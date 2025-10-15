@@ -188,12 +188,35 @@ Route::middleware(['auth:sanctum', 'klassci.sync'])->group(function () {
 });
 
 // ============================================
-// FUTURES ROUTES LMS (à implémenter)
+// QUIZZES - Routes protégées
 // ============================================
-/*
+use App\Http\Controllers\API\QuizController;
 
-// Quiz
-Route::apiResource('quizzes', QuizController::class);
-Route::post('quizzes/{id}/start', [QuizController::class, 'startQuiz']);
-Route::post('quiz-attempts/{id}/submit', [QuizController::class, 'submitQuiz']);
-*/
+// Routes accessibles à tous les utilisateurs authentifiés
+Route::middleware(['auth:sanctum', 'klassci.sync'])->group(function () {
+    // Liste et consultation des quiz
+    Route::get('quizzes', [QuizController::class, 'index']);
+    Route::get('quizzes/{id}', [QuizController::class, 'show']);
+
+    // Démarrer et soumettre une tentative
+    Route::post('quizzes/{id}/start', [QuizController::class, 'startAttempt']);
+    Route::post('quiz-attempts/{id}/submit', [QuizController::class, 'submitAttempt']);
+
+    // Consulter une tentative
+    Route::get('quiz-attempts/{id}', [QuizController::class, 'showAttempt']);
+});
+
+// Routes enseignants/coordinateurs uniquement
+Route::middleware(['auth:sanctum', 'klassci.sync', 'role:enseignant,coordinateur'])->group(function () {
+    // CRUD des quiz
+    Route::post('quizzes', [QuizController::class, 'store']);
+    Route::put('quizzes/{id}', [QuizController::class, 'update']);
+    Route::delete('quizzes/{id}', [QuizController::class, 'destroy']);
+
+    // Publication
+    Route::post('quizzes/{id}/publish', [QuizController::class, 'publish']);
+
+    // Gestion des tentatives
+    Route::get('quizzes/{id}/attempts', [QuizController::class, 'getAttempts']);
+    Route::post('quiz-attempts/{id}/grade', [QuizController::class, 'gradeAttempt']);
+});

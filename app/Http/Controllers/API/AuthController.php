@@ -24,14 +24,14 @@ class AuthController extends Controller
 
     /**
      * POST /api/auth/login
-     * Connexion utilisateur (proxy vers KLASSCI + création token local)
+     * Connexion utilisateur (local ou proxy vers KLASSCI)
      */
     public function login(Request $request): JsonResponse
     {
         try {
             // Validation des données
             $validator = Validator::make($request->all(), [
-                'email' => 'required|email',
+                'email' => 'required|string',
                 'password' => 'required|string|min:6',
             ]);
 
@@ -43,48 +43,83 @@ class AuthController extends Controller
                 ], 422);
             }
 
-            // Appeler l'API KLASSCI pour authentification
-            $klassciResponse = $this->klassciService->post('auth/login', [
-                'email' => $request->email,
-                'password' => $request->password,
-            ]);
+            // Essayer d'abord l'authentification locale
+            $user = User::where('email', $request->email)->first();
 
-            // Vérifier la réponse KLASSCI
-            if (!isset($klassciResponse['success']) || !$klassciResponse['success']) {
+            if ($user && Hash::check($request->password, $user->password)) {
+                // Authentification locale réussie
+                $token = $user->createToken('lms-backend-token', ['lms:access'])->plainTextToken;
+
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Connexion réussie (local)',
+                    'data' => [
+                        'user' => [
+                            'id' => $user->id,
+                            'klassci_id' => $user->klassci_id,
+                            'name' => $user->name,
+                            'email' => $user->email,
+                            'role' => $user->role,
+                        ],
+                        'token' => $token,
+                        'token_type' => 'Bearer',
+                    ],
+                    'meta' => [
+                        'klassci_synced' => false,
+                    ],
+                ]);
+            }
+
+            // Si pas d'utilisateur local, essayer via KLASSCI
+            try {
+                $klassciResponse = $this->klassciService->post('auth/login', [
+                    'email' => $request->email,
+                    'password' => $request->password,
+                ]);
+
+                // Vérifier la réponse KLASSCI
+                if (!isset($klassciResponse['success']) || !$klassciResponse['success']) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Identifiants incorrects',
+                    ], 401);
+                }
+
+                $klassciUser = $klassciResponse['data']['user'];
+                $klassciToken = $klassciResponse['data']['token'];
+
+                // Synchroniser ou créer l'utilisateur local
+                $user = $this->syncUserFromKlassci($klassciUser, $klassciToken);
+
+                // Générer un token Sanctum local
+                $token = $user->createToken('lms-backend-token', ['lms:access'])->plainTextToken;
+
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Connexion réussie (KLASSCI)',
+                    'data' => [
+                        'user' => [
+                            'id' => $user->id,
+                            'klassci_id' => $user->klassci_id,
+                            'name' => $user->name,
+                            'email' => $user->email,
+                            'role' => $user->role,
+                        ],
+                        'token' => $token,
+                        'token_type' => 'Bearer',
+                    ],
+                    'meta' => [
+                        'klassci_synced' => true,
+                        'annee_universitaire_courante' => $klassciResponse['meta']['annee_universitaire_courante'] ?? null,
+                    ],
+                ]);
+            } catch (\Exception $klassciError) {
+                // KLASSCI inaccessible et pas d'utilisateur local
                 return response()->json([
                     'success' => false,
                     'message' => 'Identifiants incorrects',
                 ], 401);
             }
-
-            $klassciUser = $klassciResponse['data']['user'];
-            $klassciToken = $klassciResponse['data']['token'];
-
-            // Synchroniser ou créer l'utilisateur local
-            $user = $this->syncUserFromKlassci($klassciUser, $klassciToken);
-
-            // Générer un token Sanctum local
-            $token = $user->createToken('lms-backend-token', ['lms:access'])->plainTextToken;
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Connexion réussie',
-                'data' => [
-                    'user' => [
-                        'id' => $user->id,
-                        'klassci_id' => $user->klassci_id,
-                        'name' => $user->name,
-                        'email' => $user->email,
-                        'role' => $user->role,
-                    ],
-                    'token' => $token,
-                    'token_type' => 'Bearer',
-                ],
-                'meta' => [
-                    'klassci_synced' => true,
-                    'annee_universitaire_courante' => $klassciResponse['meta']['annee_universitaire_courante'] ?? null,
-                ],
-            ]);
 
         } catch (\Exception $e) {
             return response()->json([

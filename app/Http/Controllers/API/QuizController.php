@@ -403,6 +403,20 @@ class QuizController extends Controller
             ], 422);
         }
 
+        // NOUVEAU: Vérifier si le temps est écoulé (sécurité côté serveur)
+        if ($attempt->isTimeExpired()) {
+            // Soumettre automatiquement avec les réponses actuelles ou vides
+            $attempt->submit($request->answers ?? []);
+            return response()->json([
+                'success' => false,
+                'message' => 'Le temps est écoulé. Votre tentative a été soumise automatiquement.',
+                'data' => [
+                    'attempt' => $attempt,
+                    'time_expired' => true,
+                ],
+            ], 422);
+        }
+
         $validator = Validator::make($request->all(), [
             'answers' => 'required|array',
         ]);
@@ -558,6 +572,144 @@ class QuizController extends Controller
             'success' => true,
             'message' => 'Tentative notée avec succès',
             'data' => $attempt->fresh(['user', 'grader']),
+        ]);
+    }
+
+    /**
+     * GET /api/quiz-attempts/{id}/time-remaining
+     * Vérifier le temps restant pour une tentative (évite les tricheries)
+     */
+    public function checkTimeRemaining(Request $request, int $id): JsonResponse
+    {
+        $attempt = QuizAttempt::with('quiz')->find($id);
+
+        if (!$attempt) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Tentative non trouvée',
+            ], 404);
+        }
+
+        // Vérifier les permissions
+        $user = $request->user();
+        if ($attempt->user_id !== $user->id) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Vous n\'êtes pas autorisé',
+            ], 403);
+        }
+
+        // Si la tentative n'est pas en cours, retourner 0
+        if ($attempt->status !== 'in_progress') {
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'time_remaining_seconds' => 0,
+                    'is_expired' => true,
+                    'status' => $attempt->status,
+                ],
+            ]);
+        }
+
+        // Vérifier si le temps est écoulé
+        $timeRemaining = $attempt->getTimeRemaining();
+        $isExpired = $attempt->isTimeExpired();
+
+        // Si expiré, soumettre automatiquement
+        if ($isExpired) {
+            $attempt->submit([]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Le temps est écoulé. Votre tentative a été soumise automatiquement.',
+                'data' => [
+                    'time_remaining_seconds' => 0,
+                    'is_expired' => true,
+                    'auto_submitted' => true,
+                    'attempt' => $attempt->fresh(),
+                ],
+            ], 422);
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'time_remaining_seconds' => $timeRemaining,
+                'is_expired' => false,
+                'started_at' => $attempt->started_at,
+                'duration_minutes' => $attempt->quiz->duration_minutes,
+            ],
+        ]);
+    }
+
+    /**
+     * POST /api/quiz-attempts/{id}/save-progress
+     * Sauvegarder les réponses temporaires (sans soumettre)
+     */
+    public function saveProgress(Request $request, int $id): JsonResponse
+    {
+        $attempt = QuizAttempt::with('quiz')->find($id);
+
+        if (!$attempt) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Tentative non trouvée',
+            ], 404);
+        }
+
+        // Vérifier les permissions
+        $user = $request->user();
+        if ($attempt->user_id !== $user->id) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Vous n\'êtes pas autorisé',
+            ], 403);
+        }
+
+        // Vérifier le statut
+        if ($attempt->status !== 'in_progress') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Cette tentative ne peut plus être modifiée',
+            ], 422);
+        }
+
+        // Vérifier si le temps est écoulé
+        if ($attempt->isTimeExpired()) {
+            $attempt->submit($request->answers ?? []);
+            return response()->json([
+                'success' => false,
+                'message' => 'Le temps est écoulé. Votre tentative a été soumise automatiquement.',
+                'data' => [
+                    'time_expired' => true,
+                    'attempt' => $attempt->fresh(),
+                ],
+            ], 422);
+        }
+
+        $validator = Validator::make($request->all(), [
+            'answers' => 'required|array',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Données invalides',
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        // Sauvegarder les réponses temporaires
+        $attempt->answers = $request->answers;
+        $attempt->save();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Progression sauvegardée',
+            'data' => [
+                'time_remaining' => $attempt->getTimeRemaining(),
+                'saved_at' => now(),
+            ],
         ]);
     }
 

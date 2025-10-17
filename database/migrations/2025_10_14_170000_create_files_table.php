@@ -20,8 +20,8 @@ return new class extends Migration
             // Utilisateur qui a uploadé le fichier
             $table->foreignId('user_id')->constrained()->onDelete('cascade');
 
-            // Entité liée (polymorphique)
-            $table->nullableMorphs('fileable'); // fileable_id + fileable_type
+            // Entité liée (polymorphique) - crée automatiquement l'index
+            $table->nullableMorphs('fileable'); // fileable_id + fileable_type + index
 
             // Informations du fichier
             $table->string('original_name');
@@ -49,8 +49,7 @@ return new class extends Migration
             $table->softDeletes();
 
             // Index pour performance
-            $table->index(['fileable_type', 'fileable_id']);
-            $table->index('user_id');
+            // Note: user_id et (fileable_type, fileable_id) déjà indexés automatiquement
             $table->index('type');
             $table->index('created_at');
         });

@@ -167,4 +167,28 @@ class User extends Authenticatable
     {
         return $this->hasMany(\App\Models\File::class);
     }
+
+    /**
+     * Relation: Notifications de l'utilisateur
+     */
+    public function notifications()
+    {
+        return $this->hasMany(\App\Models\Notification::class);
+    }
+
+    /**
+     * Relation: Notifications non lues
+     */
+    public function unreadNotifications()
+    {
+        return $this->notifications()->unread();
+    }
+
+    /**
+     * Relation: Tentatives de quiz
+     */
+    public function quizAttempts()
+    {
+        return $this->hasMany(\App\Models\QuizAttempt::class);
+    }
 }

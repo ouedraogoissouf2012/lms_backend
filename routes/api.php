@@ -202,6 +202,10 @@ Route::middleware(['auth:sanctum', 'klassci.sync'])->group(function () {
     Route::post('quizzes/{id}/start', [QuizController::class, 'startAttempt']);
     Route::post('quiz-attempts/{id}/submit', [QuizController::class, 'submitAttempt']);
 
+    // NOUVEAU: Timer et sauvegarde de progression
+    Route::get('quiz-attempts/{id}/time-remaining', [QuizController::class, 'checkTimeRemaining']);
+    Route::post('quiz-attempts/{id}/save-progress', [QuizController::class, 'saveProgress']);
+
     // Consulter une tentative
     Route::get('quiz-attempts/{id}', [QuizController::class, 'showAttempt']);
 });
@@ -219,4 +223,43 @@ Route::middleware(['auth:sanctum', 'klassci.sync', 'role:enseignant,coordinateur
     // Gestion des tentatives
     Route::get('quizzes/{id}/attempts', [QuizController::class, 'getAttempts']);
     Route::post('quiz-attempts/{id}/grade', [QuizController::class, 'gradeAttempt']);
+});
+
+// ============================================
+// NOTIFICATIONS - Routes protégées
+// ============================================
+use App\Http\Controllers\API\NotificationController;
+
+Route::middleware(['auth:sanctum'])->prefix('notifications')->group(function () {
+    // Liste et compteurs
+    Route::get('/', [NotificationController::class, 'index']);
+    Route::get('/unread-count', [NotificationController::class, 'unreadCount']);
+
+    // Actions globales (AVANT les routes avec {id})
+    Route::post('/read-all', [NotificationController::class, 'markAllAsRead']);
+    Route::delete('/read', [NotificationController::class, 'destroyAllRead']);
+
+    // Actions sur une notification (APRÈS les routes spécifiques)
+    Route::get('/{id}', [NotificationController::class, 'show']);
+    Route::post('/{id}/read', [NotificationController::class, 'markAsRead']);
+    Route::post('/{id}/unread', [NotificationController::class, 'markAsUnread']);
+    Route::delete('/{id}', [NotificationController::class, 'destroy']);
+});
+
+// ============================================
+// DASHBOARD - Routes protégées
+// ============================================
+use App\Http\Controllers\API\DashboardController;
+
+Route::middleware(['auth:sanctum', 'klassci.sync'])->prefix('dashboard')->group(function () {
+    // Dashboard étudiant (tous les utilisateurs authentifiés)
+    Route::get('/student', [DashboardController::class, 'student']);
+
+    // Dashboard enseignant (enseignants et coordinateurs uniquement)
+    Route::get('/teacher', [DashboardController::class, 'teacher'])
+        ->middleware('role:enseignant,coordinateur');
+
+    // Statistiques globales (coordinateurs et admin uniquement)
+    Route::get('/stats', [DashboardController::class, 'stats'])
+        ->middleware('role:coordinateur,admin');
 });

@@ -222,6 +222,14 @@ class QuizAttempt extends Model
     }
 
     /**
+     * Alias pour hasExpired() - Vérifier si le temps est écoulé
+     */
+    public function isTimeExpired(): bool
+    {
+        return $this->hasExpired();
+    }
+
+    /**
      * Obtenir le temps restant (en secondes)
      */
     public function getTimeRemaining(): ?int

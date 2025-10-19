@@ -8,6 +8,7 @@ use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
 
@@ -29,9 +30,9 @@ class AuthController extends Controller
     public function login(Request $request): JsonResponse
     {
         try {
-            // Validation des données
+            // Validation des données - accepter username OU email
             $validator = Validator::make($request->all(), [
-                'email' => 'required|string',
+                'username' => 'required|string',  // Accepter username au lieu de email
                 'password' => 'required|string|min:6',
             ]);
 
@@ -43,73 +44,101 @@ class AuthController extends Controller
                 ], 422);
             }
 
-            // Essayer d'abord l'authentification locale
-            $user = User::where('email', $request->email)->first();
+            // Essayer d'abord l'authentification locale (si DB accessible)
+            try {
+                $user = User::where('email', $request->username)
+                            ->orWhere('name', $request->username)
+                            ->first();
 
-            if ($user && Hash::check($request->password, $user->password)) {
-                // Authentification locale réussie
-                $token = $user->createToken('lms-backend-token', ['lms:access'])->plainTextToken;
+                if ($user && Hash::check($request->password, $user->password)) {
+                    // Authentification locale réussie
+                    $token = $user->createToken('lms-backend-token', ['lms:access'])->plainTextToken;
 
-                return response()->json([
-                    'success' => true,
-                    'message' => 'Connexion réussie (local)',
-                    'data' => [
-                        'user' => [
-                            'id' => $user->id,
-                            'klassci_id' => $user->klassci_id,
-                            'name' => $user->name,
-                            'email' => $user->email,
-                            'role' => $user->role,
+                    return response()->json([
+                        'success' => true,
+                        'message' => 'Connexion réussie (local)',
+                        'data' => [
+                            'user' => [
+                                'id' => $user->id,
+                                'klassci_id' => $user->klassci_id,
+                                'name' => $user->name,
+                                'email' => $user->email,
+                                'role' => $user->role,
+                            ],
+                            'token' => $token,
+                            'token_type' => 'Bearer',
                         ],
-                        'token' => $token,
-                        'token_type' => 'Bearer',
-                    ],
-                    'meta' => [
-                        'klassci_synced' => false,
-                    ],
+                        'meta' => [
+                            'klassci_synced' => false,
+                        ],
+                    ]);
+                }
+            } catch (\Exception $dbError) {
+                // Si erreur DB, on passe directement à KLASSCI
+                Log::warning('DB locale non accessible, passage à KLASSCI', [
+                    'error' => $dbError->getMessage()
                 ]);
             }
 
             // Si pas d'utilisateur local, essayer via KLASSCI
             try {
+                // KLASSCI attend uniquement 'username' et 'password'
                 $klassciResponse = $this->klassciService->post('auth/login', [
-                    'email' => $request->email,
+                    'username' => $request->username,  // Utiliser le username fourni
                     'password' => $request->password,
                 ]);
+
+                // Logger la réponse KLASSCI pour debug
+                Log::info('KLASSCI Login Response', ['response' => $klassciResponse]);
 
                 // Vérifier la réponse KLASSCI
                 if (!isset($klassciResponse['success']) || !$klassciResponse['success']) {
                     return response()->json([
                         'success' => false,
                         'message' => 'Identifiants incorrects',
+                        'klassci_response' => $klassciResponse,
                     ], 401);
+                }
+
+                // Vérifier que les données utilisateur existent
+                if (!isset($klassciResponse['data']['user']) || !isset($klassciResponse['data']['token'])) {
+                    Log::error('KLASSCI Response manquante', ['response' => $klassciResponse]);
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Réponse KLASSCI invalide',
+                        'debug' => $klassciResponse,
+                    ], 500);
                 }
 
                 $klassciUser = $klassciResponse['data']['user'];
                 $klassciToken = $klassciResponse['data']['token'];
 
-                // Synchroniser ou créer l'utilisateur local
-                $user = $this->syncUserFromKlassci($klassciUser, $klassciToken);
-
-                // Générer un token Sanctum local
-                $token = $user->createToken('lms-backend-token', ['lms:access'])->plainTextToken;
-
+                // OPTION A: API Backend - Retourner directement le token KLASSCI
+                // Pas de synchronisation locale si DB non accessible
                 return response()->json([
                     'success' => true,
                     'message' => 'Connexion réussie (KLASSCI)',
                     'data' => [
                         'user' => [
-                            'id' => $user->id,
-                            'klassci_id' => $user->klassci_id,
-                            'name' => $user->name,
-                            'email' => $user->email,
-                            'role' => $user->role,
+                            'id' => $klassciUser['id'],
+                            'klassci_id' => $klassciUser['id'],
+                            'name' => $klassciUser['nom'],
+                            'email' => $klassciUser['email'],
+                            'role' => $klassciUser['role'],
+                            'role_display_name' => $klassciUser['role_display_name'] ?? '',
+                            'avatar' => $klassciUser['avatar'] ?? null,
+                            'permissions' => $klassciUser['permissions'] ?? [],
+                            'is_admin' => $klassciUser['is_admin'] ?? false,
+                            'admin_data' => $klassciUser['admin_data'] ?? null,
+                            'enseignant_data' => $klassciUser['enseignant_data'] ?? null,
+                            'etudiant_data' => $klassciUser['etudiant_data'] ?? null,
                         ],
-                        'token' => $token,
+                        'token' => $klassciToken,
                         'token_type' => 'Bearer',
                     ],
                     'meta' => [
-                        'klassci_synced' => true,
+                        'klassci_synced' => false,
+                        'direct_klassci_auth' => true,
                         'annee_universitaire_courante' => $klassciResponse['meta']['annee_universitaire_courante'] ?? null,
                     ],
                 ]);

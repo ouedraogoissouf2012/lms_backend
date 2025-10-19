@@ -1,0 +1,82 @@
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+
+class EvaluationSubmission extends Model
+{
+    protected $fillable = [
+        'evaluation_id',
+        'klassci_etudiant_id',
+        'attempt',
+        'status',
+        'started_at',
+        'submitted_at',
+        'answers',
+        'score',
+        'note_sur_20',
+        'feedback',
+        'synced_to_klassci',
+        'synced_at',
+    ];
+
+    protected $casts = [
+        'started_at' => 'datetime',
+        'submitted_at' => 'datetime',
+        'answers' => 'array',
+        'score' => 'decimal:2',
+        'note_sur_20' => 'decimal:2',
+        'synced_to_klassci' => 'boolean',
+        'synced_at' => 'datetime',
+    ];
+
+    /**
+     * Une soumission appartient à une évaluation
+     */
+    public function evaluation(): BelongsTo
+    {
+        return $this->belongsTo(Evaluation::class);
+    }
+
+    /**
+     * Calcule le score automatiquement pour les QCM
+     */
+    public function calculateScore(): void
+    {
+        $evaluation = $this->evaluation()->with('questions')->first();
+        $totalPoints = 0;
+        $earnedPoints = 0;
+
+        foreach ($evaluation->questions as $question) {
+            $totalPoints += $question->points;
+
+            // Vérifier si l'étudiant a répondu
+            if (isset($this->answers[$question->id])) {
+                $studentAnswer = $this->answers[$question->id];
+
+                // Vérifier si la réponse est correcte
+                if ($question->isCorrectAnswer($studentAnswer)) {
+                    $earnedPoints += $question->points;
+                }
+            }
+        }
+
+        // Calculer le score et la note sur 20
+        $this->score = $earnedPoints;
+        $percentage = $totalPoints > 0 ? ($earnedPoints / $totalPoints) : 0;
+        $this->note_sur_20 = round($percentage * $evaluation->bareme, 2);
+    }
+
+    /**
+     * Soumet les réponses et calcule le score
+     */
+    public function submit(): void
+    {
+        $this->status = 'soumis';
+        $this->submitted_at = now();
+        $this->calculateScore();
+        $this->save();
+    }
+}

@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git add:*)",
+      "Bash(git commit -m \"$(cat <<''EOF''\nAjout du système d''évaluations en ligne complet\n\n- Backend:\n  * Migrations: evaluations, evaluation_questions, evaluation_submissions\n  * Modèles Eloquent avec calcul automatique des scores\n  * Controller EvaluationController avec CRUD complet\n  * Routes API pour enseignants et étudiants\n  * Synchronisation des notes vers KLASSCI\n\n- Types de questions supportés:\n  * QCM simple et multiple\n  * Vrai/Faux\n  * Réponses courtes\n  * Dissertations\n\n- Fonctionnalités:\n  * Création d''évaluations par les enseignants\n  * Passage d''évaluations par les étudiants avec timer\n  * Calcul automatique des notes\n  * Support des tentatives multiples\n  * Mélange des questions\n  * Affichage immédiat des résultats (optionnel)\n\n- Documentation: EVALUATIONS_README.md\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

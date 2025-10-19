@@ -227,6 +227,88 @@ class ProxyController extends Controller
     }
 
     /**
+     * GET /api/proxy/me/dashboard
+     * Récupère le dashboard de l'étudiant connecté (via token KLASSCI)
+     *
+     * Retourne : classe, cours (matières), quiz (évaluations), notes, statistiques
+     */
+    public function studentDashboard(Request $request): JsonResponse
+    {
+        try {
+            // Récupérer le token depuis l'en-tête Authorization
+            $authHeader = $request->header('Authorization');
+
+            if (!$authHeader || strpos($authHeader, 'Bearer ') !== 0) {
+                return $this->errorResponse('Token manquant', 401);
+            }
+
+            $userToken = substr($authHeader, 7); // Enlever "Bearer "
+
+            if (!$userToken) {
+                return $this->errorResponse('Token KLASSCI invalide', 401);
+            }
+
+            \Log::info('Dashboard request with user token', [
+                'has_token' => !empty($userToken),
+                'token_preview' => substr($userToken, 0, 10) . '...'
+            ]);
+
+            // Utiliser le token KLASSCI pour la requête
+            $data = $this->klassciService->requestWithUserToken(
+                $userToken,
+                'me/dashboard',
+                'GET'
+            );
+
+            return response()->json($data);
+        } catch (\Exception $e) {
+            \Log::error('Dashboard error', ['error' => $e->getMessage()]);
+            return $this->errorResponse($e->getMessage());
+        }
+    }
+
+    /**
+     * GET /api/proxy/me/teacher-dashboard
+     * Récupère le dashboard de l'enseignant connecté (via token KLASSCI)
+     *
+     * Retourne : matieres, classes, evaluations, seances, statistiques
+     */
+    public function teacherDashboard(Request $request): JsonResponse
+    {
+        try {
+            // Récupérer le token depuis l'en-tête Authorization
+            $authHeader = $request->header('Authorization');
+
+            if (!$authHeader || strpos($authHeader, 'Bearer ') !== 0) {
+                return $this->errorResponse('Token manquant', 401);
+            }
+
+            $userToken = substr($authHeader, 7); // Enlever "Bearer "
+
+            if (!$userToken) {
+                return $this->errorResponse('Token KLASSCI invalide', 401);
+            }
+
+            \Log::info('Teacher Dashboard request with user token', [
+                'has_token' => !empty($userToken),
+                'token_preview' => substr($userToken, 0, 10) . '...'
+            ]);
+
+            // Utiliser le token KLASSCI pour la requête
+            $data = $this->klassciService->requestWithUserToken(
+                $userToken,
+                'me/teacher-dashboard',
+                'GET'
+            );
+
+            return response()->json($data);
+        } catch (\Exception $e) {
+            \Log::error('Teacher Dashboard error', ['error' => $e->getMessage()]);
+            return $this->errorResponse($e->getMessage());
+        }
+    }
+
+    /**
      * GET /api/proxy/test-connection
      * Test de connexion à l'API KLASSCI
      */

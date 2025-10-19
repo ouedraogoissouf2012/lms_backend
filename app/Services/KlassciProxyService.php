@@ -297,4 +297,71 @@ class KlassciProxyService
             return false;
         }
     }
+
+    /**
+     * Requête avec token utilisateur spécifique (pour endpoints personnels)
+     *
+     * @param string $userToken Token KLASSCI de l'utilisateur
+     * @param string $endpoint L'endpoint API
+     * @param string $method Méthode HTTP (GET, POST, etc.)
+     * @param array $data Données à envoyer
+     * @return array
+     * @throws \Exception
+     */
+    public function requestWithUserToken(string $userToken, string $endpoint, string $method = 'GET', array $data = []): array
+    {
+        $url = $this->baseUrl . '/' . ltrim($endpoint, '/');
+
+        try {
+            Log::info("KLASSCI API Request (User Token)", [
+                'method' => $method,
+                'url' => $url,
+                'has_user_token' => !empty($userToken)
+            ]);
+
+            $request = Http::timeout($this->timeout)
+                ->withHeaders([
+                    'Accept' => 'application/json',
+                    'Content-Type' => 'application/json',
+                ])
+                ->withToken($userToken); // Utiliser le token de l'utilisateur
+
+            // Exécuter la requête selon la méthode
+            $response = match($method) {
+                'GET' => $request->get($url, $data),
+                'POST' => $request->post($url, $data),
+                'PUT' => $request->put($url, $data),
+                'DELETE' => $request->delete($url),
+                default => throw new \Exception("Méthode HTTP non supportée: {$method}")
+            };
+
+            // Vérifier le statut
+            if ($response->failed()) {
+                Log::error("KLASSCI API Error (User Token)", [
+                    'status' => $response->status(),
+                    'body' => $response->body()
+                ]);
+
+                throw new \Exception(
+                    "Erreur API KLASSCI: " . $response->status() . " - " . $response->body()
+                );
+            }
+
+            $result = $response->json();
+
+            Log::info("KLASSCI API Response (User Token)", [
+                'success' => $result['success'] ?? false
+            ]);
+
+            return $result;
+
+        } catch (\Exception $e) {
+            Log::error("KLASSCI API Exception (User Token)", [
+                'message' => $e->getMessage(),
+                'endpoint' => $endpoint
+            ]);
+
+            throw $e;
+        }
+    }
 }

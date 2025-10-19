@@ -25,6 +25,100 @@ Route::get('/ping', function () {
     ]);
 });
 
+// ROUTE DEBUG - Créer utilisateur de test (À SUPPRIMER EN PRODUCTION)
+Route::get('/create-test-user', function () {
+    try {
+        $user = \App\Models\User::firstOrCreate(
+            ['email' => 'etudiant@test.com'],
+            [
+                'klassci_id' => 999001,  // ID numérique au lieu de string
+                'name' => 'Étudiant Test',
+                'password' => \Illuminate\Support\Facades\Hash::make('password'),
+                'role' => 'étudiant',
+            ]
+        );
+
+        $teacher = \App\Models\User::firstOrCreate(
+            ['email' => 'enseignant@test.com'],
+            [
+                'klassci_id' => 999002,  // ID numérique au lieu de string
+                'name' => 'Enseignant Test',
+                'password' => \Illuminate\Support\Facades\Hash::make('password'),
+                'role' => 'enseignant',
+            ]
+        );
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Utilisateurs de test créés !',
+            'users' => [
+                ['email' => 'etudiant@test.com', 'password' => 'password', 'role' => 'étudiant'],
+                ['email' => 'enseignant@test.com', 'password' => 'password', 'role' => 'enseignant'],
+            ]
+        ]);
+    } catch (\Exception $e) {
+        return response()->json([
+            'success' => false,
+            'error' => $e->getMessage()
+        ], 500);
+    }
+});
+
+// ROUTE DEBUG - Tester connexion KLASSCI
+Route::post('/test-klassci-login', function (Request $request) {
+    try {
+        $email = $request->input('email');
+        $password = $request->input('password');
+
+        if (!$email || !$password) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Email et mot de passe requis'
+            ], 400);
+        }
+
+        // URL KLASSCI
+        $klassciUrl = env('KLASSCI_API_URL', 'http://presentation.klassci.com/api/lms');
+
+        \Log::info('Test connexion KLASSCI', [
+            'url' => $klassciUrl,
+            'email' => $email
+        ]);
+
+        $response = \Illuminate\Support\Facades\Http::timeout(30)
+            ->post($klassciUrl . '/auth/login', [
+                'email' => $email,
+                'password' => $password,
+            ]);
+
+        if ($response->successful()) {
+            $data = $response->json();
+
+            return response()->json([
+                'success' => true,
+                'message' => '✅ Connexion KLASSCI réussie !',
+                'klassci_data' => $data,
+                'api_url' => $klassciUrl,
+            ]);
+        }
+
+        return response()->json([
+            'success' => false,
+            'error' => '❌ Échec connexion KLASSCI',
+            'details' => $response->json(),
+            'status_code' => $response->status(),
+            'api_url' => $klassciUrl,
+        ], $response->status());
+
+    } catch (\Exception $e) {
+        return response()->json([
+            'success' => false,
+            'error' => $e->getMessage(),
+            'api_url' => env('KLASSCI_API_URL'),
+        ], 500);
+    }
+});
+
 // ============================================
 // AUTHENTIFICATION - Routes publiques
 // ============================================
@@ -52,29 +146,30 @@ Route::prefix('proxy')->group(function () {
 });
 
 // ============================================
-// PROXY KLASSCI - Routes protégées (Tous les rôles authentifiés)
+// PROXY KLASSCI - Routes publiques (lecture seule)
+// Ces routes utilisent le token KLASSCI configuré dans .env
+// Pas besoin d'authentification utilisateur pour la lecture
 // ============================================
 Route::prefix('proxy')
-    ->middleware(['auth:sanctum', 'klassci.sync'])
     ->group(function () {
 
-    // Structure organisationnelle (Accessible à tous)
+    // Structure organisationnelle
     Route::get('/structure', [ProxyController::class, 'structure']);
     Route::get('/filieres', [ProxyController::class, 'filieres']);
     Route::get('/niveaux-etudes', [ProxyController::class, 'niveauxEtudes']);
 
-    // Classes et étudiants (Accessible à tous)
+    // Classes et étudiants
     Route::get('/classes', [ProxyController::class, 'classes']);
     Route::get('/classes/{id}/etudiants', [ProxyController::class, 'etudiants']);
 
-    // Matières et enseignants (Accessible à tous)
+    // Matières et enseignants
     Route::get('/matieres', [ProxyController::class, 'matieres']);
     Route::get('/enseignants', [ProxyController::class, 'enseignants']);
 
-    // Emploi du temps (Accessible à tous)
+    // Emploi du temps
     Route::get('/emploi-temps', [ProxyController::class, 'emploiTemps']);
 
-    // Évaluations - Lecture (Accessible à tous)
+    // Évaluations - Lecture
     Route::get('/evaluations', [ProxyController::class, 'evaluations']);
 });
 
@@ -93,6 +188,18 @@ Route::prefix('proxy')
 
     // Mettre à jour statut cours (Enseignants/Coordinateurs uniquement)
     Route::put('/cours/{id}/statut', [ProxyController::class, 'updateCoursStatut']);
+});
+
+// ============================================
+// PROXY KLASSCI - Routes utilisateur (token KLASSCI direct)
+// Ces routes utilisent le token KLASSCI de l'utilisateur (pas Sanctum)
+// ============================================
+Route::prefix('proxy')->group(function () {
+    // Dashboard étudiant (utilise le token KLASSCI de l'utilisateur connecté)
+    Route::get('/me/dashboard', [ProxyController::class, 'studentDashboard']);
+
+    // Dashboard enseignant (utilise le token KLASSCI de l'utilisateur connecté)
+    Route::get('/me/teacher-dashboard', [ProxyController::class, 'teacherDashboard']);
 });
 
 // ============================================
@@ -262,4 +369,37 @@ Route::middleware(['auth:sanctum', 'klassci.sync'])->prefix('dashboard')->group(
     // Statistiques globales (coordinateurs et admin uniquement)
     Route::get('/stats', [DashboardController::class, 'stats'])
         ->middleware('role:coordinateur,admin');
+});
+
+// ============================================
+// EVALUATIONS - Routes protégées
+// ============================================
+use App\Http\Controllers\API\EvaluationController;
+
+// Routes accessibles à tous les utilisateurs authentifiés
+Route::middleware(['auth:sanctum'])->group(function () {
+    // Liste et consultation des évaluations
+    Route::get('evaluations', [EvaluationController::class, 'index']);
+    Route::get('evaluations/{id}', [EvaluationController::class, 'show']);
+
+    // Évaluations disponibles pour un étudiant
+    Route::get('evaluations/student/{klassciEtudiantId}', [EvaluationController::class, 'studentEvaluations']);
+
+    // Démarrer et soumettre une évaluation
+    Route::post('evaluations/{id}/start', [EvaluationController::class, 'startEvaluation']);
+    Route::post('evaluations/{id}/submit', [EvaluationController::class, 'submitEvaluation']);
+});
+
+// Routes enseignants/coordinateurs uniquement
+Route::middleware(['auth:sanctum', 'role:enseignant,coordinateur'])->group(function () {
+    // CRUD des évaluations
+    Route::post('evaluations', [EvaluationController::class, 'store']);
+    Route::put('evaluations/{id}', [EvaluationController::class, 'update']);
+    Route::delete('evaluations/{id}', [EvaluationController::class, 'destroy']);
+
+    // Publication
+    Route::post('evaluations/{id}/publish', [EvaluationController::class, 'publish']);
+
+    // Synchronisation vers KLASSCI
+    Route::post('evaluations/{id}/sync-to-klassci', [EvaluationController::class, 'syncToKlassci']);
 });

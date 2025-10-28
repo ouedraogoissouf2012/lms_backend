@@ -39,6 +39,8 @@ class Notification extends Model
     public const TYPE_LESSON_UPDATED = 'lesson_updated';
     public const TYPE_FORUM_SOLUTION = 'forum_solution';
     public const TYPE_QUIZ_DEADLINE = 'quiz_deadline';
+    public const TYPE_VISIO_SCHEDULED = 'visio_scheduled';
+    public const TYPE_VISIO_STARTING = 'visio_starting';
 
     /**
      * Relation: Utilisateur destinataire
@@ -137,6 +139,8 @@ class Notification extends Model
             self::TYPE_LESSON_UPDATED => 'mdi-book-edit',
             self::TYPE_FORUM_SOLUTION => 'mdi-check-circle',
             self::TYPE_QUIZ_DEADLINE => 'mdi-clock-alert',
+            self::TYPE_VISIO_SCHEDULED => 'mdi-video-outline',
+            self::TYPE_VISIO_STARTING => 'mdi-video-check',
             default => 'mdi-bell',
         };
     }
@@ -154,6 +158,8 @@ class Notification extends Model
             self::TYPE_LESSON_UPDATED => 'primary',
             self::TYPE_FORUM_SOLUTION => 'success',
             self::TYPE_QUIZ_DEADLINE => 'error',
+            self::TYPE_VISIO_SCHEDULED => 'info',
+            self::TYPE_VISIO_STARTING => 'warning',
             default => 'secondary',
         };
     }
@@ -174,6 +180,9 @@ class Notification extends Model
 
             self::TYPE_QUIZ_AVAILABLE, self::TYPE_GRADE_RECEIVED, self::TYPE_QUIZ_DEADLINE =>
                 isset($data['quiz_id']) ? "/quizzes/{$data['quiz_id']}" : null,
+
+            self::TYPE_VISIO_SCHEDULED, self::TYPE_VISIO_STARTING =>
+                isset($data['seance_id']) ? "/seances/{$data['seance_id']}" : null,
 
             default => null,
         };

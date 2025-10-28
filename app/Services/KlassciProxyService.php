@@ -215,11 +215,30 @@ class KlassciProxyService
     }
 
     /**
-     * Récupère les enseignants
+     * Récupère les détails d'une matière
+     */
+    public function getMatiereDetails(int $id): array
+    {
+        return $this->get("matieres/{$id}", [], 600); // Cache 10min
+    }
+
+    /**
+     * Récupère les enseignants (format simple)
      */
     public function getEnseignants(): array
     {
         return $this->get('enseignants', [], 3600); // Cache 1h
+    }
+
+    /**
+     * Récupère les enseignants avec détails enrichis (matières, classes, statistiques)
+     * @param bool $withDetails Si true, retourne les données enrichies
+     * @return array
+     */
+    public function getEnseignantsEnrichis(bool $withDetails = true): array
+    {
+        $params = $withDetails ? ['with_details' => 'true'] : [];
+        return $this->get('enseignants', $params, 600); // Cache 10min (plus court car données plus volatiles)
     }
 
     /**
@@ -239,7 +258,7 @@ class KlassciProxyService
     }
 
     /**
-     * Récupère les évaluations
+     * Récupère les évaluations depuis KLASSCI /api/lms/evaluations
      */
     public function getEvaluations(array $filters = []): array
     {
@@ -255,7 +274,7 @@ class KlassciProxyService
     }
 
     /**
-     * Sauvegarde les notes d'une évaluation
+     * Sauvegarde les notes d'une évaluation vers KLASSCI /api/lms/evaluations/{id}/notes
      */
     public function saveNotes(int $evaluationId, array $notes): array
     {

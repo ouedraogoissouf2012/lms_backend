@@ -48,9 +48,12 @@ class EvaluationController extends Controller
 
         $evaluations = $query->orderBy('date_evaluation', 'desc')->get();
 
+        // Enrichir avec les données KLASSCI (classe, matière)
+        $enrichedEvaluations = $this->enrichEvaluationsWithKlassciData($evaluations);
+
         return response()->json([
             'success' => true,
-            'data' => $evaluations
+            'data' => $enrichedEvaluations
         ]);
     }
 
@@ -69,9 +72,12 @@ class EvaluationController extends Controller
             ], 404);
         }
 
+        // Enrichir avec les données KLASSCI
+        $enrichedEvaluation = $this->enrichEvaluationsWithKlassciData(collect([$evaluation]))[0];
+
         return response()->json([
             'success' => true,
-            'data' => $evaluation
+            'data' => $enrichedEvaluation
         ]);
     }
 
@@ -191,6 +197,15 @@ class EvaluationController extends Controller
             'date_evaluation' => 'nullable|date',
             'duree_minutes' => 'sometimes|integer|min:1',
             'is_published' => 'sometimes|boolean',
+            'max_attempts' => 'sometimes|integer|min:1',
+            'shuffle_questions' => 'sometimes|boolean',
+            'show_results' => 'sometimes|boolean',
+            'questions' => 'sometimes|array',
+            'questions.*.question' => 'required|string',
+            'questions.*.type' => 'required|in:qcm,qcm_multiple,vrai_faux,reponse_courte,dissertation',
+            'questions.*.points' => 'nullable|numeric|min:0',
+            'questions.*.options' => 'nullable|array',
+            'questions.*.correct_answers' => 'nullable|array',
         ]);
 
         if ($validator->fails()) {
@@ -202,7 +217,34 @@ class EvaluationController extends Controller
         }
 
         try {
-            $evaluation->update($request->all());
+            DB::beginTransaction();
+
+            // Mettre à jour les champs de base
+            $evaluation->update($request->except(['questions']));
+
+            // Si des questions sont fournies, les remplacer
+            if ($request->has('questions')) {
+                // Supprimer les anciennes questions
+                $evaluation->questions()->delete();
+
+                // Créer les nouvelles questions
+                foreach ($request->questions as $index => $questionData) {
+                    EvaluationQuestion::create([
+                        'evaluation_id' => $evaluation->id,
+                        'question' => $questionData['question'],
+                        'type' => $questionData['type'],
+                        'ordre' => $index + 1,
+                        'points' => $questionData['points'] ?? 1,
+                        'options' => $questionData['options'] ?? null,
+                        'correct_answers' => $questionData['correct_answers'] ?? null,
+                        'explanation' => $questionData['explanation'] ?? null,
+                    ]);
+                }
+            }
+
+            DB::commit();
+
+            $evaluation->load('questions');
 
             return response()->json([
                 'success' => true,
@@ -211,6 +253,9 @@ class EvaluationController extends Controller
             ]);
 
         } catch (\Exception $e) {
+            DB::rollBack();
+            \Log::error('Erreur mise à jour évaluation', ['error' => $e->getMessage()]);
+
             return response()->json([
                 'success' => false,
                 'message' => 'Erreur lors de la mise à jour',
@@ -270,6 +315,25 @@ class EvaluationController extends Controller
     }
 
     /**
+     * GET /api/evaluations/student
+     * Récupère les évaluations de l'étudiant connecté
+     */
+    public function myEvaluations(Request $request): JsonResponse
+    {
+        $user = $request->user();
+
+        if (!$user || !$user->klassci_id) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Utilisateur non authentifié ou sans ID KLASSCI'
+            ], 401);
+        }
+
+        // Appeler studentEvaluations avec l'ID de l'utilisateur connecté
+        return $this->studentEvaluations($user->klassci_id, $request);
+    }
+
+    /**
      * GET /api/evaluations/student/{klassciEtudiantId}
      * Récupère les évaluations disponibles pour un étudiant
      */
@@ -277,11 +341,36 @@ class EvaluationController extends Controller
     {
         // Récupérer la classe de l'étudiant depuis le dashboard
         try {
-            $authHeader = $request->header('Authorization');
-            $userToken = substr($authHeader, 7);
+            // Récupérer l'utilisateur authentifié (via Sanctum)
+            $user = $request->user();
 
+            if (!$user) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Utilisateur non authentifié'
+                ], 401);
+            }
+
+            // Récupérer le token KLASSCI depuis la base de données
+            $klassciToken = $user->klassci_token;
+
+            if (!$klassciToken) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Token KLASSCI non trouvé. Veuillez vous reconnecter.'
+                ], 401);
+            }
+
+            \Log::info('Student Evaluations request', [
+                'user_id' => $user->id,
+                'klassci_id' => $user->klassci_id,
+                'klassci_etudiant_id' => $klassciEtudiantId,
+                'has_klassci_token' => !empty($klassciToken),
+            ]);
+
+            // Utiliser le token KLASSCI pour récupérer le dashboard
             $dashboard = $this->klassciService->requestWithUserToken(
-                $userToken,
+                $klassciToken,
                 'me/dashboard',
                 'GET'
             );
@@ -295,31 +384,87 @@ class EvaluationController extends Controller
                 ], 404);
             }
 
+            \Log::info('Student classe found', ['classe_id' => $classeId]);
+
             // Récupérer les évaluations publiées pour cette classe
-            $evaluations = Evaluation::with('questions', 'submissions')
+            $evaluationsLMS = Evaluation::with('questions', 'submissions')
                 ->where('klassci_classe_id', $classeId)
                 ->where('is_published', true)
                 ->whereIn('status', ['planifiee', 'en_cours'])
                 ->orderBy('date_evaluation', 'desc')
                 ->get();
 
-            // Ajouter les informations de soumission pour cet étudiant
-            $evaluations->each(function ($evaluation) use ($klassciEtudiantId) {
-                $submission = $evaluation->submissions()
+            \Log::info('Evaluations LMS found for student', ['count' => $evaluationsLMS->count()]);
+
+            // Récupérer les évaluations KLASSCI avec fenêtres temporelles
+            try {
+                $klassciEvaluationsResponse = $this->klassciService->requestWithUserToken(
+                    $klassciToken,
+                    'evaluations',
+                    'GET'
+                );
+
+                $klassciEvaluations = collect($klassciEvaluationsResponse['data'] ?? []);
+                \Log::info('KLASSCI evaluations retrieved', ['count' => $klassciEvaluations->count()]);
+
+            } catch (\Exception $e) {
+                \Log::warning('Could not fetch KLASSCI evaluations for windows', [
+                    'error' => $e->getMessage()
+                ]);
+                $klassciEvaluations = collect([]);
+            }
+
+            // Enrichir les évaluations LMS avec fenêtres KLASSCI et soumissions
+            $enrichedEvaluations = $evaluationsLMS->map(function ($evalLMS) use ($klassciEvaluations, $klassciEtudiantId) {
+                $evalArray = $evalLMS->toArray();
+
+                // Trouver l'évaluation KLASSCI correspondante
+                $klassciEval = $klassciEvaluations->firstWhere('id', $evalLMS->klassci_evaluation_id);
+
+                if ($klassciEval) {
+                    // Ajouter programmation avec window
+                    $evalArray['programmation'] = $klassciEval['programmation'] ?? null;
+
+                    // Ajouter lms_integration
+                    $evalArray['lms_integration'] = $klassciEval['lms_integration'] ?? null;
+
+                    // Ajouter classe et matière
+                    $evalArray['classe'] = $klassciEval['classe'] ?? null;
+                    $evalArray['matiere'] = $klassciEval['matiere'] ?? null;
+
+                    \Log::debug('Evaluation enriched with KLASSCI data', [
+                        'lms_id' => $evalLMS->id,
+                        'klassci_id' => $evalLMS->klassci_evaluation_id,
+                        'has_window' => isset($klassciEval['programmation']['window'])
+                    ]);
+                } else {
+                    \Log::warning('KLASSCI evaluation not found for LMS eval', [
+                        'lms_id' => $evalLMS->id,
+                        'klassci_id' => $evalLMS->klassci_evaluation_id
+                    ]);
+                }
+
+                // Ajouter la soumission de l'étudiant
+                $submission = $evalLMS->submissions()
                     ->where('klassci_etudiant_id', $klassciEtudiantId)
                     ->latest()
                     ->first();
 
-                $evaluation->student_submission = $submission;
-            });
+                $evalArray['student_submission'] = $submission;
+
+                return $evalArray;
+            })->values()->toArray();
 
             return response()->json([
                 'success' => true,
-                'data' => $evaluations
+                'data' => $enrichedEvaluations
             ]);
 
         } catch (\Exception $e) {
-            \Log::error('Erreur récupération évaluations étudiant', ['error' => $e->getMessage()]);
+            \Log::error('Erreur récupération évaluations étudiant', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
 
             return response()->json([
                 'success' => false,
@@ -336,7 +481,7 @@ class EvaluationController extends Controller
     {
         $evaluation = Evaluation::find($id);
 
-        if (!$evaluation || !$evaluation->isAvailable()) {
+        if (!$evaluation || !$evaluation->is_published) {
             return response()->json([
                 'success' => false,
                 'message' => 'Évaluation non disponible'
@@ -355,6 +500,74 @@ class EvaluationController extends Controller
         }
 
         $klassciEtudiantId = $request->klassci_etudiant_id;
+
+        // Vérifier la fenêtre temporelle KLASSCI
+        try {
+            $user = $request->user();
+            $klassciToken = $user->klassci_token;
+
+            if (!$klassciToken) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Token KLASSCI non trouvé. Veuillez vous reconnecter.'
+                ], 401);
+            }
+
+            // Récupérer l'évaluation KLASSCI avec sa fenêtre
+            $klassciEvalResponse = $this->klassciService->requestWithUserToken(
+                $klassciToken,
+                'evaluations',
+                'GET'
+            );
+
+            $klassciEval = collect($klassciEvalResponse['data'] ?? [])
+                ->firstWhere('id', $evaluation->klassci_evaluation_id);
+
+            $window = $klassciEval['programmation']['window'] ?? null;
+
+            // Vérifier que la fenêtre est ouverte
+            if ($window && !$window['is_open']) {
+                $message = 'L\'évaluation n\'est pas encore ouverte';
+
+                if (!$window['has_started']) {
+                    $startAt = \Carbon\Carbon::parse($window['start_at'])->format('d/m/Y à H:i');
+                    $message = "L'évaluation ouvrira le {$startAt}";
+                } elseif ($window['has_ended']) {
+                    $endAt = \Carbon\Carbon::parse($window['end_at'])->format('d/m/Y à H:i');
+                    $message = "L'évaluation est fermée depuis le {$endAt}";
+                }
+
+                \Log::warning('Tentative de démarrage hors fenêtre', [
+                    'evaluation_id' => $id,
+                    'klassci_evaluation_id' => $evaluation->klassci_evaluation_id,
+                    'student_id' => $klassciEtudiantId,
+                    'window' => $window
+                ]);
+
+                return response()->json([
+                    'success' => false,
+                    'message' => $message,
+                    'window' => $window
+                ], 403);
+            }
+
+            \Log::info('Démarrage évaluation autorisé', [
+                'evaluation_id' => $id,
+                'student_id' => $klassciEtudiantId,
+                'window_open' => $window ? $window['is_open'] : 'no_window',
+                'time_left_minutes' => $window['time_left_minutes'] ?? null
+            ]);
+
+        } catch (\Exception $e) {
+            \Log::error('Erreur vérification fenêtre temporelle', [
+                'evaluation_id' => $id,
+                'error' => $e->getMessage()
+            ]);
+
+            // En cas d'erreur KLASSCI, on laisse passer (fallback gracieux)
+            // Mais on log l'erreur pour investigation
+            \Log::warning('Fallback: allowing evaluation start despite window check failure');
+        }
 
         // Vérifier le nombre de tentatives
         $attemptsCount = EvaluationSubmission::where('evaluation_id', $id)
@@ -380,7 +593,8 @@ class EvaluationController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Évaluation démarrée',
-            'data' => $submission
+            'data' => $submission,
+            'window' => $window ?? null
         ]);
     }
 
@@ -438,6 +652,65 @@ class EvaluationController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Erreur lors de la soumission'
+            ], 500);
+        }
+    }
+
+    /**
+     * GET /api/evaluations/{id}/time-status
+     * Récupère l'état temporel en temps réel d'une évaluation
+     */
+    public function getTimeStatus(int $id, Request $request): JsonResponse
+    {
+        $evaluation = Evaluation::find($id);
+
+        if (!$evaluation) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Évaluation non trouvée'
+            ], 404);
+        }
+
+        try {
+            $user = $request->user();
+            $klassciToken = $user->klassci_token;
+
+            if (!$klassciToken) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Token KLASSCI non trouvé'
+                ], 401);
+            }
+
+            // Récupérer l'état KLASSCI à jour
+            $klassciEvalResponse = $this->klassciService->requestWithUserToken(
+                $klassciToken,
+                'evaluations',
+                'GET'
+            );
+
+            $klassciEval = collect($klassciEvalResponse['data'] ?? [])
+                ->firstWhere('id', $evaluation->klassci_evaluation_id);
+
+            $window = $klassciEval['programmation']['window'] ?? null;
+
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'window' => $window,
+                    'server_time' => now()->toIso8601String()
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            \Log::error('Erreur récupération état temporel', [
+                'evaluation_id' => $id,
+                'error' => $e->getMessage()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Impossible de récupérer l\'état temporel'
             ], 500);
         }
     }
@@ -505,6 +778,74 @@ class EvaluationController extends Controller
                 'message' => 'Erreur lors de la synchronisation',
                 'error' => $e->getMessage()
             ], 500);
+        }
+    }
+
+    /**
+     * Enrichit les évaluations avec les données KLASSCI (classes, matières)
+     *
+     * @param \Illuminate\Database\Eloquent\Collection $evaluations
+     * @return array
+     */
+    private function enrichEvaluationsWithKlassciData($evaluations): array
+    {
+        try {
+            // Récupérer les classes et matières de KLASSCI (avec cache)
+            $klassciClasses = $this->klassciService->getClasses();
+            $klassciMatieres = $this->klassciService->getMatieres();
+
+            // Créer des maps pour accès rapide
+            $classesMap = [];
+            if (isset($klassciClasses['data'])) {
+                foreach ($klassciClasses['data'] as $classe) {
+                    $classesMap[$classe['id']] = $classe;
+                }
+            }
+
+            $matieresMap = [];
+            if (isset($klassciMatieres['data'])) {
+                foreach ($klassciMatieres['data'] as $matiere) {
+                    $matieresMap[$matiere['id']] = $matiere;
+                }
+            }
+
+            // Enrichir chaque évaluation
+            return $evaluations->map(function ($evaluation) use ($classesMap, $matieresMap) {
+                $evalArray = $evaluation->toArray();
+
+                // Ajouter les détails de la classe
+                if (isset($evaluation->klassci_classe_id) && isset($classesMap[$evaluation->klassci_classe_id])) {
+                    $evalArray['classe'] = $classesMap[$evaluation->klassci_classe_id];
+                } else {
+                    $evalArray['classe'] = null;
+                }
+
+                // Ajouter les détails de la matière
+                if (isset($evaluation->klassci_matiere_id) && isset($matieresMap[$evaluation->klassci_matiere_id])) {
+                    $evalArray['matiere'] = $matieresMap[$evaluation->klassci_matiere_id];
+                } else {
+                    $evalArray['matiere'] = null;
+                }
+
+                // Formater la date pour un affichage convivial
+                if ($evaluation->date_evaluation) {
+                    $evalArray['date_evaluation_formatted'] = $evaluation->date_evaluation->format('d/m/Y à H:i');
+                    $evalArray['date_evaluation_short'] = $evaluation->date_evaluation->format('d/m/Y');
+                }
+
+                // Préserver les champs ajoutés dynamiquement (comme student_submission)
+                if (isset($evaluation->student_submission)) {
+                    $evalArray['student_submission'] = $evaluation->student_submission;
+                }
+
+                return $evalArray;
+            })->toArray();
+
+        } catch (\Exception $e) {
+            \Log::error('Erreur enrichissement évaluations', ['error' => $e->getMessage()]);
+
+            // En cas d'erreur, retourner les évaluations sans enrichissement
+            return $evaluations->toArray();
         }
     }
 }

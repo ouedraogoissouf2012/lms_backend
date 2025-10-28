@@ -24,14 +24,17 @@ class Lesson extends Model
         'enseignant_id',
         'title',
         'description',
-        'content',
+        'prerequis',
+        'niveau_difficulte',
+        'objectifs_pedagogiques',
+        'duree_estimee_minutes',
         'type',
         'status',
         'order',
-        'duration_minutes',
         'published_at',
         'archived_at',
         'attachments',
+        // Note: content fields moved to chapters
     ];
 
     protected $casts = [
@@ -43,6 +46,7 @@ class Lesson extends Model
     protected $attributes = [
         'status' => 'draft',
         'type' => 'cours',
+        'niveau_difficulte' => 'debutant',
         'order' => 0,
     ];
 
@@ -84,6 +88,23 @@ class Lesson extends Model
     public function files(): MorphMany
     {
         return $this->morphMany(File::class, 'fileable');
+    }
+
+    /**
+     * Relation: Chapitres de la leçon (NOUVELLE STRUCTURE)
+     * Une leçon contient plusieurs chapitres
+     */
+    public function chapters(): HasMany
+    {
+        return $this->hasMany(Chapter::class)->orderBy('order')->orderBy('created_at');
+    }
+
+    /**
+     * Relation: Ressources complémentaires
+     */
+    public function resources(): HasMany
+    {
+        return $this->hasMany(LessonResource::class)->ordered();
     }
 
     /**

@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Services\KlassciProxyService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
 /**
  * Controller Proxy pour l'API KLASSCI
@@ -79,13 +80,61 @@ class ProxyController extends Controller
     }
 
     /**
+     * GET /api/proxy/matieres/{id}
+     * Récupère les détails d'une matière
+     */
+    public function matiereDetails(int $id): JsonResponse
+    {
+        try {
+            $data = $this->klassciService->getMatiereDetails($id);
+            return response()->json($data);
+        } catch (\Exception $e) {
+            return $this->errorResponse($e->getMessage());
+        }
+    }
+
+    /**
      * GET /api/proxy/enseignants
      * Récupère les enseignants
+     *
+     * WORKAROUND: KLASSCI retourne 0 enseignants via son API mais il y en a dans le LMS local
+     * Solution: Retourner les enseignants depuis la BDD locale au lieu de KLASSCI
      */
     public function enseignants(): JsonResponse
     {
         try {
+            // Essayer d'abord KLASSCI
             $data = $this->klassciService->getEnseignants();
+
+            // Si KLASSCI retourne un tableau vide, utiliser la BDD locale
+            if (empty($data['data'])) {
+                Log::info('KLASSCI retourne 0 enseignants, utilisation BDD locale');
+
+                $localEnseignants = \App\Models\User::whereIn('role', ['enseignant', 'teacher'])
+                    ->get()
+                    ->map(function ($user) {
+                        return [
+                            'id' => $user->klassci_id ?? $user->id,
+                            'nom' => $user->name,
+                            'prenom' => '',
+                            'email' => $user->email,
+                            'role' => $user->role,
+                            'source' => 'lms_local'
+                        ];
+                    })
+                    ->toArray();
+
+                return response()->json([
+                    'success' => true,
+                    'data' => $localEnseignants,
+                    'meta' => [
+                        'total' => count($localEnseignants),
+                        'source' => 'lms_local',
+                        'note' => 'Données provenant de la BDD locale car KLASSCI retourne 0'
+                    ]
+                ]);
+            }
+
             return response()->json($data);
         } catch (\Exception $e) {
             return $this->errorResponse($e->getMessage());
@@ -235,34 +284,37 @@ class ProxyController extends Controller
     public function studentDashboard(Request $request): JsonResponse
     {
         try {
-            // Récupérer le token depuis l'en-tête Authorization
-            $authHeader = $request->header('Authorization');
+            // Récupérer l'utilisateur authentifié (via Sanctum)
+            $user = $request->user();
 
-            if (!$authHeader || strpos($authHeader, 'Bearer ') !== 0) {
-                return $this->errorResponse('Token manquant', 401);
+            if (!$user) {
+                return $this->errorResponse('Utilisateur non authentifié', 401);
             }
 
-            $userToken = substr($authHeader, 7); // Enlever "Bearer "
+            // Récupérer le token KLASSCI depuis la base de données
+            $klassciToken = $user->klassci_token;
 
-            if (!$userToken) {
-                return $this->errorResponse('Token KLASSCI invalide', 401);
+            if (!$klassciToken) {
+                return $this->errorResponse('Token KLASSCI non trouvé. Veuillez vous reconnecter.', 401);
             }
 
-            \Log::info('Dashboard request with user token', [
-                'has_token' => !empty($userToken),
-                'token_preview' => substr($userToken, 0, 10) . '...'
+            \Log::info('Student Dashboard request', [
+                'user_id' => $user->id,
+                'klassci_id' => $user->klassci_id,
+                'has_klassci_token' => !empty($klassciToken),
+                'token_preview' => substr($klassciToken, 0, 10) . '...'
             ]);
 
             // Utiliser le token KLASSCI pour la requête
             $data = $this->klassciService->requestWithUserToken(
-                $userToken,
+                $klassciToken,
                 'me/dashboard',
                 'GET'
             );
 
             return response()->json($data);
         } catch (\Exception $e) {
-            \Log::error('Dashboard error', ['error' => $e->getMessage()]);
+            \Log::error('Student Dashboard error', ['error' => $e->getMessage()]);
             return $this->errorResponse($e->getMessage());
         }
     }
@@ -276,27 +328,30 @@ class ProxyController extends Controller
     public function teacherDashboard(Request $request): JsonResponse
     {
         try {
-            // Récupérer le token depuis l'en-tête Authorization
-            $authHeader = $request->header('Authorization');
+            // Récupérer l'utilisateur authentifié (via Sanctum)
+            $user = $request->user();
 
-            if (!$authHeader || strpos($authHeader, 'Bearer ') !== 0) {
-                return $this->errorResponse('Token manquant', 401);
+            if (!$user) {
+                return $this->errorResponse('Utilisateur non authentifié', 401);
             }
 
-            $userToken = substr($authHeader, 7); // Enlever "Bearer "
+            // Récupérer le token KLASSCI depuis la base de données
+            $klassciToken = $user->klassci_token;
 
-            if (!$userToken) {
-                return $this->errorResponse('Token KLASSCI invalide', 401);
+            if (!$klassciToken) {
+                return $this->errorResponse('Token KLASSCI non trouvé. Veuillez vous reconnecter.', 401);
             }
 
-            \Log::info('Teacher Dashboard request with user token', [
-                'has_token' => !empty($userToken),
-                'token_preview' => substr($userToken, 0, 10) . '...'
+            \Log::info('Teacher Dashboard request', [
+                'user_id' => $user->id,
+                'klassci_id' => $user->klassci_id,
+                'has_klassci_token' => !empty($klassciToken),
+                'token_preview' => substr($klassciToken, 0, 10) . '...'
             ]);
 
             // Utiliser le token KLASSCI pour la requête
             $data = $this->klassciService->requestWithUserToken(
-                $userToken,
+                $klassciToken,
                 'me/teacher-dashboard',
                 'GET'
             );

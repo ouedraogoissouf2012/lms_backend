@@ -113,35 +113,73 @@ class AuthController extends Controller
                 $klassciUser = $klassciResponse['data']['user'];
                 $klassciToken = $klassciResponse['data']['token'];
 
-                // OPTION A: API Backend - Retourner directement le token KLASSCI
-                // Pas de synchronisation locale si DB non accessible
-                return response()->json([
-                    'success' => true,
-                    'message' => 'Connexion réussie (KLASSCI)',
-                    'data' => [
-                        'user' => [
-                            'id' => $klassciUser['id'],
-                            'klassci_id' => $klassciUser['id'],
-                            'name' => $klassciUser['nom'],
-                            'email' => $klassciUser['email'],
-                            'role' => $klassciUser['role'],
-                            'role_display_name' => $klassciUser['role_display_name'] ?? '',
-                            'avatar' => $klassciUser['avatar'] ?? null,
-                            'permissions' => $klassciUser['permissions'] ?? [],
-                            'is_admin' => $klassciUser['is_admin'] ?? false,
-                            'admin_data' => $klassciUser['admin_data'] ?? null,
-                            'enseignant_data' => $klassciUser['enseignant_data'] ?? null,
-                            'etudiant_data' => $klassciUser['etudiant_data'] ?? null,
+                // Synchroniser l'utilisateur localement et créer un token Sanctum
+                try {
+                    $localUser = $this->syncUserFromKlassci($klassciUser, $klassciToken);
+
+                    // Créer un token Sanctum pour l'utilisateur local
+                    $sanctumToken = $localUser->createToken('lms-backend-token', ['lms:access'])->plainTextToken;
+
+                    return response()->json([
+                        'success' => true,
+                        'message' => 'Connexion réussie (KLASSCI)',
+                        'data' => [
+                            'user' => [
+                                'id' => $localUser->id,
+                                'klassci_id' => $localUser->klassci_id,
+                                'name' => $localUser->name,
+                                'email' => $localUser->email,
+                                'role' => $localUser->role,
+                                'role_display_name' => $klassciUser['role_display_name'] ?? '',
+                                'avatar' => $klassciUser['avatar'] ?? null,
+                                'permissions' => $klassciUser['permissions'] ?? [],
+                                'is_admin' => $klassciUser['is_admin'] ?? false,
+                                'admin_data' => $klassciUser['admin_data'] ?? null,
+                                'enseignant_data' => $klassciUser['enseignant_data'] ?? null,
+                                'etudiant_data' => $klassciUser['etudiant_data'] ?? null,
+                            ],
+                            'token' => $sanctumToken,
+                            'token_type' => 'Bearer',
                         ],
-                        'token' => $klassciToken,
-                        'token_type' => 'Bearer',
-                    ],
-                    'meta' => [
-                        'klassci_synced' => false,
-                        'direct_klassci_auth' => true,
-                        'annee_universitaire_courante' => $klassciResponse['meta']['annee_universitaire_courante'] ?? null,
-                    ],
-                ]);
+                        'meta' => [
+                            'klassci_synced' => true,
+                            'klassci_token' => $klassciToken, // Conserver le token KLASSCI pour les appels proxy
+                            'annee_universitaire_courante' => $klassciResponse['meta']['annee_universitaire_courante'] ?? null,
+                        ],
+                    ]);
+                } catch (\Exception $syncError) {
+                    // Si la synchro échoue, retourner directement le token KLASSCI (fallback)
+                    Log::error('Erreur synchronisation utilisateur', ['error' => $syncError->getMessage()]);
+
+                    return response()->json([
+                        'success' => true,
+                        'message' => 'Connexion réussie (KLASSCI - mode dégradé)',
+                        'data' => [
+                            'user' => [
+                                'id' => $klassciUser['id'],
+                                'klassci_id' => $klassciUser['id'],
+                                'name' => $klassciUser['nom'],
+                                'email' => $klassciUser['email'],
+                                'role' => $klassciUser['role'],
+                                'role_display_name' => $klassciUser['role_display_name'] ?? '',
+                                'avatar' => $klassciUser['avatar'] ?? null,
+                                'permissions' => $klassciUser['permissions'] ?? [],
+                                'is_admin' => $klassciUser['is_admin'] ?? false,
+                                'admin_data' => $klassciUser['admin_data'] ?? null,
+                                'enseignant_data' => $klassciUser['enseignant_data'] ?? null,
+                                'etudiant_data' => $klassciUser['etudiant_data'] ?? null,
+                            ],
+                            'token' => $klassciToken,
+                            'token_type' => 'Bearer',
+                        ],
+                        'meta' => [
+                            'klassci_synced' => false,
+                            'direct_klassci_auth' => true,
+                            'sync_error' => $syncError->getMessage(),
+                            'annee_universitaire_courante' => $klassciResponse['meta']['annee_universitaire_courante'] ?? null,
+                        ],
+                    ]);
+                }
             } catch (\Exception $klassciError) {
                 // KLASSCI inaccessible et pas d'utilisateur local
                 return response()->json([

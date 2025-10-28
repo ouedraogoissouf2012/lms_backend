@@ -4,10 +4,12 @@ namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
 use App\Services\KlassciProxyService;
+use App\Models\LmsEnseignantCache;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Carbon\Carbon;
 
 class LMSDataController extends Controller
@@ -345,6 +347,7 @@ class LMSDataController extends Controller
 
             // 4. Récupérer les séances programmées
             // Pour les enseignants, utiliser teacher-dashboard car /emploi-temps ne fonctionne pas
+            // Pour les étudiants, utiliser student-dashboard
             // Pour les coordinateurs, utiliser matieres/{id} direct
             $seances = [];
 
@@ -354,6 +357,27 @@ class LMSDataController extends Controller
                     $dashboard = $this->klassciService->requestWithUserToken(
                         $klassciToken,
                         'me/teacher-dashboard',
+                        'GET'
+                    );
+
+                    // Trouver la matière dans le dashboard
+                    $matieres = collect($dashboard['data']['matieres'] ?? []);
+                    $matiereInDashboard = $matieres->firstWhere('id', $matiereId);
+
+                    if ($matiereInDashboard) {
+                        // Récupérer les détails de cette matière pour avoir les séances
+                        $matiereDetails = $this->klassciService->requestWithUserToken(
+                            $klassciToken,
+                            "matieres/{$matiereId}",
+                            'GET'
+                        );
+                        $seances = $matiereDetails['data']['seances_programmees'] ?? [];
+                    }
+                } elseif (in_array($user->role, ['etudiant', 'student'])) {
+                    // Étudiant: récupérer via student-dashboard
+                    $dashboard = $this->klassciService->requestWithUserToken(
+                        $klassciToken,
+                        'me/student-dashboard',
                         'GET'
                     );
 
@@ -405,9 +429,15 @@ class LMSDataController extends Controller
             // 6. Récupérer les Lessons LMS pour cette matière
             $lessons = [];
             try {
-                $lessons = \App\Models\Lesson::where('matiere_id', $matiereId)
-                    ->published()
-                    ->ordered()
+                $query = \App\Models\Lesson::where('matiere_id', $matiereId);
+
+                // Si c'est un étudiant, ne montrer que les leçons publiées
+                // Si c'est un enseignant/coordinateur, montrer TOUTES les leçons (publiées + brouillons)
+                if ($user && in_array($user->role, ['etudiant', 'student'])) {
+                    $query->published();
+                }
+
+                $lessons = $query->ordered()
                     ->get()
                     ->map(function ($lesson) use ($user) {
                         $lessonArray = $lesson->toArray();
@@ -1701,21 +1731,33 @@ class LMSDataController extends Controller
                 ], 404);
             }
 
-            // Récupérer les matières
-            $matieres = $this->klassciService->requestWithUserToken(
-                $klassciToken,
-                'matieres',
-                'GET'
-            );
+            // Utiliser les matières du dashboard au lieu de faire un nouvel appel API
+            $coursFromDashboard = $dashboard['data']['cours'] ?? [];
+
+            if (empty($coursFromDashboard)) {
+                return response()->json([
+                    'success' => true,
+                    'data' => [],
+                    'message' => 'Aucune matière trouvée pour cet étudiant'
+                ]);
+            }
 
             $seances = collect([]);
 
             // Pour chaque matière, récupérer ses séances
-            foreach ($matieres['data'] as $matiere) {
+            foreach ($coursFromDashboard as $matiere) {
                 try {
+                    // Gérer les différents formats de données (id ou matiere_id ou matiere.id)
+                    $matiereId = $matiere['id'] ?? $matiere['matiere_id'] ?? $matiere['matiere']['id'] ?? null;
+
+                    if (!$matiereId) {
+                        \Log::warning('[LMS] Matière sans ID valide', ['matiere' => $matiere]);
+                        continue;
+                    }
+
                     $matiereDetails = $this->klassciService->requestWithUserToken(
                         $klassciToken,
-                        "matieres/{$matiere['id']}",
+                        "matieres/{$matiereId}",
                         'GET'
                     );
 
@@ -1727,7 +1769,7 @@ class LMSDataController extends Controller
                     });
 
                     // Enrichir avec infos visio
-                    $seancesEnrichies = $seancesClasse->map(function ($seance) use ($matiere) {
+                    $seancesEnrichies = $seancesClasse->map(function ($seance) use ($matiere, $matiereId) {
                         $visioData = \App\Models\Seance::where('klassci_seance_id', $seance['id'])->first();
 
                         return [
@@ -1741,8 +1783,8 @@ class LMSDataController extends Controller
                                 : null,
                             'salle' => $seance['programmation']['salle'] ?? null,
                             'matiere' => [
-                                'id' => $matiere['id'],
-                                'nom' => $matiere['nom'] ?? $matiere['libelle'] ?? 'N/A',
+                                'id' => $matiereId,
+                                'nom' => $matiere['nom'] ?? $matiere['name'] ?? $matiere['libelle'] ?? 'N/A',
                                 'code' => $matiere['code'] ?? null
                             ],
                             'classe' => [
@@ -2061,14 +2103,69 @@ class LMSDataController extends Controller
                 ], 400);
             }
 
+            // OPTION B: Vérifier que l'étudiant est bien inscrit dans la classe
+            if ($user->role === 'etudiant' || $user->role === 'student') {
+                try {
+                    $klassciToken = $user->klassci_token;
+                    $klassciService = app(\App\Services\KlassciProxyService::class);
+
+                    // Récupérer les étudiants de la classe depuis KLASSCI
+                    $classeId = $visio->klassci_classe_id;
+                    $etudiantsResponse = $klassciService->get("classes/{$classeId}/etudiants");
+                    $etudiants = $etudiantsResponse['data'] ?? [];
+
+                    // Vérifier si l'étudiant est dans la liste
+                    $etudiantInscrit = collect($etudiants)->first(function ($etudiant) use ($user) {
+                        return $etudiant['id'] == $user->klassci_id;
+                    });
+
+                    if (!$etudiantInscrit) {
+                        Log::warning('Étudiant non autorisé à rejoindre visio', [
+                            'user_id' => $user->id,
+                            'klassci_id' => $user->klassci_id,
+                            'classe_id' => $classeId
+                        ]);
+
+                        return response()->json([
+                            'success' => false,
+                            'message' => 'Vous n\'êtes pas inscrit dans cette classe'
+                        ], 403);
+                    }
+
+                    // Enregistrer la participation dans esbtp_attendance
+                    $attendance = \App\Models\ESBTPAttendance::updateOrCreate(
+                        [
+                            'seance_id' => $visio->id,
+                            'user_id' => $user->id
+                        ],
+                        [
+                            'klassci_etudiant_id' => $user->klassci_id,
+                            'nom' => $etudiantInscrit['nom'] ?? $user->name,
+                            'prenom' => $etudiantInscrit['prenom'] ?? '',
+                            'email' => $etudiantInscrit['email'] ?? $user->email,
+                            'joined_at' => now(),
+                            'ip_address' => $request->ip(),
+                            'user_agent' => $request->userAgent(),
+                            'is_validated' => true
+                        ]
+                    );
+
+                    Log::info('Étudiant rejoint visio et participation enregistrée', [
+                        'seance_id' => $seanceId,
+                        'user_id' => $user->id,
+                        'attendance_id' => $attendance->id
+                    ]);
+
+                } catch (\Exception $verifyError) {
+                    Log::error('Erreur vérification étudiant', [
+                        'error' => $verifyError->getMessage()
+                    ]);
+                    // Ne pas bloquer si erreur KLASSCI, laisser passer
+                }
+            }
+
             // Incrémenter le compteur de participants
             $visio->increment('visio_participants_count');
-
-            Log::info('Étudiant rejoint visio', [
-                'seance_id' => $seanceId,
-                'user_id' => $user->id,
-                'participants_count' => $visio->visio_participants_count
-            ]);
 
             return response()->json([
                 'success' => true,
@@ -2089,6 +2186,867 @@ class LMSDataController extends Controller
                 'success' => false,
                 'message' => 'Erreur lors de la connexion',
                 'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * GET /api/lms/seances/{seanceId}/participants
+     * Récupérer la liste des participants réels à une visio
+     */
+    public function getVisioParticipants(int $seanceId, Request $request): JsonResponse
+    {
+        try {
+            $visio = \App\Models\Seance::where('klassci_seance_id', $seanceId)->first();
+
+            if (!$visio) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Séance non trouvée'
+                ], 404);
+            }
+
+            // Récupérer tous les participants enregistrés
+            $participants = \App\Models\ESBTPAttendance::where('seance_id', $visio->id)
+                ->with('user:id,name,email')
+                ->orderBy('joined_at', 'desc')
+                ->get()
+                ->map(function ($attendance) {
+                    return [
+                        'id' => $attendance->id,
+                        'user_id' => $attendance->user_id,
+                        'nom' => $attendance->nom,
+                        'prenom' => $attendance->prenom,
+                        'email' => $attendance->email,
+                        'joined_at' => $attendance->joined_at?->format('Y-m-d H:i:s'),
+                        'joined_at_human' => $attendance->joined_at?->diffForHumans(),
+                        'is_validated' => $attendance->is_validated
+                    ];
+                });
+
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'total' => $participants->count(),
+                    'participants' => $participants
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Erreur récupération participants', [
+                'seance_id' => $seanceId,
+                'error' => $e->getMessage()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur lors de la récupération des participants',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * GET /api/admin/matieres
+     * Liste toutes les matières avec leurs combinaisons complètes (pour admin/coordinateur)
+     *
+     * Retourne:
+     * - Liste des matières enrichies avec combinaisons valides (filière + niveau)
+     * - Statistiques globales
+     */
+    public function adminMatieresList(Request $request): JsonResponse
+    {
+        try {
+            $user = $request->user();
+            $klassciToken = $user ? $user->klassci_token : null;
+
+            if (!$klassciToken) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Token KLASSCI non trouvé. Veuillez vous reconnecter.'
+                ], 401);
+            }
+
+            // Vérifier que l'utilisateur est admin ou coordinateur
+            if (!in_array($user->role, ['admin', 'coordinateur'])) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Accès non autorisé. Réservé aux administrateurs et coordinateurs.'
+                ], 403);
+            }
+
+            Log::info('Récupération liste matières admin', [
+                'user_id' => $user->id,
+                'role' => $user->role
+            ]);
+
+            // 1. Récupérer la liste des matières depuis l'endpoint /matieres
+            $matieresResponse = $this->klassciService->requestWithUserToken(
+                $klassciToken,
+                'matieres',
+                'GET'
+            );
+
+            $matieres = $matieresResponse['data'] ?? [];
+
+            if (count($matieres) === 0) {
+                return response()->json([
+                    'success' => true,
+                    'data' => [
+                        'matieres' => [],
+                        'statistiques' => [
+                            'total' => 0,
+                            'total_heures' => 0,
+                            'total_seances' => 0
+                        ]
+                    ],
+                    'message' => 'Aucune matière trouvée'
+                ]);
+            }
+
+            Log::info('Matières trouvées', ['count' => count($matieres)]);
+
+            // 2. Enrichir chaque matière avec ses combinaisons complètes
+            $matieresEnrichies = [];
+
+            foreach ($matieres as $matiere) {
+                $matiereId = $matiere['id'];
+
+                try {
+                    // Récupérer les détails complets de la matière
+                    $detailsResponse = $this->klassciService->requestWithUserToken(
+                        $klassciToken,
+                        "matieres/{$matiereId}",
+                        'GET'
+                    );
+
+                    $details = $detailsResponse['data'] ?? [];
+                    $combinaisons = $details['combinaisons'] ?? [];
+
+                    // Enrichir la matière avec les combinaisons complètes
+                    $matieresEnrichies[] = [
+                        'id' => $matiere['id'],
+                        'nom' => $matiere['nom'] ?? 'N/A',
+                        'code' => $matiere['code'] ?? 'N/A',
+                        'description' => $matiere['description'] ?? null,
+                        'coefficient' => $matiere['coefficient'] ?? null,
+                        'couleur' => $matiere['couleur'] ?? '#6366f1',
+                        'heures_total' => $matiere['heures_total'] ?? 0,
+                        'nb_seances_programmees' => $matiere['nb_seances_programmees'] ?? 0,
+                        'combinaisons' => $combinaisons // Combinaisons complètes avec filière/niveau
+                    ];
+
+                    Log::info('Matière enrichie', [
+                        'id' => $matiereId,
+                        'nom' => $matiere['nom'],
+                        'combinaisons_count' => count($combinaisons)
+                    ]);
+
+                } catch (\Exception $e) {
+                    Log::warning('Erreur enrichissement matière', [
+                        'matiere_id' => $matiereId,
+                        'error' => $e->getMessage()
+                    ]);
+
+                    // En cas d'erreur, garder la matière avec combinaisons vides
+                    $matieresEnrichies[] = [
+                        'id' => $matiere['id'],
+                        'nom' => $matiere['nom'] ?? 'N/A',
+                        'code' => $matiere['code'] ?? 'N/A',
+                        'description' => $matiere['description'] ?? null,
+                        'coefficient' => $matiere['coefficient'] ?? null,
+                        'couleur' => $matiere['couleur'] ?? '#6366f1',
+                        'heures_total' => $matiere['heures_total'] ?? 0,
+                        'nb_seances_programmees' => $matiere['nb_seances_programmees'] ?? 0,
+                        'combinaisons' => []
+                    ];
+                }
+            }
+
+            // 3. Calculer les statistiques globales
+            $totalHeures = array_sum(array_column($matieresEnrichies, 'heures_total'));
+            $totalSeances = array_sum(array_column($matieresEnrichies, 'nb_seances_programmees'));
+
+            $stats = [
+                'total' => count($matieresEnrichies),
+                'total_heures' => $totalHeures,
+                'total_seances' => $totalSeances
+            ];
+
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'matieres' => $matieresEnrichies,
+                    'statistiques' => $stats
+                ],
+                'message' => count($matieresEnrichies) . ' matière(s) récupérée(s)'
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Erreur liste matières admin', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur lors de la récupération des matières',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * GET /api/lms/enseignants
+     * Retourne la liste des enseignants avec leurs classes, matières et statistiques
+     *
+     * Paramètres disponibles:
+     * - with_details (boolean): Activer le format enrichi
+     * - filiere_id (int): Filtrer par filière
+     * - niveau_id (int): Filtrer par niveau
+     * - classe_id (int): Filtrer par classe
+     * - matiere_id (int): Filtrer par matière
+     *
+     * Format simple: Liste basique des enseignants
+     * Format enrichi: Avec classes, matières, séances et statistiques
+     */
+    public function getEnseignants(Request $request): JsonResponse
+    {
+        try {
+            $startTime = microtime(true);
+            $withDetails = $request->boolean('with_details', false);
+
+            Log::info('[LMS Enseignants API] Début récupération', [
+                'with_details' => $withDetails,
+                'filters' => $request->only(['filiere_id', 'niveau_id', 'classe_id', 'matiere_id'])
+            ]);
+
+            // Vérifier que les tables nécessaires existent
+            // Si pas de table esbtp_teachers, utiliser fallback avec table users
+            $useFallback = !Schema::hasTable('esbtp_teachers');
+
+            if ($useFallback) {
+                Log::info('[LMS Enseignants API] Mode fallback - utilisation table users uniquement');
+
+                // Version simplifiée avec table users seulement
+                $enseignants = DB::table('users')
+                    ->whereIn('role', ['enseignant', 'teacher'])
+                    ->select([
+                        'id',
+                        'id as teacher_id',
+                        'name as nom',
+                        'email',
+                        'role',
+                        DB::raw('NULL as matricule'),
+                        DB::raw('NULL as specialization'),
+                        DB::raw('"permanent" as status')
+                    ])
+                    ->get();
+
+                $duration = round((microtime(true) - $startTime) * 1000, 2);
+                Log::info('[LMS Enseignants API] Terminé (mode fallback)', [
+                    'duration_ms' => $duration,
+                    'count' => $enseignants->count()
+                ]);
+
+                return response()->json([
+                    'success' => true,
+                    'data' => $enseignants,
+                    'mode' => 'fallback'
+                ]);
+            }
+
+            // Récupérer l'année universitaire courante (optionnel)
+            $anneeUniversitaireCourante = null;
+            if (Schema::hasTable('esbtp_annee_universitaires')) {
+                $anneeUniversitaireCourante = DB::table('esbtp_annee_universitaires')
+                    ->where('is_current', true)
+                    ->first();
+            }
+
+            Log::info('[LMS Enseignants API] Année universitaire', [
+                'found' => $anneeUniversitaireCourante !== null,
+                'id' => $anneeUniversitaireCourante->id ?? null
+            ]);
+
+            // Query de base: récupérer les enseignants actifs
+            $enseignantsQuery = DB::table('esbtp_teachers as t')
+                ->join('users as u', 't.user_id', '=', 'u.id')
+                ->whereNull('t.deleted_at')
+                ->where('t.is_active', true)
+                ->select([
+                    'u.id as id',
+                    't.id as teacher_id',
+                    't.nom',
+                    't.email',
+                    'u.role',
+                    't.matricule',
+                    't.specialization',
+                    't.status'
+                ]);
+
+            // Appliquer les filtres si format enrichi
+            if ($withDetails) {
+                if ($request->has('classe_id')) {
+                    $classeId = $request->input('classe_id');
+                    $enseignantsQuery->whereExists(function($query) use ($classeId, $anneeUniversitaireCourante) {
+                        $query->select(DB::raw(1))
+                            ->from('esbtp_seance_cours as sc')
+                            ->join('esbtp_emploi_temps as et', 'sc.emploi_temps_id', '=', 'et.id')
+                            ->whereColumn('sc.enseignant_id', 't.id')
+                            ->where('sc.classe_id', $classeId);
+
+                        if ($anneeUniversitaireCourante) {
+                            $query->where('et.annee_universitaire_id', $anneeUniversitaireCourante->id);
+                        }
+                    });
+                }
+
+                if ($request->has('matiere_id')) {
+                    $matiereId = $request->input('matiere_id');
+                    $enseignantsQuery->whereExists(function($query) use ($matiereId, $anneeUniversitaireCourante) {
+                        $query->select(DB::raw(1))
+                            ->from('esbtp_seance_cours as sc')
+                            ->join('esbtp_emploi_temps as et', 'sc.emploi_temps_id', '=', 'et.id')
+                            ->whereColumn('sc.enseignant_id', 't.id')
+                            ->where('sc.matiere_id', $matiereId);
+
+                        if ($anneeUniversitaireCourante) {
+                            $query->where('et.annee_universitaire_id', $anneeUniversitaireCourante->id);
+                        }
+                    });
+                }
+
+                if ($request->has('filiere_id') || $request->has('niveau_id')) {
+                    $filiereId = $request->input('filiere_id');
+                    $niveauId = $request->input('niveau_id');
+
+                    $enseignantsQuery->whereExists(function($query) use ($filiereId, $niveauId, $anneeUniversitaireCourante) {
+                        $query->select(DB::raw(1))
+                            ->from('esbtp_seance_cours as sc')
+                            ->join('esbtp_emploi_temps as et', 'sc.emploi_temps_id', '=', 'et.id')
+                            ->join('esbtp_classes as c', 'sc.classe_id', '=', 'c.id')
+                            ->join('esbtp_combinaisons as comb', 'c.combinaison_id', '=', 'comb.id')
+                            ->whereColumn('sc.enseignant_id', 't.id');
+
+                        if ($anneeUniversitaireCourante) {
+                            $query->where('et.annee_universitaire_id', $anneeUniversitaireCourante->id);
+                        }
+
+                        if ($filiereId) {
+                            $query->where('comb.filiere_id', $filiereId);
+                        }
+                        if ($niveauId) {
+                            $query->where('comb.niveau_id', $niveauId);
+                        }
+                    });
+                }
+            }
+
+            $enseignants = $enseignantsQuery->get();
+
+            Log::info('[LMS Enseignants API] Enseignants récupérés', [
+                'count' => $enseignants->count()
+            ]);
+
+            // Format simple: retourner directement
+            if (!$withDetails) {
+                $duration = round((microtime(true) - $startTime) * 1000, 2);
+                Log::info('[LMS Enseignants API] Terminé (format simple)', [
+                    'duration_ms' => $duration
+                ]);
+
+                return response()->json([
+                    'success' => true,
+                    'data' => $enseignants
+                ]);
+            }
+
+            // Format enrichi: ajouter classes, matières, séances et statistiques
+            $enseignantsEnrichis = $enseignants->map(function($enseignant) use ($anneeUniversitaireCourante) {
+                $data = (array) $enseignant;
+
+                // 1. Récupérer les classes
+                $classesQuery = DB::table('esbtp_seance_cours as sc')
+                    ->join('esbtp_emploi_temps as et', 'sc.emploi_temps_id', '=', 'et.id')
+                    ->join('esbtp_classes as c', 'sc.classe_id', '=', 'c.id')
+                    ->join('esbtp_combinaisons as comb', 'c.combinaison_id', '=', 'comb.id')
+                    ->join('esbtp_filieres as f', 'comb.filiere_id', '=', 'f.id')
+                    ->join('esbtp_niveaux as n', 'comb.niveau_id', '=', 'n.id')
+                    ->where('sc.enseignant_id', $enseignant->teacher_id);
+
+                if ($anneeUniversitaireCourante) {
+                    $classesQuery->where('et.annee_universitaire_id', $anneeUniversitaireCourante->id);
+                }
+
+                $classes = $classesQuery
+                    ->select([
+                        'c.id',
+                        'c.nom',
+                        'f.id as filiere_id',
+                        'f.nom as filiere_nom',
+                        'n.id as niveau_id',
+                        'n.nom as niveau_nom'
+                    ])
+                    ->distinct()
+                    ->get()
+                    ->map(function($classe) {
+                        return [
+                            'id' => $classe->id,
+                            'nom' => $classe->nom,
+                            'filiere' => [
+                                'id' => $classe->filiere_id,
+                                'nom' => $classe->filiere_nom
+                            ],
+                            'niveau' => [
+                                'id' => $classe->niveau_id,
+                                'nom' => $classe->niveau_nom
+                            ]
+                        ];
+                    });
+
+                // 2. Récupérer les matières avec détails
+                $matieres = $this->getMatieresEnrichiesForEnseignant(
+                    $enseignant->teacher_id,
+                    $anneeUniversitaireCourante ? $anneeUniversitaireCourante->id : null
+                );
+
+                // 3. Calculer statistiques globales
+                $statistiques = [
+                    'total_classes' => $classes->count(),
+                    'total_matieres' => $matieres->count(),
+                    'total_heures_prevues' => $matieres->sum('heures_prevues'),
+                    'total_heures_effectuees' => $matieres->sum('heures_effectuees'),
+                    'total_heures_restantes' => $matieres->sum('heures_restantes'),
+                    'taux_realisation_global' => $matieres->avg('taux_realisation') ?? 0,
+                    'nb_seances_total' => $matieres->sum('nb_seances_total'),
+                    'nb_seances_effectuees' => $matieres->sum('nb_seances_effectuees')
+                ];
+
+                $statistiques['taux_realisation_global'] = round($statistiques['taux_realisation_global'], 2);
+
+                $data['classes'] = $classes->values()->toArray();
+                $data['matieres'] = $matieres->values()->toArray();
+                $data['statistiques'] = $statistiques;
+
+                return $data;
+            });
+
+            $duration = round((microtime(true) - $startTime) * 1000, 2);
+            Log::info('[LMS Enseignants API] Terminé (format enrichi)', [
+                'duration_ms' => $duration,
+                'count' => $enseignantsEnrichis->count()
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'data' => $enseignantsEnrichis
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('[LMS Enseignants API] Erreur', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur lors de la récupération des enseignants',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * GET /api/lms/enseignants-klassci
+     * Version NOUVELLE qui utilise KLASSCI externe + cache intelligent
+     * Remplace la logique de lecture des tables locales esbtp_*
+     */
+    public function getEnseignantsFromKlassci(Request $request): JsonResponse
+    {
+        try {
+            $startTime = microtime(true);
+            $withDetails = $request->boolean('with_details', false);
+
+            Log::info('[LMS Enseignants KLASSCI] Récupération depuis API externe', [
+                'with_details' => $withDetails
+            ]);
+
+            // Appeler KLASSCI externe via le service
+            $response = $this->klassciService->getEnseignantsEnrichis($withDetails);
+
+            if (!isset($response['success']) || !$response['success']) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $response['message'] ?? 'Erreur KLASSCI',
+                    'data' => []
+                ], 500);
+            }
+
+            $enseignants = $response['data'] ?? [];
+
+            // Stocker en cache si format enrichi
+            if ($withDetails && !empty($enseignants)) {
+                foreach ($enseignants as $enseignant) {
+                    if (isset($enseignant['id'])) {
+                        try {
+                            LmsEnseignantCache::store($enseignant['id'], $enseignant, 10);
+                        } catch (\Exception $cacheErr) {
+                            // Log but continue
+                        }
+                    }
+                }
+            }
+
+            $duration = round((microtime(true) - $startTime) * 1000, 2);
+
+            return response()->json([
+                'success' => true,
+                'data' => $enseignants,
+                'meta' => array_merge($response['meta'] ?? [], [
+                    'source' => 'klassci_externe',
+                    'lms_cache_enabled' => true,
+                    'lms_performance' => [
+                        'total_time_ms' => $duration
+                    ]
+                ])
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('[LMS Enseignants KLASSCI] Erreur', [
+                'error' => $e->getMessage()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur: ' . $e->getMessage(),
+                'data' => []
+            ], 500);
+        }
+    }
+
+    /**
+     * Récupère les matières enrichies pour un enseignant
+     */
+    private function getMatieresEnrichiesForEnseignant(int $teacherId, ?int $anneeUniversitaireId): \Illuminate\Support\Collection
+    {
+        // Récupérer les matières de l'enseignant via les séances
+        $matieresQuery = DB::table('esbtp_seance_cours as sc')
+            ->join('esbtp_emploi_temps as et', 'sc.emploi_temps_id', '=', 'et.id')
+            ->join('esbtp_matieres as m', 'sc.matiere_id', '=', 'm.id')
+            ->where('sc.enseignant_id', $teacherId);
+
+        if ($anneeUniversitaireId) {
+            $matieresQuery->where('et.annee_universitaire_id', $anneeUniversitaireId);
+        }
+
+        $matieres = $matieresQuery
+            ->select([
+                'm.id',
+                'm.nom',
+                'm.code'
+            ])
+            ->distinct()
+            ->get();
+
+        return $matieres->map(function($matiere) use ($teacherId, $anneeUniversitaireId) {
+            // Récupérer heures prévues (priorité: pivot > planning > séances)
+            $heuresPrevues = 0;
+
+            // 1. Essayer pivot table
+            if ($anneeUniversitaireId) {
+                $pivot = DB::table('esbtp_enseignant_matiere')
+                    ->where('enseignant_id', $teacherId)
+                    ->where('matiere_id', $matiere->id)
+                    ->where('annee_universitaire_id', $anneeUniversitaireId)
+                    ->first();
+
+                if ($pivot && $pivot->heures_prevues > 0) {
+                    $heuresPrevues = $pivot->heures_prevues;
+                }
+            }
+
+            if ($heuresPrevues == 0 && $anneeUniversitaireId) {
+                // 2. Essayer planning général
+                $planning = DB::table('esbtp_planifications_academiques as pa')
+                    ->join('esbtp_planification_teachers as pt', 'pa.id', '=', 'pt.planification_id')
+                    ->where('pt.enseignant_id', $teacherId)
+                    ->where('pa.matiere_id', $matiere->id)
+                    ->where('pa.annee_universitaire_id', $anneeUniversitaireId)
+                    ->first();
+
+                if ($planning && $planning->volume_horaire_total > 0) {
+                    $heuresPrevues = $planning->volume_horaire_total;
+                }
+            }
+
+            if ($heuresPrevues == 0) {
+                // 3. Fallback: calculer depuis séances
+                $seancesQuery = DB::table('esbtp_seance_cours as sc')
+                    ->join('esbtp_emploi_temps as et', 'sc.emploi_temps_id', '=', 'et.id')
+                    ->where('sc.enseignant_id', $teacherId)
+                    ->where('sc.matiere_id', $matiere->id);
+
+                if ($anneeUniversitaireId) {
+                    $seancesQuery->where('et.annee_universitaire_id', $anneeUniversitaireId);
+                }
+
+                $heuresPrevues = $seancesQuery->sum(DB::raw('TIMESTAMPDIFF(HOUR, sc.heure_debut, sc.heure_fin)')) ?? 0;
+            }
+
+            // Récupérer heures effectuées depuis attendances
+            $attendancesQuery = DB::table('esbtp_teacher_attendances as ta')
+                ->join('esbtp_seance_cours as sc', 'ta.seance_id', '=', 'sc.id')
+                ->join('esbtp_emploi_temps as et', 'sc.emploi_temps_id', '=', 'et.id')
+                ->where('ta.teacher_id', $teacherId)
+                ->where('sc.matiere_id', $matiere->id)
+                ->whereIn('ta.status', ['present', 'late'])
+                ->where('ta.type', 'start');
+
+            if ($anneeUniversitaireId) {
+                $attendancesQuery->where('et.annee_universitaire_id', $anneeUniversitaireId);
+            }
+
+            $nbAttendances = $attendancesQuery->count();
+
+            // Calculer durée moyenne séance
+            $dureeMoyenneQuery = DB::table('esbtp_seance_cours as sc')
+                ->join('esbtp_emploi_temps as et', 'sc.emploi_temps_id', '=', 'et.id')
+                ->where('sc.enseignant_id', $teacherId)
+                ->where('sc.matiere_id', $matiere->id);
+
+            if ($anneeUniversitaireId) {
+                $dureeMoyenneQuery->where('et.annee_universitaire_id', $anneeUniversitaireId);
+            }
+
+            $dureeMoyenne = $dureeMoyenneQuery->avg(DB::raw('TIMESTAMPDIFF(HOUR, sc.heure_debut, sc.heure_fin)')) ?? 2;
+
+            $heuresEffectuees = $nbAttendances * $dureeMoyenne;
+            $heuresRestantes = max(0, $heuresPrevues - $heuresEffectuees);
+            $tauxRealisation = $heuresPrevues > 0 ? ($heuresEffectuees / $heuresPrevues) * 100 : 0;
+
+            // Nombre de séances
+            $nbSeancesTotalQuery = DB::table('esbtp_seance_cours as sc')
+                ->join('esbtp_emploi_temps as et', 'sc.emploi_temps_id', '=', 'et.id')
+                ->where('sc.enseignant_id', $teacherId)
+                ->where('sc.matiere_id', $matiere->id);
+
+            if ($anneeUniversitaireId) {
+                $nbSeancesTotalQuery->where('et.annee_universitaire_id', $anneeUniversitaireId);
+            }
+
+            $nbSeancesTotal = $nbSeancesTotalQuery->count();
+
+            $nbSeancesEffectueesQuery = DB::table('esbtp_teacher_attendances as ta')
+                ->join('esbtp_seance_cours as sc', 'ta.seance_id', '=', 'sc.id')
+                ->join('esbtp_emploi_temps as et', 'sc.emploi_temps_id', '=', 'et.id')
+                ->where('ta.teacher_id', $teacherId)
+                ->where('sc.matiere_id', $matiere->id)
+                ->whereIn('ta.status', ['present', 'late'])
+                ->where('ta.type', 'start')
+                ->distinct('sc.id');
+
+            if ($anneeUniversitaireId) {
+                $nbSeancesEffectueesQuery->where('et.annee_universitaire_id', $anneeUniversitaireId);
+            }
+
+            $nbSeancesEffectuees = $nbSeancesEffectueesQuery->count('sc.id');
+
+            // Récupérer les classes pour cette matière
+            $classesQuery = DB::table('esbtp_seance_cours as sc')
+                ->join('esbtp_emploi_temps as et', 'sc.emploi_temps_id', '=', 'et.id')
+                ->join('esbtp_classes as c', 'sc.classe_id', '=', 'c.id')
+                ->where('sc.enseignant_id', $teacherId)
+                ->where('sc.matiere_id', $matiere->id);
+
+            if ($anneeUniversitaireId) {
+                $classesQuery->where('et.annee_universitaire_id', $anneeUniversitaireId);
+            }
+
+            $classes = $classesQuery
+                ->select(['c.id', 'c.nom'])
+                ->distinct()
+                ->get()
+                ->map(function($c) {
+                    return ['id' => $c->id, 'nom' => $c->nom];
+                });
+
+            // Récupérer les séances
+            $seancesQuery = DB::table('esbtp_seance_cours as sc')
+                ->join('esbtp_emploi_temps as et', 'sc.emploi_temps_id', '=', 'et.id')
+                ->join('esbtp_classes as c', 'sc.classe_id', '=', 'c.id')
+                ->leftJoin('esbtp_teacher_attendances as ta', function($join) use ($teacherId) {
+                    $join->on('ta.seance_id', '=', 'sc.id')
+                         ->where('ta.teacher_id', '=', $teacherId)
+                         ->where('ta.type', '=', 'start');
+                })
+                ->where('sc.enseignant_id', $teacherId)
+                ->where('sc.matiere_id', $matiere->id);
+
+            if ($anneeUniversitaireId) {
+                $seancesQuery->where('et.annee_universitaire_id', $anneeUniversitaireId);
+            }
+
+            $seances = $seancesQuery
+                ->select([
+                    'sc.id',
+                    'sc.date_seance',
+                    'sc.heure_debut',
+                    'sc.heure_fin',
+                    'c.nom as classe',
+                    'sc.salle',
+                    'ta.status as attendance_status'
+                ])
+                ->orderBy('sc.date_seance', 'desc')
+                ->orderBy('sc.heure_debut', 'desc')
+                ->limit(10)
+                ->get()
+                ->map(function($s) {
+                    $now = Carbon::now();
+                    $seanceDateTime = Carbon::parse($s->date_seance . ' ' . $s->heure_fin);
+
+                    $status = 'a_venir';
+                    if ($seanceDateTime->isPast()) {
+                        $status = in_array($s->attendance_status, ['present', 'late']) ? 'effectuee' : 'annulee';
+                    }
+
+                    return [
+                        'id' => $s->id,
+                        'date_seance' => $s->date_seance,
+                        'heure_debut' => $s->heure_debut,
+                        'heure_fin' => $s->heure_fin,
+                        'classe' => $s->classe,
+                        'salle' => $s->salle,
+                        'status' => $status
+                    ];
+                });
+
+            return [
+                'id' => $matiere->id,
+                'nom' => $matiere->nom,
+                'code' => $matiere->code,
+                'heures_prevues' => round($heuresPrevues, 2),
+                'heures_effectuees' => round($heuresEffectuees, 2),
+                'heures_restantes' => round($heuresRestantes, 2),
+                'taux_realisation' => round($tauxRealisation, 2),
+                'nb_seances_total' => $nbSeancesTotal,
+                'nb_seances_effectuees' => $nbSeancesEffectuees,
+                'classes' => $classes->toArray(),
+                'seances' => $seances->toArray()
+            ];
+        });
+    }
+
+    /**
+     * GET /api/lms/teacher/my-matieres
+     * Récupérer les matières de l'enseignant connecté avec statistiques enrichies
+     *
+     * Retourne les matières avec:
+     * - Données KLASSCI (nom, coefficient, heures, classes)
+     * - Nombre de lessons créées localement (table lessons)
+     * - Nombre de séances programmées (KLASSCI)
+     * - Nombre d'évaluations programmées (KLASSCI)
+     */
+    public function myMatieres(Request $request): JsonResponse
+    {
+        try {
+            $user = $request->user();
+
+            if (!$user) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Utilisateur non authentifié'
+                ], 401);
+            }
+
+            $klassciToken = $user->klassci_token;
+
+            if (!$klassciToken) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Token KLASSCI non trouvé. Veuillez vous reconnecter.'
+                ], 401);
+            }
+
+            Log::info('MyMatieres request', [
+                'user_id' => $user->id,
+                'klassci_id' => $user->klassci_id
+            ]);
+
+            // 1. Récupérer données KLASSCI (matières, séances, évaluations)
+            $klassciData = $this->klassciService->requestWithUserToken(
+                $klassciToken,
+                'me/teacher-dashboard',
+                'GET'
+            );
+
+            $matieres = $klassciData['data']['matieres'] ?? [];
+            $seances = $klassciData['data']['seances'] ?? [];
+            $evaluations = $klassciData['data']['evaluations'] ?? [];
+
+            // 2. Enrichir chaque matière avec données LMS locales
+            $matieresEnrichies = array_map(function ($matiere) use ($user, $seances, $evaluations) {
+                $matiereId = $matiere['id'] ?? $matiere['matiere_id'] ?? null;
+
+                if (!$matiereId) {
+                    return $matiere;
+                }
+
+                // Compter TOUTES les lessons publiées pour cette matière (tous enseignants, sans soft deleted)
+                $nombreLessonsPubliees = \App\Models\Lesson::where('matiere_id', $matiereId)
+                    ->published()
+                    ->count();
+
+                // Compter TOUS les brouillons pour cette matière (tous enseignants, sans soft deleted)
+                $nombreLessonsBrouillons = \App\Models\Lesson::where('matiere_id', $matiereId)
+                    ->where('status', 'draft')
+                    ->count();
+
+                // Compter séances pour cette matière
+                $nombreSeances = collect($seances)->filter(function ($seance) use ($matiereId) {
+                    $seanceMatiereId = $seance['matiere']['id'] ??
+                                       $seance['matiere']['matiere_id'] ??
+                                       $seance['matiere_id'] ?? null;
+                    return $seanceMatiereId == $matiereId;
+                })->count();
+
+                // Compter évaluations pour cette matière
+                $nombreEvaluations = collect($evaluations)->filter(function ($evaluation) use ($matiereId) {
+                    $evalMatiereId = $evaluation['matiere']['id'] ??
+                                     $evaluation['matiere']['matiere_id'] ??
+                                     $evaluation['matiere_id'] ?? null;
+                    return $evalMatiereId == $matiereId;
+                })->count();
+
+                // Ajouter statistiques
+                $matiere['statistiques'] = [
+                    'nombre_lessons_publiees' => $nombreLessonsPubliees,
+                    'nombre_lessons_brouillons' => $nombreLessonsBrouillons,
+                    'nombre_seances' => $nombreSeances,
+                    'nombre_evaluations' => $nombreEvaluations
+                ];
+
+                return $matiere;
+            }, $matieres);
+
+            Log::info('MyMatieres enrichies', [
+                'nombre_matieres' => count($matieresEnrichies)
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'data' => $matieresEnrichies
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Erreur myMatieres', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur lors du chargement des matières: ' . $e->getMessage()
             ], 500);
         }
     }

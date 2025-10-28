@@ -185,6 +185,14 @@ class User extends Authenticatable
     }
 
     /**
+     * Relation: Notifications lues
+     */
+    public function readNotifications()
+    {
+        return $this->notifications()->read();
+    }
+
+    /**
      * Relation: Tentatives de quiz
      */
     public function quizAttempts()

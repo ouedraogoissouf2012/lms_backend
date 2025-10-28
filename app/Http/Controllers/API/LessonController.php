@@ -122,6 +122,14 @@ class LessonController extends Controller
             'type' => 'required|in:cours,tp,td,projet,autre',
             'matiere_id' => 'nullable|integer',
             'classe_id' => 'nullable|integer',
+            'chapter_id' => 'nullable|integer|exists:chapters,id',
+            'content_type' => 'nullable|in:text,video,pdf,audio,presentation,link,mixed',
+            'video_url' => 'nullable|string',
+            'video_provider' => 'nullable|in:youtube,vimeo,local,other',
+            'pdf_url' => 'nullable|string',
+            'audio_url' => 'nullable|string',
+            'presentation_url' => 'nullable|string',
+            'external_link' => 'nullable|string',
             'duration_minutes' => 'nullable|integer|min:1',
             'status' => 'nullable|in:draft,published,archived',
         ]);
@@ -136,6 +144,11 @@ class LessonController extends Controller
 
         $data = $validator->validated();
         $data['enseignant_id'] = $request->user()->klassci_id;
+
+        // Si la leçon est créée avec status "published", définir published_at automatiquement
+        if (isset($data['status']) && $data['status'] === 'published' && !isset($data['published_at'])) {
+            $data['published_at'] = now();
+        }
 
         $lesson = Lesson::create($data);
 
@@ -177,6 +190,14 @@ class LessonController extends Controller
             'type' => 'sometimes|in:cours,tp,td,projet,autre',
             'matiere_id' => 'nullable|integer',
             'classe_id' => 'nullable|integer',
+            'chapter_id' => 'nullable|integer|exists:chapters,id',
+            'content_type' => 'sometimes|in:text,video,pdf,audio,presentation,link,mixed',
+            'video_url' => 'nullable|string',
+            'video_provider' => 'nullable|in:youtube,vimeo,local,other',
+            'pdf_url' => 'nullable|string',
+            'audio_url' => 'nullable|string',
+            'presentation_url' => 'nullable|string',
+            'external_link' => 'nullable|string',
             'duration_minutes' => 'nullable|integer|min:1',
             'status' => 'sometimes|in:draft,published,archived',
             'order' => 'sometimes|integer',
@@ -190,7 +211,19 @@ class LessonController extends Controller
             ], 422);
         }
 
-        $lesson->update($validator->validated());
+        $data = $validator->validated();
+
+        // Si le statut passe à "published" et que published_at n'est pas défini, le définir maintenant
+        if (isset($data['status']) && $data['status'] === 'published' && !$lesson->published_at) {
+            $data['published_at'] = now();
+        }
+
+        // Si le statut passe à "draft" ou "archived", retirer published_at
+        if (isset($data['status']) && in_array($data['status'], ['draft', 'archived'])) {
+            $data['published_at'] = null;
+        }
+
+        $lesson->update($data);
 
         return response()->json([
             'success' => true,
@@ -254,7 +287,49 @@ class LessonController extends Controller
             ], 403);
         }
 
+        $wasUnpublished = $lesson->status === 'draft';
         $lesson->publish();
+
+        // Créer des notifications pour les étudiants concernés si le cours vient d'être publié
+        if ($wasUnpublished && $lesson->matiere_id) {
+            // Récupérer tous les étudiants de la matière via KLASSCI
+            try {
+                $klassciService = app(\App\Services\KlassciProxyService::class);
+                $matiereData = $klassciService->request('GET', "/matieres/{$lesson->matiere_id}");
+
+                if (isset($matiereData['data']['classe_ids']) && is_array($matiereData['data']['classe_ids'])) {
+                    $studentIds = [];
+                    foreach ($matiereData['data']['classe_ids'] as $classeId) {
+                        $classeData = $klassciService->request('GET', "/classes/{$classeId}");
+                        if (isset($classeData['data']['etudiant_ids']) && is_array($classeData['data']['etudiant_ids'])) {
+                            $studentIds = array_merge($studentIds, $classeData['data']['etudiant_ids']);
+                        }
+                    }
+
+                    // Créer notification pour chaque étudiant
+                    $studentIds = array_unique($studentIds);
+                    foreach ($studentIds as $klassciId) {
+                        // Trouver l'utilisateur local correspondant
+                        $student = \App\Models\User::where('klassci_id', $klassciId)->first();
+                        if ($student) {
+                            \App\Models\Notification::create([
+                                'user_id' => $student->id,
+                                'type' => \App\Models\Notification::TYPE_LESSON_PUBLISHED,
+                                'title' => 'Nouveau cours disponible',
+                                'message' => 'Un nouveau cours "' . $lesson->titre . '" est maintenant disponible',
+                                'data' => [
+                                    'lesson_id' => $lesson->id,
+                                    'matiere_id' => $lesson->matiere_id,
+                                ],
+                            ]);
+                        }
+                    }
+                }
+            } catch (\Exception $e) {
+                // Si erreur KLASSCI, on continue quand même
+                \Log::warning('Erreur lors de la création des notifications de cours: ' . $e->getMessage());
+            }
+        }
 
         return response()->json([
             'success' => true,

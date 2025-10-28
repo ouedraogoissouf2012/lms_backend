@@ -4,6 +4,10 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\API\ProxyController;
 use App\Http\Controllers\API\AuthController;
+use App\Http\Controllers\API\AdminAnalyticsController;
+use App\Http\Controllers\API\ReportController;
+use App\Http\Controllers\API\NotificationsController;
+use App\Http\Controllers\API\SearchController;
 
 /*
 |--------------------------------------------------------------------------
@@ -164,6 +168,7 @@ Route::prefix('proxy')
 
     // Matières et enseignants
     Route::get('/matieres', [ProxyController::class, 'matieres']);
+    Route::get('/matieres/{id}', [ProxyController::class, 'matiereDetails']);
     Route::get('/enseignants', [ProxyController::class, 'enseignants']);
 
     // Emploi du temps
@@ -191,14 +196,14 @@ Route::prefix('proxy')
 });
 
 // ============================================
-// PROXY KLASSCI - Routes utilisateur (token KLASSCI direct)
-// Ces routes utilisent le token KLASSCI de l'utilisateur (pas Sanctum)
+// PROXY KLASSCI - Routes utilisateur (authentifié via Sanctum)
+// Ces routes récupèrent le token KLASSCI depuis la base de données
 // ============================================
-Route::prefix('proxy')->group(function () {
-    // Dashboard étudiant (utilise le token KLASSCI de l'utilisateur connecté)
+Route::prefix('proxy')->middleware('auth:sanctum')->group(function () {
+    // Dashboard étudiant (récupère le token KLASSCI de l'utilisateur)
     Route::get('/me/dashboard', [ProxyController::class, 'studentDashboard']);
 
-    // Dashboard enseignant (utilise le token KLASSCI de l'utilisateur connecté)
+    // Dashboard enseignant (récupère le token KLASSCI de l'utilisateur)
     Route::get('/me/teacher-dashboard', [ProxyController::class, 'teacherDashboard']);
 });
 
@@ -210,6 +215,34 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
         'success' => true,
         'data' => $request->user(),
     ]);
+});
+
+// ============================================
+// CHAPTERS (Chapitres de leçons) - Routes protégées
+// NOUVELLE STRUCTURE: Chapter belongsTo Lesson
+// ============================================
+use App\Http\Controllers\API\ChapterController;
+
+// Routes accessibles à tous les utilisateurs authentifiés
+Route::middleware(['auth:sanctum', 'klassci.sync'])->group(function () {
+    // Liste chapitres d'une leçon
+    Route::get('lessons/{lessonId}/chapters', [ChapterController::class, 'index']);
+    // Détails d'un chapitre
+    Route::get('chapters/{id}', [ChapterController::class, 'show']);
+});
+
+// Routes enseignants/coordinateurs uniquement
+Route::middleware(['auth:sanctum', 'klassci.sync', 'role:enseignant,coordinateur'])->group(function () {
+    // CRUD des chapitres
+    Route::post('lessons/{lessonId}/chapters', [ChapterController::class, 'store']);
+    Route::put('chapters/{id}', [ChapterController::class, 'update']);
+    Route::delete('chapters/{id}', [ChapterController::class, 'destroy']);
+
+    // Upload fichier PowerPoint/Word/PDF (max 30 MB)
+    Route::post('chapters/{chapterId}/upload', [ChapterController::class, 'uploadFile']);
+
+    // Réorganisation (drag & drop)
+    Route::post('lessons/{lessonId}/chapters/reorder', [ChapterController::class, 'reorder']);
 });
 
 // ============================================
@@ -372,26 +405,144 @@ Route::middleware(['auth:sanctum', 'klassci.sync'])->prefix('dashboard')->group(
 });
 
 // ============================================
+// LMS DATA (Classes & Matières) - Routes protégées
+// ============================================
+use App\Http\Controllers\API\LMSDataController;
+
+Route::middleware(['auth:sanctum', 'klassci.sync'])->prefix('lms')->group(function () {
+    // Détails complets d'une classe
+    Route::get('/classes/{classeId}', [LMSDataController::class, 'classeDetails'])
+        ->name('lms.classes.details');
+
+    // Étudiants d'une classe
+    Route::get('/classes/{classeId}/etudiants', [LMSDataController::class, 'classeEtudiants'])
+        ->name('lms.classes.etudiants');
+
+    // Détails complets d'une matière
+    Route::get('/matieres/{matiereId}', [LMSDataController::class, 'matiereDetails'])
+        ->name('lms.matieres.details');
+
+    // Liste des enseignants (NOUVELLE VERSION: depuis KLASSCI externe + cache)
+    Route::get('/enseignants', [LMSDataController::class, 'getEnseignantsFromKlassci'])
+        ->name('lms.enseignants.list');
+});
+
+// Routes admin/coordinateur uniquement
+Route::middleware(['auth:sanctum', 'klassci.sync', 'role:admin,coordinateur'])->prefix('admin')->group(function () {
+    // Liste toutes les matières avec combinaisons complètes
+    Route::get('/matieres', [LMSDataController::class, 'adminMatieresList'])
+        ->name('admin.matieres.list');
+});
+
+// Retour au groupe /lms pour les autres routes
+Route::middleware(['auth:sanctum', 'klassci.sync'])->prefix('lms')->group(function () {
+
+    // ============================================
+    // VISIOCONFÉRENCE
+    // ============================================
+
+    // Séances à venir (pré-création rooms)
+    Route::get('/seances/upcoming', [LMSDataController::class, 'upcomingSeances'])
+        ->name('lms.seances.upcoming');
+
+    // Détails complets d'une séance (avec infos visio)
+    Route::get('/seances/{seanceId}/details', [LMSDataController::class, 'seanceDetails'])
+        ->name('lms.seances.details');
+
+    // Participants autorisés pour une séance
+    Route::get('/seances/{seanceId}/participants', [LMSDataController::class, 'seanceParticipants'])
+        ->name('lms.seances.participants');
+
+    // Valider l'accès d'un participant
+    Route::post('/seances/{seanceId}/validate-participant', [LMSDataController::class, 'validateParticipant'])
+        ->name('lms.seances.validate-participant');
+
+    // Toggle visio pour séance (coordinateurs uniquement)
+    Route::post('/seances/{seanceId}/toggle-visio', [LMSDataController::class, 'toggleVisioSeance'])
+        ->name('lms.seances.toggle-visio')
+        ->middleware('role:coordinateur,superAdmin');
+
+    // Synchroniser les attendances depuis une session vidéo
+    Route::post('/attendances/from-video-session', [LMSDataController::class, 'syncAttendancesFromVideoSession'])
+        ->name('lms.attendances.from-video-session');
+
+    // Matières de l'enseignant connecté avec statistiques enrichies
+    Route::get('/teacher/my-matieres', [LMSDataController::class, 'myMatieres'])
+        ->name('lms.teacher.my-matieres')
+        ->middleware('role:enseignant,coordinateur');
+
+    // Séances de l'enseignant connecté
+    Route::get('/seances/my-teaching', [LMSDataController::class, 'myTeachingSeances'])
+        ->name('lms.seances.my-teaching')
+        ->middleware('role:enseignant,coordinateur');
+
+    // Séances de l'étudiant connecté
+    Route::get('/seances/my-classes', [LMSDataController::class, 'myClassesSeances'])
+        ->name('lms.seances.my-classes');
+
+    // Actions visio enseignant
+    Route::post('/seances/{seanceId}/activate-visio', [LMSDataController::class, 'activateVisio'])
+        ->name('lms.seances.activate-visio')
+        ->middleware('role:enseignant,coordinateur');
+
+    Route::post('/seances/{seanceId}/start-visio', [LMSDataController::class, 'startVisio'])
+        ->name('lms.seances.start-visio')
+        ->middleware('role:enseignant,coordinateur');
+
+    Route::post('/seances/{seanceId}/end-visio', [LMSDataController::class, 'endVisio'])
+        ->name('lms.seances.end-visio')
+        ->middleware('role:enseignant,coordinateur');
+
+    // Étudiant rejoint visio
+    Route::post('/seances/{seanceId}/join', [LMSDataController::class, 'joinVisio'])
+        ->name('lms.seances.join');
+
+    // Liste des participants à une visio
+    Route::get('/seances/{seanceId}/participants', [LMSDataController::class, 'getVisioParticipants'])
+        ->name('lms.seances.participants');
+
+    // ============================================
+    // NOTIFICATIONS
+    // ============================================
+
+    // Préférences de notification d'un utilisateur
+    Route::get('/notifications/preferences/{userId}', [LMSDataController::class, 'getNotificationPreferences'])
+        ->name('lms.notifications.preferences');
+
+    // Envoyer rappel de séance
+    Route::post('/notifications/send-session-reminder', [LMSDataController::class, 'sendSessionReminder'])
+        ->name('lms.notifications.send-session-reminder');
+});
+
+// ============================================
 // EVALUATIONS - Routes protégées
 // ============================================
 use App\Http\Controllers\API\EvaluationController;
 
 // Routes accessibles à tous les utilisateurs authentifiés
-Route::middleware(['auth:sanctum'])->group(function () {
+Route::middleware(['auth:sanctum', 'klassci.sync'])->group(function () {
     // Liste et consultation des évaluations
     Route::get('evaluations', [EvaluationController::class, 'index']);
-    Route::get('evaluations/{id}', [EvaluationController::class, 'show']);
 
-    // Évaluations disponibles pour un étudiant
+    // Évaluations de l'étudiant connecté (DOIT ÊTRE AVANT evaluations/{id})
+    Route::get('evaluations/student', [EvaluationController::class, 'myEvaluations']);
+
+    // Évaluations disponibles pour un étudiant spécifique (enseignants)
     Route::get('evaluations/student/{klassciEtudiantId}', [EvaluationController::class, 'studentEvaluations']);
+
+    // Récupérer une évaluation spécifique (APRÈS les routes spécifiques)
+    Route::get('evaluations/{id}', [EvaluationController::class, 'show']);
 
     // Démarrer et soumettre une évaluation
     Route::post('evaluations/{id}/start', [EvaluationController::class, 'startEvaluation']);
     Route::post('evaluations/{id}/submit', [EvaluationController::class, 'submitEvaluation']);
+
+    // État temporel en temps réel
+    Route::get('evaluations/{id}/time-status', [EvaluationController::class, 'getTimeStatus']);
 });
 
 // Routes enseignants/coordinateurs uniquement
-Route::middleware(['auth:sanctum', 'role:enseignant,coordinateur'])->group(function () {
+Route::middleware(['auth:sanctum', 'klassci.sync', 'role:enseignant,coordinateur'])->group(function () {
     // CRUD des évaluations
     Route::post('evaluations', [EvaluationController::class, 'store']);
     Route::put('evaluations/{id}', [EvaluationController::class, 'update']);
@@ -402,4 +553,87 @@ Route::middleware(['auth:sanctum', 'role:enseignant,coordinateur'])->group(funct
 
     // Synchronisation vers KLASSCI
     Route::post('evaluations/{id}/sync-to-klassci', [EvaluationController::class, 'syncToKlassci']);
+});
+
+// ============================================
+// ADMIN ANALYTICS - Routes protégées (admin/coordinateur uniquement)
+// ============================================
+Route::middleware(['auth:sanctum', 'role:coordinateur,superAdmin'])->prefix('admin/analytics')->group(function () {
+    // Tendances d'activité (graphes)
+    Route::get('/activity-trends', [AdminAnalyticsController::class, 'getActivityTrends']);
+
+    // Métriques système globales
+    Route::get('/system-metrics', [AdminAnalyticsController::class, 'getSystemMetrics']);
+
+    // Tâches en attente
+    Route::get('/pending-tasks', [AdminAnalyticsController::class, 'getPendingTasks']);
+
+    // Utilisateurs récents
+    Route::get('/recent-users', [AdminAnalyticsController::class, 'getRecentUsers']);
+});
+
+// ============================================
+// REPORTS - Génération PDF (admin/coordinateur uniquement)
+// ============================================
+Route::middleware(['auth:sanctum', 'role:coordinateur,superAdmin'])->prefix('admin/reports')->group(function () {
+    // Rapport de présences
+    Route::post('/attendance', [ReportController::class, 'generateAttendanceReport']);
+
+    // Rapport de notes
+    Route::post('/grades', [ReportController::class, 'generateGradesReport']);
+
+    // Rapport d'activité système
+    Route::post('/activity', [ReportController::class, 'generateActivityReport']);
+});
+
+// ============================================
+// NOTIFICATIONS - Gestion des notifications
+// ============================================
+Route::middleware(['auth:sanctum'])->prefix('notifications')->group(function () {
+    // Récupérer toutes les notifications (paginées)
+    Route::get('/', [NotificationsController::class, 'index']);
+
+    // Récupérer le nombre de notifications non lues
+    Route::get('/unread-count', [NotificationsController::class, 'unreadCount']);
+
+    // Récupérer les notifications récentes (pour widget)
+    Route::get('/recent', [NotificationsController::class, 'recent']);
+
+    // Marquer une notification comme lue
+    Route::post('/{id}/mark-as-read', [NotificationsController::class, 'markAsRead']);
+
+    // Marquer toutes les notifications comme lues
+    Route::post('/mark-all-as-read', [NotificationsController::class, 'markAllAsRead']);
+
+    // Supprimer une notification
+    Route::delete('/{id}', [NotificationsController::class, 'delete']);
+
+    // Supprimer toutes les notifications lues
+    Route::delete('/read/all', [NotificationsController::class, 'deleteAllRead']);
+});
+
+// Routes admin pour les notifications
+Route::middleware(['auth:sanctum', 'role:coordinateur,superAdmin'])->prefix('admin/notifications')->group(function () {
+    // Créer une notification manuelle
+    Route::post('/create', [NotificationsController::class, 'create']);
+
+    // Statistiques notifications
+    Route::get('/stats', [NotificationsController::class, 'stats']);
+});
+
+// ============================================
+// SEARCH - Recherche globale
+// ============================================
+Route::middleware(['auth:sanctum'])->prefix('search')->group(function () {
+    // Recherche globale
+    Route::get('/', [SearchController::class, 'globalSearch']);
+
+    // Suggestions autocomplete
+    Route::get('/suggestions', [SearchController::class, 'suggestions']);
+
+    // Historique de recherche
+    Route::get('/history', [SearchController::class, 'searchHistory']);
+
+    // Sauvegarder dans l'historique
+    Route::post('/history', [SearchController::class, 'saveSearchHistory']);
 });

@@ -257,6 +257,21 @@ class ForumController extends Controller
         $post = ForumPost::create($data);
         $post->load('user:id,name,email,role');
 
+        // Créer une notification pour l'auteur du topic (sauf si c'est lui qui répond)
+        if ($topic->user_id !== $request->user()->id) {
+            \App\Models\Notification::create([
+                'user_id' => $topic->user_id,
+                'type' => \App\Models\Notification::TYPE_FORUM_REPLY,
+                'title' => 'Nouvelle réponse sur votre discussion',
+                'message' => $request->user()->name . ' a répondu à votre discussion "' . $topic->title . '"',
+                'data' => [
+                    'topic_id' => $topic->id,
+                    'post_id' => $post->id,
+                    'author_name' => $request->user()->name,
+                ],
+            ]);
+        }
+
         return response()->json([
             'success' => true,
             'message' => 'Post ajouté',

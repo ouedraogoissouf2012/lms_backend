@@ -1519,11 +1519,30 @@ class LMSDataController extends Controller
             $canStart = $now->greaterThanOrEqualTo($heureDebut->copy()->subMinutes(15));
             $canStillStart = $now->lessThanOrEqualTo($heureFin->copy()->addMinutes(30));
 
+            // Vérifier si la visio est active ET dans le timeout (4h max après démarrage)
+            $visioIsActive = ($seance['visio_status'] === 'active');
+            $visioAccessible = false;
+
+            if ($visioIsActive && $visioData && $visioData->visio_started_at) {
+                $visioStarted = Carbon::parse($visioData->visio_started_at);
+                $visioTimeout = $visioStarted->copy()->addHours(4);
+                $visioAccessible = $now->lessThan($visioTimeout);
+
+                Log::info('Vérification accessibilité visio', [
+                    'seance_id' => $seanceId,
+                    'status' => $seance['visio_status'],
+                    'started_at' => $visioStarted->toIso8601String(),
+                    'timeout_at' => $visioTimeout->toIso8601String(),
+                    'accessible' => $visioAccessible
+                ]);
+            }
+
             $seance['visio_window'] = [
                 'can_start' => $canStart && $canStillStart,
                 'has_started' => $now->greaterThanOrEqualTo($heureDebut),
                 'has_ended' => $now->greaterThan($heureFin),
                 'is_in_window' => $canStart && !$now->greaterThan($heureFin),
+                'is_accessible' => $visioAccessible || ($canStart && !$now->greaterThan($heureFin)),
                 'start_window' => $heureDebut->copy()->subMinutes(15)->toIso8601String(),
                 'end_window' => $heureFin->copy()->addMinutes(30)->toIso8601String(),
             ];
@@ -1585,6 +1604,7 @@ class LMSDataController extends Controller
                         'enabled' => $seance['visio_enabled'],
                         'type' => $seance['visio_type'],
                         'room_id' => $seance['visio_room_id'],
+                        'status' => $seance['visio_status'],
                         'window' => $seance['visio_window']
                     ]
                 ]

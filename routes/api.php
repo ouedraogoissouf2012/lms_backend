@@ -8,6 +8,7 @@ use App\Http\Controllers\API\AdminAnalyticsController;
 use App\Http\Controllers\API\ReportController;
 use App\Http\Controllers\API\NotificationsController;
 use App\Http\Controllers\API\SearchController;
+use App\Http\Controllers\API\TeacherStatsController;
 
 /*
 |--------------------------------------------------------------------------
@@ -368,23 +369,8 @@ Route::middleware(['auth:sanctum', 'klassci.sync', 'role:enseignant,coordinateur
 // ============================================
 // NOTIFICATIONS - Routes protégées
 // ============================================
-use App\Http\Controllers\API\NotificationController;
-
-Route::middleware(['auth:sanctum'])->prefix('notifications')->group(function () {
-    // Liste et compteurs
-    Route::get('/', [NotificationController::class, 'index']);
-    Route::get('/unread-count', [NotificationController::class, 'unreadCount']);
-
-    // Actions globales (AVANT les routes avec {id})
-    Route::post('/read-all', [NotificationController::class, 'markAllAsRead']);
-    Route::delete('/read', [NotificationController::class, 'destroyAllRead']);
-
-    // Actions sur une notification (APRÈS les routes spécifiques)
-    Route::get('/{id}', [NotificationController::class, 'show']);
-    Route::post('/{id}/read', [NotificationController::class, 'markAsRead']);
-    Route::post('/{id}/unread', [NotificationController::class, 'markAsUnread']);
-    Route::delete('/{id}', [NotificationController::class, 'destroy']);
-});
+// NOTE: Les routes notifications sont définies plus bas (ligne ~600)
+// avec NotificationsController
 
 // ============================================
 // DASHBOARD - Routes protégées
@@ -402,6 +388,14 @@ Route::middleware(['auth:sanctum', 'klassci.sync'])->prefix('dashboard')->group(
     // Statistiques globales (coordinateurs et admin uniquement)
     Route::get('/stats', [DashboardController::class, 'stats'])
         ->middleware('role:coordinateur,admin');
+});
+
+// ============================================
+// TEACHER STATS - Statistiques enseignant
+// ============================================
+Route::middleware(['auth:sanctum', 'klassci.sync', 'role:enseignant,coordinateur'])->prefix('teacher')->group(function () {
+    // Statistiques de l'enseignant connecté
+    Route::get('/stats', [TeacherStatsController::class, 'getStats']);
 });
 
 // ============================================

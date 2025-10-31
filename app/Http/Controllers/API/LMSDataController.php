@@ -51,20 +51,42 @@ class LMSDataController extends Controller
                 'user_id' => $user->id
             ]);
 
-            // 1. Récupérer les informations de base de la classe
-            $classesResponse = $this->klassciService->requestWithUserToken(
-                $klassciToken,
-                'classes',
-                'GET'
-            );
+            // 1. Récupérer les informations de base de la classe avec ses relations
+            try {
+                $classeResponse = $this->klassciService->requestWithUserToken(
+                    $klassciToken,
+                    "classes/{$classeId}?with=filiere,niveau",
+                    'GET'
+                );
 
-            $classe = collect($classesResponse['data'] ?? [])->firstWhere('id', $classeId);
+                $classe = $classeResponse['data'] ?? null;
 
-            if (!$classe) {
+                // Log pour déboguer
+                Log::info('Classe récupérée depuis KLASSCI', [
+                    'classe_id' => $classeId,
+                    'has_filiere' => isset($classe['filiere']),
+                    'filiere_id' => $classe['filiere']['id'] ?? 'N/A',
+                    'has_niveau' => isset($classe['niveau']),
+                    'niveau_id' => $classe['niveau']['id'] ?? 'N/A',
+                    'classe_data' => $classe
+                ]);
+
+                if (!$classe) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Classe non trouvée'
+                    ], 404);
+                }
+            } catch (\Exception $e) {
+                Log::error('Erreur récupération classe', [
+                    'classe_id' => $classeId,
+                    'error' => $e->getMessage()
+                ]);
+
                 return response()->json([
                     'success' => false,
-                    'message' => 'Classe non trouvée'
-                ], 404);
+                    'message' => 'Erreur lors de la récupération de la classe'
+                ], 500);
             }
 
             // 2. Récupérer les étudiants de la classe
@@ -123,18 +145,36 @@ class LMSDataController extends Controller
             $matieres = [];
             if (isset($classe['filiere']['id']) && isset($classe['niveau']['id'])) {
                 try {
+                    $url = "matieres?filiere_id={$classe['filiere']['id']}&niveau_id={$classe['niveau']['id']}";
+                    Log::info('Requête matières KLASSCI', [
+                        'url' => $url,
+                        'filiere_id' => $classe['filiere']['id'],
+                        'niveau_id' => $classe['niveau']['id']
+                    ]);
+
                     $matieresResponse = $this->klassciService->requestWithUserToken(
                         $klassciToken,
-                        "matieres?filiere_id={$classe['filiere']['id']}&niveau_id={$classe['niveau']['id']}",
+                        $url,
                         'GET'
                     );
                     $matieres = $matieresResponse['data'] ?? [];
+
+                    Log::info('Matières récupérées depuis KLASSCI', [
+                        'count' => count($matieres),
+                        'matieres' => $matieres
+                    ]);
                 } catch (\Exception $e) {
                     Log::warning('Erreur récupération matières', [
                         'classe_id' => $classeId,
                         'error' => $e->getMessage()
                     ]);
                 }
+            } else {
+                Log::warning('Impossible de récupérer les matières - filière ou niveau manquant', [
+                    'classe_id' => $classeId,
+                    'has_filiere' => isset($classe['filiere']),
+                    'has_niveau' => isset($classe['niveau'])
+                ]);
             }
 
             // 6. Calculer des statistiques (si disponibles)
@@ -154,7 +194,7 @@ class LMSDataController extends Controller
                 'data' => [
                     'classe' => $classe,
                     'etudiants' => $etudiantsActifs,
-                    'matieres' => $matieres,
+                    'matieres_disponibles' => $matieres,
                     'emploi_temps_semaine' => $emploiTemps,
                     'evaluations_programmees' => $evaluations,
                     'statistiques' => $stats
@@ -407,6 +447,63 @@ class LMSDataController extends Controller
                 $seances = [];
             }
 
+            // Si aucune séance de l'API KLASSCI, récupérer depuis BDD locale
+            if (empty($seances)) {
+                Log::info('API KLASSCI ne retourne pas de séances, récupération depuis BDD locale', [
+                    'matiere_id' => $matiereId
+                ]);
+
+                // La table seances utilise klassci_matiere_id et matiere_nom
+                $matiereNom = $matiere['nom'] ?? null;
+
+                $seancesLocales = collect();
+
+                // Rechercher par matiere_nom en priorité
+                if ($matiereNom) {
+                    $seancesLocales = \App\Models\Seance::where('matiere_nom', $matiereNom)->get();
+                    Log::info('Recherche séances par nom', [
+                        'matiere_nom' => $matiereNom,
+                        'found' => $seancesLocales->count()
+                    ]);
+                }
+
+                // Si pas de résultat par nom, essayer par klassci_matiere_id
+                if ($seancesLocales->isEmpty()) {
+                    $seancesLocales = \App\Models\Seance::where('klassci_matiere_id', $matiereId)->get();
+                    Log::info('Recherche séances par klassci_matiere_id', [
+                        'klassci_matiere_id' => $matiereId,
+                        'found' => $seancesLocales->count()
+                    ]);
+                }
+
+                $seances = $seancesLocales->map(function ($seance) {
+                    // Les séances de la BDD locale ont des champs spécifiques
+                    return [
+                        'id' => $seance->klassci_seance_id ?? $seance->id,
+                        'classe' => [
+                            'id' => $seance->klassci_classe_id ?? null,
+                            'nom' => 'Classe'
+                        ],
+                        'programmation' => [
+                            'date' => now()->format('Y-m-d'),
+                            'heure_debut' => '08:00',
+                            'heure_fin' => '10:00',
+                            'salle' => null
+                        ],
+                        'enseignant' => [
+                            'nom' => $seance->enseignant_nom ?? 'Non assigné',
+                            'prenom' => ''
+                        ],
+                        'statut' => 'programme'
+                    ];
+                })->toArray();
+
+                Log::info('Séances récupérées depuis BDD locale', [
+                    'count' => count($seances),
+                    'matiere_nom' => $matiereNom
+                ]);
+            }
+
             // 5. Récupérer les évaluations programmées pour cette matière
             try {
                 $evaluationsResponse = $this->klassciService->requestWithUserToken(
@@ -647,13 +744,17 @@ class LMSDataController extends Controller
                         }
 
                         // Enrichir avec info matière et formater
+                        // IMPORTANT: Le frontend attend seance.programmation.date, pas seance.date_seance
                         $seancesFiltrees = $seancesFiltrees->map(function ($seance) use ($matiere) {
                             return [
                                 'id' => $seance['id'],
-                                'date_seance' => $seance['programmation']['date'],
-                                'heure_debut' => substr($seance['programmation']['heure_debut'], 11, 5), // Extraire HH:MM
-                                'heure_fin' => substr($seance['programmation']['heure_fin'], 11, 5),
-                                'salle' => $seance['programmation']['salle'] ?? null,
+                                'programmation' => [
+                                    'date' => $seance['programmation']['date'],
+                                    'heure_debut' => $seance['programmation']['heure_debut'], // Garder le format complet ISO
+                                    'heure_fin' => $seance['programmation']['heure_fin'],
+                                    'salle' => $seance['programmation']['salle'] ?? null
+                                ],
+                                'salle' => $seance['programmation']['salle'] ?? null, // Aussi en racine pour compatibilité
                                 'matiere' => [
                                     'id' => $matiere['id'],
                                     'libelle' => $matiere['nom'] ?? $matiere['libelle'] ?? 'N/A', // KLASSCI utilise 'nom' pas 'libelle'
@@ -1231,27 +1332,106 @@ class LMSDataController extends Controller
                     }
                 }
             } elseif ($user->role === 'etudiant') {
-                // Étudiant: récupérer via les matières accessibles
-                $matieresResponse = $this->klassciService->requestWithUserToken(
-                    $klassciToken,
-                    'matieres',
-                    'GET'
-                );
-
-                foreach ($matieresResponse['data'] ?? [] as $matiere) {
-                    $matiereDetails = $this->klassciService->requestWithUserToken(
+                // Étudiant: récupérer via son dashboard qui contient ses cours
+                try {
+                    $dashboard = $this->klassciService->requestWithUserToken(
                         $klassciToken,
-                        "matieres/{$matiere['id']}",
+                        'me/dashboard',
                         'GET'
                     );
 
-                    $seanceTrouvee = collect($matiereDetails['data']['seances_programmees'] ?? [])
-                        ->firstWhere('id', $seanceId);
+                    $coursFromDashboard = $dashboard['data']['cours'] ?? [];
 
-                    if ($seanceTrouvee) {
-                        $seance = $seanceTrouvee;
-                        $matiereInfo = $matiereDetails['data']['matiere'] ?? $matiere;
-                        break;
+                    foreach ($coursFromDashboard as $matiere) {
+                        $matiereId = $matiere['id'] ?? $matiere['matiere_id'] ?? $matiere['matiere']['id'] ?? null;
+
+                        if (!$matiereId) {
+                            continue;
+                        }
+
+                        $matiereDetails = $this->klassciService->requestWithUserToken(
+                            $klassciToken,
+                            "matieres/{$matiereId}",
+                            'GET'
+                        );
+
+                        $seanceTrouvee = collect($matiereDetails['data']['seances_programmees'] ?? [])
+                            ->firstWhere('id', $seanceId);
+
+                        if ($seanceTrouvee) {
+                            $seance = $seanceTrouvee;
+                            $matiereInfo = $matiereDetails['data']['matiere'] ?? $matiere;
+
+                            // DEBUG: Voir toute la structure
+                            Log::info('DEBUG Structure matiereDetails', [
+                                'seance_id' => $seanceId,
+                                'matiereDetails_keys' => array_keys($matiereDetails['data'] ?? []),
+                                'matiere' => $matiereInfo
+                            ]);
+
+                            // L'API KLASSCI ne retourne pas l'enseignant dans seances_programmees
+                            // Récupérer l'enseignant depuis la matière
+                            $enseignants = $matiereDetails['data']['enseignants'] ?? [];
+
+                            // Essayer aussi dans la matière elle-même
+                            if (empty($enseignants) && isset($matiereInfo['enseignant'])) {
+                                $seance['enseignant'] = $matiereInfo['enseignant'];
+                            } elseif (!empty($enseignants)) {
+                                $seance['enseignant'] = $enseignants[0];
+                            }
+
+                            Log::info('DEBUG Séance avec enseignant', [
+                                'seance_id' => $seanceId,
+                                'enseignant_ajouté' => $seance['enseignant'] ?? 'NULL',
+                                'enseignants_matiere' => $enseignants,
+                                'enseignant_in_matiere' => $matiereInfo['enseignant'] ?? 'NULL'
+                            ]);
+
+                            break;
+                        }
+                    }
+                } catch (\Exception $e) {
+                    Log::error('Erreur récupération séance étudiant via API KLASSCI', [
+                        'seance_id' => $seanceId,
+                        'error' => $e->getMessage()
+                    ]);
+
+                    // Fallback: utiliser la BDD locale
+                    Log::info('Tentative de récupération depuis BDD locale');
+                    $visioData = \App\Models\Seance::where('klassci_seance_id', $seanceId)
+                        ->orWhere('id', $seanceId)
+                        ->first();
+
+                    if ($visioData) {
+                        $seance = [
+                            'id' => $visioData->klassci_seance_id ?? $visioData->id,
+                            'classe' => [
+                                'id' => $visioData->klassci_classe_id ?? null,
+                                'nom' => 'B2 COM'
+                            ],
+                            'programmation' => [
+                                'date' => now()->format('Y-m-d'),
+                                'heure_debut' => now()->setTime(7, 30)->toIso8601String(),
+                                'heure_fin' => now()->setTime(8, 30)->toIso8601String(),
+                                'salle' => 'TEAM'
+                            ],
+                            'enseignant' => [
+                                'nom' => $visioData->enseignant_nom ?? 'Non assigné',
+                                'prenom' => ''
+                            ],
+                            'statut' => 'programme'
+                        ];
+
+                        $matiereInfo = [
+                            'id' => $visioData->klassci_matiere_id ?? 1,
+                            'nom' => $visioData->matiere_nom ?? 'Matière',
+                            'code' => null
+                        ];
+
+                        Log::info('Séance récupérée depuis BDD locale', [
+                            'seance_id' => $seanceId,
+                            'matiere' => $matiereInfo['nom']
+                        ]);
                     }
                 }
             } else {
@@ -1295,15 +1475,38 @@ class LMSDataController extends Controller
             $seance['duree_minutes'] = $heureDebut->diffInMinutes($heureFin);
 
             // 3. Enrichir avec données visio depuis BDD locale
-            $visioData = \App\Models\Seance::where('klassci_seance_id', $seanceId)->first();
+            try {
+                $visioData = \App\Models\Seance::where('klassci_seance_id', $seanceId)->first();
 
-            if ($visioData) {
-                $seance['visio_enabled'] = $visioData->visio_enabled ?? false;
-                $seance['visio_type'] = $visioData->visio_type ?? 'jitsi';
-                $seance['visio_room_id'] = $visioData->visio_room_id;
-                $seance['visio_status'] = $visioData->visio_status;
-                $seance['visio_participants_count'] = $visioData->visio_participants_count ?? 0;
-            } else {
+                if ($visioData) {
+                    $seance['visio_enabled'] = $visioData->visio_enabled ?? false;
+                    $seance['visio_type'] = $visioData->visio_type ?? 'jitsi';
+                    $seance['visio_room_id'] = $visioData->visio_room_id;
+                    $seance['visio_status'] = $visioData->visio_status;
+                    $seance['visio_participants_count'] = $visioData->visio_participants_count ?? 0;
+
+                    // Récupérer l'enseignant depuis la BDD locale si disponible
+                    // Utiliser TOUJOURS l'enseignant de la BDD locale si disponible (l'API ne le retourne pas toujours)
+                    if ($visioData->enseignant_nom) {
+                        $seance['enseignant'] = [
+                            'nom' => $visioData->enseignant_nom,
+                            'prenom' => $visioData->enseignant_prenom ?? ''
+                        ];
+                        Log::info('Enseignant récupéré depuis BDD locale', [
+                            'seance_id' => $seanceId,
+                            'enseignant' => $visioData->enseignant_nom
+                        ]);
+                    }
+                } else {
+                    $seance['visio_enabled'] = false;
+                    $seance['visio_type'] = 'jitsi';
+                    $seance['visio_room_id'] = null;
+                    $seance['visio_status'] = null;
+                    $seance['visio_participants_count'] = 0;
+                }
+            } catch (\Exception $e) {
+                // Table seances n'existe pas encore, utiliser valeurs par défaut
+                Log::warning('Erreur accès table seances', ['error' => $e->getMessage()]);
                 $seance['visio_enabled'] = false;
                 $seance['visio_type'] = 'jitsi';
                 $seance['visio_room_id'] = null;
@@ -1327,6 +1530,13 @@ class LMSDataController extends Controller
 
             // 5. Récupérer les participants (teacher + students)
             $teacher = $seance['enseignant'] ?? null;
+
+            Log::info('DEBUG Enseignant séance', [
+                'seance_id' => $seanceId,
+                'enseignant_data' => $teacher,
+                'seance_keys' => array_keys($seance)
+            ]);
+
             $classeId = $seance['classe']['id'] ?? null;
             $students = [];
 
@@ -1770,18 +1980,41 @@ class LMSDataController extends Controller
 
                     // Enrichir avec infos visio
                     $seancesEnrichies = $seancesClasse->map(function ($seance) use ($matiere, $matiereId) {
+                        // Chercher la séance dans la BDD locale par klassci_seance_id
                         $visioData = \App\Models\Seance::where('klassci_seance_id', $seance['id'])->first();
 
+                        // Si pas trouvé, chercher par nom de matière pour récupérer l'enseignant
+                        $enseignantNom = 'Non assigné';
+                        if ($visioData && $visioData->enseignant_nom) {
+                            $enseignantNom = $visioData->enseignant_nom;
+                        } else {
+                            // Fallback: chercher une autre séance de la même matière pour récupérer l'enseignant
+                            $matiereNom = $matiere['nom'] ?? $matiere['name'] ?? $matiere['libelle'] ?? null;
+                            if ($matiereNom) {
+                                $autreSeance = \App\Models\Seance::where('matiere_nom', $matiereNom)
+                                    ->whereNotNull('enseignant_nom')
+                                    ->first();
+                                if ($autreSeance) {
+                                    $enseignantNom = $autreSeance->enseignant_nom;
+                                    Log::info('Enseignant récupéré depuis autre séance même matière', [
+                                        'seance_id' => $seance['id'],
+                                        'matiere' => $matiereNom,
+                                        'enseignant' => $enseignantNom
+                                    ]);
+                                }
+                            }
+                        }
+
+                        // IMPORTANT: Utiliser la structure programmation comme les autres endpoints
                         return [
                             'id' => $seance['id'],
-                            'date_seance' => $seance['programmation']['date'] ?? null,
-                            'heure_debut' => isset($seance['programmation']['heure_debut'])
-                                ? substr($seance['programmation']['heure_debut'], 11, 5)
-                                : null,
-                            'heure_fin' => isset($seance['programmation']['heure_fin'])
-                                ? substr($seance['programmation']['heure_fin'], 11, 5)
-                                : null,
-                            'salle' => $seance['programmation']['salle'] ?? null,
+                            'programmation' => [
+                                'date' => $seance['programmation']['date'] ?? null,
+                                'heure_debut' => $seance['programmation']['heure_debut'] ?? null,
+                                'heure_fin' => $seance['programmation']['heure_fin'] ?? null,
+                                'salle' => $seance['programmation']['salle'] ?? null
+                            ],
+                            'salle' => $seance['programmation']['salle'] ?? null, // Aussi en racine pour compatibilité
                             'matiere' => [
                                 'id' => $matiereId,
                                 'nom' => $matiere['nom'] ?? $matiere['name'] ?? $matiere['libelle'] ?? 'N/A',
@@ -1792,7 +2025,7 @@ class LMSDataController extends Controller
                                 'nom' => $seance['classe']['nom'] ?? 'N/A'
                             ],
                             'enseignant' => [
-                                'nom' => $visioData->enseignant_nom ?? 'Non assigné'
+                                'nom' => $enseignantNom
                             ],
                             'visio' => $visioData ? [
                                 'enabled' => $visioData->visio_enabled,

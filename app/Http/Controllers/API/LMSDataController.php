@@ -1054,85 +1054,92 @@ class LMSDataController extends Controller
                     'user_id' => $userId,
                     'user_email' => $userToValidate->email,
                     'seance_id' => $seanceId,
-                    'matiere_id' => $visioData->klassci_matiere_id
+                    'matiere_id' => $visioData->klassci_matiere_id,
+                    'classe_id' => $visioData->klassci_classe_id
                 ]);
 
-                // Étape 1: Récupérer les données de la matière via l'API KLASSCI
-                // WORKAROUND: On utilise /matieres/{id} car /emploi-temps est bugué (colonne date_cours inexistante)
+                // WORKAROUND: On utilise /matieres/{id} si disponible, sinon on utilise directement classe_id de la BDD
                 try {
-                    $matiereId = $visioData->klassci_matiere_id;
-
-                    if (!$matiereId) {
-                        Log::error('DEBUG validateParticipant - Pas de matiere_id', [
-                            'seance_id' => $seanceId
-                        ]);
-
-                        return response()->json([
-                            'success' => false,
-                            'authorized' => false,
-                            'reason' => 'invalid_seance_data',
-                            'message' => 'Données de séance incomplètes'
-                        ], 403);
-                    }
-
-                    // Appel API KLASSCI pour récupérer les infos de la matière
                     $klassciUrl = env('KLASSCI_API_URL', 'https://presentation.klassci.com/api/lms');
-                    $matiereResponse = Http::withoutVerifying()->get("{$klassciUrl}/matieres/{$matiereId}");
+                    $classeId = null;
 
-                    Log::info('DEBUG validateParticipant - Réponse /matieres', [
-                        'status' => $matiereResponse->status(),
-                        'success' => $matiereResponse->successful()
-                    ]);
+                    // Stratégie 1: Si on a déjà classe_id dans la BDD locale, l'utiliser directement
+                    if ($visioData->klassci_classe_id) {
+                        $classeId = $visioData->klassci_classe_id;
 
-                    if (!$matiereResponse->successful()) {
-                        Log::error('DEBUG validateParticipant - Erreur API matieres', [
+                        Log::info('DEBUG validateParticipant - Utilisation classe_id de la BDD locale', [
+                            'classe_id' => $classeId
+                        ]);
+                    }
+                    // Stratégie 2: Sinon, chercher via /matieres/{id}
+                    else if ($visioData->klassci_matiere_id) {
+                        $matiereId = $visioData->klassci_matiere_id;
+
+                        Log::info('DEBUG validateParticipant - Recherche via /matieres', [
+                            'matiere_id' => $matiereId
+                        ]);
+
+                        // Appel API KLASSCI pour récupérer les infos de la matière
+                        $matiereResponse = Http::withoutVerifying()->get("{$klassciUrl}/matieres/{$matiereId}");
+
+                        Log::info('DEBUG validateParticipant - Réponse /matieres', [
                             'status' => $matiereResponse->status(),
-                            'body' => $matiereResponse->body()
+                            'success' => $matiereResponse->successful()
                         ]);
 
-                        return response()->json([
-                            'success' => false,
-                            'authorized' => false,
-                            'reason' => 'klassci_api_error',
-                            'message' => 'Erreur lors de la vérification des inscriptions'
-                        ], 500);
-                    }
+                        if (!$matiereResponse->successful()) {
+                            Log::error('DEBUG validateParticipant - Erreur API matieres', [
+                                'status' => $matiereResponse->status(),
+                                'body' => $matiereResponse->body()
+                            ]);
 
-                    $matiereData = $matiereResponse->json();
-                    $seancesProgrammees = $matiereData['data']['seances_programmees'] ?? [];
+                            return response()->json([
+                                'success' => false,
+                                'authorized' => false,
+                                'reason' => 'klassci_api_error',
+                                'message' => 'Erreur lors de la vérification des inscriptions'
+                            ], 500);
+                        }
 
-                    Log::info('DEBUG validateParticipant - Séances programmées', [
-                        'count' => count($seancesProgrammees),
-                        'recherche_seance_id' => $seanceId
-                    ]);
+                        $matiereData = $matiereResponse->json();
+                        $seancesProgrammees = $matiereData['data']['seances_programmees'] ?? [];
 
-                    // Étape 2: Trouver la séance correspondante pour récupérer classe_id
-                    $seanceInfo = collect($seancesProgrammees)->firstWhere('id', $seanceId);
+                        Log::info('DEBUG validateParticipant - Séances programmées', [
+                            'count' => count($seancesProgrammees),
+                            'recherche_seance_id' => $seanceId
+                        ]);
 
-                    if (!$seanceInfo) {
-                        Log::warning('DEBUG validateParticipant - Séance non trouvée dans les programmations', [
+                        // Trouver la séance correspondante pour récupérer classe_id
+                        $seanceInfo = collect($seancesProgrammees)->firstWhere('id', $seanceId);
+
+                        if (!$seanceInfo) {
+                            Log::warning('DEBUG validateParticipant - Séance non trouvée dans les programmations', [
+                                'seance_id' => $seanceId,
+                                'seances_disponibles' => collect($seancesProgrammees)->pluck('id')->toArray()
+                            ]);
+
+                            return response()->json([
+                                'success' => false,
+                                'authorized' => false,
+                                'reason' => 'seance_not_found',
+                                'message' => 'Séance non trouvée dans les programmations'
+                            ], 403);
+                        }
+
+                        $classeId = $seanceInfo['classe_id'] ?? null;
+
+                        Log::info('DEBUG validateParticipant - Séance trouvée via /matieres', [
                             'seance_id' => $seanceId,
-                            'seances_disponibles' => collect($seancesProgrammees)->pluck('id')->toArray()
+                            'classe_id' => $classeId
                         ]);
-
-                        return response()->json([
-                            'success' => false,
-                            'authorized' => false,
-                            'reason' => 'seance_not_found',
-                            'message' => 'Séance non trouvée dans les programmations'
-                        ], 403);
                     }
 
-                    $classeId = $seanceInfo['classe_id'] ?? null;
-
-                    Log::info('DEBUG validateParticipant - Séance trouvée', [
-                        'seance_id' => $seanceId,
-                        'classe_id' => $classeId
-                    ]);
-
+                    // Si on n'a toujours pas de classe_id, erreur
                     if (!$classeId) {
-                        Log::error('DEBUG validateParticipant - Pas de classe_id', [
-                            'seance_info' => $seanceInfo
+                        Log::error('DEBUG validateParticipant - Pas de classe_id disponible', [
+                            'seance_id' => $seanceId,
+                            'has_matiere_id' => $visioData->klassci_matiere_id ? 'oui' : 'non',
+                            'has_classe_id' => $visioData->klassci_classe_id ? 'oui' : 'non'
                         ]);
 
                         return response()->json([
@@ -1143,7 +1150,7 @@ class LMSDataController extends Controller
                         ], 403);
                     }
 
-                    // Étape 3: Récupérer la liste des étudiants inscrits dans la classe
+                    // Récupérer la liste des étudiants inscrits dans la classe
                     $classesResponse = Http::withoutVerifying()->get("{$klassciUrl}/classes/{$classeId}/etudiants");
 
                     Log::info('DEBUG validateParticipant - Réponse /classes/etudiants', [

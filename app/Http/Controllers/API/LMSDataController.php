@@ -1857,6 +1857,7 @@ class LMSDataController extends Controller
 
                         return [
                             'id' => $seance['id'],
+                            // Garder compatibilité ancienne structure
                             'date_seance' => $seance['programmation']['date'] ?? null,
                             'heure_debut' => isset($seance['programmation']['heure_debut'])
                                 ? substr($seance['programmation']['heure_debut'], 11, 5)
@@ -1865,6 +1866,13 @@ class LMSDataController extends Controller
                                 ? substr($seance['programmation']['heure_fin'], 11, 5)
                                 : null,
                             'salle' => $seance['programmation']['salle'] ?? null,
+                            // Ajouter structure programmation pour cohérence avec autres endpoints
+                            'programmation' => [
+                                'date' => $seance['programmation']['date'] ?? null,
+                                'heure_debut' => $seance['programmation']['heure_debut'] ?? null,
+                                'heure_fin' => $seance['programmation']['heure_fin'] ?? null,
+                                'salle' => $seance['programmation']['salle'] ?? null
+                            ],
                             'matiere' => [
                                 'id' => $matiere['id'],
                                 'nom' => $matiere['nom'] ?? $matiere['libelle'] ?? 'N/A',

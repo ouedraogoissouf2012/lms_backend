@@ -1005,42 +1005,212 @@ class LMSDataController extends Controller
             // Vérifier d'abord si la visio existe et est active
             $visioData = \App\Models\Seance::where('klassci_seance_id', $seanceId)->first();
 
+            Log::info('DEBUG validateParticipant - Données visio', [
+                'seance_id' => $seanceId,
+                'visio_found' => $visioData ? 'oui' : 'non',
+                'visio_enabled' => $visioData?->visio_enabled,
+                'visio_status' => $visioData?->visio_status,
+                'klassci_matiere_id' => $visioData?->klassci_matiere_id
+            ]);
+
             if (!$visioData || !$visioData->visio_enabled) {
                 return response()->json([
                     'success' => false,
                     'authorized' => false,
-                    'reason' => 'visio_not_enabled'
+                    'reason' => 'visio_not_enabled',
+                    'message' => 'Visioconférence non activée pour cette séance'
                 ], 403);
             }
 
-            // Pour un étudiant, autoriser si la visio est active
-            // (pas besoin de vérifier l'API KLASSCI qui est cassée)
-            if (in_array($userToValidate->role, ['etudiant', 'étudiant', 'student'])) {
-                if ($visioData->visio_status === 'active') {
-                    return response()->json([
-                        'success' => true,
-                        'authorized' => true,
-                        'role' => 'student',
-                        'message' => 'Accès autorisé - visio active'
-                    ]);
-                } else {
-                    return response()->json([
-                        'success' => false,
-                        'authorized' => false,
-                        'reason' => 'visio_not_started',
-                        'message' => 'La visioconférence n\'a pas encore démarré'
-                    ], 403);
-                }
+            // Vérifier que la visio est active ou programmée
+            if (!in_array($visioData->visio_status, ['active', 'programmee'])) {
+                return response()->json([
+                    'success' => false,
+                    'authorized' => false,
+                    'reason' => 'visio_not_started',
+                    'message' => 'La visioconférence n\'a pas encore démarré'
+                ], 403);
             }
 
             // Pour les enseignants/coordinateurs: autoriser directement
             if (in_array($userToValidate->role, ['enseignant', 'coordinateur', 'superAdmin', 'teacher'])) {
+                Log::info('DEBUG validateParticipant - Enseignant autorisé', [
+                    'user_id' => $userId,
+                    'role' => $userToValidate->role
+                ]);
+
                 return response()->json([
                     'success' => true,
                     'authorized' => true,
                     'role' => in_array($userToValidate->role, ['coordinateur', 'superAdmin']) ? 'moderator' : 'teacher',
                     'message' => 'Enseignant ou coordinateur autorisé'
                 ]);
+            }
+
+            // Pour un étudiant: vérifier l'inscription dans la classe
+            if (in_array($userToValidate->role, ['etudiant', 'étudiant', 'student'])) {
+                Log::info('DEBUG validateParticipant - Vérification étudiant', [
+                    'user_id' => $userId,
+                    'user_email' => $userToValidate->email,
+                    'seance_id' => $seanceId,
+                    'matiere_id' => $visioData->klassci_matiere_id
+                ]);
+
+                // Étape 1: Récupérer les données de la matière via l'API KLASSCI
+                // WORKAROUND: On utilise /matieres/{id} car /emploi-temps est bugué (colonne date_cours inexistante)
+                try {
+                    $matiereId = $visioData->klassci_matiere_id;
+
+                    if (!$matiereId) {
+                        Log::error('DEBUG validateParticipant - Pas de matiere_id', [
+                            'seance_id' => $seanceId
+                        ]);
+
+                        return response()->json([
+                            'success' => false,
+                            'authorized' => false,
+                            'reason' => 'invalid_seance_data',
+                            'message' => 'Données de séance incomplètes'
+                        ], 403);
+                    }
+
+                    // Appel API KLASSCI pour récupérer les infos de la matière
+                    $klassciUrl = env('KLASSCI_API_URL', 'https://presentation.klassci.com/api/lms');
+                    $matiereResponse = Http::withoutVerifying()->get("{$klassciUrl}/matieres/{$matiereId}");
+
+                    Log::info('DEBUG validateParticipant - Réponse /matieres', [
+                        'status' => $matiereResponse->status(),
+                        'success' => $matiereResponse->successful()
+                    ]);
+
+                    if (!$matiereResponse->successful()) {
+                        Log::error('DEBUG validateParticipant - Erreur API matieres', [
+                            'status' => $matiereResponse->status(),
+                            'body' => $matiereResponse->body()
+                        ]);
+
+                        return response()->json([
+                            'success' => false,
+                            'authorized' => false,
+                            'reason' => 'klassci_api_error',
+                            'message' => 'Erreur lors de la vérification des inscriptions'
+                        ], 500);
+                    }
+
+                    $matiereData = $matiereResponse->json();
+                    $seancesProgrammees = $matiereData['data']['seances_programmees'] ?? [];
+
+                    Log::info('DEBUG validateParticipant - Séances programmées', [
+                        'count' => count($seancesProgrammees),
+                        'recherche_seance_id' => $seanceId
+                    ]);
+
+                    // Étape 2: Trouver la séance correspondante pour récupérer classe_id
+                    $seanceInfo = collect($seancesProgrammees)->firstWhere('id', $seanceId);
+
+                    if (!$seanceInfo) {
+                        Log::warning('DEBUG validateParticipant - Séance non trouvée dans les programmations', [
+                            'seance_id' => $seanceId,
+                            'seances_disponibles' => collect($seancesProgrammees)->pluck('id')->toArray()
+                        ]);
+
+                        return response()->json([
+                            'success' => false,
+                            'authorized' => false,
+                            'reason' => 'seance_not_found',
+                            'message' => 'Séance non trouvée dans les programmations'
+                        ], 403);
+                    }
+
+                    $classeId = $seanceInfo['classe_id'] ?? null;
+
+                    Log::info('DEBUG validateParticipant - Séance trouvée', [
+                        'seance_id' => $seanceId,
+                        'classe_id' => $classeId
+                    ]);
+
+                    if (!$classeId) {
+                        Log::error('DEBUG validateParticipant - Pas de classe_id', [
+                            'seance_info' => $seanceInfo
+                        ]);
+
+                        return response()->json([
+                            'success' => false,
+                            'authorized' => false,
+                            'reason' => 'no_classe_id',
+                            'message' => 'Classe non définie pour cette séance'
+                        ], 403);
+                    }
+
+                    // Étape 3: Récupérer la liste des étudiants inscrits dans la classe
+                    $classesResponse = Http::withoutVerifying()->get("{$klassciUrl}/classes/{$classeId}/etudiants");
+
+                    Log::info('DEBUG validateParticipant - Réponse /classes/etudiants', [
+                        'status' => $classesResponse->status(),
+                        'success' => $classesResponse->successful()
+                    ]);
+
+                    if (!$classesResponse->successful()) {
+                        Log::error('DEBUG validateParticipant - Erreur API classes/etudiants', [
+                            'status' => $classesResponse->status(),
+                            'body' => $classesResponse->body()
+                        ]);
+
+                        return response()->json([
+                            'success' => false,
+                            'authorized' => false,
+                            'reason' => 'klassci_api_error',
+                            'message' => 'Erreur lors de la vérification des inscriptions'
+                        ], 500);
+                    }
+
+                    $classesData = $classesResponse->json();
+                    $enrolledStudents = $classesData['data'] ?? [];
+
+                    Log::info('DEBUG validateParticipant - Étudiants inscrits', [
+                        'count' => count($enrolledStudents),
+                        'emails' => collect($enrolledStudents)->pluck('email')->toArray()
+                    ]);
+
+                    // Étape 4: Vérifier si l'étudiant est inscrit dans la classe
+                    // On compare par email car c'est l'identifiant unique
+                    $isEnrolled = collect($enrolledStudents)->contains('email', $userToValidate->email);
+
+                    Log::info('DEBUG validateParticipant - Résultat vérification inscription', [
+                        'user_email' => $userToValidate->email,
+                        'classe_id' => $classeId,
+                        'is_enrolled' => $isEnrolled
+                    ]);
+
+                    if ($isEnrolled) {
+                        return response()->json([
+                            'success' => true,
+                            'authorized' => true,
+                            'role' => 'student',
+                            'message' => 'Étudiant inscrit dans la classe - accès autorisé'
+                        ]);
+                    } else {
+                        return response()->json([
+                            'success' => false,
+                            'authorized' => false,
+                            'reason' => 'not_enrolled',
+                            'message' => 'Vous n\'êtes pas inscrit dans cette classe'
+                        ], 403);
+                    }
+
+                } catch (\Exception $e) {
+                    Log::error('DEBUG validateParticipant - Exception lors de la vérification', [
+                        'error' => $e->getMessage(),
+                        'trace' => $e->getTraceAsString()
+                    ]);
+
+                    return response()->json([
+                        'success' => false,
+                        'authorized' => false,
+                        'reason' => 'verification_error',
+                        'message' => 'Erreur lors de la vérification de l\'inscription: ' . $e->getMessage()
+                    ], 500);
+                }
             }
 
             return response()->json([

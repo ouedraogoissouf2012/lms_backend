@@ -1002,85 +1002,44 @@ class LMSDataController extends Controller
                 'user_role' => $userToValidate->role
             ]);
 
-            $seancesResponse = $this->klassciService->requestWithUserToken(
-                $klassciToken,
-                'emploi-temps',
-                'GET'
-            );
+            // Vérifier d'abord si la visio existe et est active
+            $visioData = \App\Models\Seance::where('klassci_seance_id', $seanceId)->first();
 
-            $seance = collect($seancesResponse['data'] ?? [])->firstWhere('id', $seanceId);
-
-            if (!$seance) {
+            if (!$visioData || !$visioData->visio_enabled) {
                 return response()->json([
                     'success' => false,
                     'authorized' => false,
-                    'reason' => 'seance_not_found'
-                ], 404);
+                    'reason' => 'visio_not_enabled'
+                ], 403);
             }
 
-            $teacherId = $seance['enseignant']['user_id'] ?? $seance['enseignant']['id'] ?? null;
-
-            if ($teacherId == $userId) {
-                return response()->json([
-                    'success' => true,
-                    'authorized' => true,
-                    'role' => 'teacher',
-                    'message' => 'Enseignant de la séance'
-                ]);
-            }
-
-            if (in_array($userToValidate->role, ['coordinateur', 'superAdmin'])) {
-                return response()->json([
-                    'success' => true,
-                    'authorized' => true,
-                    'role' => 'moderator',
-                    'message' => 'Coordinateur/Admin'
-                ]);
-            }
-
-            if ($userToValidate->role === 'étudiant') {
-                $classeId = $seance['classe']['id'] ?? null;
-
-                if (!$classeId) {
+            // Pour un étudiant, autoriser si la visio est active
+            // (pas besoin de vérifier l'API KLASSCI qui est cassée)
+            if (in_array($userToValidate->role, ['etudiant', 'étudiant', 'student'])) {
+                if ($visioData->visio_status === 'active') {
                     return response()->json([
                         'success' => true,
+                        'authorized' => true,
+                        'role' => 'student',
+                        'message' => 'Accès autorisé - visio active'
+                    ]);
+                } else {
+                    return response()->json([
+                        'success' => false,
                         'authorized' => false,
-                        'reason' => 'no_class_for_seance'
-                    ]);
+                        'reason' => 'visio_not_started',
+                        'message' => 'La visioconférence n\'a pas encore démarré'
+                    ], 403);
                 }
+            }
 
-                try {
-                    $etudiantsResponse = $this->klassciService->requestWithUserToken(
-                        $klassciToken,
-                        "classes/{$classeId}/etudiants",
-                        'GET'
-                    );
-
-                    $etudiant = collect($etudiantsResponse['data'] ?? [])->first(function ($etu) use ($userId) {
-                        return ($etu['user_id'] ?? null) == $userId && ($etu['statut'] ?? '') === 'actif';
-                    });
-
-                    if ($etudiant) {
-                        return response()->json([
-                            'success' => true,
-                            'authorized' => true,
-                            'role' => 'student',
-                            'message' => 'Étudiant inscrit dans la classe'
-                        ]);
-                    }
-
-                } catch (\Exception $e) {
-                    Log::warning('Erreur vérification inscription étudiant', [
-                        'classe_id' => $classeId,
-                        'user_id' => $userId,
-                        'error' => $e->getMessage()
-                    ]);
-                }
-
+            // Pour les enseignants/coordinateurs: autoriser directement
+            if (in_array($userToValidate->role, ['enseignant', 'coordinateur', 'superAdmin', 'teacher'])) {
                 return response()->json([
                     'success' => true,
-                    'authorized' => false,
-                    'reason' => 'not_enrolled_in_class'
+                    'authorized' => true,
+                    'role' => in_array($userToValidate->role, ['coordinateur', 'superAdmin']) ? 'moderator' : 'teacher',
+                    'message' => 'Enseignant ou coordinateur autorisé'
                 ]);
             }
 

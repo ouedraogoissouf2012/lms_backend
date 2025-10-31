@@ -2028,7 +2028,11 @@ class LMSDataController extends Controller
                                 'nom' => $enseignantNom
                             ],
                             'visio' => $visioData ? [
-                                'enabled' => $visioData->visio_enabled,
+                                // Une séance est considérée "avec visio" si:
+                                // 1. visio_enabled = true OU
+                                // 2. Elle a un statut actif (programmee, active)
+                                'enabled' => $visioData->visio_enabled ||
+                                            in_array($visioData->visio_status, ['programmee', 'active']),
                                 'status' => $visioData->visio_status,
                                 'room_id' => $visioData->visio_room_id,
                                 'started_at' => $visioData->visio_started_at,

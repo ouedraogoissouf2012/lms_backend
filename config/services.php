@@ -51,4 +51,18 @@ return [
         'timeout' => env('KLASSCI_TIMEOUT', 30), // 30 secondes
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | ConvertAPI Configuration
+    |--------------------------------------------------------------------------
+    |
+    | Configuration pour ConvertAPI - Service de conversion de documents
+    | Utilisé pour convertir PowerPoint, Word, PDF en images
+    | Documentation: https://www.convertapi.com/doc/php
+    |
+    */
+    'convertapi' => [
+        'secret' => env('CONVERTAPI_SECRET'),
+    ],
+
 ];

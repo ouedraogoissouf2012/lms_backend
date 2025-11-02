@@ -6,15 +6,19 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Http\UploadedFile;
 use Exception;
+use App\Services\ConvertApiService;
 
 /**
  * Service de conversion de fichiers (PowerPoint, Word, Excel)
  *
  * Conversions supportées:
- * - PowerPoint (.pptx) → PDF → Images PNG
- * - Word (.docx) → HTML/Markdown
+ * - PowerPoint (.pptx) → PDF → Images PNG (via ConvertAPI)
+ * - Word (.docx) → HTML/Markdown (via ConvertAPI)
  * - Excel (.xlsx) → JSON/HTML
- * - PDF → Images PNG
+ * - PDF → Images PNG (via ConvertAPI)
+ *
+ * ⚠️ PRIORITÉ: Utilise ConvertAPI en priorité (1,500 conversions/mois gratuites)
+ *             Fallback sur LibreOffice si ConvertAPI indisponible
  */
 class FileConversionService
 {
@@ -36,10 +40,12 @@ class FileConversionService
         'pdf' => 'pdf',
     ];
 
+    protected $convertApiService;
+
     /**
      * Convertir PowerPoint en images PNG
      *
-     * Pipeline: .pptx → PDF → PNG images
+     * Pipeline: .pptx → PDF → PNG images (via ConvertAPI)
      *
      * @param UploadedFile $file
      * @param int $chapterId
@@ -59,23 +65,46 @@ class FileConversionService
 
             Log::info("✓ Fichier original sauvegardé", ['path' => $originalPath]);
 
-            // 3. Convertir PowerPoint → PDF avec LibreOffice
-            $pdfPath = $this->convertPptxToPdf($fullOriginalPath, $chapterId);
+            // 3. Essayer ConvertAPI en priorité
+            try {
+                $convertApiService = new ConvertApiService();
+                $outputDir = "chapters/{$chapterId}/slides";
 
-            Log::info("✓ Conversion PDF terminée", ['pdf' => $pdfPath]);
+                $pngImages = $convertApiService->convertPowerPointToImages(
+                    $fullOriginalPath,
+                    $outputDir
+                );
 
-            // 4. Convertir PDF → PNG images avec Imagick
-            $pngImages = $this->convertPdfToPngImages($pdfPath, $chapterId);
+                Log::info("✓ Conversion ConvertAPI terminée", ['count' => count($pngImages)]);
 
-            Log::info("✓ Conversion PNG terminée", ['count' => count($pngImages)]);
+                return [
+                    'success' => true,
+                    'slides_images' => $pngImages,
+                    'slides_count' => count($pngImages),
+                    'file_original_path' => $originalPath,
+                    'file_converted_path' => $originalPath,
+                    'conversion_method' => 'ConvertAPI',
+                ];
 
-            return [
-                'success' => true,
-                'slides_images' => $pngImages,
-                'slides_count' => count($pngImages),
-                'file_original_path' => $originalPath,
-                'file_converted_path' => str_replace(storage_path('app/public/'), '', $pdfPath),
-            ];
+            } catch (Exception $convertApiError) {
+                Log::warning("⚠️ ConvertAPI échoué, fallback sur LibreOffice", [
+                    'error' => $convertApiError->getMessage()
+                ]);
+
+                // Fallback: Utiliser LibreOffice (méthode originale)
+                $pdfPath = $this->convertPptxToPdf($fullOriginalPath, $chapterId);
+                $pngImages = $this->convertPdfToPngImages($pdfPath, $chapterId);
+
+                return [
+                    'success' => true,
+                    'slides_images' => $pngImages,
+                    'slides_count' => count($pngImages),
+                    'file_original_path' => $originalPath,
+                    'file_converted_path' => str_replace(storage_path('app/public/'), '', $pdfPath),
+                    'conversion_method' => 'LibreOffice (fallback)',
+                ];
+            }
+
         } catch (Exception $e) {
             Log::error("❌ Erreur conversion PowerPoint", [
                 'file' => $file->getClientOriginalName(),
@@ -371,18 +400,47 @@ class FileConversionService
 
             Log::info("✓ Fichier PDF sauvegardé", ['path' => $originalPath]);
 
-            // 3. Convertir PDF → PNG images avec Imagick
-            $pngImages = $this->convertPdfToPngImages($fullOriginalPath, $chapterId);
+            // 3. Essayer ConvertAPI en priorité
+            try {
+                $convertApiService = new ConvertApiService();
+                $outputDir = "chapters/{$chapterId}/slides";
 
-            Log::info("✓ Conversion PDF→PNG terminée", ['count' => count($pngImages)]);
+                $pngImages = $convertApiService->convertPdfToImages(
+                    $fullOriginalPath,
+                    $outputDir
+                );
 
-            return [
-                'success' => true,
-                'slides_images' => $pngImages,
-                'slides_count' => count($pngImages),
-                'file_original_path' => $originalPath,
-                'file_converted_path' => $originalPath,
-            ];
+                Log::info("✓ Conversion ConvertAPI PDF terminée", ['count' => count($pngImages)]);
+
+                return [
+                    'success' => true,
+                    'slides_images' => $pngImages,
+                    'slides_count' => count($pngImages),
+                    'file_original_path' => $originalPath,
+                    'file_converted_path' => $originalPath,
+                    'conversion_method' => 'ConvertAPI',
+                ];
+
+            } catch (Exception $convertApiError) {
+                Log::warning("⚠️ ConvertAPI échoué, fallback sur Imagick", [
+                    'error' => $convertApiError->getMessage()
+                ]);
+
+                // Fallback: Utiliser Imagick/GD (méthode originale)
+                $pngImages = $this->convertPdfToPngImages($fullOriginalPath, $chapterId);
+
+                Log::info("✓ Conversion Imagick/GD terminée", ['count' => count($pngImages)]);
+
+                return [
+                    'success' => true,
+                    'slides_images' => $pngImages,
+                    'slides_count' => count($pngImages),
+                    'file_original_path' => $originalPath,
+                    'file_converted_path' => $originalPath,
+                    'conversion_method' => 'Imagick/GD (fallback)',
+                ];
+            }
+
         } catch (Exception $e) {
             Log::error("❌ Erreur conversion PDF", [
                 'file' => $file->getClientOriginalName(),

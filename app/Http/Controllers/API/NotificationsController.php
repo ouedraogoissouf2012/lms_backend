@@ -24,7 +24,7 @@ class NotificationsController extends Controller
         $cacheTTL = 60; // 1 minute
 
         $notifications = Cache::remember($cacheKey, $cacheTTL, function () use ($user, $perPage, $unreadOnly) {
-            $query = $user->notifications();
+            $query = \App\Models\Notification::where('user_id', $user->id);
 
             if ($unreadOnly) {
                 $query->whereNull('read_at');
@@ -55,7 +55,9 @@ class NotificationsController extends Controller
         $cacheTTL = 60; // 1 minute
 
         $count = Cache::remember($cacheKey, $cacheTTL, function () use ($user) {
-            return $user->unreadNotifications()->count();
+            return \App\Models\Notification::where('user_id', $user->id)
+                ->whereNull('read_at')
+                ->count();
         });
 
         return response()->json([
@@ -76,7 +78,8 @@ class NotificationsController extends Controller
         $cacheTTL = 60; // 1 minute
 
         $notifications = Cache::remember($cacheKey, $cacheTTL, function () use ($user, $limit) {
-            return $user->notifications()
+            return \App\Models\Notification::where('user_id', $user->id)
+                ->whereNull('read_at') // Seulement les notifications non lues
                 ->orderBy('created_at', 'desc')
                 ->limit($limit)
                 ->get()
@@ -110,7 +113,7 @@ class NotificationsController extends Controller
     public function markAsRead($id)
     {
         $user = Auth::user();
-        $notification = $user->notifications()->findOrFail($id);
+        $notification = \App\Models\Notification::where('user_id', $user->id)->findOrFail($id);
 
         if (!$notification->read_at) {
             $notification->markAsRead();
@@ -133,7 +136,9 @@ class NotificationsController extends Controller
     {
         $user = Auth::user();
 
-        $user->unreadNotifications->markAsRead();
+        \App\Models\Notification::where('user_id', $user->id)
+            ->whereNull('read_at')
+            ->update(['read_at' => now()]);
 
         // Invalider le cache
         Cache::forget("notifications_unread_count_user_{$user->id}");
@@ -151,7 +156,7 @@ class NotificationsController extends Controller
     public function delete($id)
     {
         $user = Auth::user();
-        $notification = $user->notifications()->findOrFail($id);
+        $notification = \App\Models\Notification::where('user_id', $user->id)->findOrFail($id);
 
         $notification->delete();
 
@@ -172,7 +177,9 @@ class NotificationsController extends Controller
     {
         $user = Auth::user();
 
-        $user->readNotifications()->delete();
+        \App\Models\Notification::where('user_id', $user->id)
+            ->whereNotNull('read_at')
+            ->delete();
 
         // Invalider le cache
         Cache::flush();

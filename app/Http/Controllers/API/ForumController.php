@@ -272,6 +272,30 @@ class ForumController extends Controller
             ]);
         }
 
+        // Si c'est une réponse à une réponse (parent_id existe)
+        // Notifier l'auteur du post parent (sauf si c'est lui qui répond ou l'auteur du topic pour éviter doublon)
+        if (!empty($data['parent_id'])) {
+            $parentPost = ForumPost::find($data['parent_id']);
+
+            if ($parentPost &&
+                $parentPost->user_id !== $request->user()->id &&
+                $parentPost->user_id !== $topic->user_id) {
+
+                \App\Models\Notification::create([
+                    'user_id' => $parentPost->user_id,
+                    'type' => \App\Models\Notification::TYPE_FORUM_REPLY,
+                    'title' => 'Nouvelle réponse à votre message',
+                    'message' => $request->user()->name . ' a répondu à votre message dans "' . $topic->title . '"',
+                    'data' => [
+                        'topic_id' => $topic->id,
+                        'post_id' => $post->id,
+                        'parent_post_id' => $parentPost->id,
+                        'author_name' => $request->user()->name,
+                    ],
+                ]);
+            }
+        }
+
         return response()->json([
             'success' => true,
             'message' => 'Post ajouté',
@@ -384,6 +408,21 @@ class ForumController extends Controller
         }
 
         $post->markAsSolution();
+
+        // Créer une notification pour l'auteur du post (sauf si c'est lui qui marque)
+        if ($post->user_id !== $user->id) {
+            \App\Models\Notification::create([
+                'user_id' => $post->user_id,
+                'type' => \App\Models\Notification::TYPE_FORUM_SOLUTION,
+                'title' => 'Votre réponse a été acceptée',
+                'message' => 'Votre réponse dans "' . $topic->title . '" a été marquée comme solution',
+                'data' => [
+                    'topic_id' => $topic->id,
+                    'post_id' => $post->id,
+                    'marked_by_name' => $user->name,
+                ],
+            ]);
+        }
 
         return response()->json([
             'success' => true,

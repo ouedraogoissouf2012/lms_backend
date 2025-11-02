@@ -2505,65 +2505,36 @@ class LMSDataController extends Controller
                 ], 400);
             }
 
-            // OPTION B: Vérifier que l'étudiant est bien inscrit dans la classe
+            // NOUVELLE APPROCHE SIMPLIFIÉE:
+            // Si l'étudiant peut se connecter = il est actif dans KLASSCI = accès autorisé
+            // La validation se fait à la connexion via syncStudentClasses()
+
             if ($user->role === 'etudiant' || $user->role === 'student') {
-                try {
-                    $klassciToken = $user->klassci_token;
-                    $klassciService = app(\App\Services\KlassciProxyService::class);
+                // Enregistrer la participation dans esbtp_attendance
+                $attendance = \App\Models\ESBTPAttendance::updateOrCreate(
+                    [
+                        'seance_id' => $visio->id,
+                        'user_id' => $user->id
+                    ],
+                    [
+                        'klassci_etudiant_id' => $user->klassci_id,
+                        'nom' => $user->name,
+                        'prenom' => '',
+                        'email' => $user->email,
+                        'joined_at' => now(),
+                        'last_seen_at' => now(),
+                        'status' => 'connected',
+                        'ip_address' => $request->ip(),
+                        'user_agent' => $request->userAgent(),
+                        'is_validated' => true
+                    ]
+                );
 
-                    // Récupérer les étudiants de la classe depuis KLASSCI
-                    $classeId = $visio->klassci_classe_id;
-                    $etudiantsResponse = $klassciService->get("classes/{$classeId}/etudiants");
-                    $etudiants = $etudiantsResponse['data'] ?? [];
-
-                    // Vérifier si l'étudiant est dans la liste
-                    $etudiantInscrit = collect($etudiants)->first(function ($etudiant) use ($user) {
-                        return $etudiant['id'] == $user->klassci_id;
-                    });
-
-                    if (!$etudiantInscrit) {
-                        Log::warning('Étudiant non autorisé à rejoindre visio', [
-                            'user_id' => $user->id,
-                            'klassci_id' => $user->klassci_id,
-                            'classe_id' => $classeId
-                        ]);
-
-                        return response()->json([
-                            'success' => false,
-                            'message' => 'Vous n\'êtes pas inscrit dans cette classe'
-                        ], 403);
-                    }
-
-                    // Enregistrer la participation dans esbtp_attendance
-                    $attendance = \App\Models\ESBTPAttendance::updateOrCreate(
-                        [
-                            'seance_id' => $visio->id,
-                            'user_id' => $user->id
-                        ],
-                        [
-                            'klassci_etudiant_id' => $user->klassci_id,
-                            'nom' => $etudiantInscrit['nom'] ?? $user->name,
-                            'prenom' => $etudiantInscrit['prenom'] ?? '',
-                            'email' => $etudiantInscrit['email'] ?? $user->email,
-                            'joined_at' => now(),
-                            'ip_address' => $request->ip(),
-                            'user_agent' => $request->userAgent(),
-                            'is_validated' => true
-                        ]
-                    );
-
-                    Log::info('Étudiant rejoint visio et participation enregistrée', [
-                        'seance_id' => $seanceId,
-                        'user_id' => $user->id,
-                        'attendance_id' => $attendance->id
-                    ]);
-
-                } catch (\Exception $verifyError) {
-                    Log::error('Erreur vérification étudiant', [
-                        'error' => $verifyError->getMessage()
-                    ]);
-                    // Ne pas bloquer si erreur KLASSCI, laisser passer
-                }
+                Log::info('Étudiant rejoint visio - participation enregistrée', [
+                    'seance_id' => $seanceId,
+                    'user_id' => $user->id,
+                    'attendance_id' => $attendance->id
+                ]);
             }
 
             // Incrémenter le compteur de participants
@@ -2622,15 +2593,32 @@ class LMSDataController extends Controller
                         'email' => $attendance->email,
                         'joined_at' => $attendance->joined_at?->format('Y-m-d H:i:s'),
                         'joined_at_human' => $attendance->joined_at?->diffForHumans(),
+                        'left_at' => $attendance->left_at?->format('Y-m-d H:i:s'),
+                        'left_at_human' => $attendance->left_at?->diffForHumans(),
+                        'last_seen_at' => $attendance->last_seen_at?->format('Y-m-d H:i:s'),
+                        'last_seen_at_human' => $attendance->last_seen_at?->diffForHumans(),
+                        'duration_minutes' => $attendance->duration_minutes,
+                        'duration_formatted' => $attendance->formatted_duration,
+                        'status' => $attendance->status,
+                        'is_connected' => $attendance->isConnected(),
                         'is_validated' => $attendance->is_validated
                     ];
                 });
 
+            // Calculer des statistiques
+            $stats = [
+                'total' => $participants->count(),
+                'connected' => $participants->where('status', 'connected')->count(),
+                'disconnected' => $participants->where('status', 'disconnected')->count(),
+                'kicked' => $participants->where('status', 'kicked')->count(),
+                'validated' => $participants->where('is_validated', true)->count()
+            ];
+
             return response()->json([
                 'success' => true,
                 'data' => [
-                    'total' => $participants->count(),
-                    'participants' => $participants
+                    'statistics' => $stats,
+                    'participants' => $participants->values()
                 ]
             ]);
 
@@ -2643,6 +2631,127 @@ class LMSDataController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Erreur lors de la récupération des participants',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * POST /api/seances/{seanceId}/leave
+     * Enregistrer la sortie d'un participant de la visio
+     */
+    public function leaveVisio(int $seanceId, Request $request): JsonResponse
+    {
+        try {
+            $user = $request->user();
+
+            $visio = \App\Models\Seance::where('klassci_seance_id', $seanceId)->first();
+
+            if (!$visio) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Visio non trouvée'
+                ], 404);
+            }
+
+            // Trouver la participation active de l'utilisateur
+            $attendance = \App\Models\ESBTPAttendance::where('seance_id', $visio->id)
+                ->where('user_id', $user->id)
+                ->where('status', 'connected')
+                ->orderBy('joined_at', 'desc')
+                ->first();
+
+            if (!$attendance) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Aucune participation active trouvée'
+                ], 404);
+            }
+
+            // Marquer comme déconnecté
+            $attendance->markAsDisconnected();
+
+            Log::info('Participant quitté visio', [
+                'seance_id' => $seanceId,
+                'user_id' => $user->id,
+                'duration_minutes' => $attendance->duration_minutes
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Déconnexion enregistrée',
+                'data' => [
+                    'left_at' => $attendance->left_at->format('Y-m-d H:i:s'),
+                    'duration_minutes' => $attendance->duration_minutes,
+                    'duration_formatted' => $attendance->formatted_duration
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Erreur leave visio', [
+                'seance_id' => $seanceId,
+                'error' => $e->getMessage()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur lors de l\'enregistrement de la sortie',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * POST /api/seances/{seanceId}/heartbeat
+     * Mettre à jour le heartbeat d'un participant (ping d'activité)
+     */
+    public function heartbeatVisio(int $seanceId, Request $request): JsonResponse
+    {
+        try {
+            $user = $request->user();
+
+            $visio = \App\Models\Seance::where('klassci_seance_id', $seanceId)->first();
+
+            if (!$visio) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Visio non trouvée'
+                ], 404);
+            }
+
+            // Trouver la participation active de l'utilisateur
+            $attendance = \App\Models\ESBTPAttendance::where('seance_id', $visio->id)
+                ->where('user_id', $user->id)
+                ->where('status', 'connected')
+                ->orderBy('joined_at', 'desc')
+                ->first();
+
+            if (!$attendance) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Aucune participation active trouvée'
+                ], 404);
+            }
+
+            // Mettre à jour le heartbeat
+            $attendance->updateHeartbeat();
+
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'last_seen_at' => $attendance->last_seen_at->format('Y-m-d H:i:s')
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Erreur heartbeat visio', [
+                'seance_id' => $seanceId,
+                'error' => $e->getMessage()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur lors de la mise à jour du heartbeat',
                 'error' => $e->getMessage()
             ], 500);
         }

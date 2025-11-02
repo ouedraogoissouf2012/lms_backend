@@ -129,6 +129,14 @@ class User extends Authenticatable
     }
 
     /**
+     * Relation: Classes KLASSCI de l'utilisateur
+     */
+    public function klassciClasses()
+    {
+        return $this->hasMany(\App\Models\UserClass::class);
+    }
+
+    /**
      * Relation: Classes actives uniquement
      */
     public function classesActives()

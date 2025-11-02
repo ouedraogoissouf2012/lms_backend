@@ -848,4 +848,113 @@ class EvaluationController extends Controller
             return $evaluations->toArray();
         }
     }
+
+    /**
+     * GET /api/evaluations/{id}/results-by-class
+     * Récupère les résultats détaillés d'une évaluation pour tous les étudiants de la classe
+     * (Coordinateur/Admin uniquement)
+     */
+    public function getResultsByClass(int $id): JsonResponse
+    {
+        try {
+            // Récupérer l'évaluation avec ses questions et soumissions
+            $evaluation = Evaluation::with(['questions', 'submissions'])->find($id);
+
+            if (!$evaluation) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Évaluation non trouvée'
+                ], 404);
+            }
+
+            \Log::info('📊 Récupération résultats évaluation', [
+                'evaluation_id' => $id,
+                'classe_id' => $evaluation->klassci_classe_id
+            ]);
+
+            // Récupérer la liste COMPLÈTE des étudiants de la classe depuis KLASSCI
+            $classeDetails = $this->klassciService->getClasseDetails($evaluation->klassci_classe_id);
+            $etudiants = $classeDetails['etudiants'] ?? [];
+
+            \Log::info('👥 Étudiants de la classe', [
+                'total_etudiants' => count($etudiants)
+            ]);
+
+            // Enrichir avec les données KLASSCI (classe, matière)
+            $evaluationEnrichie = $this->enrichEvaluationsWithKlassciData(collect([$evaluation]))[0];
+
+            // Créer un tableau de résultats pour TOUS les étudiants
+            $resultats = [];
+            foreach ($etudiants as $etudiant) {
+                // Récupérer la dernière soumission de l'étudiant pour cette évaluation
+                $submission = $evaluation->submissions()
+                    ->where('klassci_etudiant_id', $etudiant['id'])
+                    ->latest()
+                    ->first();
+
+                $resultats[] = [
+                    'etudiant_id' => $etudiant['id'],
+                    'etudiant_nom' => $etudiant['nom'] ?? '',
+                    'etudiant_prenom' => $etudiant['prenom'] ?? '',
+                    'etudiant_nom_complet' => trim(($etudiant['nom'] ?? '') . ' ' . ($etudiant['prenom'] ?? '')),
+                    'note' => $submission?->note_sur_20,
+                    'score' => $submission?->score,
+                    'status' => $submission?->status ?? 'non_passee',
+                    'submitted_at' => $submission?->submitted_at,
+                    'attempt' => $submission?->attempt,
+                    'feedback' => $submission?->feedback,
+                ];
+            }
+
+            // Trier les résultats par nom
+            usort($resultats, function($a, $b) {
+                return strcmp($a['etudiant_nom_complet'], $b['etudiant_nom_complet']);
+            });
+
+            // Calculer les statistiques
+            $soumissions = collect($resultats)->where('status', 'soumis');
+            $notes = $soumissions->pluck('note')->filter();
+
+            $statistiques = [
+                'total_etudiants' => count($etudiants),
+                'etudiants_soumis' => $soumissions->count(),
+                'etudiants_en_cours' => collect($resultats)->where('status', 'en_cours')->count(),
+                'etudiants_non_passes' => collect($resultats)->where('status', 'non_passee')->count(),
+                'taux_participation' => count($etudiants) > 0
+                    ? round(($soumissions->count() / count($etudiants)) * 100, 2)
+                    : 0,
+                'moyenne_classe' => $notes->count() > 0 ? round($notes->avg(), 2) : null,
+                'note_max' => $notes->count() > 0 ? round($notes->max(), 2) : null,
+                'note_min' => $notes->count() > 0 ? round($notes->min(), 2) : null,
+            ];
+
+            \Log::info('✅ Résultats calculés', [
+                'total_etudiants' => $statistiques['total_etudiants'],
+                'soumis' => $statistiques['etudiants_soumis'],
+                'moyenne' => $statistiques['moyenne_classe']
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'evaluation' => $evaluationEnrichie,
+                    'resultats' => $resultats,
+                    'statistiques' => $statistiques
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            \Log::error('❌ Erreur récupération résultats évaluation', [
+                'evaluation_id' => $id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur lors de la récupération des résultats',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
 }

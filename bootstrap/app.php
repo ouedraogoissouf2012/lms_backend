@@ -18,6 +18,13 @@ return Application::configure(basePath: dirname(__DIR__))
             'role' => \App\Http\Middleware\EnsureRole::class,
         ]);
     })
+    ->withSchedule(function ($schedule): void {
+        // Détecter les participants inactifs toutes les minutes
+        $schedule->command('visio:detect-inactive')
+            ->everyMinute()
+            ->withoutOverlapping()
+            ->runInBackground();
+    })
     ->withExceptions(function (Exceptions $exceptions): void {
         //
     })->create();

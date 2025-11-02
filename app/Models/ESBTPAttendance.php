@@ -20,7 +20,9 @@ class ESBTPAttendance extends Model
         'email',
         'joined_at',
         'left_at',
+        'last_seen_at',
         'duration_minutes',
+        'status',
         'ip_address',
         'user_agent',
         'is_validated',
@@ -29,6 +31,7 @@ class ESBTPAttendance extends Model
     protected $casts = [
         'joined_at' => 'datetime',
         'left_at' => 'datetime',
+        'last_seen_at' => 'datetime',
         'duration_minutes' => 'integer',
         'is_validated' => 'boolean',
     ];
@@ -82,5 +85,54 @@ class ESBTPAttendance extends Model
         }
 
         return "{$minutes}min";
+    }
+
+    /**
+     * Scope pour filtrer les participants connectés
+     */
+    public function scopeConnected($query)
+    {
+        return $query->where('status', 'connected');
+    }
+
+    /**
+     * Scope pour filtrer les participants déconnectés
+     */
+    public function scopeDisconnected($query)
+    {
+        return $query->where('status', 'disconnected');
+    }
+
+    /**
+     * Vérifier si le participant est actuellement connecté
+     */
+    public function isConnected(): bool
+    {
+        return $this->status === 'connected';
+    }
+
+    /**
+     * Marquer comme déconnecté
+     */
+    public function markAsDisconnected(): void
+    {
+        $this->status = 'disconnected';
+        $this->left_at = now();
+
+        // Calculer la durée si joined_at existe
+        if ($this->joined_at) {
+            $this->duration_minutes = $this->joined_at->diffInMinutes($this->left_at);
+        }
+
+        $this->save();
+    }
+
+    /**
+     * Mettre à jour le heartbeat
+     */
+    public function updateHeartbeat(): void
+    {
+        $this->last_seen_at = now();
+        $this->save();
     }
 }

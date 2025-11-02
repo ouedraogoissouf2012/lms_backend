@@ -341,14 +341,21 @@ class AuthController extends Controller
     private function syncUserFromKlassci(array $klassciUser, string $klassciToken): User
     {
         $klassciId = $klassciUser['id'];
+        $email = $klassciUser['email'];
 
-        // Chercher l'utilisateur par klassci_id
-        $user = User::where('klassci_id', $klassciId)->first();
+        // STRATÉGIE DE RECHERCHE AMÉLIORÉE (Option 2+3 combinées)
+        // 1. Chercher d'abord par EMAIL (plus fiable, ne change jamais)
+        $user = User::where('email', $email)->first();
+
+        // 2. Si pas trouvé par email, chercher par klassci_id
+        if (!$user) {
+            $user = User::where('klassci_id', $klassciId)->first();
+        }
 
         $userData = [
             'klassci_id' => $klassciId,
             'name' => $klassciUser['nom'] ?? $klassciUser['name'] ?? 'User',
-            'email' => $klassciUser['email'],
+            'email' => $email,
             'role' => $klassciUser['role'] ?? 'student',
             'klassci_token' => $klassciToken,
             'klassci_data' => json_encode($klassciUser),
@@ -357,14 +364,96 @@ class AuthController extends Controller
 
         if ($user) {
             // Mettre à jour l'utilisateur existant
+            // Si le klassci_id a changé, on le met à jour
+            if ($user->klassci_id != $klassciId) {
+                Log::info('KLASSCI ID mis à jour pour utilisateur', [
+                    'user_id' => $user->id,
+                    'email' => $email,
+                    'ancien_klassci_id' => $user->klassci_id,
+                    'nouveau_klassci_id' => $klassciId
+                ]);
+            }
             $user->update($userData);
         } else {
             // Créer un nouvel utilisateur
             // Note: password est null car on utilise uniquement KLASSCI pour auth
             $userData['password'] = Hash::make(uniqid()); // Password aléatoire, non utilisé
             $user = User::create($userData);
+
+            Log::info('Nouvel utilisateur créé depuis KLASSCI', [
+                'user_id' => $user->id,
+                'email' => $email,
+                'klassci_id' => $klassciId
+            ]);
+        }
+
+        // NOUVEAU: Synchroniser les classes pour les étudiants
+        if ($user->isStudent()) {
+            $this->syncStudentClasses($user, $klassciToken);
         }
 
         return $user;
+    }
+
+    /**
+     * Synchronise les classes KLASSCI de l'étudiant dans la BDD locale
+     */
+    private function syncStudentClasses(User $user, string $klassciToken): void
+    {
+        try {
+            Log::info('Synchronisation des classes pour étudiant', [
+                'user_id' => $user->id,
+                'email' => $user->email
+            ]);
+
+            // Récupérer le dashboard étudiant depuis KLASSCI
+            $dashboard = $this->klassciService->requestWithUserToken(
+                $klassciToken,
+                'me/dashboard',
+                'GET'
+            );
+
+            // IMPORTANT: L'API retourne 'classe' (singulier), pas 'classes' (pluriel)
+            // Un étudiant n'a qu'une seule classe
+            $classe = $dashboard['data']['classe'] ?? null;
+
+            if (!$classe) {
+                Log::warning('Aucune classe trouvée pour l\'étudiant', [
+                    'user_id' => $user->id
+                ]);
+                return;
+            }
+
+            Log::info('Classe KLASSCI récupérée', [
+                'user_id' => $user->id,
+                'classe_id' => $classe['id'],
+                'classe_nom' => $classe['name'] ?? $classe['libelle'] ?? 'N/A'
+            ]);
+
+            // Supprimer les anciennes classes (pour éviter les doublons)
+            $user->klassciClasses()->delete();
+
+            // Sauvegarder la classe
+            \App\Models\UserClass::create([
+                'user_id' => $user->id,
+                'klassci_classe_id' => $classe['id'],
+                'classe_nom' => $classe['name'] ?? $classe['libelle'] ?? null,
+                'classe_libelle' => $classe['libelle'] ?? $classe['name'] ?? null,
+                'classe_data' => $classe,
+                'synced_at' => now(),
+            ]);
+
+            Log::info('Classe synchronisée avec succès', [
+                'user_id' => $user->id,
+                'classe_id' => $classe['id']
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Erreur lors de la synchronisation des classes', [
+                'user_id' => $user->id,
+                'error' => $e->getMessage()
+            ]);
+            // Ne pas bloquer la connexion si la sync échoue
+        }
     }
 }

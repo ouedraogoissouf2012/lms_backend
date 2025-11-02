@@ -59,3 +59,66 @@ If you discover a security vulnerability within Laravel, please send an e-mail t
 ## License
 
 The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+
+---
+
+## 📚 Documentation Création de Leçons
+
+### Fichiers Importants
+
+- **`GUIDE_CREATION_LECONS.md`** : Guide complet utilisateur et installation serveur
+- **`test_conversion.php`** : Script de test configuration serveur
+
+### Tester la Configuration Serveur
+
+Avant de déployer en production, vérifiez que toutes les dépendances sont installées :
+
+```bash
+php test_conversion.php
+```
+
+Ce script vérifie :
+- ✅ LibreOffice (obligatoire)
+- ✅ ImageMagick + Imagick PHP (recommandé)
+- ✅ Ghostscript (fallback)
+- ✅ GD Library (fallback basique)
+- ✅ Configuration PHP (limites upload)
+- ✅ Permissions dossiers
+
+### Installation Rapide (Ubuntu/Debian)
+
+```bash
+# LibreOffice (obligatoire)
+sudo apt-get install -y libreoffice libreoffice-writer libreoffice-impress
+
+# ImageMagick + Imagick PHP (recommandé)
+sudo apt-get install -y imagemagick php-imagick
+
+# Ghostscript (fallback)
+sudo apt-get install -y ghostscript
+
+# Redémarrer le serveur web
+sudo systemctl restart apache2  # ou php-fpm
+```
+
+### Configuration PHP Minimale
+
+Modifiez `/etc/php/8.2/apache2/php.ini` (ou équivalent) :
+
+```ini
+upload_max_filesize = 100M
+post_max_size = 100M
+max_execution_time = 300
+memory_limit = 512M
+extension=imagick
+```
+
+### Permissions Dossiers
+
+```bash
+chmod -R 775 storage/app/public
+chmod -R 775 storage/logs
+chown -R www-data:www-data storage
+php artisan storage:link
+```
+

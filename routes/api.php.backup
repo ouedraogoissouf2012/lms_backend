@@ -556,8 +556,7 @@ Route::middleware(['auth:sanctum', 'klassci.sync', 'role:enseignant,coordinateur
     // Synchronisation vers KLASSCI
     Route::post('evaluations/{id}/sync-to-klassci', [EvaluationController::class, 'syncToKlassci']);
 });
-
-// Routes admin/coordinateur uniquement pour résultats d'évaluations
+n// Routes admin/coordinateur uniquement pour résultats d'évaluations
 Route::middleware(['auth:sanctum', 'klassci.sync', 'role:coordinateur,superAdmin'])->group(function () {
     // Résultats détaillés d'une évaluation avec tous les étudiants de la classe
     Route::get('evaluations/{id}/results-by-class', [EvaluationController::class, 'getResultsByClass']);

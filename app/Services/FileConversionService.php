@@ -425,29 +425,43 @@ class FileConversionService
      */
     protected function convertDocxToHtml(string $docxPath, int $chapterId): string
     {
+        // Trouver LibreOffice (comme pour PowerPoint)
+        $sofficeCommand = $this->findLibreOfficeCommand();
+
+        if (!$sofficeCommand) {
+            throw new Exception("LibreOffice n'est pas installé. Installation requise pour convertir les documents Word.");
+        }
+
         $outputDir = storage_path("app/public/chapters/{$chapterId}/html");
 
         if (!file_exists($outputDir)) {
             mkdir($outputDir, 0755, true);
         }
 
+        // Échapper le chemin si nécessaire
+        $sofficeEscaped = (str_contains($sofficeCommand, ' ')) ? '"' . $sofficeCommand . '"' : $sofficeCommand;
+
         $command = sprintf(
-            'soffice --headless --convert-to html --outdir %s %s',
+            '%s --headless --convert-to html --outdir %s %s 2>&1',
+            $sofficeEscaped,
             escapeshellarg($outputDir),
             escapeshellarg($docxPath)
         );
 
+        Log::info("🔄 Exécution LibreOffice Word→HTML", ['cmd' => $command]);
+
         exec($command, $output, $returnCode);
 
         if ($returnCode !== 0) {
-            throw new Exception("LibreOffice HTML conversion failed");
+            Log::error("Erreur LibreOffice Word", ['output' => implode("\n", $output)]);
+            throw new Exception("LibreOffice HTML conversion failed. Code: {$returnCode}");
         }
 
         $htmlFilename = pathinfo($docxPath, PATHINFO_FILENAME) . '.html';
         $htmlPath = "{$outputDir}/{$htmlFilename}";
 
         if (!file_exists($htmlPath)) {
-            throw new Exception("HTML not generated");
+            throw new Exception("HTML not generated at expected path: {$htmlPath}");
         }
 
         return $htmlPath;

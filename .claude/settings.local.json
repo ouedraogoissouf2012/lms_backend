@@ -1,7 +1,23 @@
 {
   "permissions": {
     "allow": [
-      "Bash(php artisan tinker --execute=\"\n// Supprimer les notifications avec émojis\nApp\\Models\\Notification::where(''title'', ''LIKE'', ''%🎉%'')->delete();\nApp\\Models\\Notification::where(''title'', ''LIKE'', ''%:%'')->delete();\n\n// Créer une nouvelle notification sans émoji\n$user = App\\Models\\User::where(''name'', ''BEDE ABEL TEST'')->first();\n\nif ($user) {\n    $notif = App\\Models\\Notification::create([\n        ''user_id'' => $user->id,\n        ''type'' => App\\Models\\Notification::TYPE_LESSON_PUBLISHED,\n        ''title'' => ''Nouveau cours disponible'',\n        ''message'' => ''Le cours Introduction à Vue.js vient d\\''être publié et est maintenant disponible pour vous'',\n        ''data'' => [\n            ''lesson_id'' => 999,\n            ''matiere_id'' => 3,\n            ''test'' => true\n        ]\n    ]);\n    echo ''Notification créée ID: '' . $notif->id . '' pour '' . $user->name . PHP_EOL;\n} else {\n    echo ''Utilisateur non trouvé'' . PHP_EOL;\n}\n\")"
+      "Bash(php -l app/Http/Controllers/API/EvaluationController.php)",
+      "Bash(php check_seance_structure.php)",
+      "Bash(php artisan route:list)",
+      "Bash(npx vue-tsc --noEmit src/views/admin/AdminEvaluationResults.vue)",
+      "Bash(node -e \"const fs = require(''fs''); const content = fs.readFileSync(''src/views/admin/AdminEvaluationResults.vue'', ''utf8''); console.log(''Fichier valide, taille:'', content.length, ''caractères'');\")",
+      "Bash(php test_evaluation_results.php)",
+      "Bash(php test_join_visio.php)",
+      "Bash(php find_marcel.php)",
+      "Bash(php check_seance_37_klassci.php)",
+      "Bash(php -l app/Http/Controllers/API/LMSDataController.php)",
+      "Bash(php artisan make:migration create_user_classes_table)",
+      "Bash(php artisan migrate --path=database/migrations/2025_11_02_092816_create_user_classes_table.php)",
+      "Bash(php artisan make:model UserClass)",
+      "Bash(php -l app/Http/Controllers/API/AuthController.php)",
+      "Bash(php test_student_sync.php)",
+      "Bash(php check_dashboard_response.php)",
+      "Bash(php -l \"C:\\Users\\USER PC\\Documents\\propre à moi\\lms-backend\\app\\Http\\Controllers\\API\\EvaluationController.php\")"
     ],
     "deny": [],
     "ask": []

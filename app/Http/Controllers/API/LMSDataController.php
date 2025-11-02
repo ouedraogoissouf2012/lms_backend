@@ -1774,10 +1774,49 @@ class LMSDataController extends Controller
                         ->toArray();
 
                 } catch (\Exception $e) {
-                    Log::warning('Erreur récupération étudiants séance', [
+                    Log::warning('Erreur récupération étudiants séance via KLASSCI', [
                         'classe_id' => $classeId,
                         'error' => $e->getMessage()
                     ]);
+                }
+
+                // Fallback: Si pas d'étudiants via KLASSCI, chercher dans la BDD locale
+                if (empty($students) && $visioData && $visioData->klassci_classe_id) {
+                    try {
+                        Log::info('Fallback BDD locale pour étudiants de la classe', [
+                            'seance_id' => $seanceId,
+                            'classe_id' => $visioData->klassci_classe_id
+                        ]);
+
+                        $localStudents = \App\Models\UserClass::where('klassci_classe_id', $visioData->klassci_classe_id)
+                            ->join('users', 'user_classes.user_id', '=', 'users.id')
+                            ->where('users.role', 'etudiant')
+                            ->select('users.id', 'users.name', 'users.email', 'users.klassci_id')
+                            ->get();
+
+                        $students = $localStudents->map(function($student) {
+                            // Parser le nom complet (format: "NOM Prenom")
+                            $nameParts = explode(' ', $student->name, 2);
+                            return [
+                                'id' => $student->id,
+                                'nom' => $nameParts[0] ?? $student->name,
+                                'prenom' => $nameParts[1] ?? '',
+                                'email' => $student->email,
+                                'klassci_id' => $student->klassci_id,
+                                'statut' => 'actif' // Considéré actif par défaut
+                            ];
+                        })->toArray();
+
+                        Log::info('Fallback BDD: Étudiants trouvés pour seanceDetails', [
+                            'count' => count($students)
+                        ]);
+                    } catch (\Exception $e) {
+                        Log::error('Erreur fallback BDD pour étudiants', [
+                            'seance_id' => $seanceId,
+                            'classe_id' => $visioData->klassci_classe_id ?? null,
+                            'error' => $e->getMessage()
+                        ]);
+                    }
                 }
             }
 
@@ -2707,10 +2746,48 @@ class LMSDataController extends Controller
                     $allClassStudents = $seanceData['data']['participants']['students'];
                 }
             } catch (\Exception $e) {
-                Log::warning('Impossible de récupérer la liste complète des étudiants', [
+                Log::warning('Impossible de récupérer la liste complète des étudiants via seanceDetails', [
                     'seance_id' => $seanceId,
                     'error' => $e->getMessage()
                 ]);
+            }
+
+            // Fallback : Si pas d'étudiants via KLASSCI, chercher dans la BDD locale
+            if (empty($allClassStudents) && $visio->klassci_classe_id) {
+                try {
+                    Log::info('Fallback: Recherche étudiants via BDD locale', [
+                        'seance_id' => $seanceId,
+                        'classe_id' => $visio->klassci_classe_id
+                    ]);
+
+                    $students = \App\Models\UserClass::where('klassci_classe_id', $visio->klassci_classe_id)
+                        ->join('users', 'user_classes.user_id', '=', 'users.id')
+                        ->where('users.role', 'etudiant')
+                        ->select('users.id', 'users.name', 'users.email', 'users.klassci_id')
+                        ->get();
+
+                    $allClassStudents = $students->map(function($student) {
+                        // Parser le nom complet (format: "NOM Prenom")
+                        $nameParts = explode(' ', $student->name, 2);
+                        return [
+                            'id' => $student->id,
+                            'nom' => $nameParts[0] ?? $student->name,
+                            'prenom' => $nameParts[1] ?? '',
+                            'email' => $student->email,
+                            'klassci_id' => $student->klassci_id
+                        ];
+                    })->toArray();
+
+                    Log::info('Fallback BDD: Étudiants trouvés', [
+                        'count' => count($allClassStudents)
+                    ]);
+                } catch (\Exception $e) {
+                    Log::error('Erreur fallback BDD pour récupération étudiants', [
+                        'seance_id' => $seanceId,
+                        'classe_id' => $visio->klassci_classe_id,
+                        'error' => $e->getMessage()
+                    ]);
+                }
             }
 
             // 4. Créer un index des participants réels par user_id
@@ -3809,13 +3886,8 @@ class LMSDataController extends Controller
                     ->where('status', 'draft')
                     ->count();
 
-                // Compter séances pour cette matière
-                $nombreSeances = collect($seances)->filter(function ($seance) use ($matiereId) {
-                    $seanceMatiereId = $seance['matiere']['id'] ??
-                                       $seance['matiere']['matiere_id'] ??
-                                       $seance['matiere_id'] ?? null;
-                    return $seanceMatiereId == $matiereId;
-                })->count();
+                // Compter séances pour cette matière depuis la BDD locale (plus fiable que KLASSCI)
+                $nombreSeances = \App\Models\Seance::where('klassci_matiere_id', $matiereId)->count();
 
                 // Compter évaluations pour cette matière
                 $nombreEvaluations = collect($evaluations)->filter(function ($evaluation) use ($matiereId) {

@@ -39,7 +39,7 @@ return new class extends Migration
             // Index
             $table->index(['evaluation_id', 'klassci_etudiant_id']);
             $table->index('status');
-            $table->unique(['evaluation_id', 'klassci_etudiant_id', 'attempt']);
+            $table->unique(['evaluation_id', 'klassci_etudiant_id', 'attempt'], 'eval_sub_unique');
         });
     }
 

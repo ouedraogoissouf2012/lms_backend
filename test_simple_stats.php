@@ -1,91 +1,35 @@
 <?php
 
 require __DIR__ . '/vendor/autoload.php';
-
 $app = require_once __DIR__ . '/bootstrap/app.php';
-$app->make('Illuminate\Contracts\Console\Kernel')->bootstrap();
+$app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
 
-use App\Models\User;
-use App\Models\Lesson;
-use App\Models\Evaluation;
+use App\Models\Seance;
 
-echo "=== TEST STATISTIQUES SIMPLES ===\n\n";
+echo "📊 VÉRIFICATION RAPIDE: Données des séances\n";
+echo "=" . str_repeat("=", 70) . "\n\n";
 
-$teacher = User::where('email', 'bede@gmail.com')->first();
+// Séances qui nous intéressent (celles affichées dans la capture)
+$seanceIds = [27, 34, 36, 37];
 
-if (!$teacher) {
-    echo "❌ Enseignant non trouvé\n";
-    exit(1);
+echo "🎓 SÉANCES ALGORITHME:\n";
+echo str_repeat("-", 70) . "\n\n";
+
+foreach ($seanceIds as $seanceId) {
+    $seance = Seance::where('klassci_seance_id', $seanceId)->first();
+
+    if ($seance) {
+        echo "Séance #{$seanceId} (ID local: {$seance->id}):\n";
+        echo "   📚 Matière: " . ($seance->matiere_nom ?? 'N/A') . "\n";
+        echo "   👤 Enseignant: " . ($seance->enseignant_nom ?? 'NON DÉFINI') . "\n";
+        echo "   🏛️ Classe: " . ($seance->klassci_classe_id ?? 'N/A') . "\n";
+        echo "   📹 Visio: " . ($seance->visio_enabled ? 'Oui' : 'Non') . " - Status: " . ($seance->visio_status ?? 'N/A') . "\n";
+        echo "\n";
+    } else {
+        echo "Séance #{$seanceId}: ❌ Non trouvée dans la BDD locale\n\n";
+    }
 }
 
-$klassciId = $teacher->klassci_id;
-
-echo "Enseignant: {$teacher->name} (ID: {$klassciId})\n\n";
-
-// 1. Leçons
-$lessonsCount = Lesson::where('enseignant_id', $klassciId)->count();
-echo "📚 Leçons: {$lessonsCount}\n";
-
-// 2. Évaluations
-$evaluationsCount = Evaluation::where('enseignant_id', $klassciId)->count();
-echo "📝 Évaluations: {$evaluationsCount}\n";
-
-// 3. Matières uniques
-$matieresSet = [];
-
-$lessonMatieres = Lesson::where('enseignant_id', $klassciId)
-    ->whereNotNull('matiere_id')
-    ->distinct()
-    ->pluck('matiere_id')
-    ->toArray();
-
-foreach ($lessonMatieres as $mid) {
-    $matieresSet[$mid] = true;
-}
-
-$evalMatieres = Evaluation::where('enseignant_id', $klassciId)
-    ->whereNotNull('matiere_id')
-    ->distinct()
-    ->pluck('matiere_id')
-    ->toArray();
-
-foreach ($evalMatieres as $mid) {
-    $matieresSet[$mid] = true;
-}
-
-echo "📖 Matières: " . count($matieresSet) . "\n";
-echo "   IDs: " . implode(', ', array_keys($matieresSet)) . "\n";
-
-// 4. Classes uniques
-$classesSet = [];
-
-$lessonClasses = Lesson::where('enseignant_id', $klassciId)
-    ->whereNotNull('classe_id')
-    ->distinct()
-    ->pluck('classe_id')
-    ->toArray();
-
-foreach ($lessonClasses as $cid) {
-    $classesSet[$cid] = true;
-}
-
-$evalClasses = Evaluation::where('enseignant_id', $klassciId)
-    ->whereNotNull('classe_id')
-    ->distinct()
-    ->pluck('classe_id')
-    ->toArray();
-
-foreach ($evalClasses as $cid) {
-    $classesSet[$cid] = true;
-}
-
-echo "🎓 Classes: " . count($classesSet) . "\n";
-if (count($classesSet) > 0) {
-    echo "   IDs: " . implode(', ', array_keys($classesSet)) . "\n";
-}
-
-echo "\n=== RÉSULTAT FINAL ===\n";
-echo "Matières: " . count($matieresSet) . "\n";
-echo "Classes: " . count($classesSet) . "\n";
-echo "Évaluations: {$evaluationsCount}\n";
-echo "Leçons: {$lessonsCount}\n";
+echo "\n✅ Si l'enseignant est 'BEDE ABEL TEST' ici, le backend est correct.\n";
+echo "   Le problème était qu'il était écrasé par le code ligne 570-573.\n";
+echo "   Maintenant que c'est corrigé, le frontend devrait afficher le bon nom.\n";

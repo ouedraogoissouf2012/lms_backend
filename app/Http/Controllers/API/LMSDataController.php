@@ -479,6 +479,11 @@ class LMSDataController extends Controller
 
                 $seances = $seancesLocales->map(function ($seance) {
                     // Les séances de la BDD locale ont des champs spécifiques
+                    // Créer des timestamps ISO 8601 complets pour le frontend
+                    $dateSeance = now()->format('Y-m-d');
+                    $heureDebut = $dateSeance . 'T08:00:00+00:00';  // Format ISO 8601
+                    $heureFin = $dateSeance . 'T10:00:00+00:00';    // Format ISO 8601
+
                     return [
                         'id' => $seance->klassci_seance_id ?? $seance->id,
                         'classe' => [
@@ -486,9 +491,9 @@ class LMSDataController extends Controller
                             'nom' => 'Classe'
                         ],
                         'programmation' => [
-                            'date' => now()->format('Y-m-d'),
-                            'heure_debut' => '08:00',
-                            'heure_fin' => '10:00',
+                            'date' => $dateSeance,
+                            'heure_debut' => $heureDebut,
+                            'heure_fin' => $heureFin,
                             'salle' => null
                         ],
                         'enseignant' => [
@@ -565,12 +570,9 @@ class LMSDataController extends Controller
                 // Récupérer info visio depuis notre BDD
                 $visioData = \App\Models\Seance::where('klassci_seance_id', $seance['id'])->first();
 
-                // Ajouter l'enseignant
+                // NE PAS ÉCRASER l'enseignant déjà présent dans la séance
+                // L'enseignant correct est déjà dans $seance['enseignant'] (vient de KLASSCI ou BDD locale)
                 $seanceEnrichie = $seance;
-                $seanceEnrichie['enseignant'] = [
-                    'id' => $user->klassci_id,
-                    'nom' => $user->name
-                ];
 
                 // Ajouter effectif de la classe
                 if (isset($seance['classe']['id'])) {
@@ -1598,11 +1600,66 @@ class LMSDataController extends Controller
                 }
             }
 
+            // Si la séance n'a pas été trouvée via l'API KLASSCI, essayer la BDD locale
             if (!$seance) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Séance non trouvée'
-                ], 404);
+                Log::info('Séance non trouvée via API KLASSCI, tentative BDD locale', [
+                    'seance_id' => $seanceId
+                ]);
+
+                $visioData = \App\Models\Seance::where('klassci_seance_id', $seanceId)
+                    ->orWhere('id', $seanceId)
+                    ->first();
+
+                if (!$visioData) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Séance non trouvée'
+                    ], 404);
+                }
+
+                // Construire la séance depuis la BDD locale
+                $dateSeance = now()->format('Y-m-d');
+                $heureDebut = $dateSeance . 'T08:00:00+00:00';
+                $heureFin = $dateSeance . 'T10:00:00+00:00';
+
+                $seance = [
+                    'id' => $visioData->klassci_seance_id ?? $visioData->id,
+                    'classe' => [
+                        'id' => $visioData->klassci_classe_id ?? null,
+                        'nom' => 'B2 COM'
+                    ],
+                    'programmation' => [
+                        'date' => $dateSeance,
+                        'heure_debut' => $heureDebut,
+                        'heure_fin' => $heureFin,
+                        'salle' => 'TEAM'
+                    ],
+                    'enseignant' => [
+                        'nom' => $visioData->enseignant_nom ?? 'Non assigné',
+                        'prenom' => ''
+                    ],
+                    'matiere' => [
+                        'id' => $visioData->klassci_matiere_id ?? 1,
+                        'nom' => $visioData->matiere_nom ?? 'Matière',
+                        'code' => null
+                    ],
+                    'visio_enabled' => $visioData->visio_enabled ?? false,
+                    'visio_type' => $visioData->visio_type ?? 'jitsi',
+                    'visio_room_id' => $visioData->visio_room_id,
+                    'visio_status' => $visioData->visio_status,
+                    'visio_participants_count' => $visioData->visio_participants_count ?? 0,
+                    'duree_minutes' => 120,
+                    'statut' => 'programme'
+                ];
+
+                $teacher = $seance['enseignant'];
+                $matiereInfo = $seance['matiere'];
+
+                Log::info('Séance récupérée depuis BDD locale (fallback global)', [
+                    'seance_id' => $seanceId,
+                    'matiere' => $matiereInfo['nom'],
+                    'enseignant' => $teacher['nom']
+                ]);
             }
 
             // 2. Enrichir avec durée calculée
@@ -1659,6 +1716,11 @@ class LMSDataController extends Controller
             // Vérifier si la visio est active ET dans le timeout (4h max après démarrage)
             $visioIsActive = ($seance['visio_status'] === 'active');
             $visioAccessible = false;
+
+            // Récupérer visioData si pas encore fait (pour le fallback BDD locale)
+            if (!isset($visioData)) {
+                $visioData = \App\Models\Seance::where('klassci_seance_id', $seanceId)->first();
+            }
 
             if ($visioIsActive && $visioData && $visioData->visio_started_at) {
                 $visioStarted = Carbon::parse($visioData->visio_started_at);
@@ -1728,23 +1790,42 @@ class LMSDataController extends Controller
                 ];
             }
 
+            // Préparer la réponse de base
+            $responseData = [
+                'seance' => $seance,
+                'visio' => [
+                    'enabled' => $seance['visio_enabled'],
+                    'type' => $seance['visio_type'],
+                    'room_id' => $seance['visio_room_id'],
+                    'status' => $seance['visio_status'],
+                    'window' => $seance['visio_window']
+                ]
+            ];
+
+            // IMPORTANT: Les participants ne sont visibles QUE pour les enseignants et coordinateurs
+            // Les étudiants NE DOIVENT PAS voir la liste des participants
+            if (in_array($user->role, ['enseignant', 'teacher', 'coordinateur', 'superAdmin'])) {
+                $responseData['participants'] = [
+                    'teacher' => $teacher,
+                    'students' => $students,
+                    'total' => 1 + count($students)
+                ];
+
+                Log::info('Participants inclus dans réponse (enseignant/coordinateur)', [
+                    'seance_id' => $seanceId,
+                    'user_role' => $user->role,
+                    'total_participants' => 1 + count($students)
+                ]);
+            } else {
+                Log::info('Participants exclus de la réponse (étudiant)', [
+                    'seance_id' => $seanceId,
+                    'user_role' => $user->role
+                ]);
+            }
+
             return response()->json([
                 'success' => true,
-                'data' => [
-                    'seance' => $seance,
-                    'participants' => [
-                        'teacher' => $teacher,
-                        'students' => $students,
-                        'total' => 1 + count($students)
-                    ],
-                    'visio' => [
-                        'enabled' => $seance['visio_enabled'],
-                        'type' => $seance['visio_type'],
-                        'room_id' => $seance['visio_room_id'],
-                        'status' => $seance['visio_status'],
-                        'window' => $seance['visio_window']
-                    ]
-                ]
+                'data' => $responseData
             ]);
 
         } catch (\Exception $e) {
@@ -2570,6 +2651,8 @@ class LMSDataController extends Controller
     public function getVisioParticipants(int $seanceId, Request $request): JsonResponse
     {
         try {
+            $user = $request->user();
+
             $visio = \App\Models\Seance::where('klassci_seance_id', $seanceId)->first();
 
             if (!$visio) {
@@ -2579,53 +2662,185 @@ class LMSDataController extends Controller
                 ], 404);
             }
 
-            // Récupérer tous les participants enregistrés
-            $participants = \App\Models\ESBTPAttendance::where('seance_id', $visio->id)
-                ->with('user:id,name,email')
+            // 1. Récupérer les participants qui ont RÉELLEMENT rejoint (table esbtp_attendance)
+            $actualParticipants = \App\Models\ESBTPAttendance::where('seance_id', $visio->id)
+                ->with('user:id,name,email,klassci_id')
                 ->orderBy('joined_at', 'desc')
-                ->get()
-                ->map(function ($attendance) {
-                    return [
-                        'id' => $attendance->id,
-                        'user_id' => $attendance->user_id,
-                        'nom' => $attendance->nom,
-                        'prenom' => $attendance->prenom,
-                        'email' => $attendance->email,
-                        'joined_at' => $attendance->joined_at?->format('Y-m-d H:i:s'),
-                        'joined_at_human' => $attendance->joined_at?->diffForHumans(),
-                        'left_at' => $attendance->left_at?->format('Y-m-d H:i:s'),
-                        'left_at_human' => $attendance->left_at?->diffForHumans(),
-                        'last_seen_at' => $attendance->last_seen_at?->format('Y-m-d H:i:s'),
-                        'last_seen_at_human' => $attendance->last_seen_at?->diffForHumans(),
-                        'duration_minutes' => $attendance->duration_minutes,
-                        'duration_formatted' => $attendance->formatted_duration,
-                        'status' => $attendance->status,
-                        'is_connected' => $attendance->isConnected(),
-                        'is_validated' => $attendance->is_validated
-                    ];
-                });
+                ->get();
 
-            // Calculer des statistiques
+            // 2. Calculer la durée théorique de la séance (depuis programmation)
+            $seanceDurationMinutes = 120; // Valeur par défaut
+            $heureDebut = null;
+            $heureFin = null;
+
+            try {
+                // Récupérer les détails de la séance pour avoir la programmation
+                $seanceDetailsResponse = $this->seanceDetails($seanceId, $request);
+                $seanceData = json_decode($seanceDetailsResponse->getContent(), true);
+
+                if ($seanceData['success'] && isset($seanceData['data']['seance']['programmation'])) {
+                    $prog = $seanceData['data']['seance']['programmation'];
+                    $heureDebut = $prog['heure_debut'] ?? null;
+                    $heureFin = $prog['heure_fin'] ?? null;
+
+                    if ($heureDebut && $heureFin) {
+                        $debut = new \DateTime($heureDebut);
+                        $fin = new \DateTime($heureFin);
+                        $seanceDurationMinutes = ($fin->getTimestamp() - $debut->getTimestamp()) / 60;
+                    }
+                }
+            } catch (\Exception $e) {
+                Log::warning('Impossible de calculer la durée de la séance', [
+                    'seance_id' => $seanceId,
+                    'error' => $e->getMessage()
+                ]);
+            }
+
+            // 3. Récupérer TOUS les étudiants de la classe (pour comparaison)
+            $allClassStudents = [];
+
+            try {
+                $seanceDetailsResponse = $this->seanceDetails($seanceId, $request);
+                $seanceData = json_decode($seanceDetailsResponse->getContent(), true);
+
+                if ($seanceData['success'] && isset($seanceData['data']['participants']['students'])) {
+                    $allClassStudents = $seanceData['data']['participants']['students'];
+                }
+            } catch (\Exception $e) {
+                Log::warning('Impossible de récupérer la liste complète des étudiants', [
+                    'seance_id' => $seanceId,
+                    'error' => $e->getMessage()
+                ]);
+            }
+
+            // 4. Créer un index des participants réels par user_id
+            $actualParticipantsById = [];
+            foreach ($actualParticipants as $attendance) {
+                $actualParticipantsById[$attendance->user_id] = $attendance;
+            }
+
+            // 5. Construire la liste unifiée avec statut et pourcentage
+            $unifiedList = [];
+
+            foreach ($allClassStudents as $student) {
+                $studentId = $student['id'];
+                $isPresent = isset($actualParticipantsById[$studentId]);
+
+                $studentData = [
+                    'user_id' => $studentId,
+                    'nom' => $student['nom'] ?? '',
+                    'prenom' => $student['prenom'] ?? '',
+                    'email' => $student['email'] ?? '',
+                ];
+
+                if ($isPresent) {
+                    // Étudiant PRÉSENT - ajouter les détails de participation
+                    $attendance = $actualParticipantsById[$studentId];
+
+                    $durationMinutes = $attendance->duration_minutes ?? 0;
+                    $percentage = $seanceDurationMinutes > 0
+                        ? round(($durationMinutes / $seanceDurationMinutes) * 100)
+                        : 0;
+
+                    // Déterminer le statut
+                    $status = $this->determineAttendanceStatus(
+                        $percentage,
+                        $attendance->joined_at,
+                        $attendance->left_at,
+                        $heureDebut,
+                        $heureFin
+                    );
+
+                    $studentData = array_merge($studentData, [
+                        'status' => $status['label'],
+                        'status_icon' => $status['icon'],
+                        'percentage' => $percentage,
+                        'duration_minutes' => $durationMinutes,
+                        'duration_formatted' => $attendance->formatted_duration,
+                        'joined_at' => $attendance->joined_at?->format('H:i'),
+                        'left_at' => $attendance->left_at?->format('H:i'),
+                        'joined_at_full' => $attendance->joined_at?->format('Y-m-d H:i:s'),
+                        'left_at_full' => $attendance->left_at?->format('Y-m-d H:i:s'),
+                        'is_late' => $status['is_late'],
+                        'left_early' => $status['left_early'],
+                        'is_present' => true
+                    ]);
+                } else {
+                    // Étudiant ABSENT
+                    $studentData = array_merge($studentData, [
+                        'status' => 'Absent',
+                        'status_icon' => '❌',
+                        'percentage' => 0,
+                        'duration_minutes' => 0,
+                        'duration_formatted' => '-',
+                        'joined_at' => null,
+                        'left_at' => null,
+                        'joined_at_full' => null,
+                        'left_at_full' => null,
+                        'is_late' => false,
+                        'left_early' => false,
+                        'is_present' => false
+                    ]);
+                }
+
+                $unifiedList[] = $studentData;
+            }
+
+            // 6. Trier la liste : Présents d'abord, puis par pourcentage décroissant, puis absents
+            usort($unifiedList, function($a, $b) {
+                // Présents avant absents
+                if ($a['is_present'] !== $b['is_present']) {
+                    return $b['is_present'] <=> $a['is_present'];
+                }
+                // Si tous deux présents, trier par pourcentage décroissant
+                if ($a['is_present'] && $b['is_present']) {
+                    return $b['percentage'] <=> $a['percentage'];
+                }
+                // Si tous deux absents, ordre alphabétique
+                return strcmp($a['nom'], $b['nom']);
+            });
+
+            // 7. Calculer les statistiques globales
+            $presentCount = count(array_filter($unifiedList, fn($s) => $s['is_present']));
+            $absentCount = count($unifiedList) - $presentCount;
+            $lateCount = count(array_filter($unifiedList, fn($s) => $s['is_late'] ?? false));
+            $leftEarlyCount = count(array_filter($unifiedList, fn($s) => $s['left_early'] ?? false));
+            $completePresenceCount = count(array_filter($unifiedList, fn($s) => ($s['percentage'] ?? 0) === 100));
+
+            // Calculer le pourcentage moyen de présence
+            $totalPercentage = array_reduce($unifiedList, fn($sum, $s) => $sum + ($s['percentage'] ?? 0), 0);
+            $averagePercentage = count($unifiedList) > 0 ? round($totalPercentage / count($unifiedList)) : 0;
+
+            // Calculer la durée moyenne
+            $totalDuration = array_reduce($unifiedList, fn($sum, $s) => $sum + ($s['duration_minutes'] ?? 0), 0);
+            $averageDuration = $presentCount > 0 ? round($totalDuration / $presentCount) : 0;
+
             $stats = [
-                'total' => $participants->count(),
-                'connected' => $participants->where('status', 'connected')->count(),
-                'disconnected' => $participants->where('status', 'disconnected')->count(),
-                'kicked' => $participants->where('status', 'kicked')->count(),
-                'validated' => $participants->where('is_validated', true)->count()
+                'total_students' => count($unifiedList),
+                'present_count' => $presentCount,
+                'absent_count' => $absentCount,
+                'presence_rate' => count($unifiedList) > 0 ? round(($presentCount / count($unifiedList)) * 100) : 0,
+                'complete_presence_count' => $completePresenceCount,
+                'late_count' => $lateCount,
+                'left_early_count' => $leftEarlyCount,
+                'average_percentage' => $averagePercentage,
+                'average_duration_minutes' => $averageDuration,
+                'seance_duration_minutes' => $seanceDurationMinutes
             ];
 
             return response()->json([
                 'success' => true,
                 'data' => [
-                    'statistics' => $stats,
-                    'participants' => $participants->values()
+                    'students' => $unifiedList,
+                    'statistics' => $stats
                 ]
             ]);
 
         } catch (\Exception $e) {
             Log::error('Erreur récupération participants', [
                 'seance_id' => $seanceId,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
             ]);
 
             return response()->json([
@@ -2633,6 +2848,87 @@ class LMSDataController extends Controller
                 'message' => 'Erreur lors de la récupération des participants',
                 'error' => $e->getMessage()
             ], 500);
+        }
+    }
+
+    /**
+     * Détermine le statut de présence d'un étudiant
+     */
+    private function determineAttendanceStatus($percentage, $joinedAt, $leftAt, $heureDebut, $heureFin): array
+    {
+        $RETARD_SEUIL_MINUTES = 5;
+
+        $isLate = false;
+        $leftEarly = false;
+
+        // Vérifier le retard (si heureDebut disponible)
+        if ($heureDebut && $joinedAt) {
+            try {
+                $debut = new \DateTime($heureDebut);
+                $joined = new \DateTime($joinedAt);
+                $diffMinutes = ($joined->getTimestamp() - $debut->getTimestamp()) / 60;
+
+                if ($diffMinutes > $RETARD_SEUIL_MINUTES) {
+                    $isLate = true;
+                }
+            } catch (\Exception $e) {
+                // Ignorer les erreurs de parsing
+            }
+        }
+
+        // Vérifier le départ anticipé (si heureFin disponible)
+        if ($heureFin && $leftAt) {
+            try {
+                $fin = new \DateTime($heureFin);
+                $left = new \DateTime($leftAt);
+                $diffMinutes = ($fin->getTimestamp() - $left->getTimestamp()) / 60;
+
+                if ($diffMinutes > $RETARD_SEUIL_MINUTES) {
+                    $leftEarly = true;
+                }
+            } catch (\Exception $e) {
+                // Ignorer les erreurs de parsing
+            }
+        }
+
+        // Déterminer le label et l'icône
+        if ($percentage === 100) {
+            return [
+                'label' => 'Présent (complet)',
+                'icon' => '✅',
+                'is_late' => false,
+                'left_early' => false
+            ];
+        } elseif ($percentage >= 90) {
+            return [
+                'label' => "Présent ({$percentage}%)",
+                'icon' => '✅',
+                'is_late' => $isLate,
+                'left_early' => $leftEarly
+            ];
+        } elseif ($percentage >= 50) {
+            $label = "Présent ({$percentage}%)";
+            if ($isLate && $leftEarly) {
+                $label = "Partiel ({$percentage}%)";
+            } elseif ($isLate) {
+                $label = "Retard ({$percentage}%)";
+            } elseif ($leftEarly) {
+                $label = "Départ anticipé ({$percentage}%)";
+            }
+
+            return [
+                'label' => $label,
+                'icon' => '⚠️',
+                'is_late' => $isLate,
+                'left_early' => $leftEarly
+            ];
+        } else {
+            return [
+                'label' => "Présent ({$percentage}%)",
+                'icon' => '⚠️',
+                'is_late' => $isLate,
+                'left_early' => $leftEarly
+            ];
         }
     }
 

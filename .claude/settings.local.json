@@ -1,23 +1,8 @@
 {
   "permissions": {
     "allow": [
-      "Bash(php -l app/Http/Controllers/API/EvaluationController.php)",
-      "Bash(php check_seance_structure.php)",
-      "Bash(php artisan route:list)",
-      "Bash(npx vue-tsc --noEmit src/views/admin/AdminEvaluationResults.vue)",
-      "Bash(node -e \"const fs = require(''fs''); const content = fs.readFileSync(''src/views/admin/AdminEvaluationResults.vue'', ''utf8''); console.log(''Fichier valide, taille:'', content.length, ''caractères'');\")",
-      "Bash(php test_evaluation_results.php)",
-      "Bash(php test_join_visio.php)",
-      "Bash(php find_marcel.php)",
-      "Bash(php check_seance_37_klassci.php)",
-      "Bash(php -l app/Http/Controllers/API/LMSDataController.php)",
-      "Bash(php artisan make:migration create_user_classes_table)",
-      "Bash(php artisan migrate --path=database/migrations/2025_11_02_092816_create_user_classes_table.php)",
-      "Bash(php artisan make:model UserClass)",
-      "Bash(php -l app/Http/Controllers/API/AuthController.php)",
-      "Bash(php test_student_sync.php)",
-      "Bash(php check_dashboard_response.php)",
-      "Bash(php -l \"C:\\Users\\USER PC\\Documents\\propre à moi\\lms-backend\\app\\Http\\Controllers\\API\\EvaluationController.php\")"
+      "Bash(git restore .env)",
+      "Bash(php test_participants_list.php)"
     ],
     "deny": [],
     "ask": []

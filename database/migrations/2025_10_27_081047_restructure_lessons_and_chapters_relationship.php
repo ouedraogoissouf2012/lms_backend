@@ -18,11 +18,15 @@ return new class extends Migration
      */
     public function up(): void
     {
-        // 1. Drop chapter_id from lessons table (SQLite compatible)
+        // 1. Drop chapter_id from lessons table (MySQL/SQLite compatible)
         if (Schema::hasColumn('lessons', 'chapter_id')) {
             Schema::table('lessons', function (Blueprint $table) {
+                // Supprimer l'index s'il existe
                 $table->dropIndex('lessons_chapter_id_index');
-                $table->dropForeign(['chapter_id']);
+
+                // Supprimer la foreign key SEULEMENT si elle existe (pas créée par migration précédente)
+                // La migration 2025_10_25_203044 crée seulement l'index, pas la foreign key
+                // Donc on ne tente pas de la supprimer
             });
 
             Schema::table('lessons', function (Blueprint $table) {

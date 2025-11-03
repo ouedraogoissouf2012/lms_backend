@@ -184,13 +184,26 @@ class ChapterController extends Controller
                 // Conversion Word
                 $result = $this->fileConversionService->convertWord($file, $chapterId);
 
-                $chapter->update([
-                    'content_type' => 'word',
-                    'content' => $result['content'],
-                    'file_original_path' => $result['file_original_path'],
-                ]);
-
-                Log::info("✓ Word converti en HTML");
+                // Word peut retourner soit des slides (ConvertAPI) soit du contenu HTML (LibreOffice)
+                if (isset($result['slides_images'])) {
+                    // ConvertAPI: Word → PDF → Images
+                    $chapter->update([
+                        'content_type' => 'word',
+                        'file_original_path' => $result['file_original_path'],
+                        'file_converted_path' => $result['file_converted_path'],
+                        'slides_images' => $result['slides_images'],
+                        'slides_count' => $result['slides_count'],
+                    ]);
+                    Log::info("✓ Word converti en images", ['slides' => $result['slides_count']]);
+                } else {
+                    // LibreOffice: Word → HTML
+                    $chapter->update([
+                        'content_type' => 'word',
+                        'content' => $result['content'],
+                        'file_original_path' => $result['file_original_path'],
+                    ]);
+                    Log::info("✓ Word converti en HTML");
+                }
             } elseif ($extension === 'pdf') {
                 // Convertir PDF en images (comme PowerPoint)
                 $result = $this->fileConversionService->convertPdf($file, $chapterId);

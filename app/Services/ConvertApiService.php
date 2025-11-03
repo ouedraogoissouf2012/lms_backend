@@ -28,7 +28,8 @@ class ConvertApiService
             throw new \Exception('ConvertAPI secret key not configured. Please set CONVERTAPI_SECRET in .env');
         }
 
-        $this->convertApi = new ConvertApi($secret);
+        ConvertApi::setApiCredentials($secret);
+        $this->convertApi = new ConvertApi();
     }
 
     /**
@@ -77,7 +78,7 @@ class ConvertApiService
             );
 
             Log::info('[ConvertAPI] PDF → PNG OK', [
-                'pages' => $pngResult->getFileCount()
+                'pages' => count($pngResult->getFiles())
             ]);
 
             // Sauvegarder les images
@@ -163,7 +164,7 @@ class ConvertApiService
             );
 
             Log::info('[ConvertAPI] PDF → PNG OK', [
-                'pages' => $pngResult->getFileCount()
+                'pages' => count($pngResult->getFiles())
             ]);
 
             // Sauvegarder les images
@@ -230,7 +231,7 @@ class ConvertApiService
             );
 
             Log::info('[ConvertAPI] PDF → PNG OK', [
-                'pages' => $pngResult->getFileCount()
+                'pages' => count($pngResult->getFiles())
             ]);
 
             // Sauvegarder les images

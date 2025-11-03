@@ -457,55 +457,21 @@ class FileConversionService
     public function convertWord(UploadedFile $file, int $chapterId): array
     {
         try {
-            Log::info("📄 Conversion Word démarrée", ['file' => $file->getClientOriginalName()]);
-
             $this->validateFile($file, ['docx', 'doc']);
 
             // Sauvegarder original
             $originalPath = $file->store("chapters/{$chapterId}/original", 'public');
             $fullOriginalPath = storage_path("app/public/{$originalPath}");
 
-            Log::info("✓ Fichier Word original sauvegardé", ['path' => $originalPath]);
+            // Convertir en HTML avec LibreOffice (affichage texte, pas images)
+            $htmlPath = $this->convertDocxToHtml($fullOriginalPath, $chapterId);
 
-            // Essayer ConvertAPI en priorité (Word → PDF → PNG)
-            try {
-                $convertApiService = new ConvertApiService();
-                $outputDir = "chapters/{$chapterId}/slides";
-
-                $pngImages = $convertApiService->convertWordToImages(
-                    $fullOriginalPath,
-                    $outputDir
-                );
-
-                Log::info("✓ Conversion ConvertAPI Word terminée", ['count' => count($pngImages)]);
-
-                return [
-                    'success' => true,
-                    'slides_images' => $pngImages,
-                    'slides_count' => count($pngImages),
-                    'file_original_path' => $originalPath,
-                    'file_converted_path' => $originalPath,
-                    'conversion_method' => 'ConvertAPI',
-                    'content_type' => 'slides',
-                ];
-
-            } catch (Exception $convertApiError) {
-                Log::warning("⚠️ ConvertAPI Word échoué, fallback sur LibreOffice", [
-                    'error' => $convertApiError->getMessage()
-                ]);
-
-                // Fallback: Convertir en HTML avec LibreOffice
-                $htmlPath = $this->convertDocxToHtml($fullOriginalPath, $chapterId);
-
-                return [
-                    'success' => true,
-                    'content' => file_get_contents($htmlPath),
-                    'content_type' => 'text',
-                    'file_original_path' => $originalPath,
-                    'conversion_method' => 'LibreOffice (fallback)',
-                ];
-            }
-
+            return [
+                'success' => true,
+                'content' => file_get_contents($htmlPath),
+                'content_type' => 'text',
+                'file_original_path' => $originalPath,
+            ];
         } catch (Exception $e) {
             Log::error("❌ Erreur conversion Word", ['error' => $e->getMessage()]);
             throw new Exception("Erreur conversion Word: " . $e->getMessage());

@@ -147,7 +147,7 @@ class ChapterController extends Controller
             $chapter = Chapter::findOrFail($chapterId);
 
             $validator = Validator::make($request->all(), [
-                'file' => 'required|file|mimes:pptx,ppt,docx,doc,pdf,mp4,avi,mov,wmv,flv,webm,mkv|max:102400', // 100 MB
+                'file' => 'required|file|mimes:pptx,ppt,pdf,mp4,avi,mov,wmv,flv,webm,mkv|max:102400' // Word temporairement désactivé, // 100 MB
             ]);
 
             if ($validator->fails()) {

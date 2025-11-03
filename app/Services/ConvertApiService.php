@@ -12,7 +12,17 @@ class ConvertApiService
 
     public function __construct()
     {
+        // Essayer config() d'abord, puis env() en fallback
         $secret = config('services.convertapi.secret');
+
+        if (!$secret) {
+            $secret = env('CONVERTAPI_SECRET');
+        }
+
+        \Illuminate\Support\Facades\Log::info('[ConvertAPI] Initialisation', [
+            'secret_present' => $secret ? 'YES' : 'NO',
+            'secret_length' => $secret ? strlen($secret) : 0
+        ]);
 
         if (!$secret) {
             throw new \Exception('ConvertAPI secret key not configured. Please set CONVERTAPI_SECRET in .env');

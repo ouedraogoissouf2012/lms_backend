@@ -23,8 +23,8 @@ return new class extends Migration
             // Informations de base
             $table->string('titre');
             $table->text('description')->nullable();
-            $table->enum('type', ['qcm', 'reponse_courte', 'dissertation', 'mixte'])->default('qcm');
-            $table->enum('status', ['brouillon', 'planifiee', 'en_cours', 'terminee', 'annulee'])->default('brouillon');
+            $table->string('type', 50)->default('qcm');
+            $table->string('status', 50)->default('brouillon');
 
             // Programmation
             $table->dateTime('date_evaluation')->nullable();

@@ -140,14 +140,31 @@ class EvaluationController extends Controller
             // Créer les questions si fournies
             if ($request->has('questions')) {
                 foreach ($request->questions as $index => $questionData) {
+                    // Décoder les options et correct_answers si elles sont déjà encodées en JSON
+                    $options = $questionData['options'] ?? null;
+                    if (is_string($options) && $options !== null) {
+                        $decoded = json_decode($options, true);
+                        if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                            $options = $decoded;
+                        }
+                    }
+
+                    $correctAnswers = $questionData['correct_answers'] ?? null;
+                    if (is_string($correctAnswers) && $correctAnswers !== null) {
+                        $decoded = json_decode($correctAnswers, true);
+                        if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                            $correctAnswers = $decoded;
+                        }
+                    }
+
                     EvaluationQuestion::create([
                         'evaluation_id' => $evaluation->id,
                         'question' => $questionData['question'],
                         'type' => $questionData['type'],
                         'ordre' => $index + 1,
                         'points' => $questionData['points'] ?? 1,
-                        'options' => $questionData['options'] ?? null,
-                        'correct_answers' => $questionData['correct_answers'] ?? null,
+                        'options' => $options,
+                        'correct_answers' => $correctAnswers,
                         'explanation' => $questionData['explanation'] ?? null,
                     ]);
                 }
@@ -190,6 +207,14 @@ class EvaluationController extends Controller
             ], 404);
         }
 
+        // ⚠️ Vérifier si l'évaluation peut être modifiée
+        if (!$evaluation->canBeEdited()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Impossible de modifier: des étudiants ont déjà soumis leurs réponses'
+            ], 403);
+        }
+
         $validator = Validator::make($request->all(), [
             'titre' => 'sometimes|string|max:255',
             'description' => 'nullable|string',
@@ -229,14 +254,31 @@ class EvaluationController extends Controller
 
                 // Créer les nouvelles questions
                 foreach ($request->questions as $index => $questionData) {
+                    // Décoder les options et correct_answers si elles sont déjà encodées en JSON
+                    $options = $questionData['options'] ?? null;
+                    if (is_string($options) && $options !== null) {
+                        $decoded = json_decode($options, true);
+                        if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                            $options = $decoded;
+                        }
+                    }
+
+                    $correctAnswers = $questionData['correct_answers'] ?? null;
+                    if (is_string($correctAnswers) && $correctAnswers !== null) {
+                        $decoded = json_decode($correctAnswers, true);
+                        if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                            $correctAnswers = $decoded;
+                        }
+                    }
+
                     EvaluationQuestion::create([
                         'evaluation_id' => $evaluation->id,
                         'question' => $questionData['question'],
                         'type' => $questionData['type'],
                         'ordre' => $index + 1,
                         'points' => $questionData['points'] ?? 1,
-                        'options' => $questionData['options'] ?? null,
-                        'correct_answers' => $questionData['correct_answers'] ?? null,
+                        'options' => $options,
+                        'correct_answers' => $correctAnswers,
                         'explanation' => $questionData['explanation'] ?? null,
                     ]);
                 }
@@ -279,6 +321,14 @@ class EvaluationController extends Controller
             ], 404);
         }
 
+        // ⚠️ Vérifier si l'évaluation peut être supprimée
+        if (!$evaluation->canBeEdited()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Impossible de supprimer: des étudiants ont déjà soumis leurs réponses'
+            ], 403);
+        }
+
         $evaluation->delete();
 
         return response()->json([
@@ -302,15 +352,13 @@ class EvaluationController extends Controller
             ], 404);
         }
 
-        $evaluation->update([
-            'is_published' => true,
-            'status' => 'planifiee'
-        ]);
+        // Utiliser la méthode publish() du model pour synchroniser status et is_published
+        $evaluation->publish();
 
         return response()->json([
             'success' => true,
             'message' => 'Évaluation publiée',
-            'data' => $evaluation
+            'data' => $evaluation->fresh()
         ]);
     }
 
@@ -390,7 +438,7 @@ class EvaluationController extends Controller
             $evaluationsLMS = Evaluation::with('questions', 'submissions')
                 ->where('klassci_classe_id', $classeId)
                 ->where('is_published', true)
-                ->whereIn('status', ['planifiee', 'en_cours'])
+                ->whereIn('status', ['planifiee', 'en_cours', 'terminee'])
                 ->orderBy('date_evaluation', 'desc')
                 ->get();
 
@@ -415,7 +463,7 @@ class EvaluationController extends Controller
             }
 
             // Enrichir les évaluations LMS avec fenêtres KLASSCI et soumissions
-            $enrichedEvaluations = $evaluationsLMS->map(function ($evalLMS) use ($klassciEvaluations, $klassciEtudiantId) {
+            $enrichedEvaluations = $evaluationsLMS->map(function ($evalLMS) use ($klassciEvaluations, $klassciEtudiantId, $klassciToken) {
                 $evalArray = $evalLMS->toArray();
 
                 // Trouver l'évaluation KLASSCI correspondante
@@ -432,15 +480,49 @@ class EvaluationController extends Controller
                     $evalArray['classe'] = $klassciEval['classe'] ?? null;
                     $evalArray['matiere'] = $klassciEval['matiere'] ?? null;
 
+                    // Ajouter questions_count
+                    $evalArray['questions_count'] = $evalLMS->questions->count();
+
                     \Log::debug('Evaluation enriched with KLASSCI data', [
                         'lms_id' => $evalLMS->id,
                         'klassci_id' => $evalLMS->klassci_evaluation_id,
-                        'has_window' => isset($klassciEval['programmation']['window'])
+                        'has_window' => isset($klassciEval['programmation']['window']),
+                        'questions_count' => $evalArray['questions_count']
                     ]);
                 } else {
+                    // Évaluation LMS pure (sans klassci_evaluation_id)
+                    // Récupérer les infos de matière et classe via API KLASSCI
+                    try {
+                        if ($evalLMS->klassci_matiere_id) {
+                            $matiereResponse = $this->klassciService->requestWithUserToken(
+                                $klassciToken,
+                                "matieres/{$evalLMS->klassci_matiere_id}",
+                                'GET'
+                            );
+                            $evalArray['matiere'] = $matiereResponse['data']['matiere'] ?? null;
+                        }
+
+                        if ($evalLMS->klassci_classe_id) {
+                            $classeResponse = $this->klassciService->requestWithUserToken(
+                                $klassciToken,
+                                "classes/{$evalLMS->klassci_classe_id}",
+                                'GET'
+                            );
+                            $evalArray['classe'] = $classeResponse['data'] ?? null;
+                        }
+                    } catch (\Exception $e) {
+                        \Log::warning('Could not fetch matiere/classe for pure LMS eval', [
+                            'error' => $e->getMessage()
+                        ]);
+                    }
+
+                    // Ajouter questions_count pour évaluation LMS pure
+                    $evalArray['questions_count'] = $evalLMS->questions->count();
+
                     \Log::warning('KLASSCI evaluation not found for LMS eval', [
                         'lms_id' => $evalLMS->id,
-                        'klassci_id' => $evalLMS->klassci_evaluation_id
+                        'klassci_id' => $evalLMS->klassci_evaluation_id,
+                        'questions_count' => $evalArray['questions_count']
                     ]);
                 }
 
@@ -838,6 +920,7 @@ class EvaluationController extends Controller
                     $evalArray['student_submission'] = $evaluation->student_submission;
                 }
 
+// Ajouter les informations de verrouillage                $evalArray['is_locked'] = $evaluation->isLocked();                $evalArray['can_be_edited'] = $evaluation->canBeEdited();                $evalArray['submissions_count'] = $evaluation->submissions()->count();
                 return $evalArray;
             })->toArray();
 

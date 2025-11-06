@@ -30,6 +30,8 @@ class Evaluation extends Model
         'show_results',
         'is_published',
         'notes_published',
+        'is_locked',
+        'locked_at',
     ];
 
     protected $casts = [
@@ -42,6 +44,8 @@ class Evaluation extends Model
         'show_results' => 'boolean',
         'is_published' => 'boolean',
         'notes_published' => 'boolean',
+        'is_locked' => 'boolean',
+        'locked_at' => 'datetime',
     ];
 
     /**
@@ -75,5 +79,78 @@ class Evaluation extends Model
     public function isActive(): bool
     {
         return $this->status === 'en_cours';
+    }
+
+    /**
+     * Vérifie si l'évaluation est verrouillée (ne peut plus être modifiée)
+     */
+    public function isLocked(): bool
+    {
+        return $this->is_locked || $this->submissions()->count() > 0;
+    }
+
+    /**
+     * Vérifie si l'évaluation peut être modifiée par l'enseignant
+     */
+    public function canBeEdited(): bool
+    {
+        return !$this->isLocked();
+    }
+
+    /**
+     * Verrouille l'évaluation
+     */
+    public function lock(): void
+    {
+        if (!$this->is_locked) {
+            $this->update([
+                'is_locked' => true,
+                'locked_at' => now(),
+            ]);
+        }
+    }
+
+    /**
+     * Publie l'évaluation (la rend visible aux étudiants)
+     */
+    public function publish(): void
+    {
+        $this->update([
+            'is_published' => true,
+            'status' => 'planifiee', // Planifiée = prête à être passée
+        ]);
+    }
+
+    /**
+     * Dépublie l'évaluation (la cache aux étudiants)
+     */
+    public function unpublish(): void
+    {
+        $this->update([
+            'is_published' => false,
+            'status' => 'brouillon',
+        ]);
+    }
+
+    /**
+     * Démarre l'évaluation (change le statut en cours)
+     */
+    public function start(): void
+    {
+        if ($this->is_published && $this->status === 'planifiee') {
+            $this->update([
+                'status' => 'en_cours',
+            ]);
+        }
+    }
+
+    /**
+     * Termine l'évaluation
+     */
+    public function finish(): void
+    {
+        $this->update([
+            'status' => 'terminee',
+        ]);
     }
 }

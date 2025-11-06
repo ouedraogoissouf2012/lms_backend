@@ -529,6 +529,71 @@ class LMSDataController extends Controller
                 $evaluations = [];
             }
 
+            // 5b. Enrichir les évaluations KLASSCI avec les quiz LMS
+            $evaluationsEnrichies = collect($evaluations)->map(function ($eval) {
+                $klassciEvaluationId = $eval['id'] ?? null;
+
+                // Chercher si un quiz LMS existe pour cette évaluation KLASSCI
+                $quizLMS = null;
+                if ($klassciEvaluationId) {
+                    $quizLMS = \App\Models\Evaluation::where('klassci_evaluation_id', $klassciEvaluationId)->first();
+                }
+
+                $evalArray = $eval;
+                $evalArray['has_online'] = $quizLMS !== null;
+
+                if ($quizLMS) {
+                    $evalArray['online_version'] = [
+                        'id' => $quizLMS->id,
+                        'status' => $quizLMS->status,
+                        'is_published' => $quizLMS->is_published,
+                        'is_locked' => $quizLMS->isLocked(),
+                        'can_be_edited' => $quizLMS->canBeEdited(),
+                        'questions_count' => $quizLMS->questions()->count(),
+                        'submissions_count' => $quizLMS->submissions()->count(),
+                    ];
+                } else {
+                    $evalArray['online_version'] = null;
+                }
+
+                return $evalArray;
+            })->all();
+
+            // 5c. Ajouter aussi les évaluations LMS pures (sans klassci_evaluation_id)
+            $evaluationsLMSPures = \App\Models\Evaluation::where('klassci_matiere_id', $matiereId)
+                ->whereNull('klassci_evaluation_id')
+                ->get()
+                ->map(function ($eval) {
+                    return [
+                        'id' => 'lms_' . $eval->id, // Préfixe pour distinguer des évaluations KLASSCI
+                        'lms_id' => $eval->id, // ID réel de l'évaluation LMS
+                        'titre' => $eval->titre,
+                        'description' => $eval->description,
+                        'type' => 'lms_pure',
+                        'matiere' => null,
+                        'classe' => null,
+                        'programmation' => [
+                            'date_evaluation' => $eval->date_evaluation,
+                            'duree_minutes' => $eval->duree_minutes,
+                            'coefficient' => $eval->coefficient,
+                            'bareme' => $eval->bareme,
+                        ],
+                        'has_online' => true, // C'est déjà une évaluation en ligne
+                        'online_version' => [
+                            'id' => $eval->id,
+                            'status' => $eval->status,
+                            'is_published' => $eval->is_published,
+                            'is_locked' => $eval->isLocked(),
+                            'can_be_edited' => $eval->canBeEdited(),
+                            'questions_count' => $eval->questions()->count(),
+                            'submissions_count' => $eval->submissions()->count(),
+                        ]
+                    ];
+                })->all();
+
+            // Fusionner les évaluations KLASSCI enrichies et les LMS pures
+            $evaluationsEnrichies = array_merge($evaluationsEnrichies, $evaluationsLMSPures);
+
             // 6. Récupérer les Lessons LMS pour cette matière
             $lessons = [];
             try {
@@ -638,7 +703,7 @@ class LMSDataController extends Controller
                     'enseignants' => $enseignants,
                     'lessons' => $lessons, // ← NOUVEAU: Contenu pédagogique
                     'seances_programmees' => $seancesEnrichies, // ← Séances enrichies
-                    'evaluations_programmees' => $evaluations,
+                    'evaluations_programmees' => $evaluationsEnrichies, // ← Évaluations enrichies avec quiz LMS
                     'statistiques' => $stats
                 ]
             ];
@@ -648,7 +713,7 @@ class LMSDataController extends Controller
                 'has_matiere' => !empty($matiere),
                 'lessons_count' => count($lessons),
                 'seances_count' => count($seances),
-                'evaluations_count' => count($evaluations)
+                'evaluations_count' => count($evaluationsEnrichies)
             ]);
 
             return response()->json($response);

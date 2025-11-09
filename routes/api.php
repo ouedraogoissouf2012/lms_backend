@@ -539,8 +539,14 @@ Route::middleware(['auth:sanctum', 'klassci.sync'])->group(function () {
     Route::post('evaluations/{id}/start', [EvaluationController::class, 'startEvaluation']);
     Route::post('evaluations/{id}/submit', [EvaluationController::class, 'submitEvaluation']);
 
+    // Récupérer la soumission de l'étudiant connecté
+    Route::get('evaluations/{id}/my-submission', [EvaluationController::class, 'getMySubmission']);
+
     // État temporel en temps réel
     Route::get('evaluations/{id}/time-status', [EvaluationController::class, 'getTimeStatus']);
+
+    // Notes de l'étudiant groupées par matière
+    Route::get('my-grades', [EvaluationController::class, 'myGrades']);
 });
 
 // Routes enseignants/coordinateurs uniquement
@@ -552,6 +558,13 @@ Route::middleware(['auth:sanctum', 'klassci.sync', 'role:enseignant,coordinateur
 
     // Publication
     Route::post('evaluations/{id}/publish', [EvaluationController::class, 'publish']);
+
+    // Prévisualisation enseignant (avant publication)
+    Route::get('evaluations/{id}/preview', [EvaluationController::class, 'preview']);
+
+    // Soumissions et résultats
+    Route::get('evaluations/{id}/submissions', [EvaluationController::class, 'getSubmissions']);
+    Route::post('evaluations/{id}/sync-notes', [EvaluationController::class, 'syncNotesToKlassci']);
 
     // Synchronisation vers KLASSCI
     Route::post('evaluations/{id}/sync-to-klassci', [EvaluationController::class, 'syncToKlassci']);

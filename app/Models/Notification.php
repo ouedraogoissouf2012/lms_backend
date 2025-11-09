@@ -41,6 +41,7 @@ class Notification extends Model
     public const TYPE_QUIZ_DEADLINE = 'quiz_deadline';
     public const TYPE_VISIO_SCHEDULED = 'visio_scheduled';
     public const TYPE_VISIO_STARTING = 'visio_starting';
+    public const TYPE_EVALUATION_APPROACHING = 'evaluation_approaching';
 
     /**
      * Relation: Utilisateur destinataire
@@ -141,6 +142,7 @@ class Notification extends Model
             self::TYPE_QUIZ_DEADLINE => 'mdi-clock-alert',
             self::TYPE_VISIO_SCHEDULED => 'mdi-video-outline',
             self::TYPE_VISIO_STARTING => 'mdi-video-check',
+            self::TYPE_EVALUATION_APPROACHING => 'mdi-calendar-alert',
             default => 'mdi-bell',
         };
     }
@@ -160,6 +162,7 @@ class Notification extends Model
             self::TYPE_QUIZ_DEADLINE => 'error',
             self::TYPE_VISIO_SCHEDULED => 'info',
             self::TYPE_VISIO_STARTING => 'warning',
+            self::TYPE_EVALUATION_APPROACHING => 'warning',
             default => 'secondary',
         };
     }
@@ -183,6 +186,9 @@ class Notification extends Model
 
             self::TYPE_VISIO_SCHEDULED, self::TYPE_VISIO_STARTING =>
                 isset($data['seance_id']) ? "/seances/{$data['seance_id']}" : null,
+
+            self::TYPE_EVALUATION_APPROACHING =>
+                isset($data['evaluation_id']) ? "/student/evaluations/{$data['evaluation_id']}" : null,
 
             default => null,
         };

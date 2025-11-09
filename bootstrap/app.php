@@ -24,6 +24,11 @@ return Application::configure(basePath: dirname(__DIR__))
             ->everyMinute()
             ->withoutOverlapping()
             ->runInBackground();
+
+        // Notifier les étudiants des évaluations approchantes (24h avant)
+        $schedule->command('evaluations:notify-upcoming --hours=24')
+            ->dailyAt('08:00')
+            ->withoutOverlapping();
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //

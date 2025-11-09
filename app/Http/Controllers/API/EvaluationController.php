@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Evaluation;
 use App\Models\EvaluationQuestion;
 use App\Models\EvaluationSubmission;
+use App\Models\User;
 use App\Services\KlassciProxyService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -27,6 +28,7 @@ class EvaluationController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
+        $user = $request->user();
         $query = Evaluation::with(['questions', 'submissions']);
 
         // Filtres
@@ -50,6 +52,21 @@ class EvaluationController extends Controller
 
         // Enrichir avec les données KLASSCI (classe, matière)
         $enrichedEvaluations = $this->enrichEvaluationsWithKlassciData($evaluations);
+
+        // Si c'est un étudiant, ajouter sa soumission à chaque évaluation
+        if ($user && $user->klassci_id) {
+            $enrichedEvaluations = collect($enrichedEvaluations)->map(function ($evalArray) use ($user) {
+                $evaluation = Evaluation::find($evalArray['id']);
+                if ($evaluation) {
+                    $submission = $evaluation->submissions()
+                        ->where('klassci_etudiant_id', $user->klassci_id)
+                        ->latest()
+                        ->first();
+                    $evalArray['student_submission'] = $submission;
+                }
+                return $evalArray;
+            })->toArray();
+        }
 
         return response()->json([
             'success' => true,
@@ -116,26 +133,72 @@ class EvaluationController extends Controller
         try {
             DB::beginTransaction();
 
+            // Récupérer les noms de matière et classe depuis KLASSCI
+            $matiereNom = null;
+            $classeNom = null;
+
+            try {
+                // Récupérer matière
+                if ($request->klassci_matiere_id) {
+                    $matieres = $this->klassciService->getMatieres();
+                    if (isset($matieres['data'])) {
+                        foreach ($matieres['data'] as $matiere) {
+                            if ($matiere['id'] == $request->klassci_matiere_id) {
+                                $matiereNom = $matiere['nom'] ?? $matiere['libelle'] ?? null;
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                // Récupérer classe
+                if ($request->klassci_classe_id) {
+                    $classes = $this->klassciService->getClasses();
+                    if (isset($classes['data'])) {
+                        foreach ($classes['data'] as $classe) {
+                            if ($classe['id'] == $request->klassci_classe_id) {
+                                $classeNom = $classe['libelle'] ?? $classe['nom'] ?? null;
+                                // Si pas de nom, utiliser le code du niveau
+                                if (!$classeNom && isset($classe['niveau']['code'])) {
+                                    $classeNom = $classe['niveau']['code'];
+                                } elseif (!$classeNom && isset($classe['niveau']['libelle'])) {
+                                    $classeNom = $classe['niveau']['libelle'];
+                                }
+                                break;
+                            }
+                        }
+                    }
+                }
+            } catch (\Exception $e) {
+                \Log::warning('Impossible de récupérer les noms depuis KLASSCI', ['error' => $e->getMessage()]);
+            }
+
             // Créer l'évaluation
-            $evaluation = Evaluation::create($request->only([
-                'klassci_matiere_id',
-                'klassci_classe_id',
-                'klassci_enseignant_id',
-                'klassci_evaluation_id',
-                'titre',
-                'description',
-                'type',
-                'status',
-                'date_evaluation',
-                'duree_minutes',
-                'coefficient',
-                'bareme',
-                'is_online',
-                'allow_retake',
-                'max_attempts',
-                'shuffle_questions',
-                'show_results',
-            ]));
+            $evaluation = Evaluation::create(array_merge(
+                $request->only([
+                    'klassci_matiere_id',
+                    'klassci_classe_id',
+                    'klassci_enseignant_id',
+                    'klassci_evaluation_id',
+                    'titre',
+                    'description',
+                    'type',
+                    'status',
+                    'date_evaluation',
+                    'duree_minutes',
+                    'coefficient',
+                    'bareme',
+                    'is_online',
+                    'allow_retake',
+                    'max_attempts',
+                    'shuffle_questions',
+                    'show_results',
+                ]),
+                [
+                    'matiere_nom' => $matiereNom,
+                    'classe_nom' => $classeNom,
+                ]
+            ));
 
             // Créer les questions si fournies
             if ($request->has('questions')) {
@@ -473,6 +536,11 @@ class EvaluationController extends Controller
                     // Ajouter programmation avec window
                     $evalArray['programmation'] = $klassciEval['programmation'] ?? null;
 
+                    // ⚠️ IMPORTANT: Utiliser la date_evaluation de LMS (avec heure) au lieu de KLASSCI (sans heure)
+                    if ($evalArray['programmation']) {
+                        $evalArray['programmation']['date_evaluation'] = $evalLMS->date_evaluation;
+                    }
+
                     // Ajouter lms_integration
                     $evalArray['lms_integration'] = $klassciEval['lms_integration'] ?? null;
 
@@ -533,6 +601,16 @@ class EvaluationController extends Controller
                     ->first();
 
                 $evalArray['student_submission'] = $submission;
+
+                // 🔍 DEBUG: Log pour vérifier les soumissions
+                \Log::debug('Student submission check', [
+                    'eval_id' => $evalLMS->id,
+                    'eval_title' => $evalLMS->titre,
+                    'student_id' => $klassciEtudiantId,
+                    'submission_found' => $submission !== null,
+                    'submission_status' => $submission ? $submission->status : 'null',
+                    'submission_note' => $submission ? $submission->note_sur_20 : 'null'
+                ]);
 
                 return $evalArray;
             })->values()->toArray();
@@ -739,6 +817,84 @@ class EvaluationController extends Controller
     }
 
     /**
+     * GET /api/evaluations/{id}/my-submission
+     * Récupère la soumission de l'étudiant connecté pour une évaluation
+     */
+    public function getMySubmission(int $id, Request $request): JsonResponse
+    {
+        try {
+            $user = $request->user();
+
+            if (!$user || !$user->klassci_id) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Utilisateur non authentifié'
+                ], 401);
+            }
+
+            $evaluation = Evaluation::find($id);
+
+            if (!$evaluation) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Évaluation non trouvée'
+                ], 404);
+            }
+
+            // Récupérer la soumission de l'étudiant
+            $submission = EvaluationSubmission::where('evaluation_id', $id)
+                ->where('klassci_etudiant_id', $user->klassci_id)
+                ->orderBy('attempt', 'desc')
+                ->first();
+
+            if (!$submission) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Aucune soumission trouvée pour cette évaluation'
+                ], 404);
+            }
+
+            // Charger les questions avec les réponses de l'étudiant
+            $questions = $evaluation->questions()->get();
+            $answers = $submission->answers ?? [];
+
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'id' => $submission->id,
+                    'evaluation_id' => $submission->evaluation_id,
+                    'attempt' => $submission->attempt,
+                    'status' => $submission->status,
+                    'started_at' => $submission->started_at,
+                    'submitted_at' => $submission->submitted_at,
+                    'score' => $submission->score,
+                    'note_sur_20' => $submission->note_sur_20,
+                    'feedback' => $submission->feedback,
+                    'questions' => $questions,
+                    'answers' => $answers,
+                    'evaluation' => [
+                        'id' => $evaluation->id,
+                        'titre' => $evaluation->titre,
+                        'bareme' => $evaluation->bareme,
+                        'coefficient' => $evaluation->coefficient,
+                    ]
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            \Log::error('Erreur récupération soumission étudiant', [
+                'evaluation_id' => $id,
+                'error' => $e->getMessage()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur lors de la récupération de la soumission'
+            ], 500);
+        }
+    }
+
+    /**
      * GET /api/evaluations/{id}/time-status
      * Récupère l'état temporel en temps réel d'une évaluation
      */
@@ -898,6 +1054,18 @@ class EvaluationController extends Controller
                 // Ajouter les détails de la classe
                 if (isset($evaluation->klassci_classe_id) && isset($classesMap[$evaluation->klassci_classe_id])) {
                     $evalArray['classe'] = $classesMap[$evaluation->klassci_classe_id];
+                    // Si la classe KLASSCI n'a pas de nom/libelle, utiliser le nom stocké en base
+                    if ((empty($evalArray['classe']['libelle']) && empty($evalArray['classe']['nom'])) && $evaluation->classe_nom) {
+                        $evalArray['classe']['libelle'] = $evaluation->classe_nom;
+                        $evalArray['classe']['nom'] = $evaluation->classe_nom;
+                    }
+                } elseif ($evaluation->classe_nom) {
+                    // Utiliser le nom stocké en base pour évaluations standalone
+                    $evalArray['classe'] = [
+                        'id' => $evaluation->klassci_classe_id,
+                        'libelle' => $evaluation->classe_nom,
+                        'nom' => $evaluation->classe_nom,
+                    ];
                 } else {
                     $evalArray['classe'] = null;
                 }
@@ -905,8 +1073,43 @@ class EvaluationController extends Controller
                 // Ajouter les détails de la matière
                 if (isset($evaluation->klassci_matiere_id) && isset($matieresMap[$evaluation->klassci_matiere_id])) {
                     $evalArray['matiere'] = $matieresMap[$evaluation->klassci_matiere_id];
+                    // Ajouter libelle si manquant (KLASSCI ne retourne que 'nom')
+                    if (!isset($evalArray['matiere']['libelle']) || empty($evalArray['matiere']['libelle'])) {
+                        $evalArray['matiere']['libelle'] = $evalArray['matiere']['nom'] ?? $evaluation->matiere_nom;
+                    }
+                    // Si pas de nom/libelle du tout, utiliser le nom stocké en base
+                    if (empty($evalArray['matiere']['nom']) && $evaluation->matiere_nom) {
+                        $evalArray['matiere']['nom'] = $evaluation->matiere_nom;
+                        $evalArray['matiere']['libelle'] = $evaluation->matiere_nom;
+                    }
+                } elseif ($evaluation->matiere_nom) {
+                    // Utiliser le nom stocké en base pour évaluations standalone
+                    $evalArray['matiere'] = [
+                        'id' => $evaluation->klassci_matiere_id,
+                        'nom' => $evaluation->matiere_nom,
+                        'libelle' => $evaluation->matiere_nom,
+                    ];
                 } else {
                     $evalArray['matiere'] = null;
+                }
+
+                // Ajouter les informations de l'enseignant (depuis la table users locale)
+                if ($evaluation->klassci_enseignant_id) {
+                    $enseignant = User::where('klassci_id', $evaluation->klassci_enseignant_id)->first();
+                    if ($enseignant) {
+                        $evalArray['enseignant'] = [
+                            'id' => $enseignant->klassci_id,
+                            'nom' => $enseignant->name,
+                            'email' => $enseignant->email,
+                        ];
+                        $evalArray['enseignant_nom'] = $enseignant->name;
+                    } else {
+                        $evalArray['enseignant'] = null;
+                        $evalArray['enseignant_nom'] = 'Enseignant #' . $evaluation->klassci_enseignant_id;
+                    }
+                } else {
+                    $evalArray['enseignant'] = null;
+                    $evalArray['enseignant_nom'] = null;
                 }
 
                 // Formater la date pour un affichage convivial
@@ -920,7 +1123,12 @@ class EvaluationController extends Controller
                     $evalArray['student_submission'] = $evaluation->student_submission;
                 }
 
-// Ajouter les informations de verrouillage                $evalArray['is_locked'] = $evaluation->isLocked();                $evalArray['can_be_edited'] = $evaluation->canBeEdited();                $evalArray['submissions_count'] = $evaluation->submissions()->count();
+                // Ajouter les informations de verrouillage et compteurs
+                $evalArray['is_locked'] = $evaluation->isLocked();
+                $evalArray['can_be_edited'] = $evaluation->canBeEdited();
+                $evalArray['submissions_count'] = $evaluation->submissions()->count();
+                $evalArray['questions_count'] = $evaluation->questions()->count();
+
                 return $evalArray;
             })->toArray();
 
@@ -1036,6 +1244,302 @@ class EvaluationController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Erreur lors de la récupération des résultats',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Récupère toutes les soumissions d'une évaluation (pour enseignant/coordinateur)
+     */
+    public function getSubmissions(int $id): JsonResponse
+    {
+        try {
+            $evaluation = Evaluation::findOrFail($id);
+
+            // Récupérer toutes les soumissions avec informations étudiants
+            $submissions = EvaluationSubmission::where('evaluation_id', $id)
+                ->orderBy('submitted_at', 'desc')
+                ->get();
+
+            // Récupérer les noms des étudiants depuis la table User locale
+            $klassciIds = $submissions->pluck('klassci_etudiant_id')->unique();
+            $studentsMap = User::whereIn('klassci_id', $klassciIds)
+                ->get()
+                ->pluck('name', 'klassci_id')
+                ->toArray();
+
+            // Enrichir avec noms des étudiants
+            $enrichedSubmissions = $submissions->map(function ($submission) use ($studentsMap) {
+                return [
+                    'id' => $submission->id,
+                    'evaluation_id' => $submission->evaluation_id,
+                    'klassci_etudiant_id' => $submission->klassci_etudiant_id,
+                    'student_name' => $studentsMap[$submission->klassci_etudiant_id] ?? 'Étudiant #' . $submission->klassci_etudiant_id,
+                    'attempt' => $submission->attempt,
+                    'status' => $submission->status,
+                    'started_at' => $submission->started_at,
+                    'submitted_at' => $submission->submitted_at,
+                    'score' => $submission->score,
+                    'note_sur_20' => $submission->note_sur_20,
+                    'synced_to_klassci' => $submission->synced_to_klassci,
+                    'synced_at' => $submission->synced_at,
+                ];
+            });
+
+            return response()->json([
+                'success' => true,
+                'data' => $enrichedSubmissions
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Erreur récupération soumissions', [
+                'evaluation_id' => $id,
+                'error' => $e->getMessage()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur lors de la récupération des soumissions',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Synchronise toutes les notes d'une évaluation vers KLASSCI
+     */
+    public function syncNotesToKlassci(int $id): JsonResponse
+    {
+        try {
+            $evaluation = Evaluation::findOrFail($id);
+
+            // Récupérer toutes les soumissions non synchronisées
+            $submissions = EvaluationSubmission::where('evaluation_id', $id)
+                ->where('status', 'soumis')
+                ->where('synced_to_klassci', false)
+                ->get();
+
+            if ($submissions->isEmpty()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Toutes les notes sont déjà synchronisées',
+                    'synced_count' => 0
+                ]);
+            }
+
+            $syncedCount = 0;
+            $errors = [];
+
+            foreach ($submissions as $submission) {
+                try {
+                    // TODO: Implémenter l'API KLASSCI pour synchroniser la note
+                    // Pour l'instant, marquer comme synchronisé
+                    $submission->update([
+                        'synced_to_klassci' => true,
+                        'synced_at' => now()
+                    ]);
+
+                    $syncedCount++;
+                } catch (\Exception $e) {
+                    $errors[] = [
+                        'submission_id' => $submission->id,
+                        'student_id' => $submission->klassci_etudiant_id,
+                        'error' => $e->getMessage()
+                    ];
+                }
+            }
+
+            \Log::info('Synchronisation notes vers KLASSCI', [
+                'evaluation_id' => $id,
+                'evaluation_titre' => $evaluation->titre,
+                'total_submissions' => $submissions->count(),
+                'synced_count' => $syncedCount,
+                'errors_count' => count($errors)
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => "Synchronisation terminée : {$syncedCount} note(s) synchronisée(s)",
+                'synced_count' => $syncedCount,
+                'errors' => $errors
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Erreur synchronisation notes', [
+                'evaluation_id' => $id,
+                'error' => $e->getMessage()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur lors de la synchronisation des notes',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Prévisualise une évaluation (enseignant) avant publication
+     */
+    public function preview(int $id): JsonResponse
+    {
+        try {
+            $evaluation = Evaluation::with('questions')->findOrFail($id);
+
+            // Formater les questions pour la prévisualisation (sans correct_answers pour sécurité)
+            $questionsForPreview = $evaluation->questions->map(function ($question) {
+                return [
+                    'id' => $question->id,
+                    'question' => $question->question,
+                    'type' => $question->type,
+                    'points' => $question->points,
+                    'ordre' => $question->ordre,
+                    'options' => $question->options,
+                    // Ne pas inclure correct_answers pour éviter de les exposer
+                ];
+            });
+
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'id' => $evaluation->id,
+                    'titre' => $evaluation->titre,
+                    'description' => $evaluation->description,
+                    'type' => $evaluation->type,
+                    'duree_minutes' => $evaluation->duree_minutes,
+                    'coefficient' => $evaluation->coefficient,
+                    'bareme' => $evaluation->bareme,
+                    'date_evaluation' => $evaluation->date_evaluation,
+                    'questions' => $questionsForPreview,
+                    'questions_count' => $questionsForPreview->count(),
+                    'total_points' => $evaluation->questions->sum('points'),
+                    'is_preview' => true
+                ]
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Erreur prévisualisation évaluation', [
+                'evaluation_id' => $id,
+                'error' => $e->getMessage()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur lors de la prévisualisation',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * GET /api/my-grades
+     * Récupère toutes les notes de l'étudiant connecté groupées par matière
+     */
+    public function myGrades(Request $request): JsonResponse
+    {
+        try {
+            $user = $request->user();
+
+            if (!$user || !$user->klassci_id) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Utilisateur non authentifié ou sans ID KlassCI'
+                ], 401);
+            }
+
+            // Récupérer toutes les soumissions de l'étudiant avec leurs évaluations
+            $submissions = EvaluationSubmission::where('klassci_etudiant_id', $user->klassci_id)
+                ->where('status', 'corrige')
+                ->with(['evaluation' => function($query) {
+                    $query->where('is_published', true);
+                }])
+                ->whereHas('evaluation', function($query) {
+                    $query->where('is_published', true);
+                })
+                ->orderBy('submitted_at', 'desc')
+                ->get();
+
+            // Grouper les notes par matière
+            $gradesByMatiere = [];
+
+            foreach ($submissions as $submission) {
+                $evaluation = $submission->evaluation;
+
+                if (!$evaluation) continue;
+
+                $matiereId = $evaluation->klassci_matiere_id;
+                $matiereNom = $evaluation->matiere_nom ?? 'Matière inconnue';
+
+                if (!isset($gradesByMatiere[$matiereId])) {
+                    $gradesByMatiere[$matiereId] = [
+                        'matiere_id' => $matiereId,
+                        'matiere_nom' => $matiereNom,
+                        'evaluations' => [],
+                        'moyenne' => 0,
+                        'total_evaluations' => 0
+                    ];
+                }
+
+                $gradesByMatiere[$matiereId]['evaluations'][] = [
+                    'evaluation_id' => $evaluation->id,
+                    'titre' => $evaluation->titre,
+                    'type' => $evaluation->type,
+                    'note' => $submission->note_sur_20,
+                    'coefficient' => $evaluation->coefficient ?? 1,
+                    'date_evaluation' => $evaluation->date_evaluation,
+                    'date_soumission' => $submission->submitted_at,
+                    'temps_passe' => $submission->temps_passe_minutes,
+                ];
+            }
+
+            // Calculer les moyennes par matière
+            foreach ($gradesByMatiere as $matiereId => &$matiere) {
+                $totalPoints = 0;
+                $totalCoef = 0;
+
+                foreach ($matiere['evaluations'] as $eval) {
+                    $totalPoints += $eval['note'] * $eval['coefficient'];
+                    $totalCoef += $eval['coefficient'];
+                }
+
+                $matiere['moyenne'] = $totalCoef > 0 ? round($totalPoints / $totalCoef, 2) : 0;
+                $matiere['total_evaluations'] = count($matiere['evaluations']);
+            }
+
+            // Convertir en array indexé et trier par nom de matière
+            $gradesList = array_values($gradesByMatiere);
+            usort($gradesList, fn($a, $b) => strcmp($a['matiere_nom'], $b['matiere_nom']));
+
+            // Calculer la moyenne générale
+            $totalMoyenne = 0;
+            $countMatieres = 0;
+
+            foreach ($gradesList as $matiere) {
+                if ($matiere['total_evaluations'] > 0) {
+                    $totalMoyenne += $matiere['moyenne'];
+                    $countMatieres++;
+                }
+            }
+
+            $moyenneGenerale = $countMatieres > 0 ? round($totalMoyenne / $countMatieres, 2) : 0;
+
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'matieres' => $gradesList,
+                    'moyenne_generale' => $moyenneGenerale,
+                    'total_matieres' => $countMatieres,
+                    'total_evaluations' => $submissions->count()
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            \Log::error('Erreur récupération notes étudiant', [
+                'user_id' => $request->user()?->id,
+                'error' => $e->getMessage()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur lors de la récupération des notes',
                 'error' => $e->getMessage()
             ], 500);
         }

@@ -1054,15 +1054,29 @@ class EvaluationController extends Controller
                 // Ajouter les détails de la classe
                 if (isset($evaluation->klassci_classe_id) && isset($classesMap[$evaluation->klassci_classe_id])) {
                     $evalArray['classe'] = $classesMap[$evaluation->klassci_classe_id];
-                    // Si la classe KLASSCI n'a pas de nom/libelle, utiliser le nom stocké en base
-                    if ((empty($evalArray['classe']['libelle']) && empty($evalArray['classe']['nom'])) && $evaluation->classe_nom) {
-                        $evalArray['classe']['libelle'] = $evaluation->classe_nom;
+
+                    // Normaliser les champs: KlassCI retourne 'name', on veut aussi 'nom' et 'libelle'
+                    if (isset($evalArray['classe']['name']) && !empty($evalArray['classe']['name'])) {
+                        // Si 'nom' est vide/absent, copier 'name' dedans
+                        if (empty($evalArray['classe']['nom'])) {
+                            $evalArray['classe']['nom'] = $evalArray['classe']['name'];
+                        }
+                        // Si 'libelle' est vide, utiliser 'name'
+                        if (empty($evalArray['classe']['libelle'])) {
+                            $evalArray['classe']['libelle'] = $evalArray['classe']['name'];
+                        }
+                    }
+
+                    // Si toujours vide, utiliser le nom stocké en base
+                    if (empty($evalArray['classe']['nom']) && $evaluation->classe_nom) {
                         $evalArray['classe']['nom'] = $evaluation->classe_nom;
+                        $evalArray['classe']['libelle'] = $evaluation->classe_nom;
                     }
                 } elseif ($evaluation->classe_nom) {
                     // Utiliser le nom stocké en base pour évaluations standalone
                     $evalArray['classe'] = [
                         'id' => $evaluation->klassci_classe_id,
+                        'name' => $evaluation->classe_nom,
                         'libelle' => $evaluation->classe_nom,
                         'nom' => $evaluation->classe_nom,
                     ];

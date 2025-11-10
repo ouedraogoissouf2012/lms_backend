@@ -1503,6 +1503,7 @@ class EvaluationController extends Controller
                 $matiere['moyenne'] = $totalCoef > 0 ? round($totalPoints / $totalCoef, 2) : 0;
                 $matiere['total_evaluations'] = count($matiere['evaluations']);
             }
+            unset($matiere); // Important: détruire la référence pour éviter les effets de bord
 
             // Convertir en array indexé et trier par nom de matière
             $gradesList = array_values($gradesByMatiere);

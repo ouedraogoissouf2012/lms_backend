@@ -1445,6 +1445,21 @@ class EvaluationController extends Controller
                 ], 401);
             }
 
+            // Récupérer les matières depuis l'API KlassCI pour avoir les vrais noms
+            $klassciProxy = app(\App\Services\KlassciProxyService::class);
+            $matieresData = [];
+
+            try {
+                $matieresResponse = $klassciProxy->getMatieres();
+                if (isset($matieresResponse['success']) && $matieresResponse['success'] && isset($matieresResponse['data'])) {
+                    foreach ($matieresResponse['data'] as $matiere) {
+                        $matieresData[$matiere['id']] = $matiere['nom'];
+                    }
+                }
+            } catch (\Exception $e) {
+                Log::warning("Impossible de récupérer les matières depuis KlassCI", ['error' => $e->getMessage()]);
+            }
+
             // Récupérer toutes les soumissions de l'étudiant avec leurs évaluations
             $submissions = EvaluationSubmission::where('klassci_etudiant_id', $user->klassci_id)
                 ->where('status', 'corrige')
@@ -1466,7 +1481,9 @@ class EvaluationController extends Controller
                 if (!$evaluation) continue;
 
                 $matiereId = $evaluation->klassci_matiere_id;
-                $matiereNom = $evaluation->matiere_nom ?? 'Matière inconnue';
+
+                // Récupérer le nom de la matière depuis KlassCI (priorité absolue) ou depuis l'évaluation
+                $matiereNom = $matieresData[$matiereId] ?? $evaluation->matiere_nom ?? 'Matière inconnue';
 
                 if (!isset($gradesByMatiere[$matiereId])) {
                     $gradesByMatiere[$matiereId] = [

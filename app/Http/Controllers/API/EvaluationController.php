@@ -1393,11 +1393,26 @@ class EvaluationController extends Controller
 
     /**
      * Prévisualise une évaluation (enseignant) avant publication
+     * Pour coordinateur: accessible uniquement si évaluation terminée
      */
     public function preview(int $id): JsonResponse
     {
         try {
             $evaluation = Evaluation::with('questions')->findOrFail($id);
+
+            // Restriction coordinateur: ne peut prévisualiser que les évaluations terminées
+            $user = auth()->user();
+            if ($user && $user->role === 'coordinateur') {
+                $isTerminee = $evaluation->status === 'terminee' ||
+                             EvaluationSubmission::where('evaluation_id', $id)->count() > 0;
+
+                if (!$isTerminee) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Accès refusé. Les coordinateurs ne peuvent prévisualiser que les évaluations terminées.'
+                    ], 403);
+                }
+            }
 
             // Formater les questions pour la prévisualisation (sans correct_answers pour sécurité)
             $questionsForPreview = $evaluation->questions->map(function ($question) {

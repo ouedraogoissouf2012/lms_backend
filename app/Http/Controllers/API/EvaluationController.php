@@ -1403,10 +1403,9 @@ class EvaluationController extends Controller
             // Restriction coordinateur: ne peut prévisualiser que les évaluations terminées
             $user = auth()->user();
             if ($user && $user->role === 'coordinateur') {
-                $isTerminee = $evaluation->status === 'terminee' ||
-                             EvaluationSubmission::where('evaluation_id', $id)->count() > 0;
-
-                if (!$isTerminee) {
+                // Une évaluation est terminée UNIQUEMENT si son statut est 'terminee'
+                // Pas si elle a des soumissions - un étudiant peut rendre en avance
+                if ($evaluation->status !== 'terminee') {
                     return response()->json([
                         'success' => false,
                         'message' => 'Accès refusé. Les coordinateurs ne peuvent prévisualiser que les évaluations terminées.'

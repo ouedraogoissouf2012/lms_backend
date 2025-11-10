@@ -530,7 +530,7 @@ class LMSDataController extends Controller
             }
 
             // 5b. Enrichir les évaluations KLASSCI avec les quiz LMS
-            $evaluationsEnrichies = collect($evaluations)->map(function ($eval) {
+            $evaluationsEnrichies = collect($evaluations)->map(function ($eval) use ($user) {
                 $klassciEvaluationId = $eval['id'] ?? null;
 
                 // Chercher si un quiz LMS existe pour cette évaluation KLASSCI
@@ -552,8 +552,20 @@ class LMSDataController extends Controller
                         'questions_count' => $quizLMS->questions()->count(),
                         'submissions_count' => $quizLMS->submissions()->count(),
                     ];
+
+                    // Ajouter la soumission de l'étudiant connecté (si étudiant)
+                    if ($user && $user->klassci_id) {
+                        $submission = $quizLMS->submissions()
+                            ->where('klassci_etudiant_id', $user->klassci_id)
+                            ->latest()
+                            ->first();
+                        $evalArray['student_submission'] = $submission;
+                    } else {
+                        $evalArray['student_submission'] = null;
+                    }
                 } else {
                     $evalArray['online_version'] = null;
+                    $evalArray['student_submission'] = null;
                 }
 
                 return $evalArray;
@@ -563,7 +575,16 @@ class LMSDataController extends Controller
             $evaluationsLMSPures = \App\Models\Evaluation::where('klassci_matiere_id', $matiereId)
                 ->whereNull('klassci_evaluation_id')
                 ->get()
-                ->map(function ($eval) {
+                ->map(function ($eval) use ($user) {
+                    // Récupérer la soumission de l'étudiant connecté (si étudiant)
+                    $submission = null;
+                    if ($user && $user->klassci_id) {
+                        $submission = $eval->submissions()
+                            ->where('klassci_etudiant_id', $user->klassci_id)
+                            ->latest()
+                            ->first();
+                    }
+
                     return [
                         'id' => 'lms_' . $eval->id, // Préfixe pour distinguer des évaluations KLASSCI
                         'lms_id' => $eval->id, // ID réel de l'évaluation LMS
@@ -587,7 +608,8 @@ class LMSDataController extends Controller
                             'can_be_edited' => $eval->canBeEdited(),
                             'questions_count' => $eval->questions()->count(),
                             'submissions_count' => $eval->submissions()->count(),
-                        ]
+                        ],
+                        'student_submission' => $submission
                     ];
                 })->all();
 

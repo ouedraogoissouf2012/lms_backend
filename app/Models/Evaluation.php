@@ -100,6 +100,42 @@ class Evaluation extends Model
     }
 
     /**
+     * Retourne le statut EFFECTIF de l'évaluation
+     * Logique centralisée et réutilisable
+     *
+     * Règles métier:
+     * - Si date passée ET (date + durée) passée → 'terminee'
+     * - Sinon, retourne le status actuel de la BDD
+     */
+    public function getEffectiveStatus(): string
+    {
+        // Si le status est déjà 'terminee', on garde
+        if ($this->status === 'terminee') {
+            return 'terminee';
+        }
+
+        // Calculer la date de fin (date_evaluation + durée)
+        $dateFin = $this->date_evaluation->copy()->addMinutes($this->duree_minutes);
+
+        // Si la date de fin est passée, l'évaluation est terminée
+        if (now()->greaterThan($dateFin)) {
+            return 'terminee';
+        }
+
+        // Sinon, retourner le status actuel
+        return $this->status;
+    }
+
+    /**
+     * Vérifie si l'évaluation est réellement terminée
+     * Utilise getEffectiveStatus() pour la logique
+     */
+    public function isTerminee(): bool
+    {
+        return $this->getEffectiveStatus() === 'terminee';
+    }
+
+    /**
      * Verrouille l'évaluation
      */
     public function lock(): void

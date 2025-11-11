@@ -1217,8 +1217,8 @@ class EvaluationController extends Controller
             ]);
 
             // Récupérer la liste COMPLÈTE des étudiants de la classe depuis KLASSCI
-            $classeDetails = $this->klassciService->getClasseDetails($evaluation->klassci_classe_id);
-            $etudiants = $classeDetails['etudiants'] ?? [];
+            $classeEtudiants = $this->klassciService->getClasseEtudiants($evaluation->klassci_classe_id);
+            $etudiants = $classeEtudiants['data'] ?? [];
 
             \Log::info('👥 Étudiants de la classe', [
                 'total_etudiants' => count($etudiants)

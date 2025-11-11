@@ -104,6 +104,15 @@ class EvaluationController extends Controller
      */
     public function store(Request $request): JsonResponse
     {
+        // Restriction coordinateur: ne peut pas créer d'évaluations
+        $user = auth()->user();
+        if ($user && $user->role === 'coordinateur') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Accès refusé. Les coordinateurs ne peuvent pas créer d\'évaluations.'
+            ], 403);
+        }
+
         $validator = Validator::make($request->all(), [
             'klassci_matiere_id' => 'required|integer',
             'klassci_classe_id' => 'required|integer',
@@ -261,6 +270,15 @@ class EvaluationController extends Controller
      */
     public function update(Request $request, int $id): JsonResponse
     {
+        // Restriction coordinateur: ne peut pas modifier d'évaluations
+        $user = auth()->user();
+        if ($user && $user->role === 'coordinateur') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Accès refusé. Les coordinateurs ne peuvent pas modifier d\'évaluations.'
+            ], 403);
+        }
+
         $evaluation = Evaluation::find($id);
 
         if (!$evaluation) {
@@ -375,6 +393,15 @@ class EvaluationController extends Controller
      */
     public function destroy(int $id): JsonResponse
     {
+        // Restriction coordinateur: ne peut pas supprimer d'évaluations
+        $user = auth()->user();
+        if ($user && $user->role === 'coordinateur') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Accès refusé. Les coordinateurs ne peuvent pas supprimer d\'évaluations.'
+            ], 403);
+        }
+
         $evaluation = Evaluation::find($id);
 
         if (!$evaluation) {
@@ -406,6 +433,15 @@ class EvaluationController extends Controller
      */
     public function publish(int $id): JsonResponse
     {
+        // Restriction coordinateur: ne peut pas publier d'évaluations
+        $user = auth()->user();
+        if ($user && $user->role === 'coordinateur') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Accès refusé. Les coordinateurs ne peuvent pas publier d\'évaluations.'
+            ], 403);
+        }
+
         $evaluation = Evaluation::find($id);
 
         if (!$evaluation) {

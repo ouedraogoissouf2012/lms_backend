@@ -1179,6 +1179,9 @@ class EvaluationController extends Controller
                 $evalArray['submissions_count'] = $evaluation->submissions()->count();
                 $evalArray['questions_count'] = $evaluation->questions()->count();
 
+                // Ajouter le statut effectif calculé (basé sur date + durée)
+                $evalArray['effective_status'] = $evaluation->getEffectiveStatus();
+
                 return $evalArray;
             })->toArray();
 

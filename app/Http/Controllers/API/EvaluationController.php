@@ -1230,11 +1230,26 @@ class EvaluationController extends Controller
             // Créer un tableau de résultats pour TOUS les étudiants
             $resultats = [];
             foreach ($etudiants as $etudiant) {
+                // Trouver le user local correspondant par email
+                $userLocal = \App\Models\User::where('email', $etudiant['email'] ?? '')->first();
+
                 // Récupérer la dernière soumission de l'étudiant pour cette évaluation
-                $submission = $evaluation->submissions()
-                    ->where('klassci_etudiant_id', $etudiant['id'])
-                    ->latest()
-                    ->first();
+                // Essayer d'abord avec le KlassCI ID de l'user local, sinon avec l'ID KlassCI direct
+                $submission = null;
+                if ($userLocal && $userLocal->klassci_id) {
+                    $submission = $evaluation->submissions()
+                        ->where('klassci_etudiant_id', $userLocal->klassci_id)
+                        ->latest()
+                        ->first();
+                }
+
+                // Si pas trouvé, essayer avec l'ID KlassCI direct
+                if (!$submission) {
+                    $submission = $evaluation->submissions()
+                        ->where('klassci_etudiant_id', $etudiant['id'])
+                        ->latest()
+                        ->first();
+                }
 
                 $resultats[] = [
                     'etudiant_id' => $etudiant['id'],
@@ -1255,8 +1270,8 @@ class EvaluationController extends Controller
                 return strcmp($a['etudiant_nom_complet'], $b['etudiant_nom_complet']);
             });
 
-            // Calculer les statistiques
-            $soumissions = collect($resultats)->where('status', 'soumis');
+            // Calculer les statistiques (inclure 'soumis' ET 'corrige')
+            $soumissions = collect($resultats)->whereIn('status', ['soumis', 'corrige']);
             $notes = $soumissions->pluck('note')->filter();
 
             $statistiques = [

@@ -1,22 +1,28 @@
 {
   "permissions": {
     "allow": [
-      "Bash(git add .claude/BILAN_SESSION_10_NOV_2025.md .claude/settings.local.json)"
+      "Bash(git restore README.md GUIDE_DEPLOIEMENT_PRODUCTION.md)",
+      "Bash(git add app/Http/Controllers/API/EvaluationController.php .claude/settings.local.json)"
     ],
     "deny": [],
     "ask": []
   },
   "lastSession": {
-    "date": "2025-11-10",
-    "summary": "Fix duplication notes + ajout fonctionnalités avancées page Mes Notes",
+    "date": "2025-11-12",
+    "summary": "Fix filtres coordinateur - Dropdowns vides (accès data.data incorrect)",
     "mainAchievements": [
-      "Résolu bug duplication notes (référence PHP non détruite)",
-      "Ajouté 6 fonctionnalités majeures (stats, filtres, tri, résumé, PDF, badge nouveau)",
-      "Corrigé route bouton Voir",
-      "Nettoyé données incorrectes 'Mathématiques' de l'API KlassCI",
-      "Remplacé emoji par icônes MDI professionnelles"
+      "Résolu ROOT CAUSE: dropdowns vides car accès classesResponse.data.data au lieu de data",
+      "Corrigé filtre statut pour utiliser effective_status",
+      "Amélioré binding filtres avec :value + @change",
+      "Diagnostic professionnel avec evidence et approche systématique",
+      "Nettoyé tout le code de débogage (watch, console.log, test button)"
     ],
-    "commits": 5,
-    "detailedReport": ".claude/BILAN_SESSION_10_NOV_2025.md"
+    "commits": 1,
+    "userFeedback": "super tout marche",
+    "previousSession": {
+      "date": "2025-11-10",
+      "summary": "Fix duplication notes + ajout fonctionnalités avancées page Mes Notes",
+      "commits": 5
+    }
   }
 }

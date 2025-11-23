@@ -26,6 +26,7 @@ class ESBTPAttendance extends Model
         'ip_address',
         'user_agent',
         'is_validated',
+        'is_observer',
     ];
 
     protected $casts = [
@@ -34,6 +35,7 @@ class ESBTPAttendance extends Model
         'last_seen_at' => 'datetime',
         'duration_minutes' => 'integer',
         'is_validated' => 'boolean',
+        'is_observer' => 'boolean',
     ];
 
     /**
@@ -135,4 +137,46 @@ class ESBTPAttendance extends Model
         $this->last_seen_at = now();
         $this->save();
     }
+
+    /**
+     * Déconnecter automatiquement les participants inactifs (timeout)
+     * Un participant est considéré inactif si son dernier heartbeat date de plus de X minutes
+     * 
+     * @param int $timeoutMinutes Nombre de minutes d'inactivité avant timeout (défaut: 3)
+     * @return int Nombre de participants déconnectés
+     */
+    public static function disconnectInactiveParticipants(int $timeoutMinutes = 3): int
+    {
+        $timeoutThreshold = now()->subMinutes($timeoutMinutes);
+        
+        // Trouver tous les participants connectés dont le dernier heartbeat est trop ancien
+        $inactiveParticipants = self::where('status', 'connected')
+            ->where(function($query) use ($timeoutThreshold) {
+                // Soit last_seen_at est trop ancien
+                $query->where('last_seen_at', '<', $timeoutThreshold)
+                      // Soit last_seen_at est NULL mais joined_at est trop ancien (fallback)
+                      ->orWhere(function($q) use ($timeoutThreshold) {
+                          $q->whereNull('last_seen_at')
+                            ->where('joined_at', '<', $timeoutThreshold);
+                      });
+            })
+            ->get();
+        
+        $disconnectedCount = 0;
+        
+        foreach ($inactiveParticipants as $participant) {
+            \Log::info('Timeout détecté - Déconnexion automatique', [
+                'user_id' => $participant->user_id,
+                'seance_id' => $participant->seance_id,
+                'last_seen_at' => $participant->last_seen_at?->toDateTimeString(),
+                'joined_at' => $participant->joined_at?->toDateTimeString(),
+            ]);
+            
+            $participant->markAsDisconnected();
+            $disconnectedCount++;
+        }
+        
+        return $disconnectedCount;
+    }
+
 }

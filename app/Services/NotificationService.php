@@ -249,6 +249,138 @@ class NotificationService
     }
 
     /**
+     * Notifier la programmation d'une visioconférence
+     */
+    public function notifyVisioScheduled(int $seanceId, array $seanceData): int
+    {
+        // Vérifier si des notifications ont déjà été envoyées pour cette séance (dans les dernières 24h)
+        $existingNotifications = Notification::where('type', Notification::TYPE_VISIO_SCHEDULED)
+            ->where('data->seance_id', $seanceId)
+            ->where('created_at', '>', now()->subDay())
+            ->count();
+
+        if ($existingNotifications > 0) {
+            \Log::info('Notifications déjà envoyées pour cette séance', [
+                'seance_id' => $seanceId,
+                'existing_count' => $existingNotifications
+            ]);
+            return 0; // Pas de notification en double
+        }
+
+        // Récupérer les étudiants de la classe via la table Classe
+        $students = collect();
+
+        if (isset($seanceData['klassci_classe_id'])) {
+            // Trouver la classe locale
+            $classe = \App\Models\Classe::where('klassci_id', $seanceData['klassci_classe_id'])->first();
+
+            if ($classe) {
+                // Récupérer les étudiants actifs de cette classe
+                $students = User::query()
+                    ->whereHas('classes', function ($query) use ($classe) {
+                        $query->where('classes.id', $classe->id)
+                            ->where('classe_etudiant.statut', 'actif');
+                    })
+                    ->where('role', 'etudiant')
+                    ->get();
+
+                \Log::info('Étudiants trouvés pour notification visio', [
+                    'classe_id' => $classe->id,
+                    'students_count' => $students->count()
+                ]);
+            } else {
+                \Log::warning('Classe non trouvée pour notification', [
+                    'klassci_classe_id' => $seanceData['klassci_classe_id']
+                ]);
+            }
+        }
+
+        if ($students->isEmpty()) {
+            \Log::warning('Aucun étudiant trouvé pour notification', [
+                'seance_id' => $seanceId,
+                'klassci_classe_id' => $seanceData['klassci_classe_id'] ?? null
+            ]);
+            return 0;
+        }
+
+        $matiere = $seanceData['matiere_nom'] ?? 'Matière inconnue';
+        $enseignant = $seanceData['enseignant_nom'] ?? 'Enseignant';
+
+        $title = "Visioconférence programmée";
+        $message = "Une visioconférence a été programmée en {$matiere} avec {$enseignant}.";
+        $data = [
+            'seance_id' => $seanceId,
+            'matiere' => $matiere,
+            'enseignant' => $enseignant,
+        ];
+
+        return $this->sendToMany($students, Notification::TYPE_VISIO_SCHEDULED, $title, $message, $data);
+    }
+
+    /**
+     * Notifier le démarrage imminent d'une visioconférence
+     */
+    public function notifyVisioStarting(int $seanceId, array $seanceData): int
+    {
+        // Récupérer les étudiants de la classe via la table Classe
+        $students = collect();
+
+        if (isset($seanceData['klassci_classe_id'])) {
+            // Trouver la classe locale
+            $classe = \App\Models\Classe::where('klassci_id', $seanceData['klassci_classe_id'])->first();
+
+            if ($classe) {
+                // Récupérer les étudiants actifs de cette classe
+                $students = User::query()
+                    ->whereHas('classes', function ($query) use ($classe) {
+                        $query->where('classes.id', $classe->id)
+                            ->where('classe_etudiant.statut', 'actif');
+                    })
+                    ->where('role', 'etudiant')
+                    ->get();
+            }
+        }
+
+        // Notifier aussi l'enseignant si ce n'est pas lui qui a démarré
+        $teacher = null;
+        if (isset($seanceData['klassci_enseignant_id'])) {
+            $teacher = User::where('klassci_id', $seanceData['klassci_enseignant_id'])
+                ->where('role', 'enseignant')
+                ->first();
+        }
+
+        $count = 0;
+        $matiere = $seanceData['matiere_nom'] ?? 'Matière inconnue';
+
+        // Notifier les étudiants
+        if ($students->isNotEmpty()) {
+            $title = "Visioconférence en cours";
+            $message = "La visioconférence de {$matiere} a démarré. Rejoignez maintenant !";
+            $data = [
+                'seance_id' => $seanceId,
+                'matiere' => $matiere,
+            ];
+
+            $count += $this->sendToMany($students, Notification::TYPE_VISIO_STARTING, $title, $message, $data);
+        }
+
+        // Notifier l'enseignant
+        if ($teacher) {
+            $title = "Votre visioconférence a démarré";
+            $message = "Votre visioconférence de {$matiere} est maintenant active.";
+            $data = [
+                'seance_id' => $seanceId,
+                'matiere' => $matiere,
+            ];
+
+            $this->send($teacher, Notification::TYPE_VISIO_STARTING, $title, $message, $data);
+            $count++;
+        }
+
+        return $count;
+    }
+
+    /**
      * Supprimer les anciennes notifications (cleanup)
      *
      * @param int $days Nombre de jours à conserver (défaut: 30)

@@ -4,6 +4,8 @@ namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
 use App\Services\KlassciProxyService;
+use App\Services\NotificationService;
+use App\Services\ClasseSyncService;
 use App\Models\LmsEnseignantCache;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -16,10 +18,17 @@ use Carbon\Carbon;
 class LMSDataController extends Controller
 {
     protected KlassciProxyService $klassciService;
+    protected NotificationService $notificationService;
+    protected ClasseSyncService $classeSyncService;
 
-    public function __construct(KlassciProxyService $klassciService)
-    {
+    public function __construct(
+        KlassciProxyService $klassciService,
+        NotificationService $notificationService,
+        ClasseSyncService $classeSyncService
+    ) {
         $this->klassciService = $klassciService;
+        $this->notificationService = $notificationService;
+        $this->classeSyncService = $classeSyncService;
     }
 
     /**
@@ -415,10 +424,10 @@ class LMSDataController extends Controller
                         $seances = $matiereDetails['data']['seances_programmees'] ?? [];
                     }
                 } elseif (in_array($user->role, ['etudiant', 'student'])) {
-                    // Étudiant: récupérer via student-dashboard
+                    // Étudiant: récupérer via dashboard
                     $dashboard = $this->klassciService->requestWithUserToken(
                         $klassciToken,
-                        'me/student-dashboard',
+                        'me/dashboard',
                         'GET'
                     );
 
@@ -434,6 +443,17 @@ class LMSDataController extends Controller
                             'GET'
                         );
                         $seances = $matiereDetails['data']['seances_programmees'] ?? [];
+
+                        // LOG DÉTAILLÉ pour debug dates
+                        if (!empty($seances)) {
+                            Log::info('[DEBUG DATES] Séances récupérées de Klassci pour étudiant', [
+                                'matiere_id' => $matiereId,
+                                'user_id' => $user->id,
+                                'count' => count($seances),
+                                'premiere_seance' => $seances[0] ?? null,
+                                'toutes_seances' => $seances
+                            ]);
+                        }
                     }
                 } else {
                     // Coordinateur: utiliser matieres/{id} direct
@@ -448,65 +468,44 @@ class LMSDataController extends Controller
                 $seances = [];
             }
 
-            // Si aucune séance de l'API KLASSCI, récupérer depuis BDD locale
-            if (empty($seances)) {
-                Log::info('API KLASSCI ne retourne pas de séances, récupération depuis BDD locale', [
-                    'matiere_id' => $matiereId
-                ]);
+            // NOTE: Les séances doivent toujours venir de l'API KLASSCI
+            // La BDD locale ne contient que les infos visio, pas les dates/horaires
+            // Si l'API KLASSCI ne retourne rien, c'est qu'il n'y a vraiment pas de séances
 
-                // La table seances utilise klassci_matiere_id et matiere_nom
-                $matiereNom = $matiere['nom'] ?? null;
+            // 4b. Filtrer les séances masquées et archivées pour les étudiants
+            if ($user && $user->role === 'etudiant') {
+                $seances = collect($seances)->filter(function ($seance) use ($user) {
+                    $seanceId = $seance['id'] ?? null;
 
-                $seancesLocales = collect();
+                    if (!$seanceId) {
+                        return true; // Garder si pas d'ID
+                    }
 
-                // Rechercher par matiere_nom en priorité
-                if ($matiereNom) {
-                    $seancesLocales = \App\Models\Seance::where('matiere_nom', $matiereNom)->get();
-                    Log::info('Recherche séances par nom', [
-                        'matiere_nom' => $matiereNom,
-                        'found' => $seancesLocales->count()
-                    ]);
-                }
+                    // Trouver la séance locale correspondante
+                    $localSeance = \App\Models\Seance::where('klassci_seance_id', $seanceId)
+                        ->orWhere('id', $seanceId)
+                        ->first();
 
-                // Si pas de résultat par nom, essayer par klassci_matiere_id
-                if ($seancesLocales->isEmpty()) {
-                    $seancesLocales = \App\Models\Seance::where('klassci_matiere_id', $matiereId)->get();
-                    Log::info('Recherche séances par klassci_matiere_id', [
-                        'klassci_matiere_id' => $matiereId,
-                        'found' => $seancesLocales->count()
-                    ]);
-                }
+                    if (!$localSeance) {
+                        return true; // Garder si pas de séance locale (séance KLASSCI pure)
+                    }
 
-                $seances = $seancesLocales->map(function ($seance) {
-                    // Les séances de la BDD locale ont des champs spécifiques
-                    // Créer des timestamps ISO 8601 complets pour le frontend
-                    $dateSeance = now()->format('Y-m-d');
-                    $heureDebut = $dateSeance . 'T08:00:00+00:00';  // Format ISO 8601
-                    $heureFin = $dateSeance . 'T10:00:00+00:00';    // Format ISO 8601
+                    // Filtrer si archivée
+                    if (!$localSeance->is_active) {
+                        return false;
+                    }
 
-                    return [
-                        'id' => $seance->klassci_seance_id ?? $seance->id,
-                        'classe' => [
-                            'id' => $seance->klassci_classe_id ?? null,
-                            'nom' => 'Classe'
-                        ],
-                        'programmation' => [
-                            'date' => $dateSeance,
-                            'heure_debut' => $heureDebut,
-                            'heure_fin' => $heureFin,
-                            'salle' => null
-                        ],
-                        'enseignant' => [
-                            'nom' => $seance->enseignant_nom ?? 'Non assigné',
-                            'prenom' => ''
-                        ],
-                        'statut' => 'programme'
-                    ];
-                })->toArray();
+                    // Filtrer si masquée par l'étudiant
+                    if (\App\Models\SeanceUserHidden::isHidden($localSeance->id, $user->id)) {
+                        return false;
+                    }
 
-                Log::info('Séances récupérées depuis BDD locale', [
-                    'count' => count($seances),
-                    'matiere_nom' => $matiereNom
+                    return true;
+                })->values()->toArray();
+
+                Log::info('Séances filtrées pour étudiant', [
+                    'user_id' => $user->id,
+                    'count_after_filter' => count($seances)
                 ]);
             }
 
@@ -684,7 +683,7 @@ class LMSDataController extends Controller
                     $seanceEnrichie['visio_status'] = $visioData->visio_status;
                     $seanceEnrichie['visio_active'] = $visioData->visio_active;
                     $seanceEnrichie['visio_room_id'] = $visioData->visio_room_id;
-                    $seanceEnrichie['visio_participants_count'] = $visioData->visio_participants_count ?? 0;
+                    $seanceEnrichie['visio_participants_count'] = $visioData->current_participants_count ?? 0;
                 } else {
                     $seanceEnrichie['visio_enabled'] = false;
                     $seanceEnrichie['visio_type'] = null;
@@ -830,6 +829,26 @@ class LMSDataController extends Controller
                         if ($classeId) {
                             $seancesFiltrees = $seancesFiltrees->filter(function ($seance) use ($classeId) {
                                 return isset($seance['classe']['id']) && $seance['classe']['id'] == $classeId;
+                            });
+                        }
+
+                        // IMPORTANT: Pour les étudiants, filtrer les séances archivées et masquées
+                        // Enseignants/Coordinateurs/Admins voient tout
+                        if ($user && $user->role === 'etudiant') {
+                            $seancesFiltrees = $seancesFiltrees->filter(function ($seance) use ($user) {
+                                $localSeance = \App\Models\Seance::where('klassci_seance_id', $seance['id'])->first();
+
+                                // Si la séance existe en local mais est archivée, ne pas la montrer aux étudiants
+                                if ($localSeance && !$localSeance->is_active) {
+                                    return false;
+                                }
+
+                                // Si la séance est masquée par l'étudiant, ne pas la montrer
+                                if ($localSeance && \App\Models\SeanceUserHidden::isHidden($localSeance->id, $user->id)) {
+                                    return false;
+                                }
+
+                                return true;
                             });
                         }
 
@@ -1704,6 +1723,14 @@ class LMSDataController extends Controller
                     ], 404);
                 }
 
+                // IMPORTANT: Bloquer l'accès aux séances archivées pour les étudiants
+                if ($user && $user->role === 'etudiant' && !$visioData->is_active) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Cette séance n\'est plus disponible'
+                    ], 404);
+                }
+
                 // Construire la séance depuis la BDD locale
                 $dateSeance = now()->format('Y-m-d');
                 $heureDebut = $dateSeance . 'T08:00:00+00:00';
@@ -1734,7 +1761,7 @@ class LMSDataController extends Controller
                     'visio_type' => $visioData->visio_type ?? 'jitsi',
                     'visio_room_id' => $visioData->visio_room_id,
                     'visio_status' => $visioData->visio_status,
-                    'visio_participants_count' => $visioData->visio_participants_count ?? 0,
+                    'visio_participants_count' => $visioData->current_participants_count ?? 0,
                     'duree_minutes' => 120,
                     'statut' => 'programme'
                 ];
@@ -1764,7 +1791,7 @@ class LMSDataController extends Controller
                     $seance['visio_type'] = $visioData->visio_type ?? 'jitsi';
                     $seance['visio_room_id'] = $visioData->visio_room_id;
                     $seance['visio_status'] = $visioData->visio_status;
-                    $seance['visio_participants_count'] = $visioData->visio_participants_count ?? 0;
+                    $seance['visio_participants_count'] = $visioData->current_participants_count ?? 0;
 
                     // Récupérer l'enseignant depuis la BDD locale si disponible
                     // Utiliser TOUJOURS l'enseignant de la BDD locale si disponible (l'API ne le retourne pas toujours)
@@ -2039,6 +2066,7 @@ class LMSDataController extends Controller
                     // Données visio (ce qui nous intéresse vraiment)
                     'visio_enabled' => $enabled,
                     'visio_type' => $enabled ? $visioType : null,
+                    'visio_status' => $enabled ? 'programmee' : null,
                     'visio_room_id' => $enabled ? 'lms_seance_' . $seanceId . '_' . time() : null,
                     'visio_active' => false,
                     'updated_by' => $user->id,
@@ -2050,6 +2078,52 @@ class LMSDataController extends Controller
                 $visio->save();
             }
 
+            // NOUVEAU: Envoyer notifications quand visio est activée (pattern Forum/Lessons)
+            $notificationsSent = 0;
+            if ($enabled) {
+                try {
+                    // Récupérer les infos de la séance depuis Klassci pour avoir classe_id et matiere
+                    $seanceData = $this->getSeanceDataFromKlassci($seanceId, $klassciToken);
+
+                    if ($seanceData) {
+                        // Mettre à jour les IDs manquants dans la séance locale
+                        $visio->update([
+                            'klassci_matiere_id' => $seanceData['matiere_id'] ?? null,
+                            'klassci_classe_id' => $seanceData['classe_id'] ?? null,
+                            'klassci_enseignant_id' => $seanceData['enseignant_id'] ?? null,
+                            'matiere_nom' => $seanceData['matiere_nom'] ?? null,
+                            'enseignant_nom' => $seanceData['enseignant_nom'] ?? null,
+                        ]);
+
+                        // Synchroniser la classe pour avoir les étudiants
+                        if (isset($seanceData['classe_id'])) {
+                            $this->classeSyncService->syncClasseById(
+                                $seanceData['classe_id'],
+                                $klassciToken
+                            );
+                        }
+
+                        // Envoyer les notifications immédiatement (comme Forum/Lessons)
+                        $notificationsSent = $this->notificationService->notifyVisioScheduled($seanceId, [
+                            'klassci_classe_id' => $seanceData['classe_id'] ?? null,
+                            'klassci_enseignant_id' => $seanceData['enseignant_id'] ?? null,
+                            'matiere_nom' => $seanceData['matiere_nom'] ?? 'Matière',
+                            'enseignant_nom' => $seanceData['enseignant_nom'] ?? 'Enseignant',
+                        ]);
+
+                        Log::info('Notifications visio envoyées via toggleVisio', [
+                            'seance_id' => $seanceId,
+                            'notifications_sent' => $notificationsSent
+                        ]);
+                    }
+                } catch (\Exception $e) {
+                    Log::error('Erreur envoi notifications via toggleVisio', [
+                        'seance_id' => $seanceId,
+                        'error' => $e->getMessage()
+                    ]);
+                }
+            }
+
             return response()->json([
                 'success' => true,
                 'message' => $enabled ? 'Visioconférence activée avec succès' : 'Visioconférence désactivée',
@@ -2059,6 +2133,7 @@ class LMSDataController extends Controller
                     'visio_type' => $visio->visio_type,
                     'visio_room_id' => $visio->visio_room_id,
                     'visio_active' => $visio->visio_active,
+                    'notifications_sent' => $notificationsSent,
                 ]
             ]);
 
@@ -2184,6 +2259,55 @@ class LMSDataController extends Controller
                         // Récupérer info visio depuis notre BDD
                         $visioData = \App\Models\Seance::where('klassci_seance_id', $seance['id'])->first();
 
+                        // NOUVEAU: Détection automatique des séances créées dans Klassci
+                        // IMPORTANT: Toutes les séances dans Klassci sont des visios par défaut
+                        // Pas de champ visio_enabled dans l'API - toute séance = visio
+                        if (!$visioData) {
+                            try {
+                                // Synchroniser la classe pour les notifications
+                                if (isset($seance['classe']['id'])) {
+                                    $this->classeSyncService->syncClasseById(
+                                        $seance['classe']['id'],
+                                        $klassciToken
+                                    );
+                                }
+
+                                // Créer l'entrée locale
+                                $visioData = \App\Models\Seance::create([
+                                    'klassci_seance_id' => $seance['id'],
+                                    'klassci_matiere_id' => $matiere['id'],
+                                    'klassci_classe_id' => $seance['classe']['id'] ?? null,
+                                    'klassci_enseignant_id' => $user->klassci_id,
+                                    'enseignant_nom' => $user->name,
+                                    'matiere_nom' => $matiere['nom'] ?? $matiere['libelle'] ?? null,
+                                    'visio_enabled' => true,
+                                    'visio_type' => 'jitsi',
+                                    'visio_status' => 'programmee',
+                                    'visio_room_id' => 'lms_seance_' . $seance['id'] . '_' . time(),
+                                    'visio_active' => false,
+                                    'created_by' => $user->id,
+                                ]);
+
+                                // Envoyer les notifications
+                                $notificationsSent = $this->notificationService->notifyVisioScheduled($seance['id'], [
+                                    'klassci_classe_id' => $seance['classe']['id'] ?? null,
+                                    'klassci_enseignant_id' => $user->klassci_id,
+                                    'matiere_nom' => $matiere['nom'] ?? $matiere['libelle'] ?? null,
+                                    'enseignant_nom' => $user->name,
+                                ]);
+
+                                Log::info('Séance Klassci avec visio détectée - Notifications envoyées', [
+                                    'seance_id' => $seance['id'],
+                                    'notifications_sent' => $notificationsSent
+                                ]);
+                            } catch (\Exception $e) {
+                                Log::error('Erreur détection auto visio Klassci', [
+                                    'seance_id' => $seance['id'],
+                                    'error' => $e->getMessage()
+                                ]);
+                            }
+                        }
+
                         // Récupérer effectif de la classe
                         $classeEffectif = 0;
                         if (isset($seance['classe']['id'])) {
@@ -2231,13 +2355,20 @@ class LMSDataController extends Controller
                                 'id' => $user->klassci_id,
                                 'nom' => $user->name
                             ],
+                            // Infos visio (structure plate pour compatibilité frontend)
+                            'visio_enabled' => $visioData ? $visioData->visio_enabled : false,
+                            'visio_active' => $visioData ? $visioData->visio_active : false,
+                            'visio_status' => $visioData ? $visioData->visio_status : null,
+                            'visio_room_id' => $visioData ? $visioData->visio_room_id : null,
+                            // Objet visio (structure imbriquée pour compatibilité)
                             'visio' => $visioData ? [
                                 'enabled' => $visioData->visio_enabled,
+                                'active' => $visioData->visio_active,
                                 'status' => $visioData->visio_status,
                                 'room_id' => $visioData->visio_room_id,
                                 'started_at' => $visioData->visio_started_at,
                                 'ended_at' => $visioData->visio_ended_at,
-                                'participants_count' => $visioData->visio_participants_count ?? 0
+                                'participants_count' => $visioData->current_participants_count ?? 0
                             ] : null
                         ];
                     });
@@ -2350,10 +2481,32 @@ class LMSDataController extends Controller
                         return ($seance['classe']['id'] ?? null) == $classeId;
                     });
 
+                    // IMPORTANT: Pour les étudiants, filtrer aussi les séances archivées et masquées
+                    // Si une séance existe en local mais est archivée (is_active = false), ne pas la montrer
+                    $seancesClasse = $seancesClasse->filter(function ($seance) use ($user) {
+                        $localSeance = \App\Models\Seance::where('klassci_seance_id', $seance['id'])->first();
+
+                        // Si la séance existe en local mais est archivée, ne pas la montrer
+                        if ($localSeance && !$localSeance->is_active) {
+                            return false;
+                        }
+
+                        // Si la séance est masquée par l'étudiant, ne pas la montrer
+                        if ($localSeance && \App\Models\SeanceUserHidden::isHidden($localSeance->id, $user->id)) {
+                            return false;
+                        }
+
+                        // Sinon, la montrer
+                        return true;
+                    });
+
                     // Enrichir avec infos visio
                     $seancesEnrichies = $seancesClasse->map(function ($seance) use ($matiere, $matiereId) {
                         // Chercher la séance dans la BDD locale par klassci_seance_id
-                        $visioData = \App\Models\Seance::where('klassci_seance_id', $seance['id'])->first();
+                        // IMPORTANT: Les étudiants ne voient que les séances actives (is_active = true)
+                        $visioData = \App\Models\Seance::where('klassci_seance_id', $seance['id'])
+                            ->where('is_active', true)
+                            ->first();
 
                         // Si pas trouvé, chercher par nom de matière pour récupérer l'enseignant
                         $enseignantNom = 'Non assigné';
@@ -2408,7 +2561,7 @@ class LMSDataController extends Controller
                                 'status' => $visioData->visio_status,
                                 'room_id' => $visioData->visio_room_id,
                                 'started_at' => $visioData->visio_started_at,
-                                'participants_count' => $visioData->visio_participants_count ?? 0
+                                'participants_count' => $visioData->current_participants_count ?? 0
                             ] : null
                         ];
                     });
@@ -2532,6 +2685,53 @@ class LMSDataController extends Controller
                 'room_id' => $visio->visio_room_id
             ]);
 
+            // Synchroniser la classe et ses étudiants depuis Klassci
+            // pour que les notifications puissent être envoyées
+            try {
+                if ($visio->klassci_classe_id) {
+                    Log::info('Synchronisation classe pour notifications', [
+                        'klassci_classe_id' => $visio->klassci_classe_id
+                    ]);
+
+                    $classe = $this->classeSyncService->syncClasseById(
+                        $visio->klassci_classe_id,
+                        $klassciToken
+                    );
+
+                    if ($classe) {
+                        Log::info('Classe synchronisée', [
+                            'classe_id' => $classe->id,
+                            'libelle' => $classe->libelle
+                        ]);
+                    }
+                }
+            } catch (\Exception $e) {
+                Log::error('Erreur synchronisation classe', [
+                    'seance_id' => $seanceId,
+                    'error' => $e->getMessage()
+                ]);
+            }
+
+            // Envoyer les notifications aux étudiants
+            try {
+                $notificationsSent = $this->notificationService->notifyVisioScheduled($seanceId, [
+                    'klassci_classe_id' => $visio->klassci_classe_id,
+                    'klassci_enseignant_id' => $visio->klassci_enseignant_id,
+                    'matiere_nom' => $visio->matiere_nom,
+                    'enseignant_nom' => $visio->enseignant_nom,
+                ]);
+
+                Log::info('Notifications visio programmée envoyées', [
+                    'seance_id' => $seanceId,
+                    'notifications_sent' => $notificationsSent
+                ]);
+            } catch (\Exception $e) {
+                Log::error('Erreur envoi notifications visio programmée', [
+                    'seance_id' => $seanceId,
+                    'error' => $e->getMessage()
+                ]);
+            }
+
             return response()->json([
                 'success' => true,
                 'message' => 'Visioconférence activée',
@@ -2551,6 +2751,80 @@ class LMSDataController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Erreur lors de l\'activation',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * POST /api/lms/seances/{seanceId}/deactivate-visio
+     * Désactiver la visioconférence pour une séance
+     *
+     * Workflow: Enseignant désactive → visio_enabled = false
+     */
+    public function deactivateVisio(int $seanceId, Request $request): JsonResponse
+    {
+        try {
+            $user = $request->user();
+
+            $visio = \App\Models\Seance::where('klassci_seance_id', $seanceId)->first();
+
+            if (!$visio || !$visio->visio_enabled) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Visio non activée pour cette séance'
+                ], 404);
+            }
+
+            // RESTRICTION: Seul l'enseignant peut désactiver
+            if ($user->role !== 'enseignant') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Seul l\'enseignant peut désactiver la visioconférence'
+                ], 403);
+            }
+
+            // Vérifier que c'est bien l'enseignant de cette séance
+            if ($visio->klassci_enseignant_id && $visio->klassci_enseignant_id !== $user->klassci_id) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Seul l\'enseignant de cette séance peut la désactiver'
+                ], 403);
+            }
+
+            // Désactiver la visio
+            $visio->update([
+                'visio_enabled' => false,
+                'visio_type' => null,
+                'visio_status' => null,
+                'visio_room_id' => null,
+                'visio_active' => false,
+                'visio_started_at' => null,
+                'updated_by' => $user->id,
+            ]);
+
+            Log::info('Visio désactivée', [
+                'seance_id' => $seanceId,
+                'user_id' => $user->id,
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Visioconférence désactivée',
+                'data' => [
+                    'visio_enabled' => false
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Erreur désactivation visio', [
+                'seance_id' => $seanceId,
+                'error' => $e->getMessage()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur lors de la désactivation',
                 'error' => $e->getMessage()
             ], 500);
         }
@@ -2583,6 +2857,21 @@ class LMSDataController extends Controller
                 ], 400);
             }
 
+            // RESTRICTION: Seul l'enseignant peut démarrer la visio
+            if ($user->role !== 'enseignant') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Seul l\'enseignant peut démarrer la visioconférence'
+                ], 403);
+            }
+
+            // Note: La vérification stricte du klassci_enseignant_id a été supprimée
+            // Logique: Si le coordinateur a activé la visio (visio_enabled=true),
+            // tout enseignant connecté peut la démarrer. Cela évite les problèmes de:
+            // - klassci_enseignant_id NULL
+            // - Désynchronisation entre Klassci et LMS
+            // - Enseignants remplaçants ou en binôme
+
             // Démarrer la visio
             $visio->update([
                 'visio_status' => 'active',
@@ -2596,6 +2885,45 @@ class LMSDataController extends Controller
                 'user_id' => $user->id,
                 'started_at' => $visio->visio_started_at
             ]);
+
+            // Synchroniser la classe si pas déjà fait (sécurité)
+            // Normalement déjà fait lors de activateVisio, mais on s'assure
+            try {
+                if ($visio->klassci_classe_id) {
+                    $klassciToken = $user->klassci_token;
+                    if ($klassciToken) {
+                        $classe = $this->classeSyncService->syncClasseById(
+                            $visio->klassci_classe_id,
+                            $klassciToken
+                        );
+                    }
+                }
+            } catch (\Exception $e) {
+                Log::error('Erreur synchronisation classe au démarrage', [
+                    'seance_id' => $seanceId,
+                    'error' => $e->getMessage()
+                ]);
+            }
+
+            // Envoyer les notifications aux étudiants et à l'enseignant
+            try {
+                $notificationsSent = $this->notificationService->notifyVisioStarting($seanceId, [
+                    'klassci_classe_id' => $visio->klassci_classe_id,
+                    'klassci_enseignant_id' => $visio->klassci_enseignant_id,
+                    'matiere_nom' => $visio->matiere_nom,
+                    'enseignant_nom' => $visio->enseignant_nom,
+                ]);
+
+                Log::info('Notifications visio démarrée envoyées', [
+                    'seance_id' => $seanceId,
+                    'notifications_sent' => $notificationsSent
+                ]);
+            } catch (\Exception $e) {
+                Log::error('Erreur envoi notifications visio démarrée', [
+                    'seance_id' => $seanceId,
+                    'error' => $e->getMessage()
+                ]);
+            }
 
             return response()->json([
                 'success' => true,
@@ -2660,7 +2988,7 @@ class LMSDataController extends Controller
                 'seance_id' => $seanceId,
                 'user_id' => $user->id,
                 'ended_at' => $visio->visio_ended_at,
-                'participants_count' => $visio->visio_participants_count
+                'participants_count' => $visio->current_participants_count
             ]);
 
             return response()->json([
@@ -2669,7 +2997,7 @@ class LMSDataController extends Controller
                 'data' => [
                     'visio_status' => 'terminee',
                     'visio_ended_at' => $visio->visio_ended_at,
-                    'participants_count' => $visio->visio_participants_count
+                    'participants_count' => $visio->current_participants_count
                 ]
             ]);
 
@@ -2712,47 +3040,54 @@ class LMSDataController extends Controller
                 ], 400);
             }
 
-            // NOUVELLE APPROCHE SIMPLIFIÉE:
-            // Si l'étudiant peut se connecter = il est actif dans KLASSCI = accès autorisé
-            // La validation se fait à la connexion via syncStudentClasses()
+            // 🔑 RÈGLE PARTICIPANT FANTÔME
+            // Les coordinateurs sont marqués comme "observateurs" (is_observer=true)
+            // Ils ne sont PAS affichés dans la liste des participants visible
+            // Mais leur présence est tracée pour l'audit
+            $isObserver = ($user->role === 'coordinateur');
 
-            if ($user->role === 'etudiant' || $user->role === 'student') {
-                // Enregistrer la participation dans esbtp_attendance
-                $attendance = \App\Models\ESBTPAttendance::updateOrCreate(
-                    [
-                        'seance_id' => $visio->id,
-                        'user_id' => $user->id
-                    ],
-                    [
-                        'klassci_etudiant_id' => $user->klassci_id,
-                        'nom' => $user->name,
-                        'prenom' => '',
-                        'email' => $user->email,
-                        'joined_at' => now(),
-                        'last_seen_at' => now(),
-                        'status' => 'connected',
-                        'ip_address' => $request->ip(),
-                        'user_agent' => $request->userAgent(),
-                        'is_validated' => true
-                    ]
-                );
+            // Enregistrer la participation pour tous les rôles
+            // Étudiants, enseignants et coordinateurs peuvent rejoindre la visio
+            $attendance = \App\Models\ESBTPAttendance::updateOrCreate(
+                [
+                    'seance_id' => $visio->id,
+                    'user_id' => $user->id
+                ],
+                [
+                    'klassci_etudiant_id' => $user->klassci_id,
+                    'nom' => $user->name,
+                    'prenom' => '',
+                    'email' => $user->email,
+                    'joined_at' => now(),
+                    'last_seen_at' => now(),
+                    'status' => 'connected',
+                    'ip_address' => $request->ip(),
+                    'user_agent' => $request->userAgent(),
+                    'is_validated' => true,
+                    'is_observer' => $isObserver
+                ]
+            );
 
-                Log::info('Étudiant rejoint visio - participation enregistrée', [
-                    'seance_id' => $seanceId,
-                    'user_id' => $user->id,
-                    'attendance_id' => $attendance->id
-                ]);
-            }
+            $roleLabel = match($user->role) {
+                'coordinateur' => 'Coordinateur (observateur)',
+                'enseignant' => 'Enseignant',
+                default => 'Étudiant'
+            };
 
-            // Incrémenter le compteur de participants
-            $visio->increment('visio_participants_count');
+            Log::info("$roleLabel rejoint visio - participation enregistrée", [
+                'seance_id' => $seanceId,
+                'user_id' => $user->id,
+                'role' => $user->role,
+                'is_observer' => $isObserver,
+                'attendance_id' => $attendance->id
+            ]);
 
             return response()->json([
                 'success' => true,
                 'message' => 'Accès à la visio autorisé',
                 'data' => [
                     'visio_room_id' => $visio->visio_room_id,
-                    'participants_count' => $visio->visio_participants_count
+                    'participants_count' => $visio->current_participants_count
                 ]
             ]);
 
@@ -2788,8 +3123,22 @@ class LMSDataController extends Controller
                 ], 404);
             }
 
+            // 0. Déconnecter automatiquement les participants inactifs (timeout 3 minutes)
+            // 🔑 SYSTÈME DE TIMEOUT : Détecte les participants qui n'envoient plus de heartbeat
+            // et les marque automatiquement comme déconnectés
+            $disconnectedCount = \App\Models\ESBTPAttendance::disconnectInactiveParticipants(3);
+            if ($disconnectedCount > 0) {
+                \Log::info('Participants déconnectés par timeout', [
+                    'seance_id' => $seanceId,
+                    'count' => $disconnectedCount
+                ]);
+            }
+
             // 1. Récupérer les participants qui ont RÉELLEMENT rejoint (table esbtp_attendance)
+            // 🔑 RÈGLE PARTICIPANT FANTÔME : Exclure les observateurs (coordinateurs)
+            // Les observateurs ne sont PAS affichés dans la liste visible des participants
             $actualParticipants = \App\Models\ESBTPAttendance::where('seance_id', $visio->id)
+                ->where('is_observer', false)  // 🔑 EXCLUSION DES OBSERVATEURS
                 ->with('user:id,name,email,klassci_id')
                 ->orderBy('joined_at', 'desc')
                 ->get();
@@ -2901,7 +3250,15 @@ class LMSDataController extends Controller
                     // Étudiant PRÉSENT - ajouter les détails de participation
                     $attendance = $actualParticipantsById[$studentId];
 
-                    $durationMinutes = $attendance->duration_minutes ?? 0;
+                    // Calculer la durée dynamiquement si l'étudiant est toujours connecté
+                    if ($attendance->status === 'connected' && $attendance->joined_at) {
+                        // Si toujours connecté, calculer la durée depuis joined_at jusqu'à maintenant
+                        $durationMinutes = $attendance->joined_at->diffInMinutes(now());
+                    } else {
+                        // Si déconnecté, utiliser la durée enregistrée
+                        $durationMinutes = $attendance->duration_minutes ?? 0;
+                    }
+
                     $percentage = $seanceDurationMinutes > 0
                         ? round(($durationMinutes / $seanceDurationMinutes) * 100)
                         : 0;
@@ -2912,22 +3269,39 @@ class LMSDataController extends Controller
                         $attendance->joined_at,
                         $attendance->left_at,
                         $heureDebut,
-                        $heureFin
+                        $heureFin,
+                        $visio->visio_status  // Passer le statut de la visio
                     );
+
+                    // Formatter la durée dynamiquement
+                    $hours = floor($durationMinutes / 60);
+                    $minutes = $durationMinutes % 60;
+                    $durationFormatted = $hours > 0 ? "{$hours}h {$minutes}min" : "{$minutes}min";
+
+                    // Déterminer left_at dynamiquement si toujours connecté
+                    $leftAt = $attendance->left_at;
+                    $leftAtFull = $attendance->left_at?->format('Y-m-d H:i:s');
+                    $leftAtDisplay = $attendance->left_at?->format('H:i');
+
+                    if ($attendance->status === 'connected') {
+                        $leftAtDisplay = 'En cours';
+                        $leftAtFull = null; // NULL = toujours connecté
+                    }
 
                     $studentData = array_merge($studentData, [
                         'status' => $status['label'],
                         'status_icon' => $status['icon'],
                         'percentage' => $percentage,
                         'duration_minutes' => $durationMinutes,
-                        'duration_formatted' => $attendance->formatted_duration,
+                        'duration_formatted' => $durationFormatted,
                         'joined_at' => $attendance->joined_at?->format('H:i'),
-                        'left_at' => $attendance->left_at?->format('H:i'),
+                        'left_at' => $leftAtDisplay,
                         'joined_at_full' => $attendance->joined_at?->format('Y-m-d H:i:s'),
-                        'left_at_full' => $attendance->left_at?->format('Y-m-d H:i:s'),
+                        'left_at_full' => $leftAtFull,
                         'is_late' => $status['is_late'],
                         'left_early' => $status['left_early'],
-                        'is_present' => true
+                        'is_present' => true,
+                        'is_connected' => $attendance->status === 'connected' // Nouveau champ
                     ]);
                 } else {
                     // Étudiant ABSENT
@@ -2965,7 +3339,8 @@ class LMSDataController extends Controller
             });
 
             // 7. Calculer les statistiques globales
-            $presentCount = count(array_filter($unifiedList, fn($s) => $s['is_present']));
+            // Compter seulement les participants ENCORE CONNECTÉS (pas ceux qui ont quitté)
+            $presentCount = count(array_filter($unifiedList, fn($s) => ($s['is_connected'] ?? false)));
             $absentCount = count($unifiedList) - $presentCount;
             $lateCount = count(array_filter($unifiedList, fn($s) => $s['is_late'] ?? false));
             $leftEarlyCount = count(array_filter($unifiedList, fn($s) => $s['left_early'] ?? false));
@@ -2989,14 +3364,27 @@ class LMSDataController extends Controller
                 'left_early_count' => $leftEarlyCount,
                 'average_percentage' => $averagePercentage,
                 'average_duration_minutes' => $averageDuration,
-                'seance_duration_minutes' => $seanceDurationMinutes
+                'seance_duration_minutes' => $seanceDurationMinutes,
+                'visio_status' => $visio->visio_status  // Ajouter pour conditionner affichage %
+            ];
+
+            // Récupérer l'info enseignant depuis la table seances
+            $teacherInfo = [
+                'nom' => $visio->enseignant_nom ?? null,
+                'prenom' => $visio->enseignant_prenom ?? null,
             ];
 
             return response()->json([
                 'success' => true,
                 'data' => [
                     'students' => $unifiedList,
-                    'statistics' => $stats
+                    'statistics' => $stats,
+                    'teacher' => $teacherInfo,
+                    'seance' => [
+                        'id' => $seanceId,
+                        'matiere' => $visio->matiere_nom,
+                        'classe_id' => $visio->klassci_classe_id,
+                    ]
                 ]
             ]);
 
@@ -3018,7 +3406,7 @@ class LMSDataController extends Controller
     /**
      * Détermine le statut de présence d'un étudiant
      */
-    private function determineAttendanceStatus($percentage, $joinedAt, $leftAt, $heureDebut, $heureFin): array
+    private function determineAttendanceStatus($percentage, $joinedAt, $leftAt, $heureDebut, $heureFin, $visioStatus = null): array
     {
         $RETARD_SEUIL_MINUTES = 5;
 
@@ -3065,19 +3453,31 @@ class LMSDataController extends Controller
             ];
         } elseif ($percentage >= 90) {
             return [
-                'label' => "Présent ({$percentage}%)",
+                'label' => $visioStatus === 'terminee' ? "Présent ({$percentage}%)" : "Présent",
                 'icon' => '✅',
                 'is_late' => $isLate,
                 'left_early' => $leftEarly
             ];
         } elseif ($percentage >= 50) {
-            $label = "Présent ({$percentage}%)";
-            if ($isLate && $leftEarly) {
-                $label = "Partiel ({$percentage}%)";
-            } elseif ($isLate) {
-                $label = "Retard ({$percentage}%)";
-            } elseif ($leftEarly) {
-                $label = "Départ anticipé ({$percentage}%)";
+            if ($visioStatus === 'terminee') {
+                $label = "Présent ({$percentage}%)";
+                if ($isLate && $leftEarly) {
+                    $label = "Partiel ({$percentage}%)";
+                } elseif ($isLate) {
+                    $label = "Retard ({$percentage}%)";
+                } elseif ($leftEarly) {
+                    $label = "Départ anticipé ({$percentage}%)";
+                }
+            } else {
+                // Pendant la visio active : pas de pourcentage
+                $label = "Présent";
+                if ($isLate && $leftEarly) {
+                    $label = "Partiel";
+                } elseif ($isLate) {
+                    $label = "Retard";
+                } elseif ($leftEarly) {
+                    $label = "Départ anticipé";
+                }
             }
 
             return [
@@ -3088,7 +3488,7 @@ class LMSDataController extends Controller
             ];
         } else {
             return [
-                'label' => "Présent ({$percentage}%)",
+                'label' => $visioStatus === 'terminee' ? "Présent ({$percentage}%)" : "Présent",
                 'icon' => '⚠️',
                 'is_late' => $isLate,
                 'left_early' => $leftEarly
@@ -3218,6 +3618,136 @@ class LMSDataController extends Controller
     }
 
     /**
+     * POST /api/lms/seances/{id}/hide
+     * Masquer une séance pour l'utilisateur connecté
+     *
+     * Permet à un étudiant de masquer une séance de sa vue personnelle
+     * sans affecter les autres utilisateurs
+     */
+    public function hideSeance(int $seanceId, Request $request): JsonResponse
+    {
+        try {
+            $user = $request->user();
+
+            // Vérifier que c'est bien un étudiant
+            if ($user->role !== 'etudiant') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Seuls les étudiants peuvent masquer des séances'
+                ], 403);
+            }
+
+            // Vérifier que la séance existe
+            $seance = \App\Models\Seance::where('id', $seanceId)
+                ->orWhere('klassci_seance_id', $seanceId)
+                ->first();
+
+            if (!$seance) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Séance non trouvée'
+                ], 404);
+            }
+
+            // Masquer la séance
+            \App\Models\SeanceUserHidden::hide($seance->id, $user->id);
+
+            Log::info('Séance masquée par étudiant', [
+                'seance_id' => $seance->id,
+                'user_id' => $user->id,
+                'matiere' => $seance->matiere_nom
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Séance masquée avec succès',
+                'data' => [
+                    'seance_id' => $seance->id,
+                    'hidden_at' => now()->format('Y-m-d H:i:s')
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Erreur masquage séance', [
+                'seance_id' => $seanceId,
+                'error' => $e->getMessage()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur lors du masquage de la séance',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * POST /api/lms/seances/{id}/unhide
+     * Réafficher une séance précédemment masquée
+     */
+    public function unhideSeance(int $seanceId, Request $request): JsonResponse
+    {
+        try {
+            $user = $request->user();
+
+            // Vérifier que c'est bien un étudiant
+            if ($user->role !== 'etudiant') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Seuls les étudiants peuvent gérer le masquage'
+                ], 403);
+            }
+
+            // Vérifier que la séance existe
+            $seance = \App\Models\Seance::where('id', $seanceId)
+                ->orWhere('klassci_seance_id', $seanceId)
+                ->first();
+
+            if (!$seance) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Séance non trouvée'
+                ], 404);
+            }
+
+            // Réafficher la séance
+            $unHidden = \App\Models\SeanceUserHidden::unhide($seance->id, $user->id);
+
+            if (!$unHidden) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'La séance n\'était pas masquée'
+                ], 404);
+            }
+
+            Log::info('Séance réaffichée par étudiant', [
+                'seance_id' => $seance->id,
+                'user_id' => $user->id
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Séance réaffichée avec succès',
+                'data' => [
+                    'seance_id' => $seance->id
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Erreur réaffichage séance', [
+                'seance_id' => $seanceId,
+                'error' => $e->getMessage()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur lors du réaffichage de la séance',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
      * GET /api/admin/matieres
      * Liste toutes les matières avec leurs combinaisons complètes (pour admin/coordinateur)
      *
@@ -3304,6 +3834,8 @@ class LMSDataController extends Controller
                         'couleur' => $matiere['couleur'] ?? '#6366f1',
                         'heures_total' => $matiere['heures_total'] ?? 0,
                         'nb_seances_programmees' => $matiere['nb_seances_programmees'] ?? 0,
+                        'nb_lecons' => $matiere['nb_lecons'] ?? 0,
+                        'nb_evaluations' => $matiere['nb_evaluations'] ?? 0,
                         'combinaisons' => $combinaisons // Combinaisons complètes avec filière/niveau
                     ];
 
@@ -3329,6 +3861,8 @@ class LMSDataController extends Controller
                         'couleur' => $matiere['couleur'] ?? '#6366f1',
                         'heures_total' => $matiere['heures_total'] ?? 0,
                         'nb_seances_programmees' => $matiere['nb_seances_programmees'] ?? 0,
+                        'nb_lecons' => $matiere['nb_lecons'] ?? 0,
+                        'nb_evaluations' => $matiere['nb_evaluations'] ?? 0,
                         'combinaisons' => []
                     ];
                 }
@@ -3564,7 +4098,7 @@ class LMSDataController extends Controller
                     ->map(function($classe) {
                         return [
                             'id' => $classe->id,
-                            'nom' => $classe->nom,
+                            'nom' => $classe->libelle,
                             'filiere' => [
                                 'id' => $classe->filiere_id,
                                 'nom' => $classe->filiere_nom
@@ -4013,6 +4547,184 @@ class LMSDataController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Erreur lors du chargement des matières: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Récupérer les données d'une séance depuis Klassci
+     * Cherche dans toutes les matières pour trouver la séance
+     */
+    private function getSeanceDataFromKlassci(int $seanceId, string $klassciToken): ?array
+    {
+        try {
+            // Récupérer toutes les matières de l'enseignant
+            $matieres = $this->klassciService->requestWithUserToken($klassciToken, 'matieres', 'GET');
+
+            foreach ($matieres['data'] ?? [] as $matiere) {
+                // Récupérer les détails de chaque matière
+                $details = $this->klassciService->requestWithUserToken(
+                    $klassciToken,
+                    "matieres/{$matiere['id']}",
+                    'GET'
+                );
+
+                $seances = $details['data']['seances_programmees'] ?? [];
+
+                // Chercher la séance
+                foreach ($seances as $seance) {
+                    if ($seance['id'] == $seanceId) {
+                        // Séance trouvée!
+                        return [
+                            'matiere_id' => $matiere['id'],
+                            'matiere_nom' => $matiere['nom'] ?? $matiere['libelle'] ?? null,
+                            'classe_id' => $seance['classe']['id'] ?? null,
+                            'classe_nom' => $seance['classe']['nom'] ?? null,
+                            'enseignant_id' => $details['data']['enseignant']['id'] ?? null,
+                            'enseignant_nom' => $details['data']['enseignant']['nom_complet'] ?? null,
+                        ];
+                    }
+                }
+            }
+
+            return null;
+
+        } catch (\Exception $e) {
+            Log::error('Erreur récupération données séance Klassci', [
+                'seance_id' => $seanceId,
+                'error' => $e->getMessage()
+            ]);
+            return null;
+        }
+    }
+
+    /**
+     * GET /api/attendance/history
+     * Récupérer l'historique des présences (accessible même si séance archivée)
+     *
+     * @param Request $request
+     * @return JsonResponse
+     */
+    public function getAttendanceHistory(Request $request): JsonResponse
+    {
+        try {
+            $user = $request->user();
+
+            // Paramètres de filtrage
+            $seanceId = $request->input('seance_id');
+            $dateFrom = $request->input('date_from');
+            $dateTo = $request->input('date_to');
+            $matiereId = $request->input('matiere_id');
+            $classeId = $request->input('classe_id');
+
+            // Construire la requête de base
+            $query = \App\Models\ESBTPAttendance::with(['user:id,name,email', 'seance'])
+                ->orderBy('joined_at', 'desc');
+
+            // Filtre selon le rôle
+            if ($user->role === 'enseignant') {
+                // L'enseignant ne voit que les présences de ses propres séances
+                $query->whereHas('seance', function($q) use ($user) {
+                    $q->where('enseignant_id', $user->id);
+                });
+            } else if ($user->role === 'etudiant') {
+                // L'étudiant ne voit que ses propres présences
+                $query->where('user_id', $user->id);
+            }
+            // Les coordinateurs/superAdmin voient tout
+
+            // Filtres optionnels
+            if ($seanceId) {
+                $seanceLocal = \App\Models\Seance::where('klassci_seance_id', $seanceId)->first();
+                if ($seanceLocal) {
+                    $query->where('seance_id', $seanceLocal->id);
+                }
+            }
+
+            if ($dateFrom) {
+                $query->where('joined_at', '>=', $dateFrom);
+            }
+
+            if ($dateTo) {
+                $query->where('joined_at', '<=', $dateTo . ' 23:59:59');
+            }
+
+            // Pagination
+            $perPage = $request->input('per_page', 50);
+            $attendances = $query->paginate($perPage);
+
+            // Enrichir les données avec les infos KLASSCI si disponibles
+            $enrichedData = $attendances->getCollection()->map(function($attendance) use ($request) {
+                $data = [
+                    'id' => $attendance->id,
+                    'user' => [
+                        'id' => $attendance->user?->id ?? 0,
+                        'name' => $attendance->user?->name ?? 'Utilisateur supprimé',
+                        'email' => $attendance->user?->email ?? '',
+                    ],
+                    'seance' => [
+                        'id' => $attendance->seance?->id ?? 0,
+                        'klassci_seance_id' => $attendance->seance?->klassci_seance_id ?? 'N/A',
+                        'date' => $attendance->seance?->date_seance ?? null,
+                        'matiere' => null,
+                        'classe' => null
+                    ],
+                    'joined_at' => $attendance->joined_at?->format('Y-m-d H:i:s'),
+                    'left_at' => $attendance->left_at?->format('Y-m-d H:i:s'),
+                    'last_seen_at' => $attendance->last_seen_at?->format('Y-m-d H:i:s'),
+                    'status' => $attendance->status,
+                    'duration_minutes' => null,
+                ];
+
+                // Calculer la durée
+                if ($attendance->joined_at && $attendance->left_at) {
+                    $data['duration_minutes'] = $attendance->joined_at->diffInMinutes($attendance->left_at);
+                }
+
+                // Essayer de récupérer les infos KLASSCI de la séance
+                if ($attendance->seance && $attendance->seance->klassci_seance_id) {
+                    try {
+                        $seanceDetails = $this->seanceDetails($attendance->seance->klassci_seance_id, $request);
+                    $seanceData = json_decode($seanceDetails->getContent(), true);
+
+                    if ($seanceData['success'] && isset($seanceData['data']['seance'])) {
+                        $data['seance']['matiere'] = $seanceData['data']['seance']['matiere'] ?? null;
+                        $data['seance']['classe'] = $seanceData['data']['seance']['classe'] ?? null;
+                        $data['seance']['programmation'] = $seanceData['data']['seance']['programmation'] ?? null;
+                    }
+                    } catch (\Exception $e) {
+                        // Ignorer les erreurs de récupération KLASSCI (séance peut être archivée)
+                        Log::debug('Impossible de récupérer détails KLASSCI pour historique', [
+                            'seance_id' => $attendance->seance->klassci_seance_id,
+                            'error' => $e->getMessage()
+                        ]);
+                    }
+                }
+
+                return $data;
+            });
+
+            return response()->json([
+                'success' => true,
+                'data' => $enrichedData,
+                'pagination' => [
+                    'current_page' => $attendances->currentPage(),
+                    'per_page' => $attendances->perPage(),
+                    'total' => $attendances->total(),
+                    'last_page' => $attendances->lastPage(),
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Erreur récupération historique présences', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur lors de la récupération de l\'historique',
+                'error' => $e->getMessage()
             ], 500);
         }
     }

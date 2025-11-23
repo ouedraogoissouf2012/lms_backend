@@ -4,6 +4,7 @@ namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
 use App\Services\KlassciProxyService;
+use App\Services\ClasseSyncService;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -20,7 +21,8 @@ use Illuminate\Validation\ValidationException;
 class AuthController extends Controller
 {
     public function __construct(
-        private KlassciProxyService $klassciService
+        private KlassciProxyService $klassciService,
+        private ClasseSyncService $classeSyncService
     ) {}
 
     /**
@@ -120,6 +122,22 @@ class AuthController extends Controller
                     // Créer un token Sanctum pour l'utilisateur local
                     $sanctumToken = $localUser->createToken('lms-backend-token', ['lms:access'])->plainTextToken;
 
+                    // Synchroniser les classes de l'utilisateur en arrière-plan (non-bloquant)
+                    // Cela permet aux notifications de fonctionner correctement
+                    $syncStats = null;
+                    try {
+                        $syncStats = $this->classeSyncService->syncUserClasses($klassciToken, $localUser->role);
+                        Log::info('Classes synchronisées au login', [
+                            'user_id' => $localUser->id,
+                            'stats' => $syncStats
+                        ]);
+                    } catch (\Exception $syncError) {
+                        Log::warning('Erreur synchronisation classes au login', [
+                            'user_id' => $localUser->id,
+                            'error' => $syncError->getMessage()
+                        ]);
+                    }
+
                     return response()->json([
                         'success' => true,
                         'message' => 'Connexion réussie (KLASSCI)',
@@ -145,6 +163,11 @@ class AuthController extends Controller
                             'klassci_synced' => true,
                             'klassci_token' => $klassciToken, // Conserver le token KLASSCI pour les appels proxy
                             'annee_universitaire_courante' => $klassciResponse['meta']['annee_universitaire_courante'] ?? null,
+                            'classes_sync' => $syncStats ? [
+                                'classes_created' => $syncStats['classes_created'],
+                                'students_synced' => $syncStats['students_synced'],
+                                'enrollments_created' => $syncStats['enrollments_created'],
+                            ] : null,
                         ],
                     ]);
                 } catch (\Exception $syncError) {
@@ -364,14 +387,31 @@ class AuthController extends Controller
 
         if ($user) {
             // Mettre à jour l'utilisateur existant
-            // Si le klassci_id a changé, on le met à jour
+            // IMPORTANT: Vérifier si le klassci_id n'est pas déjà utilisé par quelqu'un d'autre
             if ($user->klassci_id != $klassciId) {
-                Log::info('KLASSCI ID mis à jour pour utilisateur', [
-                    'user_id' => $user->id,
-                    'email' => $email,
-                    'ancien_klassci_id' => $user->klassci_id,
-                    'nouveau_klassci_id' => $klassciId
-                ]);
+                $existingUserWithKlassciId = User::where('klassci_id', $klassciId)
+                    ->where('id', '!=', $user->id)
+                    ->first();
+
+                if ($existingUserWithKlassciId) {
+                    // Le klassci_id est déjà utilisé par un autre utilisateur
+                    Log::warning('KLASSCI ID déjà utilisé par un autre utilisateur', [
+                        'user_id' => $user->id,
+                        'email' => $email,
+                        'klassci_id_souhaité' => $klassciId,
+                        'déjà_utilisé_par' => $existingUserWithKlassciId->email,
+                    ]);
+
+                    // Ne PAS mettre à jour le klassci_id, garder l'ancien
+                    unset($userData['klassci_id']);
+                } else {
+                    Log::info('KLASSCI ID mis à jour pour utilisateur', [
+                        'user_id' => $user->id,
+                        'email' => $email,
+                        'ancien_klassci_id' => $user->klassci_id,
+                        'nouveau_klassci_id' => $klassciId
+                    ]);
+                }
             }
             $user->update($userData);
         } else {

@@ -1,0 +1,85 @@
+FIX: Permettre au coordinateur de rejoindre une visio en cours
+
+PROBLÈME:
+- Le coordinateur est considéré comme "teacher" (isTeacher = true)
+- Mais quand la visio est active (status = 'active'), il n'a aucun bouton
+- Il voit seulement "La fenêtre pour démarrer le cours est fermée"
+
+CAUSE:
+- Ligne 102: Bouton "Démarrer" affiché seulement si `visio.window?.can_start`
+- Une fois le cours démarré, `can_start` devient false
+- Le coordinateur n'a plus de bouton pour rejoindre
+
+SOLUTION:
+Ajouter une condition pour afficher le bouton "Rejoindre" quand status = 'active'
+
+FICHIER: lms-frontend/src/views/seances/SeanceDetails.vue
+
+LIGNE 99-116 (AVANT):
+```vue
+        <!-- Bouton Enseignant -->
+        <div v-if="isTeacher">
+          <button
+            v-if="visio.window?.can_start"
+            @click="startVisio"
+            class="w-full px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition flex items-center justify-center gap-2"
+          >
+            <span class="btn-icon">▶</span> Démarrer le cours
+          </button>
+          <div v-else class="text-center py-4 text-gray-600">
+            <p v-if="!visio.window?.has_started">
+              Vous pourrez démarrer le cours 15 minutes avant l'heure prévue
+            </p>
+            <p v-else>
+              La fenêtre pour démarrer le cours est fermée
+            </p>
+          </div>
+        </div>
+```
+
+LIGNE 99-133 (APRÈS):
+```vue
+        <!-- Bouton Enseignant / Coordinateur -->
+        <div v-if="isTeacher">
+          <!-- Si le cours est déjà actif, permettre de rejoindre (pour coordinateur aussi) -->
+          <div v-if="visio.status === 'active'">
+            <div class="mb-3 p-3 bg-red-50 border-2 border-red-400 rounded-lg text-center">
+              <span class="text-red-600 font-bold text-lg">🔴 COURS EN DIRECT</span>
+            </div>
+            <button
+              @click="joinVisio"
+              class="w-full px-6 py-3 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg transition flex items-center justify-center gap-2"
+            >
+              <span class="btn-icon">◉</span> Rejoindre le cours
+            </button>
+          </div>
+          <!-- Sinon, afficher le bouton de démarrage (enseignant seulement) -->
+          <div v-else>
+            <button
+              v-if="visio.window?.can_start"
+              @click="startVisio"
+              class="w-full px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition flex items-center justify-center gap-2"
+            >
+              <span class="btn-icon">▶</span> Démarrer le cours
+            </button>
+            <div v-else class="text-center py-4 text-gray-600">
+              <p v-if="!visio.window?.has_started">
+                Vous pourrez démarrer le cours 15 minutes avant l'heure prévue
+              </p>
+              <p v-else>
+                La fenêtre pour démarrer le cours est fermée
+              </p>
+            </div>
+          </div>
+        </div>
+```
+
+CHANGEMENTS:
+1. Ajout d'un `v-if="visio.status === 'active'"` en premier
+2. Si actif → Afficher "COURS EN DIRECT" + bouton "Rejoindre"
+3. Sinon → Afficher le bouton "Démarrer" (comme avant)
+
+RÉSULTAT:
+✅ Coordinateur voit le bouton "Rejoindre" quand le cours est en direct
+✅ Enseignant peut rejoindre même s'il n'a pas démarré le cours
+✅ Les étudiants ne sont pas affectés (code séparé ligne 119+)

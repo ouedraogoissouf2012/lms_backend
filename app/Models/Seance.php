@@ -28,6 +28,9 @@ class Seance extends Model
         'visio_participants_count',
         'created_by',
         'updated_by',
+        'is_active',
+        'archived_at',
+        'archive_reason',
     ];
 
     protected $casts = [
@@ -35,7 +38,25 @@ class Seance extends Model
         'visio_active' => 'boolean',
         'visio_started_at' => 'datetime',
         'visio_ended_at' => 'datetime',
+        'is_active' => 'boolean',
+        'archived_at' => 'datetime',
     ];
+
+    protected $attributes = [
+        'is_active' => true,
+    ];
+
+    protected $appends = ['current_participants_count'];
+
+    /**
+     * Compte les participants actuellement connectés
+     */
+    public function getCurrentParticipantsCountAttribute(): int
+    {
+        return ESBTPAttendance::where('seance_id', $this->id)
+            ->where('status', 'connected')
+            ->count();
+    }
 
     /**
      * Vérifie si la visio est activée

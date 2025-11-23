@@ -460,6 +460,10 @@ Route::middleware(['auth:sanctum', 'klassci.sync'])->prefix('lms')->group(functi
     Route::post('/attendances/from-video-session', [LMSDataController::class, 'syncAttendancesFromVideoSession'])
         ->name('lms.attendances.from-video-session');
 
+    // Historique des présences (accessible même si séances archivées)
+    Route::get('/attendance/history', [LMSDataController::class, 'getAttendanceHistory'])
+        ->name('lms.attendance.history');
+
     // Matières de l'enseignant connecté avec statistiques enrichies
     Route::get('/teacher/my-matieres', [LMSDataController::class, 'myMatieres'])
         ->name('lms.teacher.my-matieres')
@@ -478,6 +482,10 @@ Route::middleware(['auth:sanctum', 'klassci.sync'])->prefix('lms')->group(functi
     Route::post('/seances/{seanceId}/activate-visio', [LMSDataController::class, 'activateVisio'])
         ->name('lms.seances.activate-visio')
         ->middleware('role:enseignant,coordinateur');
+
+    Route::post('/seances/{seanceId}/deactivate-visio', [LMSDataController::class, 'deactivateVisio'])
+        ->name('lms.seances.deactivate-visio')
+        ->middleware('role:enseignant');
 
     Route::post('/seances/{seanceId}/start-visio', [LMSDataController::class, 'startVisio'])
         ->name('lms.seances.start-visio')
@@ -502,6 +510,16 @@ Route::middleware(['auth:sanctum', 'klassci.sync'])->prefix('lms')->group(functi
     // Liste des participants à une visio
     Route::get('/seances/{seanceId}/participants', [LMSDataController::class, 'getVisioParticipants'])
         ->name('lms.seances.participants');
+
+    // Masquer une séance (étudiant uniquement)
+    Route::post('/seances/{seanceId}/hide', [LMSDataController::class, 'hideSeance'])
+        ->name('lms.seances.hide')
+        ->middleware('role:etudiant');
+
+    // Réafficher une séance (étudiant uniquement)
+    Route::post('/seances/{seanceId}/unhide', [LMSDataController::class, 'unhideSeance'])
+        ->name('lms.seances.unhide')
+        ->middleware('role:etudiant');
 
     // ============================================
     // NOTIFICATIONS
@@ -570,8 +588,8 @@ Route::middleware(['auth:sanctum', 'klassci.sync', 'role:enseignant,coordinateur
     Route::post('evaluations/{id}/sync-to-klassci', [EvaluationController::class, 'syncToKlassci']);
 });
 
-// Routes admin/coordinateur uniquement pour résultats d'évaluations
-Route::middleware(['auth:sanctum', 'klassci.sync', 'role:coordinateur,superAdmin'])->group(function () {
+// Routes admin/coordinateur/enseignant pour résultats d'évaluations
+Route::middleware(['auth:sanctum', 'klassci.sync', 'role:enseignant,coordinateur,superAdmin'])->group(function () {
     // Résultats détaillés d'une évaluation avec tous les étudiants de la classe
     Route::get('evaluations/{id}/results-by-class', [EvaluationController::class, 'getResultsByClass']);
 });

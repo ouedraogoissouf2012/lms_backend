@@ -79,7 +79,11 @@
       "Bash(dir \"@chapter\")",
       "Bash(node revert_visio_manager.js:*)",
       "Bash(node:*)",
-      "Bash(test:*)"
+      "Bash(test:*)",
+      "Bash(git rm:*)",
+      "Bash(move /Y appServicesFileConversionService.php.new appServicesFileConversionService.php)",
+      "Bash(move /Y composer.lock.new composer.lock:*)",
+      "Bash(git pull:*)"
     ],
     "deny": [],
     "ask": []

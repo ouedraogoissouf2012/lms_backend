@@ -11,6 +11,9 @@ return new class extends Migration
      */
     public function up(): void
     {
+        if (Schema::hasTable('knowledge_check_attempts')) {
+            return;
+        }
         Schema::create('knowledge_check_attempts', function (Blueprint $table) {
             $table->id();
 

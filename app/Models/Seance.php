@@ -17,6 +17,9 @@ class Seance extends Model
         'klassci_enseignant_id',
         'enseignant_nom',
         'matiere_nom',
+        'classe_nom',
+        'titre',
+        'date_seance',
         'classe_effectif',
         'visio_enabled',
         'visio_type',
@@ -40,6 +43,7 @@ class Seance extends Model
         'visio_ended_at' => 'datetime',
         'is_active' => 'boolean',
         'archived_at' => 'datetime',
+        'date_seance' => 'datetime',
     ];
 
     protected $attributes = [
@@ -134,6 +138,14 @@ class Seance extends Model
         $this->visio_ended_at = Carbon::now();
         $this->status = 'terminee';
         $this->save();
+    }
+
+    /**
+     * Relation: toutes les participations à cette séance
+     */
+    public function attendances()
+    {
+        return $this->hasMany(ESBTPAttendance::class, 'seance_id');
     }
 
     /**

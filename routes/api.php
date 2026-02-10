@@ -247,6 +247,27 @@ Route::middleware(['auth:sanctum', 'klassci.sync', 'role:enseignant,coordinateur
 });
 
 // ============================================
+// KNOWLEDGE CHECKS (Quiz "Testez vos connaissances")
+// ============================================
+use App\Http\Controllers\API\KnowledgeCheckController;
+
+Route::middleware(['auth:sanctum', 'klassci.sync'])->group(function () {
+    // Liste des quiz d'un chapitre
+    Route::get('knowledge-checks', [KnowledgeCheckController::class, 'index']);
+    Route::get('knowledge-checks/{id}', [KnowledgeCheckController::class, 'show']);
+
+    // Tentatives (étudiants)
+    Route::post('knowledge-checks/{id}/start', [KnowledgeCheckController::class, 'startAttempt']);
+    Route::post('knowledge-checks/{id}/submit', [KnowledgeCheckController::class, 'submitAttempt']);
+    Route::get('knowledge-checks/{id}/my-attempts', [KnowledgeCheckController::class, 'myAttempts']);
+
+    // CRUD (enseignants/admins)
+    Route::post('knowledge-checks', [KnowledgeCheckController::class, 'store']);
+    Route::put('knowledge-checks/{id}', [KnowledgeCheckController::class, 'update']);
+    Route::delete('knowledge-checks/{id}', [KnowledgeCheckController::class, 'destroy']);
+});
+
+// ============================================
 // LESSONS (Cours/Leçons) - Routes protégées
 // ============================================
 use App\Http\Controllers\API\LessonController;
@@ -255,6 +276,7 @@ use App\Http\Controllers\API\LessonController;
 Route::middleware(['auth:sanctum', 'klassci.sync'])->group(function () {
     // Liste et consultation des cours
     Route::get('lessons', [LessonController::class, 'index']);
+    Route::get('lessons/my-courses', [LessonController::class, 'myCourses']); // Cours de l'étudiant avec filtres
     Route::get('lessons/{id}', [LessonController::class, 'show']);
 
     // Progression (Tous peuvent voir leur progression)
@@ -438,6 +460,20 @@ Route::middleware(['auth:sanctum', 'klassci.sync'])->prefix('lms')->group(functi
     // Séances à venir (pré-création rooms)
     Route::get('/seances/upcoming', [LMSDataController::class, 'upcomingSeances'])
         ->name('lms.seances.upcoming');
+
+    // Historique des séances (séances ayant eu une visio) - DOIT être AVANT {seanceId}
+    Route::get('/seances/history', [LMSDataController::class, 'getSeancesHistory'])
+        ->name('lms.seances.history')
+        ->middleware('role:enseignant,coordinateur,superAdmin');
+
+    // Présences détaillées d'une séance
+    Route::get('/seances/{seanceId}/attendances', [LMSDataController::class, 'getSeanceAttendances'])
+        ->name('lms.seances.attendances');
+
+    // Suppression d'une séance (soft delete)
+    Route::delete('/seances/{seanceId}', [LMSDataController::class, 'deleteSeance'])
+        ->name('lms.seances.delete')
+        ->middleware('role:enseignant,coordinateur,superAdmin');
 
     // Détails complets d'une séance (avec infos visio)
     Route::get('/seances/{seanceId}/details', [LMSDataController::class, 'seanceDetails'])

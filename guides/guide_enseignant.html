@@ -1,0 +1,1185 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Guide Utilisateur - Enseignant | KLASSCI LMS</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.7;
+            color: #1e293b;
+            background: #f8fafc;
+        }
+
+        /* Header */
+        .header {
+            background: linear-gradient(135deg, #1a56db 0%, #1e40af 100%);
+            color: white;
+            padding: 60px 0;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+        .header::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+        }
+        .header h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 10px;
+            position: relative;
+        }
+        .header .subtitle {
+            font-size: 1.2rem;
+            opacity: 0.9;
+            position: relative;
+        }
+        .header .badge {
+            display: inline-block;
+            background: rgba(255,255,255,0.2);
+            padding: 6px 20px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            margin-top: 15px;
+            position: relative;
+        }
+
+        /* Navigation latérale */
+        .container {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+
+        /* Table des matières */
+        .toc {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            margin-bottom: 40px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            border-left: 4px solid #1a56db;
+        }
+        .toc h2 {
+            color: #1a56db;
+            margin-bottom: 15px;
+            font-size: 1.3rem;
+        }
+        .toc ol {
+            padding-left: 20px;
+        }
+        .toc li {
+            margin: 8px 0;
+        }
+        .toc a {
+            color: #475569;
+            text-decoration: none;
+            transition: color 0.2s;
+        }
+        .toc a:hover {
+            color: #1a56db;
+        }
+
+        /* Sections */
+        .section {
+            background: white;
+            border-radius: 12px;
+            padding: 35px;
+            margin-bottom: 30px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .section h2 {
+            color: #1a56db;
+            font-size: 1.6rem;
+            margin-bottom: 8px;
+            padding-bottom: 12px;
+            border-bottom: 2px solid #e2e8f0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .section h2 .step-num {
+            background: #1a56db;
+            color: white;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1rem;
+            flex-shrink: 0;
+        }
+        .section h3 {
+            color: #334155;
+            font-size: 1.15rem;
+            margin: 20px 0 10px;
+        }
+        .section p {
+            color: #475569;
+            margin: 10px 0;
+        }
+
+        /* Images */
+        .screenshot {
+            margin: 20px 0;
+            text-align: center;
+        }
+        .screenshot img {
+            max-width: 100%;
+            border-radius: 8px;
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        .screenshot .caption {
+            font-size: 0.85rem;
+            color: #64748b;
+            margin-top: 8px;
+            font-style: italic;
+        }
+
+        /* Info boxes */
+        .info-box {
+            background: #eff6ff;
+            border-left: 4px solid #1a56db;
+            padding: 15px 20px;
+            border-radius: 0 8px 8px 0;
+            margin: 15px 0;
+        }
+        .info-box.warning {
+            background: #fef3c7;
+            border-left-color: #f59e0b;
+        }
+        .info-box.success {
+            background: #ecfdf5;
+            border-left-color: #10b981;
+        }
+        .info-box strong {
+            display: block;
+            margin-bottom: 4px;
+        }
+
+        /* Steps list */
+        .steps {
+            list-style: none;
+            padding: 0;
+            counter-reset: step;
+        }
+        .steps li {
+            counter-increment: step;
+            padding: 8px 0 8px 40px;
+            position: relative;
+            color: #475569;
+        }
+        .steps li::before {
+            content: counter(step);
+            position: absolute;
+            left: 0;
+            top: 8px;
+            width: 28px;
+            height: 28px;
+            background: #dbeafe;
+            color: #1a56db;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+
+        /* Footer */
+        .footer {
+            text-align: center;
+            padding: 40px 20px;
+            color: #94a3b8;
+            font-size: 0.9rem;
+        }
+
+        /* Print styles */
+        @media print {
+            .header { padding: 30px 0; }
+            .section { break-inside: avoid; box-shadow: none; border: 1px solid #e2e8f0; }
+            .screenshot img { max-width: 80%; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <h1>Guide Utilisateur Enseignant</h1>
+    <div class="subtitle">Plateforme KLASSCI LMS</div>
+    <div class="badge">Profil : Enseignant</div>
+</div>
+
+<div class="container">
+
+    <!-- Table des matières -->
+    <div class="toc">
+        <h2>Table des matières</h2>
+        <ol>
+            <li><a href="#connexion">Connexion à la plateforme</a></li>
+            <li><a href="#dashboard">Tableau de bord</a></li>
+            <li><a href="#emploi-du-temps">Emploi du temps</a></li>
+            <li><a href="#seances-visio">Gestion des séances et visioconférence</a></li>
+            <li><a href="#mon-espace">Mon Espace (Classes, Matières, Leçons)</a></li>
+            <li><a href="#evaluations">Évaluations</a></li>
+            <li><a href="#forum">Forum</a></li>
+            <li><a href="#historique">Historique des présences</a></li>
+            <li><a href="#parametres">Paramètres</a></li>
+        </ol>
+    </div>
+
+    <!-- 1. Connexion -->
+    <div class="section" id="connexion">
+        <h2><span class="step-num">1</span> Connexion à la plateforme</h2>
+        <p>Pour accéder à la plateforme KLASSCI LMS, ouvrez votre navigateur et rendez-vous à l'adresse fournie par votre établissement.</p>
+
+        <h3>Page de connexion</h3>
+        <p>Vous arrivez sur la page d'authentification. Saisissez vos identifiants (login et mot de passe) fournis par l'administration.</p>
+        <div class="screenshot">
+            <img src="images/enseignant/01_page_connexion.png" alt="Page de connexion KLASSCI LMS">
+            <div class="caption">Page de connexion de la plateforme KLASSCI LMS</div>
+        </div>
+
+        <h3>Saisie des identifiants</h3>
+        <ol class="steps">
+            <li>Entrez votre <strong>nom d'utilisateur</strong> dans le premier champ</li>
+            <li>Entrez votre <strong>mot de passe</strong> dans le second champ</li>
+            <li>Cliquez sur le bouton <strong>"Se connecter"</strong></li>
+        </ol>
+        <div class="screenshot">
+            <img src="images/enseignant/02_saisie_identifiants.png" alt="Saisie des identifiants">
+            <div class="caption">Formulaire de connexion avec les champs identifiant et mot de passe</div>
+        </div>
+
+        <div class="info-box">
+            <strong>Conseil :</strong>
+            En cas d'oubli de mot de passe, contactez votre coordinateur ou l'administrateur de la plateforme.
+        </div>
+    </div>
+
+    <!-- 2. Dashboard -->
+    <div class="section" id="dashboard">
+        <h2><span class="step-num">2</span> Tableau de bord</h2>
+        <p>Après connexion, vous accédez à votre <strong>tableau de bord</strong>. C'est votre page d'accueil qui vous donne une vue d'ensemble de votre activité.</p>
+
+        <div class="screenshot">
+            <img src="images/enseignant/03_dashboard.png" alt="Tableau de bord enseignant">
+            <div class="caption">Tableau de bord enseignant - Vue d'ensemble</div>
+        </div>
+
+        <p>Le tableau de bord affiche :</p>
+        <ul style="padding-left: 20px; color: #475569;">
+            <li><strong>Vos matières</strong> : liste des matières que vous enseignez</li>
+            <li><strong>Vos classes</strong> : les classes qui vous sont assignées</li>
+            <li><strong>Évaluations récentes</strong> : aperçu de vos dernières évaluations</li>
+            <li><strong>Statistiques</strong> : nombre total de matières, classes et évaluations</li>
+        </ul>
+
+        <div class="screenshot">
+            <img src="images/enseignant/03b_dashboard_complet.png" alt="Tableau de bord complet">
+            <div class="caption">Vue complète du tableau de bord avec les statistiques et résumés</div>
+        </div>
+    </div>
+
+    <!-- 3. Emploi du temps -->
+    <div class="section" id="emploi-du-temps">
+        <h2><span class="step-num">3</span> Emploi du temps</h2>
+        <p>L'emploi du temps affiche toutes vos séances planifiées sous forme de calendrier interactif.</p>
+
+        <h3>Vue mensuelle</h3>
+        <p>Par défaut, le calendrier s'affiche en vue mensuelle. Chaque séance est représentée par un bloc coloré.</p>
+        <div class="screenshot">
+            <img src="images/enseignant/04_emploi_du_temps.png" alt="Emploi du temps - Vue mensuelle">
+            <div class="caption">Calendrier mensuel avec les séances planifiées</div>
+        </div>
+
+        <h3>Vue hebdomadaire</h3>
+        <p>Vous pouvez basculer en vue semaine pour voir le détail de chaque journée avec les horaires précis.</p>
+        <div class="screenshot">
+            <img src="images/enseignant/05_emploi_semaine.png" alt="Emploi du temps - Vue semaine">
+            <div class="caption">Vue hebdomadaire avec les créneaux horaires détaillés</div>
+        </div>
+
+        <div class="info-box">
+            <strong>Astuce :</strong>
+            Cliquez sur une séance dans le calendrier pour afficher ses détails et accéder aux options de visioconférence.
+        </div>
+    </div>
+
+    <!-- 4. Séances et Visio -->
+    <div class="section" id="seances-visio">
+        <h2><span class="step-num">4</span> Gestion des séances et visioconférence</h2>
+        <p>En tant qu'enseignant, vous pouvez <strong>activer la visioconférence</strong> pour vos séances et <strong>démarrer un cours en direct</strong>.</p>
+
+        <h3>Étape 1 : Consulter les détails d'une séance</h3>
+        <p>Cliquez sur une séance dans votre emploi du temps. Une fenêtre modale s'ouvre avec les informations de la séance.</p>
+        <div class="screenshot">
+            <img src="images/enseignant/06_modal_seance_details.png" alt="Modal détails séance">
+            <div class="caption">Fenêtre modale affichant les détails de la séance</div>
+        </div>
+
+        <h3>Étape 2 : Activer la visioconférence</h3>
+        <p>Si la visio n'est pas encore activée, cliquez sur le bouton <strong>"Activer la visio"</strong>. La séance passera en mode "Visio activée".</p>
+        <div class="screenshot">
+            <img src="images/enseignant/07_modal_activer_visio.png" alt="Activer la visioconférence">
+            <div class="caption">Bouton "Activer la visio" dans la fenêtre modale</div>
+        </div>
+
+        <h3>Étape 3 : Page de détails avec section visio</h3>
+        <p>En cliquant sur <strong>"Voir les détails"</strong>, vous accédez à la page complète de la séance, incluant la section visioconférence.</p>
+        <div class="screenshot">
+            <img src="images/enseignant/08_details_seance_visio.png" alt="Détails séance avec visio">
+            <div class="caption">Page de détails de la séance avec la section visioconférence</div>
+        </div>
+        <div class="screenshot">
+            <img src="images/enseignant/08b_details_seance_complet.png" alt="Détails séance complet">
+            <div class="caption">Vue complète de la page de détails de séance</div>
+        </div>
+
+        <h3>Étape 4 : Démarrer le cours en direct</h3>
+        <p>Cliquez sur <strong>"Démarrer le cours"</strong> pour lancer la visioconférence. Le statut passe à <strong>"COURS EN DIRECT"</strong>.</p>
+        <div class="screenshot">
+            <img src="images/enseignant/09_demarrage_visio.png" alt="Démarrage de la visio">
+            <div class="caption">Bouton "Démarrer le cours" pour lancer la visioconférence</div>
+        </div>
+
+        <div class="info-box success">
+            <strong>Cours en direct !</strong>
+            Une fois le cours démarré, les étudiants verront un bouton "Rejoindre la visio" depuis leur emploi du temps.
+        </div>
+
+        <div class="screenshot">
+            <img src="images/enseignant/10_cours_en_direct.png" alt="Cours en direct">
+            <div class="caption">Statut "COURS EN DIRECT" - La visioconférence est active</div>
+        </div>
+        <div class="screenshot">
+            <img src="images/enseignant/10b_cours_en_direct_complet.png" alt="Cours en direct vue complète">
+            <div class="caption">Vue complète du cours en direct avec le lien de visioconférence Jitsi</div>
+        </div>
+
+        <div class="info-box warning">
+            <strong>Important :</strong>
+            N'oubliez pas de <strong>terminer le cours</strong> une fois la séance finie. Cela changera le statut et empêchera les étudiants de rejoindre la visio.
+        </div>
+    </div>
+
+    <!-- 5. Mon Espace - Création de leçons -->
+    <div class="section" id="mon-espace">
+        <h2><span class="step-num">5</span> Mon Espace (Classes, Matières, Leçons)</h2>
+        <p>La section <strong>« Mon Espace »</strong> est votre espace central pour gérer vos classes, matières et créer des leçons complètes pour vos étudiants.</p>
+
+        <div class="info-box">
+            <strong>Accès :</strong> Cliquez sur <strong>« Mon Espace »</strong> dans le menu latéral gauche.
+        </div>
+
+        <!-- 5.1 Vue d'ensemble Mon Espace -->
+        <h3>5.1 Vue d'ensemble</h3>
+        <p>La page d'accueil de Mon Espace affiche 3 cartes principales :</p>
+        <table>
+            <thead>
+                <tr>
+                    <th>Carte</th>
+                    <th>Description</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr><td><strong>Mes Classes</strong></td><td>Les classes auxquelles vous enseignez (avec le nombre total)</td></tr>
+                <tr><td><strong>Mes Matières</strong></td><td>Les matières que vous enseignez (avec le nombre total)</td></tr>
+                <tr><td><strong>Mes Leçons</strong></td><td>Les leçons que vous avez créées (avec le nombre total)</td></tr>
+            </tbody>
+        </table>
+        <p>Un <strong>aperçu rapide</strong> en bas affiche vos séances à venir, évaluations actives et nombre total d'étudiants.</p>
+
+        <div class="screenshot">
+            <img src="images/enseignant/05_01_mon_espace_hub.png" alt="Mon Espace - Hub principal">
+            <div class="caption">Mon Espace - Vue d'ensemble avec les 3 cartes et l'aperçu rapide</div>
+        </div>
+
+        <!-- 5.2 Liste des leçons -->
+        <h3>5.2 Consulter vos leçons</h3>
+        <p>En cliquant sur <strong>« Mes Leçons »</strong>, vous accédez à la liste complète de vos leçons avec des filtres :</p>
+        <ul style="padding-left: 20px; color: #475569;">
+            <li><strong>Par matière</strong> : filtrer les leçons d'une matière spécifique</li>
+            <li><strong>Par statut</strong> : Publiée, Brouillon, Archivée</li>
+            <li><strong>Par type</strong> : Vidéo, Document, Quiz, TP, TD</li>
+        </ul>
+        <p>Des compteurs en haut indiquent le nombre total, les leçons publiées, les brouillons et les archivées.</p>
+
+        <div class="screenshot">
+            <img src="images/enseignant/05_02_mes_lecons_liste.png" alt="Liste des leçons">
+            <div class="caption">Liste des leçons avec filtres par matière, statut et type</div>
+        </div>
+
+        <!-- 5.3 Accéder aux matières -->
+        <h3>5.3 Gérer vos matières</h3>
+        <p>En cliquant sur <strong>« Mes Matières »</strong>, vous voyez toutes vos matières avec pour chacune :</p>
+        <ul style="padding-left: 20px; color: #475569;">
+            <li>Le <strong>coefficient</strong> de la matière</li>
+            <li>Le nombre de <strong>leçons publiées</strong></li>
+            <li>Le nombre de <strong>séances</strong></li>
+            <li>Le nombre d'<strong>évaluations</strong></li>
+            <li>Un bouton <strong>« Gérer la matière »</strong> pour accéder aux détails</li>
+        </ul>
+
+        <div class="screenshot">
+            <img src="images/enseignant/05_03_mes_matieres.png" alt="Mes Matières">
+            <div class="caption">Mes Matières - Vue des matières avec statistiques</div>
+        </div>
+
+        <!-- 5.4 Créer une nouvelle leçon -->
+        <h3>5.4 Créer une nouvelle leçon (étape par étape)</h3>
+        <p>Pour créer une leçon, suivez ces étapes :</p>
+
+        <h4>Étape 1 : Accéder à la matière</h4>
+        <ol class="steps">
+            <li>Allez dans <strong>Mon Espace → Mes Matières</strong></li>
+            <li>Cliquez sur <strong>« Gérer la matière »</strong> pour la matière souhaitée</li>
+            <li>Dans la page de détails, cliquez sur le bouton <strong>« Nouvelle leçon »</strong> (en haut à droite)</li>
+        </ol>
+
+        <div class="screenshot">
+            <img src="images/enseignant/05_04_matiere_detail_nouvelle_lecon.png" alt="Détail matière - Bouton Nouvelle leçon">
+            <div class="caption">Page de détails de la matière avec le bouton « Nouvelle leçon »</div>
+        </div>
+
+        <h4>Étape 2 : Remplir le formulaire de création</h4>
+        <p>Un formulaire modal apparaît avec les champs suivants :</p>
+        <table>
+            <thead>
+                <tr>
+                    <th>Champ</th>
+                    <th>Obligatoire</th>
+                    <th>Description</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr><td><strong>Titre de la leçon</strong></td><td>Oui *</td><td>Nom de la leçon (ex: « Introduction aux boucles en Python »)</td></tr>
+                <tr><td><strong>Description</strong></td><td>Non</td><td>Résumé court du contenu (2-3 phrases)</td></tr>
+                <tr><td><strong>Prérequis</strong></td><td>Non</td><td>Connaissances nécessaires pour suivre la leçon</td></tr>
+                <tr><td><strong>Niveau de difficulté</strong></td><td>Oui *</td><td>Débutant, Intermédiaire ou Avancé</td></tr>
+                <tr><td><strong>Objectifs pédagogiques</strong></td><td>Non</td><td>Ce que l'étudiant saura faire après la leçon</td></tr>
+                <tr><td><strong>Durée estimée (minutes)</strong></td><td>Non</td><td>Temps nécessaire pour compléter la leçon (5-600 min)</td></tr>
+            </tbody>
+        </table>
+
+        <div class="screenshot">
+            <img src="images/enseignant/05_05_modal_nouvelle_lecon.png" alt="Modal création de leçon - vide">
+            <div class="caption">Formulaire de création d'une nouvelle leçon (vide)</div>
+        </div>
+
+        <div class="screenshot">
+            <img src="images/enseignant/05_06_modal_lecon_rempli.png" alt="Modal création de leçon - rempli">
+            <div class="caption">Formulaire de création rempli avec un exemple concret</div>
+        </div>
+
+        <div class="info-box">
+            <strong>Conseil :</strong> Remplissez au minimum le <strong>titre</strong> et le <strong>niveau de difficulté</strong>. Les autres champs (description, prérequis, objectifs) sont optionnels mais recommandés pour guider vos étudiants.
+        </div>
+
+        <!-- 5.5 Gestion des chapitres -->
+        <h3>5.5 Ajouter des chapitres à votre leçon</h3>
+        <p>Après la création de la leçon, vous êtes automatiquement redirigé vers la page de <strong>gestion des chapitres</strong>. C'est ici que vous ajoutez le contenu réel de votre leçon.</p>
+
+        <p>En haut de la page, vous voyez :</p>
+        <ul style="padding-left: 20px; color: #475569;">
+            <li>Le <strong>titre</strong> et la <strong>description</strong> de votre leçon</li>
+            <li>Le <strong>statut</strong> actuel (Brouillon par défaut)</li>
+            <li>Un bouton <strong>« Prévisualiser »</strong> pour voir la leçon comme un étudiant</li>
+            <li>Un bouton <strong>« Publier la leçon »</strong> pour la rendre visible aux étudiants</li>
+        </ul>
+
+        <div class="screenshot">
+            <img src="images/enseignant/05_11_publier_lecon.png" alt="En-tête page chapitres avec boutons Publier et Prévisualiser">
+            <div class="caption">En-tête de la leçon avec les boutons « Prévisualiser » et « Publier la leçon »</div>
+        </div>
+
+        <p>Chaque chapitre comprend :</p>
+        <ol class="steps">
+            <li><strong>Un titre</strong> : nommez votre chapitre (ex: « Les boucles While »)</li>
+            <li><strong>Un type de contenu</strong> : choisissez parmi 7 types différents</li>
+            <li><strong>Le contenu</strong> : selon le type choisi, un éditeur spécifique apparaît</li>
+        </ol>
+
+        <!-- 5.6 Types de contenu -->
+        <h3>5.6 Les 7 types de contenu disponibles</h3>
+        <p>Chaque chapitre peut contenir un type de contenu différent, ce qui permet de varier les supports pédagogiques :</p>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Type</th>
+                    <th>Description</th>
+                    <th>Formats acceptés</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr><td><strong>Texte / Markdown</strong></td><td>Éditeur de texte riche avec mise en forme (gras, italique, titres, listes, tableaux, code, images, vidéos)</td><td>HTML, Markdown</td></tr>
+                <tr><td><strong>Vidéo</strong></td><td>Intégration d'une vidéo via URL</td><td>YouTube, Vimeo, URL directe</td></tr>
+                <tr><td><strong>PowerPoint</strong></td><td>Upload d'un fichier de présentation (converti automatiquement en diapositives)</td><td>.pptx, .ppt (max 30 Mo)</td></tr>
+                <tr><td><strong>Document Word</strong></td><td>Upload d'un document Word (converti automatiquement)</td><td>.docx (max 30 Mo)</td></tr>
+                <tr><td><strong>PDF</strong></td><td>Upload d'un document PDF</td><td>.pdf (max 30 Mo)</td></tr>
+                <tr><td><strong>Lien externe</strong></td><td>Lien vers une ressource web externe</td><td>URL complète</td></tr>
+                <tr><td><strong>Quiz</strong></td><td>Questionnaire interactif « Testez vos connaissances » intégré au chapitre</td><td>QCM, Vrai/Faux, Réponses multiples</td></tr>
+            </tbody>
+        </table>
+
+        <h4>Type : Texte / Markdown (éditeur riche)</h4>
+        <p>L'éditeur de texte offre une barre d'outils complète :</p>
+        <ul style="padding-left: 20px; color: #475569;">
+            <li><strong>Mise en forme</strong> : Gras, Italique, Souligné, Barré</li>
+            <li><strong>Titres</strong> : H1, H2, H3</li>
+            <li><strong>Listes</strong> : à puces, numérotées, tâches</li>
+            <li><strong>Éléments</strong> : Tableau, Citation, Bloc de code, Ligne horizontale</li>
+            <li><strong>Média</strong> : Insérer lien, image, vidéo YouTube</li>
+            <li><strong>Style</strong> : Couleur du texte, surlignage, police, alignement</li>
+            <li><strong>Mode étendu</strong> : agrandir l'éditeur en plein écran</li>
+        </ul>
+
+        <div class="screenshot">
+            <img src="images/enseignant/05_07_gestion_chapitres.png" alt="Éditeur de texte riche">
+            <div class="caption">Éditeur de texte riche avec barre d'outils complète (Chapitre 1)</div>
+        </div>
+
+        <h4>Type : PowerPoint / Word / PDF (upload de fichiers)</h4>
+        <p>Pour les fichiers, une zone de téléchargement apparaît. Vous pouvez :</p>
+        <ul style="padding-left: 20px; color: #475569;">
+            <li><strong>Glisser-déposer</strong> un fichier depuis votre ordinateur</li>
+            <li>Ou <strong>cliquer</strong> pour sélectionner un fichier</li>
+            <li>Taille maximale : <strong>30 Mo</strong> (100 Mo pour les vidéos)</li>
+            <li>Les PowerPoint sont <strong>automatiquement convertis</strong> en diapositives navigables</li>
+        </ul>
+
+        <div class="screenshot">
+            <img src="images/enseignant/05_08_chapitre_upload_pptx.png" alt="Upload PowerPoint">
+            <div class="caption">Zone d'upload pour un fichier PowerPoint (.pptx)</div>
+        </div>
+
+        <h4>Type : Vidéo (YouTube, Vimeo)</h4>
+        <p>Collez simplement l'URL de la vidéo. L'option <strong>« Lecture automatique »</strong> permet de lancer la vidéo dès que l'étudiant ouvre le chapitre.</p>
+
+        <div class="screenshot">
+            <img src="images/enseignant/05_09_chapitre_video.png" alt="Chapitre type vidéo">
+            <div class="caption">Chapitre de type Vidéo avec URL et option lecture automatique</div>
+        </div>
+
+        <h4>Type : Quiz / Testez vos connaissances</h4>
+        <p>Le type Quiz intègre un questionnaire interactif directement dans le chapitre. Vous pouvez configurer :</p>
+        <ul style="padding-left: 20px; color: #475569;">
+            <li>Le <strong>titre</strong> et la <strong>description</strong> du quiz</li>
+            <li>Le <strong>score minimum</strong> pour réussir (ex: 70%)</li>
+            <li>Le <strong>nombre de tentatives</strong> autorisées</li>
+            <li>Les options : mélanger les questions, mélanger les options, afficher les corrections</li>
+            <li>Plusieurs types de questions : <strong>QCM</strong> (une seule réponse), <strong>Réponses multiples</strong>, <strong>Vrai/Faux</strong></li>
+        </ul>
+
+        <div class="screenshot">
+            <img src="images/enseignant/05_10_chapitre_quiz.png" alt="Chapitre type quiz">
+            <div class="caption">Configuration d'un quiz « Testez vos connaissances » intégré au chapitre</div>
+        </div>
+
+        <!-- 5.7 Ajouter plusieurs chapitres -->
+        <h3>5.7 Organiser plusieurs chapitres</h3>
+        <p>Vous pouvez ajouter autant de chapitres que nécessaire en cliquant sur <strong>« + Ajouter un chapitre »</strong> en bas de la page. Chaque chapitre peut avoir un type de contenu différent.</p>
+
+        <div class="info-box">
+            <strong>Exemple de structure de leçon :</strong>
+            <ul>
+                <li><strong>Chapitre 1</strong> : « Introduction » → Type Texte (théorie)</li>
+                <li><strong>Chapitre 2</strong> : « Présentation du cours » → Type PowerPoint (diapositives)</li>
+                <li><strong>Chapitre 3</strong> : « Tutoriel vidéo » → Type Vidéo (démonstration)</li>
+                <li><strong>Chapitre 4</strong> : « Exercices pratiques » → Type PDF (feuille d'exercices)</li>
+                <li><strong>Chapitre 5</strong> : « Testez vos connaissances » → Type Quiz (auto-évaluation)</li>
+            </ul>
+        </div>
+
+        <!-- 5.8 Publier la leçon -->
+        <h3>5.8 Publier votre leçon</h3>
+        <p>Une fois tous vos chapitres ajoutés, vous pouvez publier votre leçon :</p>
+        <ol class="steps">
+            <li>Cliquez sur <strong>« Publier la leçon »</strong> en haut de la page</li>
+            <li>Le statut passe de <strong>« Brouillon »</strong> à <strong>« Publiée »</strong></li>
+            <li>La leçon devient <strong>visible</strong> et accessible aux étudiants de la classe</li>
+        </ol>
+
+        <div class="info-box warning">
+            <strong>Important :</strong>
+            <ul>
+                <li>Vous pouvez <strong>dépublier</strong> une leçon à tout moment pour la remettre en brouillon</li>
+                <li>Les étudiants ne voient que les leçons <strong>publiées</strong></li>
+                <li>Vous pouvez continuer à modifier une leçon même après publication</li>
+                <li>Utilisez <strong>« Prévisualiser »</strong> pour voir la leçon comme un étudiant avant de publier</li>
+            </ul>
+        </div>
+
+        <!-- 5.9 Résumé du processus -->
+        <h3>5.9 Résumé du processus complet</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>Étape</th>
+                    <th>Action</th>
+                    <th>Où</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr><td>1</td><td>Aller dans Mon Espace → Mes Matières</td><td>Menu latéral</td></tr>
+                <tr><td>2</td><td>Cliquer « Gérer la matière »</td><td>Carte de la matière</td></tr>
+                <tr><td>3</td><td>Cliquer « Nouvelle leçon »</td><td>Page détails matière</td></tr>
+                <tr><td>4</td><td>Remplir le formulaire (titre, niveau, description...)</td><td>Modal de création</td></tr>
+                <tr><td>5</td><td>Cliquer « Créer la leçon »</td><td>Modal de création</td></tr>
+                <tr><td>6</td><td>Ajouter des chapitres avec leur contenu</td><td>Page gestion chapitres</td></tr>
+                <tr><td>7</td><td>Cliquer « Publier la leçon »</td><td>En-tête page chapitres</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- 6. Évaluations -->
+    <div class="section" id="evaluations">
+        <h2><span class="step-num">6</span> Évaluations</h2>
+        <p>La section <strong>Évaluations</strong> est le centre de gestion de toutes vos évaluations. Elle fusionne automatiquement les évaluations créées dans KLASSCI avec leurs versions en ligne configurées dans le LMS, vous offrant une vue unifiée et complète.</p>
+
+        <div class="info-box">
+            <strong>Principe clé :</strong>
+            Les évaluations sont d'abord créées dans KLASSCI (notes, coefficients, barème). Depuis le LMS, vous pouvez ensuite créer une <strong>version en ligne</strong> pour permettre aux étudiants de passer l'évaluation directement sur la plateforme avec des questions interactives.
+        </div>
+
+        <!-- 6.1 Accéder aux évaluations -->
+        <h3>6.1 — Accéder à la liste des évaluations</h3>
+        <p>Dans le menu latéral, cliquez sur <strong>Évaluations</strong> puis <strong>Mes Évaluations</strong>. La page affiche toutes les évaluations associées à vos matières et classes.</p>
+
+        <div class="screenshot">
+            <img src="images/enseignant/12_evaluations.png" alt="Liste des évaluations enseignant">
+            <div class="caption">Liste des évaluations — Vue principale avec filtres et actions</div>
+        </div>
+
+        <p>La liste affiche pour chaque évaluation :</p>
+        <ul style="padding-left: 20px; color: #475569;">
+            <li><strong>Titre</strong> de l'évaluation (tel que défini dans KLASSCI)</li>
+            <li><strong>Matière</strong> et <strong>Classe</strong> concernées</li>
+            <li><strong>Type</strong> : Devoir, Examen, Contrôle continu, Rattrapage, etc.</li>
+            <li><strong>Date</strong> de l'évaluation</li>
+            <li><strong>Coefficient</strong> et <strong>Barème</strong> (sur 20 par défaut)</li>
+            <li><strong>Statut</strong> : Brouillon, Planifiée, En cours, Terminée</li>
+            <li><strong>Badge "En ligne"</strong> : indique si une version en ligne a été configurée</li>
+            <li><strong>Nombre de questions</strong> (si version en ligne créée)</li>
+        </ul>
+
+        <!-- 6.2 Filtrer les évaluations -->
+        <h3>6.2 — Filtrer et rechercher</h3>
+        <p>Utilisez les filtres en haut de page pour affiner la liste :</p>
+        <ul style="padding-left: 20px; color: #475569;">
+            <li><strong>Par matière</strong> : sélectionnez une matière dans la liste déroulante</li>
+            <li><strong>Par classe</strong> : filtrez par classe spécifique</li>
+            <li><strong>Par statut</strong> : Tous, Brouillon, Planifiée, En cours, Terminée</li>
+            <li><strong>Recherche textuelle</strong> : tapez un mot-clé pour chercher dans les titres</li>
+        </ul>
+
+        <div class="info-box">
+            <strong>Statut automatique :</strong>
+            Le statut <em>Terminée</em> est calculé automatiquement. Lorsque la date de l'évaluation + sa durée sont dépassées, l'évaluation passe automatiquement en statut "Terminée", même si elle était encore "Planifiée" ou "En cours" dans la base de données.
+        </div>
+
+        <!-- 6.3 Créer une version en ligne -->
+        <h3>6.3 — Créer une version en ligne</h3>
+        <p>Pour qu'une évaluation KLASSCI devienne passable en ligne par les étudiants, vous devez créer sa <strong>version en ligne</strong>. C'est l'étape où vous configurez les paramètres du quiz interactif.</p>
+
+        <ol class="steps">
+            <li>Repérez l'évaluation KLASSCI souhaitée dans la liste (celles qui n'ont pas encore le badge <strong>"En ligne"</strong>)</li>
+            <li>Cliquez sur le bouton <strong>"Créer version en ligne"</strong> (icône +) sur la ligne de l'évaluation</li>
+            <li>Une fenêtre modale s'ouvre avec les options de configuration</li>
+            <li>Configurez les paramètres (voir détails ci-dessous)</li>
+            <li>Cliquez sur <strong>"Créer et ajouter des questions"</strong></li>
+        </ol>
+
+        <div class="screenshot">
+            <img src="images/enseignant/12b_creer_version_en_ligne.png" alt="Modal création version en ligne">
+            <div class="caption">Fenêtre de création d'une version en ligne — Configuration initiale</div>
+        </div>
+
+        <h3>6.3.1 — Options de configuration de la version en ligne</h3>
+        <p>La fenêtre de création propose les paramètres suivants :</p>
+
+        <table style="width: 100%; border-collapse: collapse; margin: 15px 0; font-size: 0.95rem;">
+            <thead>
+                <tr style="background: #f1f5f9; text-align: left;">
+                    <th style="padding: 10px 15px; border-bottom: 2px solid #e2e8f0; color: #334155;">Paramètre</th>
+                    <th style="padding: 10px 15px; border-bottom: 2px solid #e2e8f0; color: #334155;">Description</th>
+                    <th style="padding: 10px 15px; border-bottom: 2px solid #e2e8f0; color: #334155;">Valeurs possibles</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td style="padding: 10px 15px; border-bottom: 1px solid #e2e8f0;"><strong>Type de questions</strong></td>
+                    <td style="padding: 10px 15px; border-bottom: 1px solid #e2e8f0;">Détermine quels types de questions seront proposés</td>
+                    <td style="padding: 10px 15px; border-bottom: 1px solid #e2e8f0;">
+                        <strong>QCM</strong> (choix unique uniquement)<br>
+                        <strong>QCM multiples</strong> (choix multiples uniquement)<br>
+                        <strong>Mixte</strong> (tous types de questions)
+                    </td>
+                </tr>
+                <tr style="background: #fafbfc;">
+                    <td style="padding: 10px 15px; border-bottom: 1px solid #e2e8f0;"><strong>Durée (minutes)</strong></td>
+                    <td style="padding: 10px 15px; border-bottom: 1px solid #e2e8f0;">Temps alloué aux étudiants pour compléter l'évaluation</td>
+                    <td style="padding: 10px 15px; border-bottom: 1px solid #e2e8f0;">Nombre entier (ex : 30, 45, 60, 90, 120)</td>
+                </tr>
+                <tr>
+                    <td style="padding: 10px 15px; border-bottom: 1px solid #e2e8f0;"><strong>Description</strong></td>
+                    <td style="padding: 10px 15px; border-bottom: 1px solid #e2e8f0;">Instructions ou consignes pour les étudiants (optionnel)</td>
+                    <td style="padding: 10px 15px; border-bottom: 1px solid #e2e8f0;">Texte libre</td>
+                </tr>
+                <tr style="background: #fafbfc;">
+                    <td style="padding: 10px 15px; border-bottom: 1px solid #e2e8f0;"><strong>Autoriser les reprises</strong></td>
+                    <td style="padding: 10px 15px; border-bottom: 1px solid #e2e8f0;">Permet aux étudiants de repasser l'évaluation</td>
+                    <td style="padding: 10px 15px; border-bottom: 1px solid #e2e8f0;">Oui / Non</td>
+                </tr>
+                <tr>
+                    <td style="padding: 10px 15px; border-bottom: 1px solid #e2e8f0;"><strong>Nombre max de tentatives</strong></td>
+                    <td style="padding: 10px 15px; border-bottom: 1px solid #e2e8f0;">Limite le nombre de fois qu'un étudiant peut tenter l'évaluation (si reprises autorisées)</td>
+                    <td style="padding: 10px 15px; border-bottom: 1px solid #e2e8f0;">1, 2, 3... (illimité si non défini)</td>
+                </tr>
+                <tr style="background: #fafbfc;">
+                    <td style="padding: 10px 15px; border-bottom: 1px solid #e2e8f0;"><strong>Mélanger les questions</strong></td>
+                    <td style="padding: 10px 15px; border-bottom: 1px solid #e2e8f0;">L'ordre des questions sera différent pour chaque étudiant</td>
+                    <td style="padding: 10px 15px; border-bottom: 1px solid #e2e8f0;">Oui / Non</td>
+                </tr>
+                <tr>
+                    <td style="padding: 10px 15px; border-bottom: 1px solid #e2e8f0;"><strong>Afficher les résultats</strong></td>
+                    <td style="padding: 10px 15px; border-bottom: 1px solid #e2e8f0;">Les étudiants peuvent voir leur score et les corrections après soumission</td>
+                    <td style="padding: 10px 15px; border-bottom: 1px solid #e2e8f0;">Oui / Non</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div class="info-box warning">
+            <strong>Attention — Unicité :</strong>
+            Chaque évaluation KLASSCI ne peut avoir qu'<strong>une seule version en ligne</strong>. Si une version existe déjà, le bouton "Créer" n'apparaît plus et un badge "En ligne" s'affiche à la place.
+        </div>
+
+        <!-- 6.4 Ajouter et modifier les questions -->
+        <h3>6.4 — Ajouter et modifier les questions</h3>
+        <p>Après la création de la version en ligne, vous êtes redirigé vers l'éditeur de questions. Vous pouvez aussi y accéder à tout moment en cliquant sur <strong>"Modifier les questions"</strong> (icône crayon) dans la liste.</p>
+
+        <div class="screenshot">
+            <img src="images/enseignant/12c_editeur_questions.png" alt="Éditeur de questions">
+            <div class="caption">Éditeur de questions — Interface d'ajout et de modification</div>
+        </div>
+
+        <h3>6.4.1 — Types de questions disponibles</h3>
+        <p>Selon le type choisi lors de la création, vous pouvez ajouter différents types de questions :</p>
+
+        <table style="width: 100%; border-collapse: collapse; margin: 15px 0; font-size: 0.95rem;">
+            <thead>
+                <tr style="background: #f1f5f9; text-align: left;">
+                    <th style="padding: 10px 15px; border-bottom: 2px solid #e2e8f0; color: #334155;">Type</th>
+                    <th style="padding: 10px 15px; border-bottom: 2px solid #e2e8f0; color: #334155;">Description</th>
+                    <th style="padding: 10px 15px; border-bottom: 2px solid #e2e8f0; color: #334155;">Correction</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td style="padding: 10px 15px; border-bottom: 1px solid #e2e8f0;"><strong>QCM (Choix unique)</strong></td>
+                    <td style="padding: 10px 15px; border-bottom: 1px solid #e2e8f0;">L'étudiant sélectionne <strong>une seule</strong> réponse parmi plusieurs options. Idéal pour les questions factuelles.</td>
+                    <td style="padding: 10px 15px; border-bottom: 1px solid #e2e8f0;">Automatique</td>
+                </tr>
+                <tr style="background: #fafbfc;">
+                    <td style="padding: 10px 15px; border-bottom: 1px solid #e2e8f0;"><strong>QCM (Choix multiples)</strong></td>
+                    <td style="padding: 10px 15px; border-bottom: 1px solid #e2e8f0;">L'étudiant peut cocher <strong>plusieurs</strong> réponses. Utile pour les questions à réponses combinées.</td>
+                    <td style="padding: 10px 15px; border-bottom: 1px solid #e2e8f0;">Automatique</td>
+                </tr>
+                <tr>
+                    <td style="padding: 10px 15px; border-bottom: 1px solid #e2e8f0;"><strong>Vrai / Faux</strong></td>
+                    <td style="padding: 10px 15px; border-bottom: 1px solid #e2e8f0;">L'étudiant choisit entre Vrai et Faux. Simple et rapide pour vérifier la compréhension.</td>
+                    <td style="padding: 10px 15px; border-bottom: 1px solid #e2e8f0;">Automatique</td>
+                </tr>
+                <tr style="background: #fafbfc;">
+                    <td style="padding: 10px 15px; border-bottom: 1px solid #e2e8f0;"><strong>Réponse courte</strong></td>
+                    <td style="padding: 10px 15px; border-bottom: 1px solid #e2e8f0;">L'étudiant tape une réponse libre (mot, phrase). Nécessite une correction manuelle ou un mot-clé attendu.</td>
+                    <td style="padding: 10px 15px; border-bottom: 1px solid #e2e8f0;">Manuelle / Semi-auto</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div class="info-box">
+            <strong>Mode Mixte :</strong>
+            Si vous avez choisi le type <em>"Mixte"</em> lors de la création, vous pouvez combiner tous les types de questions dans une même évaluation. C'est le mode le plus flexible.
+        </div>
+
+        <h3>6.4.2 — Créer une question pas à pas</h3>
+        <p>Pour chaque question ajoutée, remplissez les champs suivants :</p>
+
+        <ol class="steps">
+            <li>Choisissez le <strong>type de question</strong> dans le menu déroulant (QCM, Choix multiples, Vrai/Faux, Réponse courte)</li>
+            <li>Rédigez l'<strong>énoncé de la question</strong> dans le champ texte principal</li>
+            <li>Définissez le <strong>nombre de points</strong> attribués à cette question (par défaut : 1 point)</li>
+            <li><strong>Pour les QCM</strong> : ajoutez les options de réponse (minimum 2). Utilisez le bouton "+" pour ajouter des options supplémentaires et la corbeille pour en supprimer</li>
+            <li><strong>Sélectionnez la bonne réponse</strong> : cliquez sur le bouton radio (choix unique) ou les cases à cocher (choix multiples) correspondant à la ou les bonnes réponses</li>
+            <li>Cliquez sur <strong>"Ajouter la question"</strong> pour l'intégrer à l'évaluation</li>
+        </ol>
+
+        <div class="screenshot">
+            <img src="images/enseignant/12d_ajout_question_qcm.png" alt="Ajout d'une question QCM">
+            <div class="caption">Formulaire d'ajout d'une question QCM — Énoncé, options et sélection de la bonne réponse</div>
+        </div>
+
+        <h3>6.4.3 — Gérer les questions existantes</h3>
+        <p>Les questions ajoutées apparaissent dans une liste numérotée sous l'éditeur. Pour chaque question, vous pouvez :</p>
+        <ul style="padding-left: 20px; color: #475569;">
+            <li><strong>Modifier</strong> : cliquez sur l'icône crayon pour éditer l'énoncé, les options ou la bonne réponse</li>
+            <li><strong>Supprimer</strong> : cliquez sur l'icône corbeille pour retirer la question</li>
+            <li><strong>Réordonner</strong> : les questions sont numérotées automatiquement dans l'ordre d'ajout</li>
+        </ul>
+
+        <p>Lorsque vous avez terminé, cliquez sur <strong>"Enregistrer les modifications"</strong> pour sauvegarder toutes les questions. Vous serez redirigé vers la liste des évaluations.</p>
+
+        <div class="info-box success">
+            <strong>Conseil :</strong>
+            Vérifiez bien que chaque question a une bonne réponse sélectionnée avant d'enregistrer. Une question sans bonne réponse sera comptée comme incorrecte pour tous les étudiants.
+        </div>
+
+        <!-- 6.5 Publier une évaluation -->
+        <h3>6.5 — Publier une évaluation</h3>
+        <p>Une fois les questions ajoutées, vous devez <strong>publier</strong> l'évaluation pour la rendre visible et accessible aux étudiants.</p>
+
+        <ol class="steps">
+            <li>Dans la liste des évaluations, repérez l'évaluation avec le badge <strong>"En ligne"</strong></li>
+            <li>Cliquez sur le bouton <strong>"Publier"</strong> (icône mégaphone, violet)</li>
+            <li>Confirmez la publication dans la boîte de dialogue</li>
+            <li>Le statut passe de <strong>"Brouillon"</strong> à <strong>"Planifiée"</strong></li>
+        </ol>
+
+        <div class="info-box warning">
+            <strong>Règles de publication :</strong>
+            <ul style="padding-left: 20px; margin-top: 5px;">
+                <li>L'évaluation doit contenir <strong>au moins une question</strong> pour être publiée</li>
+                <li>Une évaluation au statut <strong>"Terminée"</strong> ne peut plus être publiée</li>
+                <li>Après publication, les étudiants de la classe concernée peuvent voir et démarrer l'évaluation</li>
+            </ul>
+        </div>
+
+        <!-- 6.6 Prévisualiser une évaluation -->
+        <h3>6.6 — Prévisualiser une évaluation</h3>
+        <p>Avant de publier, vous pouvez <strong>prévisualiser</strong> l'évaluation telle qu'elle apparaîtra aux étudiants. Cliquez sur le bouton <strong>"Prévisualiser"</strong> (icône œil, indigo) pour ouvrir un aperçu en lecture seule des questions et de la mise en page.</p>
+
+        <!-- 6.7 Cycle de vie d'une évaluation -->
+        <h3>6.7 — Cycle de vie d'une évaluation</h3>
+        <p>Comprendre les différents statuts est essentiel pour bien gérer vos évaluations :</p>
+
+        <table style="width: 100%; border-collapse: collapse; margin: 15px 0; font-size: 0.95rem;">
+            <thead>
+                <tr style="background: #f1f5f9; text-align: left;">
+                    <th style="padding: 10px 15px; border-bottom: 2px solid #e2e8f0; color: #334155;">Statut</th>
+                    <th style="padding: 10px 15px; border-bottom: 2px solid #e2e8f0; color: #334155;">Signification</th>
+                    <th style="padding: 10px 15px; border-bottom: 2px solid #e2e8f0; color: #334155;">Actions possibles</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td style="padding: 10px 15px; border-bottom: 1px solid #e2e8f0;"><span style="background: #94a3b8; color: white; padding: 2px 10px; border-radius: 12px; font-size: 0.85rem;">Brouillon</span></td>
+                    <td style="padding: 10px 15px; border-bottom: 1px solid #e2e8f0;">Version en ligne créée mais pas encore publiée. Invisible pour les étudiants.</td>
+                    <td style="padding: 10px 15px; border-bottom: 1px solid #e2e8f0;">Modifier les questions, Publier, Supprimer</td>
+                </tr>
+                <tr style="background: #fafbfc;">
+                    <td style="padding: 10px 15px; border-bottom: 1px solid #e2e8f0;"><span style="background: #3b82f6; color: white; padding: 2px 10px; border-radius: 12px; font-size: 0.85rem;">Planifiée</span></td>
+                    <td style="padding: 10px 15px; border-bottom: 1px solid #e2e8f0;">Publiée et en attente de la date d'évaluation. Visible par les étudiants.</td>
+                    <td style="padding: 10px 15px; border-bottom: 1px solid #e2e8f0;">Modifier les questions (si non verrouillée), Dépublier</td>
+                </tr>
+                <tr>
+                    <td style="padding: 10px 15px; border-bottom: 1px solid #e2e8f0;"><span style="background: #f59e0b; color: white; padding: 2px 10px; border-radius: 12px; font-size: 0.85rem;">En cours</span></td>
+                    <td style="padding: 10px 15px; border-bottom: 1px solid #e2e8f0;">Des étudiants sont en train de passer l'évaluation. L'évaluation est verrouillée.</td>
+                    <td style="padding: 10px 15px; border-bottom: 1px solid #e2e8f0;">Consulter les résultats en temps réel</td>
+                </tr>
+                <tr style="background: #fafbfc;">
+                    <td style="padding: 10px 15px; border-bottom: 1px solid #e2e8f0;"><span style="background: #10b981; color: white; padding: 2px 10px; border-radius: 12px; font-size: 0.85rem;">Terminée</span></td>
+                    <td style="padding: 10px 15px; border-bottom: 1px solid #e2e8f0;">La date + durée sont dépassées. Aucun étudiant ne peut plus soumettre de réponses.</td>
+                    <td style="padding: 10px 15px; border-bottom: 1px solid #e2e8f0;">Voir les résultats, Synchroniser les notes vers KLASSCI</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div style="text-align: center; margin: 20px 0; padding: 15px; background: #f8fafc; border-radius: 8px;">
+            <span style="display: inline-block; background: #94a3b8; color: white; padding: 4px 14px; border-radius: 12px; font-size: 0.9rem;">Brouillon</span>
+            <span style="color: #94a3b8; margin: 0 8px; font-size: 1.2rem;">→</span>
+            <span style="display: inline-block; background: #3b82f6; color: white; padding: 4px 14px; border-radius: 12px; font-size: 0.9rem;">Planifiée</span>
+            <span style="color: #94a3b8; margin: 0 8px; font-size: 1.2rem;">→</span>
+            <span style="display: inline-block; background: #f59e0b; color: white; padding: 4px 14px; border-radius: 12px; font-size: 0.9rem;">En cours</span>
+            <span style="color: #94a3b8; margin: 0 8px; font-size: 1.2rem;">→</span>
+            <span style="display: inline-block; background: #10b981; color: white; padding: 4px 14px; border-radius: 12px; font-size: 0.9rem;">Terminée</span>
+        </div>
+
+        <!-- 6.8 Verrouillage -->
+        <h3>6.8 — Verrouillage automatique</h3>
+        <p>Une évaluation est automatiquement <strong>verrouillée</strong> (non modifiable) dans les cas suivants :</p>
+        <ul style="padding-left: 20px; color: #475569;">
+            <li>Au moins un étudiant a déjà soumis une réponse</li>
+            <li>L'évaluation a été explicitement verrouillée par un administrateur</li>
+        </ul>
+        <p>Lorsqu'une évaluation est verrouillée, vous ne pouvez plus modifier ni ajouter de questions. Cela garantit l'équité entre les étudiants.</p>
+
+        <!-- 6.9 Consulter les résultats -->
+        <h3>6.9 — Consulter les résultats</h3>
+        <p>Une fois l'évaluation terminée (ou en cours), vous pouvez consulter les résultats détaillés :</p>
+
+        <ol class="steps">
+            <li>Cliquez sur <strong>"Résultats"</strong> dans la liste des évaluations</li>
+            <li>Vous accédez à la vue détaillée avec la liste de <strong>tous les étudiants de la classe</strong></li>
+            <li>Pour chaque étudiant : note obtenue, nombre de bonnes réponses, temps passé, statut (soumis, non commencé, en cours)</li>
+            <li>Les statistiques globales (moyenne, médiane, taux de réussite) sont affichées en haut</li>
+        </ol>
+
+        <div class="screenshot">
+            <img src="images/enseignant/12e_resultats_evaluation.png" alt="Résultats d'une évaluation">
+            <div class="caption">Page des résultats — Détail par étudiant et statistiques globales</div>
+        </div>
+
+        <!-- 6.10 Synchronisation KLASSCI -->
+        <h3>6.10 — Synchroniser les notes vers KLASSCI</h3>
+        <p>Après la correction, vous pouvez <strong>synchroniser automatiquement</strong> les notes obtenues en ligne vers le système KLASSCI. Cela évite la saisie manuelle des notes.</p>
+
+        <ol class="steps">
+            <li>Accédez aux résultats de l'évaluation terminée</li>
+            <li>Vérifiez les notes attribuées</li>
+            <li>Cliquez sur <strong>"Synchroniser vers KLASSCI"</strong></li>
+            <li>Les notes sont automatiquement transférées dans KLASSCI pour le bulletin</li>
+        </ol>
+
+        <div class="info-box warning">
+            <strong>Important :</strong>
+            La synchronisation vers KLASSCI est irréversible. Vérifiez bien les notes avant de synchroniser. Les notes seront directement intégrées au bulletin de l'étudiant.
+        </div>
+
+        <!-- 6.11 Supprimer une évaluation en ligne -->
+        <h3>6.11 — Supprimer une version en ligne</h3>
+        <p>Vous pouvez supprimer la version en ligne d'une évaluation si elle n'a pas encore été passée par des étudiants :</p>
+        <ul style="padding-left: 20px; color: #475569;">
+            <li>Cliquez sur le bouton <strong>"Supprimer"</strong> (icône corbeille, rouge)</li>
+            <li>Confirmez la suppression dans la boîte de dialogue</li>
+            <li>Seule la version en ligne est supprimée — l'évaluation KLASSCI reste intacte</li>
+        </ul>
+
+        <div class="info-box">
+            <strong>Sécurité :</strong>
+            Si des étudiants ont déjà soumis des réponses, la suppression peut être bloquée pour préserver les données. Contactez l'administrateur si nécessaire.
+        </div>
+
+        <!-- 6.12 Récapitulatif des boutons d'action -->
+        <h3>6.12 — Récapitulatif des boutons d'action</h3>
+        <table style="width: 100%; border-collapse: collapse; margin: 15px 0; font-size: 0.95rem;">
+            <thead>
+                <tr style="background: #f1f5f9; text-align: left;">
+                    <th style="padding: 10px 15px; border-bottom: 2px solid #e2e8f0; color: #334155;">Bouton</th>
+                    <th style="padding: 10px 15px; border-bottom: 2px solid #e2e8f0; color: #334155;">Couleur</th>
+                    <th style="padding: 10px 15px; border-bottom: 2px solid #e2e8f0; color: #334155;">Action</th>
+                    <th style="padding: 10px 15px; border-bottom: 2px solid #e2e8f0; color: #334155;">Condition</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td style="padding: 10px 15px; border-bottom: 1px solid #e2e8f0;"><strong>Créer version en ligne</strong></td>
+                    <td style="padding: 10px 15px; border-bottom: 1px solid #e2e8f0;"><span style="background: #10b981; color: white; padding: 2px 8px; border-radius: 4px;">Vert</span></td>
+                    <td style="padding: 10px 15px; border-bottom: 1px solid #e2e8f0;">Ouvre la modale de configuration</td>
+                    <td style="padding: 10px 15px; border-bottom: 1px solid #e2e8f0;">Aucune version en ligne existante</td>
+                </tr>
+                <tr style="background: #fafbfc;">
+                    <td style="padding: 10px 15px; border-bottom: 1px solid #e2e8f0;"><strong>Modifier les questions</strong></td>
+                    <td style="padding: 10px 15px; border-bottom: 1px solid #e2e8f0;"><span style="background: #f59e0b; color: white; padding: 2px 8px; border-radius: 4px;">Orange</span></td>
+                    <td style="padding: 10px 15px; border-bottom: 1px solid #e2e8f0;">Ouvre l'éditeur de questions</td>
+                    <td style="padding: 10px 15px; border-bottom: 1px solid #e2e8f0;">Version en ligne existante</td>
+                </tr>
+                <tr>
+                    <td style="padding: 10px 15px; border-bottom: 1px solid #e2e8f0;"><strong>Publier</strong></td>
+                    <td style="padding: 10px 15px; border-bottom: 1px solid #e2e8f0;"><span style="background: #8b5cf6; color: white; padding: 2px 8px; border-radius: 4px;">Violet</span></td>
+                    <td style="padding: 10px 15px; border-bottom: 1px solid #e2e8f0;">Rend l'évaluation visible aux étudiants</td>
+                    <td style="padding: 10px 15px; border-bottom: 1px solid #e2e8f0;">Au moins 1 question, pas terminée</td>
+                </tr>
+                <tr style="background: #fafbfc;">
+                    <td style="padding: 10px 15px; border-bottom: 1px solid #e2e8f0;"><strong>Prévisualiser</strong></td>
+                    <td style="padding: 10px 15px; border-bottom: 1px solid #e2e8f0;"><span style="background: #6366f1; color: white; padding: 2px 8px; border-radius: 4px;">Indigo</span></td>
+                    <td style="padding: 10px 15px; border-bottom: 1px solid #e2e8f0;">Aperçu de l'évaluation (vue étudiant)</td>
+                    <td style="padding: 10px 15px; border-bottom: 1px solid #e2e8f0;">Version en ligne existante</td>
+                </tr>
+                <tr>
+                    <td style="padding: 10px 15px; border-bottom: 1px solid #e2e8f0;"><strong>Résultats</strong></td>
+                    <td style="padding: 10px 15px; border-bottom: 1px solid #e2e8f0;"><span style="background: #3b82f6; color: white; padding: 2px 8px; border-radius: 4px;">Bleu</span></td>
+                    <td style="padding: 10px 15px; border-bottom: 1px solid #e2e8f0;">Affiche les résultats par classe</td>
+                    <td style="padding: 10px 15px; border-bottom: 1px solid #e2e8f0;">Version en ligne publiée</td>
+                </tr>
+                <tr style="background: #fafbfc;">
+                    <td style="padding: 10px 15px; border-bottom: 1px solid #e2e8f0;"><strong>Supprimer</strong></td>
+                    <td style="padding: 10px 15px; border-bottom: 1px solid #e2e8f0;"><span style="background: #ef4444; color: white; padding: 2px 8px; border-radius: 4px;">Rouge</span></td>
+                    <td style="padding: 10px 15px; border-bottom: 1px solid #e2e8f0;">Supprime la version en ligne</td>
+                    <td style="padding: 10px 15px; border-bottom: 1px solid #e2e8f0;">Pas de soumissions existantes</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <!-- 6.13 Bonnes pratiques -->
+        <h3>6.13 — Bonnes pratiques</h3>
+        <div class="info-box success">
+            <strong>Recommandations pour des évaluations réussies :</strong>
+            <ul style="padding-left: 20px; margin-top: 8px;">
+                <li><strong>Variez les types de questions</strong> : utilisez le mode Mixte pour combiner QCM, Vrai/Faux et réponses courtes</li>
+                <li><strong>Activez le mélange des questions</strong> : empêche la copie entre étudiants</li>
+                <li><strong>Calibrez la durée</strong> : prévoyez environ 1 à 2 minutes par question QCM, plus pour les réponses courtes</li>
+                <li><strong>Testez avec la prévisualisation</strong> : vérifiez l'apparence et la clarté des questions avant de publier</li>
+                <li><strong>Limitez les tentatives</strong> : pour un examen formel, autorisez une seule tentative ; pour un exercice d'entraînement, permettez plusieurs essais</li>
+                <li><strong>Publiez en avance</strong> : les étudiants pourront voir que l'évaluation est planifiée et se préparer</li>
+                <li><strong>Synchronisez après vérification</strong> : vérifiez toujours les notes avant la synchronisation vers KLASSCI</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- 7. Forum -->
+    <div class="section" id="forum">
+        <h2><span class="step-num">7</span> Forum</h2>
+        <p>Le <strong>Forum</strong> permet les échanges entre enseignants et étudiants. C'est un espace de discussion et de partage.</p>
+
+        <div class="screenshot">
+            <img src="images/enseignant/13_forum.png" alt="Forum enseignant">
+            <div class="caption">Page du forum - Espace d'échange et de discussion</div>
+        </div>
+
+        <p>Vous pouvez :</p>
+        <ul style="padding-left: 20px; color: #475569;">
+            <li>Créer de nouveaux <strong>sujets de discussion</strong></li>
+            <li>Répondre aux questions des étudiants</li>
+            <li>Partager des ressources complémentaires</li>
+        </ul>
+    </div>
+
+    <!-- 8. Historique des Séances -->
+    <div class="section" id="historique">
+        <h2><span class="step-num">8</span> Historique des Séances</h2>
+        <p>La page <strong>Historique des Séances</strong> vous permet de consulter toutes vos séances passées, leurs statistiques de présence et de gérer l'historique complet de vos cours en visioconférence.</p>
+
+        <div class="info-box">
+            <strong>Accès :</strong> Cliquez sur <strong>« Historique »</strong> dans le menu latéral gauche.
+        </div>
+
+        <!-- 8.1 Filtres temporels -->
+        <h3>8.1 Filtres temporels</h3>
+        <p>En haut de la page, 4 boutons de filtre vous permettent d'affiner la période affichée :</p>
+        <table>
+            <thead>
+                <tr>
+                    <th>Filtre</th>
+                    <th>Description</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr><td><strong>Aujourd'hui</strong></td><td>Séances du jour uniquement</td></tr>
+                <tr><td><strong>Cette semaine</strong></td><td>Séances de la semaine en cours</td></tr>
+                <tr><td><strong>Ce mois</strong></td><td>Séances du mois en cours (vue par défaut)</td></tr>
+                <tr><td><strong>Personnalisé</strong></td><td>Choisissez une plage de dates libre</td></tr>
+            </tbody>
+        </table>
+        <p>Une <strong>barre de recherche</strong> permet également de filtrer par matière, enseignant ou nom de séance.</p>
+
+        <div class="screenshot">
+            <img src="images/enseignant/14_historique_semaine.png" alt="Historique - Vue Cette semaine">
+            <div class="caption">Historique des Séances - Filtre « Cette semaine » avec 1 séance</div>
+        </div>
+
+        <!-- 8.2 Tableau des séances -->
+        <h3>8.2 Tableau des séances</h3>
+        <p>Le tableau principal affiche les colonnes suivantes :</p>
+        <table>
+            <thead>
+                <tr>
+                    <th>Colonne</th>
+                    <th>Description</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr><td><strong>Matière</strong></td><td>Nom de la matière concernée (ex: Algorithme, Anglais)</td></tr>
+                <tr><td><strong>Séance</strong></td><td>Numéro et identifiant de la séance (ex: Séance #102)</td></tr>
+                <tr><td><strong>Classe</strong></td><td>Classe concernée par la séance</td></tr>
+                <tr><td><strong>Date & Heure</strong></td><td>Date et heure de début de la séance</td></tr>
+                <tr><td><strong>Durée</strong></td><td>Durée totale de la séance en minutes</td></tr>
+                <tr><td><strong>Participants</strong></td><td>Nombre d'étudiants ayant participé</td></tr>
+                <tr><td><strong>Durée Moy.</strong></td><td>Durée moyenne de connexion des participants</td></tr>
+                <tr><td><strong>Taux</strong></td><td>Taux de présence effective (en vert si 100%, en rouge si 0%)</td></tr>
+                <tr><td><strong>Actions</strong></td><td>Boutons « Voir » et « Supprimer »</td></tr>
+            </tbody>
+        </table>
+
+        <div class="screenshot">
+            <img src="images/enseignant/14_historique_mois.png" alt="Historique - Vue Ce mois">
+            <div class="caption">Historique des Séances - Filtre « Ce mois » avec 6 séances et statistiques détaillées</div>
+        </div>
+
+        <!-- 8.3 Actions disponibles -->
+        <h3>8.3 Actions disponibles</h3>
+        <p>Pour chaque séance dans l'historique, deux actions sont possibles :</p>
+        <ul>
+            <li><strong>Voir</strong> (bouton bleu) : Affiche le détail de la séance avec la liste complète des participants, leurs heures de connexion/déconnexion, la durée individuelle et le statut de présence (Présent, Partiel, Insuffisant, Absent)</li>
+            <li><strong>Supprimer</strong> (bouton rouge) : Supprime la séance de l'historique. <em>Attention : cette action ne peut pas être effectuée si la visioconférence est encore en cours.</em></li>
+        </ul>
+
+        <!-- 8.4 Comprendre les statistiques -->
+        <h3>8.4 Comprendre les statistiques</h3>
+        <div class="info-box">
+            <strong>Règles de calcul :</strong>
+            <ul>
+                <li><strong>Taux de présence</strong> = (participants ayant été connectés plus de 3 minutes / total des participants non-observateurs) × 100</li>
+                <li><strong>Durée moyenne</strong> = moyenne des durées de connexion de tous les participants</li>
+                <li>Les <strong>observateurs</strong> (comptes de test, admins) sont exclus des statistiques</li>
+                <li>Un taux à <span style="color: #4CAF50; font-weight: bold;">100%</span> signifie que tous les étudiants ont été suffisamment présents</li>
+                <li>Un taux à <span style="color: #f44336; font-weight: bold;">0%</span> signifie qu'aucun participant n'a dépassé le seuil de 3 minutes</li>
+            </ul>
+        </div>
+
+        <!-- 8.5 Détails d'une séance (bouton Voir) -->
+        <h3>8.5 Détails d'une séance (bouton Voir)</h3>
+        <p>En cliquant sur <strong>« Voir »</strong>, vous accédez à une page détaillée contenant :</p>
+        <ol class="steps">
+            <li><strong>Informations de la séance</strong> : enseignant, heure de début/fin, durée totale, statut</li>
+            <li><strong>Statistiques globales</strong> : total participants, durée moyenne, taux de présence</li>
+            <li><strong>Liste des participants</strong> avec pour chacun :
+                <ul>
+                    <li>Nom et email</li>
+                    <li>Heure d'arrivée et de départ</li>
+                    <li>Durée de connexion</li>
+                    <li>Statut de présence (badge coloré : vert = Présent, orange = Partiel, rouge = Insuffisant/Absent)</li>
+                    <li>Pourcentage de participation</li>
+                </ul>
+            </li>
+        </ol>
+    </div>
+
+    <!-- 9. Paramètres -->
+    <div class="section" id="parametres">
+        <h2><span class="step-num">9</span> Paramètres</h2>
+        <p>Accédez aux <strong>paramètres</strong> de votre compte pour gérer votre profil et vos préférences.</p>
+
+        <div class="screenshot">
+            <img src="images/enseignant/15_parametres.png" alt="Paramètres du compte">
+            <div class="caption">Page des paramètres du compte enseignant</div>
+        </div>
+
+        <p>Depuis cette page, vous pouvez :</p>
+        <ul style="padding-left: 20px; color: #475569;">
+            <li>Modifier vos <strong>informations personnelles</strong></li>
+            <li>Changer votre <strong>mot de passe</strong></li>
+            <li>Configurer vos <strong>préférences</strong> de notification</li>
+        </ul>
+    </div>
+
+</div>
+
+<div class="footer">
+    <p>Guide Utilisateur Enseignant - KLASSCI LMS</p>
+    <p>Document généré automatiquement | Version 1.0 - Février 2026</p>
+</div>
+
+</body>
+</html>

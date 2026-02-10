@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Guide Utilisateur - Étudiant | KLASSCI LMS</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.7;
+            color: #1e293b;
+            background: #f8fafc;
+        }
+
+        /* Header */
+        .header {
+            background: linear-gradient(135deg, #059669 0%, #047857 100%);
+            color: white;
+            padding: 60px 0;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+        .header::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+        }
+        .header h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 10px;
+            position: relative;
+        }
+        .header .subtitle {
+            font-size: 1.2rem;
+            opacity: 0.9;
+            position: relative;
+        }
+        .header .badge {
+            display: inline-block;
+            background: rgba(255,255,255,0.2);
+            padding: 6px 20px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            margin-top: 15px;
+            position: relative;
+        }
+
+        .container {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+
+        /* Table des matières */
+        .toc {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            margin-bottom: 40px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            border-left: 4px solid #059669;
+        }
+        .toc h2 {
+            color: #059669;
+            margin-bottom: 15px;
+            font-size: 1.3rem;
+        }
+        .toc ol {
+            padding-left: 20px;
+        }
+        .toc li {
+            margin: 8px 0;
+        }
+        .toc a {
+            color: #475569;
+            text-decoration: none;
+            transition: color 0.2s;
+        }
+        .toc a:hover {
+            color: #059669;
+        }
+
+        /* Sections */
+        .section {
+            background: white;
+            border-radius: 12px;
+            padding: 35px;
+            margin-bottom: 30px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .section h2 {
+            color: #059669;
+            font-size: 1.6rem;
+            margin-bottom: 8px;
+            padding-bottom: 12px;
+            border-bottom: 2px solid #e2e8f0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .section h2 .step-num {
+            background: #059669;
+            color: white;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1rem;
+            flex-shrink: 0;
+        }
+        .section h3 {
+            color: #334155;
+            font-size: 1.15rem;
+            margin: 20px 0 10px;
+        }
+        .section p {
+            color: #475569;
+            margin: 10px 0;
+        }
+
+        /* Images */
+        .screenshot {
+            margin: 20px 0;
+            text-align: center;
+        }
+        .screenshot img {
+            max-width: 100%;
+            border-radius: 8px;
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        .screenshot .caption {
+            font-size: 0.85rem;
+            color: #64748b;
+            margin-top: 8px;
+            font-style: italic;
+        }
+
+        /* Info boxes */
+        .info-box {
+            background: #ecfdf5;
+            border-left: 4px solid #059669;
+            padding: 15px 20px;
+            border-radius: 0 8px 8px 0;
+            margin: 15px 0;
+        }
+        .info-box.warning {
+            background: #fef3c7;
+            border-left-color: #f59e0b;
+        }
+        .info-box.success {
+            background: #ecfdf5;
+            border-left-color: #10b981;
+        }
+        .info-box.important {
+            background: #eff6ff;
+            border-left-color: #3b82f6;
+        }
+        .info-box strong {
+            display: block;
+            margin-bottom: 4px;
+        }
+
+        /* Steps list */
+        .steps {
+            list-style: none;
+            padding: 0;
+            counter-reset: step;
+        }
+        .steps li {
+            counter-increment: step;
+            padding: 8px 0 8px 40px;
+            position: relative;
+            color: #475569;
+        }
+        .steps li::before {
+            content: counter(step);
+            position: absolute;
+            left: 0;
+            top: 8px;
+            width: 28px;
+            height: 28px;
+            background: #d1fae5;
+            color: #059669;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+
+        /* Footer */
+        .footer {
+            text-align: center;
+            padding: 40px 20px;
+            color: #94a3b8;
+            font-size: 0.9rem;
+        }
+
+        @media print {
+            .header { padding: 30px 0; }
+            .section { break-inside: avoid; box-shadow: none; border: 1px solid #e2e8f0; }
+            .screenshot img { max-width: 80%; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <h1>Guide Utilisateur Étudiant</h1>
+    <div class="subtitle">Plateforme KLASSCI LMS</div>
+    <div class="badge">Profil : Étudiant</div>
+</div>
+
+<div class="container">
+
+    <!-- Table des matières -->
+    <div class="toc">
+        <h2>Table des matières</h2>
+        <ol>
+            <li><a href="#connexion">Connexion à la plateforme</a></li>
+            <li><a href="#dashboard">Tableau de bord</a></li>
+            <li><a href="#mes-cours">Mes Cours</a></li>
+            <li><a href="#emploi-du-temps">Emploi du temps</a></li>
+            <li><a href="#rejoindre-visio">Rejoindre un cours en direct (Visioconférence)</a></li>
+            <li><a href="#evaluations">Évaluations</a></li>
+            <li><a href="#mes-notes">Mes Notes</a></li>
+            <li><a href="#parametres">Paramètres</a></li>
+        </ol>
+    </div>
+
+    <!-- 1. Connexion -->
+    <div class="section" id="connexion">
+        <h2><span class="step-num">1</span> Connexion à la plateforme</h2>
+        <p>Pour accéder à la plateforme KLASSCI LMS, ouvrez votre navigateur et rendez-vous à l'adresse fournie par votre établissement.</p>
+
+        <ol class="steps">
+            <li>Entrez votre <strong>nom d'utilisateur</strong> étudiant</li>
+            <li>Entrez votre <strong>mot de passe</strong></li>
+            <li>Cliquez sur le bouton <strong>"Se connecter"</strong></li>
+        </ol>
+
+        <div class="screenshot">
+            <img src="images/etudiant/01_connexion.png" alt="Page de connexion étudiant">
+            <div class="caption">Page de connexion - Saisie des identifiants étudiant</div>
+        </div>
+
+        <div class="info-box">
+            <strong>Conseil :</strong>
+            Si vous avez oublié votre mot de passe, contactez votre enseignant ou le coordinateur de votre établissement.
+        </div>
+    </div>
+
+    <!-- 2. Dashboard -->
+    <div class="section" id="dashboard">
+        <h2><span class="step-num">2</span> Tableau de bord</h2>
+        <p>Après connexion, vous arrivez sur votre <strong>tableau de bord</strong> personnel. Il vous donne un résumé de votre activité scolaire.</p>
+
+        <div class="screenshot">
+            <img src="images/etudiant/02_dashboard.png" alt="Dashboard étudiant">
+            <div class="caption">Tableau de bord étudiant - Vue d'ensemble</div>
+        </div>
+
+        <p>Le tableau de bord affiche :</p>
+        <ul style="padding-left: 20px; color: #475569;">
+            <li>Vos <strong>cours</strong> en cours</li>
+            <li>Les <strong>évaluations</strong> à venir</li>
+            <li>Vos <strong>résultats</strong> récents</li>
+            <li>Les <strong>notifications</strong> importantes</li>
+        </ul>
+
+        <div class="screenshot">
+            <img src="images/etudiant/02b_dashboard_complet.png" alt="Dashboard complet">
+            <div class="caption">Vue complète du tableau de bord étudiant</div>
+        </div>
+    </div>
+
+    <!-- 3. Mes Cours -->
+    <div class="section" id="mes-cours">
+        <h2><span class="step-num">3</span> Mes Cours</h2>
+        <p>La section <strong>"Mes Cours"</strong> regroupe toutes les matières auxquelles vous êtes inscrit, avec leurs leçons et ressources.</p>
+
+        <div class="screenshot">
+            <img src="images/etudiant/03_mes_cours.png" alt="Mes cours">
+            <div class="caption">Liste des cours et matières de l'étudiant</div>
+        </div>
+
+        <p>Depuis cette page, vous pouvez :</p>
+        <ul style="padding-left: 20px; color: #475569;">
+            <li>Accéder aux <strong>leçons</strong> de chaque matière</li>
+            <li>Consulter les <strong>ressources pédagogiques</strong> partagées par vos enseignants</li>
+            <li>Suivre votre <strong>progression</strong> dans chaque cours</li>
+        </ul>
+    </div>
+
+    <!-- 4. Emploi du temps -->
+    <div class="section" id="emploi-du-temps">
+        <h2><span class="step-num">4</span> Emploi du temps</h2>
+        <p>L'emploi du temps affiche toutes vos séances planifiées sous forme de <strong>calendrier interactif</strong>.</p>
+
+        <div class="screenshot">
+            <img src="images/etudiant/04_emploi_du_temps.png" alt="Emploi du temps étudiant">
+            <div class="caption">Calendrier avec les séances planifiées</div>
+        </div>
+
+        <p>Chaque séance est représentée par un bloc coloré indiquant :</p>
+        <ul style="padding-left: 20px; color: #475569;">
+            <li>Le <strong>nom de la matière</strong></li>
+            <li>L'<strong>horaire</strong> de la séance</li>
+            <li>Le <strong>statut</strong> (programmée, en direct, terminée)</li>
+        </ul>
+
+        <div class="info-box important">
+            <strong>Astuce :</strong>
+            Cliquez sur une séance dans le calendrier pour voir ses détails. Si un cours est en direct, vous verrez un bouton pour le rejoindre !
+        </div>
+    </div>
+
+    <!-- 5. Rejoindre la visio -->
+    <div class="section" id="rejoindre-visio">
+        <h2><span class="step-num">5</span> Rejoindre un cours en direct</h2>
+        <p>Lorsqu'un enseignant démarre un cours en visioconférence, vous pouvez le <strong>rejoindre directement</strong> depuis votre emploi du temps.</p>
+
+        <h3>Étape 1 : Repérer le cours en direct</h3>
+        <p>Dans votre emploi du temps, cliquez sur la séance. Si le cours est en direct, la fenêtre modale affichera le statut <strong>"EN DIRECT"</strong> avec un bouton <strong>"Rejoindre la visio"</strong>.</p>
+
+        <div class="screenshot">
+            <img src="images/etudiant/05_modal_seance_en_direct.png" alt="Modal séance en direct">
+            <div class="caption">Fenêtre modale indiquant "EN DIRECT" avec le bouton "Rejoindre la visio"</div>
+        </div>
+
+        <div class="info-box success">
+            <strong>Cours en direct !</strong>
+            Lorsque vous voyez le badge "EN DIRECT", cela signifie que votre enseignant a démarré le cours. Cliquez sur "Rejoindre la visio" pour accéder à la salle de classe virtuelle.
+        </div>
+
+        <h3>Étape 2 : Page de détails de la séance</h3>
+        <p>Vous pouvez aussi accéder aux détails complets de la séance. Le statut <strong>"COURS EN DIRECT"</strong> est clairement affiché avec le bouton <strong>"Rejoindre le cours"</strong>.</p>
+
+        <div class="screenshot">
+            <img src="images/etudiant/06_details_seance_rejoindre.png" alt="Détails séance - Rejoindre le cours">
+            <div class="caption">Page de détails avec le statut "COURS EN DIRECT" et le bouton "Rejoindre le cours"</div>
+        </div>
+
+        <h3>Comment rejoindre un cours en direct</h3>
+        <ol class="steps">
+            <li>Ouvrez votre <strong>emploi du temps</strong></li>
+            <li>Cliquez sur la séance qui est <strong>en direct</strong></li>
+            <li>Cliquez sur le bouton <strong>"Rejoindre la visio"</strong> dans la modale, ou sur <strong>"Rejoindre le cours"</strong> dans la page de détails</li>
+            <li>Vous serez redirigé vers la <strong>salle de visioconférence Jitsi</strong></li>
+            <li>Autorisez l'accès à votre <strong>microphone et caméra</strong> si demandé</li>
+        </ol>
+
+        <div class="info-box warning">
+            <strong>Important :</strong>
+            Le bouton "Rejoindre" n'apparaît que lorsque l'enseignant a <strong>démarré le cours</strong>. Si vous ne voyez pas le bouton, cela signifie que le cours n'a pas encore commencé.
+        </div>
+    </div>
+
+    <!-- 6. Évaluations -->
+    <div class="section" id="evaluations">
+        <h2><span class="step-num">6</span> Évaluations</h2>
+        <p>La section <strong>Évaluations</strong> liste toutes les évaluations auxquelles vous devez participer.</p>
+
+        <div class="screenshot">
+            <img src="images/etudiant/07_evaluations.png" alt="Évaluations étudiant">
+            <div class="caption">Liste des évaluations disponibles pour l'étudiant</div>
+        </div>
+
+        <p>Pour chaque évaluation, vous pouvez voir :</p>
+        <ul style="padding-left: 20px; color: #475569;">
+            <li>Le <strong>titre</strong> de l'évaluation</li>
+            <li>La <strong>matière</strong> concernée</li>
+            <li>La <strong>date limite</strong> de soumission</li>
+            <li>Le <strong>statut</strong> (à faire, en cours, terminée)</li>
+        </ul>
+
+        <div class="info-box">
+            <strong>Conseil :</strong>
+            Consultez régulièrement cette section pour ne manquer aucune évaluation. Les évaluations en attente sont mises en évidence.
+        </div>
+    </div>
+
+    <!-- 7. Mes Notes -->
+    <div class="section" id="mes-notes">
+        <h2><span class="step-num">7</span> Mes Notes</h2>
+        <p>Consultez vos <strong>résultats</strong> et <strong>notes</strong> pour toutes vos évaluations passées.</p>
+
+        <div class="screenshot">
+            <img src="images/etudiant/08_mes_notes.png" alt="Mes notes">
+            <div class="caption">Page des notes et résultats de l'étudiant</div>
+        </div>
+
+        <p>Cette section vous permet de :</p>
+        <ul style="padding-left: 20px; color: #475569;">
+            <li>Voir vos <strong>notes</strong> par évaluation</li>
+            <li>Suivre votre <strong>progression</strong> dans chaque matière</li>
+            <li>Consulter les <strong>commentaires</strong> de vos enseignants</li>
+        </ul>
+    </div>
+
+    <!-- 8. Paramètres -->
+    <div class="section" id="parametres">
+        <h2><span class="step-num">8</span> Paramètres</h2>
+        <p>Gérez les paramètres de votre compte étudiant.</p>
+
+        <div class="screenshot">
+            <img src="images/etudiant/09_parametres.png" alt="Paramètres étudiant">
+            <div class="caption">Paramètres du compte étudiant</div>
+        </div>
+
+        <p>Depuis cette page, vous pouvez :</p>
+        <ul style="padding-left: 20px; color: #475569;">
+            <li>Modifier vos <strong>informations personnelles</strong></li>
+            <li>Changer votre <strong>mot de passe</strong></li>
+            <li>Configurer vos <strong>préférences</strong></li>
+        </ul>
+    </div>
+
+</div>
+
+<div class="footer">
+    <p>Guide Utilisateur Étudiant - KLASSCI LMS</p>
+    <p>Document généré automatiquement | Version 1.0 - Février 2026</p>
+</div>
+
+</body>
+</html>

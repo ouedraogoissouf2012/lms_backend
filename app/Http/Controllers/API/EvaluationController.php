@@ -139,6 +139,18 @@ class EvaluationController extends Controller
             ], 422);
         }
 
+        // Vérifier qu'une évaluation LMS n'existe pas déjà pour cette évaluation KLASSCI
+        if ($request->klassci_evaluation_id) {
+            $existing = Evaluation::where('klassci_evaluation_id', $request->klassci_evaluation_id)->first();
+            if ($existing) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Une version en ligne existe déjà pour cette évaluation KLASSCI.',
+                    'data' => $existing
+                ], 409);
+            }
+        }
+
         try {
             DB::beginTransaction();
 
@@ -451,6 +463,22 @@ class EvaluationController extends Controller
             ], 404);
         }
 
+        // Vérifier que l'évaluation a des questions avant de publier
+        if ($evaluation->questions()->count() === 0) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Impossible de publier: l\'évaluation n\'a aucune question. Ajoutez des questions avant de publier.'
+            ], 422);
+        }
+
+        // Vérifier que l'évaluation n'est pas déjà terminée
+        if ($evaluation->isTerminee()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Impossible de publier: l\'évaluation est déjà terminée.'
+            ], 422);
+        }
+
         // Utiliser la méthode publish() du model pour synchroniser status et is_published
         $evaluation->publish();
 
@@ -684,6 +712,22 @@ class EvaluationController extends Controller
             ], 404);
         }
 
+        // Vérifier que l'évaluation n'est pas terminée
+        if ($evaluation->isTerminee()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Cette évaluation est terminée. Vous ne pouvez plus la passer.'
+            ], 403);
+        }
+
+        // Vérifier que l'évaluation a des questions
+        if ($evaluation->questions()->count() === 0) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Cette évaluation n\'a pas encore de questions.'
+            ], 422);
+        }
+
         $validator = Validator::make($request->all(), [
             'klassci_etudiant_id' => 'required|integer',
         ]);
@@ -765,15 +809,32 @@ class EvaluationController extends Controller
             \Log::warning('Fallback: allowing evaluation start despite window check failure');
         }
 
-        // Vérifier le nombre de tentatives
+        // Vérifier si l'étudiant a déjà une tentative en cours
+        $activeSubmission = EvaluationSubmission::where('evaluation_id', $id)
+            ->where('klassci_etudiant_id', $klassciEtudiantId)
+            ->where('status', 'en_cours')
+            ->first();
+
+        if ($activeSubmission) {
+            // Retourner la soumission en cours au lieu d'en créer une nouvelle
+            return response()->json([
+                'success' => true,
+                'message' => 'Reprise de la tentative en cours',
+                'data' => $activeSubmission,
+                'window' => $window ?? null
+            ]);
+        }
+
+        // Vérifier le nombre de tentatives terminées
         $attemptsCount = EvaluationSubmission::where('evaluation_id', $id)
             ->where('klassci_etudiant_id', $klassciEtudiantId)
+            ->whereIn('status', ['soumis', 'corrige'])
             ->count();
 
-        if ($attemptsCount >= $evaluation->max_attempts && !$evaluation->allow_retake) {
+        if ($evaluation->max_attempts && $attemptsCount >= $evaluation->max_attempts) {
             return response()->json([
                 'success' => false,
-                'message' => 'Nombre maximum de tentatives atteint'
+                'message' => 'Nombre maximum de tentatives atteint (' . $evaluation->max_attempts . ')'
             ], 403);
         }
 

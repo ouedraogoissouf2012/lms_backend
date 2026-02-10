@@ -20,7 +20,7 @@ class LessonController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
-        $query = Lesson::query();
+        $query = Lesson::with(['matiere', 'enseignant', 'classe']);
 
         // Filtres
         if ($request->has('matiere_id')) {
@@ -63,6 +63,117 @@ class LessonController extends Controller
         return response()->json([
             'success' => true,
             'data' => $lessons,
+        ]);
+    }
+
+    /**
+     * GET /api/lessons/my-courses
+     * Liste des cours de l'étudiant connecté avec enseignant et matière
+     * Filtrable par matiere_id et enseignant_id
+     */
+    public function myCourses(Request $request): JsonResponse
+    {
+        $user = $request->user();
+
+        if (!$user) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Non authentifié',
+            ], 401);
+        }
+
+        // Récupérer les matières de l'étudiant via KLASSCI
+        $klassciService = app(\App\Services\KlassciProxyService::class);
+        $matiereIds = [];
+
+        try {
+            $dashboardData = $klassciService->requestWithUserToken(
+                $user->klassci_token,
+                'me/dashboard',
+                'GET'
+            );
+
+            if (isset($dashboardData['data']['cours']) && is_array($dashboardData['data']['cours'])) {
+                foreach ($dashboardData['data']['cours'] as $cours) {
+                    if (isset($cours['id'])) {
+                        $matiereIds[] = $cours['id'];
+                    } elseif (isset($cours['matiere_id'])) {
+                        $matiereIds[] = $cours['matiere_id'];
+                    }
+                }
+            }
+        } catch (\Exception $e) {
+            \Log::warning('Erreur récupération matières KLASSCI: ' . $e->getMessage());
+        }
+
+        // Construire la requête
+        $query = Lesson::with(['matiere', 'enseignant', 'classe'])
+            ->published()
+            ->ordered();
+
+        // Filtrer par les matières de l'étudiant (si on a pu les récupérer)
+        if (!empty($matiereIds)) {
+            $query->whereIn('matiere_id', $matiereIds);
+        }
+
+        // Filtres additionnels
+        if ($request->has('matiere_id')) {
+            $query->forMatiere($request->matiere_id);
+        }
+
+        if ($request->has('enseignant_id')) {
+            $query->byTeacher($request->enseignant_id);
+        }
+
+        // Récupérer les leçons
+        $lessons = $query->get();
+
+        // Transformer pour avoir un format cohérent
+        $coursesData = $lessons->map(function ($lesson) use ($user) {
+            $progress = $lesson->progressForUser($user->id);
+
+            return [
+                'id' => $lesson->id,
+                'title' => $lesson->title,
+                'description' => $lesson->description,
+                'type' => $lesson->type,
+                'duree_estimee' => $lesson->duree_estimee_minutes,
+                'niveau_difficulte' => $lesson->niveau_difficulte,
+                'enseignant' => $lesson->enseignant ? [
+                    'id' => $lesson->enseignant->id,
+                    'klassci_id' => $lesson->enseignant->klassci_id,
+                    'name' => $lesson->enseignant->name,
+                ] : null,
+                'matiere' => $lesson->matiere ? [
+                    'id' => $lesson->matiere->id,
+                    'name' => $lesson->matiere->name ?? $lesson->matiere->libelle ?? 'Matière',
+                ] : null,
+                'classe' => $lesson->classe ? [
+                    'id' => $lesson->classe->id,
+                    'name' => $lesson->classe->name ?? $lesson->classe->nom ?? 'Classe',
+                ] : null,
+                'progress' => $progress ? [
+                    'percentage' => $progress->progress_percentage,
+                    'status' => $progress->status,
+                    'completed_at' => $progress->completed_at,
+                ] : null,
+                'published_at' => $lesson->published_at,
+                'created_at' => $lesson->created_at,
+            ];
+        });
+
+        // Récupérer les filtres disponibles (matières et enseignants uniques)
+        $matieres = $lessons->pluck('matiere')->filter()->unique('id')->values();
+        $enseignants = $lessons->pluck('enseignant')->filter()->unique('id')->values();
+
+        return response()->json([
+            'success' => true,
+            'data' => $coursesData,
+            'filters' => [
+                'matieres' => $matieres->map(fn($m) => ['id' => $m->id, 'name' => $m->name ?? $m->libelle ?? 'Matière']),
+                'enseignants' => $enseignants->map(fn($e) => ['id' => $e->klassci_id, 'name' => $e->name]),
+            ],
+            'total' => $coursesData->count(),
         ]);
     }
 

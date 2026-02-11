@@ -82,55 +82,56 @@ class LessonController extends Controller
             ], 401);
         }
 
-        // Récupérer les matières de l'étudiant via KLASSCI
-        $klassciService = app(\App\Services\KlassciProxyService::class);
-        $matiereIds = [];
-
-        try {
-            $dashboardData = $klassciService->requestWithUserToken(
-                $user->klassci_token,
-                'me/dashboard',
-                'GET'
-            );
-
-            if (isset($dashboardData['data']['cours']) && is_array($dashboardData['data']['cours'])) {
-                foreach ($dashboardData['data']['cours'] as $cours) {
-                    if (isset($cours['id'])) {
-                        $matiereIds[] = $cours['id'];
-                    } elseif (isset($cours['matiere_id'])) {
-                        $matiereIds[] = $cours['matiere_id'];
-                    }
-                }
-            }
-        } catch (\Exception $e) {
-            \Log::warning('Erreur récupération matières KLASSCI: ' . $e->getMessage());
-        }
-
-        // Construire la requête
-        $query = Lesson::with(['matiere', 'enseignant', 'classe'])
+        // Construire la requête - Tous les cours publiés
+        $query = Lesson::with(['matiere', 'classe'])
             ->published()
             ->ordered();
 
-        // Filtrer par les matières de l'étudiant (si on a pu les récupérer)
-        if (!empty($matiereIds)) {
-            $query->whereIn('matiere_id', $matiereIds);
-        }
-
-        // Filtres additionnels
+        // Filtres optionnels
         if ($request->has('matiere_id')) {
             $query->forMatiere($request->matiere_id);
         }
 
         if ($request->has('enseignant_id')) {
-            $query->byTeacher($request->enseignant_id);
+            // Chercher l'user par klassci_id (car le frontend envoie klassci_id)
+            $enseignantUser = \App\Models\User::where('klassci_id', $request->enseignant_id)
+                ->where('role', 'enseignant')
+                ->first();
+            if ($enseignantUser) {
+                $query->where(function ($q) use ($enseignantUser, $request) {
+                    $q->where('enseignant_id', $enseignantUser->id)
+                      ->orWhere('enseignant_id', $request->enseignant_id);
+                });
+            } else {
+                $query->where('enseignant_id', $request->enseignant_id);
+            }
         }
 
         // Récupérer les leçons
         $lessons = $query->get();
 
+        // Pré-charger les enseignants (par id ET par klassci_id pour gérer les deux cas)
+        $enseignantIds = $lessons->pluck('enseignant_id')->unique()->filter()->toArray();
+        $enseignants = \App\Models\User::where('role', 'enseignant')
+            ->where(function ($q) use ($enseignantIds) {
+                $q->whereIn('id', $enseignantIds)
+                  ->orWhereIn('klassci_id', $enseignantIds);
+            })
+            ->get()
+            ->keyBy(function ($u) {
+                return $u->id;
+            });
+
+        // Index par klassci_id aussi
+        $enseignantsByKlassci = $enseignants->keyBy('klassci_id');
+
         // Transformer pour avoir un format cohérent
-        $coursesData = $lessons->map(function ($lesson) use ($user) {
+        $coursesData = $lessons->map(function ($lesson) use ($user, $enseignants, $enseignantsByKlassci) {
             $progress = $lesson->progressForUser($user->id);
+
+            // Résoudre l'enseignant (essayer par id puis par klassci_id)
+            $enseignant = $enseignants->get($lesson->enseignant_id)
+                ?? $enseignantsByKlassci->get($lesson->enseignant_id);
 
             return [
                 'id' => $lesson->id,
@@ -139,10 +140,10 @@ class LessonController extends Controller
                 'type' => $lesson->type,
                 'duree_estimee' => $lesson->duree_estimee_minutes,
                 'niveau_difficulte' => $lesson->niveau_difficulte,
-                'enseignant' => $lesson->enseignant ? [
-                    'id' => $lesson->enseignant->id,
-                    'klassci_id' => $lesson->enseignant->klassci_id,
-                    'name' => $lesson->enseignant->name,
+                'enseignant' => $enseignant ? [
+                    'id' => $enseignant->id,
+                    'klassci_id' => $enseignant->klassci_id,
+                    'name' => $enseignant->name,
                 ] : null,
                 'matiere' => $lesson->matiere ? [
                     'id' => $lesson->matiere->id,
@@ -162,16 +163,23 @@ class LessonController extends Controller
             ];
         });
 
-        // Récupérer les filtres disponibles (matières et enseignants uniques)
-        $matieres = $lessons->pluck('matiere')->filter()->unique('id')->values();
-        $enseignants = $lessons->pluck('enseignant')->filter()->unique('id')->values();
+        // Récupérer les filtres disponibles
+        $uniqueEnseignants = collect();
+        foreach ($lessons as $lesson) {
+            $ens = $enseignants->get($lesson->enseignant_id) ?? $enseignantsByKlassci->get($lesson->enseignant_id);
+            if ($ens && !$uniqueEnseignants->contains('id', $ens->id)) {
+                $uniqueEnseignants->push($ens);
+            }
+        }
+
+        $uniqueMatieres = $lessons->pluck('matiere')->filter()->unique('id')->values();
 
         return response()->json([
             'success' => true,
             'data' => $coursesData,
             'filters' => [
-                'matieres' => $matieres->map(fn($m) => ['id' => $m->id, 'name' => $m->name ?? $m->libelle ?? 'Matière']),
-                'enseignants' => $enseignants->map(fn($e) => ['id' => $e->klassci_id, 'name' => $e->name]),
+                'matieres' => $uniqueMatieres->map(fn($m) => ['id' => $m->id, 'name' => $m->name ?? $m->libelle ?? 'Matière']),
+                'enseignants' => $uniqueEnseignants->map(fn($e) => ['id' => $e->klassci_id, 'name' => $e->name]),
             ],
             'total' => $coursesData->count(),
         ]);
@@ -254,7 +262,19 @@ class LessonController extends Controller
         }
 
         $data = $validator->validated();
-        $data['enseignant_id'] = $request->user()->klassci_id;
+        $data['enseignant_id'] = $request->user()->id;
+
+        // Résoudre matiere_id : le frontend peut envoyer un KLASSCI ID
+        if (isset($data['matiere_id'])) {
+            $matiere = \App\Models\Matiere::find($data['matiere_id']);
+            if (!$matiere) {
+                // Chercher par klassci_id
+                $matiere = \App\Models\Matiere::where('klassci_id', $data['matiere_id'])->first();
+                if ($matiere) {
+                    $data['matiere_id'] = $matiere->id;
+                }
+            }
+        }
 
         // Si la leçon est créée avec status "published", définir published_at automatiquement
         if (isset($data['status']) && $data['status'] === 'published' && !isset($data['published_at'])) {
@@ -287,7 +307,7 @@ class LessonController extends Controller
 
         // Vérifier que l'utilisateur est propriétaire ou admin
         $user = $request->user();
-        if (!$user->isAdmin() && $lesson->enseignant_id !== $user->klassci_id) {
+        if (!$user->isAdmin() && $lesson->enseignant_id !== $user->id) {
             return response()->json([
                 'success' => false,
                 'message' => 'Vous n\'êtes pas autorisé à modifier ce cours',
@@ -360,7 +380,7 @@ class LessonController extends Controller
 
         // Vérifier que l'utilisateur est propriétaire ou admin
         $user = $request->user();
-        if (!$user->isAdmin() && $lesson->enseignant_id !== $user->klassci_id) {
+        if (!$user->isAdmin() && $lesson->enseignant_id !== $user->id) {
             return response()->json([
                 'success' => false,
                 'message' => 'Vous n\'êtes pas autorisé à supprimer ce cours',
@@ -391,7 +411,7 @@ class LessonController extends Controller
         }
 
         $user = $request->user();
-        if (!$user->isAdmin() && $lesson->enseignant_id !== $user->klassci_id) {
+        if (!$user->isAdmin() && $lesson->enseignant_id !== $user->id) {
             return response()->json([
                 'success' => false,
                 'message' => 'Vous n\'êtes pas autorisé à publier ce cours',
@@ -465,7 +485,7 @@ class LessonController extends Controller
         }
 
         $user = $request->user();
-        if (!$user->isAdmin() && $lesson->enseignant_id !== $user->klassci_id) {
+        if (!$user->isAdmin() && $lesson->enseignant_id !== $user->id) {
             return response()->json([
                 'success' => false,
                 'message' => 'Vous n\'êtes pas autorisé à dépublier ce cours',

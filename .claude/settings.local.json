@@ -108,7 +108,16 @@
       "Bash(powershell.exe -Command \"Get-ChildItem -Path ''C:\\\\Users\\\\USER PC\\\\Desktop'',''C:\\\\Users\\\\USER PC\\\\Downloads'',''C:\\\\Users\\\\USER PC\\\\Pictures'',''C:\\\\Users\\\\USER PC\\\\Documents\\\\propre à moi\\\\lms-backend\\\\guides'' -Filter ''*.png'' -Recurse -ErrorAction SilentlyContinue | Where-Object { $_LastWriteTime -gt \\(Get-Date\\).AddDays\\(-2\\) } | Sort-Object LastWriteTime -Descending | Select-Object -First 20 FullName, LastWriteTime\")",
       "Bash(powershell.exe -NoProfile -Command:*)",
       "Bash(powershell.exe:*)",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "Bash(git add:*)",
+      "Bash(npx vite:*)",
+      "Bash(netstat:*)",
+      "WebFetch(domain:www.eleken.co)",
+      "mcp__chrome-devtools__get_console_message",
+      "mcp__chrome-devtools__list_network_requests",
+      "Bash(cmd.exe /c \"taskkill /f /im dart.exe\")",
+      "Bash(npm install:*)",
+      "Bash(cmd.exe /c \"taskkill /f /im dart.exe & taskkill /f /im node.exe\")"
     ],
     "deny": [],
     "ask": []

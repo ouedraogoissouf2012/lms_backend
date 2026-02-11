@@ -562,10 +562,12 @@ class EvaluationController extends Controller
             \Log::info('Student classe found', ['classe_id' => $classeId]);
 
             // Récupérer les évaluations publiées pour cette classe
+            // Exclure celles qui n'ont aucune question (inutiles pour l'étudiant)
             $evaluationsLMS = Evaluation::with('questions', 'submissions')
                 ->where('klassci_classe_id', $classeId)
                 ->where('is_published', true)
                 ->whereIn('status', ['planifiee', 'en_cours', 'terminee'])
+                ->whereHas('questions') // Uniquement celles qui ont au moins 1 question
                 ->orderBy('date_evaluation', 'desc')
                 ->get();
 
@@ -712,13 +714,9 @@ class EvaluationController extends Controller
             ], 404);
         }
 
-        // Vérifier que l'évaluation n'est pas terminée
-        if ($evaluation->isTerminee()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Cette évaluation est terminée. Vous ne pouvez plus la passer.'
-            ], 403);
-        }
+        // Vérifier si c'est un mode entraînement (évaluation terminée)
+        $isPracticeMode = $evaluation->isTerminee();
+        // NOTE: On ne bloque plus les évaluations terminées, l'étudiant peut s'entraîner
 
         // Vérifier que l'évaluation a des questions
         if ($evaluation->questions()->count() === 0) {
@@ -765,8 +763,8 @@ class EvaluationController extends Controller
 
             $window = $klassciEval['programmation']['window'] ?? null;
 
-            // Vérifier que la fenêtre est ouverte
-            if ($window && !$window['is_open']) {
+            // Vérifier que la fenêtre est ouverte (sauf en mode entraînement)
+            if ($window && !$window['is_open'] && !$isPracticeMode) {
                 $message = 'L\'évaluation n\'est pas encore ouverte';
 
                 if (!$window['has_started']) {
@@ -789,6 +787,14 @@ class EvaluationController extends Controller
                     'message' => $message,
                     'window' => $window
                 ], 403);
+            }
+
+            // En mode entraînement, activer le flag
+            if ($isPracticeMode) {
+                \Log::info('Mode entraînement activé pour évaluation terminée', [
+                    'evaluation_id' => $id,
+                    'student_id' => $klassciEtudiantId
+                ]);
             }
 
             \Log::info('Démarrage évaluation autorisé', [
@@ -831,7 +837,8 @@ class EvaluationController extends Controller
             ->whereIn('status', ['soumis', 'corrige'])
             ->count();
 
-        if ($evaluation->max_attempts && $attemptsCount >= $evaluation->max_attempts) {
+        // En mode entraînement, ne pas bloquer sur max_attempts
+        if (!$isPracticeMode && $evaluation->max_attempts && $attemptsCount >= $evaluation->max_attempts) {
             return response()->json([
                 'success' => false,
                 'message' => 'Nombre maximum de tentatives atteint (' . $evaluation->max_attempts . ')'
@@ -845,13 +852,15 @@ class EvaluationController extends Controller
             'attempt' => $attemptsCount + 1,
             'status' => 'en_cours',
             'started_at' => now(),
+            'feedback' => $isPracticeMode ? '[PRACTICE] Entraînement - note non officielle' : null,
         ]);
 
         return response()->json([
             'success' => true,
-            'message' => 'Évaluation démarrée',
+            'message' => $isPracticeMode ? 'Mode entraînement démarré' : 'Évaluation démarrée',
             'data' => $submission,
-            'window' => $window ?? null
+            'window' => $window ?? null,
+            'is_practice' => $isPracticeMode
         ]);
     }
 
@@ -955,6 +964,22 @@ class EvaluationController extends Controller
             $questions = $evaluation->questions()->get();
             $answers = $submission->answers ?? [];
 
+            // Calculer si la correction est disponible (7 jours après soumission)
+            $correctionDelayDays = 7;
+            $submittedAt = $submission->submitted_at ? \Carbon\Carbon::parse($submission->submitted_at) : null;
+            $correctionAvailable = $submittedAt && now()->diffInDays($submittedAt) >= $correctionDelayDays;
+            $correctionAvailableAt = $submittedAt ? $submittedAt->copy()->addDays($correctionDelayDays)->toIso8601String() : null;
+
+            // Si la correction n'est pas encore disponible, masquer les bonnes réponses
+            $questionsData = $questions->map(function ($question) use ($correctionAvailable) {
+                $q = $question->toArray();
+                if (!$correctionAvailable) {
+                    unset($q['correct_answers']);
+                    unset($q['explanation']);
+                }
+                return $q;
+            });
+
             return response()->json([
                 'success' => true,
                 'data' => [
@@ -967,8 +992,11 @@ class EvaluationController extends Controller
                     'score' => $submission->score,
                     'note_sur_20' => $submission->note_sur_20,
                     'feedback' => $submission->feedback,
-                    'questions' => $questions,
+                    'questions' => $questionsData,
                     'answers' => $answers,
+                    'correction_available' => $correctionAvailable,
+                    'correction_available_at' => $correctionAvailableAt,
+                    'correction_delay_days' => $correctionDelayDays,
                     'evaluation' => [
                         'id' => $evaluation->id,
                         'titre' => $evaluation->titre,
@@ -1066,10 +1094,11 @@ class EvaluationController extends Controller
         }
 
         try {
-            // Préparer les notes pour KLASSCI
+            // Préparer les notes pour KLASSCI (exclure les entraînements)
             $notes = [];
             foreach ($evaluation->submissions as $submission) {
-                if ($submission->status === 'soumis' || $submission->status === 'corrige') {
+                if (($submission->status === 'soumis' || $submission->status === 'corrige')
+                    && !str_starts_with($submission->feedback ?? '', '[PRACTICE]')) {
                     $notes[] = [
                         'etudiant_id' => $submission->klassci_etudiant_id,
                         'note' => $submission->note_sur_20,
@@ -1300,6 +1329,10 @@ class EvaluationController extends Controller
                 if ($userLocal && $userLocal->klassci_id) {
                     $submission = $evaluation->submissions()
                         ->where('klassci_etudiant_id', $userLocal->klassci_id)
+                        ->where(function($q) {
+                            $q->whereNull('feedback')
+                              ->orWhere('feedback', 'NOT LIKE', '[PRACTICE]%');
+                        })
                         ->latest()
                         ->first();
                 }
@@ -1308,6 +1341,10 @@ class EvaluationController extends Controller
                 if (!$submission) {
                     $submission = $evaluation->submissions()
                         ->where('klassci_etudiant_id', $etudiant['id'])
+                        ->where(function($q) {
+                            $q->whereNull('feedback')
+                              ->orWhere('feedback', 'NOT LIKE', '[PRACTICE]%');
+                        })
                         ->latest()
                         ->first();
                 }
@@ -1603,8 +1640,13 @@ class EvaluationController extends Controller
             }
 
             // Récupérer toutes les soumissions de l'étudiant avec leurs évaluations
+            // Exclure les soumissions d'entraînement (feedback commence par [PRACTICE])
             $submissions = EvaluationSubmission::where('klassci_etudiant_id', $user->klassci_id)
                 ->where('status', 'corrige')
+                ->where(function($q) {
+                    $q->whereNull('feedback')
+                      ->orWhere('feedback', 'NOT LIKE', '[PRACTICE]%');
+                })
                 ->with(['evaluation' => function($query) {
                     $query->where('is_published', true);
                 }])

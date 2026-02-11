@@ -230,6 +230,12 @@ Route::middleware(['auth:sanctum', 'klassci.sync'])->group(function () {
     Route::get('lessons/{lessonId}/chapters', [ChapterController::class, 'index']);
     // Détails d'un chapitre
     Route::get('chapters/{id}', [ChapterController::class, 'show']);
+
+    // Progression des chapitres
+    Route::get('lessons/{lessonId}/chapter-progress', [\App\Http\Controllers\API\ChapterProgressController::class, 'getLessonProgress']);
+    Route::get('chapters/{chapterId}/progress', [\App\Http\Controllers\API\ChapterProgressController::class, 'getChapterProgress']);
+    Route::post('chapters/{chapterId}/complete', [\App\Http\Controllers\API\ChapterProgressController::class, 'markAsCompleted']);
+    Route::post('chapters/{chapterId}/time', [\App\Http\Controllers\API\ChapterProgressController::class, 'updateTimeSpent']);
 });
 
 // Routes enseignants/coordinateurs uniquement
@@ -254,6 +260,8 @@ use App\Http\Controllers\API\KnowledgeCheckController;
 Route::middleware(['auth:sanctum', 'klassci.sync'])->group(function () {
     // Liste des quiz d'un chapitre
     Route::get('knowledge-checks', [KnowledgeCheckController::class, 'index']);
+    // Quiz par chapitre (doit être AVANT {id} pour éviter le conflit)
+    Route::get('knowledge-checks/chapter/{chapterId}', [KnowledgeCheckController::class, 'getByChapter']);
     Route::get('knowledge-checks/{id}', [KnowledgeCheckController::class, 'show']);
 
     // Tentatives (étudiants)

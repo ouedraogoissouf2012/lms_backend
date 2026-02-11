@@ -108,6 +108,36 @@ class KnowledgeCheckController extends Controller
     }
 
     /**
+     * Obtenir le quiz actif d'un chapitre
+     */
+    public function getByChapter(int $chapterId): JsonResponse
+    {
+        $chapter = Chapter::findOrFail($chapterId);
+
+        $quiz = KnowledgeCheck::where('chapter_id', $chapterId)
+            ->where('is_active', true)
+            ->first();
+
+        if (!$quiz) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Aucun quiz actif pour ce chapitre'
+            ], 404);
+        }
+
+        $userId = Auth::id();
+        $quiz->user_passed = $quiz->isPassedByUser($userId);
+        $quiz->user_best_score = $quiz->getBestScore($userId);
+        $quiz->can_attempt = $quiz->canAttempt($userId);
+        $quiz->questions_count = $quiz->questions_count;
+
+        return response()->json([
+            'success' => true,
+            'data' => $quiz
+        ]);
+    }
+
+    /**
      * Afficher un quiz specifique
      */
     public function show(string $id): JsonResponse

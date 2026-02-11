@@ -4902,7 +4902,11 @@ class LMSDataController extends Controller
         try {
             $user = $request->user();
 
+            // Chercher par ID local d'abord, puis par klassci_seance_id
             $seance = \App\Models\Seance::find($seanceId);
+            if (!$seance) {
+                $seance = \App\Models\Seance::where('klassci_seance_id', $seanceId)->first();
+            }
 
             if (!$seance) {
                 return response()->json([
@@ -5063,7 +5067,11 @@ class LMSDataController extends Controller
         try {
             $user = $request->user();
 
+            // Chercher par ID local d'abord, puis par klassci_seance_id
             $seance = \App\Models\Seance::find($seanceId);
+            if (!$seance) {
+                $seance = \App\Models\Seance::where('klassci_seance_id', $seanceId)->first();
+            }
 
             if (!$seance) {
                 return response()->json([

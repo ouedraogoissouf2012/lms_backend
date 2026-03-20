@@ -9,6 +9,7 @@ use App\Http\Controllers\API\ReportController;
 use App\Http\Controllers\API\NotificationsController;
 use App\Http\Controllers\API\SearchController;
 use App\Http\Controllers\API\TeacherStatsController;
+use App\Http\Controllers\API\InstitutionController;
 
 /*
 |--------------------------------------------------------------------------
@@ -30,106 +31,49 @@ Route::get('/ping', function () {
     ]);
 });
 
-// ROUTE DEBUG - Créer utilisateur de test (À SUPPRIMER EN PRODUCTION)
-Route::get('/create-test-user', function () {
-    try {
-        $user = \App\Models\User::firstOrCreate(
-            ['email' => 'etudiant@test.com'],
-            [
-                'klassci_id' => 999001,  // ID numérique au lieu de string
-                'name' => 'Étudiant Test',
-                'password' => \Illuminate\Support\Facades\Hash::make('password'),
-                'role' => 'étudiant',
-            ]
-        );
+// Liste des institutions actives (public, pour sélecteur sur page login)
+Route::get('/institutions/active', function () {
+    $institutions = \App\Models\Institution::where('is_active', true)
+        ->orderBy('name')
+        ->get(['slug', 'name', 'logo_url', 'primary_color']);
 
-        $teacher = \App\Models\User::firstOrCreate(
-            ['email' => 'enseignant@test.com'],
-            [
-                'klassci_id' => 999002,  // ID numérique au lieu de string
-                'name' => 'Enseignant Test',
-                'password' => \Illuminate\Support\Facades\Hash::make('password'),
-                'role' => 'enseignant',
-            ]
-        );
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Utilisateurs de test créés !',
-            'users' => [
-                ['email' => 'etudiant@test.com', 'password' => 'password', 'role' => 'étudiant'],
-                ['email' => 'enseignant@test.com', 'password' => 'password', 'role' => 'enseignant'],
-            ]
-        ]);
-    } catch (\Exception $e) {
-        return response()->json([
-            'success' => false,
-            'error' => $e->getMessage()
-        ], 500);
-    }
+    return response()->json([
+        'success' => true,
+        'data' => $institutions,
+    ]);
 });
 
-// ROUTE DEBUG - Tester connexion KLASSCI
-Route::post('/test-klassci-login', function (Request $request) {
-    try {
-        $email = $request->input('email');
-        $password = $request->input('password');
+// ============================================
+// INSTITUTION - Informations sur l'institution courante
+// ============================================
+Route::get('/institution/current', function () {
+    $tenantManager = app(\App\Services\TenantManager::class);
+    $institution = $tenantManager->get();
 
-        if (!$email || !$password) {
-            return response()->json([
-                'success' => false,
-                'error' => 'Email et mot de passe requis'
-            ], 400);
-        }
-
-        // URL KLASSCI
-        $klassciUrl = env('KLASSCI_API_URL', 'http://presentation.klassci.com/api/lms');
-
-        \Log::info('Test connexion KLASSCI', [
-            'url' => $klassciUrl,
-            'email' => $email
-        ]);
-
-        $response = \Illuminate\Support\Facades\Http::timeout(30)
-            ->post($klassciUrl . '/auth/login', [
-                'email' => $email,
-                'password' => $password,
-            ]);
-
-        if ($response->successful()) {
-            $data = $response->json();
-
-            return response()->json([
-                'success' => true,
-                'message' => '✅ Connexion KLASSCI réussie !',
-                'klassci_data' => $data,
-                'api_url' => $klassciUrl,
-            ]);
-        }
-
+    if (!$institution) {
         return response()->json([
             'success' => false,
-            'error' => '❌ Échec connexion KLASSCI',
-            'details' => $response->json(),
-            'status_code' => $response->status(),
-            'api_url' => $klassciUrl,
-        ], $response->status());
-
-    } catch (\Exception $e) {
-        return response()->json([
-            'success' => false,
-            'error' => $e->getMessage(),
-            'api_url' => env('KLASSCI_API_URL'),
-        ], 500);
+            'message' => 'Aucune institution résolue',
+        ], 400);
     }
+
+    return response()->json([
+        'success' => true,
+        'data' => [
+            'slug' => $institution->slug,
+            'name' => $institution->name,
+            'logo_url' => $institution->logo_url,
+            'primary_color' => $institution->primary_color,
+        ],
+    ]);
 });
+
 
 // ============================================
 // AUTHENTIFICATION - Routes publiques
 // ============================================
 Route::prefix('auth')->group(function () {
-    Route::post('/login', [AuthController::class, 'login']);
-    Route::post('/register', [AuthController::class, 'register']); // À implémenter si besoin
+    Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:5,1');
 });
 
 // ============================================
@@ -703,6 +647,20 @@ Route::middleware(['auth:sanctum', 'role:coordinateur,superAdmin'])->prefix('adm
     // Statistiques notifications
     Route::get('/stats', [NotificationsController::class, 'stats']);
 });
+
+// ============================================
+// INSTITUTION MANAGEMENT - supradmin uniquement
+// ============================================
+Route::middleware(['auth:sanctum', 'role:supradmin'])
+    ->prefix('admin/institutions')
+    ->group(function () {
+        Route::get('/', [InstitutionController::class, 'index']);
+        Route::get('/{id}', [InstitutionController::class, 'show']);
+        Route::post('/', [InstitutionController::class, 'store']);
+        Route::put('/{id}', [InstitutionController::class, 'update']);
+        Route::patch('/{id}/toggle', [InstitutionController::class, 'toggle']);
+        Route::post('/{id}/test-connection', [InstitutionController::class, 'testConnection']);
+    });
 
 // ============================================
 // SEARCH - Recherche globale

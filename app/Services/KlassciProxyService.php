@@ -14,17 +14,34 @@ use Illuminate\Support\Facades\Log;
  */
 class KlassciProxyService
 {
-    private string $baseUrl;
-    private ?string $token;
+    private ?string $baseUrl = null;
+    private ?string $token = null;
     private int $cacheTTL;
     private int $timeout;
+    private bool $configResolved = false;
 
     public function __construct()
     {
-        $this->baseUrl = config('services.klassci.url');
-        $this->token = config('services.klassci.token');
         $this->cacheTTL = config('services.klassci.cache_ttl', 300);
         $this->timeout = config('services.klassci.timeout', 30);
+    }
+
+    /**
+     * Résolution lazy de la config KLASSCI depuis l'institution courante
+     * Appelé au premier appel API, pas au constructeur
+     * (nécessaire car EnsureKlassciSync middleware injecte ce service avant que le tenant ne soit résolu)
+     */
+    private function resolveConfig(): void
+    {
+        if ($this->configResolved) {
+            return;
+        }
+
+        $tenantManager = app(TenantManager::class);
+        $config = $tenantManager->klassciConfig();
+        $this->baseUrl = $config['url'] ?? config('services.klassci.url');
+        $this->token = $config['token'] ?? config('services.klassci.token');
+        $this->configResolved = true;
     }
 
     /**
@@ -98,6 +115,7 @@ class KlassciProxyService
      */
     private function makeRequest(string $method, string $endpoint, array $data = []): array
     {
+        $this->resolveConfig();
         $url = $this->baseUrl . '/' . ltrim($endpoint, '/');
 
         try {
@@ -112,6 +130,11 @@ class KlassciProxyService
                     'Accept' => 'application/json',
                     'Content-Type' => 'application/json',
                 ]);
+
+            // Désactiver la vérification SSL uniquement en développement local
+            if (str_starts_with($url, 'https://') && app()->environment('local')) {
+                $request = $request->withoutVerifying();
+            }
 
             // Ajouter le token si disponible
             if ($this->token) {
@@ -162,8 +185,9 @@ class KlassciProxyService
      */
     private function generateCacheKey(string $endpoint, array $params): string
     {
+        $tenantSlug = app(TenantManager::class)->slug() ?? 'default';
         $paramsHash = md5(json_encode($params));
-        return "klassci_api_{$endpoint}_{$paramsHash}";
+        return "klassci_{$tenantSlug}_{$endpoint}_{$paramsHash}";
     }
 
     /**
@@ -171,10 +195,10 @@ class KlassciProxyService
      */
     private function invalidateCache(string $endpoint): void
     {
-        // Invalider toutes les clés commençant par l'endpoint
-        Cache::flush(); // Simplifié pour l'instant
-
-        Log::info("Cache invalidé pour endpoint: {$endpoint}");
+        $tenantSlug = app(TenantManager::class)->slug() ?? 'default';
+        // On laisse le TTL expirer naturellement au lieu de flush tout le cache
+        // Cela évite de supprimer le cache des autres institutions
+        Log::info("Cache invalidation pour: klassci_{$tenantSlug}_{$endpoint}");
     }
 
     // ============================================
@@ -329,6 +353,7 @@ class KlassciProxyService
      */
     public function requestWithUserToken(string $userToken, string $endpoint, string $method = 'GET', array $data = []): array
     {
+        $this->resolveConfig();
         $url = $this->baseUrl . '/' . ltrim($endpoint, '/');
 
         try {
@@ -342,8 +367,14 @@ class KlassciProxyService
                 ->withHeaders([
                     'Accept' => 'application/json',
                     'Content-Type' => 'application/json',
-                ])
-                ->withToken($userToken); // Utiliser le token de l'utilisateur
+                ]);
+
+            // Désactiver la vérification SSL uniquement en développement local
+            if (str_starts_with($url, 'https://') && app()->environment('local')) {
+                $request = $request->withoutVerifying();
+            }
+
+            $request = $request->withToken($userToken); // Utiliser le token de l'utilisateur
 
             // Exécuter la requête selon la méthode
             $response = match($method) {

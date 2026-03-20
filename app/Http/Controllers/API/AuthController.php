@@ -5,6 +5,7 @@ namespace App\Http\Controllers\API;
 use App\Http\Controllers\Controller;
 use App\Services\KlassciProxyService;
 use App\Services\ClasseSyncService;
+use App\Services\TenantManager;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -48,13 +49,16 @@ class AuthController extends Controller
 
             // Essayer d'abord l'authentification locale (si DB accessible)
             try {
-                $user = User::where('email', $request->username)
+                $user = User::withoutGlobalScope('institution')
+                            ->where('email', $request->username)
                             ->orWhere('name', $request->username)
                             ->first();
 
                 if ($user && Hash::check($request->password, $user->password)) {
                     // Authentification locale réussie
                     $token = $user->createToken('lms-backend-token', ['lms:access'])->plainTextToken;
+
+                    $isSupradmin = $user->role === 'supradmin';
 
                     return response()->json([
                         'success' => true,
@@ -72,6 +76,9 @@ class AuthController extends Controller
                         ],
                         'meta' => [
                             'klassci_synced' => false,
+                            'is_supradmin' => $isSupradmin,
+                            'institution' => $isSupradmin ? null : app(TenantManager::class)->slug(),
+                            'institution_name' => $isSupradmin ? null : app(TenantManager::class)->get()?->name,
                         ],
                     ]);
                 }
@@ -90,25 +97,25 @@ class AuthController extends Controller
                     'password' => $request->password,
                 ]);
 
-                // Logger la réponse KLASSCI pour debug
-                Log::info('KLASSCI Login Response', ['response' => $klassciResponse]);
+                Log::info('KLASSCI Login', [
+                    'success' => $klassciResponse['success'] ?? false,
+                    'user_id' => $klassciResponse['data']['user']['id'] ?? null,
+                ]);
 
                 // Vérifier la réponse KLASSCI
                 if (!isset($klassciResponse['success']) || !$klassciResponse['success']) {
                     return response()->json([
                         'success' => false,
                         'message' => 'Identifiants incorrects',
-                        'klassci_response' => $klassciResponse,
                     ], 401);
                 }
 
                 // Vérifier que les données utilisateur existent
                 if (!isset($klassciResponse['data']['user']) || !isset($klassciResponse['data']['token'])) {
-                    Log::error('KLASSCI Response manquante', ['response' => $klassciResponse]);
+                    Log::error('KLASSCI Response manquante', ['success' => $klassciResponse['success'] ?? false]);
                     return response()->json([
                         'success' => false,
                         'message' => 'Réponse KLASSCI invalide',
-                        'debug' => $klassciResponse,
                     ], 500);
                 }
 
@@ -161,8 +168,9 @@ class AuthController extends Controller
                         ],
                         'meta' => [
                             'klassci_synced' => true,
-                            'klassci_token' => $klassciToken, // Conserver le token KLASSCI pour les appels proxy
                             'annee_universitaire_courante' => $klassciResponse['meta']['annee_universitaire_courante'] ?? null,
+                            'institution' => app(TenantManager::class)->slug(),
+                            'institution_name' => app(TenantManager::class)->get()?->name,
                             'classes_sync' => $syncStats ? [
                                 'classes_created' => $syncStats['classes_created'],
                                 'students_synced' => $syncStats['students_synced'],
@@ -198,8 +206,9 @@ class AuthController extends Controller
                         'meta' => [
                             'klassci_synced' => false,
                             'direct_klassci_auth' => true,
-                            'sync_error' => $syncError->getMessage(),
                             'annee_universitaire_courante' => $klassciResponse['meta']['annee_universitaire_courante'] ?? null,
+                            'institution' => app(TenantManager::class)->slug(),
+                            'institution_name' => app(TenantManager::class)->get()?->name,
                         ],
                     ]);
                 }
@@ -365,14 +374,24 @@ class AuthController extends Controller
     {
         $klassciId = $klassciUser['id'];
         $email = $klassciUser['email'];
+        $institutionId = app(TenantManager::class)->id();
 
-        // STRATÉGIE DE RECHERCHE AMÉLIORÉE (Option 2+3 combinées)
-        // 1. Chercher d'abord par EMAIL (plus fiable, ne change jamais)
-        $user = User::where('email', $email)->first();
+        // Bypasser le scope institution global pour chercher explicitement
+        // par institution_id. Cela évite les conflits quand le même klassci_id
+        // ou email existe dans plusieurs institutions (multi-tenant).
 
-        // 2. Si pas trouvé par email, chercher par klassci_id
+        // 1. Chercher par EMAIL + institution_id
+        $user = User::withoutGlobalScope('institution')
+                    ->where('email', $email)
+                    ->where('institution_id', $institutionId)
+                    ->first();
+
+        // 2. Si pas trouvé par email, chercher par klassci_id + institution_id
         if (!$user) {
-            $user = User::where('klassci_id', $klassciId)->first();
+            $user = User::withoutGlobalScope('institution')
+                        ->where('klassci_id', $klassciId)
+                        ->where('institution_id', $institutionId)
+                        ->first();
         }
 
         $userData = [
@@ -383,47 +402,21 @@ class AuthController extends Controller
             'klassci_token' => $klassciToken,
             'klassci_data' => json_encode($klassciUser),
             'last_klassci_sync' => now(),
+            'institution_id' => $institutionId,
         ];
 
         if ($user) {
-            // Mettre à jour l'utilisateur existant
-            // IMPORTANT: Vérifier si le klassci_id n'est pas déjà utilisé par quelqu'un d'autre
-            if ($user->klassci_id != $klassciId) {
-                $existingUserWithKlassciId = User::where('klassci_id', $klassciId)
-                    ->where('id', '!=', $user->id)
-                    ->first();
-
-                if ($existingUserWithKlassciId) {
-                    // Le klassci_id est déjà utilisé par un autre utilisateur
-                    Log::warning('KLASSCI ID déjà utilisé par un autre utilisateur', [
-                        'user_id' => $user->id,
-                        'email' => $email,
-                        'klassci_id_souhaité' => $klassciId,
-                        'déjà_utilisé_par' => $existingUserWithKlassciId->email,
-                    ]);
-
-                    // Ne PAS mettre à jour le klassci_id, garder l'ancien
-                    unset($userData['klassci_id']);
-                } else {
-                    Log::info('KLASSCI ID mis à jour pour utilisateur', [
-                        'user_id' => $user->id,
-                        'email' => $email,
-                        'ancien_klassci_id' => $user->klassci_id,
-                        'nouveau_klassci_id' => $klassciId
-                    ]);
-                }
-            }
             $user->update($userData);
         } else {
-            // Créer un nouvel utilisateur
-            // Note: password est null car on utilise uniquement KLASSCI pour auth
-            $userData['password'] = Hash::make(uniqid()); // Password aléatoire, non utilisé
-            $user = User::create($userData);
+            // Créer un nouvel utilisateur pour cette institution
+            $userData['password'] = Hash::make(uniqid());
+            $user = User::withoutGlobalScope('institution')->create($userData);
 
             Log::info('Nouvel utilisateur créé depuis KLASSCI', [
                 'user_id' => $user->id,
                 'email' => $email,
-                'klassci_id' => $klassciId
+                'klassci_id' => $klassciId,
+                'institution_id' => $institutionId,
             ]);
         }
 

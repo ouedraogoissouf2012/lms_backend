@@ -107,7 +107,7 @@ class FileController extends Controller
                 'max:' . (self::MAX_FILE_SIZE / 1024), // en KB
                 'extensions:' . implode(',', self::ALLOWED_EXTENSIONS),
             ],
-            'fileable_type' => 'nullable|string',
+            'fileable_type' => 'nullable|in:lesson,chapter,evaluation,forum_post',
             'fileable_id' => 'nullable|integer',
             'category' => 'nullable|string|max:100',
             'description' => 'nullable|string|max:500',

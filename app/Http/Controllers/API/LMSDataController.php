@@ -1188,7 +1188,11 @@ class LMSDataController extends Controller
                         ]);
 
                         // Appel API KLASSCI pour récupérer les infos de la matière
-                        $matiereResponse = Http::withoutVerifying()->get("{$klassciUrl}/matieres/{$matiereId}");
+                        $httpClient = Http::timeout(30);
+                        if (app()->environment('local')) {
+                            $httpClient = $httpClient->withoutVerifying();
+                        }
+                        $matiereResponse = $httpClient->get("{$klassciUrl}/matieres/{$matiereId}");
 
                         Log::info('DEBUG validateParticipant - Réponse /matieres', [
                             'status' => $matiereResponse->status(),
@@ -1259,7 +1263,11 @@ class LMSDataController extends Controller
                     }
 
                     // Récupérer la liste des étudiants inscrits dans la classe
-                    $classesResponse = Http::withoutVerifying()->get("{$klassciUrl}/classes/{$classeId}/etudiants");
+                    $httpClient2 = Http::timeout(30);
+                    if (app()->environment('local')) {
+                        $httpClient2 = $httpClient2->withoutVerifying();
+                    }
+                    $classesResponse = $httpClient2->get("{$klassciUrl}/classes/{$classeId}/etudiants");
 
                     Log::info('DEBUG validateParticipant - Réponse /classes/etudiants', [
                         'status' => $classesResponse->status(),

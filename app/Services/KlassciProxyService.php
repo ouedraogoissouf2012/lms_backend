@@ -131,14 +131,14 @@ class KlassciProxyService
                     'Content-Type' => 'application/json',
                 ]);
 
-            // Désactiver la vérification SSL uniquement en développement local
-            if (str_starts_with($url, 'https://') && app()->environment('local')) {
+            // SSL : désactivé si env local OU si configuré via KLASSCI_SSL_VERIFY=false
+            if (str_starts_with($url, 'https://') && !config('services.klassci.ssl_verify', true)) {
                 $request = $request->withoutVerifying();
             }
 
-            // Ajouter le token si disponible
+            // Ajouter le token si disponible (fix: chaînage correct)
             if ($this->token) {
-                $request->withToken($this->token);
+                $request = $request->withToken($this->token);
             }
 
             // Exécuter la requête selon la méthode
@@ -369,12 +369,12 @@ class KlassciProxyService
                     'Content-Type' => 'application/json',
                 ]);
 
-            // Désactiver la vérification SSL uniquement en développement local
-            if (str_starts_with($url, 'https://') && app()->environment('local')) {
+            // SSL : désactivé si configuré via KLASSCI_SSL_VERIFY=false
+            if (str_starts_with($url, 'https://') && !config('services.klassci.ssl_verify', true)) {
                 $request = $request->withoutVerifying();
             }
 
-            $request = $request->withToken($userToken); // Utiliser le token de l'utilisateur
+            $request = $request->withToken($userToken);
 
             // Exécuter la requête selon la méthode
             $response = match($method) {

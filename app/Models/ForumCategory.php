@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use App\Models\Traits\BelongsToInstitution;
 
 /**
  * Model ForumCategory
@@ -13,7 +14,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  */
 class ForumCategory extends Model
 {
-    use HasFactory;
+    use HasFactory, BelongsToInstitution;
 
     protected $table = 'forum_categories';
 
@@ -21,6 +22,7 @@ class ForumCategory extends Model
         'name',
         'description',
         'order',
+        'institution_id',
     ];
 
     protected $casts = [

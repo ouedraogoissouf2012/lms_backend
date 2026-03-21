@@ -4,9 +4,12 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use App\Models\Traits\BelongsToInstitution;
 
 class EvaluationQuestion extends Model
 {
+    use BelongsToInstitution;
+
     protected $fillable = [
         'evaluation_id',
         'question',
@@ -17,6 +20,7 @@ class EvaluationQuestion extends Model
         'correct_answers',
         'explanation',
         'is_required',
+        'institution_id',
     ];
 
     protected $casts = [

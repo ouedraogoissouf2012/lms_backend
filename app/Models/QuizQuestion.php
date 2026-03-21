@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use App\Models\Traits\BelongsToInstitution;
 
 /**
  * Model QuizQuestion
@@ -14,7 +15,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  */
 class QuizQuestion extends Model
 {
-    use HasFactory;
+    use HasFactory, BelongsToInstitution;
 
     protected $fillable = [
         'quiz_id',
@@ -25,6 +26,7 @@ class QuizQuestion extends Model
         'points',
         'is_required',
         'metadata',
+        'institution_id',
     ];
 
     protected $casts = [

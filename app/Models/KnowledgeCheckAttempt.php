@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use App\Models\Traits\BelongsToInstitution;
 
 /**
  * Model KnowledgeCheckAttempt
@@ -13,7 +14,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  */
 class KnowledgeCheckAttempt extends Model
 {
-    use HasFactory;
+    use HasFactory, BelongsToInstitution;
 
     protected $fillable = [
         'knowledge_check_id',
@@ -26,6 +27,7 @@ class KnowledgeCheckAttempt extends Model
         'passed',
         'started_at',
         'completed_at',
+        'institution_id',
     ];
 
     protected $casts = [

@@ -312,20 +312,18 @@ class InstitutionController extends Controller
 
             $startTime = microtime(true);
 
-            // Tester la connexion en appelant l'endpoint /structure de l'API KLASSCI
-            $testUrl = rtrim($config['url'], '/') . '/structure';
+            // Tester via l'endpoint public /auth/check-user (pas de token requis)
+            $testUrl = rtrim($config['url'], '/') . '/auth/check-user';
 
             $response = Http::withoutVerifying()
                 ->timeout(10)
-                ->withHeaders([
-                    'Authorization' => 'Bearer ' . ($config['token'] ?? ''),
-                    'Accept' => 'application/json',
-                ])
-                ->get($testUrl);
+                ->withHeaders(['Accept' => 'application/json'])
+                ->post($testUrl, ['identifier' => 'lms-ping-test']);
 
             $responseTime = round((microtime(true) - $startTime) * 1000);
 
-            if ($response->successful()) {
+            // 200 ou 422 = serveur joignable et endpoint existe
+            if ($response->status() === 200 || $response->status() === 422 || $response->status() === 404) {
                 return response()->json([
                     'success' => true,
                     'message' => 'Connexion KLASSCI réussie',

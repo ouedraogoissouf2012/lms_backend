@@ -5,10 +5,11 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use App\Models\Traits\BelongsToInstitution;
 
 class Evaluation extends Model
 {
-    use SoftDeletes;
+    use SoftDeletes, BelongsToInstitution;
 
     protected $fillable = [
         'klassci_evaluation_id',
@@ -34,6 +35,7 @@ class Evaluation extends Model
         'notes_published',
         'is_locked',
         'locked_at',
+        'institution_id',
     ];
 
     protected $casts = [

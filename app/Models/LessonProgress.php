@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use App\Models\Traits\BelongsToInstitution;
 
 /**
  * Model LessonProgress
@@ -13,7 +14,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  */
 class LessonProgress extends Model
 {
-    use HasFactory;
+    use HasFactory, BelongsToInstitution;
 
     protected $table = 'lesson_progress';
 
@@ -29,6 +30,7 @@ class LessonProgress extends Model
         'notes',
         'rating',
         'feedback',
+        'institution_id',
     ];
 
     protected $casts = [

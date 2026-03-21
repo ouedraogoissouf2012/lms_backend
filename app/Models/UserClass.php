@@ -3,9 +3,12 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use App\Models\Traits\BelongsToInstitution;
 
 class UserClass extends Model
 {
+    use BelongsToInstitution;
+
     protected $fillable = [
         'user_id',
         'klassci_classe_id',
@@ -13,6 +16,7 @@ class UserClass extends Model
         'classe_libelle',
         'classe_data',
         'synced_at',
+        'institution_id',
     ];
 
     protected $casts = [

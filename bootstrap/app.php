@@ -12,10 +12,16 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        // Middleware global API : résolution de l'institution (multi-tenant)
+        $middleware->api(prepend: [
+            \App\Http\Middleware\ResolveInstitution::class,
+        ]);
+
         // Enregistrer les middlewares personnalisés
         $middleware->alias([
             'klassci.sync' => \App\Http\Middleware\EnsureKlassciSync::class,
             'role' => \App\Http\Middleware\EnsureRole::class,
+            'institution' => \App\Http\Middleware\ResolveInstitution::class,
         ]);
     })
     ->withSchedule(function ($schedule): void {

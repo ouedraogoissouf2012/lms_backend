@@ -3,9 +3,12 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use App\Models\Traits\BelongsToInstitution;
 
 class MatiereEnseignant extends Model
 {
+    use BelongsToInstitution;
+
     protected $table = 'matiere_enseignant';
 
     protected $fillable = [
@@ -13,7 +16,8 @@ class MatiereEnseignant extends Model
         'klassci_enseignant_id',
         'annee_universitaire_id',
         'status',
-        'created_by'
+        'created_by',
+        'institution_id',
     ];
 
     protected $casts = [

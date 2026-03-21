@@ -384,11 +384,11 @@ class DashboardController extends Controller
      */
     public function stats(Request $request): JsonResponse
     {
-        // Statistiques générales du système
+        $tenantUrl = $request->user()?->klassci_tenant_url;
 
-        $totalUsers = User::count();
-        $totalStudents = User::where('role', 'etudiant')->count();
-        $totalTeachers = User::where('role', 'enseignant')->count();
+        $totalUsers = User::when($tenantUrl, fn($q) => $q->where('klassci_tenant_url', $tenantUrl))->count();
+        $totalStudents = User::when($tenantUrl, fn($q) => $q->where('klassci_tenant_url', $tenantUrl))->where('role', 'etudiant')->count();
+        $totalTeachers = User::when($tenantUrl, fn($q) => $q->where('klassci_tenant_url', $tenantUrl))->where('role', 'enseignant')->count();
 
         $totalLessons = Lesson::count();
         $publishedLessons = Lesson::where('status', 'published')->count();
@@ -404,7 +404,7 @@ class DashboardController extends Controller
 
         // Activité récente (7 derniers jours)
         $recentActivity = [
-            'new_users' => User::where('created_at', '>=', now()->subDays(7))->count(),
+            'new_users' => User::when($tenantUrl, fn($q) => $q->where('klassci_tenant_url', $tenantUrl))->where('created_at', '>=', now()->subDays(7))->count(),
             'new_lessons' => Lesson::where('created_at', '>=', now()->subDays(7))->count(),
             'new_quiz_attempts' => QuizAttempt::where('created_at', '>=', now()->subDays(7))->count(),
             'new_forum_topics' => ForumTopic::where('created_at', '>=', now()->subDays(7))->count(),

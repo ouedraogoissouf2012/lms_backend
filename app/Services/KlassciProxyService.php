@@ -27,9 +27,9 @@ class KlassciProxyService
     }
 
     /**
-     * Résolution lazy de la config KLASSCI depuis l'institution courante
-     * Appelé au premier appel API, pas au constructeur
-     * (nécessaire car EnsureKlassciSync middleware injecte ce service avant que le tenant ne soit résolu)
+     * Résolution lazy de la config KLASSCI.
+     * Priorité : token personnel de l'utilisateur connecté (nouveau système).
+     * Fallback : token système de l'institution (ancien système).
      */
     private function resolveConfig(): void
     {
@@ -37,10 +37,20 @@ class KlassciProxyService
             return;
         }
 
+        // Priorité 1 : token personnel de l'utilisateur connecté
+        $user = auth('sanctum')->user();
+        if ($user && $user->klassci_token && $user->klassci_tenant_url) {
+            $this->baseUrl = $user->klassci_tenant_url;
+            $this->token   = $user->klassci_token;
+            $this->configResolved = true;
+            return;
+        }
+
+        // Fallback : token système de l'institution (supradmin, routes sans user)
         $tenantManager = app(TenantManager::class);
         $config = $tenantManager->klassciConfig();
         $this->baseUrl = $config['url'] ?? config('services.klassci.url');
-        $this->token = $config['token'] ?? config('services.klassci.token');
+        $this->token   = $config['token'] ?? config('services.klassci.token');
         $this->configResolved = true;
     }
 

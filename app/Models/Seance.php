@@ -5,10 +5,11 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Carbon\Carbon;
+use App\Models\Traits\BelongsToInstitution;
 
 class Seance extends Model
 {
-    use SoftDeletes;
+    use SoftDeletes, BelongsToInstitution;
 
     protected $fillable = [
         'klassci_seance_id',
@@ -34,6 +35,7 @@ class Seance extends Model
         'is_active',
         'archived_at',
         'archive_reason',
+        'institution_id',
     ];
 
     protected $casts = [

@@ -4,13 +4,14 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use App\Models\Traits\BelongsToInstitution;
 
 /**
  * Progression d'un utilisateur sur un chapitre
  */
 class ChapterProgress extends Model
 {
-    use HasFactory;
+    use HasFactory, BelongsToInstitution;
 
     protected $table = 'chapter_progress';
 
@@ -21,6 +22,7 @@ class ChapterProgress extends Model
         'time_spent_seconds',
         'quiz_score',
         'quiz_passed',
+        'institution_id',
     ];
 
     protected $casts = [

@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Support\Facades\Storage;
+use App\Models\Traits\BelongsToInstitution;
 
 /**
  * Model File
@@ -16,7 +17,7 @@ use Illuminate\Support\Facades\Storage;
  */
 class File extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory, SoftDeletes, BelongsToInstitution;
 
     protected $fillable = [
         'user_id',
@@ -36,6 +37,7 @@ class File extends Model
         'is_public',
         'is_validated',
         'virus_scan_status',
+        'institution_id',
     ];
 
     protected $casts = [

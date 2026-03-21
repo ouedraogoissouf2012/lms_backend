@@ -47,8 +47,9 @@ return [
     'klassci' => [
         'url' => env('KLASSCI_API_URL', 'http://presentation.klassci.com/api/lms'),
         'token' => env('KLASSCI_API_TOKEN'),
-        'cache_ttl' => env('KLASSCI_CACHE_TTL', 300), // 5 minutes par défaut
-        'timeout' => env('KLASSCI_TIMEOUT', 30), // 30 secondes
+        'cache_ttl' => env('KLASSCI_CACHE_TTL', 300),
+        'timeout' => env('KLASSCI_TIMEOUT', 30),
+        'ssl_verify' => env('KLASSCI_SSL_VERIFY', true),
     ],
 
     /*

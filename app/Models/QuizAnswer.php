@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use App\Models\Traits\BelongsToInstitution;
 
 /**
  * Model QuizAnswer
@@ -13,7 +14,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  */
 class QuizAnswer extends Model
 {
-    use HasFactory;
+    use HasFactory, BelongsToInstitution;
 
     protected $fillable = [
         'question_id',
@@ -21,6 +22,7 @@ class QuizAnswer extends Model
         'is_correct',
         'order',
         'feedback',
+        'institution_id',
     ];
 
     protected $casts = [

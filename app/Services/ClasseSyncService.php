@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Classe;
 use App\Models\User;
+use App\Services\TenantManager;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -297,15 +298,19 @@ class ClasseSyncService
                 }
 
                 // Créer ou mettre à jour l'inscription (pivot)
+                $institutionId = app(TenantManager::class)->id();
+
                 $exists = DB::table('classe_etudiant')
                     ->where('classe_id', $classe->id)
                     ->where('user_id', $student->id)
+                    ->when($institutionId, fn($q) => $q->where('institution_id', $institutionId))
                     ->exists();
 
                 if (!$exists) {
                     DB::table('classe_etudiant')->insert([
                         'classe_id' => $classe->id,
                         'user_id' => $student->id,
+                        'institution_id' => $institutionId,
                         'statut' => 'actif',
                         'date_inscription' => now(),
                         'created_at' => now(),
@@ -318,6 +323,7 @@ class ClasseSyncService
                     DB::table('classe_etudiant')
                         ->where('classe_id', $classe->id)
                         ->where('user_id', $student->id)
+                        ->when($institutionId, fn($q) => $q->where('institution_id', $institutionId))
                         ->update([
                             'statut' => 'actif',
                             'updated_at' => now()

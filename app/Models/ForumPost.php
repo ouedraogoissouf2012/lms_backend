@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
+use App\Models\Traits\BelongsToInstitution;
 
 /**
  * Model ForumPost
@@ -16,7 +17,7 @@ use Illuminate\Database\Eloquent\Relations\MorphMany;
  */
 class ForumPost extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory, SoftDeletes, BelongsToInstitution;
 
     protected $fillable = [
         'topic_id',
@@ -27,6 +28,7 @@ class ForumPost extends Model
         'is_edited',
         'edited_at',
         'likes_count',
+        'institution_id',
     ];
 
     protected $casts = [

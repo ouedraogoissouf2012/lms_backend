@@ -4,9 +4,12 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use App\Models\Traits\BelongsToInstitution;
 
 class EvaluationSubmission extends Model
 {
+    use BelongsToInstitution;
+
     protected $fillable = [
         'evaluation_id',
         'klassci_etudiant_id',
@@ -20,6 +23,7 @@ class EvaluationSubmission extends Model
         'feedback',
         'synced_to_klassci',
         'synced_at',
+        'institution_id',
     ];
 
     protected $casts = [

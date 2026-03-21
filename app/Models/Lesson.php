@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
+use App\Models\Traits\BelongsToInstitution;
 
 /**
  * Model Lesson
@@ -16,7 +17,7 @@ use Illuminate\Database\Eloquent\Relations\MorphMany;
  */
 class Lesson extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory, SoftDeletes, BelongsToInstitution;
 
     protected $fillable = [
         'matiere_id',
@@ -35,6 +36,7 @@ class Lesson extends Model
         'archived_at',
         'attachments',
         // Note: content fields moved to chapters
+        'institution_id',
     ];
 
     protected $casts = [

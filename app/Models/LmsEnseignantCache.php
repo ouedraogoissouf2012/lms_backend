@@ -4,9 +4,12 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Carbon\Carbon;
+use App\Models\Traits\BelongsToInstitution;
 
 class LmsEnseignantCache extends Model
 {
+    use BelongsToInstitution;
+
     protected $table = 'lms_enseignants_cache';
 
     protected $fillable = [
@@ -14,6 +17,7 @@ class LmsEnseignantCache extends Model
         'data',
         'synced_at',
         'expires_at',
+        'institution_id',
     ];
 
     protected $casts = [

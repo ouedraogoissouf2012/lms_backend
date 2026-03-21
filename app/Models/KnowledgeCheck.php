@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use App\Models\Traits\BelongsToInstitution;
 
 /**
  * Model KnowledgeCheck
@@ -16,7 +17,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  */
 class KnowledgeCheck extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory, SoftDeletes, BelongsToInstitution;
 
     protected $fillable = [
         'chapter_id',
@@ -33,6 +34,7 @@ class KnowledgeCheck extends Model
         'position',
         'is_active',
         'is_required', // Quiz obligatoire pour passer au chapitre suivant
+        'institution_id',
     ];
 
     protected $casts = [

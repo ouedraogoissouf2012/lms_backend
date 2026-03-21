@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use App\Models\Traits\BelongsToInstitution;
 
 /**
  * Model Classe
@@ -14,7 +15,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  */
 class Classe extends Model
 {
-    use HasFactory;
+    use HasFactory, BelongsToInstitution;
 
     protected $fillable = [
         'klassci_id',
@@ -27,6 +28,7 @@ class Classe extends Model
         'annee_universitaire_id',
         'klassci_data',
         'last_klassci_sync',
+        'institution_id',
     ];
 
     protected $casts = [

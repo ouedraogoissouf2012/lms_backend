@@ -23,18 +23,20 @@ class AdminAnalyticsController extends Controller
      *
      * @return \Illuminate\Http\JsonResponse
      */
-    public function getActivityTrends()
+    public function getActivityTrends(Request $request)
     {
         try {
-            $cacheKey = 'admin_analytics_activity_trends';
+            $tenantUrl = $request->user()?->klassci_tenant_url;
+            $cacheKey = 'admin_analytics_activity_trends_' . md5($tenantUrl ?? 'all');
             $cacheTTL = 300; // 5 minutes
 
-            $data = Cache::remember($cacheKey, $cacheTTL, function () {
+            $data = Cache::remember($cacheKey, $cacheTTL, function () use ($tenantUrl) {
                 $endDate = Carbon::now();
                 $startDate = Carbon::now()->subDays(30);
 
                 // Connexions par jour (approximation via created_at des utilisateurs récents)
                 $dailyRegistrations = User::whereBetween('created_at', [$startDate, $endDate])
+                    ->when($tenantUrl, fn($q) => $q->where('klassci_tenant_url', $tenantUrl))
                     ->selectRaw('DATE(created_at) as date, COUNT(*) as count')
                     ->groupBy('date')
                     ->orderBy('date')
@@ -120,13 +122,14 @@ class AdminAnalyticsController extends Controller
      *
      * @return \Illuminate\Http\JsonResponse
      */
-    public function getSystemMetrics()
+    public function getSystemMetrics(Request $request)
     {
         try {
-            $cacheKey = 'admin_analytics_system_metrics';
+            $tenantUrl = $request->user()?->klassci_tenant_url;
+            $cacheKey = 'admin_analytics_system_metrics_' . md5($tenantUrl ?? 'all');
             $cacheTTL = 300; // 5 minutes
 
-            $data = Cache::remember($cacheKey, $cacheTTL, function () {
+            $data = Cache::remember($cacheKey, $cacheTTL, function () use ($tenantUrl) {
                 $now = Carbon::now();
                 $weekAgo = Carbon::now()->subWeek();
                 $monthAgo = Carbon::now()->subMonth();
@@ -134,10 +137,11 @@ class AdminAnalyticsController extends Controller
                 return [
                     // Utilisateurs
                     'users' => [
-                        'total' => User::count(),
-                        'new_this_week' => User::where('created_at', '>=', $weekAgo)->count(),
-                        'new_this_month' => User::where('created_at', '>=', $monthAgo)->count(),
-                        'by_role' => User::selectRaw('role, COUNT(*) as count')
+                        'total' => User::when($tenantUrl, fn($q) => $q->where('klassci_tenant_url', $tenantUrl))->count(),
+                        'new_this_week' => User::when($tenantUrl, fn($q) => $q->where('klassci_tenant_url', $tenantUrl))->where('created_at', '>=', $weekAgo)->count(),
+                        'new_this_month' => User::when($tenantUrl, fn($q) => $q->where('klassci_tenant_url', $tenantUrl))->where('created_at', '>=', $monthAgo)->count(),
+                        'by_role' => User::when($tenantUrl, fn($q) => $q->where('klassci_tenant_url', $tenantUrl))
+                            ->selectRaw('role, COUNT(*) as count')
                             ->groupBy('role')
                             ->get()
                             ->pluck('count', 'role')
@@ -211,13 +215,14 @@ class AdminAnalyticsController extends Controller
      *
      * @return \Illuminate\Http\JsonResponse
      */
-    public function getPendingTasks()
+    public function getPendingTasks(Request $request)
     {
         try {
-            $cacheKey = 'admin_pending_tasks';
+            $tenantUrl = $request->user()?->klassci_tenant_url;
+            $cacheKey = 'admin_pending_tasks_' . md5($tenantUrl ?? 'all');
             $cacheTTL = 60; // 1 minute
 
-            $data = Cache::remember($cacheKey, $cacheTTL, function () {
+            $data = Cache::remember($cacheKey, $cacheTTL, function () use ($tenantUrl) {
                 return [
                     // Evaluations non notées
                     'pending_grading' => [
@@ -229,7 +234,8 @@ class AdminAnalyticsController extends Controller
 
                     // Utilisateurs inactifs (30 jours)
                     'inactive_users' => [
-                        'count' => User::where('updated_at', '<', Carbon::now()->subDays(30))
+                        'count' => User::when($tenantUrl, fn($q) => $q->where('klassci_tenant_url', $tenantUrl))
+                            ->where('updated_at', '<', Carbon::now()->subDays(30))
                             ->count()
                     ],
 
@@ -263,10 +269,13 @@ class AdminAnalyticsController extends Controller
      *
      * @return \Illuminate\Http\JsonResponse
      */
-    public function getRecentUsers()
+    public function getRecentUsers(Request $request)
     {
         try {
-            $users = User::orderBy('created_at', 'desc')
+            $tenantUrl = $request->user()?->klassci_tenant_url;
+
+            $users = User::when($tenantUrl, fn($q) => $q->where('klassci_tenant_url', $tenantUrl))
+                ->orderBy('created_at', 'desc')
                 ->take(10)
                 ->select(['id', 'name', 'email', 'role', 'created_at'])
                 ->get();

@@ -71,6 +71,7 @@ class EnsureRole
             'etudiant' => ['etudiant', 'student'],
             'coordinateur' => ['coordinateur', 'coordinator'],
             'admin' => ['admin', 'administrateur', 'administrator'],
+            'supradmin' => ['supradmin'],
         ];
 
         foreach ($roles as $role) {
@@ -103,8 +104,8 @@ class EnsureRole
     {
         $userRole = strtolower(trim($user->role));
 
-        // Admin a toujours accès à tout
-        if (in_array($userRole, ['admin', 'administrateur', 'administrator'])) {
+        // Admin et superAdmin ont toujours accès à tout
+        if (in_array($userRole, ['admin', 'administrateur', 'administrator', 'superadmin', 'supradmin'])) {
             return true;
         }
 

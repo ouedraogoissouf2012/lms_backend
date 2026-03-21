@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use App\Models\Traits\BelongsToInstitution;
 
 /**
  * Modèle pour gérer le masquage de séances par les étudiants
@@ -13,12 +14,15 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  */
 class SeanceUserHidden extends Model
 {
+    use BelongsToInstitution;
+
     protected $table = 'seance_user_hidden';
 
     protected $fillable = [
         'seance_id',
         'user_id',
         'hidden_at',
+        'institution_id',
     ];
 
     protected $casts = [

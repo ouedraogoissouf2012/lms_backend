@@ -4,10 +4,11 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use App\Models\Traits\BelongsToInstitution;
 
 class ESBTPAttendance extends Model
 {
-    use HasFactory;
+    use HasFactory, BelongsToInstitution;
 
     protected $table = 'esbtp_attendance';
 
@@ -27,6 +28,7 @@ class ESBTPAttendance extends Model
         'user_agent',
         'is_validated',
         'is_observer',
+        'institution_id',
     ];
 
     protected $casts = [

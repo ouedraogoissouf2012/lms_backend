@@ -1,0 +1,5 @@
+---
+deployment:
+  tasks:
+    - export DEPLOYPATH=/home/c2569688c/lms-backend
+    - /bin/cp -R . $DEPLOYPATH

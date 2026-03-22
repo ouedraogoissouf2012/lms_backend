@@ -39,11 +39,28 @@ class KlassciProxyService
 
         // Priorité 1 : token personnel de l'utilisateur connecté
         $user = auth('sanctum')->user();
-        if ($user && $user->klassci_token && $user->klassci_tenant_url) {
-            $this->baseUrl = $user->klassci_tenant_url;
-            $this->token   = $user->klassci_token;
-            $this->configResolved = true;
-            return;
+        if ($user && $user->klassci_token) {
+            $tenantUrl = $user->klassci_tenant_url;
+
+            // Fallback : extraire l'URL depuis klassci_data si klassci_tenant_url est null (anciens comptes)
+            if (!$tenantUrl && $user->klassci_data) {
+                $klassciData = is_array($user->klassci_data) ? $user->klassci_data : json_decode($user->klassci_data, true);
+                $tenantUrl = $klassciData['_lms_tenant_url'] ?? null;
+            }
+
+            if ($tenantUrl) {
+                $this->baseUrl = $tenantUrl;
+                $this->token   = $user->klassci_token;
+                $this->configResolved = true;
+
+                // Mettre à jour klassci_tenant_url en base si manquant (migration silencieuse)
+                if (!$user->klassci_tenant_url) {
+                    $user->withoutEvents(function () use ($user, $tenantUrl) {
+                        $user->updateQuietly(['klassci_tenant_url' => $tenantUrl]);
+                    });
+                }
+                return;
+            }
         }
 
         // Fallback : token système de l'institution (supradmin, routes sans user)

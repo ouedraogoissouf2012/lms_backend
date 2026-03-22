@@ -398,7 +398,7 @@ class AuthController extends Controller
             'role'              => $klassciUser['role'] ?? 'etudiant',
             'klassci_token'     => $klassciToken,
             'klassci_tenant_url'=> $tenantUrl,
-            'klassci_data'      => json_encode($klassciUser),
+            'klassci_data'      => json_encode(array_merge($klassciUser, ['_lms_tenant_url' => $tenantUrl])),
             'last_klassci_sync' => now(),
             'institution_id'    => null, // Plus utilisé pour l'isolation — on utilise klassci_tenant_url
         ];

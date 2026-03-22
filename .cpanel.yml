@@ -1,5 +1,7 @@
 ---
 deployment:
   tasks:
-    - export DEPLOYPATH=/home/c2569688c/lms-backend
+    - export DEPLOYPATH=/home/c2569688c/public_html/lms/backend/api
     - /bin/cp -R . $DEPLOYPATH
+    - cd $DEPLOYPATH && /usr/local/bin/php artisan cache:clear --quiet
+    - cd $DEPLOYPATH && /usr/local/bin/php artisan config:clear --quiet

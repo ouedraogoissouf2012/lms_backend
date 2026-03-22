@@ -208,13 +208,15 @@ class KlassciProxyService
     }
 
     /**
-     * Génère une clé de cache unique
+     * Génère une clé de cache unique par tenant.
+     * Priorité : tenant_url de l'utilisateur connecté > slug institution > 'default'.
+     * Cela évite la pollution cross-institution du cache.
      */
     private function generateCacheKey(string $endpoint, array $params): string
     {
-        $tenantSlug = app(TenantManager::class)->slug() ?? 'default';
+        $tenantKey = $this->resolveTenantCacheKey();
         $paramsHash = md5(json_encode($params));
-        return "klassci_{$tenantSlug}_{$endpoint}_{$paramsHash}";
+        return "klassci_{$tenantKey}_{$endpoint}_{$paramsHash}";
     }
 
     /**
@@ -222,10 +224,24 @@ class KlassciProxyService
      */
     private function invalidateCache(string $endpoint): void
     {
-        $tenantSlug = app(TenantManager::class)->slug() ?? 'default';
-        // On laisse le TTL expirer naturellement au lieu de flush tout le cache
-        // Cela évite de supprimer le cache des autres institutions
-        Log::info("Cache invalidation pour: klassci_{$tenantSlug}_{$endpoint}");
+        $tenantKey = $this->resolveTenantCacheKey();
+        Log::info("Cache invalidation pour: klassci_{$tenantKey}_{$endpoint}");
+    }
+
+    /**
+     * Retourne une clé de tenant stable pour le cache.
+     * Utilise le klassci_tenant_url de l'utilisateur connecté si disponible,
+     * sinon le slug de l'institution (TenantManager), sinon 'default'.
+     */
+    private function resolveTenantCacheKey(): string
+    {
+        $user = auth('sanctum')->user();
+        if ($user && $user->klassci_tenant_url) {
+            return md5($user->klassci_tenant_url);
+        }
+
+        $slug = app(TenantManager::class)->slug();
+        return $slug ?? 'default';
     }
 
     // ============================================

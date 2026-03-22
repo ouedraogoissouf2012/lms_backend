@@ -391,6 +391,21 @@ class AuthController extends Controller
                         ->first();
         }
 
+        // Fallback pour les comptes créés avant le système multi-tenant (klassci_tenant_url NULL)
+        if (!$user) {
+            $user = User::withoutGlobalScope('institution')
+                        ->where('klassci_id', $klassciId)
+                        ->whereNull('klassci_tenant_url')
+                        ->first();
+        }
+
+        if (!$user) {
+            $user = User::withoutGlobalScope('institution')
+                        ->where('email', $email)
+                        ->whereNull('klassci_tenant_url')
+                        ->first();
+        }
+
         $userData = [
             'klassci_id'        => $klassciId,
             'name'              => $klassciUser['nom'] ?? $klassciUser['name'] ?? 'User',

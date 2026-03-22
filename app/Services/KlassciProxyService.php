@@ -28,8 +28,11 @@ class KlassciProxyService
 
     /**
      * Résolution lazy de la config KLASSCI.
-     * Priorité : token personnel de l'utilisateur connecté (nouveau système).
-     * Fallback : token système de l'institution (ancien système).
+     * Priorité :
+     *   1. Token personnel de l'utilisateur connecté (KLASSCI login)
+     *   2. Token système de l'institution matchant klassci_tenant_url de l'utilisateur
+     *      (pour les comptes créés via auth locale sans token personnel)
+     *   3. Token système global (supradmin, routes publiques sans user)
      */
     private function resolveConfig(): void
     {
@@ -37,8 +40,9 @@ class KlassciProxyService
             return;
         }
 
-        // Priorité 1 : token personnel de l'utilisateur connecté
         $user = auth('sanctum')->user();
+
+        // Priorité 1 : token personnel de l'utilisateur connecté
         if ($user && $user->klassci_token) {
             $tenantUrl = $user->klassci_tenant_url;
 
@@ -55,15 +59,33 @@ class KlassciProxyService
 
                 // Mettre à jour klassci_tenant_url en base si manquant (migration silencieuse)
                 if (!$user->klassci_tenant_url) {
-                    $user->withoutEvents(function () use ($user, $tenantUrl) {
-                        $user->updateQuietly(['klassci_tenant_url' => $tenantUrl]);
-                    });
+                    $user->updateQuietly(['klassci_tenant_url' => $tenantUrl]);
                 }
                 return;
             }
         }
 
-        // Fallback : token système de l'institution (supradmin, routes sans user)
+        // Priorité 2 : token de l'institution correspondant au tenant_url de l'utilisateur
+        // Cas : auth locale (compte manuel) avec klassci_tenant_url défini mais sans token personnel
+        if ($user && $user->klassci_tenant_url) {
+            $institution = \App\Models\Institution::where('klassci_api_url', $user->klassci_tenant_url)
+                ->where('is_active', true)
+                ->first();
+
+            if ($institution && $institution->klassci_api_token) {
+                $this->baseUrl = $institution->klassci_api_url;
+                $this->token   = $institution->klassci_api_token;
+                $this->configResolved = true;
+
+                Log::info('KLASSCI resolveConfig: using institution token (no personal token)', [
+                    'user_id'     => $user->id,
+                    'institution' => $institution->slug,
+                ]);
+                return;
+            }
+        }
+
+        // Priorité 3 : token système de l'institution (supradmin, routes sans user)
         $tenantManager = app(TenantManager::class);
         $config = $tenantManager->klassciConfig();
         $this->baseUrl = $config['url'] ?? config('services.klassci.url');

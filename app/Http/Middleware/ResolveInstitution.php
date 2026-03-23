@@ -18,14 +18,24 @@ class ResolveInstitution
     {
         $slug = $request->header('X-Institution');
 
-        // Pas de header X-Institution
-        if (!$slug) {
-            // Si un token Bearer est présent, laisser passer sans résoudre d'institution
-            // (cas du supradmin qui n'appartient à aucune école)
-            if ($request->bearerToken()) {
-                return $next($request);
+        // Pas de header X-Institution mais token Bearer présent :
+        // résoudre l'institution depuis l'utilisateur authentifié
+        if (!$slug && $request->bearerToken()) {
+            $token = \Laravel\Sanctum\PersonalAccessToken::findToken($request->bearerToken());
+
+            if ($token && $token->tokenable && $token->tokenable->institution_id) {
+                $institution = Institution::find($token->tokenable->institution_id);
+
+                if ($institution && $institution->is_active) {
+                    $this->tenantManager->set($institution);
+                }
             }
-            // Sinon, fallback sur 'presentation' pour les routes publiques
+            // Si institution_id est null (supradmin) → pas de filtre, il voit tout
+            return $next($request);
+        }
+
+        // Pas de token Bearer → fallback sur 'presentation' pour les routes publiques
+        if (!$slug) {
             $slug = 'presentation';
         }
 

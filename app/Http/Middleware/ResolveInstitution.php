@@ -34,9 +34,9 @@ class ResolveInstitution
             return $next($request);
         }
 
-        // Pas de token Bearer → fallback sur 'presentation' pour les routes publiques
+        // Pas de token Bearer et pas de header X-Institution → routes publiques sans contexte tenant
         if (!$slug) {
-            $slug = 'presentation';
+            return $next($request);
         }
 
         $institution = Institution::where('slug', $slug)

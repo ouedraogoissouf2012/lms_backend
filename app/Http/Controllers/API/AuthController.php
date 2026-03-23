@@ -10,6 +10,7 @@ use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Client\Pool;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -94,7 +95,7 @@ class AuthController extends Controller
         try {
             $validator = Validator::make($request->all(), [
                 'username' => 'required|string',
-                'password' => 'required|string|min:6',
+                'password' => 'required|string|min:8',
             ]);
 
             if ($validator->fails()) {
@@ -396,53 +397,55 @@ class AuthController extends Controller
         $email         = $klassciUser['email'];
         $institutionId = $institution?->id;
 
-        // Recherche par (klassci_id, institution_id) — la clé unique de la DB
-        $user = User::withoutGlobalScope('institution')
-                    ->where('klassci_id', $klassciId)
-                    ->where('institution_id', $institutionId)
-                    ->first();
-
-        // Fallback par email si klassci_id a changé (rare mais possible)
-        if (!$user) {
+        return DB::transaction(function () use ($klassciId, $email, $institutionId, $klassciUser, $klassciToken, $tenantUrl) {
+            // Recherche par (klassci_id, institution_id) — la clé unique de la DB
             $user = User::withoutGlobalScope('institution')
-                        ->where('email', $email)
+                        ->where('klassci_id', $klassciId)
                         ->where('institution_id', $institutionId)
                         ->first();
-        }
 
-        $userData = [
-            'klassci_id'        => $klassciId,
-            'name'              => $klassciUser['nom'] ?? $klassciUser['name'] ?? 'User',
-            'email'             => $email,
-            'role'              => $klassciUser['role'] ?? 'etudiant',
-            'klassci_token'     => $klassciToken,
-            'klassci_tenant_url'=> $tenantUrl,
-            'klassci_data'      => json_encode(array_merge($klassciUser, ['_lms_tenant_url' => $tenantUrl])),
-            'last_klassci_sync' => now(),
-            'institution_id'    => $institutionId,
-        ];
+            // Fallback par email si klassci_id a changé (rare mais possible)
+            if (!$user) {
+                $user = User::withoutGlobalScope('institution')
+                            ->where('email', $email)
+                            ->where('institution_id', $institutionId)
+                            ->first();
+            }
 
-        if ($user) {
-            $user->update($userData);
-        } else {
-            $userData['password'] = Hash::make(uniqid());
-            $user = User::withoutGlobalScope('institution')->create($userData);
+            $userData = [
+                'klassci_id'         => $klassciId,
+                'name'               => $klassciUser['nom'] ?? $klassciUser['name'] ?? 'User',
+                'email'              => $email,
+                'role'               => $klassciUser['role'] ?? 'etudiant',
+                'klassci_token'      => $klassciToken,
+                'klassci_tenant_url' => $tenantUrl,
+                'klassci_data'       => json_encode(array_merge($klassciUser, ['_lms_tenant_url' => $tenantUrl])),
+                'last_klassci_sync'  => now(),
+                'institution_id'     => $institutionId,
+            ];
 
-            Log::info('Nouvel utilisateur créé depuis KLASSCI', [
-                'user_id'        => $user->id,
-                'email'          => $email,
-                'klassci_id'     => $klassciId,
-                'institution_id' => $institutionId,
-                'tenant'         => $tenantUrl,
-            ]);
-        }
+            if ($user) {
+                $user->update($userData);
+            } else {
+                $userData['password'] = Hash::make(uniqid());
+                $user = User::withoutGlobalScope('institution')->create($userData);
 
-        // NOUVEAU: Synchroniser les classes pour les étudiants
-        if ($user->isStudent()) {
-            $this->syncStudentClasses($user, $klassciToken);
-        }
+                Log::info('Nouvel utilisateur créé depuis KLASSCI', [
+                    'user_id'        => $user->id,
+                    'email'          => $email,
+                    'klassci_id'     => $klassciId,
+                    'institution_id' => $institutionId,
+                    'tenant'         => $tenantUrl,
+                ]);
+            }
 
-        return $user;
+            // Synchroniser les classes pour les étudiants
+            if ($user->isStudent()) {
+                $this->syncStudentClasses($user, $klassciToken);
+            }
+
+            return $user;
+        });
     }
 
     /**

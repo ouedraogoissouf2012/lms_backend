@@ -68,9 +68,14 @@ class KlassciProxyService
         // Priorité 2 : token de l'institution correspondant au tenant_url de l'utilisateur
         // Cas : auth locale (compte manuel) avec klassci_tenant_url défini mais sans token personnel
         if ($user && $user->klassci_tenant_url) {
-            $institution = \App\Models\Institution::where('klassci_api_url', $user->klassci_tenant_url)
-                ->where('is_active', true)
-                ->first();
+            $tenantUrl = $user->klassci_tenant_url;
+            $institution = \Illuminate\Support\Facades\Cache::remember(
+                'institution_by_url_' . md5($tenantUrl),
+                3600,
+                fn () => \App\Models\Institution::where('klassci_api_url', $tenantUrl)
+                    ->where('is_active', true)
+                    ->first()
+            );
 
             if ($institution && $institution->klassci_api_token) {
                 $this->baseUrl = $institution->klassci_api_url;

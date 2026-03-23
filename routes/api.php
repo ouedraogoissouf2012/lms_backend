@@ -660,6 +660,7 @@ Route::middleware(['auth:sanctum', 'role:supradmin'])
         Route::put('/{id}', [InstitutionController::class, 'update']);
         Route::patch('/{id}/toggle', [InstitutionController::class, 'toggle']);
         Route::post('/{id}/test-connection', [InstitutionController::class, 'testConnection']);
+        Route::delete('/{id}', [InstitutionController::class, 'destroy']);
     });
 
 // ============================================

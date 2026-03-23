@@ -29,53 +29,60 @@ class AuthController extends Controller
     ) {}
 
     /**
-     * Liste statique des tenants KLASSCI connus.
-     * Sera remplacée par un appel au master registry quand disponible.
+     * Retourne les tenants KLASSCI actifs depuis la table institutions.
      */
     private function getKlassciTenants(): array
     {
-        return [
-            ['code' => 'presentation', 'api_base_url' => 'http://presentation.klassci.com/api/lms'],
-            ['code' => 'hetec',        'api_base_url' => 'https://hetec.klassci.com/api/lms'],
-            ['code' => 'esbtp-abidjan','api_base_url' => 'https://esbtp-abidjan.klassci.com/api/lms'],
-            ['code' => 'esbtp-yakro',  'api_base_url' => 'https://esbtp-yakro.klassci.com/api/lms'],
-        ];
+        return \App\Models\Institution::where('is_active', true)
+            ->whereNotNull('klassci_api_url')
+            ->get()
+            ->map(fn($inst) => [
+                'code'         => $inst->slug,
+                'api_base_url' => rtrim($inst->klassci_api_url, '/'),
+            ])
+            ->toArray();
     }
 
     /**
-     * Cherche sur quel tenant KLASSCI un identifiant (username/email) existe.
+     * Cherche tous les tenants KLASSCI où un identifiant (username/email) existe.
      * Appels check-user en parallèle sur tous les tenants (endpoint public).
+     * Retourne la liste de tous les tenants qui ont trouvé l'utilisateur.
      */
-    private function findTenantForUser(string $identifier): ?array
+    private function findTenantsForUser(string $identifier): array
     {
         $tenants = $this->getKlassciTenants();
 
-        $responses = Http::pool(function (Pool $pool) use ($tenants, $identifier) {
+        $verifySSL = config('services.klassci.ssl_verify', true);
+        $responses = Http::pool(function (Pool $pool) use ($tenants, $identifier, $verifySSL) {
             foreach ($tenants as $tenant) {
-                $pool->as($tenant['code'])
-                    ->withoutVerifying()
-                    ->timeout(10)
-                    ->post($tenant['api_base_url'] . '/auth/check-user', [
-                        'identifier' => $identifier,
-                    ]);
+                $req = $pool->as($tenant['code'])->timeout(10);
+                if (!$verifySSL) {
+                    $req = $req->withoutVerifying();
+                }
+                $req->post($tenant['api_base_url'] . '/auth/check-user', [
+                    'identifier' => $identifier,
+                ]);
             }
         });
 
+        $matching = [];
         foreach ($tenants as $tenant) {
             $response = $responses[$tenant['code']] ?? null;
             if ($response && $response->successful()) {
                 $data = $response->json();
                 if ($data['data']['found'] ?? false) {
-                    Log::info('Tenant trouvé pour utilisateur', [
-                        'identifier' => $identifier,
-                        'tenant' => $tenant['code'],
-                    ]);
-                    return $tenant;
+                    $matching[] = $tenant;
                 }
             }
         }
 
-        return null;
+        Log::info('Tenants trouvés pour utilisateur', [
+            'identifier' => $identifier,
+            'count'      => count($matching),
+            'tenants'    => array_column($matching, 'code'),
+        ]);
+
+        return $matching;
     }
 
     /**
@@ -136,92 +143,99 @@ class AuthController extends Controller
                 ]);
             }
 
-            // 2. Détection automatique du tenant KLASSCI (check-user en parallèle)
-            $tenant = $this->findTenantForUser($request->username);
+            // 2. Détection automatique des tenants KLASSCI (check-user en parallèle sur tous)
+            $matchingTenants = $this->findTenantsForUser($request->username);
 
-            if (!$tenant) {
+            if (empty($matchingTenants)) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Identifiants incorrects',
                 ], 401);
             }
 
-            // 3. Login sur le tenant trouvé (endpoint public, pas de token système)
-            try {
-                $loginResponse = Http::withoutVerifying()
-                    ->timeout(30)
-                    ->post($tenant['api_base_url'] . '/auth/login', [
+            // 3. Essayer le login sur chaque tenant trouvé jusqu'à succès
+            // (cas où le même identifiant existe sur plusieurs écoles avec des mots de passe différents)
+            foreach ($matchingTenants as $tenant) {
+                try {
+                    $http = Http::timeout(30);
+                    if (!config('services.klassci.ssl_verify', true)) {
+                        $http = $http->withoutVerifying();
+                    }
+                    $loginResponse = $http->post($tenant['api_base_url'] . '/auth/login', [
                         'username' => $request->username,
                         'password' => $request->password,
                     ]);
 
-                if (!$loginResponse->successful()) {
+                    if (!$loginResponse->successful()) {
+                        Log::info('Login échoué sur tenant, on essaie le suivant', ['tenant' => $tenant['code']]);
+                        continue;
+                    }
+
+                    $klassciResponse = $loginResponse->json();
+
+                    if (!($klassciResponse['success'] ?? false)) {
+                        Log::info('Login refusé sur tenant, on essaie le suivant', ['tenant' => $tenant['code']]);
+                        continue;
+                    }
+
+                    $klassciUser  = $klassciResponse['data']['user'];
+                    $klassciToken = $klassciResponse['data']['token'];
+                    $tenantUrl    = $tenant['api_base_url'];
+
+                    // 4. Récupérer l'institution en DB pour avoir son ID réel
+                    $institution = \App\Models\Institution::where('slug', $tenant['code'])->first();
+
+                    // 5. Synchroniser l'utilisateur localement avec le bon institution_id
+                    $localUser = $this->syncUserFromKlassci($klassciUser, $klassciToken, $tenantUrl, $institution);
+                    $sanctumToken = $localUser->createToken('lms-backend-token', ['lms:access'])->plainTextToken;
+
+                    // 6. Synchroniser les classes (non-bloquant)
+                    try {
+                        $this->classeSyncService->syncUserClasses($klassciToken, $localUser->role);
+                    } catch (\Exception $syncError) {
+                        Log::warning('Erreur sync classes au login', ['error' => $syncError->getMessage()]);
+                    }
+
                     return response()->json([
-                        'success' => false,
-                        'message' => 'Identifiants incorrects',
-                    ], 401);
-                }
-
-                $klassciResponse = $loginResponse->json();
-
-                if (!($klassciResponse['success'] ?? false)) {
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'Identifiants incorrects',
-                    ], 401);
-                }
-
-                $klassciUser  = $klassciResponse['data']['user'];
-                $klassciToken = $klassciResponse['data']['token'];
-                $tenantUrl    = $tenant['api_base_url'];
-
-                // 4. Synchroniser l'utilisateur localement avec son tenant_url
-                $localUser = $this->syncUserFromKlassci($klassciUser, $klassciToken, $tenantUrl);
-                $sanctumToken = $localUser->createToken('lms-backend-token', ['lms:access'])->plainTextToken;
-
-                // 5. Synchroniser les classes (non-bloquant)
-                try {
-                    $this->classeSyncService->syncUserClasses($klassciToken, $localUser->role);
-                } catch (\Exception $syncError) {
-                    Log::warning('Erreur sync classes au login', ['error' => $syncError->getMessage()]);
-                }
-
-                return response()->json([
-                    'success' => true,
-                    'message' => 'Connexion réussie',
-                    'data' => [
-                        'user' => [
-                            'id'               => $localUser->id,
-                            'klassci_id'       => $localUser->klassci_id,
-                            'name'             => $localUser->name,
-                            'email'            => $localUser->email,
-                            'role'             => $localUser->role,
-                            'role_display_name'=> $klassciUser['role_display_name'] ?? '',
-                            'avatar'           => $klassciUser['avatar'] ?? null,
-                            'permissions'      => $klassciUser['permissions'] ?? [],
-                            'is_admin'         => $klassciUser['is_admin'] ?? false,
-                            'admin_data'       => $klassciUser['admin_data'] ?? null,
-                            'enseignant_data'  => $klassciUser['enseignant_data'] ?? null,
-                            'etudiant_data'    => $klassciUser['etudiant_data'] ?? null,
+                        'success' => true,
+                        'message' => 'Connexion réussie',
+                        'data' => [
+                            'user' => [
+                                'id'               => $localUser->id,
+                                'klassci_id'       => $localUser->klassci_id,
+                                'name'             => $localUser->name,
+                                'email'            => $localUser->email,
+                                'role'             => $localUser->role,
+                                'role_display_name'=> $klassciUser['role_display_name'] ?? '',
+                                'avatar'           => $klassciUser['avatar'] ?? null,
+                                'permissions'      => $klassciUser['permissions'] ?? [],
+                                'is_admin'         => $klassciUser['is_admin'] ?? false,
+                                'admin_data'       => $klassciUser['admin_data'] ?? null,
+                                'enseignant_data'  => $klassciUser['enseignant_data'] ?? null,
+                                'etudiant_data'    => $klassciUser['etudiant_data'] ?? null,
+                            ],
+                            'token'      => $sanctumToken,
+                            'token_type' => 'Bearer',
                         ],
-                        'token'      => $sanctumToken,
-                        'token_type' => 'Bearer',
-                    ],
-                    'meta' => [
-                        'klassci_synced'              => true,
-                        'institution'                 => $tenant['code'],
-                        'institution_name'            => $klassciUser['admin_data']['etablissement'] ?? $tenant['code'],
-                        'annee_universitaire_courante'=> $klassciResponse['meta']['annee_universitaire_courante'] ?? null,
-                    ],
-                ]);
+                        'meta' => [
+                            'klassci_synced'              => true,
+                            'institution'                 => $tenant['code'],
+                            'institution_name'            => $klassciUser['admin_data']['etablissement'] ?? $tenant['code'],
+                            'annee_universitaire_courante'=> $klassciResponse['meta']['annee_universitaire_courante'] ?? null,
+                        ],
+                    ]);
 
-            } catch (\Exception $e) {
-                Log::error('Erreur login KLASSCI', ['error' => $e->getMessage(), 'tenant' => $tenant['code']]);
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Identifiants incorrects',
-                ], 401);
+                } catch (\Exception $e) {
+                    Log::warning('Erreur login sur tenant', ['tenant' => $tenant['code'], 'error' => $e->getMessage()]);
+                    continue;
+                }
             }
+
+            // Aucun tenant n'a accepté les identifiants
+            return response()->json([
+                'success' => false,
+                'message' => 'Identifiants incorrects',
+            ], 401);
 
         } catch (\Exception $e) {
             return response()->json([
@@ -367,42 +381,32 @@ class AuthController extends Controller
     }
 
     /**
-     * Synchronise un utilisateur KLASSCI avec la base locale
+     * Synchronise un utilisateur KLASSCI avec la base locale.
+     * L'isolation est garantie par institution_id — chaque école a son propre espace.
      *
      * @param array $klassciUser Données utilisateur de KLASSCI
      * @param string $klassciToken Token KLASSCI
+     * @param string $tenantUrl URL de base du tenant KLASSCI
+     * @param \App\Models\Institution|null $institution Institution correspondante en DB
      * @return User
      */
-    private function syncUserFromKlassci(array $klassciUser, string $klassciToken, string $tenantUrl = ''): User
+    private function syncUserFromKlassci(array $klassciUser, string $klassciToken, string $tenantUrl = '', ?\App\Models\Institution $institution = null): User
     {
-        $klassciId = $klassciUser['id'];
-        $email     = $klassciUser['email'];
+        $klassciId     = $klassciUser['id'];
+        $email         = $klassciUser['email'];
+        $institutionId = $institution?->id;
 
-        // Clé d'unicité : (klassci_id, tenant_url) — chaque tenant a sa propre numérotation
+        // Recherche par (klassci_id, institution_id) — la clé unique de la DB
         $user = User::withoutGlobalScope('institution')
                     ->where('klassci_id', $klassciId)
-                    ->where('klassci_tenant_url', $tenantUrl)
+                    ->where('institution_id', $institutionId)
                     ->first();
 
+        // Fallback par email si klassci_id a changé (rare mais possible)
         if (!$user) {
             $user = User::withoutGlobalScope('institution')
                         ->where('email', $email)
-                        ->where('klassci_tenant_url', $tenantUrl)
-                        ->first();
-        }
-
-        // Fallback pour les comptes créés avant le système multi-tenant (klassci_tenant_url NULL)
-        if (!$user) {
-            $user = User::withoutGlobalScope('institution')
-                        ->where('klassci_id', $klassciId)
-                        ->whereNull('klassci_tenant_url')
-                        ->first();
-        }
-
-        if (!$user) {
-            $user = User::withoutGlobalScope('institution')
-                        ->where('email', $email)
-                        ->whereNull('klassci_tenant_url')
+                        ->where('institution_id', $institutionId)
                         ->first();
         }
 
@@ -415,7 +419,7 @@ class AuthController extends Controller
             'klassci_tenant_url'=> $tenantUrl,
             'klassci_data'      => json_encode(array_merge($klassciUser, ['_lms_tenant_url' => $tenantUrl])),
             'last_klassci_sync' => now(),
-            'institution_id'    => null, // Plus utilisé pour l'isolation — on utilise klassci_tenant_url
+            'institution_id'    => $institutionId,
         ];
 
         if ($user) {
@@ -425,10 +429,11 @@ class AuthController extends Controller
             $user = User::withoutGlobalScope('institution')->create($userData);
 
             Log::info('Nouvel utilisateur créé depuis KLASSCI', [
-                'user_id'    => $user->id,
-                'email'      => $email,
-                'klassci_id' => $klassciId,
-                'tenant'     => $tenantUrl,
+                'user_id'        => $user->id,
+                'email'          => $email,
+                'klassci_id'     => $klassciId,
+                'institution_id' => $institutionId,
+                'tenant'         => $tenantUrl,
             ]);
         }
 

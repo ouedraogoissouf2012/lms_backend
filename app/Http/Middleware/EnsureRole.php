@@ -69,7 +69,7 @@ class EnsureRole
         $roleMapping = [
             'enseignant' => ['enseignant', 'teacher'],
             'etudiant' => ['etudiant', 'student'],
-            'coordinateur' => ['coordinateur', 'coordinator'],
+            'coordinateur' => ['coordinateur', 'coordinator', 'superadmin'],
             'admin' => ['admin', 'administrateur', 'administrator'],
             'supradmin' => ['supradmin'],
         ];
@@ -104,8 +104,8 @@ class EnsureRole
     {
         $userRole = strtolower(trim($user->role));
 
-        // Admin et superAdmin ont toujours accès à tout
-        if (in_array($userRole, ['admin', 'administrateur', 'administrator', 'superadmin', 'supradmin'])) {
+        // Seul le supradmin (gestionnaire de la plateforme) bypasse tous les contrôles de rôle
+        if ($userRole === 'supradmin') {
             return true;
         }
 

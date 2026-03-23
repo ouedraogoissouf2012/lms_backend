@@ -295,6 +295,38 @@ class InstitutionController extends Controller
     }
 
     /**
+     * Supprimer une institution.
+     */
+    public function destroy(int $id)
+    {
+        try {
+            $institution = Institution::findOrFail($id);
+
+            $institution->delete();
+
+            Cache::forget('global_institutions_list');
+            Cache::forget('global_institutions_overview');
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Institution supprimée avec succès',
+            ]);
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Institution non trouvée',
+            ], 404);
+        } catch (\Exception $e) {
+            Log::error('InstitutionController@destroy', ['id' => $id, 'error' => $e->getMessage()]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur lors de la suppression',
+            ], 500);
+        }
+    }
+
+    /**
      * Tester la connexion KLASSCI d'une institution.
      */
     public function testConnection(int $id)
@@ -315,10 +347,11 @@ class InstitutionController extends Controller
             // Tester via l'endpoint public /auth/check-user (pas de token requis)
             $testUrl = rtrim($config['url'], '/') . '/auth/check-user';
 
-            $response = Http::withoutVerifying()
-                ->timeout(10)
-                ->withHeaders(['Accept' => 'application/json'])
-                ->post($testUrl, ['identifier' => 'lms-ping-test']);
+            $http = Http::timeout(10)->withHeaders(['Accept' => 'application/json']);
+            if (!config('services.klassci.ssl_verify', true)) {
+                $http = $http->withoutVerifying();
+            }
+            $response = $http->post($testUrl, ['identifier' => 'lms-ping-test']);
 
             $responseTime = round((microtime(true) - $startTime) * 1000);
 

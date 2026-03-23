@@ -24,3 +24,20 @@ Homestead.yaml
 Thumbs.db
 nul
 **/nul
+
+# Fichiers de développement — ne pas déployer en production
+*.md
+!README.md
+*.ps1
+*.bat
+*.patch
+*.txt
+!public/robots.txt
+*.xml
+/docs/
+/guides/
+/diagnostics/
+/.claude/
+postman_collection.json
+issue_*.md
+screenshot_*.png

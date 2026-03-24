@@ -150,15 +150,15 @@ class AdminAnalyticsController extends Controller
                     // Leçons
                     'lessons' => [
                         'total' => Lesson::count(),
-                        'published' => Lesson::where('is_published', true)->count(),
-                        'draft' => Lesson::where('is_published', false)->count(),
+                        'published' => Lesson::where('status', 'published')->count(),
+                        'draft' => Lesson::where('status', 'draft')->count(),
                         'created_this_week' => Lesson::where('created_at', '>=', $weekAgo)->count()
                     ],
 
                     // Evaluations
                     'evaluations' => [
                         'total' => Evaluation::count(),
-                        'published' => Evaluation::where('is_published', true)->count(),
+                        'published' => Evaluation::where('status', 'published')->count(),
                         'submissions_total' => EvaluationSubmission::count(),
                         'submissions_this_week' => EvaluationSubmission::where('submitted_at', '>=', $weekAgo)->count(),
                         'pending_grading' => EvaluationSubmission::whereNull('note')->count()
@@ -241,12 +241,12 @@ class AdminAnalyticsController extends Controller
 
                     // Evaluations non publiées
                     'unpublished_evaluations' => [
-                        'count' => Evaluation::where('is_published', false)->count()
+                        'count' => Evaluation::where('status', '!=', 'published')->count()
                     ],
 
                     // Leçons en brouillon
                     'draft_lessons' => [
-                        'count' => Lesson::where('is_published', false)->count()
+                        'count' => Lesson::where('status', 'draft')->count()
                     ]
                 ];
             });

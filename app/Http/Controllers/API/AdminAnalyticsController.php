@@ -161,7 +161,7 @@ class AdminAnalyticsController extends Controller
                         'published' => Evaluation::where('status', 'published')->count(),
                         'submissions_total' => EvaluationSubmission::count(),
                         'submissions_this_week' => EvaluationSubmission::where('submitted_at', '>=', $weekAgo)->count(),
-                        'pending_grading' => EvaluationSubmission::whereNull('note')->count()
+                        'pending_grading' => EvaluationSubmission::whereNull('note_sur_20')->count()
                     ],
 
                     // Quiz
@@ -174,7 +174,7 @@ class AdminAnalyticsController extends Controller
 
                     // Performance globale
                     'performance' => [
-                        'average_evaluation_score' => EvaluationSubmission::whereNotNull('note')->avg('note'),
+                        'average_evaluation_score' => EvaluationSubmission::whereNotNull('note_sur_20')->avg('note_sur_20'),
                         'average_quiz_score' => QuizAttempt::whereNotNull('score')->avg('score'),
                         'completion_rate' => $this->calculateCompletionRate()
                     ]
@@ -226,8 +226,8 @@ class AdminAnalyticsController extends Controller
                 return [
                     // Evaluations non notées
                     'pending_grading' => [
-                        'count' => EvaluationSubmission::whereNull('note')->count(),
-                        'urgent_count' => EvaluationSubmission::whereNull('note')
+                        'count' => EvaluationSubmission::whereNull('note_sur_20')->count(),
+                        'urgent_count' => EvaluationSubmission::whereNull('note_sur_20')
                             ->where('submitted_at', '<', Carbon::now()->subDays(3))
                             ->count()
                     ],

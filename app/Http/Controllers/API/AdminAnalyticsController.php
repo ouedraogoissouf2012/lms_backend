@@ -27,18 +27,16 @@ class AdminAnalyticsController extends Controller
     public function getActivityTrends(Request $request)
     {
         try {
-            $tenantUrl = $request->user()?->klassci_tenant_url;
             $institution = app(TenantManager::class)->slug() ?? 'default';
             $cacheKey = 'admin_analytics_activity_trends_' . $institution;
             $cacheTTL = 300; // 5 minutes
 
-            $data = Cache::remember($cacheKey, $cacheTTL, function () use ($tenantUrl) {
+            $data = Cache::remember($cacheKey, $cacheTTL, function () {
                 $endDate = Carbon::now();
                 $startDate = Carbon::now()->subDays(30);
 
-                // Connexions par jour (approximation via created_at des utilisateurs récents)
+                // Connexions par jour — BelongsToInstitution global scope filtre par institution_id
                 $dailyRegistrations = User::whereBetween('created_at', [$startDate, $endDate])
-                    ->when($tenantUrl, fn($q) => $q->where('klassci_tenant_url', $tenantUrl))
                     ->selectRaw('DATE(created_at) as date, COUNT(*) as count')
                     ->groupBy('date')
                     ->orderBy('date')
@@ -127,24 +125,22 @@ class AdminAnalyticsController extends Controller
     public function getSystemMetrics(Request $request)
     {
         try {
-            $tenantUrl = $request->user()?->klassci_tenant_url;
             $institution = app(TenantManager::class)->slug() ?? 'default';
             $cacheKey = 'admin_analytics_system_metrics_' . $institution;
             $cacheTTL = 300; // 5 minutes
 
-            $data = Cache::remember($cacheKey, $cacheTTL, function () use ($tenantUrl) {
+            $data = Cache::remember($cacheKey, $cacheTTL, function () {
                 $now = Carbon::now();
                 $weekAgo = Carbon::now()->subWeek();
                 $monthAgo = Carbon::now()->subMonth();
 
                 return [
-                    // Utilisateurs
+                    // Utilisateurs — BelongsToInstitution global scope filtre par institution_id
                     'users' => [
-                        'total' => User::when($tenantUrl, fn($q) => $q->where('klassci_tenant_url', $tenantUrl))->count(),
-                        'new_this_week' => User::when($tenantUrl, fn($q) => $q->where('klassci_tenant_url', $tenantUrl))->where('created_at', '>=', $weekAgo)->count(),
-                        'new_this_month' => User::when($tenantUrl, fn($q) => $q->where('klassci_tenant_url', $tenantUrl))->where('created_at', '>=', $monthAgo)->count(),
-                        'by_role' => User::when($tenantUrl, fn($q) => $q->where('klassci_tenant_url', $tenantUrl))
-                            ->selectRaw('role, COUNT(*) as count')
+                        'total' => User::count(),
+                        'new_this_week' => User::where('created_at', '>=', $weekAgo)->count(),
+                        'new_this_month' => User::where('created_at', '>=', $monthAgo)->count(),
+                        'by_role' => User::selectRaw('role, COUNT(*) as count')
                             ->groupBy('role')
                             ->get()
                             ->pluck('count', 'role')
@@ -221,14 +217,13 @@ class AdminAnalyticsController extends Controller
     public function getPendingTasks(Request $request)
     {
         try {
-            $tenantUrl = $request->user()?->klassci_tenant_url;
             $institution = app(TenantManager::class)->slug() ?? 'default';
             $cacheKey = 'admin_pending_tasks_' . $institution;
             $cacheTTL = 60; // 1 minute
 
-            $data = Cache::remember($cacheKey, $cacheTTL, function () use ($tenantUrl) {
+            $data = Cache::remember($cacheKey, $cacheTTL, function () {
                 return [
-                    // Evaluations non notées
+                    // Evaluations non notées — BelongsToInstitution global scope filtre par institution_id
                     'pending_grading' => [
                         'count' => EvaluationSubmission::whereNull('note_sur_20')->count(),
                         'urgent_count' => EvaluationSubmission::whereNull('note_sur_20')
@@ -238,9 +233,7 @@ class AdminAnalyticsController extends Controller
 
                     // Utilisateurs inactifs (30 jours)
                     'inactive_users' => [
-                        'count' => User::when($tenantUrl, fn($q) => $q->where('klassci_tenant_url', $tenantUrl))
-                            ->where('updated_at', '<', Carbon::now()->subDays(30))
-                            ->count()
+                        'count' => User::where('updated_at', '<', Carbon::now()->subDays(30))->count()
                     ],
 
                     // Evaluations non publiées
@@ -276,10 +269,7 @@ class AdminAnalyticsController extends Controller
     public function getRecentUsers(Request $request)
     {
         try {
-            $tenantUrl = $request->user()?->klassci_tenant_url;
-
-            $users = User::when($tenantUrl, fn($q) => $q->where('klassci_tenant_url', $tenantUrl))
-                ->orderBy('created_at', 'desc')
+            $users = User::orderBy('created_at', 'desc')
                 ->take(10)
                 ->select(['id', 'name', 'email', 'role', 'created_at'])
                 ->get();

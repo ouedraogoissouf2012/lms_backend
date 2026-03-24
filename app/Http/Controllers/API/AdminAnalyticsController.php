@@ -8,6 +8,7 @@ use App\Models\Lesson;
 use App\Models\Evaluation;
 use App\Models\EvaluationSubmission;
 use App\Models\QuizAttempt;
+use App\Services\TenantManager;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Cache;
@@ -27,7 +28,8 @@ class AdminAnalyticsController extends Controller
     {
         try {
             $tenantUrl = $request->user()?->klassci_tenant_url;
-            $cacheKey = 'admin_analytics_activity_trends_' . md5($tenantUrl ?? 'all');
+            $institution = app(TenantManager::class)->slug() ?? 'default';
+            $cacheKey = 'admin_analytics_activity_trends_' . $institution;
             $cacheTTL = 300; // 5 minutes
 
             $data = Cache::remember($cacheKey, $cacheTTL, function () use ($tenantUrl) {
@@ -126,7 +128,8 @@ class AdminAnalyticsController extends Controller
     {
         try {
             $tenantUrl = $request->user()?->klassci_tenant_url;
-            $cacheKey = 'admin_analytics_system_metrics_' . md5($tenantUrl ?? 'all');
+            $institution = app(TenantManager::class)->slug() ?? 'default';
+            $cacheKey = 'admin_analytics_system_metrics_' . $institution;
             $cacheTTL = 300; // 5 minutes
 
             $data = Cache::remember($cacheKey, $cacheTTL, function () use ($tenantUrl) {
@@ -219,7 +222,8 @@ class AdminAnalyticsController extends Controller
     {
         try {
             $tenantUrl = $request->user()?->klassci_tenant_url;
-            $cacheKey = 'admin_pending_tasks_' . md5($tenantUrl ?? 'all');
+            $institution = app(TenantManager::class)->slug() ?? 'default';
+            $cacheKey = 'admin_pending_tasks_' . $institution;
             $cacheTTL = 60; // 1 minute
 
             $data = Cache::remember($cacheKey, $cacheTTL, function () use ($tenantUrl) {

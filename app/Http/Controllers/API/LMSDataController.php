@@ -3812,7 +3812,7 @@ class LMSDataController extends Controller
             }
 
             // Vérifier que l'utilisateur est admin ou coordinateur
-            if (!in_array($user->role, ['admin', 'coordinateur'])) {
+            if (!in_array($user->role, ['admin', 'coordinateur', 'superAdmin'])) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Accès non autorisé. Réservé aux administrateurs et coordinateurs.'

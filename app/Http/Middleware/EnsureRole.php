@@ -67,11 +67,12 @@ class EnsureRole
         $normalized = [];
 
         $roleMapping = [
-            'enseignant' => ['enseignant', 'teacher'],
-            'etudiant' => ['etudiant', 'student'],
-            'coordinateur' => ['coordinateur', 'coordinator', 'superadmin'],
-            'admin' => ['admin', 'administrateur', 'administrator'],
-            'supradmin' => ['supradmin'],
+            'enseignant'  => ['enseignant', 'teacher'],
+            'etudiant'    => ['etudiant', 'student'],
+            'coordinateur'=> ['coordinateur', 'coordinator'],
+            'admin'       => ['admin', 'administrateur', 'administrator'],
+            'superAdmin'  => ['superAdmin', 'superadmin'],
+            'supradmin'   => ['supradmin'],
         ];
 
         foreach ($roles as $role) {
@@ -104,8 +105,13 @@ class EnsureRole
     {
         $userRole = strtolower(trim($user->role));
 
-        // Seul le supradmin (gestionnaire de la plateforme) bypasse tous les contrôles de rôle
+        // supradmin (gestionnaire plateforme) bypasse tous les contrôles de rôle
         if ($userRole === 'supradmin') {
+            return true;
+        }
+
+        // superAdmin (admin institution) bypasse tous les contrôles sauf les routes supradmin exclusives
+        if ($userRole === 'superadmin' && !in_array('supradmin', $allowedRoles)) {
             return true;
         }
 

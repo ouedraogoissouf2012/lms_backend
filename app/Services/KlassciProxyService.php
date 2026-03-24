@@ -256,35 +256,16 @@ class KlassciProxyService
     }
 
     /**
-     * Retourne une clé de tenant stable pour le cache.
-     * Même logique de priorité que resolveConfig() :
-     *   1. klassci_tenant_url de l'utilisateur (champ direct)
-     *   2. _lms_tenant_url dans klassci_data (anciens comptes sans tenant_url)
-     *   3. slug de l'institution (TenantManager)
-     *   4. 'default'
+     * Retourne une clé de cache unique par institution LMS.
+     *
+     * On utilise le slug de l'institution (TenantManager) — toujours unique par école.
+     *
+     * IMPORTANT : on n'utilise PAS md5(klassci_tenant_url) car plusieurs écoles peuvent
+     * partager le même serveur KLASSCI → même URL → même md5 → pollution cross-institution.
+     * Le slug LMS est la seule clé garantie unique par école.
      */
     private function resolveTenantCacheKey(): string
     {
-        $user = auth('sanctum')->user();
-
-        if ($user) {
-            // Priorité 1 : champ direct
-            if ($user->klassci_tenant_url) {
-                return md5($user->klassci_tenant_url);
-            }
-
-            // Priorité 2 : klassci_data._lms_tenant_url (anciens comptes)
-            if ($user->klassci_data) {
-                $data = is_array($user->klassci_data)
-                    ? $user->klassci_data
-                    : json_decode($user->klassci_data, true);
-                $tenantUrl = $data['_lms_tenant_url'] ?? null;
-                if ($tenantUrl) {
-                    return md5($tenantUrl);
-                }
-            }
-        }
-
         $slug = app(TenantManager::class)->slug();
         return $slug ?? 'default';
     }

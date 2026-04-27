@@ -28,7 +28,7 @@ class User extends Authenticatable
         'email',
         'password',
         'role',
-        'klassci_token',
+        'klassci_token_encrypted',
         'klassci_tenant_url',
         'klassci_data',
         'last_klassci_sync',
@@ -43,7 +43,7 @@ class User extends Authenticatable
     protected $hidden = [
         'password',
         'remember_token',
-        'klassci_token',
+        'klassci_token_encrypted',
     ];
 
     /**
@@ -57,7 +57,25 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'last_klassci_sync' => 'datetime',
+            'klassci_token_encrypted' => 'encrypted',
         ];
+    }
+
+    /**
+     * Accessor: transparent access to encrypted token via old attribute name
+     * Allows KlassciProxyService to continue using $user->klassci_token without changes
+     */
+    public function getKlassciTokenAttribute(): ?string
+    {
+        return $this->klassci_token_encrypted;
+    }
+
+    /**
+     * Mutator: transparent write to encrypted token via old attribute name
+     */
+    public function setKlassciTokenAttribute(?string $value): void
+    {
+        $this->klassci_token_encrypted = $value;
     }
 
     /**

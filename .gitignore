@@ -28,6 +28,8 @@ nul
 # Fichiers de développement — ne pas déployer en production
 *.md
 !README.md
+!PRODUCTION_STANDARDS.md
+!REFACTORING_ROADMAP.md
 *.ps1
 *.bat
 *.patch

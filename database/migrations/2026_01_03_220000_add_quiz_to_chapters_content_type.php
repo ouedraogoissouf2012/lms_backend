@@ -84,12 +84,24 @@ return new class extends Migration
             DB::statement("CREATE INDEX IF NOT EXISTS chapters_matiere_id_index ON chapters(matiere_id)");
 
             DB::statement('PRAGMA foreign_keys=on;');
-        } else {
+        } else if ($connection === 'mysql') {
             // MySQL: Modifier directement la colonne
             DB::statement("
                 ALTER TABLE chapters
                 MODIFY COLUMN content_type ENUM('text', 'video', 'pdf', 'audio', 'presentation', 'powerpoint', 'word', 'excel', 'link', 'mixed', 'quiz')
                 DEFAULT 'text'
+            ");
+        } else if ($connection === 'pgsql') {
+            // PostgreSQL: Ajouter la valeur à la contrainte CHECK existante
+            DB::statement("
+                ALTER TABLE chapters
+                DROP CONSTRAINT IF EXISTS chapters_content_type_check
+            ");
+
+            DB::statement("
+                ALTER TABLE chapters
+                ADD CONSTRAINT chapters_content_type_check
+                CHECK (content_type IN ('text', 'video', 'pdf', 'audio', 'presentation', 'powerpoint', 'word', 'excel', 'link', 'mixed', 'quiz'))
             ");
         }
     }
@@ -103,13 +115,26 @@ return new class extends Migration
 
         if ($connection === 'sqlite') {
             DB::table('chapters')->where('content_type', 'quiz')->update(['content_type' => 'text']);
-        } else {
+        } else if ($connection === 'mysql') {
             DB::table('chapters')->where('content_type', 'quiz')->update(['content_type' => 'text']);
 
             DB::statement("
                 ALTER TABLE chapters
                 MODIFY COLUMN content_type ENUM('text', 'video', 'pdf', 'audio', 'presentation', 'powerpoint', 'word', 'excel', 'link', 'mixed')
                 DEFAULT 'text'
+            ");
+        } else if ($connection === 'pgsql') {
+            DB::table('chapters')->where('content_type', 'quiz')->update(['content_type' => 'text']);
+
+            DB::statement("
+                ALTER TABLE chapters
+                DROP CONSTRAINT IF EXISTS chapters_content_type_check
+            ");
+
+            DB::statement("
+                ALTER TABLE chapters
+                ADD CONSTRAINT chapters_content_type_check
+                CHECK (content_type IN ('text', 'video', 'pdf', 'audio', 'presentation', 'powerpoint', 'word', 'excel', 'link', 'mixed'))
             ");
         }
     }

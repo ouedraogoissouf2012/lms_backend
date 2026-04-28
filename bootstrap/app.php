@@ -37,5 +37,20 @@ return Application::configure(basePath: dirname(__DIR__))
             ->withoutOverlapping();
     })
     ->withExceptions(function (Exceptions $exceptions): void {
-        //
+        $exceptions->render(function (\Throwable $e, $request) {
+            if ($request->expectsJson()) {
+                $statusCode = method_exists($e, 'getStatusCode') ? $e->getStatusCode() : 500;
+                $message = app()->isProduction() ? 'Une erreur est survenue.' : $e->getMessage();
+
+                \Illuminate\Support\Facades\Log::error('Exception non-catchée', [
+                    'exception' => get_class($e),
+                    'message' => $e->getMessage(),
+                    'url' => $request->fullUrl(),
+                    'method' => $request->getMethod(),
+                    'trace' => $e->getTraceAsString(),
+                ]);
+
+                return response()->json(['success' => false, 'message' => $message], $statusCode);
+            }
+        });
     })->create();

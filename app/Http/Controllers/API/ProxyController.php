@@ -30,7 +30,7 @@ class ProxyController extends Controller
             $data = $this->klassciService->getStructure();
             return response()->json($data);
         } catch (\Exception $e) {
-            return $this->errorResponse($e->getMessage());
+            return $this->errorResponse('Service indisponible. Veuillez réessayer.');
         }
     }
 
@@ -45,7 +45,7 @@ class ProxyController extends Controller
             $data = $this->klassciService->getClasses($filters);
             return response()->json($data);
         } catch (\Exception $e) {
-            return $this->errorResponse($e->getMessage());
+            return $this->errorResponse('Service indisponible. Veuillez réessayer.');
         }
     }
 
@@ -60,7 +60,7 @@ class ProxyController extends Controller
             $data = $this->klassciService->getClasseEtudiants($id, $anneeId);
             return response()->json($data);
         } catch (\Exception $e) {
-            return $this->errorResponse($e->getMessage());
+            return $this->errorResponse('Service indisponible. Veuillez réessayer.');
         }
     }
 
@@ -75,7 +75,7 @@ class ProxyController extends Controller
             $data = $this->klassciService->getMatieres($filters);
             return response()->json($data);
         } catch (\Exception $e) {
-            return $this->errorResponse($e->getMessage());
+            return $this->errorResponse('Service indisponible. Veuillez réessayer.');
         }
     }
 
@@ -89,7 +89,7 @@ class ProxyController extends Controller
             $data = $this->klassciService->getMatiereDetails($id);
             return response()->json($data);
         } catch (\Exception $e) {
-            return $this->errorResponse($e->getMessage());
+            return $this->errorResponse('Service indisponible. Veuillez réessayer.');
         }
     }
 
@@ -137,7 +137,7 @@ class ProxyController extends Controller
 
             return response()->json($data);
         } catch (\Exception $e) {
-            return $this->errorResponse($e->getMessage());
+            return $this->errorResponse('Service indisponible. Veuillez réessayer.');
         }
     }
 
@@ -151,7 +151,7 @@ class ProxyController extends Controller
             $data = $this->klassciService->getFilieres();
             return response()->json($data);
         } catch (\Exception $e) {
-            return $this->errorResponse($e->getMessage());
+            return $this->errorResponse('Service indisponible. Veuillez réessayer.');
         }
     }
 
@@ -165,7 +165,7 @@ class ProxyController extends Controller
             $data = $this->klassciService->getNiveauxEtudes();
             return response()->json($data);
         } catch (\Exception $e) {
-            return $this->errorResponse($e->getMessage());
+            return $this->errorResponse('Service indisponible. Veuillez réessayer.');
         }
     }
 
@@ -180,7 +180,7 @@ class ProxyController extends Controller
             $data = $this->klassciService->getEvaluations($filters);
             return response()->json($data);
         } catch (\Exception $e) {
-            return $this->errorResponse($e->getMessage());
+            return $this->errorResponse('Service indisponible. Veuillez réessayer.');
         }
     }
 
@@ -195,7 +195,7 @@ class ProxyController extends Controller
             $data = $this->klassciService->getEmploiTemps($filters);
             return response()->json($data);
         } catch (\Exception $e) {
-            return $this->errorResponse($e->getMessage());
+            return $this->errorResponse('Service indisponible. Veuillez réessayer.');
         }
     }
 
@@ -217,7 +217,7 @@ class ProxyController extends Controller
             $data = $this->klassciService->saveNotes($id, $validated['notes']);
             return response()->json($data);
         } catch (\Exception $e) {
-            return $this->errorResponse($e->getMessage());
+            return $this->errorResponse('Service indisponible. Veuillez réessayer.');
         }
     }
 
@@ -247,7 +247,7 @@ class ProxyController extends Controller
             $data = $this->klassciService->savePresences($id, $presences);
             return response()->json($data);
         } catch (\Exception $e) {
-            return $this->errorResponse($e->getMessage());
+            return $this->errorResponse('Service indisponible. Veuillez réessayer.');
         }
     }
 
@@ -271,7 +271,7 @@ class ProxyController extends Controller
 
             return response()->json($data);
         } catch (\Exception $e) {
-            return $this->errorResponse($e->getMessage());
+            return $this->errorResponse('Service indisponible. Veuillez réessayer.');
         }
     }
 
@@ -315,7 +315,7 @@ class ProxyController extends Controller
             return response()->json($data);
         } catch (\Exception $e) {
             \Log::error('Student Dashboard error', ['error' => $e->getMessage()]);
-            return $this->errorResponse($e->getMessage());
+            return $this->errorResponse('Service indisponible. Veuillez réessayer.');
         }
     }
 
@@ -359,7 +359,7 @@ class ProxyController extends Controller
             return response()->json($data);
         } catch (\Exception $e) {
             \Log::error('Teacher Dashboard error', ['error' => $e->getMessage()]);
-            return $this->errorResponse($e->getMessage());
+            return $this->errorResponse('Service indisponible. Veuillez réessayer.');
         }
     }
 
@@ -380,7 +380,7 @@ class ProxyController extends Controller
                 'api_url' => config('services.klassci.url'),
             ]);
         } catch (\Exception $e) {
-            return $this->errorResponse($e->getMessage());
+            return $this->errorResponse('Service indisponible. Veuillez réessayer.');
         }
     }
 

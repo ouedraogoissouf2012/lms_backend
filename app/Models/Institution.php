@@ -10,7 +10,7 @@ class Institution extends Model
         'slug',
         'name',
         'klassci_api_url',
-        'klassci_api_token',
+        'klassci_api_token_encrypted',
         'logo_url',
         'primary_color',
         'is_active',
@@ -20,7 +20,25 @@ class Institution extends Model
     protected $casts = [
         'is_active' => 'boolean',
         'settings' => 'array',
+        'klassci_api_token_encrypted' => 'encrypted',
     ];
+
+    /**
+     * Accessor: transparent access to encrypted API token via old attribute name
+     * Allows KlassciProxyService to continue using $institution->klassci_api_token without changes
+     */
+    public function getKlassciApiTokenAttribute(): ?string
+    {
+        return $this->klassci_api_token_encrypted;
+    }
+
+    /**
+     * Mutator: transparent write to encrypted API token via old attribute name
+     */
+    public function setKlassciApiTokenAttribute(?string $value): void
+    {
+        $this->klassci_api_token_encrypted = $value;
+    }
 
     /**
      * Trouver une institution par son slug

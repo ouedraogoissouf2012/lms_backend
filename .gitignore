@@ -36,6 +36,8 @@ nul
 *.txt
 !public/robots.txt
 *.xml
+!phpunit.xml
+!phpunit.xml.dist
 /docs/
 /guides/
 /diagnostics/
@@ -45,7 +47,9 @@ issue_*.md
 screenshot_*.png
 
 # Local development files - not for production
+# Ignore all tests except production-grade tests (marked CRITICAL-xx)
 /tests/
+!/tests/Unit/TokenEncryptionTest.php
 .env.example
 .env.production.example
 package.json

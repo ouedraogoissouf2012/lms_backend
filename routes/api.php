@@ -87,41 +87,42 @@ Route::prefix('auth')->middleware('auth:sanctum')->group(function () {
 });
 
 // ============================================
-// PROXY KLASSCI - Routes publiques
-// ============================================
-Route::prefix('proxy')->group(function () {
-    // Test de connexion (public)
-    Route::get('/test-connection', [ProxyController::class, 'testConnection']);
-});
-
-// ============================================
-// PROXY KLASSCI - Routes publiques (lecture seule)
-// Ces routes utilisent le token KLASSCI configuré dans .env
-// Pas besoin d'authentification utilisateur pour la lecture
+// PROXY KLASSCI - Test de connexion (SÉCURISÉ)
 // ============================================
 Route::prefix('proxy')
+    ->middleware(['auth:sanctum', 'klassci.sync', 'role:coordinateur,superAdmin,supradmin'])
     ->group(function () {
+        // Test de connexion KLASSCI — réservé aux admins
+        Route::get('/test-connection', [ProxyController::class, 'testConnection']);
+    });
 
-    // Structure organisationnelle
-    Route::get('/structure', [ProxyController::class, 'structure']);
-    Route::get('/filieres', [ProxyController::class, 'filieres']);
-    Route::get('/niveaux-etudes', [ProxyController::class, 'niveauxEtudes']);
+// ============================================
+// PROXY KLASSCI - Données organisationnelles (SÉCURISÉ)
+// Routes authentifiées pour tous les rôles
+// ============================================
+Route::prefix('proxy')
+    ->middleware(['auth:sanctum', 'klassci.sync'])
+    ->group(function () {
+        // Structure organisationnelle
+        Route::get('/structure', [ProxyController::class, 'structure']);
+        Route::get('/filieres', [ProxyController::class, 'filieres']);
+        Route::get('/niveaux-etudes', [ProxyController::class, 'niveauxEtudes']);
 
-    // Classes et étudiants
-    Route::get('/classes', [ProxyController::class, 'classes']);
-    Route::get('/classes/{id}/etudiants', [ProxyController::class, 'etudiants']);
+        // Classes et étudiants
+        Route::get('/classes', [ProxyController::class, 'classes']);
+        Route::get('/classes/{id}/etudiants', [ProxyController::class, 'etudiants']);
 
-    // Matières et enseignants
-    Route::get('/matieres', [ProxyController::class, 'matieres']);
-    Route::get('/matieres/{id}', [ProxyController::class, 'matiereDetails']);
-    Route::get('/enseignants', [ProxyController::class, 'enseignants']);
+        // Matières et enseignants
+        Route::get('/matieres', [ProxyController::class, 'matieres']);
+        Route::get('/matieres/{id}', [ProxyController::class, 'matiereDetails']);
+        Route::get('/enseignants', [ProxyController::class, 'enseignants']);
 
-    // Emploi du temps
-    Route::get('/emploi-temps', [ProxyController::class, 'emploiTemps']);
+        // Emploi du temps
+        Route::get('/emploi-temps', [ProxyController::class, 'emploiTemps']);
 
-    // Évaluations - Lecture
-    Route::get('/evaluations', [ProxyController::class, 'evaluations']);
-});
+        // Évaluations - Lecture
+        Route::get('/evaluations', [ProxyController::class, 'evaluations']);
+    });
 
 // ============================================
 // PROXY KLASSCI - Routes ENSEIGNANTS uniquement

@@ -51,6 +51,7 @@ screenshot_*.png
 /tests/
 !/tests/Unit/TokenEncryptionTest.php
 !/tests/Unit/ExceptionHandlerTest.php
+!/tests/Feature/ProxyRouteSecurityTest.php
 .env.example
 .env.production.example
 package.json

@@ -62,7 +62,7 @@ class DashboardController extends Controller
             ->where('user_id', $user->id)
             ->where('status', 'completed')
             ->with(['lesson.matiere'])
-            ->orderBy('submitted_at', 'desc')
+            ->orderBy('completed_at', 'desc')
             ->limit(5)
             ->get()
             ->map(function ($progress) {

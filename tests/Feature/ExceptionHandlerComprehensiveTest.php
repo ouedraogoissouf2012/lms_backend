@@ -273,20 +273,21 @@ class ExceptionHandlerComprehensiveTest extends TestCase
         $response1 = $this->getJson('/api/classes/99999');
         $response2 = $this->getJson('/api/evaluations/99999');
 
-        if ($response1->status() === 404 && $response2->status() === 404) {
-            // Both have RESOURCE_NOT_FOUND
-            $this->assertEquals('RESOURCE_NOT_FOUND', $response1->json('error_code'));
-            $this->assertEquals('RESOURCE_NOT_FOUND', $response2->json('error_code'));
+        $response1->assertStatus(404);
+        $response2->assertStatus(404);
 
-            // Client messages might differ but both are generic
-            $msg1 = $response1->json('message');
-            $msg2 = $response2->json('message');
+        // Both have RESOURCE_NOT_FOUND
+        $this->assertEquals('RESOURCE_NOT_FOUND', $response1->json('error_code'));
+        $this->assertEquals('RESOURCE_NOT_FOUND', $response2->json('error_code'));
 
-            $this->assertIsString($msg1);
-            $this->assertIsString($msg2);
-            // Neither should expose exception internals
-            $this->assertStringNotContainsString('Exception', $msg1);
-            $this->assertStringNotContainsString('Exception', $msg2);
-        }
+        // Client messages might differ but both are generic
+        $msg1 = $response1->json('message');
+        $msg2 = $response2->json('message');
+
+        $this->assertIsString($msg1);
+        $this->assertIsString($msg2);
+        // Neither should expose exception internals
+        $this->assertStringNotContainsString('Exception', $msg1);
+        $this->assertStringNotContainsString('Exception', $msg2);
     }
 }

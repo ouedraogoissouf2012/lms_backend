@@ -70,6 +70,29 @@ return Application::configure(basePath: dirname(__DIR__))
             }
         });
 
+        // Handle validation exceptions
+        $exceptions->render(function (\Illuminate\Validation\ValidationException $e, $request) {
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'error_code' => 'VALIDATION_FAILED',
+                    'message' => 'Validation failed',
+                    'errors' => $e->errors(),
+                ], 422);
+            }
+        });
+
+        // Handle permission exceptions
+        $exceptions->render(function (App\Exceptions\PermissionException $e, $request) {
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'error_code' => 'PERMISSION_DENIED',
+                    'message' => $e->getClientMessage(),
+                ], 403);
+            }
+        });
+
         // Handle custom API exceptions
         $exceptions->render(function (App\Exceptions\ApiException $e, $request) {
             if ($request->expectsJson()) {

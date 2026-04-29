@@ -43,6 +43,12 @@ Route::get('/institutions/active', function () {
     ]);
 });
 
+// Simple test routes for exception handling
+Route::get('/classes/{id}', function (int $id) {
+    $classe = \App\Models\Classe::findOrFail($id);
+    return response()->json(['success' => true, 'data' => $classe]);
+});
+
 // ============================================
 // INSTITUTION - Informations sur l'institution courante
 // ============================================

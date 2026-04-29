@@ -49,6 +49,8 @@ return Application::configure(basePath: dirname(__DIR__))
             if ($request->expectsJson()) {
                 $apiException = new App\Exceptions\ResourceNotFoundException(
                     'Ressource non trouvée',
+                    null,
+                    404,
                     ['model' => get_class($e->getModel())]
                 );
                 return $apiException->render();

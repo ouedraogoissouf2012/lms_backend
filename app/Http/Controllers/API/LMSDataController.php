@@ -14,9 +14,11 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Http;
 use Carbon\Carbon;
+use App\Http\Controllers\Traits\HandlesApiExceptions;
 
 class LMSDataController extends Controller
 {
+    use HandlesApiExceptions;
     protected KlassciProxyService $klassciService;
     protected NotificationService $notificationService;
     protected ClasseSyncService $classeSyncService;
@@ -90,7 +92,7 @@ class LMSDataController extends Controller
             } catch (\Exception $e) {
                 Log::error('Erreur récupération classe', [
                     'classe_id' => $classeId,
-                    'error' => $e->getMessage()
+                'exception_class' => get_class($e)
                 ]);
 
                 return response()->json([
@@ -127,7 +129,7 @@ class LMSDataController extends Controller
             } catch (\Exception $e) {
                 Log::warning('Erreur récupération emploi du temps', [
                     'classe_id' => $classeId,
-                    'error' => $e->getMessage()
+                'exception_class' => get_class($e)
                 ]);
                 $emploiTemps = [];
             }
@@ -146,7 +148,7 @@ class LMSDataController extends Controller
             } catch (\Exception $e) {
                 Log::warning('Erreur récupération évaluations', [
                     'classe_id' => $classeId,
-                    'error' => $e->getMessage()
+                'exception_class' => get_class($e)
                 ]);
                 $evaluations = [];
             }
@@ -171,12 +173,13 @@ class LMSDataController extends Controller
 
                     Log::info('Matières récupérées depuis KLASSCI', [
                         'count' => count($matieres),
-                        'matieres' => $matieres
+                        'matieres' => $matieres,
+                'exception_class' => get_class($e)
                     ]);
                 } catch (\Exception $e) {
                     Log::warning('Erreur récupération matières', [
                         'classe_id' => $classeId,
-                        'error' => $e->getMessage()
+                'exception_class' => get_class($e)
                     ]);
                 }
             } else {
@@ -214,14 +217,13 @@ class LMSDataController extends Controller
         } catch (\Exception $e) {
             Log::error('Erreur récupération détails classe', [
                 'classe_id' => $classeId,
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
+                'trace' => $e->getTraceAsString(),
+                'exception_class' => get_class($e)
             ]);
 
             return response()->json([
                 'success' => false,
-                'message' => 'Erreur lors de la récupération des détails de la classe',
-                'error' => $e->getMessage()
+                'message' => 'Erreur lors de la récupération des détails de la classe'
             ], 500);
         }
     }
@@ -249,7 +251,8 @@ class LMSDataController extends Controller
 
             Log::info('Récupération étudiants classe', [
                 'classe_id' => $classeId,
-                'user_id' => $user->id
+                'user_id' => $user->id,
+                'exception_class' => get_class($e)
             ]);
 
             // Récupérer les étudiants via KLASSCI
@@ -277,14 +280,13 @@ class LMSDataController extends Controller
         } catch (\Exception $e) {
             Log::error('Erreur récupération étudiants classe', [
                 'classe_id' => $classeId,
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
+                'trace' => $e->getTraceAsString(),
+                'exception_class' => get_class($e)
             ]);
 
             return response()->json([
                 'success' => false,
-                'message' => 'Erreur lors de la récupération des étudiants',
-                'error' => $e->getMessage()
+                'message' => 'Erreur lors de la récupération des étudiants'
             ], 500);
         }
     }
@@ -316,7 +318,8 @@ class LMSDataController extends Controller
 
             Log::info('Récupération détails matière', [
                 'matiere_id' => $matiereId,
-                'user_id' => $user->id
+                'user_id' => $user->id,
+                'exception_class' => get_class($e)
             ]);
 
             // 1. Récupérer les informations de base de la matière directement par ID
@@ -348,7 +351,7 @@ class LMSDataController extends Controller
             } catch (\Exception $e) {
                 Log::error('Erreur récupération matière', [
                     'matiere_id' => $matiereId,
-                    'error' => $e->getMessage()
+                'exception_class' => get_class($e)
                 ]);
 
                 return response()->json([
@@ -390,7 +393,7 @@ class LMSDataController extends Controller
                 } catch (\Exception $e) {
                     Log::warning('Erreur récupération enseignants via emploi du temps', [
                         'matiere_id' => $matiereId,
-                        'error' => $e->getMessage()
+                'exception_class' => get_class($e)
                     ]);
                 }
             }
@@ -463,7 +466,7 @@ class LMSDataController extends Controller
                 Log::warning('Erreur récupération séances', [
                     'matiere_id' => $matiereId,
                     'user_role' => $user->role,
-                    'error' => $e->getMessage()
+                'exception_class' => get_class($e)
                 ]);
                 $seances = [];
             }
@@ -505,7 +508,8 @@ class LMSDataController extends Controller
 
                 Log::info('Séances filtrées pour étudiant', [
                     'user_id' => $user->id,
-                    'count_after_filter' => count($seances)
+                    'count_after_filter' => count($seances),
+                'exception_class' => get_class($e)
                 ]);
             }
 
@@ -523,7 +527,7 @@ class LMSDataController extends Controller
             } catch (\Exception $e) {
                 Log::warning('Erreur récupération évaluations', [
                     'matiere_id' => $matiereId,
-                    'error' => $e->getMessage()
+                'exception_class' => get_class($e)
                 ]);
                 $evaluations = [];
             }
@@ -641,13 +645,14 @@ class LMSDataController extends Controller
 
                 Log::info('Lessons LMS récupérés', [
                     'matiere_id' => $matiereId,
-                    'count' => count($lessons)
+                    'count' => count($lessons),
+                'exception_class' => get_class($e)
                 ]);
 
             } catch (\Exception $e) {
                 Log::warning('Erreur récupération lessons LMS', [
                     'matiere_id' => $matiereId,
-                    'error' => $e->getMessage()
+                'exception_class' => get_class($e)
                 ]);
             }
 
@@ -734,7 +739,8 @@ class LMSDataController extends Controller
                 'has_matiere' => !empty($matiere),
                 'lessons_count' => count($lessons),
                 'seances_count' => count($seances),
-                'evaluations_count' => count($evaluationsEnrichies)
+                'evaluations_count' => count($evaluationsEnrichies),
+                'exception_class' => get_class($e)
             ]);
 
             return response()->json($response);
@@ -742,14 +748,13 @@ class LMSDataController extends Controller
         } catch (\Exception $e) {
             Log::error('Erreur récupération détails matière', [
                 'matiere_id' => $matiereId,
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
+                'trace' => $e->getTraceAsString(),
+                'exception_class' => get_class($e)
             ]);
 
             return response()->json([
                 'success' => false,
-                'message' => 'Erreur lors de la récupération des détails de la matière',
-                'error' => $e->getMessage()
+                'message' => 'Erreur lors de la récupération des détails de la matière'
             ], 500);
         }
     }
@@ -787,7 +792,8 @@ class LMSDataController extends Controller
                 'date_debut' => $dateDebut,
                 'date_fin' => $dateFin,
                 'teacher_id' => $teacherId,
-                'classe_id' => $classeId
+                'classe_id' => $classeId,
+                'exception_class' => get_class($e)
             ]);
 
             // WORKAROUND: endpoint emploi-temps bugué, on utilise matieres/{id}
@@ -880,16 +886,16 @@ class LMSDataController extends Controller
                         $seances = $seances->concat($seancesFiltrees);
 
                     } catch (\Exception $matiereError) {
-                        Log::warning("Erreur matière {$matiereId}", ['error' => $matiereError->getMessage()]);
+                Log::warning("Erreur matière {$matiereId}", ['exception_class' => get_class($matiereError)]);
                     }
                 }
 
-                Log::info('Séances récupérées via matieres', ['count' => $seances->count()]);
+                Log::info('Séances récupérées via matieres', ['count' => $seances->count(),
+                'exception_class' => get_class($matiereError)]);
 
             } catch (\Exception $e) {
-                Log::error('Erreur récupération séances via matieres', [
-                    'error' => $e->getMessage()
-                ]);
+                Log::error('Erreur récupération séances via matieres', ['exception_class' => get_class($e)
+                    ]);
             }
 
             // Enrichir avec les infos visio du LMS
@@ -940,14 +946,13 @@ class LMSDataController extends Controller
 
         } catch (\Exception $e) {
             Log::error('Erreur récupération séances à venir', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
+                'trace' => $e->getTraceAsString(),
+                'exception_class' => get_class($e)
             ]);
 
             return response()->json([
                 'success' => false,
-                'message' => 'Erreur lors de la récupération des séances',
-                'error' => $e->getMessage()
+                'message' => 'Erreur lors de la récupération des séances'
             ], 500);
         }
     }
@@ -968,7 +973,8 @@ class LMSDataController extends Controller
                 ], 401);
             }
 
-            Log::info('Récupération participants séance', ['seance_id' => $seanceId]);
+            Log::info('Récupération participants séance', ['seance_id' => $seanceId,
+                'exception_class' => get_class($e)]);
 
             // Récupérer la séance via teacher-dashboard (même logique que seanceDetails)
             $seance = null;
@@ -1037,7 +1043,7 @@ class LMSDataController extends Controller
                 } catch (\Exception $e) {
                     Log::warning('Erreur récupération étudiants', [
                         'classe_id' => $classeId,
-                        'error' => $e->getMessage()
+                'exception_class' => get_class($e)
                     ]);
                 }
             }
@@ -1055,14 +1061,13 @@ class LMSDataController extends Controller
         } catch (\Exception $e) {
             Log::error('Erreur récupération participants séance', [
                 'seance_id' => $seanceId,
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
+                'trace' => $e->getTraceAsString(),
+                'exception_class' => get_class($e)
             ]);
 
             return response()->json([
                 'success' => false,
-                'message' => 'Erreur lors de la récupération des participants',
-                'error' => $e->getMessage()
+                'message' => 'Erreur lors de la récupération des participants'
             ], 500);
         }
     }
@@ -1108,7 +1113,8 @@ class LMSDataController extends Controller
             Log::info('Validation participant séance', [
                 'seance_id' => $seanceId,
                 'user_id' => $userId,
-                'user_role' => $userToValidate->role
+                'user_role' => $userToValidate->role,
+                'exception_class' => get_class($e)
             ]);
 
             // Vérifier d'abord si la visio existe et est active
@@ -1119,7 +1125,8 @@ class LMSDataController extends Controller
                 'visio_found' => $visioData ? 'oui' : 'non',
                 'visio_enabled' => $visioData?->visio_enabled,
                 'visio_status' => $visioData?->visio_status,
-                'klassci_matiere_id' => $visioData?->klassci_matiere_id
+                'klassci_matiere_id' => $visioData?->klassci_matiere_id,
+                'exception_class' => get_class($e)
             ]);
 
             if (!$visioData || !$visioData->visio_enabled) {
@@ -1145,7 +1152,8 @@ class LMSDataController extends Controller
             if (in_array($userToValidate->role, ['enseignant', 'coordinateur', 'superAdmin', 'teacher'])) {
                 Log::info('DEBUG validateParticipant - Enseignant autorisé', [
                     'user_id' => $userId,
-                    'role' => $userToValidate->role
+                    'role' => $userToValidate->role,
+                'exception_class' => get_class($e)
                 ]);
 
                 return response()->json([
@@ -1163,7 +1171,8 @@ class LMSDataController extends Controller
                     'user_email' => $userToValidate->email,
                     'seance_id' => $seanceId,
                     'matiere_id' => $visioData->klassci_matiere_id,
-                    'classe_id' => $visioData->klassci_classe_id
+                    'classe_id' => $visioData->klassci_classe_id,
+                'exception_class' => get_class($e)
                 ]);
 
                 // WORKAROUND: On utilise /matieres/{id} si disponible, sinon on utilise directement classe_id de la BDD
@@ -1176,7 +1185,8 @@ class LMSDataController extends Controller
                         $classeId = $visioData->klassci_classe_id;
 
                         Log::info('DEBUG validateParticipant - Utilisation classe_id de la BDD locale', [
-                            'classe_id' => $classeId
+                            'classe_id' => $classeId,
+                'exception_class' => get_class($e)
                         ]);
                     }
                     // Stratégie 2: Sinon, chercher via /matieres/{id}
@@ -1184,7 +1194,8 @@ class LMSDataController extends Controller
                         $matiereId = $visioData->klassci_matiere_id;
 
                         Log::info('DEBUG validateParticipant - Recherche via /matieres', [
-                            'matiere_id' => $matiereId
+                            'matiere_id' => $matiereId,
+                'exception_class' => get_class($e)
                         ]);
 
                         // Appel API KLASSCI pour récupérer les infos de la matière
@@ -1196,13 +1207,15 @@ class LMSDataController extends Controller
 
                         Log::info('DEBUG validateParticipant - Réponse /matieres', [
                             'status' => $matiereResponse->status(),
-                            'success' => $matiereResponse->successful()
+                            'success' => $matiereResponse->successful(),
+                'exception_class' => get_class($e)
                         ]);
 
                         if (!$matiereResponse->successful()) {
                             Log::error('DEBUG validateParticipant - Erreur API matieres', [
                                 'status' => $matiereResponse->status(),
-                                'body' => $matiereResponse->body()
+                                'body' => $matiereResponse->body(),
+                'exception_class' => get_class($e)
                             ]);
 
                             return response()->json([
@@ -1218,7 +1231,8 @@ class LMSDataController extends Controller
 
                         Log::info('DEBUG validateParticipant - Séances programmées', [
                             'count' => count($seancesProgrammees),
-                            'recherche_seance_id' => $seanceId
+                            'recherche_seance_id' => $seanceId,
+                'exception_class' => get_class($e)
                         ]);
 
                         // Trouver la séance correspondante pour récupérer classe_id
@@ -1227,7 +1241,8 @@ class LMSDataController extends Controller
                         if (!$seanceInfo) {
                             Log::warning('DEBUG validateParticipant - Séance non trouvée dans les programmations', [
                                 'seance_id' => $seanceId,
-                                'seances_disponibles' => collect($seancesProgrammees)->pluck('id')->toArray()
+                                'seances_disponibles' => collect($seancesProgrammees)->pluck('id')->toArray(),
+                'exception_class' => get_class($e)
                             ]);
 
                             return response()->json([
@@ -1242,7 +1257,8 @@ class LMSDataController extends Controller
 
                         Log::info('DEBUG validateParticipant - Séance trouvée via /matieres', [
                             'seance_id' => $seanceId,
-                            'classe_id' => $classeId
+                            'classe_id' => $classeId,
+                'exception_class' => get_class($e)
                         ]);
                     }
 
@@ -1251,7 +1267,8 @@ class LMSDataController extends Controller
                         Log::error('DEBUG validateParticipant - Pas de classe_id disponible', [
                             'seance_id' => $seanceId,
                             'has_matiere_id' => $visioData->klassci_matiere_id ? 'oui' : 'non',
-                            'has_classe_id' => $visioData->klassci_classe_id ? 'oui' : 'non'
+                            'has_classe_id' => $visioData->klassci_classe_id ? 'oui' : 'non',
+                'exception_class' => get_class($e)
                         ]);
 
                         return response()->json([
@@ -1271,13 +1288,15 @@ class LMSDataController extends Controller
 
                     Log::info('DEBUG validateParticipant - Réponse /classes/etudiants', [
                         'status' => $classesResponse->status(),
-                        'success' => $classesResponse->successful()
+                        'success' => $classesResponse->successful(),
+                'exception_class' => get_class($e)
                     ]);
 
                     if (!$classesResponse->successful()) {
                         Log::error('DEBUG validateParticipant - Erreur API classes/etudiants', [
                             'status' => $classesResponse->status(),
-                            'body' => $classesResponse->body()
+                            'body' => $classesResponse->body(),
+                'exception_class' => get_class($e)
                         ]);
 
                         return response()->json([
@@ -1293,7 +1312,8 @@ class LMSDataController extends Controller
 
                     Log::info('DEBUG validateParticipant - Étudiants inscrits', [
                         'count' => count($enrolledStudents),
-                        'emails' => collect($enrolledStudents)->pluck('email')->toArray()
+                        'emails' => collect($enrolledStudents)->pluck('email')->toArray(),
+                'exception_class' => get_class($e)
                     ]);
 
                     // Étape 4: Vérifier si l'étudiant est inscrit dans la classe
@@ -1303,7 +1323,8 @@ class LMSDataController extends Controller
                     Log::info('DEBUG validateParticipant - Résultat vérification inscription', [
                         'user_email' => $userToValidate->email,
                         'classe_id' => $classeId,
-                        'is_enrolled' => $isEnrolled
+                        'is_enrolled' => $isEnrolled,
+                'exception_class' => get_class($e)
                     ]);
 
                     if ($isEnrolled) {
@@ -1324,15 +1345,15 @@ class LMSDataController extends Controller
 
                 } catch (\Exception $e) {
                     Log::error('DEBUG validateParticipant - Exception lors de la vérification', [
-                        'error' => $e->getMessage(),
-                        'trace' => $e->getTraceAsString()
+                        'trace' => $e->getTraceAsString(),
+                'exception_class' => get_class($e)
                     ]);
 
                     return response()->json([
                         'success' => false,
                         'authorized' => false,
                         'reason' => 'verification_error',
-                        'message' => 'Erreur lors de la vérification de l\'inscription: ' . $e->getMessage()
+                        'message' => 'Une erreur s\'est produite lors de la vérification de l\'inscription.'
                     ], 500);
                 }
             }
@@ -1348,14 +1369,13 @@ class LMSDataController extends Controller
             Log::error('Erreur validation participant', [
                 'seance_id' => $seanceId,
                 'user_id' => $request->input('user_id'),
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
+                'trace' => $e->getTraceAsString(),
+                'exception_class' => get_class($e)
             ]);
 
             return response()->json([
                 'success' => false,
-                'message' => 'Erreur lors de la validation du participant',
-                'error' => $e->getMessage()
+                'message' => 'Erreur lors de la validation du participant'
             ], 500);
         }
     }
@@ -1391,7 +1411,8 @@ class LMSDataController extends Controller
             Log::info('Synchronisation attendances vidéo', [
                 'seance_cours_id' => $seanceCoursId,
                 'date' => $date,
-                'nb_participants' => count($participants)
+                'nb_participants' => count($participants),
+                'exception_class' => get_class($e)
             ]);
 
             $created = 0;
@@ -1443,13 +1464,11 @@ class LMSDataController extends Controller
 
                 } catch (\Exception $e) {
                     Log::error('Erreur sync attendance pour étudiant', [
-                        'etudiant_id' => $participant['etudiant_id'] ?? null,
-                        'error' => $e->getMessage()
+                        'etudiant_id' => $participant['etudiant_id'] ?? null
                     ]);
 
                     $errors[] = [
-                        'etudiant_id' => $participant['etudiant_id'] ?? null,
-                        'error' => $e->getMessage()
+                        'etudiant_id' => $participant['etudiant_id'] ?? null
                     ];
                 }
             }
@@ -1466,14 +1485,13 @@ class LMSDataController extends Controller
 
         } catch (\Exception $e) {
             Log::error('Erreur synchronisation attendances vidéo', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
+                'trace' => $e->getTraceAsString(),
+                'exception_class' => get_class($e)
             ]);
 
             return response()->json([
                 'success' => false,
-                'message' => 'Erreur lors de la synchronisation des attendances',
-                'error' => $e->getMessage()
+                'message' => 'Erreur lors de la synchronisation des attendances'
             ], 500);
         }
     }
@@ -1516,13 +1534,12 @@ class LMSDataController extends Controller
         } catch (\Exception $e) {
             Log::error('Erreur récupération préférences notifications', [
                 'user_id' => $userId,
-                'error' => $e->getMessage()
+                'exception_class' => get_class($e)
             ]);
 
             return response()->json([
                 'success' => false,
-                'message' => 'Erreur lors de la récupération des préférences',
-                'error' => $e->getMessage()
+                'message' => 'Erreur lors de la récupération des préférences'
             ], 500);
         }
     }
@@ -1544,7 +1561,8 @@ class LMSDataController extends Controller
                 ], 401);
             }
 
-            Log::info('Récupération détails séance', ['seance_id' => $seanceId]);
+            Log::info('Récupération détails séance', ['seance_id' => $seanceId,
+                'exception_class' => get_class($e)]);
 
             // 1. Récupérer la séance depuis KLASSCI
             // Pour enseignants: utiliser teacher-dashboard car /emploi-temps est cassé
@@ -1589,7 +1607,8 @@ class LMSDataController extends Controller
                 Log::info('DEBUG seanceDetails: Étudiant cherche séance', [
                     'seanceId' => $seanceId,
                     'user_id' => $user->id,
-                    'user_role' => $user->role
+                    'user_role' => $user->role,
+                'exception_class' => get_class($e)
                 ]);
                 try {
                     $dashboard = $this->klassciService->requestWithUserToken(
@@ -1651,12 +1670,13 @@ class LMSDataController extends Controller
 
                     Log::info('DEBUG seanceDetails: Résultat recherche KLASSCI étudiant', [
                         'seanceId' => $seanceId,
-                        'seance_trouvee' => $seance ? 'OUI' : 'NON'
+                        'seance_trouvee' => $seance ? 'OUI' : 'NON',
+                'exception_class' => get_class($e)
                     ]);
                 } catch (\Exception $e) {
                     Log::error('Erreur récupération séance étudiant via API KLASSCI', [
                         'seance_id' => $seanceId,
-                        'error' => $e->getMessage()
+                'exception_class' => get_class($e)
                     ]);
 
                     // Fallback: utiliser la BDD locale
@@ -1727,7 +1747,8 @@ class LMSDataController extends Controller
             // Si la séance n'a pas été trouvée via l'API KLASSCI, essayer la BDD locale
             if (!$seance) {
                 Log::info('Séance non trouvée via API KLASSCI, tentative BDD locale', [
-                    'seance_id' => $seanceId
+                    'seance_id' => $seanceId,
+                'exception_class' => get_class($e)
                 ]);
 
                 $visioData = \App\Models\Seance::where('klassci_seance_id', $seanceId)
@@ -1804,7 +1825,8 @@ class LMSDataController extends Controller
             try {
                 Log::info('DEBUG seanceDetails: Recherche visio locale', [
                     'seanceId_param' => $seanceId,
-                    'seanceId_type' => gettype($seanceId)
+                    'seanceId_type' => gettype($seanceId),
+                'exception_class' => get_class($e)
                 ]);
 
                 $visioData = \App\Models\Seance::where('klassci_seance_id', $seanceId)->first();
@@ -1815,7 +1837,8 @@ class LMSDataController extends Controller
                     'visioData_id' => $visioData ? $visioData->id : null,
                     'visioData_klassci_id' => $visioData ? $visioData->klassci_seance_id : null,
                     'visio_enabled' => $visioData ? $visioData->visio_enabled : null,
-                    'visio_status' => $visioData ? $visioData->visio_status : null
+                    'visio_status' => $visioData ? $visioData->visio_status : null,
+                'exception_class' => get_class($e)
                 ]);
 
                 if ($visioData) {
@@ -1834,7 +1857,8 @@ class LMSDataController extends Controller
                         ];
                         Log::info('Enseignant récupéré depuis BDD locale', [
                             'seance_id' => $seanceId,
-                            'enseignant' => $visioData->enseignant_nom
+                            'enseignant' => $visioData->enseignant_nom,
+                'exception_class' => get_class($e)
                         ]);
                     }
                 } else {
@@ -1846,7 +1870,7 @@ class LMSDataController extends Controller
                 }
             } catch (\Exception $e) {
                 // Table seances n'existe pas encore, utiliser valeurs par défaut
-                Log::warning('Erreur accès table seances', ['error' => $e->getMessage()]);
+                Log::warning('Erreur accès table seances', ['exception_class' => get_class($e)]);
                 $seance['visio_enabled'] = false;
                 $seance['visio_type'] = 'jitsi';
                 $seance['visio_room_id'] = null;
@@ -1898,7 +1922,8 @@ class LMSDataController extends Controller
             Log::info('DEBUG Enseignant séance', [
                 'seance_id' => $seanceId,
                 'enseignant_data' => $teacher,
-                'seance_keys' => array_keys($seance)
+                'seance_keys' => array_keys($seance),
+                'exception_class' => get_class($e)
             ]);
 
             $classeId = $seance['classe']['id'] ?? null;
@@ -1922,7 +1947,7 @@ class LMSDataController extends Controller
                 } catch (\Exception $e) {
                     Log::warning('Erreur récupération étudiants séance via KLASSCI', [
                         'classe_id' => $classeId,
-                        'error' => $e->getMessage()
+                'exception_class' => get_class($e)
                     ]);
                 }
 
@@ -1931,7 +1956,8 @@ class LMSDataController extends Controller
                     try {
                         Log::info('Fallback BDD locale pour étudiants de la classe', [
                             'seance_id' => $seanceId,
-                            'classe_id' => $visioData->klassci_classe_id
+                            'classe_id' => $visioData->klassci_classe_id,
+                'exception_class' => get_class($e)
                         ]);
 
                         $localStudents = \App\Models\UserClass::where('klassci_classe_id', $visioData->klassci_classe_id)
@@ -1954,13 +1980,14 @@ class LMSDataController extends Controller
                         })->toArray();
 
                         Log::info('Fallback BDD: Étudiants trouvés pour seanceDetails', [
-                            'count' => count($students)
+                            'count' => count($students),
+                'exception_class' => get_class($e)
                         ]);
                     } catch (\Exception $e) {
                         Log::error('Erreur fallback BDD pour étudiants', [
                             'seance_id' => $seanceId,
                             'classe_id' => $visioData->klassci_classe_id ?? null,
-                            'error' => $e->getMessage()
+                'exception_class' => get_class($e)
                         ]);
                     }
                 }
@@ -1999,12 +2026,14 @@ class LMSDataController extends Controller
                 Log::info('Participants inclus dans réponse (enseignant/coordinateur)', [
                     'seance_id' => $seanceId,
                     'user_role' => $user->role,
-                    'total_participants' => 1 + count($students)
+                    'total_participants' => 1 + count($students),
+                'exception_class' => get_class($e)
                 ]);
             } else {
                 Log::info('Participants exclus de la réponse (étudiant)', [
                     'seance_id' => $seanceId,
-                    'user_role' => $user->role
+                    'user_role' => $user->role,
+                'exception_class' => get_class($e)
                 ]);
             }
 
@@ -2016,14 +2045,13 @@ class LMSDataController extends Controller
         } catch (\Exception $e) {
             Log::error('Erreur récupération détails séance', [
                 'seance_id' => $seanceId,
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
+                'trace' => $e->getTraceAsString(),
+                'exception_class' => get_class($e)
             ]);
 
             return response()->json([
                 'success' => false,
-                'message' => 'Erreur lors de la récupération des détails de la séance',
-                'error' => $e->getMessage()
+                'message' => 'Erreur lors de la récupération des détails de la séance'
             ], 500);
         }
     }
@@ -2072,7 +2100,8 @@ class LMSDataController extends Controller
                 'klassci_seance_id' => $seanceId,
                 'enabled' => $enabled,
                 'visio_type' => $visioType,
-                'user_id' => $user->id
+                'user_id' => $user->id,
+                'exception_class' => get_class($e)
             ]);
 
             // WORKAROUND: On ne peut pas récupérer la séance via GET /seances/{id} (endpoint inexistant dans KLASSCI)
@@ -2082,7 +2111,8 @@ class LMSDataController extends Controller
 
             Log::info('Création/MAJ entrée visio locale sans vérification KLASSCI', [
                 'klassci_seance_id' => $seanceId,
-                'note' => 'Workaround: endpoint GET /seances/{id} inexistant dans KLASSCI'
+                'note' => 'Workaround: endpoint GET /seances/{id} inexistant dans KLASSCI',
+                'exception_class' => get_class($e)
             ]);
 
             // Créer/Mettre à jour l'entrée visio locale
@@ -2145,13 +2175,14 @@ class LMSDataController extends Controller
 
                         Log::info('Notifications visio envoyées via toggleVisio', [
                             'seance_id' => $seanceId,
-                            'notifications_sent' => $notificationsSent
+                            'notifications_sent' => $notificationsSent,
+                'exception_class' => get_class($e)
                         ]);
                     }
                 } catch (\Exception $e) {
                     Log::error('Erreur envoi notifications via toggleVisio', [
                         'seance_id' => $seanceId,
-                        'error' => $e->getMessage()
+                'exception_class' => get_class($e)
                     ]);
                 }
             }
@@ -2172,13 +2203,12 @@ class LMSDataController extends Controller
         } catch (\Exception $e) {
             Log::error('Erreur toggle visio séance', [
                 'seance_id' => $seanceId,
-                'error' => $e->getMessage()
+                'exception_class' => get_class($e)
             ]);
 
             return response()->json([
                 'success' => false,
-                'message' => 'Erreur lors de l\'activation/désactivation de la visio',
-                'error' => $e->getMessage()
+                'message' => 'Erreur lors de l\'activation/désactivation de la visio'
             ], 500);
         }
     }
@@ -2210,7 +2240,8 @@ class LMSDataController extends Controller
             Log::info('Envoi rappel séance', [
                 'seance_cours_id' => $seanceCoursId,
                 'channels' => $channels,
-                'minutes_before' => $minutesBefore
+                'minutes_before' => $minutesBefore,
+                'exception_class' => get_class($e)
             ]);
 
             // TODO: Intégrer avec NotificationService existant
@@ -2228,14 +2259,13 @@ class LMSDataController extends Controller
 
         } catch (\Exception $e) {
             Log::error('Erreur envoi rappel séance', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
+                'trace' => $e->getTraceAsString(),
+                'exception_class' => get_class($e)
             ]);
 
             return response()->json([
                 'success' => false,
-                'message' => 'Erreur lors de l\'envoi des rappels',
-                'error' => $e->getMessage()
+                'message' => 'Erreur lors de l\'envoi des rappels'
             ], 500);
         }
     }
@@ -2262,7 +2292,8 @@ class LMSDataController extends Controller
 
             Log::info('Récupération séances enseignant', [
                 'user_id' => $user->id,
-                'klassci_id' => $user->klassci_id
+                'klassci_id' => $user->klassci_id,
+                'exception_class' => get_class($e)
             ]);
 
             // Utiliser le teacher-dashboard qui contient les matières de l'enseignant
@@ -2327,8 +2358,7 @@ class LMSDataController extends Controller
                                 ]);
                             } catch (\Exception $e) {
                                 Log::error('Erreur création entrée séance locale', [
-                                    'seance_id' => $seance['id'],
-                                    'error' => $e->getMessage()
+                                    'seance_id' => $seance['id']
                                 ]);
                             }
                         }
@@ -2401,8 +2431,7 @@ class LMSDataController extends Controller
                     $seances = $seances->concat($seancesEnrichies);
                 } catch (\Exception $e) {
                     Log::warning('Erreur récupération séances matière', [
-                        'matiere_id' => $matiere['id'],
-                        'error' => $e->getMessage()
+                        'matiere_id' => $matiere['id']
                     ]);
                 }
             }
@@ -2417,14 +2446,13 @@ class LMSDataController extends Controller
 
         } catch (\Exception $e) {
             Log::error('Erreur récupération séances enseignant', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
+                'trace' => $e->getTraceAsString(),
+                'exception_class' => get_class($e)
             ]);
 
             return response()->json([
                 'success' => false,
-                'message' => 'Erreur lors de la récupération des séances',
-                'error' => $e->getMessage()
+                'message' => 'Erreur lors de la récupération des séances'
             ], 500);
         }
     }
@@ -2450,7 +2478,8 @@ class LMSDataController extends Controller
 
             Log::info('Récupération séances étudiant', [
                 'user_id' => $user->id,
-                'klassci_id' => $user->klassci_id
+                'klassci_id' => $user->klassci_id,
+                'exception_class' => get_class($e)
             ]);
 
             // Récupérer le dashboard étudiant pour avoir sa classe
@@ -2489,7 +2518,8 @@ class LMSDataController extends Controller
                     $matiereId = $matiere['id'] ?? $matiere['matiere_id'] ?? $matiere['matiere']['id'] ?? null;
 
                     if (!$matiereId) {
-                        \Log::warning('[LMS] Matière sans ID valide', ['matiere' => $matiere]);
+                        \Log::warning('[LMS] Matière sans ID valide', ['matiere' => $matiere,
+                'exception_class' => get_class($e)]);
                         continue;
                     }
 
@@ -2596,8 +2626,7 @@ class LMSDataController extends Controller
                     $seances = $seances->concat($seancesEnrichies);
                 } catch (\Exception $e) {
                     Log::warning('Erreur récupération séances matière', [
-                        'matiere_id' => $matiere['id'],
-                        'error' => $e->getMessage()
+                        'matiere_id' => $matiere['id']
                     ]);
                 }
             }
@@ -2612,14 +2641,13 @@ class LMSDataController extends Controller
 
         } catch (\Exception $e) {
             Log::error('Erreur récupération séances étudiant', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
+                'trace' => $e->getTraceAsString(),
+                'exception_class' => get_class($e)
             ]);
 
             return response()->json([
                 'success' => false,
-                'message' => 'Erreur lors de la récupération des séances',
-                'error' => $e->getMessage()
+                'message' => 'Erreur lors de la récupération des séances'
             ], 500);
         }
     }
@@ -2710,7 +2738,8 @@ class LMSDataController extends Controller
             Log::info('Visio activée', [
                 'seance_id' => $seanceId,
                 'user_id' => $user->id,
-                'room_id' => $visio->visio_room_id
+                'room_id' => $visio->visio_room_id,
+                'exception_class' => get_class($e)
             ]);
 
             // Synchroniser la classe et ses étudiants depuis Klassci
@@ -2719,7 +2748,8 @@ class LMSDataController extends Controller
             try {
                 if ($visio->klassci_classe_id) {
                     Log::info('Synchronisation classe pour notifications', [
-                        'klassci_classe_id' => $visio->klassci_classe_id
+                        'klassci_classe_id' => $visio->klassci_classe_id,
+                'exception_class' => get_class($e)
                     ]);
 
                     $classe = $this->classeSyncService->syncClasseById(
@@ -2734,19 +2764,21 @@ class LMSDataController extends Controller
                             'classe_id' => $classe->id,
                             'klassci_id' => $classe->klassci_id,
                             'libelle' => $classe->libelle,
-                            'etudiants_actifs' => $etudiantsCount
+                            'etudiants_actifs' => $etudiantsCount,
+                'exception_class' => get_class($e)
                         ]);
                     } else {
                         Log::warning('Synchronisation classe échouée - classe null', [
-                            'klassci_classe_id' => $visio->klassci_classe_id
+                            'klassci_classe_id' => $visio->klassci_classe_id,
+                'exception_class' => get_class($e)
                         ]);
                     }
                 }
             } catch (\Exception $e) {
                 Log::error('Erreur synchronisation classe', [
                     'seance_id' => $seanceId,
-                    'error' => $e->getMessage(),
-                    'trace' => $e->getTraceAsString()
+                    'trace' => $e->getTraceAsString(),
+                'exception_class' => get_class($e)
                 ]);
             }
 
@@ -2763,13 +2795,14 @@ class LMSDataController extends Controller
                 Log::info('Notifications visio programmée envoyées', [
                     'seance_id' => $seanceId,
                     'notifications_sent' => $notificationsSent,
-                    'classe_local_id' => $classe ? $classe->id : null
+                    'classe_local_id' => $classe ? $classe->id : null,
+                'exception_class' => get_class($e)
                 ]);
             } catch (\Exception $e) {
                 Log::error('Erreur envoi notifications visio programmée', [
                     'seance_id' => $seanceId,
-                    'error' => $e->getMessage(),
-                    'trace' => $e->getTraceAsString()
+                    'trace' => $e->getTraceAsString(),
+                'exception_class' => get_class($e)
                 ]);
             }
 
@@ -2788,13 +2821,12 @@ class LMSDataController extends Controller
         } catch (\Exception $e) {
             Log::error('Erreur activation visio', [
                 'seance_id' => $seanceId,
-                'error' => $e->getMessage()
+                'exception_class' => get_class($e)
             ]);
 
             return response()->json([
                 'success' => false,
-                'message' => 'Erreur lors de l\'activation',
-                'error' => $e->getMessage()
+                'message' => 'Erreur lors de l\'activation'
             ], 500);
         }
     }
@@ -2849,6 +2881,7 @@ class LMSDataController extends Controller
             Log::info('Visio désactivée', [
                 'seance_id' => $seanceId,
                 'user_id' => $user->id,
+                'exception_class' => get_class($e)
             ]);
 
             return response()->json([
@@ -2862,13 +2895,12 @@ class LMSDataController extends Controller
         } catch (\Exception $e) {
             Log::error('Erreur désactivation visio', [
                 'seance_id' => $seanceId,
-                'error' => $e->getMessage()
+                'exception_class' => get_class($e)
             ]);
 
             return response()->json([
                 'success' => false,
-                'message' => 'Erreur lors de la désactivation',
-                'error' => $e->getMessage()
+                'message' => 'Erreur lors de la désactivation'
             ], 500);
         }
     }
@@ -2926,7 +2958,8 @@ class LMSDataController extends Controller
             Log::info('Visio démarrée', [
                 'seance_id' => $seanceId,
                 'user_id' => $user->id,
-                'started_at' => $visio->visio_started_at
+                'started_at' => $visio->visio_started_at,
+                'exception_class' => get_class($e)
             ]);
 
             // Synchroniser la classe si pas déjà fait (sécurité)
@@ -2944,7 +2977,7 @@ class LMSDataController extends Controller
             } catch (\Exception $e) {
                 Log::error('Erreur synchronisation classe au démarrage', [
                     'seance_id' => $seanceId,
-                    'error' => $e->getMessage()
+                'exception_class' => get_class($e)
                 ]);
             }
 
@@ -2959,12 +2992,13 @@ class LMSDataController extends Controller
 
                 Log::info('Notifications visio démarrée envoyées', [
                     'seance_id' => $seanceId,
-                    'notifications_sent' => $notificationsSent
+                    'notifications_sent' => $notificationsSent,
+                'exception_class' => get_class($e)
                 ]);
             } catch (\Exception $e) {
                 Log::error('Erreur envoi notifications visio démarrée', [
                     'seance_id' => $seanceId,
-                    'error' => $e->getMessage()
+                'exception_class' => get_class($e)
                 ]);
             }
 
@@ -2981,13 +3015,12 @@ class LMSDataController extends Controller
         } catch (\Exception $e) {
             Log::error('Erreur démarrage visio', [
                 'seance_id' => $seanceId,
-                'error' => $e->getMessage()
+                'exception_class' => get_class($e)
             ]);
 
             return response()->json([
                 'success' => false,
-                'message' => 'Erreur lors du démarrage',
-                'error' => $e->getMessage()
+                'message' => 'Erreur lors du démarrage'
             ], 500);
         }
     }
@@ -3031,7 +3064,8 @@ class LMSDataController extends Controller
                 'seance_id' => $seanceId,
                 'user_id' => $user->id,
                 'ended_at' => $visio->visio_ended_at,
-                'participants_count' => $visio->current_participants_count
+                'participants_count' => $visio->current_participants_count,
+                'exception_class' => get_class($e)
             ]);
 
             return response()->json([
@@ -3047,13 +3081,12 @@ class LMSDataController extends Controller
         } catch (\Exception $e) {
             Log::error('Erreur fin visio', [
                 'seance_id' => $seanceId,
-                'error' => $e->getMessage()
+                'exception_class' => get_class($e)
             ]);
 
             return response()->json([
                 'success' => false,
-                'message' => 'Erreur lors de la terminaison',
-                'error' => $e->getMessage()
+                'message' => 'Erreur lors de la terminaison'
             ], 500);
         }
     }
@@ -3122,7 +3155,8 @@ class LMSDataController extends Controller
                 'user_id' => $user->id,
                 'role' => $user->role,
                 'is_observer' => $isObserver,
-                'attendance_id' => $attendance->id
+                'attendance_id' => $attendance->id,
+                'exception_class' => get_class($e)
             ]);
 
             return response()->json([
@@ -3137,13 +3171,12 @@ class LMSDataController extends Controller
         } catch (\Exception $e) {
             Log::error('Erreur join visio', [
                 'seance_id' => $seanceId,
-                'error' => $e->getMessage()
+                'exception_class' => get_class($e)
             ]);
 
             return response()->json([
                 'success' => false,
-                'message' => 'Erreur lors de la connexion',
-                'error' => $e->getMessage()
+                'message' => 'Erreur lors de la connexion'
             ], 500);
         }
     }
@@ -3173,7 +3206,8 @@ class LMSDataController extends Controller
             if ($disconnectedCount > 0) {
                 \Log::info('Participants déconnectés par timeout', [
                     'seance_id' => $seanceId,
-                    'count' => $disconnectedCount
+                    'count' => $disconnectedCount,
+                'exception_class' => get_class($e)
                 ]);
             }
 
@@ -3210,7 +3244,7 @@ class LMSDataController extends Controller
             } catch (\Exception $e) {
                 Log::warning('Impossible de calculer la durée de la séance', [
                     'seance_id' => $seanceId,
-                    'error' => $e->getMessage()
+                'exception_class' => get_class($e)
                 ]);
             }
 
@@ -3227,7 +3261,7 @@ class LMSDataController extends Controller
             } catch (\Exception $e) {
                 Log::warning('Impossible de récupérer la liste complète des étudiants via seanceDetails', [
                     'seance_id' => $seanceId,
-                    'error' => $e->getMessage()
+                'exception_class' => get_class($e)
                 ]);
             }
 
@@ -3236,7 +3270,8 @@ class LMSDataController extends Controller
                 try {
                     Log::info('Fallback: Recherche étudiants via BDD locale', [
                         'seance_id' => $seanceId,
-                        'classe_id' => $visio->klassci_classe_id
+                        'classe_id' => $visio->klassci_classe_id,
+                'exception_class' => get_class($e)
                     ]);
 
                     $students = \App\Models\UserClass::where('klassci_classe_id', $visio->klassci_classe_id)
@@ -3258,13 +3293,14 @@ class LMSDataController extends Controller
                     })->toArray();
 
                     Log::info('Fallback BDD: Étudiants trouvés', [
-                        'count' => count($allClassStudents)
+                        'count' => count($allClassStudents),
+                'exception_class' => get_class($e)
                     ]);
                 } catch (\Exception $e) {
                     Log::error('Erreur fallback BDD pour récupération étudiants', [
                         'seance_id' => $seanceId,
                         'classe_id' => $visio->klassci_classe_id,
-                        'error' => $e->getMessage()
+                'exception_class' => get_class($e)
                     ]);
                 }
             }
@@ -3434,14 +3470,13 @@ class LMSDataController extends Controller
         } catch (\Exception $e) {
             Log::error('Erreur récupération participants', [
                 'seance_id' => $seanceId,
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
+                'trace' => $e->getTraceAsString(),
+                'exception_class' => get_class($e)
             ]);
 
             return response()->json([
                 'success' => false,
-                'message' => 'Erreur lors de la récupération des participants',
-                'error' => $e->getMessage()
+                'message' => 'Erreur lors de la récupération des participants'
             ], 500);
         }
     }
@@ -3577,7 +3612,8 @@ class LMSDataController extends Controller
             Log::info('Participant quitté visio', [
                 'seance_id' => $seanceId,
                 'user_id' => $user->id,
-                'duration_minutes' => $attendance->duration_minutes
+                'duration_minutes' => $attendance->duration_minutes,
+                'exception_class' => get_class($e)
             ]);
 
             return response()->json([
@@ -3593,13 +3629,12 @@ class LMSDataController extends Controller
         } catch (\Exception $e) {
             Log::error('Erreur leave visio', [
                 'seance_id' => $seanceId,
-                'error' => $e->getMessage()
+                'exception_class' => get_class($e)
             ]);
 
             return response()->json([
                 'success' => false,
-                'message' => 'Erreur lors de l\'enregistrement de la sortie',
-                'error' => $e->getMessage()
+                'message' => 'Erreur lors de l\'enregistrement de la sortie'
             ], 500);
         }
     }
@@ -3649,13 +3684,12 @@ class LMSDataController extends Controller
         } catch (\Exception $e) {
             Log::error('Erreur heartbeat visio', [
                 'seance_id' => $seanceId,
-                'error' => $e->getMessage()
+                'exception_class' => get_class($e)
             ]);
 
             return response()->json([
                 'success' => false,
-                'message' => 'Erreur lors de la mise à jour du heartbeat',
-                'error' => $e->getMessage()
+                'message' => 'Erreur lors de la mise à jour du heartbeat'
             ], 500);
         }
     }
@@ -3698,7 +3732,8 @@ class LMSDataController extends Controller
             Log::info('Séance masquée par étudiant', [
                 'seance_id' => $seance->id,
                 'user_id' => $user->id,
-                'matiere' => $seance->matiere_nom
+                'matiere' => $seance->matiere_nom,
+                'exception_class' => get_class($e)
             ]);
 
             return response()->json([
@@ -3713,13 +3748,12 @@ class LMSDataController extends Controller
         } catch (\Exception $e) {
             Log::error('Erreur masquage séance', [
                 'seance_id' => $seanceId,
-                'error' => $e->getMessage()
+                'exception_class' => get_class($e)
             ]);
 
             return response()->json([
                 'success' => false,
-                'message' => 'Erreur lors du masquage de la séance',
-                'error' => $e->getMessage()
+                'message' => 'Erreur lors du masquage de la séance'
             ], 500);
         }
     }
@@ -3765,7 +3799,8 @@ class LMSDataController extends Controller
 
             Log::info('Séance réaffichée par étudiant', [
                 'seance_id' => $seance->id,
-                'user_id' => $user->id
+                'user_id' => $user->id,
+                'exception_class' => get_class($e)
             ]);
 
             return response()->json([
@@ -3779,13 +3814,12 @@ class LMSDataController extends Controller
         } catch (\Exception $e) {
             Log::error('Erreur réaffichage séance', [
                 'seance_id' => $seanceId,
-                'error' => $e->getMessage()
+                'exception_class' => get_class($e)
             ]);
 
             return response()->json([
                 'success' => false,
-                'message' => 'Erreur lors du réaffichage de la séance',
-                'error' => $e->getMessage()
+                'message' => 'Erreur lors du réaffichage de la séance'
             ], 500);
         }
     }
@@ -3821,7 +3855,8 @@ class LMSDataController extends Controller
 
             Log::info('Récupération liste matières admin', [
                 'user_id' => $user->id,
-                'role' => $user->role
+                'role' => $user->role,
+                'exception_class' => get_class($e)
             ]);
 
             // 1. Récupérer la liste des matières depuis l'endpoint /matieres
@@ -3848,7 +3883,8 @@ class LMSDataController extends Controller
                 ]);
             }
 
-            Log::info('Matières trouvées', ['count' => count($matieres)]);
+            Log::info('Matières trouvées', ['count' => count($matieres),
+                'exception_class' => get_class($e)]);
 
             // 2. Enrichir chaque matière avec ses combinaisons complètes
             $matieresEnrichies = [];
@@ -3891,7 +3927,7 @@ class LMSDataController extends Controller
                 } catch (\Exception $e) {
                     Log::warning('Erreur enrichissement matière', [
                         'matiere_id' => $matiereId,
-                        'error' => $e->getMessage()
+                'exception_class' => get_class($e)
                     ]);
 
                     // En cas d'erreur, garder la matière avec combinaisons vides
@@ -3932,14 +3968,13 @@ class LMSDataController extends Controller
 
         } catch (\Exception $e) {
             Log::error('Erreur liste matières admin', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
+                'trace' => $e->getTraceAsString(),
+                'exception_class' => get_class($e)
             ]);
 
             return response()->json([
                 'success' => false,
-                'message' => 'Erreur lors de la récupération des matières',
-                'error' => $e->getMessage()
+                'message' => 'Erreur lors de la récupération des matières'
             ], 500);
         }
     }
@@ -3994,7 +4029,8 @@ class LMSDataController extends Controller
                 $duration = round((microtime(true) - $startTime) * 1000, 2);
                 Log::info('[LMS Enseignants API] Terminé (mode fallback)', [
                     'duration_ms' => $duration,
-                    'count' => $enseignants->count()
+                    'count' => $enseignants->count(),
+                'exception_class' => get_class($e)
                 ]);
 
                 return response()->json([
@@ -4014,7 +4050,8 @@ class LMSDataController extends Controller
 
             Log::info('[LMS Enseignants API] Année universitaire', [
                 'found' => $anneeUniversitaireCourante !== null,
-                'id' => $anneeUniversitaireCourante->id ?? null
+                'id' => $anneeUniversitaireCourante->id ?? null,
+                'exception_class' => get_class($e)
             ]);
 
             // Query de base: récupérer les enseignants actifs
@@ -4094,14 +4131,16 @@ class LMSDataController extends Controller
             $enseignants = $enseignantsQuery->get();
 
             Log::info('[LMS Enseignants API] Enseignants récupérés', [
-                'count' => $enseignants->count()
+                'count' => $enseignants->count(),
+                'exception_class' => get_class($e)
             ]);
 
             // Format simple: retourner directement
             if (!$withDetails) {
                 $duration = round((microtime(true) - $startTime) * 1000, 2);
                 Log::info('[LMS Enseignants API] Terminé (format simple)', [
-                    'duration_ms' => $duration
+                    'duration_ms' => $duration,
+                'exception_class' => get_class($e)
                 ]);
 
                 return response()->json([
@@ -4183,7 +4222,8 @@ class LMSDataController extends Controller
             $duration = round((microtime(true) - $startTime) * 1000, 2);
             Log::info('[LMS Enseignants API] Terminé (format enrichi)', [
                 'duration_ms' => $duration,
-                'count' => $enseignantsEnrichis->count()
+                'count' => $enseignantsEnrichis->count(),
+                'exception_class' => get_class($e)
             ]);
 
             return response()->json([
@@ -4193,14 +4233,13 @@ class LMSDataController extends Controller
 
         } catch (\Exception $e) {
             Log::error('[LMS Enseignants API] Erreur', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
+                'trace' => $e->getTraceAsString(),
+                'exception_class' => get_class($e)
             ]);
 
             return response()->json([
                 'success' => false,
-                'message' => 'Erreur lors de la récupération des enseignants',
-                'error' => $e->getMessage()
+                'message' => 'Erreur lors de la récupération des enseignants'
             ], 500);
         }
     }
@@ -4217,7 +4256,8 @@ class LMSDataController extends Controller
             $withDetails = $request->boolean('with_details', false);
 
             Log::info('[LMS Enseignants KLASSCI] Récupération depuis API externe', [
-                'with_details' => $withDetails
+                'with_details' => $withDetails,
+                'exception_class' => get_class($e)
             ]);
 
             // Appeler KLASSCI externe via le service
@@ -4261,13 +4301,12 @@ class LMSDataController extends Controller
             ]);
 
         } catch (\Exception $e) {
-            Log::error('[LMS Enseignants KLASSCI] Erreur', [
-                'error' => $e->getMessage()
-            ]);
+                Log::error('[LMS Enseignants KLASSCI] Erreur', ['exception_class' => get_class($e)
+                ]);
 
             return response()->json([
                 'success' => false,
-                'message' => 'Erreur: ' . $e->getMessage(),
+                'message' => 'Une erreur s\'est produite. Veuillez réessayer.',
                 'data' => []
             ], 500);
         }
@@ -4518,7 +4557,8 @@ class LMSDataController extends Controller
 
             Log::info('MyMatieres request', [
                 'user_id' => $user->id,
-                'klassci_id' => $user->klassci_id
+                'klassci_id' => $user->klassci_id,
+                'exception_class' => get_class($e)
             ]);
 
             // 1. Récupérer données KLASSCI (matières, séances, évaluations)
@@ -4573,7 +4613,8 @@ class LMSDataController extends Controller
             }, $matieres);
 
             Log::info('MyMatieres enrichies', [
-                'nombre_matieres' => count($matieresEnrichies)
+                'nombre_matieres' => count($matieresEnrichies),
+                'exception_class' => get_class($e)
             ]);
 
             return response()->json([
@@ -4583,13 +4624,13 @@ class LMSDataController extends Controller
 
         } catch (\Exception $e) {
             Log::error('Erreur myMatieres', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
+                'trace' => $e->getTraceAsString(),
+                'exception_class' => get_class($e)
             ]);
 
             return response()->json([
                 'success' => false,
-                'message' => 'Erreur lors du chargement des matières: ' . $e->getMessage()
+                'message' => 'Une erreur s\'est produite lors du chargement des matières.'
             ], 500);
         }
     }
@@ -4635,7 +4676,7 @@ class LMSDataController extends Controller
         } catch (\Exception $e) {
             Log::error('Erreur récupération données séance Klassci', [
                 'seance_id' => $seanceId,
-                'error' => $e->getMessage()
+                'exception_class' => get_class($e)
             ]);
             return null;
         }
@@ -4739,7 +4780,7 @@ class LMSDataController extends Controller
                         // Ignorer les erreurs de récupération KLASSCI (séance peut être archivée)
                         Log::debug('Impossible de récupérer détails KLASSCI pour historique', [
                             'seance_id' => $attendance->seance->klassci_seance_id,
-                            'error' => $e->getMessage()
+                'exception_class' => get_class($e)
                         ]);
                     }
                 }
@@ -4760,14 +4801,13 @@ class LMSDataController extends Controller
 
         } catch (\Exception $e) {
             Log::error('Erreur récupération historique présences', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
+                'trace' => $e->getTraceAsString(),
+                'exception_class' => get_class($e)
             ]);
 
             return response()->json([
                 'success' => false,
-                'message' => 'Erreur lors de la récupération de l\'historique',
-                'error' => $e->getMessage()
+                'message' => 'Erreur lors de la récupération de l\'historique'
             ], 500);
         }
     }
@@ -4889,14 +4929,13 @@ class LMSDataController extends Controller
 
         } catch (\Exception $e) {
             Log::error('Erreur récupération historique séances', [
-                'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
+                'exception_class' => get_class($e)
             ]);
 
             return response()->json([
                 'success' => false,
                 'message' => 'Erreur lors de la récupération de l\'historique des séances',
-                'error' => $e->getMessage(),
             ], 500);
         }
     }
@@ -5054,14 +5093,13 @@ class LMSDataController extends Controller
         } catch (\Exception $e) {
             Log::error('Erreur récupération attendances séance', [
                 'seance_id' => $seanceId,
-                'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
+                'exception_class' => get_class($e)
             ]);
 
             return response()->json([
                 'success' => false,
                 'message' => 'Erreur lors de la récupération des présences',
-                'error' => $e->getMessage(),
             ], 500);
         }
     }
@@ -5111,6 +5149,7 @@ class LMSDataController extends Controller
                 'klassci_seance_id' => $seance->klassci_seance_id,
                 'deleted_by' => $user->id,
                 'user_role' => $user->role,
+                'exception_class' => get_class($e)
             ]);
 
             // Soft delete
@@ -5124,14 +5163,13 @@ class LMSDataController extends Controller
         } catch (\Exception $e) {
             Log::error('Erreur suppression séance', [
                 'seance_id' => $seanceId,
-                'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
+                'exception_class' => get_class($e)
             ]);
 
             return response()->json([
                 'success' => false,
                 'message' => 'Erreur lors de la suppression de la séance',
-                'error' => $e->getMessage(),
             ], 500);
         }
     }

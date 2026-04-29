@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Traits\HandlesApiExceptions;
 use App\Services\KlassciProxyService;
 use App\Services\ClasseSyncService;
 use App\Services\TenantManager;
@@ -24,6 +25,7 @@ use Illuminate\Validation\ValidationException;
  */
 class AuthController extends Controller
 {
+    use HandlesApiExceptions;
     public function __construct(
         private KlassciProxyService $klassciService,
         private ClasseSyncService $classeSyncService
@@ -239,10 +241,7 @@ class AuthController extends Controller
             ], 401);
 
         } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Erreur lors de la connexion: ' . $e->getMessage(),
-            ], 500);
+            $this->serverError('Login failed with unexpected error', $e);
         }
     }
 
@@ -252,43 +251,31 @@ class AuthController extends Controller
      */
     public function me(Request $request): JsonResponse
     {
-        try {
-            $user = $request->user();
+        $user = $request->user();
 
-            if (!$user) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Non authentifié',
-                ], 401);
-            }
-
-            // Récupérer les données complètes depuis KLASSCI si besoin
-            try {
-                $klassciMe = $this->klassciService->get('auth/me');
-                $userData = $klassciMe['data']['user'] ?? [];
-            } catch (\Exception $e) {
-                // Si erreur KLASSCI, retourner les données locales
-                $userData = [];
-            }
-
-            return response()->json([
-                'success' => true,
-                'data' => [
-                    'id' => $user->id,
-                    'klassci_id' => $user->klassci_id,
-                    'name' => $user->name,
-                    'email' => $user->email,
-                    'role' => $user->role,
-                    'klassci_data' => $userData,
-                ],
-            ]);
-
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Erreur récupération profil: ' . $e->getMessage(),
-            ], 500);
+        if (!$user) {
+            $this->unauthenticated('Non authentifié', 'Unauthenticated request to auth/me');
         }
+
+        $userData = [];
+        try {
+            $klassciMe = $this->klassciService->get('auth/me');
+            $userData = $klassciMe['data']['user'] ?? [];
+        } catch (\Exception $e) {
+            Log::warning('Failed to fetch KLASSCI user data', ['error_class' => class_basename($e)]);
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'id' => $user->id,
+                'klassci_id' => $user->klassci_id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'role' => $user->role,
+                'klassci_data' => $userData,
+            ],
+        ]);
     }
 
     /**
@@ -297,28 +284,18 @@ class AuthController extends Controller
      */
     public function logout(Request $request): JsonResponse
     {
+        $request->user()->currentAccessToken()->delete();
+
         try {
-            // Révoquer le token Sanctum actuel
-            $request->user()->currentAccessToken()->delete();
-
-            // Optionnel : appeler logout KLASSCI
-            try {
-                $this->klassciService->post('auth/logout', []);
-            } catch (\Exception $e) {
-                // Ignorer l'erreur KLASSCI, le logout local est prioritaire
-            }
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Déconnexion réussie',
-            ]);
-
+            $this->klassciService->post('auth/logout', []);
         } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Erreur lors de la déconnexion: ' . $e->getMessage(),
-            ], 500);
+            Log::warning('KLASSCI logout failed, continuing with local logout', ['error_class' => class_basename($e)]);
         }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Déconnexion réussie',
+        ]);
     }
 
     /**
@@ -327,30 +304,20 @@ class AuthController extends Controller
      */
     public function refresh(Request $request): JsonResponse
     {
-        try {
-            $user = $request->user();
+        $user = $request->user();
 
-            // Révoquer l'ancien token
-            $request->user()->currentAccessToken()->delete();
+        $request->user()->currentAccessToken()->delete();
 
-            // Créer un nouveau token
-            $newToken = $user->createToken('lms-backend-token', ['lms:access'])->plainTextToken;
+        $newToken = $user->createToken('lms-backend-token', ['lms:access'])->plainTextToken;
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Token rafraîchi',
-                'data' => [
-                    'token' => $newToken,
-                    'token_type' => 'Bearer',
-                ],
-            ]);
-
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Erreur refresh token: ' . $e->getMessage(),
-            ], 500);
-        }
+        return response()->json([
+            'success' => true,
+            'message' => 'Token rafraîchi',
+            'data' => [
+                'token' => $newToken,
+                'token_type' => 'Bearer',
+            ],
+        ]);
     }
 
     /**

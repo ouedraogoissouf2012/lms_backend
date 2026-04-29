@@ -43,13 +43,9 @@ class ProxyController extends Controller
      */
     public function classes(Request $request): JsonResponse
     {
-        try {
-            $filters = $request->only(['filiere_id', 'niveau_id', 'annee_id']);
-            $data = $this->klassciService->getClasses($filters);
-            return response()->json($data);
-        } catch (\Exception $e) {
-            return $this->errorResponse($e->getMessage());
-        }
+        $filters = $request->only(['filiere_id', 'niveau_id', 'annee_id']);
+        $data = $this->klassciService->getClasses($filters);
+        return response()->json($data);
     }
 
     /**
@@ -58,13 +54,9 @@ class ProxyController extends Controller
      */
     public function etudiants(int $id, Request $request): JsonResponse
     {
-        try {
-            $anneeId = $request->input('annee_id');
-            $data = $this->klassciService->getClasseEtudiants($id, $anneeId);
-            return response()->json($data);
-        } catch (\Exception $e) {
-            return $this->errorResponse($e->getMessage());
-        }
+        $anneeId = $request->input('annee_id');
+        $data = $this->klassciService->getClasseEtudiants($id, $anneeId);
+        return response()->json($data);
     }
 
     /**
@@ -73,13 +65,9 @@ class ProxyController extends Controller
      */
     public function matieres(Request $request): JsonResponse
     {
-        try {
-            $filters = $request->only(['filiere_id', 'niveau_id']);
-            $data = $this->klassciService->getMatieres($filters);
-            return response()->json($data);
-        } catch (\Exception $e) {
-            return $this->errorResponse($e->getMessage());
-        }
+        $filters = $request->only(['filiere_id', 'niveau_id']);
+        $data = $this->klassciService->getMatieres($filters);
+        return response()->json($data);
     }
 
     /**
@@ -88,12 +76,8 @@ class ProxyController extends Controller
      */
     public function matiereDetails(int $id): JsonResponse
     {
-        try {
-            $data = $this->klassciService->getMatiereDetails($id);
-            return response()->json($data);
-        } catch (\Exception $e) {
-            return $this->errorResponse($e->getMessage());
-        }
+        $data = $this->klassciService->getMatiereDetails($id);
+        return response()->json($data);
     }
 
     /**
@@ -105,43 +89,37 @@ class ProxyController extends Controller
      */
     public function enseignants(): JsonResponse
     {
-        try {
-            // Essayer d'abord KLASSCI
-            $data = $this->klassciService->getEnseignants();
+        $data = $this->klassciService->getEnseignants();
 
-            // Si KLASSCI retourne un tableau vide, utiliser la BDD locale
-            if (empty($data['data'])) {
-                Log::info('KLASSCI retourne 0 enseignants, utilisation BDD locale');
+        if (empty($data['data'])) {
+            \Log::info('KLASSCI retourne 0 enseignants, utilisation BDD locale');
 
-                $localEnseignants = \App\Models\User::whereIn('role', ['enseignant', 'teacher'])
-                    ->get()
-                    ->map(function ($user) {
-                        return [
-                            'id' => $user->klassci_id ?? $user->id,
-                            'nom' => $user->name,
-                            'prenom' => '',
-                            'email' => $user->email,
-                            'role' => $user->role,
-                            'source' => 'lms_local'
-                        ];
-                    })
-                    ->toArray();
+            $localEnseignants = \App\Models\User::whereIn('role', ['enseignant', 'teacher'])
+                ->get()
+                ->map(function ($user) {
+                    return [
+                        'id' => $user->klassci_id ?? $user->id,
+                        'nom' => $user->name,
+                        'prenom' => '',
+                        'email' => $user->email,
+                        'role' => $user->role,
+                        'source' => 'lms_local'
+                    ];
+                })
+                ->toArray();
 
-                return response()->json([
-                    'success' => true,
-                    'data' => $localEnseignants,
-                    'meta' => [
-                        'total' => count($localEnseignants),
-                        'source' => 'lms_local',
-                        'note' => 'Données provenant de la BDD locale car KLASSCI retourne 0'
-                    ]
-                ]);
-            }
-
-            return response()->json($data);
-        } catch (\Exception $e) {
-            return $this->errorResponse($e->getMessage());
+            return response()->json([
+                'success' => true,
+                'data' => $localEnseignants,
+                'meta' => [
+                    'total' => count($localEnseignants),
+                    'source' => 'lms_local',
+                    'note' => 'Données provenant de la BDD locale car KLASSCI retourne 0'
+                ]
+            ]);
         }
+
+        return response()->json($data);
     }
 
     /**
@@ -150,12 +128,8 @@ class ProxyController extends Controller
      */
     public function filieres(): JsonResponse
     {
-        try {
-            $data = $this->klassciService->getFilieres();
-            return response()->json($data);
-        } catch (\Exception $e) {
-            return $this->errorResponse($e->getMessage());
-        }
+        $data = $this->klassciService->getFilieres();
+        return response()->json($data);
     }
 
     /**
@@ -164,12 +138,8 @@ class ProxyController extends Controller
      */
     public function niveauxEtudes(): JsonResponse
     {
-        try {
-            $data = $this->klassciService->getNiveauxEtudes();
-            return response()->json($data);
-        } catch (\Exception $e) {
-            return $this->errorResponse($e->getMessage());
-        }
+        $data = $this->klassciService->getNiveauxEtudes();
+        return response()->json($data);
     }
 
     /**
@@ -178,13 +148,9 @@ class ProxyController extends Controller
      */
     public function evaluations(Request $request): JsonResponse
     {
-        try {
-            $filters = $request->only(['matiere_id', 'classe_id', 'statut']);
-            $data = $this->klassciService->getEvaluations($filters);
-            return response()->json($data);
-        } catch (\Exception $e) {
-            return $this->errorResponse($e->getMessage());
-        }
+        $filters = $request->only(['matiere_id', 'classe_id', 'statut']);
+        $data = $this->klassciService->getEvaluations($filters);
+        return response()->json($data);
     }
 
     /**
@@ -193,13 +159,9 @@ class ProxyController extends Controller
      */
     public function emploiTemps(Request $request): JsonResponse
     {
-        try {
-            $filters = $request->only(['classe_id', 'enseignant_id', 'date_debut', 'date_fin']);
-            $data = $this->klassciService->getEmploiTemps($filters);
-            return response()->json($data);
-        } catch (\Exception $e) {
-            return $this->errorResponse($e->getMessage());
-        }
+        $filters = $request->only(['classe_id', 'enseignant_id', 'date_debut', 'date_fin']);
+        $data = $this->klassciService->getEmploiTemps($filters);
+        return response()->json($data);
     }
 
     /**
@@ -208,20 +170,16 @@ class ProxyController extends Controller
      */
     public function saveNotes(int $id, Request $request): JsonResponse
     {
-        try {
-            $validated = $request->validate([
-                'notes' => 'required|array',
-                'notes.*.etudiant_id' => 'required|integer',
-                'notes.*.note' => 'nullable|numeric|min:0|max:20',
-                'notes.*.is_absent' => 'boolean',
-                'notes.*.commentaire' => 'nullable|string',
-            ]);
+        $validated = $request->validate([
+            'notes' => 'required|array',
+            'notes.*.etudiant_id' => 'required|integer',
+            'notes.*.note' => 'nullable|numeric|min:0|max:20',
+            'notes.*.is_absent' => 'boolean',
+            'notes.*.commentaire' => 'nullable|string',
+        ]);
 
-            $data = $this->klassciService->saveNotes($id, $validated['notes']);
-            return response()->json($data);
-        } catch (\Exception $e) {
-            return $this->errorResponse($e->getMessage());
-        }
+        $data = $this->klassciService->saveNotes($id, $validated['notes']);
+        return response()->json($data);
     }
 
     /**
@@ -230,28 +188,24 @@ class ProxyController extends Controller
      */
     public function savePresences(int $id, Request $request): JsonResponse
     {
-        try {
-            $validated = $request->validate([
-                'date_cours' => 'required|date',
-                'etudiants_presents' => 'required|array',
-                'etudiants_absents' => 'nullable|array',
-                'duree_effective_minutes' => 'nullable|integer',
-                'commentaire' => 'nullable|string',
-            ]);
+        $validated = $request->validate([
+            'date_cours' => 'required|date',
+            'etudiants_presents' => 'required|array',
+            'etudiants_absents' => 'nullable|array',
+            'duree_effective_minutes' => 'nullable|integer',
+            'commentaire' => 'nullable|string',
+        ]);
 
-            $presences = [
-                'date_cours' => $validated['date_cours'],
-                'etudiants_presents' => $validated['etudiants_presents'],
-                'etudiants_absents' => $validated['etudiants_absents'] ?? [],
-                'duree_effective_minutes' => $validated['duree_effective_minutes'] ?? null,
-                'commentaire' => $validated['commentaire'] ?? null,
-            ];
+        $presences = [
+            'date_cours' => $validated['date_cours'],
+            'etudiants_presents' => $validated['etudiants_presents'],
+            'etudiants_absents' => $validated['etudiants_absents'] ?? [],
+            'duree_effective_minutes' => $validated['duree_effective_minutes'] ?? null,
+            'commentaire' => $validated['commentaire'] ?? null,
+        ];
 
-            $data = $this->klassciService->savePresences($id, $presences);
-            return response()->json($data);
-        } catch (\Exception $e) {
-            return $this->errorResponse($e->getMessage());
-        }
+        $data = $this->klassciService->savePresences($id, $presences);
+        return response()->json($data);
     }
 
     /**
@@ -260,22 +214,18 @@ class ProxyController extends Controller
      */
     public function updateCoursStatut(int $id, Request $request): JsonResponse
     {
-        try {
-            $validated = $request->validate([
-                'statut' => 'required|string|in:en_cours,realise,annule',
-                'commentaire' => 'nullable|string',
-            ]);
+        $validated = $request->validate([
+            'statut' => 'required|string|in:en_cours,realise,annule',
+            'commentaire' => 'nullable|string',
+        ]);
 
-            $data = $this->klassciService->updateCoursStatut(
-                $id,
-                $validated['statut'],
-                $validated['commentaire'] ?? null
-            );
+        $data = $this->klassciService->updateCoursStatut(
+            $id,
+            $validated['statut'],
+            $validated['commentaire'] ?? null
+        );
 
-            return response()->json($data);
-        } catch (\Exception $e) {
-            return $this->errorResponse($e->getMessage());
-        }
+        return response()->json($data);
     }
 
     /**
@@ -286,40 +236,39 @@ class ProxyController extends Controller
      */
     public function studentDashboard(Request $request): JsonResponse
     {
-        try {
-            // Récupérer l'utilisateur authentifié (via Sanctum)
-            $user = $request->user();
+        $user = $request->user();
 
-            if (!$user) {
-                return $this->errorResponse('Utilisateur non authentifié', 401);
-            }
-
-            // Récupérer le token KLASSCI depuis la base de données
-            $klassciToken = $user->klassci_token;
-
-            if (!$klassciToken) {
-                return $this->errorResponse('Token KLASSCI non trouvé. Veuillez vous reconnecter.', 401);
-            }
-
-            \Log::info('Student Dashboard request', [
-                'user_id' => $user->id,
-                'klassci_id' => $user->klassci_id,
-                'has_klassci_token' => !empty($klassciToken),
-                'token_preview' => substr($klassciToken, 0, 10) . '...'
-            ]);
-
-            // Utiliser le token KLASSCI pour la requête
-            $data = $this->klassciService->requestWithUserToken(
-                $klassciToken,
-                'me/dashboard',
-                'GET'
+        if (!$user) {
+            $this->unauthenticated(
+                'Vous devez être authentifié',
+                'Unauthenticated request to studentDashboard'
             );
-
-            return response()->json($data);
-        } catch (\Exception $e) {
-            \Log::error('Student Dashboard error', ['error' => $e->getMessage()]);
-            return $this->errorResponse($e->getMessage());
         }
+
+        $klassciToken = $user->klassci_token;
+
+        if (!$klassciToken) {
+            $this->unauthenticated(
+                'Token KLASSCI non trouvé. Veuillez vous reconnecter.',
+                'Missing KLASSCI token for student dashboard',
+                ['user_id' => $user->id]
+            );
+        }
+
+        \Log::info('Student Dashboard request', [
+            'user_id' => $user->id,
+            'klassci_id' => $user->klassci_id,
+            'has_klassci_token' => !empty($klassciToken),
+            'token_preview' => substr($klassciToken, 0, 10) . '...'
+        ]);
+
+        $data = $this->klassciService->requestWithUserToken(
+            $klassciToken,
+            'me/dashboard',
+            'GET'
+        );
+
+        return response()->json($data);
     }
 
     /**
@@ -330,40 +279,39 @@ class ProxyController extends Controller
      */
     public function teacherDashboard(Request $request): JsonResponse
     {
-        try {
-            // Récupérer l'utilisateur authentifié (via Sanctum)
-            $user = $request->user();
+        $user = $request->user();
 
-            if (!$user) {
-                return $this->errorResponse('Utilisateur non authentifié', 401);
-            }
-
-            // Récupérer le token KLASSCI depuis la base de données
-            $klassciToken = $user->klassci_token;
-
-            if (!$klassciToken) {
-                return $this->errorResponse('Token KLASSCI non trouvé. Veuillez vous reconnecter.', 401);
-            }
-
-            \Log::info('Teacher Dashboard request', [
-                'user_id' => $user->id,
-                'klassci_id' => $user->klassci_id,
-                'has_klassci_token' => !empty($klassciToken),
-                'token_preview' => substr($klassciToken, 0, 10) . '...'
-            ]);
-
-            // Utiliser le token KLASSCI pour la requête
-            $data = $this->klassciService->requestWithUserToken(
-                $klassciToken,
-                'me/teacher-dashboard',
-                'GET'
+        if (!$user) {
+            $this->unauthenticated(
+                'Vous devez être authentifié',
+                'Unauthenticated request to teacherDashboard'
             );
-
-            return response()->json($data);
-        } catch (\Exception $e) {
-            \Log::error('Teacher Dashboard error', ['error' => $e->getMessage()]);
-            return $this->errorResponse($e->getMessage());
         }
+
+        $klassciToken = $user->klassci_token;
+
+        if (!$klassciToken) {
+            $this->unauthenticated(
+                'Token KLASSCI non trouvé. Veuillez vous reconnecter.',
+                'Missing KLASSCI token for teacher dashboard',
+                ['user_id' => $user->id]
+            );
+        }
+
+        \Log::info('Teacher Dashboard request', [
+            'user_id' => $user->id,
+            'klassci_id' => $user->klassci_id,
+            'has_klassci_token' => !empty($klassciToken),
+            'token_preview' => substr($klassciToken, 0, 10) . '...'
+        ]);
+
+        $data = $this->klassciService->requestWithUserToken(
+            $klassciToken,
+            'me/teacher-dashboard',
+            'GET'
+        );
+
+        return response()->json($data);
     }
 
     /**
@@ -372,19 +320,15 @@ class ProxyController extends Controller
      */
     public function testConnection(): JsonResponse
     {
-        try {
-            $isConnected = $this->klassciService->testConnection();
+        $isConnected = $this->klassciService->testConnection();
 
-            return response()->json([
-                'success' => $isConnected,
-                'message' => $isConnected
-                    ? 'Connexion à l\'API KLASSCI réussie'
-                    : 'Impossible de se connecter à l\'API KLASSCI',
-                'api_url' => config('services.klassci.url'),
-            ]);
-        } catch (\Exception $e) {
-            return $this->errorResponse($e->getMessage());
-        }
+        return response()->json([
+            'success' => $isConnected,
+            'message' => $isConnected
+                ? 'Connexion à l\'API KLASSCI réussie'
+                : 'Impossible de se connecter à l\'API KLASSCI',
+            'api_url' => config('services.klassci.url'),
+        ]);
     }
 
 }

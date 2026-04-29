@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Traits\HandlesApiExceptions;
 use App\Models\Evaluation;
 use App\Models\EvaluationQuestion;
 use App\Models\EvaluationSubmission;
@@ -12,12 +13,14 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Log;
 
 /**
  * Controller pour gérer les évaluations en ligne
  */
 class EvaluationController extends Controller
 {
+    use HandlesApiExceptions;
     public function __construct(
         private KlassciProxyService $klassciService
     ) {}
@@ -80,14 +83,7 @@ class EvaluationController extends Controller
      */
     public function show(int $id): JsonResponse
     {
-        $evaluation = Evaluation::with('questions')->find($id);
-
-        if (!$evaluation) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Évaluation non trouvée'
-            ], 404);
-        }
+        $evaluation = Evaluation::with('questions')->findOrFail($id);
 
         // Enrichir avec les données KLASSCI
         $enrichedEvaluation = $this->enrichEvaluationsWithKlassciData(collect([$evaluation]))[0];
@@ -107,13 +103,10 @@ class EvaluationController extends Controller
         // Restriction coordinateur: ne peut pas créer d'évaluations
         $user = auth()->user();
         if ($user && $user->role === 'coordinateur') {
-            return response()->json([
-                'success' => false,
-                'message' => 'Accès refusé. Les coordinateurs ne peuvent pas créer d\'évaluations.'
-            ], 403);
+            return $this->forbidden('Les coordinateurs ne peuvent pas créer d\'évaluations.');
         }
 
-        $validator = Validator::make($request->all(), [
+        $validated = $request->validate([
             'klassci_matiere_id' => 'required|integer',
             'klassci_classe_id' => 'required|integer',
             'titre' => 'required|string|max:255',
@@ -131,14 +124,6 @@ class EvaluationController extends Controller
             'questions.*.correct_answers' => 'nullable|array',
         ]);
 
-        if ($validator->fails()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Erreur de validation',
-                'errors' => $validator->errors()
-            ], 422);
-        }
-
         // Vérifier qu'une évaluation LMS n'existe pas déjà pour cette évaluation KLASSCI
         if ($request->klassci_evaluation_id) {
             $existing = Evaluation::where('klassci_evaluation_id', $request->klassci_evaluation_id)->first();
@@ -151,129 +136,117 @@ class EvaluationController extends Controller
             }
         }
 
+        DB::beginTransaction();
+
+        // Récupérer les noms de matière et classe depuis KLASSCI
+        $matiereNom = null;
+        $classeNom = null;
+
         try {
-            DB::beginTransaction();
-
-            // Récupérer les noms de matière et classe depuis KLASSCI
-            $matiereNom = null;
-            $classeNom = null;
-
-            try {
-                // Récupérer matière
-                if ($request->klassci_matiere_id) {
-                    $matieres = $this->klassciService->getMatieres();
-                    if (isset($matieres['data'])) {
-                        foreach ($matieres['data'] as $matiere) {
-                            if ($matiere['id'] == $request->klassci_matiere_id) {
-                                $matiereNom = $matiere['nom'] ?? $matiere['libelle'] ?? null;
-                                break;
-                            }
+            // Récupérer matière
+            if ($request->klassci_matiere_id) {
+                $matieres = $this->klassciService->getMatieres();
+                if (isset($matieres['data'])) {
+                    foreach ($matieres['data'] as $matiere) {
+                        if ($matiere['id'] == $request->klassci_matiere_id) {
+                            $matiereNom = $matiere['nom'] ?? $matiere['libelle'] ?? null;
+                            break;
                         }
                     }
-                }
-
-                // Récupérer classe
-                if ($request->klassci_classe_id) {
-                    $classes = $this->klassciService->getClasses();
-                    if (isset($classes['data'])) {
-                        foreach ($classes['data'] as $classe) {
-                            if ($classe['id'] == $request->klassci_classe_id) {
-                                $classeNom = $classe['libelle'] ?? $classe['nom'] ?? null;
-                                // Si pas de nom, utiliser le code du niveau
-                                if (!$classeNom && isset($classe['niveau']['code'])) {
-                                    $classeNom = $classe['niveau']['code'];
-                                } elseif (!$classeNom && isset($classe['niveau']['libelle'])) {
-                                    $classeNom = $classe['niveau']['libelle'];
-                                }
-                                break;
-                            }
-                        }
-                    }
-                }
-            } catch (\Exception $e) {
-                \Log::warning('Impossible de récupérer les noms depuis KLASSCI', ['error' => $e->getMessage()]);
-            }
-
-            // Créer l'évaluation
-            $evaluation = Evaluation::create(array_merge(
-                $request->only([
-                    'klassci_matiere_id',
-                    'klassci_classe_id',
-                    'klassci_enseignant_id',
-                    'klassci_evaluation_id',
-                    'titre',
-                    'description',
-                    'type',
-                    'status',
-                    'date_evaluation',
-                    'duree_minutes',
-                    'coefficient',
-                    'bareme',
-                    'is_online',
-                    'allow_retake',
-                    'max_attempts',
-                    'shuffle_questions',
-                    'show_results',
-                ]),
-                [
-                    'matiere_nom' => $matiereNom,
-                    'classe_nom' => $classeNom,
-                ]
-            ));
-
-            // Créer les questions si fournies
-            if ($request->has('questions')) {
-                foreach ($request->questions as $index => $questionData) {
-                    // Décoder les options et correct_answers si elles sont déjà encodées en JSON
-                    $options = $questionData['options'] ?? null;
-                    if (is_string($options) && $options !== null) {
-                        $decoded = json_decode($options, true);
-                        if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
-                            $options = $decoded;
-                        }
-                    }
-
-                    $correctAnswers = $questionData['correct_answers'] ?? null;
-                    if (is_string($correctAnswers) && $correctAnswers !== null) {
-                        $decoded = json_decode($correctAnswers, true);
-                        if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
-                            $correctAnswers = $decoded;
-                        }
-                    }
-
-                    EvaluationQuestion::create([
-                        'evaluation_id' => $evaluation->id,
-                        'question' => $questionData['question'],
-                        'type' => $questionData['type'],
-                        'ordre' => $index + 1,
-                        'points' => $questionData['points'] ?? 1,
-                        'options' => $options,
-                        'correct_answers' => $correctAnswers,
-                        'explanation' => $questionData['explanation'] ?? null,
-                    ]);
                 }
             }
 
-            DB::commit();
-
-            $evaluation->load('questions');
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Évaluation créée avec succès',
-                'data' => $evaluation
-            ], 201);
-
+            // Récupérer classe
+            if ($request->klassci_classe_id) {
+                $classes = $this->klassciService->getClasses();
+                if (isset($classes['data'])) {
+                    foreach ($classes['data'] as $classe) {
+                        if ($classe['id'] == $request->klassci_classe_id) {
+                            $classeNom = $classe['libelle'] ?? $classe['nom'] ?? null;
+                            // Si pas de nom, utiliser le code du niveau
+                            if (!$classeNom && isset($classe['niveau']['code'])) {
+                                $classeNom = $classe['niveau']['code'];
+                            } elseif (!$classeNom && isset($classe['niveau']['libelle'])) {
+                                $classeNom = $classe['niveau']['libelle'];
+                            }
+                            break;
+                        }
+                    }
+                }
+            }
         } catch (\Exception $e) {
-            DB::rollBack();
-            \Log::error('Erreur création évaluation', ['error' => $e->getMessage()]);
-
-            return response()->json([
-                'success' => false,
-                'message' => 'Erreur lors de la création de l\'évaluation',
-                'error' => $e->getMessage()
-            ], 500);
+            \Log::warning('Failed to retrieve class/subject names from KLASSCI', ['exception_class' => get_class($e)]);
         }
+
+        // Créer l'évaluation
+        $evaluation = Evaluation::create(array_merge(
+            $request->only([
+                'klassci_matiere_id',
+                'klassci_classe_id',
+                'klassci_enseignant_id',
+                'klassci_evaluation_id',
+                'titre',
+                'description',
+                'type',
+                'status',
+                'date_evaluation',
+                'duree_minutes',
+                'coefficient',
+                'bareme',
+                'is_online',
+                'allow_retake',
+                'max_attempts',
+                'shuffle_questions',
+                'show_results',
+            ]),
+            [
+                'matiere_nom' => $matiereNom,
+                'classe_nom' => $classeNom,
+            ]
+        ));
+
+        // Créer les questions si fournies
+        if ($request->has('questions')) {
+            foreach ($request->questions as $index => $questionData) {
+                // Décoder les options et correct_answers si elles sont déjà encodées en JSON
+                $options = $questionData['options'] ?? null;
+                if (is_string($options) && $options !== null) {
+                    $decoded = json_decode($options, true);
+                    if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                        $options = $decoded;
+                    }
+                }
+
+                $correctAnswers = $questionData['correct_answers'] ?? null;
+                if (is_string($correctAnswers) && $correctAnswers !== null) {
+                    $decoded = json_decode($correctAnswers, true);
+                    if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                        $correctAnswers = $decoded;
+                    }
+                }
+
+                EvaluationQuestion::create([
+                    'evaluation_id' => $evaluation->id,
+                    'question' => $questionData['question'],
+                    'type' => $questionData['type'],
+                    'ordre' => $index + 1,
+                    'points' => $questionData['points'] ?? 1,
+                    'options' => $options,
+                    'correct_answers' => $correctAnswers,
+                    'explanation' => $questionData['explanation'] ?? null,
+                ]);
+            }
+        }
+
+        DB::commit();
+
+        $evaluation->load('questions');
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Évaluation créée avec succès',
+            'data' => $evaluation
+        ], 201);
     }
 
     /**
@@ -285,30 +258,17 @@ class EvaluationController extends Controller
         // Restriction coordinateur: ne peut pas modifier d'évaluations
         $user = auth()->user();
         if ($user && $user->role === 'coordinateur') {
-            return response()->json([
-                'success' => false,
-                'message' => 'Accès refusé. Les coordinateurs ne peuvent pas modifier d\'évaluations.'
-            ], 403);
+            return $this->forbidden('Les coordinateurs ne peuvent pas modifier d\'évaluations.');
         }
 
-        $evaluation = Evaluation::find($id);
-
-        if (!$evaluation) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Évaluation non trouvée'
-            ], 404);
-        }
+        $evaluation = Evaluation::findOrFail($id);
 
         // ⚠️ Vérifier si l'évaluation peut être modifiée
         if (!$evaluation->canBeEdited()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Impossible de modifier: des étudiants ont déjà soumis leurs réponses'
-            ], 403);
+            return $this->forbidden('Impossible de modifier: des étudiants ont déjà soumis leurs réponses');
         }
 
-        $validator = Validator::make($request->all(), [
+        $validated = $request->validate([
             'titre' => 'sometimes|string|max:255',
             'description' => 'nullable|string',
             'status' => 'sometimes|in:brouillon,planifiee,en_cours,terminee,annulee',
@@ -326,77 +286,57 @@ class EvaluationController extends Controller
             'questions.*.correct_answers' => 'nullable|array',
         ]);
 
-        if ($validator->fails()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Erreur de validation',
-                'errors' => $validator->errors()
-            ], 422);
-        }
+        DB::beginTransaction();
 
-        try {
-            DB::beginTransaction();
+        // Mettre à jour les champs de base
+        $evaluation->update($request->except(['questions']));
 
-            // Mettre à jour les champs de base
-            $evaluation->update($request->except(['questions']));
+        // Si des questions sont fournies, les remplacer
+        if ($request->has('questions')) {
+            // Supprimer les anciennes questions
+            $evaluation->questions()->delete();
 
-            // Si des questions sont fournies, les remplacer
-            if ($request->has('questions')) {
-                // Supprimer les anciennes questions
-                $evaluation->questions()->delete();
-
-                // Créer les nouvelles questions
-                foreach ($request->questions as $index => $questionData) {
-                    // Décoder les options et correct_answers si elles sont déjà encodées en JSON
-                    $options = $questionData['options'] ?? null;
-                    if (is_string($options) && $options !== null) {
-                        $decoded = json_decode($options, true);
-                        if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
-                            $options = $decoded;
-                        }
+            // Créer les nouvelles questions
+            foreach ($request->questions as $index => $questionData) {
+                // Décoder les options et correct_answers si elles sont déjà encodées en JSON
+                $options = $questionData['options'] ?? null;
+                if (is_string($options) && $options !== null) {
+                    $decoded = json_decode($options, true);
+                    if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                        $options = $decoded;
                     }
-
-                    $correctAnswers = $questionData['correct_answers'] ?? null;
-                    if (is_string($correctAnswers) && $correctAnswers !== null) {
-                        $decoded = json_decode($correctAnswers, true);
-                        if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
-                            $correctAnswers = $decoded;
-                        }
-                    }
-
-                    EvaluationQuestion::create([
-                        'evaluation_id' => $evaluation->id,
-                        'question' => $questionData['question'],
-                        'type' => $questionData['type'],
-                        'ordre' => $index + 1,
-                        'points' => $questionData['points'] ?? 1,
-                        'options' => $options,
-                        'correct_answers' => $correctAnswers,
-                        'explanation' => $questionData['explanation'] ?? null,
-                    ]);
                 }
+
+                $correctAnswers = $questionData['correct_answers'] ?? null;
+                if (is_string($correctAnswers) && $correctAnswers !== null) {
+                    $decoded = json_decode($correctAnswers, true);
+                    if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                        $correctAnswers = $decoded;
+                    }
+                }
+
+                EvaluationQuestion::create([
+                    'evaluation_id' => $evaluation->id,
+                    'question' => $questionData['question'],
+                    'type' => $questionData['type'],
+                    'ordre' => $index + 1,
+                    'points' => $questionData['points'] ?? 1,
+                    'options' => $options,
+                    'correct_answers' => $correctAnswers,
+                    'explanation' => $questionData['explanation'] ?? null,
+                ]);
             }
-
-            DB::commit();
-
-            $evaluation->load('questions');
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Évaluation mise à jour',
-                'data' => $evaluation
-            ]);
-
-        } catch (\Exception $e) {
-            DB::rollBack();
-            \Log::error('Erreur mise à jour évaluation', ['error' => $e->getMessage()]);
-
-            return response()->json([
-                'success' => false,
-                'message' => 'Erreur lors de la mise à jour',
-                'error' => $e->getMessage()
-            ], 500);
         }
+
+        DB::commit();
+
+        $evaluation->load('questions');
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Évaluation mise à jour',
+            'data' => $evaluation
+        ]);
     }
 
     /**
@@ -408,27 +348,14 @@ class EvaluationController extends Controller
         // Restriction coordinateur: ne peut pas supprimer d'évaluations
         $user = auth()->user();
         if ($user && $user->role === 'coordinateur') {
-            return response()->json([
-                'success' => false,
-                'message' => 'Accès refusé. Les coordinateurs ne peuvent pas supprimer d\'évaluations.'
-            ], 403);
+            return $this->forbidden('Les coordinateurs ne peuvent pas supprimer d\'évaluations.');
         }
 
-        $evaluation = Evaluation::find($id);
-
-        if (!$evaluation) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Évaluation non trouvée'
-            ], 404);
-        }
+        $evaluation = Evaluation::findOrFail($id);
 
         // ⚠️ Vérifier si l'évaluation peut être supprimée
         if (!$evaluation->canBeEdited()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Impossible de supprimer: des étudiants ont déjà soumis leurs réponses'
-            ], 403);
+            return $this->forbidden('Impossible de supprimer: des étudiants ont déjà soumis leurs réponses');
         }
 
         $evaluation->delete();
@@ -448,20 +375,10 @@ class EvaluationController extends Controller
         // Restriction coordinateur: ne peut pas publier d'évaluations
         $user = auth()->user();
         if ($user && $user->role === 'coordinateur') {
-            return response()->json([
-                'success' => false,
-                'message' => 'Accès refusé. Les coordinateurs ne peuvent pas publier d\'évaluations.'
-            ], 403);
+            return $this->forbidden('Les coordinateurs ne peuvent pas publier d\'évaluations.');
         }
 
-        $evaluation = Evaluation::find($id);
-
-        if (!$evaluation) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Évaluation non trouvée'
-            ], 404);
-        }
+        $evaluation = Evaluation::findOrFail($id);
 
         // Vérifier que l'évaluation a des questions avant de publier
         if ($evaluation->questions()->count() === 0) {
@@ -500,7 +417,7 @@ class EvaluationController extends Controller
         if (!$user || !$user->klassci_id) {
             return response()->json([
                 'success' => false,
-                'message' => 'Utilisateur non authentifié ou sans ID KLASSCI'
+                'message' => 'Authentification requise'
             ], 401);
         }
 
@@ -532,7 +449,7 @@ class EvaluationController extends Controller
             if (!$klassciToken) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Token KLASSCI non trouvé. Veuillez vous reconnecter.'
+                    'message' => 'Authentication token required'
                 ], 401);
             }
 
@@ -553,10 +470,7 @@ class EvaluationController extends Controller
             $classeId = $dashboard['data']['classe']['id'] ?? null;
 
             if (!$classeId) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Classe non trouvée'
-                ], 404);
+                return $this->notFound('Student class not found');
             }
 
             \Log::info('Student classe found', ['classe_id' => $classeId]);
@@ -586,7 +500,7 @@ class EvaluationController extends Controller
 
             } catch (\Exception $e) {
                 \Log::warning('Could not fetch KLASSCI evaluations for windows', [
-                    'error' => $e->getMessage()
+                    'exception_class' => get_class($e)
                 ]);
                 $klassciEvaluations = collect([]);
             }
@@ -646,7 +560,7 @@ class EvaluationController extends Controller
                         }
                     } catch (\Exception $e) {
                         \Log::warning('Could not fetch matiere/classe for pure LMS eval', [
-                            'error' => $e->getMessage()
+                            'exception_class' => get_class($e)
                         ]);
                     }
 
@@ -687,14 +601,14 @@ class EvaluationController extends Controller
             ]);
 
         } catch (\Exception $e) {
-            \Log::error('Erreur récupération évaluations étudiant', [
-                'error' => $e->getMessage(),
+            \Log::error('Error retrieving student evaluations', [
+                'exception_class' => get_class($e),
                 'trace' => $e->getTraceAsString()
             ]);
 
             return response()->json([
                 'success' => false,
-                'message' => 'Erreur lors de la récupération des évaluations'
+                'message' => 'Error retrieving evaluations'
             ], 500);
         }
     }
@@ -705,13 +619,10 @@ class EvaluationController extends Controller
      */
     public function startEvaluation(int $id, Request $request): JsonResponse
     {
-        $evaluation = Evaluation::find($id);
+        $evaluation = Evaluation::findOrFail($id);
 
-        if (!$evaluation || !$evaluation->is_published) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Évaluation non disponible'
-            ], 404);
+        if (!$evaluation->is_published) {
+            return $this->notFound('Évaluation non disponible');
         }
 
         // Vérifier si c'est un mode entraînement (évaluation terminée)
@@ -726,16 +637,9 @@ class EvaluationController extends Controller
             ], 422);
         }
 
-        $validator = Validator::make($request->all(), [
+        $validated = $request->validate([
             'klassci_etudiant_id' => 'required|integer',
         ]);
-
-        if ($validator->fails()) {
-            return response()->json([
-                'success' => false,
-                'errors' => $validator->errors()
-            ], 422);
-        }
 
         $klassciEtudiantId = $request->klassci_etudiant_id;
 
@@ -747,7 +651,7 @@ class EvaluationController extends Controller
             if (!$klassciToken) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Token KLASSCI non trouvé. Veuillez vous reconnecter.'
+                    'message' => 'Authentication token required'
                 ], 401);
             }
 
@@ -805,9 +709,9 @@ class EvaluationController extends Controller
             ]);
 
         } catch (\Exception $e) {
-            \Log::error('Erreur vérification fenêtre temporelle', [
+            \Log::error('Error checking evaluation window', [
                 'evaluation_id' => $id,
-                'error' => $e->getMessage()
+                'exception_class' => get_class($e)
             ]);
 
             // En cas d'erreur KLASSCI, on laisse passer (fallback gracieux)
@@ -870,56 +774,33 @@ class EvaluationController extends Controller
      */
     public function submitEvaluation(int $id, Request $request): JsonResponse
     {
-        $validator = Validator::make($request->all(), [
+        $validated = $request->validate([
             'submission_id' => 'required|integer',
             'answers' => 'required|array',
         ]);
 
-        if ($validator->fails()) {
-            return response()->json([
-                'success' => false,
-                'errors' => $validator->errors()
-            ], 422);
-        }
+        $submission = EvaluationSubmission::findOrFail($request->submission_id);
 
-        $submission = EvaluationSubmission::find($request->submission_id);
-
-        if (!$submission || $submission->evaluation_id != $id) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Soumission non trouvée'
-            ], 404);
+        if ($submission->evaluation_id != $id) {
+            return $this->notFound('Submission not found');
         }
 
         if ($submission->status !== 'en_cours') {
-            return response()->json([
-                'success' => false,
-                'message' => 'Cette évaluation a déjà été soumise'
-            ], 403);
+            return $this->forbidden('This evaluation has already been submitted');
         }
 
-        try {
-            $submission->answers = $request->answers;
-            $submission->submit(); // Calcule automatiquement le score
+        $submission->answers = $request->answers;
+        $submission->submit(); // Calcule automatiquement le score
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Évaluation soumise avec succès',
-                'data' => [
-                    'submission' => $submission,
-                    'score' => $submission->score,
-                    'note_sur_20' => $submission->note_sur_20,
-                ]
-            ]);
-
-        } catch (\Exception $e) {
-            \Log::error('Erreur soumission évaluation', ['error' => $e->getMessage()]);
-
-            return response()->json([
-                'success' => false,
-                'message' => 'Erreur lors de la soumission'
-            ], 500);
-        }
+        return response()->json([
+            'success' => true,
+            'message' => 'Évaluation soumise avec succès',
+            'data' => [
+                'submission' => $submission,
+                'score' => $submission->score,
+                'note_sur_20' => $submission->note_sur_20,
+            ]
+        ]);
     }
 
     /**
@@ -934,31 +815,17 @@ class EvaluationController extends Controller
             if (!$user || !$user->klassci_id) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Utilisateur non authentifié'
+                    'message' => 'Authentication required'
                 ], 401);
             }
 
-            $evaluation = Evaluation::find($id);
-
-            if (!$evaluation) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Évaluation non trouvée'
-                ], 404);
-            }
+            $evaluation = Evaluation::findOrFail($id);
 
             // Récupérer la soumission de l'étudiant
             $submission = EvaluationSubmission::where('evaluation_id', $id)
                 ->where('klassci_etudiant_id', $user->klassci_id)
                 ->orderBy('attempt', 'desc')
-                ->first();
-
-            if (!$submission) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Aucune soumission trouvée pour cette évaluation'
-                ], 404);
-            }
+                ->firstOrFail();
 
             // Charger les questions avec les réponses de l'étudiant
             $questions = $evaluation->questions()->get();
@@ -1007,14 +874,14 @@ class EvaluationController extends Controller
             ]);
 
         } catch (\Exception $e) {
-            \Log::error('Erreur récupération soumission étudiant', [
+            \Log::error('Error retrieving student submission', [
                 'evaluation_id' => $id,
-                'error' => $e->getMessage()
+                'exception_class' => get_class($e)
             ]);
 
             return response()->json([
                 'success' => false,
-                'message' => 'Erreur lors de la récupération de la soumission'
+                'message' => 'Error retrieving submission'
             ], 500);
         }
     }
@@ -1025,14 +892,7 @@ class EvaluationController extends Controller
      */
     public function getTimeStatus(int $id, Request $request): JsonResponse
     {
-        $evaluation = Evaluation::find($id);
-
-        if (!$evaluation) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Évaluation non trouvée'
-            ], 404);
-        }
+        $evaluation = Evaluation::findOrFail($id);
 
         try {
             $user = $request->user();
@@ -1041,7 +901,7 @@ class EvaluationController extends Controller
             if (!$klassciToken) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Token KLASSCI non trouvé'
+                    'message' => 'Authentication token required'
                 ], 401);
             }
 
@@ -1066,14 +926,14 @@ class EvaluationController extends Controller
             ]);
 
         } catch (\Exception $e) {
-            \Log::error('Erreur récupération état temporel', [
+            \Log::error('Error retrieving time status', [
                 'evaluation_id' => $id,
-                'error' => $e->getMessage()
+                'exception_class' => get_class($e)
             ]);
 
             return response()->json([
                 'success' => false,
-                'message' => 'Impossible de récupérer l\'état temporel'
+                'message' => 'Error retrieving time status'
             ], 500);
         }
     }
@@ -1084,14 +944,7 @@ class EvaluationController extends Controller
      */
     public function syncToKlassci(int $id): JsonResponse
     {
-        $evaluation = Evaluation::with('submissions')->find($id);
-
-        if (!$evaluation) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Évaluation non trouvée'
-            ], 404);
-        }
+        $evaluation = Evaluation::with('submissions')->findOrFail($id);
 
         try {
             // Préparer les notes pour KLASSCI (exclure les entraînements)
@@ -1135,12 +988,11 @@ class EvaluationController extends Controller
             ], 400);
 
         } catch (\Exception $e) {
-            \Log::error('Erreur synchronisation KLASSCI', ['error' => $e->getMessage()]);
+            \Log::error('Error syncing to KLASSCI', ['exception_class' => get_class($e)]);
 
             return response()->json([
                 'success' => false,
-                'message' => 'Erreur lors de la synchronisation',
-                'error' => $e->getMessage()
+                'message' => 'Error during synchronization'
             ], 500);
         }
     }
@@ -1276,7 +1128,7 @@ class EvaluationController extends Controller
             })->toArray();
 
         } catch (\Exception $e) {
-            \Log::error('Erreur enrichissement évaluations', ['error' => $e->getMessage()]);
+            \Log::error('Error enriching evaluations', ['exception_class' => get_class($e)]);
 
             // En cas d'erreur, retourner les évaluations sans enrichissement
             return $evaluations->toArray();
@@ -1401,16 +1253,15 @@ class EvaluationController extends Controller
             ]);
 
         } catch (\Exception $e) {
-            \Log::error('❌ Erreur récupération résultats évaluation', [
+            \Log::error('Error retrieving evaluation results', [
                 'evaluation_id' => $id,
-                'error' => $e->getMessage(),
+                'exception_class' => get_class($e),
                 'trace' => $e->getTraceAsString()
             ]);
 
             return response()->json([
                 'success' => false,
-                'message' => 'Erreur lors de la récupération des résultats',
-                'error' => $e->getMessage()
+                'message' => 'Error retrieving results'
             ], 500);
         }
     }
@@ -1458,15 +1309,14 @@ class EvaluationController extends Controller
                 'data' => $enrichedSubmissions
             ]);
         } catch (\Exception $e) {
-            \Log::error('Erreur récupération soumissions', [
+            \Log::error('Error retrieving submissions', [
                 'evaluation_id' => $id,
-                'error' => $e->getMessage()
+                'exception_class' => get_class($e)
             ]);
 
             return response()->json([
                 'success' => false,
-                'message' => 'Erreur lors de la récupération des soumissions',
-                'error' => $e->getMessage()
+                'message' => 'Error retrieving submissions'
             ], 500);
         }
     }
@@ -1510,7 +1360,7 @@ class EvaluationController extends Controller
                     $errors[] = [
                         'submission_id' => $submission->id,
                         'student_id' => $submission->klassci_etudiant_id,
-                        'error' => $e->getMessage()
+                        'exception' => get_class($e)
                     ];
                 }
             }
@@ -1530,15 +1380,14 @@ class EvaluationController extends Controller
                 'errors' => $errors
             ]);
         } catch (\Exception $e) {
-            \Log::error('Erreur synchronisation notes', [
+            \Log::error('Error syncing grades', [
                 'evaluation_id' => $id,
-                'error' => $e->getMessage()
+                'exception_class' => get_class($e)
             ]);
 
             return response()->json([
                 'success' => false,
-                'message' => 'Erreur lors de la synchronisation des notes',
-                'error' => $e->getMessage()
+                'message' => 'Error syncing grades'
             ], 500);
         }
     }
@@ -1557,10 +1406,7 @@ class EvaluationController extends Controller
             if ($user && $user->role === 'coordinateur') {
                 // Utilise la méthode centralisée du modèle (logique réutilisable)
                 if (!$evaluation->isTerminee()) {
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'Accès refusé. Les coordinateurs ne peuvent prévisualiser que les évaluations terminées.'
-                    ], 403);
+                    return $this->forbidden('Les coordinateurs ne peuvent prévisualiser que les évaluations terminées.');
                 }
             }
 
@@ -1595,15 +1441,14 @@ class EvaluationController extends Controller
                 ]
             ]);
         } catch (\Exception $e) {
-            \Log::error('Erreur prévisualisation évaluation', [
+            \Log::error('Error previewing evaluation', [
                 'evaluation_id' => $id,
-                'error' => $e->getMessage()
+                'exception_class' => get_class($e)
             ]);
 
             return response()->json([
                 'success' => false,
-                'message' => 'Erreur lors de la prévisualisation',
-                'error' => $e->getMessage()
+                'message' => 'Error previewing evaluation'
             ], 500);
         }
     }
@@ -1620,7 +1465,7 @@ class EvaluationController extends Controller
             if (!$user || !$user->klassci_id) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Utilisateur non authentifié ou sans ID KlassCI'
+                    'message' => 'Authentication required'
                 ], 401);
             }
 
@@ -1636,7 +1481,7 @@ class EvaluationController extends Controller
                     }
                 }
             } catch (\Exception $e) {
-                Log::warning("Impossible de récupérer les matières depuis KlassCI", ['error' => $e->getMessage()]);
+                Log::warning("Could not retrieve subjects from KlassCI", ['exception_class' => get_class($e)]);
             }
 
             // Récupérer toutes les soumissions de l'étudiant avec leurs évaluations
@@ -1734,15 +1579,14 @@ class EvaluationController extends Controller
             ]);
 
         } catch (\Exception $e) {
-            \Log::error('Erreur récupération notes étudiant', [
+            \Log::error('Error retrieving student grades', [
                 'user_id' => $request->user()?->id,
-                'error' => $e->getMessage()
+                'exception_class' => get_class($e)
             ]);
 
             return response()->json([
                 'success' => false,
-                'message' => 'Erreur lors de la récupération des notes',
-                'error' => $e->getMessage()
+                'message' => 'Error retrieving grades'
             ], 500);
         }
     }

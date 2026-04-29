@@ -30,6 +30,7 @@ nul
 !README.md
 !PRODUCTION_STANDARDS.md
 !REFACTORING_ROADMAP.md
+!CRITICAL-*.md
 *.ps1
 *.bat
 *.patch

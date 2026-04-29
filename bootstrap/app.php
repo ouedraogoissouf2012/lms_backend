@@ -37,5 +37,48 @@ return Application::configure(basePath: dirname(__DIR__))
             ->withoutOverlapping();
     })
     ->withExceptions(function (Exceptions $exceptions): void {
-        //
+        // Handle custom API exceptions
+        $exceptions->render(function (App\Exceptions\ApiException $e, $request) {
+            if ($request->expectsJson()) {
+                // Log with full context
+                \Illuminate\Support\Facades\Log::error('API Exception: ' . class_basename($e), [
+                    'error_code' => $e->getErrorCode(),
+                    'status' => $e->getStatusCode(),
+                    'message' => $e->getMessage(),
+                    'context' => $e->getContext(),
+                    'trace' => $e->getTraceAsString(),
+                    'user_id' => auth()->id(),
+                    'ip' => $request->ip(),
+                    'method' => $request->method(),
+                    'path' => $request->path(),
+                    'query_params' => $request->query(),
+                ]);
+
+                return $e->render();
+            }
+        });
+
+        // Handle uncaught exceptions generically
+        $exceptions->render(function (\Throwable $e, $request) {
+            if ($request->expectsJson()) {
+                // Log any uncaught exception with full context
+                \Illuminate\Support\Facades\Log::error('Uncaught Exception: ' . class_basename($e), [
+                    'exception_class' => get_class($e),
+                    'message' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString(),
+                    'user_id' => auth()->id(),
+                    'ip' => $request->ip(),
+                    'method' => $request->method(),
+                    'path' => $request->path(),
+                    'query_params' => $request->query(),
+                ]);
+
+                // Return generic error to client
+                return response()->json([
+                    'success' => false,
+                    'error_code' => 'INTERNAL_SERVER_ERROR',
+                    'message' => 'Erreur interne du serveur',
+                ], 500);
+            }
+        });
     })->create();

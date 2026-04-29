@@ -3,19 +3,26 @@
 namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Traits\HandlesApiExceptions;
 use App\Services\KlassciProxyService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
 
 /**
  * Controller Proxy pour l'API KLASSCI
  *
  * Ce controller expose les endpoints qui proxifient les appels vers l'API KLASSCI
  * avec gestion du cache et des erreurs
+ *
+ * PRODUCTION PATTERN:
+ * - Utilise CustomException classes pour les erreurs attendues
+ * - Exception Handler central gère les logs et réponses standardisées
+ * - Tous les getMessage() sont supprimés, uniquement des codes d'erreur
  */
 class ProxyController extends Controller
 {
+    use HandlesApiExceptions;
+
     public function __construct(
         private KlassciProxyService $klassciService
     ) {}
@@ -26,12 +33,8 @@ class ProxyController extends Controller
      */
     public function structure(): JsonResponse
     {
-        try {
-            $data = $this->klassciService->getStructure();
-            return response()->json($data);
-        } catch (\Exception $e) {
-            return $this->errorResponse($e->getMessage());
-        }
+        $data = $this->klassciService->getStructure();
+        return response()->json($data);
     }
 
     /**
@@ -384,14 +387,4 @@ class ProxyController extends Controller
         }
     }
 
-    /**
-     * Réponse d'erreur standardisée
-     */
-    private function errorResponse(string $message, int $status = 500): JsonResponse
-    {
-        return response()->json([
-            'success' => false,
-            'message' => $message,
-        ], $status);
-    }
 }

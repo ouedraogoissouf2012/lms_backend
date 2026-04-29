@@ -111,7 +111,7 @@ class ConvertApiService
 
         } catch (\Exception $e) {
             Log::error('[ConvertAPI] Erreur conversion PowerPoint', [
-                'error' => $e->getMessage(),
+                'exception_class' => get_class($e),
                 'file' => $filePath
             ]);
             throw $e;
@@ -196,7 +196,7 @@ class ConvertApiService
 
         } catch (\Exception $e) {
             Log::error('[ConvertAPI] Erreur conversion Word', [
-                'error' => $e->getMessage(),
+                'exception_class' => get_class($e),
                 'file' => $filePath
             ]);
             throw $e;
@@ -258,7 +258,7 @@ class ConvertApiService
 
         } catch (\Exception $e) {
             Log::error('[ConvertAPI] Erreur conversion PDF', [
-                'error' => $e->getMessage(),
+                'exception_class' => get_class($e),
                 'file' => $filePath
             ]);
             throw $e;

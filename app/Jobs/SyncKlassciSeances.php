@@ -131,7 +131,7 @@ class SyncKlassciSeances implements ShouldQueue
                                 $stats['errors']++;
                                 Log::error('Erreur traitement séance dans job', [
                                     'seance_id' => $seanceKlassci['id'] ?? 'unknown',
-                                    'error' => $e->getMessage(),
+                                    'exception_class' => get_class($e),
                                 ]);
                             }
                         }
@@ -141,7 +141,7 @@ class SyncKlassciSeances implements ShouldQueue
                     $stats['errors']++;
                     Log::error('Erreur traitement enseignant dans job', [
                         'teacher_id' => $teacher->id,
-                        'error' => $e->getMessage(),
+                        'exception_class' => get_class($e),
                     ]);
                 }
             }
@@ -175,7 +175,7 @@ class SyncKlassciSeances implements ShouldQueue
 
         } catch (\Exception $e) {
             Log::error('Erreur fatale dans job SyncKlassciSeances', [
-                'error' => $e->getMessage(),
+                'exception_class' => get_class($e),
                 'trace' => $e->getTraceAsString(),
             ]);
         }

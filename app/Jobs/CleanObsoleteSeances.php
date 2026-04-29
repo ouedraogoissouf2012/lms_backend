@@ -101,7 +101,7 @@ class CleanObsoleteSeances implements ShouldQueue
                     Log::warning('⚠️ [CleanObsoleteSeances] Erreur lors de la vérification', [
                         'seance_id' => $seance->id,
                         'klassci_seance_id' => $klassciSeanceId,
-                        'error' => substr($e->getMessage(), 0, 200)
+                        'exception_class' => get_class($e)
                     ]);
                 }
             }

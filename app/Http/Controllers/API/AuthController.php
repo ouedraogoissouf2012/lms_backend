@@ -96,7 +96,7 @@ class AuthController extends Controller
     {
         try {
             $validator = Validator::make($request->all(), [
-                'username' => 'required|string',
+                'email' => 'required|string',
                 'password' => 'required|string|min:8',
             ]);
 
@@ -111,8 +111,8 @@ class AuthController extends Controller
             // 1. Authentification locale (supradmin, comptes LMS internes)
             try {
                 $user = User::withoutGlobalScope('institution')
-                            ->where('email', $request->username)
-                            ->orWhere('name', $request->username)
+                            ->where('email', $request->email)
+                            ->orWhere('name', $request->email)
                             ->first();
 
                 if ($user && Hash::check($request->password, $user->password)) {
@@ -142,12 +142,12 @@ class AuthController extends Controller
                 }
             } catch (\Exception $dbError) {
                 Log::warning('DB locale non accessible, passage à KLASSCI', [
-                    'error' => $dbError->getMessage()
+                    'exception_class' => get_class($dbError)
                 ]);
             }
 
             // 2. Détection automatique des tenants KLASSCI (check-user en parallèle sur tous)
-            $matchingTenants = $this->findTenantsForUser($request->username);
+            $matchingTenants = $this->findTenantsForUser($request->email);
 
             if (empty($matchingTenants)) {
                 return response()->json([
@@ -165,7 +165,7 @@ class AuthController extends Controller
                         $http = $http->withoutVerifying();
                     }
                     $loginResponse = $http->post($tenant['api_base_url'] . '/auth/login', [
-                        'username' => $request->username,
+                        'email' => $request->email,
                         'password' => $request->password,
                     ]);
 
@@ -196,7 +196,7 @@ class AuthController extends Controller
                     try {
                         $this->classeSyncService->syncUserClasses($klassciToken, $localUser->role);
                     } catch (\Exception $syncError) {
-                        Log::warning('Erreur sync classes au login', ['error' => $syncError->getMessage()]);
+                        Log::warning('Erreur sync classes au login', ['exception_class' => get_class($syncError)]);
                     }
 
                     return response()->json([
@@ -229,7 +229,7 @@ class AuthController extends Controller
                     ]);
 
                 } catch (\Exception $e) {
-                    Log::warning('Erreur login sur tenant', ['tenant' => $tenant['code'], 'error' => $e->getMessage()]);
+                    Log::warning('Erreur login sur tenant', ['tenant' => $tenant['code'], 'exception_class' => get_class($e)]);
                     continue;
                 }
             }
@@ -471,7 +471,7 @@ class AuthController extends Controller
         } catch (\Exception $e) {
             Log::error('Erreur lors de la synchronisation des classes', [
                 'user_id' => $user->id,
-                'error' => $e->getMessage()
+                'exception_class' => get_class($e)
             ]);
             // Ne pas bloquer la connexion si la sync échoue
         }

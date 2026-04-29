@@ -62,7 +62,7 @@ class ArchiveOldSeances implements ShouldQueue
 
         } catch (\Exception $e) {
             Log::error('❌ Erreur lors de l\'archivage automatique', [
-                'error' => $e->getMessage(),
+                'exception_class' => get_class($e),
                 'trace' => $e->getTraceAsString()
             ]);
 

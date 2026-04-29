@@ -50,6 +50,7 @@ screenshot_*.png
 # Ignore all tests except production-grade tests (marked CRITICAL-xx)
 /tests/
 !/tests/Unit/TokenEncryptionTest.php
+!/tests/Feature/ProxyRouteSecurityTest.php
 .env.example
 .env.production.example
 package.json

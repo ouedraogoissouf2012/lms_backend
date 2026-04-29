@@ -111,7 +111,7 @@ class DetectDisconnectedParticipants implements ShouldQueue
     public function failed(\Throwable $exception): void
     {
         Log::error('[DetectDisconnectedParticipants] Job échoué', [
-            'error' => $exception->getMessage(),
+            'exception_class' => get_class($exception),
             'trace' => $exception->getTraceAsString()
         ]);
     }

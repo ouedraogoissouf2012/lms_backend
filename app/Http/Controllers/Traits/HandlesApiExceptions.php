@@ -70,7 +70,7 @@ trait HandlesApiExceptions
     {
         throw new ApiServerException(
             clientMessage: 'Erreur interne du serveur',
-            logMessage: $logMessage . ($exception ? ' - ' . $exception->getMessage() : ''),
+            logMessage: $logMessage . ($exception ? ' - ' . get_class($exception) : ''),
             context: array_merge(
                 $exception ? ['exception' => class_basename($exception)] : [],
                 $context

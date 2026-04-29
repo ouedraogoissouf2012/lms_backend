@@ -458,7 +458,7 @@ class LessonController extends Controller
                 }
             } catch (\Exception $e) {
                 // Si erreur KLASSCI, on continue quand même
-                \Log::warning('Erreur lors de la création des notifications de cours: ' . $e->getMessage());
+                \Log::warning('Erreur lors de la création des notifications de cours: ' . get_class($e));
             }
         }
 

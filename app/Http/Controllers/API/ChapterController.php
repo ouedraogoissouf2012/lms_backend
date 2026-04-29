@@ -36,17 +36,15 @@ class ChapterController extends Controller
      */
     public function index(int $lessonId): JsonResponse
     {
-        try {
-            $lesson = Lesson::findOrFail($lessonId);
+        $lesson = Lesson::findOrFail($lessonId);
 
-            $chapters = $lesson->chapters()->ordered()->get();
+        $chapters = $lesson->chapters()->ordered()->get();
 
-            return response()->json([
-                'success' => true,
-                'data' => $chapters,
-                'message' => "Chapitres récupérés",
-            ]);
-        }
+        return response()->json([
+            'success' => true,
+            'data' => $chapters,
+            'message' => "Chapitres récupérés",
+        ]);
     }
 
     /**

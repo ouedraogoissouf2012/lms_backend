@@ -71,7 +71,7 @@ class EnsureKlassciSync
             // En cas d'erreur, logger mais continuer quand même
             // Les données locales (même obsolètes) restent utilisables
             Log::warning("Échec re-synchronisation KLASSCI pour user {$user->id}", [
-                'error' => $e->getMessage(),
+                'exception_class' => get_class($e),
             ]);
         }
 

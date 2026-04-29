@@ -4,6 +4,7 @@ namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\Traits\HandlesApiExceptions;
+use App\Models\Classe;
 use App\Services\KlassciProxyService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -46,6 +47,19 @@ class ProxyController extends Controller
         $filters = $request->only(['filiere_id', 'niveau_id', 'annee_id']);
         $data = $this->klassciService->getClasses($filters);
         return response()->json($data);
+    }
+
+    /**
+     * GET /api/proxy/classes/{id}
+     * Récupère les détails d'une classe
+     */
+    public function classeDetails(int $id): JsonResponse
+    {
+        $classe = Classe::findOrFail($id);
+        return response()->json([
+            'success' => true,
+            'data' => $classe,
+        ]);
     }
 
     /**

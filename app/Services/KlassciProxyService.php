@@ -226,7 +226,7 @@ class KlassciProxyService
 
         } catch (\Exception $e) {
             Log::error("KLASSCI API Exception", [
-                'message' => $e->getMessage(),
+                'exception_class' => get_class($e),
                 'endpoint' => $endpoint
             ]);
 
@@ -476,7 +476,7 @@ class KlassciProxyService
 
         } catch (\Exception $e) {
             Log::error("KLASSCI API Exception (User Token)", [
-                'message' => $e->getMessage(),
+                'exception_class' => get_class($e),
                 'endpoint' => $endpoint
             ]);
 

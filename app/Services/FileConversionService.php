@@ -88,7 +88,7 @@ class FileConversionService
 
             } catch (Exception $convertApiError) {
                 Log::warning("⚠️ ConvertAPI échoué, fallback sur LibreOffice", [
-                    'error' => $convertApiError->getMessage()
+                    'exception_class' => get_class($convertApiError)
                 ]);
 
                 // Fallback: Utiliser LibreOffice (méthode originale)
@@ -108,7 +108,7 @@ class FileConversionService
         } catch (Exception $e) {
             Log::error("❌ Erreur conversion PowerPoint", [
                 'file' => $file->getClientOriginalName(),
-                'error' => $e->getMessage()
+                'exception_class' => get_class($e)
             ]);
 
             throw new Exception("Erreur lors de la conversion PowerPoint: " . $e->getMessage());
@@ -423,7 +423,7 @@ class FileConversionService
 
             } catch (Exception $convertApiError) {
                 Log::warning("⚠️ ConvertAPI échoué, fallback sur Imagick", [
-                    'error' => $convertApiError->getMessage()
+                    'exception_class' => get_class($convertApiError)
                 ]);
 
                 // Fallback: Utiliser Imagick/GD (méthode originale)
@@ -444,7 +444,7 @@ class FileConversionService
         } catch (Exception $e) {
             Log::error("❌ Erreur conversion PDF", [
                 'file' => $file->getClientOriginalName(),
-                'error' => $e->getMessage()
+                'exception_class' => get_class($e)
             ]);
 
             throw new Exception("Erreur lors de la conversion PDF: " . $e->getMessage());
@@ -473,7 +473,7 @@ class FileConversionService
                 'file_original_path' => $originalPath,
             ];
         } catch (Exception $e) {
-            Log::error("❌ Erreur conversion Word", ['error' => $e->getMessage()]);
+            Log::error("❌ Erreur conversion Word", ['exception_class' => get_class($e)]);
             throw new Exception("Erreur conversion Word: " . $e->getMessage());
         }
     }

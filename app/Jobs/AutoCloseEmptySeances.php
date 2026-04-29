@@ -287,7 +287,7 @@ class AutoCloseEmptySeances implements ShouldQueue
             Log::error('[AutoCloseEmptySeances] Erreur lors de la fermeture de la séance', [
                 'seance_id' => $seance->id,
                 'reason' => $reason,
-                'error' => $e->getMessage(),
+                'exception_class' => get_class($e),
                 'trace' => $e->getTraceAsString()
             ]);
 
@@ -334,7 +334,7 @@ class AutoCloseEmptySeances implements ShouldQueue
     public function failed(\Throwable $exception): void
     {
         Log::error('[AutoCloseEmptySeances] Job échoué', [
-            'error' => $exception->getMessage(),
+            'exception_class' => get_class($exception),
             'trace' => $exception->getTraceAsString()
         ]);
     }

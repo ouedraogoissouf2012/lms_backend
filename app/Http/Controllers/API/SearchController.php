@@ -143,7 +143,7 @@ class SearchController extends Controller
                         ];
                     })->values();
                 } catch (\Exception $e) {
-                    \Log::error('Erreur recherche classes KLASSCI:', ['error' => $e->getMessage()]);
+                    \Log::error('Erreur recherche classes KLASSCI:', ['exception_class' => get_class($e)]);
                 }
             }
 
@@ -170,7 +170,7 @@ class SearchController extends Controller
                         ];
                     })->values();
                 } catch (\Exception $e) {
-                    \Log::error('Erreur recherche matières KLASSCI:', ['error' => $e->getMessage()]);
+                    \Log::error('Erreur recherche matières KLASSCI:', ['exception_class' => get_class($e)]);
                 }
             }
 

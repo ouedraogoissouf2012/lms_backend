@@ -89,17 +89,20 @@ Route::prefix('auth')->middleware('auth:sanctum')->group(function () {
 // ============================================
 // PROXY KLASSCI - Routes publiques
 // ============================================
-Route::prefix('proxy')->group(function () {
-    // Test de connexion (public)
-    Route::get('/test-connection', [ProxyController::class, 'testConnection']);
-});
+Route::prefix('proxy')
+    ->middleware(['auth:sanctum', 'klassci.sync', 'role:coordinateur,superAdmin,supradmin'])
+    ->group(function () {
+        // Test de connexion (admin/coordinateur uniquement)
+        Route::get('/test-connection', [ProxyController::class, 'testConnection']);
+    });
 
 // ============================================
-// PROXY KLASSCI - Routes publiques (lecture seule)
+// PROXY KLASSCI - Routes protégées (lecture seule)
 // Ces routes utilisent le token KLASSCI configuré dans .env
-// Pas besoin d'authentification utilisateur pour la lecture
+// Authentification requise (tous rôles autorisés)
 // ============================================
 Route::prefix('proxy')
+    ->middleware(['auth:sanctum', 'klassci.sync'])
     ->group(function () {
 
     // Structure organisationnelle
@@ -109,6 +112,7 @@ Route::prefix('proxy')
 
     // Classes et étudiants
     Route::get('/classes', [ProxyController::class, 'classes']);
+    Route::get('/classes/{id}', [ProxyController::class, 'classeDetails']);
     Route::get('/classes/{id}/etudiants', [ProxyController::class, 'etudiants']);
 
     // Matières et enseignants
@@ -626,17 +630,17 @@ Route::middleware(['auth:sanctum'])->prefix('notifications')->group(function () 
     // Récupérer les notifications récentes (pour widget)
     Route::get('/recent', [NotificationsController::class, 'recent']);
 
+    // Marquer toutes les notifications comme lues (before /{id} pattern)
+    Route::post('/mark-all-as-read', [NotificationsController::class, 'markAllAsRead']);
+
+    // Supprimer toutes les notifications lues (before /{id} pattern)
+    Route::delete('/read/all', [NotificationsController::class, 'deleteAllRead']);
+
     // Marquer une notification comme lue
     Route::post('/{id}/mark-as-read', [NotificationsController::class, 'markAsRead']);
 
-    // Marquer toutes les notifications comme lues
-    Route::post('/mark-all-as-read', [NotificationsController::class, 'markAllAsRead']);
-
     // Supprimer une notification
     Route::delete('/{id}', [NotificationsController::class, 'delete']);
-
-    // Supprimer toutes les notifications lues
-    Route::delete('/read/all', [NotificationsController::class, 'deleteAllRead']);
 });
 
 // Routes admin pour les notifications

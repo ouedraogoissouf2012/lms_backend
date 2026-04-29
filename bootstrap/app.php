@@ -37,14 +37,32 @@ return Application::configure(basePath: dirname(__DIR__))
             ->withoutOverlapping();
     })
     ->withExceptions(function (Exceptions $exceptions): void {
+        // Handle authentication failures
+        $exceptions->render(function (\Illuminate\Auth\AuthenticationException $e, $request) {
+            if ($request->expectsJson()) {
+                return response()->json(['message' => 'Unauthenticated.'], 401);
+            }
+        });
+
+        // Convert Laravel's ModelNotFoundException to ResourceNotFoundException
+        $exceptions->render(function (Illuminate\Database\Eloquent\ModelNotFoundException $e, $request) {
+            if ($request->expectsJson()) {
+                $apiException = new App\Exceptions\ResourceNotFoundException(
+                    'Ressource non trouvée',
+                    ['model' => get_class($e->getModel())]
+                );
+                return $apiException->render();
+            }
+        });
+
         // Handle custom API exceptions
         $exceptions->render(function (App\Exceptions\ApiException $e, $request) {
             if ($request->expectsJson()) {
                 // Log with full context
                 \Illuminate\Support\Facades\Log::error('API Exception: ' . class_basename($e), [
+                    'exception_class' => get_class($e),
                     'error_code' => $e->getErrorCode(),
                     'status' => $e->getStatusCode(),
-                    'message' => $e->getMessage(),
                     'context' => $e->getContext(),
                     'trace' => $e->getTraceAsString(),
                     'user_id' => auth()->id(),
@@ -64,7 +82,6 @@ return Application::configure(basePath: dirname(__DIR__))
                 // Log any uncaught exception with full context
                 \Illuminate\Support\Facades\Log::error('Uncaught Exception: ' . class_basename($e), [
                     'exception_class' => get_class($e),
-                    'message' => $e->getMessage(),
                     'trace' => $e->getTraceAsString(),
                     'user_id' => auth()->id(),
                     'ip' => $request->ip(),

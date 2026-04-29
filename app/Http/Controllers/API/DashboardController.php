@@ -62,7 +62,7 @@ class DashboardController extends Controller
             ->where('user_id', $user->id)
             ->where('status', 'completed')
             ->with(['lesson.matiere'])
-            ->orderBy('completed_at', 'desc')
+            ->orderBy('submitted_at', 'desc')
             ->limit(5)
             ->get()
             ->map(function ($progress) {
@@ -70,7 +70,7 @@ class DashboardController extends Controller
                     'lesson_id' => $progress->lesson->id,
                     'title' => $progress->lesson->title,
                     'matiere' => $progress->lesson->matiere->libelle ?? null,
-                    'completed_at' => $progress->completed_at,
+                    'submitted_at' => $progress->completed_at,
                     'rating' => $progress->rating,
                 ];
             });
@@ -124,7 +124,7 @@ class DashboardController extends Controller
 
         $averageQuizScore = QuizAttempt::where('user_id', $user->id)
             ->where('status', 'completed')
-            ->avg('percentage') ?? 0;
+            ->avg('score') ?? 0;
 
         $progression = [
             'lessons' => [
@@ -266,15 +266,12 @@ class DashboardController extends Controller
         // 3. Quiz à corriger (tentatives en attente de correction manuelle)
         $quizzesToGrade = QuizAttempt::query()
             ->whereHas('quiz', function ($query) use ($user) {
-                $query->where('enseignant_id', $user->id);
+                $query->where('created_by', $user->id);
             })
             ->where('status', 'completed')
             ->whereNull('graded_at')
-            ->whereHas('quiz', function ($query) {
-                $query->where('requires_manual_grading', true);
-            })
             ->with(['quiz', 'user'])
-            ->orderBy('completed_at', 'desc')
+            ->orderBy('submitted_at', 'desc')
             ->limit(10)
             ->get()
             ->map(function ($attempt) {
@@ -282,20 +279,17 @@ class DashboardController extends Controller
                     'attempt_id' => $attempt->id,
                     'quiz_title' => $attempt->quiz->title,
                     'student_name' => $attempt->user->name,
-                    'completed_at' => $attempt->completed_at,
+                    'submitted_at' => $attempt->completed_at,
                     'auto_score' => $attempt->score,
                 ];
             });
 
         $quizzesToGradeCount = QuizAttempt::query()
             ->whereHas('quiz', function ($query) use ($user) {
-                $query->where('enseignant_id', $user->id);
+                $query->where('created_by', $user->id);
             })
             ->where('status', 'completed')
             ->whereNull('graded_at')
-            ->whereHas('quiz', function ($query) {
-                $query->where('requires_manual_grading', true);
-            })
             ->count();
 
         // 4. Topics forum non résolus dans les cours de l'enseignant
@@ -330,24 +324,24 @@ class DashboardController extends Controller
             ->count();
 
         // 5. Statistiques quiz
-        $totalQuizzes = Quiz::where('enseignant_id', $user->id)->count();
-        $publishedQuizzes = Quiz::where('enseignant_id', $user->id)
+        $totalQuizzes = Quiz::where('created_by', $user->id)->count();
+        $publishedQuizzes = Quiz::where('created_by', $user->id)
             ->where('status', 'published')
             ->count();
 
         $totalQuizAttempts = QuizAttempt::query()
             ->whereHas('quiz', function ($query) use ($user) {
-                $query->where('enseignant_id', $user->id);
+                $query->where('created_by', $user->id);
             })
             ->where('status', 'completed')
             ->count();
 
         $averageQuizScore = QuizAttempt::query()
             ->whereHas('quiz', function ($query) use ($user) {
-                $query->where('enseignant_id', $user->id);
+                $query->where('created_by', $user->id);
             })
             ->where('status', 'completed')
-            ->avg('percentage') ?? 0;
+            ->avg('score') ?? 0;
 
         return response()->json([
             'success' => true,

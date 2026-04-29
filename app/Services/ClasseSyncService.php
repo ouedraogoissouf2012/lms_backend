@@ -71,7 +71,7 @@ class ClasseSyncService
                     $classeName = $klasseData['nom'] ?? $klasseData['libelle'] ?? $klasseData['id'] ?? 'Inconnue';
                     Log::error('Erreur sync classe', [
                         'classe_id' => $klasseData['id'] ?? null,
-                        'error' => $e->getMessage()
+                        'exception_class' => get_class($e)
                     ]);
                     $stats['errors'][] = "Classe {$classeName}: {$e->getMessage()}";
                 }
@@ -82,7 +82,7 @@ class ClasseSyncService
 
         } catch (\Exception $e) {
             Log::error('Erreur synchronisation classes', [
-                'error' => $e->getMessage(),
+                'exception_class' => get_class($e),
                 'trace' => $e->getTraceAsString()
             ]);
             throw $e;
@@ -138,7 +138,7 @@ class ClasseSyncService
             // Si /classes échoue (403, etc.), essayer les autres endpoints
             Log::info('Endpoint /classes non accessible, essai selon rôle', [
                 'role' => $userRole,
-                'error' => $e->getMessage()
+                'exception_class' => get_class($e)
             ]);
         }
 
@@ -334,7 +334,7 @@ class ClasseSyncService
                 Log::error('Erreur sync étudiant', [
                     'classe_id' => $classe->id,
                     'etudiant_id' => $etudiantData['id'] ?? null,
-                    'error' => $e->getMessage()
+                    'exception_class' => get_class($e)
                 ]);
             }
         }
@@ -394,7 +394,7 @@ class ClasseSyncService
         } catch (\Exception $e) {
             Log::error('Erreur sync classe par ID', [
                 'klassci_classe_id' => $klassciClasseId,
-                'error' => $e->getMessage()
+                'exception_class' => get_class($e)
             ]);
             return null;
         }

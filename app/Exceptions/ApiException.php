@@ -19,10 +19,12 @@ abstract class ApiException extends Exception
     public function __construct(
         string $clientMessage = null,
         string $logMessage = null,
-        int $statusCode = 500,
+        int $statusCode = null,
         array $context = []
     ) {
-        $this->statusCode = $statusCode;
+        if ($statusCode !== null) {
+            $this->statusCode = $statusCode;
+        }
         $this->clientMessage = $clientMessage ?? $this->getDefaultClientMessage();
         $this->context = $context;
 

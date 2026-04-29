@@ -39,40 +39,25 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withExceptions(function (Exceptions $exceptions): void {
         // Handle authentication failures
         $exceptions->render(function (\Illuminate\Auth\AuthenticationException $e, $request) {
-            if ($request->expectsJson()) {
-                return response()->json([
-                    'success' => false,
-                    'error_code' => 'UNAUTHENTICATED',
-                    'message' => 'Unauthenticated.'
-                ], 401);
-            }
+            return response()->json([
+                'success' => false,
+                'error_code' => 'UNAUTHENTICATED',
+                'message' => 'Unauthenticated.'
+            ], 401);
         });
 
         // Convert Laravel's ModelNotFoundException to ResourceNotFoundException
         $exceptions->render(function (Illuminate\Database\Eloquent\ModelNotFoundException $e, $request) {
-            if ($request->expectsJson()) {
-                try {
-                    $apiException = new App\Exceptions\ResourceNotFoundException(
-                        'Ressource non trouvée',
-                        'Model not found: ' . get_class($e->getModel()),
-                        404,
-                        ['model' => get_class($e->getModel())]
-                    );
-                    return $apiException->render();
-                } catch (\Exception $ex) {
-                    // Fallback if something goes wrong
-                    return response()->json([
-                        'success' => false,
-                        'error_code' => 'RESOURCE_NOT_FOUND',
-                        'message' => 'Ressource non trouvée'
-                    ], 404);
-                }
-            }
-        });
-
-        // Handle NotFoundHttpException (converted from ModelNotFoundException in Laravel 11+)
-        $exceptions->render(function (Symfony\Component\HttpKernel\Exception\NotFoundHttpException $e, $request) {
-            if ($request->expectsJson()) {
+            try {
+                $apiException = new App\Exceptions\ResourceNotFoundException(
+                    'Ressource non trouvée',
+                    'Model not found: ' . get_class($e->getModel()),
+                    404,
+                    ['model' => get_class($e->getModel())]
+                );
+                return $apiException->render();
+            } catch (\Exception $ex) {
+                // Fallback if something goes wrong
                 return response()->json([
                     'success' => false,
                     'error_code' => 'RESOURCE_NOT_FOUND',
@@ -81,9 +66,18 @@ return Application::configure(basePath: dirname(__DIR__))
             }
         });
 
+        // Handle NotFoundHttpException (converted from ModelNotFoundException in Laravel 11+)
+        $exceptions->render(function (Symfony\Component\HttpKernel\Exception\NotFoundHttpException $e, $request) {
+            return response()->json([
+                'success' => false,
+                'error_code' => 'RESOURCE_NOT_FOUND',
+                'message' => 'Ressource non trouvée'
+            ], 404);
+        });
+
         // Handle HttpException for 403 Forbidden responses
         $exceptions->render(function (Symfony\Component\HttpKernel\Exception\HttpException $e, $request) {
-            if ($request->expectsJson() && $e->getStatusCode() === 403) {
+            if ($e->getStatusCode() === 403) {
                 return response()->json([
                     'success' => false,
                     'error_code' => 'PERMISSION_DENIED',
@@ -94,68 +88,60 @@ return Application::configure(basePath: dirname(__DIR__))
 
         // Handle validation exceptions
         $exceptions->render(function (\Illuminate\Validation\ValidationException $e, $request) {
-            if ($request->expectsJson()) {
-                return response()->json([
-                    'success' => false,
-                    'error_code' => 'VALIDATION_FAILED',
-                    'message' => 'Validation failed',
-                    'errors' => $e->errors(),
-                ], 422);
-            }
+            return response()->json([
+                'success' => false,
+                'error_code' => 'VALIDATION_FAILED',
+                'message' => 'Validation failed',
+                'errors' => $e->errors(),
+            ], 422);
         });
 
         // Handle permission exceptions
-        $exceptions->render(function (App\Exceptions\PermissionException $e, $request) {
-            if ($request->expectsJson()) {
-                return response()->json([
-                    'success' => false,
-                    'error_code' => 'PERMISSION_DENIED',
-                    'message' => $e->getClientMessage(),
-                ], 403);
-            }
+        $exceptions->render(function (\App\Exceptions\PermissionException $e, $request) {
+            return response()->json([
+                'success' => false,
+                'error_code' => 'PERMISSION_DENIED',
+                'message' => $e->getClientMessage(),
+            ], 403);
         });
 
         // Handle custom API exceptions
-        $exceptions->render(function (App\Exceptions\ApiException $e, $request) {
-            if ($request->expectsJson()) {
-                // Log with full context
-                \Illuminate\Support\Facades\Log::error('API Exception: ' . class_basename($e), [
-                    'exception_class' => get_class($e),
-                    'error_code' => $e->getErrorCode(),
-                    'status' => $e->getStatusCode(),
-                    'context' => $e->getContext(),
-                    'trace' => $e->getTraceAsString(),
-                    'user_id' => auth()->id(),
-                    'ip' => $request->ip(),
-                    'method' => $request->method(),
-                    'path' => $request->path(),
-                    'query_params' => $request->query(),
-                ]);
+        $exceptions->render(function (\App\Exceptions\ApiException $e, $request) {
+            // Log with full context
+            \Illuminate\Support\Facades\Log::error('API Exception: ' . class_basename($e), [
+                'exception_class' => get_class($e),
+                'error_code' => $e->getErrorCode(),
+                'status' => $e->getStatusCode(),
+                'context' => $e->getContext(),
+                'trace' => $e->getTraceAsString(),
+                'user_id' => auth()->id(),
+                'ip' => $request->ip(),
+                'method' => $request->method(),
+                'path' => $request->path(),
+                'query_params' => $request->query(),
+            ]);
 
-                return $e->render();
-            }
+            return $e->render();
         });
 
         // Handle uncaught exceptions generically
         $exceptions->render(function (\Throwable $e, $request) {
-            if ($request->expectsJson()) {
-                // Log any uncaught exception with full context
-                \Illuminate\Support\Facades\Log::error('Uncaught Exception: ' . class_basename($e), [
-                    'exception_class' => get_class($e),
-                    'trace' => $e->getTraceAsString(),
-                    'user_id' => auth()->id(),
-                    'ip' => $request->ip(),
-                    'method' => $request->method(),
-                    'path' => $request->path(),
-                    'query_params' => $request->query(),
-                ]);
+            // Log any uncaught exception with full context
+            \Illuminate\Support\Facades\Log::error('Uncaught Exception: ' . class_basename($e), [
+                'exception_class' => get_class($e),
+                'trace' => $e->getTraceAsString(),
+                'user_id' => auth()->id(),
+                'ip' => $request->ip(),
+                'method' => $request->method(),
+                'path' => $request->path(),
+                'query_params' => $request->query(),
+            ]);
 
-                // Return generic error to client
-                return response()->json([
-                    'success' => false,
-                    'error_code' => 'INTERNAL_SERVER_ERROR',
-                    'message' => 'Erreur interne du serveur',
-                ], 500);
-            }
+            // Return generic error to client
+            return response()->json([
+                'success' => false,
+                'error_code' => 'INTERNAL_SERVER_ERROR',
+                'message' => 'Erreur interne du serveur',
+            ], 500);
         });
     })->create();

@@ -2,6 +2,8 @@
 
 namespace App\Exceptions;
 
+use Illuminate\Http\JsonResponse;
+
 class PermissionException extends ApiException
 {
     protected string $errorCode = 'PERMISSION_DENIED';
@@ -11,4 +13,5 @@ class PermissionException extends ApiException
     {
         return 'Accès refusé';
     }
+
 }

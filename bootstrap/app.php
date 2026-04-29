@@ -70,6 +70,28 @@ return Application::configure(basePath: dirname(__DIR__))
             }
         });
 
+        // Handle NotFoundHttpException (converted from ModelNotFoundException in Laravel 11+)
+        $exceptions->render(function (Symfony\Component\HttpKernel\Exception\NotFoundHttpException $e, $request) {
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'error_code' => 'RESOURCE_NOT_FOUND',
+                    'message' => 'Ressource non trouvée'
+                ], 404);
+            }
+        });
+
+        // Handle HttpException for 403 Forbidden responses
+        $exceptions->render(function (Symfony\Component\HttpKernel\Exception\HttpException $e, $request) {
+            if ($request->expectsJson() && $e->getStatusCode() === 403) {
+                return response()->json([
+                    'success' => false,
+                    'error_code' => 'PERMISSION_DENIED',
+                    'message' => 'Accès refusé'
+                ], 403);
+            }
+        });
+
         // Handle validation exceptions
         $exceptions->render(function (\Illuminate\Validation\ValidationException $e, $request) {
             if ($request->expectsJson()) {

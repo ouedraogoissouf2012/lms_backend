@@ -45,8 +45,47 @@ Route::get('/institutions/active', function () {
 
 // Simple test routes for exception handling
 Route::get('/classes/{id}', function (int $id) {
-    $classe = \App\Models\Classe::findOrFail($id);
-    return response()->json(['success' => true, 'data' => $classe]);
+    try {
+        $classe = \App\Models\Classe::findOrFail($id);
+        return response()->json(['success' => true, 'data' => $classe]);
+    } catch (\Exception $e) {
+        \Log::error('Route exception: ' . get_class($e) . ': ' . $e->getMessage());
+        throw $e;
+    }
+});
+
+// Test routes for exception handler tests
+Route::post('/chapters', function (\Illuminate\Http\Request $request) {
+    $validated = $request->validate([
+        'title' => 'required|string',
+        'content' => 'required|string',
+    ]);
+    return response()->json([
+        'success' => true,
+        'message' => 'Chapter created'
+    ], 201);
+});
+
+Route::post('/evaluations', function (\Illuminate\Http\Request $request) {
+    $validated = $request->validate([
+        'titre' => 'required|string',
+        'description' => 'required|string',
+        'duree_minutes' => 'required|integer',
+    ]);
+    return response()->json([
+        'success' => true,
+        'message' => 'Evaluation created'
+    ], 201);
+});
+
+Route::get('/evaluations/{id}', function (int $id) {
+    $evaluation = \App\Models\Evaluation::findOrFail($id);
+    return response()->json(['success' => true, 'data' => $evaluation]);
+});
+
+// Test route for admin analytics (403 - requires special role)
+Route::get('/admin/analytics/trends', function () {
+    abort(403, 'Unauthorized');
 });
 
 // ============================================

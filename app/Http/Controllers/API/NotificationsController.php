@@ -18,30 +18,37 @@ class NotificationsController extends Controller
     {
         $user = Auth::user();
         $perPage = $request->input('per_page', 10);
-        $unreadOnly = $request->input('unread_only', false);
+        $read = $request->input('read', null);
 
-        $cacheKey = "notifications_user_{$user->id}_unread_{$unreadOnly}_page_" . $request->input('page', 1);
+        $cacheKey = "notifications_user_{$user->id}_read_{$read}_page_" . $request->input('page', 1);
         $cacheTTL = 60; // 1 minute
 
-        $notifications = Cache::remember($cacheKey, $cacheTTL, function () use ($user, $perPage, $unreadOnly) {
+        $notifications = Cache::remember($cacheKey, $cacheTTL, function () use ($user, $perPage, $read) {
             $query = \App\Models\Notification::where('user_id', $user->id);
 
-            if ($unreadOnly) {
+            if ($read === 'false') {
                 $query->whereNull('read_at');
+            } elseif ($read === 'true') {
+                $query->whereNotNull('read_at');
             }
 
             return $query->orderBy('created_at', 'desc')->paginate($perPage);
         });
 
+        $unreadCount = \App\Models\Notification::where('user_id', $user->id)
+            ->whereNull('read_at')
+            ->count();
+
         return response()->json([
             'success' => true,
-            'data' => $notifications->items(),
-            'meta' => [
+            'data' => [
+                'data' => $notifications->items(),
+                'total' => $notifications->total(),
+                'per_page' => $notifications->perPage(),
                 'current_page' => $notifications->currentPage(),
                 'last_page' => $notifications->lastPage(),
-                'per_page' => $notifications->perPage(),
-                'total' => $notifications->total(),
-            ]
+            ],
+            'unread_count' => $unreadCount
         ]);
     }
 

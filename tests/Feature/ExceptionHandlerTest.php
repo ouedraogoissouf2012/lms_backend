@@ -36,8 +36,8 @@ class ExceptionHandlerTest extends TestCase
         ]);
 
         // Verify message is NOT raw exception message
-        $this->assertNotContains('Undefined', $response->getContent());
-        $this->assertNotContains('ModelNotFoundException', $response->getContent());
+        $this->assertStringNotContainsString('Undefined', $response->getContent());
+        $this->assertStringNotContainsString('ModelNotFoundException', $response->getContent());
     }
 
     /**

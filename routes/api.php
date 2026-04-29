@@ -54,7 +54,7 @@ Route::get('/classes/{id}', function (int $id) {
     }
 });
 
-// Test routes for exception handler tests
+// Test routes for exception handler tests - GET only here
 Route::post('/chapters', function (\Illuminate\Http\Request $request) {
     $validated = $request->validate([
         'title' => 'required|string',
@@ -66,19 +66,7 @@ Route::post('/chapters', function (\Illuminate\Http\Request $request) {
     ], 201);
 });
 
-Route::post('/evaluations', function (\Illuminate\Http\Request $request) {
-    $validated = $request->validate([
-        'titre' => 'required|string',
-        'description' => 'required|string',
-        'duree_minutes' => 'required|integer',
-    ]);
-    return response()->json([
-        'success' => true,
-        'message' => 'Evaluation created'
-    ], 201);
-});
-
-Route::get('/evaluations/{id}', function (int $id) {
+Route::get('/test-evaluations/{id}', function (int $id) {
     $evaluation = \App\Models\Evaluation::findOrFail($id);
     return response()->json(['success' => true, 'data' => $evaluation]);
 });
@@ -602,6 +590,19 @@ Route::middleware(['auth:sanctum', 'klassci.sync'])->group(function () {
 
     // Notes de l'étudiant groupées par matière
     Route::get('my-grades', [EvaluationController::class, 'myGrades']);
+});
+
+// Test route for validation exception testing - different path to avoid conflicts
+Route::post('/test-validation-evaluations', function (\Illuminate\Http\Request $request) {
+    $validated = $request->validate([
+        'titre' => 'required|string',
+        'description' => 'required|string',
+        'duree_minutes' => 'required|integer',
+    ]);
+    return response()->json([
+        'success' => true,
+        'message' => 'Evaluation created'
+    ], 201);
 });
 
 // Routes enseignants/coordinateurs uniquement

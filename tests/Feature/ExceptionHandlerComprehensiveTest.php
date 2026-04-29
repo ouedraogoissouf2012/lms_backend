@@ -74,7 +74,7 @@ class ExceptionHandlerComprehensiveTest extends TestCase
 
     public function test_validation_error_contains_field_errors(): void
     {
-        $response = $this->postJson('/api/evaluations', [
+        $response = $this->postJson('/api/test-validation-evaluations', [
             // Missing required fields
             'duree_minutes' => 'not_a_number', // Wrong type
         ]);
@@ -154,6 +154,15 @@ class ExceptionHandlerComprehensiveTest extends TestCase
         $response = $this->getJson('/api/classes?invalid_param=<script>alert(1)</script>');
 
         // Either 404 or 500, both should be generic
+        $this->assertThat(
+            $response->status(),
+            $this->logicalOr(
+                $this->equalTo(404),
+                $this->equalTo(500)
+            ),
+            'Response should be either 404 or 500'
+        );
+
         if ($response->status() === 500) {
             $response->assertJson([
                 'success' => false,
@@ -271,7 +280,7 @@ class ExceptionHandlerComprehensiveTest extends TestCase
         // Two 404s might have different internal exceptions
         // but client sees same error_code
         $response1 = $this->getJson('/api/classes/99999');
-        $response2 = $this->getJson('/api/evaluations/99999');
+        $response2 = $this->getJson('/api/test-evaluations/99999');
 
         $response1->assertStatus(404);
         $response2->assertStatus(404);

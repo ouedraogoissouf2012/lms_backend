@@ -640,7 +640,7 @@ Route::middleware(['auth:sanctum'])->prefix('notifications')->group(function () 
     Route::post('/mark-all-as-read', [NotificationsController::class, 'markAllAsRead']);
 
     // Supprimer toutes les notifications lues (before /{id} pattern)
-    Route::delete('/read/all', [NotificationsController::class, 'deleteAllRead']);
+    Route::delete('/read', [NotificationsController::class, 'deleteAllRead']);
 
     // Marquer une notification comme lue
     Route::post('/{id}/mark-as-read', [NotificationsController::class, 'markAsRead']);

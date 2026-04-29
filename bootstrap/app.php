@@ -40,20 +40,33 @@ return Application::configure(basePath: dirname(__DIR__))
         // Handle authentication failures
         $exceptions->render(function (\Illuminate\Auth\AuthenticationException $e, $request) {
             if ($request->expectsJson()) {
-                return response()->json(['message' => 'Unauthenticated.'], 401);
+                return response()->json([
+                    'success' => false,
+                    'error_code' => 'UNAUTHENTICATED',
+                    'message' => 'Unauthenticated.'
+                ], 401);
             }
         });
 
         // Convert Laravel's ModelNotFoundException to ResourceNotFoundException
         $exceptions->render(function (Illuminate\Database\Eloquent\ModelNotFoundException $e, $request) {
             if ($request->expectsJson()) {
-                $apiException = new App\Exceptions\ResourceNotFoundException(
-                    'Ressource non trouvée',
-                    null,
-                    404,
-                    ['model' => get_class($e->getModel())]
-                );
-                return $apiException->render();
+                try {
+                    $apiException = new App\Exceptions\ResourceNotFoundException(
+                        'Ressource non trouvée',
+                        'Model not found: ' . get_class($e->getModel()),
+                        404,
+                        ['model' => get_class($e->getModel())]
+                    );
+                    return $apiException->render();
+                } catch (\Exception $ex) {
+                    // Fallback if something goes wrong
+                    return response()->json([
+                        'success' => false,
+                        'error_code' => 'RESOURCE_NOT_FOUND',
+                        'message' => 'Ressource non trouvée'
+                    ], 404);
+                }
             }
         });
 

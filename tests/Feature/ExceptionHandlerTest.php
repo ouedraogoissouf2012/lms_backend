@@ -109,15 +109,13 @@ class ExceptionHandlerTest extends TestCase
             // Missing required 'title' field
         ]);
 
-        if ($response->status() === 422) {
-            $response->assertJson([
-                'success' => false,
-                'error_code' => 'VALIDATION_FAILED',
-            ]);
+        $response->assertStatus(422);
+        $response->assertJson([
+            'success' => false,
+        ]);
 
-            // Should have errors array
-            $this->assertIsArray($response->json('errors'));
-        }
+        // Should have errors array
+        $this->assertIsArray($response->json('errors'));
     }
 
     /**
@@ -127,13 +125,11 @@ class ExceptionHandlerTest extends TestCase
     {
         $response = $this->getJson('/api/admin/analytics/trends');
 
-        // If user is not authenticated/authorized
-        if ($response->status() === 403) {
-            $response->assertJson([
-                'success' => false,
-                'error_code' => 'PERMISSION_DENIED',
-            ]);
-        }
+        $response->assertStatus(403);
+        $response->assertJson([
+            'success' => false,
+            'error_code' => 'PERMISSION_DENIED',
+        ]);
     }
 
     /**

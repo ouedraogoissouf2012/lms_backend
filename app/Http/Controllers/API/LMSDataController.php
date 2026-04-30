@@ -1070,30 +1070,12 @@ class LMSDataController extends Controller
     /**
      * POST /api/lms/seances/{id}/validate-participant
      */
-    public function validateParticipant(int $seanceId, Request $request): JsonResponse
+    public function validateParticipant(int $seanceId, \App\Http\Requests\ValidateParticipantRequest $request): JsonResponse
     {
         try {
-            $validator = \Validator::make($request->all(), [
-                'user_id' => 'required|integer|exists:users,id'
-            ]);
-
-            if ($validator->fails()) {
-                return response()->json([
-                    'success' => false,
-                    'errors' => $validator->errors()
-                ], 422);
-            }
-
-            $userId = $request->input('user_id');
+            $userId = $request->validated('user_id');
             $currentUser = $request->user();
-            $klassciToken = $currentUser ? $currentUser->klassci_token : null;
-
-            if (!$klassciToken) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Token KLASSCI non trouvé'
-                ], 401);
-            }
+            $klassciToken = $currentUser->klassci_token;
 
             $userToValidate = \App\Models\User::find($userId);
 
@@ -1363,30 +1345,12 @@ class LMSDataController extends Controller
     /**
      * POST /api/lms/attendances/from-video-session
      */
-    public function syncAttendancesFromVideoSession(Request $request): JsonResponse
+    public function syncAttendancesFromVideoSession(\App\Http\Requests\SyncAttendancesRequest $request): JsonResponse
     {
         try {
-            $validator = \Validator::make($request->all(), [
-                'seance_cours_id' => 'required|integer|exists:esbtp_seance_cours,id',
-                'date' => 'required|date',
-                'participants' => 'required|array|min:1',
-                'participants.*.etudiant_id' => 'required|integer',
-                'participants.*.statut' => 'required|in:present,absent,retard',
-                'participants.*.joined_at' => 'nullable|date',
-                'participants.*.left_at' => 'nullable|date',
-                'participants.*.duration_minutes' => 'nullable|integer|min:0'
-            ]);
-
-            if ($validator->fails()) {
-                return response()->json([
-                    'success' => false,
-                    'errors' => $validator->errors()
-                ], 422);
-            }
-
-            $seanceCoursId = $request->input('seance_cours_id');
-            $date = $request->input('date');
-            $participants = $request->input('participants');
+            $seanceCoursId = $request->validated('seance_cours_id');
+            $date = $request->validated('date');
+            $participants = $request->validated('participants');
 
             Log::info('Synchronisation attendances vidéo', [
                 'seance_cours_id' => $seanceCoursId,
@@ -2032,41 +1996,13 @@ class LMSDataController extends Controller
      * POST /api/lms/seances/{id}/toggle-visio
      * Active/désactive la visioconférence pour une séance (coordinateurs uniquement)
      */
-    public function toggleVisioSeance(int $seanceId, Request $request): JsonResponse
+    public function toggleVisioSeance(int $seanceId, \App\Http\Requests\ToggleVisioSeanceRequest $request): JsonResponse
     {
         try {
-            $validator = \Validator::make($request->all(), [
-                'enabled' => 'required|boolean',
-                'visio_type' => 'nullable|in:jitsi,zoom,teams,bbb',
-            ]);
-
-            if ($validator->fails()) {
-                return response()->json([
-                    'success' => false,
-                    'errors' => $validator->errors()
-                ], 422);
-            }
-
             $user = $request->user();
-
-            // Vérifier que c'est un coordinateur
-            if (!in_array($user->role, ['coordinateur', 'superAdmin'])) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Seuls les coordinateurs peuvent activer/désactiver la visio'
-                ], 403);
-            }
-
-            $enabled = $request->input('enabled');
-            $visioType = $request->input('visio_type', 'jitsi');
+            $enabled = $request->validated('enabled');
+            $visioType = $request->validated('visio_type') ?? 'jitsi';
             $klassciToken = $user->klassci_token;
-
-            if (!$klassciToken) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Token KLASSCI non trouvé'
-                ], 401);
-            }
 
             Log::info('Toggle visio séance', [
                 'klassci_seance_id' => $seanceId,
@@ -2186,26 +2122,12 @@ class LMSDataController extends Controller
     /**
      * POST /api/lms/notifications/send-session-reminder
      */
-    public function sendSessionReminder(Request $request): JsonResponse
+    public function sendSessionReminder(\App\Http\Requests\SendSessionReminderRequest $request): JsonResponse
     {
         try {
-            $validator = \Validator::make($request->all(), [
-                'seance_cours_id' => 'required|integer|exists:esbtp_seance_cours,id',
-                'channels' => 'required|array|min:1',
-                'channels.*' => 'in:whatsapp,email,sms,app',
-                'minutes_before' => 'nullable|integer|min:0|max:1440'
-            ]);
-
-            if ($validator->fails()) {
-                return response()->json([
-                    'success' => false,
-                    'errors' => $validator->errors()
-                ], 422);
-            }
-
-            $seanceCoursId = $request->input('seance_cours_id');
-            $channels = $request->input('channels');
-            $minutesBefore = $request->input('minutes_before', 15);
+            $seanceCoursId = $request->validated('seance_cours_id');
+            $channels = $request->validated('channels');
+            $minutesBefore = $request->validated('minutes_before') ?? 15;
 
             Log::info('Envoi rappel séance', [
                 'seance_cours_id' => $seanceCoursId,

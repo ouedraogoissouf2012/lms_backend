@@ -110,7 +110,7 @@ final class SubmitEvaluationRequest extends FormRequest
             'answers.*.question_id' => [
                 'required',
                 'integer',
-                'exists:questions,id',
+                'exists:evaluation_questions,id',
             ],
             'answers.*.answer' => [
                 'required',
@@ -119,7 +119,7 @@ final class SubmitEvaluationRequest extends FormRequest
             ],
             'submitted_at' => [
                 'sometimes',
-                'date_format:Y-m-d\TH:i:s\Z',
+                'date_format:Y-m-d\\TH:i:s\\Z',
             ],
         ];
     }
@@ -139,7 +139,7 @@ final class SubmitEvaluationRequest extends FormRequest
             'answers.*.question_id.exists' => 'La question n\'existe pas',
             'answers.*.answer.required' => 'Une réponse est requise pour chaque question',
             'answers.*.answer.max' => 'Chaque réponse ne doit pas dépasser 10000 caractères',
-            'submitted_at.date_format' => 'La date de soumission doit être au format ISO 8601 (Y-m-d\TH:i:s\Z)',
+            'submitted_at.date_format' => 'La date de soumission doit être au format ISO 8601 (Y-m-d\\TH:i:s\\Z)',
         ];
     }
 
@@ -154,10 +154,10 @@ final class SubmitEvaluationRequest extends FormRequest
      */
     protected function prepareForValidation(): void
     {
-        // If no submitted_at provided, use current time
+        // If no submitted_at provided, use current time in strict ISO 8601 format (Y-m-d\TH:i:s\Z)
         if (!$this->has('submitted_at')) {
             $this->merge([
-                'submitted_at' => now()->toIso8601String(),
+                'submitted_at' => now()->format('Y-m-d\\TH:i:s\\Z'),
             ]);
         }
 

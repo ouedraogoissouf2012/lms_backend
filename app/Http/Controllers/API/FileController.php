@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\UploadFileRequest;
 use App\Models\File;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -17,14 +18,10 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 class FileController extends Controller
 {
     /**
-     * Configuration par défaut
+     * Configuration — now standardized in UploadFileRequest
+     * For reference: 30 MB max, strict MIME types (pdf,doc,docx,xls,xlsx,ppt,pptx,jpg,jpeg,png,gif)
+     * See UploadFileRequest::rules() for validation contract
      */
-    private const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50 MB
-    private const ALLOWED_EXTENSIONS = [
-        'pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx',
-        'txt', 'csv', 'jpg', 'jpeg', 'png', 'gif', 'svg',
-        'mp4', 'avi', 'mov', 'mp3', 'wav', 'zip', 'rar',
-    ];
 
     /**
      * GET /api/files
@@ -96,32 +93,11 @@ class FileController extends Controller
 
     /**
      * POST /api/files/upload
-     * Upload d'un nouveau fichier
+     * Upload d'un nouveau fichier (Standardized to 30 MB max via UploadFileRequest)
      */
-    public function upload(Request $request): JsonResponse
+    public function upload(UploadFileRequest $request): JsonResponse
     {
-        $validator = Validator::make($request->all(), [
-            'file' => [
-                'required',
-                'file',
-                'max:' . (self::MAX_FILE_SIZE / 1024), // en KB
-                'extensions:' . implode(',', self::ALLOWED_EXTENSIONS),
-            ],
-            'fileable_type' => 'nullable|in:lesson,chapter,evaluation,forum_post',
-            'fileable_id' => 'nullable|integer',
-            'category' => 'nullable|string|max:100',
-            'description' => 'nullable|string|max:500',
-            'is_public' => 'nullable|boolean',
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Données invalides',
-                'errors' => $validator->errors(),
-            ], 422);
-        }
-
+        // Validation handled by UploadFileRequest (30 MB, strict MIME types)
         $uploadedFile = $request->file('file');
 
         // Générer un nom unique

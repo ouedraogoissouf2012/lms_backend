@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\FilterLessonsRequest;
+use App\Http\Requests\StoreLessonRequest;
 use App\Models\Lesson;
 use App\Models\LessonProgress;
 use Illuminate\Http\JsonResponse;
@@ -18,11 +20,11 @@ class LessonController extends Controller
      * GET /api/lessons
      * Liste des cours (avec filtres optionnels)
      */
-    public function index(Request $request): JsonResponse
+    public function index(FilterLessonsRequest $request): JsonResponse
     {
         $query = Lesson::with(['matiere', 'enseignant', 'classe']);
 
-        // Filtres
+        // Filtres — validated via FilterLessonsRequest
         if ($request->has('matiere_id')) {
             $query->forMatiere($request->matiere_id);
         }
@@ -47,7 +49,7 @@ class LessonController extends Controller
             $query->where('status', $request->status);
         }
 
-        // Pagination
+        // Pagination — DOS-protected by FilterLessonsRequest (per_page: 1-100)
         $perPage = $request->get('per_page', 15);
         $lessons = $query->ordered()->paginate($perPage);
 
@@ -232,36 +234,10 @@ class LessonController extends Controller
      * POST /api/lessons
      * Créer un nouveau cours (Enseignants uniquement)
      */
-    public function store(Request $request): JsonResponse
+    public function store(StoreLessonRequest $request): JsonResponse
     {
-        $validator = Validator::make($request->all(), [
-            'title' => 'required|string|max:255',
-            'description' => 'nullable|string',
-            'content' => 'nullable|string',
-            'type' => 'required|in:cours,tp,td,projet,autre',
-            'matiere_id' => 'nullable|integer',
-            'classe_id' => 'nullable|integer',
-            'chapter_id' => 'nullable|integer|exists:chapters,id',
-            'content_type' => 'nullable|in:text,video,pdf,audio,presentation,link,mixed',
-            'video_url' => 'nullable|string',
-            'video_provider' => 'nullable|in:youtube,vimeo,local,other',
-            'pdf_url' => 'nullable|string',
-            'audio_url' => 'nullable|string',
-            'presentation_url' => 'nullable|string',
-            'external_link' => 'nullable|string',
-            'duration_minutes' => 'nullable|integer|min:1',
-            'status' => 'nullable|in:draft,published,archived',
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Données invalides',
-                'errors' => $validator->errors(),
-            ], 422);
-        }
-
-        $data = $validator->validated();
+        // Validation + authorization handled by StoreLessonRequest
+        $data = $request->validated();
         $data['enseignant_id'] = $request->user()->id;
 
         // Résoudre matiere_id : le frontend peut envoyer un KLASSCI ID

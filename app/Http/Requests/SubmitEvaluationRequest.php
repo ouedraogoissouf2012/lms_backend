@@ -68,8 +68,9 @@ final class SubmitEvaluationRequest extends FormRequest
         }
 
         // Check 3: Evaluation must exist and be published
-        $evaluation = \App\Models\Evaluation::where('id', $this->route('evaluation'))
-            ->where('status', 'published')
+        // Route parameter is 'id' (POST /api/evaluations/{id}/submit)
+        $evaluation = \App\Models\Evaluation::where('id', $this->route('id'))
+            ->where('is_published', true)
             ->first();
 
         if (!$evaluation) {

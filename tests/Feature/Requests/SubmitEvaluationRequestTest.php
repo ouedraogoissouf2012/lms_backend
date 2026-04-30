@@ -73,12 +73,12 @@ class SubmitEvaluationRequestTest extends TestCase
 
         $this->question1 = EvaluationQuestion::factory()
             ->for($this->evaluation)
-            ->state(['question_text' => 'What is 2+2?'])
+            ->state(['question' => 'What is 2+2?'])
             ->create();
 
         $this->question2 = EvaluationQuestion::factory()
             ->for($this->evaluation)
-            ->state(['question_text' => 'What is the capital of France?'])
+            ->state(['question' => 'What is the capital of France?'])
             ->create();
     }
 

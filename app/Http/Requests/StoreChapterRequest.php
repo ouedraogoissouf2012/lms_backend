@@ -59,12 +59,12 @@ final class StoreChapterRequest extends FormRequest
         }
 
         // Check 3: Multi-tenant safety - lesson must belong to user's institution
-        // Lesson ID comes from route: /api/lessons/{lesson_id}/chapters
-        if (!$this->route('lesson')) {
+        // Lesson ID comes from route: /api/lessons/{lessonId}/chapters
+        if (!$this->route('lessonId')) {
             return false;
         }
 
-        $lesson = \App\Models\Lesson::where('id', $this->route('lesson'))
+        $lesson = \App\Models\Lesson::where('id', $this->route('lessonId'))
             ->where('institution_id', $user->institution_id)
             ->exists();
 

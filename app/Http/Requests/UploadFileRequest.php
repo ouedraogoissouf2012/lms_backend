@@ -76,12 +76,35 @@ final class UploadFileRequest extends FormRequest
                 'max:31457280', // 30 MB max
                 'mimes:pdf,doc,docx,xls,xlsx,ppt,pptx,jpg,jpeg,png,gif',
             ],
-            // Optional: file description/name
             'name' => [
                 'sometimes',
                 'string',
                 'max:255',
-                'regex:/^[a-zA-Z0-9\s\-\.]+$/', // Alphanumeric, spaces, dash, dot only (no underscore)
+                'regex:/^[a-zA-Z0-9\s\-\.]+$/',
+            ],
+            'category' => [
+                'sometimes',
+                'string',
+                'in:course_material,assignment,resource,other',
+            ],
+            'fileable_type' => [
+                'sometimes',
+                'string',
+                'in:lesson,chapter,evaluation,seance',
+            ],
+            'fileable_id' => [
+                'sometimes',
+                'integer',
+                'min:1',
+            ],
+            'description' => [
+                'sometimes',
+                'string',
+                'max:500',
+            ],
+            'is_public' => [
+                'sometimes',
+                'boolean',
             ],
         ];
     }

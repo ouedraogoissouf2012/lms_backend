@@ -4,6 +4,8 @@ namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\UploadFileRequest;
+use App\Http\Requests\UpdateFileRequest;
+use App\Http\Requests\DeleteFileRequest;
 use App\Models\File;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -240,7 +242,7 @@ class FileController extends Controller
      * PUT /api/files/{id}
      * Mettre à jour les métadonnées d'un fichier
      */
-    public function update(Request $request, int $id): JsonResponse
+    public function update(int $id, UpdateFileRequest $request): JsonResponse
     {
         $file = File::find($id);
 
@@ -251,30 +253,7 @@ class FileController extends Controller
             ], 404);
         }
 
-        // Vérifier les permissions
-        $user = $request->user();
-        if (!$user->isAdmin() && $file->user_id !== $user->id) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Vous n\'êtes pas autorisé à modifier ce fichier',
-            ], 403);
-        }
-
-        $validator = Validator::make($request->all(), [
-            'category' => 'sometimes|string|max:100',
-            'description' => 'sometimes|string|max:500',
-            'is_public' => 'sometimes|boolean',
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Données invalides',
-                'errors' => $validator->errors(),
-            ], 422);
-        }
-
-        $file->update($validator->validated());
+        $file->update($request->validated());
 
         return response()->json([
             'success' => true,
@@ -287,7 +266,7 @@ class FileController extends Controller
      * DELETE /api/files/{id}
      * Supprimer un fichier
      */
-    public function destroy(Request $request, int $id): JsonResponse
+    public function destroy(int $id, DeleteFileRequest $request): JsonResponse
     {
         $file = File::find($id);
 
@@ -296,15 +275,6 @@ class FileController extends Controller
                 'success' => false,
                 'message' => 'Fichier non trouvé',
             ], 404);
-        }
-
-        // Vérifier les permissions
-        $user = $request->user();
-        if (!$user->isAdmin() && $file->user_id !== $user->id) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Vous n\'êtes pas autorisé à supprimer ce fichier',
-            ], 403);
         }
 
         // Supprimer (soft delete)

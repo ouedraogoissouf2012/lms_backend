@@ -43,6 +43,17 @@ return Application::configure(basePath: dirname(__DIR__))
             }
         });
 
+        // Handle ValidationException for FormRequests
+        $exceptions->render(function (\Illuminate\Validation\ValidationException $e, $request) {
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Validation failed',
+                    'errors' => $e->errors(),
+                ], 422);
+            }
+        });
+
         $exceptions->render(function (\Throwable $e, $request) {
             if ($request->expectsJson()) {
                 $statusCode = method_exists($e, 'getStatusCode') ? $e->getStatusCode() : 500;

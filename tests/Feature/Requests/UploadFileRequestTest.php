@@ -41,6 +41,7 @@ class UploadFileRequestTest extends TestCase
     {
         parent::setUp();
         $this->user = User::factory()->create();
+        $this->disableKlassciMiddleware();
     }
 
     /**

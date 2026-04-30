@@ -7,6 +7,7 @@ use App\Models\Institution;
 use App\Models\Lesson;
 use App\Models\Matiere;
 use App\Models\User;
+use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
 /**

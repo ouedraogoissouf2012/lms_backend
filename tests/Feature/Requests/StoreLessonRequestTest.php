@@ -6,6 +6,7 @@ use App\Models\Classe;
 use App\Models\Institution;
 use App\Models\Matiere;
 use App\Models\User;
+use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
 /**
@@ -52,7 +53,7 @@ class StoreLessonRequestTest extends TestCase
      */
     public function test_valid_data_creates_lesson(): void
     {
-        $this->actingAs($this->teacher);
+        Sanctum::actingAs($this->teacher);
 
         $response = $this->postJson('/api/lessons', [
             'title' => 'Introduction to PHP',
@@ -75,7 +76,7 @@ class StoreLessonRequestTest extends TestCase
      */
     public function test_title_with_leading_trailing_spaces_is_trimmed(): void
     {
-        $this->actingAs($this->teacher);
+        Sanctum::actingAs($this->teacher);
 
         $response = $this->postJson('/api/lessons', [
             'title' => '   PHP Basics   ',
@@ -93,7 +94,7 @@ class StoreLessonRequestTest extends TestCase
      */
     public function test_title_with_only_spaces_fails(): void
     {
-        $this->actingAs($this->teacher);
+        Sanctum::actingAs($this->teacher);
 
         $response = $this->postJson('/api/lessons', [
             'title' => '     ',
@@ -110,7 +111,7 @@ class StoreLessonRequestTest extends TestCase
      */
     public function test_missing_title_fails(): void
     {
-        $this->actingAs($this->teacher);
+        Sanctum::actingAs($this->teacher);
 
         $response = $this->postJson('/api/lessons', [
             'type' => 'cours',
@@ -126,7 +127,7 @@ class StoreLessonRequestTest extends TestCase
      */
     public function test_title_too_short_fails(): void
     {
-        $this->actingAs($this->teacher);
+        Sanctum::actingAs($this->teacher);
 
         $response = $this->postJson('/api/lessons', [
             'title' => 'ab',
@@ -143,7 +144,7 @@ class StoreLessonRequestTest extends TestCase
      */
     public function test_title_exceeding_max_length_fails(): void
     {
-        $this->actingAs($this->teacher);
+        Sanctum::actingAs($this->teacher);
 
         $response = $this->postJson('/api/lessons', [
             'title' => str_repeat('a', 256),
@@ -160,7 +161,7 @@ class StoreLessonRequestTest extends TestCase
      */
     public function test_invalid_lesson_type_fails(): void
     {
-        $this->actingAs($this->teacher);
+        Sanctum::actingAs($this->teacher);
 
         $response = $this->postJson('/api/lessons', [
             'title' => 'Test',
@@ -177,7 +178,7 @@ class StoreLessonRequestTest extends TestCase
      */
     public function test_student_cannot_create_lesson(): void
     {
-        $this->actingAs($this->student);
+        Sanctum::actingAs($this->student);
 
         $response = $this->postJson('/api/lessons', [
             'title' => 'Test Lesson',
@@ -210,7 +211,7 @@ class StoreLessonRequestTest extends TestCase
         $other_institution = Institution::factory()->create();
         $other_classe = Classe::factory()->for($other_institution)->create();
 
-        $this->actingAs($this->teacher);
+        Sanctum::actingAs($this->teacher);
 
         $response = $this->postJson('/api/lessons', [
             'title' => 'Test Lesson',
@@ -226,7 +227,7 @@ class StoreLessonRequestTest extends TestCase
      */
     public function test_xss_in_description_is_sanitized(): void
     {
-        $this->actingAs($this->teacher);
+        Sanctum::actingAs($this->teacher);
 
         $response = $this->postJson('/api/lessons', [
             'title' => 'Test Lesson',
@@ -246,7 +247,7 @@ class StoreLessonRequestTest extends TestCase
      */
     public function test_sql_injection_attempt_fails(): void
     {
-        $this->actingAs($this->teacher);
+        Sanctum::actingAs($this->teacher);
 
         $response = $this->postJson('/api/lessons', [
             'title' => "'; DROP TABLE lessons; --",
@@ -267,7 +268,7 @@ class StoreLessonRequestTest extends TestCase
      */
     public function test_duration_exceeding_max_fails(): void
     {
-        $this->actingAs($this->teacher);
+        Sanctum::actingAs($this->teacher);
 
         $response = $this->postJson('/api/lessons', [
             'title' => 'Test',
@@ -285,7 +286,7 @@ class StoreLessonRequestTest extends TestCase
      */
     public function test_duration_negative_fails(): void
     {
-        $this->actingAs($this->teacher);
+        Sanctum::actingAs($this->teacher);
 
         $response = $this->postJson('/api/lessons', [
             'title' => 'Test',

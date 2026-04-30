@@ -7,6 +7,7 @@ use App\Models\EvaluationSubmission;
 use App\Models\Institution;
 use App\Models\Question;
 use App\Models\User;
+use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
 /**
@@ -85,7 +86,7 @@ class SubmitEvaluationRequestTest extends TestCase
      */
     public function test_valid_submission_passes(): void
     {
-        $this->actingAs($this->student);
+        Sanctum::actingAs($this->student);
 
         $response = $this->postJson("/api/evaluations/{$this->evaluation->id}/submit", [
             'answers' => [
@@ -107,7 +108,7 @@ class SubmitEvaluationRequestTest extends TestCase
      */
     public function test_single_answer_submission_passes(): void
     {
-        $this->actingAs($this->student);
+        Sanctum::actingAs($this->student);
 
         $response = $this->postJson("/api/evaluations/{$this->evaluation->id}/submit", [
             'answers' => [
@@ -123,7 +124,7 @@ class SubmitEvaluationRequestTest extends TestCase
      */
     public function test_submission_with_timestamp_passes(): void
     {
-        $this->actingAs($this->student);
+        Sanctum::actingAs($this->student);
         $timestamp = now()->toIso8601String();
 
         $response = $this->postJson("/api/evaluations/{$this->evaluation->id}/submit", [
@@ -141,7 +142,7 @@ class SubmitEvaluationRequestTest extends TestCase
      */
     public function test_answer_with_spaces_is_trimmed(): void
     {
-        $this->actingAs($this->student);
+        Sanctum::actingAs($this->student);
 
         $response = $this->postJson("/api/evaluations/{$this->evaluation->id}/submit", [
             'answers' => [
@@ -157,7 +158,7 @@ class SubmitEvaluationRequestTest extends TestCase
      */
     public function test_missing_answers_fails(): void
     {
-        $this->actingAs($this->student);
+        Sanctum::actingAs($this->student);
 
         $response = $this->postJson("/api/evaluations/{$this->evaluation->id}/submit", [
             // No answers
@@ -174,7 +175,7 @@ class SubmitEvaluationRequestTest extends TestCase
      */
     public function test_empty_answers_array_fails(): void
     {
-        $this->actingAs($this->student);
+        Sanctum::actingAs($this->student);
 
         $response = $this->postJson("/api/evaluations/{$this->evaluation->id}/submit", [
             'answers' => [],
@@ -191,7 +192,7 @@ class SubmitEvaluationRequestTest extends TestCase
      */
     public function test_missing_question_id_fails(): void
     {
-        $this->actingAs($this->student);
+        Sanctum::actingAs($this->student);
 
         $response = $this->postJson("/api/evaluations/{$this->evaluation->id}/submit", [
             'answers' => [
@@ -210,7 +211,7 @@ class SubmitEvaluationRequestTest extends TestCase
      */
     public function test_invalid_question_id_fails(): void
     {
-        $this->actingAs($this->student);
+        Sanctum::actingAs($this->student);
 
         $response = $this->postJson("/api/evaluations/{$this->evaluation->id}/submit", [
             'answers' => [
@@ -229,7 +230,7 @@ class SubmitEvaluationRequestTest extends TestCase
      */
     public function test_missing_answer_text_fails(): void
     {
-        $this->actingAs($this->student);
+        Sanctum::actingAs($this->student);
 
         $response = $this->postJson("/api/evaluations/{$this->evaluation->id}/submit", [
             'answers' => [
@@ -248,7 +249,7 @@ class SubmitEvaluationRequestTest extends TestCase
      */
     public function test_answer_exceeding_max_length_fails(): void
     {
-        $this->actingAs($this->student);
+        Sanctum::actingAs($this->student);
 
         $response = $this->postJson("/api/evaluations/{$this->evaluation->id}/submit", [
             'answers' => [
@@ -281,7 +282,7 @@ class SubmitEvaluationRequestTest extends TestCase
      */
     public function test_teacher_cannot_submit_evaluation(): void
     {
-        $this->actingAs($this->teacher);
+        Sanctum::actingAs($this->teacher);
 
         $response = $this->postJson("/api/evaluations/{$this->evaluation->id}/submit", [
             'answers' => [
@@ -306,7 +307,7 @@ class SubmitEvaluationRequestTest extends TestCase
             ->for($draft_evaluation)
             ->create();
 
-        $this->actingAs($this->student);
+        Sanctum::actingAs($this->student);
 
         $response = $this->postJson("/api/evaluations/{$draft_evaluation->id}/submit", [
             'answers' => [
@@ -334,7 +335,7 @@ class SubmitEvaluationRequestTest extends TestCase
             ->for($expired_evaluation)
             ->create();
 
-        $this->actingAs($this->student);
+        Sanctum::actingAs($this->student);
 
         $response = $this->postJson("/api/evaluations/{$expired_evaluation->id}/submit", [
             'answers' => [
@@ -356,7 +357,7 @@ class SubmitEvaluationRequestTest extends TestCase
             ->for($this->student, 'student')
             ->create();
 
-        $this->actingAs($this->student);
+        Sanctum::actingAs($this->student);
 
         $response = $this->postJson("/api/evaluations/{$this->evaluation->id}/submit", [
             'answers' => [
@@ -372,7 +373,7 @@ class SubmitEvaluationRequestTest extends TestCase
      */
     public function test_submission_without_timestamp_defaults_to_now(): void
     {
-        $this->actingAs($this->student);
+        Sanctum::actingAs($this->student);
 
         $response = $this->postJson("/api/evaluations/{$this->evaluation->id}/submit", [
             'answers' => [
@@ -392,7 +393,7 @@ class SubmitEvaluationRequestTest extends TestCase
      */
     public function test_invalid_timestamp_format_fails(): void
     {
-        $this->actingAs($this->student);
+        Sanctum::actingAs($this->student);
 
         $response = $this->postJson("/api/evaluations/{$this->evaluation->id}/submit", [
             'answers' => [
@@ -416,7 +417,7 @@ class SubmitEvaluationRequestTest extends TestCase
         $question3 = Question::factory()->for($this->evaluation)->create();
         $question4 = Question::factory()->for($this->evaluation)->create();
 
-        $this->actingAs($this->student);
+        Sanctum::actingAs($this->student);
 
         $response = $this->postJson("/api/evaluations/{$this->evaluation->id}/submit", [
             'answers' => [

@@ -116,4 +116,85 @@ class ProxyRouteSecurityTest extends TestCase
         $this->assertNotEquals(401, $response->status());
         $this->assertNotEquals(403, $response->status());
     }
+
+    /**
+     * Test: /api/proxy/me/dashboard sans token → 401
+     */
+    public function test_unauthenticated_cannot_access_me_dashboard(): void
+    {
+        $response = $this->getJson('/api/proxy/me/dashboard');
+
+        $response->assertStatus(401)
+            ->assertJson(['message' => 'Unauthenticated.']);
+    }
+
+    /**
+     * Test: /api/proxy/me/teacher-dashboard sans token → 401
+     */
+    public function test_unauthenticated_cannot_access_me_teacher_dashboard(): void
+    {
+        $response = $this->getJson('/api/proxy/me/teacher-dashboard');
+
+        $response->assertStatus(401)
+            ->assertJson(['message' => 'Unauthenticated.']);
+    }
+
+    /**
+     * Test: Étudiant peut accéder à /api/proxy/me/dashboard
+     */
+    public function test_authenticated_student_can_access_me_dashboard(): void
+    {
+        $user = User::factory()->create([
+            'role' => 'etudiant',
+            'last_klassci_sync' => now(),
+        ]);
+
+        Sanctum::actingAs($user);
+
+        $response = $this->getJson('/api/proxy/me/dashboard');
+
+        // Ne doit pas être 401 (Unauthenticated) ni 403 (rôle insuffisant)
+        $this->assertNotEquals(401, $response->status());
+        // Note: 500 acceptable si KLASSCI API non disponible, mais pas 401/403
+    }
+
+    /**
+     * Test: Étudiant ne peut pas accéder à /api/proxy/me/teacher-dashboard → 403
+     */
+    public function test_student_cannot_access_me_teacher_dashboard(): void
+    {
+        $user = User::factory()->create([
+            'role' => 'etudiant',
+            'last_klassci_sync' => now(),
+        ]);
+
+        Sanctum::actingAs($user);
+
+        $response = $this->getJson('/api/proxy/me/teacher-dashboard');
+
+        $response->assertStatus(403)
+            ->assertJson([
+                'success' => false,
+                'message' => 'Accès refusé - Permissions insuffisantes',
+            ]);
+    }
+
+    /**
+     * Test: Enseignant peut accéder à /api/proxy/me/teacher-dashboard
+     */
+    public function test_teacher_can_access_me_teacher_dashboard(): void
+    {
+        $user = User::factory()->create([
+            'role' => 'enseignant',
+            'last_klassci_sync' => now(),
+        ]);
+
+        Sanctum::actingAs($user);
+
+        $response = $this->getJson('/api/proxy/me/teacher-dashboard');
+
+        // Ne doit pas être 401 ou 403 (rôle ok)
+        $this->assertNotEquals(401, $response->status());
+        $this->assertNotEquals(403, $response->status());
+    }
 }

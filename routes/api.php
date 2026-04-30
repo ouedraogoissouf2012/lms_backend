@@ -73,7 +73,8 @@ Route::get('/institution/current', function () {
 // AUTHENTIFICATION - Routes publiques
 // ============================================
 Route::prefix('auth')->group(function () {
-    Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:5,1');
+    // Login: 60 requests per minute (1/sec) - allows retry on slow connections
+    Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:60,1');
 });
 
 // ============================================
@@ -131,27 +132,33 @@ Route::prefix('proxy')
     ->middleware(['auth:sanctum', 'klassci.sync', 'role:enseignant,coordinateur'])
     ->group(function () {
 
-    // Sauvegarder les notes (Enseignants/Coordinateurs uniquement)
-    Route::post('/evaluations/{id}/notes', [ProxyController::class, 'saveNotes']);
+    // Sauvegarder les notes (Enseignants/Coordinateurs uniquement) - Rate limited: 60/min
+    Route::post('/evaluations/{id}/notes', [ProxyController::class, 'saveNotes'])
+        ->middleware('throttle:60,1');
 
-    // Sauvegarder les présences (Enseignants/Coordinateurs uniquement)
-    Route::post('/cours/{id}/presences', [ProxyController::class, 'savePresences']);
+    // Sauvegarder les présences (Enseignants/Coordinateurs uniquement) - Rate limited: 60/min
+    Route::post('/cours/{id}/presences', [ProxyController::class, 'savePresences'])
+        ->middleware('throttle:60,1');
 
-    // Mettre à jour statut cours (Enseignants/Coordinateurs uniquement)
-    Route::put('/cours/{id}/statut', [ProxyController::class, 'updateCoursStatut']);
+    // Mettre à jour statut cours (Enseignants/Coordinateurs uniquement) - Rate limited: 30/min
+    Route::put('/cours/{id}/statut', [ProxyController::class, 'updateCoursStatut'])
+        ->middleware('throttle:30,1');
 });
 
 // ============================================
 // PROXY KLASSCI - Routes utilisateur (authentifié via Sanctum)
 // Ces routes récupèrent le token KLASSCI depuis la base de données
 // ============================================
-Route::prefix('proxy')->middleware('auth:sanctum')->group(function () {
-    // Dashboard étudiant (récupère le token KLASSCI de l'utilisateur)
-    Route::get('/me/dashboard', [ProxyController::class, 'studentDashboard']);
+Route::prefix('proxy')
+    ->middleware(['auth:sanctum', 'klassci.sync'])
+    ->group(function () {
+        // Dashboard étudiant (récupère le token KLASSCI de l'utilisateur)
+        Route::get('/me/dashboard', [ProxyController::class, 'studentDashboard']);
 
-    // Dashboard enseignant (récupère le token KLASSCI de l'utilisateur)
-    Route::get('/me/teacher-dashboard', [ProxyController::class, 'teacherDashboard']);
-});
+        // Dashboard enseignant (réservé aux enseignants/coordinateurs)
+        Route::get('/me/teacher-dashboard', [ProxyController::class, 'teacherDashboard'])
+            ->middleware('role:enseignant,coordinateur');
+    });
 
 // ============================================
 // ROUTE USER PROFILE (Protégée)
@@ -186,15 +193,20 @@ Route::middleware(['auth:sanctum', 'klassci.sync'])->group(function () {
 // Routes enseignants/coordinateurs uniquement
 Route::middleware(['auth:sanctum', 'klassci.sync', 'role:enseignant,coordinateur'])->group(function () {
     // CRUD des chapitres
-    Route::post('lessons/{lessonId}/chapters', [ChapterController::class, 'store']);
-    Route::put('chapters/{id}', [ChapterController::class, 'update']);
-    Route::delete('chapters/{id}', [ChapterController::class, 'destroy']);
+    Route::post('lessons/{lessonId}/chapters', [ChapterController::class, 'store'])
+        ->middleware('throttle:60,1');
+    Route::put('chapters/{id}', [ChapterController::class, 'update'])
+        ->middleware('throttle:30,1');
+    Route::delete('chapters/{id}', [ChapterController::class, 'destroy'])
+        ->middleware('throttle:30,1');
 
-    // Upload fichier PowerPoint/Word/PDF (max 30 MB)
-    Route::post('chapters/{chapterId}/upload', [ChapterController::class, 'uploadFile']);
+    // Upload fichier PowerPoint/Word/PDF (max 30 MB) - Rate limited: 60/min
+    Route::post('chapters/{chapterId}/upload', [ChapterController::class, 'uploadFile'])
+        ->middleware('throttle:60,1');
 
-    // Réorganisation (drag & drop)
-    Route::post('lessons/{lessonId}/chapters/reorder', [ChapterController::class, 'reorder']);
+    // Réorganisation (drag & drop) - Rate limited: 100/min (frequent user action)
+    Route::post('lessons/{lessonId}/chapters/reorder', [ChapterController::class, 'reorder'])
+        ->middleware('throttle:100,1');
 });
 
 // ============================================
@@ -210,8 +222,10 @@ Route::middleware(['auth:sanctum', 'klassci.sync'])->group(function () {
     Route::get('knowledge-checks/{id}', [KnowledgeCheckController::class, 'show']);
 
     // Tentatives (étudiants)
-    Route::post('knowledge-checks/{id}/start', [KnowledgeCheckController::class, 'startAttempt']);
-    Route::post('knowledge-checks/{id}/submit', [KnowledgeCheckController::class, 'submitAttempt']);
+    Route::post('knowledge-checks/{id}/start', [KnowledgeCheckController::class, 'startAttempt'])
+        ->middleware('throttle:300,1');
+    Route::post('knowledge-checks/{id}/submit', [KnowledgeCheckController::class, 'submitAttempt'])
+        ->middleware('throttle:60,1');
     Route::get('knowledge-checks/{id}/my-attempts', [KnowledgeCheckController::class, 'myAttempts']);
 
     // CRUD (enseignants/admins)
@@ -234,21 +248,29 @@ Route::middleware(['auth:sanctum', 'klassci.sync'])->group(function () {
 
     // Progression (Tous peuvent voir leur progression)
     Route::get('lessons/{id}/progress', [LessonController::class, 'getProgress']);
-    Route::post('lessons/{id}/progress', [LessonController::class, 'updateProgress']);
-    Route::post('lessons/{id}/complete', [LessonController::class, 'markComplete']);
-    Route::post('lessons/{id}/rating', [LessonController::class, 'rate']);
+    Route::post('lessons/{id}/progress', [LessonController::class, 'updateProgress'])
+        ->middleware('throttle:300,1');
+    Route::post('lessons/{id}/complete', [LessonController::class, 'markComplete'])
+        ->middleware('throttle:300,1');
+    Route::post('lessons/{id}/rating', [LessonController::class, 'rate'])
+        ->middleware('throttle:300,1');
 });
 
 // Routes enseignants/coordinateurs uniquement
 Route::middleware(['auth:sanctum', 'klassci.sync', 'role:enseignant,coordinateur'])->group(function () {
     // CRUD des cours
-    Route::post('lessons', [LessonController::class, 'store']);
-    Route::put('lessons/{id}', [LessonController::class, 'update']);
-    Route::delete('lessons/{id}', [LessonController::class, 'destroy']);
+    Route::post('lessons', [LessonController::class, 'store'])
+        ->middleware('throttle:60,1');
+    Route::put('lessons/{id}', [LessonController::class, 'update'])
+        ->middleware('throttle:30,1');
+    Route::delete('lessons/{id}', [LessonController::class, 'destroy'])
+        ->middleware('throttle:30,1');
 
     // Actions spéciales
-    Route::post('lessons/{id}/publish', [LessonController::class, 'publish']);
-    Route::post('lessons/{id}/unpublish', [LessonController::class, 'unpublish']);
+    Route::post('lessons/{id}/publish', [LessonController::class, 'publish'])
+        ->middleware('throttle:100,1');
+    Route::post('lessons/{id}/unpublish', [LessonController::class, 'unpublish'])
+        ->middleware('throttle:100,1');
 });
 
 // ============================================
@@ -260,18 +282,25 @@ use App\Http\Controllers\API\ForumController;
 Route::middleware(['auth:sanctum', 'klassci.sync'])->prefix('forum')->group(function () {
     // Topics
     Route::get('topics', [ForumController::class, 'index']);
-    Route::post('topics', [ForumController::class, 'store']);
+    Route::post('topics', [ForumController::class, 'store'])
+        ->middleware('throttle:100,1');
     Route::get('topics/{id}', [ForumController::class, 'show']);
-    Route::put('topics/{id}', [ForumController::class, 'update']);
-    Route::delete('topics/{id}', [ForumController::class, 'destroy']);
+    Route::put('topics/{id}', [ForumController::class, 'update'])
+        ->middleware('throttle:100,1');
+    Route::delete('topics/{id}', [ForumController::class, 'destroy'])
+        ->middleware('throttle:30,1');
 
     // Posts
-    Route::post('topics/{id}/posts', [ForumController::class, 'storePost']);
-    Route::put('posts/{id}', [ForumController::class, 'updatePost']);
-    Route::delete('posts/{id}', [ForumController::class, 'destroyPost']);
+    Route::post('topics/{id}/posts', [ForumController::class, 'storePost'])
+        ->middleware('throttle:100,1');
+    Route::put('posts/{id}', [ForumController::class, 'updatePost'])
+        ->middleware('throttle:100,1');
+    Route::delete('posts/{id}', [ForumController::class, 'destroyPost'])
+        ->middleware('throttle:30,1');
 
     // Marquer solution (Enseignants/Auteur topic)
-    Route::post('posts/{id}/solution', [ForumController::class, 'markAsSolution']);
+    Route::post('posts/{id}/solution', [ForumController::class, 'markAsSolution'])
+        ->middleware('throttle:100,1');
 });
 
 // Routes enseignants/coordinateurs/admin uniquement
@@ -292,15 +321,18 @@ Route::middleware(['auth:sanctum', 'klassci.sync'])->group(function () {
     Route::get('files/{id}', [FileController::class, 'show']);
     Route::get('files/{id}/download', [FileController::class, 'download'])->name('api.files.download');
 
-    // Upload de fichiers (Tous peuvent uploader)
-    Route::post('files/upload', [FileController::class, 'upload']);
+    // Upload de fichiers (Tous peuvent uploader) - Rate limited: 60/min (with size limit)
+    Route::post('files/upload', [FileController::class, 'upload'])
+        ->middleware('throttle:60,1');
 
     // Statistiques
     Route::get('files/stats', [FileController::class, 'stats']);
 
     // Mise à jour et suppression (propriétaire ou admin)
-    Route::put('files/{id}', [FileController::class, 'update']);
-    Route::delete('files/{id}', [FileController::class, 'destroy']);
+    Route::put('files/{id}', [FileController::class, 'update'])
+        ->middleware('throttle:60,1');
+    Route::delete('files/{id}', [FileController::class, 'destroy'])
+        ->middleware('throttle:30,1');
 });
 
 // ============================================
@@ -315,8 +347,10 @@ Route::middleware(['auth:sanctum', 'klassci.sync'])->group(function () {
     Route::get('quizzes/{id}', [QuizController::class, 'show']);
 
     // Démarrer et soumettre une tentative
-    Route::post('quizzes/{id}/start', [QuizController::class, 'startAttempt']);
-    Route::post('quiz-attempts/{id}/submit', [QuizController::class, 'submitAttempt']);
+    Route::post('quizzes/{id}/start', [QuizController::class, 'startAttempt'])
+        ->middleware('throttle:300,1');
+    Route::post('quiz-attempts/{id}/submit', [QuizController::class, 'submitAttempt'])
+        ->middleware('throttle:60,1');
 
     // NOUVEAU: Timer et sauvegarde de progression
     Route::get('quiz-attempts/{id}/time-remaining', [QuizController::class, 'checkTimeRemaining']);
@@ -486,15 +520,18 @@ Route::middleware(['auth:sanctum', 'klassci.sync'])->prefix('lms')->group(functi
 
     // Étudiant rejoint visio
     Route::post('/seances/{seanceId}/join', [LMSDataController::class, 'joinVisio'])
-        ->name('lms.seances.join');
+        ->name('lms.seances.join')
+        ->middleware('throttle:300,1');
 
     // Étudiant quitte visio
     Route::post('/seances/{seanceId}/leave', [LMSDataController::class, 'leaveVisio'])
-        ->name('lms.seances.leave');
+        ->name('lms.seances.leave')
+        ->middleware('throttle:300,1');
 
-    // Heartbeat participant (ping d'activité)
+    // Heartbeat participant (ping d'activité) - Rate limited to 10000/min per user
     Route::post('/seances/{seanceId}/heartbeat', [LMSDataController::class, 'heartbeatVisio'])
-        ->name('lms.seances.heartbeat');
+        ->name('lms.seances.heartbeat')
+        ->middleware('throttle:10000,1');
 
     // Liste des participants à une visio
     Route::get('/seances/{seanceId}/participants', [LMSDataController::class, 'getVisioParticipants'])
@@ -543,8 +580,10 @@ Route::middleware(['auth:sanctum', 'klassci.sync'])->group(function () {
     Route::get('evaluations/{id}', [EvaluationController::class, 'show']);
 
     // Démarrer et soumettre une évaluation
-    Route::post('evaluations/{id}/start', [EvaluationController::class, 'startEvaluation']);
-    Route::post('evaluations/{id}/submit', [EvaluationController::class, 'submitEvaluation']);
+    Route::post('evaluations/{id}/start', [EvaluationController::class, 'startEvaluation'])
+        ->middleware('throttle:300,1');
+    Route::post('evaluations/{id}/submit', [EvaluationController::class, 'submitEvaluation'])
+        ->middleware('throttle:60,1');
 
     // Récupérer la soumission de l'étudiant connecté
     Route::get('evaluations/{id}/my-submission', [EvaluationController::class, 'getMySubmission']);
@@ -604,14 +643,17 @@ Route::middleware(['auth:sanctum', 'role:coordinateur,superAdmin'])->prefix('adm
 // REPORTS - Génération PDF (admin/coordinateur uniquement)
 // ============================================
 Route::middleware(['auth:sanctum', 'role:coordinateur,superAdmin'])->prefix('admin/reports')->group(function () {
-    // Rapport de présences
-    Route::post('/attendance', [ReportController::class, 'generateAttendanceReport']);
+    // Rapport de présences - Rate limited: 30/min (resource intensive)
+    Route::post('/attendance', [ReportController::class, 'generateAttendanceReport'])
+        ->middleware('throttle:30,1');
 
-    // Rapport de notes
-    Route::post('/grades', [ReportController::class, 'generateGradesReport']);
+    // Rapport de notes - Rate limited: 30/min (resource intensive)
+    Route::post('/grades', [ReportController::class, 'generateGradesReport'])
+        ->middleware('throttle:30,1');
 
-    // Rapport d'activité système
-    Route::post('/activity', [ReportController::class, 'generateActivityReport']);
+    // Rapport d'activité système - Rate limited: 30/min (resource intensive)
+    Route::post('/activity', [ReportController::class, 'generateActivityReport'])
+        ->middleware('throttle:30,1');
 });
 
 // ============================================

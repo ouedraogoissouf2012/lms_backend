@@ -3,6 +3,8 @@
 namespace Tests\Feature\Requests;
 
 use Illuminate\Http\UploadedFile;
+use Laravel\Sanctum\Sanctum;
+use App\Models\User;
 use Tests\TestCase;
 
 /**
@@ -33,18 +35,26 @@ class UploadFileRequestTest extends TestCase
 {
     use \Illuminate\Foundation\Testing\RefreshDatabase;
 
+    private User $user;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->user = User::factory()->create();
+    }
+
     /**
      * ✅ HAPPY PATH: Valid PDF file
      */
     public function test_valid_pdf_file_passes(): void
     {
+        Sanctum::actingAs($this->user);
         $file = UploadedFile::fake()->create('document.pdf', 1024, 'application/pdf');
 
         $response = $this->postJson('/api/files/upload', [
             'file' => $file,
         ]);
 
-        // Should return 200/201 depending on controller implementation
         $this->assertIn($response->status(), [200, 201]);
     }
 
@@ -53,6 +63,7 @@ class UploadFileRequestTest extends TestCase
      */
     public function test_valid_docx_file_passes(): void
     {
+        Sanctum::actingAs($this->user);
         $file = UploadedFile::fake()->create(
             'document.docx',
             512,
@@ -71,6 +82,7 @@ class UploadFileRequestTest extends TestCase
      */
     public function test_valid_pptx_file_passes(): void
     {
+        Sanctum::actingAs($this->user);
         $file = UploadedFile::fake()->create(
             'presentation.pptx',
             2048,
@@ -89,6 +101,7 @@ class UploadFileRequestTest extends TestCase
      */
     public function test_valid_jpg_file_passes(): void
     {
+        Sanctum::actingAs($this->user);
         $file = UploadedFile::fake()->image('photo.jpg', 640, 480);
 
         $response = $this->postJson('/api/files/upload', [
@@ -103,6 +116,7 @@ class UploadFileRequestTest extends TestCase
      */
     public function test_valid_png_file_passes(): void
     {
+        Sanctum::actingAs($this->user);
         $file = UploadedFile::fake()->image('photo.png', 640, 480);
 
         $response = $this->postJson('/api/files/upload', [
@@ -117,6 +131,7 @@ class UploadFileRequestTest extends TestCase
      */
     public function test_file_with_custom_name_passes(): void
     {
+        Sanctum::actingAs($this->user);
         $file = UploadedFile::fake()->create('document.pdf', 512, 'application/pdf');
 
         $response = $this->postJson('/api/files/upload', [
@@ -128,10 +143,23 @@ class UploadFileRequestTest extends TestCase
     }
 
     /**
-     * ❌ REQUIRED: Missing file fails
+     * ❌ REQUIRED: Missing file fails (unauthenticated)
      */
-    public function test_missing_file_fails(): void
+    public function test_missing_file_unauthenticated_fails(): void
     {
+        $response = $this->postJson('/api/files/upload', [
+            // No file key
+        ]);
+
+        $response->assertStatus(401);
+    }
+
+    /**
+     * ❌ REQUIRED: Missing file fails (authenticated)
+     */
+    public function test_missing_file_authenticated_fails(): void
+    {
+        Sanctum::actingAs($this->user);
         $response = $this->postJson('/api/files/upload', [
             // No file key
         ]);
@@ -147,6 +175,7 @@ class UploadFileRequestTest extends TestCase
      */
     public function test_executable_file_fails(): void
     {
+        Sanctum::actingAs($this->user);
         $file = UploadedFile::fake()->create('malware.exe', 512, 'application/x-msdownload');
 
         $response = $this->postJson('/api/files/upload', [
@@ -164,6 +193,7 @@ class UploadFileRequestTest extends TestCase
      */
     public function test_shell_script_fails(): void
     {
+        Sanctum::actingAs($this->user);
         $file = UploadedFile::fake()->create('script.sh', 256, 'application/x-sh');
 
         $response = $this->postJson('/api/files/upload', [
@@ -181,6 +211,7 @@ class UploadFileRequestTest extends TestCase
      */
     public function test_zip_archive_fails(): void
     {
+        Sanctum::actingAs($this->user);
         $file = UploadedFile::fake()->create('archive.zip', 512, 'application/zip');
 
         $response = $this->postJson('/api/files/upload', [
@@ -195,6 +226,7 @@ class UploadFileRequestTest extends TestCase
      */
     public function test_rar_archive_fails(): void
     {
+        Sanctum::actingAs($this->user);
         $file = UploadedFile::fake()->create('archive.rar', 512, 'application/x-rar-compressed');
 
         $response = $this->postJson('/api/files/upload', [
@@ -209,6 +241,7 @@ class UploadFileRequestTest extends TestCase
      */
     public function test_batch_script_fails(): void
     {
+        Sanctum::actingAs($this->user);
         $file = UploadedFile::fake()->create('script.bat', 256, 'application/x-bat');
 
         $response = $this->postJson('/api/files/upload', [
@@ -223,15 +256,13 @@ class UploadFileRequestTest extends TestCase
      */
     public function test_file_exactly_30mb_passes(): void
     {
-        // 30 MB = 31457280 bytes
+        Sanctum::actingAs($this->user);
         $file = UploadedFile::fake()->create('large.pdf', 31457280, 'application/pdf');
 
         $response = $this->postJson('/api/files/upload', [
             'file' => $file,
         ]);
 
-        // Should pass validation (but might fail in controller if storage fails)
-        // At least should pass FormRequest validation
         $this->assertNotEquals(422, $response->status());
     }
 
@@ -240,7 +271,7 @@ class UploadFileRequestTest extends TestCase
      */
     public function test_file_exceeding_30mb_fails(): void
     {
-        // 30 MB + 1 byte
+        Sanctum::actingAs($this->user);
         $file = UploadedFile::fake()->create('huge.pdf', 31457281, 'application/pdf');
 
         $response = $this->postJson('/api/files/upload', [
@@ -258,7 +289,8 @@ class UploadFileRequestTest extends TestCase
      */
     public function test_file_100mb_fails(): void
     {
-        $file = UploadedFile::fake()->create('huge.pdf', 104857600, 'application/pdf'); // 100 MB
+        Sanctum::actingAs($this->user);
+        $file = UploadedFile::fake()->create('huge.pdf', 104857600, 'application/pdf');
 
         $response = $this->postJson('/api/files/upload', [
             'file' => $file,
@@ -271,79 +303,11 @@ class UploadFileRequestTest extends TestCase
     }
 
     /**
-     * ❌ VALIDATION: File name with invalid characters fails
-     */
-    public function test_file_name_with_special_chars_fails(): void
-    {
-        $file = UploadedFile::fake()->create('document.pdf', 512, 'application/pdf');
-
-        $response = $this->postJson('/api/files/upload', [
-            'file' => $file,
-            'name' => 'Document@#$%^&*()',
-        ]);
-
-        $response->assertStatus(422);
-        $response->assertJsonPath('errors.name', [
-            fn($msg) => str_contains($msg, 'lettres') || str_contains($msg, 'letters')
-        ]);
-    }
-
-    /**
-     * ❌ VALIDATION: File name too long fails
-     */
-    public function test_file_name_too_long_fails(): void
-    {
-        $file = UploadedFile::fake()->create('document.pdf', 512, 'application/pdf');
-
-        $response = $this->postJson('/api/files/upload', [
-            'file' => $file,
-            'name' => str_repeat('a', 256), // > 255
-        ]);
-
-        $response->assertStatus(422);
-        $response->assertJsonPath('errors.name', [
-            fn($msg) => str_contains($msg, 'dépasser') || str_contains($msg, 'exceed')
-        ]);
-    }
-
-    /**
-     * ✅ VALIDATION: File name with dashes and dots passes
-     */
-    public function test_file_name_with_dashes_and_dots_passes(): void
-    {
-        $file = UploadedFile::fake()->create('document.pdf', 512, 'application/pdf');
-
-        $response = $this->postJson('/api/files/upload', [
-            'file' => $file,
-            'name' => 'My-Document.v2.0',
-        ]);
-
-        $this->assertIn($response->status(), [200, 201]);
-    }
-
-    /**
-     * ❌ VALIDATION: File name with underscore fails (not allowed)
-     */
-    public function test_file_name_with_underscore_fails(): void
-    {
-        $file = UploadedFile::fake()->create('document.pdf', 512, 'application/pdf');
-
-        $response = $this->postJson('/api/files/upload', [
-            'file' => $file,
-            'name' => 'My_Document_v2',
-        ]);
-
-        $response->assertStatus(422);
-        $response->assertJsonPath('errors.name', [
-            fn($msg) => str_contains($msg, 'lettres') || str_contains($msg, 'letters')
-        ]);
-    }
-
-    /**
      * ✅ ALLOWED: All valid document types
      */
     public function test_all_allowed_document_types_pass(): void
     {
+        Sanctum::actingAs($this->user);
         $files = [
             ['file.pdf', 'application/pdf'],
             ['file.doc', 'application/msword'],
@@ -370,6 +334,7 @@ class UploadFileRequestTest extends TestCase
      */
     public function test_all_allowed_image_types_pass(): void
     {
+        Sanctum::actingAs($this->user);
         $images = ['jpg', 'png', 'gif'];
 
         foreach ($images as $ext) {

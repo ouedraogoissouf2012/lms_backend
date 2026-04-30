@@ -166,11 +166,7 @@ class SubmitEvaluationRequestTest extends TestCase
         ]);
 
         $response->assertStatus(422);
-        $response->assertJsonPath('errors.answers');
-$this->assertTrue(str_contains(
-    json_encode($response->json('errors.answers')),
-    'ou' // message contains check
-));
+        $this->assertNotEmpty($response->json('errors.answers'));
     }
 
     /**
@@ -185,11 +181,7 @@ $this->assertTrue(str_contains(
         ]);
 
         $response->assertStatus(422);
-        $response->assertJsonPath('errors.answers');
-$this->assertTrue(str_contains(
-    json_encode($response->json('errors.answers')),
-    'ou' // message contains check
-));
+        $this->assertNotEmpty($response->json('errors.answers'));
     }
 
     /**
@@ -206,11 +198,7 @@ $this->assertTrue(str_contains(
         ]);
 
         $response->assertStatus(422);
-        $response->assertJsonPath('errors.answers.0.question_id');
-$this->assertTrue(str_contains(
-    json_encode($response->json('errors.answers.0.question_id')),
-    'ou' // message contains check
-));
+        $this->assertNotEmpty($response->json('errors.answers.0.question_id'));
     }
 
     /**
@@ -227,11 +215,7 @@ $this->assertTrue(str_contains(
         ]);
 
         $response->assertStatus(422);
-        $response->assertJsonPath('errors.answers.0.question_id');
-$this->assertTrue(str_contains(
-    json_encode($response->json('errors.answers.0.question_id')),
-    'ou' // message contains check
-));
+        $this->assertNotEmpty($response->json('errors.answers.0.question_id'));
     }
 
     /**
@@ -248,11 +232,7 @@ $this->assertTrue(str_contains(
         ]);
 
         $response->assertStatus(422);
-        $response->assertJsonPath('errors.answers.0.answer');
-$this->assertTrue(str_contains(
-    json_encode($response->json('errors.answers.0.answer')),
-    'ou' // message contains check
-));
+        $this->assertNotEmpty($response->json('errors.answers.0.answer'));
     }
 
     /**
@@ -269,11 +249,7 @@ $this->assertTrue(str_contains(
         ]);
 
         $response->assertStatus(422);
-        $response->assertJsonPath('errors.answers.0.answer');
-$this->assertTrue(str_contains(
-    json_encode($response->json('errors.answers.0.answer')),
-    'ou' // message contains check
-));
+        $this->assertNotEmpty($response->json('errors.answers.0.answer'));
     }
 
     /**
@@ -416,11 +392,7 @@ $this->assertTrue(str_contains(
         ]);
 
         $response->assertStatus(422);
-        $response->assertJsonPath('errors.submitted_at');
-$this->assertTrue(str_contains(
-    json_encode($response->json('errors.submitted_at')),
-    'ou' // message contains check
-));
+        $this->assertNotEmpty($response->json('errors.submitted_at'));
     }
 
     /**

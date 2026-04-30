@@ -12,6 +12,7 @@ class EvaluationSubmission extends Model
 
     protected $fillable = [
         'evaluation_id',
+        'student_id',
         'klassci_etudiant_id',
         'attempt',
         'status',
@@ -42,6 +43,14 @@ class EvaluationSubmission extends Model
     public function evaluation(): BelongsTo
     {
         return $this->belongsTo(Evaluation::class);
+    }
+
+    /**
+     * Une soumission appartient à un étudiant (user local)
+     */
+    public function student(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'student_id');
     }
 
     /**

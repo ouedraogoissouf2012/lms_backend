@@ -3,6 +3,13 @@
 namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\ActivateVisioRequest;
+use App\Http\Requests\DeactivateVisioRequest;
+use App\Http\Requests\StartVisioRequest;
+use App\Http\Requests\EndVisioRequest;
+use App\Http\Requests\JoinVisioRequest;
+use App\Http\Requests\LeaveVisioRequest;
+use App\Http\Requests\HeartbeatVisioRequest;
 use App\Services\KlassciProxyService;
 use App\Services\NotificationService;
 use App\Services\ClasseSyncService;
@@ -2552,18 +2559,11 @@ class LMSDataController extends Controller
      *
      * Workflow: Enseignant active → status = 'programmee'
      */
-    public function activateVisio(int $seanceId, Request $request): JsonResponse
+    public function activateVisio(int $seanceId, ActivateVisioRequest $request): JsonResponse
     {
         try {
             $user = $request->user();
             $klassciToken = $user->klassci_token;
-
-            if (!$klassciToken) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Token KLASSCI non trouvé'
-                ], 401);
-            }
 
             // Vérifier que la séance existe dans KLASSCI
             // Pour enseignants: utiliser teacher-dashboard
@@ -2727,7 +2727,7 @@ class LMSDataController extends Controller
      *
      * Workflow: Enseignant désactive → visio_enabled = false
      */
-    public function deactivateVisio(int $seanceId, Request $request): JsonResponse
+    public function deactivateVisio(int $seanceId, DeactivateVisioRequest $request): JsonResponse
     {
         try {
             $user = $request->user();
@@ -2739,22 +2739,6 @@ class LMSDataController extends Controller
                     'success' => false,
                     'message' => 'Visio non activée pour cette séance'
                 ], 404);
-            }
-
-            // RESTRICTION: Seul l'enseignant peut désactiver
-            if ($user->role !== 'enseignant') {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Seul l\'enseignant peut désactiver la visioconférence'
-                ], 403);
-            }
-
-            // Vérifier que c'est bien l'enseignant de cette séance
-            if ($visio->klassci_enseignant_id && $visio->klassci_enseignant_id !== $user->klassci_id) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Seul l\'enseignant de cette séance peut la désactiver'
-                ], 403);
             }
 
             // Désactiver la visio
@@ -2801,7 +2785,7 @@ class LMSDataController extends Controller
      *
      * Workflow: Enseignant démarre → status = 'active'
      */
-    public function startVisio(int $seanceId, Request $request): JsonResponse
+    public function startVisio(int $seanceId, StartVisioRequest $request): JsonResponse
     {
         try {
             $user = $request->user();
@@ -2821,21 +2805,6 @@ class LMSDataController extends Controller
                     'message' => 'La visio doit être activée avant de démarrer'
                 ], 400);
             }
-
-            // RESTRICTION: Seul l'enseignant peut démarrer la visio
-            if ($user->role !== 'enseignant') {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Seul l\'enseignant peut démarrer la visioconférence'
-                ], 403);
-            }
-
-            // Note: La vérification stricte du klassci_enseignant_id a été supprimée
-            // Logique: Si le coordinateur a activé la visio (visio_enabled=true),
-            // tout enseignant connecté peut la démarrer. Cela évite les problèmes de:
-            // - klassci_enseignant_id NULL
-            // - Désynchronisation entre Klassci et LMS
-            // - Enseignants remplaçants ou en binôme
 
             // Démarrer la visio
             $visio->update([
@@ -2920,7 +2889,7 @@ class LMSDataController extends Controller
      *
      * Workflow: Enseignant termine → status = 'terminee'
      */
-    public function endVisio(int $seanceId, Request $request): JsonResponse
+    public function endVisio(int $seanceId, EndVisioRequest $request): JsonResponse
     {
         try {
             $user = $request->user();
@@ -2984,7 +2953,7 @@ class LMSDataController extends Controller
      * POST /api/lms/seances/{seanceId}/join
      * Logger qu'un étudiant rejoint la visio
      */
-    public function joinVisio(int $seanceId, Request $request): JsonResponse
+    public function joinVisio(int $seanceId, JoinVisioRequest $request): JsonResponse
     {
         try {
             $user = $request->user();
@@ -3465,7 +3434,7 @@ class LMSDataController extends Controller
      * POST /api/seances/{seanceId}/leave
      * Enregistrer la sortie d'un participant de la visio
      */
-    public function leaveVisio(int $seanceId, Request $request): JsonResponse
+    public function leaveVisio(int $seanceId, LeaveVisioRequest $request): JsonResponse
     {
         try {
             $user = $request->user();
@@ -3530,7 +3499,7 @@ class LMSDataController extends Controller
      * POST /api/seances/{seanceId}/heartbeat
      * Mettre à jour le heartbeat d'un participant (ping d'activité)
      */
-    public function heartbeatVisio(int $seanceId, Request $request): JsonResponse
+    public function heartbeatVisio(int $seanceId, HeartbeatVisioRequest $request): JsonResponse
     {
         try {
             $user = $request->user();

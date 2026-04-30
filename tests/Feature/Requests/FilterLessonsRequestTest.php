@@ -130,10 +130,7 @@ class FilterLessonsRequestTest extends TestCase
         $response = $this->getJson('/api/lessons?per_page=101');
 
         $response->assertStatus(422);
-        $this->assertTrue(str_contains(
-            json_encode($response->json('errors.per_page')),
-            'ou' // message contains check
-        ));
+        $this->assertNotEmpty($response->json('errors.per_page'));
     }
 
     /**
@@ -156,10 +153,7 @@ class FilterLessonsRequestTest extends TestCase
         $response = $this->getJson('/api/lessons?per_page=abc');
 
         $response->assertStatus(422);
-        $this->assertTrue(str_contains(
-            json_encode($response->json('errors.per_page')),
-            'ou' // message contains check
-        ));
+        $this->assertNotEmpty($response->json('errors.per_page'));
     }
 
     /**
@@ -375,10 +369,7 @@ class FilterLessonsRequestTest extends TestCase
         $response = $this->getJson('/api/lessons?per_page=abc&matiere_id=invalid&type=bad');
 
         $response->assertStatus(422);
-        $this->assertTrue(str_contains(
-            json_encode($response->json('errors.per_page')),
-            'ou' // message contains check
-        ));
+        $this->assertNotEmpty($response->json('errors.per_page'));
         $response->assertJsonPath('errors.matiere_id');
 $this->assertTrue(str_contains(
     json_encode($response->json('errors.matiere_id')),

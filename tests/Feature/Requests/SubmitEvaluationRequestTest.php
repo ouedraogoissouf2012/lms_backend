@@ -127,7 +127,7 @@ class SubmitEvaluationRequestTest extends TestCase
     public function test_submission_with_timestamp_passes(): void
     {
         Sanctum::actingAs($this->student);
-        $timestamp = now()->toIso8601String();
+        $timestamp = now()->format('Y-m-d\\TH:i:s\\Z');
 
         $response = $this->postJson("/api/evaluations/{$this->evaluation->id}/submit", [
             'answers' => [
@@ -199,7 +199,8 @@ class SubmitEvaluationRequestTest extends TestCase
         ]);
 
         $response->assertStatus(422);
-        $this->assertNotEmpty($response->json('errors.answers.0.question_id'));
+        $errors = $response->json('errors');
+        $this->assertNotEmpty($errors['answers.0.question_id'] ?? null);
     }
 
     /**
@@ -216,7 +217,8 @@ class SubmitEvaluationRequestTest extends TestCase
         ]);
 
         $response->assertStatus(422);
-        $this->assertNotEmpty($response->json('errors.answers.0.question_id'));
+        $errors = $response->json('errors');
+        $this->assertNotEmpty($errors['answers.0.question_id'] ?? null);
     }
 
     /**
@@ -233,7 +235,8 @@ class SubmitEvaluationRequestTest extends TestCase
         ]);
 
         $response->assertStatus(422);
-        $this->assertNotEmpty($response->json('errors.answers.0.answer'));
+        $errors = $response->json('errors');
+        $this->assertNotEmpty($errors['answers.0.answer'] ?? null);
     }
 
     /**
@@ -250,7 +253,8 @@ class SubmitEvaluationRequestTest extends TestCase
         ]);
 
         $response->assertStatus(422);
-        $this->assertNotEmpty($response->json('errors.answers.0.answer'));
+        $errors = $response->json('errors');
+        $this->assertNotEmpty($errors['answers.0.answer'] ?? null);
     }
 
     /**
@@ -290,7 +294,7 @@ class SubmitEvaluationRequestTest extends TestCase
     {
         $draft_evaluation = Evaluation::factory()
             ->for($this->institution)
-            ->state(['status' => 'draft'])
+            ->state(['status' => 'draft', 'is_published' => false])
             ->create();
 
         $draft_question = EvaluationQuestion::factory()
@@ -393,7 +397,8 @@ class SubmitEvaluationRequestTest extends TestCase
         ]);
 
         $response->assertStatus(422);
-        $this->assertNotEmpty($response->json('errors.submitted_at'));
+        $errors = $response->json('errors');
+        $this->assertNotEmpty($errors['submitted_at'] ?? null);
     }
 
     /**

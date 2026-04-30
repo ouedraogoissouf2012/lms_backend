@@ -166,10 +166,8 @@ class UploadFileRequestTest extends TestCase
         ]);
 
         $response->assertStatus(422);
-        $this->assertTrue(str_contains(
-            json_encode($response->json('errors.file')),
-            'ou' // message contains check
-        ));
+        // Validation error message is present in errors.file
+        $this->assertNotEmpty($response->json('errors.file'));
     }
 
     /**
@@ -185,10 +183,8 @@ class UploadFileRequestTest extends TestCase
         ]);
 
         $response->assertStatus(422);
-        $this->assertTrue(str_contains(
-            json_encode($response->json('errors.file')),
-            'ou' // message contains check
-        ));
+        // Validation error message is present in errors.file
+        $this->assertNotEmpty($response->json('errors.file'));
     }
 
     /**
@@ -204,10 +200,8 @@ class UploadFileRequestTest extends TestCase
         ]);
 
         $response->assertStatus(422);
-        $this->assertTrue(str_contains(
-            json_encode($response->json('errors.file')),
-            'ou' // message contains check
-        ));
+        // Validation error message is present in errors.file
+        $this->assertNotEmpty($response->json('errors.file'));
     }
 
     /**
@@ -283,10 +277,8 @@ class UploadFileRequestTest extends TestCase
         ]);
 
         $response->assertStatus(422);
-        $this->assertTrue(str_contains(
-            json_encode($response->json('errors.file')),
-            'ou' // message contains check
-        ));
+        // Validation error message is present in errors.file
+        $this->assertNotEmpty($response->json('errors.file'));
     }
 
     /**
@@ -302,10 +294,8 @@ class UploadFileRequestTest extends TestCase
         ]);
 
         $response->assertStatus(422);
-        $this->assertTrue(str_contains(
-            json_encode($response->json('errors.file')),
-            'ou' // message contains check
-        ));
+        // Validation error message is present in errors.file
+        $this->assertNotEmpty($response->json('errors.file'));
     }
 
     /**

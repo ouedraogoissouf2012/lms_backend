@@ -29,7 +29,7 @@ class ValidateParticipantRequestTest extends TestCase
         $this->student = User::factory()->student()->for($this->institution)->create([
             'klassci_token' => 'test_token_' . uniqid(),
         ]);
-        $this->seance = Seance::factory()->for($this->institution)->create([
+        $this->seance = Seance::factory()->forInstitution($this->institution)->create([
             'klassci_enseignant_id' => 123,
         ]);
     }

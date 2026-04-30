@@ -83,7 +83,7 @@ class SeanceFactory extends Factory
     /**
      * Set institution for the seance.
      */
-    public function for(Institution $institution): static
+    public function forInstitution(Institution $institution): static
     {
         return $this->state(fn (array $attributes) => [
             'institution_id' => $institution->id,

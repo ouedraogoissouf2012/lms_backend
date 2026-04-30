@@ -5,7 +5,7 @@ namespace Tests\Feature\Requests;
 use App\Models\Evaluation;
 use App\Models\EvaluationSubmission;
 use App\Models\Institution;
-use App\Models\Question;
+use App\Models\EvaluationQuestion;
 use App\Models\User;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
@@ -42,8 +42,8 @@ class SubmitEvaluationRequestTest extends TestCase
     private User $student;
     private User $teacher;
     private Evaluation $evaluation;
-    private Question $question1;
-    private Question $question2;
+    private EvaluationQuestion $question1;
+    private EvaluationQuestion $question2;
 
     protected function setUp(): void
     {
@@ -71,12 +71,12 @@ class SubmitEvaluationRequestTest extends TestCase
             ])
             ->create();
 
-        $this->question1 = Question::factory()
+        $this->question1 = EvaluationQuestion::factory()
             ->for($this->evaluation)
             ->state(['question_text' => 'What is 2+2?'])
             ->create();
 
-        $this->question2 = Question::factory()
+        $this->question2 = EvaluationQuestion::factory()
             ->for($this->evaluation)
             ->state(['question_text' => 'What is the capital of France?'])
             ->create();
@@ -304,7 +304,7 @@ class SubmitEvaluationRequestTest extends TestCase
             ->state(['status' => 'draft'])
             ->create();
 
-        $draft_question = Question::factory()
+        $draft_question = EvaluationQuestion::factory()
             ->for($draft_evaluation)
             ->create();
 
@@ -332,7 +332,7 @@ class SubmitEvaluationRequestTest extends TestCase
             ])
             ->create();
 
-        $expired_question = Question::factory()
+        $expired_question = EvaluationQuestion::factory()
             ->for($expired_evaluation)
             ->create();
 
@@ -415,8 +415,8 @@ class SubmitEvaluationRequestTest extends TestCase
     public function test_multiple_answers_all_valid(): void
     {
         // Create more questions
-        $question3 = Question::factory()->for($this->evaluation)->create();
-        $question4 = Question::factory()->for($this->evaluation)->create();
+        $question3 = EvaluationQuestion::factory()->for($this->evaluation)->create();
+        $question4 = EvaluationQuestion::factory()->for($this->evaluation)->create();
 
         Sanctum::actingAs($this->student);
 

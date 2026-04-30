@@ -36,6 +36,7 @@ class EvaluationFactory extends Factory
             'notes_published' => $this->faker->boolean(30),
             'is_locked' => false,
             'locked_at' => null,
+            'institution_id' => \App\Models\Institution::factory(),
         ];
     }
 

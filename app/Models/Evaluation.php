@@ -37,10 +37,13 @@ class Evaluation extends Model
         'is_locked',
         'locked_at',
         'institution_id',
+        'deadline_at',
+        'enseignant_nom',
     ];
 
     protected $casts = [
         'date_evaluation' => 'datetime',
+        'deadline_at' => 'datetime',
         'coefficient' => 'decimal:2',
         'bareme' => 'decimal:2',
         'is_online' => 'boolean',

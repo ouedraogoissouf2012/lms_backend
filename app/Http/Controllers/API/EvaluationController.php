@@ -4,6 +4,10 @@ namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\SubmitEvaluationRequest;
+use App\Http\Requests\StoreEvaluationRequest;
+use App\Http\Requests\UpdateEvaluationRequest;
+use App\Http\Requests\DeleteEvaluationRequest;
+use App\Http\Requests\PublishEvaluationRequest;
 use App\Models\Evaluation;
 use App\Models\EvaluationQuestion;
 use App\Models\EvaluationSubmission;
@@ -103,42 +107,9 @@ class EvaluationController extends Controller
      * POST /api/evaluations
      * Crée une nouvelle évaluation
      */
-    public function store(Request $request): JsonResponse
+    public function store(StoreEvaluationRequest $request): JsonResponse
     {
-        // Restriction coordinateur: ne peut pas créer d'évaluations
-        $user = auth()->user();
-        if ($user && $user->role === 'coordinateur') {
-            return response()->json([
-                'success' => false,
-                'message' => 'Accès refusé. Les coordinateurs ne peuvent pas créer d\'évaluations.'
-            ], 403);
-        }
-
-        $validator = Validator::make($request->all(), [
-            'klassci_matiere_id' => 'required|integer',
-            'klassci_classe_id' => 'required|integer',
-            'titre' => 'required|string|max:255',
-            'description' => 'nullable|string',
-            'type' => 'required|in:qcm,reponse_courte,dissertation,mixte',
-            'date_evaluation' => 'nullable|date',
-            'duree_minutes' => 'required|integer|min:1',
-            'coefficient' => 'nullable|numeric|min:0',
-            'bareme' => 'nullable|numeric|min:0',
-            'questions' => 'nullable|array',
-            'questions.*.question' => 'required|string',
-            'questions.*.type' => 'required|in:qcm,qcm_multiple,vrai_faux,reponse_courte,dissertation',
-            'questions.*.points' => 'nullable|numeric|min:0',
-            'questions.*.options' => 'nullable|array',
-            'questions.*.correct_answers' => 'nullable|array',
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Erreur de validation',
-                'errors' => $validator->errors()
-            ], 422);
-        }
+        // FormRequest handles authorization (role check)
 
         // Vérifier qu'une évaluation LMS n'existe pas déjà pour cette évaluation KLASSCI
         if ($request->klassci_evaluation_id) {
@@ -281,58 +252,16 @@ class EvaluationController extends Controller
      * PUT /api/evaluations/{id}
      * Met à jour une évaluation
      */
-    public function update(Request $request, int $id): JsonResponse
+    public function update(UpdateEvaluationRequest $request, int $id): JsonResponse
     {
-        // Restriction coordinateur: ne peut pas modifier d'évaluations
-        $user = auth()->user();
-        if ($user && $user->role === 'coordinateur') {
-            return response()->json([
-                'success' => false,
-                'message' => 'Accès refusé. Les coordinateurs ne peuvent pas modifier d\'évaluations.'
-            ], 403);
-        }
+        $evaluation = Evaluation::findOrFail($id);
 
-        $evaluation = Evaluation::find($id);
-
-        if (!$evaluation) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Évaluation non trouvée'
-            ], 404);
-        }
-
-        // ⚠️ Vérifier si l'évaluation peut être modifiée
+        // Vérifier si l'évaluation peut être modifiée (état check)
         if (!$evaluation->canBeEdited()) {
             return response()->json([
                 'success' => false,
                 'message' => 'Impossible de modifier: des étudiants ont déjà soumis leurs réponses'
             ], 403);
-        }
-
-        $validator = Validator::make($request->all(), [
-            'titre' => 'sometimes|string|max:255',
-            'description' => 'nullable|string',
-            'status' => 'sometimes|in:brouillon,planifiee,en_cours,terminee,annulee',
-            'date_evaluation' => 'nullable|date',
-            'duree_minutes' => 'sometimes|integer|min:1',
-            'is_published' => 'sometimes|boolean',
-            'max_attempts' => 'sometimes|integer|min:1',
-            'shuffle_questions' => 'sometimes|boolean',
-            'show_results' => 'sometimes|boolean',
-            'questions' => 'sometimes|array',
-            'questions.*.question' => 'required|string',
-            'questions.*.type' => 'required|in:qcm,qcm_multiple,vrai_faux,reponse_courte,dissertation',
-            'questions.*.points' => 'nullable|numeric|min:0',
-            'questions.*.options' => 'nullable|array',
-            'questions.*.correct_answers' => 'nullable|array',
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Erreur de validation',
-                'errors' => $validator->errors()
-            ], 422);
         }
 
         try {
@@ -404,27 +333,11 @@ class EvaluationController extends Controller
      * DELETE /api/evaluations/{id}
      * Supprime une évaluation
      */
-    public function destroy(int $id): JsonResponse
+    public function destroy(DeleteEvaluationRequest $request, int $id): JsonResponse
     {
-        // Restriction coordinateur: ne peut pas supprimer d'évaluations
-        $user = auth()->user();
-        if ($user && $user->role === 'coordinateur') {
-            return response()->json([
-                'success' => false,
-                'message' => 'Accès refusé. Les coordinateurs ne peuvent pas supprimer d\'évaluations.'
-            ], 403);
-        }
+        $evaluation = Evaluation::findOrFail($id);
 
-        $evaluation = Evaluation::find($id);
-
-        if (!$evaluation) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Évaluation non trouvée'
-            ], 404);
-        }
-
-        // ⚠️ Vérifier si l'évaluation peut être supprimée
+        // Vérifier si l'évaluation peut être supprimée (état check)
         if (!$evaluation->canBeEdited()) {
             return response()->json([
                 'success' => false,
@@ -444,25 +357,9 @@ class EvaluationController extends Controller
      * POST /api/evaluations/{id}/publish
      * Publie une évaluation (la rend visible aux étudiants)
      */
-    public function publish(int $id): JsonResponse
+    public function publish(PublishEvaluationRequest $request, int $id): JsonResponse
     {
-        // Restriction coordinateur: ne peut pas publier d'évaluations
-        $user = auth()->user();
-        if ($user && $user->role === 'coordinateur') {
-            return response()->json([
-                'success' => false,
-                'message' => 'Accès refusé. Les coordinateurs ne peuvent pas publier d\'évaluations.'
-            ], 403);
-        }
-
-        $evaluation = Evaluation::find($id);
-
-        if (!$evaluation) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Évaluation non trouvée'
-            ], 404);
-        }
+        $evaluation = Evaluation::findOrFail($id);
 
         // Vérifier que l'évaluation a des questions avant de publier
         if ($evaluation->questions()->count() === 0) {

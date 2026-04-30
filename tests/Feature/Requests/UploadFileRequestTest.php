@@ -326,7 +326,7 @@ class UploadFileRequestTest extends TestCase
                 'file' => $file,
             ]);
 
-            $this->assertIn($response->status(), [200, 201], "Failed for $filename");
+            $this->assertTrue(in_array($response->status(), [200, 201]), "Failed for $filename");
         }
     }
 

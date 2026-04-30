@@ -15,7 +15,7 @@ class ToggleVisioSeanceRequestTest extends TestCase
     private Institution $institution;
     private User $coordinator;
     private User $teacher;
-    private User $admin;
+    private User $superAdmin;
     private Seance $seance;
 
     protected function setUp(): void
@@ -30,7 +30,8 @@ class ToggleVisioSeanceRequestTest extends TestCase
         $this->teacher = User::factory()->teacher()->for($this->institution)->create([
             'klassci_token' => 'test_token_' . uniqid(),
         ]);
-        $this->admin = User::factory()->admin()->for($this->institution)->create([
+        $this->superAdmin = User::factory()->for($this->institution)->create([
+            'role' => 'superAdmin',
             'klassci_token' => 'test_token_' . uniqid(),
         ]);
         $this->seance = Seance::factory()->forInstitution($this->institution)->create();
@@ -66,9 +67,9 @@ class ToggleVisioSeanceRequestTest extends TestCase
         $this->assertTrue(in_array($response->status(), [200, 201]));
     }
 
-    public function test_admin_can_toggle_visio(): void
+    public function test_superadmin_can_toggle_visio(): void
     {
-        Sanctum::actingAs($this->admin);
+        Sanctum::actingAs($this->superAdmin);
         $response = $this->postJson("/api/lms/seances/{$this->seance->klassci_seance_id}/toggle-visio", [
             'enabled' => false,
         ]);

@@ -177,11 +177,10 @@ class StoreChapterRequestTest extends TestCase
         ]);
 
         $response->assertStatus(422);
-        $response->assertJsonPath('errors.titre');
-$this->assertTrue(str_contains(
-    json_encode($response->json('errors.titre')),
-    'ou' // message contains check
-));
+        $this->assertTrue(str_contains(
+            json_encode($response->json('errors.titre')),
+            'ou' // message contains check
+        ));
     }
 
     /**
@@ -196,11 +195,10 @@ $this->assertTrue(str_contains(
         ]);
 
         $response->assertStatus(422);
-        $response->assertJsonPath('errors.titre');
-$this->assertTrue(str_contains(
-    json_encode($response->json('errors.titre')),
-    'ou' // message contains check
-));
+        $this->assertTrue(str_contains(
+            json_encode($response->json('errors.titre')),
+            'ou' // message contains check
+        ));
     }
 
     /**
@@ -215,11 +213,10 @@ $this->assertTrue(str_contains(
         ]);
 
         $response->assertStatus(422);
-        $response->assertJsonPath('errors.titre');
-$this->assertTrue(str_contains(
-    json_encode($response->json('errors.titre')),
-    'ou' // message contains check
-));
+        $this->assertTrue(str_contains(
+            json_encode($response->json('errors.titre')),
+            'ou' // message contains check
+        ));
     }
 
     /**
@@ -234,11 +231,10 @@ $this->assertTrue(str_contains(
         ]);
 
         $response->assertStatus(422);
-        $response->assertJsonPath('errors.titre');
-$this->assertTrue(str_contains(
-    json_encode($response->json('errors.titre')),
-    'ou' // message contains check
-));
+        $this->assertTrue(str_contains(
+            json_encode($response->json('errors.titre')),
+            'ou' // message contains check
+        ));
     }
 
     /**
@@ -254,11 +250,10 @@ $this->assertTrue(str_contains(
         ]);
 
         $response->assertStatus(422);
-        $response->assertJsonPath('errors.description');
-$this->assertTrue(str_contains(
-    json_encode($response->json('errors.description')),
-    'ou' // message contains check
-));
+        $this->assertTrue(str_contains(
+            json_encode($response->json('errors.description')),
+            'ou' // message contains check
+        ));
     }
 
     /**
@@ -274,11 +269,10 @@ $this->assertTrue(str_contains(
         ]);
 
         $response->assertStatus(422);
-        $response->assertJsonPath('errors.ordre');
-$this->assertTrue(str_contains(
-    json_encode($response->json('errors.ordre')),
-    'ou' // message contains check
-));
+        $this->assertTrue(str_contains(
+            json_encode($response->json('errors.ordre')),
+            'ou' // message contains check
+        ));
     }
 
     /**
@@ -310,11 +304,10 @@ $this->assertTrue(str_contains(
         ]);
 
         $response->assertStatus(422);
-        $response->assertJsonPath('errors.fichier');
-$this->assertTrue(str_contains(
-    json_encode($response->json('errors.fichier')),
-    'ou' // message contains check
-));
+        $this->assertTrue(str_contains(
+            json_encode($response->json('errors.fichier')),
+            'ou' // message contains check
+        ));
     }
 
     /**
@@ -348,11 +341,10 @@ $this->assertTrue(str_contains(
         ]);
 
         $response->assertStatus(422);
-        $response->assertJsonPath('errors.fichier');
-$this->assertTrue(str_contains(
-    json_encode($response->json('errors.fichier')),
-    'ou' // message contains check
-));
+        $this->assertTrue(str_contains(
+            json_encode($response->json('errors.fichier')),
+            'ou' // message contains check
+        ));
     }
 
     /**
@@ -464,10 +456,9 @@ $this->assertTrue(str_contains(
         ]);
 
         $response->assertStatus(422);
-        $response->assertJsonPath('errors.type_contenu');
-$this->assertTrue(str_contains(
-    json_encode($response->json('errors.type_contenu')),
-    'ou' // message contains check
-));
+        $this->assertTrue(str_contains(
+            json_encode($response->json('errors.type_contenu')),
+            'ou' // message contains check
+        ));
     }
 }

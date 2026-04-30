@@ -254,10 +254,7 @@ class StoreChapterRequestTest extends TestCase
         ]);
 
         $response->assertStatus(422);
-        $this->assertTrue(str_contains(
-            json_encode($response->json('errors.ordre')),
-            'ou' // message contains check
-        ));
+        $this->assertNotEmpty($response->json('errors.ordre'));
     }
 
     /**

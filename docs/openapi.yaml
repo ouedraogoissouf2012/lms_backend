@@ -1,0 +1,690 @@
+openapi: 3.0.0
+info:
+  title: "LMS Backend API"
+  description: "API complète pour la plateforme LMS - Learning Management System avec intégration KLASSCI"
+  version: "1.0.0"
+  contact:
+    name: "LMS Team"
+    email: "support@lms.local"
+  license:
+    name: "MIT"
+
+servers:
+  - url: "http://localhost:8000/api"
+    description: "Development Server"
+  - url: "https://api.lms.local/api"
+    description: "Production Server"
+
+# Security Schemes
+components:
+  securitySchemes:
+    sanctum:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: "Sanctum token authentication"
+
+  schemas:
+    # Error Response
+    ErrorResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        error_code:
+          type: string
+          example: "UNAUTHENTICATED"
+        message:
+          type: string
+          example: "Unauthenticated."
+      required:
+        - success
+        - error_code
+        - message
+
+    # Auth Schemas
+    LoginRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+          example: "user@example.com"
+        password:
+          type: string
+          format: password
+          example: "password123"
+      required:
+        - email
+        - password
+
+    AuthResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          type: object
+          properties:
+            token:
+              type: string
+              example: "token_string_here"
+            user:
+              type: object
+
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        email:
+          type: string
+          example: "user@example.com"
+        name:
+          type: string
+          example: "John Doe"
+        role:
+          type: string
+          enum: [etudiant, enseignant, coordinateur, admin, superAdmin]
+
+# Paths
+paths:
+  # ============ AUTHENTICATION ============
+  /auth/login:
+    post:
+      tags:
+        - Authentication
+      summary: "Login user"
+      description: "Authenticate user with email and password, returns Sanctum token"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: "Login successful"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '401':
+          description: "Invalid credentials"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: "Validation error"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /auth/me:
+    get:
+      tags:
+        - Authentication
+      summary: "Get authenticated user"
+      security:
+        - sanctum: []
+      responses:
+        '200':
+          description: "User data"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/User'
+        '401':
+          description: "Unauthenticated"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /auth/logout:
+    post:
+      tags:
+        - Authentication
+      summary: "Logout user"
+      security:
+        - sanctum: []
+      responses:
+        '200':
+          description: "Logout successful"
+        '401':
+          description: "Unauthenticated"
+
+  /auth/refresh:
+    post:
+      tags:
+        - Authentication
+      summary: "Refresh authentication token"
+      security:
+        - sanctum: []
+      responses:
+        '200':
+          description: "New token"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '401':
+          description: "Unauthenticated"
+
+  # ============ PROXY ROUTES (KLASSCI) ============
+  /proxy/structure:
+    get:
+      tags:
+        - Proxy / KLASSCI
+      summary: "Get organizational structure"
+      description: "Retrieve organizational structure (branches, levels)"
+      security:
+        - sanctum: []
+      responses:
+        '200':
+          description: "Structure data"
+        '401':
+          description: "Unauthenticated"
+
+  /proxy/classes:
+    get:
+      tags:
+        - Proxy / KLASSCI
+      summary: "Get all active classes"
+      security:
+        - sanctum: []
+      parameters:
+        - name: filiere_id
+          in: query
+          schema:
+            type: integer
+        - name: niveau_id
+          in: query
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: "List of classes"
+        '401':
+          description: "Unauthenticated"
+
+  /proxy/classes/{id}/etudiants:
+    get:
+      tags:
+        - Proxy / KLASSCI
+      summary: "Get students of a class"
+      security:
+        - sanctum: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: annee_id
+          in: query
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: "List of students"
+        '401':
+          description: "Unauthenticated"
+        '404':
+          description: "Class not found"
+
+  /proxy/matieres:
+    get:
+      tags:
+        - Proxy / KLASSCI
+      summary: "Get subjects"
+      security:
+        - sanctum: []
+      parameters:
+        - name: filiere_id
+          in: query
+          schema:
+            type: integer
+        - name: niveau_id
+          in: query
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: "List of subjects"
+
+  /proxy/matieres/{id}:
+    get:
+      tags:
+        - Proxy / KLASSCI
+      summary: "Get subject details"
+      security:
+        - sanctum: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: "Subject details"
+
+  /proxy/enseignants:
+    get:
+      tags:
+        - Proxy / KLASSCI
+      summary: "Get teachers"
+      security:
+        - sanctum: []
+      responses:
+        '200':
+          description: "List of teachers"
+
+  /proxy/filieres:
+    get:
+      tags:
+        - Proxy / KLASSCI
+      summary: "Get branches/programs"
+      security:
+        - sanctum: []
+      responses:
+        '200':
+          description: "List of branches"
+
+  /proxy/niveaux-etudes:
+    get:
+      tags:
+        - Proxy / KLASSCI
+      summary: "Get study levels"
+      security:
+        - sanctum: []
+      responses:
+        '200':
+          description: "List of study levels"
+
+  /proxy/evaluations:
+    get:
+      tags:
+        - Proxy / KLASSCI
+      summary: "Get evaluations"
+      security:
+        - sanctum: []
+      responses:
+        '200':
+          description: "List of evaluations"
+
+  /proxy/emploi-temps:
+    get:
+      tags:
+        - Proxy / KLASSCI
+      summary: "Get schedule"
+      security:
+        - sanctum: []
+      responses:
+        '200':
+          description: "Schedule data"
+
+  /proxy/test-connection:
+    get:
+      tags:
+        - Proxy / KLASSCI
+      summary: "Test KLASSCI connection"
+      description: "Admin/Coordinator only - Test connection to KLASSCI API"
+      security:
+        - sanctum: []
+      responses:
+        '200':
+          description: "Connection successful"
+        '401':
+          description: "Unauthenticated"
+        '403':
+          description: "Insufficient permissions (requires coordinateur or admin role)"
+
+  # ============ EVALUATIONS ============
+  /evaluations:
+    get:
+      tags:
+        - Evaluations
+      summary: "List evaluations"
+      security:
+        - sanctum: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+        - name: per_page
+          in: query
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: "List of evaluations"
+        '401':
+          description: "Unauthenticated"
+
+    post:
+      tags:
+        - Evaluations
+      summary: "Create evaluation"
+      security:
+        - sanctum: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title:
+                  type: string
+                description:
+                  type: string
+      responses:
+        '201':
+          description: "Evaluation created"
+        '422':
+          description: "Validation error"
+
+  /evaluations/{id}:
+    get:
+      tags:
+        - Evaluations
+      summary: "Get evaluation details"
+      security:
+        - sanctum: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: "Evaluation details"
+        '404':
+          description: "Evaluation not found"
+
+    put:
+      tags:
+        - Evaluations
+      summary: "Update evaluation"
+      security:
+        - sanctum: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: "Evaluation updated"
+        '403':
+          description: "Permission denied"
+        '404':
+          description: "Not found"
+
+    delete:
+      tags:
+        - Evaluations
+      summary: "Delete evaluation"
+      security:
+        - sanctum: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: "Evaluation deleted"
+        '403':
+          description: "Permission denied"
+        '404':
+          description: "Not found"
+
+  # ============ DASHBOARD ============
+  /dashboard/student:
+    get:
+      tags:
+        - Dashboard
+      summary: "Student dashboard"
+      security:
+        - sanctum: []
+      responses:
+        '200':
+          description: "Student dashboard data"
+        '401':
+          description: "Unauthenticated"
+
+  /dashboard/teacher:
+    get:
+      tags:
+        - Dashboard
+      summary: "Teacher dashboard"
+      security:
+        - sanctum: []
+      responses:
+        '200':
+          description: "Teacher dashboard data"
+        '401':
+          description: "Unauthenticated"
+
+  # ============ CHAPTERS ============
+  /chapters:
+    get:
+      tags:
+        - Chapters
+      summary: "List chapters"
+      security:
+        - sanctum: []
+      responses:
+        '200':
+          description: "List of chapters"
+
+    post:
+      tags:
+        - Chapters
+      summary: "Create chapter"
+      security:
+        - sanctum: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title:
+                  type: string
+      responses:
+        '201':
+          description: "Chapter created"
+        '422':
+          description: "Validation error"
+
+  /chapters/{id}:
+    get:
+      tags:
+        - Chapters
+      summary: "Get chapter details"
+      security:
+        - sanctum: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: "Chapter details"
+        '404':
+          description: "Chapter not found"
+
+    put:
+      tags:
+        - Chapters
+      summary: "Update chapter"
+      security:
+        - sanctum: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: "Chapter updated"
+
+    delete:
+      tags:
+        - Chapters
+      summary: "Delete chapter"
+      security:
+        - sanctum: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: "Chapter deleted"
+
+  # ============ NOTIFICATIONS ============
+  /notifications:
+    get:
+      tags:
+        - Notifications
+      summary: "List notifications"
+      security:
+        - sanctum: []
+      parameters:
+        - name: read
+          in: query
+          schema:
+            type: string
+            enum: [true, false]
+        - name: per_page
+          in: query
+          schema:
+            type: integer
+            default: 10
+      responses:
+        '200':
+          description: "List of notifications"
+
+  /notifications/unread-count:
+    get:
+      tags:
+        - Notifications
+      summary: "Get unread count"
+      security:
+        - sanctum: []
+      responses:
+        '200':
+          description: "Unread count"
+
+  /notifications/{id}/mark-as-read:
+    post:
+      tags:
+        - Notifications
+      summary: "Mark notification as read"
+      security:
+        - sanctum: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: "Marked as read"
+
+  # ============ FILES ============
+  /files:
+    get:
+      tags:
+        - Files
+      summary: "List files"
+      security:
+        - sanctum: []
+      responses:
+        '200':
+          description: "List of files"
+
+    post:
+      tags:
+        - Files
+      summary: "Upload file"
+      security:
+        - sanctum: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        '201':
+          description: "File uploaded"
+        '422':
+          description: "Validation error"
+
+  /files/{id}/download:
+    get:
+      tags:
+        - Files
+      summary: "Download file"
+      security:
+        - sanctum: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: "File downloaded"
+
+# Security (global)
+security:
+  - sanctum: []
+
+tags:
+  - name: "Authentication"
+    description: "User authentication and session management"
+  - name: "Proxy / KLASSCI"
+    description: "Routes proxying to KLASSCI API with authentication"
+  - name: "Evaluations"
+    description: "Student evaluations and assessments"
+  - name: "Dashboard"
+    description: "Dashboard endpoints for students and teachers"
+  - name: "Chapters"
+    description: "Course chapters and content"
+  - name: "Notifications"
+    description: "User notifications"
+  - name: "Files"
+    description: "File upload and download"

@@ -1,0 +1,1909 @@
+openapi: 3.0.0
+info:
+  title: "LMS Backend API - Complete Reference"
+  description: |
+    # Documentation Complète de l'API LMS
+
+    Plateforme Learning Management System (LMS) avec intégration multi-tenant KLASSCI.
+
+    ## Authentification
+    Tous les endpoints (sauf `/auth/login`) requièrent un token Sanctum.
+    Format: `Authorization: Bearer <token>`
+
+    ## Architecture
+    - **Multi-tenant**: Chaque institution (campus) est isolée
+    - **KLASSCI Integration**: Synchronisation bidirectionnelle des données académiques
+    - **Real-time**: WebSockets pour visioconférences et notifications
+    - **Offline-first**: Cache local pour données critiques
+
+    ## Codes d'erreur (CRITICAL-02)
+    - `UNAUTHENTICATED` (401): Token manquant ou invalide
+    - `PERMISSION_DENIED` (403): Rôle insuffisant pour l'action
+    - `RESOURCE_NOT_FOUND` (404): Ressource inexistante
+    - `VALIDATION_FAILED` (422): Données invalides
+    - `INTERNAL_SERVER_ERROR` (500): Erreur serveur
+
+    ## Rôles & Permissions (CRITICAL-03)
+    - **etudiant**: Accès formations, évaluations, notes
+    - **enseignant**: Création évaluations, notation, gestion classe
+    - **coordinateur**: Coordination académique, pas création évaluations
+    - **admin**: Gestion institution, utilisateurs
+    - **superAdmin**: Contrôle global, multi-institution
+
+  version: "3.0.0"
+  contact:
+    name: "LMS Development Team"
+    email: "dev@lms.local"
+  license:
+    name: "MIT"
+
+servers:
+  - url: "http://localhost:8000/api"
+    description: "Development"
+  - url: "https://api.lms.local/api"
+    description: "Production"
+
+tags:
+  - name: "Authentication"
+    description: "Gestion des tokens et sessions"
+  - name: "Proxy / KLASSCI"
+    description: "Routes proxy vers KLASSCI (toutes nécessitent auth:sanctum + klassci.sync)"
+  - name: "Evaluations"
+    description: "Gestion des évaluations en ligne (CRUD, soumissions, corrections)"
+  - name: "Dashboard"
+    description: "Tableaux de bord personnalisés"
+  - name: "Chapters & Lessons"
+    description: "Gestion du contenu pédagogique"
+  - name: "Quiz & Knowledge Checks"
+    description: "Quizzes interactifs et tests de connaissance"
+  - name: "Files"
+    description: "Upload, téléchargement, conversion fichiers"
+  - name: "Notifications"
+    description: "Système de notifications utilisateur"
+  - name: "Forum"
+    description: "Forums de discussion par évaluation"
+  - name: "LMS Data"
+    description: "Données LMS critiques (séances, classes, horaires, visio)"
+  - name: "Search"
+    description: "Recherche globale et suggestions"
+  - name: "Reports & Analytics"
+    description: "Rapports et statistiques"
+  - name: "Admin"
+    description: "Endpoints administrateur"
+  - name: "Institutions"
+    description: "Gestion multi-tenant des institutions"
+
+components:
+  securitySchemes:
+    sanctum:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: "Laravel Sanctum token"
+
+  schemas:
+    ErrorResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        error_code:
+          type: string
+          enum: [UNAUTHENTICATED, PERMISSION_DENIED, RESOURCE_NOT_FOUND, VALIDATION_FAILED, INTERNAL_SERVER_ERROR]
+        message:
+          type: string
+      required:
+        - success
+        - error_code
+        - message
+
+    ValidationErrorResponse:
+      allOf:
+        - $ref: '#/components/schemas/ErrorResponse'
+        - type: object
+          properties:
+            errors:
+              type: object
+              additionalProperties:
+                type: array
+                items:
+                  type: string
+
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+        email:
+          type: string
+        name:
+          type: string
+        role:
+          type: string
+          enum: [etudiant, enseignant, coordinateur, admin, superAdmin]
+        klassci_id:
+          type: integer
+        institution_id:
+          type: integer
+
+    SuccessResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+        data:
+          type: object
+
+paths:
+
+  # ====== AUTHENTICATION (6 endpoints) ======
+  /auth/login:
+    post:
+      tags: [Authentication]
+      summary: "Authentifier un utilisateur"
+      description: |
+        Multi-tenant auto-detection:
+        1. Cherche en BD locale (superAdmin)
+        2. Détecte le tenant KLASSCI via check-user
+        3. Essaie login sur chaque tenant trouvé
+        4. Synchronise l'utilisateur en BD locale
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                username:
+                  type: string
+                  example: "john@example.com"
+                password:
+                  type: string
+                  format: password
+              required: [username, password]
+      responses:
+        '200':
+          description: "Login successful"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      user:
+                        $ref: '#/components/schemas/User'
+                      token:
+                        type: string
+                      token_type:
+                        type: string
+                  meta:
+                    type: object
+        '401':
+          description: "Invalid credentials"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: "Validation failed"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationErrorResponse'
+
+  /auth/me:
+    get:
+      tags: [Authentication]
+      summary: "Récupérer le profil utilisateur"
+      security:
+        - sanctum: []
+      responses:
+        '200':
+          description: "User profile"
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+
+  /auth/logout:
+    post:
+      tags: [Authentication]
+      summary: "Déconnecter l'utilisateur"
+      security:
+        - sanctum: []
+      responses:
+        '200':
+          description: "Logout successful"
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+
+  /auth/refresh:
+    post:
+      tags: [Authentication]
+      summary: "Rafraîchir le token"
+      security:
+        - sanctum: []
+      responses:
+        '200':
+          description: "New token generated"
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+
+  /auth/check:
+    get:
+      tags: [Authentication]
+      summary: "Vérifier l'authentification"
+      security:
+        - sanctum: []
+      responses:
+        '200':
+          description: "Auth status"
+
+  # ====== PROXY / KLASSCI (12 endpoints) ======
+  /proxy/structure:
+    get:
+      tags: ["Proxy / KLASSCI"]
+      summary: "Structure organisationnelle"
+      description: "Filières, niveaux, classes depuis KLASSCI"
+      security:
+        - sanctum: []
+      responses:
+        '200':
+          description: "Organizational structure"
+
+  /proxy/classes:
+    get:
+      tags: ["Proxy / KLASSCI"]
+      summary: "Toutes les classes"
+      security:
+        - sanctum: []
+      parameters:
+        - name: filiere_id
+          in: query
+          schema: {type: integer}
+        - name: niveau_id
+          in: query
+          schema: {type: integer}
+      responses:
+        '200':
+          description: "Classes list"
+
+  /proxy/classes/{id}/etudiants:
+    get:
+      tags: ["Proxy / KLASSCI"]
+      summary: "Étudiants d'une classe"
+      security:
+        - sanctum: []
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: integer}}
+      responses:
+        '200':
+          description: "Students list"
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /proxy/matieres:
+    get:
+      tags: ["Proxy / KLASSCI"]
+      summary: "Matières"
+      security:
+        - sanctum: []
+      parameters:
+        - name: filiere_id
+          in: query
+          schema: {type: integer}
+        - name: niveau_id
+          in: query
+          schema: {type: integer}
+      responses:
+        '200':
+          description: "Subjects list"
+
+  /proxy/matieres/{id}:
+    get:
+      tags: ["Proxy / KLASSCI"]
+      summary: "Détails matière"
+      security:
+        - sanctum: []
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: integer}}
+      responses:
+        '200':
+          description: "Subject details"
+
+  /proxy/enseignants:
+    get:
+      tags: ["Proxy / KLASSCI"]
+      summary: "Enseignants"
+      security:
+        - sanctum: []
+      responses:
+        '200':
+          description: "Teachers list"
+
+  /proxy/filieres:
+    get:
+      tags: ["Proxy / KLASSCI"]
+      summary: "Filières"
+      security:
+        - sanctum: []
+      responses:
+        '200':
+          description: "Branches list"
+
+  /proxy/niveaux-etudes:
+    get:
+      tags: ["Proxy / KLASSCI"]
+      summary: "Niveaux d'étude"
+      security:
+        - sanctum: []
+      responses:
+        '200':
+          description: "Study levels"
+
+  /proxy/evaluations:
+    get:
+      tags: ["Proxy / KLASSCI"]
+      summary: "Évaluations KLASSCI"
+      security:
+        - sanctum: []
+      responses:
+        '200':
+          description: "Evaluations list"
+
+  /proxy/emploi-temps:
+    get:
+      tags: ["Proxy / KLASSCI"]
+      summary: "Emploi du temps"
+      security:
+        - sanctum: []
+      responses:
+        '200':
+          description: "Schedule"
+
+  /proxy/test-connection:
+    get:
+      tags: ["Proxy / KLASSCI"]
+      summary: "Tester connexion KLASSCI"
+      description: "**Rôle requis: coordinateur, superAdmin, supradmin**"
+      security:
+        - sanctum: []
+      responses:
+        '200':
+          description: "Connection successful"
+        '403':
+          $ref: '#/components/responses/PermissionDenied'
+
+  # ====== EVALUATIONS (19 endpoints) ======
+  /evaluations:
+    get:
+      tags: [Evaluations]
+      summary: "Lister évaluations"
+      security:
+        - sanctum: []
+      parameters:
+        - {name: page, in: query, schema: {type: integer, default: 1}}
+        - {name: per_page, in: query, schema: {type: integer, default: 15}}
+        - {name: classe_id, in: query, schema: {type: integer}}
+        - {name: matiere_id, in: query, schema: {type: integer}}
+        - {name: status, in: query, schema: {type: string, enum: [brouillon, active, terminee, archivee]}}
+      responses:
+        '200':
+          description: "Evaluations list"
+
+    post:
+      tags: [Evaluations]
+      summary: "Créer évaluation"
+      description: "**Restriction: Coordinateurs ne peuvent pas créer d'évaluations**"
+      security:
+        - sanctum: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                klassci_classe_id: {type: integer}
+                klassci_matiere_id: {type: integer}
+                titre: {type: string}
+                type: {type: string, enum: [qcm, reponse_courte, dissertation, mixte]}
+                duree_minutes: {type: integer, minimum: 1}
+                questions: {type: array}
+              required: [klassci_classe_id, klassci_matiere_id, titre, type, duree_minutes]
+      responses:
+        '201':
+          description: "Evaluation created"
+        '403':
+          description: "Coordinators cannot create evaluations"
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+
+  /evaluations/{id}:
+    get:
+      tags: [Evaluations]
+      summary: "Détails évaluation"
+      security:
+        - sanctum: []
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: integer}}
+      responses:
+        '200':
+          description: "Evaluation details"
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    put:
+      tags: [Evaluations]
+      summary: "Modifier évaluation"
+      security:
+        - sanctum: []
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: integer}}
+      responses:
+        '200':
+          description: "Evaluation updated"
+        '403':
+          $ref: '#/components/responses/PermissionDenied'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    delete:
+      tags: [Evaluations]
+      summary: "Supprimer évaluation"
+      security:
+        - sanctum: []
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: integer}}
+      responses:
+        '200':
+          description: "Evaluation deleted"
+        '403':
+          $ref: '#/components/responses/PermissionDenied'
+
+  /evaluations/{id}/publish:
+    post:
+      tags: [Evaluations]
+      summary: "Publier évaluation"
+      security:
+        - sanctum: []
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: integer}}
+      responses:
+        '200':
+          description: "Evaluation published"
+
+  /evaluations/my-evaluations:
+    get:
+      tags: [Evaluations]
+      summary: "Mes évaluations"
+      security:
+        - sanctum: []
+      responses:
+        '200':
+          description: "User evaluations"
+
+  /evaluations/student/{id}:
+    get:
+      tags: [Evaluations]
+      summary: "Évaluations étudiant"
+      security:
+        - sanctum: []
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: integer}}
+      responses:
+        '200':
+          description: "Student evaluations"
+
+  /evaluations/{id}/start:
+    post:
+      tags: [Evaluations]
+      summary: "Démarrer une évaluation"
+      security:
+        - sanctum: []
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: integer}}
+      responses:
+        '200':
+          description: "Evaluation started"
+
+  /evaluations/{id}/submit:
+    post:
+      tags: [Evaluations]
+      summary: "Soumettre évaluation"
+      security:
+        - sanctum: []
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: integer}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                answers: {type: object}
+      responses:
+        '200':
+          description: "Evaluation submitted"
+
+  /evaluations/{id}/my-submission:
+    get:
+      tags: [Evaluations]
+      summary: "Ma soumission"
+      security:
+        - sanctum: []
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: integer}}
+      responses:
+        '200':
+          description: "User submission"
+
+  /evaluations/{id}/time-status:
+    get:
+      tags: [Evaluations]
+      summary: "Statut temps d'évaluation"
+      security:
+        - sanctum: []
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: integer}}
+      responses:
+        '200':
+          description: "Time status"
+
+  /evaluations/{id}/sync-klassci:
+    post:
+      tags: [Evaluations]
+      summary: "Synchroniser vers KLASSCI"
+      security:
+        - sanctum: []
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: integer}}
+      responses:
+        '200':
+          description: "Synced to KLASSCI"
+
+  /evaluations/{id}/results-by-class:
+    get:
+      tags: [Evaluations]
+      summary: "Résultats par classe"
+      security:
+        - sanctum: []
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: integer}}
+      responses:
+        '200':
+          description: "Results by class"
+
+  /evaluations/{id}/submissions:
+    get:
+      tags: [Evaluations]
+      summary: "Soumissions d'une évaluation"
+      security:
+        - sanctum: []
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: integer}}
+      responses:
+        '200':
+          description: "Submissions list"
+
+  /evaluations/{id}/sync-notes-klassci:
+    post:
+      tags: [Evaluations]
+      summary: "Synchroniser notes vers KLASSCI"
+      security:
+        - sanctum: []
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: integer}}
+      responses:
+        '200':
+          description: "Notes synced"
+
+  /evaluations/{id}/preview:
+    get:
+      tags: [Evaluations]
+      summary: "Aperçu évaluation"
+      security:
+        - sanctum: []
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: integer}}
+      responses:
+        '200':
+          description: "Preview"
+
+  /evaluations/my-grades:
+    get:
+      tags: [Evaluations]
+      summary: "Mes notes"
+      security:
+        - sanctum: []
+      responses:
+        '200':
+          description: "User grades"
+
+  # ====== DASHBOARD (3 endpoints) ======
+  /dashboard/student:
+    get:
+      tags: [Dashboard]
+      summary: "Dashboard étudiant"
+      security:
+        - sanctum: []
+      responses:
+        '200':
+          description: "Student dashboard"
+
+  /dashboard/teacher:
+    get:
+      tags: [Dashboard]
+      summary: "Dashboard enseignant"
+      security:
+        - sanctum: []
+      responses:
+        '200':
+          description: "Teacher dashboard"
+
+  /dashboard/stats:
+    get:
+      tags: [Dashboard]
+      summary: "Statistiques"
+      security:
+        - sanctum: []
+      responses:
+        '200':
+          description: "Stats"
+
+  # ====== CHAPTERS & LESSONS (13 endpoints) ======
+  /chapters:
+    get:
+      tags: ["Chapters & Lessons"]
+      summary: "Lister chapitres"
+      security:
+        - sanctum: []
+      responses:
+        '200':
+          description: "Chapters list"
+
+    post:
+      tags: ["Chapters & Lessons"]
+      summary: "Créer chapitre"
+      security:
+        - sanctum: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title: {type: string}
+              required: [title]
+      responses:
+        '201':
+          description: "Chapter created"
+
+  /chapters/{id}:
+    get:
+      tags: ["Chapters & Lessons"]
+      summary: "Détails chapitre"
+      security:
+        - sanctum: []
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: integer}}
+      responses:
+        '200':
+          description: "Chapter details"
+
+    put:
+      tags: ["Chapters & Lessons"]
+      summary: "Modifier chapitre"
+      security:
+        - sanctum: []
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: integer}}
+      responses:
+        '200':
+          description: "Chapter updated"
+
+    delete:
+      tags: ["Chapters & Lessons"]
+      summary: "Supprimer chapitre"
+      security:
+        - sanctum: []
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: integer}}
+      responses:
+        '200':
+          description: "Chapter deleted"
+
+  /chapters/{id}/upload-file:
+    post:
+      tags: ["Chapters & Lessons"]
+      summary: "Télécharger fichier chapitre"
+      security:
+        - sanctum: []
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: integer}}
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file: {type: string, format: binary}
+      responses:
+        '201':
+          description: "File uploaded"
+
+  /chapters/{id}/reorder:
+    post:
+      tags: ["Chapters & Lessons"]
+      summary: "Réorganiser chapitres"
+      security:
+        - sanctum: []
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: integer}}
+      responses:
+        '200':
+          description: "Reordered"
+
+  /lessons:
+    get:
+      tags: ["Chapters & Lessons"]
+      summary: "Lister leçons"
+      security:
+        - sanctum: []
+      responses:
+        '200':
+          description: "Lessons list"
+
+    post:
+      tags: ["Chapters & Lessons"]
+      summary: "Créer leçon"
+      security:
+        - sanctum: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title: {type: string}
+              required: [title]
+      responses:
+        '201':
+          description: "Lesson created"
+
+  /lessons/{id}:
+    get:
+      tags: ["Chapters & Lessons"]
+      summary: "Détails leçon"
+      security:
+        - sanctum: []
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: integer}}
+      responses:
+        '200':
+          description: "Lesson details"
+
+    put:
+      tags: ["Chapters & Lessons"]
+      summary: "Modifier leçon"
+      security:
+        - sanctum: []
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: integer}}
+      responses:
+        '200':
+          description: "Lesson updated"
+
+    delete:
+      tags: ["Chapters & Lessons"]
+      summary: "Supprimer leçon"
+      security:
+        - sanctum: []
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: integer}}
+      responses:
+        '200':
+          description: "Lesson deleted"
+
+  /lessons/{id}/publish:
+    post:
+      tags: ["Chapters & Lessons"]
+      summary: "Publier leçon"
+      security:
+        - sanctum: []
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: integer}}
+      responses:
+        '200':
+          description: "Published"
+
+  # ====== QUIZ & KNOWLEDGE CHECKS (15 endpoints) ======
+  /quizzes:
+    get:
+      tags: ["Quiz & Knowledge Checks"]
+      summary: "Lister quizzes"
+      security:
+        - sanctum: []
+      parameters:
+        - {name: lesson_id, in: query, schema: {type: integer}}
+        - {name: matiere_id, in: query, schema: {type: integer}}
+        - {name: sort, in: query, schema: {type: string, enum: [recent, title, popular]}}
+      responses:
+        '200':
+          description: "Quizzes list"
+
+    post:
+      tags: ["Quiz & Knowledge Checks"]
+      summary: "Créer quiz"
+      security:
+        - sanctum: []
+      responses:
+        '201':
+          description: "Quiz created"
+
+  /quizzes/{id}:
+    get:
+      tags: ["Quiz & Knowledge Checks"]
+      summary: "Détails quiz"
+      security:
+        - sanctum: []
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200':
+          description: "Quiz details"
+
+    put:
+      tags: ["Quiz & Knowledge Checks"]
+      summary: "Modifier quiz"
+      security:
+        - sanctum: []
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200':
+          description: "Quiz updated"
+
+    delete:
+      tags: ["Quiz & Knowledge Checks"]
+      summary: "Supprimer quiz"
+      security:
+        - sanctum: []
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200':
+          description: "Quiz deleted"
+
+  /quizzes/{id}/publish:
+    post:
+      tags: ["Quiz & Knowledge Checks"]
+      summary: "Publier quiz"
+      security:
+        - sanctum: []
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200':
+          description: "Published"
+
+  /quizzes/{id}/start:
+    post:
+      tags: ["Quiz & Knowledge Checks"]
+      summary: "Démarrer tentative quiz"
+      security:
+        - sanctum: []
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200':
+          description: "Attempt started"
+
+  /quizzes/{id}/submit:
+    post:
+      tags: ["Quiz & Knowledge Checks"]
+      summary: "Soumettre tentative"
+      security:
+        - sanctum: []
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200':
+          description: "Submitted"
+
+  /quizzes/{id}/attempts/{attemptId}:
+    get:
+      tags: ["Quiz & Knowledge Checks"]
+      summary: "Détails tentative"
+      security:
+        - sanctum: []
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+        - {name: attemptId, in: path, required: true, schema: {type: string}}
+      responses:
+        '200':
+          description: "Attempt details"
+
+  /quizzes/{id}/attempts:
+    get:
+      tags: ["Quiz & Knowledge Checks"]
+      summary: "Tentatives du quiz"
+      security:
+        - sanctum: []
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200':
+          description: "Attempts list"
+
+  /quizzes/{id}/grade/{attemptId}:
+    post:
+      tags: ["Quiz & Knowledge Checks"]
+      summary: "Noter tentative"
+      security:
+        - sanctum: []
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+        - {name: attemptId, in: path, required: true, schema: {type: string}}
+      responses:
+        '200':
+          description: "Graded"
+
+  /quizzes/{id}/time-remaining:
+    get:
+      tags: ["Quiz & Knowledge Checks"]
+      summary: "Temps restant"
+      security:
+        - sanctum: []
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200':
+          description: "Time remaining"
+
+  /knowledge-checks:
+    get:
+      tags: ["Quiz & Knowledge Checks"]
+      summary: "Tests de connaissance"
+      security:
+        - sanctum: []
+      responses:
+        '200':
+          description: "Knowledge checks list"
+
+    post:
+      tags: ["Quiz & Knowledge Checks"]
+      summary: "Créer test"
+      security:
+        - sanctum: []
+      responses:
+        '201':
+          description: "Created"
+
+  /knowledge-checks/chapter/{chapterId}:
+    get:
+      tags: ["Quiz & Knowledge Checks"]
+      summary: "Tests d'un chapitre"
+      security:
+        - sanctum: []
+      parameters:
+        - {name: chapterId, in: path, required: true, schema: {type: integer}}
+      responses:
+        '200':
+          description: "Chapter checks"
+
+  # ====== FILES (7 endpoints) ======
+  /files:
+    get:
+      tags: [Files]
+      summary: "Lister fichiers"
+      security:
+        - sanctum: []
+      responses:
+        '200':
+          description: "Files list"
+
+    post:
+      tags: [Files]
+      summary: "Télécharger fichier"
+      security:
+        - sanctum: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file: {type: string, format: binary}
+      responses:
+        '201':
+          description: "File uploaded"
+
+  /files/{id}:
+    get:
+      tags: [Files]
+      summary: "Détails fichier"
+      security:
+        - sanctum: []
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: integer}}
+      responses:
+        '200':
+          description: "File details"
+
+    put:
+      tags: [Files]
+      summary: "Modifier fichier"
+      security:
+        - sanctum: []
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: integer}}
+      responses:
+        '200':
+          description: "Updated"
+
+    delete:
+      tags: [Files]
+      summary: "Supprimer fichier"
+      security:
+        - sanctum: []
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: integer}}
+      responses:
+        '200':
+          description: "Deleted"
+
+  /files/{id}/download:
+    get:
+      tags: [Files]
+      summary: "Télécharger fichier"
+      security:
+        - sanctum: []
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: integer}}
+      responses:
+        '200':
+          description: "File content"
+
+  /files/stats:
+    get:
+      tags: [Files]
+      summary: "Statistiques fichiers"
+      security:
+        - sanctum: []
+      responses:
+        '200':
+          description: "Stats"
+
+  # ====== NOTIFICATIONS (9 endpoints) ======
+  /notifications:
+    get:
+      tags: [Notifications]
+      summary: "Lister notifications"
+      security:
+        - sanctum: []
+      parameters:
+        - {name: read, in: query, schema: {type: string, enum: ['true', 'false']}}
+        - {name: per_page, in: query, schema: {type: integer, default: 10}}
+      responses:
+        '200':
+          description: "Notifications list"
+
+  /notifications/unread-count:
+    get:
+      tags: [Notifications]
+      summary: "Compte non-lues"
+      security:
+        - sanctum: []
+      responses:
+        '200':
+          description: "Unread count"
+
+  /notifications/recent:
+    get:
+      tags: [Notifications]
+      summary: "Récentes notifications"
+      security:
+        - sanctum: []
+      responses:
+        '200':
+          description: "Recent notifications"
+
+  /notifications/{id}/mark-as-read:
+    post:
+      tags: [Notifications]
+      summary: "Marquer comme lue"
+      security:
+        - sanctum: []
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: integer}}
+      responses:
+        '200':
+          description: "Marked"
+
+  /notifications/mark-all-as-read:
+    post:
+      tags: [Notifications]
+      summary: "Tout marquer comme lu"
+      security:
+        - sanctum: []
+      responses:
+        '200':
+          description: "All marked"
+
+  /notifications/{id}:
+    delete:
+      tags: [Notifications]
+      summary: "Supprimer notification"
+      security:
+        - sanctum: []
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: integer}}
+      responses:
+        '200':
+          description: "Deleted"
+
+  /notifications/delete-read:
+    delete:
+      tags: [Notifications]
+      summary: "Supprimer toutes les lues"
+      security:
+        - sanctum: []
+      responses:
+        '200':
+          description: "Deleted"
+
+  /notifications/create:
+    post:
+      tags: [Notifications]
+      summary: "Créer notification (admin)"
+      security:
+        - sanctum: []
+      responses:
+        '201':
+          description: "Created"
+
+  /notifications/stats:
+    get:
+      tags: [Notifications]
+      summary: "Statistiques (admin)"
+      security:
+        - sanctum: []
+      responses:
+        '200':
+          description: "Stats"
+
+  # ====== FORUM (11 endpoints) ======
+  /evaluations/{evalId}/forum:
+    get:
+      tags: [Forum]
+      summary: "Topics d'un forum"
+      security:
+        - sanctum: []
+      parameters:
+        - {name: evalId, in: path, required: true, schema: {type: integer}}
+      responses:
+        '200':
+          description: "Topics list"
+
+    post:
+      tags: [Forum]
+      summary: "Créer topic"
+      security:
+        - sanctum: []
+      parameters:
+        - {name: evalId, in: path, required: true, schema: {type: integer}}
+      responses:
+        '201':
+          description: "Topic created"
+
+  /forum/{topicId}:
+    get:
+      tags: [Forum]
+      summary: "Détails topic"
+      security:
+        - sanctum: []
+      parameters:
+        - {name: topicId, in: path, required: true, schema: {type: integer}}
+      responses:
+        '200':
+          description: "Topic details"
+
+    put:
+      tags: [Forum]
+      summary: "Modifier topic"
+      security:
+        - sanctum: []
+      parameters:
+        - {name: topicId, in: path, required: true, schema: {type: integer}}
+      responses:
+        '200':
+          description: "Updated"
+
+    delete:
+      tags: [Forum]
+      summary: "Supprimer topic"
+      security:
+        - sanctum: []
+      parameters:
+        - {name: topicId, in: path, required: true, schema: {type: integer}}
+      responses:
+        '200':
+          description: "Deleted"
+
+  /forum/{topicId}/posts:
+    post:
+      tags: [Forum]
+      summary: "Ajouter post"
+      security:
+        - sanctum: []
+      parameters:
+        - {name: topicId, in: path, required: true, schema: {type: integer}}
+      responses:
+        '201':
+          description: "Post created"
+
+  /forum/posts/{postId}:
+    put:
+      tags: [Forum]
+      summary: "Modifier post"
+      security:
+        - sanctum: []
+      parameters:
+        - {name: postId, in: path, required: true, schema: {type: integer}}
+      responses:
+        '200':
+          description: "Updated"
+
+    delete:
+      tags: [Forum]
+      summary: "Supprimer post"
+      security:
+        - sanctum: []
+      parameters:
+        - {name: postId, in: path, required: true, schema: {type: integer}}
+      responses:
+        '200':
+          description: "Deleted"
+
+  /forum/{postId}/mark-solution:
+    post:
+      tags: [Forum]
+      summary: "Marquer comme solution"
+      security:
+        - sanctum: []
+      parameters:
+        - {name: postId, in: path, required: true, schema: {type: integer}}
+      responses:
+        '200':
+          description: "Marked"
+
+  /forum/{topicId}/close:
+    post:
+      tags: [Forum]
+      summary: "Fermer topic"
+      security:
+        - sanctum: []
+      parameters:
+        - {name: topicId, in: path, required: true, schema: {type: integer}}
+      responses:
+        '200':
+          description: "Closed"
+
+  /forum/{topicId}/pin:
+    post:
+      tags: [Forum]
+      summary: "Épingler topic"
+      security:
+        - sanctum: []
+      parameters:
+        - {name: topicId, in: path, required: true, schema: {type: integer}}
+      responses:
+        '200':
+          description: "Pinned"
+
+  # ====== LMS DATA (33 endpoints) ======
+  /lms/classes/{id}:
+    get:
+      tags: ["LMS Data"]
+      summary: "Détails complets classe"
+      description: "Classe, étudiants, matières, emploi du temps, évaluations, stats"
+      security:
+        - sanctum: []
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: integer}}
+      responses:
+        '200':
+          description: "Class details"
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /lms/classes/{id}/etudiants:
+    get:
+      tags: ["LMS Data"]
+      summary: "Étudiants classe"
+      security:
+        - sanctum: []
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: integer}}
+        - {name: annee_id, in: query, schema: {type: integer}}
+      responses:
+        '200':
+          description: "Students list"
+
+  /lms/matieres/{id}:
+    get:
+      tags: ["LMS Data"]
+      summary: "Détails matière"
+      security:
+        - sanctum: []
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: integer}}
+      responses:
+        '200':
+          description: "Subject details"
+
+  /lms/seances/upcoming:
+    get:
+      tags: ["LMS Data"]
+      summary: "Séances à venir"
+      security:
+        - sanctum: []
+      responses:
+        '200':
+          description: "Upcoming sessions"
+
+  /lms/seances/{id}/participants:
+    get:
+      tags: ["LMS Data"]
+      summary: "Participants séance"
+      security:
+        - sanctum: []
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: integer}}
+      responses:
+        '200':
+          description: "Participants list"
+
+  /lms/seances/{id}/validate-participant:
+    post:
+      tags: ["LMS Data"]
+      summary: "Valider participant"
+      security:
+        - sanctum: []
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: integer}}
+      responses:
+        '200':
+          description: "Validated"
+
+  /lms/visio/sync-attendances:
+    post:
+      tags: ["LMS Data"]
+      summary: "Synchroniser présences vidéo"
+      security:
+        - sanctum: []
+      responses:
+        '200':
+          description: "Synced"
+
+  /lms/notification-preferences:
+    get:
+      tags: ["LMS Data"]
+      summary: "Préférences notifications"
+      security:
+        - sanctum: []
+      responses:
+        '200':
+          description: "Preferences"
+
+  /lms/seances/{id}:
+    get:
+      tags: ["LMS Data"]
+      summary: "Détails séance"
+      security:
+        - sanctum: []
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: integer}}
+      responses:
+        '200':
+          description: "Session details"
+
+  /lms/seances/{id}/toggle-visio:
+    post:
+      tags: ["LMS Data"]
+      summary: "Basculer visio"
+      security:
+        - sanctum: []
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: integer}}
+      responses:
+        '200':
+          description: "Toggled"
+
+  /lms/seances/{id}/send-reminder:
+    post:
+      tags: ["LMS Data"]
+      summary: "Envoyer rappel"
+      security:
+        - sanctum: []
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: integer}}
+      responses:
+        '200':
+          description: "Reminder sent"
+
+  /lms/my-teaching-seances:
+    get:
+      tags: ["LMS Data"]
+      summary: "Mes séances d'enseignement"
+      security:
+        - sanctum: []
+      responses:
+        '200':
+          description: "Teaching sessions"
+
+  /lms/my-classes-seances:
+    get:
+      tags: ["LMS Data"]
+      summary: "Séances de mes classes"
+      security:
+        - sanctum: []
+      responses:
+        '200':
+          description: "Classes sessions"
+
+  /lms/visio/{id}/activate:
+    post:
+      tags: ["LMS Data"]
+      summary: "Activer visio"
+      security:
+        - sanctum: []
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: integer}}
+      responses:
+        '200':
+          description: "Activated"
+
+  /lms/visio/{id}/deactivate:
+    post:
+      tags: ["LMS Data"]
+      summary: "Désactiver visio"
+      security:
+        - sanctum: []
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: integer}}
+      responses:
+        '200':
+          description: "Deactivated"
+
+  /lms/visio/{id}/start:
+    post:
+      tags: ["LMS Data"]
+      summary: "Démarrer visio"
+      security:
+        - sanctum: []
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: integer}}
+      responses:
+        '200':
+          description: "Started"
+
+  /lms/visio/{id}/end:
+    post:
+      tags: ["LMS Data"]
+      summary: "Terminer visio"
+      security:
+        - sanctum: []
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: integer}}
+      responses:
+        '200':
+          description: "Ended"
+
+  /lms/visio/{id}/join:
+    post:
+      tags: ["LMS Data"]
+      summary: "Rejoindre visio"
+      security:
+        - sanctum: []
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: integer}}
+      responses:
+        '200':
+          description: "Joined"
+
+  /lms/visio/{id}/participants:
+    get:
+      tags: ["LMS Data"]
+      summary: "Participants visio"
+      security:
+        - sanctum: []
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: integer}}
+      responses:
+        '200':
+          description: "Participants"
+
+  /lms/visio/{id}/leave:
+    post:
+      tags: ["LMS Data"]
+      summary: "Quitter visio"
+      security:
+        - sanctum: []
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: integer}}
+      responses:
+        '200':
+          description: "Left"
+
+  /lms/visio/{id}/heartbeat:
+    post:
+      tags: ["LMS Data"]
+      summary: "Heartbeat visio"
+      security:
+        - sanctum: []
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: integer}}
+      responses:
+        '200':
+          description: "Heartbeat"
+
+  /lms/seances/{id}/hide:
+    post:
+      tags: ["LMS Data"]
+      summary: "Masquer séance"
+      security:
+        - sanctum: []
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: integer}}
+      responses:
+        '200':
+          description: "Hidden"
+
+  /lms/seances/{id}/unhide:
+    post:
+      tags: ["LMS Data"]
+      summary: "Afficher séance"
+      security:
+        - sanctum: []
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: integer}}
+      responses:
+        '200':
+          description: "Unhidden"
+
+  /lms/admin/matieres:
+    get:
+      tags: ["LMS Data"]
+      summary: "Matières (admin)"
+      security:
+        - sanctum: []
+      responses:
+        '200':
+          description: "Subjects list"
+
+  /lms/enseignants:
+    get:
+      tags: ["LMS Data"]
+      summary: "Enseignants locaux"
+      security:
+        - sanctum: []
+      responses:
+        '200':
+          description: "Teachers list"
+
+  /lms/enseignants-klassci:
+    get:
+      tags: ["LMS Data"]
+      summary: "Enseignants KLASSCI"
+      security:
+        - sanctum: []
+      responses:
+        '200':
+          description: "KLASSCI teachers"
+
+  /lms/my-matieres:
+    get:
+      tags: ["LMS Data"]
+      summary: "Mes matières"
+      security:
+        - sanctum: []
+      responses:
+        '200':
+          description: "My subjects"
+
+  /lms/attendance-history:
+    get:
+      tags: ["LMS Data"]
+      summary: "Historique présences"
+      security:
+        - sanctum: []
+      responses:
+        '200':
+          description: "Attendance history"
+
+  /lms/seances-history:
+    get:
+      tags: ["LMS Data"]
+      summary: "Historique séances"
+      security:
+        - sanctum: []
+      responses:
+        '200':
+          description: "Sessions history"
+
+  /lms/seances/{id}/attendances:
+    get:
+      tags: ["LMS Data"]
+      summary: "Présences séance"
+      security:
+        - sanctum: []
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: integer}}
+      responses:
+        '200':
+          description: "Attendances"
+
+  /lms/seances/{id}/delete:
+    delete:
+      tags: ["LMS Data"]
+      summary: "Supprimer séance"
+      security:
+        - sanctum: []
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: integer}}
+      responses:
+        '200':
+          description: "Deleted"
+
+  # ====== SEARCH (3 endpoints) ======
+  /search:
+    get:
+      tags: [Search]
+      summary: "Recherche globale"
+      security:
+        - sanctum: []
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: "Search results"
+
+  /search/suggestions:
+    get:
+      tags: [Search]
+      summary: "Suggestions recherche"
+      security:
+        - sanctum: []
+      parameters:
+        - name: q
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: "Suggestions"
+
+  /search/history:
+    get:
+      tags: [Search]
+      summary: "Historique recherches"
+      security:
+        - sanctum: []
+      responses:
+        '200':
+          description: "Search history"
+
+  # ====== REPORTS & ANALYTICS (3 endpoints) ======
+  /reports/attendance:
+    post:
+      tags: ["Reports & Analytics"]
+      summary: "Rapport présences"
+      security:
+        - sanctum: []
+      responses:
+        '200':
+          description: "Attendance report"
+
+  /reports/grades:
+    post:
+      tags: ["Reports & Analytics"]
+      summary: "Rapport notes"
+      security:
+        - sanctum: []
+      responses:
+        '200':
+          description: "Grades report"
+
+  /reports/activity:
+    post:
+      tags: ["Reports & Analytics"]
+      summary: "Rapport activité"
+      security:
+        - sanctum: []
+      responses:
+        '200':
+          description: "Activity report"
+
+  # ====== ADMIN (4 endpoints) ======
+  /admin/analytics/trends:
+    get:
+      tags: [Admin]
+      summary: "Tendances activité"
+      security:
+        - sanctum: []
+      responses:
+        '200':
+          description: "Trends"
+        '403':
+          $ref: '#/components/responses/PermissionDenied'
+
+  /admin/analytics/metrics:
+    get:
+      tags: [Admin]
+      summary: "Métriques système"
+      security:
+        - sanctum: []
+      responses:
+        '200':
+          description: "Metrics"
+
+  /admin/analytics/pending-tasks:
+    get:
+      tags: [Admin]
+      summary: "Tâches en attente"
+      security:
+        - sanctum: []
+      responses:
+        '200':
+          description: "Pending tasks"
+
+  /admin/analytics/recent-users:
+    get:
+      tags: [Admin]
+      summary: "Utilisateurs récents"
+      security:
+        - sanctum: []
+      responses:
+        '200':
+          description: "Recent users"
+
+  # ====== INSTITUTIONS (7 endpoints) ======
+  /institutions:
+    get:
+      tags: [Institutions]
+      summary: "Lister institutions"
+      security:
+        - sanctum: []
+      responses:
+        '200':
+          description: "Institutions list"
+
+    post:
+      tags: [Institutions]
+      summary: "Créer institution"
+      security:
+        - sanctum: []
+      responses:
+        '201':
+          description: "Created"
+
+  /institutions/{id}:
+    get:
+      tags: [Institutions]
+      summary: "Détails institution"
+      security:
+        - sanctum: []
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: integer}}
+      responses:
+        '200':
+          description: "Institution details"
+
+    put:
+      tags: [Institutions]
+      summary: "Modifier institution"
+      security:
+        - sanctum: []
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: integer}}
+      responses:
+        '200':
+          description: "Updated"
+
+    delete:
+      tags: [Institutions]
+      summary: "Supprimer institution"
+      security:
+        - sanctum: []
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: integer}}
+      responses:
+        '200':
+          description: "Deleted"
+
+  /institutions/{id}/toggle:
+    post:
+      tags: [Institutions]
+      summary: "Activer/Désactiver institution"
+      security:
+        - sanctum: []
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: integer}}
+      responses:
+        '200':
+          description: "Toggled"
+
+  /institutions/{id}/test-connection:
+    post:
+      tags: [Institutions]
+      summary: "Tester connexion KLASSCI"
+      security:
+        - sanctum: []
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: integer}}
+      responses:
+        '200':
+          description: "Connection successful"
+
+# ====== RESPONSE COMPONENTS ======
+components:
+  responses:
+    Unauthenticated:
+      description: "Unauthenticated"
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            success: false
+            error_code: UNAUTHENTICATED
+            message: "Unauthenticated."
+
+    PermissionDenied:
+      description: "Permission denied"
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            success: false
+            error_code: PERMISSION_DENIED
+            message: "Accès refusé"
+
+    NotFound:
+      description: "Resource not found"
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            success: false
+            error_code: RESOURCE_NOT_FOUND
+            message: "Ressource non trouvée"
+
+    ValidationFailed:
+      description: "Validation failed"
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ValidationErrorResponse'
+
+security:
+  - sanctum: []

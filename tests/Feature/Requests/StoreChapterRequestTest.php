@@ -41,6 +41,7 @@ class StoreChapterRequestTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        $this->disableKlassciMiddleware();
 
         $this->institution = Institution::factory()->create();
         $classe = Classe::factory()->for($this->institution)->create();

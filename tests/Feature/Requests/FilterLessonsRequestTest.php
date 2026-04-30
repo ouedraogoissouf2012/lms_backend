@@ -38,6 +38,7 @@ class FilterLessonsRequestTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        $this->disableKlassciMiddleware();
 
         $this->institution = Institution::factory()->create();
         $this->classe = Classe::factory()->for($this->institution)->create();

@@ -55,7 +55,7 @@ class UploadFileRequestTest extends TestCase
             'file' => $file,
         ]);
 
-        $this->assertIn($response->status(), [200, 201]);
+        $this->assertTrue(in_array($response->status(), [200, 201]));
     }
 
     /**
@@ -74,7 +74,7 @@ class UploadFileRequestTest extends TestCase
             'file' => $file,
         ]);
 
-        $this->assertIn($response->status(), [200, 201]);
+        $this->assertTrue(in_array($response->status(), [200, 201]));
     }
 
     /**
@@ -93,7 +93,7 @@ class UploadFileRequestTest extends TestCase
             'file' => $file,
         ]);
 
-        $this->assertIn($response->status(), [200, 201]);
+        $this->assertTrue(in_array($response->status(), [200, 201]));
     }
 
     /**
@@ -108,7 +108,7 @@ class UploadFileRequestTest extends TestCase
             'file' => $file,
         ]);
 
-        $this->assertIn($response->status(), [200, 201]);
+        $this->assertTrue(in_array($response->status(), [200, 201]));
     }
 
     /**
@@ -123,7 +123,7 @@ class UploadFileRequestTest extends TestCase
             'file' => $file,
         ]);
 
-        $this->assertIn($response->status(), [200, 201]);
+        $this->assertTrue(in_array($response->status(), [200, 201]));
     }
 
     /**
@@ -139,7 +139,7 @@ class UploadFileRequestTest extends TestCase
             'name' => 'My Important Document',
         ]);
 
-        $this->assertIn($response->status(), [200, 201]);
+        $this->assertTrue(in_array($response->status(), [200, 201]));
     }
 
     /**

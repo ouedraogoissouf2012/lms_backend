@@ -5,16 +5,18 @@ namespace Database\Factories;
 use App\Models\Institution;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
-class ClasseFactory extends Factory
+class MatiereFactory extends Factory
 {
     public function definition(): array
     {
         return [
             'institution_id' => Institution::factory(),
-            'libelle' => fake()->unique()->bothify('Classe ??#'),
             'klassci_id' => fake()->unique()->numberBetween(1, 10000),
-            'code' => fake()->unique()->bothify('CLS-???-###'),
-            'effectif' => fake()->numberBetween(20, 50),
+            'code' => fake()->unique()->bothify('MAT-???-###'),
+            'libelle' => fake()->unique()->word(),
+            'description' => fake()->sentence(),
+            'coefficient' => fake()->numberBetween(1, 5),
+            'credit' => fake()->numberBetween(1, 6),
         ];
     }
 }

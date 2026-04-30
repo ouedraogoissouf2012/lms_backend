@@ -105,14 +105,14 @@ class TeacherStatsController extends Controller
 
         } catch (\Exception $e) {
             Log::error('Erreur récupération statistiques enseignant:', [
-                'error' => $e->getMessage(),
+                'error' => 'Une erreur est survenue.',
                 'trace' => $e->getTraceAsString()
             ]);
 
             return response()->json([
                 'success' => false,
                 'message' => 'Erreur lors de la récupération des statistiques',
-                'error' => $e->getMessage()
+                'error' => 'Une erreur est survenue.'
             ], 500);
         }
     }

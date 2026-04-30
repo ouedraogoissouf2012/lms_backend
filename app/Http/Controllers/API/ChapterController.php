@@ -48,7 +48,7 @@ class ChapterController extends Controller
             Log::error("Erreur récupération chapitres", ['error' => $e->getMessage()]);
             return response()->json([
                 'success' => false,
-                'message' => $e->getMessage()
+                'message' => 'Une erreur est survenue.'
             ], 500);
         }
     }
@@ -132,7 +132,7 @@ class ChapterController extends Controller
             Log::error("❌ Erreur création chapitre", ['error' => $e->getMessage()]);
             return response()->json([
                 'success' => false,
-                'message' => $e->getMessage()
+                'message' => 'Une erreur est survenue.'
             ], 500);
         }
     }
@@ -244,7 +244,7 @@ class ChapterController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => $e->getMessage()
+                'message' => 'Une erreur est survenue.'
             ], 500);
         }
     }
@@ -291,7 +291,7 @@ class ChapterController extends Controller
             Log::error("❌ Erreur mise à jour chapitre", ['error' => $e->getMessage()]);
             return response()->json([
                 'success' => false,
-                'message' => $e->getMessage()
+                'message' => 'Une erreur est survenue.'
             ], 500);
         }
     }
@@ -320,7 +320,7 @@ class ChapterController extends Controller
             Log::error("❌ Erreur suppression chapitre", ['error' => $e->getMessage()]);
             return response()->json([
                 'success' => false,
-                'message' => $e->getMessage()
+                'message' => 'Une erreur est survenue.'
             ], 500);
         }
     }
@@ -364,7 +364,7 @@ class ChapterController extends Controller
             Log::error("❌ Erreur réorganisation chapitres", ['error' => $e->getMessage()]);
             return response()->json([
                 'success' => false,
-                'message' => $e->getMessage()
+                'message' => 'Une erreur est survenue.'
             ], 500);
         }
     }

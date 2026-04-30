@@ -271,7 +271,7 @@ class EvaluationController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Erreur lors de la création de l\'évaluation',
-                'error' => $e->getMessage()
+                'error' => 'Une erreur est survenue.'
             ], 500);
         }
     }
@@ -394,7 +394,7 @@ class EvaluationController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Erreur lors de la mise à jour',
-                'error' => $e->getMessage()
+                'error' => 'Une erreur est survenue.'
             ], 500);
         }
     }
@@ -586,7 +586,7 @@ class EvaluationController extends Controller
 
             } catch (\Exception $e) {
                 \Log::warning('Could not fetch KLASSCI evaluations for windows', [
-                    'error' => $e->getMessage()
+                    'error' => 'Une erreur est survenue.'
                 ]);
                 $klassciEvaluations = collect([]);
             }
@@ -646,7 +646,7 @@ class EvaluationController extends Controller
                         }
                     } catch (\Exception $e) {
                         \Log::warning('Could not fetch matiere/classe for pure LMS eval', [
-                            'error' => $e->getMessage()
+                            'error' => 'Une erreur est survenue.'
                         ]);
                     }
 
@@ -688,7 +688,7 @@ class EvaluationController extends Controller
 
         } catch (\Exception $e) {
             \Log::error('Erreur récupération évaluations étudiant', [
-                'error' => $e->getMessage(),
+                'error' => 'Une erreur est survenue.',
                 'trace' => $e->getTraceAsString()
             ]);
 
@@ -807,7 +807,7 @@ class EvaluationController extends Controller
         } catch (\Exception $e) {
             \Log::error('Erreur vérification fenêtre temporelle', [
                 'evaluation_id' => $id,
-                'error' => $e->getMessage()
+                'error' => 'Une erreur est survenue.'
             ]);
 
             // En cas d'erreur KLASSCI, on laisse passer (fallback gracieux)
@@ -1009,7 +1009,7 @@ class EvaluationController extends Controller
         } catch (\Exception $e) {
             \Log::error('Erreur récupération soumission étudiant', [
                 'evaluation_id' => $id,
-                'error' => $e->getMessage()
+                'error' => 'Une erreur est survenue.'
             ]);
 
             return response()->json([
@@ -1068,7 +1068,7 @@ class EvaluationController extends Controller
         } catch (\Exception $e) {
             \Log::error('Erreur récupération état temporel', [
                 'evaluation_id' => $id,
-                'error' => $e->getMessage()
+                'error' => 'Une erreur est survenue.'
             ]);
 
             return response()->json([
@@ -1140,7 +1140,7 @@ class EvaluationController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Erreur lors de la synchronisation',
-                'error' => $e->getMessage()
+                'error' => 'Une erreur est survenue.'
             ], 500);
         }
     }
@@ -1403,14 +1403,14 @@ class EvaluationController extends Controller
         } catch (\Exception $e) {
             \Log::error('❌ Erreur récupération résultats évaluation', [
                 'evaluation_id' => $id,
-                'error' => $e->getMessage(),
+                'error' => 'Une erreur est survenue.',
                 'trace' => $e->getTraceAsString()
             ]);
 
             return response()->json([
                 'success' => false,
                 'message' => 'Erreur lors de la récupération des résultats',
-                'error' => $e->getMessage()
+                'error' => 'Une erreur est survenue.'
             ], 500);
         }
     }
@@ -1460,13 +1460,13 @@ class EvaluationController extends Controller
         } catch (\Exception $e) {
             \Log::error('Erreur récupération soumissions', [
                 'evaluation_id' => $id,
-                'error' => $e->getMessage()
+                'error' => 'Une erreur est survenue.'
             ]);
 
             return response()->json([
                 'success' => false,
                 'message' => 'Erreur lors de la récupération des soumissions',
-                'error' => $e->getMessage()
+                'error' => 'Une erreur est survenue.'
             ], 500);
         }
     }
@@ -1510,7 +1510,7 @@ class EvaluationController extends Controller
                     $errors[] = [
                         'submission_id' => $submission->id,
                         'student_id' => $submission->klassci_etudiant_id,
-                        'error' => $e->getMessage()
+                        'error' => 'Une erreur est survenue.'
                     ];
                 }
             }
@@ -1532,13 +1532,13 @@ class EvaluationController extends Controller
         } catch (\Exception $e) {
             \Log::error('Erreur synchronisation notes', [
                 'evaluation_id' => $id,
-                'error' => $e->getMessage()
+                'error' => 'Une erreur est survenue.'
             ]);
 
             return response()->json([
                 'success' => false,
                 'message' => 'Erreur lors de la synchronisation des notes',
-                'error' => $e->getMessage()
+                'error' => 'Une erreur est survenue.'
             ], 500);
         }
     }
@@ -1597,13 +1597,13 @@ class EvaluationController extends Controller
         } catch (\Exception $e) {
             \Log::error('Erreur prévisualisation évaluation', [
                 'evaluation_id' => $id,
-                'error' => $e->getMessage()
+                'error' => 'Une erreur est survenue.'
             ]);
 
             return response()->json([
                 'success' => false,
                 'message' => 'Erreur lors de la prévisualisation',
-                'error' => $e->getMessage()
+                'error' => 'Une erreur est survenue.'
             ], 500);
         }
     }
@@ -1736,13 +1736,13 @@ class EvaluationController extends Controller
         } catch (\Exception $e) {
             \Log::error('Erreur récupération notes étudiant', [
                 'user_id' => $request->user()?->id,
-                'error' => $e->getMessage()
+                'error' => 'Une erreur est survenue.'
             ]);
 
             return response()->json([
                 'success' => false,
                 'message' => 'Erreur lors de la récupération des notes',
-                'error' => $e->getMessage()
+                'error' => 'Une erreur est survenue.'
             ], 500);
         }
     }

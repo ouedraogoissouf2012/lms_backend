@@ -383,7 +383,7 @@ class InstitutionController extends Controller
                 'message' => 'Impossible de se connecter au serveur KLASSCI',
                 'data' => [
                     'api_url' => $institution->klassci_api_url ?? '',
-                    'error' => $e->getMessage(),
+                    'error' => 'Erreur de connexion au serveur KLASSCI.',
                 ],
             ], 502);
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {

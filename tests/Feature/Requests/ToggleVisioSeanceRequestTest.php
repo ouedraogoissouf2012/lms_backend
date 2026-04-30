@@ -33,7 +33,7 @@ class ToggleVisioSeanceRequestTest extends TestCase
         $this->admin = User::factory()->admin()->for($this->institution)->create([
             'klassci_token' => 'test_token_' . uniqid(),
         ]);
-        $this->seance = Seance::factory()->for($this->institution)->create();
+        $this->seance = Seance::factory()->forInstitution($this->institution)->create();
     }
 
     public function test_unauthenticated_cannot_toggle_visio(): void

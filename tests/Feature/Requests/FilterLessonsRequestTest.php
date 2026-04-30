@@ -62,6 +62,7 @@ class FilterLessonsRequestTest extends TestCase
      */
     public function test_valid_query_parameters_returns_200(): void
     {
+        Sanctum::actingAs($this->teacher);
         $response = $this->getJson('/api/lessons?per_page=10&type=cours&status=published');
 
         $response->assertStatus(200);
@@ -72,6 +73,7 @@ class FilterLessonsRequestTest extends TestCase
      */
     public function test_per_page_defaults_to_15(): void
     {
+        Sanctum::actingAs($this->teacher);
         $response = $this->getJson('/api/lessons');
 
         $response->assertStatus(200);
@@ -83,6 +85,7 @@ class FilterLessonsRequestTest extends TestCase
      */
     public function test_per_page_minimum_is_valid(): void
     {
+        Sanctum::actingAs($this->teacher);
         $response = $this->getJson('/api/lessons?per_page=1');
 
         $response->assertStatus(200);
@@ -93,6 +96,7 @@ class FilterLessonsRequestTest extends TestCase
      */
     public function test_per_page_maximum_is_valid(): void
     {
+        Sanctum::actingAs($this->teacher);
         $response = $this->getJson('/api/lessons?per_page=100');
 
         $response->assertStatus(200);
@@ -103,6 +107,7 @@ class FilterLessonsRequestTest extends TestCase
      */
     public function test_per_page_zero_fails(): void
     {
+        Sanctum::actingAs($this->teacher);
         $response = $this->getJson('/api/lessons?per_page=0');
 
         $response->assertStatus(422);
@@ -116,6 +121,7 @@ class FilterLessonsRequestTest extends TestCase
      */
     public function test_per_page_exceeding_max_fails(): void
     {
+        Sanctum::actingAs($this->teacher);
         $response = $this->getJson('/api/lessons?per_page=101');
 
         $response->assertStatus(422);
@@ -129,6 +135,7 @@ class FilterLessonsRequestTest extends TestCase
      */
     public function test_per_page_extreme_value_fails(): void
     {
+        Sanctum::actingAs($this->teacher);
         $response = $this->getJson('/api/lessons?per_page=1000000');
 
         $response->assertStatus(422);
@@ -139,6 +146,7 @@ class FilterLessonsRequestTest extends TestCase
      */
     public function test_per_page_non_integer_fails(): void
     {
+        Sanctum::actingAs($this->teacher);
         $response = $this->getJson('/api/lessons?per_page=abc');
 
         $response->assertStatus(422);
@@ -152,6 +160,7 @@ class FilterLessonsRequestTest extends TestCase
      */
     public function test_valid_matiere_id_passes(): void
     {
+        Sanctum::actingAs($this->teacher);
         $response = $this->getJson('/api/lessons?matiere_id=' . $this->matiere->id);
 
         $response->assertStatus(200);
@@ -162,6 +171,7 @@ class FilterLessonsRequestTest extends TestCase
      */
     public function test_matiere_id_zero_fails(): void
     {
+        Sanctum::actingAs($this->teacher);
         $response = $this->getJson('/api/lessons?matiere_id=0');
 
         $response->assertStatus(422);
@@ -175,6 +185,7 @@ class FilterLessonsRequestTest extends TestCase
      */
     public function test_matiere_id_negative_fails(): void
     {
+        Sanctum::actingAs($this->teacher);
         $response = $this->getJson('/api/lessons?matiere_id=-5');
 
         $response->assertStatus(422);
@@ -185,6 +196,7 @@ class FilterLessonsRequestTest extends TestCase
      */
     public function test_matiere_id_non_numeric_fails(): void
     {
+        Sanctum::actingAs($this->teacher);
         $response = $this->getJson('/api/lessons?matiere_id=abc');
 
         $response->assertStatus(422);
@@ -195,6 +207,7 @@ class FilterLessonsRequestTest extends TestCase
      */
     public function test_valid_classe_id_passes(): void
     {
+        Sanctum::actingAs($this->teacher);
         $response = $this->getJson('/api/lessons?classe_id=' . $this->classe->id);
 
         $response->assertStatus(200);
@@ -205,6 +218,7 @@ class FilterLessonsRequestTest extends TestCase
      */
     public function test_classe_id_zero_fails(): void
     {
+        Sanctum::actingAs($this->teacher);
         $response = $this->getJson('/api/lessons?classe_id=0');
 
         $response->assertStatus(422);
@@ -215,6 +229,7 @@ class FilterLessonsRequestTest extends TestCase
      */
     public function test_valid_enseignant_id_passes(): void
     {
+        Sanctum::actingAs($this->teacher);
         $response = $this->getJson('/api/lessons?enseignant_id=' . $this->teacher->id);
 
         $response->assertStatus(200);
@@ -225,6 +240,7 @@ class FilterLessonsRequestTest extends TestCase
      */
     public function test_enseignant_id_negative_fails(): void
     {
+        Sanctum::actingAs($this->teacher);
         $response = $this->getJson('/api/lessons?enseignant_id=-1');
 
         $response->assertStatus(422);
@@ -235,6 +251,7 @@ class FilterLessonsRequestTest extends TestCase
      */
     public function test_valid_type_cours_passes(): void
     {
+        Sanctum::actingAs($this->teacher);
         $response = $this->getJson('/api/lessons?type=cours');
 
         $response->assertStatus(200);
@@ -245,6 +262,7 @@ class FilterLessonsRequestTest extends TestCase
      */
     public function test_valid_type_tp_passes(): void
     {
+        Sanctum::actingAs($this->teacher);
         $response = $this->getJson('/api/lessons?type=tp');
 
         $response->assertStatus(200);
@@ -255,6 +273,7 @@ class FilterLessonsRequestTest extends TestCase
      */
     public function test_invalid_type_fails(): void
     {
+        Sanctum::actingAs($this->teacher);
         $response = $this->getJson('/api/lessons?type=invalid_type');
 
         $response->assertStatus(422);
@@ -268,6 +287,7 @@ class FilterLessonsRequestTest extends TestCase
      */
     public function test_valid_status_published_passes(): void
     {
+        Sanctum::actingAs($this->teacher);
         $response = $this->getJson('/api/lessons?status=published');
 
         $response->assertStatus(200);
@@ -278,6 +298,7 @@ class FilterLessonsRequestTest extends TestCase
      */
     public function test_valid_status_draft_passes(): void
     {
+        Sanctum::actingAs($this->teacher);
         $response = $this->getJson('/api/lessons?status=draft');
 
         $response->assertStatus(200);
@@ -288,6 +309,7 @@ class FilterLessonsRequestTest extends TestCase
      */
     public function test_valid_status_archived_passes(): void
     {
+        Sanctum::actingAs($this->teacher);
         $response = $this->getJson('/api/lessons?status=archived');
 
         $response->assertStatus(200);
@@ -298,6 +320,7 @@ class FilterLessonsRequestTest extends TestCase
      */
     public function test_invalid_status_fails(): void
     {
+        Sanctum::actingAs($this->teacher);
         $response = $this->getJson('/api/lessons?status=invalid_status');
 
         $response->assertStatus(422);
@@ -311,6 +334,7 @@ class FilterLessonsRequestTest extends TestCase
      */
     public function test_multiple_filters_together_pass(): void
     {
+        Sanctum::actingAs($this->teacher);
         $response = $this->getJson(sprintf(
             '/api/lessons?per_page=10&matiere_id=%d&classe_id=%d&type=cours&status=published',
             $this->matiere->id,
@@ -325,6 +349,7 @@ class FilterLessonsRequestTest extends TestCase
      */
     public function test_filters_are_optional(): void
     {
+        Sanctum::actingAs($this->teacher);
         $response = $this->getJson('/api/lessons');
 
         $response->assertStatus(200);
@@ -336,6 +361,7 @@ class FilterLessonsRequestTest extends TestCase
      */
     public function test_multiple_invalid_filters_fail(): void
     {
+        Sanctum::actingAs($this->teacher);
         $response = $this->getJson('/api/lessons?per_page=abc&matiere_id=invalid&type=bad');
 
         $response->assertStatus(422);

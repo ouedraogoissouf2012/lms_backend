@@ -8,6 +8,7 @@ use App\Models\Lesson;
 use App\Models\Matiere;
 use App\Models\User;
 use Illuminate\Http\UploadedFile;
+use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
 /**
@@ -67,7 +68,7 @@ class StoreChapterRequestTest extends TestCase
      */
     public function test_valid_chapter_creates_successfully(): void
     {
-        $this->actingAs($this->teacher);
+        Sanctum::actingAs($this->teacher);
 
         $response = $this->postJson("/api/lessons/{$this->lesson->id}/chapters", [
             'titre' => 'Variables and Data Types',
@@ -81,7 +82,7 @@ class StoreChapterRequestTest extends TestCase
      */
     public function test_chapter_with_all_metadata_passes(): void
     {
-        $this->actingAs($this->teacher);
+        Sanctum::actingAs($this->teacher);
 
         $response = $this->postJson("/api/lessons/{$this->lesson->id}/chapters", [
             'titre' => 'Functions and Scope',
@@ -98,7 +99,7 @@ class StoreChapterRequestTest extends TestCase
      */
     public function test_chapter_with_pdf_file_passes(): void
     {
-        $this->actingAs($this->teacher);
+        Sanctum::actingAs($this->teacher);
         $file = UploadedFile::fake()->create('slides.pdf', 1024, 'application/pdf');
 
         $response = $this->postJson("/api/lessons/{$this->lesson->id}/chapters", [
@@ -114,7 +115,7 @@ class StoreChapterRequestTest extends TestCase
      */
     public function test_chapter_with_pptx_file_passes(): void
     {
-        $this->actingAs($this->teacher);
+        Sanctum::actingAs($this->teacher);
         $file = UploadedFile::fake()->create(
             'presentation.pptx',
             2048,
@@ -134,7 +135,7 @@ class StoreChapterRequestTest extends TestCase
      */
     public function test_chapter_with_docx_file_passes(): void
     {
-        $this->actingAs($this->teacher);
+        Sanctum::actingAs($this->teacher);
         $file = UploadedFile::fake()->create(
             'notes.docx',
             512,
@@ -154,7 +155,7 @@ class StoreChapterRequestTest extends TestCase
      */
     public function test_title_with_spaces_is_trimmed(): void
     {
-        $this->actingAs($this->teacher);
+        Sanctum::actingAs($this->teacher);
 
         $response = $this->postJson("/api/lessons/{$this->lesson->id}/chapters", [
             'titre' => '   Important Chapter   ',
@@ -168,7 +169,7 @@ class StoreChapterRequestTest extends TestCase
      */
     public function test_missing_titre_fails(): void
     {
-        $this->actingAs($this->teacher);
+        Sanctum::actingAs($this->teacher);
 
         $response = $this->postJson("/api/lessons/{$this->lesson->id}/chapters", [
             // No titre
@@ -185,7 +186,7 @@ class StoreChapterRequestTest extends TestCase
      */
     public function test_titre_too_short_fails(): void
     {
-        $this->actingAs($this->teacher);
+        Sanctum::actingAs($this->teacher);
 
         $response = $this->postJson("/api/lessons/{$this->lesson->id}/chapters", [
             'titre' => 'ab', // < 3 chars
@@ -202,7 +203,7 @@ class StoreChapterRequestTest extends TestCase
      */
     public function test_titre_exceeding_max_length_fails(): void
     {
-        $this->actingAs($this->teacher);
+        Sanctum::actingAs($this->teacher);
 
         $response = $this->postJson("/api/lessons/{$this->lesson->id}/chapters", [
             'titre' => str_repeat('a', 256), // > 255
@@ -219,7 +220,7 @@ class StoreChapterRequestTest extends TestCase
      */
     public function test_titre_only_spaces_fails(): void
     {
-        $this->actingAs($this->teacher);
+        Sanctum::actingAs($this->teacher);
 
         $response = $this->postJson("/api/lessons/{$this->lesson->id}/chapters", [
             'titre' => '     ',
@@ -236,7 +237,7 @@ class StoreChapterRequestTest extends TestCase
      */
     public function test_description_exceeding_max_length_fails(): void
     {
-        $this->actingAs($this->teacher);
+        Sanctum::actingAs($this->teacher);
 
         $response = $this->postJson("/api/lessons/{$this->lesson->id}/chapters", [
             'titre' => 'Valid Title',
@@ -254,7 +255,7 @@ class StoreChapterRequestTest extends TestCase
      */
     public function test_ordre_zero_fails(): void
     {
-        $this->actingAs($this->teacher);
+        Sanctum::actingAs($this->teacher);
 
         $response = $this->postJson("/api/lessons/{$this->lesson->id}/chapters", [
             'titre' => 'Valid Title',
@@ -272,7 +273,7 @@ class StoreChapterRequestTest extends TestCase
      */
     public function test_ordre_negative_fails(): void
     {
-        $this->actingAs($this->teacher);
+        Sanctum::actingAs($this->teacher);
 
         $response = $this->postJson("/api/lessons/{$this->lesson->id}/chapters", [
             'titre' => 'Valid Title',
@@ -287,7 +288,7 @@ class StoreChapterRequestTest extends TestCase
      */
     public function test_executable_file_fails(): void
     {
-        $this->actingAs($this->teacher);
+        Sanctum::actingAs($this->teacher);
         $file = UploadedFile::fake()->create('malware.exe', 512, 'application/x-msdownload');
 
         $response = $this->postJson("/api/lessons/{$this->lesson->id}/chapters", [
@@ -306,7 +307,7 @@ class StoreChapterRequestTest extends TestCase
      */
     public function test_zip_file_fails(): void
     {
-        $this->actingAs($this->teacher);
+        Sanctum::actingAs($this->teacher);
         $file = UploadedFile::fake()->create('archive.zip', 512, 'application/zip');
 
         $response = $this->postJson("/api/lessons/{$this->lesson->id}/chapters", [
@@ -322,7 +323,7 @@ class StoreChapterRequestTest extends TestCase
      */
     public function test_file_exceeding_30mb_fails(): void
     {
-        $this->actingAs($this->teacher);
+        Sanctum::actingAs($this->teacher);
         // 30 MB + 1 byte
         $file = UploadedFile::fake()->create('huge.pdf', 31457281, 'application/pdf');
 
@@ -342,7 +343,7 @@ class StoreChapterRequestTest extends TestCase
      */
     public function test_100mb_file_now_fails(): void
     {
-        $this->actingAs($this->teacher);
+        Sanctum::actingAs($this->teacher);
         $file = UploadedFile::fake()->create('huge.pdf', 104857600, 'application/pdf');
 
         $response = $this->postJson("/api/lessons/{$this->lesson->id}/chapters", [
@@ -359,7 +360,7 @@ class StoreChapterRequestTest extends TestCase
      */
     public function test_student_cannot_create_chapter(): void
     {
-        $this->actingAs($this->student);
+        Sanctum::actingAs($this->student);
 
         $response = $this->postJson("/api/lessons/{$this->lesson->id}/chapters", [
             'titre' => 'Valid Title',
@@ -394,7 +395,7 @@ class StoreChapterRequestTest extends TestCase
             ->for($other_institution)
             ->create();
 
-        $this->actingAs($this->teacher);
+        Sanctum::actingAs($this->teacher);
 
         $response = $this->postJson("/api/lessons/{$other_lesson->id}/chapters", [
             'titre' => 'Valid Title',
@@ -408,7 +409,7 @@ class StoreChapterRequestTest extends TestCase
      */
     public function test_valid_content_type_pdf_passes(): void
     {
-        $this->actingAs($this->teacher);
+        Sanctum::actingAs($this->teacher);
 
         $response = $this->postJson("/api/lessons/{$this->lesson->id}/chapters", [
             'titre' => 'Valid Title',
@@ -423,7 +424,7 @@ class StoreChapterRequestTest extends TestCase
      */
     public function test_valid_content_type_powerpoint_passes(): void
     {
-        $this->actingAs($this->teacher);
+        Sanctum::actingAs($this->teacher);
 
         $response = $this->postJson("/api/lessons/{$this->lesson->id}/chapters", [
             'titre' => 'Valid Title',
@@ -438,7 +439,7 @@ class StoreChapterRequestTest extends TestCase
      */
     public function test_invalid_content_type_fails(): void
     {
-        $this->actingAs($this->teacher);
+        Sanctum::actingAs($this->teacher);
 
         $response = $this->postJson("/api/lessons/{$this->lesson->id}/chapters", [
             'titre' => 'Valid Title',

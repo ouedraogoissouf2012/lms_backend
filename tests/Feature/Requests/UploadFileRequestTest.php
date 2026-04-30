@@ -102,6 +102,10 @@ class UploadFileRequestTest extends TestCase
      */
     public function test_valid_jpg_file_passes(): void
     {
+        if (!extension_loaded('gd')) {
+            $this->markTestSkipped('GD extension is required for image tests');
+        }
+
         Sanctum::actingAs($this->user);
         $file = UploadedFile::fake()->image('photo.jpg', 640, 480);
 
@@ -117,6 +121,10 @@ class UploadFileRequestTest extends TestCase
      */
     public function test_valid_png_file_passes(): void
     {
+        if (!extension_loaded('gd')) {
+            $this->markTestSkipped('GD extension is required for image tests');
+        }
+
         Sanctum::actingAs($this->user);
         $file = UploadedFile::fake()->image('photo.png', 640, 480);
 
@@ -330,6 +338,10 @@ class UploadFileRequestTest extends TestCase
      */
     public function test_all_allowed_image_types_pass(): void
     {
+        if (!extension_loaded('gd')) {
+            $this->markTestSkipped('GD extension is required for image tests');
+        }
+
         Sanctum::actingAs($this->user);
         $images = ['jpg', 'png', 'gif'];
 

@@ -41,9 +41,11 @@ final class PositiveInteger implements Rule
      */
     public function passes($attribute, $value): bool
     {
-        // Must be integer and must be > 0
-        // We check both conditions for clarity
-        if (!is_int($value) && !ctype_digit($value)) {
+        if ($value === null || $value === '') {
+            return false;
+        }
+
+        if (!is_int($value) && !ctype_digit((string) $value)) {
             return false;
         }
 

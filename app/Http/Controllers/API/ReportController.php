@@ -92,7 +92,7 @@ class ReportController extends Controller
             return response()->json([
                 'success' => false,
                 'error' => 'Erreur génération rapport',
-                'message' => $e->getMessage()
+                'message' => 'Une erreur est survenue.'
             ], 500);
         }
     }
@@ -171,7 +171,7 @@ class ReportController extends Controller
             return response()->json([
                 'success' => false,
                 'error' => 'Erreur génération rapport',
-                'message' => $e->getMessage()
+                'message' => 'Une erreur est survenue.'
             ], 500);
         }
     }
@@ -231,7 +231,7 @@ class ReportController extends Controller
             return response()->json([
                 'success' => false,
                 'error' => 'Erreur génération rapport',
-                'message' => $e->getMessage()
+                'message' => 'Une erreur est survenue.'
             ], 500);
         }
     }

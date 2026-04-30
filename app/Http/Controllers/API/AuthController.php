@@ -241,7 +241,7 @@ class AuthController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Erreur lors de la connexion: ' . $e->getMessage(),
+                'message' => 'Erreur lors de la connexion.',
             ], 500);
         }
     }
@@ -286,7 +286,7 @@ class AuthController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Erreur récupération profil: ' . $e->getMessage(),
+                'message' => 'Erreur lors de la récupération du profil.',
             ], 500);
         }
     }
@@ -316,7 +316,7 @@ class AuthController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Erreur lors de la déconnexion: ' . $e->getMessage(),
+                'message' => 'Erreur lors de la déconnexion.',
             ], 500);
         }
     }
@@ -348,7 +348,7 @@ class AuthController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Erreur refresh token: ' . $e->getMessage(),
+                'message' => 'Erreur lors du renouvellement du token.',
             ], 500);
         }
     }

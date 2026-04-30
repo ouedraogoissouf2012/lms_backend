@@ -221,7 +221,7 @@ class LMSDataController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Erreur lors de la récupération des détails de la classe',
-                'error' => $e->getMessage()
+                'error' => 'Une erreur est survenue.'
             ], 500);
         }
     }
@@ -284,7 +284,7 @@ class LMSDataController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Erreur lors de la récupération des étudiants',
-                'error' => $e->getMessage()
+                'error' => 'Une erreur est survenue.'
             ], 500);
         }
     }
@@ -749,7 +749,7 @@ class LMSDataController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Erreur lors de la récupération des détails de la matière',
-                'error' => $e->getMessage()
+                'error' => 'Une erreur est survenue.'
             ], 500);
         }
     }
@@ -947,7 +947,7 @@ class LMSDataController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Erreur lors de la récupération des séances',
-                'error' => $e->getMessage()
+                'error' => 'Une erreur est survenue.'
             ], 500);
         }
     }
@@ -1062,7 +1062,7 @@ class LMSDataController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Erreur lors de la récupération des participants',
-                'error' => $e->getMessage()
+                'error' => 'Une erreur est survenue.'
             ], 500);
         }
     }
@@ -1355,7 +1355,7 @@ class LMSDataController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Erreur lors de la validation du participant',
-                'error' => $e->getMessage()
+                'error' => 'Une erreur est survenue.'
             ], 500);
         }
     }
@@ -1449,7 +1449,7 @@ class LMSDataController extends Controller
 
                     $errors[] = [
                         'etudiant_id' => $participant['etudiant_id'] ?? null,
-                        'error' => $e->getMessage()
+                        'error' => 'Une erreur est survenue.'
                     ];
                 }
             }
@@ -1473,7 +1473,7 @@ class LMSDataController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Erreur lors de la synchronisation des attendances',
-                'error' => $e->getMessage()
+                'error' => 'Une erreur est survenue.'
             ], 500);
         }
     }
@@ -1522,7 +1522,7 @@ class LMSDataController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Erreur lors de la récupération des préférences',
-                'error' => $e->getMessage()
+                'error' => 'Une erreur est survenue.'
             ], 500);
         }
     }
@@ -2023,7 +2023,7 @@ class LMSDataController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Erreur lors de la récupération des détails de la séance',
-                'error' => $e->getMessage()
+                'error' => 'Une erreur est survenue.'
             ], 500);
         }
     }
@@ -2178,7 +2178,7 @@ class LMSDataController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Erreur lors de l\'activation/désactivation de la visio',
-                'error' => $e->getMessage()
+                'error' => 'Une erreur est survenue.'
             ], 500);
         }
     }
@@ -2235,7 +2235,7 @@ class LMSDataController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Erreur lors de l\'envoi des rappels',
-                'error' => $e->getMessage()
+                'error' => 'Une erreur est survenue.'
             ], 500);
         }
     }
@@ -2424,7 +2424,7 @@ class LMSDataController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Erreur lors de la récupération des séances',
-                'error' => $e->getMessage()
+                'error' => 'Une erreur est survenue.'
             ], 500);
         }
     }
@@ -2619,7 +2619,7 @@ class LMSDataController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Erreur lors de la récupération des séances',
-                'error' => $e->getMessage()
+                'error' => 'Une erreur est survenue.'
             ], 500);
         }
     }
@@ -2794,7 +2794,7 @@ class LMSDataController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Erreur lors de l\'activation',
-                'error' => $e->getMessage()
+                'error' => 'Une erreur est survenue.'
             ], 500);
         }
     }
@@ -2868,7 +2868,7 @@ class LMSDataController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Erreur lors de la désactivation',
-                'error' => $e->getMessage()
+                'error' => 'Une erreur est survenue.'
             ], 500);
         }
     }
@@ -2987,7 +2987,7 @@ class LMSDataController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Erreur lors du démarrage',
-                'error' => $e->getMessage()
+                'error' => 'Une erreur est survenue.'
             ], 500);
         }
     }
@@ -3053,7 +3053,7 @@ class LMSDataController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Erreur lors de la terminaison',
-                'error' => $e->getMessage()
+                'error' => 'Une erreur est survenue.'
             ], 500);
         }
     }
@@ -3143,7 +3143,7 @@ class LMSDataController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Erreur lors de la connexion',
-                'error' => $e->getMessage()
+                'error' => 'Une erreur est survenue.'
             ], 500);
         }
     }
@@ -3441,7 +3441,7 @@ class LMSDataController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Erreur lors de la récupération des participants',
-                'error' => $e->getMessage()
+                'error' => 'Une erreur est survenue.'
             ], 500);
         }
     }
@@ -3599,7 +3599,7 @@ class LMSDataController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Erreur lors de l\'enregistrement de la sortie',
-                'error' => $e->getMessage()
+                'error' => 'Une erreur est survenue.'
             ], 500);
         }
     }
@@ -3655,7 +3655,7 @@ class LMSDataController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Erreur lors de la mise à jour du heartbeat',
-                'error' => $e->getMessage()
+                'error' => 'Une erreur est survenue.'
             ], 500);
         }
     }
@@ -3719,7 +3719,7 @@ class LMSDataController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Erreur lors du masquage de la séance',
-                'error' => $e->getMessage()
+                'error' => 'Une erreur est survenue.'
             ], 500);
         }
     }
@@ -3785,7 +3785,7 @@ class LMSDataController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Erreur lors du réaffichage de la séance',
-                'error' => $e->getMessage()
+                'error' => 'Une erreur est survenue.'
             ], 500);
         }
     }
@@ -3939,7 +3939,7 @@ class LMSDataController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Erreur lors de la récupération des matières',
-                'error' => $e->getMessage()
+                'error' => 'Une erreur est survenue.'
             ], 500);
         }
     }
@@ -4200,7 +4200,7 @@ class LMSDataController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Erreur lors de la récupération des enseignants',
-                'error' => $e->getMessage()
+                'error' => 'Une erreur est survenue.'
             ], 500);
         }
     }
@@ -4739,7 +4739,7 @@ class LMSDataController extends Controller
                         // Ignorer les erreurs de récupération KLASSCI (séance peut être archivée)
                         Log::debug('Impossible de récupérer détails KLASSCI pour historique', [
                             'seance_id' => $attendance->seance->klassci_seance_id,
-                            'error' => $e->getMessage()
+                            'error' => 'Une erreur est survenue.'
                         ]);
                     }
                 }
@@ -4767,7 +4767,7 @@ class LMSDataController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Erreur lors de la récupération de l\'historique',
-                'error' => $e->getMessage()
+                'error' => 'Une erreur est survenue.'
             ], 500);
         }
     }
@@ -4896,7 +4896,7 @@ class LMSDataController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Erreur lors de la récupération de l\'historique des séances',
-                'error' => $e->getMessage(),
+                'error' => 'Une erreur est survenue.',
             ], 500);
         }
     }
@@ -5061,7 +5061,7 @@ class LMSDataController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Erreur lors de la récupération des présences',
-                'error' => $e->getMessage(),
+                'error' => 'Une erreur est survenue.',
             ], 500);
         }
     }
@@ -5131,7 +5131,7 @@ class LMSDataController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Erreur lors de la suppression de la séance',
-                'error' => $e->getMessage(),
+                'error' => 'Une erreur est survenue.',
             ], 500);
         }
     }

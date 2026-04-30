@@ -112,7 +112,7 @@ class AdminAnalyticsController extends Controller
             return response()->json([
                 'success' => false,
                 'error' => 'Erreur lors de la récupération des tendances',
-                'message' => $e->getMessage()
+                'message' => 'Une erreur est survenue.'
             ], 500);
         }
     }
@@ -188,7 +188,7 @@ class AdminAnalyticsController extends Controller
             return response()->json([
                 'success' => false,
                 'error' => 'Erreur lors de la récupération des métriques',
-                'message' => $e->getMessage()
+                'message' => 'Une erreur est survenue.'
             ], 500);
         }
     }
@@ -256,7 +256,7 @@ class AdminAnalyticsController extends Controller
             return response()->json([
                 'success' => false,
                 'error' => 'Erreur lors de la récupération des tâches',
-                'message' => $e->getMessage()
+                'message' => 'Une erreur est survenue.'
             ], 500);
         }
     }
@@ -282,7 +282,7 @@ class AdminAnalyticsController extends Controller
             return response()->json([
                 'success' => false,
                 'error' => 'Erreur lors de la récupération des utilisateurs',
-                'message' => $e->getMessage()
+                'message' => 'Une erreur est survenue.'
             ], 500);
         }
     }

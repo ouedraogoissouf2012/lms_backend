@@ -86,15 +86,26 @@ class ChapterController extends Controller
             $lesson = Lesson::findOrFail($lessonId);
 
             // Validation handled by StoreChapterRequest
-            $data = $request->validated();
+            $validated = $request->validated();
 
-            // Ajouter les IDs contextuels
-            $data['lesson_id'] = $lessonId;
-            $data['matiere_id'] = $lesson->matiere_id;
-            $data['enseignant_id'] = auth()->id();
+            // Map French field names to English model column names
+            $data = [
+                'title' => $validated['titre'] ?? null,
+                'description' => $validated['description'] ?? null,
+                'lesson_id' => $lessonId,
+                'matiere_id' => $lesson->matiere_id,
+                'enseignant_id' => auth()->id(),
+            ];
+
+            // Map type_contenu to content_type if provided
+            if (isset($validated['type_contenu'])) {
+                $data['content_type'] = $validated['type_contenu'];
+            }
 
             // Si pas d'ordre spécifié, mettre à la fin
-            if (!isset($data['order'])) {
+            if (isset($validated['ordre']) && $validated['ordre'] !== null) {
+                $data['order'] = (int) $validated['ordre'];
+            } else {
                 $maxOrder = $lesson->chapters()->max('order') ?? 0;
                 $data['order'] = $maxOrder + 1;
             }

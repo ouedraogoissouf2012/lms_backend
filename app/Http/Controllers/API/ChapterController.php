@@ -4,6 +4,9 @@ namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreChapterRequest;
+use App\Http\Requests\UpdateChapterRequest;
+use App\Http\Requests\DeleteChapterRequest;
+use App\Http\Requests\ReorderChaptersRequest;
 use App\Http\Requests\UploadFileRequest;
 use App\Models\Chapter;
 use App\Models\Lesson;
@@ -234,32 +237,11 @@ class ChapterController extends Controller
      * PUT /api/chapters/{id}
      * Mettre à jour un chapitre
      */
-    public function update(Request $request, int $id): JsonResponse
+    public function update(UpdateChapterRequest $request, int $id): JsonResponse
     {
         try {
             $chapter = Chapter::findOrFail($id);
-
-            $validator = Validator::make($request->all(), [
-                'title' => 'sometimes|required|string|max:255',
-                'description' => 'nullable|string',
-                'content' => 'nullable|string',
-                'video_url' => 'nullable|url',
-                'external_link' => 'nullable|url',
-                'order' => 'nullable|integer|min:0',
-                'duration_minutes' => 'nullable|integer|min:0',
-                'allow_download' => 'nullable|boolean',
-                'show_slide_numbers' => 'nullable|boolean',
-                'autoplay_video' => 'nullable|boolean',
-            ]);
-
-            if ($validator->fails()) {
-                return response()->json([
-                    'success' => false,
-                    'errors' => $validator->errors()
-                ], 422);
-            }
-
-            $chapter->update($request->all());
+            $chapter->update($request->validated());
 
             Log::info("✓ Chapitre mis à jour", ['chapter_id' => $id]);
 
@@ -281,14 +263,11 @@ class ChapterController extends Controller
      * DELETE /api/chapters/{id}
      * Supprimer un chapitre
      */
-    public function destroy(int $id): JsonResponse
+    public function destroy(DeleteChapterRequest $request, int $id): JsonResponse
     {
         try {
             $chapter = Chapter::findOrFail($id);
-
-            // Supprimer les fichiers associés
             $this->fileConversionService->deleteChapterFiles($id);
-
             $chapter->delete();
 
             Log::info("✓ Chapitre supprimé", ['chapter_id' => $id]);
@@ -310,26 +289,11 @@ class ChapterController extends Controller
      * POST /api/lessons/{lessonId}/chapters/reorder
      * Réorganiser l'ordre des chapitres d'une leçon (drag & drop)
      */
-    public function reorder(Request $request, int $lessonId): JsonResponse
+    public function reorder(ReorderChaptersRequest $request, int $lessonId): JsonResponse
     {
         try {
-            $lesson = Lesson::findOrFail($lessonId);
-
-            $validator = Validator::make($request->all(), [
-                'chapters' => 'required|array',
-                'chapters.*.id' => 'required|exists:chapters,id',
-                'chapters.*.order' => 'required|integer|min:0',
-            ]);
-
-            if ($validator->fails()) {
-                return response()->json([
-                    'success' => false,
-                    'errors' => $validator->errors()
-                ], 422);
-            }
-
-            // Mettre à jour l'ordre de chaque chapitre
-            foreach ($request->chapters as $chapterData) {
+            $chapters = $request->validated()['chapters'];
+            foreach ($chapters as $chapterData) {
                 Chapter::where('id', $chapterData['id'])
                     ->where('lesson_id', $lessonId)
                     ->update(['order' => $chapterData['order']]);

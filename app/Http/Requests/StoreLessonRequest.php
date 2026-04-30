@@ -157,8 +157,8 @@ final class StoreLessonRequest extends FormRequest
     {
         $this->merge([
             'title' => trim($this->title ?? ''),
-            'description' => trim($this->description ?? ''),
-            'content' => trim($this->content ?? ''),
+            'description' => strip_tags(trim($this->description ?? '')),
+            'content' => strip_tags(trim($this->content ?? '')),
         ]);
     }
 }

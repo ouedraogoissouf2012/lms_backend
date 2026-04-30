@@ -104,7 +104,7 @@ class StoreLessonRequestTest extends TestCase
         ]);
 
         $response->assertStatus(422);
-        $response->assertJsonPath('errors.title', ['The title field is required']);
+        $response->assertJsonPath('errors.title', ['Le titre du cours est requis']);
     }
 
     /**
@@ -120,7 +120,7 @@ class StoreLessonRequestTest extends TestCase
         ]);
 
         $response->assertStatus(422);
-        $response->assertJsonPath('errors.title', ['The title field is required']);
+        $response->assertJsonPath('errors.title', ['Le titre du cours est requis']);
     }
 
     /**
@@ -137,7 +137,7 @@ class StoreLessonRequestTest extends TestCase
         ]);
 
         $response->assertStatus(422);
-        $response->assertJsonPath('errors.title', ['The title must be at least 3 characters']);
+        $response->assertJsonPath('errors.title', ['Le titre doit contenir au moins 3 caractères']);
     }
 
     /**
@@ -154,7 +154,7 @@ class StoreLessonRequestTest extends TestCase
         ]);
 
         $response->assertStatus(422);
-        $response->assertJsonPath('errors.title', ['The title may not be greater than 255 characters']);
+        $response->assertJsonPath('errors.title', ['Le titre ne doit pas dépasser 255 caractères']);
     }
 
     /**
@@ -171,7 +171,7 @@ class StoreLessonRequestTest extends TestCase
         ]);
 
         $response->assertStatus(422);
-        $response->assertJsonPath('errors.type', ['The type field is invalid']);
+        $response->assertJsonPath('errors.type', ['Le type de cours doit être: cours, tp, td, projet ou autre']);
     }
 
     /**
@@ -279,7 +279,7 @@ class StoreLessonRequestTest extends TestCase
         ]);
 
         $response->assertStatus(422);
-        $response->assertJsonPath('errors.duree_estimee_minutes', ['The duration may not be greater than 480 minutes']);
+        $response->assertJsonPath('errors.duree_estimee_minutes', ['La durée estimée ne doit pas dépasser 480 minutes']);
     }
 
     /**

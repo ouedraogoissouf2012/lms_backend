@@ -166,11 +166,10 @@ class UploadFileRequestTest extends TestCase
         ]);
 
         $response->assertStatus(422);
-        $response->assertJsonPath('errors.file');
-$this->assertTrue(str_contains(
-    json_encode($response->json('errors.file')),
-    'ou' // message contains check
-));
+        $this->assertTrue(str_contains(
+            json_encode($response->json('errors.file')),
+            'ou' // message contains check
+        ));
     }
 
     /**
@@ -186,11 +185,10 @@ $this->assertTrue(str_contains(
         ]);
 
         $response->assertStatus(422);
-        $response->assertJsonPath('errors.file');
-$this->assertTrue(str_contains(
-    json_encode($response->json('errors.file')),
-    'ou' // message contains check
-));
+        $this->assertTrue(str_contains(
+            json_encode($response->json('errors.file')),
+            'ou' // message contains check
+        ));
     }
 
     /**
@@ -206,11 +204,10 @@ $this->assertTrue(str_contains(
         ]);
 
         $response->assertStatus(422);
-        $response->assertJsonPath('errors.file');
-$this->assertTrue(str_contains(
-    json_encode($response->json('errors.file')),
-    'ou' // message contains check
-));
+        $this->assertTrue(str_contains(
+            json_encode($response->json('errors.file')),
+            'ou' // message contains check
+        ));
     }
 
     /**
@@ -286,11 +283,10 @@ $this->assertTrue(str_contains(
         ]);
 
         $response->assertStatus(422);
-        $response->assertJsonPath('errors.file');
-$this->assertTrue(str_contains(
-    json_encode($response->json('errors.file')),
-    'ou' // message contains check
-));
+        $this->assertTrue(str_contains(
+            json_encode($response->json('errors.file')),
+            'ou' // message contains check
+        ));
     }
 
     /**
@@ -306,11 +302,10 @@ $this->assertTrue(str_contains(
         ]);
 
         $response->assertStatus(422);
-        $response->assertJsonPath('errors.file');
-$this->assertTrue(str_contains(
-    json_encode($response->json('errors.file')),
-    'ou' // message contains check
-));
+        $this->assertTrue(str_contains(
+            json_encode($response->json('errors.file')),
+            'ou' // message contains check
+        ));
     }
 
     /**

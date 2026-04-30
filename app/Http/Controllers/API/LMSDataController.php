@@ -3589,18 +3589,10 @@ class LMSDataController extends Controller
      * Permet à un étudiant de masquer une séance de sa vue personnelle
      * sans affecter les autres utilisateurs
      */
-    public function hideSeance(int $seanceId, Request $request): JsonResponse
+    public function hideSeance(int $seanceId, \App\Http\Requests\HideSeanceRequest $request): JsonResponse
     {
         try {
             $user = $request->user();
-
-            // Vérifier que c'est bien un étudiant
-            if ($user->role !== 'etudiant') {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Seuls les étudiants peuvent masquer des séances'
-                ], 403);
-            }
 
             // Vérifier que la séance existe
             $seance = \App\Models\Seance::where('id', $seanceId)
@@ -3650,18 +3642,10 @@ class LMSDataController extends Controller
      * POST /api/lms/seances/{id}/unhide
      * Réafficher une séance précédemment masquée
      */
-    public function unhideSeance(int $seanceId, Request $request): JsonResponse
+    public function unhideSeance(int $seanceId, \App\Http\Requests\UnhideSeanceRequest $request): JsonResponse
     {
         try {
             $user = $request->user();
-
-            // Vérifier que c'est bien un étudiant
-            if ($user->role !== 'etudiant') {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Seuls les étudiants peuvent gérer le masquage'
-                ], 403);
-            }
 
             // Vérifier que la séance existe
             $seance = \App\Models\Seance::where('id', $seanceId)
@@ -4992,7 +4976,7 @@ class LMSDataController extends Controller
      * DELETE /api/lms/seances/{seanceId}
      * Soft-delete d'une séance
      */
-    public function deleteSeance(Request $request, int $seanceId): JsonResponse
+    public function deleteSeance(\App\Http\Requests\DeleteSeanceRequest $request, int $seanceId): JsonResponse
     {
         try {
             $user = $request->user();
@@ -5001,23 +4985,6 @@ class LMSDataController extends Controller
             $seance = \App\Models\Seance::find($seanceId);
             if (!$seance) {
                 $seance = \App\Models\Seance::where('klassci_seance_id', $seanceId)->first();
-            }
-
-            if (!$seance) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Séance non trouvée',
-                ], 404);
-            }
-
-            // Enseignant ne peut supprimer que ses propres séances
-            if ($user->role === 'enseignant') {
-                if ($seance->klassci_enseignant_id != $user->klassci_id) {
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'Accès refusé. Vous ne pouvez supprimer que vos propres séances.',
-                    ], 403);
-                }
             }
 
             // Empêcher la suppression si la visio est en cours

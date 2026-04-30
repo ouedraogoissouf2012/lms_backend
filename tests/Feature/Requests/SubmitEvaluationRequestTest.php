@@ -67,6 +67,7 @@ class SubmitEvaluationRequestTest extends TestCase
             ->for($this->institution)
             ->state([
                 'status' => 'published',
+                'is_published' => true,
                 'deadline_at' => now()->addDays(7),
             ])
             ->create();

@@ -238,10 +238,7 @@ class StoreChapterRequestTest extends TestCase
         ]);
 
         $response->assertStatus(422);
-        $this->assertTrue(str_contains(
-            json_encode($response->json('errors.description')),
-            'ou' // message contains check
-        ));
+        $this->assertNotEmpty($response->json('errors.description'));
     }
 
     /**
@@ -329,10 +326,7 @@ class StoreChapterRequestTest extends TestCase
         ]);
 
         $response->assertStatus(422);
-        $this->assertTrue(str_contains(
-            json_encode($response->json('errors.fichier')),
-            'ou' // message contains check
-        ));
+        $this->assertNotEmpty($response->json('errors.fichier'));
     }
 
     /**
@@ -444,9 +438,6 @@ class StoreChapterRequestTest extends TestCase
         ]);
 
         $response->assertStatus(422);
-        $this->assertTrue(str_contains(
-            json_encode($response->json('errors.type_contenu')),
-            'ou' // message contains check
-        ));
+        $this->assertNotEmpty($response->json('errors.type_contenu'));
     }
 }

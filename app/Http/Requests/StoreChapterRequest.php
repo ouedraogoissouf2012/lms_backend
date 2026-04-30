@@ -145,7 +145,7 @@ final class StoreChapterRequest extends FormRequest
         $this->merge([
             'titre' => trim($this->titre ?? ''),
             'description' => trim($this->description ?? ''),
-            'ordre' => $this->ordre ? (int) $this->ordre : null,
+            'ordre' => $this->has('ordre') ? (int) $this->ordre : null,
         ]);
     }
 }

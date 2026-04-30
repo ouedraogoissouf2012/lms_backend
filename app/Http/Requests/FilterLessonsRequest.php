@@ -68,15 +68,18 @@ final class FilterLessonsRequest extends FormRequest
             ],
             'matiere_id' => [
                 'sometimes',
-                new PositiveInteger(),
+                'integer',
+                'min:1',
             ],
             'classe_id' => [
                 'sometimes',
-                new PositiveInteger(),
+                'integer',
+                'min:1',
             ],
             'enseignant_id' => [
                 'sometimes',
-                new PositiveInteger(),
+                'integer',
+                'min:1',
             ],
             'type' => [
                 'sometimes',
@@ -118,18 +121,28 @@ final class FilterLessonsRequest extends FormRequest
      */
     protected function prepareForValidation(): void
     {
+        $data = [];
+
         // Default per_page to 15 if not specified
         if (!$this->has('per_page')) {
-            $this->merge(['per_page' => 15]);
+            $data['per_page'] = 15;
+        } else {
+            $data['per_page'] = (int) $this->per_page;
         }
 
         // Convert string integers to actual integers for validation
         // Query parameters arrive as strings, but our rules expect integers
-        $this->merge([
-            'per_page' => (int) $this->per_page,
-            'matiere_id' => $this->matiere_id ? (int) $this->matiere_id : null,
-            'classe_id' => $this->classe_id ? (int) $this->classe_id : null,
-            'enseignant_id' => $this->enseignant_id ? (int) $this->enseignant_id : null,
-        ]);
+        // Only merge fields that are actually present in the request
+        if ($this->has('matiere_id')) {
+            $data['matiere_id'] = (int) $this->matiere_id;
+        }
+        if ($this->has('classe_id')) {
+            $data['classe_id'] = (int) $this->classe_id;
+        }
+        if ($this->has('enseignant_id')) {
+            $data['enseignant_id'] = (int) $this->enseignant_id;
+        }
+
+        $this->merge($data);
     }
 }

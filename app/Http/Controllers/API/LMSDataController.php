@@ -2732,7 +2732,10 @@ class LMSDataController extends Controller
         try {
             $user = $request->user();
 
-            $visio = \App\Models\Seance::where('klassci_seance_id', $seanceId)->first();
+            $visio = \App\Models\Seance::find($seanceId);
+            if (!$visio) {
+                $visio = \App\Models\Seance::where('klassci_seance_id', $seanceId)->first();
+            }
 
             if (!$visio || !$visio->visio_enabled) {
                 return response()->json([
@@ -2790,7 +2793,10 @@ class LMSDataController extends Controller
         try {
             $user = $request->user();
 
-            $visio = \App\Models\Seance::where('klassci_seance_id', $seanceId)->first();
+            $visio = \App\Models\Seance::find($seanceId);
+            if (!$visio) {
+                $visio = \App\Models\Seance::where('klassci_seance_id', $seanceId)->first();
+            }
 
             if (!$visio) {
                 return response()->json([
@@ -2894,7 +2900,10 @@ class LMSDataController extends Controller
         try {
             $user = $request->user();
 
-            $visio = \App\Models\Seance::where('klassci_seance_id', $seanceId)->first();
+            $visio = \App\Models\Seance::find($seanceId);
+            if (!$visio) {
+                $visio = \App\Models\Seance::where('klassci_seance_id', $seanceId)->first();
+            }
 
             if (!$visio) {
                 return response()->json([
@@ -2958,7 +2967,10 @@ class LMSDataController extends Controller
         try {
             $user = $request->user();
 
-            $visio = \App\Models\Seance::where('klassci_seance_id', $seanceId)->first();
+            $visio = \App\Models\Seance::find($seanceId);
+            if (!$visio) {
+                $visio = \App\Models\Seance::where('klassci_seance_id', $seanceId)->first();
+            }
 
             if (!$visio) {
                 return response()->json([
@@ -3439,7 +3451,10 @@ class LMSDataController extends Controller
         try {
             $user = $request->user();
 
-            $visio = \App\Models\Seance::where('klassci_seance_id', $seanceId)->first();
+            $visio = \App\Models\Seance::find($seanceId);
+            if (!$visio) {
+                $visio = \App\Models\Seance::where('klassci_seance_id', $seanceId)->first();
+            }
 
             if (!$visio) {
                 return response()->json([
@@ -3504,7 +3519,10 @@ class LMSDataController extends Controller
         try {
             $user = $request->user();
 
-            $visio = \App\Models\Seance::where('klassci_seance_id', $seanceId)->first();
+            $visio = \App\Models\Seance::find($seanceId);
+            if (!$visio) {
+                $visio = \App\Models\Seance::where('klassci_seance_id', $seanceId)->first();
+            }
 
             if (!$visio) {
                 return response()->json([

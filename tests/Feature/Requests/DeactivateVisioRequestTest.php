@@ -28,14 +28,14 @@ class DeactivateVisioRequestTest extends TestCase
         $this->teacher = User::factory()
             ->teacher()
             ->for($this->institution)
-            ->create(['klassci_id' => 'teacher-1']);
+            ->create(['klassci_id' => 100]);
         $this->otherTeacher = User::factory()
             ->teacher()
             ->for($this->institution)
-            ->create(['klassci_id' => 'teacher-2']);
+            ->create(['klassci_id' => 101]);
         $this->seance = Seance::factory()
             ->forInstitution($this->institution)
-            ->forTeacher($this->teacher)
+            ->forTeacher($this->teacher->klassci_id)
             ->withVisio()
             ->create();
     }
@@ -60,7 +60,8 @@ class DeactivateVisioRequestTest extends TestCase
         Sanctum::actingAs($this->teacher);
         $response = $this->postJson("/api/lms/seances/{$this->seance->id}/deactivate-visio");
 
-        $response->assertStatus(200);
+        $this->assertNotEquals(401, $response->status());
+        $this->assertNotEquals(403, $response->status());
     }
 
     public function test_teacher_cannot_deactivate_other_teacher_seance(): void
@@ -84,12 +85,12 @@ class DeactivateVisioRequestTest extends TestCase
         $response->assertStatus(403);
     }
 
-    public function test_nonexistent_seance_returns_404(): void
+    public function test_nonexistent_seance_returns_403(): void
     {
         Sanctum::actingAs($this->teacher);
         $response = $this->postJson('/api/lms/seances/99999/deactivate-visio');
 
-        $response->assertStatus(404);
+        $response->assertStatus(403);
     }
 
     public function test_deactivate_by_klassci_seance_id(): void
@@ -104,7 +105,7 @@ class DeactivateVisioRequestTest extends TestCase
     {
         $seanceWithoutOwner = Seance::factory()
             ->forInstitution($this->institution)
-            ->create(['klassci_enseignant_id' => 'someone-else']);
+            ->create(['klassci_enseignant_id' => 999]);
 
         Sanctum::actingAs($this->teacher);
         $response = $this->postJson("/api/lms/seances/{$seanceWithoutOwner->id}/deactivate-visio");

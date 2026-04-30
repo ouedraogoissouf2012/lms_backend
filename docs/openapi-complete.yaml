@@ -1,0 +1,1650 @@
+openapi: 3.0.0
+info:
+  title: "LMS Backend API - Complete"
+  description: "Documentation complète de l'API LMS - Learning Management System avec intégration multi-tenant KLASSCI. Authentification via Sanctum, gestion des évaluations, visioconférences, et synchronisation KLASSCI."
+  version: "2.0.0"
+  contact:
+    name: "LMS Support Team"
+    email: "support@lms.local"
+  license:
+    name: "MIT"
+  x-logo:
+    url: "https://lms.local/logo.png"
+
+servers:
+  - url: "http://localhost:8000/api"
+    description: "Development Server"
+    variables:
+      version:
+        default: "v1"
+  - url: "https://api.lms.local/api"
+    description: "Production Server"
+
+# ============================================
+# TAGS - Groupement logique des endpoints
+# ============================================
+tags:
+  - name: "Authentication"
+    description: "Authentification utilisateur et gestion des tokens Sanctum. Supports multi-tenant KLASSCI avec détection automatique."
+
+  - name: "Proxy / KLASSCI"
+    description: "Routes proxy vers l'API KLASSCI. Toutes les routes nécessitent auth:sanctum et klassci.sync middleware."
+
+  - name: "Evaluations"
+    description: "Gestion complète des évaluations (CRUD, soumissions, notes, synchronisation KLASSCI)"
+
+  - name: "Dashboard"
+    description: "Tableaux de bord personnalisés pour étudiants, enseignants et administrateurs"
+
+  - name: "Chapters & Lessons"
+    description: "Gestion du contenu pédagogique (chapitres, leçons, ressources)"
+
+  - name: "Quiz & Knowledge Checks"
+    description: "Quizzes interactifs et tests de connaissance"
+
+  - name: "Files"
+    description: "Upload, téléchargement et gestion des fichiers"
+
+  - name: "Notifications"
+    description: "Système de notifications pour les utilisateurs"
+
+  - name: "Forum"
+    description: "Forums de discussion par évaluation"
+
+  - name: "LMS Data"
+    description: "Données LMS - séances, classes, horaires, participants"
+
+  - name: "Search"
+    description: "Recherche globale et suggestions"
+
+  - name: "Reports & Analytics"
+    description: "Rapports et statistiques pour administrateurs et enseignants"
+
+  - name: "Admin"
+    description: "Endpoints d'administration (analytics, institutions, gestion utilisateurs)"
+
+# ============================================
+# COMPONENTS - Réutilisable
+# ============================================
+components:
+  securitySchemes:
+    sanctum:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: "Laravel Sanctum token. Format: 'Bearer <token>'"
+
+  schemas:
+    # ---- Error Responses (CRITICAL-02) ----
+    ErrorResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        error_code:
+          type: string
+          enum: [UNAUTHENTICATED, PERMISSION_DENIED, RESOURCE_NOT_FOUND, VALIDATION_FAILED, INTERNAL_SERVER_ERROR]
+          example: "UNAUTHENTICATED"
+        message:
+          type: string
+          example: "Unauthenticated."
+      required:
+        - success
+        - error_code
+        - message
+
+    ValidationErrorResponse:
+      allOf:
+        - $ref: '#/components/schemas/ErrorResponse'
+        - type: object
+          properties:
+            errors:
+              type: object
+              example:
+                email: ["The email field is required"]
+                password: ["The password must be at least 8 characters"]
+
+    # ---- Auth Schemas ----
+    LoginRequest:
+      type: object
+      properties:
+        username:
+          type: string
+          example: "john.doe@example.com"
+          description: "Email ou username KLASSCI"
+        password:
+          type: string
+          format: password
+          example: "password123"
+          description: "Mot de passe (minimum 8 caractères)"
+      required:
+        - username
+        - password
+
+    LoginResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: "Connexion réussie"
+        data:
+          type: object
+          properties:
+            user:
+              $ref: '#/components/schemas/UserProfile'
+            token:
+              type: string
+              example: "1|AbCdEfGhIjKlMnOpQrStUvWxYz..."
+            token_type:
+              type: string
+              example: "Bearer"
+        meta:
+          type: object
+          properties:
+            klassci_synced:
+              type: boolean
+              example: true
+            institution:
+              type: string
+              example: "esbtp"
+            institution_name:
+              type: string
+              example: "ESBTP Campus"
+            annee_universitaire_courante:
+              type: string
+              example: "2025-2026"
+
+    UserProfile:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        klassci_id:
+          type: integer
+          example: 12345
+        name:
+          type: string
+          example: "John Doe"
+        email:
+          type: string
+          example: "john.doe@example.com"
+        role:
+          type: string
+          enum: [etudiant, enseignant, coordinateur, admin, superAdmin]
+          example: "etudiant"
+        role_display_name:
+          type: string
+          example: "Étudiant"
+        avatar:
+          type: string
+          nullable: true
+          example: "https://klassci.local/avatars/12345.jpg"
+        permissions:
+          type: array
+          items:
+            type: string
+          example: ["evaluations.submit", "classes.view"]
+        is_admin:
+          type: boolean
+          example: false
+
+    # ---- Evaluation Schemas ----
+    Evaluation:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        klassci_classe_id:
+          type: integer
+        klassci_matiere_id:
+          type: integer
+        klassci_evaluation_id:
+          type: integer
+          nullable: true
+        titre:
+          type: string
+          example: "Évaluation Mathématiques - Semaine 1"
+        description:
+          type: string
+          example: "Évaluation formative sur les intégrales"
+        type:
+          type: string
+          enum: [qcm, reponse_courte, dissertation, mixte]
+          example: "qcm"
+        status:
+          type: string
+          enum: [brouillon, active, terminee, archivee]
+          example: "active"
+        is_published:
+          type: boolean
+          example: true
+        date_evaluation:
+          type: string
+          format: date-time
+          nullable: true
+        duree_minutes:
+          type: integer
+          example: 60
+        coefficient:
+          type: number
+          format: float
+          nullable: true
+          example: 1.5
+        bareme:
+          type: number
+          format: float
+          nullable: true
+          example: 20
+        questions_count:
+          type: integer
+          example: 10
+        submissions_count:
+          type: integer
+          example: 25
+        classe_name:
+          type: string
+          example: "L1 Informatique"
+        matiere_name:
+          type: string
+          example: "Mathématiques"
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    EvaluationQuestion:
+      type: object
+      properties:
+        id:
+          type: integer
+        evaluation_id:
+          type: integer
+        order:
+          type: integer
+        question:
+          type: string
+          example: "Qu'est-ce qu'une intégrale?"
+        type:
+          type: string
+          enum: [qcm, qcm_multiple, vrai_faux, reponse_courte, dissertation]
+        points:
+          type: number
+          format: float
+          nullable: true
+        options:
+          type: array
+          items:
+            type: string
+          nullable: true
+        correct_answers:
+          type: array
+          items:
+            type: string
+          nullable: true
+
+    EvaluationSubmission:
+      type: object
+      properties:
+        id:
+          type: integer
+        evaluation_id:
+          type: integer
+        klassci_etudiant_id:
+          type: integer
+        etudiant_name:
+          type: string
+        status:
+          type: string
+          enum: [en_cours, soumise, corrigee]
+          example: "soumise"
+        answers:
+          type: object
+          additionalProperties: true
+        note:
+          type: number
+          format: float
+          nullable: true
+        feedback:
+          type: string
+          nullable: true
+        submitted_at:
+          type: string
+          format: date-time
+          nullable: true
+        graded_at:
+          type: string
+          format: date-time
+          nullable: true
+
+    # ---- Chapitre/Leçon ----
+    Chapter:
+      type: object
+      properties:
+        id:
+          type: integer
+        lesson_id:
+          type: integer
+          nullable: true
+        title:
+          type: string
+          example: "Chapitre 1: Introduction"
+        description:
+          type: string
+          nullable: true
+        order:
+          type: integer
+        is_published:
+          type: boolean
+        content_types:
+          type: array
+          items:
+            type: string
+          example: ["text", "video", "quiz"]
+        lessons_count:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+
+    Lesson:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        description:
+          type: string
+          nullable: true
+        content:
+          type: string
+          description: "HTML content"
+        is_published:
+          type: boolean
+        chapters:
+          type: array
+          items:
+            $ref: '#/components/schemas/Chapter'
+        resources:
+          type: array
+          items:
+            type: object
+
+    # ---- Notification ----
+    Notification:
+      type: object
+      properties:
+        id:
+          type: integer
+        user_id:
+          type: integer
+        type:
+          type: string
+          enum: [info, success, warning, danger]
+        title:
+          type: string
+        message:
+          type: string
+        data:
+          type: object
+          nullable: true
+        action_url:
+          type: string
+          nullable: true
+        read_at:
+          type: string
+          format: date-time
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+
+    # ---- Pagination ----
+    PaginationMeta:
+      type: object
+      properties:
+        total:
+          type: integer
+          example: 100
+        per_page:
+          type: integer
+          example: 10
+        current_page:
+          type: integer
+          example: 1
+        last_page:
+          type: integer
+          example: 10
+
+# ============================================
+# PATHS - Définition des endpoints
+# ============================================
+paths:
+
+  # ====== AUTHENTICATION ======
+  /auth/login:
+    post:
+      tags:
+        - Authentication
+      summary: "Authentifier un utilisateur"
+      description: |
+        Authentifie un utilisateur via ses identifiants KLASSCI ou compte local.
+        - Cherche d'abord en BD locale (superAdmin)
+        - Puis détecte le tenant KLASSCI (check-user en parallèle)
+        - Essaie login sur chaque tenant trouvé
+        - Synchronise l'utilisateur en BD locale
+      operationId: "auth.login"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: "Authentification réussie"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '401':
+          description: "Identifiants incorrects"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                success: false
+                error_code: "UNAUTHENTICATED"
+                message: "Identifiants incorrects"
+        '422':
+          description: "Validation échouée"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationErrorResponse'
+        '500':
+          description: "Erreur serveur"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                success: false
+                error_code: "INTERNAL_SERVER_ERROR"
+                message: "Erreur lors de la connexion."
+
+  /auth/me:
+    get:
+      tags:
+        - Authentication
+      summary: "Récupérer le profil de l'utilisateur"
+      description: "Retourne le profil complet de l'utilisateur authentifié + données KLASSCI"
+      operationId: "auth.me"
+      security:
+        - sanctum: []
+      responses:
+        '200':
+          description: "Profil utilisateur"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      id:
+                        type: integer
+                      klassci_id:
+                        type: integer
+                      name:
+                        type: string
+                      email:
+                        type: string
+                      role:
+                        type: string
+                      klassci_data:
+                        type: object
+        '401':
+          description: "Non authentifié"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: "Erreur serveur"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /auth/logout:
+    post:
+      tags:
+        - Authentication
+      summary: "Déconnecter l'utilisateur"
+      description: "Révoque le token Sanctum actuel et déconnecte KLASSCI"
+      operationId: "auth.logout"
+      security:
+        - sanctum: []
+      responses:
+        '200':
+          description: "Déconnexion réussie"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+        '401':
+          description: "Non authentifié"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /auth/refresh:
+    post:
+      tags:
+        - Authentication
+      summary: "Rafraîchir le token"
+      description: "Révoque l'ancien token et génère un nouveau"
+      operationId: "auth.refresh"
+      security:
+        - sanctum: []
+      responses:
+        '200':
+          description: "Nouveau token généré"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  data:
+                    type: object
+                    properties:
+                      token:
+                        type: string
+                      token_type:
+                        type: string
+        '401':
+          description: "Non authentifié"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /auth/check:
+    get:
+      tags:
+        - Authentication
+      summary: "Vérifier l'authentification"
+      description: "Vérifie si le token est valide et retourne le statut"
+      operationId: "auth.check"
+      security:
+        - sanctum: []
+      responses:
+        '200':
+          description: "Statut d'authentification"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  authenticated:
+                    type: boolean
+                  user:
+                    $ref: '#/components/schemas/UserProfile'
+                    nullable: true
+
+  # ====== PROXY / KLASSCI ======
+  /proxy/structure:
+    get:
+      tags:
+        - "Proxy / KLASSCI"
+      summary: "Récupérer la structure organisationnelle"
+      description: "Retourne les filières, niveaux, classes depuis KLASSCI"
+      operationId: "proxy.structure"
+      security:
+        - sanctum: []
+      responses:
+        '200':
+          description: "Structure organisationnelle"
+        '401':
+          description: "Non authentifié"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /proxy/classes:
+    get:
+      tags:
+        - "Proxy / KLASSCI"
+      summary: "Récupérer toutes les classes"
+      description: "Liste toutes les classes actives avec filtres optionnels"
+      operationId: "proxy.classes"
+      security:
+        - sanctum: []
+      parameters:
+        - name: filiere_id
+          in: query
+          schema:
+            type: integer
+          description: "Filtrer par filière"
+        - name: niveau_id
+          in: query
+          schema:
+            type: integer
+          description: "Filtrer par niveau"
+        - name: annee_id
+          in: query
+          schema:
+            type: integer
+          description: "Filtrer par année"
+      responses:
+        '200':
+          description: "Liste des classes"
+        '401':
+          description: "Non authentifié"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /proxy/classes/{id}/etudiants:
+    get:
+      tags:
+        - "Proxy / KLASSCI"
+      summary: "Récupérer les étudiants d'une classe"
+      description: "Retourne la liste des étudiants d'une classe KLASSCI"
+      operationId: "proxy.classStudents"
+      security:
+        - sanctum: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: "ID de la classe"
+        - name: annee_id
+          in: query
+          schema:
+            type: integer
+          description: "Filtrer par année"
+      responses:
+        '200':
+          description: "Liste des étudiants"
+        '401':
+          description: "Non authentifié"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: "Classe non trouvée"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /proxy/matieres:
+    get:
+      tags:
+        - "Proxy / KLASSCI"
+      summary: "Récupérer les matières"
+      description: "Liste les matières avec filtres optionnels"
+      operationId: "proxy.subjects"
+      security:
+        - sanctum: []
+      parameters:
+        - name: filiere_id
+          in: query
+          schema:
+            type: integer
+        - name: niveau_id
+          in: query
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: "Liste des matières"
+        '401':
+          description: "Non authentifié"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /proxy/matieres/{id}:
+    get:
+      tags:
+        - "Proxy / KLASSCI"
+      summary: "Récupérer les détails d'une matière"
+      operationId: "proxy.subjectDetails"
+      security:
+        - sanctum: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: "Détails de la matière"
+        '404':
+          description: "Matière non trouvée"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /proxy/enseignants:
+    get:
+      tags:
+        - "Proxy / KLASSCI"
+      summary: "Récupérer la liste des enseignants"
+      operationId: "proxy.teachers"
+      security:
+        - sanctum: []
+      responses:
+        '200':
+          description: "Liste des enseignants"
+        '401':
+          description: "Non authentifié"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /proxy/filieres:
+    get:
+      tags:
+        - "Proxy / KLASSCI"
+      summary: "Récupérer les filières"
+      operationId: "proxy.branches"
+      security:
+        - sanctum: []
+      responses:
+        '200':
+          description: "Liste des filières"
+
+  /proxy/niveaux-etudes:
+    get:
+      tags:
+        - "Proxy / KLASSCI"
+      summary: "Récupérer les niveaux d'étude"
+      operationId: "proxy.levels"
+      security:
+        - sanctum: []
+      responses:
+        '200':
+          description: "Liste des niveaux"
+
+  /proxy/evaluations:
+    get:
+      tags:
+        - "Proxy / KLASSCI"
+      summary: "Récupérer les évaluations"
+      operationId: "proxy.evaluations"
+      security:
+        - sanctum: []
+      responses:
+        '200':
+          description: "Liste des évaluations"
+
+  /proxy/emploi-temps:
+    get:
+      tags:
+        - "Proxy / KLASSCI"
+      summary: "Récupérer l'emploi du temps"
+      operationId: "proxy.schedule"
+      security:
+        - sanctum: []
+      responses:
+        '200':
+          description: "Emploi du temps"
+
+  /proxy/test-connection:
+    get:
+      tags:
+        - "Proxy / KLASSCI"
+      summary: "Tester la connexion KLASSCI"
+      description: "**Rôle requis: coordinateur, superAdmin, supradmin** - Teste la connexion à l'API KLASSCI"
+      operationId: "proxy.testConnection"
+      security:
+        - sanctum: []
+      responses:
+        '200':
+          description: "Connexion KLASSCI réussie"
+        '401':
+          description: "Non authentifié"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: "Permissions insuffisantes (requires coordinateur or admin role)"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                success: false
+                error_code: "PERMISSION_DENIED"
+                message: "Accès refusé"
+
+  # ====== EVALUATIONS ======
+  /evaluations:
+    get:
+      tags:
+        - Evaluations
+      summary: "Lister les évaluations"
+      description: "Retourne la liste des évaluations avec pagination et filtres"
+      operationId: "evaluations.index"
+      security:
+        - sanctum: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: per_page
+          in: query
+          schema:
+            type: integer
+            default: 15
+        - name: classe_id
+          in: query
+          schema:
+            type: integer
+          description: "Filtrer par classe"
+        - name: matiere_id
+          in: query
+          schema:
+            type: integer
+          description: "Filtrer par matière"
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [brouillon, active, terminee, archivee]
+          description: "Filtrer par statut"
+        - name: is_published
+          in: query
+          schema:
+            type: boolean
+          description: "Filtrer par publication"
+      responses:
+        '200':
+          description: "Liste des évaluations"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Evaluation'
+        '401':
+          description: "Non authentifié"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    post:
+      tags:
+        - Evaluations
+      summary: "Créer une nouvelle évaluation"
+      description: "**Restriction**: Coordinateurs ne peuvent pas créer d'évaluations. Crée une évaluation avec questions optionnelles."
+      operationId: "evaluations.store"
+      security:
+        - sanctum: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                klassci_classe_id:
+                  type: integer
+                  example: 1
+                klassci_matiere_id:
+                  type: integer
+                  example: 5
+                titre:
+                  type: string
+                  example: "Évaluation Mathématiques Semaine 1"
+                description:
+                  type: string
+                  nullable: true
+                type:
+                  type: string
+                  enum: [qcm, reponse_courte, dissertation, mixte]
+                  example: "qcm"
+                date_evaluation:
+                  type: string
+                  format: date
+                  nullable: true
+                duree_minutes:
+                  type: integer
+                  example: 60
+                  minimum: 1
+                coefficient:
+                  type: number
+                  nullable: true
+                bareme:
+                  type: number
+                  nullable: true
+                questions:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      question:
+                        type: string
+                      type:
+                        type: string
+                        enum: [qcm, qcm_multiple, vrai_faux, reponse_courte, dissertation]
+                      points:
+                        type: number
+                        nullable: true
+                      options:
+                        type: array
+                        items:
+                          type: string
+                        nullable: true
+                      correct_answers:
+                        type: array
+                        items:
+                          type: string
+                        nullable: true
+              required:
+                - klassci_classe_id
+                - klassci_matiere_id
+                - titre
+                - type
+                - duree_minutes
+      responses:
+        '201':
+          description: "Évaluation créée"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/Evaluation'
+        '403':
+          description: "Coordinateurs ne peuvent pas créer d'évaluations"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                success: false
+                error_code: "PERMISSION_DENIED"
+                message: "Accès refusé. Les coordinateurs ne peuvent pas créer d'évaluations."
+        '409':
+          description: "Évaluation existe déjà pour cette évaluation KLASSCI"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  data:
+                    $ref: '#/components/schemas/Evaluation'
+        '422':
+          description: "Validation échouée"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationErrorResponse'
+
+  /evaluations/{id}:
+    get:
+      tags:
+        - Evaluations
+      summary: "Récupérer une évaluation"
+      operationId: "evaluations.show"
+      security:
+        - sanctum: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: "Détails de l'évaluation"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/Evaluation'
+        '404':
+          description: "Évaluation non trouvée"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    put:
+      tags:
+        - Evaluations
+      summary: "Modifier une évaluation"
+      operationId: "evaluations.update"
+      security:
+        - sanctum: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: "Évaluation modifiée"
+        '403':
+          description: "Permission denied"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: "Évaluation non trouvée"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    delete:
+      tags:
+        - Evaluations
+      summary: "Supprimer une évaluation"
+      operationId: "evaluations.destroy"
+      security:
+        - sanctum: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: "Évaluation supprimée"
+        '403':
+          description: "Permission denied"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: "Évaluation non trouvée"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /evaluations/{id}/publish:
+    post:
+      tags:
+        - Evaluations
+      summary: "Publier une évaluation"
+      operationId: "evaluations.publish"
+      security:
+        - sanctum: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: "Évaluation publiée"
+        '403':
+          description: "Permission denied"
+        '404':
+          description: "Évaluation non trouvée"
+
+  /evaluations/my-evaluations:
+    get:
+      tags:
+        - Evaluations
+      summary: "Récupérer mes évaluations"
+      description: "Retourne les évaluations assignées à l'utilisateur (étudiant: ses évaluations, enseignant: ses évaluations)"
+      operationId: "evaluations.myEvaluations"
+      security:
+        - sanctum: []
+      responses:
+        '200':
+          description: "Mes évaluations"
+        '401':
+          description: "Non authentifié"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /evaluations/{id}/submit:
+    post:
+      tags:
+        - Evaluations
+      summary: "Soumettre une évaluation"
+      description: "Soumet les réponses d'une évaluation pour un étudiant"
+      operationId: "evaluations.submitEvaluation"
+      security:
+        - sanctum: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                answers:
+                  type: object
+                  description: "Réponses aux questions {question_id: answer}"
+                  additionalProperties: true
+              required:
+                - answers
+      responses:
+        '200':
+          description: "Évaluation soumise"
+        '400':
+          description: "Erreur soumission"
+        '404':
+          description: "Évaluation non trouvée"
+
+  /evaluations/{id}/my-submission:
+    get:
+      tags:
+        - Evaluations
+      summary: "Récupérer ma soumission"
+      description: "Retourne la soumission de l'étudiant pour cette évaluation"
+      operationId: "evaluations.getMySubmission"
+      security:
+        - sanctum: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: "Soumission"
+        '404':
+          description: "Soumission non trouvée"
+
+  # ====== DASHBOARD ======
+  /dashboard/student:
+    get:
+      tags:
+        - Dashboard
+      summary: "Dashboard étudiant"
+      description: "Retourne les informations personnalisées pour un étudiant (classes, évaluations, notes, progrès)"
+      operationId: "dashboard.student"
+      security:
+        - sanctum: []
+      responses:
+        '200':
+          description: "Dashboard étudiant"
+        '401':
+          description: "Non authentifié"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /dashboard/teacher:
+    get:
+      tags:
+        - Dashboard
+      summary: "Dashboard enseignant"
+      description: "Retourne les informations personnalisées pour un enseignant (classes, évaluations, soumissions, notes)"
+      operationId: "dashboard.teacher"
+      security:
+        - sanctum: []
+      responses:
+        '200':
+          description: "Dashboard enseignant"
+        '401':
+          description: "Non authentifié"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /dashboard/stats:
+    get:
+      tags:
+        - Dashboard
+      summary: "Statistiques globales"
+      operationId: "dashboard.stats"
+      security:
+        - sanctum: []
+      responses:
+        '200':
+          description: "Statistiques"
+
+  # ====== CHAPTERS & LESSONS ======
+  /chapters:
+    get:
+      tags:
+        - "Chapters & Lessons"
+      summary: "Lister les chapitres"
+      operationId: "chapters.index"
+      security:
+        - sanctum: []
+      responses:
+        '200':
+          description: "Liste des chapitres"
+
+    post:
+      tags:
+        - "Chapters & Lessons"
+      summary: "Créer un chapitre"
+      operationId: "chapters.store"
+      security:
+        - sanctum: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title:
+                  type: string
+                description:
+                  type: string
+                lesson_id:
+                  type: integer
+                order:
+                  type: integer
+              required:
+                - title
+      responses:
+        '201':
+          description: "Chapitre créé"
+        '422':
+          description: "Validation échouée"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationErrorResponse'
+
+  /chapters/{id}:
+    get:
+      tags:
+        - "Chapters & Lessons"
+      summary: "Récupérer un chapitre"
+      operationId: "chapters.show"
+      security:
+        - sanctum: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: "Détails du chapitre"
+        '404':
+          description: "Chapitre non trouvé"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    put:
+      tags:
+        - "Chapters & Lessons"
+      summary: "Modifier un chapitre"
+      operationId: "chapters.update"
+      security:
+        - sanctum: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: "Chapitre modifié"
+        '404':
+          description: "Chapitre non trouvé"
+
+    delete:
+      tags:
+        - "Chapters & Lessons"
+      summary: "Supprimer un chapitre"
+      operationId: "chapters.destroy"
+      security:
+        - sanctum: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: "Chapitre supprimé"
+
+  /lessons:
+    get:
+      tags:
+        - "Chapters & Lessons"
+      summary: "Lister les leçons"
+      operationId: "lessons.index"
+      security:
+        - sanctum: []
+      responses:
+        '200':
+          description: "Liste des leçons"
+
+    post:
+      tags:
+        - "Chapters & Lessons"
+      summary: "Créer une leçon"
+      operationId: "lessons.store"
+      security:
+        - sanctum: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title:
+                  type: string
+                description:
+                  type: string
+                content:
+                  type: string
+                  description: "HTML content"
+              required:
+                - title
+      responses:
+        '201':
+          description: "Leçon créée"
+
+  /lessons/{id}:
+    get:
+      tags:
+        - "Chapters & Lessons"
+      summary: "Récupérer une leçon"
+      operationId: "lessons.show"
+      security:
+        - sanctum: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: "Détails de la leçon"
+
+    put:
+      tags:
+        - "Chapters & Lessons"
+      summary: "Modifier une leçon"
+      operationId: "lessons.update"
+      security:
+        - sanctum: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: "Leçon modifiée"
+
+    delete:
+      tags:
+        - "Chapters & Lessons"
+      summary: "Supprimer une leçon"
+      operationId: "lessons.destroy"
+      security:
+        - sanctum: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: "Leçon supprimée"
+
+  # ====== NOTIFICATIONS ======
+  /notifications:
+    get:
+      tags:
+        - Notifications
+      summary: "Lister les notifications"
+      operationId: "notifications.index"
+      security:
+        - sanctum: []
+      parameters:
+        - name: read
+          in: query
+          schema:
+            type: string
+            enum: ['true', 'false']
+          description: "Filtrer par lues/non-lues"
+        - name: per_page
+          in: query
+          schema:
+            type: integer
+            default: 10
+      responses:
+        '200':
+          description: "Liste des notifications"
+        '401':
+          description: "Non authentifié"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /notifications/unread-count:
+    get:
+      tags:
+        - Notifications
+      summary: "Compte des notifications non-lues"
+      operationId: "notifications.unreadCount"
+      security:
+        - sanctum: []
+      responses:
+        '200':
+          description: "Nombre non-lues"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  count:
+                    type: integer
+
+  /notifications/{id}/mark-as-read:
+    post:
+      tags:
+        - Notifications
+      summary: "Marquer une notification comme lue"
+      operationId: "notifications.markAsRead"
+      security:
+        - sanctum: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: "Notification marquée comme lue"
+        '404':
+          description: "Notification non trouvée"
+
+  # ====== FILES ======
+  /files:
+    get:
+      tags:
+        - Files
+      summary: "Lister les fichiers"
+      operationId: "files.index"
+      security:
+        - sanctum: []
+      responses:
+        '200':
+          description: "Liste des fichiers"
+
+    post:
+      tags:
+        - Files
+      summary: "Télécharger un fichier"
+      operationId: "files.upload"
+      security:
+        - sanctum: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: "Fichier à télécharger"
+                description:
+                  type: string
+                  nullable: true
+              required:
+                - file
+      responses:
+        '201':
+          description: "Fichier téléchargé"
+        '422':
+          description: "Validation échouée"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationErrorResponse'
+
+  /files/{id}:
+    get:
+      tags:
+        - Files
+      summary: "Récupérer un fichier"
+      operationId: "files.show"
+      security:
+        - sanctum: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: "Détails du fichier"
+        '404':
+          description: "Fichier non trouvé"
+
+    delete:
+      tags:
+        - Files
+      summary: "Supprimer un fichier"
+      operationId: "files.destroy"
+      security:
+        - sanctum: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: "Fichier supprimé"
+
+  /files/{id}/download:
+    get:
+      tags:
+        - Files
+      summary: "Télécharger un fichier"
+      operationId: "files.download"
+      security:
+        - sanctum: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: "Fichier"
+
+security:
+  - sanctum: []

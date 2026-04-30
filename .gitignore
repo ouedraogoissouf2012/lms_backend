@@ -30,6 +30,9 @@ nul
 !README.md
 !PRODUCTION_STANDARDS.md
 !REFACTORING_ROADMAP.md
+!DOCUMENTATION_PACKAGE.md
+!docs/*.md
+!docs/openapi*.yaml
 *.ps1
 *.bat
 *.patch
@@ -38,7 +41,6 @@ nul
 *.xml
 !phpunit.xml
 !phpunit.xml.dist
-/docs/
 /guides/
 /diagnostics/
 /.claude/

@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\StoreChapterRequest;
+use App\Http\Requests\UploadFileRequest;
 use App\Models\Chapter;
 use App\Models\Lesson;
 use App\Services\FileConversionService;
@@ -78,35 +80,13 @@ class ChapterController extends Controller
      * POST /api/lessons/{lessonId}/chapters
      * Créer un nouveau chapitre pour une leçon
      */
-    public function store(Request $request, int $lessonId): JsonResponse
+    public function store(StoreChapterRequest $request, int $lessonId): JsonResponse
     {
         try {
             $lesson = Lesson::findOrFail($lessonId);
 
-            $validator = Validator::make($request->all(), [
-                'title' => 'required|string|max:255',
-                'description' => 'nullable|string',
-                'content_type' => 'required|in:text,video,pdf,audio,presentation,powerpoint,word,excel,link,mixed',
-                'content' => 'nullable|string',
-                'video_url' => 'nullable|url',
-                'video_provider' => 'nullable|in:youtube,vimeo,custom',
-                'external_link' => 'nullable|url',
-                'order' => 'nullable|integer|min:0',
-                'duration_minutes' => 'nullable|integer|min:0',
-            ]);
-
-            if ($validator->fails()) {
-                return response()->json([
-                    'success' => false,
-                    'errors' => $validator->errors()
-                ], 422);
-            }
-
-            $data = $request->only([
-                'title', 'description', 'content_type', 'content',
-                'video_url', 'video_provider', 'external_link',
-                'order', 'duration_minutes'
-            ]);
+            // Validation handled by StoreChapterRequest
+            $data = $request->validated();
 
             // Ajouter les IDs contextuels
             $data['lesson_id'] = $lessonId;
@@ -139,24 +119,14 @@ class ChapterController extends Controller
 
     /**
      * POST /api/chapters/{chapterId}/upload
-     * Upload et conversion de fichier pour un chapitre
+     * Upload et conversion de fichier pour un chapitre (30 MB max via UploadFileRequest)
      */
-    public function uploadFile(Request $request, int $chapterId): JsonResponse
+    public function uploadFile(UploadFileRequest $request, int $chapterId): JsonResponse
     {
         try {
             $chapter = Chapter::findOrFail($chapterId);
 
-            $validator = Validator::make($request->all(), [
-                'file' => 'required|file|mimes:pptx,ppt,pdf,mp4,avi,mov,wmv,flv,webm,mkv|max:102400' // Word temporairement désactivé, // 100 MB
-            ]);
-
-            if ($validator->fails()) {
-                return response()->json([
-                    'success' => false,
-                    'errors' => $validator->errors()
-                ], 422);
-            }
-
+            // Validation handled by UploadFileRequest (30 MB, strict MIME types)
             $file = $request->file('file');
             $extension = strtolower($file->getClientOriginalExtension());
 

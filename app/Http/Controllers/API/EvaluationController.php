@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\SubmitEvaluationRequest;
 use App\Models\Evaluation;
 use App\Models\EvaluationQuestion;
 use App\Models\EvaluationSubmission;
@@ -866,41 +867,27 @@ class EvaluationController extends Controller
 
     /**
      * POST /api/evaluations/{id}/submit
-     * Soumet les réponses d'une évaluation
+     * Soumet les réponses d'une évaluation (validation + authorization via SubmitEvaluationRequest)
      */
-    public function submitEvaluation(int $id, Request $request): JsonResponse
+    public function submitEvaluation(int $id, SubmitEvaluationRequest $request): JsonResponse
     {
-        $validator = Validator::make($request->all(), [
-            'submission_id' => 'required|integer',
-            'answers' => 'required|array',
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json([
-                'success' => false,
-                'errors' => $validator->errors()
-            ], 422);
-        }
-
-        $submission = EvaluationSubmission::find($request->submission_id);
-
-        if (!$submission || $submission->evaluation_id != $id) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Soumission non trouvée'
-            ], 404);
-        }
-
-        if ($submission->status !== 'en_cours') {
-            return response()->json([
-                'success' => false,
-                'message' => 'Cette évaluation a déjà été soumise'
-            ], 403);
-        }
+        // Authorization + validation handled by SubmitEvaluationRequest:
+        // - Student only
+        // - Evaluation published
+        // - Deadline not passed
+        // - Not already submitted
+        // - Answers trimmed + validated
 
         try {
-            $submission->answers = $request->answers;
-            $submission->submit(); // Calcule automatiquement le score
+            // Find the in-progress submission created by startEvaluation()
+            $submission = EvaluationSubmission::where('evaluation_id', $id)
+                ->where('student_id', auth()->id())
+                ->where('status', 'en_cours')
+                ->firstOrFail();
+
+            // Update submission with validated answers
+            $submission->answers = $request->validated('answers');
+            $submission->submit(); // Auto-calculate score
 
             return response()->json([
                 'success' => true,

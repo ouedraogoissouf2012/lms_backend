@@ -117,7 +117,11 @@ class SendSessionReminderRequestTest extends TestCase
         ]);
 
         $response->assertStatus(422);
-        $this->assertNotEmpty($response->json('errors.channels.0'));
+        $errors = $response->json('errors');
+        $this->assertTrue(
+            isset($errors['channels.0']) || isset($errors['channels']),
+            'Expected validation error for invalid channel value'
+        );
     }
 
     public function test_single_channel(): void

@@ -31,6 +31,8 @@ nul
 !PRODUCTION_STANDARDS.md
 !REFACTORING_ROADMAP.md
 !DOCUMENTATION_PACKAGE.md
+!CRITICAL-05_TIER1_COMPLETION.md
+!OPENAPI_FIX_LOG.md
 !docs/*.md
 !docs/openapi*.yaml
 *.ps1
@@ -38,6 +40,7 @@ nul
 *.patch
 *.txt
 !public/robots.txt
+!CRITICAL-05_TIER1_SUMMARY.txt
 *.xml
 !phpunit.xml
 !phpunit.xml.dist
@@ -53,6 +56,8 @@ screenshot_*.png
 /tests/
 !/tests/Unit/TokenEncryptionTest.php
 !/tests/Unit/ExceptionHandlerTest.php
+!/tests/Unit/Rules/**
+!/tests/Feature/Requests/**
 !/tests/Feature/ProxyRouteSecurityTest.php
 .env.example
 .env.production.example

@@ -5,6 +5,10 @@ namespace App\Http\Controllers\API;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\FilterLessonsRequest;
 use App\Http\Requests\StoreLessonRequest;
+use App\Http\Requests\UpdateLessonRequest;
+use App\Http\Requests\DeleteLessonRequest;
+use App\Http\Requests\PublishLessonRequest;
+use App\Http\Requests\UnpublishLessonRequest;
 use App\Models\Lesson;
 use App\Models\LessonProgress;
 use Illuminate\Http\JsonResponse;
@@ -270,64 +274,18 @@ class LessonController extends Controller
      * PUT /api/lessons/{id}
      * Mettre à jour un cours (Enseignants uniquement)
      */
-    public function update(Request $request, int $id): JsonResponse
+    public function update(UpdateLessonRequest $request, int $id): JsonResponse
     {
-        $lesson = Lesson::find($id);
+        $lesson = Lesson::findOrFail($id);
+        $data = $request->validated();
 
-        if (!$lesson) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Cours non trouvé',
-            ], 404);
-        }
-
-        // Vérifier que l'utilisateur est propriétaire ou admin
-        $user = $request->user();
-        if (!$user->isAdmin() && $lesson->enseignant_id !== $user->id) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Vous n\'êtes pas autorisé à modifier ce cours',
-            ], 403);
-        }
-
-        $validator = Validator::make($request->all(), [
-            'title' => 'sometimes|string|max:255',
-            'description' => 'nullable|string',
-            'content' => 'nullable|string',
-            'type' => 'sometimes|in:cours,tp,td,projet,autre',
-            'matiere_id' => 'nullable|integer',
-            'classe_id' => 'nullable|integer',
-            'chapter_id' => 'nullable|integer|exists:chapters,id',
-            'content_type' => 'sometimes|in:text,video,pdf,audio,presentation,link,mixed',
-            'video_url' => 'nullable|string',
-            'video_provider' => 'nullable|in:youtube,vimeo,local,other',
-            'pdf_url' => 'nullable|string',
-            'audio_url' => 'nullable|string',
-            'presentation_url' => 'nullable|string',
-            'external_link' => 'nullable|string',
-            'duration_minutes' => 'nullable|integer|min:1',
-            'status' => 'sometimes|in:draft,published,archived',
-            'order' => 'sometimes|integer',
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Données invalides',
-                'errors' => $validator->errors(),
-            ], 422);
-        }
-
-        $data = $validator->validated();
-
-        // Si le statut passe à "published" et que published_at n'est pas défini, le définir maintenant
-        if (isset($data['status']) && $data['status'] === 'published' && !$lesson->published_at) {
-            $data['published_at'] = now();
-        }
-
-        // Si le statut passe à "draft" ou "archived", retirer published_at
-        if (isset($data['status']) && in_array($data['status'], ['draft', 'archived'])) {
-            $data['published_at'] = null;
+        // Handle status transitions and published_at timestamp
+        if (isset($data['status'])) {
+            if ($data['status'] === 'published' && !$lesson->published_at) {
+                $data['published_at'] = now();
+            } elseif (in_array($data['status'], ['draft', 'archived'])) {
+                $data['published_at'] = null;
+            }
         }
 
         $lesson->update($data);
@@ -343,26 +301,9 @@ class LessonController extends Controller
      * DELETE /api/lessons/{id}
      * Supprimer un cours (Enseignants uniquement)
      */
-    public function destroy(Request $request, int $id): JsonResponse
+    public function destroy(DeleteLessonRequest $request, int $id): JsonResponse
     {
-        $lesson = Lesson::find($id);
-
-        if (!$lesson) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Cours non trouvé',
-            ], 404);
-        }
-
-        // Vérifier que l'utilisateur est propriétaire ou admin
-        $user = $request->user();
-        if (!$user->isAdmin() && $lesson->enseignant_id !== $user->id) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Vous n\'êtes pas autorisé à supprimer ce cours',
-            ], 403);
-        }
-
+        $lesson = Lesson::findOrFail($id);
         $lesson->delete();
 
         return response()->json([
@@ -375,25 +316,9 @@ class LessonController extends Controller
      * POST /api/lessons/{id}/publish
      * Publier un cours (Enseignants uniquement)
      */
-    public function publish(Request $request, int $id): JsonResponse
+    public function publish(PublishLessonRequest $request, int $id): JsonResponse
     {
-        $lesson = Lesson::find($id);
-
-        if (!$lesson) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Cours non trouvé',
-            ], 404);
-        }
-
-        $user = $request->user();
-        if (!$user->isAdmin() && $lesson->enseignant_id !== $user->id) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Vous n\'êtes pas autorisé à publier ce cours',
-            ], 403);
-        }
-
+        $lesson = Lesson::findOrFail($id);
         $wasUnpublished = $lesson->status === 'draft';
         $lesson->publish();
 
@@ -449,25 +374,9 @@ class LessonController extends Controller
      * POST /api/lessons/{id}/unpublish
      * Dépublier un cours (Enseignants uniquement)
      */
-    public function unpublish(Request $request, int $id): JsonResponse
+    public function unpublish(UnpublishLessonRequest $request, int $id): JsonResponse
     {
-        $lesson = Lesson::find($id);
-
-        if (!$lesson) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Cours non trouvé',
-            ], 404);
-        }
-
-        $user = $request->user();
-        if (!$user->isAdmin() && $lesson->enseignant_id !== $user->id) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Vous n\'êtes pas autorisé à dépublier ce cours',
-            ], 403);
-        }
-
+        $lesson = Lesson::findOrFail($id);
         $lesson->unpublish();
 
         return response()->json([

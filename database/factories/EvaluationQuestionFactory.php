@@ -15,7 +15,7 @@ class EvaluationQuestionFactory extends Factory
         return [
             'evaluation_id' => Evaluation::factory(),
             'question' => $this->faker->sentence(),
-            'type' => $this->faker->randomElement(['multiple_choice', 'short_answer', 'essay']),
+            'type' => $this->faker->randomElement(['qcm', 'qcm_multiple', 'vrai_faux', 'reponse_courte', 'dissertation']),
             'ordre' => $this->faker->numberBetween(1, 10),
         ];
     }

@@ -138,6 +138,47 @@ components:
         data:
           type: object
 
+  responses:
+    Unauthenticated:
+      description: "Unauthenticated"
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            success: false
+            error_code: UNAUTHENTICATED
+            message: "Unauthenticated."
+
+    PermissionDenied:
+      description: "Permission denied"
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            success: false
+            error_code: PERMISSION_DENIED
+            message: "Accès refusé"
+
+    NotFound:
+      description: "Resource not found"
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            success: false
+            error_code: RESOURCE_NOT_FOUND
+            message: "Ressource non trouvée"
+
+    ValidationFailed:
+      description: "Validation failed"
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ValidationErrorResponse'
+
 paths:
 
   # ====== AUTHENTICATION (6 endpoints) ======
@@ -1863,47 +1904,5 @@ paths:
           description: "Connection successful"
 
 # ====== RESPONSE COMPONENTS ======
-components:
-  responses:
-    Unauthenticated:
-      description: "Unauthenticated"
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/ErrorResponse'
-          example:
-            success: false
-            error_code: UNAUTHENTICATED
-            message: "Unauthenticated."
-
-    PermissionDenied:
-      description: "Permission denied"
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/ErrorResponse'
-          example:
-            success: false
-            error_code: PERMISSION_DENIED
-            message: "Accès refusé"
-
-    NotFound:
-      description: "Resource not found"
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/ErrorResponse'
-          example:
-            success: false
-            error_code: RESOURCE_NOT_FOUND
-            message: "Ressource non trouvée"
-
-    ValidationFailed:
-      description: "Validation failed"
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/ValidationErrorResponse'
-
 security:
   - sanctum: []

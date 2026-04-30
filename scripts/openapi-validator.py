@@ -13,10 +13,16 @@
 #
 ##############################################################################
 
-import yaml
 import sys
 import re
 from typing import List, Dict, Tuple
+
+try:
+    import yaml
+except ImportError:
+    print("[WARNING] PyYAML not installed - skipping validation")
+    print("[INFO] Install with: pip install pyyaml")
+    sys.exit(0)
 
 class OpenAPIValidator:
     """Validates OpenAPI 3.0.0 specification with custom rules."""

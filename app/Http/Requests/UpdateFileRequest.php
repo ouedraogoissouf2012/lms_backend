@@ -5,33 +5,43 @@ namespace App\Http\Requests;
 use Illuminate\Foundation\Http\FormRequest;
 
 /**
- * Validates file update requests (PUT /api/files/{id}).
+ * Validates file metadata update requests (PUT /api/files/{id}).
  *
  * ## Purpose
- * Update file metadata (category, description, visibility).
- * No input validation beyond field constraints.
- * Extracted from inline checks in FileController::update.
+ * Update file metadata while enforcing ownership.
+ * Updatable: category, description, visibility.
+ * Prevents unauthorized file metadata hijacking.
+ *
+ * ## Updatable Fields
+ * - category: document classification (course_material, assignment, resource, other)
+ * - description: optional file description (max 500 chars)
+ * - is_public: visibility toggle (boolean)
  *
  * ## Authorization Model
- * 1. User authenticated (via auth:sanctum middleware)
- * 2. User is owner of file OR admin
- * 3. File must exist
+ * File owner OR admin can update.
+ * Ownership check: file->user_id === auth()->id() OR isAdmin()
+ * File must exist (returns 403 if not found to prevent existence leakage).
  *
- * If ANY check fails → 403/404
+ * ## 10-year consideration
+ * Enum values (category) must match File model fillable + UploadFileRequest rules.
+ * If categories change, update: rules(), messages(), and UploadFileRequest together.
  *
- * Lookup: File::find($id) for seance/lesson context.
+ * Performance: File::find() in authorize() acceptable (single lookup, indexed by id).
  */
 final class UpdateFileRequest extends FormRequest
 {
+    /**
+     * Verify file ownership before allowing update.
+     *
+     * @return bool
+     */
     public function authorize(): bool
     {
-        // Check 1: User must be authenticated
         $user = auth()->user();
         if (!$user) {
             return false;
         }
 
-        // Check 2: User must own the file OR be admin
         $fileId = $this->route('id');
         $file = \App\Models\File::find($fileId);
 
@@ -39,20 +49,22 @@ final class UpdateFileRequest extends FormRequest
             return false;
         }
 
-        if (!$user->isAdmin() && $file->user_id !== $user->id) {
-            return false;
-        }
-
-        return true;
+        // Owner OR admin
+        return $file->user_id === $user->id || $user->isAdmin();
     }
 
+    /**
+     * Get validation rules for file metadata update.
+     *
+     * @return array
+     */
     public function rules(): array
     {
         return [
             'category' => [
                 'sometimes',
                 'string',
-                'max:100',
+                'in:course_material,assignment,resource,other',
             ],
             'description' => [
                 'sometimes',
@@ -63,6 +75,20 @@ final class UpdateFileRequest extends FormRequest
                 'sometimes',
                 'boolean',
             ],
+        ];
+    }
+
+    /**
+     * Custom error messages in French.
+     *
+     * @return array
+     */
+    public function messages(): array
+    {
+        return [
+            'category.in' => 'La catégorie sélectionnée est invalide',
+            'description.max' => 'La description ne doit pas dépasser 500 caractères',
+            'is_public.boolean' => 'Le champ visibilité doit être un booléen',
         ];
     }
 }

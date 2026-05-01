@@ -8,28 +8,56 @@ use Illuminate\Foundation\Http\FormRequest;
  * Validates mark-as-read notification requests (POST /api/notifications/{id}/mark-as-read).
  *
  * ## Purpose
- * Authorize marking a single notification as read.
- * No input validation required — only authentication check.
- * Extracted from inline checks in NotificationsController::markAsRead.
+ * Mark a single notification as read for authenticated user.
+ * Prevents unauthed users from manipulating notification state.
  *
  * ## Authorization Model
- * 1. User authenticated (via auth:sanctum middleware)
- * 2. Notification must exist and belong to user (checked in controller via SQL scope)
+ * Authenticated users only.
+ * Ownership verified in controller via SQL scope: Notification::where('user_id', $user->id)->findOrFail($id)
+ * Returns 404 if notification doesn't belong to user (prevents cross-user data access).
  *
- * Ownership is verified in controller via: Notification::where('user_id', $user->id)->findOrFail($id)
- * This returns 404 if the notification doesn't belong to the user.
+ * ## No Input Fields
+ * POST body optional — only route parameter {id} required.
+ * Notification ID presence checked by controller via findOrFail().
+ *
+ * ## 10-year consideration
+ * Delegation of ownership check to controller SQL scope is acceptable pattern:
+ * - Simpler FormRequest (no N+1 risk)
+ * - Controller layer handles data access control
+ * - SQL findOrFail() provides natural access control boundary
+ *
+ * Performance: Zero database queries in authorize() (auth check only, no lookup).
  */
 final class MarkAsReadRequest extends FormRequest
 {
+    /**
+     * Verify user is authenticated.
+     *
+     * @return bool
+     */
     public function authorize(): bool
     {
-        // Check: User must be authenticated
         return auth()->check();
     }
 
+    /**
+     * Get validation rules for notification mark-as-read.
+     *
+     * @return array
+     */
     public function rules(): array
     {
-        // No input validation for POST with no body
+        // No input validation for POST request with no body
+        return [];
+    }
+
+    /**
+     * Custom error messages.
+     *
+     * @return array
+     */
+    public function messages(): array
+    {
         return [];
     }
 }

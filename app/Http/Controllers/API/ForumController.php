@@ -3,11 +3,19 @@
 namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\StoreForumTopicRequest;
+use App\Http\Requests\UpdateForumTopicRequest;
+use App\Http\Requests\DeleteForumTopicRequest;
+use App\Http\Requests\StoreForumPostRequest;
+use App\Http\Requests\UpdateForumPostRequest;
+use App\Http\Requests\DeleteForumPostRequest;
+use App\Http\Requests\MarkPostAsSolutionRequest;
+use App\Http\Requests\CloseTopicRequest;
+use App\Http\Requests\PinTopicRequest;
 use App\Models\ForumTopic;
 use App\Models\ForumPost;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Validator;
 
 /**
  * Controller pour le forum de discussion
@@ -69,31 +77,14 @@ class ForumController extends Controller
      * POST /api/forum/topics
      * Créer un nouveau topic
      */
-    public function store(Request $request): JsonResponse
+    public function store(StoreForumTopicRequest $request): JsonResponse
     {
-        $validator = Validator::make($request->all(), [
-            'title' => 'required|string|max:255',
-            'content' => 'required|string',
-            'lesson_id' => 'nullable|exists:lessons,id',
-            'matiere_id' => 'nullable|integer',
-            'classe_id' => 'nullable|integer',
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Données invalides',
-                'errors' => $validator->errors(),
-            ], 422);
-        }
-
-        $data = $validator->validated();
+        $data = $request->validated();
         $data['user_id'] = $request->user()->id;
+        $data['institution_id'] = $request->user()->institution_id;
         $data['last_activity_at'] = now();
 
         $topic = ForumTopic::create($data);
-
-        // Charger les relations
         $topic->load('user:id,name,email,role');
 
         return response()->json([
@@ -104,12 +95,12 @@ class ForumController extends Controller
     }
 
     /**
-     * GET /api/forum/topics/{id}
+     * GET /api/forum/topics/{topic}
      * Détails d'un topic avec ses posts
      */
-    public function show(Request $request, int $id): JsonResponse
+    public function show(Request $request, ForumTopic $topic): JsonResponse
     {
-        $topic = ForumTopic::with([
+        $topic->load([
             'user:id,name,email,role',
             'lesson:id,title',
             'posts' => function ($query) {
@@ -118,16 +109,8 @@ class ForumController extends Controller
                     ->orderBy('is_solution', 'desc')
                     ->orderBy('created_at', 'asc');
             }
-        ])->find($id);
+        ]);
 
-        if (!$topic) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Topic non trouvé',
-            ], 404);
-        }
-
-        // Incrémenter le compteur de vues
         $topic->incrementViews();
 
         return response()->json([
@@ -140,40 +123,9 @@ class ForumController extends Controller
      * PUT /api/forum/topics/{id}
      * Mettre à jour un topic
      */
-    public function update(Request $request, int $id): JsonResponse
+    public function update(UpdateForumTopicRequest $request, ForumTopic $topic): JsonResponse
     {
-        $topic = ForumTopic::find($id);
-
-        if (!$topic) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Topic non trouvé',
-            ], 404);
-        }
-
-        // Vérifier les permissions
-        $user = $request->user();
-        if (!$user->isAdmin() && $topic->user_id !== $user->id) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Vous n\'êtes pas autorisé à modifier ce topic',
-            ], 403);
-        }
-
-        $validator = Validator::make($request->all(), [
-            'title' => 'sometimes|string|max:255',
-            'content' => 'sometimes|string',
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Données invalides',
-                'errors' => $validator->errors(),
-            ], 422);
-        }
-
-        $topic->update($validator->validated());
+        $topic->update($request->validated());
 
         return response()->json([
             'success' => true,
@@ -186,26 +138,8 @@ class ForumController extends Controller
      * DELETE /api/forum/topics/{id}
      * Supprimer un topic
      */
-    public function destroy(Request $request, int $id): JsonResponse
+    public function destroy(DeleteForumTopicRequest $request, ForumTopic $topic): JsonResponse
     {
-        $topic = ForumTopic::find($id);
-
-        if (!$topic) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Topic non trouvé',
-            ], 404);
-        }
-
-        // Vérifier les permissions
-        $user = $request->user();
-        if (!$user->isAdmin() && $topic->user_id !== $user->id) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Vous n\'êtes pas autorisé à supprimer ce topic',
-            ], 403);
-        }
-
         $topic->delete();
 
         return response()->json([
@@ -218,41 +152,12 @@ class ForumController extends Controller
      * POST /api/forum/topics/{id}/posts
      * Ajouter un post à un topic
      */
-    public function storePost(Request $request, int $id): JsonResponse
+    public function storePost(StoreForumPostRequest $request, ForumTopic $topic): JsonResponse
     {
-        $topic = ForumTopic::find($id);
-
-        if (!$topic) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Topic non trouvé',
-            ], 404);
-        }
-
-        // Vérifier si le topic est fermé
-        if ($topic->isClosed() && !$request->user()->isAdmin()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Ce topic est fermé',
-            ], 403);
-        }
-
-        $validator = Validator::make($request->all(), [
-            'content' => 'required|string',
-            'parent_id' => 'nullable|exists:forum_posts,id',
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Données invalides',
-                'errors' => $validator->errors(),
-            ], 422);
-        }
-
-        $data = $validator->validated();
+        $data = $request->validated();
         $data['topic_id'] = $topic->id;
         $data['user_id'] = $request->user()->id;
+        $data['institution_id'] = $request->user()->institution_id;
 
         $post = ForumPost::create($data);
         $post->load('user:id,name,email,role');
@@ -269,13 +174,13 @@ class ForumController extends Controller
                     'post_id' => $post->id,
                     'author_name' => $request->user()->name,
                 ],
+                'institution_id' => $request->user()->institution_id,
             ]);
         }
 
         // Si c'est une réponse à une réponse (parent_id existe)
-        // Notifier l'auteur du post parent (sauf si c'est lui qui répond ou l'auteur du topic pour éviter doublon)
-        if (!empty($data['parent_id'])) {
-            $parentPost = ForumPost::find($data['parent_id']);
+        if ($request->parent_id) {
+            $parentPost = ForumPost::find($request->parent_id);
 
             if ($parentPost &&
                 $parentPost->user_id !== $request->user()->id &&
@@ -292,6 +197,7 @@ class ForumController extends Controller
                         'parent_post_id' => $parentPost->id,
                         'author_name' => $request->user()->name,
                     ],
+                    'institution_id' => $request->user()->institution_id,
                 ]);
             }
         }
@@ -307,39 +213,9 @@ class ForumController extends Controller
      * PUT /api/forum/posts/{id}
      * Modifier un post
      */
-    public function updatePost(Request $request, int $id): JsonResponse
+    public function updatePost(UpdateForumPostRequest $request, ForumPost $post): JsonResponse
     {
-        $post = ForumPost::find($id);
-
-        if (!$post) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Post non trouvé',
-            ], 404);
-        }
-
-        // Vérifier les permissions
-        $user = $request->user();
-        if (!$user->isAdmin() && $post->user_id !== $user->id) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Vous n\'êtes pas autorisé à modifier ce post',
-            ], 403);
-        }
-
-        $validator = Validator::make($request->all(), [
-            'content' => 'required|string',
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Données invalides',
-                'errors' => $validator->errors(),
-            ], 422);
-        }
-
-        $post->update($validator->validated());
+        $post->update($request->validated());
         $post->markAsEdited();
 
         return response()->json([
@@ -353,26 +229,8 @@ class ForumController extends Controller
      * DELETE /api/forum/posts/{id}
      * Supprimer un post
      */
-    public function destroyPost(Request $request, int $id): JsonResponse
+    public function destroyPost(DeleteForumPostRequest $request, ForumPost $post): JsonResponse
     {
-        $post = ForumPost::find($id);
-
-        if (!$post) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Post non trouvé',
-            ], 404);
-        }
-
-        // Vérifier les permissions
-        $user = $request->user();
-        if (!$user->isAdmin() && $post->user_id !== $user->id) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Vous n\'êtes pas autorisé à supprimer ce post',
-            ], 403);
-        }
-
         $post->delete();
 
         return response()->json([
@@ -383,29 +241,12 @@ class ForumController extends Controller
 
     /**
      * POST /api/forum/posts/{id}/solution
-     * Marquer un post comme solution (Enseignants/Auteur du topic)
+     * Marquer un post comme solution
      */
-    public function markAsSolution(Request $request, int $id): JsonResponse
+    public function markAsSolution(MarkPostAsSolutionRequest $request, ForumPost $post): JsonResponse
     {
-        $post = ForumPost::find($id);
-
-        if (!$post) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Post non trouvé',
-            ], 404);
-        }
-
         $user = $request->user();
         $topic = $post->topic;
-
-        // Seul l'auteur du topic, un enseignant ou un admin peut marquer une solution
-        if (!$user->isAdmin() && !$user->isTeacher() && $topic->user_id !== $user->id) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Vous n\'êtes pas autorisé à marquer une solution',
-            ], 403);
-        }
 
         $post->markAsSolution();
 
@@ -421,6 +262,7 @@ class ForumController extends Controller
                     'post_id' => $post->id,
                     'marked_by_name' => $user->name,
                 ],
+                'institution_id' => $user->institution_id,
             ]);
         }
 
@@ -433,19 +275,10 @@ class ForumController extends Controller
 
     /**
      * POST /api/forum/topics/{id}/close
-     * Fermer un topic (Enseignants/Coordinateurs/Admin)
+     * Fermer un topic
      */
-    public function closeTopic(Request $request, int $id): JsonResponse
+    public function closeTopic(CloseTopicRequest $request, ForumTopic $topic): JsonResponse
     {
-        $topic = ForumTopic::find($id);
-
-        if (!$topic) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Topic non trouvé',
-            ], 404);
-        }
-
         $topic->close();
 
         return response()->json([
@@ -457,19 +290,10 @@ class ForumController extends Controller
 
     /**
      * POST /api/forum/topics/{id}/pin
-     * Épingler un topic (Enseignants/Coordinateurs/Admin)
+     * Épingler un topic
      */
-    public function pinTopic(Request $request, int $id): JsonResponse
+    public function pinTopic(PinTopicRequest $request, ForumTopic $topic): JsonResponse
     {
-        $topic = ForumTopic::find($id);
-
-        if (!$topic) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Topic non trouvé',
-            ], 404);
-        }
-
         $topic->pin();
 
         return response()->json([

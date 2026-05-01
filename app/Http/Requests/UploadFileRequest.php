@@ -122,6 +122,12 @@ final class UploadFileRequest extends FormRequest
             'file.max' => 'Le fichier ne doit pas dépasser 30 MB',
             'file.mimes' => 'Le type de fichier n\'est pas autorisé. Types acceptés: PDF, Word, Excel, PowerPoint, JPG, PNG, GIF',
             'name.regex' => 'Le nom du fichier ne peut contenir que des lettres, chiffres, espaces, tirets et points',
+            'name.max' => 'Le nom du fichier ne doit pas dépasser 255 caractères',
+            'category.in' => 'La catégorie sélectionnée est invalide',
+            'fileable_type.in' => 'Le type de ressource est invalide',
+            'fileable_id.min' => 'L\'identifiant de ressource doit être positif',
+            'description.max' => 'La description ne doit pas dépasser 500 caractères',
+            'is_public.boolean' => 'Le champ visibilité doit être un booléen',
         ];
     }
 

@@ -5,28 +5,28 @@ namespace App\Http\Requests;
 use Illuminate\Foundation\Http\FormRequest;
 
 /**
- * Validates file metadata update requests (PUT /api/files/{file}).
+ * Validates file metadata update requests (PUT /api/files/{id}).
  *
  * ## Purpose
- * Update file metadata while enforcing ownership via implicit model binding.
+ * Update file metadata while enforcing ownership.
  * Updatable: category, description, visibility.
  * Prevents unauthorized file metadata hijacking.
  *
  * ## Updatable Fields
- * - category: document classification (course_material, assignment, resource, other, forum_attachment, profile_picture, general)
+ * - category: document classification (course_material, assignment, resource, other)
  * - description: optional file description (max 500 chars)
  * - is_public: visibility toggle (boolean)
  *
  * ## Authorization Model
  * File owner OR admin can update.
- * Ownership check: $file->user_id === auth()->id() OR isAdmin()
- * File existence: guaranteed by implicit route model binding {file} → 404 if not found.
+ * Ownership check: file->user_id === auth()->id() OR isAdmin()
+ * File must exist (returns 403 if not found to prevent existence leakage).
  *
  * ## 10-year consideration
  * Enum values (category) must match File model fillable + UploadFileRequest rules.
  * If categories change, update: rules(), messages(), and UploadFileRequest together.
  *
- * Performance: Implicit model binding eliminates redundant File::find() call.
+ * Performance: File::find() in authorize() acceptable (single lookup, indexed by id).
  */
 final class UpdateFileRequest extends FormRequest
 {
@@ -38,12 +38,18 @@ final class UpdateFileRequest extends FormRequest
     public function authorize(): bool
     {
         $user = auth()->user();
-        $file = $this->route('file');
-
-        if (!$user || !$file) {
+        if (!$user) {
             return false;
         }
 
+        $fileId = $this->route('id');
+        $file = \App\Models\File::find($fileId);
+
+        if (!$file) {
+            return false;
+        }
+
+        // Owner OR admin
         return $file->user_id === $user->id || $user->isAdmin();
     }
 
@@ -58,7 +64,7 @@ final class UpdateFileRequest extends FormRequest
             'category' => [
                 'sometimes',
                 'string',
-                'in:course_material,assignment,resource,other,forum_attachment,profile_picture,general',
+                'in:course_material,assignment,resource,other',
             ],
             'description' => [
                 'sometimes',

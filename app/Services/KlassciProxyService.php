@@ -111,7 +111,7 @@ class KlassciProxyService
         $cacheKey = $this->generateCacheKey($endpoint, $params);
         $ttl = $customTTL ?? $this->cacheTTL;
 
-        return Cache::remember($cacheKey, $ttl, function () use ($endpoint, $params) {
+        return Cache::tags(['klassci'])->remember($cacheKey, $ttl, function () use ($endpoint, $params) {
             return $this->makeRequest('GET', $endpoint, $params);
         });
     }
@@ -247,12 +247,12 @@ class KlassciProxyService
     }
 
     /**
-     * Invalide le cache pour un endpoint
+     * Invalide le cache pour un endpoint (flushes all KLASSCI-tagged cache)
      */
     private function invalidateCache(string $endpoint): void
     {
-        $tenantKey = $this->resolveTenantCacheKey();
-        Log::info("Cache invalidation pour: klassci_{$tenantKey}_{$endpoint}");
+        Cache::tags(['klassci'])->flush();
+        Log::info('KLASSCI cache cleared', ['endpoint' => $endpoint]);
     }
 
     /**

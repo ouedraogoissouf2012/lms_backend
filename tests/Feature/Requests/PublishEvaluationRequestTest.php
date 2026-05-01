@@ -38,6 +38,8 @@ class PublishEvaluationRequestTest extends TestCase
             ->state([
                 'is_published' => false,
                 'klassci_enseignant_id' => $teacherEnseignantId,
+                'status' => 'brouillon',
+                'date_evaluation' => now()->addDays(7),
             ])
             ->create();
 
@@ -65,6 +67,8 @@ class PublishEvaluationRequestTest extends TestCase
             ->state([
                 'is_published' => true,
                 'klassci_enseignant_id' => $teacherEnseignantId,
+                'status' => 'planifiee',
+                'date_evaluation' => now()->addDays(7),
             ])
             ->create();
 

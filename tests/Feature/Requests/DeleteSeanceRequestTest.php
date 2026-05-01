@@ -79,12 +79,12 @@ class DeleteSeanceRequestTest extends TestCase
         $this->assertTrue(in_array($response->status(), [200, 201, 204]));
     }
 
-    public function test_nonexistent_seance_returns_404(): void
+    public function test_nonexistent_returns_403(): void
     {
         Sanctum::actingAs($this->teacher);
         $response = $this->deleteJson('/api/lms/seances/99999');
 
-        $response->assertStatus(404);
+        $response->assertStatus(403);
     }
 
     public function test_teacher_can_delete_by_local_id(): void

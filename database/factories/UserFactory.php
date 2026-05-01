@@ -35,6 +35,7 @@ class UserFactory extends Factory
                 'id' => fake()->numberBetween(1, 10000),
                 'nom' => fake()->lastName(),
                 'prenom' => fake()->firstName(),
+                'enseignant_id' => fake()->unique()->numberBetween(1, 10000),
             ]),
             'last_klassci_sync' => now(),
             'remember_token' => Str::random(10),

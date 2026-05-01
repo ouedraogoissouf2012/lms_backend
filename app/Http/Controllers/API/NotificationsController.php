@@ -123,9 +123,8 @@ class NotificationsController extends Controller
         if (!$notification->read_at) {
             $notification->markAsRead();
 
-            // Invalider le cache
+            // Invalidate user's unread count. Ownership scoped by SQL WHERE user_id = $user->id, so Cache::flush() unnecessary.
             Cache::forget("notifications_unread_count_user_{$user->id}");
-            Cache::flush();
         }
 
         return response()->json([
@@ -145,9 +144,8 @@ class NotificationsController extends Controller
             ->whereNull('read_at')
             ->update(['read_at' => now()]);
 
-        // Invalider le cache
+        // Invalidate user's unread count. Ownership scoped by SQL WHERE user_id = $user->id, so Cache::flush() unnecessary.
         Cache::forget("notifications_unread_count_user_{$user->id}");
-        Cache::flush();
 
         return response()->json([
             'success' => true,
@@ -165,9 +163,8 @@ class NotificationsController extends Controller
 
         $notification->delete();
 
-        // Invalider le cache
+        // Invalidate user's unread count. Ownership scoped by SQL WHERE user_id = $user->id, so Cache::flush() unnecessary.
         Cache::forget("notifications_unread_count_user_{$user->id}");
-        Cache::flush();
 
         return response()->json([
             'success' => true,
@@ -186,8 +183,8 @@ class NotificationsController extends Controller
             ->whereNotNull('read_at')
             ->delete();
 
-        // Invalider le cache
-        Cache::flush();
+        // Invalidate user's unread count. Ownership scoped by SQL WHERE user_id = $user->id, so Cache::flush() unnecessary.
+        Cache::forget("notifications_unread_count_user_{$user->id}");
 
         return response()->json([
             'success' => true,

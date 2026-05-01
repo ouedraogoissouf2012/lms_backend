@@ -344,10 +344,10 @@ use App\Http\Controllers\API\QuizController;
 Route::middleware(['auth:sanctum', 'klassci.sync'])->group(function () {
     // Liste et consultation des quiz
     Route::get('quizzes', [QuizController::class, 'index']);
-    Route::get('quizzes/{id}', [QuizController::class, 'show']);
+    Route::get('quizzes/{quiz}', [QuizController::class, 'show']);
 
     // Démarrer et soumettre une tentative
-    Route::post('quizzes/{id}/start', [QuizController::class, 'startAttempt'])
+    Route::post('quizzes/{quiz}/start', [QuizController::class, 'startAttempt'])
         ->middleware('throttle:300,1');
     Route::post('quiz-attempts/{id}/submit', [QuizController::class, 'submitAttempt'])
         ->middleware('throttle:60,1');
@@ -360,18 +360,18 @@ Route::middleware(['auth:sanctum', 'klassci.sync'])->group(function () {
     Route::get('quiz-attempts/{id}', [QuizController::class, 'showAttempt']);
 });
 
-// Routes enseignants/coordinateurs uniquement
-Route::middleware(['auth:sanctum', 'klassci.sync', 'role:enseignant,coordinateur'])->group(function () {
+// Routes enseignants/coordinateurs/admins
+Route::middleware(['auth:sanctum', 'klassci.sync', 'role:enseignant,coordinateur,admin'])->group(function () {
     // CRUD des quiz
     Route::post('quizzes', [QuizController::class, 'store']);
-    Route::put('quizzes/{id}', [QuizController::class, 'update']);
-    Route::delete('quizzes/{id}', [QuizController::class, 'destroy']);
+    Route::put('quizzes/{quiz}', [QuizController::class, 'update']);
+    Route::delete('quizzes/{quiz}', [QuizController::class, 'destroy']);
 
     // Publication
-    Route::post('quizzes/{id}/publish', [QuizController::class, 'publish']);
+    Route::post('quizzes/{quiz}/publish', [QuizController::class, 'publish']);
 
     // Gestion des tentatives
-    Route::get('quizzes/{id}/attempts', [QuizController::class, 'getAttempts']);
+    Route::get('quizzes/{quiz}/attempts', [QuizController::class, 'getAttempts']);
     Route::post('quiz-attempts/{id}/grade', [QuizController::class, 'gradeAttempt']);
 });
 

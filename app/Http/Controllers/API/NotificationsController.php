@@ -202,13 +202,16 @@ class NotificationsController extends Controller
     {
         $user = \App\Models\User::findOrFail($request->user_id);
 
-        // Créer notification
-        $user->notify(new \App\Notifications\CustomNotification(
-            $request->title,
-            $request->message,
-            $request->type ?? 'info',
-            $request->action_url
-        ));
+        // Créer notification directement dans la base (notre schéma personnalisé)
+        \App\Models\Notification::create([
+            'user_id' => $user->id,
+            'institution_id' => $user->institution_id,
+            'type' => $request->type ?? 'info',
+            'title' => $request->title,
+            'message' => $request->message,
+            'data' => ['action_url' => $request->action_url],
+            'read_at' => null,
+        ]);
 
         // Invalider le cache
         Cache::forget("notifications_unread_count_user_{$user->id}");

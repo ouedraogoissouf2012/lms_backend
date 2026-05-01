@@ -3,6 +3,9 @@
 namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\GenerateAttendanceReportRequest;
+use App\Http\Requests\GenerateGradesReportRequest;
+use App\Http\Requests\GenerateActivityReportRequest;
 use App\Models\User;
 use App\Models\Evaluation;
 use App\Models\EvaluationSubmission;
@@ -20,20 +23,14 @@ class ReportController extends Controller
     /**
      * Génère un rapport de présences (PDF)
      *
-     * @param Request $request
+     * @param GenerateAttendanceReportRequest $request
      * @return \Illuminate\Http\Response
      */
-    public function generateAttendanceReport(Request $request)
+    public function generateAttendanceReport(GenerateAttendanceReportRequest $request)
     {
-        $request->validate([
-            'date_start' => 'nullable|date',
-            'date_end' => 'nullable|date|after_or_equal:date_start',
-            'classe_id' => 'nullable|integer'
-        ]);
-
         try {
-            $dateStart = $request->date_start ? Carbon::parse($request->date_start) : Carbon::now()->subMonth();
-            $dateEnd = $request->date_end ? Carbon::parse($request->date_end) : Carbon::now();
+            $dateStart = Carbon::parse($request->date_start);
+            $dateEnd = Carbon::parse($request->date_end);
             $classeId = $request->classe_id;
 
             // Récupérer les données de présence
@@ -100,49 +97,47 @@ class ReportController extends Controller
     /**
      * Génère un rapport de notes (PDF)
      *
-     * @param Request $request
+     * @param GenerateGradesReportRequest $request
      * @return \Illuminate\Http\Response
      */
-    public function generateGradesReport(Request $request)
+    public function generateGradesReport(GenerateGradesReportRequest $request)
     {
-        $request->validate([
-            'date_start' => 'nullable|date',
-            'date_end' => 'nullable|date|after_or_equal:date_start',
-            'classe_id' => 'nullable|integer',
-            'matiere_id' => 'nullable|integer'
-        ]);
-
         try {
-            $dateStart = $request->date_start ? Carbon::parse($request->date_start) : Carbon::now()->subMonth();
-            $dateEnd = $request->date_end ? Carbon::parse($request->date_end) : Carbon::now();
+            $dateStart = Carbon::parse($request->date_start);
+            $dateEnd = Carbon::parse($request->date_end);
 
             // Récupérer les soumissions
             $query = EvaluationSubmission::whereBetween('submitted_at', [$dateStart, $dateEnd])
-                ->whereNotNull('note')
-                ->with(['evaluation', 'user']);
+                ->whereNotNull('note_sur_20')
+                ->with(['evaluation', 'student']);
+
+            // Filtrer par évaluation si fournie
+            if ($request->evaluation_id) {
+                $query->where('evaluation_id', $request->evaluation_id);
+            }
 
             $submissions = $query->get();
 
             // Calculer les statistiques
             $totalSubmissions = $submissions->count();
-            $averageGrade = $submissions->avg('note');
-            $highestGrade = $submissions->max('note');
-            $lowestGrade = $submissions->min('note');
+            $averageGrade = $submissions->avg('note_sur_20');
+            $highestGrade = $submissions->max('note_sur_20');
+            $lowestGrade = $submissions->min('note_sur_20');
 
             // Grouper par étudiant
-            $gradesByStudent = $submissions->groupBy('user_id')->map(function ($items, $userId) {
-                $user = $items->first()->user;
+            $gradesByStudent = $submissions->groupBy('student_id')->map(function ($items, $studentId) {
+                $student = $items->first()->student;
                 return [
-                    'name' => $user->name ?? 'Inconnu',
-                    'email' => $user->email ?? '',
+                    'name' => $student->name ?? 'Inconnu',
+                    'email' => $student->email ?? '',
                     'total_evaluations' => $items->count(),
-                    'average' => round($items->avg('note'), 2),
-                    'highest' => round($items->max('note'), 2),
-                    'lowest' => round($items->min('note'), 2),
+                    'average' => round($items->avg('note_sur_20'), 2),
+                    'highest' => round($items->max('note_sur_20'), 2),
+                    'lowest' => round($items->min('note_sur_20'), 2),
                     'evaluations' => $items->map(function ($submission) {
                         return [
                             'title' => $submission->evaluation->titre ?? 'Sans titre',
-                            'note' => $submission->note,
+                            'note' => $submission->note_sur_20,
                             'date' => $submission->submitted_at->format('d/m/Y')
                         ];
                     })
@@ -179,19 +174,14 @@ class ReportController extends Controller
     /**
      * Génère un rapport d'activité système (PDF)
      *
-     * @param Request $request
+     * @param GenerateActivityReportRequest $request
      * @return \Illuminate\Http\Response
      */
-    public function generateActivityReport(Request $request)
+    public function generateActivityReport(GenerateActivityReportRequest $request)
     {
-        $request->validate([
-            'date_start' => 'nullable|date',
-            'date_end' => 'nullable|date|after_or_equal:date_start'
-        ]);
-
         try {
-            $dateStart = $request->date_start ? Carbon::parse($request->date_start) : Carbon::now()->subMonth();
-            $dateEnd = $request->date_end ? Carbon::parse($request->date_end) : Carbon::now();
+            $dateStart = Carbon::parse($request->date_start);
+            $dateEnd = Carbon::parse($request->date_end);
 
             // Statistiques utilisateurs
             $newUsers = User::whereBetween('created_at', [$dateStart, $dateEnd])->count();

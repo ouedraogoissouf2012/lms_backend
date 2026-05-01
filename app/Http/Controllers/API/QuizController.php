@@ -7,9 +7,11 @@ use App\Models\Quiz;
 use App\Models\QuizAttempt;
 use App\Models\QuizQuestion;
 use App\Models\QuizAnswer;
+use App\Http\Requests\StoreQuizRequest;
+use App\Http\Requests\UpdateQuizRequest;
+use App\Http\Requests\DeleteQuizRequest;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -87,34 +89,9 @@ class QuizController extends Controller
      * POST /api/quizzes
      * Créer un nouveau quiz (Enseignants uniquement)
      */
-    public function store(Request $request): JsonResponse
+    public function store(StoreQuizRequest $request): JsonResponse
     {
-        $validator = Validator::make($request->all(), [
-            'title' => 'required|string|max:255',
-            'description' => 'nullable|string',
-            'instructions' => 'nullable|string',
-            'lesson_id' => 'nullable|exists:lessons,id',
-            'matiere_id' => 'nullable|exists:matieres,id',
-            'classe_id' => 'nullable|exists:classes,id',
-            'type' => 'nullable|in:formative,summative,diagnostic',
-            'duration_minutes' => 'nullable|integer|min:1',
-            'max_attempts' => 'nullable|integer|min:1',
-            'passing_score' => 'nullable|numeric|min:0|max:100',
-            'shuffle_questions' => 'nullable|boolean',
-            'shuffle_answers' => 'nullable|boolean',
-            'show_correct_answers' => 'nullable|boolean',
-            'allow_review' => 'nullable|boolean',
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Données invalides',
-                'errors' => $validator->errors(),
-            ], 422);
-        }
-
-        $data = $validator->validated();
+        $data = $request->validated();
         $data['created_by'] = $request->user()->id;
 
         $quiz = Quiz::create($data);
@@ -128,26 +105,19 @@ class QuizController extends Controller
     }
 
     /**
-     * GET /api/quizzes/{id}
+     * GET /api/quizzes/{quiz}
      * Détails d'un quiz
      */
-    public function show(Request $request, int $id): JsonResponse
+    public function show(Request $request, Quiz $quiz): JsonResponse
     {
         $user = $request->user();
 
-        $quiz = Quiz::with([
+        $quiz->load([
             'creator:id,name,email,role',
             'matiere:id,libelle',
             'classe:id,libelle',
             'lesson:id,title',
-        ])->find($id);
-
-        if (!$quiz) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Quiz non trouvé',
-            ], 404);
-        }
+        ]);
 
         // Les étudiants ne peuvent voir que les quiz publiés
         if ($user->isStudent() && !$quiz->isAvailable()) {
@@ -182,51 +152,12 @@ class QuizController extends Controller
     }
 
     /**
-     * PUT /api/quizzes/{id}
+     * PUT /api/quizzes/{quiz}
      * Mettre à jour un quiz
      */
-    public function update(Request $request, int $id): JsonResponse
+    public function update(UpdateQuizRequest $request, Quiz $quiz): JsonResponse
     {
-        $quiz = Quiz::find($id);
-
-        if (!$quiz) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Quiz non trouvé',
-            ], 404);
-        }
-
-        // Vérifier les permissions
-        $user = $request->user();
-        if (!$user->isAdmin() && $quiz->created_by !== $user->id) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Vous n\'êtes pas autorisé à modifier ce quiz',
-            ], 403);
-        }
-
-        $validator = Validator::make($request->all(), [
-            'title' => 'sometimes|string|max:255',
-            'description' => 'sometimes|string',
-            'instructions' => 'sometimes|string',
-            'duration_minutes' => 'sometimes|integer|min:1',
-            'max_attempts' => 'sometimes|integer|min:1',
-            'passing_score' => 'sometimes|numeric|min:0|max:100',
-            'shuffle_questions' => 'sometimes|boolean',
-            'shuffle_answers' => 'sometimes|boolean',
-            'show_correct_answers' => 'sometimes|boolean',
-            'allow_review' => 'sometimes|boolean',
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Données invalides',
-                'errors' => $validator->errors(),
-            ], 422);
-        }
-
-        $quiz->update($validator->validated());
+        $quiz->update($request->validated());
 
         return response()->json([
             'success' => true,
@@ -236,29 +167,11 @@ class QuizController extends Controller
     }
 
     /**
-     * DELETE /api/quizzes/{id}
+     * DELETE /api/quizzes/{quiz}
      * Supprimer un quiz
      */
-    public function destroy(Request $request, int $id): JsonResponse
+    public function destroy(DeleteQuizRequest $request, Quiz $quiz): JsonResponse
     {
-        $quiz = Quiz::find($id);
-
-        if (!$quiz) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Quiz non trouvé',
-            ], 404);
-        }
-
-        // Vérifier les permissions
-        $user = $request->user();
-        if (!$user->isAdmin() && $quiz->created_by !== $user->id) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Vous n\'êtes pas autorisé à supprimer ce quiz',
-            ], 403);
-        }
-
         $quiz->delete();
 
         return response()->json([
@@ -268,19 +181,11 @@ class QuizController extends Controller
     }
 
     /**
-     * POST /api/quizzes/{id}/publish
+     * POST /api/quizzes/{quiz}/publish
      * Publier un quiz
      */
-    public function publish(Request $request, int $id): JsonResponse
+    public function publish(Request $request, Quiz $quiz): JsonResponse
     {
-        $quiz = Quiz::find($id);
-
-        if (!$quiz) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Quiz non trouvé',
-            ], 404);
-        }
 
         // Vérifier qu'il y a au moins une question
         if ($quiz->questions()->count() === 0) {
@@ -300,19 +205,11 @@ class QuizController extends Controller
     }
 
     /**
-     * POST /api/quizzes/{id}/start
+     * POST /api/quizzes/{quiz}/start
      * Démarrer une nouvelle tentative de quiz
      */
-    public function startAttempt(Request $request, int $id): JsonResponse
+    public function startAttempt(Request $request, Quiz $quiz): JsonResponse
     {
-        $quiz = Quiz::find($id);
-
-        if (!$quiz) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Quiz non trouvé',
-            ], 404);
-        }
 
         $user = $request->user();
 
@@ -496,19 +393,11 @@ class QuizController extends Controller
     }
 
     /**
-     * GET /api/quizzes/{id}/attempts
+     * GET /api/quizzes/{quiz}/attempts
      * Liste des tentatives pour un quiz (Enseignants)
      */
-    public function getAttempts(Request $request, int $id): JsonResponse
+    public function getAttempts(Request $request, Quiz $quiz): JsonResponse
     {
-        $quiz = Quiz::find($id);
-
-        if (!$quiz) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Quiz non trouvé',
-            ], 404);
-        }
 
         $query = $quiz->attempts()->with('user:id,name,email')->submitted();
 

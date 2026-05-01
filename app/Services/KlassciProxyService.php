@@ -111,7 +111,7 @@ class KlassciProxyService
         $cacheKey = $this->generateCacheKey($endpoint, $params);
         $ttl = $customTTL ?? $this->cacheTTL;
 
-        return Cache::tags(['klassci'])->remember($cacheKey, $ttl, function () use ($endpoint, $params) {
+        return Cache::remember($cacheKey, $ttl, function () use ($endpoint, $params) {
             return $this->makeRequest('GET', $endpoint, $params);
         });
     }
@@ -243,16 +243,30 @@ class KlassciProxyService
     {
         $tenantKey = $this->resolveTenantCacheKey();
         $paramsHash = md5(json_encode($params));
-        return "klassci_{$tenantKey}_{$endpoint}_{$paramsHash}";
+
+        // Inclut le timestamp d'invalidation pour invalider automatiquement le cache
+        $invalidationKey = "klassci_{$tenantKey}_invalidated_at";
+        $invalidatedAt = Cache::get($invalidationKey, 0);
+
+        return "klassci_{$tenantKey}_{$endpoint}_{$paramsHash}_{$invalidatedAt}";
     }
 
     /**
-     * Invalide le cache pour un endpoint (flushes all KLASSCI-tagged cache)
+     * Invalide le cache pour les endpoints KLASSCI.
+     *
+     * Compatible avec tous les cache drivers (file, database, redis, memcached).
+     * Stocke un timestamp d'invalidation et l'inclut dans les clés de cache.
+     * Quand on appelle forget() sur ce timestamp, toutes les clés deviennent obsolètes.
      */
     private function invalidateCache(string $endpoint): void
     {
-        Cache::tags(['klassci'])->flush();
-        Log::info('KLASSCI cache cleared', ['endpoint' => $endpoint]);
+        $tenantKey = $this->resolveTenantCacheKey();
+        $invalidationKey = "klassci_{$tenantKey}_invalidated_at";
+
+        // Stocke le timestamp actuel pour invalider tout le cache
+        Cache::forever($invalidationKey, now()->timestamp);
+
+        Log::info('KLASSCI cache invalidated', ['endpoint' => $endpoint, 'tenant' => $tenantKey]);
     }
 
     /**

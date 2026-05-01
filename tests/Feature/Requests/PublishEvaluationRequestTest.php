@@ -35,11 +35,10 @@ class PublishEvaluationRequestTest extends TestCase
 
         $this->evaluation = Evaluation::factory()
             ->for($this->institution)
+            ->brouillon()
             ->state([
-                'is_published' => false,
                 'klassci_enseignant_id' => $teacherEnseignantId,
-                'status' => 'brouillon',
-                'date_evaluation' => now()->addDays(7),
+                'date_evaluation' => now()->addDays(30),
             ])
             ->create();
 
@@ -64,11 +63,10 @@ class PublishEvaluationRequestTest extends TestCase
         $teacherEnseignantId = $klassciData['enseignant_id'] ?? null;
         $published = Evaluation::factory()
             ->for($this->institution)
+            ->planifiee()
             ->state([
-                'is_published' => true,
                 'klassci_enseignant_id' => $teacherEnseignantId,
-                'status' => 'planifiee',
-                'date_evaluation' => now()->addDays(7),
+                'date_evaluation' => now()->addDays(30),
             ])
             ->create();
 

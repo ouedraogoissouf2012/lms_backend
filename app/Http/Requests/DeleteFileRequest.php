@@ -8,30 +8,38 @@ use Illuminate\Foundation\Http\FormRequest;
  * Validates file deletion requests (DELETE /api/files/{id}).
  *
  * ## Purpose
- * Authorize deletion of a file.
- * No input validation required — only authorization checks.
- * Extracted from inline checks in FileController::destroy.
+ * Authorize file deletion before removing from database.
+ * No input validation required — only authorization.
+ * Prevents unauthorized file deletion across tenants.
  *
  * ## Authorization Model
- * 1. User authenticated (via auth:sanctum middleware)
- * 2. User is owner of file OR admin
- * 3. File must exist
+ * File owner OR admin can delete.
+ * Ownership check: file->user_id === auth()->id() OR isAdmin()
+ * File must exist (returns 403 if not found to prevent existence leakage).
  *
- * If ANY check fails → 403/404
+ * ## Deletion Behavior
+ * Soft delete via Model::delete() preserves historical record.
+ * File::boot() hook auto-deletes physical file on force delete.
  *
- * Deletion: Soft delete via Model::delete() (keeps historical record).
+ * ## 10-year consideration
+ * Soft deletes allow recovery and audit trails.
+ * Force delete (hard delete) triggers physical file removal.
+ * Performance: File::find() in authorize() acceptable (single indexed lookup).
  */
 final class DeleteFileRequest extends FormRequest
 {
+    /**
+     * Verify file ownership before allowing deletion.
+     *
+     * @return bool
+     */
     public function authorize(): bool
     {
-        // Check 1: User must be authenticated
         $user = auth()->user();
         if (!$user) {
             return false;
         }
 
-        // Check 2: User must own the file OR be admin
         $fileId = $this->route('id');
         $file = \App\Models\File::find($fileId);
 
@@ -39,16 +47,18 @@ final class DeleteFileRequest extends FormRequest
             return false;
         }
 
-        if (!$user->isAdmin() && $file->user_id !== $user->id) {
-            return false;
-        }
-
-        return true;
+        // Owner OR admin
+        return $file->user_id === $user->id || $user->isAdmin();
     }
 
+    /**
+     * Get validation rules for file deletion.
+     *
+     * @return array
+     */
     public function rules(): array
     {
-        // No input validation for DELETE with no body
+        // No input validation for DELETE request with no body
         return [];
     }
 }

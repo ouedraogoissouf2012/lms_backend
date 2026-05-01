@@ -284,29 +284,29 @@ Route::middleware(['auth:sanctum', 'klassci.sync'])->prefix('forum')->group(func
     Route::get('topics', [ForumController::class, 'index']);
     Route::post('topics', [ForumController::class, 'store'])
         ->middleware('throttle:100,1');
-    Route::get('topics/{id}', [ForumController::class, 'show']);
-    Route::put('topics/{id}', [ForumController::class, 'update'])
+    Route::get('topics/{topic}', [ForumController::class, 'show']);
+    Route::put('topics/{topic}', [ForumController::class, 'update'])
         ->middleware('throttle:100,1');
-    Route::delete('topics/{id}', [ForumController::class, 'destroy'])
+    Route::delete('topics/{topic}', [ForumController::class, 'destroy'])
         ->middleware('throttle:30,1');
 
     // Posts
-    Route::post('topics/{id}/posts', [ForumController::class, 'storePost'])
+    Route::post('topics/{topic}/posts', [ForumController::class, 'storePost'])
         ->middleware('throttle:100,1');
-    Route::put('posts/{id}', [ForumController::class, 'updatePost'])
+    Route::put('posts/{post}', [ForumController::class, 'updatePost'])
         ->middleware('throttle:100,1');
-    Route::delete('posts/{id}', [ForumController::class, 'destroyPost'])
+    Route::delete('posts/{post}', [ForumController::class, 'destroyPost'])
         ->middleware('throttle:30,1');
 
-    // Marquer solution (Enseignants/Auteur topic)
-    Route::post('posts/{id}/solution', [ForumController::class, 'markAsSolution'])
+    // Marquer solution
+    Route::post('posts/{post}/solution', [ForumController::class, 'markAsSolution'])
         ->middleware('throttle:100,1');
 });
 
-// Routes enseignants/coordinateurs/admin uniquement
-Route::middleware(['auth:sanctum', 'klassci.sync', 'role:enseignant,coordinateur'])->prefix('forum')->group(function () {
-    Route::post('topics/{id}/close', [ForumController::class, 'closeTopic']);
-    Route::post('topics/{id}/pin', [ForumController::class, 'pinTopic']);
+// Routes pour clôturer et épingler des topics (formateurs/coordinateurs/admins)
+Route::middleware(['auth:sanctum', 'klassci.sync', 'role:enseignant,coordinateur,admin'])->prefix('forum')->group(function () {
+    Route::post('topics/{topic}/close', [ForumController::class, 'closeTopic']);
+    Route::post('topics/{topic}/pin', [ForumController::class, 'pinTopic']);
 });
 
 // ============================================
@@ -344,10 +344,10 @@ use App\Http\Controllers\API\QuizController;
 Route::middleware(['auth:sanctum', 'klassci.sync'])->group(function () {
     // Liste et consultation des quiz
     Route::get('quizzes', [QuizController::class, 'index']);
-    Route::get('quizzes/{id}', [QuizController::class, 'show']);
+    Route::get('quizzes/{quiz}', [QuizController::class, 'show']);
 
     // Démarrer et soumettre une tentative
-    Route::post('quizzes/{id}/start', [QuizController::class, 'startAttempt'])
+    Route::post('quizzes/{quiz}/start', [QuizController::class, 'startAttempt'])
         ->middleware('throttle:300,1');
     Route::post('quiz-attempts/{id}/submit', [QuizController::class, 'submitAttempt'])
         ->middleware('throttle:60,1');
@@ -360,18 +360,18 @@ Route::middleware(['auth:sanctum', 'klassci.sync'])->group(function () {
     Route::get('quiz-attempts/{id}', [QuizController::class, 'showAttempt']);
 });
 
-// Routes enseignants/coordinateurs uniquement
-Route::middleware(['auth:sanctum', 'klassci.sync', 'role:enseignant,coordinateur'])->group(function () {
+// Routes enseignants/coordinateurs/admins
+Route::middleware(['auth:sanctum', 'klassci.sync', 'role:enseignant,coordinateur,admin'])->group(function () {
     // CRUD des quiz
     Route::post('quizzes', [QuizController::class, 'store']);
-    Route::put('quizzes/{id}', [QuizController::class, 'update']);
-    Route::delete('quizzes/{id}', [QuizController::class, 'destroy']);
+    Route::put('quizzes/{quiz}', [QuizController::class, 'update']);
+    Route::delete('quizzes/{quiz}', [QuizController::class, 'destroy']);
 
     // Publication
-    Route::post('quizzes/{id}/publish', [QuizController::class, 'publish']);
+    Route::post('quizzes/{quiz}/publish', [QuizController::class, 'publish']);
 
     // Gestion des tentatives
-    Route::get('quizzes/{id}/attempts', [QuizController::class, 'getAttempts']);
+    Route::get('quizzes/{quiz}/attempts', [QuizController::class, 'getAttempts']);
     Route::post('quiz-attempts/{id}/grade', [QuizController::class, 'gradeAttempt']);
 });
 

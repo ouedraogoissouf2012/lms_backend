@@ -3,7 +3,6 @@
 namespace Database\Factories;
 
 use App\Models\ForumTopic;
-use App\Models\ForumCategory;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
@@ -22,12 +21,14 @@ class ForumTopicFactory extends Factory
     public function definition(): array
     {
         return [
-            'category_id' => ForumCategory::factory(),
             'user_id' => User::factory(),
             'title' => $this->faker->sentence(),
-            'is_pinned' => false,
-            'is_locked' => false,
+            'content' => $this->faker->paragraph(),
+            'status' => 'open',
             'is_resolved' => false,
+            'views_count' => 0,
+            'posts_count' => 0,
+            'last_activity_at' => now(),
         ];
     }
 
@@ -37,17 +38,17 @@ class ForumTopicFactory extends Factory
     public function pinned(): static
     {
         return $this->state(fn (array $attributes) => [
-            'is_pinned' => true,
+            'status' => 'pinned',
         ]);
     }
 
     /**
-     * Indicate that the topic is locked.
+     * Indicate that the topic is closed.
      */
-    public function locked(): static
+    public function closed(): static
     {
         return $this->state(fn (array $attributes) => [
-            'is_locked' => true,
+            'status' => 'closed',
         ]);
     }
 

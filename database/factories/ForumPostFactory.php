@@ -24,7 +24,11 @@ class ForumPostFactory extends Factory
         return [
             'topic_id' => ForumTopic::factory(),
             'user_id' => User::factory(),
-            'content' => $this->faker->paragraphs(3, true),
+            'content' => $this->faker->paragraph(),
+            'parent_id' => null,
+            'is_solution' => false,
+            'is_edited' => false,
+            'likes_count' => 0,
         ];
     }
 

@@ -58,8 +58,34 @@ class User extends Authenticatable
             'password' => 'hashed',
             'last_klassci_sync' => 'datetime',
             'klassci_token_encrypted' => 'encrypted',
-            'klassci_data' => 'json',
         ];
+    }
+
+    /**
+     * Get klassci_data as decoded array. Handles both JSON strings and native JSON columns.
+     * Production-grade: explicitly decodes JSON since database stores as TEXT/JSON
+     */
+    public function getKlassciDataAttribute($value): array
+    {
+        if (is_array($value)) {
+            return $value;
+        }
+        if (is_string($value)) {
+            return json_decode($value, true) ?: [];
+        }
+        return [];
+    }
+
+    /**
+     * Set klassci_data: accepts array or JSON string, stores as JSON-encoded string
+     */
+    public function setKlassciDataAttribute($value): void
+    {
+        if (is_array($value)) {
+            $this->attributes['klassci_data'] = json_encode($value);
+        } else {
+            $this->attributes['klassci_data'] = $value;
+        }
     }
 
     /**

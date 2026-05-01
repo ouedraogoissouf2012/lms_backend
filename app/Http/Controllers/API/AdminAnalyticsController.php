@@ -27,7 +27,7 @@ class AdminAnalyticsController extends Controller
     public function getActivityTrends(Request $request)
     {
         try {
-            $institution = app(TenantManager::class)->slug() ?? 'default';
+            $institution = app(TenantManager::class)->getResolvedSlug();
             $cacheKey = 'admin_analytics_activity_trends_' . $institution;
             $cacheTTL = 300; // 5 minutes
 
@@ -125,7 +125,7 @@ class AdminAnalyticsController extends Controller
     public function getSystemMetrics(Request $request)
     {
         try {
-            $institution = app(TenantManager::class)->slug() ?? 'default';
+            $institution = app(TenantManager::class)->getResolvedSlug();
             $cacheKey = 'admin_analytics_system_metrics_' . $institution;
             $cacheTTL = 300; // 5 minutes
 
@@ -217,7 +217,7 @@ class AdminAnalyticsController extends Controller
     public function getPendingTasks(Request $request)
     {
         try {
-            $institution = app(TenantManager::class)->slug() ?? 'default';
+            $institution = app(TenantManager::class)->getResolvedSlug();
             $cacheKey = 'admin_pending_tasks_' . $institution;
             $cacheTTL = 60; // 1 minute
 

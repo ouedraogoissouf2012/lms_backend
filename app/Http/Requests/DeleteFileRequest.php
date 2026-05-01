@@ -5,17 +5,17 @@ namespace App\Http\Requests;
 use Illuminate\Foundation\Http\FormRequest;
 
 /**
- * Validates file deletion requests (DELETE /api/files/{id}).
+ * Validates file deletion requests (DELETE /api/files/{file}).
  *
  * ## Purpose
- * Authorize file deletion before removing from database.
+ * Authorize file deletion before removing from database via implicit model binding.
  * No input validation required — only authorization.
  * Prevents unauthorized file deletion across tenants.
  *
  * ## Authorization Model
  * File owner OR admin can delete.
- * Ownership check: file->user_id === auth()->id() OR isAdmin()
- * File must exist (returns 403 if not found to prevent existence leakage).
+ * Ownership check: $file->user_id === auth()->id() OR isAdmin()
+ * File existence: guaranteed by implicit route model binding {file} → 404 if not found.
  *
  * ## Deletion Behavior
  * Soft delete via Model::delete() preserves historical record.
@@ -24,7 +24,7 @@ use Illuminate\Foundation\Http\FormRequest;
  * ## 10-year consideration
  * Soft deletes allow recovery and audit trails.
  * Force delete (hard delete) triggers physical file removal.
- * Performance: File::find() in authorize() acceptable (single indexed lookup).
+ * Performance: Implicit model binding eliminates redundant File::find() call.
  */
 final class DeleteFileRequest extends FormRequest
 {
@@ -36,18 +36,12 @@ final class DeleteFileRequest extends FormRequest
     public function authorize(): bool
     {
         $user = auth()->user();
-        if (!$user) {
+        $file = $this->route('file');
+
+        if (!$user || !$file) {
             return false;
         }
 
-        $fileId = $this->route('id');
-        $file = \App\Models\File::find($fileId);
-
-        if (!$file) {
-            return false;
-        }
-
-        // Owner OR admin
         return $file->user_id === $user->id || $user->isAdmin();
     }
 

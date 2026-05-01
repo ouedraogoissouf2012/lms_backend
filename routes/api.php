@@ -329,9 +329,9 @@ Route::middleware(['auth:sanctum', 'klassci.sync'])->group(function () {
     Route::get('files/stats', [FileController::class, 'stats']);
 
     // Mise à jour et suppression (propriétaire ou admin)
-    Route::put('files/{id}', [FileController::class, 'update'])
+    Route::put('files/{file}', [FileController::class, 'update'])
         ->middleware('throttle:60,1');
-    Route::delete('files/{id}', [FileController::class, 'destroy'])
+    Route::delete('files/{file}', [FileController::class, 'destroy'])
         ->middleware('throttle:30,1');
 });
 

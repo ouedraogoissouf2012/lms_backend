@@ -254,19 +254,75 @@ class KlassciProxyService
     /**
      * Invalide le cache pour les endpoints KLASSCI.
      *
-     * Compatible avec tous les cache drivers (file, database, redis, memcached).
-     * Stocke un timestamp d'invalidation et l'inclut dans les clés de cache.
-     * Quand on appelle forget() sur ce timestamp, toutes les clés deviennent obsolètes.
+     * Strategy HYBRID (2024 Laravel best practices):
+     * 1. Essayer Cache::tags() — invalidation ciblée (Redis/Memcached)
+     * 2. Fallback Cache::forget() — invalidation universelle (tous drivers)
+     *
+     * Multi-tenant safe: scope par institution_id + endpoint
+     * Production-grade: gère tous les drivers (Redis, Memcached, File, Database)
+     *
+     * Why not just Cache::forget():
+     * - Besoin de connaître les clés exactes (params hash problématique)
+     * - Tags = pattern moderne recommandé 2024 (Laravel docs + OWASP)
+     *
+     * Why fallback:
+     * - File driver ne supporte pas tags (need fallback)
+     * - Cache::forever(timestamp) permet versioning en cas de tags fail
      */
     private function invalidateCache(string $endpoint): void
     {
         $tenantKey = $this->resolveTenantCacheKey();
-        $invalidationKey = "klassci_{$tenantKey}_invalidated_at";
+        $cacheDriver = config('cache.default');
 
-        // Stocke le timestamp actuel pour invalider tout le cache
+        // PRIMARY: Cache::tags() si le driver le supporte (Redis, Memcached)
+        if ($this->driverSupportsTagging($cacheDriver)) {
+            try {
+                Cache::tags([
+                    "klassci_{$endpoint}",      // Tag par endpoint (classes, matieres, evaluations)
+                    "institution_{$tenantKey}"  // Tag par tenant (multi-tenant safety)
+                ])->flush();
+
+                Log::info('KLASSCI cache invalidated (tags)', [
+                    'endpoint' => $endpoint,
+                    'tenant' => $tenantKey,
+                    'driver' => $cacheDriver
+                ]);
+
+                return;
+            } catch (\Exception $e) {
+                Log::warning('KLASSCI cache invalidation failed (tags)', [
+                    'endpoint' => $endpoint,
+                    'tenant' => $tenantKey,
+                    'driver' => $cacheDriver,
+                    'error' => $e->getMessage()
+                ]);
+                // Fall through to fallback
+            }
+        }
+
+        // FALLBACK: Cache::forget() pattern pour tous les drivers
+        // Invalide le timestamp, force recalc de toutes les clés du tenant
+        $invalidationKey = "klassci_{$tenantKey}_invalidated_at";
+        Cache::forget($invalidationKey);
+
+        // Stocker nouveau timestamp pour les clés futures
         Cache::forever($invalidationKey, now()->timestamp);
 
-        Log::info('KLASSCI cache invalidated', ['endpoint' => $endpoint, 'tenant' => $tenantKey]);
+        Log::info('KLASSCI cache invalidated (forget)', [
+            'endpoint' => $endpoint,
+            'tenant' => $tenantKey,
+            'driver' => $cacheDriver
+        ]);
+    }
+
+    /**
+     * Vérifier si le driver supporte les tags.
+     * Tags sont supportés: redis, memcached
+     * Tags ne sont PAS supportés: file, database, dynamodb
+     */
+    private function driverSupportsTagging(string $driver): bool
+    {
+        return in_array($driver, ['redis', 'memcached'], true);
     }
 
     /**

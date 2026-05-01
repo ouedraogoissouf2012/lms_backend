@@ -76,16 +76,10 @@ final class UploadFileRequest extends FormRequest
                 'max:31457280', // 30 MB max
                 'mimes:pdf,doc,docx,xls,xlsx,ppt,pptx,jpg,jpeg,png,gif',
             ],
-            'name' => [
-                'sometimes',
-                'string',
-                'max:255',
-                'regex:/^[a-zA-Z0-9\s\-\.]+$/',
-            ],
             'category' => [
                 'sometimes',
                 'string',
-                'in:course_material,assignment,resource,other',
+                'in:course_material,assignment,resource,other,forum_attachment,profile_picture,general',
             ],
             'fileable_type' => [
                 'sometimes',
@@ -121,32 +115,12 @@ final class UploadFileRequest extends FormRequest
             'file.file' => 'Le champ doit être un fichier valide',
             'file.max' => 'Le fichier ne doit pas dépasser 30 MB',
             'file.mimes' => 'Le type de fichier n\'est pas autorisé. Types acceptés: PDF, Word, Excel, PowerPoint, JPG, PNG, GIF',
-            'name.regex' => 'Le nom du fichier ne peut contenir que des lettres, chiffres, espaces, tirets et points',
-            'name.max' => 'Le nom du fichier ne doit pas dépasser 255 caractères',
             'category.in' => 'La catégorie sélectionnée est invalide',
             'fileable_type.in' => 'Le type de ressource est invalide',
             'fileable_id.min' => 'L\'identifiant de ressource doit être positif',
             'description.max' => 'La description ne doit pas dépasser 500 caractères',
             'is_public.boolean' => 'Le champ visibilité doit être un booléen',
         ];
-    }
-
-    /**
-     * Prepare data for validation.
-     *
-     * Normalize file name if provided:
-     * - Trim whitespace
-     * - Remove special characters
-     *
-     * @return void
-     */
-    protected function prepareForValidation(): void
-    {
-        if ($this->has('name')) {
-            $this->merge([
-                'name' => trim($this->name ?? ''),
-            ]);
-        }
     }
 
     /**

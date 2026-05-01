@@ -242,17 +242,12 @@ class FileController extends Controller
      * PUT /api/files/{id}
      * Mettre à jour les métadonnées d'un fichier
      */
-    public function update(int $id, UpdateFileRequest $request): JsonResponse
+    /**
+     * PUT /api/files/{file}
+     * Mettre à jour un fichier (propriétaire ou admin)
+     */
+    public function update(UpdateFileRequest $request, File $file): JsonResponse
     {
-        $file = File::find($id);
-
-        if (!$file) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Fichier non trouvé',
-            ], 404);
-        }
-
         $file->update($request->validated());
 
         return response()->json([
@@ -263,21 +258,11 @@ class FileController extends Controller
     }
 
     /**
-     * DELETE /api/files/{id}
-     * Supprimer un fichier
+     * DELETE /api/files/{file}
+     * Supprimer un fichier (soft delete — propriétaire ou admin)
      */
-    public function destroy(int $id, DeleteFileRequest $request): JsonResponse
+    public function destroy(DeleteFileRequest $request, File $file): JsonResponse
     {
-        $file = File::find($id);
-
-        if (!$file) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Fichier non trouvé',
-            ], 404);
-        }
-
-        // Supprimer (soft delete)
         $file->delete();
 
         return response()->json([

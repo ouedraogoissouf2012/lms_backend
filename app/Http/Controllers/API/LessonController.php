@@ -327,12 +327,12 @@ class LessonController extends Controller
             // Récupérer tous les étudiants de la matière via KLASSCI
             try {
                 $klassciService = app(\App\Services\KlassciProxyService::class);
-                $matiereData = $klassciService->request('GET', "/matieres/{$lesson->matiere_id}");
+                $matiereData = $klassciService->get("/matieres/{$lesson->matiere_id}");
 
                 if (isset($matiereData['data']['classe_ids']) && is_array($matiereData['data']['classe_ids'])) {
                     $studentIds = [];
                     foreach ($matiereData['data']['classe_ids'] as $classeId) {
-                        $classeData = $klassciService->request('GET', "/classes/{$classeId}");
+                        $classeData = $klassciService->get("/classes/{$classeId}");
                         if (isset($classeData['data']['etudiant_ids']) && is_array($classeData['data']['etudiant_ids'])) {
                             $studentIds = array_merge($studentIds, $classeData['data']['etudiant_ids']);
                         }

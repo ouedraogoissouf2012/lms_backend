@@ -67,12 +67,12 @@ class EnsureRole
         $normalized = [];
 
         $roleMapping = [
-            'enseignant'  => ['enseignant', 'teacher'],
-            'etudiant'    => ['etudiant', 'student'],
-            'coordinateur'=> ['coordinateur', 'coordinator'],
-            'admin'       => ['admin', 'administrateur', 'administrator'],
-            'superAdmin'  => ['superAdmin', 'superadmin'],
-            'supradmin'   => ['supradmin'],
+            'enseignant'   => ['enseignant', 'teacher'],
+            'etudiant'     => ['etudiant', 'student'],
+            'coordinateur' => ['coordinateur', 'coordinator'],
+            'admin'        => ['admin', 'administrateur', 'administrator'],
+            'superadmin'   => ['superadmin'],  // FIX #27 & #28: Unified lowercase
+            'supradmin'    => ['supradmin'],
         ];
 
         foreach ($roles as $role) {

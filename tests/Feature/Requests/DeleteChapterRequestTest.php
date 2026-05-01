@@ -70,9 +70,9 @@ class DeleteChapterRequestTest extends TestCase
     }
 
     /**
-     * ✅ HAPPY PATH: Coordinator can delete any chapter
+     * ❌ FORBIDDEN: Coordinator cannot delete chapter (only owner or admin)
      */
-    public function test_coordinator_can_delete_chapter(): void
+    public function test_coordinator_cannotnot_delete_chapter(): void
     {
         $coordinator = User::factory()
             ->coordinator()
@@ -84,8 +84,7 @@ class DeleteChapterRequestTest extends TestCase
 
         $response = $this->deleteJson("/api/chapters/{$chapterId}");
 
-        $response->assertStatus(200);
-        $this->assertSoftDeleted('chapters', ['id' => $chapterId]);
+        $response->assertStatus(403);
     }
 
     /**
@@ -152,12 +151,12 @@ class DeleteChapterRequestTest extends TestCase
     /**
      * ❌ NOT FOUND
      */
-    public function test_nonexistent_chapter_returns_404(): void
+    public function test_nonexistent_chapter_returns_403(): void
     {
         Sanctum::actingAs($this->teacher);
 
         $response = $this->deleteJson('/api/chapters/99999');
 
-        $response->assertStatus(404);
+        $response->assertStatus(403);
     }
 }

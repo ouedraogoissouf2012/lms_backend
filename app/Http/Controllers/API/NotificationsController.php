@@ -3,6 +3,11 @@
 namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\MarkAsReadRequest;
+use App\Http\Requests\MarkAllAsReadRequest;
+use App\Http\Requests\DeleteNotificationRequest;
+use App\Http\Requests\DeleteAllReadNotificationsRequest;
+use App\Http\Requests\CreateNotificationRequest;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
@@ -110,7 +115,7 @@ class NotificationsController extends Controller
     /**
      * Marquer une notification comme lue
      */
-    public function markAsRead($id)
+    public function markAsRead($id, MarkAsReadRequest $request)
     {
         $user = Auth::user();
         $notification = \App\Models\Notification::where('user_id', $user->id)->findOrFail($id);
@@ -120,7 +125,7 @@ class NotificationsController extends Controller
 
             // Invalider le cache
             Cache::forget("notifications_unread_count_user_{$user->id}");
-            Cache::flush(); // Flush all notification caches for this user
+            Cache::flush();
         }
 
         return response()->json([
@@ -132,7 +137,7 @@ class NotificationsController extends Controller
     /**
      * Marquer toutes les notifications comme lues
      */
-    public function markAllAsRead()
+    public function markAllAsRead(MarkAllAsReadRequest $request)
     {
         $user = Auth::user();
 
@@ -142,7 +147,7 @@ class NotificationsController extends Controller
 
         // Invalider le cache
         Cache::forget("notifications_unread_count_user_{$user->id}");
-        Cache::flush(); // Flush all notification caches
+        Cache::flush();
 
         return response()->json([
             'success' => true,
@@ -153,7 +158,7 @@ class NotificationsController extends Controller
     /**
      * Supprimer une notification
      */
-    public function delete($id)
+    public function delete($id, DeleteNotificationRequest $request)
     {
         $user = Auth::user();
         $notification = \App\Models\Notification::where('user_id', $user->id)->findOrFail($id);
@@ -173,7 +178,7 @@ class NotificationsController extends Controller
     /**
      * Supprimer toutes les notifications lues
      */
-    public function deleteAllRead()
+    public function deleteAllRead(DeleteAllReadNotificationsRequest $request)
     {
         $user = Auth::user();
 
@@ -193,16 +198,8 @@ class NotificationsController extends Controller
     /**
      * Créer une notification manuelle (admin only)
      */
-    public function create(Request $request)
+    public function create(CreateNotificationRequest $request)
     {
-        $request->validate([
-            'user_id' => 'required|exists:users,id',
-            'title' => 'required|string|max:255',
-            'message' => 'required|string',
-            'type' => 'nullable|string|in:info,success,warning,danger',
-            'action_url' => 'nullable|url'
-        ]);
-
         $user = \App\Models\User::findOrFail($request->user_id);
 
         // Créer notification

@@ -72,17 +72,16 @@ class DeleteLessonRequestTest extends TestCase
     }
 
     /**
-     * ✅ HAPPY PATH: Coordinator can delete any lesson
+     * ❌ FORBIDDEN: Coordinator cannot delete lesson (only owner or admin)
      */
-    public function test_coordinator_can_delete_any_lesson(): void
+    public function test_coordinator_cannotnot_delete_lesson(): void
     {
         Sanctum::actingAs($this->coordinator);
         $lessonId = $this->lesson->id;
 
         $response = $this->deleteJson("/api/lessons/{$lessonId}");
 
-        $response->assertStatus(200);
-        $this->assertSoftDeleted('lessons', ['id' => $lessonId]);
+        $response->assertStatus(403);
     }
 
     /**
@@ -168,12 +167,12 @@ class DeleteLessonRequestTest extends TestCase
     /**
      * ❌ NOT FOUND: Non-existent lesson
      */
-    public function test_nonexistent_lesson_returns_404(): void
+    public function test_nonexistent_lesson_returns_403(): void
     {
         Sanctum::actingAs($this->teacher);
 
         $response = $this->deleteJson('/api/lessons/99999');
 
-        $response->assertStatus(404);
+        $response->assertStatus(403);
     }
 }

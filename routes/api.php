@@ -190,12 +190,12 @@ Route::middleware(['auth:sanctum', 'klassci.sync'])->group(function () {
     Route::post('chapters/{chapterId}/time', [\App\Http\Controllers\API\ChapterProgressController::class, 'updateTimeSpent']);
 });
 
-// Routes enseignants/coordinateurs uniquement
-Route::middleware(['auth:sanctum', 'klassci.sync', 'role:enseignant,coordinateur'])->group(function () {
+// Routes enseignants/coordinateurs/admins
+Route::middleware(['auth:sanctum', 'klassci.sync', 'role:enseignant,coordinateur,admin'])->group(function () {
     // CRUD des chapitres
     Route::post('lessons/{lessonId}/chapters', [ChapterController::class, 'store'])
         ->middleware('throttle:60,1');
-    Route::put('chapters/{id}', [ChapterController::class, 'update'])
+    Route::match(['put', 'patch'], 'chapters/{id}', [ChapterController::class, 'update'])
         ->middleware('throttle:30,1');
     Route::delete('chapters/{id}', [ChapterController::class, 'destroy'])
         ->middleware('throttle:30,1');
@@ -256,12 +256,12 @@ Route::middleware(['auth:sanctum', 'klassci.sync'])->group(function () {
         ->middleware('throttle:300,1');
 });
 
-// Routes enseignants/coordinateurs uniquement
-Route::middleware(['auth:sanctum', 'klassci.sync', 'role:enseignant,coordinateur'])->group(function () {
+// Routes enseignants/coordinateurs/admins
+Route::middleware(['auth:sanctum', 'klassci.sync', 'role:enseignant,coordinateur,admin'])->group(function () {
     // CRUD des cours
     Route::post('lessons', [LessonController::class, 'store'])
         ->middleware('throttle:60,1');
-    Route::put('lessons/{id}', [LessonController::class, 'update'])
+    Route::match(['put', 'patch'], 'lessons/{id}', [LessonController::class, 'update'])
         ->middleware('throttle:30,1');
     Route::delete('lessons/{id}', [LessonController::class, 'destroy'])
         ->middleware('throttle:30,1');
@@ -596,10 +596,10 @@ Route::middleware(['auth:sanctum', 'klassci.sync'])->group(function () {
 });
 
 // Routes enseignants/coordinateurs uniquement
-Route::middleware(['auth:sanctum', 'klassci.sync', 'role:enseignant,coordinateur'])->group(function () {
+Route::middleware(['auth:sanctum', 'klassci.sync', 'role:enseignant,coordinateur,admin'])->group(function () {
     // CRUD des évaluations
     Route::post('evaluations', [EvaluationController::class, 'store']);
-    Route::put('evaluations/{id}', [EvaluationController::class, 'update']);
+    Route::match(['put', 'patch'], 'evaluations/{id}', [EvaluationController::class, 'update']);
     Route::delete('evaluations/{id}', [EvaluationController::class, 'destroy']);
 
     // Publication

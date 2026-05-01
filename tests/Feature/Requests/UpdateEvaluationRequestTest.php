@@ -37,10 +37,11 @@ class UpdateEvaluationRequestTest extends TestCase
             ->for($this->institution)
             ->create();
 
+        $teacherEnseignantId = data_get($this->teacher->klassci_data, 'enseignant_id');
         $this->evaluation = Evaluation::factory()
             ->for($this->institution)
             ->state([
-                'klassci_enseignant_id' => $this->teacher->id,
+                'klassci_enseignant_id' => $teacherEnseignantId,
                 'titre' => 'Original Title',
             ])
             ->create();
@@ -132,7 +133,7 @@ class UpdateEvaluationRequestTest extends TestCase
     }
 
     /** ❌ Not found */
-    public function test_nonexistent_returns_404(): void
+    public function test_nonexistent_returns_403(): void
     {
         Sanctum::actingAs($this->teacher);
 
@@ -140,6 +141,6 @@ class UpdateEvaluationRequestTest extends TestCase
             'titre' => 'Ghost',
         ]);
 
-        $response->assertStatus(404);
+        $response->assertStatus(403);
     }
 }

@@ -46,6 +46,12 @@ final class UpdateEvaluationRequest extends FormRequest
             return false;
         }
 
+        // Check ownership: only the assigned enseignant can modify
+        $userKlassciEnseignantId = data_get($user->klassci_data, 'enseignant_id');
+        if (!$user->isAdmin() && $evaluation->klassci_enseignant_id !== $userKlassciEnseignantId) {
+            return false;
+        }
+
         return true;
     }
 

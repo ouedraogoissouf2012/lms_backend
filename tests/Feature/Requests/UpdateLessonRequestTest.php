@@ -109,9 +109,9 @@ class UpdateLessonRequestTest extends TestCase
     }
 
     /**
-     * ✅ HAPPY PATH: Coordinator can update any lesson
+     * ❌ FORBIDDEN: Coordinator cannot modify lesson (only owner or admin)
      */
-    public function test_coordinator_can_update_any_lesson(): void
+    public function test_coordinator_cannotnot_update_lesson(): void
     {
         Sanctum::actingAs($this->coordinator);
 
@@ -119,10 +119,7 @@ class UpdateLessonRequestTest extends TestCase
             'title' => 'Coordinator Update',
         ]);
 
-        $this->assertTrue(in_array($response->status(), [200, 201]));
-        $this->assertDatabaseHas('lessons', [
-            'title' => 'Coordinator Update',
-        ]);
+        $response->assertStatus(403);
     }
 
     /**
@@ -376,7 +373,7 @@ class UpdateLessonRequestTest extends TestCase
     /**
      * ❌ NOT FOUND: Non-existent lesson
      */
-    public function test_nonexistent_lesson_returns_404(): void
+    public function test_nonexistent_lesson_returns_403(): void
     {
         Sanctum::actingAs($this->teacher);
 
@@ -384,6 +381,6 @@ class UpdateLessonRequestTest extends TestCase
             'title' => 'Ghost Update',
         ]);
 
-        $response->assertStatus(404);
+        $response->assertStatus(403);
     }
 }

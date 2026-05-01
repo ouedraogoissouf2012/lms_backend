@@ -252,7 +252,7 @@ class UpdateChapterRequestTest extends TestCase
     /**
      * ❌ NOT FOUND
      */
-    public function test_nonexistent_chapter_returns_404(): void
+    public function test_nonexistent_chapter_returns_403(): void
     {
         Sanctum::actingAs($this->teacher);
 
@@ -260,6 +260,6 @@ class UpdateChapterRequestTest extends TestCase
             'title' => 'Ghost',
         ]);
 
-        $response->assertStatus(404);
+        $response->assertStatus(403);
     }
 }

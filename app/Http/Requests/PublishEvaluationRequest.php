@@ -41,6 +41,12 @@ final class PublishEvaluationRequest extends FormRequest
             return false;
         }
 
+        // Check ownership: only the assigned enseignant can publish
+        $userKlassciEnseignantId = data_get($user->klassci_data, 'enseignant_id');
+        if (!$user->isAdmin() && $evaluation->klassci_enseignant_id !== $userKlassciEnseignantId) {
+            return false;
+        }
+
         return true;
     }
 

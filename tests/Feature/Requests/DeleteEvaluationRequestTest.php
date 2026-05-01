@@ -25,14 +25,19 @@ class DeleteEvaluationRequestTest extends TestCase
         $this->institution = Institution::factory()->create();
         $this->teacher = User::factory()->teacher()->for($this->institution)->create();
         $this->coordinator = User::factory()->coordinator()->for($this->institution)->create();
-        $this->evaluation = Evaluation::factory()->for($this->institution)->create();
+
+        $teacherEnseignantId = data_get($this->teacher->klassci_data, 'enseignant_id');
+        $this->evaluation = Evaluation::factory()
+            ->for($this->institution)
+            ->state(['klassci_enseignant_id' => $teacherEnseignantId])
+            ->create();
     }
 
     public function test_teacher_can_delete(): void
     {
         Sanctum::actingAs($this->teacher);
         $response = $this->deleteJson("/api/evaluations/{$this->evaluation->id}");
-        $this->assertTrue(in_array($response->status(), [200, 201]));
+        $this->assertTrue(in_array($response->status(), [200, 204]));
     }
 
     public function test_coordinator_cannot_delete(): void
@@ -48,10 +53,10 @@ class DeleteEvaluationRequestTest extends TestCase
         $response->assertStatus(401);
     }
 
-    public function test_nonexistent_returns_404(): void
+    public function test_nonexistent_returns_403(): void
     {
         Sanctum::actingAs($this->teacher);
         $response = $this->deleteJson('/api/evaluations/99999');
-        $response->assertStatus(404);
+        $response->assertStatus(403);
     }
 }

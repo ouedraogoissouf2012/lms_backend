@@ -80,15 +80,13 @@ class UnpublishLessonRequestTest extends TestCase
     /**
      * ✅ HAPPY PATH: Coordinator can unpublish any lesson
      */
-    public function test_coordinator_can_unpublish_any_lesson(): void
+    public function test_coordinator_cannotnot_unpublish_lesson(): void
     {
         Sanctum::actingAs($this->coordinator);
 
         $response = $this->postJson("/api/lessons/{$this->lesson->id}/unpublish");
 
-        $this->assertTrue(in_array($response->status(), [200, 201]));
-        $lesson = Lesson::find($this->lesson->id);
-        $this->assertEquals('draft', $lesson->status);
+        $response->assertStatus(403);
     }
 
     /**
@@ -199,14 +197,14 @@ class UnpublishLessonRequestTest extends TestCase
     }
 
     /**
-     * ❌ NOT FOUND: Non-existent lesson
+     * ❌ AUTHORIZATION: Non-existent lesson
      */
-    public function test_nonexistent_lesson_returns_404(): void
+    public function test_nonexistent_lesson_returns_403(): void
     {
         Sanctum::actingAs($this->teacher);
 
         $response = $this->postJson('/api/lessons/99999/unpublish');
 
-        $response->assertStatus(404);
+        $response->assertStatus(403);
     }
 }

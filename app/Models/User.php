@@ -58,6 +58,7 @@ class User extends Authenticatable
             'password' => 'hashed',
             'last_klassci_sync' => 'datetime',
             'klassci_token_encrypted' => 'encrypted',
+            'klassci_data' => 'json',
         ];
     }
 

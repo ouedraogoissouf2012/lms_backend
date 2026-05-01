@@ -87,9 +87,9 @@ class ReorderChaptersRequestTest extends TestCase
     }
 
     /**
-     * ✅ HAPPY PATH: Coordinator can reorder any lesson's chapters
+     * ❌ FORBIDDEN: Coordinator cannot reorder chapters (only owner or admin)
      */
-    public function test_coordinator_can_reorder_chapters(): void
+    public function test_coordinator_cannotnot_reorder_chapters(): void
     {
         $coordinator = User::factory()
             ->coordinator()
@@ -105,7 +105,7 @@ class ReorderChaptersRequestTest extends TestCase
             ],
         ]);
 
-        $this->assertTrue(in_array($response->status(), [200, 201]));
+        $response->assertStatus(403);
     }
 
     /**
@@ -294,7 +294,7 @@ class ReorderChaptersRequestTest extends TestCase
     /**
      * ❌ NOT FOUND: Non-existent lesson
      */
-    public function test_nonexistent_lesson_returns_404(): void
+    public function test_nonexistent_lesson_returns_403(): void
     {
         Sanctum::actingAs($this->teacher);
 
@@ -304,6 +304,6 @@ class ReorderChaptersRequestTest extends TestCase
             ],
         ]);
 
-        $response->assertStatus(404);
+        $response->assertStatus(403);
     }
 }

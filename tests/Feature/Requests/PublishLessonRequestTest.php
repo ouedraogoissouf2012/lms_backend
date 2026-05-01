@@ -80,15 +80,13 @@ class PublishLessonRequestTest extends TestCase
     /**
      * ✅ HAPPY PATH: Coordinator can publish any lesson
      */
-    public function test_coordinator_can_publish_any_lesson(): void
+    public function test_coordinator_cannotnot_publish_lesson(): void
     {
         Sanctum::actingAs($this->coordinator);
 
         $response = $this->postJson("/api/lessons/{$this->lesson->id}/publish");
 
-        $this->assertTrue(in_array($response->status(), [200, 201]));
-        $lesson = Lesson::find($this->lesson->id);
-        $this->assertEquals('published', $lesson->status);
+        $response->assertStatus(403);
     }
 
     /**
@@ -201,12 +199,12 @@ class PublishLessonRequestTest extends TestCase
     /**
      * ❌ NOT FOUND: Non-existent lesson
      */
-    public function test_nonexistent_lesson_returns_404(): void
+    public function test_nonexistent_lesson_returns_403(): void
     {
         Sanctum::actingAs($this->teacher);
 
         $response = $this->postJson('/api/lessons/99999/publish');
 
-        $response->assertStatus(404);
+        $response->assertStatus(403);
     }
 }

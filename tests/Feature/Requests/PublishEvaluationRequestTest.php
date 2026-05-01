@@ -25,10 +25,24 @@ class PublishEvaluationRequestTest extends TestCase
         $this->institution = Institution::factory()->create();
         $this->teacher = User::factory()->teacher()->for($this->institution)->create();
         $this->coordinator = User::factory()->coordinator()->for($this->institution)->create();
+
+        // Get the teacher's klassci_enseignant_id from klassci_data
+        $klassciData = $this->teacher->klassci_data;
+        if (is_string($klassciData)) {
+            $klassciData = json_decode($klassciData, true);
+        }
+        $teacherEnseignantId = $klassciData['enseignant_id'] ?? null;
+
         $this->evaluation = Evaluation::factory()
             ->for($this->institution)
-            ->state(['is_published' => false])
+            ->state([
+                'is_published' => false,
+                'klassci_enseignant_id' => $teacherEnseignantId,
+            ])
             ->create();
+
+        // Create at least one question so evaluation can be published
+        \App\Models\EvaluationQuestion::factory()->for($this->evaluation)->create();
     }
 
     public function test_teacher_can_publish(): void
@@ -40,10 +54,22 @@ class PublishEvaluationRequestTest extends TestCase
 
     public function test_idempotent(): void
     {
+        // Get the teacher's klassci_enseignant_id from klassci_data
+        $klassciData = $this->teacher->klassci_data;
+        if (is_string($klassciData)) {
+            $klassciData = json_decode($klassciData, true);
+        }
+        $teacherEnseignantId = $klassciData['enseignant_id'] ?? null;
         $published = Evaluation::factory()
             ->for($this->institution)
-            ->state(['is_published' => true])
+            ->state([
+                'is_published' => true,
+                'klassci_enseignant_id' => $teacherEnseignantId,
+            ])
             ->create();
+
+        // Create at least one question
+        \App\Models\EvaluationQuestion::factory()->for($published)->create();
 
         Sanctum::actingAs($this->teacher);
         $response = $this->postJson("/api/evaluations/{$published->id}/publish");
@@ -63,10 +89,10 @@ class PublishEvaluationRequestTest extends TestCase
         $response->assertStatus(401);
     }
 
-    public function test_nonexistent_returns_404(): void
+    public function test_nonexistent_returns_403(): void
     {
         Sanctum::actingAs($this->teacher);
         $response = $this->postJson('/api/evaluations/99999/publish');
-        $response->assertStatus(404);
+        $response->assertStatus(403);
     }
 }

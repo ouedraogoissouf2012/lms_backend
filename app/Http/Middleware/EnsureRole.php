@@ -48,8 +48,6 @@ class EnsureRole
             return response()->json([
                 'success' => false,
                 'message' => 'Accès refusé - Permissions insuffisantes',
-                'required_roles' => $roles,
-                'your_role' => $user->role,
             ], 403);
         }
 

@@ -33,14 +33,27 @@ class ReportController extends Controller
             $dateEnd = Carbon::parse($request->date_end);
             $classeId = $request->classe_id;
 
-            // Récupérer les données de présence
-            $query = ESBTPAttendance::whereBetween('date', [$dateStart, $dateEnd]);
-
+            // Récupérer la classe pour obtenir son klassci_id
+            $klassciClasseId = null;
             if ($classeId) {
-                $query->where('classe_id', $classeId);
+                $classe = \App\Models\Classe::find($classeId);
+                if ($classe) {
+                    $klassciClasseId = $classe->klassci_id;
+                }
             }
 
-            $attendances = $query->with(['user'])->get();
+            // Récupérer les données de présence (joindre avec seance pour la date)
+            $query = ESBTPAttendance::whereHas('seance', function ($q) use ($dateStart, $dateEnd) {
+                $q->whereBetween('date_seance', [$dateStart, $dateEnd->endOfDay()]);
+            });
+
+            if ($klassciClasseId) {
+                $query->whereHas('seance', function ($q) use ($klassciClasseId) {
+                    $q->where('klassci_classe_id', $klassciClasseId);
+                });
+            }
+
+            $attendances = $query->with(['user', 'seance'])->get();
 
             // Calculer les statistiques
             $totalAttendances = $attendances->count();

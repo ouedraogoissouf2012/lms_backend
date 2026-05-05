@@ -26,12 +26,11 @@ class AdminAnalyticsController extends Controller
      */
     public function getActivityTrends(Request $request)
     {
-        try {
-            $institution = app(TenantManager::class)->getResolvedSlug();
-            $cacheKey = 'admin_analytics_activity_trends_' . $institution;
-            $cacheTTL = 300; // 5 minutes
+        $institution = app(TenantManager::class)->getResolvedSlug();
+        $cacheKey = 'admin_analytics_activity_trends_' . $institution;
+        $cacheTTL = 300; // 5 minutes
 
-            $data = Cache::remember($cacheKey, $cacheTTL, function () {
+        $data = Cache::remember($cacheKey, $cacheTTL, function () {
                 $endDate = Carbon::now();
                 $startDate = Carbon::now()->subDays(30);
 
@@ -104,17 +103,10 @@ class AdminAnalyticsController extends Controller
                 ];
             });
 
-            return response()->json([
-                'success' => true,
-                'data' => $data
-            ]);
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'error' => 'Erreur lors de la récupération des tendances',
-                'message' => 'Une erreur est survenue.'
-            ], 500);
-        }
+        return response()->json([
+            'success' => true,
+            'data' => $data
+        ]);
     }
 
     /**
@@ -124,12 +116,11 @@ class AdminAnalyticsController extends Controller
      */
     public function getSystemMetrics(Request $request)
     {
-        try {
-            $institution = app(TenantManager::class)->getResolvedSlug();
-            $cacheKey = 'admin_analytics_system_metrics_' . $institution;
-            $cacheTTL = 300; // 5 minutes
+        $institution = app(TenantManager::class)->getResolvedSlug();
+        $cacheKey = 'admin_analytics_system_metrics_' . $institution;
+        $cacheTTL = 300; // 5 minutes
 
-            $data = Cache::remember($cacheKey, $cacheTTL, function () {
+        $data = Cache::remember($cacheKey, $cacheTTL, function () {
                 $now = Carbon::now();
                 $weekAgo = Carbon::now()->subWeek();
                 $monthAgo = Carbon::now()->subMonth();
@@ -180,17 +171,10 @@ class AdminAnalyticsController extends Controller
                 ];
             });
 
-            return response()->json([
-                'success' => true,
-                'data' => $data
-            ]);
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'error' => 'Erreur lors de la récupération des métriques',
-                'message' => 'Une erreur est survenue.'
-            ], 500);
-        }
+        return response()->json([
+            'success' => true,
+            'data' => $data
+        ]);
     }
 
     /**
@@ -216,12 +200,11 @@ class AdminAnalyticsController extends Controller
      */
     public function getPendingTasks(Request $request)
     {
-        try {
-            $institution = app(TenantManager::class)->getResolvedSlug();
-            $cacheKey = 'admin_pending_tasks_' . $institution;
-            $cacheTTL = 60; // 1 minute
+        $institution = app(TenantManager::class)->getResolvedSlug();
+        $cacheKey = 'admin_pending_tasks_' . $institution;
+        $cacheTTL = 60; // 1 minute
 
-            $data = Cache::remember($cacheKey, $cacheTTL, function () {
+        $data = Cache::remember($cacheKey, $cacheTTL, function () {
                 return [
                     // Evaluations non notées — BelongsToInstitution global scope filtre par institution_id
                     'pending_grading' => [
@@ -249,16 +232,9 @@ class AdminAnalyticsController extends Controller
             });
 
             return response()->json([
-                'success' => true,
-                'data' => $data
-            ]);
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'error' => 'Erreur lors de la récupération des tâches',
-                'message' => 'Une erreur est survenue.'
-            ], 500);
-        }
+            'success' => true,
+            'data' => $data
+        ]);
     }
 
     /**

@@ -10,6 +10,9 @@ use App\Http\Controllers\API\NotificationsController;
 use App\Http\Controllers\API\SearchController;
 use App\Http\Controllers\API\TeacherStatsController;
 use App\Http\Controllers\API\InstitutionController;
+use App\Http\Controllers\API\AdminController;
+use App\Http\Controllers\API\ConfigurationController;
+use App\Http\Controllers\API\IntegrationController;
 
 /*
 |--------------------------------------------------------------------------
@@ -142,6 +145,44 @@ Route::prefix('proxy')
 
     // Mettre à jour statut cours (Enseignants/Coordinateurs uniquement) - Rate limited: 30/min
     Route::put('/cours/{id}/statut', [ProxyController::class, 'updateCoursStatut'])
+        ->middleware('throttle:30,1');
+});
+
+// ============================================
+// ADMIN - Gestion des utilisateurs et configuration
+// ============================================
+Route::middleware(['auth:sanctum', 'klassci.sync', 'role:coordinateur,superAdmin'])->group(function () {
+    Route::post('users', [AdminController::class, 'createUser'])
+        ->middleware('throttle:30,1');
+    Route::put('users/{user}', [AdminController::class, 'updateUser'])
+        ->middleware('throttle:30,1');
+    Route::delete('users/{user}', [AdminController::class, 'deleteUser'])
+        ->middleware('throttle:30,1');
+});
+
+// ============================================
+// CONFIGURATION - Gestion de la configuration système
+// ============================================
+Route::middleware(['auth:sanctum', 'klassci.sync', 'role:superAdmin'])->group(function () {
+    Route::get('configuration', [ConfigurationController::class, 'get'])
+        ->middleware('throttle:60,1');
+    Route::put('configuration', [ConfigurationController::class, 'update'])
+        ->middleware('throttle:30,1');
+    Route::delete('configuration', [ConfigurationController::class, 'delete'])
+        ->middleware('throttle:30,1');
+});
+
+// ============================================
+// INTEGRATIONS - Services tiers
+// ============================================
+Route::middleware(['auth:sanctum', 'klassci.sync', 'role:superAdmin'])->prefix('integrations')->group(function () {
+    Route::post('connect', [IntegrationController::class, 'connect'])
+        ->middleware('throttle:30,1');
+    Route::post('authorize', [IntegrationController::class, 'authorize'])
+        ->middleware('throttle:30,1');
+    Route::post('test', [IntegrationController::class, 'testConnection'])
+        ->middleware('throttle:60,1');
+    Route::post('disconnect', [IntegrationController::class, 'disconnect'])
         ->middleware('throttle:30,1');
 });
 

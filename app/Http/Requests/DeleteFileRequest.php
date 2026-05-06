@@ -40,9 +40,7 @@ final class DeleteFileRequest extends FormRequest
             return false;
         }
 
-        $fileId = $this->route('id');
-        $file = \App\Models\File::find($fileId);
-
+        $file = $this->route('file');
         if (!$file) {
             return false;
         }

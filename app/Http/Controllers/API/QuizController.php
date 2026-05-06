@@ -10,6 +10,13 @@ use App\Models\QuizAnswer;
 use App\Http\Requests\StoreQuizRequest;
 use App\Http\Requests\UpdateQuizRequest;
 use App\Http\Requests\DeleteQuizRequest;
+use App\Http\Requests\PublishQuizRequest;
+use App\Http\Requests\StartQuizAttemptRequest;
+use App\Http\Requests\SubmitQuizAttemptRequest;
+use App\Http\Requests\GradeAttemptRequest;
+use App\Http\Requests\SaveQuizProgressRequest;
+use App\Http\Requests\ShowAttemptRequest;
+use App\Http\Requests\CheckTimeRemainingRequest;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -184,9 +191,8 @@ class QuizController extends Controller
      * POST /api/quizzes/{quiz}/publish
      * Publier un quiz
      */
-    public function publish(Request $request, Quiz $quiz): JsonResponse
+    public function publish(PublishQuizRequest $request, Quiz $quiz): JsonResponse
     {
-
         // Vérifier qu'il y a au moins une question
         if ($quiz->questions()->count() === 0) {
             return response()->json([
@@ -208,9 +214,8 @@ class QuizController extends Controller
      * POST /api/quizzes/{quiz}/start
      * Démarrer une nouvelle tentative de quiz
      */
-    public function startAttempt(Request $request, Quiz $quiz): JsonResponse
+    public function startAttempt(StartQuizAttemptRequest $request, Quiz $quiz): JsonResponse
     {
-
         $user = $request->user();
 
         // Vérifier que le quiz est disponible
@@ -272,7 +277,7 @@ class QuizController extends Controller
      * POST /api/quiz-attempts/{id}/submit
      * Soumettre les réponses d'une tentative
      */
-    public function submitAttempt(Request $request, int $id): JsonResponse
+    public function submitAttempt(SubmitQuizAttemptRequest $request, int $id): JsonResponse
     {
         $attempt = QuizAttempt::with('quiz')->find($id);
 
@@ -358,7 +363,7 @@ class QuizController extends Controller
      * GET /api/quiz-attempts/{id}
      * Détails d'une tentative
      */
-    public function showAttempt(Request $request, int $id): JsonResponse
+    public function showAttempt(ShowAttemptRequest $request, int $id): JsonResponse
     {
         $attempt = QuizAttempt::with(['quiz', 'user:id,name,email'])->find($id);
 
@@ -427,7 +432,7 @@ class QuizController extends Controller
      * POST /api/quiz-attempts/{id}/grade
      * Correction manuelle d'une tentative (Enseignants)
      */
-    public function gradeAttempt(Request $request, int $id): JsonResponse
+    public function gradeAttempt(GradeAttemptRequest $request, int $id): JsonResponse
     {
         $attempt = QuizAttempt::with('quiz')->find($id);
 
@@ -468,7 +473,7 @@ class QuizController extends Controller
      * GET /api/quiz-attempts/{id}/time-remaining
      * Vérifier le temps restant pour une tentative (évite les tricheries)
      */
-    public function checkTimeRemaining(Request $request, int $id): JsonResponse
+    public function checkTimeRemaining(CheckTimeRemainingRequest $request, int $id): JsonResponse
     {
         $attempt = QuizAttempt::with('quiz')->find($id);
 
@@ -535,7 +540,7 @@ class QuizController extends Controller
      * POST /api/quiz-attempts/{id}/save-progress
      * Sauvegarder les réponses temporaires (sans soumettre)
      */
-    public function saveProgress(Request $request, int $id): JsonResponse
+    public function saveProgress(SaveQuizProgressRequest $request, int $id): JsonResponse
     {
         $attempt = QuizAttempt::with('quiz')->find($id);
 

@@ -42,9 +42,7 @@ final class UpdateFileRequest extends FormRequest
             return false;
         }
 
-        $fileId = $this->route('id');
-        $file = \App\Models\File::find($fileId);
-
+        $file = $this->route('file');
         if (!$file) {
             return false;
         }
@@ -64,7 +62,7 @@ final class UpdateFileRequest extends FormRequest
             'category' => [
                 'sometimes',
                 'string',
-                'in:course_material,assignment,resource,other',
+                'in:course_material,assignment,resource,other,forum_attachment,profile_picture,general',
             ],
             'description' => [
                 'sometimes',

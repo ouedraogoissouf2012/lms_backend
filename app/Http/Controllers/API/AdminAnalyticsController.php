@@ -9,6 +9,10 @@ use App\Models\Evaluation;
 use App\Models\EvaluationSubmission;
 use App\Models\QuizAttempt;
 use App\Services\TenantManager;
+use App\Http\Requests\GetActivityTrendsRequest;
+use App\Http\Requests\GetSystemMetricsRequest;
+use App\Http\Requests\GetPendingTasksRequest;
+use App\Http\Requests\GetRecentUsersRequest;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Cache;
@@ -24,7 +28,7 @@ class AdminAnalyticsController extends Controller
      *
      * @return \Illuminate\Http\JsonResponse
      */
-    public function getActivityTrends(Request $request)
+    public function getActivityTrends(GetActivityTrendsRequest $request)
     {
         $institution = app(TenantManager::class)->getResolvedSlug();
         $cacheKey = 'admin_analytics_activity_trends_' . $institution;
@@ -114,7 +118,7 @@ class AdminAnalyticsController extends Controller
      *
      * @return \Illuminate\Http\JsonResponse
      */
-    public function getSystemMetrics(Request $request)
+    public function getSystemMetrics(GetSystemMetricsRequest $request)
     {
         $institution = app(TenantManager::class)->getResolvedSlug();
         $cacheKey = 'admin_analytics_system_metrics_' . $institution;
@@ -198,7 +202,7 @@ class AdminAnalyticsController extends Controller
      *
      * @return \Illuminate\Http\JsonResponse
      */
-    public function getPendingTasks(Request $request)
+    public function getPendingTasks(GetPendingTasksRequest $request)
     {
         $institution = app(TenantManager::class)->getResolvedSlug();
         $cacheKey = 'admin_pending_tasks_' . $institution;
@@ -242,7 +246,7 @@ class AdminAnalyticsController extends Controller
      *
      * @return \Illuminate\Http\JsonResponse
      */
-    public function getRecentUsers(Request $request)
+    public function getRecentUsers(GetRecentUsersRequest $request)
     {
         try {
             $users = User::orderBy('created_at', 'desc')

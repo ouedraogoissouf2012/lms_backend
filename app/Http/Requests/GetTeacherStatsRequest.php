@@ -26,15 +26,16 @@ final class GetTeacherStatsRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return auth()->check();
+        $user = $this->user();
+        if (!$user) {
+            return false;
+        }
+
+        return in_array($user->role, ['teacher', 'enseignant', 'coordinateur', 'admin', 'superAdmin']);
     }
 
     public function rules(): array
     {
-        return [
-            'date_start' => 'sometimes|date_format:Y-m-d',
-            'date_end' => 'sometimes|date_format:Y-m-d|after_or_equal:date_start',
-            'limit' => 'sometimes|integer|min:1|max:1000',
-        ];
+        return [];
     }
 }

@@ -12,7 +12,7 @@ use Illuminate\Foundation\Http\FormRequest;
  * Teacher/coordinator endpoint. No input validation (no body).
  *
  * ## Authorization Model
- * Teachers/coordinators only (verified via role:enseignant,coordinateur middleware).
+ * Teachers/coordinators and admins (verified via role:enseignant,coordinateur,superAdmin middleware).
  * Implicit check: only teachers who created evaluation can sync.
  *
  * ## 10-year Consideration

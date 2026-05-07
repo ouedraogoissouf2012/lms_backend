@@ -654,7 +654,7 @@ Route::middleware(['auth:sanctum', 'klassci.sync', 'role:enseignant,coordinateur
     Route::post('evaluations/{id}/sync-notes', [EvaluationController::class, 'syncNotesToKlassci']);
 
     // Synchronisation vers KLASSCI
-    Route::post('evaluations/{id}/sync-to-klassci', [EvaluationController::class, 'syncToKlassci']);
+    Route::post('evaluations/{id}/sync-klassci', [EvaluationController::class, 'syncToKlassci']);
 });
 
 // Routes admin/coordinateur/enseignant pour résultats d'évaluations

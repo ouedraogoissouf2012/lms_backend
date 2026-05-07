@@ -22,16 +22,17 @@ class QuizAttemptFactory extends Factory
     public function definition(): array
     {
         $startedAt = $this->faker->dateTimeBetween('-1 month', 'now');
-        $completedAt = $this->faker->dateTimeBetween($startedAt, 'now');
+        $submittedAt = $this->faker->dateTimeBetween($startedAt, 'now');
 
         return [
             'quiz_id' => Quiz::factory(),
             'user_id' => User::factory()->create(['role' => 'étudiant']),
             'score' => $this->faker->numberBetween(0, 100),
             'answers' => [],
-            'status' => 'completed',
+            'status' => 'submitted',
             'started_at' => $startedAt,
-            'completed_at' => $completedAt,
+            'submitted_at' => $submittedAt,
+            'completed_at' => null,
         ];
     }
 
@@ -48,12 +49,12 @@ class QuizAttemptFactory extends Factory
     }
 
     /**
-     * Indicate that the attempt is completed.
+     * Indicate that the attempt is graded.
      */
-    public function completed(): static
+    public function graded(): static
     {
         return $this->state(fn (array $attributes) => [
-            'status' => 'completed',
+            'status' => 'graded',
             'completed_at' => now(),
         ]);
     }

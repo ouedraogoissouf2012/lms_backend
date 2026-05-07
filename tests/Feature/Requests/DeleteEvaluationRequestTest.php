@@ -36,27 +36,27 @@ class DeleteEvaluationRequestTest extends TestCase
     public function test_teacher_can_delete(): void
     {
         Sanctum::actingAs($this->teacher);
-        $response = $this->deleteJson("/api/evaluations/{$this->evaluation->id}");
+        $response = $this->withHeader('X-Institution', $this->institution->slug)->deleteJson("/api/evaluations/{$this->evaluation->id}");
         $this->assertTrue(in_array($response->status(), [200, 204]));
     }
 
     public function test_coordinator_cannot_delete(): void
     {
         Sanctum::actingAs($this->coordinator);
-        $response = $this->deleteJson("/api/evaluations/{$this->evaluation->id}");
+        $response = $this->withHeader('X-Institution', $this->institution->slug)->deleteJson("/api/evaluations/{$this->evaluation->id}");
         $response->assertStatus(403);
     }
 
     public function test_unauthenticated_cannot_delete(): void
     {
-        $response = $this->deleteJson("/api/evaluations/{$this->evaluation->id}");
+        $response = $this->withHeader('X-Institution', $this->institution->slug)->deleteJson("/api/evaluations/{$this->evaluation->id}");
         $response->assertStatus(401);
     }
 
     public function test_nonexistent_returns_403(): void
     {
         Sanctum::actingAs($this->teacher);
-        $response = $this->deleteJson('/api/evaluations/99999');
+        $response = $this->withHeader('X-Institution', $this->institution->slug)->deleteJson('/api/evaluations/99999');
         $response->assertStatus(403);
     }
 }

@@ -18,6 +18,10 @@ class GradeAttemptRequest extends FormRequest
     public function authorize(): bool
     {
         $user = Auth::user();
+        if (!$user) {
+            return false;
+        }
+
         $attempt = $this->attempt();
 
         if (!$attempt) {

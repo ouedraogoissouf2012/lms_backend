@@ -23,11 +23,14 @@ class QuizAttemptFactory extends Factory
     {
         $startedAt = $this->faker->dateTimeBetween('-1 month', 'now');
         $submittedAt = $this->faker->dateTimeBetween($startedAt, 'now');
+        $pointsPossible = $this->faker->numberBetween(50, 150);
 
         return [
             'quiz_id' => Quiz::factory(),
             'user_id' => User::factory()->create(['role' => 'étudiant']),
             'score' => $this->faker->numberBetween(0, 100),
+            'points_possible' => $pointsPossible,
+            'points_earned' => $this->faker->numberBetween(0, $pointsPossible),
             'answers' => [],
             'status' => 'submitted',
             'started_at' => $startedAt,

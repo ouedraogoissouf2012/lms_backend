@@ -25,7 +25,7 @@ class GradeAttemptRequest extends FormRequest
         $attempt = $this->attempt();
 
         if (!$attempt) {
-            return false;
+            abort(404, 'Tentative non trouvée');
         }
 
         return $user->isAdmin() || $attempt->quiz->created_by === $user->id;

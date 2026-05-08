@@ -20,6 +20,7 @@ use App\Http\Requests\CheckTimeRemainingRequest;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Validator;
 
 /**
  * Controller pour la gestion des quiz
@@ -441,19 +442,6 @@ class QuizController extends Controller
                 'success' => false,
                 'message' => 'Tentative non trouvée',
             ], 404);
-        }
-
-        $validator = Validator::make($request->all(), [
-            'points_earned' => 'required|numeric|min:0',
-            'feedback' => 'nullable|string',
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Données invalides',
-                'errors' => $validator->errors(),
-            ], 422);
         }
 
         $attempt->manualGrade(

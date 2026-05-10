@@ -41,11 +41,13 @@ class QuizAttemptFactory extends Factory
 
     /**
      * Indicate that the attempt is in progress.
+     * CRITICAL: Sets started_at to NOW so isTimeExpired() returns false
      */
     public function inProgress(): static
     {
         return $this->state(fn (array $attributes) => [
             'status' => 'in_progress',
+            'started_at' => now(),  // CRITICAL: time-sensitive for saveProgress endpoint
             'score' => null,
             'completed_at' => null,
         ]);

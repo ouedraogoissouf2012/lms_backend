@@ -136,7 +136,7 @@ class QuizAttempt extends Model
 
         // Calculer le temps passé
         if ($this->started_at) {
-            $this->time_spent_seconds = now()->diffInSeconds($this->started_at);
+            $this->time_spent_seconds = (int) abs(now()->diffInSeconds($this->started_at));
         }
 
         // Auto-correction pour les questions à correction automatique

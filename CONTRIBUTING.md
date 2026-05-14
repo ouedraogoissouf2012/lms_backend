@@ -57,14 +57,17 @@ Les deux ne se remplacent pas — ils s'empilent.
 
 ### Sub-agents à utiliser
 
-| Phase | Sub-agent | Fichier de règles |
-|---|---|---|
-| Requirements | `spec-requirements` | [`.claude/agents/kfc/spec-requirements.md`](.claude/agents/kfc/spec-requirements.md) |
-| Design | `spec-design` | [`.claude/agents/kfc/spec-design.md`](.claude/agents/kfc/spec-design.md) |
-| Tasks | `spec-tasks` | [`.claude/agents/kfc/spec-tasks.md`](.claude/agents/kfc/spec-tasks.md) |
-| Implémentation | `spec-impl` | [`.claude/agents/kfc/spec-impl.md`](.claude/agents/kfc/spec-impl.md) |
-| Tests | `spec-test` | [`.claude/agents/kfc/spec-test.md`](.claude/agents/kfc/spec-test.md) |
-| Évaluation versions parallèles | `spec-judge` | [`.claude/agents/kfc/spec-judge.md`](.claude/agents/kfc/spec-judge.md) |
+| Phase | Sub-agent | Fichier de règles | Type |
+|---|---|---|---|
+| Requirements | `spec-requirements` | [`.claude/agents/kfc/spec-requirements.md`](.claude/agents/kfc/spec-requirements.md) | Write |
+| Design | `spec-design` | [`.claude/agents/kfc/spec-design.md`](.claude/agents/kfc/spec-design.md) | Write |
+| Tasks | `spec-tasks` | [`.claude/agents/kfc/spec-tasks.md`](.claude/agents/kfc/spec-tasks.md) | Write |
+| Implémentation | `spec-impl` | [`.claude/agents/kfc/spec-impl.md`](.claude/agents/kfc/spec-impl.md) | Write |
+| Tests | `spec-test` | [`.claude/agents/kfc/spec-test.md`](.claude/agents/kfc/spec-test.md) | Write |
+| Évaluation versions parallèles | `spec-judge` | [`.claude/agents/kfc/spec-judge.md`](.claude/agents/kfc/spec-judge.md) | Evaluate |
+| **Audit sécurité** | `spec-security` | [`.claude/agents/kfc/spec-security.md`](.claude/agents/kfc/spec-security.md) | **Read-only** |
+| **Audit architecture (SOLID/DRY)** | `spec-architect` | [`.claude/agents/kfc/spec-architect.md`](.claude/agents/kfc/spec-architect.md) | **Read-only** |
+| **Revue finale pré-merge** | `spec-reviewer` | [`.claude/agents/kfc/spec-reviewer.md`](.claude/agents/kfc/spec-reviewer.md) | **Read-only** |
 
 ### Règles non-négociables du workflow
 
@@ -75,19 +78,33 @@ Les deux ne se remplacent pas — ils s'empilent.
 5. Pour requirements/design/tasks parallèles → demander combien d'agents (1-128)
 6. `spec-judge` évalue les versions parallèles : ceil(n/4) judges au round 1, jusqu'à ≤ 3 docs
 
+### Quand invoquer les 3 agents d'audit
+
+Les agents `spec-security`, `spec-architect`, `spec-reviewer` sont **read-only** et ne modifient jamais le code. Ils produisent un rapport.
+
+| Moment | Agent à lancer | Pourquoi |
+|---|---|---|
+| Après chaque tâche `spec-impl` | `spec-security` + `spec-architect` en parallèle | Détecte tôt les violations avant qu'elles ne s'empilent |
+| Avant chaque PR | Les 3 agents en parallèle | Audit complet du diff |
+| Avant chaque merge en `lms` (prod) | `spec-reviewer` (qui consomme les 2 rapports précédents) | Verdict final MERGE-READY / BLOCKED |
+| Sur demande ponctuelle (audit ciblé) | L'un des 3 selon le besoin | Ex : doute sur la sécurité d'un endpoint |
+
+**Règle d'arrêt** : si `spec-security` ou `spec-architect` retourne un finding **CRITICAL** ou **HIGH**, la PR est automatiquement **BLOQUÉE** quel que soit l'avis de `spec-reviewer`.
+
 ---
 
 ## B. Production Standards — pour CHAQUE commit
 
-### Les 5 principes non-négociables
+### Les 6 principes non-négociables
 
 | # | Principe | Vérification |
 |---|---|---|
-| 1 | **Zero God Code** | `find app/ -name '*.php' | xargs wc -l | awk '$1>300'` doit être vide |
-| 2 | **Sécurité Absolue** | `grep -r 'getMessage()' app/Http/Controllers` = 0 |
-| 3 | **Tests Obligatoires** | `php artisan test` = 100% |
-| 4 | **Performance Garantie** | Laravel Debugbar = zero N+1 |
-| 5 | **Validation Systématique** | Tout input via FormRequest |
+| 1.1 | **Zero God Code** | `find app/ -name '*.php' | xargs wc -l | awk '$1>300'` doit être vide |
+| 1.2 | **Sécurité Absolue** | `grep -r 'getMessage()' app/Http/Controllers` = 0 |
+| 1.3 | **Tests Obligatoires** | `php artisan test` = 100% |
+| 1.4 | **Performance Garantie** | Laravel Debugbar = zero N+1 |
+| 1.5 | **Validation Systématique** | Tout input via FormRequest |
+| 1.6 | **SOLID & Architecture Décennale** | Liskov respecté + injection de deps + scale 10× sans réécriture |
 
 ### Checklist pre-commit (13 points)
 
@@ -107,7 +124,7 @@ Les deux ne se remplacent pas — ils s'empilent.
 ☑ Migration créée si la DB change
 ```
 
-### Les 10 questions self-critique avant CHAQUE PR
+### Les 15 questions self-critique avant CHAQUE PR
 
 Si UNE réponse = non → ne pas merger.
 
@@ -121,6 +138,11 @@ Si UNE réponse = non → ne pas merger.
 8. Y a-t-il des N+1 ?
 9. Chaque "pourquoi non-évident" a-t-il un commentaire ?
 10. Les erreurs sont-elles gérées sans exposer le détail au client ?
+11. **C'est la meilleure solution architecturale, ou la plus rapide à coder ?** Si rapide → justifier par écrit, sinon refaire.
+12. **Qu'est-ce que tu n'as PAS considéré ?** Lister 2 alternatives écartées et la raison du rejet.
+13. **Dans 2 ans à 10× le volume, ça tient toujours ?** Projection explicite des chiffres.
+14. **Cites-tu une source ou bluffes-tu ?** Chaque best practice invoquée pointe vers doc/RFC/benchmark.
+15. **Qu'est-ce qui te ferait changer d'avis ?** Définir le critère qui invaliderait la solution.
 
 ### Standards par type de code
 

@@ -105,7 +105,7 @@ class TeacherStatsController extends Controller
 
         } catch (\Exception $e) {
             Log::error('Erreur récupération statistiques enseignant:', [
-                'error' => 'Une erreur est survenue.',
+                'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
             ]);
 

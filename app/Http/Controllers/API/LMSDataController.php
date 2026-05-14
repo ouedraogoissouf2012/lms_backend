@@ -4632,7 +4632,7 @@ class LMSDataController extends Controller
                         // Ignorer les erreurs de récupération KLASSCI (séance peut être archivée)
                         Log::debug('Impossible de récupérer détails KLASSCI pour historique', [
                             'seance_id' => $attendance->seance->klassci_seance_id,
-                            'error' => 'Une erreur est survenue.'
+                            'error' => $e->getMessage()
                         ]);
                     }
                 }

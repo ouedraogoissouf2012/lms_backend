@@ -57,14 +57,17 @@ Les deux ne se remplacent pas — ils s'empilent.
 
 ### Sub-agents à utiliser
 
-| Phase | Sub-agent | Fichier de règles |
-|---|---|---|
-| Requirements | `spec-requirements` | [`.claude/agents/kfc/spec-requirements.md`](.claude/agents/kfc/spec-requirements.md) |
-| Design | `spec-design` | [`.claude/agents/kfc/spec-design.md`](.claude/agents/kfc/spec-design.md) |
-| Tasks | `spec-tasks` | [`.claude/agents/kfc/spec-tasks.md`](.claude/agents/kfc/spec-tasks.md) |
-| Implémentation | `spec-impl` | [`.claude/agents/kfc/spec-impl.md`](.claude/agents/kfc/spec-impl.md) |
-| Tests | `spec-test` | [`.claude/agents/kfc/spec-test.md`](.claude/agents/kfc/spec-test.md) |
-| Évaluation versions parallèles | `spec-judge` | [`.claude/agents/kfc/spec-judge.md`](.claude/agents/kfc/spec-judge.md) |
+| Phase | Sub-agent | Fichier de règles | Type |
+|---|---|---|---|
+| Requirements | `spec-requirements` | [`.claude/agents/kfc/spec-requirements.md`](.claude/agents/kfc/spec-requirements.md) | Write |
+| Design | `spec-design` | [`.claude/agents/kfc/spec-design.md`](.claude/agents/kfc/spec-design.md) | Write |
+| Tasks | `spec-tasks` | [`.claude/agents/kfc/spec-tasks.md`](.claude/agents/kfc/spec-tasks.md) | Write |
+| Implémentation | `spec-impl` | [`.claude/agents/kfc/spec-impl.md`](.claude/agents/kfc/spec-impl.md) | Write |
+| Tests | `spec-test` | [`.claude/agents/kfc/spec-test.md`](.claude/agents/kfc/spec-test.md) | Write |
+| Évaluation versions parallèles | `spec-judge` | [`.claude/agents/kfc/spec-judge.md`](.claude/agents/kfc/spec-judge.md) | Evaluate |
+| **Audit sécurité** | `spec-security` | [`.claude/agents/kfc/spec-security.md`](.claude/agents/kfc/spec-security.md) | **Read-only** |
+| **Audit architecture (SOLID/DRY)** | `spec-architect` | [`.claude/agents/kfc/spec-architect.md`](.claude/agents/kfc/spec-architect.md) | **Read-only** |
+| **Revue finale pré-merge** | `spec-reviewer` | [`.claude/agents/kfc/spec-reviewer.md`](.claude/agents/kfc/spec-reviewer.md) | **Read-only** |
 
 ### Règles non-négociables du workflow
 
@@ -74,6 +77,19 @@ Les deux ne se remplacent pas — ils s'empilent.
 4. Marquer `- [x]` dans `tasks.md` IMMÉDIATEMENT après la complétion d'une tâche
 5. Pour requirements/design/tasks parallèles → demander combien d'agents (1-128)
 6. `spec-judge` évalue les versions parallèles : ceil(n/4) judges au round 1, jusqu'à ≤ 3 docs
+
+### Quand invoquer les 3 agents d'audit
+
+Les agents `spec-security`, `spec-architect`, `spec-reviewer` sont **read-only** et ne modifient jamais le code. Ils produisent un rapport.
+
+| Moment | Agent à lancer | Pourquoi |
+|---|---|---|
+| Après chaque tâche `spec-impl` | `spec-security` + `spec-architect` en parallèle | Détecte tôt les violations avant qu'elles ne s'empilent |
+| Avant chaque PR | Les 3 agents en parallèle | Audit complet du diff |
+| Avant chaque merge en `lms` (prod) | `spec-reviewer` (qui consomme les 2 rapports précédents) | Verdict final MERGE-READY / BLOCKED |
+| Sur demande ponctuelle (audit ciblé) | L'un des 3 selon le besoin | Ex : doute sur la sécurité d'un endpoint |
+
+**Règle d'arrêt** : si `spec-security` ou `spec-architect` retourne un finding **CRITICAL** ou **HIGH**, la PR est automatiquement **BLOQUÉE** quel que soit l'avis de `spec-reviewer`.
 
 ---
 

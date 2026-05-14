@@ -484,7 +484,7 @@ class EvaluationController extends Controller
 
             } catch (\Exception $e) {
                 \Log::warning('Could not fetch KLASSCI evaluations for windows', [
-                    'error' => 'Une erreur est survenue.'
+                    'error' => $e->getMessage()
                 ]);
                 $klassciEvaluations = collect([]);
             }
@@ -544,7 +544,7 @@ class EvaluationController extends Controller
                         }
                     } catch (\Exception $e) {
                         \Log::warning('Could not fetch matiere/classe for pure LMS eval', [
-                            'error' => 'Une erreur est survenue.'
+                            'error' => $e->getMessage()
                         ]);
                     }
 
@@ -586,7 +586,7 @@ class EvaluationController extends Controller
 
         } catch (\Exception $e) {
             \Log::error('Erreur récupération évaluations étudiant', [
-                'error' => 'Une erreur est survenue.',
+                'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
             ]);
 
@@ -705,7 +705,7 @@ class EvaluationController extends Controller
         } catch (\Exception $e) {
             \Log::error('Erreur vérification fenêtre temporelle', [
                 'evaluation_id' => $id,
-                'error' => 'Une erreur est survenue.'
+                'error' => $e->getMessage()
             ]);
 
             // En cas d'erreur KLASSCI, on laisse passer (fallback gracieux)
@@ -908,7 +908,7 @@ class EvaluationController extends Controller
         } catch (\Exception $e) {
             \Log::error('Erreur récupération soumission étudiant', [
                 'evaluation_id' => $id,
-                'error' => 'Une erreur est survenue.'
+                'error' => $e->getMessage()
             ]);
 
             return response()->json([
@@ -967,7 +967,7 @@ class EvaluationController extends Controller
         } catch (\Exception $e) {
             \Log::error('Erreur récupération état temporel', [
                 'evaluation_id' => $id,
-                'error' => 'Une erreur est survenue.'
+                'error' => $e->getMessage()
             ]);
 
             return response()->json([
@@ -1302,7 +1302,7 @@ class EvaluationController extends Controller
         } catch (\Exception $e) {
             \Log::error('❌ Erreur récupération résultats évaluation', [
                 'evaluation_id' => $id,
-                'error' => 'Une erreur est survenue.',
+                'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
             ]);
 
@@ -1359,7 +1359,7 @@ class EvaluationController extends Controller
         } catch (\Exception $e) {
             \Log::error('Erreur récupération soumissions', [
                 'evaluation_id' => $id,
-                'error' => 'Une erreur est survenue.'
+                'error' => $e->getMessage()
             ]);
 
             return response()->json([
@@ -1431,7 +1431,7 @@ class EvaluationController extends Controller
         } catch (\Exception $e) {
             \Log::error('Erreur synchronisation notes', [
                 'evaluation_id' => $id,
-                'error' => 'Une erreur est survenue.'
+                'error' => $e->getMessage()
             ]);
 
             return response()->json([
@@ -1496,7 +1496,7 @@ class EvaluationController extends Controller
         } catch (\Exception $e) {
             \Log::error('Erreur prévisualisation évaluation', [
                 'evaluation_id' => $id,
-                'error' => 'Une erreur est survenue.'
+                'error' => $e->getMessage()
             ]);
 
             return response()->json([
@@ -1635,7 +1635,7 @@ class EvaluationController extends Controller
         } catch (\Exception $e) {
             \Log::error('Erreur récupération notes étudiant', [
                 'user_id' => $request->user()?->id,
-                'error' => 'Une erreur est survenue.'
+                'error' => $e->getMessage()
             ]);
 
             return response()->json([

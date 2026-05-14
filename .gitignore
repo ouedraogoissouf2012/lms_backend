@@ -29,6 +29,7 @@ nul
 # Fichiers de développement — ne pas déployer en production
 *.md
 !README.md
+!CONTRIBUTING.md
 !PRODUCTION_STANDARDS.md
 !REFACTORING_ROADMAP.md
 !DOCUMENTATION_PACKAGE.md
@@ -36,6 +37,8 @@ nul
 !OPENAPI_FIX_LOG.md
 !docs/*.md
 !docs/openapi*.yaml
+!.claude/agents/**/*.md
+!.claude/system-prompts/**/*.md
 *.ps1
 *.bat
 *.patch
@@ -47,7 +50,11 @@ nul
 !phpunit.xml.dist
 /guides/
 /diagnostics/
-/.claude/
+# .claude/ : keep workflow files, ignore local/specs
+/.claude/settings.local.json
+/.claude/specs/
+/.claude/steering/
+/.claude/cache/
 postman_collection.json
 issue_*.md
 screenshot_*.png

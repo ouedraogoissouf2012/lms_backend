@@ -79,15 +79,16 @@ Les deux ne se remplacent pas — ils s'empilent.
 
 ## B. Production Standards — pour CHAQUE commit
 
-### Les 5 principes non-négociables
+### Les 6 principes non-négociables
 
 | # | Principe | Vérification |
 |---|---|---|
-| 1 | **Zero God Code** | `find app/ -name '*.php' | xargs wc -l | awk '$1>300'` doit être vide |
-| 2 | **Sécurité Absolue** | `grep -r 'getMessage()' app/Http/Controllers` = 0 |
-| 3 | **Tests Obligatoires** | `php artisan test` = 100% |
-| 4 | **Performance Garantie** | Laravel Debugbar = zero N+1 |
-| 5 | **Validation Systématique** | Tout input via FormRequest |
+| 1.1 | **Zero God Code** | `find app/ -name '*.php' | xargs wc -l | awk '$1>300'` doit être vide |
+| 1.2 | **Sécurité Absolue** | `grep -r 'getMessage()' app/Http/Controllers` = 0 |
+| 1.3 | **Tests Obligatoires** | `php artisan test` = 100% |
+| 1.4 | **Performance Garantie** | Laravel Debugbar = zero N+1 |
+| 1.5 | **Validation Systématique** | Tout input via FormRequest |
+| 1.6 | **SOLID & Architecture Décennale** | Liskov respecté + injection de deps + scale 10× sans réécriture |
 
 ### Checklist pre-commit (13 points)
 
@@ -107,7 +108,7 @@ Les deux ne se remplacent pas — ils s'empilent.
 ☑ Migration créée si la DB change
 ```
 
-### Les 10 questions self-critique avant CHAQUE PR
+### Les 15 questions self-critique avant CHAQUE PR
 
 Si UNE réponse = non → ne pas merger.
 
@@ -121,6 +122,11 @@ Si UNE réponse = non → ne pas merger.
 8. Y a-t-il des N+1 ?
 9. Chaque "pourquoi non-évident" a-t-il un commentaire ?
 10. Les erreurs sont-elles gérées sans exposer le détail au client ?
+11. **C'est la meilleure solution architecturale, ou la plus rapide à coder ?** Si rapide → justifier par écrit, sinon refaire.
+12. **Qu'est-ce que tu n'as PAS considéré ?** Lister 2 alternatives écartées et la raison du rejet.
+13. **Dans 2 ans à 10× le volume, ça tient toujours ?** Projection explicite des chiffres.
+14. **Cites-tu une source ou bluffes-tu ?** Chaque best practice invoquée pointe vers doc/RFC/benchmark.
+15. **Qu'est-ce qui te ferait changer d'avis ?** Définir le critère qui invaliderait la solution.
 
 ### Standards par type de code
 

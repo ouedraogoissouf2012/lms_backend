@@ -6,6 +6,26 @@ Ce document définit les standards non-négociables pour transformer ce code MVP
 
 ---
 
+## Engagement
+
+Ce projet est conçu pour durer **plus de 10 ans**. Chaque ligne de code écrite aujourd'hui sera lue, comprise et maintenue par quelqu'un d'autre demain — peut-être par quelqu'un qui n'est pas encore dans l'équipe.
+
+Cela impose une seule règle morale :
+
+> **On choisit toujours la meilleure solution architecturale, jamais la plus rapide.**
+
+Conséquences concrètes :
+
+- Si une fonctionnalité nécessite 10 fichiers au lieu de 2, on fait 10 fichiers.
+- Si une décision nécessite 5 vérifications au lieu d'une intuition, on fait 5 vérifications.
+- On ne livre jamais un prototype en production.
+- On ne raccourcit jamais une étape pour gagner du temps.
+- En cas de doute → ralentir, vérifier, demander.
+
+**Sur l'honneur de la bonne foi**, chaque contributeur s'engage à signaler honnêtement quand un compromis a été fait, plutôt que de présenter une solution rapide comme étant "la bonne".
+
+---
+
 ## 1. PRINCIPES FONDAMENTAUX
 
 ### 1.1 Zero God Code
@@ -33,6 +53,22 @@ Ce document définit les standards non-négociables pour transformer ce code MVP
 - **Règle** : Tout input non vérifiable dans une Form Request.
 - **Règle** : Format de réponse JSON identique pour tous les endpoints.
 - **Contrôle** : Postman collection mise à jour par PR.
+
+### 1.6 SOLID & Architecture Décennale
+
+- **Règle S — Single Responsibility** : chaque classe a UNE seule raison de changer.
+- **Règle O — Open/Closed** : ouvert à l'extension, fermé à la modification. Nouveaux comportements via héritage/composition, pas en éditant le code existant.
+- **Règle L — Liskov Substitution** : un sous-type doit être substituable à son type parent sans casser le comportement attendu. Pas de `throw new NotImplementedException` dans une classe enfant.
+- **Règle I — Interface Segregation** : pas d'interface "fourre-tout". Plusieurs petites interfaces ciblées valent mieux qu'une grosse.
+- **Règle D — Dependency Inversion** : on dépend des abstractions, jamais des implémentations concrètes. Services injectés via le constructor, jamais via `new` ou Facades en code métier.
+
+- **Règle scalabilité** : toute solution doit tenir à 10× le volume actuel sans réécriture. Si la solution ne tient pas à 200 000 utilisateurs (10× les 20k visés), elle ne tient pas.
+- **Règle maintenabilité** : un nouveau dev doit pouvoir comprendre une feature en lisant ses tests + son `design.md`, sans poser de questions à l'auteur.
+
+**Contrôle** : avant chaque PR, vérifier que la classe modifiée :
+1. Pourrait être substituée par un mock dans un test sans contournement → L respecté
+2. N'a aucune dépendance instanciée avec `new` ou `Facade::method()` directement → D respecté
+3. Ne fait qu'une chose (une méthode résumable en un verbe) → S respecté
 
 ---
 
@@ -90,7 +126,7 @@ Avant CHAQUE commit :
 
 ---
 
-## 4. LES 10 QUESTIONS SELF-CRITIQUE
+## 4. LES 15 QUESTIONS SELF-CRITIQUE
 
 Avant CHAQUE PR, répondre à ces questions. Si UNE réponse = non → réviser.
 
@@ -104,6 +140,11 @@ Avant CHAQUE PR, répondre à ces questions. Si UNE réponse = non → réviser.
 8. Y a-t-il des N+1?
 9. Chaque "pourquoi non-évident" a-t-il un commentaire?
 10. Les erreurs sont-elles gérées sans exposer le détail?
+11. **C'est la meilleure solution architecturale, ou la plus rapide à coder ?** Si tu as choisi la rapide → justifier par écrit (commit message ou ADR), sinon refaire.
+12. **Qu'est-ce que tu n'as PAS considéré ?** Lister 2 alternatives écartées et la raison du rejet. Si tu n'arrives pas à en lister 2, tu n'as pas assez exploré.
+13. **Dans 2 ans à 10× le volume, ça tient toujours ?** Projection explicite : combien d'utilisateurs, de tenants, de requêtes/sec ? Si la réponse est "je ne sais pas" → mesure ou simulation obligatoire.
+14. **Cites-tu une source ou bluffes-tu ?** Chaque "best practice" invoquée doit pointer vers : doc officielle, RFC, livre reconnu, ou benchmark interne. Pas de "je pense que" non sourcé.
+15. **Qu'est-ce qui te ferait changer d'avis ?** Si tu ne peux pas répondre, ta conviction est dogmatique, pas raisonnée. Définir le critère qui invaliderait ta solution = test de solidité du raisonnement.
 
 ---
 

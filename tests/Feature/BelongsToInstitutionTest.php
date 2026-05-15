@@ -31,7 +31,7 @@ class BelongsToInstitutionTest extends TestCase
     public function test_tenant_manager_getresolved_throws_if_not_initialized()
     {
         $tenantManager = app(TenantManager::class);
-        $tenantManager->set(null);
+        $tenantManager->reset();
 
         $this->expectException(\RuntimeException::class);
         $this->expectExceptionMessageMatches('/Tenant resolution failed/');
@@ -45,7 +45,7 @@ class BelongsToInstitutionTest extends TestCase
     public function test_tenant_manager_getresolvedslug_throws_if_not_initialized()
     {
         $tenantManager = app(TenantManager::class);
-        $tenantManager->set(null);
+        $tenantManager->reset();
 
         $this->expectException(\RuntimeException::class);
         $this->expectExceptionMessageMatches('/Tenant resolution failed/');
@@ -68,7 +68,7 @@ class BelongsToInstitutionTest extends TestCase
         ]);
 
         $tenantManager = app(TenantManager::class);
-        $tenantManager->set(null);
+        $tenantManager->reset();
 
         $this->expectException(\RuntimeException::class);
         $this->expectExceptionMessageMatches('/Tenant resolution failed/');
@@ -110,9 +110,9 @@ class BelongsToInstitutionTest extends TestCase
         $tenantManager = app(TenantManager::class);
         $tenantManager->set($this->institution1);
 
+        // No institution_id provided → auto-set from resolved tenant.
         $user = User::factory()->create([
-            'institution_id' => null,
-            'name' => 'NewUser'
+            'name' => 'NewUser',
         ]);
 
         $this->assertEquals($this->institution1->id, $user->institution_id);
@@ -124,13 +124,36 @@ class BelongsToInstitutionTest extends TestCase
     public function test_creating_model_throws_if_tenant_not_resolved()
     {
         $tenantManager = app(TenantManager::class);
-        $tenantManager->set(null);
+        $tenantManager->reset();
 
         $this->expectException(\RuntimeException::class);
         $this->expectExceptionMessageMatches('/Tenant resolution failed/');
 
-        User::factory()->create([
-            'institution_id' => null
+        // No institution_id, no tenant → must throw.
+        User::factory()->create();
+    }
+
+    /**
+     * Test that explicit institution_id => null (e.g. supradmin / system rows)
+     * is preserved and NOT overridden by the tenant resolver.
+     *
+     * This is required for the supradmin seed flow where institution_id
+     * is intentionally null (cross-tenant platform admin).
+     */
+    public function test_explicit_null_institution_id_is_preserved()
+    {
+        $tenantManager = app(TenantManager::class);
+        $tenantManager->set($this->institution1);
+
+        $user = User::factory()->create([
+            'institution_id' => null,
+            'name'           => 'Supradmin',
+            'role'           => 'supradmin',
         ]);
+
+        $this->assertNull(
+            $user->institution_id,
+            'institution_id explicitly set to null must be preserved (supradmin case)'
+        );
     }
 }

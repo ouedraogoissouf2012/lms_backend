@@ -1,7 +1,10 @@
 name: Security Audit
 
-# Step 1 of the CI security pipeline (issue #65).
-# Subsequent PRs will add : PHPStan + Larastan, Semgrep SAST, OWASP ZAP DAST.
+# CI security pipeline (issue #65). Status :
+#   Step 1 ✅ — composer-audit + dependency-review + Dependabot (defense-in-depth on deps)
+#   Step 2 ✅ — phpstan-analysis (Larastan level 9 + baseline)
+#   Step 3 ⏳ — Semgrep SAST (OWASP ruleset)
+#   Step 4 ⏳ — OWASP ZAP DAST
 #
 # Defense-in-depth on dependencies :
 #   - composer-audit job        → reactive : blocks merge if a known CVE
@@ -87,3 +90,49 @@ jobs:
         with:
           fail-on-severity: high
           comment-summary-in-pr: on-failure
+
+  phpstan-analysis:
+    # Step 2/4 of the CI security pipeline (issue #65).
+    # Larastan = official PHPStan extension for Laravel.
+    # Level 9 (maximum strictness) + baseline file to grandfather legacy
+    # violations. New code MUST pass level 9 ; legacy migrates per-touched-file.
+    #
+    # Strategy reference :
+    #   https://laravel.io/articles/how-to-get-your-laravel-app-from-0-to-9-with-larastan
+    name: PHPStan / Larastan (level 9 + baseline)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup PHP 8.3
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.3"
+          coverage: none
+          tools: composer:v2
+
+      - name: Cache Composer dependencies (with dev)
+        uses: actions/cache@v4
+        with:
+          path: vendor
+          key: composer-phpstan-${{ hashFiles('composer.lock') }}
+          restore-keys: composer-phpstan-
+
+      # Install dev deps too — Larastan is in require-dev.
+      - name: Install dependencies (including dev)
+        run: composer install --no-interaction --no-progress --prefer-dist --no-scripts
+
+      - name: Cache PHPStan result cache
+        uses: actions/cache@v4
+        with:
+          path: storage/framework/cache/phpstan
+          key: phpstan-${{ hashFiles('**/*.php', 'phpstan.neon.dist', 'phpstan-baseline.neon') }}
+          restore-keys: phpstan-
+
+      # The baseline file is checked in. Any violation outside the baseline
+      # (= new code, or modified legacy file that now exceeds the grandfathered
+      # set) fails the build.
+      - name: Run PHPStan / Larastan
+        run: vendor/bin/phpstan analyse --memory-limit=2G --no-progress

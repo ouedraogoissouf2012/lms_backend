@@ -17,6 +17,23 @@ class TenantManager
     }
 
     /**
+     * Réinitialiser le tenant courant à null.
+     *
+     * Utilisé dans :
+     * - Les tests, pour simuler explicitement « aucun tenant résolu »
+     *   et vérifier le comportement fail-secure (CRITICAL-06).
+     * - Les jobs/commands d'administration qui veulent forcer un état propre
+     *   avant de fixer un tenant cible.
+     *
+     * NE PAS appeler en cours de requête HTTP — un changement de tenant en
+     * cours de requête est une faille de sécurité (cf. CRITICAL-07).
+     */
+    public function reset(): void
+    {
+        $this->current = null;
+    }
+
+    /**
      * Obtenir l'institution courante
      */
     public function get(): ?Institution

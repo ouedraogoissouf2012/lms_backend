@@ -76,8 +76,16 @@ Route::get('/institution/current', function () {
 // AUTHENTIFICATION - Routes publiques
 // ============================================
 Route::prefix('auth')->group(function () {
-    // Login: 60 requests per minute (1/sec) - allows retry on slow connections
-    Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:60,1');
+    // Login: 10 attempts/minute/IP — aligned with Auth0 / Cloudflare defaults
+    // for login endpoints (cf. OWASP Authentication Cheat Sheet: 3-10 attempts
+    // before lockout). Reduces brute-force throughput by 83% vs. previous 60/min
+    // while still tolerating legitimate retries (humans rarely need more than
+    // 5-6 attempts to type their password correctly).
+    //
+    // Future hardening (post-CI security pipeline): switch to a named
+    // RateLimiter::for('login') with composite key (IP + username) + exponential
+    // backoff to defeat credential stuffing distributed across IPs.
+    Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:10,1');
 });
 
 // ============================================

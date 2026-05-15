@@ -302,7 +302,6 @@ class ProxyController extends Controller
                 'user_id' => $user->id,
                 'klassci_id' => $user->klassci_id,
                 'has_klassci_token' => !empty($klassciToken),
-                'token_preview' => substr($klassciToken, 0, 10) . '...'
             ]);
 
             // Utiliser le token KLASSCI pour la requête
@@ -346,7 +345,6 @@ class ProxyController extends Controller
                 'user_id' => $user->id,
                 'klassci_id' => $user->klassci_id,
                 'has_klassci_token' => !empty($klassciToken),
-                'token_preview' => substr($klassciToken, 0, 10) . '...'
             ]);
 
             // Utiliser le token KLASSCI pour la requête

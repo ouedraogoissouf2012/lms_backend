@@ -1,0 +1,62 @@
+name: Security Audit
+
+# Runs on every pull request targeting `lms` (production branch)
+# and on direct pushes to `lms` as a safety net.
+#
+# Step 1 of the CI security pipeline (issue #65).
+# Subsequent PRs will add : PHPStan + Larastan, Semgrep SAST, OWASP ZAP DAST.
+
+on:
+  pull_request:
+    branches:
+      - lms
+  push:
+    branches:
+      - lms
+
+permissions:
+  contents: read
+
+jobs:
+  composer-audit:
+    name: Composer Audit (CVE scan)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup PHP 8.3
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.3"
+          coverage: none
+          tools: composer:v2
+
+      - name: Cache Composer dependencies
+        uses: actions/cache@v4
+        with:
+          path: vendor
+          key: composer-${{ hashFiles('composer.lock') }}
+          restore-keys: composer-
+
+      # Production install: only `require` (not `require-dev`).
+      # Reflects exactly what ships to prod — auditing dev deps would
+      # produce noise (Tinker, Faker, etc. are never in prod).
+      - name: Install production dependencies
+        run: composer install --no-interaction --no-progress --prefer-dist --no-dev --no-scripts
+
+      # `composer audit` checks `composer.lock` against the public
+      # Packagist advisory database (https://packagist.org/security-advisories).
+      # --abandoned=ignore : do NOT fail on abandoned packages
+      #   (that's a maintenance signal, not a CVE — handle separately).
+      # --no-dev was already set at install time.
+      - name: Run composer audit (fail on HIGH/CRITICAL CVE)
+        run: composer audit --abandoned=ignore --no-interaction
+
+      # Visibility-only: list outdated packages without failing the build.
+      # Helps maintenance planning ; never blocks merges.
+      - name: List outdated production packages (informational only)
+        if: always()
+        continue-on-error: true
+        run: composer outdated --direct --no-interaction

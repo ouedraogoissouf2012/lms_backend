@@ -1,0 +1,42 @@
+# Dependabot configuration — issue #65 step 1 / CI security pipeline
+#
+# Stratégie : composer audit (workflow GitHub Actions) gate à chaque PR,
+# Dependabot ouvre des PRs proactives quand une CVE est publiée.
+# Les deux sont complémentaires :
+#   - composer audit  → réactif, bloque les merges contaminés
+#   - Dependabot      → proactif, propose la mise à jour avant qu'on merge
+#
+# Sources :
+#   https://docs.github.com/en/code-security/dependabot/dependabot-version-updates/configuration-options-for-the-dependabot.yml-file
+#   https://freek.dev/2892-how-to-monitor-your-laravel-app-for-critical-vulnerabilities
+
+version: 2
+updates:
+  # Dépendances Composer (PHP). Le frontend est dans un autre repo,
+  # pas de package.json ici.
+  - package-ecosystem: "composer"
+    directory: "/"
+    schedule:
+      interval: "daily"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "security"
+    commit-message:
+      prefix: "chore(deps)"
+      include: "scope"
+
+  # Versions des GitHub Actions utilisées dans .github/workflows/*.yml.
+  # Crucial : les supply-chain attacks via actions tierces (cf. tj-actions/changed-files
+  # incident 2025) imposent de monitorer aussi les actions, pas seulement les paquets app.
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "daily"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "ci"
+    commit-message:
+      prefix: "chore(ci)"
+      include: "scope"

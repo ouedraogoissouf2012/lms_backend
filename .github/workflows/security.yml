@@ -1,10 +1,15 @@
 name: Security Audit
 
-# Runs on every pull request targeting `lms` (production branch)
-# and on direct pushes to `lms` as a safety net.
-#
 # Step 1 of the CI security pipeline (issue #65).
 # Subsequent PRs will add : PHPStan + Larastan, Semgrep SAST, OWASP ZAP DAST.
+#
+# Defense-in-depth on dependencies :
+#   - composer-audit job        → reactive : blocks merge if a known CVE
+#                                  is in composer.lock at PR time
+#   - dependency-review job     → reactive : blocks merge if the PR
+#                                  ADDS a vulnerable dependency
+#   - .github/dependabot.yml    → proactive : opens fix PRs daily
+#                                  when an advisory is published
 
 on:
   pull_request:
@@ -16,6 +21,7 @@ on:
 
 permissions:
   contents: read
+  pull-requests: read  # required by dependency-review-action
 
 jobs:
   composer-audit:
@@ -60,3 +66,24 @@ jobs:
         if: always()
         continue-on-error: true
         run: composer outdated --direct --no-interaction
+
+  dependency-review:
+    # GitHub's native Dependency Review action analyses ONLY what the PR
+    # adds/removes vs. the base branch. Catches a vulnerable dependency
+    # introduced by the PR itself, even if it's not yet known to Packagist
+    # (e.g. malicious package via typosquatting).
+    #
+    # Only runs on pull_request — push events have no diff to review.
+    name: Dependency Review (PR-level diff)
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Dependency Review
+        uses: actions/dependency-review-action@v4
+        with:
+          fail-on-severity: high
+          comment-summary-in-pr: on-failure

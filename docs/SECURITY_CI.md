@@ -8,8 +8,8 @@ Ce pipeline est construit de façon **incrémentale** (issue [#65](../../../issu
 
 | Étape | État | Outils | Détecte |
 |---|---|---|---|
-| **1** | ✅ **Cette PR** | `composer audit` + Dependabot + Dependency Review | CVE connus dans dépendances Composer + GitHub Actions, détection proactive ET réactive |
-| 2 | À venir | PHPStan + Larastan niveau 9 | Bugs typés, logiques fragiles, API mal utilisée |
+| **1** | ✅ | `composer audit` + Dependabot + Dependency Review | CVE connus dans dépendances Composer + GitHub Actions, détection proactive ET réactive |
+| **2** | ✅ **Cette PR** | PHPStan + Larastan **niveau 9** + baseline | Bugs typés, logiques fragiles, API Laravel mal utilisée, null-safety, types génériques |
 | 3 | À venir | Semgrep (ruleset OWASP) + secret scanning | Patterns SAST (SQL injection, XSS, hardcoded secrets) |
 | 4 | À venir | OWASP ZAP | DAST scan sur staging avant release |
 
@@ -113,6 +113,54 @@ Les Actions tierces dans les workflows sont une surface d'attaque (cf. incident 
 
 ---
 
+## Étape 2 — PHPStan / Larastan niveau 9 + baseline
+
+### Stratégie
+
+Standard 2025 pour adopter PHPStan sur un projet Laravel existant : **démarrer au niveau maximum (9) avec un fichier baseline** qui « grandfather » les violations historiques. Tout NOUVEAU code doit passer level 9 ; le legacy migre progressivement.
+
+Sources :
+- [`laravel.io` — From 0 to 9 with Larastan](https://laravel.io/articles/how-to-get-your-laravel-app-from-0-to-9-with-larastan)
+- [`phpstan.org` — Rule Levels](https://phpstan.org/user-guide/rule-levels)
+- [`larastan/larastan` GitHub repo](https://github.com/larastan/larastan) (extension officielle Laravel)
+
+### Configuration
+
+`phpstan.neon.dist` (versionné) :
+- `level: 9`
+- `paths: [app]`
+- `parallel.processTimeout: 300`
+- `tmpDir: storage/framework/cache/phpstan`
+- Inclut `phpstan-baseline.neon`
+
+### Le baseline (`phpstan-baseline.neon`)
+
+- **1648 violations** grandfathered au moment de l'adoption
+- Versionné dans git
+- **Régénéré automatiquement** quand on touche un fichier listé : `composer phpstan:baseline`
+- À chaque PR qui touche un fichier dans la baseline, **fix les violations de ce fichier dans la même PR** (sinon la baseline diverge)
+
+### Workflow CI
+
+Le job `phpstan-analysis` s'exécute à chaque PR vers `lms`. Il installe les deps (avec dev), restaure le cache PHPStan, et lance `vendor/bin/phpstan analyse`. Si une violation hors baseline est détectée → PR bloquée.
+
+### Commandes locales (DX)
+
+\`\`\`bash
+# Lancer PHPStan localement avant push
+composer phpstan
+
+# Régénérer la baseline (à faire après avoir fixé des violations legacy)
+composer phpstan:baseline
+\`\`\`
+
+### Limitations connues
+
+- La baseline contient beaucoup d'erreurs « PHPDoc » manquants — la majorité peut être résolue par génération automatique via `phpdoc-parser` ou IDE
+- Quand `app/Http/Controllers/API/LMSDataController.php` (>2000 lignes) sera splitté (TIER 1 du `REFACTORING_ROADMAP.md`), une grosse partie de la baseline tombera
+
+---
+
 ## Prochaine étape
 
-Quand cette PR est mergée et que le workflow tourne proprement sur quelques PRs, on passe à l'**étape 2** : PHPStan + Larastan niveau 9. Voir issue [#65](../../../issues/65) pour le suivi.
+Quand cette PR est mergée et que le workflow tourne proprement, on passera à l'**étape 3** : Semgrep SAST avec ruleset OWASP + secret scanning. Voir issue [#65](../../../issues/65) pour le suivi.

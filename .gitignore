@@ -67,6 +67,9 @@ screenshot_*.png
 !/tests/Unit/Rules/**
 !/tests/Feature/Requests/**
 !/tests/Feature/ProxyRouteSecurityTest.php
+!/tests/Feature/ResolveInstitutionMiddlewareTest.php
+!/tests/Feature/SSLVerificationTest.php
+!/tests/Feature/BelongsToInstitutionTest.php
 .env.example
 .env.production.example
 package.json

@@ -6,8 +6,32 @@ use App\Models\Institution;
 use App\Services\TenantManager;
 use Closure;
 use Illuminate\Http\Request;
+use Laravel\Sanctum\PersonalAccessToken;
 use Symfony\Component\HttpFoundation\Response;
 
+/**
+ * Resolves the current tenant (institution) for each incoming request.
+ *
+ * ## Resolution priority (CRITICAL-07)
+ *
+ * 1. **Bearer token present** : the institution is resolved EXCLUSIVELY from the
+ *    authenticated user's `institution_id`. The `X-Institution` header is
+ *    deliberately IGNORED in this case — trusting an arbitrary client header
+ *    while a Sanctum token exists would let an authenticated user of school A
+ *    impersonate the tenant context of school B by sending `X-Institution: B`.
+ *
+ * 2. **No bearer token but `X-Institution` header present** : fallback used for
+ *    pre-authentication public routes (login, password reset, signup). The
+ *    institution is resolved from the slug header. This is acceptable because
+ *    no user identity is associated with the request yet.
+ *
+ * 3. **Neither token nor header** : no tenant context is set. Subsequent code
+ *    relying on the tenant (e.g. `BelongsToInstitution` global scope) will
+ *    behave according to its own rules.
+ *
+ * @see PRODUCTION_STANDARDS.md §1.2 Sécurité Absolue
+ * @see .claude/agents/kfc/spec-security.md Check 5 IDOR / cross-tenant
+ */
 class ResolveInstitution
 {
     public function __construct(private TenantManager $tenantManager)
@@ -16,26 +40,17 @@ class ResolveInstitution
 
     public function handle(Request $request, Closure $next): Response
     {
-        $slug = $request->header('X-Institution');
-
-        // Pas de header X-Institution mais token Bearer présent :
-        // résoudre l'institution depuis l'utilisateur authentifié
-        if (!$slug && $request->bearerToken()) {
-            $token = \Laravel\Sanctum\PersonalAccessToken::findToken($request->bearerToken());
-
-            if ($token && $token->tokenable && $token->tokenable->institution_id) {
-                $institution = Institution::find($token->tokenable->institution_id);
-
-                if ($institution && $institution->is_active) {
-                    $this->tenantManager->set($institution);
-                }
-            }
-            // Si institution_id est null (supradmin) → pas de filtre, il voit tout
+        // Priority 1: authenticated request — trust ONLY the JWT-bound institution.
+        if ($request->bearerToken()) {
+            $this->resolveFromBearerToken($request);
             return $next($request);
         }
 
-        // Pas de token Bearer et pas de header X-Institution → routes publiques sans contexte tenant
+        // Priority 2: public route — fallback on the X-Institution slug header.
+        $slug = $request->header('X-Institution');
+
         if (!$slug) {
+            // Priority 3: no token, no header — no tenant context.
             return $next($request);
         }
 
@@ -53,5 +68,30 @@ class ResolveInstitution
         $this->tenantManager->set($institution);
 
         return $next($request);
+    }
+
+    /**
+     * Resolve the tenant from the user behind the bearer token.
+     *
+     * Silently leaves the tenant unset if:
+     * - the token cannot be found (will trigger 401 downstream via auth:sanctum),
+     * - the user has no institution_id (supradmin — sees all tenants),
+     * - the institution is inactive or deleted.
+     *
+     * Never trusts a request header at this stage.
+     */
+    private function resolveFromBearerToken(Request $request): void
+    {
+        $token = PersonalAccessToken::findToken($request->bearerToken());
+
+        if (!$token || !$token->tokenable || !$token->tokenable->institution_id) {
+            return;
+        }
+
+        $institution = Institution::find($token->tokenable->institution_id);
+
+        if ($institution && $institution->is_active) {
+            $this->tenantManager->set($institution);
+        }
     }
 }

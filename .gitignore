@@ -72,6 +72,7 @@ screenshot_*.png
 !/tests/Feature/BelongsToInstitutionTest.php
 !/tests/Feature/KlassciCacheInvalidationTest.php
 !/tests/Feature/EnsureRole403ResponseShapeTest.php
+!/tests/Feature/SanctumTokenExpirationTest.php
 .env.example
 .env.production.example
 package.json

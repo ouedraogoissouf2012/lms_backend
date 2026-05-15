@@ -1,0 +1,28 @@
+includes:
+    - vendor/larastan/larastan/extension.neon
+    # Baseline file — 1648 violations grandfathered from initial Larastan
+    # adoption. New code must pass level 9 ; legacy migrates incrementally.
+    # Whenever a file in the baseline is modified, its violations should be
+    # fixed in the same PR (the baseline is regenerated automatically).
+    - phpstan-baseline.neon
+
+parameters:
+    paths:
+        - app
+
+    # Level 9 = maximum strictness (PHPStan official rule levels).
+    # Strategy : level 9 + baseline file to grandfather existing violations.
+    # All NEW code must pass level 9 ; old code is migrated gradually.
+    # Reference : https://laravel.io/articles/how-to-get-your-laravel-app-from-0-to-9-with-larastan
+    level: 9
+
+    # Run analysis in parallel — faster on multi-core CI runners.
+    parallel:
+        processTimeout: 300.0
+
+    # Cache PHPStan results between runs (CI cache + local).
+    tmpDir: storage/framework/cache/phpstan
+
+    # Larastan-specific: better collection / relation generic understanding.
+    # See https://github.com/larastan/larastan/blob/master/docs/rules.md
+    checkModelProperties: true

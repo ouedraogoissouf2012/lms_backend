@@ -122,3 +122,34 @@ chown -R www-data:www-data storage
 php artisan storage:link
 ```
 
+---
+
+## 🔐 Variables d'environnement obligatoires
+
+Le projet refuse de fonctionner sans certaines variables d'environnement définies dans `.env`. Cette section liste les variables critiques par catégorie.
+
+### Compte supradmin (création initiale uniquement)
+
+`SupradminSeeder` (déclenché par `php artisan db:seed --class=SupradminSeeder`) refuse de créer le compte supradmin si ces variables sont absentes :
+
+```dotenv
+SUPRADMIN_EMAIL=admin@votre-domaine.tld
+SUPRADMIN_PASSWORD=<mot-de-passe-fort-aléatoire-32-caractères>
+```
+
+> ⚠️ **Procédure de sécurité post-déploiement** : immédiatement après le premier seeding en production, **rotatez le mot de passe** via :
+>
+> ```bash
+> php artisan tinker
+> > User::where('email', config('supradmin.email'))->first()
+> >     ->update(['password' => Hash::make('NOUVEAU_MOT_DE_PASSE')]);
+> ```
+>
+> Puis retirez `SUPRADMIN_PASSWORD` du `.env` de production (la variable n'est lue qu'au seeding).
+
+### Pourquoi ce mécanisme
+
+Référence : [`PRODUCTION_STANDARDS.md` §1.2](PRODUCTION_STANDARDS.md) — « Aucun secret en plaintext en base ». Le mot de passe n'est jamais committé dans git ; il vit uniquement dans le `.env` du serveur, jamais versionné.
+
+Voir [`config/supradmin.php`](config/supradmin.php) pour le mapping config ↔ env.
+

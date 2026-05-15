@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\ListFilesRequest;
 use App\Http\Requests\UploadFileRequest;
 use App\Http\Requests\UpdateFileRequest;
 use App\Http\Requests\DeleteFileRequest;
@@ -27,11 +28,11 @@ class FileController extends Controller
 
     /**
      * GET /api/files
-     * Liste des fichiers (avec filtres)
+     * Liste des fichiers (avec filtres). Inputs whitelistés par ListFilesRequest.
      */
-    public function index(Request $request): JsonResponse
+    public function index(ListFilesRequest $request): JsonResponse
     {
-        $query = File::with(['user:id,name,email,role'])->validated();
+        $query = File::with(['user:id,name,email,role']);
 
         $user = $request->user();
 
@@ -43,26 +44,29 @@ class FileController extends Controller
             });
         }
 
-        // Filtres
-        if ($request->has('type')) {
-            $query->ofType($request->type);
+        // Filtres — toutes les valeurs validées par ListFilesRequest.
+        // fileable_type est dans la whitelist config/fileables.php (issue #10 IDOR).
+        $validated = $request->validated();
+
+        if (isset($validated['type'])) {
+            $query->ofType($validated['type']);
         }
 
-        if ($request->has('category')) {
-            $query->ofCategory($request->category);
+        if (isset($validated['category'])) {
+            $query->ofCategory($validated['category']);
         }
 
-        if ($request->has('user_id')) {
-            $query->where('user_id', $request->user_id);
+        if (isset($validated['user_id'])) {
+            $query->where('user_id', $validated['user_id']);
         }
 
-        if ($request->has('fileable_type') && $request->has('fileable_id')) {
-            $query->where('fileable_type', $request->fileable_type)
-                  ->where('fileable_id', $request->fileable_id);
+        if (isset($validated['fileable_type'], $validated['fileable_id'])) {
+            $query->where('fileable_type', $validated['fileable_type'])
+                  ->where('fileable_id', $validated['fileable_id']);
         }
 
-        // Tri
-        $sortBy = $request->get('sort', 'recent');
+        // Tri (validé par ListFilesRequest, default 'recent')
+        $sortBy = $validated['sort'] ?? 'recent';
         switch ($sortBy) {
             case 'name':
                 $query->orderBy('original_name', 'asc');
@@ -77,7 +81,7 @@ class FileController extends Controller
                 $query->orderBy('created_at', 'desc');
         }
 
-        $perPage = $request->get('per_page', 20);
+        $perPage = $validated['per_page'] ?? 20;
         $files = $query->paginate($perPage);
 
         // Ajouter formatted_size à chaque fichier

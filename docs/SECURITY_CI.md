@@ -156,7 +156,7 @@ composer phpstan:baseline
 
 ### Limitations connues
 
-- La baseline contient beaucoup d'erreurs « PHPDoc » manquants — la majorité peut être résolue par génération automatique via `phpdoc-parser` ou IDE
+- La baseline contient 1648 violations grandfathered. Catégorisation mesurée : ~480 sont des bugs réels (null-safety, property/method.notFound, argument.type), le reste sont des annotations manquantes. Anti-pattern identifié et écarté : `barryvdh/laravel-ide-helper` + `scanFiles:` (testé empiriquement, baseline 1648 → 1751, +103 violations à cause de `_ide_helper.php` qui redéfinit les classes Laravel et casse la résolution Larastan).
 - Quand `app/Http/Controllers/API/LMSDataController.php` (>2000 lignes) sera splitté (TIER 1 du `REFACTORING_ROADMAP.md`), une grosse partie de la baseline tombera
 
 ---

@@ -41,13 +41,18 @@ return [
     | Session Encryption
     |--------------------------------------------------------------------------
     |
-    | This option allows you to easily specify that all of your session data
-    | should be encrypted before it's stored. All encryption is performed
-    | automatically by Laravel and you may use the session like normal.
+    | All session data is encrypted at rest by default (CRITICAL — HIGH-2,
+    | issue #6). Anyone with read access to the session store (files,
+    | database, Redis) cannot inspect session contents in cleartext.
+    |
+    | Set SESSION_ENCRYPT=false in .env only if you have a strong reason
+    | (e.g. compatibility shim) and document the decision.
+    |
+    | Reference: PRODUCTION_STANDARDS.md §1.2 — "Aucun secret en plaintext".
     |
     */
 
-    'encrypt' => env('SESSION_ENCRYPT', false),
+    'encrypt' => env('SESSION_ENCRYPT', true),
 
     /*
     |--------------------------------------------------------------------------

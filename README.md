@@ -128,6 +128,18 @@ php artisan storage:link
 
 Le projet refuse de fonctionner sans certaines variables d'environnement définies dans `.env`. Cette section liste les variables critiques par catégorie.
 
+### Chiffrement des sessions (activé par défaut)
+
+Depuis le fix issue #6 (HIGH-2), `config/session.php` chiffre les sessions par défaut :
+
+```php
+'encrypt' => env('SESSION_ENCRYPT', true),
+```
+
+Les données de session stockées (fichiers, DB, Redis) sont chiffrées avec `APP_KEY`. Personne ayant un accès brut au store ne peut lire les sessions en clair.
+
+> ⚠️ **Bascule `SESSION_ENCRYPT`** : si tu changes la valeur (en `.env`), **toutes les sessions existantes deviennent invalides** → les utilisateurs sont déconnectés. Faire cette bascule en heures creuses.
+
 ### Compte supradmin (création initiale uniquement)
 
 `SupradminSeeder` (déclenché par `php artisan db:seed --class=SupradminSeeder`) refuse de créer le compte supradmin si ces variables sont absentes :

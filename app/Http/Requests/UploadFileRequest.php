@@ -81,10 +81,14 @@ final class UploadFileRequest extends FormRequest
                 'string',
                 'in:course_material,assignment,resource,other,forum_attachment,profile_picture,general',
             ],
+            // fileable_type whitelist comes from config/fileables.php (single
+            // source of truth). Adding a fileable type → update the config,
+            // both upload and listing validations adapt automatically.
+            // Issue #10 (IDOR) — never accept an arbitrary class name here.
             'fileable_type' => [
                 'sometimes',
                 'string',
-                'in:lesson,chapter,evaluation,seance',
+                'in:' . implode(',', array_keys(config('fileables.morph_map', []))),
             ],
             'fileable_id' => [
                 'sometimes',

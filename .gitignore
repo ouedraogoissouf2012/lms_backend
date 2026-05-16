@@ -65,6 +65,7 @@ screenshot_*.png
 !/tests/Unit/TokenEncryptionTest.php
 !/tests/Unit/ExceptionHandlerTest.php
 !/tests/Unit/Rules/**
+!/tests/Unit/Support/**
 !/tests/Feature/Requests/**
 !/tests/Feature/ProxyRouteSecurityTest.php
 !/tests/Feature/ResolveInstitutionMiddlewareTest.php

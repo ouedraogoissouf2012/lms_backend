@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use App\Models\PersonalAccessToken;
 use App\Services\TenantManager;
+use App\Support\Shell\ShellExecutor;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\ServiceProvider;
@@ -17,6 +18,11 @@ class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->singleton(TenantManager::class);
+
+        // ShellExecutor — sole entry point for external process execution
+        // (issue #79 Phase A). Singleton because it is stateless and we want
+        // any optional logger (debug) to be the same instance across callers.
+        $this->app->singleton(ShellExecutor::class);
     }
 
     /**

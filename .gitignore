@@ -75,6 +75,7 @@ screenshot_*.png
 !/tests/Feature/SanctumTokenExpirationTest.php
 !/tests/Feature/AdminAnalyticsCacheIsolationTest.php
 !/tests/Feature/KlassciProxyServiceInstitutionResolutionTest.php
+!/tests/Feature/SupradminSeederTest.php
 .env.example
 .env.production.example
 package.json

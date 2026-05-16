@@ -9,8 +9,8 @@ Ce pipeline est construit de façon **incrémentale** (issue [#65](../../../issu
 | Étape | État | Outils | Détecte |
 |---|---|---|---|
 | **1** | ✅ | `composer audit` + Dependabot + Dependency Review | CVE connus dans dépendances Composer + GitHub Actions, détection proactive ET réactive |
-| **2** | ✅ **Cette PR** | PHPStan + Larastan **niveau 9** + baseline | Bugs typés, logiques fragiles, API Laravel mal utilisée, null-safety, types génériques |
-| 3 | À venir | Semgrep (ruleset OWASP) + secret scanning | Patterns SAST (SQL injection, XSS, hardcoded secrets) |
+| **2** | ✅ | PHPStan + Larastan **niveau 9** + baseline | Bugs typés, logiques fragiles, API Laravel mal utilisée, null-safety, types génériques |
+| **3** | ✅ **Cette PR** | Semgrep SAST (`p/default` + `p/owasp-top-ten`) + GitHub secret scanning natif | Patterns SAST (SQL injection, XSS, deserialization, mass assignment, etc.) + tokens/clés exposés dans commits |
 | 4 | À venir | OWASP ZAP | DAST scan sur staging avant release |
 
 ---
@@ -163,4 +163,81 @@ composer phpstan:baseline
 
 ## Prochaine étape
 
-Quand cette PR est mergée et que le workflow tourne proprement, on passera à l'**étape 3** : Semgrep SAST avec ruleset OWASP + secret scanning. Voir issue [#65](../../../issues/65) pour le suivi.
+Quand cette PR est mergée et que le workflow tourne proprement, on passera à l'**étape 4** : OWASP ZAP DAST sur staging. Voir issue [#65](../../../issues/65) pour le suivi.
+
+---
+
+## Étape 3 — Semgrep SAST + GitHub secret scanning natif
+
+### Stratégie
+
+Standard 2026 pour SAST sur projet PHP/Laravel : **Semgrep Community Edition** avec rulesets curés (`p/default` + `p/owasp-top-ten`). Combinaison qui équilibre **couverture** (OWASP A01-A10 mappés explicitement) et **faible taux de faux positifs** (`p/default` = ~600 règles validées par Semgrep team).
+
+Pour les secrets exposés en code/commits : **GitHub secret scanning natif**, gratuit pour repos publics depuis 2024, auto-activé en 2026. Aucun outil tiers (GitGuardian, etc.) — on évite une dépendance externe.
+
+Sources :
+- [Semgrep quickstart](https://semgrep.dev/docs/getting-started/quickstart)
+- [Ruleset `p/default`](https://semgrep.dev/p/default)
+- [Ruleset `p/owasp-top-ten`](https://semgrep.dev/p/owasp-top-ten)
+- [GitHub Docs — Secret scanning](https://docs.github.com/en/code-security/secret-scanning)
+- OWASP ASVS v5 chapitre 14.2
+
+### Configuration Semgrep
+
+Le job `semgrep-sast` dans `.github/workflows/security.yml` tourne sur chaque PR vers `lms`.
+
+**Deux niveaux** (analogue à la stratégie PHPStan baseline) :
+
+| Niveau | Comportement | Justification |
+|---|---|---|
+| `--severity ERROR` | **Bloque la PR** (`--error` flag) | Vraies vulnérabilités, faux positifs rares |
+| `--severity WARNING` / `INFO` | Informationnel, `continue-on-error: true` | Pas de blocage du flux dev, triage progressif possible |
+
+Sur PR uniquement (`if: github.event_name == 'pull_request'`) — pas sur push direct pour rester diff-aware.
+
+### Lever un faux positif Semgrep
+
+Si une règle Semgrep produit un faux positif sur du code légitime :
+
+**Option A — Inline (cas isolé)** :
+```php
+// nosemgrep: rule-id-here
+$value = $userInput;  // explanation why this is safe
+```
+
+**Option B — `.semgrepignore` (paths globaux)** :
+```
+# .semgrepignore (à la racine du repo)
+vendor/
+node_modules/
+storage/
+tests/fixtures/
+```
+
+**Option C — règle custom** : si un pattern projet-spécifique génère beaucoup de FP, créer une règle locale dans `.semgrep/<custom>.yml` et l'inclure dans le workflow (à n'envisager qu'au-delà de 5+ inline `nosemgrep` sur le même pattern).
+
+### Durcissement futur (suivi)
+
+Une fois la baseline initiale triée et stabilisée :
+- Abaisser le seuil bloquant de `ERROR` à `WARNING` (durcissement progressif, mêmes que la promotion de level PHPStan)
+- Ajouter `p/php` et `p/laravel` à la config (rulesets spécifiques framework, plus de profondeur sur le legacy code)
+- Considérer Semgrep Pro rules (payant) si les rules communautaires se révèlent insuffisantes pour des cas Laravel avancés
+
+### GitHub secret scanning natif
+
+**Activé via `gh api` (settings repo)** — pas de workflow YAML à maintenir. GitHub scanne :
+- Tous les commits poussés (alertes a posteriori)
+- **Push protection** : bloque le push en temps réel si un secret est détecté (clé AWS, token GitHub, etc.)
+
+Settings activés (commande pour vérifier) :
+```bash
+gh api repos/ouedraogoissouf2012/lms_backend --jq '.security_and_analysis'
+```
+
+Doit afficher `secret_scanning: enabled` et `secret_scanning_push_protection: enabled`.
+
+**Cas projet-spécifique** : `KLASSCI_API_TOKEN`, `APP_KEY` Laravel et autres patterns custom peuvent être ajoutés via **GitHub custom patterns** (Settings → Code security and analysis → Secret scanning → Custom patterns). À traiter dans un follow-up séparé si un pattern KLASSCI leak est observé.
+
+### Coût CI ajouté
+
+Estimation : **+1 à 3 minutes** par PR (Semgrep scan). Secret scanning : 0 (server-side GitHub). Acceptable pour un projet 10+ ans / 20k+ users.

@@ -2,6 +2,8 @@
 
 namespace App\Services;
 
+use App\Models\Institution;
+use App\Models\User;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
@@ -65,19 +67,24 @@ class KlassciProxyService
             }
         }
 
-        // Priorité 2 : token de l'institution correspondant au tenant_url de l'utilisateur
-        // Cas : auth locale (compte manuel) avec klassci_tenant_url défini mais sans token personnel
-        if ($user && $user->klassci_tenant_url) {
-            $tenantUrl = $user->klassci_tenant_url;
-            $institution = \Illuminate\Support\Facades\Cache::remember(
-                'institution_by_url_' . md5($tenantUrl),
-                3600,
-                fn () => \App\Models\Institution::where('klassci_api_url', $tenantUrl)
-                    ->where('is_active', true)
-                    ->first()
-            );
+        // Priorité 2 : token de l'institution de l'utilisateur (compte manuel sans token personnel).
+        //
+        // On utilise la relation directe $user->institution (clé étrangère institution_id)
+        // au lieu d'un lookup par klassci_api_url. Deux institutions peuvent partager le même
+        // serveur KLASSCI (même URL) ; un lookup par URL est ambigu et exposait à une fuite
+        // cross-institution (cf. issue #75, analog de #23). La relation user→institution est
+        // unique par construction.
+        //
+        // Check défensif klassci_api_url : si l'institution résolue n'a pas la même URL que
+        // celle enregistrée chez le user, c'est une incohérence de données — on refuse de
+        // monter un token cross-tenant et on laisse Priority 3 prendre le relais (fail-secure).
+        if ($user instanceof User && $user->klassci_tenant_url) {
+            $institution = $user->institution;
 
-            if ($institution && $institution->klassci_api_token) {
+            if ($institution instanceof Institution
+                && $institution->is_active
+                && $institution->klassci_api_url === $user->klassci_tenant_url
+                && $institution->klassci_api_token) {
                 $this->baseUrl = $institution->klassci_api_url;
                 $this->token   = $institution->klassci_api_token;
                 $this->configResolved = true;

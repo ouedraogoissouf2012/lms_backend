@@ -3,7 +3,7 @@ name: Security Audit
 # CI security pipeline (issue #65). Status :
 #   Step 1 ✅ — composer-audit + dependency-review + Dependabot (defense-in-depth on deps)
 #   Step 2 ✅ — phpstan-analysis (Larastan level 9 + baseline)
-#   Step 3 ⏳ — Semgrep SAST (OWASP ruleset)
+#   Step 3 ✅ — semgrep-sast (p/default + p/owasp-top-ten) + GitHub native secret scanning
 #   Step 4 ⏳ — OWASP ZAP DAST
 #
 # Defense-in-depth on dependencies :
@@ -136,3 +136,42 @@ jobs:
       # set) fails the build.
       - name: Run PHPStan / Larastan
         run: vendor/bin/phpstan analyse --memory-limit=2G --no-progress
+
+  semgrep-sast:
+    # Step 3/4 of the CI security pipeline (issue #65).
+    # Static Application Security Testing via Semgrep Community Edition.
+    #
+    # Rulesets choisis :
+    #   - p/default          : ~600 règles haute confidence, faible FP (recommandé)
+    #   - p/owasp-top-ten    : mapping explicite OWASP A01-A10, valeur compliance ASVS
+    #
+    # Stratégie deux niveaux (analogue PHPStan baseline) :
+    #   - ERROR severity → bloque la PR (vraies vulnérabilités)
+    #   - WARNING/INFO   → informationnel, continue-on-error: true
+    #
+    # Diff-aware : ne tourne que sur les PR (pas les push direct).
+    # Référence : https://semgrep.dev/docs/getting-started/quickstart
+    name: Semgrep SAST (OWASP + default)
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+
+    container:
+      image: semgrep/semgrep
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # Bloque la PR si une vulnérabilité ERROR severity est détectée.
+      # Une fois la baseline initiale triée, on peut durcir en abaissant
+      # le seuil à WARNING (cf. docs/SECURITY_CI.md section Étape 3).
+      - name: Semgrep scan (block on ERROR severity)
+        run: semgrep scan --config p/default --config p/owasp-top-ten --severity ERROR --error
+
+      # Remontée informationnelle des WARNING / INFO. Ne bloque jamais.
+      # Permet aux contributeurs de voir les findings non-critiques sans
+      # impacter le merge. À traiter progressivement.
+      - name: Semgrep scan (informational, WARNING/INFO)
+        if: always()
+        continue-on-error: true
+        run: semgrep scan --config p/default --config p/owasp-top-ten --severity WARNING --severity INFO

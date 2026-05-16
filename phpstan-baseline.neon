@@ -6577,12 +6577,6 @@ parameters:
 			path: app/Services/FileConversionService.php
 
 		-
-			message: '#^Access to an undefined property Illuminate\\Contracts\\Auth\\Authenticatable\:\:\$id\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/KlassciProxyService.php
-
-		-
 			message: '#^Access to an undefined property Illuminate\\Contracts\\Auth\\Authenticatable\:\:\$klassci_data\.$#'
 			identifier: property.notFound
 			count: 1
@@ -6591,7 +6585,7 @@ parameters:
 		-
 			message: '#^Access to an undefined property Illuminate\\Contracts\\Auth\\Authenticatable\:\:\$klassci_tenant_url\.$#'
 			identifier: property.notFound
-			count: 3
+			count: 2
 			path: app/Services/KlassciProxyService.php
 
 		-

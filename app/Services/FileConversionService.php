@@ -147,6 +147,11 @@ class FileConversionService
 
         Log::info("🔄 Exécution LibreOffice", ['cmd' => $command]);
 
+        // Semgrep flags exec() as potentially injectable. Ici tous les inputs sont
+        // server-controlled : escapeshellarg() sur $outputDir + $pptxPath (lignes
+        // 144-145), $sofficeCommand vient de la config / detection serveur.
+        // Aucune valeur user-input n'atteint la ligne ci-dessous.
+        // nosemgrep: php.lang.security.exec-use.exec-use
         exec($command, $output, $returnCode);
 
         if ($returnCode !== 0) {
@@ -309,6 +314,16 @@ class FileConversionService
 
         Log::info("🔄 Exécution Ghostscript", ['cmd' => $command]);
 
+        // Semgrep flags exec(). Tous les inputs sont server-controlled :
+        // - $outputDir vient de storage_path("…/{\$chapterId}/…") où \$chapterId
+        //   est strictement typé `int` à l'entrée publique (ligne 214 / 54).
+        // - $pdfPath est généré par le pipeline server-side (pathinfo + LibreOffice),
+        //   pas par l'utilisateur.
+        // - $gsCommand vient de la detection serveur.
+        // Le `escapeshellarg` est intentionnellement omis sur le pattern %03d que
+        // Ghostscript doit interpréter ; les guillemets manuels suffisent ici car
+        // aucun string user-controlled n'atteint le command.
+        // nosemgrep: php.lang.security.exec-use.exec-use
         exec($command, $output, $returnCode);
 
         if ($returnCode !== 0) {
@@ -508,6 +523,11 @@ class FileConversionService
 
         Log::info("🔄 Exécution LibreOffice Word→HTML", ['cmd' => $command]);
 
+        // Semgrep flags exec(). Tous les inputs sont server-controlled :
+        // escapeshellarg() sur $outputDir + $docxPath (lignes 505-506),
+        // $sofficeCommand vient de la config / detection serveur.
+        // Aucune valeur user-input n'atteint la ligne ci-dessous.
+        // nosemgrep: php.lang.security.exec-use.exec-use
         exec($command, $output, $returnCode);
 
         if ($returnCode !== 0) {

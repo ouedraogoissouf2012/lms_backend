@@ -1123,6 +1123,12 @@ parameters:
 			path: app/Http/Controllers/API/KnowledgeCheckController.php
 
 		-
+			message: '#^Parameter \#1 \$enseignantId of static method App\\Models\\LmsEnseignantCache\:\:store\(\) expects int, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/API/LMS/LMSEnseignantsController.php
+
+		-
 			message: '#^Cannot access offset ''id'' on mixed\.$#'
 			identifier: offsetAccess.nonOffsetAccessible
 			count: 1
@@ -1429,12 +1435,6 @@ parameters:
 			path: app/Http/Controllers/API/LMSDataController.php
 
 		-
-			message: '#^Expression on left side of \?\? is not nullable\.$#'
-			identifier: nullCoalesce.expr
-			count: 1
-			path: app/Http/Controllers/API/LMSDataController.php
-
-		-
 			message: '#^Left side of && is always true\.$#'
 			identifier: booleanAnd.leftAlwaysTrue
 			count: 7
@@ -1479,12 +1479,6 @@ parameters:
 		-
 			message: '#^Method App\\Http\\Controllers\\API\\LMSDataController\:\:determineAttendanceStatus\(\) return type has no value type specified in iterable type array\.$#'
 			identifier: missingType.iterableValue
-			count: 1
-			path: app/Http/Controllers/API/LMSDataController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\API\\LMSDataController\:\:getMatieresEnrichiesForEnseignant\(\) return type with generic class Illuminate\\Support\\Collection does not specify its types\: TKey, TValue$#'
-			identifier: missingType.generics
 			count: 1
 			path: app/Http/Controllers/API/LMSDataController.php
 

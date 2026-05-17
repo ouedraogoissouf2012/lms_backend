@@ -81,6 +81,7 @@ screenshot_*.png
 !/tests/Feature/SupradminSeederTest.php
 !/tests/Feature/FileConversion/**
 !/tests/Feature/Forum/**
+!/tests/Feature/Quiz/**
 .env.example
 .env.production.example
 package.json

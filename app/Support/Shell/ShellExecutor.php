@@ -26,7 +26,7 @@ use Symfony\Component\Process\Process;
  *
  * @see \Symfony\Component\Process\Process
  */
-final class ShellExecutor
+final class ShellExecutor implements ShellExecutorInterface
 {
     /**
      * Default timeout in seconds for a single process invocation.

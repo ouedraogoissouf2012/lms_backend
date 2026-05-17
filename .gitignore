@@ -66,6 +66,7 @@ screenshot_*.png
 !/tests/Unit/ExceptionHandlerTest.php
 !/tests/Unit/Rules/**
 !/tests/Unit/Support/**
+!/tests/Unit/FileConversion/**
 !/tests/Feature/Requests/**
 !/tests/Feature/ProxyRouteSecurityTest.php
 !/tests/Feature/ResolveInstitutionMiddlewareTest.php
@@ -77,6 +78,7 @@ screenshot_*.png
 !/tests/Feature/AdminAnalyticsCacheIsolationTest.php
 !/tests/Feature/KlassciProxyServiceInstitutionResolutionTest.php
 !/tests/Feature/SupradminSeederTest.php
+!/tests/Feature/FileConversion/**
 .env.example
 .env.production.example
 package.json

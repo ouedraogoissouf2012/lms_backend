@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Services\FileConversion;
 
 use App\Support\Shell\ShellExecutionException;
-use App\Support\Shell\ShellExecutor;
+use App\Support\Shell\ShellExecutorInterface;
 use Imagick;
 use RuntimeException;
 
@@ -26,7 +26,7 @@ use RuntimeException;
  * is preserved verbatim from the legacy `convertPdfWithImagick` /
  * `convertPdfWithGD` (Invariant 2) so existing slide URLs keep working.
  */
-final class PdfToPngRenderer
+final class PdfToPngRenderer implements PdfToPngRendererInterface
 {
     /**
      * Cross-platform candidates for the Ghostscript binary. The first
@@ -58,7 +58,7 @@ final class PdfToPngRenderer
     private const IMAGICK_QUALITY        = 90;
 
     public function __construct(
-        private readonly ShellExecutor $shell,
+        private readonly ShellExecutorInterface $shell,
     ) {
     }
 

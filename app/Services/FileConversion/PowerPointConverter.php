@@ -6,7 +6,7 @@ namespace App\Services\FileConversion;
 
 use App\Services\ConvertApiService;
 use App\Support\Shell\ShellExecutionException;
-use App\Support\Shell\ShellExecutor;
+use App\Support\Shell\ShellExecutorInterface;
 use Exception;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Log;
@@ -48,9 +48,9 @@ final class PowerPointConverter
     ];
 
     public function __construct(
-        private readonly ShellExecutor $shell,
+        private readonly ShellExecutorInterface $shell,
         private readonly ConvertApiService $convertApi,
-        private readonly PdfToPngRenderer $pdfRenderer,
+        private readonly PdfToPngRendererInterface $pdfRenderer,
         private readonly FileValidator $validator,
     ) {
     }

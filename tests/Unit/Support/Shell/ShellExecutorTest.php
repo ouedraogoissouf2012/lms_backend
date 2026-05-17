@@ -99,4 +99,29 @@ final class ShellExecutorTest extends TestCase
 
         $this->assertNull($found);
     }
+
+    /**
+     * Priority contract : when several candidates exist on disk, the first
+     * one in the array must win. This matters for the production binary
+     * lookup where newer paths (e.g. `gs10.06.0/...`) come before older
+     * versions in the candidate list.
+     */
+    public function test_locate_picks_the_first_resolvable_candidate(): void
+    {
+        $firstChoice  = tempnam(sys_get_temp_dir(), 'sh-locate-first-');
+        $secondChoice = tempnam(sys_get_temp_dir(), 'sh-locate-second-');
+        $this->assertNotFalse($firstChoice);
+        $this->assertNotFalse($secondChoice);
+
+        try {
+            $found = $this->executor->locate('priority-test', [
+                $firstChoice,
+                $secondChoice,
+            ]);
+            $this->assertSame($firstChoice, $found, 'First candidate must win when both exist.');
+        } finally {
+            @unlink($firstChoice);
+            @unlink($secondChoice);
+        }
+    }
 }

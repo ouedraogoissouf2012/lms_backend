@@ -403,9 +403,15 @@ parameters:
 			path: app/Http/Controllers/API/DashboardController.php
 
 		-
+			message: '#^Cannot access property \$title on App\\Models\\Quiz\|null\.$#'
+			identifier: property.nonObject
+			count: 1
+			path: app/Http/Controllers/API/DashboardController.php
+
+		-
 			message: '#^Cannot access property \$title on Illuminate\\Database\\Eloquent\\Model\|null\.$#'
 			identifier: property.nonObject
-			count: 3
+			count: 2
 			path: app/Http/Controllers/API/DashboardController.php
 
 		-
@@ -2163,7 +2169,7 @@ parameters:
 		-
 			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Relations\\HasMany\:\:ordered\(\)\.$#'
 			identifier: method.notFound
-			count: 1
+			count: 2
 			path: app/Http/Controllers/API/QuizController.php
 
 		-
@@ -2173,31 +2179,25 @@ parameters:
 			path: app/Http/Controllers/API/QuizController.php
 
 		-
-			message: '#^Cannot access property \$allow_review on Illuminate\\Database\\Eloquent\\Model\|null\.$#'
+			message: '#^Cannot access property \$allow_review on App\\Models\\Quiz\|null\.$#'
 			identifier: property.nonObject
 			count: 1
 			path: app/Http/Controllers/API/QuizController.php
 
 		-
-			message: '#^Cannot access property \$created_by on Illuminate\\Database\\Eloquent\\Model\|null\.$#'
+			message: '#^Cannot access property \$duration_minutes on App\\Models\\Quiz\|null\.$#'
 			identifier: property.nonObject
 			count: 1
 			path: app/Http/Controllers/API/QuizController.php
 
 		-
-			message: '#^Cannot access property \$duration_minutes on Illuminate\\Database\\Eloquent\\Model\|null\.$#'
+			message: '#^Cannot access property \$show_correct_answers on App\\Models\\Quiz\|null\.$#'
 			identifier: property.nonObject
 			count: 1
 			path: app/Http/Controllers/API/QuizController.php
 
 		-
-			message: '#^Cannot access property \$show_correct_answers on Illuminate\\Database\\Eloquent\\Model\|null\.$#'
-			identifier: property.nonObject
-			count: 1
-			path: app/Http/Controllers/API/QuizController.php
-
-		-
-			message: '#^Cannot call method questions\(\) on Illuminate\\Database\\Eloquent\\Model\|null\.$#'
+			message: '#^Cannot call method questions\(\) on App\\Models\\Quiz\|null\.$#'
 			identifier: method.nonObject
 			count: 1
 			path: app/Http/Controllers/API/QuizController.php
@@ -5617,25 +5617,49 @@ parameters:
 			path: app/Models/QuizAnswer.php
 
 		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Models/QuizAttempt.php
+
+		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$institution_id\.$#'
 			identifier: property.notFound
 			count: 1
 			path: app/Models/QuizAttempt.php
 
 		-
-			message: '#^Cannot access property \$duration_minutes on Illuminate\\Database\\Eloquent\\Model\|null\.$#'
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$points\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Models/QuizAttempt.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:calculatePoints\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Models/QuizAttempt.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:requiresManualGrading\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Models/QuizAttempt.php
+
+		-
+			message: '#^Cannot access property \$duration_minutes on App\\Models\\Quiz\|null\.$#'
 			identifier: property.nonObject
 			count: 4
 			path: app/Models/QuizAttempt.php
 
 		-
-			message: '#^Cannot access property \$passing_score on Illuminate\\Database\\Eloquent\\Model\|null\.$#'
+			message: '#^Cannot access property \$passing_score on App\\Models\\Quiz\|null\.$#'
 			identifier: property.nonObject
 			count: 2
 			path: app/Models/QuizAttempt.php
 
 		-
-			message: '#^Cannot call method questions\(\) on Illuminate\\Database\\Eloquent\\Model\|null\.$#'
+			message: '#^Cannot call method questions\(\) on App\\Models\\Quiz\|null\.$#'
 			identifier: method.nonObject
 			count: 1
 			path: app/Models/QuizAttempt.php
@@ -6553,9 +6577,15 @@ parameters:
 			path: app/Services/NotificationService.php
 
 		-
+			message: '#^Cannot access property \$id on App\\Models\\Quiz\|null\.$#'
+			identifier: property.nonObject
+			count: 1
+			path: app/Services/NotificationService.php
+
+		-
 			message: '#^Cannot access property \$id on Illuminate\\Database\\Eloquent\\Model\|null\.$#'
 			identifier: property.nonObject
-			count: 3
+			count: 2
 			path: app/Services/NotificationService.php
 
 		-
@@ -6577,7 +6607,7 @@ parameters:
 			path: app/Services/NotificationService.php
 
 		-
-			message: '#^Cannot access property \$title on Illuminate\\Database\\Eloquent\\Model\|null\.$#'
+			message: '#^Cannot access property \$title on App\\Models\\Quiz\|null\.$#'
 			identifier: property.nonObject
 			count: 2
 			path: app/Services/NotificationService.php

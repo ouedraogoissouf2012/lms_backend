@@ -180,6 +180,32 @@ Pattern de réduction continue : voir `app/Http/Controllers/AuthenticatedControl
 
 ---
 
+## 2026-05-17 — fix(security): Quiz IDOR cross-tenant ([#87](../../../issues/87))
+
+### Contexte
+
+Le `spec-security` audit du Batch 3 PHPStan (PR #86) avait relevé un **HIGH IDOR pré-existant** sur `QuizController::getAttempts()` (aucun check ownership ni tenant). L'investigation a révélé le **même bug pattern MEDIUM** sur `QuizController::showAttempt()` (inline `$user->isAdmin()` ambigu cross-tenant). Les 2 sont traités dans ce fix.
+
+### Fix
+
+- Nouveau `GetQuizAttemptsRequest` qui utilise le trait `ChecksForumAuthorization` (validé par PR #95) avec params Quiz : `ownerUserId = $quiz->created_by`, moderatorRoles = admins + coordinateur
+- `ShowAttemptRequest` modifié pour utiliser le trait avec **double appel court-circuit** (path 1 = attempt-owner, path 2 = quiz-creator), moderatorRoles = admins seuls (PAS coordinateur — supervise mais ne voit pas détails)
+- `QuizController::getAttempts` signature : `Request` → `GetQuizAttemptsRequest`
+- `QuizController::showAttempt` : inline check `isAdmin()` supprimé (déplacé dans le FormRequest)
+- Side-effect : 2 `@property` PHPDoc ajoutés à `Quiz` et `QuizAttempt` (baseline +4 — révèle 4 violations latentes via typage strict)
+
+### Tests
+
+- 8 tests intégration HTTP sur `getAttempts` (`tests/Feature/Quiz/GetQuizAttemptsAuthorizationTest.php`)
+- 7 tests intégration HTTP sur `showAttempt` (`tests/Feature/Quiz/ShowAttemptAuthorizationTest.php`)
+- 16 tests unitaires `ChecksForumAuthorization` (réutilisés, non modifiés)
+
+### Spec
+
+Voir `.claude/specs/quiz-idor-get-attempts/` (requirements + design + tasks).
+
+---
+
 ## 2026-05-17 — fix(security): Forum IDOR cross-tenant ([#91](../../../issues/91))
 
 ### Contexte

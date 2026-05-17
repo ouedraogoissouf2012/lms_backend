@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Services\FileConversion;
 
 use App\Support\Shell\ShellExecutionException;
-use App\Support\Shell\ShellExecutor;
+use App\Support\Shell\ShellExecutorInterface;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Log;
 use RuntimeException;
@@ -46,7 +46,7 @@ final class WordConverter
     ];
 
     public function __construct(
-        private readonly ShellExecutor $shell,
+        private readonly ShellExecutorInterface $shell,
         private readonly FileValidator $validator,
     ) {
     }

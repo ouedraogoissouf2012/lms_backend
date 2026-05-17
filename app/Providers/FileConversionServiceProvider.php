@@ -6,6 +6,7 @@ namespace App\Providers;
 
 use App\Services\FileConversion\FileValidator;
 use App\Services\FileConversion\PdfToPngRenderer;
+use App\Services\FileConversion\PdfToPngRendererInterface;
 use App\Services\FileConversionService;
 use Illuminate\Support\ServiceProvider;
 
@@ -30,6 +31,7 @@ final class FileConversionServiceProvider extends ServiceProvider
     {
         $this->app->singleton(FileValidator::class);
         $this->app->singleton(PdfToPngRenderer::class);
+        $this->app->bind(PdfToPngRendererInterface::class, PdfToPngRenderer::class);
 
         // Facade — singleton because ChapterController holds it for the
         // request lifecycle and there is no per-call state to isolate.

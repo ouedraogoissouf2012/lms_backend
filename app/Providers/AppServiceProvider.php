@@ -5,6 +5,7 @@ namespace App\Providers;
 use App\Models\PersonalAccessToken;
 use App\Services\TenantManager;
 use App\Support\Shell\ShellExecutor;
+use App\Support\Shell\ShellExecutorInterface;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\ServiceProvider;
@@ -22,7 +23,10 @@ class AppServiceProvider extends ServiceProvider
         // ShellExecutor — sole entry point for external process execution
         // (issue #79 Phase A). Singleton because it is stateless and we want
         // any optional logger (debug) to be the same instance across callers.
+        // Bound to the interface so consumers depend on the abstraction
+        // (§1.6 D — Dependency Inversion) and tests can swap a mock.
         $this->app->singleton(ShellExecutor::class);
+        $this->app->bind(ShellExecutorInterface::class, ShellExecutor::class);
     }
 
     /**

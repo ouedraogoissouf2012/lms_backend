@@ -33,7 +33,7 @@ final class PdfConverter
 {
     public function __construct(
         private readonly ConvertApiService $convertApi,
-        private readonly PdfToPngRenderer $pdfRenderer,
+        private readonly PdfToPngRendererInterface $pdfRenderer,
         private readonly FileValidator $validator,
     ) {
     }

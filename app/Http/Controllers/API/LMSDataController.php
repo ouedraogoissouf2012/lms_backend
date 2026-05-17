@@ -49,6 +49,11 @@ class LMSDataController extends Controller
      * - Emploi du temps de la semaine courante
      * - Évaluations programmées
      * - Statistiques (taux présence, moyenne classe)
+     *
+     * @deprecated Migrated to {@see \App\Http\Controllers\API\LMS\LMSClassesController::classeDetails}.
+     *             This copy is unreachable (routes/api.php now points to the new controller) and will be
+     *             removed in Phase C cleanup (PR J of the LMS split spec).
+     *             DO NOT modify this version — fix the new controller instead.
      */
     public function classeDetails(int $classeId, Request $request): JsonResponse
     {
@@ -240,6 +245,11 @@ class LMSDataController extends Controller
      * @param int $classeId
      * @param Request $request
      * @return JsonResponse
+     *
+     * @deprecated Migrated to {@see \App\Http\Controllers\API\LMS\LMSClassesController::classeEtudiants}.
+     *             This copy is unreachable (routes/api.php now points to the new controller) and will be
+     *             removed in Phase C cleanup (PR J of the LMS split spec).
+     *             DO NOT modify this version — fix the new controller instead.
      */
     public function classeEtudiants(int $classeId, Request $request): JsonResponse
     {

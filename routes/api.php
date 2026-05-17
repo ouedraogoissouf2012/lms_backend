@@ -465,14 +465,15 @@ Route::middleware(['auth:sanctum', 'klassci.sync', 'role:enseignant,coordinateur
 // LMS DATA (Classes & Matières) - Routes protégées
 // ============================================
 use App\Http\Controllers\API\LMSDataController;
+use App\Http\Controllers\API\LMS\LMSClassesController;
 
 Route::middleware(['auth:sanctum', 'klassci.sync'])->prefix('lms')->group(function () {
     // Détails complets d'une classe
-    Route::get('/classes/{classeId}', [LMSDataController::class, 'classeDetails'])
+    Route::get('/classes/{classeId}', [LMSClassesController::class, 'classeDetails'])
         ->name('lms.classes.details');
 
     // Étudiants d'une classe
-    Route::get('/classes/{classeId}/etudiants', [LMSDataController::class, 'classeEtudiants'])
+    Route::get('/classes/{classeId}/etudiants', [LMSClassesController::class, 'classeEtudiants'])
         ->name('lms.classes.etudiants');
 
     // Détails complets d'une matière

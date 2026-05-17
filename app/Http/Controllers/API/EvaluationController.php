@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers\API;
 
-use App\Http\Controllers\Controller;
+use App\Http\Controllers\AuthenticatedController;
 use App\Http\Requests\SubmitEvaluationRequest;
 use App\Http\Requests\StoreEvaluationRequest;
 use App\Http\Requests\UpdateEvaluationRequest;
@@ -21,7 +21,7 @@ use Illuminate\Support\Facades\Validator;
 /**
  * Controller pour gérer les évaluations en ligne
  */
-class EvaluationController extends Controller
+class EvaluationController extends AuthenticatedController
 {
     public function __construct(
         private KlassciProxyService $klassciService
@@ -33,7 +33,7 @@ class EvaluationController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
-        $user = $request->user();
+        $user = $this->authenticatedUser($request);
         $query = Evaluation::with(['questions', 'submissions']);
 
         // Filtres
@@ -58,8 +58,9 @@ class EvaluationController extends Controller
         // Enrichir avec les données KLASSCI (classe, matière)
         $enrichedEvaluations = $this->enrichEvaluationsWithKlassciData($evaluations);
 
-        // Si c'est un étudiant, ajouter sa soumission à chaque évaluation
-        if ($user && $user->klassci_id) {
+        // Si c'est un étudiant avec un ID KLASSCI sync, ajouter sa soumission à chaque évaluation.
+        // ($user is guaranteed non-null by AuthenticatedController::authenticatedUser)
+        if ($user->klassci_id) {
             $enrichedEvaluations = collect($enrichedEvaluations)->map(function ($evalArray) use ($user) {
                 $evaluation = Evaluation::find($evalArray['id']);
                 if ($evaluation) {
@@ -393,12 +394,13 @@ class EvaluationController extends Controller
      */
     public function myEvaluations(Request $request): JsonResponse
     {
-        $user = $request->user();
+        $user = $this->authenticatedUser($request);
 
-        if (!$user || !$user->klassci_id) {
+        // $user is guaranteed non-null; check klassci_id sync (business invariant).
+        if (!$user->klassci_id) {
             return response()->json([
                 'success' => false,
-                'message' => 'Utilisateur non authentifié ou sans ID KLASSCI'
+                'message' => 'Utilisateur sans ID KLASSCI synchronisé'
             ], 401);
         }
 
@@ -414,15 +416,10 @@ class EvaluationController extends Controller
     {
         // Récupérer la classe de l'étudiant depuis le dashboard
         try {
-            // Récupérer l'utilisateur authentifié (via Sanctum)
-            $user = $request->user();
-
-            if (!$user) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Utilisateur non authentifié'
-                ], 401);
-            }
+            // Récupérer l'utilisateur authentifié (via Sanctum).
+            // `authenticatedUser()` already enforces non-null + raises 401 via
+            // AuthenticationException if missing, so no explicit null check needed.
+            $user = $this->authenticatedUser($request);
 
             // Récupérer le token KLASSCI depuis la base de données
             $klassciToken = $user->klassci_token;
@@ -639,7 +636,7 @@ class EvaluationController extends Controller
 
         // Vérifier la fenêtre temporelle KLASSCI
         try {
-            $user = $request->user();
+            $user = $this->authenticatedUser($request);
             $klassciToken = $user->klassci_token;
 
             if (!$klassciToken) {
@@ -828,12 +825,13 @@ class EvaluationController extends Controller
     public function getMySubmission(int $id, Request $request): JsonResponse
     {
         try {
-            $user = $request->user();
+            $user = $this->authenticatedUser($request);
 
-            if (!$user || !$user->klassci_id) {
+            // $user guaranteed non-null; check klassci_id sync (business invariant).
+            if (!$user->klassci_id) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Utilisateur non authentifié'
+                    'message' => 'Utilisateur sans ID KLASSCI synchronisé'
                 ], 401);
             }
 
@@ -934,7 +932,7 @@ class EvaluationController extends Controller
         }
 
         try {
-            $user = $request->user();
+            $user = $this->authenticatedUser($request);
             $klassciToken = $user->klassci_token;
 
             if (!$klassciToken) {
@@ -1514,12 +1512,13 @@ class EvaluationController extends Controller
     public function myGrades(Request $request): JsonResponse
     {
         try {
-            $user = $request->user();
+            $user = $this->authenticatedUser($request);
 
-            if (!$user || !$user->klassci_id) {
+            // $user guaranteed non-null; check klassci_id sync (business invariant).
+            if (!$user->klassci_id) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Utilisateur non authentifié ou sans ID KlassCI'
+                    'message' => 'Utilisateur sans ID KlassCI synchronisé'
                 ], 401);
             }
 

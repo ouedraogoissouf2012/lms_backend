@@ -2,59 +2,63 @@
 
 namespace App\Http\Requests;
 
+use App\Http\Requests\Concerns\ChecksFileAuthorization;
+use App\Models\File;
+use App\Models\User;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Support\Facades\Auth;
 
 /**
  * Validates file metadata update requests (PUT /api/files/{id}).
  *
  * ## Purpose
- * Update file metadata while enforcing ownership.
+ * Update file metadata while enforcing ownership AND tenant isolation.
  * Updatable: category, description, visibility.
- * Prevents unauthorized file metadata hijacking.
+ * Prevents unauthorized file metadata hijacking and cross-tenant tampering.
  *
  * ## Updatable Fields
  * - category: document classification (course_material, assignment, resource, other)
  * - description: optional file description (max 500 chars)
  * - is_public: visibility toggle (boolean)
  *
- * ## Authorization Model
- * File owner OR admin can update.
- * Ownership check: file->user_id === auth()->id() OR isAdmin()
- * File must exist (returns 403 if not found to prevent existence leakage).
+ * ## Authorization Model (issue #102 fix)
+ *
+ * Strict tenant isolation via `ChecksFileAuthorization::canModerateFile()`:
+ *   1. supradmin → allow (platform manager bypass)
+ *   2. file.institution_id !== user.institution_id → deny
+ *   3. file.user_id === user.id → allow (owner)
+ *   4. user.role ∈ [admin, administrateur, superAdmin] → allow (admin intra-tenant)
+ *   5. else → deny
+ *
+ * Previous version used `$user->isAdmin()` which ambiguously allowed any admin
+ * (including intra-tenant ones) to update files cross-tenant (HIGH IDOR).
  *
  * ## 10-year consideration
  * Enum values (category) must match File model fillable + UploadFileRequest rules.
  * If categories change, update: rules(), messages(), and UploadFileRequest together.
- *
- * Performance: File::find() in authorize() acceptable (single lookup, indexed by id).
  */
 final class UpdateFileRequest extends FormRequest
 {
+    use ChecksFileAuthorization;
+
     /**
-     * Verify file ownership before allowing update.
-     *
-     * @return bool
+     * Verify file ownership + tenant isolation before allowing update.
      */
     public function authorize(): bool
     {
-        $user = auth()->user();
-        if (!$user) {
-            return false;
-        }
-
+        $user = Auth::user();
         $file = $this->route('file');
-        if (!$file) {
-            return false;
-        }
 
-        // Owner OR admin
-        return $file->user_id === $user->id || $user->isAdmin();
+        return $this->canModerateFile(
+            $file instanceof File ? $file : null,
+            $user instanceof User ? $user : null,
+        );
     }
 
     /**
      * Get validation rules for file metadata update.
      *
-     * @return array
+     * @return array<string, array<int, string>>
      */
     public function rules(): array
     {
@@ -79,7 +83,7 @@ final class UpdateFileRequest extends FormRequest
     /**
      * Custom error messages in French.
      *
-     * @return array
+     * @return array<string, string>
      */
     public function messages(): array
     {

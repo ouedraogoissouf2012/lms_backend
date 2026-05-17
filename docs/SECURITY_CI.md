@@ -180,6 +180,30 @@ Pattern de réduction continue : voir `app/Http/Controllers/AuthenticatedControl
 
 ---
 
+## 2026-05-17 — fix(security): File IDOR cross-tenant ([#102](../../../issues/102))
+
+### Contexte
+
+Audit `spec-security` du Batch 7 PHPStan (PR #101) a remonté un HIGH IDOR pré-existant. L'investigation a étendu le scope à 5 méthodes affectées : `show`, `download`, `stats`, `UpdateFileRequest::authorize()`, `DeleteFileRequest::authorize()`. Toutes utilisaient `$user->isAdmin()` ambigu (mélange intra-tenant et `supradmin`) sans check `institution_id`.
+
+### Fix
+
+- Nouveau trait `ChecksFileAuthorization` avec 2 méthodes : `canReadFile` (avec bypass `is_public`) et `canModerateFile` (sans `is_public`)
+- 5 méthodes Files migrées vers le trait
+- `stats()` filtre par tenant + supradmin bypass + cache per-tenant (pattern #98 Notifications)
+- 1 `@property` ajouté à `File` model (`is_public`, `institution_id`, `user_id`, `id`)
+
+### Tests
+
+- 14 tests unit `ChecksFileAuthorizationTest`
+- 17 tests Feature HTTP (read + moderate + stats)
+
+### Spec
+
+`.claude/specs/file-idor-cross-tenant/`
+
+---
+
 ## 2026-05-17 — fix(security): Quiz IDOR cross-tenant ([#87](../../../issues/87))
 
 ### Contexte

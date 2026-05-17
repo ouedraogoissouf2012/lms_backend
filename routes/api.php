@@ -363,19 +363,24 @@ Route::middleware(['auth:sanctum', 'klassci.sync', 'role:enseignant,coordinateur
 // ============================================
 use App\Http\Controllers\API\FileController;
 
-// Routes accessibles à tous les utilisateurs authentifiés
+// Routes accessibles à tous les utilisateurs authentifiés.
+// IMPORTANT: les routes statiques (`files/upload`, `files/stats`) DOIVENT être
+// déclarées AVANT `files/{id}` — sinon Laravel matche `{id}=upload|stats`
+// dans l'ordre et la route statique devient inaccessible (404).
 Route::middleware(['auth:sanctum', 'klassci.sync'])->group(function () {
-    // Liste et consultation des fichiers
+    // Liste
     Route::get('files', [FileController::class, 'index']);
-    Route::get('files/{id}', [FileController::class, 'show']);
-    Route::get('files/{id}/download', [FileController::class, 'download'])->name('api.files.download');
 
     // Upload de fichiers (Tous peuvent uploader) - Rate limited: 60/min (with size limit)
     Route::post('files/upload', [FileController::class, 'upload'])
         ->middleware('throttle:60,1');
 
-    // Statistiques
+    // Statistiques (déclarée avant `files/{id}` pour éviter le matching de `{id}=stats`)
     Route::get('files/stats', [FileController::class, 'stats']);
+
+    // Consultation par id (après les routes statiques)
+    Route::get('files/{id}', [FileController::class, 'show']);
+    Route::get('files/{id}/download', [FileController::class, 'download'])->name('api.files.download');
 
     // Mise à jour et suppression (propriétaire ou admin)
     Route::put('files/{file}', [FileController::class, 'update'])

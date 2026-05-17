@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\AuthenticatedController;
+use App\Http\Requests\Concerns\ChecksFileAuthorization;
 use App\Http\Requests\ListFilesRequest;
 use App\Http\Requests\UploadFileRequest;
 use App\Http\Requests\UpdateFileRequest;
@@ -10,6 +11,7 @@ use App\Http\Requests\DeleteFileRequest;
 use App\Models\File;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
@@ -20,6 +22,8 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
  */
 class FileController extends AuthenticatedController
 {
+    use ChecksFileAuthorization;
+
     /**
      * Configuration — now standardized in UploadFileRequest
      * For reference: 30 MB max, strict MIME types (pdf,doc,docx,xls,xlsx,ppt,pptx,jpg,jpeg,png,gif)
@@ -181,9 +185,8 @@ class FileController extends AuthenticatedController
             ], 404);
         }
 
-        // Vérifier les permissions
-        $user = $this->authenticatedUser($request);
-        if (!$file->is_public && !$user->isAdmin() && $file->user_id !== $user->id) {
+        // Authorization (tenant + ownership + admin + supradmin bypass) — issue #102 fix
+        if (!$this->canReadFile($file, $this->authenticatedUser($request))) {
             return response()->json([
                 'success' => false,
                 'message' => 'Accès refusé',
@@ -214,9 +217,8 @@ class FileController extends AuthenticatedController
             ], 404);
         }
 
-        // Vérifier les permissions
-        $user = $this->authenticatedUser($request);
-        if (!$file->is_public && !$user->isAdmin() && $file->user_id !== $user->id) {
+        // Authorization (tenant + ownership + admin + supradmin bypass) — issue #102 fix
+        if (!$this->canReadFile($file, $this->authenticatedUser($request))) {
             return response()->json([
                 'success' => false,
                 'message' => 'Accès refusé',
@@ -273,40 +275,65 @@ class FileController extends AuthenticatedController
 
     /**
      * GET /api/files/stats
-     * Statistiques sur les fichiers
+     * Statistiques sur les fichiers.
+     *
+     * Tenant isolation (issue #102 fix):
+     *   - supradmin sees global counts cross-tenant
+     *   - non-supradmin sees counts scoped to their institution
+     *   - students additionally see their own files only (within their tenant)
+     *
+     * Cache key namespaced per institution + role to prevent cross-tenant leak
+     * via Cache::remember (same pattern as #98 NotificationsController::stats).
      */
     public function stats(Request $request): JsonResponse
     {
-        $user = $this->authenticatedUser($request);
+        $caller = $this->authenticatedUser($request);
+        $isSupradmin = $caller->role === 'supradmin';
+        $isStudent = $caller->isStudent();
 
-        $query = File::query();
+        $cacheKey = $isSupradmin
+            ? 'files_stats_global'
+            : ($isStudent
+                ? "files_stats_inst_{$caller->institution_id}_user_{$caller->id}"
+                : "files_stats_inst_{$caller->institution_id}");
+        $cacheTTL = 300; // 5 minutes
 
-        // Les étudiants ne voient que leurs propres stats
-        if ($user->isStudent()) {
-            $query->where('user_id', $user->id);
-        }
+        $applyScope = function ($query) use ($caller, $isSupradmin, $isStudent) {
+            if ($isSupradmin) {
+                return $query;
+            }
+            $query->where('institution_id', $caller->institution_id);
+            if ($isStudent) {
+                $query->where('user_id', $caller->id);
+            }
+            return $query;
+        };
 
-        $stats = [
-            'total_files' => $query->count(),
-            'total_size_bytes' => $query->sum('size_bytes'),
-            'total_downloads' => $query->sum('downloads_count'),
-            'by_type' => $query->selectRaw('type, COUNT(*) as count, SUM(size_bytes) as total_size')
-                ->groupBy('type')
-                ->get(),
-            'by_category' => $query->selectRaw('category, COUNT(*) as count')
-                ->whereNotNull('category')
-                ->groupBy('category')
-                ->get(),
-            'recent_uploads' => File::with('user:id,name')
-                ->when($user->isStudent(), fn($q) => $q->where('user_id', $user->id))
-                ->orderBy('created_at', 'desc')
-                ->limit(5)
-                ->get(),
-        ];
+        $stats = Cache::remember($cacheKey, $cacheTTL, function () use ($applyScope) {
+            $payload = [
+                'total_files' => $applyScope(File::query())->count(),
+                'total_size_bytes' => $applyScope(File::query())->sum('size_bytes'),
+                'total_downloads' => $applyScope(File::query())->sum('downloads_count'),
+                'by_type' => $applyScope(File::query())
+                    ->selectRaw('type, COUNT(*) as count, SUM(size_bytes) as total_size')
+                    ->groupBy('type')
+                    ->get(),
+                'by_category' => $applyScope(File::query())
+                    ->selectRaw('category, COUNT(*) as count')
+                    ->whereNotNull('category')
+                    ->groupBy('category')
+                    ->get(),
+                'recent_uploads' => $applyScope(File::with('user:id,name'))
+                    ->orderBy('created_at', 'desc')
+                    ->limit(5)
+                    ->get(),
+            ];
 
-        // Formater la taille totale
-        $totalSizeMB = round($stats['total_size_bytes'] / (1024 * 1024), 2);
-        $stats['total_size_formatted'] = $totalSizeMB . ' MB';
+            $totalSizeMB = round((float) $payload['total_size_bytes'] / (1024 * 1024), 2);
+            $payload['total_size_formatted'] = $totalSizeMB . ' MB';
+
+            return $payload;
+        });
 
         return response()->json([
             'success' => true,

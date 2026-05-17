@@ -409,12 +409,6 @@ parameters:
 			path: app/Http/Controllers/API/DashboardController.php
 
 		-
-			message: '#^Cannot access property \$id on App\\Models\\User\|null\.$#'
-			identifier: property.nonObject
-			count: 27
-			path: app/Http/Controllers/API/DashboardController.php
-
-		-
 			message: '#^Cannot access property \$id on Illuminate\\Database\\Eloquent\\Model\|null\.$#'
 			identifier: property.nonObject
 			count: 2

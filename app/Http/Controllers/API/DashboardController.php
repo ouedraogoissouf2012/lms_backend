@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers\API;
 
-use App\Http\Controllers\Controller;
+use App\Http\Controllers\AuthenticatedController;
 use App\Models\Lesson;
 use App\Models\LessonProgress;
 use App\Models\Quiz;
@@ -19,7 +19,7 @@ use Illuminate\Support\Facades\DB;
  *
  * Fournit les données pour les tableaux de bord étudiant et enseignant
  */
-class DashboardController extends Controller
+class DashboardController extends AuthenticatedController
 {
     /**
      * Dashboard Étudiant
@@ -36,7 +36,7 @@ class DashboardController extends Controller
      */
     public function student(Request $request): JsonResponse
     {
-        $user = $request->user();
+        $user = $this->authenticatedUser($request);
 
         // 1. Cours en cours
         $ongoingLessons = LessonProgress::query()
@@ -216,7 +216,7 @@ class DashboardController extends Controller
      */
     public function teacher(Request $request): JsonResponse
     {
-        $user = $request->user();
+        $user = $this->authenticatedUser($request);
 
         // 1. Statistiques cours créés
         $totalLessons = Lesson::where('enseignant_id', $user->id)->count();
@@ -384,7 +384,7 @@ class DashboardController extends Controller
      */
     public function stats(Request $request): JsonResponse
     {
-        $tenantUrl = $request->user()?->klassci_tenant_url;
+        $tenantUrl = $this->authenticatedUser($request)->klassci_tenant_url;
 
         $totalUsers = User::when($tenantUrl, fn($q) => $q->where('klassci_tenant_url', $tenantUrl))->count();
         $totalStudents = User::when($tenantUrl, fn($q) => $q->where('klassci_tenant_url', $tenantUrl))->where('role', 'etudiant')->count();

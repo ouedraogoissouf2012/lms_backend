@@ -156,8 +156,20 @@ composer phpstan:baseline
 
 ### Limitations connues
 
-- La baseline contient 1648 violations grandfathered. Catégorisation mesurée : ~480 sont des bugs réels (null-safety, property/method.notFound, argument.type), le reste sont des annotations manquantes. Anti-pattern identifié et écarté : `barryvdh/laravel-ide-helper` + `scanFiles:` (testé empiriquement, baseline 1648 → 1751, +103 violations à cause de `_ide_helper.php` qui redéfinit les classes Laravel et casse la résolution Larastan).
+- La baseline contient 1631 violations grandfathered (initialement 1648). Catégorisation mesurée : ~480 sont des bugs réels (null-safety, property/method.notFound, argument.type), le reste sont des annotations manquantes. Anti-pattern identifié et écarté : `barryvdh/laravel-ide-helper` + `scanFiles:` (testé empiriquement, baseline 1648 → 1751, +103 violations à cause de `_ide_helper.php` qui redéfinit les classes Laravel et casse la résolution Larastan).
 - Quand `app/Http/Controllers/API/LMSDataController.php` (>2000 lignes) sera splitté (TIER 1 du `REFACTORING_ROADMAP.md`), une grosse partie de la baseline tombera
+
+### Réduction progressive — historique
+
+| PR | Concern | Baseline avant → après | Notes |
+|---|---|---|---|
+| #71 | adoption initiale | (initial) → 1648 | grandfathered en bloc |
+| #76 | KlassciProxyService Priority 2 fix | 1648 → 1646 (−2) | `instanceof User` narrow |
+| #81 | FileConversionService split (façade) | 1646 → 1634 (−12) | entries obsolètes du monolithe |
+| #83 | `AuthenticatedController` base class | 1634 → 1634 (0) | infrastructure seule, pas de migration |
+| Batch 1 (cette PR) | `AuthController` migré | 1634 → 1631 (−3) | 1× `createToken` + 2× `currentAccessToken` `User\|null` éliminés |
+
+Pattern de réduction continue : voir `app/Http/Controllers/AuthenticatedController.php` et migrer les controllers protégés par `auth:sanctum` qui appellent `Auth::user()` ou `$request->user()` vers `$this->authenticatedUser($request)`.
 
 ---
 

@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers\API;
 
-use App\Http\Controllers\Controller;
+use App\Http\Controllers\AuthenticatedController;
 use App\Services\KlassciProxyService;
 use App\Services\ClasseSyncService;
 use App\Services\TenantManager;
@@ -22,7 +22,7 @@ use Illuminate\Validation\ValidationException;
  *
  * Gère l'authentification via l'API KLASSCI et génère des tokens Sanctum locaux
  */
-class AuthController extends Controller
+class AuthController extends AuthenticatedController
 {
     public function __construct(
         private KlassciProxyService $klassciService,
@@ -253,14 +253,7 @@ class AuthController extends Controller
     public function me(Request $request): JsonResponse
     {
         try {
-            $user = $request->user();
-
-            if (!$user) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Non authentifié',
-                ], 401);
-            }
+            $user = $this->authenticatedUser($request);
 
             // Récupérer les données complètes depuis KLASSCI si besoin
             try {
@@ -299,7 +292,7 @@ class AuthController extends Controller
     {
         try {
             // Révoquer le token Sanctum actuel
-            $request->user()->currentAccessToken()->delete();
+            $this->authenticatedUser($request)->currentAccessToken()->delete();
 
             // Optionnel : appeler logout KLASSCI
             try {
@@ -328,10 +321,10 @@ class AuthController extends Controller
     public function refresh(Request $request): JsonResponse
     {
         try {
-            $user = $request->user();
+            $user = $this->authenticatedUser($request);
 
             // Révoquer l'ancien token
-            $request->user()->currentAccessToken()->delete();
+            $user->currentAccessToken()->delete();
 
             // Créer un nouveau token
             $newToken = $user->createToken('lms-backend-token', ['lms:access'])->plainTextToken;

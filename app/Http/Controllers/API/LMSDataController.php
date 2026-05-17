@@ -1466,6 +1466,11 @@ class LMSDataController extends Controller
 
     /**
      * GET /api/lms/notifications/preferences/{userId}
+     *
+     * @deprecated Migrated to {@see \App\Http\Controllers\API\LMS\LMSNotificationsPreferencesController::getNotificationPreferences}.
+     *             This copy is unreachable (routes/api.php now points to the new controller) and will be
+     *             removed in Phase C cleanup (PR J of the LMS split spec).
+     *             DO NOT modify this version — fix the new controller instead.
      */
     public function getNotificationPreferences(int $userId, Request $request): JsonResponse
     {
@@ -2143,6 +2148,11 @@ class LMSDataController extends Controller
 
     /**
      * POST /api/lms/notifications/send-session-reminder
+     *
+     * @deprecated Migrated to {@see \App\Http\Controllers\API\LMS\LMSNotificationsPreferencesController::sendSessionReminder}.
+     *             This copy is unreachable (routes/api.php now points to the new controller) and will be
+     *             removed in Phase C cleanup (PR J of the LMS split spec).
+     *             DO NOT modify this version — fix the new controller instead.
      */
     public function sendSessionReminder(\App\Http\Requests\SendSessionReminderRequest $request): JsonResponse
     {

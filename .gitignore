@@ -67,6 +67,7 @@ screenshot_*.png
 !/tests/Unit/Rules/**
 !/tests/Unit/Support/**
 !/tests/Unit/FileConversion/**
+!/tests/Unit/Http/**
 !/tests/Feature/Requests/**
 !/tests/Feature/ProxyRouteSecurityTest.php
 !/tests/Feature/ResolveInstitutionMiddlewareTest.php

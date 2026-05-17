@@ -2,16 +2,15 @@
 
 namespace App\Http\Controllers\API;
 
-use App\Http\Controllers\Controller;
+use App\Http\Controllers\AuthenticatedController;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use App\Models\User;
 use App\Models\Lesson;
 use App\Models\Evaluation;
 
-class SearchController extends Controller
+class SearchController extends AuthenticatedController
 {
     /**
      * Recherche globale dans le système
@@ -24,7 +23,7 @@ class SearchController extends Controller
         ]);
 
         $query = $request->input('query');
-        $user = Auth::user();
+        $user = $this->authenticatedUser($request);
         $limit = $request->input('limit', 5); // Limite par catégorie
 
         $cacheKey = "global_search_" . md5($query . $user->id . $limit);
@@ -205,7 +204,7 @@ class SearchController extends Controller
         ]);
 
         $query = $request->input('query');
-        $user = Auth::user();
+        $user = $this->authenticatedUser($request);
         $limit = 10;
 
         $suggestions = [];
@@ -256,9 +255,9 @@ class SearchController extends Controller
     /**
      * Historique de recherche de l'utilisateur
      */
-    public function searchHistory()
+    public function searchHistory(Request $request)
     {
-        $user = Auth::user();
+        $user = $this->authenticatedUser($request);
         $cacheKey = "search_history_user_{$user->id}";
 
         $history = Cache::get($cacheKey, []);
@@ -278,7 +277,7 @@ class SearchController extends Controller
             'query' => 'required|string|max:100'
         ]);
 
-        $user = Auth::user();
+        $user = $this->authenticatedUser($request);
         $query = $request->input('query');
         $cacheKey = "search_history_user_{$user->id}";
 

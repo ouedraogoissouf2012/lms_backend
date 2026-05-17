@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers\API;
 
-use App\Http\Controllers\Controller;
+use App\Http\Controllers\AuthenticatedController;
 use App\Http\Requests\ListFilesRequest;
 use App\Http\Requests\UploadFileRequest;
 use App\Http\Requests\UpdateFileRequest;
@@ -18,7 +18,7 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 /**
  * Controller pour la gestion des fichiers
  */
-class FileController extends Controller
+class FileController extends AuthenticatedController
 {
     /**
      * Configuration — now standardized in UploadFileRequest
@@ -34,7 +34,7 @@ class FileController extends Controller
     {
         $query = File::with(['user:id,name,email,role']);
 
-        $user = $request->user();
+        $user = $this->authenticatedUser($request);
 
         // Les étudiants ne voient que les fichiers publics ou leurs propres fichiers
         if ($user->isStudent()) {
@@ -139,7 +139,7 @@ class FileController extends Controller
         $mimeType = $uploadedFile->getMimeType();
 
         $file = File::create([
-            'user_id' => $request->user()->id,
+            'user_id' => $this->authenticatedUser($request)->id,
             'fileable_type' => $request->fileable_type,
             'fileable_id' => $request->fileable_id,
             'original_name' => $originalName,
@@ -182,7 +182,7 @@ class FileController extends Controller
         }
 
         // Vérifier les permissions
-        $user = $request->user();
+        $user = $this->authenticatedUser($request);
         if (!$file->is_public && !$user->isAdmin() && $file->user_id !== $user->id) {
             return response()->json([
                 'success' => false,
@@ -215,7 +215,7 @@ class FileController extends Controller
         }
 
         // Vérifier les permissions
-        $user = $request->user();
+        $user = $this->authenticatedUser($request);
         if (!$file->is_public && !$user->isAdmin() && $file->user_id !== $user->id) {
             return response()->json([
                 'success' => false,
@@ -277,7 +277,7 @@ class FileController extends Controller
      */
     public function stats(Request $request): JsonResponse
     {
-        $user = $request->user();
+        $user = $this->authenticatedUser($request);
 
         $query = File::query();
 

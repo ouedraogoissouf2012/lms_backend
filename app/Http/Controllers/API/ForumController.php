@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers\API;
 
-use App\Http\Controllers\Controller;
+use App\Http\Controllers\AuthenticatedController;
 use App\Http\Requests\StoreForumTopicRequest;
 use App\Http\Requests\UpdateForumTopicRequest;
 use App\Http\Requests\DeleteForumTopicRequest;
@@ -20,7 +20,7 @@ use Illuminate\Http\Request;
 /**
  * Controller pour le forum de discussion
  */
-class ForumController extends Controller
+class ForumController extends AuthenticatedController
 {
     /**
      * GET /api/forum/topics
@@ -79,9 +79,10 @@ class ForumController extends Controller
      */
     public function store(StoreForumTopicRequest $request): JsonResponse
     {
+        $user = $this->authenticatedUser($request);
         $data = $request->validated();
-        $data['user_id'] = $request->user()->id;
-        $data['institution_id'] = $request->user()->institution_id;
+        $data['user_id'] = $user->id;
+        $data['institution_id'] = $user->institution_id;
         $data['last_activity_at'] = now();
 
         $topic = ForumTopic::create($data);
@@ -154,27 +155,28 @@ class ForumController extends Controller
      */
     public function storePost(StoreForumPostRequest $request, ForumTopic $topic): JsonResponse
     {
+        $user = $this->authenticatedUser($request);
         $data = $request->validated();
         $data['topic_id'] = $topic->id;
-        $data['user_id'] = $request->user()->id;
-        $data['institution_id'] = $request->user()->institution_id;
+        $data['user_id'] = $user->id;
+        $data['institution_id'] = $user->institution_id;
 
         $post = ForumPost::create($data);
         $post->load('user:id,name,email,role');
 
         // Créer une notification pour l'auteur du topic (sauf si c'est lui qui répond)
-        if ($topic->user_id !== $request->user()->id) {
+        if ($topic->user_id !== $user->id) {
             \App\Models\Notification::create([
                 'user_id' => $topic->user_id,
                 'type' => \App\Models\Notification::TYPE_FORUM_REPLY,
                 'title' => 'Nouvelle réponse sur votre discussion',
-                'message' => $request->user()->name . ' a répondu à votre discussion "' . $topic->title . '"',
+                'message' => $user->name . ' a répondu à votre discussion "' . $topic->title . '"',
                 'data' => [
                     'topic_id' => $topic->id,
                     'post_id' => $post->id,
-                    'author_name' => $request->user()->name,
+                    'author_name' => $user->name,
                 ],
-                'institution_id' => $request->user()->institution_id,
+                'institution_id' => $user->institution_id,
             ]);
         }
 
@@ -183,21 +185,21 @@ class ForumController extends Controller
             $parentPost = ForumPost::find($request->parent_id);
 
             if ($parentPost &&
-                $parentPost->user_id !== $request->user()->id &&
+                $parentPost->user_id !== $user->id &&
                 $parentPost->user_id !== $topic->user_id) {
 
                 \App\Models\Notification::create([
                     'user_id' => $parentPost->user_id,
                     'type' => \App\Models\Notification::TYPE_FORUM_REPLY,
                     'title' => 'Nouvelle réponse à votre message',
-                    'message' => $request->user()->name . ' a répondu à votre message dans "' . $topic->title . '"',
+                    'message' => $user->name . ' a répondu à votre message dans "' . $topic->title . '"',
                     'data' => [
                         'topic_id' => $topic->id,
                         'post_id' => $post->id,
                         'parent_post_id' => $parentPost->id,
-                        'author_name' => $request->user()->name,
+                        'author_name' => $user->name,
                     ],
-                    'institution_id' => $request->user()->institution_id,
+                    'institution_id' => $user->institution_id,
                 ]);
             }
         }
@@ -245,7 +247,7 @@ class ForumController extends Controller
      */
     public function markAsSolution(MarkPostAsSolutionRequest $request, ForumPost $post): JsonResponse
     {
-        $user = $request->user();
+        $user = $this->authenticatedUser($request);
         $topic = $post->topic;
 
         $post->markAsSolution();

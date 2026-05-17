@@ -468,6 +468,7 @@ use App\Http\Controllers\API\LMSDataController;
 use App\Http\Controllers\API\LMS\LMSClassesController;
 use App\Http\Controllers\API\LMS\LMSEnseignantsController;
 use App\Http\Controllers\API\LMS\LMSMatieresController;
+use App\Http\Controllers\API\LMS\LMSNotificationsPreferencesController;
 
 Route::middleware(['auth:sanctum', 'klassci.sync'])->prefix('lms')->group(function () {
     // Détails complets d'une classe
@@ -609,11 +610,11 @@ Route::middleware(['auth:sanctum', 'klassci.sync'])->prefix('lms')->group(functi
     // ============================================
 
     // Préférences de notification d'un utilisateur
-    Route::get('/notifications/preferences/{userId}', [LMSDataController::class, 'getNotificationPreferences'])
+    Route::get('/notifications/preferences/{userId}', [LMSNotificationsPreferencesController::class, 'getNotificationPreferences'])
         ->name('lms.notifications.preferences');
 
     // Envoyer rappel de séance
-    Route::post('/notifications/send-session-reminder', [LMSDataController::class, 'sendSessionReminder'])
+    Route::post('/notifications/send-session-reminder', [LMSNotificationsPreferencesController::class, 'sendSessionReminder'])
         ->name('lms.notifications.send-session-reminder');
 });
 

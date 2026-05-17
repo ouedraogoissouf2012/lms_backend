@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers\API;
 
-use App\Http\Controllers\Controller;
+use App\Http\Controllers\AuthenticatedController;
 use App\Http\Requests\FilterLessonsRequest;
 use App\Http\Requests\StoreLessonRequest;
 use App\Http\Requests\UpdateLessonRequest;
@@ -18,7 +18,7 @@ use Illuminate\Support\Facades\Validator;
 /**
  * Controller pour la gestion des cours (Lessons)
  */
-class LessonController extends Controller
+class LessonController extends AuthenticatedController
 {
     /**
      * GET /api/lessons
@@ -46,7 +46,7 @@ class LessonController extends Controller
         }
 
         // Seuls les cours publiés pour les étudiants
-        $user = $request->user();
+        $user = $this->authenticatedUser($request);
         if ($user->isStudent()) {
             $query->published();
         } elseif ($request->has('status')) {
@@ -79,14 +79,8 @@ class LessonController extends Controller
      */
     public function myCourses(Request $request): JsonResponse
     {
-        $user = $request->user();
-
-        if (!$user) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Non authentifié',
-            ], 401);
-        }
+        // $user guaranteed non-null by `authenticatedUser()` (throws AuthenticationException → 401 otherwise)
+        $user = $this->authenticatedUser($request);
 
         // Construire la requête - Tous les cours publiés
         $query = Lesson::with(['matiere', 'classe'])
@@ -197,7 +191,7 @@ class LessonController extends Controller
      */
     public function show(Request $request, int $id): JsonResponse
     {
-        $user = $request->user();
+        $user = $this->authenticatedUser($request);
         $lesson = Lesson::find($id);
 
         if (!$lesson) {
@@ -242,7 +236,7 @@ class LessonController extends Controller
     {
         // Validation + authorization handled by StoreLessonRequest
         $data = $request->validated();
-        $data['enseignant_id'] = $request->user()->id;
+        $data['enseignant_id'] = $this->authenticatedUser($request)->id;
 
         // Résoudre matiere_id : le frontend peut envoyer un KLASSCI ID
         if (isset($data['matiere_id'])) {
@@ -401,7 +395,7 @@ class LessonController extends Controller
             ], 404);
         }
 
-        $user = $request->user();
+        $user = $this->authenticatedUser($request);
 
         // Étudiant: sa propre progression
         if ($user->isStudent()) {
@@ -464,7 +458,7 @@ class LessonController extends Controller
             ], 404);
         }
 
-        $user = $request->user();
+        $user = $this->authenticatedUser($request);
 
         // Trouver ou créer la progression
         $progress = LessonProgress::firstOrCreate(
@@ -498,7 +492,7 @@ class LessonController extends Controller
             ], 404);
         }
 
-        $user = $request->user();
+        $user = $this->authenticatedUser($request);
 
         $progress = LessonProgress::firstOrCreate(
             ['user_id' => $user->id, 'lesson_id' => $lesson->id]
@@ -541,7 +535,7 @@ class LessonController extends Controller
             ], 404);
         }
 
-        $user = $request->user();
+        $user = $this->authenticatedUser($request);
 
         $progress = LessonProgress::firstOrCreate(
             ['user_id' => $user->id, 'lesson_id' => $lesson->id]

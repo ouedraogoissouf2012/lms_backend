@@ -1729,12 +1729,6 @@ parameters:
 			path: app/Http/Controllers/API/LessonController.php
 
 		-
-			message: '#^Cannot access property \$id on App\\Models\\User\|null\.$#'
-			identifier: property.nonObject
-			count: 8
-			path: app/Http/Controllers/API/LessonController.php
-
-		-
 			message: '#^Cannot access property \$id on mixed\.$#'
 			identifier: property.nonObject
 			count: 1
@@ -1749,30 +1743,6 @@ parameters:
 		-
 			message: '#^Cannot access property \$name on mixed\.$#'
 			identifier: property.nonObject
-			count: 1
-			path: app/Http/Controllers/API/LessonController.php
-
-		-
-			message: '#^Cannot call method isAdmin\(\) on App\\Models\\User\|null\.$#'
-			identifier: method.nonObject
-			count: 1
-			path: app/Http/Controllers/API/LessonController.php
-
-		-
-			message: '#^Cannot call method isCoordinator\(\) on App\\Models\\User\|null\.$#'
-			identifier: method.nonObject
-			count: 1
-			path: app/Http/Controllers/API/LessonController.php
-
-		-
-			message: '#^Cannot call method isStudent\(\) on App\\Models\\User\|null\.$#'
-			identifier: method.nonObject
-			count: 4
-			path: app/Http/Controllers/API/LessonController.php
-
-		-
-			message: '#^Cannot call method isTeacher\(\) on App\\Models\\User\|null\.$#'
-			identifier: method.nonObject
 			count: 1
 			path: app/Http/Controllers/API/LessonController.php
 

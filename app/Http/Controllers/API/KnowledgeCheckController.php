@@ -2,21 +2,20 @@
 
 namespace App\Http\Controllers\API;
 
-use App\Http\Controllers\Controller;
+use App\Http\Controllers\AuthenticatedController;
 use App\Models\KnowledgeCheck;
 use App\Models\KnowledgeCheckAttempt;
 use App\Models\Chapter;
 use App\Models\ChapterProgress;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
 
 /**
  * Controller pour les quiz "Testez vos connaissances"
  * ATTENTION: Ceci est SEPARE des Evaluations KLASSCI
  */
-class KnowledgeCheckController extends Controller
+class KnowledgeCheckController extends AuthenticatedController
 {
     /**
      * Liste des quiz d'un chapitre
@@ -38,7 +37,7 @@ class KnowledgeCheckController extends Controller
             ->get();
 
         // Ajouter les infos de progression pour l'utilisateur connecte
-        $userId = Auth::id();
+        $userId = $this->authenticatedUser($request)->id;
         $quizzes = $quizzes->map(function ($quiz) use ($userId) {
             $quiz->user_passed = $quiz->isPassedByUser($userId);
             $quiz->user_best_score = $quiz->getBestScore($userId);
@@ -89,7 +88,7 @@ class KnowledgeCheckController extends Controller
 
         // Verifier que l'utilisateur a le droit de modifier ce chapitre
         $chapter = Chapter::findOrFail($request->chapter_id);
-        $user = Auth::user();
+        $user = $this->authenticatedUser($request);
 
         if (!$user->isAdmin() && $chapter->enseignant_id !== $user->id) {
             return response()->json([
@@ -110,7 +109,7 @@ class KnowledgeCheckController extends Controller
     /**
      * Obtenir le quiz actif d'un chapitre
      */
-    public function getByChapter(int $chapterId): JsonResponse
+    public function getByChapter(Request $request, int $chapterId): JsonResponse
     {
         $chapter = Chapter::findOrFail($chapterId);
 
@@ -125,7 +124,7 @@ class KnowledgeCheckController extends Controller
             ], 404);
         }
 
-        $userId = Auth::id();
+        $userId = $this->authenticatedUser($request)->id;
         $quiz->user_passed = $quiz->isPassedByUser($userId);
         $quiz->user_best_score = $quiz->getBestScore($userId);
         $quiz->can_attempt = $quiz->canAttempt($userId);
@@ -140,10 +139,10 @@ class KnowledgeCheckController extends Controller
     /**
      * Afficher un quiz specifique
      */
-    public function show(string $id): JsonResponse
+    public function show(Request $request, string $id): JsonResponse
     {
         $quiz = KnowledgeCheck::with('chapter')->findOrFail($id);
-        $userId = Auth::id();
+        $userId = $this->authenticatedUser($request)->id;
 
         $quiz->user_passed = $quiz->isPassedByUser($userId);
         $quiz->user_best_score = $quiz->getBestScore($userId);
@@ -163,7 +162,7 @@ class KnowledgeCheckController extends Controller
     {
         $quiz = KnowledgeCheck::findOrFail($id);
         $chapter = $quiz->chapter;
-        $user = Auth::user();
+        $user = $this->authenticatedUser($request);
 
         if (!$user->isAdmin() && $chapter->enseignant_id !== $user->id) {
             return response()->json([
@@ -211,11 +210,11 @@ class KnowledgeCheckController extends Controller
     /**
      * Supprimer un quiz
      */
-    public function destroy(string $id): JsonResponse
+    public function destroy(Request $request, string $id): JsonResponse
     {
         $quiz = KnowledgeCheck::findOrFail($id);
         $chapter = $quiz->chapter;
-        $user = Auth::user();
+        $user = $this->authenticatedUser($request);
 
         if (!$user->isAdmin() && $chapter->enseignant_id !== $user->id) {
             return response()->json([
@@ -235,10 +234,10 @@ class KnowledgeCheckController extends Controller
     /**
      * Demarrer une tentative de quiz
      */
-    public function startAttempt(string $id): JsonResponse
+    public function startAttempt(Request $request, string $id): JsonResponse
     {
         $quiz = KnowledgeCheck::findOrFail($id);
-        $userId = Auth::id();
+        $userId = $this->authenticatedUser($request)->id;
 
         if (!$quiz->canAttempt($userId)) {
             return response()->json([
@@ -292,7 +291,7 @@ class KnowledgeCheckController extends Controller
     public function submitAttempt(Request $request, string $id): JsonResponse
     {
         $quiz = KnowledgeCheck::findOrFail($id);
-        $userId = Auth::id();
+        $userId = $this->authenticatedUser($request)->id;
 
         $validator = Validator::make($request->all(), [
             'answers' => 'required|array',
@@ -413,10 +412,10 @@ class KnowledgeCheckController extends Controller
     /**
      * Historique des tentatives d'un utilisateur pour un quiz
      */
-    public function myAttempts(string $id): JsonResponse
+    public function myAttempts(Request $request, string $id): JsonResponse
     {
         $quiz = KnowledgeCheck::findOrFail($id);
-        $userId = Auth::id();
+        $userId = $this->authenticatedUser($request)->id;
 
         $attempts = KnowledgeCheckAttempt::where('knowledge_check_id', $id)
             ->where('user_id', $userId)

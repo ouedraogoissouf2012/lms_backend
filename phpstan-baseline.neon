@@ -1123,18 +1123,6 @@ parameters:
 			path: app/Http/Controllers/API/KnowledgeCheckController.php
 
 		-
-			message: '#^Cannot access property \$id on App\\Models\\User\|null\.$#'
-			identifier: property.nonObject
-			count: 3
-			path: app/Http/Controllers/API/KnowledgeCheckController.php
-
-		-
-			message: '#^Cannot call method isAdmin\(\) on App\\Models\\User\|null\.$#'
-			identifier: method.nonObject
-			count: 3
-			path: app/Http/Controllers/API/KnowledgeCheckController.php
-
-		-
 			message: '#^Method App\\Http\\Controllers\\API\\KnowledgeCheckController\:\:checkAnswer\(\) has parameter \$correctAnswer with no type specified\.$#'
 			identifier: missingType.parameter
 			count: 1
@@ -1154,30 +1142,6 @@ parameters:
 
 		-
 			message: '#^Parameter \#1 \$column of method Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\:\:where\(\) expects array\<int\|model property of Illuminate\\Database\\Eloquent\\Model, mixed\>\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\: Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\: void\)\|Illuminate\\Contracts\\Database\\Query\\Expression\|model property of Illuminate\\Database\\Eloquent\\Model, ''user_id'' given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Controllers/API/KnowledgeCheckController.php
-
-		-
-			message: '#^Parameter \#1 \$userId of method App\\Models\\KnowledgeCheck\:\:canAttempt\(\) expects int, int\|string\|null given\.$#'
-			identifier: argument.type
-			count: 5
-			path: app/Http/Controllers/API/KnowledgeCheckController.php
-
-		-
-			message: '#^Parameter \#1 \$userId of method App\\Models\\KnowledgeCheck\:\:getBestScore\(\) expects int, int\|string\|null given\.$#'
-			identifier: argument.type
-			count: 3
-			path: app/Http/Controllers/API/KnowledgeCheckController.php
-
-		-
-			message: '#^Parameter \#1 \$userId of method App\\Models\\KnowledgeCheck\:\:isPassedByUser\(\) expects int, int\|string\|null given\.$#'
-			identifier: argument.type
-			count: 3
-			path: app/Http/Controllers/API/KnowledgeCheckController.php
-
-		-
-			message: '#^Parameter \#1 \$userId of static method App\\Models\\ChapterProgress\:\:getOrCreate\(\) expects int, int\|string\|null given\.$#'
 			identifier: argument.type
 			count: 1
 			path: app/Http/Controllers/API/KnowledgeCheckController.php

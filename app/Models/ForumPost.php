@@ -14,6 +14,11 @@ use App\Models\Traits\BelongsToInstitution;
  * Model ForumPost
  *
  * Représente un post/réponse dans un topic de forum
+ *
+ * @property int $id
+ * @property int $user_id
+ * @property int|null $institution_id
+ * @property-read \App\Models\ForumTopic|null $topic
  */
 class ForumPost extends Model
 {

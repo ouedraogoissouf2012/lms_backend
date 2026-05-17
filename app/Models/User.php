@@ -12,6 +12,10 @@ use App\Models\Traits\BelongsToInstitution;
  * Model User - Synchronisé avec KLASSCI
  *
  * Ce modèle représente les utilisateurs synchronisés depuis l'API KLASSCI
+ *
+ * @property int $id
+ * @property string $role
+ * @property int|null $institution_id
  */
 class User extends Authenticatable
 {

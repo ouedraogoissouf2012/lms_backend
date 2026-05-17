@@ -14,6 +14,10 @@ use App\Models\Traits\BelongsToInstitution;
  * Model ForumTopic
  *
  * Représente un topic de discussion dans le forum
+ *
+ * @property int $id
+ * @property int $user_id
+ * @property int|null $institution_id
  */
 class ForumTopic extends Model
 {

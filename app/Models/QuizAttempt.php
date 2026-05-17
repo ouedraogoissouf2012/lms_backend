@@ -11,6 +11,11 @@ use App\Models\Traits\BelongsToInstitution;
  * Model QuizAttempt
  *
  * Tentative de quiz par un étudiant
+ *
+ * @property int $id
+ * @property int $user_id
+ * @property int|null $institution_id
+ * @property-read \App\Models\Quiz|null $quiz
  */
 class QuizAttempt extends Model
 {

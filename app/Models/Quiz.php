@@ -13,6 +13,10 @@ use App\Models\Traits\BelongsToInstitution;
  * Model Quiz
  *
  * Représente un quiz/évaluation en ligne
+ *
+ * @property int $id
+ * @property int $created_by
+ * @property int|null $institution_id
  */
 class Quiz extends Model
 {

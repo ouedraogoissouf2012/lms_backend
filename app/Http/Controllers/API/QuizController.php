@@ -16,6 +16,7 @@ use App\Http\Requests\SubmitQuizAttemptRequest;
 use App\Http\Requests\GradeAttemptRequest;
 use App\Http\Requests\SaveQuizProgressRequest;
 use App\Http\Requests\ShowAttemptRequest;
+use App\Http\Requests\GetQuizAttemptsRequest;
 use App\Http\Requests\CheckTimeRemainingRequest;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -375,14 +376,11 @@ class QuizController extends AuthenticatedController
             ], 404);
         }
 
-        // Vérifier les permissions
+        // Permissions: tenant + ownership + role enforcement is delegated to
+        // ShowAttemptRequest::authorize() (cf. #87 fix). We still need $user
+        // here because the visibility check below decides whether to expose
+        // corrected questions/answers (feature gate, not access control).
         $user = $this->authenticatedUser($request);
-        if (!$user->isAdmin() && $attempt->user_id !== $user->id && $attempt->quiz->created_by !== $user->id) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Vous n\'êtes pas autorisé',
-            ], 403);
-        }
 
         // Si la tentative est terminée et que le quiz permet la révision
         if ($attempt->status !== 'in_progress' && ($attempt->quiz->allow_review || $user->isTeacher() || $user->isAdmin())) {
@@ -402,9 +400,10 @@ class QuizController extends AuthenticatedController
      * GET /api/quizzes/{quiz}/attempts
      * Liste des tentatives pour un quiz (Enseignants)
      */
-    public function getAttempts(Request $request, Quiz $quiz): JsonResponse
+    public function getAttempts(GetQuizAttemptsRequest $request, Quiz $quiz): JsonResponse
     {
-
+        // Authorization (tenant + ownership + moderator role) is enforced by
+        // GetQuizAttemptsRequest::authorize() (cf. #87 fix).
         $query = $quiz->attempts()->with('user:id,name,email')->submitted();
 
         // Filtres

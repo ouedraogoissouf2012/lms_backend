@@ -997,8 +997,8 @@ parameters:
 			path: app/Http/Controllers/API/ForumController.php
 
 		-
-			message: '#^Cannot access property \$id on App\\Models\\User\|null\.$#'
-			identifier: property.nonObject
+			message: '#^Access to an undefined property App\\Models\\User\:\:\$institution_id\.$#'
+			identifier: property.notFound
 			count: 5
 			path: app/Http/Controllers/API/ForumController.php
 
@@ -1006,18 +1006,6 @@ parameters:
 			message: '#^Cannot access property \$id on Illuminate\\Database\\Eloquent\\Model\|null\.$#'
 			identifier: property.nonObject
 			count: 1
-			path: app/Http/Controllers/API/ForumController.php
-
-		-
-			message: '#^Cannot access property \$institution_id on App\\Models\\User\|null\.$#'
-			identifier: property.nonObject
-			count: 5
-			path: app/Http/Controllers/API/ForumController.php
-
-		-
-			message: '#^Cannot access property \$name on App\\Models\\User\|null\.$#'
-			identifier: property.nonObject
-			count: 5
 			path: app/Http/Controllers/API/ForumController.php
 
 		-

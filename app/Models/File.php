@@ -14,6 +14,11 @@ use App\Models\Traits\BelongsToInstitution;
  * Model File
  *
  * Gestion des fichiers uploadés avec relation polymorphique
+ *
+ * @property int $id
+ * @property int $user_id
+ * @property int|null $institution_id
+ * @property bool $is_public
  */
 class File extends Model
 {

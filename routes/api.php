@@ -466,6 +466,7 @@ Route::middleware(['auth:sanctum', 'klassci.sync', 'role:enseignant,coordinateur
 // ============================================
 use App\Http\Controllers\API\LMSDataController;
 use App\Http\Controllers\API\LMS\LMSClassesController;
+use App\Http\Controllers\API\LMS\LMSEnseignantsController;
 use App\Http\Controllers\API\LMS\LMSMatieresController;
 
 Route::middleware(['auth:sanctum', 'klassci.sync'])->prefix('lms')->group(function () {
@@ -481,8 +482,8 @@ Route::middleware(['auth:sanctum', 'klassci.sync'])->prefix('lms')->group(functi
     Route::get('/matieres/{matiereId}', [LMSMatieresController::class, 'matiereDetails'])
         ->name('lms.matieres.details');
 
-    // Liste des enseignants (NOUVELLE VERSION: depuis KLASSCI externe + cache)
-    Route::get('/enseignants', [LMSDataController::class, 'getEnseignantsFromKlassci'])
+    // Liste des enseignants (depuis KLASSCI externe + cache local 10 min)
+    Route::get('/enseignants', [LMSEnseignantsController::class, 'getEnseignantsFromKlassci'])
         ->name('lms.enseignants.list');
 });
 

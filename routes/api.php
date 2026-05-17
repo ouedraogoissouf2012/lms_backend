@@ -466,6 +466,7 @@ Route::middleware(['auth:sanctum', 'klassci.sync', 'role:enseignant,coordinateur
 // ============================================
 use App\Http\Controllers\API\LMSDataController;
 use App\Http\Controllers\API\LMS\LMSClassesController;
+use App\Http\Controllers\API\LMS\LMSMatieresController;
 
 Route::middleware(['auth:sanctum', 'klassci.sync'])->prefix('lms')->group(function () {
     // Détails complets d'une classe
@@ -477,7 +478,7 @@ Route::middleware(['auth:sanctum', 'klassci.sync'])->prefix('lms')->group(functi
         ->name('lms.classes.etudiants');
 
     // Détails complets d'une matière
-    Route::get('/matieres/{matiereId}', [LMSDataController::class, 'matiereDetails'])
+    Route::get('/matieres/{matiereId}', [LMSMatieresController::class, 'matiereDetails'])
         ->name('lms.matieres.details');
 
     // Liste des enseignants (NOUVELLE VERSION: depuis KLASSCI externe + cache)
@@ -488,7 +489,7 @@ Route::middleware(['auth:sanctum', 'klassci.sync'])->prefix('lms')->group(functi
 // Routes admin/coordinateur uniquement
 Route::middleware(['auth:sanctum', 'klassci.sync', 'role:admin,coordinateur'])->prefix('admin')->group(function () {
     // Liste toutes les matières avec combinaisons complètes
-    Route::get('/matieres', [LMSDataController::class, 'adminMatieresList'])
+    Route::get('/matieres', [LMSMatieresController::class, 'adminMatieresList'])
         ->name('admin.matieres.list');
 });
 
@@ -543,7 +544,7 @@ Route::middleware(['auth:sanctum', 'klassci.sync'])->prefix('lms')->group(functi
         ->name('lms.attendance.history');
 
     // Matières de l'enseignant connecté avec statistiques enrichies
-    Route::get('/teacher/my-matieres', [LMSDataController::class, 'myMatieres'])
+    Route::get('/teacher/my-matieres', [LMSMatieresController::class, 'myMatieres'])
         ->name('lms.teacher.my-matieres')
         ->middleware('role:enseignant,coordinateur');
 

@@ -2,24 +2,32 @@
 
 namespace App\Http\Requests;
 
+use App\Http\Requests\Concerns\ChecksForumAuthorization;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Auth;
 
 /**
  * UpdateForumPostRequest - Update forum post
  *
- * Purpose: Validate & authorize forum post updates with ownership checks
- * Authorization: Owner or admin can update
- * 10-year perspective: is_edited flag tracks modification history for transparency
+ * Purpose: Validate & authorize forum post updates with ownership + tenant isolation.
+ * Authorization: Post owner OR institution-scoped admin within the same tenant.
+ *                Supradmin (platform manager) bypasses tenant isolation by design.
+ * 10-year perspective: is_edited flag tracks modification history for transparency.
  */
 class UpdateForumPostRequest extends FormRequest
 {
+    use ChecksForumAuthorization;
+
     public function authorize(): bool
     {
         $post = $this->route('post');
-        $user = Auth::user();
+        $post = $post instanceof \App\Models\ForumPost ? $post : null;
 
-        return $post->user_id === $user->id || $user->isAdmin();
+        return $this->isForumActionAuthorized(
+            ownerUserId: $post?->user_id,
+            tenantInstitutionId: $post?->institution_id,
+            user: Auth::user(),
+        );
     }
 
     public function rules(): array

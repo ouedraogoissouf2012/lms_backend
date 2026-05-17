@@ -731,8 +731,11 @@ Route::middleware(['auth:sanctum'])->prefix('notifications')->group(function () 
     Route::delete('/read/all', [NotificationsController::class, 'deleteAllRead']);
 });
 
-// Routes admin pour les notifications
-Route::middleware(['auth:sanctum', 'role:coordinateur,superAdmin'])->prefix('admin/notifications')->group(function () {
+// Routes admin pour les notifications.
+// `supradmin` added (issue #98 fix): platform manager can create cross-tenant
+// notifications and view global stats; tenant isolation enforced by FormRequest
+// authorize() + stats() filter logic.
+Route::middleware(['auth:sanctum', 'role:coordinateur,superAdmin,supradmin'])->prefix('admin/notifications')->group(function () {
     // Créer une notification manuelle
     Route::post('/create', [NotificationsController::class, 'create']);
 

@@ -82,6 +82,7 @@ screenshot_*.png
 !/tests/Feature/FileConversion/**
 !/tests/Feature/Forum/**
 !/tests/Feature/Quiz/**
+!/tests/Feature/Notifications/**
 .env.example
 .env.production.example
 package.json

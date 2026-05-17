@@ -219,28 +219,46 @@ class NotificationsController extends AuthenticatedController
     }
 
     /**
-     * Récupérer les statistiques de notifications (admin)
+     * Récupérer les statistiques de notifications (admin).
+     *
+     * Tenant isolation (issue #98 fix):
+     *   - Non-`supradmin` callers see counts scoped to their own institution.
+     *   - `supradmin` (platform manager) sees global counts cross-tenant.
+     *
+     * Cache key is namespaced per institution to prevent cross-tenant leak via
+     * Cache::remember. Each institution gets its own cache slot.
      */
-    public function stats()
+    public function stats(Request $request)
     {
-        $cacheKey = 'notifications_stats_admin';
+        $caller = $this->authenticatedUser($request);
+        $isSupradmin = $caller->role === 'supradmin';
+
+        $cacheKey = $isSupradmin
+            ? 'notifications_stats_global'
+            : "notifications_stats_inst_{$caller->institution_id}";
         $cacheTTL = 300; // 5 minutes
 
-        $stats = Cache::remember($cacheKey, $cacheTTL, function () {
-            $totalNotifications = DB::table('notifications')->count();
-            $unreadNotifications = DB::table('notifications')
+        $stats = Cache::remember($cacheKey, $cacheTTL, function () use ($isSupradmin, $caller) {
+            $applyTenantFilter = function ($query) use ($isSupradmin, $caller) {
+                return $isSupradmin
+                    ? $query
+                    : $query->where('institution_id', $caller->institution_id);
+            };
+
+            $totalNotifications = $applyTenantFilter(DB::table('notifications'))->count();
+            $unreadNotifications = $applyTenantFilter(DB::table('notifications'))
                 ->whereNull('read_at')
                 ->count();
 
-            $last24h = DB::table('notifications')
+            $last24h = $applyTenantFilter(DB::table('notifications'))
                 ->where('created_at', '>=', Carbon::now()->subDay())
                 ->count();
 
-            $last7days = DB::table('notifications')
+            $last7days = $applyTenantFilter(DB::table('notifications'))
                 ->where('created_at', '>=', Carbon::now()->subDays(7))
                 ->count();
 
-            $byType = DB::table('notifications')
+            $byType = $applyTenantFilter(DB::table('notifications'))
                 ->select('type', DB::raw('count(*) as count'))
                 ->groupBy('type')
                 ->get();

@@ -2,15 +2,16 @@
 
 namespace App\Http\Requests;
 
+use App\Models\User;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Support\Facades\Auth;
 
 /**
  * Validates create notification requests (POST /api/admin/notifications/create).
  *
  * ## Purpose
  * Admin/coordinator manually create and send custom notifications to specific users.
- * Prevents unauthorized bulk notifications.
- * Validates notification content (title, message, URL, type).
+ * Prevents unauthorized bulk notifications and cross-tenant notification injection.
  *
  * ## Required Fields
  * - user_id: Target recipient (must exist in database)
@@ -21,42 +22,66 @@ use Illuminate\Foundation\Http\FormRequest;
  * - type: Notification type enum (info, success, warning, danger) — defaults to 'info'
  * - action_url: Call-to-action URL (must be valid URL format if provided)
  *
- * ## Authorization Model
- * 1. User authenticated (via auth:sanctum middleware)
- * 2. User has role coordinateur OR superAdmin (enforced by route middleware + this request)
- * 3. Defense in depth: Authorization checked twice (middleware + FormRequest authorize())
+ * ## Authorization model (issue #98 fix)
  *
- * If ANY check fails → 401/403
+ * 1. **Caller authenticated** (via `auth:sanctum` middleware).
+ * 2. **Caller role** is one of `coordinateur`, `superAdmin`, `supradmin` (defense in
+ *    depth: route middleware `role:` enforces this too).
+ * 3. **Tenant isolation**: unless caller is `supradmin` (platform manager, cross-tenant
+ *    by design — cf. `EnsureRole::userHasRole()` L107-108), `targetUser.institution_id`
+ *    MUST equal `caller.institution_id`. Otherwise the request is rejected (403).
  *
- * ## 10-year consideration
- * Role enum (coordinateur, superAdmin) must match User model.
- * If new admin roles added, update rules and authorize() together.
- * Type enum (info,success,warning,danger) must match Notification model + frontend UI.
+ * Without check 3, a coordinator of institution A could send notifications to users of
+ * institution B (MEDIUM IDOR finding from PR #97 spec-security audit).
  *
- * Performance: exists:users,id validation performs 1 database query (acceptable for single insert).
+ * Side note: the `supradmin` role was previously missing from the route middleware
+ * `role:coordinateur,superAdmin`. Added in routes/api.php L735 to make the bypass
+ * actually reachable, otherwise REQ-2/REQ-5 of the spec would be dead code.
+ *
+ * @see app/Http/Controllers/API/NotificationsController.php (caller)
+ * @see app/Http/Middleware/EnsureRole.php L107-108 (supradmin semantics)
+ * @see .claude/specs/notifications-cross-tenant/design.md §2.1
  */
 final class CreateNotificationRequest extends FormRequest
 {
     /**
-     * Verify user is admin/coordinator.
-     *
-     * @return bool
+     * Authorize: role + tenant isolation (supradmin bypass).
      */
     public function authorize(): bool
     {
-        $user = auth()->user();
-        if (!$user) {
+        $caller = Auth::user();
+        if (!$caller instanceof User) {
             return false;
         }
 
-        // Defense in depth: Route middleware enforces role, this request validates too
-        return in_array($user->role, ['coordinateur', 'superAdmin']);
+        // Role check (defense in depth above route middleware)
+        if (!in_array($caller->role, ['coordinateur', 'superAdmin', 'supradmin'], true)) {
+            return false;
+        }
+
+        // Supradmin bypass tenant isolation (platform manager)
+        if ($caller->role === 'supradmin') {
+            return true;
+        }
+
+        // Tenant check: target user must belong to caller's institution
+        $targetUserId = $this->input('user_id');
+        if (!is_numeric($targetUserId)) {
+            return false;
+        }
+
+        $targetUser = User::find((int) $targetUserId);
+        if ($targetUser === null) {
+            return false;
+        }
+
+        return $targetUser->institution_id === $caller->institution_id;
     }
 
     /**
      * Get validation rules for notification creation.
      *
-     * @return array
+     * @return array<string, array<int, string>>
      */
     public function rules(): array
     {
@@ -90,7 +115,7 @@ final class CreateNotificationRequest extends FormRequest
     /**
      * Custom error messages in French.
      *
-     * @return array
+     * @return array<string, string>
      */
     public function messages(): array
     {

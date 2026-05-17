@@ -317,6 +317,11 @@ class LMSDataController extends Controller
      * - Séances programmées (30 prochains jours)
      * - Évaluations programmées
      * - Statistiques (nb séances, taux réalisation)
+     *
+     * @deprecated Migrated to {@see \App\Http\Controllers\API\LMS\LMSMatieresController::matiereDetails}.
+     *             This copy is unreachable (routes/api.php now points to the new controller) and will be
+     *             removed in Phase C cleanup (PR J of the LMS split spec).
+     *             DO NOT modify this version — fix the new controller instead.
      */
     public function matiereDetails(int $matiereId, Request $request): JsonResponse
     {
@@ -3700,6 +3705,11 @@ class LMSDataController extends Controller
      * Retourne:
      * - Liste des matières enrichies avec combinaisons valides (filière + niveau)
      * - Statistiques globales
+     *
+     * @deprecated Migrated to {@see \App\Http\Controllers\API\LMS\LMSMatieresController::adminMatieresList}.
+     *             This copy is unreachable (routes/api.php now points to the new controller) and will be
+     *             removed in Phase C cleanup (PR J of the LMS split spec).
+     *             DO NOT modify this version — fix the new controller instead.
      */
     public function adminMatieresList(Request $request): JsonResponse
     {
@@ -4178,6 +4188,11 @@ class LMSDataController extends Controller
 
     /**
      * Récupère les matières enrichies pour un enseignant
+     *
+     * @internal Still active here because called by `getEnseignantsFromKlassci()` (below)
+     *           which is not yet migrated (PR B of the LMS split spec).
+     *           Will be migrated to `LMSEnseignantsController` (or a shared service) in PR B,
+     *           then removed from here in Phase C cleanup (PR J).
      */
     private function getMatieresEnrichiesForEnseignant(int $teacherId, ?int $anneeUniversitaireId): \Illuminate\Support\Collection
     {
@@ -4397,6 +4412,11 @@ class LMSDataController extends Controller
      * - Nombre de lessons créées localement (table lessons)
      * - Nombre de séances programmées (KLASSCI)
      * - Nombre d'évaluations programmées (KLASSCI)
+     *
+     * @deprecated Migrated to {@see \App\Http\Controllers\API\LMS\LMSMatieresController::myMatieres}.
+     *             This copy is unreachable (routes/api.php now points to the new controller) and will be
+     *             removed in Phase C cleanup (PR J of the LMS split spec).
+     *             DO NOT modify this version — fix the new controller instead.
      */
     public function myMatieres(Request $request): JsonResponse
     {

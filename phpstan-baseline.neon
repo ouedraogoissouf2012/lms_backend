@@ -6565,6 +6565,96 @@ parameters:
 			path: app/Services/NotificationService.php
 
 		-
+			message: '#^Access to an undefined property App\\Models\\UserClass\:\:\$email\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/SeanceQueryService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\UserClass\:\:\$klassci_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/SeanceQueryService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\UserClass\:\:\$name\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Services/SeanceQueryService.php
+
+		-
+			message: '#^Cannot access offset ''heure_debut'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: app/Services/SeanceQueryService.php
+
+		-
+			message: '#^Cannot access offset ''heure_fin'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: app/Services/SeanceQueryService.php
+
+		-
+			message: '#^Method App\\Services\\SeanceQueryService\:\:buildVisioWindow\(\) has parameter \$seance with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Services/SeanceQueryService.php
+
+		-
+			message: '#^Method App\\Services\\SeanceQueryService\:\:enrichWithVisioData\(\) has parameter \$seance with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Services/SeanceQueryService.php
+
+		-
+			message: '#^Method App\\Services\\SeanceQueryService\:\:getProgrammation\(\) should return array\<string, mixed\>\|null but returns array\<mixed, mixed\>\|null\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Services/SeanceQueryService.php
+
+		-
+			message: '#^Method App\\Services\\SeanceQueryService\:\:resolveParticipants\(\) should return array\<int, array\<string, mixed\>\> but returns array\<mixed\>\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Services/SeanceQueryService.php
+
+		-
+			message: '#^Offset 0 on non\-empty\-list\<string\> on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Services/SeanceQueryService.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\UserClass\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 1
+			path: app/Services/SeanceQueryService.php
+
+		-
+			message: '#^Parameter \#1 \$time of static method Carbon\\Carbon\:\:parse\(\) expects Carbon\\Month\|Carbon\\WeekDay\|DateTimeInterface\|float\|int\|string\|null, mixed given\.$#'
+			identifier: argument.type
+			count: 2
+			path: app/Services/SeanceQueryService.php
+
+		-
+			message: '#^Return type of call to method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\UserClass\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: method.unresolvableReturnType
+			count: 1
+			path: app/Services/SeanceQueryService.php
+
+		-
+			message: '#^Unable to resolve the template type TKey in call to function collect$#'
+			identifier: argument.templateType
+			count: 4
+			path: app/Services/SeanceQueryService.php
+
+		-
+			message: '#^Unable to resolve the template type TValue in call to function collect$#'
+			identifier: argument.templateType
+			count: 4
+			path: app/Services/SeanceQueryService.php
+
+		-
 			message: '#^Method App\\Services\\TenantManager\:\:klassciConfig\(\) return type has no value type specified in iterable type array\.$#'
 			identifier: missingType.iterableValue
 			count: 1

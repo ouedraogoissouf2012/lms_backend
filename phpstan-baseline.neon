@@ -2215,33 +2215,9 @@ parameters:
 			path: app/Http/Controllers/API/QuizController.php
 
 		-
-			message: '#^Cannot access property \$id on App\\Models\\User\|null\.$#'
-			identifier: property.nonObject
-			count: 17
-			path: app/Http/Controllers/API/QuizController.php
-
-		-
 			message: '#^Cannot access property \$show_correct_answers on Illuminate\\Database\\Eloquent\\Model\|null\.$#'
 			identifier: property.nonObject
 			count: 1
-			path: app/Http/Controllers/API/QuizController.php
-
-		-
-			message: '#^Cannot call method isAdmin\(\) on App\\Models\\User\|null\.$#'
-			identifier: method.nonObject
-			count: 3
-			path: app/Http/Controllers/API/QuizController.php
-
-		-
-			message: '#^Cannot call method isStudent\(\) on App\\Models\\User\|null\.$#'
-			identifier: method.nonObject
-			count: 2
-			path: app/Http/Controllers/API/QuizController.php
-
-		-
-			message: '#^Cannot call method isTeacher\(\) on App\\Models\\User\|null\.$#'
-			identifier: method.nonObject
-			count: 2
 			path: app/Http/Controllers/API/QuizController.php
 
 		-

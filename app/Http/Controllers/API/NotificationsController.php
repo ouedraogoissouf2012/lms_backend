@@ -2,26 +2,25 @@
 
 namespace App\Http\Controllers\API;
 
-use App\Http\Controllers\Controller;
+use App\Http\Controllers\AuthenticatedController;
 use App\Http\Requests\MarkAsReadRequest;
 use App\Http\Requests\MarkAllAsReadRequest;
 use App\Http\Requests\DeleteNotificationRequest;
 use App\Http\Requests\DeleteAllReadNotificationsRequest;
 use App\Http\Requests\CreateNotificationRequest;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 
-class NotificationsController extends Controller
+class NotificationsController extends AuthenticatedController
 {
     /**
      * Récupérer toutes les notifications de l'utilisateur connecté
      */
     public function index(Request $request)
     {
-        $user = Auth::user();
+        $user = $this->authenticatedUser($request);
         $perPage = $request->input('per_page', 10);
         $unreadOnly = $request->input('unread_only', false);
 
@@ -53,9 +52,9 @@ class NotificationsController extends Controller
     /**
      * Récupérer les notifications non lues (pour le badge)
      */
-    public function unreadCount()
+    public function unreadCount(Request $request)
     {
-        $user = Auth::user();
+        $user = $this->authenticatedUser($request);
         $cacheKey = "notifications_unread_count_user_{$user->id}";
         $cacheTTL = 60; // 1 minute
 
@@ -76,7 +75,7 @@ class NotificationsController extends Controller
      */
     public function recent(Request $request)
     {
-        $user = Auth::user();
+        $user = $this->authenticatedUser($request);
         $limit = $request->input('limit', 5);
 
         $cacheKey = "notifications_recent_user_{$user->id}_limit_{$limit}";
@@ -117,7 +116,7 @@ class NotificationsController extends Controller
      */
     public function markAsRead($id, MarkAsReadRequest $request)
     {
-        $user = Auth::user();
+        $user = $this->authenticatedUser($request);
         $notification = \App\Models\Notification::where('user_id', $user->id)->findOrFail($id);
 
         if (!$notification->read_at) {
@@ -138,7 +137,7 @@ class NotificationsController extends Controller
      */
     public function markAllAsRead(MarkAllAsReadRequest $request)
     {
-        $user = Auth::user();
+        $user = $this->authenticatedUser($request);
 
         \App\Models\Notification::where('user_id', $user->id)
             ->whereNull('read_at')
@@ -158,7 +157,7 @@ class NotificationsController extends Controller
      */
     public function delete($id, DeleteNotificationRequest $request)
     {
-        $user = Auth::user();
+        $user = $this->authenticatedUser($request);
         $notification = \App\Models\Notification::where('user_id', $user->id)->findOrFail($id);
 
         $notification->delete();
@@ -177,7 +176,7 @@ class NotificationsController extends Controller
      */
     public function deleteAllRead(DeleteAllReadNotificationsRequest $request)
     {
-        $user = Auth::user();
+        $user = $this->authenticatedUser($request);
 
         \App\Models\Notification::where('user_id', $user->id)
             ->whereNotNull('read_at')

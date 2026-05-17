@@ -167,9 +167,45 @@ composer phpstan:baseline
 | #76 | KlassciProxyService Priority 2 fix | 1648 → 1646 (−2) | `instanceof User` narrow |
 | #81 | FileConversionService split (façade) | 1646 → 1634 (−12) | entries obsolètes du monolithe |
 | #83 | `AuthenticatedController` base class | 1634 → 1634 (0) | infrastructure seule, pas de migration |
-| Batch 1 (cette PR) | `AuthController` migré | 1634 → 1631 (−3) | 1× `createToken` + 2× `currentAccessToken` `User\|null` éliminés |
+| Batch 1 (#84) | `AuthController` migré | 1634 → 1631 (−3) | 1× `createToken` + 2× `currentAccessToken` `User\|null` éliminés |
+| Batch 2 (#85) | `DashboardController` migré | 1631 → 1604 (−27) | 3 méthodes migrées + hardening multi-tenant (retrait `?->` sur stats) |
+| Batch 3 (#86) | `QuizController` migré | 1604 → 1580 (−24) | 9 sites migrés ; HIGH IDOR pré-existant relevé → ticket [#87](../../../issues/87) |
+| Batch 4 (#88) | `SearchController` migré | 1580 → 1561 (−19) | 4 sites + signature `searchHistory(Request)` ajoutée |
+| Batch 5 (#90) | `ForumController` migré | 1561 → 1551 (−10 net) | 13 sites DRY (3 extractions) ; +5 révélés `User::institution_id` |
+| Fix #91 (Forum IDOR) | `ChecksForumAuthorization` trait + 7 FormRequests | 1561* → 1529 (−32 net) | side-effect : 3 `@property` PHPDoc sur User/ForumTopic/ForumPost résolvent dette latente |
+
+\* La PR #91 part de `lms` post-Batch 4 (baseline 1561), pas post-Batch 5.
 
 Pattern de réduction continue : voir `app/Http/Controllers/AuthenticatedController.php` et migrer les controllers protégés par `auth:sanctum` qui appellent `Auth::user()` ou `$request->user()` vers `$this->authenticatedUser($request)`.
+
+---
+
+## 2026-05-17 — fix(security): Forum IDOR cross-tenant ([#91](../../../issues/91))
+
+### Contexte
+
+L'audit `spec-security` du Batch 5 PHPStan (PR #90) a remonté 2 vulnérabilités IDOR pré-existantes dans les FormRequests Forum :
+
+- **HIGH** : `CloseTopicRequest` et `PinTopicRequest` autorisaient tout utilisateur authentifié à fermer/épingler n'importe quel topic, indépendamment de l'institution. Seul filtre = middleware `role:` sur la route.
+- **MEDIUM** : 5 FormRequests (`Update/DeleteForumTopic`, `Update/DeleteForumPost`, `MarkPostAsSolution`) vérifiaient l'ownership de l'auteur mais leur branche `$user->isAdmin()` permettait un admin de l'institution A de modifier/supprimer du contenu de l'institution B.
+
+**Cause racine** : `User::isAdmin()` mélange `admin`, `administrateur`, `superAdmin` (intra-tenant) et `supradmin` (cross-tenant légitime).
+
+### Fix
+
+- Trait `App\Http\Requests\Concerns\ChecksForumAuthorization` en **défense en profondeur** au-dessus du global scope `BelongsToInstitution`
+- 7 FormRequests Forum migrés vers le pattern uniforme
+- `User::isAdmin()` n'est plus appelé dans les `authorize()` (sémantique ambiguë évitée — listes de rôles explicites)
+- Side-effect baseline : −32 violations grâce à 3 `@property` PHPDoc ajoutés à `User`, `ForumTopic`, `ForumPost`
+
+### Tests
+
+- 16 tests unitaires sur le trait (`tests/Unit/Http/Requests/Concerns/ChecksForumAuthorizationTest.php`)
+- 13 tests intégration HTTP matrice tenant×rôle (`tests/Feature/Forum/UpdateForumTopicAuthorizationTest.php` + `CloseTopicAuthorizationTest.php`)
+
+### Spec
+
+Voir `.claude/specs/forum-idor-cross-tenant/` (requirements + design + tasks).
 
 ---
 

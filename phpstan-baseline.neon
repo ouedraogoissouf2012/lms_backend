@@ -931,24 +931,6 @@ parameters:
 			path: app/Http/Controllers/API/FileController.php
 
 		-
-			message: '#^Cannot access property \$id on App\\Models\\User\|null\.$#'
-			identifier: property.nonObject
-			count: 6
-			path: app/Http/Controllers/API/FileController.php
-
-		-
-			message: '#^Cannot call method isAdmin\(\) on App\\Models\\User\|null\.$#'
-			identifier: method.nonObject
-			count: 2
-			path: app/Http/Controllers/API/FileController.php
-
-		-
-			message: '#^Cannot call method isStudent\(\) on App\\Models\\User\|null\.$#'
-			identifier: method.nonObject
-			count: 3
-			path: app/Http/Controllers/API/FileController.php
-
-		-
 			message: '#^Parameter \#1 \$category of method Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\File\>\:\:ofCategory\(\) expects string, mixed given\.$#'
 			identifier: argument.type
 			count: 1

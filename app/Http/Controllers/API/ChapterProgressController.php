@@ -2,25 +2,24 @@
 
 namespace App\Http\Controllers\API;
 
-use App\Http\Controllers\Controller;
+use App\Http\Controllers\AuthenticatedController;
 use App\Models\Chapter;
 use App\Models\ChapterProgress;
 use App\Models\KnowledgeCheck;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Facades\Auth;
 
 /**
  * Controller pour la progression des chapitres
  */
-class ChapterProgressController extends Controller
+class ChapterProgressController extends AuthenticatedController
 {
     /**
      * Obtenir la progression d'une lecon pour l'utilisateur connecte
      */
-    public function getLessonProgress(int $lessonId): JsonResponse
+    public function getLessonProgress(Request $request, int $lessonId): JsonResponse
     {
-        $userId = Auth::id();
+        $userId = $this->authenticatedUser($request)->id;
         $progress = ChapterProgress::getLessonProgress($userId, $lessonId);
 
         return response()->json([
@@ -32,9 +31,9 @@ class ChapterProgressController extends Controller
     /**
      * Obtenir la progression d'un chapitre specifique
      */
-    public function getChapterProgress(int $chapterId): JsonResponse
+    public function getChapterProgress(Request $request, int $chapterId): JsonResponse
     {
-        $userId = Auth::id();
+        $userId = $this->authenticatedUser($request)->id;
         $chapter = Chapter::findOrFail($chapterId);
 
         $progress = ChapterProgress::where('user_id', $userId)
@@ -89,7 +88,7 @@ class ChapterProgressController extends Controller
      */
     public function markAsCompleted(Request $request, int $chapterId): JsonResponse
     {
-        $userId = Auth::id();
+        $userId = $this->authenticatedUser($request)->id;
         $chapter = Chapter::findOrFail($chapterId);
 
         // Verifier si l'utilisateur peut acceder a ce chapitre
@@ -146,11 +145,18 @@ class ChapterProgressController extends Controller
     }
 
     /**
-     * Enregistrer le score d'un quiz (appele automatiquement par KnowledgeCheckController)
+     * Enregistrer le score d'un quiz.
+     *
+     * @internal Method has no current callers (grep confirms 0 hit). PHPDoc mentions
+     *           "appele automatiquement par KnowledgeCheckController" but no such
+     *           call exists. Kept for now in case future integration uses it; the
+     *           `Request` parameter was added in Batch 9 (#102 fix-pattern) for
+     *           consistency with the AuthenticatedController contract. If still
+     *           dead code at next refactor pass, mark private or remove.
      */
-    public function recordQuizScore(int $chapterId, int $score, bool $passed): void
+    public function recordQuizScore(Request $request, int $chapterId, int $score, bool $passed): void
     {
-        $userId = Auth::id();
+        $userId = $this->authenticatedUser($request)->id;
         $progress = ChapterProgress::getOrCreate($userId, $chapterId);
 
         // Mettre a jour le score (garder le meilleur)
@@ -172,7 +178,7 @@ class ChapterProgressController extends Controller
      */
     public function updateTimeSpent(Request $request, int $chapterId): JsonResponse
     {
-        $userId = Auth::id();
+        $userId = $this->authenticatedUser($request)->id;
         $chapter = Chapter::findOrFail($chapterId);
 
         $request->validate([
@@ -196,10 +202,11 @@ class ChapterProgressController extends Controller
      */
     public function resetLessonProgress(Request $request, int $lessonId): JsonResponse
     {
-        $user = Auth::user();
+        $user = $this->authenticatedUser($request);
 
-        // Verifier les permissions
-        if (!$user->isAdmin() && !$user->isEnseignant()) {
+        // Verifier les permissions (latent typo: isEnseignant() did not exist on User —
+        // fixed to isTeacher() which is the actual method, cf. User.php:115).
+        if (!$user->isAdmin() && !$user->isTeacher()) {
             return response()->json([
                 'success' => false,
                 'message' => 'Non autorise',

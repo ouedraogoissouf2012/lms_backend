@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers\API;
 
-use App\Http\Controllers\Controller;
+use App\Http\Controllers\AuthenticatedController;
 use App\Models\Quiz;
 use App\Models\QuizAttempt;
 use App\Models\QuizQuestion;
@@ -25,7 +25,7 @@ use Illuminate\Support\Facades\Validator;
 /**
  * Controller pour la gestion des quiz
  */
-class QuizController extends Controller
+class QuizController extends AuthenticatedController
 {
     /**
      * GET /api/quizzes
@@ -35,7 +35,7 @@ class QuizController extends Controller
     {
         $query = Quiz::with(['creator:id,name,email,role', 'matiere:id,libelle', 'classe:id,libelle']);
 
-        $user = $request->user();
+        $user = $this->authenticatedUser($request);
 
         // Les étudiants ne voient que les quiz publiés et disponibles
         if ($user->isStudent()) {
@@ -100,7 +100,7 @@ class QuizController extends Controller
     public function store(StoreQuizRequest $request): JsonResponse
     {
         $data = $request->validated();
-        $data['created_by'] = $request->user()->id;
+        $data['created_by'] = $this->authenticatedUser($request)->id;
 
         $quiz = Quiz::create($data);
         $quiz->load('creator', 'matiere', 'classe');
@@ -118,7 +118,7 @@ class QuizController extends Controller
      */
     public function show(Request $request, Quiz $quiz): JsonResponse
     {
-        $user = $request->user();
+        $user = $this->authenticatedUser($request);
 
         $quiz->load([
             'creator:id,name,email,role',
@@ -217,7 +217,7 @@ class QuizController extends Controller
      */
     public function startAttempt(StartQuizAttemptRequest $request, Quiz $quiz): JsonResponse
     {
-        $user = $request->user();
+        $user = $this->authenticatedUser($request);
 
         // Vérifier que le quiz est disponible
         if (!$quiz->isAvailable()) {
@@ -290,7 +290,7 @@ class QuizController extends Controller
         }
 
         // Vérifier les permissions
-        $user = $request->user();
+        $user = $this->authenticatedUser($request);
         if ($attempt->user_id !== $user->id) {
             return response()->json([
                 'success' => false,
@@ -376,7 +376,7 @@ class QuizController extends Controller
         }
 
         // Vérifier les permissions
-        $user = $request->user();
+        $user = $this->authenticatedUser($request);
         if (!$user->isAdmin() && $attempt->user_id !== $user->id && $attempt->quiz->created_by !== $user->id) {
             return response()->json([
                 'success' => false,
@@ -446,7 +446,7 @@ class QuizController extends Controller
 
         $attempt->manualGrade(
             $request->points_earned,
-            $request->user()->id,
+            $this->authenticatedUser($request)->id,
             $request->feedback
         );
 
@@ -473,7 +473,7 @@ class QuizController extends Controller
         }
 
         // Vérifier les permissions
-        $user = $request->user();
+        $user = $this->authenticatedUser($request);
         if ($attempt->user_id !== $user->id) {
             return response()->json([
                 'success' => false,
@@ -540,7 +540,7 @@ class QuizController extends Controller
         }
 
         // Vérifier les permissions
-        $user = $request->user();
+        $user = $this->authenticatedUser($request);
         if ($attempt->user_id !== $user->id) {
             return response()->json([
                 'success' => false,

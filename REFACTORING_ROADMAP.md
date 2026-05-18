@@ -86,7 +86,7 @@ Chaque étape doit être 100% complète avant de passer à la suivante.
 
 Après TIER 0 complété.
 
-### [PERF-01] Split LMSDataController → 15 controllers
+### [PERF-01] ~~Split LMSDataController~~ ✅ DONE (PRs #108→#117) — décomposé en 7 controllers SRP + 2 services partagés. Spec : `.claude/specs/lms-data-controller-split/`.
 ### [PERF-02] N+1 HTTP KLASSCI → batch + caching
 ### [PERF-03] N+1 SQL → eager loading
 ### [PERF-04] Logique métier modèles → services
@@ -100,7 +100,7 @@ Après TIER 0 complété.
 Après TIER 1 complété.
 
 ### [TEST-01] Tests désactivés → réactiver
-### [TEST-02] LMSDataController → tests feature
+### [TEST-02] ~~LMSDataController → tests feature~~ ✅ Largely OBE par PERF-01 (chaque controller extrait a ses propres tests Feature de routing : `tests/Feature/LMS/{Classes,Matieres,Enseignants,Notifications,Seances,Attendances,Visio}`). Resteraient à ajouter : tests d'intégration KLASSCI proxy (hors scope du split).
 ### [TEST-03] Multi-tenant isolation → tests
 ### [TEST-04] Exception handler → Sentry
 

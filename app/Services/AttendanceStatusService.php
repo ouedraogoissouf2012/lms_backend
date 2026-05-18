@@ -13,9 +13,9 @@ use DateTimeImmutable;
  *
  * ## Why this service exists
  *
- * The legacy `LMSDataController::determineAttendanceStatus()` was a private
- * helper used by `getVisioParticipants` (visio domain). Once `LMSVisioController`
- * (PR I) and `LMSAttendancesController` (PR H) are extracted, both will need
+ * The legacy `determineAttendanceStatus()` was a private helper inside the
+ * (now-deleted) `LMSDataController`, used by `getVisioParticipants` (visio domain).
+ * `LMSVisioController` (PR I) and `LMSAttendancesController` (PR H) both needed
  * this logic — duplicating it would violate DRY, and exposing it through one
  * controller would couple the other to it. A shared service is the right home.
  *
@@ -25,7 +25,7 @@ use DateTimeImmutable;
  * given participation percentage + timestamps, it returns the labelled status.
  * Trivially unit-testable, no mocks required.
  *
- * @see app/Http/Controllers/API/LMSDataController.php::determineAttendanceStatus (legacy)
+ * @see \App\Http\Controllers\API\LMS\LMSVisioController::getVisioParticipants (sole consumer)
  * @see .claude/specs/lms-data-controller-split/design.md §2.3
  */
 final class AttendanceStatusService

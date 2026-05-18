@@ -14,7 +14,11 @@ use App\Models\Traits\BelongsToInstitution;
  * Ce modèle représente les utilisateurs synchronisés depuis l'API KLASSCI
  *
  * @property int $id
- * @property string $role
+ * @property string $role             Rôle LMS — source de vérité unique pour TOUTES les
+ *                                    décisions d'autorisation (middlewares, policies, controllers).
+ * @property string|null $klassci_role Rôle reçu de KLASSCI lors du dernier sync.
+ *                                    PURELY INFORMATIONAL — ne JAMAIS utiliser pour autorisation.
+ *                                    Voir `.claude/specs/critical-05-klassci-role-separation/`.
  * @property int|null $institution_id
  */
 class User extends Authenticatable
@@ -32,6 +36,7 @@ class User extends Authenticatable
         'email',
         'password',
         'role',
+        'klassci_role',
         'klassci_token_encrypted',
         'klassci_tenant_url',
         'klassci_data',

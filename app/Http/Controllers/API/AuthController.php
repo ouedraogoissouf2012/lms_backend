@@ -405,11 +405,17 @@ class AuthController extends AuthenticatedController
                             ->first();
             }
 
-            $userData = [
+            $klassciRole = $klassciUser['role'] ?? 'etudiant';
+
+            // Champs propagés sur CHAQUE login (CREATE + UPDATE).
+            // Email reste syncé au login parce que l'utilisateur engage activement
+            // sa session KLASSCI à cet instant — l'asymétrie avec le re-sync passif
+            // est détaillée dans `.claude/specs/critical-05-klassci-role-separation/design.md` §4.
+            $commonData = [
                 'klassci_id'         => $klassciId,
                 'name'               => $klassciUser['nom'] ?? $klassciUser['name'] ?? 'User',
                 'email'              => $email,
-                'role'               => $klassciUser['role'] ?? 'etudiant',
+                'klassci_role'       => $klassciRole,
                 'klassci_token'      => $klassciToken,
                 'klassci_tenant_url' => $tenantUrl,
                 'klassci_data'       => json_encode(array_merge($klassciUser, ['_lms_tenant_url' => $tenantUrl])),
@@ -418,10 +424,19 @@ class AuthController extends AuthenticatedController
             ];
 
             if ($user) {
-                $user->update($userData);
+                // SÉCURITÉ — REQ-3 de la spec critical-05 :
+                // Pour un user existant, `role` LMS reste figé. Seul `klassci_role`
+                // capture la valeur de KLASSCI. Le contrôle de `role` LMS appartient
+                // exclusivement à l'administration LMS.
+                $user->update($commonData);
             } else {
-                $userData['password'] = Hash::make(uniqid());
-                $user = User::withoutGlobalScope('institution')->create($userData);
+                // SÉCURITÉ — REQ-3 : initialisation autorisée d'un nouvel utilisateur.
+                // C'est le SEUL chemin où KLASSCI peut écrire `role` LMS — il faut
+                // bien initialiser le rôle d'un user qui vient d'être découvert.
+                $user = User::withoutGlobalScope('institution')->create(array_merge($commonData, [
+                    'role'     => $klassciRole,
+                    'password' => Hash::make(uniqid()),
+                ]));
 
                 Log::info('Nouvel utilisateur créé depuis KLASSCI', [
                     'user_id'        => $user->id,

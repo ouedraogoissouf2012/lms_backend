@@ -469,6 +469,7 @@ use App\Http\Controllers\API\LMS\LMSClassesController;
 use App\Http\Controllers\API\LMS\LMSEnseignantsController;
 use App\Http\Controllers\API\LMS\LMSMatieresController;
 use App\Http\Controllers\API\LMS\LMSNotificationsPreferencesController;
+use App\Http\Controllers\API\LMS\LMSAttendancesController;
 use App\Http\Controllers\API\LMS\LMSSeancesController;
 
 Route::middleware(['auth:sanctum', 'klassci.sync'])->prefix('lms')->group(function () {
@@ -513,7 +514,7 @@ Route::middleware(['auth:sanctum', 'klassci.sync'])->prefix('lms')->group(functi
         ->middleware('role:enseignant,coordinateur,superAdmin');
 
     // Présences détaillées d'une séance
-    Route::get('/seances/{seanceId}/attendances', [LMSDataController::class, 'getSeanceAttendances'])
+    Route::get('/seances/{seanceId}/attendances', [LMSAttendancesController::class, 'getSeanceAttendances'])
         ->name('lms.seances.attendances');
 
     // Suppression d'une séance (soft delete)
@@ -539,11 +540,11 @@ Route::middleware(['auth:sanctum', 'klassci.sync'])->prefix('lms')->group(functi
         ->middleware('role:coordinateur,superAdmin');
 
     // Synchroniser les attendances depuis une session vidéo
-    Route::post('/attendances/from-video-session', [LMSDataController::class, 'syncAttendancesFromVideoSession'])
+    Route::post('/attendances/from-video-session', [LMSAttendancesController::class, 'syncAttendancesFromVideoSession'])
         ->name('lms.attendances.from-video-session');
 
     // Historique des présences (accessible même si séances archivées)
-    Route::get('/attendance/history', [LMSDataController::class, 'getAttendanceHistory'])
+    Route::get('/attendance/history', [LMSAttendancesController::class, 'getAttendanceHistory'])
         ->name('lms.attendance.history');
 
     // Matières de l'enseignant connecté avec statistiques enrichies

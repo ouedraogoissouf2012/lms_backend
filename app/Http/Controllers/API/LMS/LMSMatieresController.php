@@ -753,9 +753,4 @@ final class LMSMatieresController extends AuthenticatedController
         }
     }
 
-    // Note: `getMatieresEnrichiesForEnseignant()` helper stays in `LMSDataController`
-    // for now (still called by `getEnseignantsFromKlassci()` there, not yet migrated).
-    // Will be moved to its definitive home in PR B (LMSEnseignantsController) — either
-    // duplicated, promoted to a shared service, or co-located there depending on the
-    // PR B design decision (cf. spec design.md §3 R3).
 }

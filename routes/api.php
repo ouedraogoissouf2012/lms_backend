@@ -462,14 +462,14 @@ Route::middleware(['auth:sanctum', 'klassci.sync', 'role:enseignant,coordinateur
 });
 
 // ============================================
-// LMS DATA (Classes & Matières) - Routes protégées
+// LMS — Routes protégées (god-object LMSDataController split en 7 controllers
+// + 2 services partagés. Spec : .claude/specs/lms-data-controller-split/).
 // ============================================
-use App\Http\Controllers\API\LMSDataController;
+use App\Http\Controllers\API\LMS\LMSAttendancesController;
 use App\Http\Controllers\API\LMS\LMSClassesController;
 use App\Http\Controllers\API\LMS\LMSEnseignantsController;
 use App\Http\Controllers\API\LMS\LMSMatieresController;
 use App\Http\Controllers\API\LMS\LMSNotificationsPreferencesController;
-use App\Http\Controllers\API\LMS\LMSAttendancesController;
 use App\Http\Controllers\API\LMS\LMSSeancesController;
 use App\Http\Controllers\API\LMS\LMSVisioController;
 

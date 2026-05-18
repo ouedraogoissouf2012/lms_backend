@@ -156,8 +156,8 @@ composer phpstan:baseline
 
 ### Limitations connues
 
-- La baseline contient 1631 violations grandfathered (initialement 1648). Catégorisation mesurée : ~480 sont des bugs réels (null-safety, property/method.notFound, argument.type), le reste sont des annotations manquantes. Anti-pattern identifié et écarté : `barryvdh/laravel-ide-helper` + `scanFiles:` (testé empiriquement, baseline 1648 → 1751, +103 violations à cause de `_ide_helper.php` qui redéfinit les classes Laravel et casse la résolution Larastan).
-- Quand `app/Http/Controllers/API/LMSDataController.php` (>2000 lignes) sera splitté (TIER 1 du `REFACTORING_ROADMAP.md`), une grosse partie de la baseline tombera
+- La baseline contient 1344 violations grandfathered (initialement 1648, puis 1631 après les Batch 1-5 PHPStan, puis 1344 post-split LMS — voir tableau ci-dessous). Catégorisation mesurée : ~480 sont des bugs réels (null-safety, property/method.notFound, argument.type), le reste sont des annotations manquantes. Anti-pattern identifié et écarté : `barryvdh/laravel-ide-helper` + `scanFiles:` (testé empiriquement, baseline 1648 → 1751, +103 violations à cause de `_ide_helper.php` qui redéfinit les classes Laravel et casse la résolution Larastan).
+- Le god-object `app/Http/Controllers/API/LMSDataController.php` (5014 lignes initiales, TIER 1 du `REFACTORING_ROADMAP.md`) a été **entièrement supprimé** en PR #J du split spec — décomposé en 7 controllers SRP (`LMSClassesController`, `LMSMatieresController`, `LMSEnseignantsController`, `LMSNotificationsPreferencesController`, `LMSSeancesController`, `LMSAttendancesController`, `LMSVisioController`) + 2 services partagés (`SeanceQueryService`, `AttendanceStatusService`). Spec : [`.claude/specs/lms-data-controller-split/`](../.claude/specs/lms-data-controller-split/).
 
 ### Réduction progressive — historique
 
@@ -173,6 +173,8 @@ composer phpstan:baseline
 | Batch 4 (#88) | `SearchController` migré | 1580 → 1561 (−19) | 4 sites + signature `searchHistory(Request)` ajoutée |
 | Batch 5 (#90) | `ForumController` migré | 1561 → 1551 (−10 net) | 13 sites DRY (3 extractions) ; +5 révélés `User::institution_id` |
 | Fix #91 (Forum IDOR) | `ChecksForumAuthorization` trait + 7 FormRequests | 1561* → 1529 (−32 net) | side-effect : 3 `@property` PHPDoc sur User/ForumTopic/ForumPost résolvent dette latente |
+| Split LMS PR A→I (#108→#116) | 7 controllers extraits + 2 services partagés | 1417 → 1603 (+186) | extraction copie temporairement les violations Carbon-null/mixed-type ; baseline gonfle pendant 9 PRs |
+| Split LMS PR J (cleanup) | suppression de `LMSDataController.php` | 1603 → 1344 (−259) | -95 entrées du fichier supprimé + ré-évaluation des dépendants ; **net split = 1417 → 1344 = −73** |
 
 \* La PR #91 part de `lms` post-Batch 4 (baseline 1561), pas post-Batch 5.
 

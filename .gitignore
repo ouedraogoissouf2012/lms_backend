@@ -85,6 +85,8 @@ screenshot_*.png
 !/tests/Feature/Notifications/**
 !/tests/Feature/Files/**
 !/tests/Feature/LMS/**
+!/tests/Feature/Security/**
+!/tests/Unit/Middleware/**
 .env.example
 .env.production.example
 package.json

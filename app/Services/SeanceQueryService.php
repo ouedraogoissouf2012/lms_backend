@@ -39,7 +39,7 @@ use RuntimeException;
  * - Missing KLASSCI token on user → throws `RuntimeException` (caller renders 401).
  * - Unexpected errors propagate up (caller logs and renders 500).
  *
- * @see app/Http/Controllers/API/LMSDataController.php::seanceDetails (legacy origin)
+ * @see \App\Http\Controllers\API\LMS\LMSSeancesController::seanceDetails (route handler, delegates here)
  * @see .claude/specs/lms-data-controller-split/design.md §2.2
  */
 final class SeanceQueryService
@@ -51,8 +51,8 @@ final class SeanceQueryService
     /**
      * Returns the structured seance details array for an authenticated user.
      *
-     * The return shape mirrors `LMSDataController::seanceDetails()` legacy `data`
-     * payload to preserve the HTTP contract when callers wrap it as JSON.
+     * The return shape mirrors the legacy `seanceDetails()` `data` payload to
+     * preserve the HTTP contract when callers wrap it as JSON.
      *
      * @return array{seance: array<string, mixed>, visio: array<string, mixed>, participants?: array<string, mixed>}|null
      *

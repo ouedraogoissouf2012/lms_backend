@@ -47,17 +47,19 @@ use Carbon\Carbon;
  *   ## Notifications (PR D #111 ✓ merged)
  *   - getNotificationPreferences, sendSessionReminder → \App\Http\Controllers\API\LMS\LMSNotificationsPreferencesController
  *
- *   ## Seances (PR F — this PR)
+ *   ## Seances (PR F #114 ✓ merged)
  *   - upcomingSeances, seanceParticipants, validateParticipant, seanceDetails,
  *     toggleVisioSeance, myTeachingSeances, myClassesSeances, hideSeance,
  *     unhideSeance, getSeancesHistory, deleteSeance → \App\Http\Controllers\API\LMS\LMSSeancesController
  *   - private getSeanceDataFromKlassci helper also migrated
  *
- *   ## Still active in this file (pending future PRs)
- *   - syncAttendancesFromVideoSession, getAttendanceHistory, getSeanceAttendances → PR H (Attendances)
+ *   ## Attendances (PR H #115 ✓ merged)
+ *   - syncAttendancesFromVideoSession, getAttendanceHistory, getSeanceAttendances → \App\Http\Controllers\API\LMS\LMSAttendancesController
+ *
+ *   ## Visio (PR I — this PR)
  *   - activateVisio, deactivateVisio, startVisio, endVisio, joinVisio,
- *     getVisioParticipants, leaveVisio, heartbeatVisio,
- *     private determineAttendanceStatus → PR I (Visio)
+ *     getVisioParticipants, leaveVisio, heartbeatVisio → \App\Http\Controllers\API\LMS\LMSVisioController
+ *   - private determineAttendanceStatus replaced by \App\Services\AttendanceStatusService (PR G)
  *
  * In Phase C (PR J), this entire file will be deleted.
  *
@@ -2624,6 +2626,11 @@ class LMSDataController extends Controller
      * Activer la visioconférence pour une séance
      *
      * Workflow: Enseignant active → status = 'programmee'
+     *
+     * @deprecated Migrated to {@see \App\Http\Controllers\API\LMS\LMSVisioController::activateVisio}.
+     *             This copy is unreachable (routes/api.php now points to the new controller) and will be
+     *             removed in Phase C cleanup (PR J of the LMS split spec).
+     *             DO NOT modify this version — fix the new controller instead.
      */
     public function activateVisio(int $seanceId, ActivateVisioRequest $request): JsonResponse
     {
@@ -2792,6 +2799,11 @@ class LMSDataController extends Controller
      * Désactiver la visioconférence pour une séance
      *
      * Workflow: Enseignant désactive → visio_enabled = false
+     *
+     * @deprecated Migrated to {@see \App\Http\Controllers\API\LMS\LMSVisioController::deactivateVisio}.
+     *             This copy is unreachable (routes/api.php now points to the new controller) and will be
+     *             removed in Phase C cleanup (PR J of the LMS split spec).
+     *             DO NOT modify this version — fix the new controller instead.
      */
     public function deactivateVisio(int $seanceId, DeactivateVisioRequest $request): JsonResponse
     {
@@ -2853,6 +2865,11 @@ class LMSDataController extends Controller
      * Démarrer la visioconférence
      *
      * Workflow: Enseignant démarre → status = 'active'
+     *
+     * @deprecated Migrated to {@see \App\Http\Controllers\API\LMS\LMSVisioController::startVisio}.
+     *             This copy is unreachable (routes/api.php now points to the new controller) and will be
+     *             removed in Phase C cleanup (PR J of the LMS split spec).
+     *             DO NOT modify this version — fix the new controller instead.
      */
     public function startVisio(int $seanceId, StartVisioRequest $request): JsonResponse
     {
@@ -2960,6 +2977,11 @@ class LMSDataController extends Controller
      * Terminer la visioconférence manuellement
      *
      * Workflow: Enseignant termine → status = 'terminee'
+     *
+     * @deprecated Migrated to {@see \App\Http\Controllers\API\LMS\LMSVisioController::endVisio}.
+     *             This copy is unreachable (routes/api.php now points to the new controller) and will be
+     *             removed in Phase C cleanup (PR J of the LMS split spec).
+     *             DO NOT modify this version — fix the new controller instead.
      */
     public function endVisio(int $seanceId, EndVisioRequest $request): JsonResponse
     {
@@ -3027,6 +3049,11 @@ class LMSDataController extends Controller
     /**
      * POST /api/lms/seances/{seanceId}/join
      * Logger qu'un étudiant rejoint la visio
+     *
+     * @deprecated Migrated to {@see \App\Http\Controllers\API\LMS\LMSVisioController::joinVisio}.
+     *             This copy is unreachable (routes/api.php now points to the new controller) and will be
+     *             removed in Phase C cleanup (PR J of the LMS split spec).
+     *             DO NOT modify this version — fix the new controller instead.
      */
     public function joinVisio(int $seanceId, JoinVisioRequest $request): JsonResponse
     {
@@ -3120,6 +3147,13 @@ class LMSDataController extends Controller
     /**
      * GET /api/lms/seances/{seanceId}/participants
      * Récupérer la liste des participants réels à une visio
+     *
+     * @deprecated Migrated to {@see \App\Http\Controllers\API\LMS\LMSVisioController::getVisioParticipants}.
+     *             The route was ALSO renamed to `/seances/{id}/visio-participants` (REQ-4 of the spec)
+     *             because the legacy `/participants` URI collided with `LMSSeancesController::seanceParticipants`
+     *             — Laravel matched the latter first, making this version unreachable even before the rename.
+     *             Will be removed in Phase C cleanup (PR J).
+     *             DO NOT modify this version — fix the new controller instead.
      */
     public function getVisioParticipants(int $seanceId, Request $request): JsonResponse
     {
@@ -3417,6 +3451,11 @@ class LMSDataController extends Controller
 
     /**
      * Détermine le statut de présence d'un étudiant
+     *
+     * @deprecated Replaced by {@see \App\Services\AttendanceStatusService::determine} (PR G of the LMS split spec).
+     *             This private helper is no longer called by any reachable method — `getVisioParticipants`,
+     *             its sole caller, was migrated to {@see \App\Http\Controllers\API\LMS\LMSVisioController} (PR I)
+     *             which uses the service. Will be removed with the rest of this file in Phase C cleanup (PR J).
      */
     private function determineAttendanceStatus($percentage, $joinedAt, $leftAt, $heureDebut, $heureFin, $visioStatus = null): array
     {
@@ -3511,6 +3550,11 @@ class LMSDataController extends Controller
     /**
      * POST /api/seances/{seanceId}/leave
      * Enregistrer la sortie d'un participant de la visio
+     *
+     * @deprecated Migrated to {@see \App\Http\Controllers\API\LMS\LMSVisioController::leaveVisio}.
+     *             This copy is unreachable (routes/api.php now points to the new controller) and will be
+     *             removed in Phase C cleanup (PR J of the LMS split spec).
+     *             DO NOT modify this version — fix the new controller instead.
      */
     public function leaveVisio(int $seanceId, LeaveVisioRequest $request): JsonResponse
     {
@@ -3579,6 +3623,11 @@ class LMSDataController extends Controller
     /**
      * POST /api/seances/{seanceId}/heartbeat
      * Mettre à jour le heartbeat d'un participant (ping d'activité)
+     *
+     * @deprecated Migrated to {@see \App\Http\Controllers\API\LMS\LMSVisioController::heartbeatVisio}.
+     *             This copy is unreachable (routes/api.php now points to the new controller) and will be
+     *             removed in Phase C cleanup (PR J of the LMS split spec).
+     *             DO NOT modify this version — fix the new controller instead.
      */
     public function heartbeatVisio(int $seanceId, HeartbeatVisioRequest $request): JsonResponse
     {

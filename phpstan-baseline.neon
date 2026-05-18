@@ -1165,6 +1165,138 @@ parameters:
 			path: app/Http/Controllers/API/LMS/LMSMatieresController.php
 
 		-
+			message: '#^Access to an undefined property App\\Http\\Controllers\\API\\LMS\\LMSSeancesController\:\:\$classeSyncService\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Http/Controllers/API/LMS/LMSSeancesController.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Controllers\\API\\LMS\\LMSSeancesController\:\:\$notificationService\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/API/LMS/LMSSeancesController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\User\|Illuminate\\Database\\Eloquent\\Collection\<int, App\\Models\\User\>\:\:\$email\.$#'
+			identifier: property.notFound
+			count: 3
+			path: app/Http/Controllers/API/LMS/LMSSeancesController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\User\|Illuminate\\Database\\Eloquent\\Collection\<int, App\\Models\\User\>\:\:\$role\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Http/Controllers/API/LMS/LMSSeancesController.php
+
+		-
+			message: '#^Binary operation "\." between mixed and '' 23\:59\:59'' results in an error\.$#'
+			identifier: binaryOp.invalid
+			count: 1
+			path: app/Http/Controllers/API/LMS/LMSSeancesController.php
+
+		-
+			message: '#^Call to static method timeout\(\) on an unknown class App\\Http\\Controllers\\API\\LMS\\Http\.$#'
+			identifier: class.notFound
+			count: 2
+			path: app/Http/Controllers/API/LMS/LMSSeancesController.php
+
+		-
+			message: '#^Called ''env'' outside of the config directory which returns null when the config is cached, use ''config''\.$#'
+			identifier: larastan.noEnvCallsOutsideOfConfig
+			count: 1
+			path: app/Http/Controllers/API/LMS/LMSSeancesController.php
+
+		-
+			message: '#^Cannot access property \$id on App\\Models\\Seance\|null\.$#'
+			identifier: property.nonObject
+			count: 1
+			path: app/Http/Controllers/API/LMS/LMSSeancesController.php
+
+		-
+			message: '#^Cannot access property \$klassci_seance_id on App\\Models\\Seance\|null\.$#'
+			identifier: property.nonObject
+			count: 1
+			path: app/Http/Controllers/API/LMS/LMSSeancesController.php
+
+		-
+			message: '#^Cannot access property \$visio_active on App\\Models\\Seance\|null\.$#'
+			identifier: property.nonObject
+			count: 1
+			path: app/Http/Controllers/API/LMS/LMSSeancesController.php
+
+		-
+			message: '#^Cannot call method delete\(\) on App\\Models\\Seance\|null\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Http/Controllers/API/LMS/LMSSeancesController.php
+
+		-
+			message: '#^Cannot cast mixed to int\.$#'
+			identifier: cast.int
+			count: 1
+			path: app/Http/Controllers/API/LMS/LMSSeancesController.php
+
+		-
+			message: '#^Left side of && is always true\.$#'
+			identifier: booleanAnd.leftAlwaysTrue
+			count: 1
+			path: app/Http/Controllers/API/LMS/LMSSeancesController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\API\\LMS\\LMSSeancesController\:\:getSeanceDataFromKlassci\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Http/Controllers/API/LMS/LMSSeancesController.php
+
+		-
+			message: '#^Parameter \#1 \$num of function round expects float\|int, float\|int\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/API/LMS/LMSSeancesController.php
+
+		-
+			message: '#^Parameter \#1 \$perPage of method Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Seance\>\:\:paginate\(\) expects int\|null, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/API/LMS/LMSSeancesController.php
+
+		-
+			message: '#^Parameter \#2 \$klassciToken of method App\\Http\\Controllers\\API\\LMS\\LMSSeancesController\:\:getSeanceDataFromKlassci\(\) expects string, string\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/API/LMS/LMSSeancesController.php
+
+		-
+			message: '#^Part \$search \(mixed\) of encapsed string cannot be cast to string\.$#'
+			identifier: encapsedStringPart.nonString
+			count: 4
+			path: app/Http/Controllers/API/LMS/LMSSeancesController.php
+
+		-
+			message: '#^Property App\\Models\\Seance\:\:\$created_by \(int\<0, max\>\|null\) does not accept int\.$#'
+			identifier: assign.propertyType
+			count: 1
+			path: app/Http/Controllers/API/LMS/LMSSeancesController.php
+
+		-
+			message: '#^Ternary operator condition is always true\.$#'
+			identifier: ternary.alwaysTrue
+			count: 2
+			path: app/Http/Controllers/API/LMS/LMSSeancesController.php
+
+		-
+			message: '#^Unable to resolve the template type TKey in call to function collect$#'
+			identifier: argument.templateType
+			count: 13
+			path: app/Http/Controllers/API/LMS/LMSSeancesController.php
+
+		-
+			message: '#^Unable to resolve the template type TValue in call to function collect$#'
+			identifier: argument.templateType
+			count: 13
+			path: app/Http/Controllers/API/LMS/LMSSeancesController.php
+
+		-
 			message: '#^Access to an undefined property App\\Models\\ESBTPAttendance\:\:\$seance\.$#'
 			identifier: property.notFound
 			count: 1

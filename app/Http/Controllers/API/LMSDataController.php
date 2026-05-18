@@ -22,6 +22,47 @@ use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Http;
 use Carbon\Carbon;
 
+/**
+ * @deprecated GOD-OBJECT BEING SPLIT — DO NOT MODIFY METHODS BELOW
+ *
+ * This 5014-line god object is being decomposed into 7 dedicated controllers
+ * + 2 shared services as part of the LMS split refactor (spec:
+ * `.claude/specs/lms-data-controller-split/`).
+ *
+ * The methods below are kept here ONLY because `routes/api.php` no longer
+ * points to them (they have been migrated). They are unreachable in the
+ * routing tree and will be entirely removed in Phase C cleanup (PR J).
+ *
+ * Migration status (method → new controller):
+ *
+ *   ## Classes (PR A #108 ✓ merged)
+ *   - classeDetails, classeEtudiants → \App\Http\Controllers\API\LMS\LMSClassesController
+ *
+ *   ## Matieres (PR C #109 ✓ merged)
+ *   - matiereDetails, adminMatieresList, myMatieres → \App\Http\Controllers\API\LMS\LMSMatieresController
+ *
+ *   ## Enseignants (PR B #110 ✓ merged — dead code + helper also deleted)
+ *   - getEnseignantsFromKlassci → \App\Http\Controllers\API\LMS\LMSEnseignantsController
+ *
+ *   ## Notifications (PR D #111 ✓ merged)
+ *   - getNotificationPreferences, sendSessionReminder → \App\Http\Controllers\API\LMS\LMSNotificationsPreferencesController
+ *
+ *   ## Seances (PR F — this PR)
+ *   - upcomingSeances, seanceParticipants, validateParticipant, seanceDetails,
+ *     toggleVisioSeance, myTeachingSeances, myClassesSeances, hideSeance,
+ *     unhideSeance, getSeancesHistory, deleteSeance → \App\Http\Controllers\API\LMS\LMSSeancesController
+ *   - private getSeanceDataFromKlassci helper also migrated
+ *
+ *   ## Still active in this file (pending future PRs)
+ *   - syncAttendancesFromVideoSession, getAttendanceHistory, getSeanceAttendances → PR H (Attendances)
+ *   - activateVisio, deactivateVisio, startVisio, endVisio, joinVisio,
+ *     getVisioParticipants, leaveVisio, heartbeatVisio,
+ *     private determineAttendanceStatus → PR I (Visio)
+ *
+ * In Phase C (PR J), this entire file will be deleted.
+ *
+ * DO NOT modify any method here — fix the corresponding new controller instead.
+ */
 class LMSDataController extends Controller
 {
     protected KlassciProxyService $klassciService;

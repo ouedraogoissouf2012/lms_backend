@@ -255,4 +255,34 @@ final class EnsureKlassciSyncTest extends TestCase
 
         self::assertSame(200, $response->getStatusCode());
     }
+
+    /**
+     * Issue #119 — passive resync must NEVER overwrite `klassci_enseignant_id`.
+     * The column is initialized write-once at KLASSCI sign-up via
+     * `AuthController::syncUserFromKlassci` CREATE branch.
+     */
+    public function test_resync_does_not_overwrite_klassci_enseignant_id(): void
+    {
+        $user = User::factory()->create([
+            'institution_id'        => $this->institution->id,
+            'role'                  => 'enseignant',
+            'klassci_role'          => 'enseignant',
+            'klassci_enseignant_id' => 42,
+            'email'                 => 'real@school.fr',
+            'name'                  => 'Original Name',
+            'klassci_data'          => json_encode(['enseignant_id' => 42]),
+            'last_klassci_sync'     => now()->subHours(25),
+        ]);
+
+        // Compromised KLASSCI returns a different enseignant_id (impersonation).
+        $this->runMiddlewareWith($user, [
+            'role'          => 'enseignant',
+            'email'         => 'real@school.fr',
+            'nom'           => 'X',
+            'enseignant_id' => 999,
+        ]);
+
+        $user->refresh();
+        self::assertSame(42, $user->klassci_enseignant_id, 'klassci_enseignant_id MUST remain 42 after passive re-sync.');
+    }
 }

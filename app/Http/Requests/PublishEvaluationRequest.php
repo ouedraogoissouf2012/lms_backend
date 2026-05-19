@@ -41,10 +41,18 @@ final class PublishEvaluationRequest extends FormRequest
             return false;
         }
 
-        // Check ownership: only the assigned enseignant can publish
-        $userKlassciEnseignantId = data_get($user->klassci_data, 'enseignant_id');
-        if (!$user->isAdmin() && $evaluation->klassci_enseignant_id !== $userKlassciEnseignantId) {
-            return false;
+        // Check ownership: only the assigned enseignant can publish.
+        //
+        // Issue #119 — lire $user->klassci_enseignant_id (colonne dédiée write-once,
+        // initialisée au sign-up KLASSCI). Le blob `klassci_data['enseignant_id']`
+        // est écrasable par un re-sync KLASSCI compromis et ne doit JAMAIS être lu
+        // pour de l'autorisation.
+        if (!$user->isAdmin()) {
+            $userKlassciEnseignantId = $user->klassci_enseignant_id;
+            if ($userKlassciEnseignantId === null
+                || $evaluation->klassci_enseignant_id !== $userKlassciEnseignantId) {
+                return false;
+            }
         }
 
         return true;

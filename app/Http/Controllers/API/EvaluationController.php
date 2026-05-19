@@ -112,6 +112,18 @@ class EvaluationController extends AuthenticatedController
     {
         // FormRequest handles authorization (role check)
 
+        // Issue #124 — sécurité : l'identité enseignant est dérivée du token Sanctum,
+        // jamais du body. Un utilisateur sans `klassci_enseignant_id` synchronisé
+        // (admin LMS local, compte service) n'a pas vocation à créer d'évaluation —
+        // refus explicite ici plutôt qu'un check d'ownership qui échouerait plus tard.
+        $user = $this->authenticatedUser($request);
+        if ($user->klassci_enseignant_id === null) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Vous devez être un enseignant KLASSCI synchronisé pour créer une évaluation.',
+            ], 403);
+        }
+
         // Vérifier qu'une évaluation LMS n'existe pas déjà pour cette évaluation KLASSCI
         if ($request->klassci_evaluation_id) {
             $existing = Evaluation::where('klassci_evaluation_id', $request->klassci_evaluation_id)->first();
@@ -167,12 +179,15 @@ class EvaluationController extends AuthenticatedController
                 \Log::warning('Impossible de récupérer les noms depuis KLASSCI', ['error' => $e->getMessage()]);
             }
 
-            // Créer l'évaluation
+            // Créer l'évaluation.
+            // Issue #124 — sécurité : `klassci_enseignant_id` est forcé depuis le
+            // token (jamais lu du body via `$request->only(...)`). Empêche un
+            // enseignant de polluer l'inbox d'un collègue ou de créer une éval
+            // attribuée à un autre prof.
             $evaluation = Evaluation::create(array_merge(
                 $request->only([
                     'klassci_matiere_id',
                     'klassci_classe_id',
-                    'klassci_enseignant_id',
                     'klassci_evaluation_id',
                     'titre',
                     'description',
@@ -191,6 +206,7 @@ class EvaluationController extends AuthenticatedController
                 [
                     'matiere_nom' => $matiereNom,
                     'classe_nom' => $classeNom,
+                    'klassci_enseignant_id' => $user->klassci_enseignant_id,
                 ]
             ));
 
@@ -268,8 +284,24 @@ class EvaluationController extends AuthenticatedController
         try {
             DB::beginTransaction();
 
-            // Mettre à jour les champs de base
-            $evaluation->update($request->except(['questions']));
+            // Mettre à jour les champs de base.
+            // Issue #124 — sécurité : les champs d'identité de l'évaluation sont
+            // write-once post-create. Aucune mutation possible via PUT, même par
+            // l'owner. Si un client envoie ces champs, ils sont silencieusement
+            // ignorés (backward-compat). Champs exclus :
+            //   • klassci_enseignant_id (ownership — empêche transfert via PUT)
+            //   • institution_id (isolation tenant)
+            //   • klassci_classe_id (cible — immuable post-create)
+            //   • klassci_matiere_id (matière — immuable post-create)
+            //   • klassci_evaluation_id (référence KLASSCI — immuable post-create)
+            $evaluation->update($request->except([
+                'questions',
+                'klassci_enseignant_id',
+                'institution_id',
+                'klassci_classe_id',
+                'klassci_matiere_id',
+                'klassci_evaluation_id',
+            ]));
 
             // Si des questions sont fournies, les remplacer
             if ($request->has('questions')) {

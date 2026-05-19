@@ -19,6 +19,12 @@ use App\Models\Traits\BelongsToInstitution;
  * @property string|null $klassci_role Rôle reçu de KLASSCI lors du dernier sync.
  *                                    PURELY INFORMATIONAL — ne JAMAIS utiliser pour autorisation.
  *                                    Voir `.claude/specs/critical-05-klassci-role-separation/`.
+ * @property int|null    $klassci_enseignant_id  ID enseignant dans KLASSCI.
+ *                                    Initialisé au sign-up KLASSCI ; jamais réécrit par re-sync.
+ *                                    Source d'autorité unique pour les checks d'ownership enseignant
+ *                                    (DeleteEvaluationRequest, PublishEvaluationRequest, UpdateEvaluationRequest).
+ *                                    Ne JAMAIS lire `klassci_data['enseignant_id']` pour l'autorisation.
+ *                                    Voir `.claude/specs/klassci-enseignant-id-separation/`.
  * @property int|null $institution_id
  */
 class User extends Authenticatable
@@ -37,6 +43,7 @@ class User extends Authenticatable
         'password',
         'role',
         'klassci_role',
+        'klassci_enseignant_id',
         'klassci_token_encrypted',
         'klassci_tenant_url',
         'klassci_data',
@@ -73,6 +80,18 @@ class User extends Authenticatable
     /**
      * Get klassci_data as decoded array. Handles both JSON strings and native JSON columns.
      * Production-grade: explicitly decodes JSON since database stores as TEXT/JSON
+     *
+     * ⚠️ SÉCURITÉ — ce blob est un cache display informationnel. Il est écrasé EN BLOC à
+     * chaque re-sync KLASSCI 24h (`EnsureKlassciSync`), donc une instance KLASSCI compromise
+     * peut y pousser n'importe quoi.
+     *
+     * NE JAMAIS lire `$user->klassci_data['XXX_id']` pour de l'AUTORISATION. Les champs
+     * d'autorité ont leur colonne dédiée write-once :
+     *   • `role`                  (LMS — source d'autorité applicative)
+     *   • `klassci_role`          (info, NE PAS lire pour autoriser — voir CRITICAL-05)
+     *   • `klassci_enseignant_id` (ownership évaluations — voir #119)
+     *
+     * Lire le blob pour l'affichage / les rapports / les champs informatifs reste OK.
      */
     public function getKlassciDataAttribute($value): array
     {

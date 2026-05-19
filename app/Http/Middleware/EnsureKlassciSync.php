@@ -95,12 +95,16 @@ class EnsureKlassciSync
 
                 $this->detectAndLogRoleDivergence($user, $klassciUser);
 
-                // SÉCURITÉ — REQ-4 de la spec critical-05 :
-                // Le re-sync passif ne doit PAS pouvoir écraser :
-                //   • `role`  (autorisation LMS — source de vérité unique)
-                //   • `email` (peut servir à des checks d'autorité futurs +
-                //              vecteur d'interception de password-reset)
-                // Seuls les champs informatifs sont propagés.
+                // SÉCURITÉ — champs EXCLUS volontairement du re-sync passif :
+                //   • `role`                  (CRITICAL-05 #34 — autorisation LMS)
+                //   • `email`                 (CRITICAL-05 #34 — anti-hijack password-reset)
+                //   • `klassci_enseignant_id` (#119 — ownership évaluations, write-once
+                //                              au sign-up via AuthController::syncUserFromKlassci)
+                //
+                // `klassci_data` continue à être écrasé en bloc — c'est un cache display
+                // informationnel, plus aucun consommateur d'autorisation ne le lit
+                // (vérifié grep post-#119). Le commentaire de garde dans User::klassci_data
+                // documente cette règle pour les futurs développeurs.
                 $user->update([
                     'name'              => $klassciUser['nom'] ?? $klassciUser['name'] ?? $user->name,
                     'klassci_role'      => $klassciUser['role'] ?? $user->klassci_role,

@@ -430,12 +430,19 @@ class AuthController extends AuthenticatedController
                 // exclusivement à l'administration LMS.
                 $user->update($commonData);
             } else {
-                // SÉCURITÉ — REQ-3 : initialisation autorisée d'un nouvel utilisateur.
-                // C'est le SEUL chemin où KLASSCI peut écrire `role` LMS — il faut
-                // bien initialiser le rôle d'un user qui vient d'être découvert.
+                // SÉCURITÉ — initialisation autorisée d'un nouvel utilisateur.
+                //   • `role` LMS — REQ-3 spec critical-05 : seul chemin où KLASSCI peut
+                //                  initialiser l'autorisation LMS d'un user découvert
+                //   • `klassci_enseignant_id` — REQ-3 spec klassci-enseignant-id-separation :
+                //                  initialisation write-once. Plus jamais réécrit (ni au login
+                //                  d'un user existant, ni au re-sync passif 24h). Source d'autorité
+                //                  unique pour l'ownership évaluations (issue #119).
                 $user = User::withoutGlobalScope('institution')->create(array_merge($commonData, [
-                    'role'     => $klassciRole,
-                    'password' => Hash::make(uniqid()),
+                    'role'                  => $klassciRole,
+                    'klassci_enseignant_id' => isset($klassciUser['enseignant_id']) && is_numeric($klassciUser['enseignant_id'])
+                        ? (int) $klassciUser['enseignant_id']
+                        : null,
+                    'password'              => Hash::make(uniqid()),
                 ]));
 
                 Log::info('Nouvel utilisateur créé depuis KLASSCI', [

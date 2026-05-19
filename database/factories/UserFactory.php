@@ -23,6 +23,8 @@ class UserFactory extends Factory
      */
     public function definition(): array
     {
+        $enseignantId = fake()->unique()->numberBetween(1, 10000);
+
         return [
             'klassci_id' => fake()->unique()->numberBetween(1, 10000),
             'name' => fake()->name(),
@@ -30,12 +32,16 @@ class UserFactory extends Factory
             'email_verified_at' => now(),
             'password' => static::$password ??= Hash::make('password'),
             'role' => fake()->randomElement(['etudiant', 'enseignant', 'coordinateur']),
+            // Issue #119 — `klassci_enseignant_id` est la colonne dédiée d'autorité ;
+            // alignée par défaut avec `klassci_data['enseignant_id']` pour que les
+            // tests legacy qui peuplent la factory sans state explicite restent verts.
+            'klassci_enseignant_id' => $enseignantId,
             'klassci_token' => Str::random(64),
             'klassci_data' => json_encode([
                 'id' => fake()->numberBetween(1, 10000),
                 'nom' => fake()->lastName(),
                 'prenom' => fake()->firstName(),
-                'enseignant_id' => fake()->unique()->numberBetween(1, 10000),
+                'enseignant_id' => $enseignantId,
             ]),
             'last_klassci_sync' => now(),
             'remember_token' => Str::random(10),

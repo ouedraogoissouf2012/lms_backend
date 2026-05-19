@@ -635,10 +635,11 @@ Route::middleware(['auth:sanctum', 'klassci.sync'])->group(function () {
     Route::get('evaluations', [EvaluationController::class, 'index']);
 
     // Évaluations de l'étudiant connecté (DOIT ÊTRE AVANT evaluations/{id})
+    // Issue #123 : la route /evaluations/student/{klassciEtudiantId} a été
+    // supprimée (vecteur d'IDOR — un étudiant pouvait forge l'ID d'un autre).
+    // Le besoin legit "un étudiant voit ses propres évals" passe par cette
+    // route sans param, dérivée du token Sanctum.
     Route::get('evaluations/student', [EvaluationController::class, 'myEvaluations']);
-
-    // Évaluations disponibles pour un étudiant spécifique (enseignants)
-    Route::get('evaluations/student/{klassciEtudiantId}', [EvaluationController::class, 'studentEvaluations']);
 
     // Récupérer une évaluation spécifique (APRÈS les routes spécifiques)
     Route::get('evaluations/{id}', [EvaluationController::class, 'show']);

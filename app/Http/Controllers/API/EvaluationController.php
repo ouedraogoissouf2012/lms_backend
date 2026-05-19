@@ -8,6 +8,7 @@ use App\Http\Requests\StoreEvaluationRequest;
 use App\Http\Requests\UpdateEvaluationRequest;
 use App\Http\Requests\DeleteEvaluationRequest;
 use App\Http\Requests\PublishEvaluationRequest;
+use App\Http\Requests\StartEvaluationRequest;
 use App\Models\Evaluation;
 use App\Models\EvaluationQuestion;
 use App\Models\EvaluationSubmission;
@@ -16,7 +17,6 @@ use App\Services\KlassciProxyService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Validator;
 
 /**
  * Controller pour gérer les évaluations en ligne
@@ -404,23 +404,23 @@ class EvaluationController extends AuthenticatedController
             ], 401);
         }
 
-        // Appeler studentEvaluations avec l'ID de l'utilisateur connecté
-        return $this->studentEvaluations($user->klassci_id, $request);
+        return $this->studentEvaluationsForUser($user, $request);
     }
 
     /**
-     * GET /api/evaluations/student/{klassciEtudiantId}
-     * Récupère les évaluations disponibles pour un étudiant
+     * Récupère les évaluations disponibles pour un étudiant donné.
+     *
+     * Issue #123 — méthode rendue **privée** (était `studentEvaluations` publique avec
+     * URL param `klassciEtudiantId`, vecteur d'IDOR). L'identité étudiant est désormais
+     * toujours dérivée du token Sanctum via `myEvaluations()` qui passe le `$user`
+     * authentifié. Plus aucune route ne permet de spécifier l'ID en input.
      */
-    public function studentEvaluations(int $klassciEtudiantId, Request $request): JsonResponse
+    private function studentEvaluationsForUser(User $user, Request $request): JsonResponse
     {
+        $klassciEtudiantId = $user->klassci_id;
+
         // Récupérer la classe de l'étudiant depuis le dashboard
         try {
-            // Récupérer l'utilisateur authentifié (via Sanctum).
-            // `authenticatedUser()` already enforces non-null + raises 401 via
-            // AuthenticationException if missing, so no explicit null check needed.
-            $user = $this->authenticatedUser($request);
-
             // Récupérer le token KLASSCI depuis la base de données
             $klassciToken = $user->klassci_token;
 
@@ -596,10 +596,19 @@ class EvaluationController extends AuthenticatedController
 
     /**
      * POST /api/evaluations/{id}/start
-     * Démarre une évaluation pour un étudiant
+     * Démarre une évaluation pour un étudiant.
+     *
+     * Issue #123 : l'identité étudiant est dérivée du token Sanctum
+     * (`$user->klassci_id`), jamais lue du body. Le champ `klassci_etudiant_id`
+     * envoyé par d'anciens clients est silencieusement ignoré (backward-compat).
+     * L'autorisation `étudiant uniquement` est appliquée par `StartEvaluationRequest::authorize()`.
      */
-    public function startEvaluation(int $id, Request $request): JsonResponse
+    public function startEvaluation(int $id, StartEvaluationRequest $request): JsonResponse
     {
+        // Issue #123 : identité étudiant dérivée du token Sanctum, jamais lue du body.
+        $user = $this->authenticatedUser($request);
+        $klassciEtudiantId = $user->klassci_id;
+
         $evaluation = Evaluation::find($id);
 
         if (!$evaluation || !$evaluation->is_published) {
@@ -621,22 +630,8 @@ class EvaluationController extends AuthenticatedController
             ], 422);
         }
 
-        $validator = Validator::make($request->all(), [
-            'klassci_etudiant_id' => 'required|integer',
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json([
-                'success' => false,
-                'errors' => $validator->errors()
-            ], 422);
-        }
-
-        $klassciEtudiantId = $request->klassci_etudiant_id;
-
         // Vérifier la fenêtre temporelle KLASSCI
         try {
-            $user = $this->authenticatedUser($request);
             $klassciToken = $user->klassci_token;
 
             if (!$klassciToken) {

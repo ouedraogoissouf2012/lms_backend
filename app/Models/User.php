@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\Role;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -134,11 +135,22 @@ class User extends Authenticatable
     }
 
     /**
+     * Convertit la valeur brute `$this->role` en case enum `Role`, en
+     * normalisant les alias EN/FR. Retourne `null` pour une valeur inconnue
+     * ou `null` (fail-soft). Issue #121 — source de vérité unique pour les
+     * rôles utilisateurs.
+     */
+    public function asRoleEnum(): ?Role
+    {
+        return Role::tryFromString($this->role);
+    }
+
+    /**
      * Vérifie si l'utilisateur est un enseignant
      */
     public function isTeacher(): bool
     {
-        return $this->role === 'enseignant' || $this->role === 'teacher';
+        return $this->asRoleEnum() === Role::Enseignant;
     }
 
     /**
@@ -146,7 +158,7 @@ class User extends Authenticatable
      */
     public function isCoordinator(): bool
     {
-        return $this->role === 'coordinateur' || $this->role === 'coordinator';
+        return $this->asRoleEnum() === Role::Coordinateur;
     }
 
     /**
@@ -154,15 +166,17 @@ class User extends Authenticatable
      */
     public function isStudent(): bool
     {
-        return $this->role === 'etudiant' || $this->role === 'student';
+        return $this->asRoleEnum() === Role::Etudiant;
     }
 
     /**
-     * Vérifie si l'utilisateur est un admin
+     * Vérifie si l'utilisateur est un admin (admin / administrateur /
+     * superAdmin / supradmin). La liste élargie est définie dans
+     * `Role::isAdmin()` (issue #121, source de vérité unique).
      */
     public function isAdmin(): bool
     {
-        return in_array($this->role, ['admin', 'administrateur', 'superAdmin', 'supradmin']);
+        return $this->asRoleEnum()?->isAdmin() ?? false;
     }
 
     /**

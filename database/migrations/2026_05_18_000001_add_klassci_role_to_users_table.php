@@ -37,6 +37,12 @@ return new class extends Migration
         //
         // Batched by 1000-row chunks to keep the lock window short on the users
         // table at the 200k+ scale projection (design.md §10).
+        //
+        // NOTE (issue #126): pour les déploiements à grande échelle (>500k users)
+        // où ce backfill inline risque un timeout, utiliser plutôt le command
+        // artisan dédié :
+        //     php artisan klassci:backfill-role --chunk=2000
+        // Le command est IDEMPOTENT (sémantique `klassci_role = role` déterministe).
         DB::table('users')
             ->whereNotNull('klassci_id')
             ->orderBy('id')

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Middleware;
 
+use App\Enums\Role;
 use App\Models\User;
 use App\Services\KlassciProxyService;
 use Closure;
@@ -39,27 +40,6 @@ use Symfony\Component\HttpFoundation\Response;
  */
 class EnsureKlassciSync
 {
-    /**
-     * Hiérarchie de permissivité interne — sert UNIQUEMENT à qualifier les
-     * findings du log de divergence (`is_escalation_attempt`). N'est JAMAIS
-     * utilisée pour de l'autorisation : l'autorisation passe par `EnsureRole`
-     * et `User::isAdmin()`, sources de vérité.
-     *
-     * @var array<string, int>
-     */
-    private const ROLE_PERMISSIVITY = [
-        'etudiant'       => 1,
-        'student'        => 1,
-        'enseignant'     => 2,
-        'teacher'        => 2,
-        'coordinateur'   => 3,
-        'coordinator'    => 3,
-        'admin'          => 4,
-        'administrateur' => 4,
-        'superAdmin'     => 5,
-        'supradmin'      => 5,
-    ];
-
     public function __construct(
         private readonly KlassciProxyService $klassciService,
     ) {}
@@ -158,13 +138,16 @@ class EnsureKlassciSync
 
     /**
      * Returns true iff `$klassciRole` is *more permissive* than `$lmsRole`
-     * according to the internal hierarchy. Used only to qualify divergence
+     * according to the hierarchy defined in `App\Enums\Role::permissivity()`
+     * (issue #121 — source de vérité unique). Used only to qualify divergence
      * findings — never for authorization decisions.
+     *
+     * Unknown roles map to permissivity 0 (less than any known role).
      */
     private function isEscalationAttempt(?string $lmsRole, ?string $klassciRole): bool
     {
-        $lmsLevel     = self::ROLE_PERMISSIVITY[$lmsRole] ?? 0;
-        $klassciLevel = self::ROLE_PERMISSIVITY[$klassciRole] ?? 0;
+        $lmsLevel     = Role::tryFromString($lmsRole)?->permissivity() ?? 0;
+        $klassciLevel = Role::tryFromString($klassciRole)?->permissivity() ?? 0;
 
         return $klassciLevel > $lmsLevel;
     }

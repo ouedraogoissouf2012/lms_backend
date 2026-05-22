@@ -165,12 +165,12 @@ final class LMSAttendancesController extends AuthenticatedController
                 ->orderBy('joined_at', 'desc');
 
             // Filtre selon le rôle
-            if ($user->role === 'enseignant') {
+            if ($user->isTeacher()) {
                 // L'enseignant ne voit que les présences de ses propres séances
                 $query->whereHas('seance', function($q) use ($user) {
                     $q->where('enseignant_id', $user->id);
                 });
-            } else if ($user->role === 'etudiant') {
+            } else if ($user->isStudent()) {
                 // L'étudiant ne voit que ses propres présences
                 $query->where('user_id', $user->id);
             }
@@ -300,7 +300,7 @@ final class LMSAttendancesController extends AuthenticatedController
             }
 
             // Contrôle d'accès par rôle
-            if ($user->role === 'enseignant') {
+            if ($user->isTeacher()) {
                 if ($seance->klassci_enseignant_id != $user->klassci_id) {
                     return response()->json([
                         'success' => false,

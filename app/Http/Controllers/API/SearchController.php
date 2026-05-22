@@ -39,7 +39,7 @@ class SearchController extends AuthenticatedController
             ];
 
             // 1. Rechercher des utilisateurs (admin/coordinateur seulement)
-            if (in_array($user->role, ['coordinateur', 'superAdmin'])) {
+            if ($user->isCoordinator() || $user->isAdmin()) {
                 $results['users'] = User::where(function ($q) use ($query) {
                     $q->where('name', 'LIKE', "%{$query}%")
                       ->orWhere('email', 'LIKE', "%{$query}%");
@@ -67,11 +67,11 @@ class SearchController extends AuthenticatedController
             })
             ->where(function ($q) use ($user) {
                 // Les enseignants ne voient que leurs leçons
-                if ($user->role === 'enseignant') {
+                if ($user->isTeacher()) {
                     $q->where('teacher_id', $user->id);
                 }
                 // Les étudiants voient les leçons publiées
-                if ($user->role === 'étudiant' || $user->role === 'student') {
+                if ($user->isStudent()) {
                     $q->where('status', 'published');
                 }
             })
@@ -96,11 +96,11 @@ class SearchController extends AuthenticatedController
             })
             ->where(function ($q) use ($user) {
                 // Les enseignants ne voient que leurs évaluations
-                if ($user->role === 'enseignant') {
+                if ($user->isTeacher()) {
                     $q->where('teacher_id', $user->id);
                 }
                 // Les étudiants voient les évaluations publiées
-                if ($user->role === 'étudiant' || $user->role === 'student') {
+                if ($user->isStudent()) {
                     $q->where('status', 'published');
                 }
             })
@@ -119,7 +119,7 @@ class SearchController extends AuthenticatedController
             });
 
             // 4. Rechercher dans les classes KLASSCI (via proxy)
-            if (in_array($user->role, ['coordinateur', 'superAdmin', 'enseignant'])) {
+            if ($user->isCoordinator() || $user->isAdmin() || $user->isTeacher()) {
                 try {
                     $klassciService = app(\App\Services\KlassciProxyService::class);
                     $allClasses = $klassciService->getClasses();
@@ -147,7 +147,7 @@ class SearchController extends AuthenticatedController
             }
 
             // 5. Rechercher dans les matières KLASSCI
-            if (in_array($user->role, ['coordinateur', 'superAdmin', 'enseignant'])) {
+            if ($user->isCoordinator() || $user->isAdmin() || $user->isTeacher()) {
                 try {
                     $klassciService = app(\App\Services\KlassciProxyService::class);
                     $allMatieres = $klassciService->getMatieres();
@@ -210,7 +210,7 @@ class SearchController extends AuthenticatedController
         $suggestions = [];
 
         // Suggestions de noms d'utilisateurs
-        if (in_array($user->role, ['coordinateur', 'superAdmin'])) {
+        if ($user->isCoordinator() || $user->isAdmin()) {
             $userSuggestions = User::where('name', 'LIKE', "%{$query}%")
                 ->limit($limit)
                 ->pluck('name')
@@ -221,7 +221,7 @@ class SearchController extends AuthenticatedController
         // Suggestions de titres de leçons
         $lessonSuggestions = Lesson::where('title', 'LIKE', "%{$query}%")
             ->where(function ($q) use ($user) {
-                if ($user->role === 'enseignant') {
+                if ($user->isTeacher()) {
                     $q->where('teacher_id', $user->id);
                 }
             })
@@ -233,7 +233,7 @@ class SearchController extends AuthenticatedController
         // Suggestions de titres d'évaluations
         $evaluationSuggestions = Evaluation::where('title', 'LIKE', "%{$query}%")
             ->where(function ($q) use ($user) {
-                if ($user->role === 'enseignant') {
+                if ($user->isTeacher()) {
                     $q->where('teacher_id', $user->id);
                 }
             })

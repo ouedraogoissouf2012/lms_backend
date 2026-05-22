@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\API;
 
+use App\Enums\Role;
 use App\Http\Controllers\AuthenticatedController;
 use App\Http\Requests\MarkAsReadRequest;
 use App\Http\Requests\MarkAllAsReadRequest;
@@ -231,7 +232,7 @@ class NotificationsController extends AuthenticatedController
     public function stats(Request $request)
     {
         $caller = $this->authenticatedUser($request);
-        $isSupradmin = $caller->role === 'supradmin';
+        $isSupradmin = $caller->asRoleEnum() === Role::Supradmin;
 
         $cacheKey = $isSupradmin
             ? 'notifications_stats_global'

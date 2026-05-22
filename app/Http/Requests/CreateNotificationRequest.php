@@ -55,11 +55,17 @@ final class CreateNotificationRequest extends FormRequest
         }
 
         // Role check (defense in depth above route middleware)
-        if (!in_array($caller->role, ['coordinateur', 'superAdmin', 'supradmin'], true)) {
+        if (!($caller->isCoordinator() || $caller->isAdmin())) {
             return false;
         }
 
-        // Supradmin bypass tenant isolation (platform manager)
+        // Supradmin bypass tenant isolation (platform manager).
+        //
+        // Intentional: strict lowercase `'supradmin'` only — l'enum `Role::Supradmin`
+        // normaliserait aussi `'superAdmin'` (intra-tenant admin) via `tryFromString`,
+        // ce qui briserait la distinction délibérée du contrôle cross-tenant
+        // (cf. `EnsureRole::userHasRole` L107-108 et `.claude/specs/notifications-cross-tenant/`).
+        // NE PAS migrer vers `asRoleEnum()` (#132 spec design.md §4.4).
         if ($caller->role === 'supradmin') {
             return true;
         }

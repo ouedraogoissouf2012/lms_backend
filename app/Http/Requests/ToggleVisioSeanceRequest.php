@@ -31,7 +31,7 @@ final class ToggleVisioSeanceRequest extends FormRequest
 
         // Check 2: User must be coordinateur or superAdmin
         // (route middleware also enforces this, defense in depth)
-        if (!in_array($user->role, ['coordinateur', 'superAdmin'])) {
+        if (!($user->isCoordinator() || $user->isAdmin())) {
             return false;
         }
 

@@ -1478,7 +1478,7 @@ class EvaluationController extends AuthenticatedController
 
             // Restriction coordinateur: ne peut prévisualiser que les évaluations terminées
             $user = auth()->user();
-            if ($user && $user->role === 'coordinateur') {
+            if ($user?->isCoordinator()) {
                 // Utilise la méthode centralisée du modèle (logique réutilisable)
                 if (!$evaluation->isTerminee()) {
                     return response()->json([

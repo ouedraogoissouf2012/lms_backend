@@ -55,6 +55,11 @@ trait ChecksFileAuthorization
             return false;
         }
 
+        // Intentional: strict lowercase `'supradmin'` only — l'enum `Role::Supradmin`
+        // normaliserait aussi `'superAdmin'` (intra-tenant admin) via `tryFromString`,
+        // ce qui briserait la distinction délibérée du trait (cf. PR #103 / issue #102
+        // et `.claude/specs/file-idor-cross-tenant/design.md` §2).
+        // NE PAS migrer vers `asRoleEnum()` (#132 spec design.md §4.4).
         if ($user->role === 'supradmin') {
             return true;
         }
@@ -71,7 +76,7 @@ trait ChecksFileAuthorization
             return true;
         }
 
-        return in_array($user->role, ['admin', 'administrateur', 'superAdmin'], true);
+        return $user->isAdmin();
     }
 
     /**
@@ -86,6 +91,11 @@ trait ChecksFileAuthorization
             return false;
         }
 
+        // Intentional: strict lowercase `'supradmin'` only — l'enum `Role::Supradmin`
+        // normaliserait aussi `'superAdmin'` (intra-tenant admin) via `tryFromString`,
+        // ce qui briserait la distinction délibérée du trait (cf. PR #103 / issue #102
+        // et `.claude/specs/file-idor-cross-tenant/design.md` §2).
+        // NE PAS migrer vers `asRoleEnum()` (#132 spec design.md §4.4).
         if ($user->role === 'supradmin') {
             return true;
         }
@@ -98,6 +108,6 @@ trait ChecksFileAuthorization
             return true;
         }
 
-        return in_array($user->role, ['admin', 'administrateur', 'superAdmin'], true);
+        return $user->isAdmin();
     }
 }

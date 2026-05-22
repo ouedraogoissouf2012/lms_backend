@@ -1369,18 +1369,6 @@ parameters:
 			path: app/Http/Controllers/API/LMS/LMSSeancesController.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\User\|Illuminate\\Database\\Eloquent\\Collection\<int, App\\Models\\User\>\:\:\$email\.$#'
-			identifier: property.notFound
-			count: 3
-			path: app/Http/Controllers/API/LMS/LMSSeancesController.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\User\|Illuminate\\Database\\Eloquent\\Collection\<int, App\\Models\\User\>\:\:\$role\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Http/Controllers/API/LMS/LMSSeancesController.php
-
-		-
 			message: '#^Binary operation "\." between mixed and '' 23\:59\:59'' results in an error\.$#'
 			identifier: binaryOp.invalid
 			count: 1
@@ -1425,12 +1413,6 @@ parameters:
 		-
 			message: '#^Cannot cast mixed to int\.$#'
 			identifier: cast.int
-			count: 1
-			path: app/Http/Controllers/API/LMS/LMSSeancesController.php
-
-		-
-			message: '#^Left side of && is always true\.$#'
-			identifier: booleanAnd.leftAlwaysTrue
 			count: 1
 			path: app/Http/Controllers/API/LMS/LMSSeancesController.php
 
@@ -2407,34 +2389,16 @@ parameters:
 			path: app/Http/Requests/ActivateVisioRequest.php
 
 		-
-			message: '#^Cannot access property \$role on App\\Models\\User\|null\.$#'
-			identifier: property.nonObject
-			count: 1
-			path: app/Http/Requests/AuthorizeServiceRequest.php
-
-		-
 			message: '#^Method App\\Http\\Requests\\AuthorizeServiceRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
 			identifier: missingType.iterableValue
 			count: 1
 			path: app/Http/Requests/AuthorizeServiceRequest.php
 
 		-
-			message: '#^Cannot access property \$role on App\\Models\\User\|null\.$#'
-			identifier: property.nonObject
-			count: 1
-			path: app/Http/Requests/BulkImportUsersRequest.php
-
-		-
 			message: '#^Method App\\Http\\Requests\\BulkImportUsersRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
 			identifier: missingType.iterableValue
 			count: 1
 			path: app/Http/Requests/BulkImportUsersRequest.php
-
-		-
-			message: '#^Cannot access property \$role on App\\Models\\User\|null\.$#'
-			identifier: property.nonObject
-			count: 1
-			path: app/Http/Requests/ChangeRoleRequest.php
 
 		-
 			message: '#^Method App\\Http\\Requests\\ChangeRoleRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
@@ -2455,22 +2419,10 @@ parameters:
 			path: app/Http/Requests/CloseTopicRequest.php
 
 		-
-			message: '#^Cannot access property \$role on App\\Models\\User\|null\.$#'
-			identifier: property.nonObject
-			count: 1
-			path: app/Http/Requests/ConnectServiceRequest.php
-
-		-
 			message: '#^Method App\\Http\\Requests\\ConnectServiceRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
 			identifier: missingType.iterableValue
 			count: 1
 			path: app/Http/Requests/ConnectServiceRequest.php
-
-		-
-			message: '#^Cannot access property \$role on App\\Models\\User\|null\.$#'
-			identifier: property.nonObject
-			count: 1
-			path: app/Http/Requests/CreateUserRequest.php
 
 		-
 			message: '#^Method App\\Http\\Requests\\CreateUserRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
@@ -2525,12 +2477,6 @@ parameters:
 			identifier: argument.type
 			count: 1
 			path: app/Http/Requests/DeleteChapterRequest.php
-
-		-
-			message: '#^Cannot access property \$role on App\\Models\\User\|null\.$#'
-			identifier: property.nonObject
-			count: 1
-			path: app/Http/Requests/DeleteConfigurationRequest.php
 
 		-
 			message: '#^Method App\\Http\\Requests\\DeleteConfigurationRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
@@ -2641,22 +2587,10 @@ parameters:
 			path: app/Http/Requests/DeleteSeanceRequest.php
 
 		-
-			message: '#^Cannot access property \$role on App\\Models\\User\|null\.$#'
-			identifier: property.nonObject
-			count: 1
-			path: app/Http/Requests/DeleteUserRequest.php
-
-		-
 			message: '#^Method App\\Http\\Requests\\DeleteUserRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
 			identifier: missingType.iterableValue
 			count: 1
 			path: app/Http/Requests/DeleteUserRequest.php
-
-		-
-			message: '#^Cannot access property \$role on App\\Models\\User\|null\.$#'
-			identifier: property.nonObject
-			count: 1
-			path: app/Http/Requests/DisableUserRequest.php
 
 		-
 			message: '#^Method App\\Http\\Requests\\DisableUserRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
@@ -2665,22 +2599,10 @@ parameters:
 			path: app/Http/Requests/DisableUserRequest.php
 
 		-
-			message: '#^Cannot access property \$role on App\\Models\\User\|null\.$#'
-			identifier: property.nonObject
-			count: 1
-			path: app/Http/Requests/DisconnectServiceRequest.php
-
-		-
 			message: '#^Method App\\Http\\Requests\\DisconnectServiceRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
 			identifier: missingType.iterableValue
 			count: 1
 			path: app/Http/Requests/DisconnectServiceRequest.php
-
-		-
-			message: '#^Cannot access property \$role on App\\Models\\User\|null\.$#'
-			identifier: property.nonObject
-			count: 1
-			path: app/Http/Requests/EnableUserRequest.php
 
 		-
 			message: '#^Method App\\Http\\Requests\\EnableUserRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
@@ -2693,12 +2615,6 @@ parameters:
 			identifier: missingType.iterableValue
 			count: 1
 			path: app/Http/Requests/EndVisioRequest.php
-
-		-
-			message: '#^Cannot access property \$role on App\\Models\\User\|null\.$#'
-			identifier: property.nonObject
-			count: 1
-			path: app/Http/Requests/ExportUsersRequest.php
 
 		-
 			message: '#^Method App\\Http\\Requests\\ExportUsersRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
@@ -2725,34 +2641,16 @@ parameters:
 			path: app/Http/Requests/FilterLessonsRequest.php
 
 		-
-			message: '#^Cannot access property \$role on App\\Models\\User\|null\.$#'
-			identifier: property.nonObject
-			count: 1
-			path: app/Http/Requests/GenerateActivityReportRequest.php
-
-		-
 			message: '#^Method App\\Http\\Requests\\GenerateActivityReportRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
 			identifier: missingType.iterableValue
 			count: 1
 			path: app/Http/Requests/GenerateActivityReportRequest.php
 
 		-
-			message: '#^Cannot access property \$role on App\\Models\\User\|null\.$#'
-			identifier: property.nonObject
-			count: 1
-			path: app/Http/Requests/GenerateAttendanceReportRequest.php
-
-		-
 			message: '#^Method App\\Http\\Requests\\GenerateAttendanceReportRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
 			identifier: missingType.iterableValue
 			count: 1
 			path: app/Http/Requests/GenerateAttendanceReportRequest.php
-
-		-
-			message: '#^Cannot access property \$role on App\\Models\\User\|null\.$#'
-			identifier: property.nonObject
-			count: 1
-			path: app/Http/Requests/GenerateGradesReportRequest.php
 
 		-
 			message: '#^Method App\\Http\\Requests\\GenerateGradesReportRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
@@ -2795,12 +2693,6 @@ parameters:
 			identifier: missingType.iterableValue
 			count: 1
 			path: app/Http/Requests/GetAttendanceHistoryRequest.php
-
-		-
-			message: '#^Cannot access property \$role on App\\Models\\User\|null\.$#'
-			identifier: property.nonObject
-			count: 1
-			path: app/Http/Requests/GetConfigurationRequest.php
 
 		-
 			message: '#^Method App\\Http\\Requests\\GetConfigurationRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
@@ -3079,12 +2971,6 @@ parameters:
 			path: app/Http/Requests/ResetLessonProgressRequest.php
 
 		-
-			message: '#^Cannot access property \$role on App\\Models\\User\|null\.$#'
-			identifier: property.nonObject
-			count: 1
-			path: app/Http/Requests/ResetPasswordRequest.php
-
-		-
 			message: '#^Method App\\Http\\Requests\\ResetPasswordRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
 			identifier: missingType.iterableValue
 			count: 1
@@ -3205,6 +3091,12 @@ parameters:
 			path: app/Http/Requests/StoreEvaluationRequest.php
 
 		-
+			message: '#^Negated boolean expression is always true\.$#'
+			identifier: booleanNot.alwaysTrue
+			count: 1
+			path: app/Http/Requests/StoreEvaluationRequest.php
+
+		-
 			message: '#^Parameter \#1 \$string of function trim expects string, mixed given\.$#'
 			identifier: argument.type
 			count: 2
@@ -3281,12 +3173,6 @@ parameters:
 			identifier: argument.type
 			count: 1
 			path: app/Http/Requests/StoreLessonRequest.php
-
-		-
-			message: '#^Cannot access property \$role on App\\Models\\User\|null\.$#'
-			identifier: property.nonObject
-			count: 1
-			path: app/Http/Requests/StoreQuizRequest.php
 
 		-
 			message: '#^Method App\\Http\\Requests\\StoreQuizRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
@@ -3391,12 +3277,6 @@ parameters:
 			path: app/Http/Requests/TeacherDashboardRequest.php
 
 		-
-			message: '#^Cannot access property \$role on App\\Models\\User\|null\.$#'
-			identifier: property.nonObject
-			count: 1
-			path: app/Http/Requests/TestServiceConnectionRequest.php
-
-		-
 			message: '#^Method App\\Http\\Requests\\TestServiceConnectionRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
 			identifier: missingType.iterableValue
 			count: 1
@@ -3455,12 +3335,6 @@ parameters:
 			identifier: argument.type
 			count: 1
 			path: app/Http/Requests/UpdateChapterRequest.php
-
-		-
-			message: '#^Cannot access property \$role on App\\Models\\User\|null\.$#'
-			identifier: property.nonObject
-			count: 1
-			path: app/Http/Requests/UpdateConfigurationRequest.php
 
 		-
 			message: '#^Method App\\Http\\Requests\\UpdateConfigurationRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
@@ -3523,12 +3397,6 @@ parameters:
 			path: app/Http/Requests/UpdateForumTopicRequest.php
 
 		-
-			message: '#^Cannot access property \$role on App\\Models\\User\|null\.$#'
-			identifier: property.nonObject
-			count: 1
-			path: app/Http/Requests/UpdateInstitutionSettingsRequest.php
-
-		-
 			message: '#^Method App\\Http\\Requests\\UpdateInstitutionSettingsRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
 			identifier: missingType.iterableValue
 			count: 1
@@ -3589,12 +3457,6 @@ parameters:
 			path: app/Http/Requests/UpdateTimeSpentRequest.php
 
 		-
-			message: '#^Cannot access property \$role on App\\Models\\User\|null\.$#'
-			identifier: property.nonObject
-			count: 1
-			path: app/Http/Requests/UpdateUserRequest.php
-
-		-
 			message: '#^Method App\\Http\\Requests\\UpdateUserRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
 			identifier: missingType.iterableValue
 			count: 1
@@ -3631,22 +3493,10 @@ parameters:
 			path: app/Http/Requests/ValidateParticipantRequest.php
 
 		-
-			message: '#^Cannot access property \$role on App\\Models\\User\|null\.$#'
-			identifier: property.nonObject
-			count: 1
-			path: app/Http/Requests/ViewAuditLogRequest.php
-
-		-
 			message: '#^Method App\\Http\\Requests\\ViewAuditLogRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
 			identifier: missingType.iterableValue
 			count: 1
 			path: app/Http/Requests/ViewAuditLogRequest.php
-
-		-
-			message: '#^Cannot access property \$role on App\\Models\\User\|null\.$#'
-			identifier: property.nonObject
-			count: 1
-			path: app/Http/Requests/ViewUserDetailsRequest.php
 
 		-
 			message: '#^Method App\\Http\\Requests\\ViewUserDetailsRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'

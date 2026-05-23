@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Services\Klassci\Concerns\HasKlassciEndpointShortcuts;
+use App\Services\Klassci\KlassciBatchFetcher;
 use App\Services\Klassci\KlassciCacheKeyStrategy;
 use App\Services\Klassci\KlassciHttpClient;
 use App\Services\Klassci\KlassciRequestMemo;
@@ -56,6 +58,8 @@ use Illuminate\Contracts\Cache\Repository as CacheRepository;
  */
 class KlassciProxyService
 {
+    use HasKlassciEndpointShortcuts;
+
     private readonly int $cacheTTL;
 
     private readonly int $userTokenDefaultTTL;
@@ -65,6 +69,7 @@ class KlassciProxyService
         private readonly KlassciRequestMemo $memo,
         private readonly KlassciCacheKeyStrategy $cacheKeys,
         private readonly CacheRepository $cache,
+        private readonly KlassciBatchFetcher $batch,
     ) {
         $cacheTtlConfig = config('services.klassci.cache_ttl', 300);
         $this->cacheTTL = is_int($cacheTtlConfig) ? $cacheTtlConfig : 300;
@@ -200,146 +205,59 @@ class KlassciProxyService
     }
 
     // ============================================
-    // MÉTHODES SPÉCIFIQUES POUR CHAQUE ENDPOINT
+    // MÉTHODES ENDPOINT SÉMANTIQUES (catalogue KLASSCI)
     // ============================================
+    // Les 15 méthodes `getStructure`/`getClasses`/`getMatieres`/`saveNotes`/etc.
+    // vivent maintenant dans le trait HasKlassciEndpointShortcuts (`use` ci-dessus).
+    // Audit `spec-architect` PR 2 MEDIUM-1 : sépare le catalogue de la mécanique
+    // HTTP+cache+memo, fait passer ce fichier sous §1.1 (< 300 lignes).
+
+    // ============================================
+    // BATCH HELPERS — PR 2 PERF-02 (issue #135 part b/c)
+    // ============================================
+    // Délégation à KlassciBatchFetcher (couche 3) — parallélisation Http::pool
+    // avec intégration memo intra-request + cache distribué (couches 1+2).
+    // Cf. .claude/specs/perf-02-klassci-batch-cache/design.md §4.
 
     /**
-     * @return array<string, mixed>
+     * Batch fetch N ressources par ID — parallélisé en pools de `pool_size`.
+     *
+     * @param  array<int>  $ids
+     * @return array<int, array<string, mixed>>  Map [id => responseData] ; IDs échoués absents.
      */
-    public function getStructure(): array
-    {
-        return $this->get('structure', [], 3600);
+    public function fetchManyByEndpoint(
+        array $ids,
+        string $endpointPattern,
+        ?string $userToken = null,
+        ?int $customTTL = null,
+    ): array {
+        return $this->batch->fetchManyByEndpoint($ids, $endpointPattern, $userToken, $customTTL);
     }
 
     /**
-     * @param  array<string, mixed>  $filters
-     * @return array<string, mixed>
+     * @param  array<int>  $matiereIds
+     * @return array<int, array<string, mixed>>
      */
-    public function getClasses(array $filters = []): array
+    public function fetchManyMatieresDetails(array $matiereIds, string $userToken, ?int $ttl = 600): array
     {
-        return $this->get('classes', $filters, 600);
+        return $this->batch->fetchManyMatieresDetails($matiereIds, $userToken, $ttl);
     }
 
     /**
-     * @return array<string, mixed>
+     * @param  array<int>  $classeIds
+     * @return array<int, array<string, mixed>>
      */
-    public function getClasseEtudiants(int $classeId, ?int $anneeId = null): array
+    public function fetchManyClassesDetails(array $classeIds, string $userToken, ?int $ttl = 600): array
     {
-        $params = $anneeId ? ['annee_id' => $anneeId] : [];
-
-        return $this->get("classes/{$classeId}/etudiants", $params, 300);
+        return $this->batch->fetchManyClassesDetails($classeIds, $userToken, $ttl);
     }
 
     /**
-     * @param  array<string, mixed>  $filters
-     * @return array<string, mixed>
+     * @param  array<int>  $classeIds
+     * @return array<int, array<string, mixed>>
      */
-    public function getMatieres(array $filters = []): array
+    public function fetchManyClasseEtudiants(array $classeIds, ?int $anneeId = null, ?int $ttl = 300): array
     {
-        return $this->get('matieres', $filters, 600);
-    }
-
-    /**
-     * @return array<string, mixed>
-     */
-    public function getMatiereDetails(int $id): array
-    {
-        return $this->get("matieres/{$id}", [], 600);
-    }
-
-    /**
-     * @return array<string, mixed>
-     */
-    public function getEnseignants(): array
-    {
-        return $this->get('enseignants', [], 3600);
-    }
-
-    /**
-     * @return array<string, mixed>
-     */
-    public function getEnseignantsEnrichis(bool $withDetails = true): array
-    {
-        $params = $withDetails ? ['with_details' => 'true'] : [];
-
-        return $this->get('enseignants', $params, 600);
-    }
-
-    /**
-     * @return array<string, mixed>
-     */
-    public function getFilieres(): array
-    {
-        return $this->get('filieres', [], 3600);
-    }
-
-    /**
-     * @return array<string, mixed>
-     */
-    public function getNiveauxEtudes(): array
-    {
-        return $this->get('niveaux-etudes', [], 3600);
-    }
-
-    /**
-     * @param  array<string, mixed>  $filters
-     * @return array<string, mixed>
-     */
-    public function getEvaluations(array $filters = []): array
-    {
-        return $this->get('evaluations', $filters, 300);
-    }
-
-    /**
-     * @param  array<string, mixed>  $filters
-     * @return array<string, mixed>
-     */
-    public function getEmploiTemps(array $filters = []): array
-    {
-        return $this->get('emploi-temps', $filters, 600);
-    }
-
-    /**
-     * @param  array<int, array<string, mixed>>  $notes
-     * @return array<string, mixed>
-     */
-    public function saveNotes(int $evaluationId, array $notes): array
-    {
-        return $this->post("evaluations/{$evaluationId}/notes", [
-            'notes' => $notes,
-        ]);
-    }
-
-    /**
-     * @param  array<int, array<string, mixed>>  $presences
-     * @return array<string, mixed>
-     */
-    public function savePresences(int $coursId, array $presences): array
-    {
-        return $this->post("cours/{$coursId}/presences", [
-            'presences' => $presences,
-        ]);
-    }
-
-    /**
-     * @return array<string, mixed>
-     */
-    public function updateCoursStatut(int $coursId, string $statut, ?string $commentaire = null): array
-    {
-        return $this->put("cours/{$coursId}/statut", [
-            'statut'      => $statut,
-            'commentaire' => $commentaire,
-        ]);
-    }
-
-    public function testConnection(): bool
-    {
-        try {
-            $response = $this->get('structure');
-
-            return isset($response['success']) && (bool) $response['success'];
-        } catch (\Exception) {
-            return false;
-        }
+        return $this->batch->fetchManyClasseEtudiants($classeIds, $anneeId, $ttl);
     }
 }

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Klassci;
 
 use Illuminate\Http\Client\Factory as HttpFactory;
+use Illuminate\Http\Client\PendingRequest;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -83,20 +84,12 @@ final class KlassciHttpClient
                 'has_user_token' => $overrideToken !== null && !empty($overrideToken),
             ]);
 
-            $request = $this->http->timeout($this->timeout)
-                ->withHeaders([
-                    'Accept'       => 'application/json',
-                    'Content-Type' => 'application/json',
-                ]);
-
-            // SSL : désactivé si configuré via KLASSCI_SSL_VERIFY=false.
-            if (str_starts_with($url, 'https://') && !$this->sslVerify) {
-                $request = $request->withoutVerifying();
-            }
-
-            if (is_string($token) && $token !== '') {
-                $request = $request->withToken($token);
-            }
+            $request = self::decorateRequest(
+                $this->http->timeout($this->timeout),
+                $url,
+                $this->sslVerify,
+                $token,
+            );
 
             $response = match ($method) {
                 'GET'    => $request->get($url, $data),
@@ -136,5 +129,41 @@ final class KlassciHttpClient
 
             throw $e;
         }
+    }
+
+    /**
+     * Décore un `PendingRequest` avec les headers KLASSCI standard, SSL conditionnel
+     * et auth bearer si token non vide.
+     *
+     * Helper statique pur — appelé par `executeHttp()` ET par `KlassciBatchFetcher`
+     * pour partager la même politique de décoration HTTP (DRY fix audit MEDIUM-2).
+     * Pas d'état interne, donc statique acceptable malgré §1.6 D (pas un Service
+     * Locator, juste une fonction pure sur un type d'entrée injecté).
+     *
+     * @param  PendingRequest  $request  Builder déjà initialisé (timeout appliqué en amont)
+     * @param  string  $url               URL cible (utilisée pour le check SSL https-only)
+     * @param  bool  $sslVerify           Doit-on vérifier SSL ? (false → withoutVerifying si https)
+     * @param  string|null  $token        Bearer token ou null/'' pour ne pas en attacher
+     */
+    public static function decorateRequest(
+        PendingRequest $request,
+        string $url,
+        bool $sslVerify,
+        ?string $token,
+    ): PendingRequest {
+        $req = $request->withHeaders([
+            'Accept'       => 'application/json',
+            'Content-Type' => 'application/json',
+        ]);
+
+        if (str_starts_with($url, 'https://') && !$sslVerify) {
+            $req = $req->withoutVerifying();
+        }
+
+        if (is_string($token) && $token !== '') {
+            $req = $req->withToken($token);
+        }
+
+        return $req;
     }
 }

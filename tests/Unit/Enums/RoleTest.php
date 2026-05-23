@@ -50,6 +50,16 @@ final class RoleTest extends TestCase
         self::assertSame(Role::Supradmin, Role::tryFromString('superAdmin'));
     }
 
+    /**
+     * Issue #132 (REQ-1) — alias historique avec accent aigu. 2 sites pré-existants
+     * (`SearchController`, `LMSSeancesController`) supportaient explicitement ce variant
+     * avant la migration vers `User::isStudent()`. L'enum doit le normaliser.
+     */
+    public function test_try_from_string_accepts_accented_etudiant_alias(): void
+    {
+        self::assertSame(Role::Etudiant, Role::tryFromString('étudiant'));
+    }
+
     public function test_try_from_string_returns_null_for_invalid(): void
     {
         self::assertNull(Role::tryFromString('hacker'));

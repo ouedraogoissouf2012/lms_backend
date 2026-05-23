@@ -17,7 +17,7 @@ namespace App\Enums;
  * éviter une migration data invasive, l'enum accepte tous les alias
  * connus en lecture, et normalise vers la case canonique FR :
  *
- *  - `'etudiant'`     ou `'student'`        → `Role::Etudiant`
+ *  - `'etudiant'`, `'student'` ou `'étudiant'` (accent) → `Role::Etudiant`
  *  - `'enseignant'`   ou `'teacher'`        → `Role::Enseignant`
  *  - `'coordinateur'` ou `'coordinator'`    → `Role::Coordinateur`
  *  - `'admin'`        ou `'administrateur'` → `Role::Admin`
@@ -59,7 +59,7 @@ enum Role: string
     public static function tryFromString(?string $value): ?self
     {
         return match ($value) {
-            'etudiant', 'student'         => self::Etudiant,
+            'etudiant', 'student', 'étudiant' => self::Etudiant,
             'enseignant', 'teacher'       => self::Enseignant,
             'coordinateur', 'coordinator' => self::Coordinateur,
             'admin', 'administrateur'     => self::Admin,

@@ -31,7 +31,7 @@ final class GetTeacherStatsRequest extends FormRequest
             return false;
         }
 
-        return in_array($user->role, ['teacher', 'enseignant', 'coordinateur', 'admin', 'superAdmin']);
+        return $user->isTeacher() || $user->isCoordinator() || $user->isAdmin();
     }
 
     public function rules(): array

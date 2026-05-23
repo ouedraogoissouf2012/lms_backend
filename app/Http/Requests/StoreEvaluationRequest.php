@@ -37,7 +37,7 @@ final class StoreEvaluationRequest extends FormRequest
         }
 
         // Coordinators cannot create evaluations
-        if ($user->role === 'coordinateur') {
+        if ($user->isCoordinator()) {
             return false;
         }
 

@@ -25,7 +25,7 @@ final class SyncToKlassciRequest extends FormRequest
     public function authorize(): bool
     {
         $user = auth()->user();
-        return $user && in_array($user->role, ['enseignant', 'coordinateur', 'superAdmin']);
+        return $user !== null && ($user->isTeacher() || $user->isCoordinator() || $user->isAdmin());
     }
 
     public function rules(): array

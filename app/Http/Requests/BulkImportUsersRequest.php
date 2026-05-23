@@ -8,7 +8,8 @@ final class BulkImportUsersRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return auth()->check() && in_array(auth()->user()->role, ['coordinateur', 'superAdmin']);
+        $user = auth()->user();
+        return $user !== null && ($user->isCoordinator() || $user->isAdmin());
     }
 
     public function rules(): array

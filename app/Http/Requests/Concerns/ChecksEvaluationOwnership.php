@@ -79,7 +79,7 @@ trait ChecksEvaluationOwnership
         }
 
         // Coordinators are excluded from evaluation mutations by business rule.
-        if ($user->role === 'coordinateur') {
+        if ($user->isCoordinator()) {
             return false;
         }
 

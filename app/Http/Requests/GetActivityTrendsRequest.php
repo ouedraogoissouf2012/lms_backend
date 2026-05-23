@@ -31,7 +31,7 @@ final class GetActivityTrendsRequest extends FormRequest
             return false;
         }
 
-        return in_array($user->role, ['coordinateur', 'superAdmin', 'admin']);
+        return $user->isCoordinator() || $user->isAdmin();
     }
 
     public function rules(): array

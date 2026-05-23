@@ -118,7 +118,7 @@ final class SeanceQueryService
         ];
 
         // 9. Les participants sont visibles QUE pour les enseignants et coordinateurs
-        if (in_array($user->role, ['enseignant', 'teacher', 'coordinateur', 'superAdmin'], true)) {
+        if ($user->isTeacher() || $user->isCoordinator() || $user->isAdmin()) {
             $response['participants'] = [
                 'teacher' => $teacher,
                 'students' => $students,
@@ -160,11 +160,11 @@ final class SeanceQueryService
      */
     private function resolveSeanceFromKlassci(int $seanceId, User $user, string $klassciToken): array
     {
-        if (in_array($user->role, ['enseignant', 'teacher'], true)) {
+        if ($user->isTeacher()) {
             return $this->resolveSeanceForTeacher($seanceId, $user, $klassciToken);
         }
 
-        if ($user->role === 'etudiant') {
+        if ($user->isStudent()) {
             return $this->resolveSeanceForStudent($seanceId, $user, $klassciToken);
         }
 
@@ -309,7 +309,7 @@ final class SeanceQueryService
         }
 
         // IMPORTANT: Bloquer l'accès aux séances archivées pour les étudiants
-        if ($user->role === 'etudiant' && !$visioData->is_active) {
+        if ($user->isStudent() && !$visioData->is_active) {
             return null;
         }
 

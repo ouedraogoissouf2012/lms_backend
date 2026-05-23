@@ -149,7 +149,7 @@ final class LMSSeancesController extends AuthenticatedController
 
                         // IMPORTANT: Pour les étudiants, filtrer les séances archivées et masquées
                         // Enseignants/Coordinateurs/Admins voient tout
-                        if ($user && $user->role === 'etudiant') {
+                        if ($user->isStudent()) {
                             $seancesFiltrees = $seancesFiltrees->filter(function ($seance) use ($user) {
                                 $localSeance = \App\Models\Seance::where('klassci_seance_id', $seance['id'])->first();
 
@@ -288,7 +288,7 @@ final class LMSSeancesController extends AuthenticatedController
             // Récupérer la séance via teacher-dashboard (même logique que seanceDetails)
             $seance = null;
 
-            if (in_array($user->role, ['enseignant', 'teacher'])) {
+            if ($user->isTeacher()) {
                 $dashboard = $this->klassciService->requestWithUserToken(
                     $klassciToken,
                     'me/teacher-dashboard',
@@ -394,7 +394,7 @@ final class LMSSeancesController extends AuthenticatedController
 
             $userToValidate = \App\Models\User::find($userId);
 
-            if (!$userToValidate) {
+            if (!$userToValidate instanceof \App\Models\User) {
                 return response()->json([
                     'success' => false,
                     'authorized' => false,
@@ -439,7 +439,7 @@ final class LMSSeancesController extends AuthenticatedController
             }
 
             // Pour les enseignants/coordinateurs: autoriser directement
-            if (in_array($userToValidate->role, ['enseignant', 'coordinateur', 'superAdmin', 'teacher'])) {
+            if ($userToValidate->isTeacher() || $userToValidate->isCoordinator() || $userToValidate->isAdmin()) {
                 Log::info('DEBUG validateParticipant - Enseignant autorisé', [
                     'user_id' => $userId,
                     'role' => $userToValidate->role
@@ -448,13 +448,13 @@ final class LMSSeancesController extends AuthenticatedController
                 return response()->json([
                     'success' => true,
                     'authorized' => true,
-                    'role' => in_array($userToValidate->role, ['coordinateur', 'superAdmin']) ? 'moderator' : 'teacher',
+                    'role' => ($userToValidate->isCoordinator() || $userToValidate->isAdmin()) ? 'moderator' : 'teacher',
                     'message' => 'Enseignant ou coordinateur autorisé'
                 ]);
             }
 
             // Pour un étudiant: vérifier l'inscription dans la classe
-            if (in_array($userToValidate->role, ['etudiant', 'étudiant', 'student'])) {
+            if ($userToValidate->isStudent()) {
                 Log::info('DEBUG validateParticipant - Vérification étudiant', [
                     'user_id' => $userId,
                     'user_email' => $userToValidate->email,
@@ -1354,7 +1354,7 @@ final class LMSSeancesController extends AuthenticatedController
                 ->orderBy('visio_started_at', 'desc');
 
             // Filtre par rôle
-            if ($user->role === 'enseignant') {
+            if ($user->isTeacher()) {
                 $query->where('klassci_enseignant_id', $user->klassci_id);
             }
             // coordinateur / superAdmin : pas de filtre, voit tout

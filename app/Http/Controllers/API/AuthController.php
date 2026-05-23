@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\API;
 
+use App\Enums\Role;
 use App\Http\Controllers\AuthenticatedController;
 use App\Services\KlassciProxyService;
 use App\Services\ClasseSyncService;
@@ -132,7 +133,7 @@ class AuthController extends AuthenticatedController
                         ],
                         'meta' => [
                             'klassci_synced' => false,
-                            'is_supradmin'   => $user->role === 'supradmin',
+                            'is_supradmin'   => $user->asRoleEnum() === Role::Supradmin,
                             'institution'    => null,
                             'institution_name' => null,
                         ],

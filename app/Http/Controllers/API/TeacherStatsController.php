@@ -26,7 +26,7 @@ class TeacherStatsController extends Controller
         try {
             $user = $request->user();
 
-            if (!$user || !in_array($user->role, ['enseignant', 'teacher', 'coordinateur', 'superAdmin'])) {
+            if (!$user || !($user->isTeacher() || $user->isCoordinator() || $user->isAdmin())) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Accès réservé aux enseignants'

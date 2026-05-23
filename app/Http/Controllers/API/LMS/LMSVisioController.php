@@ -73,7 +73,7 @@ final class LMSVisioController extends AuthenticatedController
             $seanceFound = null;
             $matiereInfo = null;
 
-            if (in_array($user->role, ['enseignant', 'teacher'])) {
+            if ($user->isTeacher()) {
                 $dashboard = $this->klassciService->requestWithUserToken(
                     $klassciToken,
                     'me/teacher-dashboard',
@@ -492,7 +492,7 @@ final class LMSVisioController extends AuthenticatedController
             // Les coordinateurs sont marqués comme "observateurs" (is_observer=true)
             // Ils ne sont PAS affichés dans la liste des participants visible
             // Mais leur présence est tracée pour l'audit
-            $isObserver = ($user->role === 'coordinateur');
+            $isObserver = $user->isCoordinator();
 
             // Enregistrer la participation pour tous les rôles
             // Étudiants, enseignants et coordinateurs peuvent rejoindre la visio

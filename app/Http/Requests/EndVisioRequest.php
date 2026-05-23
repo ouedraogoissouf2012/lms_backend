@@ -34,7 +34,7 @@ final class EndVisioRequest extends FormRequest
 
         // Check 2: User must be enseignant or coordinateur
         // (route middleware also enforces this, defense in depth)
-        if (!in_array($user->role, ['enseignant', 'teacher', 'coordinateur'])) {
+        if (!($user->isTeacher() || $user->isCoordinator())) {
             return false;
         }
 

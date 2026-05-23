@@ -49,7 +49,7 @@ trait ChecksForumAuthorization
      *
      * Check order (short-circuit):
      *   1. If any of `$ownerUserId`, `$tenantInstitutionId`, `$user` is null → deny.
-     *   2. If `$user->role === 'supradmin'` → allow (platform manager bypass).
+     *   2. If `$user->role === 'supradmin'` (strict lowercase) → allow (platform manager bypass).
      *   3. If `$tenantInstitutionId !== $user->institution_id` → deny.
      *   4. If `$ownerUserId === $user->id` → allow (owner intra-tenant).
      *   5. If `$user->role` is in `$moderatorRoles` → allow (moderator intra-tenant).
@@ -79,6 +79,11 @@ trait ChecksForumAuthorization
             return false;
         }
 
+        // Intentional: strict lowercase `'supradmin'` only — l'enum `Role::Supradmin`
+        // normaliserait aussi `'superAdmin'` (intra-tenant admin) via `tryFromString`,
+        // ce qui briserait la distinction délibérée du trait (cf. PR #95 / issue #91
+        // et `.claude/specs/forum-idor-cross-tenant/design.md` §50-51).
+        // NE PAS migrer vers `asRoleEnum()` (#132 spec design.md §4.4).
         if ($user->role === 'supradmin') {
             return true;
         }

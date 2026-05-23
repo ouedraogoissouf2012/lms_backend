@@ -52,7 +52,7 @@ final class LMSNotificationsPreferencesController extends AuthenticatedControlle
         try {
             $currentUser = $this->authenticatedUser($request);
 
-            if ($currentUser->id !== $userId && !in_array($currentUser->role, ['coordinateur', 'superAdmin'], true)) {
+            if ($currentUser->id !== $userId && !($currentUser->isCoordinator() || $currentUser->isAdmin())) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Accès refusé'

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\API;
 
+use App\Enums\Role;
 use App\Http\Controllers\AuthenticatedController;
 use App\Http\Requests\Concerns\ChecksFileAuthorization;
 use App\Http\Requests\ListFilesRequest;
@@ -288,7 +289,7 @@ class FileController extends AuthenticatedController
     public function stats(Request $request): JsonResponse
     {
         $caller = $this->authenticatedUser($request);
-        $isSupradmin = $caller->role === 'supradmin';
+        $isSupradmin = $caller->asRoleEnum() === Role::Supradmin;
         $isStudent = $caller->isStudent();
 
         $cacheKey = $isSupradmin

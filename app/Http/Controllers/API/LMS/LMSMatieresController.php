@@ -149,7 +149,7 @@ final class LMSMatieresController extends AuthenticatedController
             $seances = [];
 
             try {
-                if (in_array($user->role, ['enseignant', 'teacher'])) {
+                if ($user->isTeacher()) {
                     $dashboard = $this->klassciService->requestWithUserToken(
                         $klassciToken,
                         'me/teacher-dashboard',
@@ -168,7 +168,7 @@ final class LMSMatieresController extends AuthenticatedController
                         );
                         $seances = $matiereDetails['data']['seances_programmees'] ?? [];
                     }
-                } elseif (in_array($user->role, ['etudiant', 'student'])) {
+                } elseif ($user->isStudent()) {
                     $dashboard = $this->klassciService->requestWithUserToken(
                         $klassciToken,
                         'me/dashboard',
@@ -211,7 +211,7 @@ final class LMSMatieresController extends AuthenticatedController
             }
 
             // 4b. Filtrer les séances masquées et archivées pour les étudiants
-            if ($user->role === 'etudiant') {
+            if ($user->isStudent()) {
                 /** @var array<int, array<string, mixed>> $seances */
                 $seances = collect($seances)->filter(function (array $seance) use ($user): bool {
                     $seanceId = $seance['id'] ?? null;
@@ -360,7 +360,7 @@ final class LMSMatieresController extends AuthenticatedController
                 $query = \App\Models\Lesson::where('matiere_id', $matiereId);
 
                 // Étudiants : leçons publiées uniquement ; enseignants/coordinateurs : toutes
-                if (in_array($user->role, ['etudiant', 'student'])) {
+                if ($user->isStudent()) {
                     $query->published();
                 }
 
@@ -519,7 +519,7 @@ final class LMSMatieresController extends AuthenticatedController
             // Defense in depth: la route middleware `role:admin,coordinateur` filtre
             // déjà, mais on garde le check controller comme garde supplémentaire.
             // Note: `superAdmin` accepté car role intra-tenant admin (cf. EnsureRole.php).
-            if (!in_array($user->role, ['admin', 'coordinateur', 'superAdmin'], true)) {
+            if (!($user->isCoordinator() || $user->isAdmin())) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Accès non autorisé. Réservé aux administrateurs et coordinateurs.'

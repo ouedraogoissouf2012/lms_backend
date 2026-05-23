@@ -33,7 +33,7 @@ final class DeleteSeanceRequest extends FormRequest
 
         // Check 2: User must be enseignant/coordinateur/superAdmin
         // (route middleware also enforces this, defense in depth)
-        if (!in_array($user->role, ['enseignant', 'teacher', 'coordinateur', 'superAdmin'])) {
+        if (!($user->isTeacher() || $user->isCoordinator() || $user->isAdmin())) {
             return false;
         }
 
@@ -50,7 +50,7 @@ final class DeleteSeanceRequest extends FormRequest
 
         // Check 4: For enseignants only - verify ownership (klassci_enseignant_id match)
         // Coordinateurs and admins can delete any seance
-        if (in_array($user->role, ['enseignant', 'teacher'])) {
+        if ($user->isTeacher()) {
             if ($seance->klassci_enseignant_id && $seance->klassci_enseignant_id !== $user->klassci_id) {
                 return false;
             }

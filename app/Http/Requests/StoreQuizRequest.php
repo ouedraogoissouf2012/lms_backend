@@ -17,7 +17,7 @@ class StoreQuizRequest extends FormRequest
     public function authorize(): bool
     {
         $user = Auth::user();
-        return in_array($user->role, ['enseignant', 'coordinateur', 'superAdmin', 'admin']);
+        return $user !== null && ($user->isTeacher() || $user->isCoordinator() || $user->isAdmin());
     }
 
     public function rules(): array

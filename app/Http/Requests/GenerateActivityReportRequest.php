@@ -17,7 +17,7 @@ class GenerateActivityReportRequest extends FormRequest
     public function authorize(): bool
     {
         $user = Auth::user();
-        return in_array($user->role, ['coordinateur', 'superAdmin', 'admin']);
+        return $user !== null && ($user->isCoordinator() || $user->isAdmin());
     }
 
     public function rules(): array

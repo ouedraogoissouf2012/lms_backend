@@ -34,7 +34,7 @@ final class DeactivateVisioRequest extends FormRequest
 
         // Check 2: Only enseignants can deactivate
         // (route middleware also enforces this, defense in depth)
-        if ($user->role !== 'enseignant' && $user->role !== 'teacher') {
+        if (!$user->isTeacher()) {
             return false;
         }
 

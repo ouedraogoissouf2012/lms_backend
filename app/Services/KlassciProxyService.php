@@ -1,294 +1,202 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Services;
 
-use App\Models\Institution;
-use App\Models\User;
-use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Log;
+use App\Services\Klassci\KlassciCacheKeyStrategy;
+use App\Services\Klassci\KlassciHttpClient;
+use App\Services\Klassci\KlassciRequestMemo;
+use Illuminate\Contracts\Cache\Repository as CacheRepository;
 
 /**
- * Service Proxy pour l'API KLASSCI
+ * Service Proxy pour l'API KLASSCI — orchestrateur fin.
  *
- * Ce service gère toutes les communications avec l'API KLASSCI backend
- * avec cache intelligent et gestion d'erreurs
+ * ## PERF-02 (issue #137) — Architecture 4 collaborateurs
+ *
+ * Après éclatement architectural (audit `spec-architect` HIGH-1 sur la PR
+ * monolithique initiale), ce service est devenu un **orchestrateur** mince qui
+ * délègue à 4 collaborateurs spécialisés :
+ *
+ *   - {@see \App\Services\Klassci\KlassciConfigResolver} — résolution 3-tiers du
+ *     tenant URL + token système (priorité personal token → institution token →
+ *     system token). Injecté indirectement via {@see KlassciHttpClient}.
+ *
+ *   - {@see \App\Services\Klassci\KlassciHttpClient} — couche HTTP unifiée avec
+ *     `executeHttp()` (DRY fix HIGH-2). Gère SSL, headers, timeout, gestion
+ *     d'erreur. Token système OU token utilisateur via param `$overrideToken`.
+ *
+ *   - {@see \App\Services\Klassci\KlassciRequestMemo} — memoization intra-request.
+ *     Tableau privé en mémoire indexé par `xxh3(method+endpoint+params+tokenHash)`.
+ *     Vidé sur tout write. Préserve l'isolation cross-user via tokenHash.
+ *
+ *   - {@see \App\Services\Klassci\KlassciCacheKeyStrategy} — génération clés cache
+ *     distribué + soft-invalidation tenant-wide via `invalidatedAt` timestamp.
+ *
+ * Ce service expose les 15 méthodes endpoint métier (getStructure, getClasses, ...)
+ * + 4 méthodes HTTP génériques (get/post/put/delete) + `requestWithUserToken`.
+ *
+ * ## Flux de résolution (pour les GET)
+ *
+ *   1. Calcul `memoKey` via `KlassciRequestMemo::memoKey()`.
+ *   2. Si memo hit → retour immédiat (pas d'I/O cache, pas de HTTP).
+ *   3. Sinon, génération `cacheKey` via `KlassciCacheKeyStrategy` puis
+ *      `Cache::remember()` (TTL configurable par appel).
+ *   4. Sur cache miss : `KlassciHttpClient::executeHttp('GET', ...)`.
+ *   5. Memo populate.
+ *
+ * ## Flux des writes (POST/PUT/DELETE)
+ *
+ *   1. `KlassciHttpClient::executeHttp(method, ...)` — réseau direct.
+ *   2. `KlassciCacheKeyStrategy::invalidateTenant()` — incrémente le timestamp
+ *      `invalidatedAt` (toutes les clés du tenant deviennent obsolètes).
+ *   3. `KlassciRequestMemo::clear()` — reset memo intra-request.
+ *
+ * @see .claude/specs/perf-02-klassci-batch-cache/design.md §1-3
  */
 class KlassciProxyService
 {
-    private ?string $baseUrl = null;
-    private ?string $token = null;
-    private int $cacheTTL;
-    private int $timeout;
-    private bool $configResolved = false;
+    private readonly int $cacheTTL;
 
-    public function __construct()
-    {
-        $this->cacheTTL = config('services.klassci.cache_ttl', 300);
-        $this->timeout = config('services.klassci.timeout', 30);
+    private readonly int $userTokenDefaultTTL;
+
+    public function __construct(
+        private readonly KlassciHttpClient $http,
+        private readonly KlassciRequestMemo $memo,
+        private readonly KlassciCacheKeyStrategy $cacheKeys,
+        private readonly CacheRepository $cache,
+    ) {
+        $cacheTtlConfig = config('services.klassci.cache_ttl', 300);
+        $this->cacheTTL = is_int($cacheTtlConfig) ? $cacheTtlConfig : 300;
+
+        $userTtlConfig = config('services.klassci.user_token_cache_default_ttl', 300);
+        $this->userTokenDefaultTTL = is_int($userTtlConfig) ? $userTtlConfig : 300;
     }
 
     /**
-     * Résolution lazy de la config KLASSCI.
-     * Priorité :
-     *   1. Token personnel de l'utilisateur connecté (KLASSCI login)
-     *   2. Token système de l'institution matchant klassci_tenant_url de l'utilisateur
-     *      (pour les comptes créés via auth locale sans token personnel)
-     *   3. Token système global (supradmin, routes publiques sans user)
-     */
-    private function resolveConfig(): void
-    {
-        if ($this->configResolved) {
-            return;
-        }
-
-        $user = auth('sanctum')->user();
-
-        // Priorité 1 : token personnel de l'utilisateur connecté
-        if ($user && $user->klassci_token) {
-            $tenantUrl = $user->klassci_tenant_url;
-
-            // Fallback : extraire l'URL depuis klassci_data si klassci_tenant_url est null (anciens comptes)
-            if (!$tenantUrl && $user->klassci_data) {
-                $klassciData = is_array($user->klassci_data) ? $user->klassci_data : json_decode($user->klassci_data, true);
-                $tenantUrl = $klassciData['_lms_tenant_url'] ?? null;
-            }
-
-            if ($tenantUrl) {
-                $this->baseUrl = $tenantUrl;
-                $this->token   = $user->klassci_token;
-                $this->configResolved = true;
-
-                // Mettre à jour klassci_tenant_url en base si manquant (migration silencieuse)
-                if (!$user->klassci_tenant_url) {
-                    $user->updateQuietly(['klassci_tenant_url' => $tenantUrl]);
-                }
-                return;
-            }
-        }
-
-        // Priorité 2 : token de l'institution de l'utilisateur (compte manuel sans token personnel).
-        //
-        // On utilise la relation directe $user->institution (clé étrangère institution_id)
-        // au lieu d'un lookup par klassci_api_url. Deux institutions peuvent partager le même
-        // serveur KLASSCI (même URL) ; un lookup par URL est ambigu et exposait à une fuite
-        // cross-institution (cf. issue #75, analog de #23). La relation user→institution est
-        // unique par construction.
-        //
-        // Check défensif klassci_api_url : si l'institution résolue n'a pas la même URL que
-        // celle enregistrée chez le user, c'est une incohérence de données — on refuse de
-        // monter un token cross-tenant et on laisse Priority 3 prendre le relais (fail-secure).
-        if ($user instanceof User && $user->klassci_tenant_url) {
-            $institution = $user->institution;
-
-            if ($institution instanceof Institution
-                && $institution->is_active
-                && $institution->klassci_api_url === $user->klassci_tenant_url
-                && $institution->klassci_api_token) {
-                $this->baseUrl = $institution->klassci_api_url;
-                $this->token   = $institution->klassci_api_token;
-                $this->configResolved = true;
-
-                Log::info('KLASSCI resolveConfig: using institution token (no personal token)', [
-                    'user_id'     => $user->id,
-                    'institution' => $institution->slug,
-                ]);
-                return;
-            }
-        }
-
-        // Priorité 3 : token système de l'institution (supradmin, routes sans user)
-        $tenantManager = app(TenantManager::class);
-        $config = $tenantManager->klassciConfig();
-        $this->baseUrl = $config['url'] ?? config('services.klassci.url');
-        $this->token   = $config['token'] ?? config('services.klassci.token');
-        $this->configResolved = true;
-    }
-
-    /**
-     * GET Request avec cache intelligent
+     * GET avec cache distribué + memoization intra-request.
      *
-     * @param string $endpoint L'endpoint API (ex: 'classes', 'matieres')
-     * @param array $params Paramètres query string
-     * @param int|null $customTTL TTL cache personnalisé (en secondes)
-     * @return array
+     * @param  array<string, mixed>  $params
+     * @return array<string, mixed>
      */
     public function get(string $endpoint, array $params = [], ?int $customTTL = null): array
     {
-        $cacheKey = $this->generateCacheKey($endpoint, $params);
+        $memoKey = $this->memo->memoKey('GET', $endpoint, $params, null);
+        $memoized = $this->memo->get($memoKey);
+        if ($memoized !== null) {
+            return $memoized;
+        }
+
+        $cacheKey = $this->cacheKeys->generateGlobalKey($endpoint, $params);
         $ttl = $customTTL ?? $this->cacheTTL;
 
-        return Cache::remember($cacheKey, $ttl, function () use ($endpoint, $params) {
-            return $this->makeRequest('GET', $endpoint, $params);
+        /** @var array<string, mixed> $result */
+        $result = $this->cache->remember($cacheKey, $ttl, function () use ($endpoint, $params): array {
+            return $this->http->executeHttp('GET', $endpoint, $params);
         });
+
+        $this->memo->put($memoKey, $result);
+
+        return $result;
     }
 
     /**
-     * POST Request (pas de cache)
+     * POST (pas de cache, invalidation tenant + reset memo).
      *
-     * @param string $endpoint
-     * @param array $data
-     * @return array
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
      */
     public function post(string $endpoint, array $data): array
     {
-        // Invalider le cache lié à cet endpoint
+        $result = $this->http->executeHttp('POST', $endpoint, $data);
         $this->invalidateCache($endpoint);
 
-        return $this->makeRequest('POST', $endpoint, $data);
+        return $result;
     }
 
     /**
-     * PUT Request (pas de cache)
+     * PUT (pas de cache, invalidation tenant + reset memo).
      *
-     * @param string $endpoint
-     * @param array $data
-     * @return array
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
      */
     public function put(string $endpoint, array $data): array
     {
+        $result = $this->http->executeHttp('PUT', $endpoint, $data);
         $this->invalidateCache($endpoint);
 
-        return $this->makeRequest('PUT', $endpoint, $data);
+        return $result;
     }
 
     /**
-     * DELETE Request
+     * DELETE (pas de cache, invalidation tenant + reset memo).
      *
-     * @param string $endpoint
-     * @return array
+     * @return array<string, mixed>
      */
     public function delete(string $endpoint): array
     {
+        $result = $this->http->executeHttp('DELETE', $endpoint);
         $this->invalidateCache($endpoint);
 
-        return $this->makeRequest('DELETE', $endpoint);
+        return $result;
     }
 
     /**
-     * Requête HTTP générique
+     * Requête avec token utilisateur spécifique (endpoints personnels).
      *
-     * @param string $method
-     * @param string $endpoint
-     * @param array $data
-     * @return array
+     * GET : memoization + cache distribué user-token-aware (clé incluant tokenHash
+     * pour isolation cross-user).
+     *
+     * POST/PUT/DELETE : direct HTTP + invalidation tenant + reset memo.
+     *
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     *
      * @throws \Exception
      */
-    private function makeRequest(string $method, string $endpoint, array $data = []): array
-    {
-        $this->resolveConfig();
-        $url = $this->baseUrl . '/' . ltrim($endpoint, '/');
+    public function requestWithUserToken(
+        string $userToken,
+        string $endpoint,
+        string $method = 'GET',
+        array $data = [],
+        ?int $customTTL = null,
+    ): array {
+        $tokenHash = $this->memo->userTokenHash($userToken);
 
-        try {
-            Log::info("KLASSCI API Request", [
-                'method' => $method,
-                'url' => $url,
-                'params' => $method === 'GET' ? $data : []
-            ]);
-
-            $request = Http::timeout($this->timeout)
-                ->withHeaders([
-                    'Accept' => 'application/json',
-                    'Content-Type' => 'application/json',
-                ]);
-
-            // SSL : désactivé si env local OU si configuré via KLASSCI_SSL_VERIFY=false
-            if (str_starts_with($url, 'https://') && !config('services.klassci.ssl_verify', true)) {
-                $request = $request->withoutVerifying();
+        if ($method === 'GET') {
+            $memoKey = $this->memo->memoKey('GET', $endpoint, $data, $tokenHash);
+            $memoized = $this->memo->get($memoKey);
+            if ($memoized !== null) {
+                return $memoized;
             }
 
-            // Ajouter le token si disponible (fix: chaînage correct)
-            if ($this->token) {
-                $request = $request->withToken($this->token);
-            }
+            $cacheKey = $this->cacheKeys->generateUserTokenKey($endpoint, $data, $tokenHash);
+            $ttl = $customTTL ?? $this->userTokenDefaultTTL;
 
-            // Exécuter la requête selon la méthode
-            $response = match($method) {
-                'GET' => $request->get($url, $data),
-                'POST' => $request->post($url, $data),
-                'PUT' => $request->put($url, $data),
-                'DELETE' => $request->delete($url),
-                default => throw new \Exception("Méthode HTTP non supportée: {$method}")
-            };
+            /** @var array<string, mixed> $result */
+            $result = $this->cache->remember($cacheKey, $ttl, function () use ($userToken, $endpoint, $method, $data): array {
+                return $this->http->executeHttp($method, $endpoint, $data, $userToken);
+            });
 
-            // Vérifier le statut
-            if ($response->failed()) {
-                Log::error("KLASSCI API Error", [
-                    'status' => $response->status(),
-                    'body' => $response->body()
-                ]);
-
-                throw new \Exception(
-                    "Erreur API KLASSCI: " . $response->status() . " - " . $response->body()
-                );
-            }
-
-            $result = $response->json();
-
-            Log::info("KLASSCI API Response", [
-                'success' => $result['success'] ?? false
-            ]);
+            $this->memo->put($memoKey, $result);
 
             return $result;
-
-        } catch (\Exception $e) {
-            Log::error("KLASSCI API Exception", [
-                'message' => $e->getMessage(),
-                'endpoint' => $endpoint
-            ]);
-
-            throw $e;
         }
+
+        // POST/PUT/DELETE — réseau direct + invalidation.
+        $result = $this->http->executeHttp($method, $endpoint, $data, $userToken);
+        $this->invalidateCache($endpoint);
+
+        return $result;
     }
 
     /**
-     * Génère une clé de cache unique par tenant.
-     * Priorité : tenant_url de l'utilisateur connecté > slug institution > 'default'.
-     * Cela évite la pollution cross-institution du cache.
-     */
-    private function generateCacheKey(string $endpoint, array $params): string
-    {
-        $tenantKey = $this->resolveTenantCacheKey();
-        $paramsHash = md5(json_encode($params));
-
-        // Inclut le timestamp d'invalidation pour invalider automatiquement le cache
-        $invalidationKey = "klassci_{$tenantKey}_invalidated_at";
-        $invalidatedAt = Cache::get($invalidationKey, 0);
-
-        return "klassci_{$tenantKey}_{$endpoint}_{$paramsHash}_{$invalidatedAt}";
-    }
-
-    /**
-     * Invalide le cache pour les endpoints KLASSCI.
-     *
-     * Compatible avec tous les cache drivers (file, database, redis, memcached).
-     * Stocke un timestamp d'invalidation et l'inclut dans les clés de cache.
-     * Quand on appelle forget() sur ce timestamp, toutes les clés deviennent obsolètes.
+     * Invalidation tenant-wide + reset memo intra-request.
      */
     private function invalidateCache(string $endpoint): void
     {
-        $tenantKey = $this->resolveTenantCacheKey();
-        $invalidationKey = "klassci_{$tenantKey}_invalidated_at";
-
-        // Stocke le timestamp actuel pour invalider tout le cache
-        Cache::forever($invalidationKey, now()->timestamp);
-
-        Log::info('KLASSCI cache invalidated', ['endpoint' => $endpoint, 'tenant' => $tenantKey]);
-    }
-
-    /**
-     * Retourne une clé de cache unique par institution LMS.
-     *
-     * On utilise le slug de l'institution (TenantManager) — toujours unique par école.
-     *
-     * IMPORTANT : on n'utilise PAS md5(klassci_tenant_url) car plusieurs écoles peuvent
-     * partager le même serveur KLASSCI → même URL → même md5 → pollution cross-institution.
-     * Le slug LMS est la seule clé garantie unique par école.
-     */
-    private function resolveTenantCacheKey(): string
-    {
-        $slug = app(TenantManager::class)->slug();
-        return $slug ?? 'default';
+        $this->cacheKeys->invalidateTenant($endpoint);
+        $this->memo->clear();
     }
 
     // ============================================
@@ -296,212 +204,142 @@ class KlassciProxyService
     // ============================================
 
     /**
-     * Récupère la structure organisationnelle (filières, niveaux)
+     * @return array<string, mixed>
      */
     public function getStructure(): array
     {
-        return $this->get('structure', [], 3600); // Cache 1h
+        return $this->get('structure', [], 3600);
     }
 
     /**
-     * Récupère toutes les classes actives
+     * @param  array<string, mixed>  $filters
+     * @return array<string, mixed>
      */
     public function getClasses(array $filters = []): array
     {
-        return $this->get('classes', $filters, 600); // Cache 10min
+        return $this->get('classes', $filters, 600);
     }
 
     /**
-     * Récupère les étudiants d'une classe
+     * @return array<string, mixed>
      */
     public function getClasseEtudiants(int $classeId, ?int $anneeId = null): array
     {
         $params = $anneeId ? ['annee_id' => $anneeId] : [];
-        return $this->get("classes/{$classeId}/etudiants", $params, 300); // Cache 5min
+
+        return $this->get("classes/{$classeId}/etudiants", $params, 300);
     }
 
     /**
-     * Récupère les matières
+     * @param  array<string, mixed>  $filters
+     * @return array<string, mixed>
      */
     public function getMatieres(array $filters = []): array
     {
-        return $this->get('matieres', $filters, 600); // Cache 10min
+        return $this->get('matieres', $filters, 600);
     }
 
     /**
-     * Récupère les détails d'une matière
+     * @return array<string, mixed>
      */
     public function getMatiereDetails(int $id): array
     {
-        return $this->get("matieres/{$id}", [], 600); // Cache 10min
+        return $this->get("matieres/{$id}", [], 600);
     }
 
     /**
-     * Récupère les enseignants (format simple)
+     * @return array<string, mixed>
      */
     public function getEnseignants(): array
     {
-        return $this->get('enseignants', [], 3600); // Cache 1h
+        return $this->get('enseignants', [], 3600);
     }
 
     /**
-     * Récupère les enseignants avec détails enrichis (matières, classes, statistiques)
-     * @param bool $withDetails Si true, retourne les données enrichies
-     * @return array
+     * @return array<string, mixed>
      */
     public function getEnseignantsEnrichis(bool $withDetails = true): array
     {
         $params = $withDetails ? ['with_details' => 'true'] : [];
-        return $this->get('enseignants', $params, 600); // Cache 10min (plus court car données plus volatiles)
+
+        return $this->get('enseignants', $params, 600);
     }
 
     /**
-     * Récupère les filières
+     * @return array<string, mixed>
      */
     public function getFilieres(): array
     {
-        return $this->get('filieres', [], 3600); // Cache 1h
+        return $this->get('filieres', [], 3600);
     }
 
     /**
-     * Récupère les niveaux d'études
+     * @return array<string, mixed>
      */
     public function getNiveauxEtudes(): array
     {
-        return $this->get('niveaux-etudes', [], 3600); // Cache 1h
+        return $this->get('niveaux-etudes', [], 3600);
     }
 
     /**
-     * Récupère les évaluations depuis KLASSCI /api/lms/evaluations
+     * @param  array<string, mixed>  $filters
+     * @return array<string, mixed>
      */
     public function getEvaluations(array $filters = []): array
     {
-        return $this->get('evaluations', $filters, 300); // Cache 5min
+        return $this->get('evaluations', $filters, 300);
     }
 
     /**
-     * Récupère l'emploi du temps
+     * @param  array<string, mixed>  $filters
+     * @return array<string, mixed>
      */
     public function getEmploiTemps(array $filters = []): array
     {
-        return $this->get('emploi-temps', $filters, 600); // Cache 10min
+        return $this->get('emploi-temps', $filters, 600);
     }
 
     /**
-     * Sauvegarde les notes d'une évaluation vers KLASSCI /api/lms/evaluations/{id}/notes
+     * @param  array<int, array<string, mixed>>  $notes
+     * @return array<string, mixed>
      */
     public function saveNotes(int $evaluationId, array $notes): array
     {
         return $this->post("evaluations/{$evaluationId}/notes", [
-            'notes' => $notes
+            'notes' => $notes,
         ]);
     }
 
     /**
-     * Enregistre les présences d'un cours
+     * @param  array<int, array<string, mixed>>  $presences
+     * @return array<string, mixed>
      */
     public function savePresences(int $coursId, array $presences): array
     {
         return $this->post("cours/{$coursId}/presences", [
-            'presences' => $presences
+            'presences' => $presences,
         ]);
     }
 
     /**
-     * Met à jour le statut d'un cours
+     * @return array<string, mixed>
      */
     public function updateCoursStatut(int $coursId, string $statut, ?string $commentaire = null): array
     {
         return $this->put("cours/{$coursId}/statut", [
-            'statut' => $statut,
-            'commentaire' => $commentaire
+            'statut'      => $statut,
+            'commentaire' => $commentaire,
         ]);
     }
 
-    /**
-     * Test de connexion à l'API
-     */
     public function testConnection(): bool
     {
         try {
             $response = $this->get('structure');
-            return isset($response['success']) && $response['success'];
-        } catch (\Exception $e) {
+
+            return isset($response['success']) && (bool) $response['success'];
+        } catch (\Exception) {
             return false;
-        }
-    }
-
-    /**
-     * Requête avec token utilisateur spécifique (pour endpoints personnels)
-     *
-     * @param string $userToken Token KLASSCI de l'utilisateur
-     * @param string $endpoint L'endpoint API
-     * @param string $method Méthode HTTP (GET, POST, etc.)
-     * @param array $data Données à envoyer
-     * @return array
-     * @throws \Exception
-     */
-    public function requestWithUserToken(string $userToken, string $endpoint, string $method = 'GET', array $data = []): array
-    {
-        $this->resolveConfig();
-        $url = $this->baseUrl . '/' . ltrim($endpoint, '/');
-
-        try {
-            Log::info("KLASSCI API Request (User Token)", [
-                'method' => $method,
-                'url' => $url,
-                'has_user_token' => !empty($userToken)
-            ]);
-
-            $request = Http::timeout($this->timeout)
-                ->withHeaders([
-                    'Accept' => 'application/json',
-                    'Content-Type' => 'application/json',
-                ]);
-
-            // SSL : désactivé si configuré via KLASSCI_SSL_VERIFY=false
-            if (str_starts_with($url, 'https://') && !config('services.klassci.ssl_verify', true)) {
-                $request = $request->withoutVerifying();
-            }
-
-            $request = $request->withToken($userToken);
-
-            // Exécuter la requête selon la méthode
-            $response = match($method) {
-                'GET' => $request->get($url, $data),
-                'POST' => $request->post($url, $data),
-                'PUT' => $request->put($url, $data),
-                'DELETE' => $request->delete($url),
-                default => throw new \Exception("Méthode HTTP non supportée: {$method}")
-            };
-
-            // Vérifier le statut
-            if ($response->failed()) {
-                Log::error("KLASSCI API Error (User Token)", [
-                    'status' => $response->status(),
-                    'body' => $response->body()
-                ]);
-
-                throw new \Exception(
-                    "Erreur API KLASSCI: " . $response->status() . " - " . $response->body()
-                );
-            }
-
-            $result = $response->json();
-
-            Log::info("KLASSCI API Response (User Token)", [
-                'success' => $result['success'] ?? false
-            ]);
-
-            return $result;
-
-        } catch (\Exception $e) {
-            Log::error("KLASSCI API Exception (User Token)", [
-                'message' => $e->getMessage(),
-                'endpoint' => $endpoint
-            ]);
-
-            throw $e;
         }
     }
 }

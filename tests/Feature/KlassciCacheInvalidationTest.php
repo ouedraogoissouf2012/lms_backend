@@ -1,60 +1,60 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Tests\Feature;
 
 use App\Models\Institution;
-use App\Services\KlassciProxyService;
+use App\Services\Klassci\KlassciCacheKeyStrategy;
 use App\Services\TenantManager;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
-use ReflectionClass;
 use Tests\TestCase;
 
 /**
  * CRITICAL-09 — Cache invalidation pattern verification (issue #38).
  *
- * The KlassciProxyService uses a « cache key versioning » pattern :
- *   - Each generated key embeds an invalidation timestamp.
- *   - invalidateCache() bumps that timestamp via Cache::forever().
- *   - On the next read, generateCacheKey() produces a new key
- *     (different timestamp) → cache miss → fresh data fetched.
+ * Le KlassciCacheKeyStrategy implémente un pattern « cache key versioning » :
+ *   - Chaque clé générée incorpore un timestamp d'invalidation.
+ *   - `invalidateTenant()` bump ce timestamp via Cache::forever().
+ *   - Au prochain lookup, `generateGlobalKey()` produit une nouvelle clé
+ *     (timestamp différent) → cache miss → données fraîches.
  *
- * Old entries expire naturally with their TTL. This works with all cache
- * drivers (file, database, redis, memcached) — unlike Cache::tags() which
- * is redis/memcached-only.
+ * Compatible avec tous les drivers cache (file, database, redis, memcached) —
+ * contrairement à `Cache::tags()` qui est redis/memcached-only.
  *
- * This test verifies the contract directly. Since generateCacheKey() and
- * invalidateCache() are private, Reflection is used. If the methods are
- * later extracted into a dedicated CacheKeyVersioner class, the test will
- * refactor naturally — the contract (« bump → key changes ») stays.
+ * ## PERF-02 (issue #137) — Refactor post-split
+ *
+ * Avant le split architectural de PR 1 PERF-02, `generateCacheKey()` et
+ * `invalidateCache()` étaient des méthodes privées de `KlassciProxyService`.
+ * Le test devait passer par Reflection. Depuis le split, ces méthodes vivent
+ * comme méthodes **publiques** sur `KlassciCacheKeyStrategy` — la Reflection
+ * est éliminée, le contract est testé directement.
+ *
+ * @see \App\Services\Klassci\KlassciCacheKeyStrategy
  */
-class KlassciCacheInvalidationTest extends TestCase
+final class KlassciCacheInvalidationTest extends TestCase
 {
     use RefreshDatabase;
 
     private Institution $institution;
-    private KlassciProxyService $service;
-    private ReflectionClass $reflection;
+
+    private KlassciCacheKeyStrategy $strategy;
 
     protected function setUp(): void
     {
+        if (!extension_loaded('pdo_pgsql')) {
+            self::markTestSkipped('PostgreSQL PDO driver not available (CI-only test).');
+        }
+
         parent::setUp();
 
         $this->institution = Institution::factory()->create(['slug' => 'cache-test-inst']);
         app(TenantManager::class)->set($this->institution);
 
-        $this->service    = new KlassciProxyService();
-        $this->reflection = new ReflectionClass($this->service);
+        $this->strategy = app(KlassciCacheKeyStrategy::class);
 
-        // Make sure no leftover invalidation timestamp from previous tests.
-        Cache::forget("klassci_cache-test-inst_invalidated_at");
-    }
-
-    private function callPrivate(string $method, array $args = []): mixed
-    {
-        $m = $this->reflection->getMethod($method);
-        $m->setAccessible(true);
-        return $m->invokeArgs($this->service, $args);
+        Cache::forget('klassci_cache-test-inst_invalidated_at');
     }
 
     /**
@@ -63,10 +63,10 @@ class KlassciCacheInvalidationTest extends TestCase
      */
     public function test_same_inputs_produce_same_cache_key(): void
     {
-        $k1 = $this->callPrivate('generateCacheKey', ['endpoint', []]);
-        $k2 = $this->callPrivate('generateCacheKey', ['endpoint', []]);
+        $k1 = $this->strategy->generateGlobalKey('endpoint', []);
+        $k2 = $this->strategy->generateGlobalKey('endpoint', []);
 
-        $this->assertSame($k1, $k2, 'Same endpoint + same params must produce a stable cache key.');
+        self::assertSame($k1, $k2, 'Same endpoint + same params must produce a stable cache key.');
     }
 
     /**
@@ -74,10 +74,10 @@ class KlassciCacheInvalidationTest extends TestCase
      */
     public function test_different_params_produce_different_keys(): void
     {
-        $k1 = $this->callPrivate('generateCacheKey', ['endpoint', ['filter' => 'a']]);
-        $k2 = $this->callPrivate('generateCacheKey', ['endpoint', ['filter' => 'b']]);
+        $k1 = $this->strategy->generateGlobalKey('endpoint', ['filter' => 'a']);
+        $k2 = $this->strategy->generateGlobalKey('endpoint', ['filter' => 'b']);
 
-        $this->assertNotSame($k1, $k2, 'Distinct params must produce distinct cache keys.');
+        self::assertNotSame($k1, $k2, 'Distinct params must produce distinct cache keys.');
     }
 
     /**
@@ -85,56 +85,74 @@ class KlassciCacheInvalidationTest extends TestCase
      */
     public function test_different_tenants_produce_different_keys(): void
     {
-        $k1 = $this->callPrivate('generateCacheKey', ['endpoint', []]);
+        $k1 = $this->strategy->generateGlobalKey('endpoint', []);
 
         $otherInstitution = Institution::factory()->create(['slug' => 'other-inst']);
         app(TenantManager::class)->set($otherInstitution);
 
-        $k2 = $this->callPrivate('generateCacheKey', ['endpoint', []]);
+        $k2 = $this->strategy->generateGlobalKey('endpoint', []);
 
-        $this->assertNotSame($k1, $k2, 'Different tenants must produce distinct cache keys.');
+        self::assertNotSame($k1, $k2, 'Different tenants must produce distinct cache keys.');
     }
 
     /**
-     * CORE TEST — calling invalidateCache() changes the next generated key.
-     * This is the contract that makes the timestamp pattern actually invalidate.
+     * CORE TEST — calling invalidateTenant() changes the next generated key.
+     * C'est le contract qui fait que le pattern timestamp invalide réellement.
      */
-    public function test_invalidateCache_bumps_the_next_generated_key(): void
+    public function test_invalidate_tenant_bumps_the_next_generated_key(): void
     {
-        $before = $this->callPrivate('generateCacheKey', ['endpoint', []]);
+        $before = $this->strategy->generateGlobalKey('endpoint', []);
 
         // Force at least 1-second resolution between timestamps.
         sleep(1);
 
-        $this->callPrivate('invalidateCache', ['endpoint']);
+        $this->strategy->invalidateTenant('endpoint');
 
-        $after = $this->callPrivate('generateCacheKey', ['endpoint', []]);
+        $after = $this->strategy->generateGlobalKey('endpoint', []);
 
-        $this->assertNotSame(
+        self::assertNotSame(
             $before,
             $after,
-            'After invalidateCache(), the next generated key must differ — otherwise the cache would keep serving stale data.'
+            'After invalidateTenant(), the next generated key must differ — sinon le cache servirait des données stales.'
         );
     }
 
     /**
-     * invalidateCache() must actually persist a timestamp in the cache store
+     * invalidateTenant() must actually persist a timestamp in the cache store
      * under the tenant-scoped key.
      */
-    public function test_invalidateCache_stores_a_timestamp_in_the_tenant_scoped_key(): void
+    public function test_invalidate_tenant_stores_a_timestamp_in_the_tenant_scoped_key(): void
     {
-        $invalidationKey = "klassci_cache-test-inst_invalidated_at";
+        $invalidationKey = 'klassci_cache-test-inst_invalidated_at';
 
-        $this->assertNull(
+        self::assertNull(
             Cache::get($invalidationKey),
             'Sanity check: no timestamp before invalidation.'
         );
 
-        $this->callPrivate('invalidateCache', ['endpoint']);
+        $this->strategy->invalidateTenant('endpoint');
 
         $stored = Cache::get($invalidationKey);
-        $this->assertNotNull($stored, 'A timestamp must be persisted after invalidation.');
-        $this->assertIsNumeric($stored, 'Stored value must be a numeric Unix timestamp.');
-        $this->assertGreaterThan(0, (int) $stored);
+        self::assertNotNull($stored, 'A timestamp must be persisted after invalidation.');
+        self::assertIsNumeric($stored, 'Stored value must be a numeric Unix timestamp.');
+        self::assertGreaterThan(0, (int) $stored);
+    }
+
+    /**
+     * PERF-02 — Le `generateUserTokenKey()` doit produire des clés DISTINCTES
+     * pour des tokenHash distincts, même endpoint + params + tenant identiques.
+     *
+     * C'est l'invariant de sécurité d'isolation cross-user (cf. design.md §8.2).
+     */
+    public function test_user_token_keys_isolate_distinct_token_hashes(): void
+    {
+        $kA = $this->strategy->generateUserTokenKey('me/dashboard', [], 'hash_alice_1234');
+        $kB = $this->strategy->generateUserTokenKey('me/dashboard', [], 'hash_bob_5678');
+
+        self::assertNotSame(
+            $kA,
+            $kB,
+            'Different tokenHash MUST produce distinct cache keys — sinon User A pourrait lire le cache de User B.'
+        );
     }
 }

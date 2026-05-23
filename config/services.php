@@ -50,6 +50,12 @@ return [
         'cache_ttl' => env('KLASSCI_CACHE_TTL', 300),
         'timeout' => env('KLASSCI_TIMEOUT', 30),
         'ssl_verify' => env('KLASSCI_SSL_VERIFY', true),
+
+        // PERF-02 (issue #137) — Memoization intra-request + cache user-token-aware + Http::pool batch.
+        // Voir .claude/specs/perf-02-klassci-batch-cache/design.md §2-4.
+        'pool_size' => env('KLASSCI_POOL_SIZE', 4),
+        'user_token_cache_default_ttl' => env('KLASSCI_USER_TOKEN_TTL', 300),
+        'memoize_enabled' => env('KLASSCI_MEMOIZE_ENABLED', true),
     ],
 
     /*

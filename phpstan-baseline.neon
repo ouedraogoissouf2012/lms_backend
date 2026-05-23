@@ -109,6 +109,12 @@ parameters:
 			path: app/Http/Controllers/API/AuthController.php
 
 		-
+			message: '#^Cannot access offset ''classe'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: app/Http/Controllers/API/AuthController.php
+
+		-
 			message: '#^Cannot access offset ''data'' on mixed\.$#'
 			identifier: offsetAccess.nonOffsetAccessible
 			count: 3
@@ -139,15 +145,33 @@ parameters:
 			path: app/Http/Controllers/API/AuthController.php
 
 		-
+			message: '#^Cannot access offset ''id'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 3
+			path: app/Http/Controllers/API/AuthController.php
+
+		-
 			message: '#^Cannot access offset ''is_admin'' on mixed\.$#'
 			identifier: offsetAccess.nonOffsetAccessible
 			count: 1
 			path: app/Http/Controllers/API/AuthController.php
 
 		-
+			message: '#^Cannot access offset ''libelle'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 3
+			path: app/Http/Controllers/API/AuthController.php
+
+		-
 			message: '#^Cannot access offset ''meta'' on mixed\.$#'
 			identifier: offsetAccess.nonOffsetAccessible
 			count: 1
+			path: app/Http/Controllers/API/AuthController.php
+
+		-
+			message: '#^Cannot access offset ''name'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 3
 			path: app/Http/Controllers/API/AuthController.php
 
 		-
@@ -177,7 +201,7 @@ parameters:
 		-
 			message: '#^Cannot access offset ''user'' on mixed\.$#'
 			identifier: offsetAccess.nonOffsetAccessible
-			count: 1
+			count: 2
 			path: app/Http/Controllers/API/AuthController.php
 
 		-
@@ -615,13 +639,25 @@ parameters:
 		-
 			message: '#^Argument of an invalid type mixed supplied for foreach, only iterables are supported\.$#'
 			identifier: foreach.nonIterable
-			count: 2
+			count: 8
 			path: app/Http/Controllers/API/EvaluationController.php
 
 		-
 			message: '#^Binary operation "\+" between mixed and 1 results in an error\.$#'
 			identifier: binaryOp.invalid
 			count: 2
+			path: app/Http/Controllers/API/EvaluationController.php
+
+		-
+			message: '#^Binary operation "\." between mixed and '' '' results in an error\.$#'
+			identifier: binaryOp.invalid
+			count: 1
+			path: app/Http/Controllers/API/EvaluationController.php
+
+		-
+			message: '#^Binary operation "\." between non\-falsy\-string and mixed results in an error\.$#'
+			identifier: binaryOp.invalid
+			count: 1
 			path: app/Http/Controllers/API/EvaluationController.php
 
 		-
@@ -673,15 +709,93 @@ parameters:
 			path: app/Http/Controllers/API/EvaluationController.php
 
 		-
+			message: '#^Cannot access offset ''classe'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: app/Http/Controllers/API/EvaluationController.php
+
+		-
+			message: '#^Cannot access offset ''code'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: app/Http/Controllers/API/EvaluationController.php
+
+		-
 			message: '#^Cannot access offset ''correct_answers'' on mixed\.$#'
 			identifier: offsetAccess.nonOffsetAccessible
 			count: 2
 			path: app/Http/Controllers/API/EvaluationController.php
 
 		-
+			message: '#^Cannot access offset ''email'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: app/Http/Controllers/API/EvaluationController.php
+
+		-
+			message: '#^Cannot access offset ''end_at'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: app/Http/Controllers/API/EvaluationController.php
+
+		-
 			message: '#^Cannot access offset ''explanation'' on mixed\.$#'
 			identifier: offsetAccess.nonOffsetAccessible
 			count: 2
+			path: app/Http/Controllers/API/EvaluationController.php
+
+		-
+			message: '#^Cannot access offset ''has_ended'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: app/Http/Controllers/API/EvaluationController.php
+
+		-
+			message: '#^Cannot access offset ''has_started'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: app/Http/Controllers/API/EvaluationController.php
+
+		-
+			message: '#^Cannot access offset ''id'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 8
+			path: app/Http/Controllers/API/EvaluationController.php
+
+		-
+			message: '#^Cannot access offset ''is_open'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 2
+			path: app/Http/Controllers/API/EvaluationController.php
+
+		-
+			message: '#^Cannot access offset ''libelle'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 9
+			path: app/Http/Controllers/API/EvaluationController.php
+
+		-
+			message: '#^Cannot access offset ''matiere'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: app/Http/Controllers/API/EvaluationController.php
+
+		-
+			message: '#^Cannot access offset ''name'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 2
+			path: app/Http/Controllers/API/EvaluationController.php
+
+		-
+			message: '#^Cannot access offset ''niveau'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 2
+			path: app/Http/Controllers/API/EvaluationController.php
+
+		-
+			message: '#^Cannot access offset ''nom'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 12
 			path: app/Http/Controllers/API/EvaluationController.php
 
 		-
@@ -697,13 +811,43 @@ parameters:
 			path: app/Http/Controllers/API/EvaluationController.php
 
 		-
+			message: '#^Cannot access offset ''prenom'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 2
+			path: app/Http/Controllers/API/EvaluationController.php
+
+		-
+			message: '#^Cannot access offset ''programmation'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 2
+			path: app/Http/Controllers/API/EvaluationController.php
+
+		-
 			message: '#^Cannot access offset ''question'' on mixed\.$#'
 			identifier: offsetAccess.nonOffsetAccessible
 			count: 2
 			path: app/Http/Controllers/API/EvaluationController.php
 
 		-
+			message: '#^Cannot access offset ''start_at'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: app/Http/Controllers/API/EvaluationController.php
+
+		-
+			message: '#^Cannot access offset ''time_left_minutes'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: app/Http/Controllers/API/EvaluationController.php
+
+		-
 			message: '#^Cannot access offset ''type'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 2
+			path: app/Http/Controllers/API/EvaluationController.php
+
+		-
+			message: '#^Cannot access offset ''window'' on mixed\.$#'
 			identifier: offsetAccess.nonOffsetAccessible
 			count: 2
 			path: app/Http/Controllers/API/EvaluationController.php
@@ -799,9 +943,27 @@ parameters:
 			path: app/Http/Controllers/API/EvaluationController.php
 
 		-
+			message: '#^Parameter \#1 \$time of static method Carbon\\Carbon\:\:parse\(\) expects Carbon\\Month\|Carbon\\WeekDay\|DateTimeInterface\|float\|int\|string\|null, mixed given\.$#'
+			identifier: argument.type
+			count: 2
+			path: app/Http/Controllers/API/EvaluationController.php
+
+		-
 			message: '#^Parameter \#1 \$value of function collect contains unresolvable type\.$#'
 			identifier: argument.unresolvableType
 			count: 3
+			path: app/Http/Controllers/API/EvaluationController.php
+
+		-
+			message: '#^Parameter \#1 \$value of function collect expects Illuminate\\Contracts\\Support\\Arrayable\<\(int\|string\), mixed\>\|iterable\<\(int\|string\), mixed\>\|null, mixed given\.$#'
+			identifier: argument.type
+			count: 3
+			path: app/Http/Controllers/API/EvaluationController.php
+
+		-
+			message: '#^Parameter \#1 \$value of function count expects array\|Countable, mixed given\.$#'
+			identifier: argument.type
+			count: 4
 			path: app/Http/Controllers/API/EvaluationController.php
 
 		-
@@ -814,6 +976,12 @@ parameters:
 			message: '#^Parameter \#2 \$callback of function usort contains unresolvable type\.$#'
 			identifier: argument.unresolvableType
 			count: 2
+			path: app/Http/Controllers/API/EvaluationController.php
+
+		-
+			message: '#^Possibly invalid array key type mixed\.$#'
+			identifier: offsetAccess.invalidOffset
+			count: 3
 			path: app/Http/Controllers/API/EvaluationController.php
 
 		-
@@ -1315,13 +1483,139 @@ parameters:
 			path: app/Http/Controllers/API/LMS/LMSAttendancesController.php
 
 		-
+			message: '#^Binary operation "/" between int\<0, max\> and mixed results in an error\.$#'
+			identifier: binaryOp.invalid
+			count: 1
+			path: app/Http/Controllers/API/LMS/LMSClassesController.php
+
+		-
+			message: '#^Cannot access offset ''filiere'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 4
+			path: app/Http/Controllers/API/LMS/LMSClassesController.php
+
+		-
+			message: '#^Cannot access offset ''id'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 4
+			path: app/Http/Controllers/API/LMS/LMSClassesController.php
+
+		-
+			message: '#^Cannot access offset ''niveau'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 4
+			path: app/Http/Controllers/API/LMS/LMSClassesController.php
+
+		-
+			message: '#^Cannot access offset ''nombre_places'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 2
+			path: app/Http/Controllers/API/LMS/LMSClassesController.php
+
+		-
+			message: '#^Parameter \#1 \$value of function count expects array\|Countable, mixed given\.$#'
+			identifier: argument.type
+			count: 3
+			path: app/Http/Controllers/API/LMS/LMSClassesController.php
+
+		-
+			message: '#^Part \$classe\[''filiere''\]\[''id''\] \(mixed\) of encapsed string cannot be cast to string\.$#'
+			identifier: encapsedStringPart.nonString
+			count: 1
+			path: app/Http/Controllers/API/LMS/LMSClassesController.php
+
+		-
+			message: '#^Part \$classe\[''niveau''\]\[''id''\] \(mixed\) of encapsed string cannot be cast to string\.$#'
+			identifier: encapsedStringPart.nonString
+			count: 1
+			path: app/Http/Controllers/API/LMS/LMSClassesController.php
+
+		-
 			message: '#^Parameter \#1 \$enseignantId of static method App\\Models\\LmsEnseignantCache\:\:store\(\) expects int, mixed given\.$#'
 			identifier: argument.type
 			count: 1
 			path: app/Http/Controllers/API/LMS/LMSEnseignantsController.php
 
 		-
+			message: '#^Parameter \#1 \.\.\.\$arrays of function array_merge expects array, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/API/LMS/LMSEnseignantsController.php
+
+		-
+			message: '#^Cannot access offset ''classe'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: app/Http/Controllers/API/LMS/LMSMatieresController.php
+
+		-
+			message: '#^Cannot access offset ''coefficient'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: app/Http/Controllers/API/LMS/LMSMatieresController.php
+
+		-
+			message: '#^Cannot access offset ''combinaisons'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 2
+			path: app/Http/Controllers/API/LMS/LMSMatieresController.php
+
+		-
+			message: '#^Cannot access offset ''enseignants'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 2
+			path: app/Http/Controllers/API/LMS/LMSMatieresController.php
+
+		-
+			message: '#^Cannot access offset ''evaluations'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: app/Http/Controllers/API/LMS/LMSMatieresController.php
+
+		-
 			message: '#^Cannot access offset ''id'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: app/Http/Controllers/API/LMS/LMSMatieresController.php
+
+		-
+			message: '#^Cannot access offset ''matiere'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 2
+			path: app/Http/Controllers/API/LMS/LMSMatieresController.php
+
+		-
+			message: '#^Cannot access offset ''matieres'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 3
+			path: app/Http/Controllers/API/LMS/LMSMatieresController.php
+
+		-
+			message: '#^Cannot access offset ''nom'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: app/Http/Controllers/API/LMS/LMSMatieresController.php
+
+		-
+			message: '#^Cannot access offset ''places_occupees'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: app/Http/Controllers/API/LMS/LMSMatieresController.php
+
+		-
+			message: '#^Cannot access offset ''seances_programmees'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 3
+			path: app/Http/Controllers/API/LMS/LMSMatieresController.php
+
+		-
+			message: '#^Cannot access offset ''volume_horaire_total'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: app/Http/Controllers/API/LMS/LMSMatieresController.php
+
+		-
+			message: '#^Cannot access offset 0 on mixed\.$#'
 			identifier: offsetAccess.nonOffsetAccessible
 			count: 1
 			path: app/Http/Controllers/API/LMS/LMSMatieresController.php
@@ -1333,9 +1627,27 @@ parameters:
 			path: app/Http/Controllers/API/LMS/LMSMatieresController.php
 
 		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Support\\Collection\<\(int\|string\),mixed\>\:\:filter\(\) expects \(callable\(mixed, int\|string\)\: bool\)\|null, Closure\(array\)\: bool given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/API/LMS/LMSMatieresController.php
+
+		-
 			message: '#^Parameter \#1 \$column of method Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\:\:where\(\) expects array\<int\|model property of Illuminate\\Database\\Eloquent\\Model, mixed\>\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\: Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\: void\)\|Illuminate\\Contracts\\Database\\Query\\Expression\|model property of Illuminate\\Database\\Eloquent\\Model, ''klassci_etudiant_id'' given\.$#'
 			identifier: argument.type
 			count: 2
+			path: app/Http/Controllers/API/LMS/LMSMatieresController.php
+
+		-
+			message: '#^Parameter \#1 \$value of function collect expects Illuminate\\Contracts\\Support\\Arrayable\<\(int\|string\), mixed\>\|iterable\<\(int\|string\), mixed\>\|null, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/API/LMS/LMSMatieresController.php
+
+		-
+			message: '#^Parameter \#1 \$value of function count expects array\|Countable, mixed given\.$#'
+			identifier: argument.type
+			count: 4
 			path: app/Http/Controllers/API/LMS/LMSMatieresController.php
 
 		-
@@ -1369,6 +1681,12 @@ parameters:
 			path: app/Http/Controllers/API/LMS/LMSSeancesController.php
 
 		-
+			message: '#^Argument of an invalid type mixed supplied for foreach, only iterables are supported\.$#'
+			identifier: foreach.nonIterable
+			count: 3
+			path: app/Http/Controllers/API/LMS/LMSSeancesController.php
+
+		-
 			message: '#^Binary operation "\." between mixed and '' 23\:59\:59'' results in an error\.$#'
 			identifier: binaryOp.invalid
 			count: 1
@@ -1383,6 +1701,126 @@ parameters:
 		-
 			message: '#^Called ''env'' outside of the config directory which returns null when the config is cached, use ''config''\.$#'
 			identifier: larastan.noEnvCallsOutsideOfConfig
+			count: 1
+			path: app/Http/Controllers/API/LMS/LMSSeancesController.php
+
+		-
+			message: '#^Cannot access offset ''classe'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 16
+			path: app/Http/Controllers/API/LMS/LMSSeancesController.php
+
+		-
+			message: '#^Cannot access offset ''code'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 3
+			path: app/Http/Controllers/API/LMS/LMSSeancesController.php
+
+		-
+			message: '#^Cannot access offset ''cours'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: app/Http/Controllers/API/LMS/LMSSeancesController.php
+
+		-
+			message: '#^Cannot access offset ''date'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 5
+			path: app/Http/Controllers/API/LMS/LMSSeancesController.php
+
+		-
+			message: '#^Cannot access offset ''enseignant'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 2
+			path: app/Http/Controllers/API/LMS/LMSSeancesController.php
+
+		-
+			message: '#^Cannot access offset ''heure_debut'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 4
+			path: app/Http/Controllers/API/LMS/LMSSeancesController.php
+
+		-
+			message: '#^Cannot access offset ''heure_fin'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 4
+			path: app/Http/Controllers/API/LMS/LMSSeancesController.php
+
+		-
+			message: '#^Cannot access offset ''id'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 36
+			path: app/Http/Controllers/API/LMS/LMSSeancesController.php
+
+		-
+			message: '#^Cannot access offset ''libelle'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 6
+			path: app/Http/Controllers/API/LMS/LMSSeancesController.php
+
+		-
+			message: '#^Cannot access offset ''matiere'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: app/Http/Controllers/API/LMS/LMSSeancesController.php
+
+		-
+			message: '#^Cannot access offset ''matiere_id'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: app/Http/Controllers/API/LMS/LMSSeancesController.php
+
+		-
+			message: '#^Cannot access offset ''matieres'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 2
+			path: app/Http/Controllers/API/LMS/LMSSeancesController.php
+
+		-
+			message: '#^Cannot access offset ''name'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 2
+			path: app/Http/Controllers/API/LMS/LMSSeancesController.php
+
+		-
+			message: '#^Cannot access offset ''nom'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 10
+			path: app/Http/Controllers/API/LMS/LMSSeancesController.php
+
+		-
+			message: '#^Cannot access offset ''nom_complet'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: app/Http/Controllers/API/LMS/LMSSeancesController.php
+
+		-
+			message: '#^Cannot access offset ''places_occupees'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: app/Http/Controllers/API/LMS/LMSSeancesController.php
+
+		-
+			message: '#^Cannot access offset ''programmation'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 19
+			path: app/Http/Controllers/API/LMS/LMSSeancesController.php
+
+		-
+			message: '#^Cannot access offset ''salle'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 6
+			path: app/Http/Controllers/API/LMS/LMSSeancesController.php
+
+		-
+			message: '#^Cannot access offset ''seances_programmees'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 5
+			path: app/Http/Controllers/API/LMS/LMSSeancesController.php
+
+		-
+			message: '#^Cannot access offset ''statut'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
 			count: 1
 			path: app/Http/Controllers/API/LMS/LMSSeancesController.php
 
@@ -1435,8 +1873,44 @@ parameters:
 			path: app/Http/Controllers/API/LMS/LMSSeancesController.php
 
 		-
+			message: '#^Parameter \#1 \$string of function substr expects string, mixed given\.$#'
+			identifier: argument.type
+			count: 2
+			path: app/Http/Controllers/API/LMS/LMSSeancesController.php
+
+		-
+			message: '#^Parameter \#1 \$value of function collect expects Illuminate\\Contracts\\Support\\Arrayable\<\(int\|string\), mixed\>\|iterable\<\(int\|string\), mixed\>\|null, mixed given\.$#'
+			identifier: argument.type
+			count: 9
+			path: app/Http/Controllers/API/LMS/LMSSeancesController.php
+
+		-
 			message: '#^Parameter \#2 \$klassciToken of method App\\Http\\Controllers\\API\\LMS\\LMSSeancesController\:\:getSeanceDataFromKlassci\(\) expects string, string\|null given\.$#'
 			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/API/LMS/LMSSeancesController.php
+
+		-
+			message: '#^Part \$classeId \(mixed\) of encapsed string cannot be cast to string\.$#'
+			identifier: encapsedStringPart.nonString
+			count: 1
+			path: app/Http/Controllers/API/LMS/LMSSeancesController.php
+
+		-
+			message: '#^Part \$matiereId \(mixed\) of encapsed string cannot be cast to string\.$#'
+			identifier: encapsedStringPart.nonString
+			count: 3
+			path: app/Http/Controllers/API/LMS/LMSSeancesController.php
+
+		-
+			message: '#^Part \$matiere\[''id''\] \(mixed\) of encapsed string cannot be cast to string\.$#'
+			identifier: encapsedStringPart.nonString
+			count: 3
+			path: app/Http/Controllers/API/LMS/LMSSeancesController.php
+
+		-
+			message: '#^Part \$seance\[''classe''\]\[''id''\] \(mixed\) of encapsed string cannot be cast to string\.$#'
+			identifier: encapsedStringPart.nonString
 			count: 1
 			path: app/Http/Controllers/API/LMS/LMSSeancesController.php
 
@@ -1507,6 +1981,12 @@ parameters:
 			path: app/Http/Controllers/API/LMS/LMSVisioController.php
 
 		-
+			message: '#^Cannot access offset ''classe'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: app/Http/Controllers/API/LMS/LMSVisioController.php
+
+		-
 			message: '#^Cannot access offset ''email'' on mixed\.$#'
 			identifier: offsetAccess.nonOffsetAccessible
 			count: 1
@@ -1527,17 +2007,35 @@ parameters:
 		-
 			message: '#^Cannot access offset ''id'' on mixed\.$#'
 			identifier: offsetAccess.nonOffsetAccessible
+			count: 4
+			path: app/Http/Controllers/API/LMS/LMSVisioController.php
+
+		-
+			message: '#^Cannot access offset ''libelle'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: app/Http/Controllers/API/LMS/LMSVisioController.php
+
+		-
+			message: '#^Cannot access offset ''matieres'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
 			count: 1
 			path: app/Http/Controllers/API/LMS/LMSVisioController.php
 
 		-
 			message: '#^Cannot access offset ''nom'' on mixed\.$#'
 			identifier: offsetAccess.nonOffsetAccessible
-			count: 1
+			count: 2
 			path: app/Http/Controllers/API/LMS/LMSVisioController.php
 
 		-
 			message: '#^Cannot access offset ''prenom'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: app/Http/Controllers/API/LMS/LMSVisioController.php
+
+		-
+			message: '#^Cannot access offset ''seances_programmees'' on mixed\.$#'
 			identifier: offsetAccess.nonOffsetAccessible
 			count: 1
 			path: app/Http/Controllers/API/LMS/LMSVisioController.php
@@ -1603,6 +2101,12 @@ parameters:
 			path: app/Http/Controllers/API/LMS/LMSVisioController.php
 
 		-
+			message: '#^Parameter \#1 \$value of function collect expects Illuminate\\Contracts\\Support\\Arrayable\<\(int\|string\), mixed\>\|iterable\<\(int\|string\), mixed\>\|null, mixed given\.$#'
+			identifier: argument.type
+			count: 3
+			path: app/Http/Controllers/API/LMS/LMSVisioController.php
+
+		-
 			message: '#^Parameter \#2 \$string2 of function strcmp expects string, mixed given\.$#'
 			identifier: argument.type
 			count: 1
@@ -1617,6 +2121,12 @@ parameters:
 		-
 			message: '#^Parameter \#5 \$heureFin of method App\\Services\\AttendanceStatusService\:\:determine\(\) expects string\|null, mixed given\.$#'
 			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/API/LMS/LMSVisioController.php
+
+		-
+			message: '#^Part \$matiere\[''id''\] \(mixed\) of encapsed string cannot be cast to string\.$#'
+			identifier: encapsedStringPart.nonString
 			count: 1
 			path: app/Http/Controllers/API/LMS/LMSVisioController.php
 
@@ -1678,6 +2188,18 @@ parameters:
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
 			identifier: property.notFound
 			count: 2
+			path: app/Http/Controllers/API/LessonController.php
+
+		-
+			message: '#^Cannot access offset ''classe_ids'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: app/Http/Controllers/API/LessonController.php
+
+		-
+			message: '#^Cannot access offset ''etudiant_ids'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
 			path: app/Http/Controllers/API/LessonController.php
 
 		-
@@ -1921,6 +2443,12 @@ parameters:
 			path: app/Http/Controllers/API/ProxyController.php
 
 		-
+			message: '#^Parameter \#2 \$presences of method App\\Services\\KlassciProxyService\:\:savePresences\(\) expects array\<int, array\<string, mixed\>\>, array\<string, mixed\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/API/ProxyController.php
+
+		-
 			message: '#^Variable \$klassciToken in empty\(\) always exists and is not falsy\.$#'
 			identifier: empty.variable
 			count: 2
@@ -2155,6 +2683,30 @@ parameters:
 			path: app/Http/Controllers/API/SearchController.php
 
 		-
+			message: '#^Binary operation "\." between ''/admin/classes/'' and mixed results in an error\.$#'
+			identifier: binaryOp.invalid
+			count: 1
+			path: app/Http/Controllers/API/SearchController.php
+
+		-
+			message: '#^Binary operation "\." between ''/admin/matieres/'' and mixed results in an error\.$#'
+			identifier: binaryOp.invalid
+			count: 1
+			path: app/Http/Controllers/API/SearchController.php
+
+		-
+			message: '#^Binary operation "\." between ''Code\: '' and mixed results in an error\.$#'
+			identifier: binaryOp.invalid
+			count: 1
+			path: app/Http/Controllers/API/SearchController.php
+
+		-
+			message: '#^Binary operation "\." between mixed and '' \- '' results in an error\.$#'
+			identifier: binaryOp.invalid
+			count: 1
+			path: app/Http/Controllers/API/SearchController.php
+
+		-
 			message: '#^Binary operation "\." between mixed and int results in an error\.$#'
 			identifier: binaryOp.invalid
 			count: 1
@@ -2164,6 +2716,48 @@ parameters:
 			message: '#^Binary operation "\." between non\-empty\-string and mixed results in an error\.$#'
 			identifier: binaryOp.invalid
 			count: 1
+			path: app/Http/Controllers/API/SearchController.php
+
+		-
+			message: '#^Binary operation "\." between non\-falsy\-string and mixed results in an error\.$#'
+			identifier: binaryOp.invalid
+			count: 1
+			path: app/Http/Controllers/API/SearchController.php
+
+		-
+			message: '#^Cannot access offset ''code'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 2
+			path: app/Http/Controllers/API/SearchController.php
+
+		-
+			message: '#^Cannot access offset ''filiere'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 2
+			path: app/Http/Controllers/API/SearchController.php
+
+		-
+			message: '#^Cannot access offset ''id'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 4
+			path: app/Http/Controllers/API/SearchController.php
+
+		-
+			message: '#^Cannot access offset ''name'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 6
+			path: app/Http/Controllers/API/SearchController.php
+
+		-
+			message: '#^Cannot access offset ''niveau'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 2
+			path: app/Http/Controllers/API/SearchController.php
+
+		-
+			message: '#^Cannot access offset ''nom'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 2
 			path: app/Http/Controllers/API/SearchController.php
 
 		-
@@ -2251,7 +2845,13 @@ parameters:
 			path: app/Http/Controllers/API/SearchController.php
 
 		-
-			message: '#^Parameter \#1 \$limit of method Illuminate\\Support\\Collection\<\(int\|string\),mixed\>\:\:take\(\) expects int, mixed given\.$#'
+			message: '#^Parameter \#1 \$haystack of function stripos expects string, mixed given\.$#'
+			identifier: argument.type
+			count: 5
+			path: app/Http/Controllers/API/SearchController.php
+
+		-
+			message: '#^Parameter \#1 \$limit of method Illuminate\\Support\\Collection\<string,mixed\>\:\:take\(\) expects int, mixed given\.$#'
 			identifier: argument.type
 			count: 2
 			path: app/Http/Controllers/API/SearchController.php
@@ -2335,8 +2935,38 @@ parameters:
 			path: app/Http/Controllers/API/TeacherStatsController.php
 
 		-
+			message: '#^Cannot access offset ''name'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: app/Http/Middleware/EnsureKlassciSync.php
+
+		-
+			message: '#^Cannot access offset ''nom'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: app/Http/Middleware/EnsureKlassciSync.php
+
+		-
+			message: '#^Cannot access offset ''role'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: app/Http/Middleware/EnsureKlassciSync.php
+
+		-
+			message: '#^Cannot access offset ''user'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: app/Http/Middleware/EnsureKlassciSync.php
+
+		-
 			message: '#^Cannot call method toIso8601String\(\) on string\.$#'
 			identifier: method.nonObject
+			count: 1
+			path: app/Http/Middleware/EnsureKlassciSync.php
+
+		-
+			message: '#^Parameter \#2 \$klassciUser of method App\\Http\\Middleware\\EnsureKlassciSync\:\:detectAndLogRoleDivergence\(\) expects array\<string, mixed\>, mixed given\.$#'
+			identifier: argument.type
 			count: 1
 			path: app/Http/Middleware/EnsureKlassciSync.php
 
@@ -3577,14 +4207,80 @@ parameters:
 			path: app/Jobs/FinalizeSeanceAttendances.php
 
 		-
+			message: '#^Argument of an invalid type mixed supplied for foreach, only iterables are supported\.$#'
+			identifier: foreach.nonIterable
+			count: 2
+			path: app/Jobs/SyncKlassciSeances.php
+
+		-
+			message: '#^Binary operation "\." between ''lms_seance_'' and mixed results in an error\.$#'
+			identifier: binaryOp.invalid
+			count: 1
+			path: app/Jobs/SyncKlassciSeances.php
+
+		-
+			message: '#^Cannot access offset ''classe'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 3
+			path: app/Jobs/SyncKlassciSeances.php
+
+		-
+			message: '#^Cannot access offset ''id'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 13
+			path: app/Jobs/SyncKlassciSeances.php
+
+		-
+			message: '#^Cannot access offset ''libelle'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 2
+			path: app/Jobs/SyncKlassciSeances.php
+
+		-
+			message: '#^Cannot access offset ''nom'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 3
+			path: app/Jobs/SyncKlassciSeances.php
+
+		-
+			message: '#^Cannot access offset ''seances_programmees'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: app/Jobs/SyncKlassciSeances.php
+
+		-
+			message: '#^Parameter \#1 \$klassciClasseId of method App\\Services\\ClasseSyncService\:\:syncClasseById\(\) expects int, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Jobs/SyncKlassciSeances.php
+
+		-
+			message: '#^Parameter \#1 \$seanceId of method App\\Services\\NotificationService\:\:notifyVisioScheduled\(\) expects int, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Jobs/SyncKlassciSeances.php
+
+		-
 			message: '#^Parameter \#1 \$userToken of method App\\Services\\KlassciProxyService\:\:requestWithUserToken\(\) expects string, string\|null given\.$#'
 			identifier: argument.type
 			count: 2
 			path: app/Jobs/SyncKlassciSeances.php
 
 		-
+			message: '#^Parameter \#1 \$value of function count expects array\|Countable, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Jobs/SyncKlassciSeances.php
+
+		-
 			message: '#^Parameter \#2 \$klassciToken of method App\\Services\\ClasseSyncService\:\:syncClasseById\(\) expects string, string\|null given\.$#'
 			identifier: argument.type
+			count: 1
+			path: app/Jobs/SyncKlassciSeances.php
+
+		-
+			message: '#^Part \$matiere\[''id''\] \(mixed\) of encapsed string cannot be cast to string\.$#'
+			identifier: encapsedStringPart.nonString
 			count: 1
 			path: app/Jobs/SyncKlassciSeances.php
 
@@ -5845,6 +6541,42 @@ parameters:
 			path: app/Rules/PositiveInteger.php
 
 		-
+			message: '#^Argument of an invalid type mixed supplied for foreach, only iterables are supported\.$#'
+			identifier: foreach.nonIterable
+			count: 2
+			path: app/Services/ClasseSyncService.php
+
+		-
+			message: '#^Cannot access offset ''classe'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 3
+			path: app/Services/ClasseSyncService.php
+
+		-
+			message: '#^Cannot access offset ''classes'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: app/Services/ClasseSyncService.php
+
+		-
+			message: '#^Cannot access offset ''etudiants'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 3
+			path: app/Services/ClasseSyncService.php
+
+		-
+			message: '#^Cannot access offset ''id'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 5
+			path: app/Services/ClasseSyncService.php
+
+		-
+			message: '#^Cannot access offset ''matieres'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: app/Services/ClasseSyncService.php
+
+		-
 			message: '#^Expression on left side of \?\? is not nullable\.$#'
 			identifier: nullCoalesce.expr
 			count: 1
@@ -5853,6 +6585,12 @@ parameters:
 		-
 			message: '#^Method App\\Services\\ClasseSyncService\:\:fetchClassesFromKlassci\(\) return type has no value type specified in iterable type array\.$#'
 			identifier: missingType.iterableValue
+			count: 1
+			path: app/Services/ClasseSyncService.php
+
+		-
+			message: '#^Method App\\Services\\ClasseSyncService\:\:fetchClassesFromKlassci\(\) should return array but returns mixed\.$#'
+			identifier: return.type
 			count: 1
 			path: app/Services/ClasseSyncService.php
 
@@ -5884,6 +6622,30 @@ parameters:
 			message: '#^Method App\\Services\\ClasseSyncService\:\:syncUserClasses\(\) return type has no value type specified in iterable type array\.$#'
 			identifier: missingType.iterableValue
 			count: 1
+			path: app/Services/ClasseSyncService.php
+
+		-
+			message: '#^Parameter \#1 \$klasseData of method App\\Services\\ClasseSyncService\:\:syncClasse\(\) expects array, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/ClasseSyncService.php
+
+		-
+			message: '#^Part \$classe\[''id''\] \(mixed\) of encapsed string cannot be cast to string\.$#'
+			identifier: encapsedStringPart.nonString
+			count: 1
+			path: app/Services/ClasseSyncService.php
+
+		-
+			message: '#^Part \$matiere\[''id''\] \(mixed\) of encapsed string cannot be cast to string\.$#'
+			identifier: encapsedStringPart.nonString
+			count: 1
+			path: app/Services/ClasseSyncService.php
+
+		-
+			message: '#^Possibly invalid array key type mixed\.$#'
+			identifier: offsetAccess.invalidOffset
+			count: 2
 			path: app/Services/ClasseSyncService.php
 
 		-
@@ -5927,264 +6689,6 @@ parameters:
 			identifier: missingType.property
 			count: 1
 			path: app/Services/ConvertApiService.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Contracts\\Auth\\Authenticatable\:\:\$klassci_data\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/KlassciProxyService.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Contracts\\Auth\\Authenticatable\:\:\$klassci_tenant_url\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Services/KlassciProxyService.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Contracts\\Auth\\Authenticatable\:\:\$klassci_token\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/KlassciProxyService.php
-
-		-
-			message: '#^Cannot access offset ''_lms_tenant_url'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 1
-			path: app/Services/KlassciProxyService.php
-
-		-
-			message: '#^Cannot access offset ''success'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 2
-			path: app/Services/KlassciProxyService.php
-
-		-
-			message: '#^Method App\\Services\\KlassciProxyService\:\:delete\(\) return type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Services/KlassciProxyService.php
-
-		-
-			message: '#^Method App\\Services\\KlassciProxyService\:\:generateCacheKey\(\) has parameter \$params with no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Services/KlassciProxyService.php
-
-		-
-			message: '#^Method App\\Services\\KlassciProxyService\:\:get\(\) has parameter \$params with no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Services/KlassciProxyService.php
-
-		-
-			message: '#^Method App\\Services\\KlassciProxyService\:\:get\(\) return type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Services/KlassciProxyService.php
-
-		-
-			message: '#^Method App\\Services\\KlassciProxyService\:\:getClasseEtudiants\(\) return type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Services/KlassciProxyService.php
-
-		-
-			message: '#^Method App\\Services\\KlassciProxyService\:\:getClasses\(\) has parameter \$filters with no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Services/KlassciProxyService.php
-
-		-
-			message: '#^Method App\\Services\\KlassciProxyService\:\:getClasses\(\) return type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Services/KlassciProxyService.php
-
-		-
-			message: '#^Method App\\Services\\KlassciProxyService\:\:getEmploiTemps\(\) has parameter \$filters with no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Services/KlassciProxyService.php
-
-		-
-			message: '#^Method App\\Services\\KlassciProxyService\:\:getEmploiTemps\(\) return type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Services/KlassciProxyService.php
-
-		-
-			message: '#^Method App\\Services\\KlassciProxyService\:\:getEnseignants\(\) return type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Services/KlassciProxyService.php
-
-		-
-			message: '#^Method App\\Services\\KlassciProxyService\:\:getEnseignantsEnrichis\(\) return type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Services/KlassciProxyService.php
-
-		-
-			message: '#^Method App\\Services\\KlassciProxyService\:\:getEvaluations\(\) has parameter \$filters with no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Services/KlassciProxyService.php
-
-		-
-			message: '#^Method App\\Services\\KlassciProxyService\:\:getEvaluations\(\) return type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Services/KlassciProxyService.php
-
-		-
-			message: '#^Method App\\Services\\KlassciProxyService\:\:getFilieres\(\) return type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Services/KlassciProxyService.php
-
-		-
-			message: '#^Method App\\Services\\KlassciProxyService\:\:getMatiereDetails\(\) return type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Services/KlassciProxyService.php
-
-		-
-			message: '#^Method App\\Services\\KlassciProxyService\:\:getMatieres\(\) has parameter \$filters with no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Services/KlassciProxyService.php
-
-		-
-			message: '#^Method App\\Services\\KlassciProxyService\:\:getMatieres\(\) return type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Services/KlassciProxyService.php
-
-		-
-			message: '#^Method App\\Services\\KlassciProxyService\:\:getNiveauxEtudes\(\) return type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Services/KlassciProxyService.php
-
-		-
-			message: '#^Method App\\Services\\KlassciProxyService\:\:getStructure\(\) return type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Services/KlassciProxyService.php
-
-		-
-			message: '#^Method App\\Services\\KlassciProxyService\:\:makeRequest\(\) has parameter \$data with no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Services/KlassciProxyService.php
-
-		-
-			message: '#^Method App\\Services\\KlassciProxyService\:\:makeRequest\(\) return type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Services/KlassciProxyService.php
-
-		-
-			message: '#^Method App\\Services\\KlassciProxyService\:\:makeRequest\(\) should return array but returns mixed\.$#'
-			identifier: return.type
-			count: 1
-			path: app/Services/KlassciProxyService.php
-
-		-
-			message: '#^Method App\\Services\\KlassciProxyService\:\:post\(\) has parameter \$data with no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Services/KlassciProxyService.php
-
-		-
-			message: '#^Method App\\Services\\KlassciProxyService\:\:post\(\) return type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Services/KlassciProxyService.php
-
-		-
-			message: '#^Method App\\Services\\KlassciProxyService\:\:put\(\) has parameter \$data with no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Services/KlassciProxyService.php
-
-		-
-			message: '#^Method App\\Services\\KlassciProxyService\:\:put\(\) return type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Services/KlassciProxyService.php
-
-		-
-			message: '#^Method App\\Services\\KlassciProxyService\:\:requestWithUserToken\(\) has parameter \$data with no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Services/KlassciProxyService.php
-
-		-
-			message: '#^Method App\\Services\\KlassciProxyService\:\:requestWithUserToken\(\) return type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Services/KlassciProxyService.php
-
-		-
-			message: '#^Method App\\Services\\KlassciProxyService\:\:requestWithUserToken\(\) should return array but returns mixed\.$#'
-			identifier: return.type
-			count: 1
-			path: app/Services/KlassciProxyService.php
-
-		-
-			message: '#^Method App\\Services\\KlassciProxyService\:\:saveNotes\(\) has parameter \$notes with no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Services/KlassciProxyService.php
-
-		-
-			message: '#^Method App\\Services\\KlassciProxyService\:\:saveNotes\(\) return type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Services/KlassciProxyService.php
-
-		-
-			message: '#^Method App\\Services\\KlassciProxyService\:\:savePresences\(\) has parameter \$presences with no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Services/KlassciProxyService.php
-
-		-
-			message: '#^Method App\\Services\\KlassciProxyService\:\:savePresences\(\) return type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Services/KlassciProxyService.php
-
-		-
-			message: '#^Method App\\Services\\KlassciProxyService\:\:updateCoursStatut\(\) return type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Services/KlassciProxyService.php
-
-		-
-			message: '#^Parameter \#1 \$string of function md5 expects string, string\|false given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Services/KlassciProxyService.php
-
-		-
-			message: '#^Part \$invalidatedAt \(mixed\) of encapsed string cannot be cast to string\.$#'
-			identifier: encapsedStringPart.nonString
-			count: 1
-			path: app/Services/KlassciProxyService.php
-
-		-
-			message: '#^Property App\\Services\\KlassciProxyService\:\:\$cacheTTL \(int\) does not accept mixed\.$#'
-			identifier: assign.propertyType
-			count: 1
-			path: app/Services/KlassciProxyService.php
-
-		-
-			message: '#^Property App\\Services\\KlassciProxyService\:\:\$timeout \(int\) does not accept mixed\.$#'
-			identifier: assign.propertyType
-			count: 1
-			path: app/Services/KlassciProxyService.php
 
 		-
 			message: '#^Access to an undefined property App\\Models\\QuizAttempt\:\:\$max_score\.$#'
@@ -6373,6 +6877,30 @@ parameters:
 			path: app/Services/SeanceQueryService.php
 
 		-
+			message: '#^Argument of an invalid type mixed supplied for foreach, only iterables are supported\.$#'
+			identifier: foreach.nonIterable
+			count: 3
+			path: app/Services/SeanceQueryService.php
+
+		-
+			message: '#^Cannot access offset ''cours'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: app/Services/SeanceQueryService.php
+
+		-
+			message: '#^Cannot access offset ''enseignant'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 4
+			path: app/Services/SeanceQueryService.php
+
+		-
+			message: '#^Cannot access offset ''enseignants'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: app/Services/SeanceQueryService.php
+
+		-
 			message: '#^Cannot access offset ''heure_debut'' on mixed\.$#'
 			identifier: offsetAccess.nonOffsetAccessible
 			count: 1
@@ -6380,6 +6908,42 @@ parameters:
 
 		-
 			message: '#^Cannot access offset ''heure_fin'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: app/Services/SeanceQueryService.php
+
+		-
+			message: '#^Cannot access offset ''id'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 4
+			path: app/Services/SeanceQueryService.php
+
+		-
+			message: '#^Cannot access offset ''matiere'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 4
+			path: app/Services/SeanceQueryService.php
+
+		-
+			message: '#^Cannot access offset ''matiere_id'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: app/Services/SeanceQueryService.php
+
+		-
+			message: '#^Cannot access offset ''matieres'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: app/Services/SeanceQueryService.php
+
+		-
+			message: '#^Cannot access offset ''seances_programmees'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 3
+			path: app/Services/SeanceQueryService.php
+
+		-
+			message: '#^Cannot access offset 0 on mixed\.$#'
 			identifier: offsetAccess.nonOffsetAccessible
 			count: 1
 			path: app/Services/SeanceQueryService.php
@@ -6409,6 +6973,24 @@ parameters:
 			path: app/Services/SeanceQueryService.php
 
 		-
+			message: '#^Method App\\Services\\SeanceQueryService\:\:resolveSeanceForCoordinator\(\) should return array\{array\<string, mixed\>\|null, array\<string, mixed\>\|null\} but returns array\{mixed, mixed\}\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Services/SeanceQueryService.php
+
+		-
+			message: '#^Method App\\Services\\SeanceQueryService\:\:resolveSeanceForStudent\(\) should return array\{array\<string, mixed\>\|null, array\<string, mixed\>\|null\} but returns array\{mixed, mixed\}\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Services/SeanceQueryService.php
+
+		-
+			message: '#^Method App\\Services\\SeanceQueryService\:\:resolveSeanceForTeacher\(\) should return array\{array\<string, mixed\>\|null, array\<string, mixed\>\|null\} but returns array\{mixed, mixed\}\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Services/SeanceQueryService.php
+
+		-
 			message: '#^Offset 0 on non\-empty\-list\<string\> on left side of \?\? always exists and is not nullable\.$#'
 			identifier: nullCoalesce.offset
 			count: 1
@@ -6421,8 +7003,32 @@ parameters:
 			path: app/Services/SeanceQueryService.php
 
 		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Support\\Collection\<\(int\|string\),mixed\>\:\:filter\(\) expects \(callable\(mixed, int\|string\)\: bool\)\|null, Closure\(array\)\: bool given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/SeanceQueryService.php
+
+		-
 			message: '#^Parameter \#1 \$time of static method Carbon\\Carbon\:\:parse\(\) expects Carbon\\Month\|Carbon\\WeekDay\|DateTimeInterface\|float\|int\|string\|null, mixed given\.$#'
 			identifier: argument.type
+			count: 2
+			path: app/Services/SeanceQueryService.php
+
+		-
+			message: '#^Parameter \#1 \$value of function collect expects Illuminate\\Contracts\\Support\\Arrayable\<\(int\|string\), mixed\>\|iterable\<\(int\|string\), mixed\>\|null, mixed given\.$#'
+			identifier: argument.type
+			count: 4
+			path: app/Services/SeanceQueryService.php
+
+		-
+			message: '#^Part \$matiereId \(mixed\) of encapsed string cannot be cast to string\.$#'
+			identifier: encapsedStringPart.nonString
+			count: 1
+			path: app/Services/SeanceQueryService.php
+
+		-
+			message: '#^Part \$matiere\[''id''\] \(mixed\) of encapsed string cannot be cast to string\.$#'
+			identifier: encapsedStringPart.nonString
 			count: 2
 			path: app/Services/SeanceQueryService.php
 

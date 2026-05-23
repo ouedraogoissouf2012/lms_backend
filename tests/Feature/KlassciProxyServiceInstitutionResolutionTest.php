@@ -1,48 +1,66 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Tests\Feature;
 
 use App\Models\Institution;
 use App\Models\User;
-use App\Services\KlassciProxyService;
+use App\Services\Klassci\KlassciConfigResolver;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
-use ReflectionClass;
 use Tests\TestCase;
 
 /**
- * Issue #75 — KlassciProxyService::resolveConfig() Priority 2 must use the
- * direct user→institution relation, NEVER a lookup-by-URL.
+ * Issue #75 — La résolution Priority 2 du `KlassciConfigResolver` doit utiliser
+ * la relation directe user→institution, JAMAIS un lookup-by-URL.
  *
- * Bug historique : la priorité 2 cherchait l'institution avec
+ * ## Historique
+ *
+ * Bug historique : avant le fix #75, la priorité 2 cherchait l'institution avec
  *     Institution::where('klassci_api_url', $url)->first()
  * et cachait le résultat sous `'institution_by_url_' . md5($url)`. Si deux
  * institutions partagent le même serveur KLASSCI (même `klassci_api_url`),
- * la query renvoyait UNE des deux (non-déterministe), et le cache figeait
- * le choix → toutes les requêtes proxy de l'autre école étaient
- * authentifiées avec le token de la première (cross-institution leak).
+ * la query renvoyait UNE des deux (non-déterministe), et le cache figeait le
+ * choix → toutes les requêtes proxy de l'autre école étaient authentifiées
+ * avec le token de la première (cross-institution leak).
  *
- * Fix : utiliser `$user->institution` (FK institution_id), avec check
- * défensif que `klassci_api_url` matche. Si désaccord → fail-secure
- * vers Priority 3.
+ * Fix : utiliser `$user->institution` (FK institution_id), avec check défensif
+ * que `klassci_api_url` matche. Si désaccord → fail-secure vers Priority 3.
  *
- * @see app/Services/KlassciProxyService.php::resolveConfig() Priority 2
+ * ## PERF-02 (issue #137) — Refactor post-split
+ *
+ * Avant le split architectural de PR 1 PERF-02, la méthode `resolveConfig()` et
+ * les props `$token`/`$baseUrl` vivaient en privé sur `KlassciProxyService`. Le
+ * test devait passer par Reflection. Depuis le split, la résolution vit dans
+ * `KlassciConfigResolver` avec accesseurs **publics** `baseUrl()` + `token()` —
+ * la Reflection est éliminée, le contract anti-régression #75 est testé direct.
+ *
+ * @see \App\Services\Klassci\KlassciConfigResolver
+ * @see Issue #75 (cross-institution token leak)
  * @see Issue #23 (analog précédent dans AdminAnalyticsController)
  * @see OWASP A01:2021 Broken Access Control
  */
-class KlassciProxyServiceInstitutionResolutionTest extends TestCase
+final class KlassciProxyServiceInstitutionResolutionTest extends TestCase
 {
     use RefreshDatabase;
 
     private const SHARED_URL = 'https://klassci-shared.example.com';
 
     private Institution $institutionA;
+
     private Institution $institutionB;
+
     private User $userA;
+
     private User $userB;
 
     protected function setUp(): void
     {
+        if (!extension_loaded('pdo_pgsql')) {
+            self::markTestSkipped('PostgreSQL PDO driver not available (CI-only test).');
+        }
+
         parent::setUp();
 
         // Deux institutions DIFFÉRENTES partageant le même serveur KLASSCI.
@@ -60,7 +78,7 @@ class KlassciProxyServiceInstitutionResolutionTest extends TestCase
             'is_active'                   => true,
         ]);
 
-        // Users sans token personnel → on déclenche Priority 2 de resolveConfig().
+        // Users sans token personnel → on déclenche Priority 2 du resolver.
         $this->userA = User::factory()->create([
             'institution_id'          => $this->institutionA->id,
             'klassci_tenant_url'      => self::SHARED_URL,
@@ -74,17 +92,30 @@ class KlassciProxyServiceInstitutionResolutionTest extends TestCase
     }
 
     /**
+     * Resolve un KlassciConfigResolver FRAIS (le resolver est lazy + memoized
+     * sur sa propre instance, donc on doit en créer une nouvelle à chaque test
+     * pour éviter le réutilisé du container Laravel singleton).
+     */
+    private function freshResolver(): KlassciConfigResolver
+    {
+        // Forge une nouvelle instance via le container (pour bénéficier de l'auto-wire
+        // des dépendances : AuthFactory, TenantManager, LoggerInterface).
+        $this->app->forgetInstance(KlassciConfigResolver::class);
+
+        return app(KlassciConfigResolver::class);
+    }
+
+    /**
      * Happy path : utilisateur résolu → token de SA propre institution.
      */
     public function test_user_resolves_to_their_own_institution_token(): void
     {
         Sanctum::actingAs($this->userA);
 
-        $service = new KlassciProxyService();
-        $this->invokeResolveConfig($service);
+        $resolver = $this->freshResolver();
 
-        $this->assertSame('plain-token-A', $this->readProp($service, 'token'));
-        $this->assertSame(self::SHARED_URL, $this->readProp($service, 'baseUrl'));
+        self::assertSame('plain-token-A', $resolver->token());
+        self::assertSame(self::SHARED_URL, $resolver->baseUrl());
     }
 
     /**
@@ -96,19 +127,17 @@ class KlassciProxyServiceInstitutionResolutionTest extends TestCase
     {
         // Resolve A
         Sanctum::actingAs($this->userA);
-        $serviceA = new KlassciProxyService();
-        $this->invokeResolveConfig($serviceA);
-        $tokenA = $this->readProp($serviceA, 'token');
+        $resolverA = $this->freshResolver();
+        $tokenA = $resolverA->token();
 
         // Resolve B (aurait été pollué par le cache md5(url) avant fix)
         Sanctum::actingAs($this->userB);
-        $serviceB = new KlassciProxyService();
-        $this->invokeResolveConfig($serviceB);
-        $tokenB = $this->readProp($serviceB, 'token');
+        $resolverB = $this->freshResolver();
+        $tokenB = $resolverB->token();
 
-        $this->assertSame('plain-token-A', $tokenA, 'User A must get institution A token.');
-        $this->assertSame('plain-token-B', $tokenB, 'User B must get institution B token.');
-        $this->assertNotSame(
+        self::assertSame('plain-token-A', $tokenA, 'User A must get institution A token.');
+        self::assertSame('plain-token-B', $tokenB, 'User B must get institution B token.');
+        self::assertNotSame(
             $tokenA,
             $tokenB,
             'Cross-institution token leak detected — issue #75 regression.'
@@ -123,19 +152,18 @@ class KlassciProxyServiceInstitutionResolutionTest extends TestCase
      */
     public function test_fails_priority_2_when_user_url_does_not_match_institution(): void
     {
-        // User pointe vers une URL qui n'est PAS celle de son institution.
         $this->userA->klassci_tenant_url = 'https://different-server.example.com';
         $this->userA->save();
 
         Sanctum::actingAs($this->userA);
 
-        $service = new KlassciProxyService();
-        $this->invokeResolveConfig($service);
+        $resolver = $this->freshResolver();
+        $token = $resolver->token();
 
         // Surtout pas le token de l'institution A (URL ne matche pas) et surtout
         // pas le token de B juste parce que B a la SHARED_URL.
-        $this->assertNotSame('plain-token-A', $this->readProp($service, 'token'));
-        $this->assertNotSame('plain-token-B', $this->readProp($service, 'token'));
+        self::assertNotSame('plain-token-A', $token);
+        self::assertNotSame('plain-token-B', $token);
     }
 
     /**
@@ -148,12 +176,11 @@ class KlassciProxyServiceInstitutionResolutionTest extends TestCase
 
         Sanctum::actingAs($this->userA);
 
-        $service = new KlassciProxyService();
-        $this->invokeResolveConfig($service);
+        $resolver = $this->freshResolver();
 
-        $this->assertNotSame(
+        self::assertNotSame(
             'plain-token-A',
-            $this->readProp($service, 'token'),
+            $resolver->token(),
             'Priority 2 ne doit jamais utiliser le token d\'une institution désactivée.'
         );
     }
@@ -168,10 +195,9 @@ class KlassciProxyServiceInstitutionResolutionTest extends TestCase
 
         Sanctum::actingAs($this->userA);
 
-        $service = new KlassciProxyService();
-        $this->invokeResolveConfig($service);
+        $resolver = $this->freshResolver();
 
-        $this->assertNotSame('plain-token-A', $this->readProp($service, 'token'));
+        self::assertNotSame('plain-token-A', $resolver->token());
     }
 
     /**
@@ -184,37 +210,12 @@ class KlassciProxyServiceInstitutionResolutionTest extends TestCase
 
         Sanctum::actingAs($this->userA);
 
-        $service = new KlassciProxyService();
-        $this->invokeResolveConfig($service);
+        $resolver = $this->freshResolver();
 
-        $this->assertNotSame(
+        self::assertNotSame(
             '',
-            $this->readProp($service, 'token'),
-            'Le service ne doit JAMAIS monter un token vide.'
+            $resolver->token(),
+            'Le resolver ne doit JAMAIS monter un token vide.'
         );
-    }
-
-    /**
-     * Helper : invoque la méthode privée resolveConfig() via Reflection.
-     * Si elle est un jour rendue publique ou extraite, ce helper disparaîtra
-     * naturellement.
-     */
-    private function invokeResolveConfig(KlassciProxyService $service): void
-    {
-        $method = (new ReflectionClass($service))->getMethod('resolveConfig');
-        $method->setAccessible(true);
-        $method->invoke($service);
-    }
-
-    /**
-     * Helper : lit une propriété privée (baseUrl ou token) via Reflection.
-     */
-    private function readProp(KlassciProxyService $service, string $name): ?string
-    {
-        $prop = (new ReflectionClass($service))->getProperty($name);
-        $prop->setAccessible(true);
-        $value = $prop->getValue($service);
-
-        return is_string($value) ? $value : null;
     }
 }

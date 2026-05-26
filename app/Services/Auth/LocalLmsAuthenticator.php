@@ -39,7 +39,7 @@ use Psr\Log\LoggerInterface;
  * @see app/Http/Controllers/API/AuthController.php (avant refactor) lignes 110-141
  * @see .claude/specs/auth-controller-refactor/design.md §2.1
  */
-final class LocalLmsAuthenticator
+class LocalLmsAuthenticator
 {
     public function __construct(
         private readonly Hasher $hasher,

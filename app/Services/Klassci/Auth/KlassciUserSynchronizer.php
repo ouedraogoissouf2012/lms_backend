@@ -57,7 +57,7 @@ use Psr\Log\LoggerInterface;
  * @see app/Http/Controllers/API/AuthController.php (avant refactor) lignes 388-528
  * @see .claude/specs/auth-controller-refactor/design.md §2.4
  */
-final class KlassciUserSynchronizer
+class KlassciUserSynchronizer
 {
     public function __construct(
         private readonly ConnectionInterface $db,

@@ -42,7 +42,7 @@ use Psr\Log\LoggerInterface;
  * @see app/Http/Controllers/API/AuthController.php (avant refactor) lignes 160-234
  * @see .claude/specs/auth-controller-refactor/design.md §2.3
  */
-final class KlassciAuthClient
+class KlassciAuthClient
 {
     private readonly int $timeout;
 

@@ -40,7 +40,7 @@ use Psr\Log\LoggerInterface;
  * @see app/Http/Controllers/API/AuthController.php (avant refactor)
  * @see .claude/specs/auth-controller-refactor/design.md §2.2
  */
-final class KlassciTenantDiscovery
+class KlassciTenantDiscovery
 {
     private readonly bool $sslVerify;
 

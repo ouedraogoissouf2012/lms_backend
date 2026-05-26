@@ -42,4 +42,25 @@ final class LoginRequest extends FormRequest
             'password.min' => 'Le mot de passe doit contenir au moins 8 caractères',
         ];
     }
+
+    /**
+     * Helper typé pour récupérer l'username validé en string strict.
+     *
+     * Issue #120 — Permet aux callers (AuthController) d'éviter `(string)` cast
+     * sur `$request->input('username')` qui retourne `mixed`. Pattern conforme
+     * §1.6 et utilisé par d'autres FormRequests du projet (cf. `BackfillRoleCommand`).
+     */
+    public function username(): string
+    {
+        $value = $this->validated()['username'] ?? '';
+
+        return is_string($value) ? $value : '';
+    }
+
+    public function password(): string
+    {
+        $value = $this->validated()['password'] ?? '';
+
+        return is_string($value) ? $value : '';
+    }
 }

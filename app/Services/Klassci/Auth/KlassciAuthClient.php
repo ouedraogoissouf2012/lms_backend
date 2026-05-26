@@ -65,10 +65,23 @@ class KlassciAuthClient
      */
     public function attemptLogin(string $tenantUrl, string $username, string $password): ?array
     {
-        $request = $this->buildRequest();
+        $response = $this->sendLoginRequest($tenantUrl, $username, $password);
+        if ($response === null) {
+            return null;
+        }
 
+        return $this->parseLoginResponse($response, $tenantUrl);
+    }
+
+    /**
+     * Envoie la requête HTTP login + catch ConnectionException (FIX BUG).
+     *
+     * @return Response|null  null si tenant unreachable
+     */
+    private function sendLoginRequest(string $tenantUrl, string $username, string $password): ?Response
+    {
         try {
-            $response = $request->post($tenantUrl . '/auth/login', [
+            return $this->buildRequest()->post($tenantUrl . '/auth/login', [
                 'username' => $username,
                 'password' => $password,
             ]);
@@ -80,11 +93,20 @@ class KlassciAuthClient
 
             return null;
         }
+    }
 
-        // 🔑 FIX BUG ligne 172 — try/catch ConnectionException ci-dessus garantit que
-        // `$response` est ici de type Response (sinon on serait return null plus haut).
-        // Plus de risque de crash `successful()` sur ConnectionException — c'était la
-        // racine du bug origine commit a6066be2.
+    /**
+     * Parse la Response HTTP en payload validé.
+     *
+     * Trois checks séquentiels :
+     * 1. `successful()` (HTTP 2xx) — sinon log info + null
+     * 2. `is_array($payload)` — sinon log warning + null
+     * 3. `success === true` — sinon log info + null
+     *
+     * @return array<string, mixed>|null
+     */
+    private function parseLoginResponse(Response $response, string $tenantUrl): ?array
+    {
         if (!$response->successful()) {
             $this->logger->info('KLASSCI login refused or HTTP failure', [
                 'tenant_url' => $tenantUrl,
@@ -96,16 +118,8 @@ class KlassciAuthClient
 
         /** @var array<string, mixed>|mixed $payload */
         $payload = $response->json();
-        if (!is_array($payload)) {
-            $this->logger->warning('KLASSCI login returned non-array payload', [
-                'tenant_url' => $tenantUrl,
-            ]);
-
-            return null;
-        }
-
-        if (($payload['success'] ?? false) !== true) {
-            $this->logger->info('KLASSCI login payload reports success=false', [
+        if (!is_array($payload) || ($payload['success'] ?? false) !== true) {
+            $this->logger->info('KLASSCI login payload invalid or success=false', [
                 'tenant_url' => $tenantUrl,
             ]);
 

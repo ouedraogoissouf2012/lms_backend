@@ -82,10 +82,14 @@ class KlassciTenantDiscovery
 
         $matching = $this->filterMatchingResponses($tenants, $responses);
 
+        // 🔑 Audit `spec-security` LOW-1 — hash de l'identifier au lieu du clair.
+        // L'identifier (email ou username) est PII RGPD ; pas un secret bloquant
+        // mais sa fuite dans des logs centralisés est inutile. On garde un hash
+        // tronqué pour permettre le debug par corrélation (même hash = même user).
         $this->logger->info('Tenants trouvés pour utilisateur', [
-            'identifier' => $identifier,
-            'count'      => count($matching),
-            'tenants'    => array_column($matching, 'code'),
+            'identifier_hash' => substr(hash('sha256', $identifier), 0, 8),
+            'count'           => count($matching),
+            'tenants'         => array_column($matching, 'code'),
         ]);
 
         return $matching;

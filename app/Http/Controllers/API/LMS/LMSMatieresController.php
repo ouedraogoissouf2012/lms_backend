@@ -364,16 +364,24 @@ final class LMSMatieresController extends AuthenticatedController
                     $query->published();
                 }
 
+                // PERF-03 — eager load `progress` filtré au user courant.
+                // Avant : 1 query/lesson via `progressForUser()` → N+1 sur la liste matière.
+                // Après : 1 query agrégée qui jointure le LessonProgress du user à toutes les lessons.
+                if ($user->isStudent()) {
+                    $query->with(['progress' => function ($q) use ($user) {
+                        $q->where('user_id', $user->id);
+                    }]);
+                }
+
                 $lessons = $query->ordered()
                     ->get()
                     ->map(function ($lesson) use ($user): array {
                         $lessonArray = $lesson->toArray();
 
-                        // $user is guaranteed `User` (typed via AuthenticatedController), so
-                        // `isStudent()` always exists — the legacy `method_exists` check has
-                        // been removed (PHPStan flagged it as always-true).
                         if ($user->isStudent()) {
-                            $lessonArray['user_progress'] = $lesson->progressForUser($user->id);
+                            // `progress` est filtré au user courant via l'eager load ci-dessus,
+                            // donc la collection contient 0 ou 1 élément.
+                            $lessonArray['user_progress'] = $lesson->progress->first();
                         }
 
                         return $lessonArray;

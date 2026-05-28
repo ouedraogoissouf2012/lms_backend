@@ -44,6 +44,14 @@ final class ChecksEvaluationOwnershipTest extends TestCase
      */
     private function runTraitWith(?User $user, ?int $evaluationId): bool
     {
+        // Le trait lit `auth()->user()`, pas `$this->user()` du FormRequest.
+        // En prod Sanctum peuple le guard ; en test isolé il faut le faire à la main.
+        if ($user !== null) {
+            $this->actingAs($user);
+        } else {
+            auth()->forgetGuards();
+        }
+
         $request = TestEvaluationOwnershipRequest::create(
             "/test/evaluations/{$evaluationId}",
             'DELETE',
@@ -121,7 +129,6 @@ final class ChecksEvaluationOwnershipTest extends TestCase
     // REQ-4 #5 — Happy path.
     public function test_returns_true_for_owner_with_matching_klassci_enseignant_id(): void
     {
-        self::markTestIncomplete('Test passes no assertion under SQLite — needs porting (follow-up).');
         $user = User::factory()->create([
             'institution_id'        => $this->institution->id,
             'role'                  => 'enseignant',
@@ -139,7 +146,6 @@ final class ChecksEvaluationOwnershipTest extends TestCase
     // REQ-4 #6 — Admin bypass.
     public function test_returns_true_for_admin_regardless_of_klassci_enseignant_id(): void
     {
-        self::markTestIncomplete('Test passes no assertion under SQLite — needs porting (follow-up).');
         $admin = User::factory()->create([
             'institution_id'        => $this->institution->id,
             'role'                  => 'supradmin',

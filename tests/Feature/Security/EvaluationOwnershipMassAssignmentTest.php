@@ -209,14 +209,16 @@ final class EvaluationOwnershipMassAssignmentTest extends TestCase
     // ne ré-ouvre pas ce vecteur sans alarme rouge.
     public function test_create_evaluation_ignores_institution_id_from_body(): void
     {
-        self::markTestIncomplete('Test fails on SQLite — needs porting (follow-up).');
         $teacher = $this->teacher(klassciEnseignantId: 42);
 
         Sanctum::actingAs($teacher);
 
-        $response = $this->postJson('/api/evaluations', $this->basePayload([
-            'institution_id' => $this->otherInstitution->id,    // attacker attempt cross-tenant
-        ]));
+        // Sanctum::actingAs() ne pose pas de Bearer token réel → ResolveInstitution
+        // skip prio 1 et tombe en prio 2 (fallback X-Institution slug header).
+        $response = $this->withHeaders(['X-Institution' => $this->institution->slug])
+            ->postJson('/api/evaluations', $this->basePayload([
+                'institution_id' => $this->otherInstitution->id,    // attacker attempt cross-tenant
+            ]));
 
         $response->assertStatus(201);
 

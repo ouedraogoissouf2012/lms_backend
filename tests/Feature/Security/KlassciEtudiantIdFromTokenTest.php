@@ -65,9 +65,12 @@ final class KlassciEtudiantIdFromTokenTest extends TestCase
 
         // L'évaluation doit avoir au moins 1 question (sinon startEvaluation
         // retourne 422 « pas encore de questions »).
+        // institution_id requis pour que le global scope BelongsToInstitution
+        // retrouve la question quand le tenant est résolu.
         EvaluationQuestion::factory()->create([
-            'evaluation_id' => $evaluation->id,
-            'question'      => 'Question test',
+            'evaluation_id'  => $evaluation->id,
+            'question'       => 'Question test',
+            'institution_id' => $evaluation->institution_id,
         ]);
 
         return $evaluation;
@@ -149,6 +152,8 @@ final class KlassciEtudiantIdFromTokenTest extends TestCase
         $evaluation = $this->publishedEvaluation(['max_attempts' => 3]);
 
         // A has 3 completed submissions (max reached).
+        // institution_id requis pour que le global scope BelongsToInstitution
+        // retrouve les submissions quand le tenant est résolu (sinon attemptsCount=0).
         foreach (['soumis', 'soumis', 'corrige'] as $i => $status) {
             EvaluationSubmission::create([
                 'evaluation_id'       => $evaluation->id,
@@ -157,6 +162,7 @@ final class KlassciEtudiantIdFromTokenTest extends TestCase
                 'status'              => $status,
                 'started_at'          => now()->subDays($i + 1),
                 'submitted_at'        => now()->subDays($i + 1)->addHour(),
+                'institution_id'      => $this->institution->id,
             ]);
         }
 
@@ -164,9 +170,14 @@ final class KlassciEtudiantIdFromTokenTest extends TestCase
         // attacker should be blocked by A's count, not B's.
         Sanctum::actingAs($studentA);
 
-        $response = $this->postJson("/api/evaluations/{$evaluation->id}/start", [
-            'klassci_etudiant_id' => 999,
-        ]);
+        // Sans middleware ResolveInstitution : ce test fait du fingerprinting
+        // sur la logique anti-IDOR du controller (REQ-6 #4). La résolution de
+        // tenant n'est pas l'objet du test et son comportement avec Sanctum::actingAs
+        // est fragile à l'ordre d'exécution.
+        $response = $this->withoutMiddleware(\App\Http\Middleware\ResolveInstitution::class)
+            ->postJson("/api/evaluations/{$evaluation->id}/start", [
+                'klassci_etudiant_id' => 999,
+            ]);
 
         $response->assertStatus(403);
         self::assertStringContainsString('maximum', strtolower($response->json('message') ?? ''));

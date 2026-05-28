@@ -86,16 +86,18 @@ final class NotificationStatsAuthorizationTest extends TestCase
         $response->assertJsonPath('data.total', 3);
     }
 
-    public function test_superAdmin_sees_only_their_institution_stats(): void
+    public function test_superAdmin_alias_is_treated_as_supradmin_and_sees_global_stats(): void
     {
-        self::markTestIncomplete('Test fails on SQLite — needs porting (follow-up).');
+        // `superAdmin` est un alias de `supradmin` (cf. Role::tryFromString
+        // app/Enums/Role.php:66). Il a donc des privilèges cross-tenant et voit
+        // les 5 notifications, pas les 3 de son institution_id.
         $adminA = $this->createUser($this->instA, 'superAdmin');
         Sanctum::actingAs($adminA);
 
         $response = $this->getJson('/api/admin/notifications/stats');
 
         $response->assertStatus(200);
-        $response->assertJsonPath('data.total', 3);
+        $response->assertJsonPath('data.total', 5);
     }
 
     public function test_supradmin_sees_global_stats_cross_tenant(): void

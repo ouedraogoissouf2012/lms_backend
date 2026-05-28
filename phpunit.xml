@@ -42,6 +42,9 @@
     <php>
         <ini name="display_errors" value="1"/>
         <ini name="error_reporting" value="-1"/>
+        <!-- Suite complète bootstrappe ~150 MB de container Laravel + fixtures.
+             128 MB par défaut PHP fait OOM avec dump de stack massif. -->
+        <ini name="memory_limit" value="512M"/>
         <ini name="xdebug.mode" value="coverage"/>
         <env name="APP_ENV" value="testing"/>
         <!-- APP_KEY n'est PAS hardcodé ici (anti-pattern). Laravel le lit depuis

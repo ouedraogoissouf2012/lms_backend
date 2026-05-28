@@ -44,7 +44,9 @@
         <ini name="error_reporting" value="-1"/>
         <ini name="xdebug.mode" value="coverage"/>
         <env name="APP_ENV" value="testing"/>
-        <env name="APP_KEY" value="base64:VEVTVElORy1BUFAtS0VZLUZPUi1VTklULVRFU1RTLU8="/>
+        <!-- APP_KEY n'est PAS hardcodé ici (anti-pattern). Laravel le lit depuis
+             le .env local du dev. CI doit fournir APP_KEY via env var GitHub Actions
+             si PHPUnit est ajouté au workflow. -->
         <env name="BCRYPT_ROUNDS" value="4"/>
         <env name="CACHE_DRIVER" value="array"/>
         <env name="DB_CONNECTION" value="sqlite"/>

@@ -47,14 +47,6 @@ final class SeanceQueryServiceTest extends TestCase
 
     public function test_returns_null_when_seance_not_found_anywhere(): void
     {
-        // This test exercises the full path: KLASSCI returns nothing, then
-        // the service falls back to `Seance::where(...)` which requires a DB
-        // connection. Without pdo_pgsql, the local SQLite-free environment
-        // can't run this branch — skip locally; CI runs it.
-        if (!extension_loaded('pdo_pgsql')) {
-            self::markTestSkipped('Requires DB connection for Seance fallback path.');
-        }
-
         $klassciMock = Mockery::mock(KlassciProxyService::class);
         $klassciMock->shouldReceive('requestWithUserToken')
             ->andReturn(['data' => ['matieres' => []]]);
@@ -77,10 +69,6 @@ final class SeanceQueryServiceTest extends TestCase
 
     public function test_getProgrammation_returns_null_when_seance_not_found(): void
     {
-        if (!extension_loaded('pdo_pgsql')) {
-            self::markTestSkipped('Requires DB connection for Seance fallback path.');
-        }
-
         $klassciMock = Mockery::mock(KlassciProxyService::class);
         $klassciMock->shouldReceive('requestWithUserToken')
             ->andReturn(['data' => ['matieres' => []]]);

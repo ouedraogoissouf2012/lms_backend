@@ -110,7 +110,7 @@ Après TIER 1 complété.
 
 Après TIER 2 complété.
 
-### [OPS-01] SQLite → MySQL/PostgreSQL
+### [OPS-01] SQLite → MySQL
 ### [OPS-02] LOG_LEVEL debug → production-safe
 ### [OPS-03] Scheduler duplication → consolidate
 ### [OPS-04] TODOs actifs → implementer ou retirer

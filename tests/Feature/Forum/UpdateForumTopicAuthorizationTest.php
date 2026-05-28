@@ -35,10 +35,6 @@ final class UpdateForumTopicAuthorizationTest extends TestCase
     protected function setUp(): void
     {
         // Skip BEFORE parent::setUp() — RefreshDatabase trait would otherwise
-        // try to migrate and crash on missing pgsql driver.
-        if (!extension_loaded('pdo_pgsql')) {
-            self::markTestSkipped('PostgreSQL PDO driver not available (CI-only test).');
-        }
 
         parent::setUp();
 

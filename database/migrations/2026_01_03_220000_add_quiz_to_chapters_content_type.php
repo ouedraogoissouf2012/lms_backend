@@ -91,18 +91,6 @@ return new class extends Migration
                 MODIFY COLUMN content_type ENUM('text', 'video', 'pdf', 'audio', 'presentation', 'powerpoint', 'word', 'excel', 'link', 'mixed', 'quiz')
                 DEFAULT 'text'
             ");
-        } else if ($connection === 'pgsql') {
-            // PostgreSQL: Ajouter la valeur à la contrainte CHECK existante
-            DB::statement("
-                ALTER TABLE chapters
-                DROP CONSTRAINT IF EXISTS chapters_content_type_check
-            ");
-
-            DB::statement("
-                ALTER TABLE chapters
-                ADD CONSTRAINT chapters_content_type_check
-                CHECK (content_type IN ('text', 'video', 'pdf', 'audio', 'presentation', 'powerpoint', 'word', 'excel', 'link', 'mixed', 'quiz'))
-            ");
         }
     }
 
@@ -122,19 +110,6 @@ return new class extends Migration
                 ALTER TABLE chapters
                 MODIFY COLUMN content_type ENUM('text', 'video', 'pdf', 'audio', 'presentation', 'powerpoint', 'word', 'excel', 'link', 'mixed')
                 DEFAULT 'text'
-            ");
-        } else if ($connection === 'pgsql') {
-            DB::table('chapters')->where('content_type', 'quiz')->update(['content_type' => 'text']);
-
-            DB::statement("
-                ALTER TABLE chapters
-                DROP CONSTRAINT IF EXISTS chapters_content_type_check
-            ");
-
-            DB::statement("
-                ALTER TABLE chapters
-                ADD CONSTRAINT chapters_content_type_check
-                CHECK (content_type IN ('text', 'video', 'pdf', 'audio', 'presentation', 'powerpoint', 'word', 'excel', 'link', 'mixed'))
             ");
         }
     }

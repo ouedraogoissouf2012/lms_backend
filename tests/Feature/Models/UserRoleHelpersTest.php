@@ -34,9 +34,6 @@ final class UserRoleHelpersTest extends TestCase
 
     protected function setUp(): void
     {
-        if (!extension_loaded('pdo_pgsql')) {
-            self::markTestSkipped('PostgreSQL PDO driver not available (CI-only test).');
-        }
 
         parent::setUp();
 
@@ -122,8 +119,8 @@ final class UserRoleHelpersTest extends TestCase
      * Note : le cas `role = NULL` est volontairement non testé ici parce que la
      * migration `2025_10_14_000001_add_klassci_fields_to_users_table.php:19` définit
      * `$table->string('role')->default('student')` sans `->nullable()`. La colonne
-     * NOT NULL en PostgreSQL rend `null` structurellement impossible — couvert au
-     * niveau Unit par `RoleTest::test_try_from_string_returns_null_for_invalid`.
+     * NOT NULL rend `null` structurellement impossible — couvert au niveau Unit
+     * par `RoleTest::test_try_from_string_returns_null_for_invalid`.
      */
     public function test_user_helpers_return_false_for_empty_role(): void
     {

@@ -4,14 +4,13 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Security;
 
-use App\Http\Controllers\API\AuthController;
 use App\Models\Evaluation;
 use App\Models\Institution;
 use App\Models\User;
+use App\Services\Klassci\Auth\KlassciUserSynchronizer;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
 use Mockery;
-use ReflectionClass;
 use Tests\TestCase;
 
 /**
@@ -34,9 +33,6 @@ final class KlassciEnseignantIdSeparationTest extends TestCase
 
     protected function setUp(): void
     {
-        if (!extension_loaded('pdo_pgsql')) {
-            self::markTestSkipped('PostgreSQL PDO driver not available (CI-only test).');
-        }
 
         parent::setUp();
 
@@ -50,19 +46,12 @@ final class KlassciEnseignantIdSeparationTest extends TestCase
     }
 
     /**
-     * Invoke the private method `AuthController::syncUserFromKlassci()` via
-     * reflection to exercise REQ-3 directly without the multi-tenant login
-     * discovery machinery.
+     * Invoke `KlassciUserSynchronizer::sync()` directly to exercise REQ-3
+     * without the multi-tenant login discovery machinery.
      */
     private function callSyncUserFromKlassci(array $klassciUser): User
     {
-        $controller = $this->app->make(AuthController::class);
-        $method     = (new ReflectionClass(AuthController::class))
-            ->getMethod('syncUserFromKlassci');
-        $method->setAccessible(true);
-
-        return $method->invoke(
-            $controller,
+        return $this->app->make(KlassciUserSynchronizer::class)->sync(
             $klassciUser,
             'fake-klassci-token',
             'https://klassci.fake/api',

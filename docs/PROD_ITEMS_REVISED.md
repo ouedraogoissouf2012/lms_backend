@@ -207,7 +207,7 @@ Audit Log Fields:
 - [ ] request_id (correlate with application logs)
 
 Storage & Retention:
-- [ ] Storage: PostgreSQL table `audit_logs` (fast queries)
+- [ ] Storage: dedicated DB table `audit_logs` (fast queries)
 - [ ] Retention: 1 year minimum (SOC2 requirement)
 - [ ] Archive: After 6 months, move to cold storage
 - [ ] Encryption: At rest (if customer PII)

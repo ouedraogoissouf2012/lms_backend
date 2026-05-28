@@ -4,14 +4,13 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Security;
 
-use App\Http\Controllers\API\AuthController;
 use App\Models\Institution;
 use App\Models\User;
+use App\Services\Klassci\Auth\KlassciUserSynchronizer;
 use App\Services\KlassciProxyService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
 use Mockery;
-use ReflectionClass;
 use Tests\TestCase;
 
 /**
@@ -23,7 +22,7 @@ use Tests\TestCase;
  * Spec: `.claude/specs/critical-05-klassci-role-separation/`
  *
  * @see \App\Http\Middleware\EnsureKlassciSync
- * @see \App\Http\Controllers\API\AuthController::syncUserFromKlassci
+ * @see \App\Services\Klassci\Auth\KlassciUserSynchronizer::sync
  */
 final class KlassciRoleSeparationTest extends TestCase
 {
@@ -31,9 +30,6 @@ final class KlassciRoleSeparationTest extends TestCase
 
     protected function setUp(): void
     {
-        if (!extension_loaded('pdo_pgsql')) {
-            self::markTestSkipped('PostgreSQL PDO driver not available (CI-only test).');
-        }
 
         parent::setUp();
     }
@@ -60,19 +56,12 @@ final class KlassciRoleSeparationTest extends TestCase
     }
 
     /**
-     * Invoke the private method `AuthController::syncUserFromKlassci()`
-     * directly via reflection. Bypasses the multi-tenant login discovery
-     * machinery so we can exercise REQ-3 in isolation.
+     * Invoke `KlassciUserSynchronizer::sync()` directly. Bypasses the
+     * multi-tenant login discovery machinery so we can exercise REQ-3 in isolation.
      */
     private function callSyncUserFromKlassci(array $klassciUser, ?Institution $institution): User
     {
-        $controller = $this->app->make(AuthController::class);
-        $method     = (new ReflectionClass(AuthController::class))
-            ->getMethod('syncUserFromKlassci');
-        $method->setAccessible(true);
-
-        return $method->invoke(
-            $controller,
+        return $this->app->make(KlassciUserSynchronizer::class)->sync(
             $klassciUser,
             'fake-klassci-token',
             'https://klassci.fake/api',

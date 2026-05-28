@@ -32,9 +32,6 @@ final class SeancesRoutingTest extends TestCase
 
     protected function setUp(): void
     {
-        if (!extension_loaded('pdo_pgsql')) {
-            self::markTestSkipped('PostgreSQL PDO driver not available (CI-only test).');
-        }
 
         parent::setUp();
 

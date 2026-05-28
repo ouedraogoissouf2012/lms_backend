@@ -12,7 +12,6 @@ use PHPUnit\Framework\TestCase;
  * Issue #121 — Tests Unit pure de `App\Enums\Role`.
  *
  * Aucune dépendance DB/HTTP : l'enum est un value object stateless.
- * Pas de skip `pdo_pgsql` — ces tests s'exécutent partout.
  *
  * Spec: `.claude/specs/role-enum/`
  */

@@ -25,12 +25,12 @@
 
 | Variable | Default test | Production | Description |
 |---|---|---|---|
-| `DB_CONNECTION` | `pgsql` | `pgsql` ou `mysql` | Driver PDO (doit correspondre à l'extension PHP installée) |
-| `DB_HOST` | `127.0.0.1` | host fourni | — |
-| `DB_PORT` | `5432` (pgsql) | `5432` ou `3306` | — |
-| `DB_DATABASE` | `lms_test` | `klassci_lms_prod` | Nom de la DB |
-| `DB_USERNAME` | `postgres` | user dédié | Pas `root` en prod |
-| `DB_PASSWORD` | — | **obligatoire** | Stocké en vault si possible, jamais en clair en repo |
+| `DB_CONNECTION` | `sqlite` | `mysql` | Driver PDO (doit correspondre à l'extension PHP installée) |
+| `DB_HOST` | — (sqlite) | host fourni | Inutile pour SQLite |
+| `DB_PORT` | — (sqlite) | `3306` | Inutile pour SQLite |
+| `DB_DATABASE` | `database/database.testing.sqlite` | `klassci_lms_prod` | Chemin du fichier SQLite local OU nom de DB MySQL |
+| `DB_USERNAME` | — (sqlite) | user dédié | Pas `root` en prod |
+| `DB_PASSWORD` | — | **obligatoire en prod MySQL** | Stocké en vault si possible, jamais en clair en repo |
 
 ## 3. KLASSCI (intégration externe)
 

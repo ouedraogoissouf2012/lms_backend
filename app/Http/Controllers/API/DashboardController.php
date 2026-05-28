@@ -228,29 +228,28 @@ class DashboardController extends AuthenticatedController
             ->count();
 
         // Cours avec le plus d'engagement
+        // PERF-03 — Avant : 1 query main + 5×2 sub-queries (count + avg par lesson) = 11 queries.
+        // Après : 4 queries totales via `withCount`/`withAvg` agrégés en une passe SQL.
         $topLessons = Lesson::query()
             ->where('enseignant_id', $user->id)
             ->where('status', 'published')
             ->withCount(['progress as students_started' => function ($query) {
                 $query->whereIn('status', ['in_progress', 'completed']);
             }])
+            ->withCount(['progress as students_completed' => function ($query) {
+                $query->where('status', 'completed');
+            }])
+            ->withAvg('progress as average_progress', 'progress_percentage')
             ->orderBy('students_started', 'desc')
             ->limit(5)
             ->get()
             ->map(function ($lesson) {
-                $completedCount = LessonProgress::where('lesson_id', $lesson->id)
-                    ->where('status', 'completed')
-                    ->count();
-
-                $averageProgress = LessonProgress::where('lesson_id', $lesson->id)
-                    ->avg('progress_percentage') ?? 0;
-
                 return [
-                    'lesson_id' => $lesson->id,
-                    'title' => $lesson->title,
-                    'students_started' => $lesson->students_started,
-                    'students_completed' => $completedCount,
-                    'average_progress' => round($averageProgress, 1),
+                    'lesson_id'          => $lesson->id,
+                    'title'              => $lesson->title,
+                    'students_started'   => $lesson->students_started,
+                    'students_completed' => $lesson->students_completed ?? 0,
+                    'average_progress'   => round((float) ($lesson->average_progress ?? 0), 1),
                 ];
             });
 

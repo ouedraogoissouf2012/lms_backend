@@ -65,6 +65,51 @@ final class EnsureKlassciSyncTest extends TestCase
     }
 
     /**
+     * Capture all `Log::warning(...)` calls into an ArrayObject so subsequent
+     * test assertions can inspect them.
+     *
+     * Pourquoi ce helper : `Log::shouldHaveReceived('warning')->withArgs(...)`
+     * ne fonctionne pas — `shouldHaveReceived` retourne null sans chain.
+     * ArrayObject permet la mutation par référence partagée entre la closure
+     * et le test.
+     *
+     * @return \ArrayObject<int, array{0: string, 1: array<string, mixed>}>
+     */
+    private function captureLogWarnings(): \ArrayObject
+    {
+        /** @var \ArrayObject<int, array{0: string, 1: array<string, mixed>}> $captured */
+        $captured = new \ArrayObject();
+        $spy = Mockery::mock();
+        $spy->shouldReceive('warning')
+            ->andReturnUsing(function (string $event, array $ctx = []) use ($captured): void {
+                $captured->append([$event, $ctx]);
+            });
+        $spy->shouldReceive('info', 'debug', 'notice', 'error', 'critical', 'alert', 'emergency')
+            ->andReturnNull();
+
+        Log::swap($spy);
+
+        return $captured;
+    }
+
+    /**
+     * Find the first captured warning whose event name (first argument) equals $event.
+     *
+     * @param  \ArrayObject<int, array{0: string, 1: array<string, mixed>}>  $captured
+     * @return array{0: string, 1: array<string, mixed>}|null
+     */
+    private function findWarningByEvent(\ArrayObject $captured, string $event): ?array
+    {
+        foreach ($captured as $call) {
+            if ($call[0] === $event) {
+                return $call;
+            }
+        }
+
+        return null;
+    }
+
+    /**
      * Run the middleware with a KLASSCI service mocked to return $klassciUser.
      */
     private function runMiddlewareWith(User $user, array $klassciUser): Response
@@ -147,9 +192,11 @@ final class EnsureKlassciSyncTest extends TestCase
 
     public function test_resync_logs_warning_on_role_divergence(): void
     {
-        self::markTestIncomplete('Mockery Log::spy + withArgs chain broken — needs porting (follow-up).');
-        Log::spy();
         $user = $this->staleUser('etudiant');
+
+        // On capture les warnings via un spy custom plutôt que la chain
+        // `shouldHaveReceived->withArgs` (Mockery ne la supporte pas).
+        $capturedWarnings = $this->captureLogWarnings();
 
         $this->runMiddlewareWith($user, [
             'role'  => 'supradmin',
@@ -157,24 +204,22 @@ final class EnsureKlassciSyncTest extends TestCase
             'nom'   => 'X',
         ]);
 
-        Log::shouldHaveReceived('warning')
-            ->withArgs(function (string $event, array $ctx) use ($user) {
-                return $event === 'klassci_role_divergence_detected'
-                    && $ctx['user_id'] === $user->id
-                    && $ctx['institution_id'] === $this->institution->id
-                    && $ctx['lms_role'] === 'etudiant'
-                    && $ctx['klassci_role_received'] === 'supradmin'
-                    && $ctx['klassci_role_previous'] === 'etudiant'
-                    && $ctx['is_escalation_attempt'] === true;
-            })
-            ->once();
+        $divergence = $this->findWarningByEvent($capturedWarnings, 'klassci_role_divergence_detected');
+        self::assertNotNull($divergence, 'klassci_role_divergence_detected warning should fire');
+        $ctx = $divergence[1];
+        self::assertSame($user->id, $ctx['user_id']);
+        self::assertSame($this->institution->id, $ctx['institution_id']);
+        self::assertSame('etudiant', $ctx['lms_role']);
+        self::assertSame('supradmin', $ctx['klassci_role_received']);
+        self::assertSame('etudiant', $ctx['klassci_role_previous']);
+        self::assertTrue($ctx['is_escalation_attempt']);
     }
 
     public function test_resync_does_not_log_warning_when_roles_match(): void
     {
-        self::markTestIncomplete('Mockery shouldNotHaveReceived + withArgs chain broken — needs porting (follow-up).');
-        Log::spy();
         $user = $this->staleUser('enseignant');
+
+        $capturedWarnings = $this->captureLogWarnings();
 
         $this->runMiddlewareWith($user, [
             'role'  => 'enseignant',
@@ -182,11 +227,8 @@ final class EnsureKlassciSyncTest extends TestCase
             'nom'   => 'X',
         ]);
 
-        // Closure-based matcher: the divergence event must NEVER fire when roles match.
-        // (The earlier positional-array form was a false-green — Mockery wouldn't
-        // bind it against the actual call signature.)
-        Log::shouldNotHaveReceived('warning')
-            ->withArgs(fn (string $event) => $event === 'klassci_role_divergence_detected');
+        $divergence = $this->findWarningByEvent($capturedWarnings, 'klassci_role_divergence_detected');
+        self::assertNull($divergence, 'Aucun warning de divergence ne doit fire quand les rôles matchent');
     }
 
     public function test_klassci_api_failure_does_not_overwrite_role_or_email(): void
@@ -213,10 +255,10 @@ final class EnsureKlassciSyncTest extends TestCase
 
     public function test_escalation_attempt_flag_is_false_when_klassci_role_is_less_permissive(): void
     {
-        self::markTestIncomplete('Mockery Log::spy + withArgs chain broken — needs porting (follow-up).');
-        Log::spy();
         // LMS = enseignant (level 2), KLASSCI = etudiant (level 1) — NOT an escalation.
         $user = $this->staleUser('enseignant');
+
+        $capturedWarnings = $this->captureLogWarnings();
 
         $this->runMiddlewareWith($user, [
             'role'  => 'etudiant',
@@ -224,12 +266,9 @@ final class EnsureKlassciSyncTest extends TestCase
             'nom'   => 'X',
         ]);
 
-        Log::shouldHaveReceived('warning')
-            ->withArgs(fn (string $event, array $ctx) =>
-                $event === 'klassci_role_divergence_detected'
-                && $ctx['is_escalation_attempt'] === false
-            )
-            ->once();
+        $divergence = $this->findWarningByEvent($capturedWarnings, 'klassci_role_divergence_detected');
+        self::assertNotNull($divergence, 'Warning de divergence attendu même quand non-escalade');
+        self::assertFalse($divergence[1]['is_escalation_attempt'], 'is_escalation_attempt doit être false quand KLASSCI < LMS');
     }
 
     public function test_fresh_user_skips_resync_entirely(): void

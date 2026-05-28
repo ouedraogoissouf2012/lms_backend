@@ -55,12 +55,20 @@ final class KlassciEtudiantIdFromTokenTest extends TestCase
 
     private function publishedEvaluation(array $overrides = []): Evaluation
     {
+        // `date_evaluation` figé dans le futur + `duree_minutes` raisonnable :
+        // sans ça, la factory tire au sort `date_evaluation` entre -1 mois et +1 mois,
+        // et si `date_evaluation + duree_minutes < now()` alors `Evaluation::isTerminee()`
+        // retourne true, le controller bascule en mode entraînement et le check
+        // `max_attempts` est BYPASSÉ → test flaky 200 vs 403 (issue identifiée
+        // lors du PERF-03 audit).
         $evaluation = Evaluation::factory()->create(array_merge([
-            'institution_id' => $this->institution->id,
-            'is_published'   => true,
-            'is_locked'      => false,
-            'status'         => 'en_cours',
-            'max_attempts'   => 3,
+            'institution_id'  => $this->institution->id,
+            'is_published'    => true,
+            'is_locked'       => false,
+            'status'          => 'en_cours',
+            'max_attempts'    => 3,
+            'date_evaluation' => now()->addDay(),
+            'duree_minutes'   => 60,
         ], $overrides));
 
         // L'évaluation doit avoir au moins 1 question (sinon startEvaluation

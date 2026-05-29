@@ -286,39 +286,40 @@ Route::middleware(['auth:sanctum', 'klassci.sync'])->group(function () {
 // ============================================
 // LESSONS (Cours/Leçons) - Routes protégées
 // ============================================
-use App\Http\Controllers\API\LessonController;
+use App\Http\Controllers\API\Lesson\LessonCrudController;
+use App\Http\Controllers\API\Lesson\LessonProgressController;
 
 // Routes accessibles à tous les utilisateurs authentifiés
 Route::middleware(['auth:sanctum', 'klassci.sync'])->group(function () {
     // Liste et consultation des cours
-    Route::get('lessons', [LessonController::class, 'index']);
-    Route::get('lessons/my-courses', [LessonController::class, 'myCourses']); // Cours de l'étudiant avec filtres
-    Route::get('lessons/{id}', [LessonController::class, 'show']);
+    Route::get('lessons', [LessonCrudController::class, 'index']);
+    Route::get('lessons/my-courses', [LessonCrudController::class, 'myCourses']); // Cours de l'étudiant avec filtres
+    Route::get('lessons/{id}', [LessonCrudController::class, 'show']);
 
     // Progression (Tous peuvent voir leur progression)
-    Route::get('lessons/{id}/progress', [LessonController::class, 'getProgress']);
-    Route::post('lessons/{id}/progress', [LessonController::class, 'updateProgress'])
+    Route::get('lessons/{id}/progress', [LessonProgressController::class, 'getProgress']);
+    Route::post('lessons/{id}/progress', [LessonProgressController::class, 'updateProgress'])
         ->middleware('throttle:300,1');
-    Route::post('lessons/{id}/complete', [LessonController::class, 'markComplete'])
+    Route::post('lessons/{id}/complete', [LessonProgressController::class, 'markComplete'])
         ->middleware('throttle:300,1');
-    Route::post('lessons/{id}/rating', [LessonController::class, 'rate'])
+    Route::post('lessons/{id}/rating', [LessonProgressController::class, 'rate'])
         ->middleware('throttle:300,1');
 });
 
 // Routes enseignants/coordinateurs/admins
 Route::middleware(['auth:sanctum', 'klassci.sync', 'role:enseignant,coordinateur,admin'])->group(function () {
     // CRUD des cours
-    Route::post('lessons', [LessonController::class, 'store'])
+    Route::post('lessons', [LessonCrudController::class, 'store'])
         ->middleware('throttle:60,1');
-    Route::match(['put', 'patch'], 'lessons/{id}', [LessonController::class, 'update'])
+    Route::match(['put', 'patch'], 'lessons/{id}', [LessonCrudController::class, 'update'])
         ->middleware('throttle:30,1');
-    Route::delete('lessons/{id}', [LessonController::class, 'destroy'])
+    Route::delete('lessons/{id}', [LessonCrudController::class, 'destroy'])
         ->middleware('throttle:30,1');
 
     // Actions spéciales
-    Route::post('lessons/{id}/publish', [LessonController::class, 'publish'])
+    Route::post('lessons/{id}/publish', [LessonCrudController::class, 'publish'])
         ->middleware('throttle:100,1');
-    Route::post('lessons/{id}/unpublish', [LessonController::class, 'unpublish'])
+    Route::post('lessons/{id}/unpublish', [LessonCrudController::class, 'unpublish'])
         ->middleware('throttle:100,1');
 });
 

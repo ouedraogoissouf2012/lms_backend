@@ -139,8 +139,8 @@ final class VisioRoutingTest extends TestCase
 
     /**
      * REQ-4 — Sanity check: the legacy `/seances/{id}/participants` route still
-     * points to `LMSSeancesController::seanceParticipants`, so the rename did NOT
-     * accidentally break the enrolment-list endpoint.
+     * points to the seances query controller (post split PR — méthode déplacée
+     * de `LMSSeancesController` vers `LMSSeancesQueryController`).
      */
     public function test_legacy_participants_route_still_uses_lms_seances_controller(): void
     {
@@ -148,7 +148,7 @@ final class VisioRoutingTest extends TestCase
 
         self::assertNotNull($route, 'Route lms.seances.participants should be registered.');
         self::assertSame(
-            \App\Http\Controllers\API\LMS\LMSSeancesController::class . '@seanceParticipants',
+            \App\Http\Controllers\API\LMS\LMSSeancesQueryController::class . '@seanceParticipants',
             $route->getActionName(),
         );
     }

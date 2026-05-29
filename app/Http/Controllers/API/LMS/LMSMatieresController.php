@@ -311,45 +311,55 @@ final class LMSMatieresController extends AuthenticatedController
             })->all();
 
             // 5c. Ajouter aussi les évaluations LMS pures (sans klassci_evaluation_id)
-            $evaluationsLMSPures = \App\Models\Evaluation::where('klassci_matiere_id', $matiereId)
+            // PERF-03 batch 2 — Avant : 1 query main + 3×N sub-queries par éval
+            //   ($eval->questions()->count, $eval->submissions()->count, $eval->submissions()->latest()).
+            //   Pour 10 évals : 31 queries.
+            // Après : 1 main + 2 (`withCount`) + 1 (batch user submissions) = **4 queries**.
+            $evaluationsLMSPuresModels = \App\Models\Evaluation::where('klassci_matiere_id', $matiereId)
                 ->whereNull('klassci_evaluation_id')
-                ->get()
-                ->map(function ($eval) use ($user): array {
-                    $submission = null;
-                    if ($user->klassci_id) {
-                        $submission = $eval->submissions()
-                            ->where('klassci_etudiant_id', $user->klassci_id)
-                            ->latest()
-                            ->first();
-                    }
+                ->withCount(['questions', 'submissions'])
+                ->get();
 
-                    return [
-                        'id' => 'lms_' . $eval->id,
-                        'lms_id' => $eval->id,
-                        'titre' => $eval->titre,
-                        'description' => $eval->description,
-                        'type' => 'lms_pure',
-                        'matiere' => null,
-                        'classe' => null,
-                        'programmation' => [
-                            'date_evaluation' => $eval->date_evaluation,
-                            'duree_minutes' => $eval->duree_minutes,
-                            'coefficient' => $eval->coefficient,
-                            'bareme' => $eval->bareme,
-                        ],
-                        'has_online' => true,
-                        'online_version' => [
-                            'id' => $eval->id,
-                            'status' => $eval->status,
-                            'is_published' => $eval->is_published,
-                            'is_locked' => $eval->isLocked(),
-                            'can_be_edited' => $eval->canBeEdited(),
-                            'questions_count' => $eval->questions()->count(),
-                            'submissions_count' => $eval->submissions()->count(),
-                        ],
-                        'student_submission' => $submission
-                    ];
-                })->all();
+            // Récupère en une seule passe la dernière submission du user pour CHAQUE éval.
+            $userLatestSubmissions = collect();
+            if ($user->klassci_id && $evaluationsLMSPuresModels->isNotEmpty()) {
+                $userLatestSubmissions = \App\Models\EvaluationSubmission::query()
+                    ->whereIn('evaluation_id', $evaluationsLMSPuresModels->pluck('id'))
+                    ->where('klassci_etudiant_id', $user->klassci_id)
+                    ->orderByDesc('id')
+                    ->get()
+                    ->groupBy('evaluation_id')
+                    ->map(fn ($subs) => $subs->first()); // latest par éval
+            }
+
+            $evaluationsLMSPures = $evaluationsLMSPuresModels->map(function ($eval) use ($userLatestSubmissions): array {
+                return [
+                    'id' => 'lms_' . $eval->id,
+                    'lms_id' => $eval->id,
+                    'titre' => $eval->titre,
+                    'description' => $eval->description,
+                    'type' => 'lms_pure',
+                    'matiere' => null,
+                    'classe' => null,
+                    'programmation' => [
+                        'date_evaluation' => $eval->date_evaluation,
+                        'duree_minutes' => $eval->duree_minutes,
+                        'coefficient' => $eval->coefficient,
+                        'bareme' => $eval->bareme,
+                    ],
+                    'has_online' => true,
+                    'online_version' => [
+                        'id' => $eval->id,
+                        'status' => $eval->status,
+                        'is_published' => $eval->is_published,
+                        'is_locked' => $eval->isLocked(),
+                        'can_be_edited' => $eval->canBeEdited(),
+                        'questions_count' => $eval->questions_count,
+                        'submissions_count' => $eval->submissions_count,
+                    ],
+                    'student_submission' => $userLatestSubmissions->get($eval->id),
+                ];
+            })->all();
 
             // Fusionner les évaluations KLASSCI enrichies et les LMS pures
             $evaluationsEnrichies = array_merge($evaluationsEnrichies, $evaluationsLMSPures);

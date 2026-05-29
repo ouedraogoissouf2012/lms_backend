@@ -392,41 +392,42 @@ Route::middleware(['auth:sanctum', 'klassci.sync'])->group(function () {
 // ============================================
 // QUIZZES - Routes protégées
 // ============================================
-use App\Http\Controllers\API\QuizController;
+use App\Http\Controllers\API\Quiz\QuizAttemptController;
+use App\Http\Controllers\API\Quiz\QuizCrudController;
 
 // Routes accessibles à tous les utilisateurs authentifiés
 Route::middleware(['auth:sanctum', 'klassci.sync'])->group(function () {
     // Liste et consultation des quiz
-    Route::get('quizzes', [QuizController::class, 'index']);
-    Route::get('quizzes/{quiz}', [QuizController::class, 'show']);
+    Route::get('quizzes', [QuizCrudController::class, 'index']);
+    Route::get('quizzes/{quiz}', [QuizCrudController::class, 'show']);
 
     // Démarrer et soumettre une tentative
-    Route::post('quizzes/{quiz}/start', [QuizController::class, 'startAttempt'])
+    Route::post('quizzes/{quiz}/start', [QuizAttemptController::class, 'startAttempt'])
         ->middleware('throttle:300,1');
-    Route::post('quiz-attempts/{id}/submit', [QuizController::class, 'submitAttempt'])
+    Route::post('quiz-attempts/{id}/submit', [QuizAttemptController::class, 'submitAttempt'])
         ->middleware('throttle:60,1');
 
     // NOUVEAU: Timer et sauvegarde de progression
-    Route::get('quiz-attempts/{id}/time-remaining', [QuizController::class, 'checkTimeRemaining']);
-    Route::post('quiz-attempts/{id}/save-progress', [QuizController::class, 'saveProgress']);
+    Route::get('quiz-attempts/{id}/time-remaining', [QuizAttemptController::class, 'checkTimeRemaining']);
+    Route::post('quiz-attempts/{id}/save-progress', [QuizAttemptController::class, 'saveProgress']);
 
     // Consulter une tentative
-    Route::get('quiz-attempts/{id}', [QuizController::class, 'showAttempt']);
+    Route::get('quiz-attempts/{id}', [QuizAttemptController::class, 'showAttempt']);
 });
 
 // Routes enseignants/coordinateurs/admins
 Route::middleware(['auth:sanctum', 'klassci.sync', 'role:enseignant,coordinateur,admin'])->group(function () {
     // CRUD des quiz
-    Route::post('quizzes', [QuizController::class, 'store']);
-    Route::put('quizzes/{quiz}', [QuizController::class, 'update']);
-    Route::delete('quizzes/{quiz}', [QuizController::class, 'destroy']);
+    Route::post('quizzes', [QuizCrudController::class, 'store']);
+    Route::put('quizzes/{quiz}', [QuizCrudController::class, 'update']);
+    Route::delete('quizzes/{quiz}', [QuizCrudController::class, 'destroy']);
 
     // Publication
-    Route::post('quizzes/{quiz}/publish', [QuizController::class, 'publish']);
+    Route::post('quizzes/{quiz}/publish', [QuizCrudController::class, 'publish']);
 
     // Gestion des tentatives
-    Route::get('quizzes/{quiz}/attempts', [QuizController::class, 'getAttempts']);
-    Route::post('quiz-attempts/{id}/grade', [QuizController::class, 'gradeAttempt']);
+    Route::get('quizzes/{quiz}/attempts', [QuizAttemptController::class, 'getAttempts']);
+    Route::post('quiz-attempts/{id}/grade', [QuizAttemptController::class, 'gradeAttempt']);
 });
 
 // ============================================

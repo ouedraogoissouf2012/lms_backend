@@ -29,6 +29,9 @@ class ForumPostFactory extends Factory
             'is_solution' => false,
             'is_edited' => false,
             'likes_count' => 0,
+            // institution_id hérité du parent ForumTopic.
+            'institution_id' => fn (array $attrs) => ForumTopic::find($attrs['topic_id'])?->institution_id
+                ?? \App\Models\Institution::factory(),
         ];
     }
 

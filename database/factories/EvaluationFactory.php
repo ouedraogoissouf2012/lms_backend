@@ -22,8 +22,14 @@ class EvaluationFactory extends Factory
             'titre' => $this->faker->sentence(3),
             'description' => $this->faker->optional()->paragraph(),
             'type' => $this->faker->randomElement(['devoir', 'composition', 'interrogation', 'examen', 'tp', 'td', 'qcm']),
-            'status' => $this->faker->randomElement(['brouillon', 'planifiee', 'en_cours', 'terminee']),
-            'date_evaluation' => $this->faker->dateTimeBetween('-1 month', '+1 month'),
+            // `'terminee'` retiré du pool random : il fait basculer Evaluation::isTerminee()
+            // → controller passe en mode entraînement → bypass max_attempts (flaky test cassé
+            // dans PR #146). Utiliser explicitement `->terminee()` quand on en a besoin.
+            'status' => $this->faker->randomElement(['brouillon', 'planifiee', 'en_cours']),
+            // `date_evaluation` figé dans le futur par défaut. Avant : random -1mois/+1mois
+            // → si date + durée < now() l'éval auto-bascule en mode entraînement. Pour tester
+            // une éval passée, utiliser le state `->terminee()` ou `->dateInPast(...)`.
+            'date_evaluation' => now()->addDays($this->faker->numberBetween(1, 30)),
             'duree_minutes' => $this->faker->randomElement([30, 60, 90, 120, 180]),
             'coefficient' => $this->faker->randomFloat(1, 1, 5),
             'bareme' => 20,

@@ -35,6 +35,8 @@ class FileFactory extends Factory
             'is_public' => $this->faker->boolean(),
             'is_validated' => true,
             'virus_scan_status' => 'clean',
+            // institution_id requis : File est tenant-scoped via BelongsToInstitution.
+            'institution_id' => \App\Models\Institution::factory(),
         ];
     }
 }

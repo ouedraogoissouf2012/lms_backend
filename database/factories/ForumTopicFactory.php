@@ -29,6 +29,8 @@ class ForumTopicFactory extends Factory
             'views_count' => 0,
             'posts_count' => 0,
             'last_activity_at' => now(),
+            // institution_id requis : ForumTopic est tenant-scoped via BelongsToInstitution.
+            'institution_id' => \App\Models\Institution::factory(),
         ];
     }
 

@@ -23,6 +23,8 @@ class ForumCategoryFactory extends Factory
             'name' => $this->faker->words(3, true),
             'description' => $this->faker->sentence(),
             'order' => $this->faker->numberBetween(1, 100),
+            // institution_id requis : ForumCategory est tenant-scoped via BelongsToInstitution.
+            'institution_id' => \App\Models\Institution::factory(),
         ];
     }
 }

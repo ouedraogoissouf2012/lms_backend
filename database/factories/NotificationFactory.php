@@ -29,6 +29,8 @@ class NotificationFactory extends Factory
                 'lesson_id' => $this->faker->numberBetween(1, 100),
             ],
             'read_at' => null,
+            // institution_id requis : Notification est tenant-scoped via BelongsToInstitution.
+            'institution_id' => \App\Models\Institution::factory(),
         ];
     }
 

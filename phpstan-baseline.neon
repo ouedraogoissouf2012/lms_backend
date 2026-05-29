@@ -2413,136 +2413,136 @@ parameters:
 			path: app/Http/Controllers/API/ProxyController.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\Quiz\:\:\$user_attempts_count\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Http/Controllers/API/QuizController.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\Quiz\:\:\$user_best_attempt\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Http/Controllers/API/QuizController.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\Quiz\:\:\$user_can_attempt\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Http/Controllers/API/QuizController.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\Quiz\:\:\$user_latest_attempt\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Controllers/API/QuizController.php
-
-		-
 			message: '#^Access to an undefined property App\\Models\\QuizAttempt\:\:\$questions_with_results\.$#'
 			identifier: property.notFound
 			count: 1
-			path: app/Http/Controllers/API/QuizController.php
+			path: app/Http/Controllers/API/Quiz/QuizAttemptController.php
 
 		-
 			message: '#^Access to an undefined property App\\Models\\QuizAttempt\:\:\$time_remaining\.$#'
 			identifier: property.notFound
 			count: 1
-			path: app/Http/Controllers/API/QuizController.php
+			path: app/Http/Controllers/API/Quiz/QuizAttemptController.php
 
 		-
 			message: '#^Access to an undefined property App\\Models\\QuizAttempt\:\:\$time_spent_formatted\.$#'
 			identifier: property.notFound
 			count: 1
-			path: app/Http/Controllers/API/QuizController.php
+			path: app/Http/Controllers/API/Quiz/QuizAttemptController.php
 
 		-
 			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Relations\\HasMany\:\:ordered\(\)\.$#'
 			identifier: method.notFound
 			count: 2
-			path: app/Http/Controllers/API/QuizController.php
+			path: app/Http/Controllers/API/Quiz/QuizAttemptController.php
 
 		-
 			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Relations\\HasMany\:\:submitted\(\)\.$#'
 			identifier: method.notFound
 			count: 1
-			path: app/Http/Controllers/API/QuizController.php
+			path: app/Http/Controllers/API/Quiz/QuizAttemptController.php
 
 		-
 			message: '#^Cannot access property \$allow_review on App\\Models\\Quiz\|null\.$#'
 			identifier: property.nonObject
 			count: 1
-			path: app/Http/Controllers/API/QuizController.php
+			path: app/Http/Controllers/API/Quiz/QuizAttemptController.php
 
 		-
 			message: '#^Cannot access property \$duration_minutes on App\\Models\\Quiz\|null\.$#'
 			identifier: property.nonObject
 			count: 1
-			path: app/Http/Controllers/API/QuizController.php
+			path: app/Http/Controllers/API/Quiz/QuizAttemptController.php
 
 		-
 			message: '#^Cannot access property \$show_correct_answers on App\\Models\\Quiz\|null\.$#'
 			identifier: property.nonObject
 			count: 1
-			path: app/Http/Controllers/API/QuizController.php
+			path: app/Http/Controllers/API/Quiz/QuizAttemptController.php
 
 		-
 			message: '#^Cannot call method questions\(\) on App\\Models\\Quiz\|null\.$#'
 			identifier: method.nonObject
 			count: 1
-			path: app/Http/Controllers/API/QuizController.php
+			path: app/Http/Controllers/API/Quiz/QuizAttemptController.php
 
 		-
-			message: '#^Method App\\Http\\Controllers\\API\\QuizController\:\:getQuestionsWithResults\(\) return type has no value type specified in iterable type array\.$#'
+			message: '#^Method App\\Http\\Controllers\\API\\Quiz\\QuizAttemptController\:\:getQuestionsWithResults\(\) return type has no value type specified in iterable type array\.$#'
 			identifier: missingType.iterableValue
 			count: 1
-			path: app/Http/Controllers/API/QuizController.php
+			path: app/Http/Controllers/API/Quiz/QuizAttemptController.php
 
 		-
 			message: '#^Parameter \#1 \$answers of method App\\Models\\QuizAttempt\:\:submit\(\) expects array, mixed given\.$#'
 			identifier: argument.type
 			count: 3
-			path: app/Http/Controllers/API/QuizController.php
-
-		-
-			message: '#^Parameter \#1 \$classeId of method Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Quiz\>\:\:forClasse\(\) expects int, mixed given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Controllers/API/QuizController.php
-
-		-
-			message: '#^Parameter \#1 \$lessonId of method Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Quiz\>\:\:forLesson\(\) expects int, mixed given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Controllers/API/QuizController.php
-
-		-
-			message: '#^Parameter \#1 \$matiereId of method Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Quiz\>\:\:forMatiere\(\) expects int, mixed given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Controllers/API/QuizController.php
-
-		-
-			message: '#^Parameter \#1 \$perPage of method Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Quiz\>\:\:paginate\(\) expects int\|null, mixed given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Controllers/API/QuizController.php
+			path: app/Http/Controllers/API/Quiz/QuizAttemptController.php
 
 		-
 			message: '#^Parameter \#1 \$pointsEarned of method App\\Models\\QuizAttempt\:\:manualGrade\(\) expects float, mixed given\.$#'
 			identifier: argument.type
 			count: 1
-			path: app/Http/Controllers/API/QuizController.php
+			path: app/Http/Controllers/API/Quiz/QuizAttemptController.php
 
 		-
 			message: '#^Parameter \#3 \$feedback of method App\\Models\\QuizAttempt\:\:manualGrade\(\) expects string\|null, mixed given\.$#'
 			identifier: argument.type
 			count: 1
-			path: app/Http/Controllers/API/QuizController.php
+			path: app/Http/Controllers/API/Quiz/QuizAttemptController.php
 
 		-
 			message: '#^Property App\\Models\\QuizAttempt\:\:\$answers \(array\|null\) does not accept mixed\.$#'
 			identifier: assign.propertyType
 			count: 1
-			path: app/Http/Controllers/API/QuizController.php
+			path: app/Http/Controllers/API/Quiz/QuizAttemptController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Quiz\:\:\$user_attempts_count\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Http/Controllers/API/Quiz/QuizCrudController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Quiz\:\:\$user_best_attempt\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Http/Controllers/API/Quiz/QuizCrudController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Quiz\:\:\$user_can_attempt\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Http/Controllers/API/Quiz/QuizCrudController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Quiz\:\:\$user_latest_attempt\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/API/Quiz/QuizCrudController.php
+
+		-
+			message: '#^Parameter \#1 \$classeId of method Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Quiz\>\:\:forClasse\(\) expects int, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/API/Quiz/QuizCrudController.php
+
+		-
+			message: '#^Parameter \#1 \$lessonId of method Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Quiz\>\:\:forLesson\(\) expects int, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/API/Quiz/QuizCrudController.php
+
+		-
+			message: '#^Parameter \#1 \$matiereId of method Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Quiz\>\:\:forMatiere\(\) expects int, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/API/Quiz/QuizCrudController.php
+
+		-
+			message: '#^Parameter \#1 \$perPage of method Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Quiz\>\:\:paginate\(\) expects int\|null, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/API/Quiz/QuizCrudController.php
 
 		-
 			message: '#^Access to an undefined property App\\Models\\Classe\|Illuminate\\Database\\Eloquent\\Collection\<int, App\\Models\\Classe\>\:\:\$klassci_id\.$#'

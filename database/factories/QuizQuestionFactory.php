@@ -20,49 +20,23 @@ class QuizQuestionFactory extends Factory
      */
     public function definition(): array
     {
+        // Aligné avec la migration `2025_10_14_180100_create_quiz_questions_table.php` :
+        // colonnes réelles = quiz_id, question_text, explanation, type, order, points,
+        // is_required, metadata, institution_id. Les anciens champs `options` et
+        // `correct_answer` étaient des artefacts factory non migrés en DB.
         $type = $this->faker->randomElement(['multiple_choice', 'true_false', 'short_answer']);
 
         return [
-            'quiz_id' => Quiz::factory(),
-            'question_text' => $this->faker->sentence() . '?',
-            'question_type' => $type,
-            'options' => $this->getOptionsForType($type),
-            'correct_answer' => $this->getCorrectAnswerForType($type),
-            'points' => $this->faker->randomElement([1, 2, 5, 10]),
-            'order' => $this->faker->numberBetween(1, 100),
+            'quiz_id'        => Quiz::factory(),
+            'question_text'  => $this->faker->sentence() . '?',
+            'type'           => $type,
+            'order'          => $this->faker->numberBetween(1, 100),
+            'points'         => $this->faker->randomElement([1, 2, 5, 10]),
+            'is_required'    => true,
+            // institution_id hérité du parent Quiz.
+            'institution_id' => fn (array $attrs) => Quiz::find($attrs['quiz_id'])?->institution_id
+                ?? \App\Models\Institution::factory(),
         ];
-    }
-
-    /**
-     * Get options based on question type.
-     */
-    protected function getOptionsForType(string $type): ?array
-    {
-        return match ($type) {
-            'multiple_choice' => [
-                'A' => $this->faker->sentence(),
-                'B' => $this->faker->sentence(),
-                'C' => $this->faker->sentence(),
-                'D' => $this->faker->sentence(),
-            ],
-            'true_false' => [
-                'true' => 'Vrai',
-                'false' => 'Faux',
-            ],
-            default => null,
-        };
-    }
-
-    /**
-     * Get correct answer based on question type.
-     */
-    protected function getCorrectAnswerForType(string $type): string
-    {
-        return match ($type) {
-            'multiple_choice' => $this->faker->randomElement(['A', 'B', 'C', 'D']),
-            'true_false' => $this->faker->randomElement(['true', 'false']),
-            default => $this->faker->sentence(),
-        };
     }
 
     /**
@@ -71,14 +45,7 @@ class QuizQuestionFactory extends Factory
     public function multipleChoice(): static
     {
         return $this->state(fn (array $attributes) => [
-            'question_type' => 'multiple_choice',
-            'options' => [
-                'A' => $this->faker->sentence(),
-                'B' => $this->faker->sentence(),
-                'C' => $this->faker->sentence(),
-                'D' => $this->faker->sentence(),
-            ],
-            'correct_answer' => $this->faker->randomElement(['A', 'B', 'C', 'D']),
+            'type' => 'multiple_choice',
         ]);
     }
 
@@ -88,12 +55,7 @@ class QuizQuestionFactory extends Factory
     public function trueFalse(): static
     {
         return $this->state(fn (array $attributes) => [
-            'question_type' => 'true_false',
-            'options' => [
-                'true' => 'Vrai',
-                'false' => 'Faux',
-            ],
-            'correct_answer' => $this->faker->randomElement(['true', 'false']),
+            'type' => 'true_false',
         ]);
     }
 
@@ -103,9 +65,7 @@ class QuizQuestionFactory extends Factory
     public function shortAnswer(): static
     {
         return $this->state(fn (array $attributes) => [
-            'question_type' => 'short_answer',
-            'options' => null,
-            'correct_answer' => $this->faker->sentence(),
+            'type' => 'short_answer',
         ]);
     }
 }

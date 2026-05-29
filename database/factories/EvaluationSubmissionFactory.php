@@ -26,6 +26,10 @@ class EvaluationSubmissionFactory extends Factory
             'note_sur_20' => $this->faker->numberBetween(0, 20),
             'feedback' => null,
             'synced_to_klassci' => false,
+            // institution_id hérité du parent Evaluation : sans ça, le global scope
+            // BelongsToInstitution filtre la submission hors de son évaluation parente.
+            'institution_id' => fn (array $attrs) => Evaluation::find($attrs['evaluation_id'])?->institution_id
+                ?? \App\Models\Institution::factory(),
         ];
     }
 }

@@ -17,6 +17,10 @@ class EvaluationQuestionFactory extends Factory
             'question' => $this->faker->sentence(),
             'type' => $this->faker->randomElement(['qcm', 'qcm_multiple', 'vrai_faux', 'reponse_courte', 'dissertation']),
             'ordre' => $this->faker->numberBetween(1, 10),
+            // institution_id hérité du parent Evaluation : sans ça, le global scope
+            // BelongsToInstitution filtre la question hors de son évaluation parente.
+            'institution_id' => fn (array $attrs) => Evaluation::find($attrs['evaluation_id'])?->institution_id
+                ?? \App\Models\Institution::factory(),
         ];
     }
 }

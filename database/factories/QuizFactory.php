@@ -27,6 +27,8 @@ class QuizFactory extends Factory
             'duration_minutes' => $this->faker->randomElement([15, 30, 45, 60, 90]),
             'passing_score' => $this->faker->numberBetween(50, 80),
             'max_attempts' => $this->faker->numberBetween(1, 3),
+            // institution_id requis : Quiz est tenant-scoped via BelongsToInstitution.
+            'institution_id' => \App\Models\Institution::factory(),
         ];
     }
 

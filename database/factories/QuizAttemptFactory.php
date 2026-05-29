@@ -36,6 +36,9 @@ class QuizAttemptFactory extends Factory
             'started_at' => $startedAt,
             'submitted_at' => $submittedAt,
             'completed_at' => null,
+            // institution_id hérité du parent Quiz.
+            'institution_id' => fn (array $attrs) => Quiz::find($attrs['quiz_id'])?->institution_id
+                ?? \App\Models\Institution::factory(),
         ];
     }
 

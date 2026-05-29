@@ -28,6 +28,8 @@ class LessonFactory extends Factory
             'status' => $this->faker->randomElement(['draft', 'published', 'archived']),
             'order' => $this->faker->numberBetween(1, 100),
             'type' => 'cours',
+            // institution_id requis : la Lesson est tenant-scoped via BelongsToInstitution.
+            'institution_id' => \App\Models\Institution::factory(),
         ];
     }
 

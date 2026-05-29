@@ -29,6 +29,9 @@ class LessonProgressFactory extends Factory
             'notes' => $this->faker->optional()->paragraph(),
             'rating' => $status === 'completed' ? $this->faker->optional()->numberBetween(1, 5) : null,
             'feedback' => $status === 'completed' ? $this->faker->optional()->paragraph() : null,
+            // institution_id hérité du parent Lesson.
+            'institution_id' => fn (array $attrs) => Lesson::find($attrs['lesson_id'])?->institution_id
+                ?? \App\Models\Institution::factory(),
         ];
     }
 

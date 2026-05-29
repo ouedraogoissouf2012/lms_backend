@@ -472,7 +472,8 @@ use App\Http\Controllers\API\LMS\LMSMatieresController;
 use App\Http\Controllers\API\LMS\LMSNotificationsPreferencesController;
 use App\Http\Controllers\API\LMS\LMSSeancesMutationController;
 use App\Http\Controllers\API\LMS\LMSSeancesQueryController;
-use App\Http\Controllers\API\LMS\LMSVisioController;
+use App\Http\Controllers\API\LMS\LMSVisioLifecycleController;
+use App\Http\Controllers\API\LMS\LMSVisioParticipantController;
 
 Route::middleware(['auth:sanctum', 'klassci.sync'])->prefix('lms')->group(function () {
     // Détails complets d'une classe
@@ -564,34 +565,34 @@ Route::middleware(['auth:sanctum', 'klassci.sync'])->prefix('lms')->group(functi
         ->name('lms.seances.my-classes');
 
     // Actions visio enseignant
-    Route::post('/seances/{seanceId}/activate-visio', [LMSVisioController::class, 'activateVisio'])
+    Route::post('/seances/{seanceId}/activate-visio', [LMSVisioLifecycleController::class, 'activateVisio'])
         ->name('lms.seances.activate-visio')
         ->middleware('role:enseignant,coordinateur');
 
-    Route::post('/seances/{seanceId}/deactivate-visio', [LMSVisioController::class, 'deactivateVisio'])
+    Route::post('/seances/{seanceId}/deactivate-visio', [LMSVisioLifecycleController::class, 'deactivateVisio'])
         ->name('lms.seances.deactivate-visio')
         ->middleware('role:enseignant');
 
-    Route::post('/seances/{seanceId}/start-visio', [LMSVisioController::class, 'startVisio'])
+    Route::post('/seances/{seanceId}/start-visio', [LMSVisioLifecycleController::class, 'startVisio'])
         ->name('lms.seances.start-visio')
         ->middleware('role:enseignant,coordinateur');
 
-    Route::post('/seances/{seanceId}/end-visio', [LMSVisioController::class, 'endVisio'])
+    Route::post('/seances/{seanceId}/end-visio', [LMSVisioLifecycleController::class, 'endVisio'])
         ->name('lms.seances.end-visio')
         ->middleware('role:enseignant,coordinateur');
 
     // Étudiant rejoint visio
-    Route::post('/seances/{seanceId}/join', [LMSVisioController::class, 'joinVisio'])
+    Route::post('/seances/{seanceId}/join', [LMSVisioParticipantController::class, 'joinVisio'])
         ->name('lms.seances.join')
         ->middleware('throttle:300,1');
 
     // Étudiant quitte visio
-    Route::post('/seances/{seanceId}/leave', [LMSVisioController::class, 'leaveVisio'])
+    Route::post('/seances/{seanceId}/leave', [LMSVisioParticipantController::class, 'leaveVisio'])
         ->name('lms.seances.leave')
         ->middleware('throttle:300,1');
 
     // Heartbeat participant (ping d'activité) - Rate limited to 10000/min per user
-    Route::post('/seances/{seanceId}/heartbeat', [LMSVisioController::class, 'heartbeatVisio'])
+    Route::post('/seances/{seanceId}/heartbeat', [LMSVisioParticipantController::class, 'heartbeatVisio'])
         ->name('lms.seances.heartbeat')
         ->middleware('throttle:10000,1');
 
@@ -599,7 +600,7 @@ Route::middleware(['auth:sanctum', 'klassci.sync'])->prefix('lms')->group(functi
     // REQ-4 du spec : route renommée `/visio-participants` pour résoudre le
     // conflit avec `lms.seances.participants` (LMSSeancesController, ligne 530)
     // qui matchait toujours en premier — la route legacy était INACCESSIBLE.
-    Route::get('/seances/{seanceId}/visio-participants', [LMSVisioController::class, 'getVisioParticipants'])
+    Route::get('/seances/{seanceId}/visio-participants', [LMSVisioParticipantController::class, 'getVisioParticipants'])
         ->name('lms.seances.visio-participants');
 
     // Masquer une séance (étudiant uniquement)

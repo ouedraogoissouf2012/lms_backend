@@ -470,7 +470,8 @@ use App\Http\Controllers\API\LMS\LMSClassesController;
 use App\Http\Controllers\API\LMS\LMSEnseignantsController;
 use App\Http\Controllers\API\LMS\LMSMatieresController;
 use App\Http\Controllers\API\LMS\LMSNotificationsPreferencesController;
-use App\Http\Controllers\API\LMS\LMSSeancesController;
+use App\Http\Controllers\API\LMS\LMSSeancesMutationController;
+use App\Http\Controllers\API\LMS\LMSSeancesQueryController;
 use App\Http\Controllers\API\LMS\LMSVisioController;
 
 Route::middleware(['auth:sanctum', 'klassci.sync'])->prefix('lms')->group(function () {
@@ -506,11 +507,11 @@ Route::middleware(['auth:sanctum', 'klassci.sync'])->prefix('lms')->group(functi
     // ============================================
 
     // Séances à venir (pré-création rooms)
-    Route::get('/seances/upcoming', [LMSSeancesController::class, 'upcomingSeances'])
+    Route::get('/seances/upcoming', [LMSSeancesQueryController::class, 'upcomingSeances'])
         ->name('lms.seances.upcoming');
 
     // Historique des séances (séances ayant eu une visio) - DOIT être AVANT {seanceId}
-    Route::get('/seances/history', [LMSSeancesController::class, 'getSeancesHistory'])
+    Route::get('/seances/history', [LMSSeancesQueryController::class, 'getSeancesHistory'])
         ->name('lms.seances.history')
         ->middleware('role:enseignant,coordinateur,superAdmin');
 
@@ -519,24 +520,24 @@ Route::middleware(['auth:sanctum', 'klassci.sync'])->prefix('lms')->group(functi
         ->name('lms.seances.attendances');
 
     // Suppression d'une séance (soft delete)
-    Route::delete('/seances/{seanceId}', [LMSSeancesController::class, 'deleteSeance'])
+    Route::delete('/seances/{seanceId}', [LMSSeancesMutationController::class, 'deleteSeance'])
         ->name('lms.seances.delete')
         ->middleware('role:enseignant,coordinateur,superAdmin');
 
     // Détails complets d'une séance (avec infos visio)
-    Route::get('/seances/{seanceId}/details', [LMSSeancesController::class, 'seanceDetails'])
+    Route::get('/seances/{seanceId}/details', [LMSSeancesQueryController::class, 'seanceDetails'])
         ->name('lms.seances.details');
 
     // Participants autorisés pour une séance
-    Route::get('/seances/{seanceId}/participants', [LMSSeancesController::class, 'seanceParticipants'])
+    Route::get('/seances/{seanceId}/participants', [LMSSeancesQueryController::class, 'seanceParticipants'])
         ->name('lms.seances.participants');
 
     // Valider l'accès d'un participant
-    Route::post('/seances/{seanceId}/validate-participant', [LMSSeancesController::class, 'validateParticipant'])
+    Route::post('/seances/{seanceId}/validate-participant', [LMSSeancesMutationController::class, 'validateParticipant'])
         ->name('lms.seances.validate-participant');
 
     // Toggle visio pour séance (coordinateurs uniquement)
-    Route::post('/seances/{seanceId}/toggle-visio', [LMSSeancesController::class, 'toggleVisioSeance'])
+    Route::post('/seances/{seanceId}/toggle-visio', [LMSSeancesMutationController::class, 'toggleVisioSeance'])
         ->name('lms.seances.toggle-visio')
         ->middleware('role:coordinateur,superAdmin');
 
@@ -554,12 +555,12 @@ Route::middleware(['auth:sanctum', 'klassci.sync'])->prefix('lms')->group(functi
         ->middleware('role:enseignant,coordinateur');
 
     // Séances de l'enseignant connecté
-    Route::get('/seances/my-teaching', [LMSSeancesController::class, 'myTeachingSeances'])
+    Route::get('/seances/my-teaching', [LMSSeancesQueryController::class, 'myTeachingSeances'])
         ->name('lms.seances.my-teaching')
         ->middleware('role:enseignant,coordinateur');
 
     // Séances de l'étudiant connecté
-    Route::get('/seances/my-classes', [LMSSeancesController::class, 'myClassesSeances'])
+    Route::get('/seances/my-classes', [LMSSeancesQueryController::class, 'myClassesSeances'])
         ->name('lms.seances.my-classes');
 
     // Actions visio enseignant
@@ -602,12 +603,12 @@ Route::middleware(['auth:sanctum', 'klassci.sync'])->prefix('lms')->group(functi
         ->name('lms.seances.visio-participants');
 
     // Masquer une séance (étudiant uniquement)
-    Route::post('/seances/{seanceId}/hide', [LMSSeancesController::class, 'hideSeance'])
+    Route::post('/seances/{seanceId}/hide', [LMSSeancesMutationController::class, 'hideSeance'])
         ->name('lms.seances.hide')
         ->middleware('role:etudiant');
 
     // Réafficher une séance (étudiant uniquement)
-    Route::post('/seances/{seanceId}/unhide', [LMSSeancesController::class, 'unhideSeance'])
+    Route::post('/seances/{seanceId}/unhide', [LMSSeancesMutationController::class, 'unhideSeance'])
         ->name('lms.seances.unhide')
         ->middleware('role:etudiant');
 

@@ -59,17 +59,20 @@ class EvaluationController extends AuthenticatedController
         $enrichedEvaluations = $this->enrichEvaluationsWithKlassciData($evaluations);
 
         // Si c'est un étudiant avec un ID KLASSCI sync, ajouter sa soumission à chaque évaluation.
-        // ($user is guaranteed non-null by AuthenticatedController::authenticatedUser)
-        if ($user->klassci_id) {
-            $enrichedEvaluations = collect($enrichedEvaluations)->map(function ($evalArray) use ($user) {
-                $evaluation = Evaluation::find($evalArray['id']);
-                if ($evaluation) {
-                    $submission = $evaluation->submissions()
-                        ->where('klassci_etudiant_id', $user->klassci_id)
-                        ->latest()
-                        ->first();
-                    $evalArray['student_submission'] = $submission;
-                }
+        // PERF-03 batch 2 — Avant : `Evaluation::find()` + `submissions()->latest()->first()`
+        // POUR CHAQUE évaluation = 2×N queries. Après : 1 batch query qui ramène
+        // toutes les latest submissions du user pour les évaluations listées.
+        if ($user->klassci_id && $evaluations->isNotEmpty()) {
+            $userLatestSubmissions = EvaluationSubmission::query()
+                ->whereIn('evaluation_id', $evaluations->pluck('id'))
+                ->where('klassci_etudiant_id', $user->klassci_id)
+                ->orderByDesc('id')
+                ->get()
+                ->groupBy('evaluation_id')
+                ->map(fn ($subs) => $subs->first());
+
+            $enrichedEvaluations = collect($enrichedEvaluations)->map(function ($evalArray) use ($userLatestSubmissions) {
+                $evalArray['student_submission'] = $userLatestSubmissions->get($evalArray['id']);
                 return $evalArray;
             })->toArray();
         }

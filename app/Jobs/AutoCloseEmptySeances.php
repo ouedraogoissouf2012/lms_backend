@@ -17,6 +17,19 @@ class AutoCloseEmptySeances implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
+    /** Nombre max de tentatives — DB-only, retry 3x sur transient. */
+    public int $tries = 3;
+
+    /** Timeout par tentative en secondes — beaucoup de séances à scanner. */
+    public int $timeout = 300;
+
+    /**
+     * Backoff progressif.
+     *
+     * @var array<int, int>
+     */
+    public array $backoff = [60, 300];
+
     // Seuils de temps pour chaque règle
     const TEACHER_DISCONNECT_THRESHOLD = 5;   // minutes
     const ALL_DISCONNECT_THRESHOLD = 10;      // minutes

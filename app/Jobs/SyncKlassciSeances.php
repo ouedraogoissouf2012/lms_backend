@@ -18,6 +18,19 @@ class SyncKlassciSeances implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
+    /** Nombre max de tentatives — HTTP KLASSCI instable, mais sync = idempotent. */
+    public int $tries = 3;
+
+    /** Timeout par tentative en secondes — sync potentiellement lourd. */
+    public int $timeout = 600;
+
+    /**
+     * Backoff HTTP progressif : 1 min, 5 min, 15 min.
+     *
+     * @var array<int, int>
+     */
+    public array $backoff = [60, 300, 900];
+
     /**
      * Execute the job.
      */
@@ -178,6 +191,19 @@ class SyncKlassciSeances implements ShouldQueue
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
             ]);
+            // Re-throw pour permettre au retry mechanism de fonctionner.
+            throw $e;
         }
+    }
+
+    /**
+     * Job échoué après toutes les tentatives.
+     */
+    public function failed(\Throwable $exception): void
+    {
+        Log::error('[SyncKlassciSeances] Job failed after all retries', [
+            'tries'     => $this->tries,
+            'exception' => $exception->getMessage(),
+        ]);
     }
 }

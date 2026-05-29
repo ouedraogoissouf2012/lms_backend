@@ -57,10 +57,12 @@ final class LMSSeancesController extends AuthenticatedController
             ]);
 
         } catch (RuntimeException $e) {
-            // Thrown by SeanceQueryService when user has no klassci_token
+            // Thrown by SeanceQueryService when user has no klassci_token.
+            // §1.2 — message fixé au site du catch, pas dérivé de l'exception
+            // (le thrower peut changer son message sans que le client soit reformaté).
             return response()->json([
                 'success' => false,
-                'message' => $e->getMessage()
+                'message' => 'Token KLASSCI non trouvé. Veuillez vous reconnecter.',
             ], 401);
         } catch (\Exception $e) {
             Log::error('Erreur récupération détails séance', [
@@ -620,16 +622,17 @@ final class LMSSeancesController extends AuthenticatedController
                     }
 
                 } catch (\Exception $e) {
+                    // §1.2 — Détail technique loggé server-side, message générique au client.
                     Log::error('DEBUG validateParticipant - Exception lors de la vérification', [
                         'error' => $e->getMessage(),
-                        'trace' => $e->getTraceAsString()
+                        'trace' => $e->getTraceAsString(),
                     ]);
 
                     return response()->json([
-                        'success' => false,
+                        'success'    => false,
                         'authorized' => false,
-                        'reason' => 'verification_error',
-                        'message' => 'Erreur lors de la vérification de l\'inscription: ' . $e->getMessage()
+                        'reason'     => 'verification_error',
+                        'message'    => 'Erreur lors de la vérification de l\'inscription.',
                     ], 500);
                 }
             }

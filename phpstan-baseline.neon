@@ -349,15 +349,9 @@ parameters:
 			path: app/Http/Controllers/API/EvaluationController.php
 
 		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$classe_nom\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Http/Controllers/API/EvaluationController.php
-
-		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$date_evaluation\.$#'
 			identifier: property.notFound
-			count: 2
+			count: 1
 			path: app/Http/Controllers/API/EvaluationController.php
 
 		-
@@ -373,18 +367,6 @@ parameters:
 			path: app/Http/Controllers/API/EvaluationController.php
 
 		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$klassci_classe_id\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Controllers/API/EvaluationController.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$klassci_enseignant_id\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Controllers/API/EvaluationController.php
-
-		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$klassci_etudiant_id\.$#'
 			identifier: property.notFound
 			count: 1
@@ -393,13 +375,7 @@ parameters:
 		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$klassci_matiere_id\.$#'
 			identifier: property.notFound
-			count: 2
-			path: app/Http/Controllers/API/EvaluationController.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$matiere_nom\.$#'
-			identifier: property.notFound
-			count: 3
+			count: 1
 			path: app/Http/Controllers/API/EvaluationController.php
 
 		-
@@ -465,7 +441,7 @@ parameters:
 		-
 			message: '#^Argument of an invalid type mixed supplied for foreach, only iterables are supported\.$#'
 			identifier: foreach.nonIterable
-			count: 8
+			count: 6
 			path: app/Http/Controllers/API/EvaluationController.php
 
 		-
@@ -483,36 +459,6 @@ parameters:
 		-
 			message: '#^Binary operation "\." between non\-falsy\-string and mixed results in an error\.$#'
 			identifier: binaryOp.invalid
-			count: 1
-			path: app/Http/Controllers/API/EvaluationController.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:canBeEdited\(\)\.$#'
-			identifier: method.notFound
-			count: 1
-			path: app/Http/Controllers/API/EvaluationController.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:getEffectiveStatus\(\)\.$#'
-			identifier: method.notFound
-			count: 1
-			path: app/Http/Controllers/API/EvaluationController.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:isLocked\(\)\.$#'
-			identifier: method.notFound
-			count: 1
-			path: app/Http/Controllers/API/EvaluationController.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:questions\(\)\.$#'
-			identifier: method.notFound
-			count: 1
-			path: app/Http/Controllers/API/EvaluationController.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:submissions\(\)\.$#'
-			identifier: method.notFound
 			count: 1
 			path: app/Http/Controllers/API/EvaluationController.php
 
@@ -579,7 +525,7 @@ parameters:
 		-
 			message: '#^Cannot access offset ''id'' on mixed\.$#'
 			identifier: offsetAccess.nonOffsetAccessible
-			count: 8
+			count: 6
 			path: app/Http/Controllers/API/EvaluationController.php
 
 		-
@@ -591,19 +537,13 @@ parameters:
 		-
 			message: '#^Cannot access offset ''libelle'' on mixed\.$#'
 			identifier: offsetAccess.nonOffsetAccessible
-			count: 9
+			count: 3
 			path: app/Http/Controllers/API/EvaluationController.php
 
 		-
 			message: '#^Cannot access offset ''matiere'' on mixed\.$#'
 			identifier: offsetAccess.nonOffsetAccessible
 			count: 1
-			path: app/Http/Controllers/API/EvaluationController.php
-
-		-
-			message: '#^Cannot access offset ''name'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 2
 			path: app/Http/Controllers/API/EvaluationController.php
 
 		-
@@ -615,7 +555,7 @@ parameters:
 		-
 			message: '#^Cannot access offset ''nom'' on mixed\.$#'
 			identifier: offsetAccess.nonOffsetAccessible
-			count: 12
+			count: 5
 			path: app/Http/Controllers/API/EvaluationController.php
 
 		-
@@ -691,18 +631,6 @@ parameters:
 			path: app/Http/Controllers/API/EvaluationController.php
 
 		-
-			message: '#^Method App\\Http\\Controllers\\API\\EvaluationController\:\:enrichEvaluationsWithKlassciData\(\) has parameter \$evaluations with generic class Illuminate\\Database\\Eloquent\\Collection but does not specify its types\: TKey, TModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Http/Controllers/API/EvaluationController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\API\\EvaluationController\:\:enrichEvaluationsWithKlassciData\(\) return type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Http/Controllers/API/EvaluationController.php
-
-		-
 			message: '#^Parameter \#1 \$array of function array_values contains unresolvable type\.$#'
 			identifier: argument.unresolvableType
 			count: 1
@@ -712,12 +640,6 @@ parameters:
 			message: '#^Parameter \#1 \$array of function usort contains unresolvable type\.$#'
 			identifier: argument.unresolvableType
 			count: 2
-			path: app/Http/Controllers/API/EvaluationController.php
-
-		-
-			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<\(int\|string\),Illuminate\\Database\\Eloquent\\Model\>\:\:map\(\) contains unresolvable type\.$#'
-			identifier: argument.unresolvableType
-			count: 1
 			path: app/Http/Controllers/API/EvaluationController.php
 
 		-
@@ -745,9 +667,9 @@ parameters:
 			path: app/Http/Controllers/API/EvaluationController.php
 
 		-
-			message: '#^Parameter \#1 \$evaluations of method App\\Http\\Controllers\\API\\EvaluationController\:\:enrichEvaluationsWithKlassciData\(\) expects Illuminate\\Database\\Eloquent\\Collection, Illuminate\\Support\\Collection\<int, App\\Models\\Evaluation\> given\.$#'
+			message: '#^Parameter \#1 \$key of method Illuminate\\Support\\Collection\<\(int\|string\),mixed\>\:\:get\(\) expects int\|string\|null, mixed given\.$#'
 			identifier: argument.type
-			count: 2
+			count: 1
 			path: app/Http/Controllers/API/EvaluationController.php
 
 		-
@@ -801,7 +723,7 @@ parameters:
 		-
 			message: '#^Possibly invalid array key type mixed\.$#'
 			identifier: offsetAccess.invalidOffset
-			count: 3
+			count: 1
 			path: app/Http/Controllers/API/EvaluationController.php
 
 		-
@@ -820,12 +742,6 @@ parameters:
 			message: '#^Return type of call to function collect contains unresolvable type\.$#'
 			identifier: function.unresolvableReturnType
 			count: 3
-			path: app/Http/Controllers/API/EvaluationController.php
-
-		-
-			message: '#^Return type of call to method Illuminate\\Database\\Eloquent\\Collection\<\(int\|string\),Illuminate\\Database\\Eloquent\\Model\>\:\:map\(\) contains unresolvable type\.$#'
-			identifier: method.unresolvableReturnType
-			count: 1
 			path: app/Http/Controllers/API/EvaluationController.php
 
 		-
@@ -6509,6 +6425,42 @@ parameters:
 			identifier: missingType.property
 			count: 1
 			path: app/Services/ConvertApiService.php
+
+		-
+			message: '#^Cannot access offset ''id'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 2
+			path: app/Services/Evaluation/EvaluationEnrichmentService.php
+
+		-
+			message: '#^Cannot access offset ''libelle'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 6
+			path: app/Services/Evaluation/EvaluationEnrichmentService.php
+
+		-
+			message: '#^Cannot access offset ''name'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 2
+			path: app/Services/Evaluation/EvaluationEnrichmentService.php
+
+		-
+			message: '#^Cannot access offset ''nom'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 7
+			path: app/Services/Evaluation/EvaluationEnrichmentService.php
+
+		-
+			message: '#^Method App\\Services\\Evaluation\\EvaluationEnrichmentService\:\:enrich\(\) should return array\<int, array\<string, mixed\>\> but returns array\<mixed\>\.$#'
+			identifier: return.type
+			count: 2
+			path: app/Services/Evaluation/EvaluationEnrichmentService.php
+
+		-
+			message: '#^Possibly invalid array key type mixed\.$#'
+			identifier: offsetAccess.invalidOffset
+			count: 2
+			path: app/Services/Evaluation/EvaluationEnrichmentService.php
 
 		-
 			message: '#^Access to an undefined property App\\Models\\QuizAttempt\:\:\$max_score\.$#'

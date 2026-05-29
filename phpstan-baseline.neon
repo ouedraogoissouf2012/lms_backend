@@ -2128,127 +2128,127 @@ parameters:
 			message: '#^Access to an undefined property App\\Models\\Lesson\:\:\$statistics\.$#'
 			identifier: property.notFound
 			count: 1
-			path: app/Http/Controllers/API/LessonController.php
+			path: app/Http/Controllers/API/Lesson/LessonCrudController.php
 
 		-
 			message: '#^Access to an undefined property App\\Models\\Lesson\:\:\$titre\.$#'
 			identifier: property.notFound
 			count: 1
-			path: app/Http/Controllers/API/LessonController.php
+			path: app/Http/Controllers/API/Lesson/LessonCrudController.php
 
 		-
 			message: '#^Access to an undefined property App\\Models\\Lesson\:\:\$user_progress\.$#'
 			identifier: property.notFound
 			count: 2
-			path: app/Http/Controllers/API/LessonController.php
+			path: app/Http/Controllers/API/Lesson/LessonCrudController.php
 
 		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
 			identifier: property.notFound
 			count: 2
-			path: app/Http/Controllers/API/LessonController.php
+			path: app/Http/Controllers/API/Lesson/LessonCrudController.php
 
 		-
 			message: '#^Cannot access offset ''classe_ids'' on mixed\.$#'
 			identifier: offsetAccess.nonOffsetAccessible
 			count: 1
-			path: app/Http/Controllers/API/LessonController.php
+			path: app/Http/Controllers/API/Lesson/LessonCrudController.php
 
 		-
 			message: '#^Cannot access offset ''etudiant_ids'' on mixed\.$#'
 			identifier: offsetAccess.nonOffsetAccessible
 			count: 1
-			path: app/Http/Controllers/API/LessonController.php
+			path: app/Http/Controllers/API/Lesson/LessonCrudController.php
 
 		-
 			message: '#^Cannot access property \$id on mixed\.$#'
 			identifier: property.nonObject
 			count: 1
-			path: app/Http/Controllers/API/LessonController.php
+			path: app/Http/Controllers/API/Lesson/LessonCrudController.php
 
 		-
 			message: '#^Cannot access property \$libelle on mixed\.$#'
 			identifier: property.nonObject
 			count: 1
-			path: app/Http/Controllers/API/LessonController.php
+			path: app/Http/Controllers/API/Lesson/LessonCrudController.php
 
 		-
 			message: '#^Cannot access property \$name on mixed\.$#'
 			identifier: property.nonObject
 			count: 1
-			path: app/Http/Controllers/API/LessonController.php
+			path: app/Http/Controllers/API/Lesson/LessonCrudController.php
 
 		-
 			message: '#^Parameter \#1 \$array of function array_unique expects an array of values castable to string, array\<mixed\> given\.$#'
 			identifier: argument.type
 			count: 1
-			path: app/Http/Controllers/API/LessonController.php
+			path: app/Http/Controllers/API/Lesson/LessonCrudController.php
 
 		-
 			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\Lesson\>\:\:map\(\) contains unresolvable type\.$#'
 			identifier: argument.unresolvableType
 			count: 1
-			path: app/Http/Controllers/API/LessonController.php
+			path: app/Http/Controllers/API/Lesson/LessonCrudController.php
 
 		-
 			message: '#^Parameter \#1 \$classeId of method Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Lesson\>\:\:forClasse\(\) expects int, mixed given\.$#'
 			identifier: argument.type
 			count: 1
-			path: app/Http/Controllers/API/LessonController.php
+			path: app/Http/Controllers/API/Lesson/LessonCrudController.php
 
 		-
 			message: '#^Parameter \#1 \$enseignantId of method Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Lesson\>\:\:byTeacher\(\) expects int, mixed given\.$#'
 			identifier: argument.type
 			count: 1
-			path: app/Http/Controllers/API/LessonController.php
+			path: app/Http/Controllers/API/Lesson/LessonCrudController.php
 
 		-
 			message: '#^Parameter \#1 \$matiereId of method Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Lesson\>\:\:forMatiere\(\) expects int, mixed given\.$#'
 			identifier: argument.type
 			count: 2
-			path: app/Http/Controllers/API/LessonController.php
+			path: app/Http/Controllers/API/Lesson/LessonCrudController.php
 
 		-
 			message: '#^Parameter \#1 \$perPage of method Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Lesson\>\:\:paginate\(\) expects int\|null, mixed given\.$#'
 			identifier: argument.type
 			count: 1
-			path: app/Http/Controllers/API/LessonController.php
-
-		-
-			message: '#^Parameter \#1 \$percentage of method App\\Models\\LessonProgress\:\:updateProgress\(\) expects int, mixed given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Controllers/API/LessonController.php
-
-		-
-			message: '#^Parameter \#1 \$rating of method App\\Models\\LessonProgress\:\:addRating\(\) expects int, mixed given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Controllers/API/LessonController.php
-
-		-
-			message: '#^Parameter \#2 \$feedback of method App\\Models\\LessonProgress\:\:addRating\(\) expects string\|null, mixed given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Controllers/API/LessonController.php
-
-		-
-			message: '#^Parameter \#2 \$timeSpentMinutes of method App\\Models\\LessonProgress\:\:updateProgress\(\) expects int\|null, mixed given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Controllers/API/LessonController.php
+			path: app/Http/Controllers/API/Lesson/LessonCrudController.php
 
 		-
 			message: '#^Part \$classeId \(mixed\) of encapsed string cannot be cast to string\.$#'
 			identifier: encapsedStringPart.nonString
 			count: 1
-			path: app/Http/Controllers/API/LessonController.php
+			path: app/Http/Controllers/API/Lesson/LessonCrudController.php
 
 		-
 			message: '#^Return type of call to method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\Lesson\>\:\:map\(\) contains unresolvable type\.$#'
 			identifier: method.unresolvableReturnType
 			count: 1
-			path: app/Http/Controllers/API/LessonController.php
+			path: app/Http/Controllers/API/Lesson/LessonCrudController.php
+
+		-
+			message: '#^Parameter \#1 \$percentage of method App\\Models\\LessonProgress\:\:updateProgress\(\) expects int, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/API/Lesson/LessonProgressController.php
+
+		-
+			message: '#^Parameter \#1 \$rating of method App\\Models\\LessonProgress\:\:addRating\(\) expects int, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/API/Lesson/LessonProgressController.php
+
+		-
+			message: '#^Parameter \#2 \$feedback of method App\\Models\\LessonProgress\:\:addRating\(\) expects string\|null, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/API/Lesson/LessonProgressController.php
+
+		-
+			message: '#^Parameter \#2 \$timeSpentMinutes of method App\\Models\\LessonProgress\:\:updateProgress\(\) expects int\|null, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/API/Lesson/LessonProgressController.php
 
 		-
 			message: '#^Access to an undefined property App\\Models\\Notification\|Illuminate\\Database\\Eloquent\\Collection\<int, App\\Models\\Notification\>\:\:\$read_at\.$#'

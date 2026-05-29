@@ -132,7 +132,7 @@ final class VisioRoutingTest extends TestCase
 
         self::assertNotNull($route, 'Route lms.seances.visio-participants should be registered.');
         self::assertSame(
-            \App\Http\Controllers\API\LMS\LMSVisioController::class . '@getVisioParticipants',
+            \App\Http\Controllers\API\LMS\LMSVisioParticipantController::class . '@getVisioParticipants',
             $route->getActionName(),
         );
     }

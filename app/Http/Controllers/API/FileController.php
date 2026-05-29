@@ -157,7 +157,10 @@ class FileController extends AuthenticatedController
             'category' => $category,
             'description' => $request->description,
             'is_public' => $request->boolean('is_public', false),
-            'virus_scan_status' => 'clean', // TODO: Implémenter scan antivirus
+            // Le scan antivirus n'est pas encore intégré ; on garde la colonne en `pending`
+            // (au lieu de la mensonge `clean`) pour ne pas exposer aux clients/admins l'illusion
+            // qu'un scan a été effectué. Intégration ClamAV / VirusTotal à faire dans une issue dédiée.
+            'virus_scan_status' => 'pending',
         ]);
 
         $file->load('user:id,name,email');

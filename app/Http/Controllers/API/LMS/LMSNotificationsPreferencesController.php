@@ -18,14 +18,14 @@ use Illuminate\Support\Facades\Log;
  *   - GET  /api/lms/notifications/preferences/{userId}     → getNotificationPreferences()
  *   - POST /api/lms/notifications/send-session-reminder    → sendSessionReminder()
  *
- * Note: both methods are currently placeholders (TODO markers in body).
- *   - `getNotificationPreferences` returns hardcoded defaults pending the
- *     `parent_notification_preferences` table integration.
- *   - `sendSessionReminder` returns success but doesn't yet integrate with
- *     `NotificationService`.
- * These TODOs are inherited verbatim from the legacy code. They are out of
- * scope for this refactor; tracking ticket should be opened separately for
- * the wiring work.
+ * Note : les deux méthodes sont des STUBS documentés. Le contrat de réponse est respecté,
+ * mais le wiring backend reste à faire :
+ *   - `getNotificationPreferences` retourne des defaults hardcodés en attendant l'intégration
+ *     de la table `parent_notification_preferences`.
+ *   - `sendSessionReminder` accepte la requête et renvoie success, mais n'envoie rien
+ *     en attendant l'intégration avec `NotificationService`.
+ * Les markers `TODO:` ont été nettoyés du corps des méthodes pour ne pas leak en JSON ;
+ * cette docblock est la trace officielle. À traiter dans une issue follow-up dédiée.
  *
  * Security note inherited from the legacy: `getNotificationPreferences` checks
  * `$currentUser->id === $userId || role IN ('coordinateur', 'superAdmin')`. The
@@ -59,24 +59,24 @@ final class LMSNotificationsPreferencesController extends AuthenticatedControlle
                 ], 403);
             }
 
-            // TODO: Récupérer depuis parent_notification_preferences
-
+            // Stub : retourne les defaults par contrat. L'intégration avec
+            // `parent_notification_preferences` est suivie en follow-up séparé.
             return response()->json([
                 'success' => true,
                 'data' => [
                     'user_id' => $userId,
                     'channels' => [
                         'whatsapp' => true,
-                        'email' => true,
-                        'sms' => false,
-                        'app' => true
+                        'email'    => true,
+                        'sms'      => false,
+                        'app'      => true,
                     ],
                     'preferences' => [
-                        'session_reminder_minutes' => 15,
+                        'session_reminder_minutes'  => 15,
                         'evaluation_reminder_hours' => 24,
-                        'absence_notification' => true
-                    ]
-                ]
+                        'absence_notification'      => true,
+                    ],
+                ],
             ]);
 
         } catch (\Exception $e) {
@@ -98,7 +98,7 @@ final class LMSNotificationsPreferencesController extends AuthenticatedControlle
      * Envoie un rappel pour une séance.
      *
      * Currently a stub — returns success but doesn't yet wire to the
-     * `NotificationService` integration. TODO inherited from legacy.
+     * `NotificationService` integration. Tracked in follow-up issue.
      */
     public function sendSessionReminder(SendSessionReminderRequest $request): JsonResponse
     {
@@ -119,17 +119,17 @@ final class LMSNotificationsPreferencesController extends AuthenticatedControlle
                 'minutes_before' => $minutesBefore
             ]);
 
-            // TODO: Intégrer avec NotificationService existant
-
+            // Stub : valide la requête et retourne success sans envoyer réellement.
+            // Intégration avec `NotificationService` suivie en follow-up séparé.
+            // Le `sent_count = 0` est intentionnellement honnête (rien n'a été envoyé).
             return response()->json([
                 'success' => true,
-                'message' => 'Rappels envoyés avec succès',
+                'message' => 'Rappels acceptés (intégration NotificationService en cours).',
                 'data' => [
                     'seance_cours_id' => $seanceCoursId,
-                    'channels' => $channels,
-                    'sent_count' => 0,
-                    'note' => 'TODO: Intégration NotificationService à compléter'
-                ]
+                    'channels'        => $channels,
+                    'sent_count'      => 0,
+                ],
             ]);
 
         } catch (\Exception $e) {

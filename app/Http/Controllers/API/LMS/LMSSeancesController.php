@@ -190,7 +190,10 @@ final class LMSSeancesController extends AuthenticatedController
                                     'id' => $seance['classe']['id'] ?? null,
                                     'libelle' => $seance['classe']['nom'] ?? 'N/A'
                                 ],
-                                'enseignant' => null // TODO: ajouter si disponible
+                                // `enseignant` est intentionnellement null sur ce chemin :
+                                // KLASSCI ne le fournit pas à ce niveau. Il est résolu côté frontend
+                                // via un appel séparé /enseignants/{matiere_id} si l'UI en a besoin.
+                                'enseignant' => null,
                             ];
                         });
 

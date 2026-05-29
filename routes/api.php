@@ -468,7 +468,8 @@ Route::middleware(['auth:sanctum', 'klassci.sync', 'role:enseignant,coordinateur
 use App\Http\Controllers\API\LMS\LMSAttendancesController;
 use App\Http\Controllers\API\LMS\LMSClassesController;
 use App\Http\Controllers\API\LMS\LMSEnseignantsController;
-use App\Http\Controllers\API\LMS\LMSMatieresController;
+use App\Http\Controllers\API\LMS\LMSMatieresAdminController;
+use App\Http\Controllers\API\LMS\LMSMatieresQueryController;
 use App\Http\Controllers\API\LMS\LMSNotificationsPreferencesController;
 use App\Http\Controllers\API\LMS\LMSSeancesMutationController;
 use App\Http\Controllers\API\LMS\LMSSeancesQueryController;
@@ -485,7 +486,7 @@ Route::middleware(['auth:sanctum', 'klassci.sync'])->prefix('lms')->group(functi
         ->name('lms.classes.etudiants');
 
     // Détails complets d'une matière
-    Route::get('/matieres/{matiereId}', [LMSMatieresController::class, 'matiereDetails'])
+    Route::get('/matieres/{matiereId}', [LMSMatieresQueryController::class, 'matiereDetails'])
         ->name('lms.matieres.details');
 
     // Liste des enseignants (depuis KLASSCI externe + cache local 10 min)
@@ -496,7 +497,7 @@ Route::middleware(['auth:sanctum', 'klassci.sync'])->prefix('lms')->group(functi
 // Routes admin/coordinateur uniquement
 Route::middleware(['auth:sanctum', 'klassci.sync', 'role:admin,coordinateur'])->prefix('admin')->group(function () {
     // Liste toutes les matières avec combinaisons complètes
-    Route::get('/matieres', [LMSMatieresController::class, 'adminMatieresList'])
+    Route::get('/matieres', [LMSMatieresAdminController::class, 'adminMatieresList'])
         ->name('admin.matieres.list');
 });
 
@@ -551,7 +552,7 @@ Route::middleware(['auth:sanctum', 'klassci.sync'])->prefix('lms')->group(functi
         ->name('lms.attendance.history');
 
     // Matières de l'enseignant connecté avec statistiques enrichies
-    Route::get('/teacher/my-matieres', [LMSMatieresController::class, 'myMatieres'])
+    Route::get('/teacher/my-matieres', [LMSMatieresQueryController::class, 'myMatieres'])
         ->name('lms.teacher.my-matieres')
         ->middleware('role:enseignant,coordinateur');
 

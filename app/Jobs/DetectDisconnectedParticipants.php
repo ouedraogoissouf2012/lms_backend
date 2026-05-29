@@ -15,6 +15,15 @@ class DetectDisconnectedParticipants implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
+    /** Nombre max de tentatives — time-sensitive, échec rapide acceptable. */
+    public int $tries = 2;
+
+    /** Timeout par tentative en secondes — détection courte. */
+    public int $timeout = 60;
+
+    /** Backoff minimal — job temps-réel. */
+    public int $backoff = 30;
+
     /**
      * Durée d'inactivité avant de considérer un participant comme déconnecté (en minutes)
      */

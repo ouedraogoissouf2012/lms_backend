@@ -16,6 +16,19 @@ class FinalizeSeanceAttendances implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
+    /** Nombre max de tentatives — DB-only, retry 3x sur transient. */
+    public int $tries = 3;
+
+    /** Timeout par tentative en secondes — finalisation de N participants × M séances. */
+    public int $timeout = 300;
+
+    /**
+     * Backoff progressif.
+     *
+     * @var array<int, int>
+     */
+    public array $backoff = [60, 300];
+
     /**
      * Délai après heure_fin pour finaliser les présences (en minutes)
      */

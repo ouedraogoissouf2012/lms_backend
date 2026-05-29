@@ -21,6 +21,19 @@ class CleanObsoleteSeances implements ShouldQueue
 {
     use Queueable;
 
+    /** Nombre max de tentatives — HTTP KLASSCI peut être instable. */
+    public int $tries = 3;
+
+    /** Timeout par tentative en secondes — appels KLASSCI peuvent être lents. */
+    public int $timeout = 300;
+
+    /**
+     * Backoff progressif HTTP : 1 min, 5 min, 15 min.
+     *
+     * @var array<int, int>
+     */
+    public array $backoff = [60, 300, 900];
+
     /**
      * Create a new job instance.
      */
@@ -112,6 +125,17 @@ class CleanObsoleteSeances implements ShouldQueue
             'archived' => $archivedCount,
             'errors' => $errorCount,
             'still_active' => $seancesLocales->count() - $archivedCount
+        ]);
+    }
+
+    /**
+     * Job échoué après toutes les tentatives.
+     */
+    public function failed(\Throwable $exception): void
+    {
+        Log::error('[CleanObsoleteSeances] Job failed after all retries', [
+            'tries'     => $this->tries,
+            'exception' => $exception->getMessage(),
         ]);
     }
 }

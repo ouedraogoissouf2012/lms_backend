@@ -24,6 +24,19 @@ class CleanOldEvaluations implements ShouldQueue
 {
     use Queueable;
 
+    /** Nombre max de tentatives — DB-only. */
+    public int $tries = 3;
+
+    /** Timeout par tentative en secondes. */
+    public int $timeout = 180;
+
+    /**
+     * Backoff progressif.
+     *
+     * @var array<int, int>
+     */
+    public array $backoff = [60, 300];
+
     /**
      * Nombre de jours après date_evaluation pour considérer une évaluation comme "passée"
      */
@@ -111,6 +124,17 @@ class CleanOldEvaluations implements ShouldQueue
             'archived' => $archivedCount,
             'kept' => $keptCount,
             'cutoff_date' => $cutoffDate->toDateTimeString()
+        ]);
+    }
+
+    /**
+     * Job échoué après toutes les tentatives.
+     */
+    public function failed(\Throwable $exception): void
+    {
+        Log::error('[CleanOldEvaluations] Job failed after all retries', [
+            'tries'     => $this->tries,
+            'exception' => $exception->getMessage(),
         ]);
     }
 }

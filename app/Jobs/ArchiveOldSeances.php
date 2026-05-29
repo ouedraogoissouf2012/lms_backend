@@ -21,6 +21,19 @@ class ArchiveOldSeances implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
+    /** Nombre max de tentatives avant de marquer le job comme failed. */
+    public int $tries = 3;
+
+    /** Timeout par tentative en secondes — DB-only, devrait être rapide. */
+    public int $timeout = 120;
+
+    /**
+     * Backoff entre les tentatives (1 min, puis 5 min).
+     *
+     * @var array<int, int>
+     */
+    public array $backoff = [60, 300];
+
     /**
      * Exécuter le job
      */
@@ -68,5 +81,17 @@ class ArchiveOldSeances implements ShouldQueue
 
             throw $e;
         }
+    }
+
+    /**
+     * Appelé quand le job a échoué toutes ses tentatives.
+     * Permet d'avoir un log structuré dédié distinct du log de l'exception qui a déclenché l'échec.
+     */
+    public function failed(\Throwable $exception): void
+    {
+        Log::error('Job ArchiveOldSeances failed after all retries', [
+            'tries'     => $this->tries,
+            'exception' => $exception->getMessage(),
+        ]);
     }
 }

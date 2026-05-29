@@ -1423,13 +1423,20 @@ class EvaluationController extends AuthenticatedController
             $syncedCount = 0;
             $errors = [];
 
+            // STUB DOCUMENTÉ — l'appel POST KLASSCI `/api/notes` n'est pas encore implémenté.
+            // En attendant, on marque les soumissions comme synced_to_klassci pour ne pas les
+            // re-tenter en boucle, mais on log un warning à chaque appel pour rendre la dette
+            // visible dans les dashboards. À fixer dans une issue follow-up dédiée.
+            \Log::warning('syncNotesToKlassci is stubbed — submissions marked synced without KLASSCI POST', [
+                'evaluation_id'        => $id,
+                'submissions_affected' => $submissions->count(),
+            ]);
+
             foreach ($submissions as $submission) {
                 try {
-                    // TODO: Implémenter l'API KLASSCI pour synchroniser la note
-                    // Pour l'instant, marquer comme synchronisé
                     $submission->update([
                         'synced_to_klassci' => true,
-                        'synced_at' => now()
+                        'synced_at'         => now(),
                     ]);
 
                     $syncedCount++;

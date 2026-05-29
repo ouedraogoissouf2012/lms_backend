@@ -13,6 +13,7 @@ use App\Models\Evaluation;
 use App\Models\EvaluationQuestion;
 use App\Models\EvaluationSubmission;
 use App\Models\User;
+use App\Services\Evaluation\EvaluationEnrichmentService;
 use App\Services\KlassciProxyService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -24,7 +25,8 @@ use Illuminate\Support\Facades\DB;
 class EvaluationController extends AuthenticatedController
 {
     public function __construct(
-        private KlassciProxyService $klassciService
+        private KlassciProxyService $klassciService,
+        private EvaluationEnrichmentService $enrichmentService,
     ) {}
 
     /**
@@ -56,7 +58,7 @@ class EvaluationController extends AuthenticatedController
         $evaluations = $query->orderBy('date_evaluation', 'desc')->get();
 
         // Enrichir avec les données KLASSCI (classe, matière)
-        $enrichedEvaluations = $this->enrichEvaluationsWithKlassciData($evaluations);
+        $enrichedEvaluations = $this->enrichmentService->enrich($evaluations);
 
         // Si c'est un étudiant avec un ID KLASSCI sync, ajouter sa soumission à chaque évaluation.
         // PERF-03 batch 2 — Avant : `Evaluation::find()` + `submissions()->latest()->first()`
@@ -99,7 +101,7 @@ class EvaluationController extends AuthenticatedController
         }
 
         // Enrichir avec les données KLASSCI
-        $enrichedEvaluation = $this->enrichEvaluationsWithKlassciData(collect([$evaluation]))[0];
+        $enrichedEvaluation = $this->enrichmentService->enrich(collect([$evaluation]))[0];
 
         return response()->json([
             'success' => true,
@@ -1072,143 +1074,6 @@ class EvaluationController extends AuthenticatedController
         }
     }
 
-    /**
-     * Enrichit les évaluations avec les données KLASSCI (classes, matières)
-     *
-     * @param \Illuminate\Database\Eloquent\Collection $evaluations
-     * @return array
-     */
-    private function enrichEvaluationsWithKlassciData($evaluations): array
-    {
-        try {
-            // Récupérer les classes et matières de KLASSCI (avec cache)
-            $klassciClasses = $this->klassciService->getClasses();
-            $klassciMatieres = $this->klassciService->getMatieres();
-
-            // Créer des maps pour accès rapide
-            $classesMap = [];
-            if (isset($klassciClasses['data'])) {
-                foreach ($klassciClasses['data'] as $classe) {
-                    $classesMap[$classe['id']] = $classe;
-                }
-            }
-
-            $matieresMap = [];
-            if (isset($klassciMatieres['data'])) {
-                foreach ($klassciMatieres['data'] as $matiere) {
-                    $matieresMap[$matiere['id']] = $matiere;
-                }
-            }
-
-            // Enrichir chaque évaluation
-            return $evaluations->map(function ($evaluation) use ($classesMap, $matieresMap) {
-                $evalArray = $evaluation->toArray();
-
-                // Ajouter les détails de la classe
-                if (isset($evaluation->klassci_classe_id) && isset($classesMap[$evaluation->klassci_classe_id])) {
-                    $evalArray['classe'] = $classesMap[$evaluation->klassci_classe_id];
-
-                    // Normaliser les champs: KlassCI retourne 'name', on veut aussi 'nom' et 'libelle'
-                    if (isset($evalArray['classe']['name']) && !empty($evalArray['classe']['name'])) {
-                        // Si 'nom' est vide/absent, copier 'name' dedans
-                        if (empty($evalArray['classe']['nom'])) {
-                            $evalArray['classe']['nom'] = $evalArray['classe']['name'];
-                        }
-                        // Si 'libelle' est vide, utiliser 'name'
-                        if (empty($evalArray['classe']['libelle'])) {
-                            $evalArray['classe']['libelle'] = $evalArray['classe']['name'];
-                        }
-                    }
-
-                    // Si toujours vide, utiliser le nom stocké en base
-                    if (empty($evalArray['classe']['nom']) && $evaluation->classe_nom) {
-                        $evalArray['classe']['nom'] = $evaluation->classe_nom;
-                        $evalArray['classe']['libelle'] = $evaluation->classe_nom;
-                    }
-                } elseif ($evaluation->classe_nom) {
-                    // Utiliser le nom stocké en base pour évaluations standalone
-                    $evalArray['classe'] = [
-                        'id' => $evaluation->klassci_classe_id,
-                        'name' => $evaluation->classe_nom,
-                        'libelle' => $evaluation->classe_nom,
-                        'nom' => $evaluation->classe_nom,
-                    ];
-                } else {
-                    $evalArray['classe'] = null;
-                }
-
-                // Ajouter les détails de la matière
-                if (isset($evaluation->klassci_matiere_id) && isset($matieresMap[$evaluation->klassci_matiere_id])) {
-                    $evalArray['matiere'] = $matieresMap[$evaluation->klassci_matiere_id];
-                    // Ajouter libelle si manquant (KLASSCI ne retourne que 'nom')
-                    if (!isset($evalArray['matiere']['libelle']) || empty($evalArray['matiere']['libelle'])) {
-                        $evalArray['matiere']['libelle'] = $evalArray['matiere']['nom'] ?? $evaluation->matiere_nom;
-                    }
-                    // Si pas de nom/libelle du tout, utiliser le nom stocké en base
-                    if (empty($evalArray['matiere']['nom']) && $evaluation->matiere_nom) {
-                        $evalArray['matiere']['nom'] = $evaluation->matiere_nom;
-                        $evalArray['matiere']['libelle'] = $evaluation->matiere_nom;
-                    }
-                } elseif ($evaluation->matiere_nom) {
-                    // Utiliser le nom stocké en base pour évaluations standalone
-                    $evalArray['matiere'] = [
-                        'id' => $evaluation->klassci_matiere_id,
-                        'nom' => $evaluation->matiere_nom,
-                        'libelle' => $evaluation->matiere_nom,
-                    ];
-                } else {
-                    $evalArray['matiere'] = null;
-                }
-
-                // Ajouter les informations de l'enseignant (depuis la table users locale)
-                if ($evaluation->klassci_enseignant_id) {
-                    $enseignant = User::where('klassci_id', $evaluation->klassci_enseignant_id)->first();
-                    if ($enseignant) {
-                        $evalArray['enseignant'] = [
-                            'id' => $enseignant->klassci_id,
-                            'nom' => $enseignant->name,
-                            'email' => $enseignant->email,
-                        ];
-                        $evalArray['enseignant_nom'] = $enseignant->name;
-                    } else {
-                        $evalArray['enseignant'] = null;
-                        $evalArray['enseignant_nom'] = 'Enseignant #' . $evaluation->klassci_enseignant_id;
-                    }
-                } else {
-                    $evalArray['enseignant'] = null;
-                    $evalArray['enseignant_nom'] = null;
-                }
-
-                // Formater la date pour un affichage convivial
-                if ($evaluation->date_evaluation) {
-                    $evalArray['date_evaluation_formatted'] = $evaluation->date_evaluation->format('d/m/Y à H:i');
-                    $evalArray['date_evaluation_short'] = $evaluation->date_evaluation->format('d/m/Y');
-                }
-
-                // Préserver les champs ajoutés dynamiquement (comme student_submission)
-                if (isset($evaluation->student_submission)) {
-                    $evalArray['student_submission'] = $evaluation->student_submission;
-                }
-
-                // Ajouter les informations de verrouillage et compteurs
-                $evalArray['is_locked'] = $evaluation->isLocked();
-                $evalArray['can_be_edited'] = $evaluation->canBeEdited();
-                $evalArray['submissions_count'] = $evaluation->submissions()->count();
-                $evalArray['questions_count'] = $evaluation->questions()->count();
-
-                // Ajouter le statut effectif calculé (basé sur date + durée)
-                $evalArray['effective_status'] = $evaluation->getEffectiveStatus();
-
-                return $evalArray;
-            })->toArray();
-
-        } catch (\Exception $e) {
-            \Log::error('Erreur enrichissement évaluations', ['error' => $e->getMessage()]);
-
-            // En cas d'erreur, retourner les évaluations sans enrichissement
-            return $evaluations->toArray();
-        }
-    }
 
     /**
      * GET /api/evaluations/{id}/results-by-class
@@ -1242,7 +1107,7 @@ class EvaluationController extends AuthenticatedController
             ]);
 
             // Enrichir avec les données KLASSCI (classe, matière)
-            $evaluationEnrichie = $this->enrichEvaluationsWithKlassciData(collect([$evaluation]))[0];
+            $evaluationEnrichie = $this->enrichmentService->enrich(collect([$evaluation]))[0];
 
             // Créer un tableau de résultats pour TOUS les étudiants
             $resultats = [];

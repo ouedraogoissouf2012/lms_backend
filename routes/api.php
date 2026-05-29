@@ -627,64 +627,69 @@ Route::middleware(['auth:sanctum', 'klassci.sync'])->prefix('lms')->group(functi
 // ============================================
 // EVALUATIONS - Routes protégées
 // ============================================
-use App\Http\Controllers\API\EvaluationController;
+// Refactor #152/#153 — god-controller `EvaluationController` (1676 lignes)
+// split en 4 controllers SRP sous `App\Http\Controllers\API\Evaluation\`.
+use App\Http\Controllers\API\Evaluation\EvaluationCrudController;
+use App\Http\Controllers\API\Evaluation\EvaluationKlassciSyncController;
+use App\Http\Controllers\API\Evaluation\EvaluationStudentController;
+use App\Http\Controllers\API\Evaluation\EvaluationTeacherController;
 
 // Routes accessibles à tous les utilisateurs authentifiés
 Route::middleware(['auth:sanctum', 'klassci.sync'])->group(function () {
     // Liste et consultation des évaluations
-    Route::get('evaluations', [EvaluationController::class, 'index']);
+    Route::get('evaluations', [EvaluationCrudController::class, 'index']);
 
     // Évaluations de l'étudiant connecté (DOIT ÊTRE AVANT evaluations/{id})
     // Issue #123 : la route /evaluations/student/{klassciEtudiantId} a été
     // supprimée (vecteur d'IDOR — un étudiant pouvait forge l'ID d'un autre).
     // Le besoin legit "un étudiant voit ses propres évals" passe par cette
     // route sans param, dérivée du token Sanctum.
-    Route::get('evaluations/student', [EvaluationController::class, 'myEvaluations']);
+    Route::get('evaluations/student', [EvaluationStudentController::class, 'myEvaluations']);
 
     // Récupérer une évaluation spécifique (APRÈS les routes spécifiques)
-    Route::get('evaluations/{id}', [EvaluationController::class, 'show']);
+    Route::get('evaluations/{id}', [EvaluationCrudController::class, 'show']);
 
     // Démarrer et soumettre une évaluation
-    Route::post('evaluations/{id}/start', [EvaluationController::class, 'startEvaluation'])
+    Route::post('evaluations/{id}/start', [EvaluationStudentController::class, 'startEvaluation'])
         ->middleware('throttle:300,1');
-    Route::post('evaluations/{id}/submit', [EvaluationController::class, 'submitEvaluation'])
+    Route::post('evaluations/{id}/submit', [EvaluationStudentController::class, 'submitEvaluation'])
         ->middleware('throttle:60,1');
 
     // Récupérer la soumission de l'étudiant connecté
-    Route::get('evaluations/{id}/my-submission', [EvaluationController::class, 'getMySubmission']);
+    Route::get('evaluations/{id}/my-submission', [EvaluationStudentController::class, 'getMySubmission']);
 
     // État temporel en temps réel
-    Route::get('evaluations/{id}/time-status', [EvaluationController::class, 'getTimeStatus']);
+    Route::get('evaluations/{id}/time-status', [EvaluationStudentController::class, 'getTimeStatus']);
 
     // Notes de l'étudiant groupées par matière
-    Route::get('my-grades', [EvaluationController::class, 'myGrades']);
+    Route::get('my-grades', [EvaluationStudentController::class, 'myGrades']);
 });
 
 // Routes enseignants/coordinateurs uniquement
 Route::middleware(['auth:sanctum', 'klassci.sync', 'role:enseignant,coordinateur,admin'])->group(function () {
     // CRUD des évaluations
-    Route::post('evaluations', [EvaluationController::class, 'store']);
-    Route::match(['put', 'patch'], 'evaluations/{id}', [EvaluationController::class, 'update']);
-    Route::delete('evaluations/{id}', [EvaluationController::class, 'destroy']);
+    Route::post('evaluations', [EvaluationCrudController::class, 'store']);
+    Route::match(['put', 'patch'], 'evaluations/{id}', [EvaluationCrudController::class, 'update']);
+    Route::delete('evaluations/{id}', [EvaluationCrudController::class, 'destroy']);
 
     // Publication
-    Route::post('evaluations/{id}/publish', [EvaluationController::class, 'publish']);
+    Route::post('evaluations/{id}/publish', [EvaluationCrudController::class, 'publish']);
 
     // Prévisualisation enseignant (avant publication)
-    Route::get('evaluations/{id}/preview', [EvaluationController::class, 'preview']);
+    Route::get('evaluations/{id}/preview', [EvaluationTeacherController::class, 'preview']);
 
     // Soumissions et résultats
-    Route::get('evaluations/{id}/submissions', [EvaluationController::class, 'getSubmissions']);
-    Route::post('evaluations/{id}/sync-notes', [EvaluationController::class, 'syncNotesToKlassci']);
+    Route::get('evaluations/{id}/submissions', [EvaluationTeacherController::class, 'getSubmissions']);
+    Route::post('evaluations/{id}/sync-notes', [EvaluationKlassciSyncController::class, 'syncNotesToKlassci']);
 
     // Synchronisation vers KLASSCI
-    Route::post('evaluations/{id}/sync-klassci', [EvaluationController::class, 'syncToKlassci']);
+    Route::post('evaluations/{id}/sync-klassci', [EvaluationKlassciSyncController::class, 'syncToKlassci']);
 });
 
 // Routes admin/coordinateur/enseignant pour résultats d'évaluations
 Route::middleware(['auth:sanctum', 'klassci.sync', 'role:enseignant,coordinateur,superAdmin'])->group(function () {
     // Résultats détaillés d'une évaluation avec tous les étudiants de la classe
-    Route::get('evaluations/{id}/results-by-class', [EvaluationController::class, 'getResultsByClass']);
+    Route::get('evaluations/{id}/results-by-class', [EvaluationTeacherController::class, 'getResultsByClass']);
 });
 
 // ============================================

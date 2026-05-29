@@ -759,14 +759,15 @@ final class LMSMatieresController extends AuthenticatedController
             ]);
 
         } catch (\Exception $e) {
+            // §1.2 — Détail technique loggé server-side, message générique au client.
             Log::error('Erreur myMatieres', [
                 'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
+                'trace' => $e->getTraceAsString(),
             ]);
 
             return response()->json([
                 'success' => false,
-                'message' => 'Erreur lors du chargement des matières: ' . $e->getMessage()
+                'message' => 'Erreur lors du chargement des matières.',
             ], 500);
         }
     }

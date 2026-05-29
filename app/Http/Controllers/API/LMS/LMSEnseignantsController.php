@@ -104,14 +104,15 @@ final class LMSEnseignantsController extends AuthenticatedController
             ]);
 
         } catch (\Exception $e) {
+            // §1.2 — Détail technique loggé server-side, message générique au client.
             Log::error('[LMS Enseignants KLASSCI] Erreur', [
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ]);
 
             return response()->json([
                 'success' => false,
-                'message' => 'Erreur: ' . $e->getMessage(),
-                'data' => []
+                'message' => 'Erreur lors du chargement des enseignants.',
+                'data'    => [],
             ], 500);
         }
     }

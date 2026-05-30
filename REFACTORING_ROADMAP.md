@@ -102,7 +102,11 @@ Après TIER 1 complété.
 ### [TEST-01] Tests désactivés → réactiver
 ### [TEST-02] ~~LMSDataController → tests feature~~ ✅ Largely OBE par PERF-01 (chaque controller extrait a ses propres tests Feature de routing : `tests/Feature/LMS/{Classes,Matieres,Enseignants,Notifications,Seances,Attendances,Visio}`). Resteraient à ajouter : tests d'intégration KLASSCI proxy (hors scope du split).
 ### [TEST-03] Multi-tenant isolation → tests
-### [TEST-04] Exception handler → Sentry
+### [TEST-04] ~~Exception handler → Sentry~~ ⏸️ DEFERRED (chief decision 2026-05-30)
+**Décision** : pas d'intégration Sentry pour l'instant. Le handler actuel
+([bootstrap/app.php:51-66](bootstrap/app.php#L51-L66)) continue de logger via `Log::error`
+vers `storage/logs/laravel.log` sur cPanel. À reconsidérer quand le projet
+sera en charge réelle (volume d'erreurs justifiant un APM).
 
 ---
 

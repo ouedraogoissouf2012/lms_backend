@@ -55,32 +55,12 @@ class EvaluationSubmission extends Model
     }
 
     /**
-     * Calcule le score automatiquement pour les QCM
+     * Calcule le score automatiquement pour les QCM — délègue à
+     * {@see \App\Services\Evaluation\EvaluationGradingService::calculateScore} (PERF-04).
      */
     public function calculateScore(): void
     {
-        $evaluation = $this->evaluation()->with('questions')->first();
-        $totalPoints = 0;
-        $earnedPoints = 0;
-
-        foreach ($evaluation->questions as $question) {
-            $totalPoints += $question->points;
-
-            // Vérifier si l'étudiant a répondu
-            if (isset($this->answers[$question->id])) {
-                $studentAnswer = $this->answers[$question->id];
-
-                // Vérifier si la réponse est correcte
-                if ($question->isCorrectAnswer($studentAnswer)) {
-                    $earnedPoints += $question->points;
-                }
-            }
-        }
-
-        // Calculer le score et la note sur 20
-        $this->score = $earnedPoints;
-        $percentage = $totalPoints > 0 ? ($earnedPoints / $totalPoints) : 0;
-        $this->note_sur_20 = round($percentage * $evaluation->bareme, 2);
+        app(\App\Services\Evaluation\EvaluationGradingService::class)->calculateScore($this);
     }
 
     /**

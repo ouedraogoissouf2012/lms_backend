@@ -18,14 +18,9 @@
     <testsuites>
         <testsuite name="Unit">
             <directory>tests/Unit</directory>
-            <!-- Test exclus — restant (TEST-01 batch C). -->
-            <exclude>tests/Unit/ExceptionHandlerTest.php</exclude>
         </testsuite>
         <testsuite name="Feature">
             <directory>tests/Feature</directory>
-            <!-- Tests temporairement exclus — restants (batches TEST-01 suivants). -->
-            <exclude>tests/Feature/ResolveInstitutionMiddlewareTest.php</exclude>
-            <exclude>tests/Feature/AdminAnalyticsCacheIsolationTest.php</exclude>
         </testsuite>
     </testsuites>
     <source>

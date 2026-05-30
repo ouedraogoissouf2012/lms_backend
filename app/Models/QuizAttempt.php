@@ -151,44 +151,12 @@ class QuizAttempt extends Model
     }
 
     /**
-     * Auto-correction des questions
+     * Auto-correction des questions — délègue à {@see \App\Services\Quiz\QuizGradingService::gradeAttempt}
+     * extrait en PERF-04. Thin wrapper pour préserver les call sites internes.
      */
     public function autoGrade(): void
     {
-        $quiz = $this->quiz;
-        $questions = $quiz->questions()->with('answers')->get();
-
-        $pointsEarned = 0;
-        $pointsPossible = 0;
-        $requiresManualGrading = false;
-
-        foreach ($questions as $question) {
-            $pointsPossible += $question->points;
-
-            $userAnswer = $this->answers[$question->id] ?? null;
-
-            if ($question->requiresManualGrading()) {
-                $requiresManualGrading = true;
-                continue;
-            }
-
-            if ($userAnswer !== null) {
-                $pointsEarned += $question->calculatePoints($userAnswer);
-            }
-        }
-
-        $this->points_earned = $pointsEarned;
-        $this->points_possible = $pointsPossible;
-
-        if (!$requiresManualGrading) {
-            // Toutes les questions sont auto-corrigées
-            $this->score = $pointsPossible > 0 ? ($pointsEarned / $pointsPossible) * 100 : 0;
-            $this->passed = $this->score >= $quiz->passing_score;
-            $this->status = 'graded';
-        } else {
-            // Nécessite correction manuelle
-            $this->status = 'submitted';
-        }
+        app(\App\Services\Quiz\QuizGradingService::class)->gradeAttempt($this);
     }
 
     /**

@@ -100,52 +100,24 @@ class QuizQuestion extends Model
     }
 
     /**
-     * Vérifier si une réponse est correcte
+     * Vérifier si une réponse est correcte — délègue à
+     * {@see \App\Services\Quiz\QuizGradingService::checkAnswer} (PERF-04).
+     *
+     * Retourne `null` pour les types nécessitant une correction manuelle
+     * (short_answer, essay) — la signature reste `?bool` malgré le hint.
      */
-    public function checkAnswer($userAnswer): bool
+    public function checkAnswer($userAnswer): ?bool
     {
-        switch ($this->type) {
-            case 'multiple_choice':
-                // Une seule réponse correcte
-                return $this->answers()
-                    ->where('id', $userAnswer)
-                    ->where('is_correct', true)
-                    ->exists();
-
-            case 'multiple_response':
-                // Plusieurs réponses correctes
-                $correctIds = $this->getCorrectAnswers()->pluck('id')->sort()->values()->toArray();
-                $userIds = is_array($userAnswer) ? collect($userAnswer)->sort()->values()->toArray() : [];
-                return $correctIds === $userIds;
-
-            case 'true_false':
-                // Vrai/Faux
-                $correctAnswer = $this->answers()->where('is_correct', true)->first();
-                return $correctAnswer && $correctAnswer->id == $userAnswer;
-
-            case 'short_answer':
-            case 'essay':
-                // Nécessite correction manuelle
-                return null;
-
-            default:
-                return false;
-        }
+        return app(\App\Services\Quiz\QuizGradingService::class)->checkAnswer($this, $userAnswer);
     }
 
     /**
-     * Calculer les points obtenus pour une réponse
+     * Calculer les points obtenus pour une réponse — délègue à
+     * {@see \App\Services\Quiz\QuizGradingService::calculatePoints} (PERF-04).
      */
     public function calculatePoints($userAnswer): float
     {
-        $isCorrect = $this->checkAnswer($userAnswer);
-
-        if ($isCorrect === null) {
-            // Nécessite correction manuelle
-            return 0;
-        }
-
-        return $isCorrect ? $this->points : 0;
+        return app(\App\Services\Quiz\QuizGradingService::class)->calculatePoints($this, $userAnswer);
     }
 
     /**

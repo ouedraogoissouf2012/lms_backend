@@ -18,6 +18,7 @@ use App\Http\Requests\SaveQuizProgressRequest;
 use App\Http\Requests\ShowAttemptRequest;
 use App\Http\Requests\GetQuizAttemptsRequest;
 use App\Http\Requests\CheckTimeRemainingRequest;
+use App\Services\Quiz\QuizGradingService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -26,11 +27,16 @@ use Illuminate\Support\Facades\Validator;
 /**
  * QuizAttemptController — extrait verbatim de QuizController.
  * Refactor du god-controller (618 lignes -> 2 fichiers SRP).
- * Aucun changement comportemental.
+ *
+ * DI du grading service (PERF-04) — la logique métier de correction est
+ * extraite des modèles vers `QuizGradingService`. Les modèles conservent
+ * des thin wrappers pour préserver les call sites internes (ex. submitAttempt).
  */
 class QuizAttemptController extends AuthenticatedController
 {
-
+    public function __construct(private QuizGradingService $gradingService)
+    {
+    }
 
     /**
      * POST /api/quizzes/{quiz}/start

@@ -7,12 +7,12 @@ use App\Models\Lesson;
 use App\Models\LessonProgress;
 use App\Models\Quiz;
 use App\Models\QuizAttempt;
+use App\Models\ForumPost;
 use App\Models\ForumTopic;
 use App\Models\Notification;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Facades\DB;
 
 /**
  * DashboardAdminController — extrait verbatim de DashboardController.
@@ -41,7 +41,10 @@ class DashboardAdminController extends AuthenticatedController
         $totalQuizAttempts = QuizAttempt::where('status', 'completed')->count();
 
         $totalForumTopics = ForumTopic::count();
-        $totalForumPosts = DB::table('forum_posts')->count();
+        // TEST-03 : utilise le model pour respecter le scope global
+        // `BelongsToInstitution`. `DB::table()` court-circuitait Eloquent
+        // et fuitait les forum_posts cross-tenant dans le count.
+        $totalForumPosts = ForumPost::count();
 
         $totalNotifications = Notification::count();
         $unreadNotifications = Notification::whereNull('read_at')->count();

@@ -18,9 +18,9 @@ use Tests\TestCase;
  *   - GET  /api/lms/notifications/preferences/{userId}
  *   - POST /api/lms/notifications/send-session-reminder
  *
- * Note: both legacy methods are stubs (TODO markers) — these tests cover the
- * HTTP contract (auth + ownership/role rules), not the business logic which
- * is not yet implemented.
+ * Note: both legacy methods are stubs (documented in the controller's docblock,
+ * cf. PR #151) — these tests cover the HTTP contract (auth + ownership/role rules),
+ * not the business logic which is not yet implemented.
  *
  * @see app/Http/Controllers/API/LMS/LMSNotificationsPreferencesController.php
  * @see .claude/specs/lms-data-controller-split/

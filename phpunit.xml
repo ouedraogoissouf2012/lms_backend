@@ -24,12 +24,7 @@
         </testsuite>
         <testsuite name="Feature">
             <directory>tests/Feature</directory>
-            <!-- Tests temporairement exclus — manque `use RefreshDatabase` ou pgsql-specific. -->
-            <exclude>tests/Feature/Requests/StoreChapterRequestTest.php</exclude>
-            <exclude>tests/Feature/Requests/UpdateChapterRequestTest.php</exclude>
-            <exclude>tests/Feature/Requests/DeleteChapterRequestTest.php</exclude>
-            <exclude>tests/Feature/Requests/ReorderChaptersRequestTest.php</exclude>
-            <exclude>tests/Feature/Requests/UploadFileRequestTest.php</exclude>
+            <!-- Tests temporairement exclus — restants (batches TEST-01 suivants). -->
             <exclude>tests/Feature/ResolveInstitutionMiddlewareTest.php</exclude>
             <exclude>tests/Feature/AdminAnalyticsCacheIsolationTest.php</exclude>
         </testsuite>

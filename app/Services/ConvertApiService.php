@@ -8,28 +8,57 @@ use Illuminate\Support\Facades\Storage;
 
 class ConvertApiService
 {
-    protected $convertApi;
+    protected ?ConvertApi $convertApi = null;
 
+    /**
+     * Lazy-load ConvertAPI : la clé n'est checkée qu'à l'usage réel, pas
+     * à la construction (TEST-01).
+     *
+     * Le constructeur d'origine throw si `CONVERTAPI_SECRET` est absent.
+     * Comme ce service est injecté transitivement dans `ChapterController`
+     * (via `FileService`), ça bloquait à la résolution du container Laravel
+     * **toutes** les requêtes `/chapters`, même celles qui n'ont jamais
+     * besoin de conversion (ex : création d'un chapitre texte sans fichier).
+     *
+     * En test, ça bloquait 56 tests (Chapter Request + UploadFile). En prod,
+     * ça aurait crashé en hard 500 toutes les routes chapitre si le secret
+     * était mal configuré. Mauvaise architecture (§1.1 — les services ne
+     * doivent pas throw en construction sur de la config runtime).
+     *
+     * Fix : on stocke rien, on appelle `ensureInitialized()` lazy avant
+     * chaque appel API. Les méthodes publiques font le check au moment où
+     * elles ont effectivement besoin du SDK.
+     */
     public function __construct()
     {
-        // Essayer config() d'abord, puis env() en fallback
-        $secret = config('services.convertapi.secret');
+        // Pas d'init. Le check de config est différé à la première convert*().
+    }
 
-        if (!$secret) {
-            $secret = env('CONVERTAPI_SECRET');
+    /**
+     * Retourne le client ConvertAPI initialisé à la demande.
+     *
+     * @throws \RuntimeException  Si la clé n'est pas configurée au moment où
+     *                            la conversion est tentée.
+     */
+    private function getClient(): ConvertApi
+    {
+        if ($this->convertApi !== null) {
+            return $this->convertApi;
         }
 
-        \Illuminate\Support\Facades\Log::info('[ConvertAPI] Initialisation', [
+        $secret = config('services.convertapi.secret') ?: env('CONVERTAPI_SECRET');
+
+        Log::info('[ConvertAPI] Initialisation', [
             'secret_present' => $secret ? 'YES' : 'NO',
-            'secret_length' => $secret ? strlen($secret) : 0
+            'secret_length' => $secret ? strlen($secret) : 0,
         ]);
 
         if (!$secret) {
-            throw new \Exception('ConvertAPI secret key not configured. Please set CONVERTAPI_SECRET in .env');
+            throw new \RuntimeException('ConvertAPI secret key not configured. Please set CONVERTAPI_SECRET in .env');
         }
 
         ConvertApi::setApiCredentials($secret);
-        $this->convertApi = new ConvertApi();
+        return $this->convertApi = new ConvertApi();
     }
 
     /**
@@ -41,6 +70,8 @@ class ConvertApiService
      */
     public function convertPowerPointToImages(string $filePath, string $outputDir): array
     {
+        $client = $this->getClient();
+
         try {
             Log::info('[ConvertAPI] Début conversion PowerPoint', [
                 'file' => $filePath,
@@ -48,7 +79,7 @@ class ConvertApiService
             ]);
 
             // Étape 1 : PowerPoint → PDF
-            $pdfResult = $this->convertApi->convert(
+            $pdfResult = $client->convert(
                 'pdf',
                 [
                     'File' => $filePath,
@@ -66,7 +97,7 @@ class ConvertApiService
             $pdfResult->getFile()->save($tempPdfPath);
 
             // Étape 2 : PDF → PNG (toutes les pages)
-            $pngResult = $this->convertApi->convert(
+            $pngResult = $client->convert(
                 'png',
                 [
                     'File' => $tempPdfPath,
@@ -127,6 +158,8 @@ class ConvertApiService
      */
     public function convertWordToImages(string $filePath, string $outputDir): array
     {
+        $client = $this->getClient();
+
         try {
             Log::info('[ConvertAPI] Début conversion Word', [
                 'file' => $filePath,
@@ -134,7 +167,7 @@ class ConvertApiService
             ]);
 
             // Étape 1 : Word → PDF
-            $pdfResult = $this->convertApi->convert(
+            $pdfResult = $client->convert(
                 'pdf',
                 [
                     'File' => $filePath,
@@ -152,7 +185,7 @@ class ConvertApiService
             $pdfResult->getFile()->save($tempPdfPath);
 
             // Étape 2 : PDF → PNG
-            $pngResult = $this->convertApi->convert(
+            $pngResult = $client->convert(
                 'png',
                 [
                     'File' => $tempPdfPath,
@@ -212,6 +245,8 @@ class ConvertApiService
      */
     public function convertPdfToImages(string $filePath, string $outputDir): array
     {
+        $client = $this->getClient();
+
         try {
             Log::info('[ConvertAPI] Début conversion PDF', [
                 'file' => $filePath,
@@ -219,7 +254,7 @@ class ConvertApiService
             ]);
 
             // PDF → PNG direct
-            $pngResult = $this->convertApi->convert(
+            $pngResult = $client->convert(
                 'png',
                 [
                     'File' => $filePath,

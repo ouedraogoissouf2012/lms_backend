@@ -34,14 +34,18 @@ final class KlassciEnseignantIdBackfillTest extends TestCase
     }
 
     /**
-     * Re-execute the most recent migration: rollback drops the column +
-     * its index, re-apply recreates them AND runs the backfill closure on
-     * the existing rows. Any user with `klassci_data['enseignant_id']` is
-     * expected to receive the matching value in the column.
+     * Re-execute the backfill migration: rollback drops the column + its index,
+     * re-apply recreates them AND runs the backfill closure on the existing rows.
+     * Any user with `klassci_data['enseignant_id']` is expected to receive the
+     * matching value in the column.
+     *
+     * Cible explicitement le batch de la migration backfill (vs `--step 1`)
+     * pour résister aux migrations ultérieures qui s'intercaleraient (ex:
+     * PERF-05 cleanup `@temp.local` du 2026-05-30).
      */
     private function rerunBackfillMigration(): void
     {
-        Artisan::call('migrate:rollback', ['--step' => 1]);
+        Artisan::call('migrate:rollback', ['--path' => 'database/migrations/2026_05_19_000001_add_klassci_enseignant_id_to_users_table.php']);
         Artisan::call('migrate');
     }
 

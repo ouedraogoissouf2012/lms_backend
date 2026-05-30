@@ -258,10 +258,28 @@ class ClasseSyncService
                 $student = User::where('klassci_id', $etudiantData['id'])->first();
 
                 if (!$student) {
-                    // Si pas trouvé par klassci_id, chercher par email
-                    // (cas où l'étudiant existe déjà avec un email mais sans klassci_id)
-                    $email = $etudiantData['email'] ?? "etudiant{$etudiantData['id']}@temp.local";
-                    $student = User::where('email', $email)->where('role', 'etudiant')->first();
+                    // PERF-05 — Avant : si KLASSCI ne retournait pas d'email,
+                    // on fabriquait `etudiant{id}@temp.local` comme placeholder
+                    // ET on l'utilisait pour rechercher un user existant.
+                    // Conséquences :
+                    //   • Pollution table users avec des emails fake
+                    //   • Risque de match faux positif (un autre étudiant ayant
+                    //     vraiment cet email aurait été réécrit)
+                    //   • Ces users ne pouvaient JAMAIS se connecter
+                    //   • Fuite d'info : l'email construit révélait l'existence
+                    //     d'un user pour klassci_id N à qui pouvait voir la BDD.
+                    //
+                    // Après : email peut être null (colonne nullable depuis la
+                    // migration 2025-10-19). On skip le fallback lookup quand
+                    // KLASSCI ne nous donne rien d'utile.
+                    $email = isset($etudiantData['email']) && is_string($etudiantData['email']) && $etudiantData['email'] !== ''
+                        ? $etudiantData['email']
+                        : null;
+
+                    // Fallback lookup par email uniquement si KLASSCI nous en a fourni un.
+                    if ($email !== null) {
+                        $student = User::where('email', $email)->where('role', 'etudiant')->first();
+                    }
 
                     if ($student) {
                         // Mettre à jour le klassci_id de l'étudiant existant
@@ -269,7 +287,7 @@ class ClasseSyncService
                         Log::info('Klassci ID ajouté à étudiant existant', [
                             'user_id' => $student->id,
                             'email' => $email,
-                            'klassci_id' => $etudiantData['id']
+                            'klassci_id' => $etudiantData['id'],
                         ]);
                     } else {
                         // Créer l'étudiant local
@@ -281,16 +299,16 @@ class ClasseSyncService
 
                         $student = User::create([
                             'klassci_id' => $etudiantData['id'],
-                            'name' => $name,
-                            'email' => $email,
-                            'role' => 'etudiant',
-                            'password' => bcrypt(bin2hex(random_bytes(16))), // Password aléatoire
+                            'name'       => $name,
+                            'email'      => $email,    // null si KLASSCI n'en a pas fourni
+                            'role'       => 'etudiant',
+                            'password'   => bcrypt(bin2hex(random_bytes(16))), // Password aléatoire
                         ]);
 
                         Log::info('Nouvel étudiant créé', [
-                            'user_id' => $student->id,
+                            'user_id'    => $student->id,
                             'klassci_id' => $etudiantData['id'],
-                            'email' => $email
+                            'email'      => $email,
                         ]);
                     }
 

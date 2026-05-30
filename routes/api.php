@@ -440,18 +440,20 @@ Route::middleware(['auth:sanctum', 'klassci.sync', 'role:enseignant,coordinateur
 // ============================================
 // DASHBOARD - Routes protégées
 // ============================================
-use App\Http\Controllers\API\DashboardController;
+use App\Http\Controllers\API\Dashboard\DashboardAdminController;
+use App\Http\Controllers\API\Dashboard\DashboardStudentController;
+use App\Http\Controllers\API\Dashboard\DashboardTeacherController;
 
 Route::middleware(['auth:sanctum', 'klassci.sync'])->prefix('dashboard')->group(function () {
     // Dashboard étudiant (tous les utilisateurs authentifiés)
-    Route::get('/student', [DashboardController::class, 'student']);
+    Route::get('/student', [DashboardStudentController::class, 'student']);
 
     // Dashboard enseignant (enseignants et coordinateurs uniquement)
-    Route::get('/teacher', [DashboardController::class, 'teacher'])
+    Route::get('/teacher', [DashboardTeacherController::class, 'teacher'])
         ->middleware('role:enseignant,coordinateur');
 
     // Statistiques globales (coordinateurs et admin uniquement)
-    Route::get('/stats', [DashboardController::class, 'stats'])
+    Route::get('/stats', [DashboardAdminController::class, 'stats'])
         ->middleware('role:coordinateur,admin');
 });
 

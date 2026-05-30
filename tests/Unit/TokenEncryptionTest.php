@@ -67,29 +67,27 @@ class TokenEncryptionTest extends TestCase
         $this->assertEquals($plainToken, $institution->klassci_api_token);
     }
 
+    /**
+     * Vérifie que l'ancienne colonne plaintext `klassci_token` n'existe plus.
+     *
+     * Utilise `Schema::hasColumn` (Laravel abstraction) pour rester
+     * cross-DB compatible (sqlite local, mysql prod) — l'original utilisait
+     * `information_schema.columns` qui est PostgreSQL/MySQL specifique
+     * et fait crasher sqlite (TEST-01 fix).
+     */
     public function test_plaintext_token_column_does_not_exist(): void
     {
-        $columns = \DB::select("
-            SELECT column_name
-            FROM information_schema.columns
-            WHERE table_name = 'users'
-            AND column_name = 'klassci_token'
-            AND table_schema = 'public'
-        ");
-
-        $this->assertEmpty($columns, 'The plaintext klassci_token column should not exist');
+        $this->assertFalse(
+            \Illuminate\Support\Facades\Schema::hasColumn('users', 'klassci_token'),
+            'The plaintext klassci_token column should not exist'
+        );
     }
 
     public function test_plaintext_api_token_column_does_not_exist(): void
     {
-        $columns = \DB::select("
-            SELECT column_name
-            FROM information_schema.columns
-            WHERE table_name = 'institutions'
-            AND column_name = 'klassci_api_token'
-            AND table_schema = 'public'
-        ");
-
-        $this->assertEmpty($columns, 'The plaintext klassci_api_token column should not exist');
+        $this->assertFalse(
+            \Illuminate\Support\Facades\Schema::hasColumn('institutions', 'klassci_api_token'),
+            'The plaintext klassci_api_token column should not exist'
+        );
     }
 }

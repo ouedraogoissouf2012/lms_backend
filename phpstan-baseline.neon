@@ -2515,6 +2515,12 @@ parameters:
 			path: app/Http/Controllers/API/Quiz/QuizAttemptController.php
 
 		-
+			message: '#^Property App\\Http\\Controllers\\API\\Quiz\\QuizAttemptController\:\:\$gradingService is never read, only written\.$#'
+			identifier: property.onlyWritten
+			count: 1
+			path: app/Http/Controllers/API/Quiz/QuizAttemptController.php
+
+		-
 			message: '#^Property App\\Models\\QuizAttempt\:\:\$answers \(array\|null\) does not accept mixed\.$#'
 			identifier: assign.propertyType
 			count: 1
@@ -5923,32 +5929,8 @@ parameters:
 			path: app/Models/QuizAnswer.php
 
 		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Models/QuizAttempt.php
-
-		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$institution_id\.$#'
 			identifier: property.notFound
-			count: 1
-			path: app/Models/QuizAttempt.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$points\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Models/QuizAttempt.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:calculatePoints\(\)\.$#'
-			identifier: method.notFound
-			count: 1
-			path: app/Models/QuizAttempt.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:requiresManualGrading\(\)\.$#'
-			identifier: method.notFound
 			count: 1
 			path: app/Models/QuizAttempt.php
 
@@ -5961,12 +5943,6 @@ parameters:
 		-
 			message: '#^Cannot access property \$passing_score on App\\Models\\Quiz\|null\.$#'
 			identifier: property.nonObject
-			count: 2
-			path: app/Models/QuizAttempt.php
-
-		-
-			message: '#^Cannot call method questions\(\) on App\\Models\\Quiz\|null\.$#'
-			identifier: method.nonObject
 			count: 1
 			path: app/Models/QuizAttempt.php
 
@@ -6055,12 +6031,6 @@ parameters:
 			path: app/Models/QuizAttempt.php
 
 		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Models/QuizQuestion.php
-
-		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$institution_id\.$#'
 			identifier: property.notFound
 			count: 1
@@ -6091,20 +6061,8 @@ parameters:
 			path: app/Models/QuizQuestion.php
 
 		-
-			message: '#^Method App\\Models\\QuizQuestion\:\:calculatePoints\(\) should return float but returns int\|string\.$#'
-			identifier: return.type
-			count: 1
-			path: app/Models/QuizQuestion.php
-
-		-
 			message: '#^Method App\\Models\\QuizQuestion\:\:checkAnswer\(\) has parameter \$userAnswer with no type specified\.$#'
 			identifier: missingType.parameter
-			count: 1
-			path: app/Models/QuizQuestion.php
-
-		-
-			message: '#^Method App\\Models\\QuizQuestion\:\:checkAnswer\(\) should return bool but returns null\.$#'
-			identifier: return.type
 			count: 1
 			path: app/Models/QuizQuestion.php
 
@@ -6151,20 +6109,8 @@ parameters:
 			path: app/Models/QuizQuestion.php
 
 		-
-			message: '#^Parameter \#1 \$column of method Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\:\:where\(\) expects array\<int\|model property of Illuminate\\Database\\Eloquent\\Model, mixed\>\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\: Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\: void\)\|Illuminate\\Contracts\\Database\\Query\\Expression\|model property of Illuminate\\Database\\Eloquent\\Model, ''id'' given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Models/QuizQuestion.php
-
-		-
 			message: '#^Parameter \#1 \$column of method Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\:\:where\(\) expects array\<int\|model property of Illuminate\\Database\\Eloquent\\Model, mixed\>\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\: Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\: void\)\|Illuminate\\Contracts\\Database\\Query\\Expression\|model property of Illuminate\\Database\\Eloquent\\Model, ''is_correct'' given\.$#'
 			identifier: argument.type
-			count: 3
-			path: app/Models/QuizQuestion.php
-
-		-
-			message: '#^Strict comparison using \=\=\= between bool and null will always evaluate to false\.$#'
-			identifier: identical.alwaysFalse
 			count: 1
 			path: app/Models/QuizQuestion.php
 
@@ -6875,6 +6821,54 @@ parameters:
 			identifier: ternary.alwaysTrue
 			count: 2
 			path: app/Services/NotificationService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Services/Quiz/QuizGradingService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$points\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Quiz/QuizGradingService.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:requiresManualGrading\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Services/Quiz/QuizGradingService.php
+
+		-
+			message: '#^Cannot access property \$passing_score on App\\Models\\Quiz\|null\.$#'
+			identifier: property.nonObject
+			count: 1
+			path: app/Services/Quiz/QuizGradingService.php
+
+		-
+			message: '#^Cannot call method questions\(\) on App\\Models\\Quiz\|null\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Services/Quiz/QuizGradingService.php
+
+		-
+			message: '#^Parameter \#1 \$column of method Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\:\:where\(\) expects array\<int\|model property of Illuminate\\Database\\Eloquent\\Model, mixed\>\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\: Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\: void\)\|Illuminate\\Contracts\\Database\\Query\\Expression\|model property of Illuminate\\Database\\Eloquent\\Model, ''id'' given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Quiz/QuizGradingService.php
+
+		-
+			message: '#^Parameter \#1 \$column of method Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\:\:where\(\) expects array\<int\|model property of Illuminate\\Database\\Eloquent\\Model, mixed\>\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\: Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\: void\)\|Illuminate\\Contracts\\Database\\Query\\Expression\|model property of Illuminate\\Database\\Eloquent\\Model, ''is_correct'' given\.$#'
+			identifier: argument.type
+			count: 2
+			path: app/Services/Quiz/QuizGradingService.php
+
+		-
+			message: '#^Parameter \#1 \$question of method App\\Services\\Quiz\\QuizGradingService\:\:calculatePoints\(\) expects App\\Models\\QuizQuestion, Illuminate\\Database\\Eloquent\\Model given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Quiz/QuizGradingService.php
 
 		-
 			message: '#^Access to an undefined property App\\Models\\UserClass\:\:\$email\.$#'

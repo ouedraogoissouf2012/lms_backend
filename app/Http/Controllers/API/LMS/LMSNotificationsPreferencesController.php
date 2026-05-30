@@ -24,8 +24,8 @@ use Illuminate\Support\Facades\Log;
  *     de la table `parent_notification_preferences`.
  *   - `sendSessionReminder` accepte la requête et renvoie success, mais n'envoie rien
  *     en attendant l'intégration avec `NotificationService`.
- * Les markers `TODO:` ont été nettoyés du corps des méthodes pour ne pas leak en JSON ;
- * cette docblock est la trace officielle. À traiter dans une issue follow-up dédiée.
+ * Cette docblock est la trace officielle du stub status (cf. PR #151). À traiter
+ * dans une issue follow-up dédiée.
  *
  * Security note inherited from the legacy: `getNotificationPreferences` checks
  * `$currentUser->id === $userId || role IN ('coordinateur', 'superAdmin')`. The

@@ -113,7 +113,7 @@ Après TIER 2 complété.
 ### [OPS-01] SQLite → MySQL
 ### [OPS-02] LOG_LEVEL debug → production-safe
 ### [OPS-03] Scheduler duplication → consolidate
-### [OPS-04] TODOs actifs → implementer ou retirer
+### [OPS-04] ~~TODOs actifs → implementer ou retirer~~ ✅ DONE (PR #151 + #163) — 0 TODO/FIXME/HACK actionnable dans `app/` `routes/` `bootstrap/` `tests/` `database/` `config/` à la date 2026-05-30. 9 TODOs nettoyés en PR #151 ; les 2 meta-comments référençant l'historique nettoyés en PR #163. Le seul stub status documenté (LMSNotificationsPreferencesController) est tracé dans son docblock, pas en TODO inline.
 
 ---
 

@@ -170,29 +170,11 @@ class Notification extends Model
     }
 
     /**
-     * Obtenir le lien de l'action
+     * Obtenir le lien de l'action — délègue à
+     * {@see \App\Services\Notification\NotificationPresenter::getActionUrl} (PERF-04).
      */
     public function getActionUrl(): ?string
     {
-        $data = $this->data ?? [];
-
-        return match($this->type) {
-            self::TYPE_LESSON_PUBLISHED, self::TYPE_LESSON_UPDATED =>
-                isset($data['lesson_id']) ? "/lessons/{$data['lesson_id']}" : null,
-
-            self::TYPE_FORUM_REPLY, self::TYPE_FORUM_SOLUTION =>
-                isset($data['topic_id']) ? "/forum/topics/{$data['topic_id']}" : null,
-
-            self::TYPE_QUIZ_AVAILABLE, self::TYPE_GRADE_RECEIVED, self::TYPE_QUIZ_DEADLINE =>
-                isset($data['quiz_id']) ? "/quizzes/{$data['quiz_id']}" : null,
-
-            self::TYPE_VISIO_SCHEDULED, self::TYPE_VISIO_STARTING =>
-                isset($data['seance_id']) ? "/seances/{$data['seance_id']}" : null,
-
-            self::TYPE_EVALUATION_APPROACHING =>
-                isset($data['evaluation_id']) ? "/student/evaluations/{$data['evaluation_id']}" : null,
-
-            default => null,
-        };
+        return app(\App\Services\Notification\NotificationPresenter::class)->getActionUrl($this);
     }
 }

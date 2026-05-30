@@ -24,18 +24,12 @@ $app = Application::configure(basePath: dirname(__DIR__))
             'institution' => \App\Http\Middleware\ResolveInstitution::class,
         ]);
     })
-    ->withSchedule(function ($schedule): void {
-        // Détecter les participants inactifs toutes les minutes
-        $schedule->command('visio:detect-inactive')
-            ->everyMinute()
-            ->withoutOverlapping()
-            ->runInBackground();
-
-        // Notifier les étudiants des évaluations approchantes (24h avant)
-        $schedule->command('evaluations:notify-upcoming --hours=24')
-            ->dailyAt('08:00')
-            ->withoutOverlapping();
-    })
+    // OPS-03 — les schedules vivent dans `routes/console.php` (convention Laravel 11).
+    // Avant cette PR, 2 commandes étaient déclarées en double ici ET dans routes/console.php :
+    //   • `evaluations:notify-upcoming` (dailyAt 08:00) → exécutée 2× chaque matin en prod
+    //   • `visio:detect-inactive` (everyMinute) faisait LA MÊME chose que le Job
+    //     `DetectDisconnectedParticipants` (every2Minutes) — double scan ESBTPAttendance
+    // Source unique conservée : `routes/console.php`.
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->render(function (\Illuminate\Auth\AuthenticationException $e, $request) {
             if ($request->expectsJson()) {

@@ -240,6 +240,14 @@ class NotificationsController extends AuthenticatedController
         $cacheTTL = 300; // 5 minutes
 
         $stats = Cache::remember($cacheKey, $cacheTTL, function () use ($isSupradmin, $caller) {
+            // SECURITY (hardening) : on utilise `DB::table` plutôt que `Notification::`
+            // car la `stats` doit pouvoir retourner les counts cross-tenant pour
+            // `supradmin` (cf. issue #98). Le scope global `BelongsToInstitution`
+            // ferait obstacle. Le filtre tenant est appliqué manuellement via
+            // `$applyTenantFilter` qui no-op pour supradmin et restreint pour les
+            // autres rôles. NE PAS supprimer `$applyTenantFilter` sans repenser
+            // l'isolation cross-tenant — chaque DB::table ci-dessous DOIT passer
+            // dans ce filtre.
             $applyTenantFilter = function ($query) use ($isSupradmin, $caller) {
                 return $isSupradmin
                     ? $query

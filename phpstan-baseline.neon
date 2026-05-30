@@ -4639,18 +4639,6 @@ parameters:
 			path: app/Models/EvaluationSubmission.php
 
 		-
-			message: '#^Cannot access property \$bareme on Illuminate\\Database\\Eloquent\\Model\|null\.$#'
-			identifier: property.nonObject
-			count: 1
-			path: app/Models/EvaluationSubmission.php
-
-		-
-			message: '#^Cannot access property \$questions on Illuminate\\Database\\Eloquent\\Model\|null\.$#'
-			identifier: property.nonObject
-			count: 1
-			path: app/Models/EvaluationSubmission.php
-
-		-
 			message: '#^Class App\\Models\\EvaluationSubmission uses generic trait Illuminate\\Database\\Eloquent\\Factories\\HasFactory but does not specify its types\: TFactory$#'
 			identifier: missingType.generics
 			count: 1
@@ -6653,6 +6641,24 @@ parameters:
 			identifier: offsetAccess.invalidOffset
 			count: 2
 			path: app/Services/Evaluation/EvaluationEnrichmentService.php
+
+		-
+			message: '#^Cannot access property \$bareme on Illuminate\\Database\\Eloquent\\Model\|null\.$#'
+			identifier: property.nonObject
+			count: 1
+			path: app/Services/Evaluation/EvaluationGradingService.php
+
+		-
+			message: '#^Cannot access property \$questions on Illuminate\\Database\\Eloquent\\Model\|null\.$#'
+			identifier: property.nonObject
+			count: 1
+			path: app/Services/Evaluation/EvaluationGradingService.php
+
+		-
+			message: '#^Cannot cast mixed to string\.$#'
+			identifier: cast.string
+			count: 1
+			path: app/Services/Evaluation/EvaluationGradingService.php
 
 		-
 			message: '#^Access to an undefined property App\\Models\\QuizAttempt\:\:\$max_score\.$#'

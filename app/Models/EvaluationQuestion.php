@@ -40,41 +40,12 @@ class EvaluationQuestion extends Model
     }
 
     /**
-     * Vérifie si une réponse est correcte
+     * Vérifie si une réponse est correcte — délègue à
+     * {@see \App\Services\Evaluation\EvaluationGradingService::isCorrectAnswer} (PERF-04).
      */
     public function isCorrectAnswer($answer): bool
     {
-        if (!$this->correct_answers) {
-            return false;
-        }
-
-        // Pour QCM simple
-        if ($this->type === 'qcm' || $this->type === 'vrai_faux') {
-            return in_array($answer, $this->correct_answers);
-        }
-
-        // Pour QCM multiple
-        if ($this->type === 'qcm_multiple') {
-            if (!is_array($answer)) {
-                return false;
-            }
-            sort($answer);
-            $correctAnswers = $this->correct_answers;
-            sort($correctAnswers);
-            return $answer === $correctAnswers;
-        }
-
-        // Pour réponse courte (comparaison insensible à la casse)
-        if ($this->type === 'reponse_courte') {
-            $normalizedAnswer = strtolower(trim($answer));
-            foreach ($this->correct_answers as $correct) {
-                if (strtolower(trim($correct)) === $normalizedAnswer) {
-                    return true;
-                }
-            }
-            return false;
-        }
-
-        return false;
+        return app(\App\Services\Evaluation\EvaluationGradingService::class)
+            ->isCorrectAnswer($this, $answer);
     }
 }

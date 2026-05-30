@@ -110,7 +110,7 @@ Après TIER 1 complété.
 
 Après TIER 2 complété.
 
-### [OPS-01] SQLite → MySQL
+### [OPS-01] ~~SQLite → MySQL~~ ✅ DONE (PRs #143 + #139 + #164) — le code supporte dual-DB sqlite (local dev) + mysql (prod cPanel). PR #143 a supprimé pgsql (code mort). PR #139 a aligné phpunit.xml sur sqlite. La migration `2026_01_03_220000_add_quiz_to_chapters_content_type` a deux branches (sqlite recreate-table + mysql ALTER ENUM) — pattern à suivre pour toute migration future qui touche un type. PR #164 (cette PR) finalise la doc.
 ### [OPS-02] LOG_LEVEL debug → production-safe
 ### [OPS-03] Scheduler duplication → consolidate
 ### [OPS-04] ~~TODOs actifs → implementer ou retirer~~ ✅ DONE (PR #151 + #163) — 0 TODO/FIXME/HACK actionnable dans `app/` `routes/` `bootstrap/` `tests/` `database/` `config/` à la date 2026-05-30. 9 TODOs nettoyés en PR #151 ; les 2 meta-comments référençant l'historique nettoyés en PR #163. Le seul stub status documenté (LMSNotificationsPreferencesController) est tracé dans son docblock, pas en TODO inline.

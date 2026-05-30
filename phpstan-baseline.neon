@@ -6601,12 +6601,6 @@ parameters:
 			path: app/Services/ConvertApiService.php
 
 		-
-			message: '#^Property App\\Services\\ConvertApiService\:\:\$convertApi has no type specified\.$#'
-			identifier: missingType.property
-			count: 1
-			path: app/Services/ConvertApiService.php
-
-		-
 			message: '#^Cannot access offset ''id'' on mixed\.$#'
 			identifier: offsetAccess.nonOffsetAccessible
 			count: 2

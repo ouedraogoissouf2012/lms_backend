@@ -81,31 +81,13 @@ class LessonProgress extends Model
     }
 
     /**
-     * Mettre à jour la progression
+     * Met à jour la progression — délègue à
+     * {@see \App\Services\Lesson\LessonProgressService::updateProgress} (PERF-04).
      */
-    public function updateProgress(int $percentage, int $timeSpentMinutes = null): bool
+    public function updateProgress(int $percentage, ?int $timeSpentMinutes = null): bool
     {
-        $data = [
-            'progress_percentage' => min(100, max(0, $percentage)),
-            'last_accessed_at' => now(),
-        ];
-
-        if ($this->status === 'not_started' && $percentage > 0) {
-            $data['status'] = 'in_progress';
-            $data['started_at'] = now();
-        }
-
-        if ($timeSpentMinutes !== null) {
-            $data['time_spent_minutes'] = $this->time_spent_minutes + $timeSpentMinutes;
-        }
-
-        // Auto-complétion si 100%
-        if ($percentage >= 100 && $this->status !== 'completed') {
-            $data['status'] = 'completed';
-            $data['completed_at'] = now();
-        }
-
-        return $this->update($data);
+        return app(\App\Services\Lesson\LessonProgressService::class)
+            ->updateProgress($this, $percentage, $timeSpentMinutes);
     }
 
     /**

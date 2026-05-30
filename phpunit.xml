@@ -18,8 +18,7 @@
     <testsuites>
         <testsuite name="Unit">
             <directory>tests/Unit</directory>
-            <!-- Tests temporairement exclus — dette technique à fixer dans une issue dédiée. -->
-            <exclude>tests/Unit/TokenEncryptionTest.php</exclude>
+            <!-- Test exclus — restant (TEST-01 batch C). -->
             <exclude>tests/Unit/ExceptionHandlerTest.php</exclude>
         </testsuite>
         <testsuite name="Feature">

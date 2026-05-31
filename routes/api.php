@@ -475,7 +475,8 @@ use App\Http\Controllers\API\LMS\LMSEnseignantsController;
 use App\Http\Controllers\API\LMS\LMSMatieresAdminController;
 use App\Http\Controllers\API\LMS\LMSMatieresQueryController;
 use App\Http\Controllers\API\LMS\LMSNotificationsPreferencesController;
-use App\Http\Controllers\API\LMS\LMSSeancesMutationController;
+use App\Http\Controllers\API\LMS\LMSSeanceParticipantMutationController;
+use App\Http\Controllers\API\LMS\LMSSeanceVisibilityMutationController;
 use App\Http\Controllers\API\LMS\LMSSeancesQueryController;
 use App\Http\Controllers\API\LMS\LMSVisioLifecycleController;
 use App\Http\Controllers\API\LMS\LMSVisioParticipantController;
@@ -526,7 +527,7 @@ Route::middleware(['auth:sanctum', 'klassci.sync'])->prefix('lms')->group(functi
         ->name('lms.seances.attendances');
 
     // Suppression d'une séance (soft delete)
-    Route::delete('/seances/{seanceId}', [LMSSeancesMutationController::class, 'deleteSeance'])
+    Route::delete('/seances/{seanceId}', [LMSSeanceVisibilityMutationController::class, 'deleteSeance'])
         ->name('lms.seances.delete')
         ->middleware('role:enseignant,coordinateur,superAdmin');
 
@@ -539,11 +540,11 @@ Route::middleware(['auth:sanctum', 'klassci.sync'])->prefix('lms')->group(functi
         ->name('lms.seances.participants');
 
     // Valider l'accès d'un participant
-    Route::post('/seances/{seanceId}/validate-participant', [LMSSeancesMutationController::class, 'validateParticipant'])
+    Route::post('/seances/{seanceId}/validate-participant', [LMSSeanceParticipantMutationController::class, 'validateParticipant'])
         ->name('lms.seances.validate-participant');
 
     // Toggle visio pour séance (coordinateurs uniquement)
-    Route::post('/seances/{seanceId}/toggle-visio', [LMSSeancesMutationController::class, 'toggleVisioSeance'])
+    Route::post('/seances/{seanceId}/toggle-visio', [LMSSeanceVisibilityMutationController::class, 'toggleVisioSeance'])
         ->name('lms.seances.toggle-visio')
         ->middleware('role:coordinateur,superAdmin');
 
@@ -609,12 +610,12 @@ Route::middleware(['auth:sanctum', 'klassci.sync'])->prefix('lms')->group(functi
         ->name('lms.seances.visio-participants');
 
     // Masquer une séance (étudiant uniquement)
-    Route::post('/seances/{seanceId}/hide', [LMSSeancesMutationController::class, 'hideSeance'])
+    Route::post('/seances/{seanceId}/hide', [LMSSeanceVisibilityMutationController::class, 'hideSeance'])
         ->name('lms.seances.hide')
         ->middleware('role:etudiant');
 
     // Réafficher une séance (étudiant uniquement)
-    Route::post('/seances/{seanceId}/unhide', [LMSSeancesMutationController::class, 'unhideSeance'])
+    Route::post('/seances/{seanceId}/unhide', [LMSSeanceVisibilityMutationController::class, 'unhideSeance'])
         ->name('lms.seances.unhide')
         ->middleware('role:etudiant');
 

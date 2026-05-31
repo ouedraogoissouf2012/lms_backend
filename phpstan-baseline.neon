@@ -1435,126 +1435,6 @@ parameters:
 			path: app/Http/Controllers/API/LMS/LMSMatieresAdminController.php
 
 		-
-			message: '#^Cannot access offset ''classe'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 1
-			path: app/Http/Controllers/API/LMS/LMSMatieresQueryController.php
-
-		-
-			message: '#^Cannot access offset ''coefficient'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 1
-			path: app/Http/Controllers/API/LMS/LMSMatieresQueryController.php
-
-		-
-			message: '#^Cannot access offset ''combinaisons'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 1
-			path: app/Http/Controllers/API/LMS/LMSMatieresQueryController.php
-
-		-
-			message: '#^Cannot access offset ''enseignants'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 2
-			path: app/Http/Controllers/API/LMS/LMSMatieresQueryController.php
-
-		-
-			message: '#^Cannot access offset ''evaluations'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 1
-			path: app/Http/Controllers/API/LMS/LMSMatieresQueryController.php
-
-		-
-			message: '#^Cannot access offset ''id'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 1
-			path: app/Http/Controllers/API/LMS/LMSMatieresQueryController.php
-
-		-
-			message: '#^Cannot access offset ''matiere'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 2
-			path: app/Http/Controllers/API/LMS/LMSMatieresQueryController.php
-
-		-
-			message: '#^Cannot access offset ''matieres'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 3
-			path: app/Http/Controllers/API/LMS/LMSMatieresQueryController.php
-
-		-
-			message: '#^Cannot access offset ''nom'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 1
-			path: app/Http/Controllers/API/LMS/LMSMatieresQueryController.php
-
-		-
-			message: '#^Cannot access offset ''places_occupees'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 1
-			path: app/Http/Controllers/API/LMS/LMSMatieresQueryController.php
-
-		-
-			message: '#^Cannot access offset ''seances_programmees'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 3
-			path: app/Http/Controllers/API/LMS/LMSMatieresQueryController.php
-
-		-
-			message: '#^Cannot access offset ''volume_horaire_total'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 1
-			path: app/Http/Controllers/API/LMS/LMSMatieresQueryController.php
-
-		-
-			message: '#^Cannot access offset 0 on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 1
-			path: app/Http/Controllers/API/LMS/LMSMatieresQueryController.php
-
-		-
-			message: '#^Parameter \#1 \$callback of method Illuminate\\Support\\Collection\<\(int\|string\),mixed\>\:\:filter\(\) expects \(callable\(mixed, int\|string\)\: bool\)\|null, Closure\(array\)\: bool given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Controllers/API/LMS/LMSMatieresQueryController.php
-
-		-
-			message: '#^Parameter \#1 \$column of method Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\:\:where\(\) expects array\<int\|model property of Illuminate\\Database\\Eloquent\\Model, mixed\>\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\: Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\: void\)\|Illuminate\\Contracts\\Database\\Query\\Expression\|model property of Illuminate\\Database\\Eloquent\\Model, ''klassci_etudiant_id'' given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Controllers/API/LMS/LMSMatieresQueryController.php
-
-		-
-			message: '#^Parameter \#1 \$value of function collect expects Illuminate\\Contracts\\Support\\Arrayable\<\(int\|string\), mixed\>\|iterable\<\(int\|string\), mixed\>\|null, mixed given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Controllers/API/LMS/LMSMatieresQueryController.php
-
-		-
-			message: '#^Parameter \#1 \$value of function count expects array\|Countable, mixed given\.$#'
-			identifier: argument.type
-			count: 3
-			path: app/Http/Controllers/API/LMS/LMSMatieresQueryController.php
-
-		-
-			message: '#^Part \$seance\[''classe''\]\[''id''\] \(mixed\) of encapsed string cannot be cast to string\.$#'
-			identifier: encapsedStringPart.nonString
-			count: 1
-			path: app/Http/Controllers/API/LMS/LMSMatieresQueryController.php
-
-		-
-			message: '#^Unable to resolve the template type TKey in call to function collect$#'
-			identifier: argument.templateType
-			count: 1
-			path: app/Http/Controllers/API/LMS/LMSMatieresQueryController.php
-
-		-
-			message: '#^Unable to resolve the template type TValue in call to function collect$#'
-			identifier: argument.templateType
-			count: 1
-			path: app/Http/Controllers/API/LMS/LMSMatieresQueryController.php
-
-		-
 			message: '#^Access to an undefined property App\\Http\\Controllers\\API\\LMS\\LMSSeancesMutationController\:\:\$classeSyncService\.$#'
 			identifier: property.notFound
 			count: 1
@@ -6623,6 +6503,66 @@ parameters:
 			identifier: cast.string
 			count: 1
 			path: app/Services/Evaluation/EvaluationGradingService.php
+
+		-
+			message: '#^Parameter \#1 \$column of method Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\:\:where\(\) expects array\<int\|model property of Illuminate\\Database\\Eloquent\\Model, mixed\>\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\: Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\: void\)\|Illuminate\\Contracts\\Database\\Query\\Expression\|model property of Illuminate\\Database\\Eloquent\\Model, ''klassci_etudiant_id'' given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Matiere/MatiereEvaluationsFetcher.php
+
+		-
+			message: '#^Cannot access offset ''classe'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: app/Services/Matiere/MatiereSeancesFetcher.php
+
+		-
+			message: '#^Cannot access offset ''id'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: app/Services/Matiere/MatiereSeancesFetcher.php
+
+		-
+			message: '#^Cannot access offset ''matieres'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: app/Services/Matiere/MatiereSeancesFetcher.php
+
+		-
+			message: '#^Cannot access offset ''places_occupees'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: app/Services/Matiere/MatiereSeancesFetcher.php
+
+		-
+			message: '#^Cannot access offset ''seances_programmees'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: app/Services/Matiere/MatiereSeancesFetcher.php
+
+		-
+			message: '#^Method App\\Services\\Matiere\\MatiereSeancesFetcher\:\:filterHiddenAndArchivedForStudent\(\) should return array\<int, array\<string, mixed\>\> but returns array\<mixed\>\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Services/Matiere/MatiereSeancesFetcher.php
+
+		-
+			message: '#^Part \$seance\[''classe''\]\[''id''\] \(mixed\) of encapsed string cannot be cast to string\.$#'
+			identifier: encapsedStringPart.nonString
+			count: 1
+			path: app/Services/Matiere/MatiereSeancesFetcher.php
+
+		-
+			message: '#^Cannot access offset ''evaluations'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: app/Services/Matiere/MyMatieresQueryService.php
+
+		-
+			message: '#^Cannot access offset ''matieres'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: app/Services/Matiere/MyMatieresQueryService.php
 
 		-
 			message: '#^Access to an undefined property App\\Models\\QuizAttempt\:\:\$max_score\.$#'

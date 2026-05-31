@@ -6427,111 +6427,27 @@ parameters:
 			path: app/Rules/PositiveInteger.php
 
 		-
-			message: '#^Argument of an invalid type mixed supplied for foreach, only iterables are supported\.$#'
-			identifier: foreach.nonIterable
-			count: 2
-			path: app/Services/ClasseSyncService.php
-
-		-
-			message: '#^Cannot access offset ''classe'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 3
-			path: app/Services/ClasseSyncService.php
-
-		-
-			message: '#^Cannot access offset ''classes'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 1
-			path: app/Services/ClasseSyncService.php
-
-		-
-			message: '#^Cannot access offset ''etudiants'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 3
-			path: app/Services/ClasseSyncService.php
-
-		-
 			message: '#^Cannot access offset ''id'' on mixed\.$#'
 			identifier: offsetAccess.nonOffsetAccessible
-			count: 5
-			path: app/Services/ClasseSyncService.php
-
-		-
-			message: '#^Cannot access offset ''matieres'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
 			count: 1
 			path: app/Services/ClasseSyncService.php
 
 		-
-			message: '#^Expression on left side of \?\? is not nullable\.$#'
-			identifier: nullCoalesce.expr
-			count: 1
-			path: app/Services/ClasseSyncService.php
-
-		-
-			message: '#^Method App\\Services\\ClasseSyncService\:\:fetchClassesFromKlassci\(\) return type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Services/ClasseSyncService.php
-
-		-
-			message: '#^Method App\\Services\\ClasseSyncService\:\:fetchClassesFromKlassci\(\) should return array but returns mixed\.$#'
-			identifier: return.type
-			count: 1
-			path: app/Services/ClasseSyncService.php
-
-		-
-			message: '#^Method App\\Services\\ClasseSyncService\:\:syncClasse\(\) has parameter \$klasseData with no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Services/ClasseSyncService.php
-
-		-
-			message: '#^Method App\\Services\\ClasseSyncService\:\:syncClasse\(\) return type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Services/ClasseSyncService.php
-
-		-
-			message: '#^Method App\\Services\\ClasseSyncService\:\:syncClasseStudents\(\) has parameter \$etudiantsData with no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Services/ClasseSyncService.php
-
-		-
-			message: '#^Method App\\Services\\ClasseSyncService\:\:syncClasseStudents\(\) return type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Services/ClasseSyncService.php
-
-		-
-			message: '#^Method App\\Services\\ClasseSyncService\:\:syncUserClasses\(\) return type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Services/ClasseSyncService.php
-
-		-
-			message: '#^Parameter \#1 \$klasseData of method App\\Services\\ClasseSyncService\:\:syncClasse\(\) expects array, mixed given\.$#'
+			message: '#^Parameter \#1 \$klasseData of method App\\Services\\ClasseSyncService\:\:syncSingleClasse\(\) expects array\<string, mixed\>, mixed given\.$#'
 			identifier: argument.type
 			count: 1
 			path: app/Services/ClasseSyncService.php
 
 		-
-			message: '#^Part \$classe\[''id''\] \(mixed\) of encapsed string cannot be cast to string\.$#'
-			identifier: encapsedStringPart.nonString
-			count: 1
-			path: app/Services/ClasseSyncService.php
-
-		-
-			message: '#^Part \$matiere\[''id''\] \(mixed\) of encapsed string cannot be cast to string\.$#'
-			identifier: encapsedStringPart.nonString
-			count: 1
-			path: app/Services/ClasseSyncService.php
-
-		-
-			message: '#^Possibly invalid array key type mixed\.$#'
-			identifier: offsetAccess.invalidOffset
+			message: '#^Parameter \#2 \$etudiantsData of method App\\Services\\Sync\\Classes\\ClasseStudentsSynchronizer\:\:sync\(\) expects array\<int, array\<string, mixed\>\>, array\<mixed, mixed\> given\.$#'
+			identifier: argument.type
 			count: 2
+			path: app/Services/ClasseSyncService.php
+
+		-
+			message: '#^Part \$classeName \(mixed\) of encapsed string cannot be cast to string\.$#'
+			identifier: encapsedStringPart.nonString
+			count: 1
 			path: app/Services/ClasseSyncService.php
 
 		-
@@ -7043,6 +6959,108 @@ parameters:
 			identifier: argument.templateType
 			count: 4
 			path: app/Services/SeanceQueryService.php
+
+		-
+			message: '#^Binary operation "\." between mixed and '' '' results in an error\.$#'
+			identifier: binaryOp.invalid
+			count: 1
+			path: app/Services/Sync/Classes/ClasseStudentsSynchronizer.php
+
+		-
+			message: '#^Binary operation "\." between non\-falsy\-string and mixed results in an error\.$#'
+			identifier: binaryOp.invalid
+			count: 1
+			path: app/Services/Sync/Classes/ClasseStudentsSynchronizer.php
+
+		-
+			message: '#^Expression on left side of \?\? is not nullable\.$#'
+			identifier: nullCoalesce.expr
+			count: 1
+			path: app/Services/Sync/Classes/ClasseStudentsSynchronizer.php
+
+		-
+			message: '#^Parameter \#1 \$string of function trim expects string, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Sync/Classes/ClasseStudentsSynchronizer.php
+
+		-
+			message: '#^Argument of an invalid type mixed supplied for foreach, only iterables are supported\.$#'
+			identifier: foreach.nonIterable
+			count: 2
+			path: app/Services/Sync/Classes/KlassciClassesFetcher.php
+
+		-
+			message: '#^Cannot access offset ''classe'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 2
+			path: app/Services/Sync/Classes/KlassciClassesFetcher.php
+
+		-
+			message: '#^Cannot access offset ''classes'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: app/Services/Sync/Classes/KlassciClassesFetcher.php
+
+		-
+			message: '#^Cannot access offset ''etudiants'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 2
+			path: app/Services/Sync/Classes/KlassciClassesFetcher.php
+
+		-
+			message: '#^Cannot access offset ''id'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 4
+			path: app/Services/Sync/Classes/KlassciClassesFetcher.php
+
+		-
+			message: '#^Cannot access offset ''matieres'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: app/Services/Sync/Classes/KlassciClassesFetcher.php
+
+		-
+			message: '#^Method App\\Services\\Sync\\Classes\\KlassciClassesFetcher\:\:fetchAllClassesWithDetails\(\) should return array\<int, array\<string, mixed\>\> but returns list\<mixed\>\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Services/Sync/Classes/KlassciClassesFetcher.php
+
+		-
+			message: '#^Method App\\Services\\Sync\\Classes\\KlassciClassesFetcher\:\:fetchClasseDetails\(\) should return array\<string, mixed\>\|null but returns mixed\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Services/Sync/Classes/KlassciClassesFetcher.php
+
+		-
+			message: '#^Method App\\Services\\Sync\\Classes\\KlassciClassesFetcher\:\:fetchStudentClasses\(\) should return array\<int, array\<string, mixed\>\> but returns mixed\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Services/Sync/Classes/KlassciClassesFetcher.php
+
+		-
+			message: '#^Method App\\Services\\Sync\\Classes\\KlassciClassesFetcher\:\:fetchTeacherClasses\(\) should return array\<int, array\<string, mixed\>\> but returns list\<mixed\>\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Services/Sync/Classes/KlassciClassesFetcher.php
+
+		-
+			message: '#^Part \$classe\[''id''\] \(mixed\) of encapsed string cannot be cast to string\.$#'
+			identifier: encapsedStringPart.nonString
+			count: 1
+			path: app/Services/Sync/Classes/KlassciClassesFetcher.php
+
+		-
+			message: '#^Part \$matiere\[''id''\] \(mixed\) of encapsed string cannot be cast to string\.$#'
+			identifier: encapsedStringPart.nonString
+			count: 1
+			path: app/Services/Sync/Classes/KlassciClassesFetcher.php
+
+		-
+			message: '#^Possibly invalid array key type mixed\.$#'
+			identifier: offsetAccess.invalidOffset
+			count: 2
+			path: app/Services/Sync/Classes/KlassciClassesFetcher.php
 
 		-
 			message: '#^Method App\\Services\\TenantManager\:\:klassciConfig\(\) return type has no value type specified in iterable type array\.$#'

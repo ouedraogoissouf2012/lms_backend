@@ -6,6 +6,7 @@ use App\Http\Middleware\ResolveInstitution;
 use App\Models\Institution;
 use App\Models\User;
 use App\Services\TenantManager;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Laravel\Sanctum\PersonalAccessToken;
@@ -19,6 +20,8 @@ use Tests\TestCase;
  */
 class ResolveInstitutionMiddlewareTest extends TestCase
 {
+    use RefreshDatabase;
+
     private Institution $institutionA;
     private Institution $institutionB;
     private User $userOfA;

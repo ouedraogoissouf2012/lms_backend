@@ -802,3 +802,15 @@ Route::middleware(['auth:sanctum'])->prefix('search')->group(function () {
     // Sauvegarder dans l'historique
     Route::post('/history', [SearchController::class, 'saveSearchHistory']);
 });
+
+// ============================================
+// Route de test interne — testing env uniquement
+// ============================================
+// Sert exclusivement à valider le pipeline d'exception handling
+// (`bootstrap/app.php` withExceptions) côté tests Feature
+// (cf. `tests/Unit/ExceptionHandlerTest`). N'est pas exposée en prod.
+if (app()->environment('testing')) {
+    Route::get('/test-throw-exception', function () {
+        throw new \RuntimeException('Diagnostic exception (testing env only).');
+    });
+}

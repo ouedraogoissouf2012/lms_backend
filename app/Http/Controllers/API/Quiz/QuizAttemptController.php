@@ -136,7 +136,7 @@ class QuizAttemptController extends AuthenticatedController
         // NOUVEAU: Vérifier si le temps est écoulé (sécurité côté serveur)
         if ($attempt->isTimeExpired()) {
             // Soumettre automatiquement avec les réponses actuelles ou vides
-            $attempt->submit($request->answers ?? []);
+            $this->gradingService->submitAttempt($attempt, $request->answers ?? []);
             return response()->json([
                 'success' => false,
                 'message' => 'Le temps est écoulé. Votre tentative a été soumise automatiquement.',
@@ -160,7 +160,7 @@ class QuizAttemptController extends AuthenticatedController
         }
 
         // Soumettre les réponses
-        $attempt->submit($request->answers);
+        $this->gradingService->submitAttempt($attempt, $request->answers);
 
         // Charger les données complètes
         $attempt->load(['quiz.questions.answers', 'user:id,name,email']);
@@ -269,7 +269,8 @@ class QuizAttemptController extends AuthenticatedController
             ], 404);
         }
 
-        $attempt->manualGrade(
+        $this->gradingService->manualGradeAttempt(
+            $attempt,
             $request->points_earned,
             $this->authenticatedUser($request)->id,
             $request->feedback
@@ -427,16 +428,16 @@ class QuizAttemptController extends AuthenticatedController
     {
         $questions = $attempt->quiz->questions()->with('answers')->ordered()->get();
         $userAnswers = $attempt->answers;
+        $gradingService = $this->gradingService;
 
-        return $questions->map(function ($question) use ($userAnswers) {
+        return $questions->map(function ($question) use ($userAnswers, $gradingService) {
             $userAnswer = $userAnswers[$question->id] ?? null;
-            $isCorrect = $question->checkAnswer($userAnswer);
 
             return [
                 'question' => $question,
                 'user_answer' => $userAnswer,
-                'is_correct' => $isCorrect,
-                'points_earned' => $question->calculatePoints($userAnswer),
+                'is_correct' => $gradingService->checkAnswer($question, $userAnswer),
+                'points_earned' => $gradingService->calculatePoints($question, $userAnswer),
                 'correct_answers' => $question->getCorrectAnswers(),
             ];
         })->toArray();

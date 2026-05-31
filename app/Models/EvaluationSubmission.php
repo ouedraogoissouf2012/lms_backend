@@ -54,23 +54,4 @@ class EvaluationSubmission extends Model
         return $this->belongsTo(User::class, 'student_id');
     }
 
-    /**
-     * Calcule le score automatiquement pour les QCM — délègue à
-     * {@see \App\Services\Evaluation\EvaluationGradingService::calculateScore} (PERF-04).
-     */
-    public function calculateScore(): void
-    {
-        app(\App\Services\Evaluation\EvaluationGradingService::class)->calculateScore($this);
-    }
-
-    /**
-     * Soumet les réponses et calcule le score
-     */
-    public function submit(): void
-    {
-        $this->status = 'soumis';
-        $this->submitted_at = now();
-        $this->calculateScore();
-        $this->save();
-    }
 }

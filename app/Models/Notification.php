@@ -169,12 +169,4 @@ class Notification extends Model
         };
     }
 
-    /**
-     * Obtenir le lien de l'action — délègue à
-     * {@see \App\Services\Notification\NotificationPresenter::getActionUrl} (PERF-04).
-     */
-    public function getActionUrl(): ?string
-    {
-        return app(\App\Services\Notification\NotificationPresenter::class)->getActionUrl($this);
-    }
 }

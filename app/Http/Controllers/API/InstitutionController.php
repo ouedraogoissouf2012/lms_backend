@@ -14,6 +14,23 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
 
+/**
+ * InstitutionController — admin platform-wide.
+ *
+ * SECURITY : ce controller utilise massivement `withoutGlobalScope('institution')`
+ * pour aggréger des stats **cross-tenant**. Cet usage est intentionnel et sûr
+ * UNIQUEMENT parce que toutes les routes pointant ici sont protégées par
+ * `role:supradmin` (cf. `routes/api.php` group « admin/institutions » et
+ * voisinage). Si une route est jamais ouverte à un rôle non-supradmin, ce
+ * controller deviendrait une fuite cross-tenant à grande échelle.
+ *
+ * Ne jamais retirer la protection `role:supradmin` côté routes sans
+ * réécrire les queries pour respecter le scope global, OU ajouter une
+ * vérification de rôle explicite ici en début de méthode.
+ *
+ * @see app/Models/Traits/BelongsToInstitution.php
+ * @see routes/api.php (groupe admin/institutions)
+ */
 class InstitutionController extends Controller
 {
     /**

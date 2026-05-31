@@ -315,13 +315,20 @@ class ClasseSyncService
                     $stats['students_synced']++;
                 }
 
-                // Créer ou mettre à jour l'inscription (pivot)
-                $institutionId = app(TenantManager::class)->id();
+                // Créer ou mettre à jour l'inscription (pivot `classe_etudiant`).
+                //
+                // SECURITY (hardening) : la table pivot n'a pas de modèle Eloquent
+                // donc pas de scope `BelongsToInstitution`. Le filtre `institution_id`
+                // est donc obligatoire et fail-secure : on throw si le tenant n'est
+                // pas résolu plutôt que de risquer un cross-tenant via `->when()`
+                // silencieux. Ce code n'est appelé que depuis le sync KLASSCI dans
+                // un contexte authentifié — le tenant DOIT être résolu.
+                $institutionId = app(TenantManager::class)->getResolved();
 
                 $exists = DB::table('classe_etudiant')
                     ->where('classe_id', $classe->id)
                     ->where('user_id', $student->id)
-                    ->when($institutionId, fn($q) => $q->where('institution_id', $institutionId))
+                    ->where('institution_id', $institutionId)
                     ->exists();
 
                 if (!$exists) {
@@ -341,7 +348,7 @@ class ClasseSyncService
                     DB::table('classe_etudiant')
                         ->where('classe_id', $classe->id)
                         ->where('user_id', $student->id)
-                        ->when($institutionId, fn($q) => $q->where('institution_id', $institutionId))
+                        ->where('institution_id', $institutionId)
                         ->update([
                             'statut' => 'actif',
                             'updated_at' => now()

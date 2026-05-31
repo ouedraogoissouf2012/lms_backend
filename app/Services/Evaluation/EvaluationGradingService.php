@@ -115,4 +115,19 @@ class EvaluationGradingService
         $percentage = $totalPoints > 0 ? ($earnedPoints / $totalPoints) : 0;
         $submission->note_sur_20 = round($percentage * $evaluation->bareme, 2);
     }
+
+    /**
+     * Soumet une évaluation : passe le statut à `soumis`, calcule le score,
+     * persiste. Orchestrateur utilisé par le controller à la soumission étudiant.
+     *
+     * Remplace l'ancien `EvaluationSubmission::submit()` qui mélangeait state
+     * machine et appel `app(...)` (anti-pattern Service Locator §1.6 D).
+     */
+    public function submit(EvaluationSubmission $submission): void
+    {
+        $submission->status = 'soumis';
+        $submission->submitted_at = now();
+        $this->calculateScore($submission);
+        $submission->save();
+    }
 }

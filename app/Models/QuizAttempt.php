@@ -131,51 +131,6 @@ class QuizAttempt extends Model
     }
 
     /**
-     * Soumettre la tentative
-     */
-    public function submit(array $answers): bool
-    {
-        $this->answers = $answers;
-        $this->submitted_at = now();
-        $this->status = 'submitted';
-
-        // Calculer le temps passé
-        if ($this->started_at) {
-            $this->time_spent_seconds = (int) abs(now()->diffInSeconds($this->started_at));
-        }
-
-        // Auto-correction pour les questions à correction automatique
-        $this->autoGrade();
-
-        return $this->save();
-    }
-
-    /**
-     * Auto-correction des questions — délègue à {@see \App\Services\Quiz\QuizGradingService::gradeAttempt}
-     * extrait en PERF-04. Thin wrapper pour préserver les call sites internes.
-     */
-    public function autoGrade(): void
-    {
-        app(\App\Services\Quiz\QuizGradingService::class)->gradeAttempt($this);
-    }
-
-    /**
-     * Correction manuelle par un enseignant
-     */
-    public function manualGrade(float $pointsEarned, int $gradedBy, ?string $feedback = null): bool
-    {
-        $this->points_earned = $pointsEarned;
-        $this->score = $this->points_possible > 0 ? ($pointsEarned / $this->points_possible) * 100 : 0;
-        $this->passed = $this->score >= $this->quiz->passing_score;
-        $this->status = 'graded';
-        $this->graded_by = $gradedBy;
-        $this->graded_at = now();
-        $this->teacher_feedback = $feedback;
-
-        return $this->save();
-    }
-
-    /**
      * Abandonner la tentative
      */
     public function abandon(): bool

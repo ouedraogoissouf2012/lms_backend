@@ -40,6 +40,15 @@ class ResolveInstitution
 
     public function handle(Request $request, Closure $next): Response
     {
+        // CRITICAL-06/07: chaque requête démarre avec un tenant non résolu.
+        // Sous Octane / Swoole / FrankenPHP (et en suite PHPUnit), le container
+        // Laravel et le `TenantManager` singleton survivent entre requêtes —
+        // sans reset, le tenant du request précédent contamine le scope
+        // `BelongsToInstitution` du request en cours et empêche la résolution
+        // (User::find via tokenable retournerait null pour un user d'un autre
+        // tenant). Reset = fresh state garanti à chaque entrée du middleware.
+        $this->tenantManager->reset();
+
         // Priority 1: authenticated request — trust ONLY the JWT-bound institution.
         if ($request->bearerToken()) {
             $this->resolveFromBearerToken($request);

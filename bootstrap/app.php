@@ -51,7 +51,10 @@ $app = Application::configure(basePath: dirname(__DIR__))
         $exceptions->render(function (\Throwable $e, $request) {
             if ($request->expectsJson()) {
                 $statusCode = method_exists($e, 'getStatusCode') ? $e->getStatusCode() : 500;
-                $message = app()->isProduction() ? 'Une erreur est survenue.' : $e->getMessage();
+                // CRITICAL-02: ne pas se fier à `isProduction()` seul (laisserait fuir
+                // les détails en staging/demo/preview). On gate sur `config('app.debug')`
+                // qui est le contrat Laravel standard pour exposer les détails.
+                $message = config('app.debug') ? $e->getMessage() : 'Une erreur est survenue.';
 
                 \Illuminate\Support\Facades\Log::error('Exception non-catchée', [
                     'exception' => get_class($e),

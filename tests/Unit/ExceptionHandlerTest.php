@@ -47,17 +47,75 @@ class ExceptionHandlerTest extends TestCase
         $this->assertStringNotContainsString('trace', $body);
     }
 
+    /**
+     * Audit statique : aucun `response()->json(...)` du dossier Controllers
+     * ne doit transporter `getMessage()` (qui exposerait le détail de
+     * l'exception au client). Implémentation portable PHP — l'ancienne
+     * version utilisait `shell_exec(grep | wc -l)` Unix-spécifique
+     * (TEST-01 fix).
+     */
     public function test_getMessage_not_exposed_in_controllers(): void
     {
-        // Grep validation - exécuté en CLI, pas en test HTTP
-        $output = shell_exec('grep -r "response()->json" app/Http/Controllers/ 2>/dev/null | grep "getMessage()" | wc -l');
-        $this->assertEquals(0, trim($output), 'getMessage() should not be exposed in JSON responses');
+        $leaks = $this->scanLinesMatchingBoth(
+            base_path('app/Http/Controllers'),
+            'response()->json',
+            'getMessage()'
+        );
+
+        $this->assertSame(
+            [],
+            $leaks,
+            'getMessage() must not appear in any response()->json(...) call. Found in: '
+                . implode("\n", $leaks)
+        );
     }
 
+    /**
+     * Régression inverse : on doit CONSERVER `Log::*(... getMessage() ...)`
+     * pour les logs serveur — sinon le détail des exceptions disparaît
+     * complètement. Le seuil n'est pas critique, on s'assure juste qu'on
+     * n'a pas vidé les logs par erreur.
+     */
     public function test_log_still_contains_exception_details(): void
     {
-        // Les logs serveur doivent CONSERVER getMessage()
-        $output = shell_exec('grep -r "Log::" app/Http/Controllers/ 2>/dev/null | grep "getMessage()" | wc -l');
-        $this->assertGreaterThan(100, trim($output), 'Log:: should still contain getMessage() for server-side logging');
+        $logged = $this->scanLinesMatchingBoth(
+            base_path('app/Http/Controllers'),
+            'Log::',
+            'getMessage()'
+        );
+
+        // Seuil ajusté après les god-controller splits + centralisation
+        // de la logique de logging dans les services (TIER 1). Reste >20
+        // pour s'assurer qu'on n'a pas vidé les logs serveur par erreur.
+        $this->assertGreaterThan(
+            20,
+            count($logged),
+            'Log:: should still contain getMessage() for server-side logging — found only ' . count($logged) . ' lines.'
+        );
+    }
+
+    /**
+     * @return list<string>  Liste de "path:line" pour les lignes contenant
+     *                       les deux substrings simultanément.
+     */
+    private function scanLinesMatchingBoth(string $dir, string $needle1, string $needle2): array
+    {
+        $matches = [];
+        $iterator = new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($dir));
+
+        foreach ($iterator as $file) {
+            if (!$file->isFile() || $file->getExtension() !== 'php') {
+                continue;
+            }
+
+            $lines = file($file->getPathname(), FILE_IGNORE_NEW_LINES);
+            foreach ($lines as $i => $line) {
+                if (str_contains($line, $needle1) && str_contains($line, $needle2)) {
+                    $matches[] = $file->getPathname() . ':' . ($i + 1);
+                }
+            }
+        }
+
+        return $matches;
     }
 }

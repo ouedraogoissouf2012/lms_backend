@@ -142,4 +142,54 @@ class QuizGradingService
             $attempt->status = 'submitted';
         }
     }
+
+    /**
+     * Soumet une tentative : capture les réponses, calcule le temps, déclenche
+     * l'auto-grading, persiste. Méthode orchestratrice utilisée par le
+     * controller à la soumission étudiant.
+     *
+     * Remplace l'ancien `QuizAttempt::submit()` qui mélangeait state machine
+     * et appel `app(...)` (anti-pattern Service Locator §1.6 D).
+     *
+     * @return bool  Résultat du `save()` Eloquent.
+     */
+    public function submitAttempt(QuizAttempt $attempt, array $answers): bool
+    {
+        $attempt->answers = $answers;
+        $attempt->submitted_at = now();
+        $attempt->status = 'submitted';
+
+        if ($attempt->started_at) {
+            $attempt->time_spent_seconds = (int) abs(now()->diffInSeconds($attempt->started_at));
+        }
+
+        $this->gradeAttempt($attempt);
+
+        return $attempt->save();
+    }
+
+    /**
+     * Correction manuelle d'une tentative par un enseignant — utilisée pour
+     * les essais / short_answer / override d'un auto-grade.
+     *
+     * Remplace l'ancien `QuizAttempt::manualGrade()`.
+     */
+    public function manualGradeAttempt(
+        QuizAttempt $attempt,
+        float $pointsEarned,
+        int $gradedBy,
+        ?string $feedback = null
+    ): bool {
+        $attempt->points_earned = $pointsEarned;
+        $attempt->score = $attempt->points_possible > 0
+            ? ($pointsEarned / $attempt->points_possible) * 100
+            : 0;
+        $attempt->passed = $attempt->score >= $attempt->quiz->passing_score;
+        $attempt->status = 'graded';
+        $attempt->graded_by = $gradedBy;
+        $attempt->graded_at = now();
+        $attempt->teacher_feedback = $feedback;
+
+        return $attempt->save();
+    }
 }

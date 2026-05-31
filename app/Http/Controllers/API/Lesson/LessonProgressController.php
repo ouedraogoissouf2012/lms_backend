@@ -11,6 +11,7 @@ use App\Http\Requests\PublishLessonRequest;
 use App\Http\Requests\UnpublishLessonRequest;
 use App\Models\Lesson;
 use App\Models\LessonProgress;
+use App\Services\Lesson\LessonProgressService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
@@ -22,6 +23,10 @@ use Illuminate\Support\Facades\Validator;
  */
 class LessonProgressController extends AuthenticatedController
 {
+    public function __construct(private LessonProgressService $progressService)
+    {
+    }
+
     /**
      * GET /api/lessons/{id}/progress
      * Obtenir la progression d'un cours (ou de tous les étudiants pour enseignant)
@@ -107,7 +112,8 @@ class LessonProgressController extends AuthenticatedController
             ['user_id' => $user->id, 'lesson_id' => $lesson->id]
         );
 
-        $progress->updateProgress(
+        $this->progressService->updateProgress(
+            $progress,
             $request->progress_percentage,
             $request->time_spent_minutes
         );

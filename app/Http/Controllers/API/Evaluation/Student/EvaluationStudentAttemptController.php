@@ -90,9 +90,7 @@ final class EvaluationStudentAttemptController extends AuthenticatedController
             }
 
             $submission->answers = $request->validated('answers');
-            // TODO post-#176: $this->gradingService->submit($submission);
-            // Sur cette branche fork avant #176, EvaluationSubmission::submit() existe encore.
-            $submission->submit();
+            $this->gradingService->submit($submission);
 
             return response()->json([
                 'success' => true,

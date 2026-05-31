@@ -100,27 +100,6 @@ class QuizQuestion extends Model
     }
 
     /**
-     * Vérifier si une réponse est correcte — délègue à
-     * {@see \App\Services\Quiz\QuizGradingService::checkAnswer} (PERF-04).
-     *
-     * Retourne `null` pour les types nécessitant une correction manuelle
-     * (short_answer, essay) — la signature reste `?bool` malgré le hint.
-     */
-    public function checkAnswer($userAnswer): ?bool
-    {
-        return app(\App\Services\Quiz\QuizGradingService::class)->checkAnswer($this, $userAnswer);
-    }
-
-    /**
-     * Calculer les points obtenus pour une réponse — délègue à
-     * {@see \App\Services\Quiz\QuizGradingService::calculatePoints} (PERF-04).
-     */
-    public function calculatePoints($userAnswer): float
-    {
-        return app(\App\Services\Quiz\QuizGradingService::class)->calculatePoints($this, $userAnswer);
-    }
-
-    /**
      * Vérifier si la question nécessite une correction manuelle
      */
     public function requiresManualGrading(): bool

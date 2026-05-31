@@ -81,16 +81,6 @@ class LessonProgress extends Model
     }
 
     /**
-     * Met à jour la progression — délègue à
-     * {@see \App\Services\Lesson\LessonProgressService::updateProgress} (PERF-04).
-     */
-    public function updateProgress(int $percentage, ?int $timeSpentMinutes = null): bool
-    {
-        return app(\App\Services\Lesson\LessonProgressService::class)
-            ->updateProgress($this, $percentage, $timeSpentMinutes);
-    }
-
-    /**
      * Marquer comme complété
      */
     public function complete(): bool

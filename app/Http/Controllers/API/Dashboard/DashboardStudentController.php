@@ -10,6 +10,7 @@ use App\Models\QuizAttempt;
 use App\Models\ForumTopic;
 use App\Models\Notification;
 use App\Models\User;
+use App\Services\Notification\NotificationPresenter;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
@@ -21,6 +22,10 @@ use Illuminate\Support\Facades\DB;
  */
 class DashboardStudentController extends AuthenticatedController
 {
+    public function __construct(private NotificationPresenter $presenter)
+    {
+    }
+
     /**
      * Dashboard Étudiant
      *
@@ -156,7 +161,7 @@ class DashboardStudentController extends AuthenticatedController
                     'is_read' => $notification->isRead(),
                     'icon' => $notification->getIcon(),
                     'color' => $notification->getColor(),
-                    'action_url' => $notification->getActionUrl(),
+                    'action_url' => $this->presenter->getActionUrl($notification),
                     'created_at' => $notification->created_at,
                 ];
             });

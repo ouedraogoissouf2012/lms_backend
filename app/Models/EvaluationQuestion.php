@@ -39,13 +39,4 @@ class EvaluationQuestion extends Model
         return $this->belongsTo(Evaluation::class);
     }
 
-    /**
-     * Vérifie si une réponse est correcte — délègue à
-     * {@see \App\Services\Evaluation\EvaluationGradingService::isCorrectAnswer} (PERF-04).
-     */
-    public function isCorrectAnswer($answer): bool
-    {
-        return app(\App\Services\Evaluation\EvaluationGradingService::class)
-            ->isCorrectAnswer($this, $answer);
-    }
 }

@@ -14,6 +14,7 @@ use App\Models\EvaluationQuestion;
 use App\Models\EvaluationSubmission;
 use App\Models\User;
 use App\Services\Evaluation\EvaluationEnrichmentService;
+use App\Services\Evaluation\EvaluationGradingService;
 use App\Services\KlassciProxyService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -32,6 +33,7 @@ class EvaluationStudentController extends AuthenticatedController
     public function __construct(
         private KlassciProxyService $klassciService,
         private EvaluationEnrichmentService $enrichmentService,
+        private EvaluationGradingService $gradingService,
     ) {}
 
     public function myEvaluations(Request $request): JsonResponse
@@ -412,7 +414,7 @@ class EvaluationStudentController extends AuthenticatedController
 
             // Update submission with validated answers
             $submission->answers = $request->validated('answers');
-            $submission->submit(); // Auto-calculate score
+            $this->gradingService->submit($submission); // Auto-calculate score
 
             return response()->json([
                 'success' => true,

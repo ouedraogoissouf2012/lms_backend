@@ -142,4 +142,57 @@ class QuizGradingService
             $attempt->status = 'submitted';
         }
     }
+
+    /**
+     * Soumet une tentative : capture les réponses, calcule le temps, déclenche
+     * l'auto-grading, persiste. Méthode orchestratrice utilisée par le
+     * controller à la soumission étudiant.
+     *
+     * Remplace l'ancien `QuizAttempt::submit()` qui mélangeait state machine
+     * et appel `app(...)` (anti-pattern Service Locator §1.6 D).
+     *
+     * @return bool  Résultat du `save()` Eloquent.
+     */
+    public function submitAttempt(QuizAttempt $attempt, array $answers): bool
+    {
+        $attempt->answers = $answers;
+        $attempt->submitted_at = now();
+        $attempt->status = 'submitted';
+
+        if ($attempt->started_at) {
+            $attempt->time_spent_seconds = (int) abs(now()->diffInSeconds($attempt->started_at));
+        }
+
+        $this->gradeAttempt($attempt);
+
+        return $attempt->save();
+    }
+
+    /**
+     * Correction manuelle d'une tentative par un enseignant — utilisée pour
+     * les essais / short_answer / override d'un auto-grade.
+     *
+     * Remplace l'ancien `QuizAttempt::manualGrade()`.
+     */
+    public function manualGradeAttempt(
+        QuizAttempt $attempt,
+        float $pointsEarned,
+        int $gradedBy,
+        ?string $feedback = null
+    ): bool {
+        $attempt->points_earned = $pointsEarned;
+        $attempt->score = $attempt->points_possible > 0
+            ? ($pointsEarned / $attempt->points_possible) * 100
+            : 0;
+        $attempt->passed = $attempt->score >= $attempt->quiz->passing_score;
+        $attempt->status = 'graded';
+        // graded_by est int<0,max>|null — le caller passe le id d'un user qui
+        // existe forcément (Sanctum::actingAs garanti positif). Cast pour
+        // assurer la covariance type.
+        $attempt->graded_by = max(0, $gradedBy);
+        $attempt->graded_at = now();
+        $attempt->teacher_feedback = $feedback;
+
+        return $attempt->save();
+    }
 }

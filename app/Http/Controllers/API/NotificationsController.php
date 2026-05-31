@@ -9,6 +9,7 @@ use App\Http\Requests\MarkAllAsReadRequest;
 use App\Http\Requests\DeleteNotificationRequest;
 use App\Http\Requests\DeleteAllReadNotificationsRequest;
 use App\Http\Requests\CreateNotificationRequest;
+use App\Services\Notification\NotificationPresenter;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -16,6 +17,10 @@ use Carbon\Carbon;
 
 class NotificationsController extends AuthenticatedController
 {
+    public function __construct(private NotificationPresenter $presenter)
+    {
+    }
+
     /**
      * Récupérer toutes les notifications de l'utilisateur connecté
      */
@@ -99,7 +104,7 @@ class NotificationsController extends AuthenticatedController
                         'created_at' => $notification->created_at->toISOString(),
                         'time_ago' => $notification->created_at->diffForHumans(),
                         'is_unread' => is_null($notification->read_at),
-                        'action_url' => $notification->getActionUrl(),
+                        'action_url' => $this->presenter->getActionUrl($notification),
                         'icon' => $notification->getIcon(),
                         'color' => $notification->getColor(),
                     ];

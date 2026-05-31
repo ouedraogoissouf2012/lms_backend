@@ -638,8 +638,10 @@ Route::middleware(['auth:sanctum', 'klassci.sync'])->prefix('lms')->group(functi
 // split en 4 controllers SRP sous `App\Http\Controllers\API\Evaluation\`.
 use App\Http\Controllers\API\Evaluation\EvaluationCrudController;
 use App\Http\Controllers\API\Evaluation\EvaluationKlassciSyncController;
-use App\Http\Controllers\API\Evaluation\EvaluationStudentController;
 use App\Http\Controllers\API\Evaluation\EvaluationTeacherController;
+use App\Http\Controllers\API\Evaluation\Student\EvaluationStudentAttemptController;
+use App\Http\Controllers\API\Evaluation\Student\EvaluationStudentListController;
+use App\Http\Controllers\API\Evaluation\Student\EvaluationStudentSubmissionController;
 
 // Routes accessibles à tous les utilisateurs authentifiés
 Route::middleware(['auth:sanctum', 'klassci.sync'])->group(function () {
@@ -651,25 +653,25 @@ Route::middleware(['auth:sanctum', 'klassci.sync'])->group(function () {
     // supprimée (vecteur d'IDOR — un étudiant pouvait forge l'ID d'un autre).
     // Le besoin legit "un étudiant voit ses propres évals" passe par cette
     // route sans param, dérivée du token Sanctum.
-    Route::get('evaluations/student', [EvaluationStudentController::class, 'myEvaluations']);
+    Route::get('evaluations/student', [EvaluationStudentListController::class, 'myEvaluations']);
 
     // Récupérer une évaluation spécifique (APRÈS les routes spécifiques)
     Route::get('evaluations/{id}', [EvaluationCrudController::class, 'show']);
 
     // Démarrer et soumettre une évaluation
-    Route::post('evaluations/{id}/start', [EvaluationStudentController::class, 'startEvaluation'])
+    Route::post('evaluations/{id}/start', [EvaluationStudentAttemptController::class, 'startEvaluation'])
         ->middleware('throttle:300,1');
-    Route::post('evaluations/{id}/submit', [EvaluationStudentController::class, 'submitEvaluation'])
+    Route::post('evaluations/{id}/submit', [EvaluationStudentAttemptController::class, 'submitEvaluation'])
         ->middleware('throttle:60,1');
 
     // Récupérer la soumission de l'étudiant connecté
-    Route::get('evaluations/{id}/my-submission', [EvaluationStudentController::class, 'getMySubmission']);
+    Route::get('evaluations/{id}/my-submission', [EvaluationStudentSubmissionController::class, 'getMySubmission']);
 
     // État temporel en temps réel
-    Route::get('evaluations/{id}/time-status', [EvaluationStudentController::class, 'getTimeStatus']);
+    Route::get('evaluations/{id}/time-status', [EvaluationStudentAttemptController::class, 'getTimeStatus']);
 
     // Notes de l'étudiant groupées par matière
-    Route::get('my-grades', [EvaluationStudentController::class, 'myGrades']);
+    Route::get('my-grades', [EvaluationStudentListController::class, 'myGrades']);
 });
 
 // Routes enseignants/coordinateurs uniquement

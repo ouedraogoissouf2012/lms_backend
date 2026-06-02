@@ -367,96 +367,6 @@ parameters:
 			path: app/Http/Controllers/API/Dashboard/DashboardTeacherController.php
 
 		-
-			message: '#^Argument of an invalid type mixed supplied for foreach, only iterables are supported\.$#'
-			identifier: foreach.nonIterable
-			count: 4
-			path: app/Http/Controllers/API/Evaluation/EvaluationCrudController.php
-
-		-
-			message: '#^Binary operation "\+" between mixed and 1 results in an error\.$#'
-			identifier: binaryOp.invalid
-			count: 2
-			path: app/Http/Controllers/API/Evaluation/EvaluationCrudController.php
-
-		-
-			message: '#^Cannot access offset ''code'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 1
-			path: app/Http/Controllers/API/Evaluation/EvaluationCrudController.php
-
-		-
-			message: '#^Cannot access offset ''correct_answers'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 2
-			path: app/Http/Controllers/API/Evaluation/EvaluationCrudController.php
-
-		-
-			message: '#^Cannot access offset ''explanation'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 2
-			path: app/Http/Controllers/API/Evaluation/EvaluationCrudController.php
-
-		-
-			message: '#^Cannot access offset ''id'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 2
-			path: app/Http/Controllers/API/Evaluation/EvaluationCrudController.php
-
-		-
-			message: '#^Cannot access offset ''libelle'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 3
-			path: app/Http/Controllers/API/Evaluation/EvaluationCrudController.php
-
-		-
-			message: '#^Cannot access offset ''niveau'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 2
-			path: app/Http/Controllers/API/Evaluation/EvaluationCrudController.php
-
-		-
-			message: '#^Cannot access offset ''nom'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 2
-			path: app/Http/Controllers/API/Evaluation/EvaluationCrudController.php
-
-		-
-			message: '#^Cannot access offset ''options'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 2
-			path: app/Http/Controllers/API/Evaluation/EvaluationCrudController.php
-
-		-
-			message: '#^Cannot access offset ''points'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 2
-			path: app/Http/Controllers/API/Evaluation/EvaluationCrudController.php
-
-		-
-			message: '#^Cannot access offset ''question'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 2
-			path: app/Http/Controllers/API/Evaluation/EvaluationCrudController.php
-
-		-
-			message: '#^Cannot access offset ''type'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 2
-			path: app/Http/Controllers/API/Evaluation/EvaluationCrudController.php
-
-		-
-			message: '#^Parameter \#1 \$key of method Illuminate\\Support\\Collection\<\(int\|string\),mixed\>\:\:get\(\) expects int\|string\|null, mixed given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Controllers/API/Evaluation/EvaluationCrudController.php
-
-		-
-			message: '#^Strict comparison using \!\=\= between string and null will always evaluate to true\.$#'
-			identifier: notIdentical.alwaysTrue
-			count: 4
-			path: app/Http/Controllers/API/Evaluation/EvaluationCrudController.php
-
-		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$feedback\.$#'
 			identifier: property.notFound
 			count: 1
@@ -5671,6 +5581,66 @@ parameters:
 			path: app/Services/ConvertApiService.php
 
 		-
+			message: '#^Cannot access offset ''code'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: app/Services/Evaluation/EvaluationCreationService.php
+
+		-
+			message: '#^Cannot access offset ''id'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 2
+			path: app/Services/Evaluation/EvaluationCreationService.php
+
+		-
+			message: '#^Cannot access offset ''libelle'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 3
+			path: app/Services/Evaluation/EvaluationCreationService.php
+
+		-
+			message: '#^Cannot access offset ''niveau'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 2
+			path: app/Services/Evaluation/EvaluationCreationService.php
+
+		-
+			message: '#^Cannot access offset ''nom'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 2
+			path: app/Services/Evaluation/EvaluationCreationService.php
+
+		-
+			message: '#^Cannot cast mixed to int\.$#'
+			identifier: cast.int
+			count: 2
+			path: app/Services/Evaluation/EvaluationCreationService.php
+
+		-
+			message: '#^Method App\\Services\\Evaluation\\EvaluationCreationService\:\:resolveKlassciLabels\(\) should return array\{string\|null, string\|null\} but returns array\{mixed, mixed\}\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Services/Evaluation/EvaluationCreationService.php
+
+		-
+			message: '#^Parameter \#1 \$matiereId of method App\\Services\\Evaluation\\EvaluationCreationService\:\:resolveKlassciLabels\(\) expects int\|null, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Evaluation/EvaluationCreationService.php
+
+		-
+			message: '#^Parameter \#2 \$classeId of method App\\Services\\Evaluation\\EvaluationCreationService\:\:resolveKlassciLabels\(\) expects int\|null, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Evaluation/EvaluationCreationService.php
+
+		-
+			message: '#^Parameter \#2 \$questions of method App\\Services\\Evaluation\\EvaluationCreationService\:\:createQuestions\(\) expects array\<int, array\<string, mixed\>\>, array\<mixed, mixed\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Evaluation/EvaluationCreationService.php
+
+		-
 			message: '#^Cannot access offset ''id'' on mixed\.$#'
 			identifier: offsetAccess.nonOffsetAccessible
 			count: 2
@@ -5723,6 +5693,24 @@ parameters:
 			identifier: cast.string
 			count: 1
 			path: app/Services/Evaluation/EvaluationGradingService.php
+
+		-
+			message: '#^Method App\\Services\\Evaluation\\EvaluationListService\:\:listForTeacher\(\) should return array\<int, array\<string, mixed\>\> but returns array\<mixed\>\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Services/Evaluation/EvaluationListService.php
+
+		-
+			message: '#^Parameter \#1 \$key of method Illuminate\\Support\\Collection\<\(int\|string\),mixed\>\:\:get\(\) expects int\|string\|null, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Evaluation/EvaluationListService.php
+
+		-
+			message: '#^Parameter \#2 \$questions of method App\\Services\\Evaluation\\EvaluationUpdateService\:\:createQuestions\(\) expects array\<int, array\<string, mixed\>\>, array\<mixed, mixed\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Evaluation/EvaluationUpdateService.php
 
 		-
 			message: '#^Cannot access offset ''programmation'' on mixed\.$#'

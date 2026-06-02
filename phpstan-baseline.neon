@@ -955,198 +955,6 @@ parameters:
 			path: app/Http/Controllers/API/KnowledgeCheckController.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\ESBTPAttendance\:\:\$seance\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Controllers/API/LMS/LMSAttendancesController.php
-
-		-
-			message: '#^Anonymous function has an unused use \$request\.$#'
-			identifier: closure.unusedUse
-			count: 1
-			path: app/Http/Controllers/API/LMS/LMSAttendancesController.php
-
-		-
-			message: '#^Argument of an invalid type mixed supplied for foreach, only iterables are supported\.$#'
-			identifier: foreach.nonIterable
-			count: 1
-			path: app/Http/Controllers/API/LMS/LMSAttendancesController.php
-
-		-
-			message: '#^Binary operation "\." between mixed and '' 23\:59\:59'' results in an error\.$#'
-			identifier: binaryOp.invalid
-			count: 1
-			path: app/Http/Controllers/API/LMS/LMSAttendancesController.php
-
-		-
-			message: '#^Cannot access offset ''duration_minutes'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 1
-			path: app/Http/Controllers/API/LMS/LMSAttendancesController.php
-
-		-
-			message: '#^Cannot access offset ''etudiant_id'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 3
-			path: app/Http/Controllers/API/LMS/LMSAttendancesController.php
-
-		-
-			message: '#^Cannot access offset ''joined_at'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 1
-			path: app/Http/Controllers/API/LMS/LMSAttendancesController.php
-
-		-
-			message: '#^Cannot access offset ''left_at'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 1
-			path: app/Http/Controllers/API/LMS/LMSAttendancesController.php
-
-		-
-			message: '#^Cannot access offset ''statut'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 1
-			path: app/Http/Controllers/API/LMS/LMSAttendancesController.php
-
-		-
-			message: '#^Offset ''seance'' on array\{seance\: array\<string, mixed\>, visio\: array\<string, mixed\>, participants\?\: array\<string, mixed\>\} in isset\(\) always exists and is not nullable\.$#'
-			identifier: isset.offset
-			count: 1
-			path: app/Http/Controllers/API/LMS/LMSAttendancesController.php
-
-		-
-			message: '#^Parameter \#1 \$attributes of static method Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\ESBTPAttendance\>\:\:updateOrCreate\(\) expects array\<model property of App\\Models\\ESBTPAttendance, mixed\>, array\<string, mixed\> given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Controllers/API/LMS/LMSAttendancesController.php
-
-		-
-			message: '#^Parameter \#1 \$column of method Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\ESBTPAttendance\>\:\:where\(\) expects array\<int\|model property of App\\Models\\ESBTPAttendance, mixed\>\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\ESBTPAttendance\>\)\: Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\ESBTPAttendance\>\)\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\ESBTPAttendance\>\)\: void\)\|Illuminate\\Contracts\\Database\\Query\\Expression\|model property of App\\Models\\ESBTPAttendance, ''date'' given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Controllers/API/LMS/LMSAttendancesController.php
-
-		-
-			message: '#^Parameter \#1 \$column of method Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\ESBTPAttendance\>\:\:where\(\) expects array\<int\|model property of App\\Models\\ESBTPAttendance, mixed\>\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\ESBTPAttendance\>\)\: Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\ESBTPAttendance\>\)\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\ESBTPAttendance\>\)\: void\)\|Illuminate\\Contracts\\Database\\Query\\Expression\|model property of App\\Models\\ESBTPAttendance, ''etudiant_id'' given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Controllers/API/LMS/LMSAttendancesController.php
-
-		-
-			message: '#^Parameter \#1 \$column of method Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\:\:where\(\) expects array\<int\|model property of Illuminate\\Database\\Eloquent\\Model, mixed\>\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\: Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\: void\)\|Illuminate\\Contracts\\Database\\Query\\Expression\|model property of Illuminate\\Database\\Eloquent\\Model, ''enseignant_id'' given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Controllers/API/LMS/LMSAttendancesController.php
-
-		-
-			message: '#^Parameter \#1 \$column of static method Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\ESBTPAttendance\>\:\:where\(\) expects array\<int\|model property of App\\Models\\ESBTPAttendance, mixed\>\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\ESBTPAttendance\>\)\: Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\ESBTPAttendance\>\)\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\ESBTPAttendance\>\)\: void\)\|Illuminate\\Contracts\\Database\\Query\\Expression\|model property of App\\Models\\ESBTPAttendance, ''seance_cours_id'' given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Controllers/API/LMS/LMSAttendancesController.php
-
-		-
-			message: '#^Parameter \#1 \$num of function round expects float\|int, float\|int\|null given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Controllers/API/LMS/LMSAttendancesController.php
-
-		-
-			message: '#^Parameter \#1 \$perPage of method Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\ESBTPAttendance\>\:\:paginate\(\) expects int\|null, mixed given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Controllers/API/LMS/LMSAttendancesController.php
-
-		-
-			message: '#^Parameter \#1 \$value of function count expects array\|Countable, mixed given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Controllers/API/LMS/LMSAttendancesController.php
-
-		-
-			message: '#^Parameter \#2 \$values of static method Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\ESBTPAttendance\>\:\:updateOrCreate\(\) expects array\<model property of App\\Models\\ESBTPAttendance, mixed\>, array\<string, mixed\> given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Controllers/API/LMS/LMSAttendancesController.php
-
-		-
-			message: '#^Part \$durationMinutes \(mixed\) of encapsed string cannot be cast to string\.$#'
-			identifier: encapsedStringPart.nonString
-			count: 1
-			path: app/Http/Controllers/API/LMS/LMSAttendancesController.php
-
-		-
-			message: '#^Part \$joinedAt \(mixed\) of encapsed string cannot be cast to string\.$#'
-			identifier: encapsedStringPart.nonString
-			count: 1
-			path: app/Http/Controllers/API/LMS/LMSAttendancesController.php
-
-		-
-			message: '#^Part \$leftAt \(mixed\) of encapsed string cannot be cast to string\.$#'
-			identifier: encapsedStringPart.nonString
-			count: 1
-			path: app/Http/Controllers/API/LMS/LMSAttendancesController.php
-
-		-
-			message: '#^Property App\\Http\\Controllers\\API\\LMS\\LMSAttendancesController\:\:\$attendanceStatus is never read, only written\.$#'
-			identifier: property.onlyWritten
-			count: 1
-			path: app/Http/Controllers/API/LMS/LMSAttendancesController.php
-
-		-
-			message: '#^Property App\\Http\\Controllers\\API\\LMS\\LMSAttendancesController\:\:\$klassciService is never read, only written\.$#'
-			identifier: property.onlyWritten
-			count: 1
-			path: app/Http/Controllers/API/LMS/LMSAttendancesController.php
-
-		-
-			message: '#^Relation ''seance'' is not found in App\\Models\\ESBTPAttendance model\.$#'
-			identifier: larastan.relationExistence
-			count: 2
-			path: app/Http/Controllers/API/LMS/LMSAttendancesController.php
-
-		-
-			message: '#^Relation ''user'' is not found in App\\Models\\ESBTPAttendance model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Http/Controllers/API/LMS/LMSAttendancesController.php
-
-		-
-			message: '#^Undefined variable\: \$user$#'
-			identifier: variable.undefined
-			count: 1
-			path: app/Http/Controllers/API/LMS/LMSAttendancesController.php
-
-		-
-			message: '#^Using nullsafe property access "\?\-\>date_seance" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
-			identifier: nullsafe.neverNull
-			count: 1
-			path: app/Http/Controllers/API/LMS/LMSAttendancesController.php
-
-		-
-			message: '#^Using nullsafe property access "\?\-\>email" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
-			identifier: nullsafe.neverNull
-			count: 1
-			path: app/Http/Controllers/API/LMS/LMSAttendancesController.php
-
-		-
-			message: '#^Using nullsafe property access "\?\-\>id" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
-			identifier: nullsafe.neverNull
-			count: 2
-			path: app/Http/Controllers/API/LMS/LMSAttendancesController.php
-
-		-
-			message: '#^Using nullsafe property access "\?\-\>klassci_seance_id" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
-			identifier: nullsafe.neverNull
-			count: 1
-			path: app/Http/Controllers/API/LMS/LMSAttendancesController.php
-
-		-
-			message: '#^Using nullsafe property access "\?\-\>name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
-			identifier: nullsafe.neverNull
-			count: 1
-			path: app/Http/Controllers/API/LMS/LMSAttendancesController.php
-
-		-
 			message: '#^Binary operation "/" between int\<0, max\> and mixed results in an error\.$#'
 			identifier: binaryOp.invalid
 			count: 1
@@ -5609,6 +5417,150 @@ parameters:
 			identifier: cast.string
 			count: 1
 			path: app/Rules/PositiveInteger.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\ESBTPAttendance\:\:\$seance\.$#'
+			identifier: property.notFound
+			count: 3
+			path: app/Services/Attendances/AttendanceHistoryQueryService.php
+
+		-
+			message: '#^Binary operation "\." between mixed and '' 23\:59\:59'' results in an error\.$#'
+			identifier: binaryOp.invalid
+			count: 1
+			path: app/Services/Attendances/AttendanceHistoryQueryService.php
+
+		-
+			message: '#^Cannot access offset ''classe'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: app/Services/Attendances/AttendanceHistoryQueryService.php
+
+		-
+			message: '#^Cannot access offset ''matiere'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: app/Services/Attendances/AttendanceHistoryQueryService.php
+
+		-
+			message: '#^Cannot access offset ''programmation'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: app/Services/Attendances/AttendanceHistoryQueryService.php
+
+		-
+			message: '#^Cannot cast mixed to int\.$#'
+			identifier: cast.int
+			count: 1
+			path: app/Services/Attendances/AttendanceHistoryQueryService.php
+
+		-
+			message: '#^Offset ''seance'' on array\{seance\: array\<string, mixed\>, visio\: array\<string, mixed\>, participants\?\: array\<string, mixed\>\} in isset\(\) always exists and is not nullable\.$#'
+			identifier: isset.offset
+			count: 1
+			path: app/Services/Attendances/AttendanceHistoryQueryService.php
+
+		-
+			message: '#^Parameter \#1 \$column of method Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\:\:where\(\) expects array\<int\|model property of Illuminate\\Database\\Eloquent\\Model, mixed\>\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\: Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\: void\)\|Illuminate\\Contracts\\Database\\Query\\Expression\|model property of Illuminate\\Database\\Eloquent\\Model, ''enseignant_id'' given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Attendances/AttendanceHistoryQueryService.php
+
+		-
+			message: '#^Relation ''seance'' is not found in App\\Models\\ESBTPAttendance model\.$#'
+			identifier: larastan.relationExistence
+			count: 2
+			path: app/Services/Attendances/AttendanceHistoryQueryService.php
+
+		-
+			message: '#^Relation ''user'' is not found in App\\Models\\ESBTPAttendance model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/Attendances/AttendanceHistoryQueryService.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>date_seance" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Services/Attendances/AttendanceHistoryQueryService.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>email" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Services/Attendances/AttendanceHistoryQueryService.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>id" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 2
+			path: app/Services/Attendances/AttendanceHistoryQueryService.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>klassci_seance_id" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Services/Attendances/AttendanceHistoryQueryService.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Services/Attendances/AttendanceHistoryQueryService.php
+
+		-
+			message: '#^Parameter \#1 \$num of function round expects float\|int, float\|int\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Attendances/SeanceAttendancesQueryService.php
+
+		-
+			message: '#^Parameter \#1 \$attributes of static method Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\ESBTPAttendance\>\:\:updateOrCreate\(\) expects array\<model property of App\\Models\\ESBTPAttendance, mixed\>, array\<string, mixed\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Attendances/VideoSessionAttendancesSyncer.php
+
+		-
+			message: '#^Parameter \#1 \$column of method Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\ESBTPAttendance\>\:\:where\(\) expects array\<int\|model property of App\\Models\\ESBTPAttendance, mixed\>\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\ESBTPAttendance\>\)\: Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\ESBTPAttendance\>\)\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\ESBTPAttendance\>\)\: void\)\|Illuminate\\Contracts\\Database\\Query\\Expression\|model property of App\\Models\\ESBTPAttendance, ''date'' given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Attendances/VideoSessionAttendancesSyncer.php
+
+		-
+			message: '#^Parameter \#1 \$column of method Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\ESBTPAttendance\>\:\:where\(\) expects array\<int\|model property of App\\Models\\ESBTPAttendance, mixed\>\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\ESBTPAttendance\>\)\: Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\ESBTPAttendance\>\)\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\ESBTPAttendance\>\)\: void\)\|Illuminate\\Contracts\\Database\\Query\\Expression\|model property of App\\Models\\ESBTPAttendance, ''etudiant_id'' given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Attendances/VideoSessionAttendancesSyncer.php
+
+		-
+			message: '#^Parameter \#1 \$column of static method Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\ESBTPAttendance\>\:\:where\(\) expects array\<int\|model property of App\\Models\\ESBTPAttendance, mixed\>\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\ESBTPAttendance\>\)\: Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\ESBTPAttendance\>\)\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\ESBTPAttendance\>\)\: void\)\|Illuminate\\Contracts\\Database\\Query\\Expression\|model property of App\\Models\\ESBTPAttendance, ''seance_cours_id'' given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Attendances/VideoSessionAttendancesSyncer.php
+
+		-
+			message: '#^Parameter \#2 \$values of static method Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\ESBTPAttendance\>\:\:updateOrCreate\(\) expects array\<model property of App\\Models\\ESBTPAttendance, mixed\>, array\<string, mixed\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Attendances/VideoSessionAttendancesSyncer.php
+
+		-
+			message: '#^Part \$durationMinutes \(mixed\) of encapsed string cannot be cast to string\.$#'
+			identifier: encapsedStringPart.nonString
+			count: 1
+			path: app/Services/Attendances/VideoSessionAttendancesSyncer.php
+
+		-
+			message: '#^Part \$joinedAt \(mixed\) of encapsed string cannot be cast to string\.$#'
+			identifier: encapsedStringPart.nonString
+			count: 1
+			path: app/Services/Attendances/VideoSessionAttendancesSyncer.php
+
+		-
+			message: '#^Part \$leftAt \(mixed\) of encapsed string cannot be cast to string\.$#'
+			identifier: encapsedStringPart.nonString
+			count: 1
+			path: app/Services/Attendances/VideoSessionAttendancesSyncer.php
 
 		-
 			message: '#^Cannot access offset ''id'' on mixed\.$#'

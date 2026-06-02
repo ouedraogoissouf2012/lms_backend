@@ -493,240 +493,6 @@ parameters:
 			path: app/Http/Controllers/API/Evaluation/EvaluationKlassciSyncController.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\EvaluationSubmission\:\:\$temps_passe_minutes\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Controllers/API/Evaluation/EvaluationStudentController.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$date_evaluation\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Controllers/API/Evaluation/EvaluationStudentController.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Controllers/API/Evaluation/EvaluationStudentController.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$klassci_matiere_id\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Controllers/API/Evaluation/EvaluationStudentController.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$note_sur_20\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Controllers/API/Evaluation/EvaluationStudentController.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$status\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Controllers/API/Evaluation/EvaluationStudentController.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$titre\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Controllers/API/Evaluation/EvaluationStudentController.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$type\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Controllers/API/Evaluation/EvaluationStudentController.php
-
-		-
-			message: '#^Argument of an invalid type mixed supplied for foreach, only iterables are supported\.$#'
-			identifier: foreach.nonIterable
-			count: 1
-			path: app/Http/Controllers/API/Evaluation/EvaluationStudentController.php
-
-		-
-			message: '#^Call to static method warning\(\) on an unknown class App\\Http\\Controllers\\API\\Evaluation\\Log\.$#'
-			identifier: class.notFound
-			count: 1
-			path: app/Http/Controllers/API/Evaluation/EvaluationStudentController.php
-
-		-
-			message: '#^Cannot access offset ''classe'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 1
-			path: app/Http/Controllers/API/Evaluation/EvaluationStudentController.php
-
-		-
-			message: '#^Cannot access offset ''end_at'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 1
-			path: app/Http/Controllers/API/Evaluation/EvaluationStudentController.php
-
-		-
-			message: '#^Cannot access offset ''has_ended'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 1
-			path: app/Http/Controllers/API/Evaluation/EvaluationStudentController.php
-
-		-
-			message: '#^Cannot access offset ''has_started'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 1
-			path: app/Http/Controllers/API/Evaluation/EvaluationStudentController.php
-
-		-
-			message: '#^Cannot access offset ''id'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 2
-			path: app/Http/Controllers/API/Evaluation/EvaluationStudentController.php
-
-		-
-			message: '#^Cannot access offset ''is_open'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 2
-			path: app/Http/Controllers/API/Evaluation/EvaluationStudentController.php
-
-		-
-			message: '#^Cannot access offset ''matiere'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 1
-			path: app/Http/Controllers/API/Evaluation/EvaluationStudentController.php
-
-		-
-			message: '#^Cannot access offset ''nom'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 1
-			path: app/Http/Controllers/API/Evaluation/EvaluationStudentController.php
-
-		-
-			message: '#^Cannot access offset ''programmation'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 2
-			path: app/Http/Controllers/API/Evaluation/EvaluationStudentController.php
-
-		-
-			message: '#^Cannot access offset ''start_at'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 1
-			path: app/Http/Controllers/API/Evaluation/EvaluationStudentController.php
-
-		-
-			message: '#^Cannot access offset ''time_left_minutes'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 1
-			path: app/Http/Controllers/API/Evaluation/EvaluationStudentController.php
-
-		-
-			message: '#^Cannot access offset ''window'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 2
-			path: app/Http/Controllers/API/Evaluation/EvaluationStudentController.php
-
-		-
-			message: '#^Cannot access property \$id on App\\Models\\User\|null\.$#'
-			identifier: property.nonObject
-			count: 2
-			path: app/Http/Controllers/API/Evaluation/EvaluationStudentController.php
-
-		-
-			message: '#^Cannot access property \$klassci_id on App\\Models\\User\|null\.$#'
-			identifier: property.nonObject
-			count: 1
-			path: app/Http/Controllers/API/Evaluation/EvaluationStudentController.php
-
-		-
-			message: '#^Comparison operation "\>" between int\<1, max\> and 0 is always true\.$#'
-			identifier: greater.alwaysTrue
-			count: 1
-			path: app/Http/Controllers/API/Evaluation/EvaluationStudentController.php
-
-		-
-			message: '#^Parameter \#1 \$array of function array_values contains unresolvable type\.$#'
-			identifier: argument.unresolvableType
-			count: 1
-			path: app/Http/Controllers/API/Evaluation/EvaluationStudentController.php
-
-		-
-			message: '#^Parameter \#1 \$array of function usort contains unresolvable type\.$#'
-			identifier: argument.unresolvableType
-			count: 1
-			path: app/Http/Controllers/API/Evaluation/EvaluationStudentController.php
-
-		-
-			message: '#^Parameter \#1 \$column of method Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\:\:where\(\) expects array\<int\|model property of Illuminate\\Database\\Eloquent\\Model, mixed\>\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\: Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\: void\)\|Illuminate\\Contracts\\Database\\Query\\Expression\|model property of Illuminate\\Database\\Eloquent\\Model, ''is_published'' given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Controllers/API/Evaluation/EvaluationStudentController.php
-
-		-
-			message: '#^Parameter \#1 \$column of method Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\:\:where\(\) expects array\<int\|model property of Illuminate\\Database\\Eloquent\\Model, mixed\>\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\: Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\: void\)\|Illuminate\\Contracts\\Database\\Query\\Expression\|model property of Illuminate\\Database\\Eloquent\\Model, ''klassci_etudiant_id'' given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Controllers/API/Evaluation/EvaluationStudentController.php
-
-		-
-			message: '#^Parameter \#1 \$time of static method Carbon\\Carbon\:\:parse\(\) expects Carbon\\Month\|Carbon\\WeekDay\|DateTimeInterface\|float\|int\|string\|null, mixed given\.$#'
-			identifier: argument.type
-			count: 2
-			path: app/Http/Controllers/API/Evaluation/EvaluationStudentController.php
-
-		-
-			message: '#^Parameter \#1 \$value of function collect expects Illuminate\\Contracts\\Support\\Arrayable\<\(int\|string\), mixed\>\|iterable\<\(int\|string\), mixed\>\|null, mixed given\.$#'
-			identifier: argument.type
-			count: 3
-			path: app/Http/Controllers/API/Evaluation/EvaluationStudentController.php
-
-		-
-			message: '#^Parameter \#2 \$callback of function usort contains unresolvable type\.$#'
-			identifier: argument.unresolvableType
-			count: 1
-			path: app/Http/Controllers/API/Evaluation/EvaluationStudentController.php
-
-		-
-			message: '#^Possibly invalid array key type mixed\.$#'
-			identifier: offsetAccess.invalidOffset
-			count: 1
-			path: app/Http/Controllers/API/Evaluation/EvaluationStudentController.php
-
-		-
-			message: '#^Property App\\Http\\Controllers\\API\\Evaluation\\EvaluationStudentController\:\:\$enrichmentService is never read, only written\.$#'
-			identifier: property.onlyWritten
-			count: 1
-			path: app/Http/Controllers/API/Evaluation/EvaluationStudentController.php
-
-		-
-			message: '#^Property App\\Models\\EvaluationSubmission\:\:\$answers \(array\|null\) does not accept mixed\.$#'
-			identifier: assign.propertyType
-			count: 1
-			path: app/Http/Controllers/API/Evaluation/EvaluationStudentController.php
-
-		-
-			message: '#^Return type of call to function array_values contains unresolvable type\.$#'
-			identifier: function.unresolvableReturnType
-			count: 1
-			path: app/Http/Controllers/API/Evaluation/EvaluationStudentController.php
-
-		-
-			message: '#^Unable to resolve the template type TKey in call to function collect$#'
-			identifier: argument.templateType
-			count: 3
-			path: app/Http/Controllers/API/Evaluation/EvaluationStudentController.php
-
-		-
-			message: '#^Unable to resolve the template type TValue in call to function collect$#'
-			identifier: argument.templateType
-			count: 3
-			path: app/Http/Controllers/API/Evaluation/EvaluationStudentController.php
-
-		-
-			message: '#^Variable \$klassciToken in empty\(\) always exists and is not falsy\.$#'
-			identifier: empty.variable
-			count: 1
-			path: app/Http/Controllers/API/Evaluation/EvaluationStudentController.php
-
-		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$attempt\.$#'
 			identifier: property.notFound
 			count: 1
@@ -917,6 +683,30 @@ parameters:
 			identifier: nullsafe.neverNull
 			count: 1
 			path: app/Http/Controllers/API/Evaluation/EvaluationTeacherController.php
+
+		-
+			message: '#^Offset ''message'' might not exist on array\{status\: ''max_attempts'', submission\?\: App\\Models\\EvaluationSubmission, window\?\: array\<string, mixed\>\|null, message\?\: string, is_practice\?\: bool, resumed\?\: bool\}\.$#'
+			identifier: offsetAccess.notFound
+			count: 1
+			path: app/Http/Controllers/API/Evaluation/Student/EvaluationStudentAttemptController.php
+
+		-
+			message: '#^Offset ''message'' might not exist on array\{status\: ''window_closed'', submission\?\: App\\Models\\EvaluationSubmission, window\?\: array\<string, mixed\>\|null, message\?\: string, is_practice\?\: bool, resumed\?\: bool\}\.$#'
+			identifier: offsetAccess.notFound
+			count: 1
+			path: app/Http/Controllers/API/Evaluation/Student/EvaluationStudentAttemptController.php
+
+		-
+			message: '#^Offset ''submission'' might not exist on array\{status\: ''ok'', submission\?\: App\\Models\\EvaluationSubmission, window\?\: array\<string, mixed\>\|null, message\?\: string, is_practice\?\: bool, resumed\?\: bool\}\.$#'
+			identifier: offsetAccess.notFound
+			count: 1
+			path: app/Http/Controllers/API/Evaluation/Student/EvaluationStudentAttemptController.php
+
+		-
+			message: '#^Property App\\Models\\EvaluationSubmission\:\:\$answers \(array\|null\) does not accept mixed\.$#'
+			identifier: assign.propertyType
+			count: 1
+			path: app/Http/Controllers/API/Evaluation/Student/EvaluationStudentAttemptController.php
 
 		-
 			message: '#^Access to an undefined property App\\Models\\File\:\:\$download_url\.$#'
@@ -1435,124 +1225,22 @@ parameters:
 			path: app/Http/Controllers/API/LMS/LMSMatieresAdminController.php
 
 		-
-			message: '#^Cannot access offset ''classe'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
+			message: '#^Cannot cast mixed to int\.$#'
+			identifier: cast.int
 			count: 1
-			path: app/Http/Controllers/API/LMS/LMSMatieresQueryController.php
+			path: app/Http/Controllers/API/LMS/LMSSeancesHistoryController.php
 
 		-
-			message: '#^Cannot access offset ''coefficient'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
+			message: '#^Parameter \#2 \$filters of method App\\Services\\SeancesHistoryQueryService\:\:getHistoryForUser\(\) expects array\{date_from\?\: string\|null, date_to\?\: string\|null, search\?\: string\|null, per_page\?\: int\|null\}, array\{date_from\: mixed, date_to\: mixed, search\: mixed, per_page\: int\} given\.$#'
+			identifier: argument.type
 			count: 1
-			path: app/Http/Controllers/API/LMS/LMSMatieresQueryController.php
+			path: app/Http/Controllers/API/LMS/LMSSeancesHistoryController.php
 
 		-
-			message: '#^Cannot access offset ''combinaisons'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 1
-			path: app/Http/Controllers/API/LMS/LMSMatieresQueryController.php
-
-		-
-			message: '#^Cannot access offset ''enseignants'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 2
-			path: app/Http/Controllers/API/LMS/LMSMatieresQueryController.php
-
-		-
-			message: '#^Cannot access offset ''evaluations'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 1
-			path: app/Http/Controllers/API/LMS/LMSMatieresQueryController.php
-
-		-
-			message: '#^Cannot access offset ''id'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 1
-			path: app/Http/Controllers/API/LMS/LMSMatieresQueryController.php
-
-		-
-			message: '#^Cannot access offset ''matiere'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 2
-			path: app/Http/Controllers/API/LMS/LMSMatieresQueryController.php
-
-		-
-			message: '#^Cannot access offset ''matieres'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
+			message: '#^Cannot cast mixed to int\.$#'
+			identifier: cast.int
 			count: 3
-			path: app/Http/Controllers/API/LMS/LMSMatieresQueryController.php
-
-		-
-			message: '#^Cannot access offset ''nom'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 1
-			path: app/Http/Controllers/API/LMS/LMSMatieresQueryController.php
-
-		-
-			message: '#^Cannot access offset ''places_occupees'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 1
-			path: app/Http/Controllers/API/LMS/LMSMatieresQueryController.php
-
-		-
-			message: '#^Cannot access offset ''seances_programmees'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 3
-			path: app/Http/Controllers/API/LMS/LMSMatieresQueryController.php
-
-		-
-			message: '#^Cannot access offset ''volume_horaire_total'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 1
-			path: app/Http/Controllers/API/LMS/LMSMatieresQueryController.php
-
-		-
-			message: '#^Cannot access offset 0 on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 1
-			path: app/Http/Controllers/API/LMS/LMSMatieresQueryController.php
-
-		-
-			message: '#^Parameter \#1 \$callback of method Illuminate\\Support\\Collection\<\(int\|string\),mixed\>\:\:filter\(\) expects \(callable\(mixed, int\|string\)\: bool\)\|null, Closure\(array\)\: bool given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Controllers/API/LMS/LMSMatieresQueryController.php
-
-		-
-			message: '#^Parameter \#1 \$column of method Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\:\:where\(\) expects array\<int\|model property of Illuminate\\Database\\Eloquent\\Model, mixed\>\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\: Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\: void\)\|Illuminate\\Contracts\\Database\\Query\\Expression\|model property of Illuminate\\Database\\Eloquent\\Model, ''klassci_etudiant_id'' given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Controllers/API/LMS/LMSMatieresQueryController.php
-
-		-
-			message: '#^Parameter \#1 \$value of function collect expects Illuminate\\Contracts\\Support\\Arrayable\<\(int\|string\), mixed\>\|iterable\<\(int\|string\), mixed\>\|null, mixed given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Controllers/API/LMS/LMSMatieresQueryController.php
-
-		-
-			message: '#^Parameter \#1 \$value of function count expects array\|Countable, mixed given\.$#'
-			identifier: argument.type
-			count: 3
-			path: app/Http/Controllers/API/LMS/LMSMatieresQueryController.php
-
-		-
-			message: '#^Part \$seance\[''classe''\]\[''id''\] \(mixed\) of encapsed string cannot be cast to string\.$#'
-			identifier: encapsedStringPart.nonString
-			count: 1
-			path: app/Http/Controllers/API/LMS/LMSMatieresQueryController.php
-
-		-
-			message: '#^Unable to resolve the template type TKey in call to function collect$#'
-			identifier: argument.templateType
-			count: 1
-			path: app/Http/Controllers/API/LMS/LMSMatieresQueryController.php
-
-		-
-			message: '#^Unable to resolve the template type TValue in call to function collect$#'
-			identifier: argument.templateType
-			count: 1
-			path: app/Http/Controllers/API/LMS/LMSMatieresQueryController.php
+			path: app/Http/Controllers/API/LMS/LMSSeancesListController.php
 
 		-
 			message: '#^Access to an undefined property App\\Http\\Controllers\\API\\LMS\\LMSSeancesMutationController\:\:\$classeSyncService\.$#'
@@ -1685,222 +1373,6 @@ parameters:
 			identifier: argument.templateType
 			count: 4
 			path: app/Http/Controllers/API/LMS/LMSSeancesMutationController.php
-
-		-
-			message: '#^Access to an undefined property App\\Http\\Controllers\\API\\LMS\\LMSSeancesQueryController\:\:\$classeSyncService\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Controllers/API/LMS/LMSSeancesQueryController.php
-
-		-
-			message: '#^Argument of an invalid type mixed supplied for foreach, only iterables are supported\.$#'
-			identifier: foreach.nonIterable
-			count: 3
-			path: app/Http/Controllers/API/LMS/LMSSeancesQueryController.php
-
-		-
-			message: '#^Binary operation "\." between mixed and '' 23\:59\:59'' results in an error\.$#'
-			identifier: binaryOp.invalid
-			count: 1
-			path: app/Http/Controllers/API/LMS/LMSSeancesQueryController.php
-
-		-
-			message: '#^Cannot access offset ''classe'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 16
-			path: app/Http/Controllers/API/LMS/LMSSeancesQueryController.php
-
-		-
-			message: '#^Cannot access offset ''code'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 3
-			path: app/Http/Controllers/API/LMS/LMSSeancesQueryController.php
-
-		-
-			message: '#^Cannot access offset ''cours'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 1
-			path: app/Http/Controllers/API/LMS/LMSSeancesQueryController.php
-
-		-
-			message: '#^Cannot access offset ''date'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 5
-			path: app/Http/Controllers/API/LMS/LMSSeancesQueryController.php
-
-		-
-			message: '#^Cannot access offset ''enseignant'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 2
-			path: app/Http/Controllers/API/LMS/LMSSeancesQueryController.php
-
-		-
-			message: '#^Cannot access offset ''heure_debut'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 4
-			path: app/Http/Controllers/API/LMS/LMSSeancesQueryController.php
-
-		-
-			message: '#^Cannot access offset ''heure_fin'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 4
-			path: app/Http/Controllers/API/LMS/LMSSeancesQueryController.php
-
-		-
-			message: '#^Cannot access offset ''id'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 36
-			path: app/Http/Controllers/API/LMS/LMSSeancesQueryController.php
-
-		-
-			message: '#^Cannot access offset ''libelle'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 6
-			path: app/Http/Controllers/API/LMS/LMSSeancesQueryController.php
-
-		-
-			message: '#^Cannot access offset ''matiere'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 1
-			path: app/Http/Controllers/API/LMS/LMSSeancesQueryController.php
-
-		-
-			message: '#^Cannot access offset ''matiere_id'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 1
-			path: app/Http/Controllers/API/LMS/LMSSeancesQueryController.php
-
-		-
-			message: '#^Cannot access offset ''matieres'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 2
-			path: app/Http/Controllers/API/LMS/LMSSeancesQueryController.php
-
-		-
-			message: '#^Cannot access offset ''name'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 2
-			path: app/Http/Controllers/API/LMS/LMSSeancesQueryController.php
-
-		-
-			message: '#^Cannot access offset ''nom'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 10
-			path: app/Http/Controllers/API/LMS/LMSSeancesQueryController.php
-
-		-
-			message: '#^Cannot access offset ''nom_complet'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 1
-			path: app/Http/Controllers/API/LMS/LMSSeancesQueryController.php
-
-		-
-			message: '#^Cannot access offset ''places_occupees'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 1
-			path: app/Http/Controllers/API/LMS/LMSSeancesQueryController.php
-
-		-
-			message: '#^Cannot access offset ''programmation'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 19
-			path: app/Http/Controllers/API/LMS/LMSSeancesQueryController.php
-
-		-
-			message: '#^Cannot access offset ''salle'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 6
-			path: app/Http/Controllers/API/LMS/LMSSeancesQueryController.php
-
-		-
-			message: '#^Cannot access offset ''seances_programmees'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 5
-			path: app/Http/Controllers/API/LMS/LMSSeancesQueryController.php
-
-		-
-			message: '#^Cannot access offset ''statut'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 1
-			path: app/Http/Controllers/API/LMS/LMSSeancesQueryController.php
-
-		-
-			message: '#^Cannot cast mixed to int\.$#'
-			identifier: cast.int
-			count: 1
-			path: app/Http/Controllers/API/LMS/LMSSeancesQueryController.php
-
-		-
-			message: '#^Parameter \#1 \$num of function round expects float\|int, float\|int\|null given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Controllers/API/LMS/LMSSeancesQueryController.php
-
-		-
-			message: '#^Parameter \#1 \$perPage of method Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Seance\>\:\:paginate\(\) expects int\|null, mixed given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Controllers/API/LMS/LMSSeancesQueryController.php
-
-		-
-			message: '#^Parameter \#1 \$string of function substr expects string, mixed given\.$#'
-			identifier: argument.type
-			count: 2
-			path: app/Http/Controllers/API/LMS/LMSSeancesQueryController.php
-
-		-
-			message: '#^Parameter \#1 \$value of function collect expects Illuminate\\Contracts\\Support\\Arrayable\<\(int\|string\), mixed\>\|iterable\<\(int\|string\), mixed\>\|null, mixed given\.$#'
-			identifier: argument.type
-			count: 9
-			path: app/Http/Controllers/API/LMS/LMSSeancesQueryController.php
-
-		-
-			message: '#^Part \$classeId \(mixed\) of encapsed string cannot be cast to string\.$#'
-			identifier: encapsedStringPart.nonString
-			count: 1
-			path: app/Http/Controllers/API/LMS/LMSSeancesQueryController.php
-
-		-
-			message: '#^Part \$matiereId \(mixed\) of encapsed string cannot be cast to string\.$#'
-			identifier: encapsedStringPart.nonString
-			count: 3
-			path: app/Http/Controllers/API/LMS/LMSSeancesQueryController.php
-
-		-
-			message: '#^Part \$matiere\[''id''\] \(mixed\) of encapsed string cannot be cast to string\.$#'
-			identifier: encapsedStringPart.nonString
-			count: 3
-			path: app/Http/Controllers/API/LMS/LMSSeancesQueryController.php
-
-		-
-			message: '#^Part \$seance\[''classe''\]\[''id''\] \(mixed\) of encapsed string cannot be cast to string\.$#'
-			identifier: encapsedStringPart.nonString
-			count: 1
-			path: app/Http/Controllers/API/LMS/LMSSeancesQueryController.php
-
-		-
-			message: '#^Part \$search \(mixed\) of encapsed string cannot be cast to string\.$#'
-			identifier: encapsedStringPart.nonString
-			count: 4
-			path: app/Http/Controllers/API/LMS/LMSSeancesQueryController.php
-
-		-
-			message: '#^Ternary operator condition is always true\.$#'
-			identifier: ternary.alwaysTrue
-			count: 2
-			path: app/Http/Controllers/API/LMS/LMSSeancesQueryController.php
-
-		-
-			message: '#^Unable to resolve the template type TKey in call to function collect$#'
-			identifier: argument.templateType
-			count: 9
-			path: app/Http/Controllers/API/LMS/LMSSeancesQueryController.php
-
-		-
-			message: '#^Unable to resolve the template type TValue in call to function collect$#'
-			identifier: argument.templateType
-			count: 9
-			path: app/Http/Controllers/API/LMS/LMSSeancesQueryController.php
 
 		-
 			message: '#^Access to an undefined property App\\Http\\Controllers\\API\\LMS\\LMSVisioLifecycleController\:\:\$classeSyncService\.$#'
@@ -6625,6 +6097,282 @@ parameters:
 			path: app/Services/Evaluation/EvaluationGradingService.php
 
 		-
+			message: '#^Cannot access offset ''programmation'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: app/Services/Evaluation/Student/EvaluationAttemptStateService.php
+
+		-
+			message: '#^Cannot access offset ''window'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: app/Services/Evaluation/Student/EvaluationAttemptStateService.php
+
+		-
+			message: '#^Method App\\Services\\Evaluation\\Student\\EvaluationAttemptStateService\:\:fetchWindowSafe\(\) should return array\<string, mixed\>\|null but returns mixed\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Services/Evaluation/Student/EvaluationAttemptStateService.php
+
+		-
+			message: '#^Parameter \#1 \$time of static method Carbon\\Carbon\:\:parse\(\) expects Carbon\\Month\|Carbon\\WeekDay\|DateTimeInterface\|float\|int\|string\|null, mixed given\.$#'
+			identifier: argument.type
+			count: 2
+			path: app/Services/Evaluation/Student/EvaluationAttemptStateService.php
+
+		-
+			message: '#^Parameter \#1 \$value of function collect expects Illuminate\\Contracts\\Support\\Arrayable\<\(int\|string\), mixed\>\|iterable\<\(int\|string\), mixed\>\|null, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Evaluation/Student/EvaluationAttemptStateService.php
+
+		-
+			message: '#^Unable to resolve the template type TKey in call to function collect$#'
+			identifier: argument.templateType
+			count: 1
+			path: app/Services/Evaluation/Student/EvaluationAttemptStateService.php
+
+		-
+			message: '#^Unable to resolve the template type TValue in call to function collect$#'
+			identifier: argument.templateType
+			count: 1
+			path: app/Services/Evaluation/Student/EvaluationAttemptStateService.php
+
+		-
+			message: '#^Cannot access offset ''classe'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: app/Services/Evaluation/Student/StudentEvaluationsListService.php
+
+		-
+			message: '#^Cannot access offset ''date_evaluation'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: app/Services/Evaluation/Student/StudentEvaluationsListService.php
+
+		-
+			message: '#^Cannot access offset ''id'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: app/Services/Evaluation/Student/StudentEvaluationsListService.php
+
+		-
+			message: '#^Cannot access offset ''matiere'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: app/Services/Evaluation/Student/StudentEvaluationsListService.php
+
+		-
+			message: '#^Method App\\Services\\Evaluation\\Student\\StudentEvaluationsListService\:\:fetchKlassciEvaluationsSafe\(\) should return Illuminate\\Support\\Collection\<int, array\<string, mixed\>\> but returns Illuminate\\Support\\Collection\<\(int\|string\), mixed\>\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Services/Evaluation/Student/StudentEvaluationsListService.php
+
+		-
+			message: '#^Method App\\Services\\Evaluation\\Student\\StudentEvaluationsListService\:\:getEnrichedEvaluationsForStudent\(\) should return array\<int, array\<string, mixed\>\>\|null but returns array\<mixed\>\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Services/Evaluation/Student/StudentEvaluationsListService.php
+
+		-
+			message: '#^Parameter \#1 \$column of method Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\:\:where\(\) expects array\<int\|model property of Illuminate\\Database\\Eloquent\\Model, mixed\>\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\: Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\: void\)\|Illuminate\\Contracts\\Database\\Query\\Expression\|model property of Illuminate\\Database\\Eloquent\\Model, ''klassci_etudiant_id'' given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Evaluation/Student/StudentEvaluationsListService.php
+
+		-
+			message: '#^Parameter \#1 \$value of function collect expects Illuminate\\Contracts\\Support\\Arrayable\<\(int\|string\), mixed\>\|iterable\<\(int\|string\), mixed\>\|null, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Evaluation/Student/StudentEvaluationsListService.php
+
+		-
+			message: '#^Unable to resolve the template type TKey in call to function collect$#'
+			identifier: argument.templateType
+			count: 1
+			path: app/Services/Evaluation/Student/StudentEvaluationsListService.php
+
+		-
+			message: '#^Unable to resolve the template type TValue in call to function collect$#'
+			identifier: argument.templateType
+			count: 1
+			path: app/Services/Evaluation/Student/StudentEvaluationsListService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\EvaluationSubmission\:\:\$temps_passe_minutes\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Evaluation/Student/StudentGradesAggregator.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$date_evaluation\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Evaluation/Student/StudentGradesAggregator.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Evaluation/Student/StudentGradesAggregator.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$klassci_matiere_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Evaluation/Student/StudentGradesAggregator.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$titre\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Evaluation/Student/StudentGradesAggregator.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$type\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Evaluation/Student/StudentGradesAggregator.php
+
+		-
+			message: '#^Argument of an invalid type mixed supplied for foreach, only iterables are supported\.$#'
+			identifier: foreach.nonIterable
+			count: 2
+			path: app/Services/Evaluation/Student/StudentGradesAggregator.php
+
+		-
+			message: '#^Binary operation "\*" between mixed and mixed results in an error\.$#'
+			identifier: binaryOp.invalid
+			count: 1
+			path: app/Services/Evaluation/Student/StudentGradesAggregator.php
+
+		-
+			message: '#^Binary operation "\+\=" between \(float\|int\) and mixed results in an error\.$#'
+			identifier: assignOp.invalid
+			count: 2
+			path: app/Services/Evaluation/Student/StudentGradesAggregator.php
+
+		-
+			message: '#^Cannot access offset ''coefficient'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 2
+			path: app/Services/Evaluation/Student/StudentGradesAggregator.php
+
+		-
+			message: '#^Cannot access offset ''id'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: app/Services/Evaluation/Student/StudentGradesAggregator.php
+
+		-
+			message: '#^Cannot access offset ''nom'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: app/Services/Evaluation/Student/StudentGradesAggregator.php
+
+		-
+			message: '#^Cannot access offset ''note'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: app/Services/Evaluation/Student/StudentGradesAggregator.php
+
+		-
+			message: '#^Method App\\Services\\Evaluation\\Student\\StudentGradesAggregator\:\:fetchMatieresNames\(\) should return array\<int, string\> but returns array\<mixed\>\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Services/Evaluation/Student/StudentGradesAggregator.php
+
+		-
+			message: '#^Parameter \#1 \$column of method Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\:\:where\(\) expects array\<int\|model property of Illuminate\\Database\\Eloquent\\Model, mixed\>\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\: Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\: void\)\|Illuminate\\Contracts\\Database\\Query\\Expression\|model property of Illuminate\\Database\\Eloquent\\Model, ''is_published'' given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Evaluation/Student/StudentGradesAggregator.php
+
+		-
+			message: '#^Parameter \#1 \$string1 of function strcmp expects string, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Evaluation/Student/StudentGradesAggregator.php
+
+		-
+			message: '#^Parameter \#1 \$value of function count expects array\|Countable, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Evaluation/Student/StudentGradesAggregator.php
+
+		-
+			message: '#^Parameter \#2 \$string2 of function strcmp expects string, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Evaluation/Student/StudentGradesAggregator.php
+
+		-
+			message: '#^Possibly invalid array key type mixed\.$#'
+			identifier: offsetAccess.invalidOffset
+			count: 1
+			path: app/Services/Evaluation/Student/StudentGradesAggregator.php
+
+		-
+			message: '#^Parameter \#1 \$column of method Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\:\:where\(\) expects array\<int\|model property of Illuminate\\Database\\Eloquent\\Model, mixed\>\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\: Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\: void\)\|Illuminate\\Contracts\\Database\\Query\\Expression\|model property of Illuminate\\Database\\Eloquent\\Model, ''klassci_etudiant_id'' given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Matiere/MatiereEvaluationsFetcher.php
+
+		-
+			message: '#^Cannot access offset ''classe'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: app/Services/Matiere/MatiereSeancesFetcher.php
+
+		-
+			message: '#^Cannot access offset ''id'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: app/Services/Matiere/MatiereSeancesFetcher.php
+
+		-
+			message: '#^Cannot access offset ''matieres'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: app/Services/Matiere/MatiereSeancesFetcher.php
+
+		-
+			message: '#^Cannot access offset ''places_occupees'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: app/Services/Matiere/MatiereSeancesFetcher.php
+
+		-
+			message: '#^Cannot access offset ''seances_programmees'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: app/Services/Matiere/MatiereSeancesFetcher.php
+
+		-
+			message: '#^Method App\\Services\\Matiere\\MatiereSeancesFetcher\:\:filterHiddenAndArchivedForStudent\(\) should return array\<int, array\<string, mixed\>\> but returns array\<mixed\>\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Services/Matiere/MatiereSeancesFetcher.php
+
+		-
+			message: '#^Part \$seance\[''classe''\]\[''id''\] \(mixed\) of encapsed string cannot be cast to string\.$#'
+			identifier: encapsedStringPart.nonString
+			count: 1
+			path: app/Services/Matiere/MatiereSeancesFetcher.php
+
+		-
+			message: '#^Cannot access offset ''evaluations'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: app/Services/Matiere/MyMatieresQueryService.php
+
+		-
+			message: '#^Cannot access offset ''matieres'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: app/Services/Matiere/MyMatieresQueryService.php
+
+		-
 			message: '#^Cannot access property \$id on App\\Models\\ForumTopic\|null\.$#'
 			identifier: property.nonObject
 			count: 3
@@ -6847,202 +6595,670 @@ parameters:
 			path: app/Services/Quiz/QuizGradingService.php
 
 		-
-			message: '#^Property App\\Models\\QuizAttempt\:\:\$graded_by \(int\<0, max\>\|null\) does not accept int\.$#'
-			identifier: assign.propertyType
-			count: 1
-			path: app/Services/Quiz/QuizGradingService.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\UserClass\:\:\$email\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/SeanceQueryService.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\UserClass\:\:\$klassci_id\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/SeanceQueryService.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\UserClass\:\:\$name\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Services/SeanceQueryService.php
-
-		-
-			message: '#^Argument of an invalid type mixed supplied for foreach, only iterables are supported\.$#'
-			identifier: foreach.nonIterable
-			count: 3
-			path: app/Services/SeanceQueryService.php
-
-		-
-			message: '#^Cannot access offset ''cours'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 1
-			path: app/Services/SeanceQueryService.php
-
-		-
-			message: '#^Cannot access offset ''enseignant'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 4
-			path: app/Services/SeanceQueryService.php
-
-		-
-			message: '#^Cannot access offset ''enseignants'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 1
-			path: app/Services/SeanceQueryService.php
-
-		-
 			message: '#^Cannot access offset ''heure_debut'' on mixed\.$#'
 			identifier: offsetAccess.nonOffsetAccessible
 			count: 1
-			path: app/Services/SeanceQueryService.php
+			path: app/Services/SeanceDetailQueryService.php
 
 		-
 			message: '#^Cannot access offset ''heure_fin'' on mixed\.$#'
 			identifier: offsetAccess.nonOffsetAccessible
 			count: 1
-			path: app/Services/SeanceQueryService.php
+			path: app/Services/SeanceDetailQueryService.php
 
 		-
 			message: '#^Cannot access offset ''id'' on mixed\.$#'
 			identifier: offsetAccess.nonOffsetAccessible
-			count: 4
-			path: app/Services/SeanceQueryService.php
-
-		-
-			message: '#^Cannot access offset ''matiere'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 4
-			path: app/Services/SeanceQueryService.php
-
-		-
-			message: '#^Cannot access offset ''matiere_id'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 1
-			path: app/Services/SeanceQueryService.php
+			count: 3
+			path: app/Services/SeanceDetailQueryService.php
 
 		-
 			message: '#^Cannot access offset ''matieres'' on mixed\.$#'
 			identifier: offsetAccess.nonOffsetAccessible
 			count: 1
-			path: app/Services/SeanceQueryService.php
+			path: app/Services/SeanceDetailQueryService.php
 
 		-
 			message: '#^Cannot access offset ''seances_programmees'' on mixed\.$#'
 			identifier: offsetAccess.nonOffsetAccessible
-			count: 3
-			path: app/Services/SeanceQueryService.php
+			count: 1
+			path: app/Services/SeanceDetailQueryService.php
 
 		-
-			message: '#^Cannot access offset 0 on mixed\.$#'
+			message: '#^Cannot access offset ''statut'' on mixed\.$#'
 			identifier: offsetAccess.nonOffsetAccessible
 			count: 1
-			path: app/Services/SeanceQueryService.php
+			path: app/Services/SeanceDetailQueryService.php
 
 		-
-			message: '#^Method App\\Services\\SeanceQueryService\:\:buildVisioWindow\(\) has parameter \$seance with no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Services/SeanceQueryService.php
-
-		-
-			message: '#^Method App\\Services\\SeanceQueryService\:\:enrichWithVisioData\(\) has parameter \$seance with no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Services/SeanceQueryService.php
-
-		-
-			message: '#^Method App\\Services\\SeanceQueryService\:\:getProgrammation\(\) should return array\<string, mixed\>\|null but returns array\<mixed, mixed\>\|null\.$#'
+			message: '#^Method App\\Services\\SeanceDetailQueryService\:\:fetchActiveStudents\(\) should return array\<int, array\<string, mixed\>\> but returns array\<mixed\>\.$#'
 			identifier: return.type
 			count: 1
-			path: app/Services/SeanceQueryService.php
+			path: app/Services/SeanceDetailQueryService.php
 
 		-
-			message: '#^Method App\\Services\\SeanceQueryService\:\:resolveParticipants\(\) should return array\<int, array\<string, mixed\>\> but returns array\<mixed\>\.$#'
+			message: '#^Method App\\Services\\SeanceDetailQueryService\:\:findSeanceForParticipants\(\) should return array\<string, mixed\>\|null but returns mixed\.$#'
 			identifier: return.type
 			count: 1
-			path: app/Services/SeanceQueryService.php
+			path: app/Services/SeanceDetailQueryService.php
 
 		-
-			message: '#^Method App\\Services\\SeanceQueryService\:\:resolveSeanceForCoordinator\(\) should return array\{array\<string, mixed\>\|null, array\<string, mixed\>\|null\} but returns array\{mixed, mixed\}\.$#'
+			message: '#^Method App\\Services\\SeanceDetailQueryService\:\:getProgrammation\(\) should return array\<string, mixed\>\|null but returns array\<mixed, mixed\>\|null\.$#'
 			identifier: return.type
 			count: 1
-			path: app/Services/SeanceQueryService.php
+			path: app/Services/SeanceDetailQueryService.php
 
 		-
-			message: '#^Method App\\Services\\SeanceQueryService\:\:resolveSeanceForStudent\(\) should return array\{array\<string, mixed\>\|null, array\<string, mixed\>\|null\} but returns array\{mixed, mixed\}\.$#'
-			identifier: return.type
-			count: 1
-			path: app/Services/SeanceQueryService.php
-
-		-
-			message: '#^Method App\\Services\\SeanceQueryService\:\:resolveSeanceForTeacher\(\) should return array\{array\<string, mixed\>\|null, array\<string, mixed\>\|null\} but returns array\{mixed, mixed\}\.$#'
-			identifier: return.type
-			count: 1
-			path: app/Services/SeanceQueryService.php
-
-		-
-			message: '#^Offset 0 on non\-empty\-list\<string\> on left side of \?\? always exists and is not nullable\.$#'
-			identifier: nullCoalesce.offset
-			count: 1
-			path: app/Services/SeanceQueryService.php
-
-		-
-			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\UserClass\>\:\:map\(\) contains unresolvable type\.$#'
-			identifier: argument.unresolvableType
-			count: 1
-			path: app/Services/SeanceQueryService.php
-
-		-
-			message: '#^Parameter \#1 \$callback of method Illuminate\\Support\\Collection\<\(int\|string\),mixed\>\:\:filter\(\) expects \(callable\(mixed, int\|string\)\: bool\)\|null, Closure\(array\)\: bool given\.$#'
+			message: '#^Parameter \#1 \$classeId of method App\\Services\\SeanceDetailQueryService\:\:fetchActiveStudents\(\) expects int\|null, mixed given\.$#'
 			identifier: argument.type
 			count: 1
-			path: app/Services/SeanceQueryService.php
+			path: app/Services/SeanceDetailQueryService.php
+
+		-
+			message: '#^Parameter \#1 \$classeId of method App\\Services\\Seances\\SeanceVisioEnricher\:\:resolveParticipants\(\) expects int\|null, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/SeanceDetailQueryService.php
 
 		-
 			message: '#^Parameter \#1 \$time of static method Carbon\\Carbon\:\:parse\(\) expects Carbon\\Month\|Carbon\\WeekDay\|DateTimeInterface\|float\|int\|string\|null, mixed given\.$#'
 			identifier: argument.type
 			count: 2
-			path: app/Services/SeanceQueryService.php
+			path: app/Services/SeanceDetailQueryService.php
 
 		-
 			message: '#^Parameter \#1 \$value of function collect expects Illuminate\\Contracts\\Support\\Arrayable\<\(int\|string\), mixed\>\|iterable\<\(int\|string\), mixed\>\|null, mixed given\.$#'
 			identifier: argument.type
 			count: 4
-			path: app/Services/SeanceQueryService.php
-
-		-
-			message: '#^Part \$matiereId \(mixed\) of encapsed string cannot be cast to string\.$#'
-			identifier: encapsedStringPart.nonString
-			count: 1
-			path: app/Services/SeanceQueryService.php
+			path: app/Services/SeanceDetailQueryService.php
 
 		-
 			message: '#^Part \$matiere\[''id''\] \(mixed\) of encapsed string cannot be cast to string\.$#'
 			identifier: encapsedStringPart.nonString
-			count: 2
-			path: app/Services/SeanceQueryService.php
-
-		-
-			message: '#^Return type of call to method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\UserClass\>\:\:map\(\) contains unresolvable type\.$#'
-			identifier: method.unresolvableReturnType
 			count: 1
-			path: app/Services/SeanceQueryService.php
+			path: app/Services/SeanceDetailQueryService.php
 
 		-
 			message: '#^Unable to resolve the template type TKey in call to function collect$#'
 			identifier: argument.templateType
 			count: 4
-			path: app/Services/SeanceQueryService.php
+			path: app/Services/SeanceDetailQueryService.php
 
 		-
 			message: '#^Unable to resolve the template type TValue in call to function collect$#'
 			identifier: argument.templateType
 			count: 4
-			path: app/Services/SeanceQueryService.php
+			path: app/Services/SeanceDetailQueryService.php
+
+		-
+			message: '#^Argument of an invalid type mixed supplied for foreach, only iterables are supported\.$#'
+			identifier: foreach.nonIterable
+			count: 3
+			path: app/Services/Seances/KlassciSeanceLookupService.php
+
+		-
+			message: '#^Cannot access offset ''cours'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: app/Services/Seances/KlassciSeanceLookupService.php
+
+		-
+			message: '#^Cannot access offset ''enseignant'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 4
+			path: app/Services/Seances/KlassciSeanceLookupService.php
+
+		-
+			message: '#^Cannot access offset ''enseignants'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: app/Services/Seances/KlassciSeanceLookupService.php
+
+		-
+			message: '#^Cannot access offset ''id'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 4
+			path: app/Services/Seances/KlassciSeanceLookupService.php
+
+		-
+			message: '#^Cannot access offset ''matiere'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 4
+			path: app/Services/Seances/KlassciSeanceLookupService.php
+
+		-
+			message: '#^Cannot access offset ''matiere_id'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: app/Services/Seances/KlassciSeanceLookupService.php
+
+		-
+			message: '#^Cannot access offset ''matieres'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: app/Services/Seances/KlassciSeanceLookupService.php
+
+		-
+			message: '#^Cannot access offset ''seances_programmees'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 3
+			path: app/Services/Seances/KlassciSeanceLookupService.php
+
+		-
+			message: '#^Cannot access offset 0 on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: app/Services/Seances/KlassciSeanceLookupService.php
+
+		-
+			message: '#^Method App\\Services\\Seances\\KlassciSeanceLookupService\:\:lookupForCoordinator\(\) should return array\{array\<string, mixed\>\|null, array\<string, mixed\>\|null\} but returns array\{mixed, mixed\}\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Services/Seances/KlassciSeanceLookupService.php
+
+		-
+			message: '#^Method App\\Services\\Seances\\KlassciSeanceLookupService\:\:lookupForStudent\(\) should return array\{array\<string, mixed\>\|null, array\<string, mixed\>\|null\} but returns array\{mixed, mixed\}\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Services/Seances/KlassciSeanceLookupService.php
+
+		-
+			message: '#^Method App\\Services\\Seances\\KlassciSeanceLookupService\:\:lookupForTeacher\(\) should return array\{array\<string, mixed\>\|null, array\<string, mixed\>\|null\} but returns array\{mixed, mixed\}\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Services/Seances/KlassciSeanceLookupService.php
+
+		-
+			message: '#^Parameter \#1 \$value of function collect expects Illuminate\\Contracts\\Support\\Arrayable\<\(int\|string\), mixed\>\|iterable\<\(int\|string\), mixed\>\|null, mixed given\.$#'
+			identifier: argument.type
+			count: 3
+			path: app/Services/Seances/KlassciSeanceLookupService.php
+
+		-
+			message: '#^Part \$matiereId \(mixed\) of encapsed string cannot be cast to string\.$#'
+			identifier: encapsedStringPart.nonString
+			count: 1
+			path: app/Services/Seances/KlassciSeanceLookupService.php
+
+		-
+			message: '#^Part \$matiere\[''id''\] \(mixed\) of encapsed string cannot be cast to string\.$#'
+			identifier: encapsedStringPart.nonString
+			count: 2
+			path: app/Services/Seances/KlassciSeanceLookupService.php
+
+		-
+			message: '#^Unable to resolve the template type TKey in call to function collect$#'
+			identifier: argument.templateType
+			count: 3
+			path: app/Services/Seances/KlassciSeanceLookupService.php
+
+		-
+			message: '#^Unable to resolve the template type TValue in call to function collect$#'
+			identifier: argument.templateType
+			count: 3
+			path: app/Services/Seances/KlassciSeanceLookupService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\UserClass\:\:\$email\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Seances/SeanceVisioEnricher.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\UserClass\:\:\$klassci_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Seances/SeanceVisioEnricher.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\UserClass\:\:\$name\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Services/Seances/SeanceVisioEnricher.php
+
+		-
+			message: '#^Method App\\Services\\Seances\\SeanceVisioEnricher\:\:resolveParticipants\(\) should return array\<int, array\<string, mixed\>\> but returns array\<mixed\>\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Services/Seances/SeanceVisioEnricher.php
+
+		-
+			message: '#^Offset 0 on non\-empty\-list\<string\> on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Services/Seances/SeanceVisioEnricher.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\UserClass\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 1
+			path: app/Services/Seances/SeanceVisioEnricher.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Support\\Collection\<\(int\|string\),mixed\>\:\:filter\(\) expects \(callable\(mixed, int\|string\)\: bool\)\|null, Closure\(array\)\: bool given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Seances/SeanceVisioEnricher.php
+
+		-
+			message: '#^Parameter \#1 \$value of function collect expects Illuminate\\Contracts\\Support\\Arrayable\<\(int\|string\), mixed\>\|iterable\<\(int\|string\), mixed\>\|null, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Seances/SeanceVisioEnricher.php
+
+		-
+			message: '#^Return type of call to method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\UserClass\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: method.unresolvableReturnType
+			count: 1
+			path: app/Services/Seances/SeanceVisioEnricher.php
+
+		-
+			message: '#^Unable to resolve the template type TKey in call to function collect$#'
+			identifier: argument.templateType
+			count: 1
+			path: app/Services/Seances/SeanceVisioEnricher.php
+
+		-
+			message: '#^Unable to resolve the template type TValue in call to function collect$#'
+			identifier: argument.templateType
+			count: 1
+			path: app/Services/Seances/SeanceVisioEnricher.php
+
+		-
+			message: '#^Argument of an invalid type mixed supplied for foreach, only iterables are supported\.$#'
+			identifier: foreach.nonIterable
+			count: 1
+			path: app/Services/Seances/StudentClassesSeancesFetcher.php
+
+		-
+			message: '#^Cannot access offset ''classe'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: app/Services/Seances/StudentClassesSeancesFetcher.php
+
+		-
+			message: '#^Cannot access offset ''cours'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: app/Services/Seances/StudentClassesSeancesFetcher.php
+
+		-
+			message: '#^Cannot access offset ''date'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: app/Services/Seances/StudentClassesSeancesFetcher.php
+
+		-
+			message: '#^Cannot access offset ''heure_debut'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: app/Services/Seances/StudentClassesSeancesFetcher.php
+
+		-
+			message: '#^Cannot access offset ''heure_fin'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: app/Services/Seances/StudentClassesSeancesFetcher.php
+
+		-
+			message: '#^Cannot access offset ''id'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 6
+			path: app/Services/Seances/StudentClassesSeancesFetcher.php
+
+		-
+			message: '#^Cannot access offset ''matiere'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: app/Services/Seances/StudentClassesSeancesFetcher.php
+
+		-
+			message: '#^Cannot access offset ''matiere_id'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: app/Services/Seances/StudentClassesSeancesFetcher.php
+
+		-
+			message: '#^Cannot access offset ''nom'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: app/Services/Seances/StudentClassesSeancesFetcher.php
+
+		-
+			message: '#^Cannot access offset ''salle'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 2
+			path: app/Services/Seances/StudentClassesSeancesFetcher.php
+
+		-
+			message: '#^Cannot access offset ''seances_programmees'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: app/Services/Seances/StudentClassesSeancesFetcher.php
+
+		-
+			message: '#^Method App\\Services\\Seances\\StudentClassesSeancesFetcher\:\:mapStudentSeances\(\) should return Illuminate\\Support\\Collection\<int, array\<string, mixed\>\> but returns Illuminate\\Support\\Collection\<int, array\{id\: mixed, programmation\: array\{date\: mixed, heure_debut\: mixed, heure_fin\: mixed, salle\: mixed\}, salle\: mixed, matiere\: array\{id\: int, nom\: mixed, code\: mixed\}, classe\: array\{id\: mixed, nom\: mixed\}, enseignant\: array\{nom\: string\}, visio\: array\{enabled\: bool, status\: string\|null, room_id\: string\|null, started_at\: Carbon\\Carbon\|null, participants_count\: int\}\|null\}\>\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Services/Seances/StudentClassesSeancesFetcher.php
+
+		-
+			message: '#^Method App\\Services\\Seances\\StudentClassesSeancesFetcher\:\:resolveEnseignantNom\(\) should return string but returns string\|null\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Services/Seances/StudentClassesSeancesFetcher.php
+
+		-
+			message: '#^Parameter \#1 \$seances of method App\\Services\\Seances\\StudentClassesSeancesFetcher\:\:filterForStudent\(\) expects Illuminate\\Support\\Collection\<int, array\<string, mixed\>\>, Illuminate\\Support\\Collection\<\(int\|string\), mixed\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Seances/StudentClassesSeancesFetcher.php
+
+		-
+			message: '#^Parameter \#1 \$value of function collect expects Illuminate\\Contracts\\Support\\Arrayable\<\(int\|string\), mixed\>\|iterable\<\(int\|string\), mixed\>\|null, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Seances/StudentClassesSeancesFetcher.php
+
+		-
+			message: '#^Parameter \#2 \$classeId of method App\\Services\\Seances\\StudentClassesSeancesFetcher\:\:filterForStudent\(\) expects int, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Seances/StudentClassesSeancesFetcher.php
+
+		-
+			message: '#^Parameter \#2 \$matiere of method App\\Services\\Seances\\StudentClassesSeancesFetcher\:\:mapStudentSeances\(\) expects array\<string, mixed\>, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Seances/StudentClassesSeancesFetcher.php
+
+		-
+			message: '#^Parameter \#3 \$matiereId of method App\\Services\\Seances\\StudentClassesSeancesFetcher\:\:mapStudentSeances\(\) expects int, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Seances/StudentClassesSeancesFetcher.php
+
+		-
+			message: '#^Part \$matiereId \(mixed\) of encapsed string cannot be cast to string\.$#'
+			identifier: encapsedStringPart.nonString
+			count: 1
+			path: app/Services/Seances/StudentClassesSeancesFetcher.php
+
+		-
+			message: '#^Unable to resolve the template type TKey in call to function collect$#'
+			identifier: argument.templateType
+			count: 1
+			path: app/Services/Seances/StudentClassesSeancesFetcher.php
+
+		-
+			message: '#^Unable to resolve the template type TValue in call to function collect$#'
+			identifier: argument.templateType
+			count: 1
+			path: app/Services/Seances/StudentClassesSeancesFetcher.php
+
+		-
+			message: '#^Cannot access offset ''classe'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: app/Services/Seances/TeachingSeancesFetcher.php
+
+		-
+			message: '#^Cannot access offset ''date'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 2
+			path: app/Services/Seances/TeachingSeancesFetcher.php
+
+		-
+			message: '#^Cannot access offset ''heure_debut'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 2
+			path: app/Services/Seances/TeachingSeancesFetcher.php
+
+		-
+			message: '#^Cannot access offset ''heure_fin'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 2
+			path: app/Services/Seances/TeachingSeancesFetcher.php
+
+		-
+			message: '#^Cannot access offset ''id'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 6
+			path: app/Services/Seances/TeachingSeancesFetcher.php
+
+		-
+			message: '#^Cannot access offset ''matieres'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: app/Services/Seances/TeachingSeancesFetcher.php
+
+		-
+			message: '#^Cannot access offset ''nom'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: app/Services/Seances/TeachingSeancesFetcher.php
+
+		-
+			message: '#^Cannot access offset ''places_occupees'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: app/Services/Seances/TeachingSeancesFetcher.php
+
+		-
+			message: '#^Cannot access offset ''salle'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 2
+			path: app/Services/Seances/TeachingSeancesFetcher.php
+
+		-
+			message: '#^Cannot access offset ''seances_programmees'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: app/Services/Seances/TeachingSeancesFetcher.php
+
+		-
+			message: '#^Method App\\Services\\Seances\\TeachingSeancesFetcher\:\:fetchClasseEffectif\(\) should return int but returns mixed\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Services/Seances/TeachingSeancesFetcher.php
+
+		-
+			message: '#^Parameter \#1 \$klassciClasseId of method App\\Services\\ClasseSyncService\:\:syncClasseById\(\) expects int, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Seances/TeachingSeancesFetcher.php
+
+		-
+			message: '#^Parameter \#1 \$seance of method App\\Services\\Seances\\TeachingSeancesFetcher\:\:ensureLocalSeanceExists\(\) expects array\<string, mixed\>, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Seances/TeachingSeancesFetcher.php
+
+		-
+			message: '#^Parameter \#1 \$seance of method App\\Services\\Seances\\TeachingSeancesFetcher\:\:fetchClasseEffectif\(\) expects array\<string, mixed\>, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Seances/TeachingSeancesFetcher.php
+
+		-
+			message: '#^Parameter \#1 \$seance of method App\\Services\\Seances\\TeachingSeancesFetcher\:\:mapSeance\(\) expects array\<string, mixed\>, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Seances/TeachingSeancesFetcher.php
+
+		-
+			message: '#^Parameter \#1 \$string of function substr expects string, mixed given\.$#'
+			identifier: argument.type
+			count: 2
+			path: app/Services/Seances/TeachingSeancesFetcher.php
+
+		-
+			message: '#^Parameter \#1 \$value of function collect expects Illuminate\\Contracts\\Support\\Arrayable\<\(int\|string\), mixed\>\|iterable\<\(int\|string\), mixed\>\|null, mixed given\.$#'
+			identifier: argument.type
+			count: 2
+			path: app/Services/Seances/TeachingSeancesFetcher.php
+
+		-
+			message: '#^Parameter \#2 \$matiere of method App\\Services\\Seances\\TeachingSeancesFetcher\:\:ensureLocalSeanceExists\(\) expects array\<string, mixed\>, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Seances/TeachingSeancesFetcher.php
+
+		-
+			message: '#^Parameter \#2 \$matiere of method App\\Services\\Seances\\TeachingSeancesFetcher\:\:mapSeance\(\) expects array\<string, mixed\>, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Seances/TeachingSeancesFetcher.php
+
+		-
+			message: '#^Part \$matiere\[''id''\] \(mixed\) of encapsed string cannot be cast to string\.$#'
+			identifier: encapsedStringPart.nonString
+			count: 1
+			path: app/Services/Seances/TeachingSeancesFetcher.php
+
+		-
+			message: '#^Part \$seance\[''classe''\]\[''id''\] \(mixed\) of encapsed string cannot be cast to string\.$#'
+			identifier: encapsedStringPart.nonString
+			count: 1
+			path: app/Services/Seances/TeachingSeancesFetcher.php
+
+		-
+			message: '#^Unable to resolve the template type TKey in call to function collect$#'
+			identifier: argument.templateType
+			count: 2
+			path: app/Services/Seances/TeachingSeancesFetcher.php
+
+		-
+			message: '#^Unable to resolve the template type TValue in call to function collect$#'
+			identifier: argument.templateType
+			count: 2
+			path: app/Services/Seances/TeachingSeancesFetcher.php
+
+		-
+			message: '#^Binary operation "\." between mixed and '' '' results in an error\.$#'
+			identifier: binaryOp.invalid
+			count: 2
+			path: app/Services/Seances/UpcomingSeancesFetcher.php
+
+		-
+			message: '#^Binary operation "\." between non\-falsy\-string and mixed results in an error\.$#'
+			identifier: binaryOp.invalid
+			count: 2
+			path: app/Services/Seances/UpcomingSeancesFetcher.php
+
+		-
+			message: '#^Cannot access offset ''date'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 2
+			path: app/Services/Seances/UpcomingSeancesFetcher.php
+
+		-
+			message: '#^Cannot access offset ''heure_debut'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: app/Services/Seances/UpcomingSeancesFetcher.php
+
+		-
+			message: '#^Cannot access offset ''heure_fin'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: app/Services/Seances/UpcomingSeancesFetcher.php
+
+		-
+			message: '#^Cannot access offset ''id'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 3
+			path: app/Services/Seances/UpcomingSeancesFetcher.php
+
+		-
+			message: '#^Cannot access offset ''nom'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: app/Services/Seances/UpcomingSeancesFetcher.php
+
+		-
+			message: '#^Cannot access offset ''salle'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 2
+			path: app/Services/Seances/UpcomingSeancesFetcher.php
+
+		-
+			message: '#^Cannot access offset ''seances_programmees'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: app/Services/Seances/UpcomingSeancesFetcher.php
+
+		-
+			message: '#^Method App\\Services\\Seances\\UpcomingSeancesFetcher\:\:enrichWithVisio\(\) should return Illuminate\\Support\\Collection\<int, array\<string, mixed\>\> but returns Illuminate\\Support\\Collection\<int, non\-empty\-array\<string, mixed\>\>\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Services/Seances/UpcomingSeancesFetcher.php
+
+		-
+			message: '#^Method App\\Services\\Seances\\UpcomingSeancesFetcher\:\:filterSeances\(\) should return Illuminate\\Support\\Collection\<int, array\<string, mixed\>\> but returns Illuminate\\Support\\Collection\<int, array\<string, mixed\>\>\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Services/Seances/UpcomingSeancesFetcher.php
+
+		-
+			message: '#^Method App\\Services\\Seances\\UpcomingSeancesFetcher\:\:mapSeances\(\) should return Illuminate\\Support\\Collection\<int, array\<string, mixed\>\> but returns Illuminate\\Support\\Collection\<int, array\{id\: mixed, programmation\: array\{date\: mixed, heure_debut\: mixed, heure_fin\: mixed, salle\: mixed\}, salle\: mixed, matiere\: array\{id\: mixed, libelle\: mixed, code\: mixed\}, classe\: array\{id\: mixed, libelle\: mixed\}, enseignant\: null\}\>\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Services/Seances/UpcomingSeancesFetcher.php
+
+		-
+			message: '#^Parameter \#1 \$klassciSeanceId of static method Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Seance\>\:\:byKlassciId\(\) expects int, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Seances/UpcomingSeancesFetcher.php
+
+		-
+			message: '#^Parameter \#1 \$seancesProgrammees of method App\\Services\\Seances\\UpcomingSeancesFetcher\:\:filterSeances\(\) expects Illuminate\\Support\\Collection\<int, array\<string, mixed\>\>, Illuminate\\Support\\Collection\<\(int\|string\), mixed\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Seances/UpcomingSeancesFetcher.php
+
+		-
+			message: '#^Parameter \#1 \$value of function collect expects Illuminate\\Contracts\\Support\\Arrayable\<\(int\|string\), mixed\>\|iterable\<\(int\|string\), mixed\>\|null, mixed given\.$#'
+			identifier: argument.type
+			count: 2
+			path: app/Services/Seances/UpcomingSeancesFetcher.php
+
+		-
+			message: '#^Parameter \#2 \$matiere of method App\\Services\\Seances\\UpcomingSeancesFetcher\:\:mapSeances\(\) expects array\<string, mixed\>, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Seances/UpcomingSeancesFetcher.php
+
+		-
+			message: '#^Part \$matiereId \(mixed\) of encapsed string cannot be cast to string\.$#'
+			identifier: encapsedStringPart.nonString
+			count: 2
+			path: app/Services/Seances/UpcomingSeancesFetcher.php
+
+		-
+			message: '#^Unable to resolve the template type TKey in call to function collect$#'
+			identifier: argument.templateType
+			count: 2
+			path: app/Services/Seances/UpcomingSeancesFetcher.php
+
+		-
+			message: '#^Unable to resolve the template type TValue in call to function collect$#'
+			identifier: argument.templateType
+			count: 2
+			path: app/Services/Seances/UpcomingSeancesFetcher.php
+
+		-
+			message: '#^Method App\\Services\\SeancesHistoryQueryService\:\:enrichWithStats\(\) should return Illuminate\\Support\\Collection\<int, array\<string, mixed\>\> but returns Illuminate\\Support\\Collection\<int, array\{id\: int, klassci_seance_id\: int, titre\: string, matiere\: array\{nom\: string\}, classe\: array\{nom\: string\}, date\: string\|null, visio_started_at\: string\|null, visio_ended_at\: string\|null, \.\.\.\}\>\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Services/SeancesHistoryQueryService.php
+
+		-
+			message: '#^Parameter \#1 \$num of function round expects float\|int, float\|int\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/SeancesHistoryQueryService.php
 
 		-
 			message: '#^Method App\\Services\\TenantManager\:\:klassciConfig\(\) return type has no value type specified in iterable type array\.$#'

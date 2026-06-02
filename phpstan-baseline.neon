@@ -1228,6 +1228,12 @@ parameters:
 			message: '#^Cannot cast mixed to int\.$#'
 			identifier: cast.int
 			count: 1
+			path: app/Http/Controllers/API/LMS/LMSSeanceParticipantMutationController.php
+
+		-
+			message: '#^Cannot cast mixed to int\.$#'
+			identifier: cast.int
+			count: 1
 			path: app/Http/Controllers/API/LMS/LMSSeancesHistoryController.php
 
 		-
@@ -1241,138 +1247,6 @@ parameters:
 			identifier: cast.int
 			count: 3
 			path: app/Http/Controllers/API/LMS/LMSSeancesListController.php
-
-		-
-			message: '#^Access to an undefined property App\\Http\\Controllers\\API\\LMS\\LMSSeancesMutationController\:\:\$classeSyncService\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Controllers/API/LMS/LMSSeancesMutationController.php
-
-		-
-			message: '#^Access to an undefined property App\\Http\\Controllers\\API\\LMS\\LMSSeancesMutationController\:\:\$notificationService\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Controllers/API/LMS/LMSSeancesMutationController.php
-
-		-
-			message: '#^Argument of an invalid type mixed supplied for foreach, only iterables are supported\.$#'
-			identifier: foreach.nonIterable
-			count: 2
-			path: app/Http/Controllers/API/LMS/LMSSeancesMutationController.php
-
-		-
-			message: '#^Call to static method timeout\(\) on an unknown class App\\Http\\Controllers\\API\\LMS\\Http\.$#'
-			identifier: class.notFound
-			count: 2
-			path: app/Http/Controllers/API/LMS/LMSSeancesMutationController.php
-
-		-
-			message: '#^Called ''env'' outside of the config directory which returns null when the config is cached, use ''config''\.$#'
-			identifier: larastan.noEnvCallsOutsideOfConfig
-			count: 1
-			path: app/Http/Controllers/API/LMS/LMSSeancesMutationController.php
-
-		-
-			message: '#^Cannot access offset ''classe'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 2
-			path: app/Http/Controllers/API/LMS/LMSSeancesMutationController.php
-
-		-
-			message: '#^Cannot access offset ''enseignant'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 2
-			path: app/Http/Controllers/API/LMS/LMSSeancesMutationController.php
-
-		-
-			message: '#^Cannot access offset ''id'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 5
-			path: app/Http/Controllers/API/LMS/LMSSeancesMutationController.php
-
-		-
-			message: '#^Cannot access offset ''libelle'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 1
-			path: app/Http/Controllers/API/LMS/LMSSeancesMutationController.php
-
-		-
-			message: '#^Cannot access offset ''nom'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 2
-			path: app/Http/Controllers/API/LMS/LMSSeancesMutationController.php
-
-		-
-			message: '#^Cannot access offset ''nom_complet'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 1
-			path: app/Http/Controllers/API/LMS/LMSSeancesMutationController.php
-
-		-
-			message: '#^Cannot access offset ''seances_programmees'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 1
-			path: app/Http/Controllers/API/LMS/LMSSeancesMutationController.php
-
-		-
-			message: '#^Cannot access property \$id on App\\Models\\Seance\|null\.$#'
-			identifier: property.nonObject
-			count: 1
-			path: app/Http/Controllers/API/LMS/LMSSeancesMutationController.php
-
-		-
-			message: '#^Cannot access property \$klassci_seance_id on App\\Models\\Seance\|null\.$#'
-			identifier: property.nonObject
-			count: 1
-			path: app/Http/Controllers/API/LMS/LMSSeancesMutationController.php
-
-		-
-			message: '#^Cannot access property \$visio_active on App\\Models\\Seance\|null\.$#'
-			identifier: property.nonObject
-			count: 1
-			path: app/Http/Controllers/API/LMS/LMSSeancesMutationController.php
-
-		-
-			message: '#^Cannot call method delete\(\) on App\\Models\\Seance\|null\.$#'
-			identifier: method.nonObject
-			count: 1
-			path: app/Http/Controllers/API/LMS/LMSSeancesMutationController.php
-
-		-
-			message: '#^Parameter \#2 \$klassciToken of method App\\Http\\Controllers\\API\\LMS\\LMSSeancesMutationController\:\:getSeanceDataFromKlassci\(\) expects string, string\|null given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Controllers/API/LMS/LMSSeancesMutationController.php
-
-		-
-			message: '#^Part \$matiere\[''id''\] \(mixed\) of encapsed string cannot be cast to string\.$#'
-			identifier: encapsedStringPart.nonString
-			count: 1
-			path: app/Http/Controllers/API/LMS/LMSSeancesMutationController.php
-
-		-
-			message: '#^Property App\\Http\\Controllers\\API\\LMS\\LMSSeancesMutationController\:\:\$seanceQuery is never read, only written\.$#'
-			identifier: property.onlyWritten
-			count: 1
-			path: app/Http/Controllers/API/LMS/LMSSeancesMutationController.php
-
-		-
-			message: '#^Property App\\Models\\Seance\:\:\$created_by \(int\<0, max\>\|null\) does not accept int\.$#'
-			identifier: assign.propertyType
-			count: 1
-			path: app/Http/Controllers/API/LMS/LMSSeancesMutationController.php
-
-		-
-			message: '#^Unable to resolve the template type TKey in call to function collect$#'
-			identifier: argument.templateType
-			count: 4
-			path: app/Http/Controllers/API/LMS/LMSSeancesMutationController.php
-
-		-
-			message: '#^Unable to resolve the template type TValue in call to function collect$#'
-			identifier: argument.templateType
-			count: 4
-			path: app/Http/Controllers/API/LMS/LMSSeancesMutationController.php
 
 		-
 			message: '#^Access to an undefined property App\\Http\\Controllers\\API\\LMS\\LMSVisioLifecycleController\:\:\$classeSyncService\.$#'
@@ -6797,6 +6671,126 @@ parameters:
 			identifier: argument.templateType
 			count: 3
 			path: app/Services/Seances/KlassciSeanceLookupService.php
+
+		-
+			message: '#^Called ''env'' outside of the config directory which returns null when the config is cached, use ''config''\.$#'
+			identifier: larastan.noEnvCallsOutsideOfConfig
+			count: 1
+			path: app/Services/Seances/Mutations/ParticipantValidationService.php
+
+		-
+			message: '#^Cannot access offset ''classe_id'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: app/Services/Seances/Mutations/ParticipantValidationService.php
+
+		-
+			message: '#^Cannot access offset ''data'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 2
+			path: app/Services/Seances/Mutations/ParticipantValidationService.php
+
+		-
+			message: '#^Cannot access offset ''seances_programmees'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: app/Services/Seances/Mutations/ParticipantValidationService.php
+
+		-
+			message: '#^Parameter \#1 \$value of function collect expects Illuminate\\Contracts\\Support\\Arrayable\<\(int\|string\), mixed\>\|iterable\<\(int\|string\), mixed\>\|null, mixed given\.$#'
+			identifier: argument.type
+			count: 4
+			path: app/Services/Seances/Mutations/ParticipantValidationService.php
+
+		-
+			message: '#^Parameter \#1 \$value of function count expects array\|Countable, mixed given\.$#'
+			identifier: argument.type
+			count: 2
+			path: app/Services/Seances/Mutations/ParticipantValidationService.php
+
+		-
+			message: '#^Part \$classeId \(mixed\) of encapsed string cannot be cast to string\.$#'
+			identifier: encapsedStringPart.nonString
+			count: 1
+			path: app/Services/Seances/Mutations/ParticipantValidationService.php
+
+		-
+			message: '#^Unable to resolve the template type TKey in call to function collect$#'
+			identifier: argument.templateType
+			count: 4
+			path: app/Services/Seances/Mutations/ParticipantValidationService.php
+
+		-
+			message: '#^Unable to resolve the template type TValue in call to function collect$#'
+			identifier: argument.templateType
+			count: 4
+			path: app/Services/Seances/Mutations/ParticipantValidationService.php
+
+		-
+			message: '#^Argument of an invalid type mixed supplied for foreach, only iterables are supported\.$#'
+			identifier: foreach.nonIterable
+			count: 2
+			path: app/Services/Seances/Mutations/VisioToggleService.php
+
+		-
+			message: '#^Cannot access offset ''classe'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 2
+			path: app/Services/Seances/Mutations/VisioToggleService.php
+
+		-
+			message: '#^Cannot access offset ''enseignant'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 2
+			path: app/Services/Seances/Mutations/VisioToggleService.php
+
+		-
+			message: '#^Cannot access offset ''id'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 5
+			path: app/Services/Seances/Mutations/VisioToggleService.php
+
+		-
+			message: '#^Cannot access offset ''libelle'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: app/Services/Seances/Mutations/VisioToggleService.php
+
+		-
+			message: '#^Cannot access offset ''nom'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 2
+			path: app/Services/Seances/Mutations/VisioToggleService.php
+
+		-
+			message: '#^Cannot access offset ''nom_complet'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: app/Services/Seances/Mutations/VisioToggleService.php
+
+		-
+			message: '#^Cannot access offset ''seances_programmees'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: app/Services/Seances/Mutations/VisioToggleService.php
+
+		-
+			message: '#^Cannot cast mixed to int\.$#'
+			identifier: cast.int
+			count: 1
+			path: app/Services/Seances/Mutations/VisioToggleService.php
+
+		-
+			message: '#^Part \$matiere\[''id''\] \(mixed\) of encapsed string cannot be cast to string\.$#'
+			identifier: encapsedStringPart.nonString
+			count: 1
+			path: app/Services/Seances/Mutations/VisioToggleService.php
+
+		-
+			message: '#^Property App\\Models\\Seance\:\:\$created_by \(int\<0, max\>\|null\) does not accept int\.$#'
+			identifier: assign.propertyType
+			count: 1
+			path: app/Services/Seances/Mutations/VisioToggleService.php
 
 		-
 			message: '#^Access to an undefined property App\\Models\\UserClass\:\:\$email\.$#'

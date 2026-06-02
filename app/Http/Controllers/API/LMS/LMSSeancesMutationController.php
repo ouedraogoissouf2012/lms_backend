@@ -9,7 +9,7 @@ use App\Http\Requests\ToggleVisioSeanceRequest;
 use App\Http\Requests\UnhideSeanceRequest;
 use App\Http\Requests\ValidateParticipantRequest;
 use App\Services\KlassciProxyService;
-use App\Services\SeanceQueryService;
+use App\Services\SeanceDetailQueryService;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -29,7 +29,7 @@ final class LMSSeancesMutationController extends AuthenticatedController
 
     public function __construct(
         private readonly KlassciProxyService $klassciService,
-        private readonly SeanceQueryService $seanceQuery,
+        private readonly SeanceDetailQueryService $seanceQuery,
     ) {}
 
     /**

@@ -1,0 +1,287 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Services\Chapter;
+
+use App\Http\Requests\ReorderChaptersRequest;
+use App\Http\Requests\StoreChapterRequest;
+use App\Http\Requests\UpdateChapterRequest;
+use App\Models\Chapter;
+use App\Models\Lesson;
+use App\Services\FileConversionService;
+use Psr\Log\LoggerInterface;
+use Throwable;
+
+/**
+ * ChapterCrudService — CRUD des chapitres extrait verbatim de
+ * `ChapterController` (split-17/chapter).
+ *
+ * Regroupe les opérations CRUD + reorder des chapitres :
+ *   - list (par lesson)
+ *   - show
+ *   - create
+ *   - update
+ *   - delete (+ purge fichiers via FileConversionService)
+ *   - reorder (drag & drop)
+ *
+ * Aucun changement comportemental — toute la logique vient du controller
+ * original. La méthode `delete()` continue de purger les fichiers via
+ * `FileConversionService::deleteChapterFiles()`.
+ *
+ * @see PRODUCTION_STANDARDS.md §1.1 — Services ≤300 lignes
+ * @see PRODUCTION_STANDARDS.md §1.6 D — DI strict (LoggerInterface PSR-3)
+ */
+final class ChapterCrudService
+{
+    public function __construct(
+        private readonly FileConversionService $fileConversionService,
+        private readonly LoggerInterface $logger,
+    ) {}
+
+    /**
+     * Liste des chapitres d'une leçon (ordered scope).
+     *
+     * @return array{status:int, payload: array<string, mixed>}
+     */
+    public function listByLesson(int $lessonId): array
+    {
+        try {
+            $lesson = Lesson::findOrFail($lessonId);
+            $chapters = $lesson->chapters()->ordered()->get();
+
+            return [
+                'status' => 200,
+                'payload' => [
+                    'success' => true,
+                    'data' => $chapters,
+                    'message' => 'Chapitres récupérés',
+                ],
+            ];
+        } catch (Throwable $e) {
+            $this->logger->error('Erreur récupération chapitres', [
+                'lesson_id' => $lessonId,
+                'error' => $e->getMessage(),
+            ]);
+
+            return [
+                'status' => 500,
+                'payload' => [
+                    'success' => false,
+                    'message' => 'Une erreur est survenue.',
+                ],
+            ];
+        }
+    }
+
+    /**
+     * Détails d'un chapitre avec sa leçon parente.
+     *
+     * @return array{status:int, payload: array<string, mixed>}
+     */
+    public function show(int $id): array
+    {
+        try {
+            $chapter = Chapter::with('lesson')->findOrFail($id);
+
+            return [
+                'status' => 200,
+                'payload' => [
+                    'success' => true,
+                    'data' => $chapter,
+                ],
+            ];
+        } catch (Throwable $e) {
+            return [
+                'status' => 404,
+                'payload' => [
+                    'success' => false,
+                    'message' => 'Chapitre non trouvé',
+                ],
+            ];
+        }
+    }
+
+    /**
+     * Crée un nouveau chapitre pour une leçon.
+     *
+     * Mappe les champs français du request vers les colonnes anglaises
+     * du modèle. Si `ordre` n'est pas fourni, place le chapitre en fin
+     * de liste (max(order) + 1).
+     *
+     * @return array{status:int, payload: array<string, mixed>}
+     */
+    public function create(StoreChapterRequest $request, int $lessonId, ?int $authUserId): array
+    {
+        try {
+            $lesson = Lesson::findOrFail($lessonId);
+
+            $validated = $request->validated();
+
+            $data = [
+                'title' => $validated['titre'] ?? null,
+                'description' => $validated['description'] ?? null,
+                'lesson_id' => $lessonId,
+                'matiere_id' => $lesson->matiere_id,
+                'enseignant_id' => $authUserId,
+            ];
+
+            if (isset($validated['type_contenu'])) {
+                $data['content_type'] = $validated['type_contenu'];
+            }
+
+            if (isset($validated['ordre']) && $validated['ordre'] !== null) {
+                $data['order'] = (int) $validated['ordre'];
+            } else {
+                $maxOrder = $lesson->chapters()->max('order') ?? 0;
+                $data['order'] = $maxOrder + 1;
+            }
+
+            $chapter = Chapter::create($data);
+
+            $this->logger->info('Chapitre créé', [
+                'chapter_id' => $chapter->id,
+                'lesson_id' => $lessonId,
+            ]);
+
+            return [
+                'status' => 201,
+                'payload' => [
+                    'success' => true,
+                    'data' => $chapter->load('lesson'),
+                    'message' => 'Chapitre créé avec succès',
+                ],
+            ];
+        } catch (Throwable $e) {
+            $this->logger->error('Erreur création chapitre', [
+                'lesson_id' => $lessonId,
+                'error' => $e->getMessage(),
+            ]);
+
+            return [
+                'status' => 500,
+                'payload' => [
+                    'success' => false,
+                    'message' => 'Une erreur est survenue.',
+                ],
+            ];
+        }
+    }
+
+    /**
+     * Met à jour un chapitre.
+     *
+     * @return array{status:int, payload: array<string, mixed>}
+     */
+    public function update(UpdateChapterRequest $request, int $id): array
+    {
+        try {
+            $chapter = Chapter::findOrFail($id);
+            $chapter->update($request->validated());
+
+            $this->logger->info('Chapitre mis à jour', ['chapter_id' => $id]);
+
+            return [
+                'status' => 200,
+                'payload' => [
+                    'success' => true,
+                    'data' => $chapter->fresh(),
+                    'message' => 'Chapitre mis à jour',
+                ],
+            ];
+        } catch (Throwable $e) {
+            $this->logger->error('Erreur mise à jour chapitre', [
+                'chapter_id' => $id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return [
+                'status' => 500,
+                'payload' => [
+                    'success' => false,
+                    'message' => 'Une erreur est survenue.',
+                ],
+            ];
+        }
+    }
+
+    /**
+     * Supprime un chapitre (purge fichiers + delete row).
+     *
+     * @return array{status:int, payload: array<string, mixed>}
+     */
+    public function delete(int $id): array
+    {
+        try {
+            $chapter = Chapter::findOrFail($id);
+            $this->fileConversionService->deleteChapterFiles($id);
+            $chapter->delete();
+
+            $this->logger->info('Chapitre supprimé', ['chapter_id' => $id]);
+
+            return [
+                'status' => 200,
+                'payload' => [
+                    'success' => true,
+                    'message' => 'Chapitre supprimé',
+                ],
+            ];
+        } catch (Throwable $e) {
+            $this->logger->error('Erreur suppression chapitre', [
+                'chapter_id' => $id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return [
+                'status' => 500,
+                'payload' => [
+                    'success' => false,
+                    'message' => 'Une erreur est survenue.',
+                ],
+            ];
+        }
+    }
+
+    /**
+     * Réorganise l'ordre des chapitres d'une leçon (drag & drop).
+     *
+     * @return array{status:int, payload: array<string, mixed>}
+     */
+    public function reorder(ReorderChaptersRequest $request, int $lessonId): array
+    {
+        try {
+            $chapters = $request->validated()['chapters'];
+            foreach ($chapters as $chapterData) {
+                Chapter::where('id', $chapterData['id'])
+                    ->where('lesson_id', $lessonId)
+                    ->update(['order' => $chapterData['order']]);
+            }
+
+            $this->logger->info('Chapitres réorganisés', [
+                'lesson_id' => $lessonId,
+                'count' => count($chapters),
+            ]);
+
+            return [
+                'status' => 200,
+                'payload' => [
+                    'success' => true,
+                    'message' => 'Ordre des chapitres mis à jour',
+                ],
+            ];
+        } catch (Throwable $e) {
+            $this->logger->error('Erreur réorganisation chapitres', [
+                'lesson_id' => $lessonId,
+                'error' => $e->getMessage(),
+            ]);
+
+            return [
+                'status' => 500,
+                'payload' => [
+                    'success' => false,
+                    'message' => 'Une erreur est survenue.',
+                ],
+            ];
+        }
+    }
+}

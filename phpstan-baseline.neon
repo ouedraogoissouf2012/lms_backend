@@ -711,38 +711,50 @@ parameters:
 		-
 			message: '#^Access to an undefined property App\\Models\\File\:\:\$download_url\.$#'
 			identifier: property.notFound
-			count: 3
-			path: app/Http/Controllers/API/FileController.php
+			count: 2
+			path: app/Services/File/FileQueryService.php
 
 		-
 			message: '#^Access to an undefined property App\\Models\\File\:\:\$formatted_size\.$#'
 			identifier: property.notFound
-			count: 3
-			path: app/Http/Controllers/API/FileController.php
+			count: 2
+			path: app/Services/File/FileQueryService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\File\:\:\$download_url\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/File/FileUploadService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\File\:\:\$formatted_size\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/File/FileUploadService.php
 
 		-
 			message: '#^Parameter \#1 \$category of method Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\File\>\:\:ofCategory\(\) expects string, mixed given\.$#'
 			identifier: argument.type
 			count: 1
-			path: app/Http/Controllers/API/FileController.php
-
-		-
-			message: '#^Parameter \#1 \$mimeType of static method App\\Models\\File\:\:determineTypeFromMime\(\) expects string, string\|null given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Controllers/API/FileController.php
+			path: app/Services/File/FileQueryService.php
 
 		-
 			message: '#^Parameter \#1 \$perPage of method Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\File\>\:\:paginate\(\) expects int\|null, mixed given\.$#'
 			identifier: argument.type
 			count: 1
-			path: app/Http/Controllers/API/FileController.php
+			path: app/Services/File/FileQueryService.php
 
 		-
 			message: '#^Parameter \#1 \$type of method Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\File\>\:\:ofType\(\) expects string, mixed given\.$#'
 			identifier: argument.type
 			count: 1
-			path: app/Http/Controllers/API/FileController.php
+			path: app/Services/File/FileQueryService.php
+
+		-
+			message: '#^Method App\\Services\\File\\FileUploadService\:\:store\(\) has parameter \$payload with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Services/File/FileUploadService.php
 
 		-
 			message: '#^Access to an undefined property App\\Models\\ForumPost\|Illuminate\\Database\\Eloquent\\Collection\<int, App\\Models\\ForumPost\>\:\:\$id\.$#'

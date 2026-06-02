@@ -18,7 +18,7 @@ use Tests\TestCase;
  * Integration tests for `POST /api/quiz-attempts/{id}/submit`.
  *
  * Comble le gap test-coverage identifié dans l'audit total post-TIER 2 :
- * `QuizAttemptController::submitAttempt` mutait les notes étudiants
+ * `QuizAttemptStudentController::submitAttempt` mute les notes étudiants
  * **sans aucune couverture test feature** (seul la FormRequest était testée).
  *
  * Tests :
@@ -28,7 +28,8 @@ use Tests\TestCase;
  *  - 404 : attempt inexistant
  *  - cross-tenant : attaquant d'une autre institution ne peut pas soumettre
  *
- * @see app/Http/Controllers/API/Quiz/QuizAttemptController.php::submitAttempt
+ * @see app/Http/Controllers/API/Quiz/QuizAttemptStudentController.php::submitAttempt
+ * @see app/Services/Quiz/QuizAttemptLifecycleService.php (split-10/quiz-attempt)
  * @see app/Services/Quiz/QuizGradingService.php (PERF-04 batch 1)
  */
 final class SubmitAttemptHappyPathTest extends TestCase

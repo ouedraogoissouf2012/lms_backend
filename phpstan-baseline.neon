@@ -1627,96 +1627,6 @@ parameters:
 			path: app/Http/Controllers/API/ProxyController.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\QuizAttempt\:\:\$questions_with_results\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Controllers/API/Quiz/QuizAttemptController.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\QuizAttempt\:\:\$time_remaining\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Controllers/API/Quiz/QuizAttemptController.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\QuizAttempt\:\:\$time_spent_formatted\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Controllers/API/Quiz/QuizAttemptController.php
-
-		-
-			message: '#^Call to an undefined method App\\Models\\QuizAttempt\:\:submit\(\)\.$#'
-			identifier: method.notFound
-			count: 2
-			path: app/Http/Controllers/API/Quiz/QuizAttemptController.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Relations\\HasMany\:\:ordered\(\)\.$#'
-			identifier: method.notFound
-			count: 2
-			path: app/Http/Controllers/API/Quiz/QuizAttemptController.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Relations\\HasMany\:\:submitted\(\)\.$#'
-			identifier: method.notFound
-			count: 1
-			path: app/Http/Controllers/API/Quiz/QuizAttemptController.php
-
-		-
-			message: '#^Cannot access property \$allow_review on App\\Models\\Quiz\|null\.$#'
-			identifier: property.nonObject
-			count: 1
-			path: app/Http/Controllers/API/Quiz/QuizAttemptController.php
-
-		-
-			message: '#^Cannot access property \$duration_minutes on App\\Models\\Quiz\|null\.$#'
-			identifier: property.nonObject
-			count: 1
-			path: app/Http/Controllers/API/Quiz/QuizAttemptController.php
-
-		-
-			message: '#^Cannot access property \$show_correct_answers on App\\Models\\Quiz\|null\.$#'
-			identifier: property.nonObject
-			count: 1
-			path: app/Http/Controllers/API/Quiz/QuizAttemptController.php
-
-		-
-			message: '#^Cannot call method questions\(\) on App\\Models\\Quiz\|null\.$#'
-			identifier: method.nonObject
-			count: 1
-			path: app/Http/Controllers/API/Quiz/QuizAttemptController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\API\\Quiz\\QuizAttemptController\:\:getQuestionsWithResults\(\) return type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Http/Controllers/API/Quiz/QuizAttemptController.php
-
-		-
-			message: '#^Parameter \#2 \$answers of method App\\Services\\Quiz\\QuizGradingService\:\:submitAttempt\(\) expects array, mixed given\.$#'
-			identifier: argument.type
-			count: 2
-			path: app/Http/Controllers/API/Quiz/QuizAttemptController.php
-
-		-
-			message: '#^Parameter \#2 \$pointsEarned of method App\\Services\\Quiz\\QuizGradingService\:\:manualGradeAttempt\(\) expects float, mixed given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Controllers/API/Quiz/QuizAttemptController.php
-
-		-
-			message: '#^Parameter \#4 \$feedback of method App\\Services\\Quiz\\QuizGradingService\:\:manualGradeAttempt\(\) expects string\|null, mixed given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Controllers/API/Quiz/QuizAttemptController.php
-
-		-
-			message: '#^Property App\\Models\\QuizAttempt\:\:\$answers \(array\|null\) does not accept mixed\.$#'
-			identifier: assign.propertyType
-			count: 1
-			path: app/Http/Controllers/API/Quiz/QuizAttemptController.php
-
-		-
 			message: '#^Access to an undefined property App\\Models\\Quiz\:\:\$user_attempts_count\.$#'
 			identifier: property.notFound
 			count: 2
@@ -6167,6 +6077,42 @@ parameters:
 			identifier: larastan.relationExistence
 			count: 2
 			path: app/Services/Notification/VisioNotificationDispatcher.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\QuizAttempt\:\:\$questions_with_results\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Quiz/QuizAttemptLifecycleService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\QuizAttempt\:\:\$time_remaining\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Quiz/QuizAttemptLifecycleService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\QuizAttempt\:\:\$time_spent_formatted\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Quiz/QuizAttemptLifecycleService.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Relations\\HasMany\:\:ordered\(\)\.$#'
+			identifier: method.notFound
+			count: 2
+			path: app/Services/Quiz/QuizAttemptLifecycleService.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Relations\\HasMany\:\:submitted\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Services/Quiz/QuizAttemptLifecycleService.php
+
+		-
+			message: '#^Method App\\Services\\Quiz\\QuizAttemptLifecycleService\:\:getAttemptsForQuiz\(\) return type with generic class Illuminate\\Pagination\\LengthAwarePaginator does not specify its types\: TKey, TValue$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Services/Quiz/QuizAttemptLifecycleService.php
 
 		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'

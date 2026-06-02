@@ -6,7 +6,7 @@ use App\Http\Controllers\AuthenticatedController;
 use App\Http\Requests\SyncAttendancesRequest;
 use App\Services\AttendanceStatusService;
 use App\Services\KlassciProxyService;
-use App\Services\SeanceQueryService;
+use App\Services\SeanceDetailQueryService;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -22,14 +22,14 @@ use RuntimeException;
  * Responsibilities:
  *   - POST /api/lms/attendances/from-video-session  → syncAttendancesFromVideoSession()
  *   - GET  /api/lms/attendance/history              → getAttendanceHistory()
- *                                                     (uses SeanceQueryService)
+ *                                                     (uses SeanceDetailQueryService)
  *   - GET  /api/lms/seances/{id}/attendances        → getSeanceAttendances()
  *
  * Injects 3 services:
  *   - KlassciProxyService — for direct KLASSCI calls
- *   - SeanceQueryService (PR E) — replaces legacy `$this->seanceDetails(...)`
- *     anti-pattern. Used by `getAttendanceHistory` to enrich attendance rows
- *     with séance metadata.
+ *   - SeanceDetailQueryService (split-1, ex-SeanceQueryService) — replaces legacy
+ *     `$this->seanceDetails(...)` anti-pattern. Used by `getAttendanceHistory`
+ *     to enrich attendance rows with séance metadata.
  *   - AttendanceStatusService (PR G) — currently not used directly in these
  *     3 methods, but pre-wired for future use (e.g. when `getSeanceAttendances`
  *     gets a status-decoration feature). Removing it keeps the constructor
@@ -39,7 +39,7 @@ final class LMSAttendancesController extends AuthenticatedController
 {
     public function __construct(
         private readonly KlassciProxyService $klassciService,
-        private readonly SeanceQueryService $seanceQuery,
+        private readonly SeanceDetailQueryService $seanceQuery,
         private readonly AttendanceStatusService $attendanceStatus,
     ) {}
 
@@ -227,7 +227,7 @@ final class LMSAttendancesController extends AuthenticatedController
                 // Essayer de récupérer les infos KLASSCI de la séance
                 if ($attendance->seance && $attendance->seance->klassci_seance_id) {
                     try {
-                        // Use SeanceQueryService (PR E) instead of legacy
+                        // Use SeanceDetailQueryService (split-1, ex-SeanceQueryService PR E) instead of legacy
                         // `$this->seanceDetails($id, $request)` + json_decode anti-pattern.
                         // Returns the seance array directly — no encode/decode round-trip.
                         $seanceArray = $this->seanceQuery->getSeanceDetailsArray(

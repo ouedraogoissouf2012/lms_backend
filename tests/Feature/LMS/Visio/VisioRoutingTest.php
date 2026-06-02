@@ -138,9 +138,10 @@ final class VisioRoutingTest extends TestCase
     }
 
     /**
-     * REQ-4 — Sanity check: the legacy `/seances/{id}/participants` route still
-     * points to the seances query controller (post split PR — méthode déplacée
-     * de `LMSSeancesController` vers `LMSSeancesQueryController`).
+     * REQ-4 — Sanity check: the `/seances/{id}/participants` route points to
+     * the seance details controller (post split TIER 2 — méthode déplacée de
+     * `LMSSeancesQueryController` vers `LMSSeanceDetailsController` lors du
+     * découpage §5 du god-controller 922l en 3 SRPs ≤200l).
      */
     public function test_legacy_participants_route_still_uses_lms_seances_controller(): void
     {
@@ -148,7 +149,7 @@ final class VisioRoutingTest extends TestCase
 
         self::assertNotNull($route, 'Route lms.seances.participants should be registered.');
         self::assertSame(
-            \App\Http\Controllers\API\LMS\LMSSeancesQueryController::class . '@seanceParticipants',
+            \App\Http\Controllers\API\LMS\LMSSeanceDetailsController::class . '@seanceParticipants',
             $route->getActionName(),
         );
     }

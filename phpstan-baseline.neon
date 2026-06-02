@@ -6001,172 +6001,172 @@ parameters:
 			path: app/Services/Matiere/MyMatieresQueryService.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\QuizAttempt\:\:\$max_score\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Services/NotificationService.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\QuizAttempt\:\:\$percentage\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/NotificationService.php
-
-		-
 			message: '#^Cannot access property \$id on App\\Models\\ForumTopic\|null\.$#'
 			identifier: property.nonObject
 			count: 3
-			path: app/Services/NotificationService.php
-
-		-
-			message: '#^Cannot access property \$id on App\\Models\\Quiz\|null\.$#'
-			identifier: property.nonObject
-			count: 1
-			path: app/Services/NotificationService.php
+			path: app/Services/Notification/ForumNotificationDispatcher.php
 
 		-
 			message: '#^Cannot access property \$id on Illuminate\\Database\\Eloquent\\Model\|null\.$#'
 			identifier: property.nonObject
 			count: 2
-			path: app/Services/NotificationService.php
-
-		-
-			message: '#^Cannot access property \$libelle on Illuminate\\Database\\Eloquent\\Model\|null\.$#'
-			identifier: property.nonObject
-			count: 1
-			path: app/Services/NotificationService.php
+			path: app/Services/Notification/ForumNotificationDispatcher.php
 
 		-
 			message: '#^Cannot access property \$name on Illuminate\\Database\\Eloquent\\Model\|null\.$#'
 			identifier: property.nonObject
 			count: 3
-			path: app/Services/NotificationService.php
+			path: app/Services/Notification/ForumNotificationDispatcher.php
 
 		-
 			message: '#^Cannot access property \$title on App\\Models\\ForumTopic\|null\.$#'
 			identifier: property.nonObject
 			count: 5
-			path: app/Services/NotificationService.php
-
-		-
-			message: '#^Cannot access property \$title on App\\Models\\Quiz\|null\.$#'
-			identifier: property.nonObject
-			count: 2
-			path: app/Services/NotificationService.php
+			path: app/Services/Notification/ForumNotificationDispatcher.php
 
 		-
 			message: '#^Cannot access property \$user on App\\Models\\ForumTopic\|null\.$#'
 			identifier: property.nonObject
 			count: 1
-			path: app/Services/NotificationService.php
-
-		-
-			message: '#^Method App\\Services\\NotificationService\:\:cleanupOldNotifications\(\) should return int but returns mixed\.$#'
-			identifier: return.type
-			count: 1
-			path: app/Services/NotificationService.php
-
-		-
-			message: '#^Method App\\Services\\NotificationService\:\:notifyVisioScheduled\(\) has parameter \$seanceData with no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Services/NotificationService.php
-
-		-
-			message: '#^Method App\\Services\\NotificationService\:\:notifyVisioStarting\(\) has parameter \$seanceData with no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Services/NotificationService.php
-
-		-
-			message: '#^Method App\\Services\\NotificationService\:\:send\(\) has parameter \$data with no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Services/NotificationService.php
-
-		-
-			message: '#^Method App\\Services\\NotificationService\:\:sendToMany\(\) has parameter \$data with no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Services/NotificationService.php
-
-		-
-			message: '#^Method App\\Services\\NotificationService\:\:sendToMany\(\) has parameter \$users with generic class Illuminate\\Support\\Collection but does not specify its types\: TKey, TValue$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Services/NotificationService.php
-
-		-
-			message: '#^Parameter \#1 \$column of method Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Notification\>\:\:where\(\) expects array\<int\|model property of App\\Models\\Notification, mixed\>\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Notification\>\)\: Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Notification\>\)\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Notification\>\)\: void\)\|Illuminate\\Contracts\\Database\\Query\\Expression\|model property of App\\Models\\Notification, ''data\-\>seance_id'' given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Services/NotificationService.php
-
-		-
-			message: '#^Parameter \#1 \$column of method Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\:\:where\(\) expects array\<int\|model property of Illuminate\\Database\\Eloquent\\Model, mixed\>\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\: Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\: void\)\|Illuminate\\Contracts\\Database\\Query\\Expression\|model property of Illuminate\\Database\\Eloquent\\Model, ''lesson_id'' given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Services/NotificationService.php
-
-		-
-			message: '#^Parameter \#1 \$column of method Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\:\:where\(\) expects array\<int\|model property of Illuminate\\Database\\Eloquent\\Model, mixed\>\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\: Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\: void\)\|Illuminate\\Contracts\\Database\\Query\\Expression\|model property of Illuminate\\Database\\Eloquent\\Model, ''quiz_id'' given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Services/NotificationService.php
-
-		-
-			message: '#^Parameter \#1 \$column of method Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\:\:where\(\) expects array\<int\|model property of Illuminate\\Database\\Eloquent\\Model, mixed\>\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\: Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\: void\)\|Illuminate\\Contracts\\Database\\Query\\Expression\|model property of Illuminate\\Database\\Eloquent\\Model, ''status'' given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Services/NotificationService.php
+			path: app/Services/Notification/ForumNotificationDispatcher.php
 
 		-
 			message: '#^Parameter \#1 \$column of method Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\:\:where\(\) expects array\<int\|model property of Illuminate\\Database\\Eloquent\\Model, mixed\>\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\: Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\: void\)\|Illuminate\\Contracts\\Database\\Query\\Expression\|model property of Illuminate\\Database\\Eloquent\\Model, ''topic_id'' given\.$#'
 			identifier: argument.type
 			count: 1
-			path: app/Services/NotificationService.php
+			path: app/Services/Notification/ForumNotificationDispatcher.php
 
 		-
-			message: '#^Parameter \#1 \$user of method App\\Services\\NotificationService\:\:send\(\) expects App\\Models\\User, Illuminate\\Database\\Eloquent\\Model\|null given\.$#'
+			message: '#^Parameter \#1 \$user of method App\\Services\\Notification\\NotificationDispatcher\:\:send\(\) expects App\\Models\\User, Illuminate\\Database\\Eloquent\\Model\|null given\.$#'
 			identifier: argument.type
-			count: 3
-			path: app/Services/NotificationService.php
-
-		-
-			message: '#^Parameter \#1 \$user of method App\\Services\\NotificationService\:\:send\(\) expects App\\Models\\User, mixed given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Services/NotificationService.php
-
-		-
-			message: '#^Relation ''classes'' is not found in App\\Models\\User model\.$#'
-			identifier: larastan.relationExistence
-			count: 5
-			path: app/Services/NotificationService.php
+			count: 2
+			path: app/Services/Notification/ForumNotificationDispatcher.php
 
 		-
 			message: '#^Relation ''forumPosts'' is not found in App\\Models\\User model\.$#'
 			identifier: larastan.relationExistence
 			count: 1
-			path: app/Services/NotificationService.php
+			path: app/Services/Notification/ForumNotificationDispatcher.php
+
+		-
+			message: '#^Ternary operator condition is always true\.$#'
+			identifier: ternary.alwaysTrue
+			count: 1
+			path: app/Services/Notification/ForumNotificationDispatcher.php
+
+		-
+			message: '#^Cannot access property \$libelle on Illuminate\\Database\\Eloquent\\Model\|null\.$#'
+			identifier: property.nonObject
+			count: 1
+			path: app/Services/Notification/LessonNotificationDispatcher.php
+
+		-
+			message: '#^Parameter \#1 \$column of method Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\:\:where\(\) expects array\<int\|model property of Illuminate\\Database\\Eloquent\\Model, mixed\>\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\: Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\: void\)\|Illuminate\\Contracts\\Database\\Query\\Expression\|model property of Illuminate\\Database\\Eloquent\\Model, ''lesson_id'' given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Notification/LessonNotificationDispatcher.php
+
+		-
+			message: '#^Relation ''classes'' is not found in App\\Models\\User model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/Notification/LessonNotificationDispatcher.php
 
 		-
 			message: '#^Relation ''lessonProgress'' is not found in App\\Models\\User model\.$#'
 			identifier: larastan.relationExistence
 			count: 1
-			path: app/Services/NotificationService.php
+			path: app/Services/Notification/LessonNotificationDispatcher.php
+
+		-
+			message: '#^Cannot cast mixed to int\.$#'
+			identifier: cast.int
+			count: 1
+			path: app/Services/Notification/NotificationDispatcher.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\QuizAttempt\:\:\$max_score\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Services/Notification/QuizNotificationDispatcher.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\QuizAttempt\:\:\$percentage\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Notification/QuizNotificationDispatcher.php
+
+		-
+			message: '#^Cannot access property \$id on App\\Models\\Quiz\|null\.$#'
+			identifier: property.nonObject
+			count: 1
+			path: app/Services/Notification/QuizNotificationDispatcher.php
+
+		-
+			message: '#^Cannot access property \$title on App\\Models\\Quiz\|null\.$#'
+			identifier: property.nonObject
+			count: 2
+			path: app/Services/Notification/QuizNotificationDispatcher.php
+
+		-
+			message: '#^Parameter \#1 \$column of method Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\:\:where\(\) expects array\<int\|model property of Illuminate\\Database\\Eloquent\\Model, mixed\>\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\: Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\: void\)\|Illuminate\\Contracts\\Database\\Query\\Expression\|model property of Illuminate\\Database\\Eloquent\\Model, ''quiz_id'' given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Notification/QuizNotificationDispatcher.php
+
+		-
+			message: '#^Parameter \#1 \$column of method Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\:\:where\(\) expects array\<int\|model property of Illuminate\\Database\\Eloquent\\Model, mixed\>\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\: Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\: void\)\|Illuminate\\Contracts\\Database\\Query\\Expression\|model property of Illuminate\\Database\\Eloquent\\Model, ''status'' given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Notification/QuizNotificationDispatcher.php
+
+		-
+			message: '#^Parameter \#1 \$user of method App\\Services\\Notification\\NotificationDispatcher\:\:send\(\) expects App\\Models\\User, Illuminate\\Database\\Eloquent\\Model\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Notification/QuizNotificationDispatcher.php
+
+		-
+			message: '#^Relation ''classes'' is not found in App\\Models\\User model\.$#'
+			identifier: larastan.relationExistence
+			count: 2
+			path: app/Services/Notification/QuizNotificationDispatcher.php
 
 		-
 			message: '#^Relation ''quizAttempts'' is not found in App\\Models\\User model\.$#'
 			identifier: larastan.relationExistence
 			count: 1
-			path: app/Services/NotificationService.php
+			path: app/Services/Notification/QuizNotificationDispatcher.php
 
 		-
 			message: '#^Ternary operator condition is always true\.$#'
 			identifier: ternary.alwaysTrue
+			count: 1
+			path: app/Services/Notification/QuizNotificationDispatcher.php
+
+		-
+			message: '#^Parameter \#1 \$column of method Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Notification\>\:\:where\(\) expects array\<int\|model property of App\\Models\\Notification, mixed\>\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Notification\>\)\: Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Notification\>\)\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Notification\>\)\: void\)\|Illuminate\\Contracts\\Database\\Query\\Expression\|model property of App\\Models\\Notification, ''data\-\>seance_id'' given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Notification/VisioNotificationDispatcher.php
+
+		-
+			message: '#^Part \$enseignant \(mixed\) of encapsed string cannot be cast to string\.$#'
+			identifier: encapsedStringPart.nonString
+			count: 1
+			path: app/Services/Notification/VisioNotificationDispatcher.php
+
+		-
+			message: '#^Part \$matiere \(mixed\) of encapsed string cannot be cast to string\.$#'
+			identifier: encapsedStringPart.nonString
+			count: 3
+			path: app/Services/Notification/VisioNotificationDispatcher.php
+
+		-
+			message: '#^Relation ''classes'' is not found in App\\Models\\User model\.$#'
+			identifier: larastan.relationExistence
 			count: 2
-			path: app/Services/NotificationService.php
+			path: app/Services/Notification/VisioNotificationDispatcher.php
 
 		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'

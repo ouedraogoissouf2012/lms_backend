@@ -186,7 +186,10 @@ class QuizGradingService
             : 0;
         $attempt->passed = $attempt->score >= $attempt->quiz->passing_score;
         $attempt->status = 'graded';
-        $attempt->graded_by = $gradedBy;
+        // graded_by est int<0,max>|null — le caller passe le id d'un user qui
+        // existe forcément (Sanctum::actingAs garanti positif). Cast pour
+        // assurer la covariance type.
+        $attempt->graded_by = max(0, $gradedBy);
         $attempt->graded_at = now();
         $attempt->teacher_feedback = $feedback;
 

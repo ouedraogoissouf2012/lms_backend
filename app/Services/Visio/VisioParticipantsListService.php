@@ -8,7 +8,7 @@ use App\Models\ESBTPAttendance;
 use App\Models\Seance;
 use App\Models\User;
 use App\Models\UserClass;
-use App\Services\SeanceQueryService;
+use App\Services\SeanceDetailQueryService;
 use DateTime;
 use Psr\Log\LoggerInterface;
 use Throwable;
@@ -21,7 +21,7 @@ use Throwable;
  * statut de présence à la visio :
  *  1. Déconnecte automatiquement les participants inactifs (timeout 3 min)
  *  2. Charge les participations réelles (excl. observateurs/coordinateurs)
- *  3. Calcule la durée théorique de la séance via `SeanceQueryService`
+ *  3. Calcule la durée théorique de la séance via `SeanceDetailQueryService`
  *  4. Récupère la liste complète des étudiants (KLASSCI → BDD fallback)
  *  5. Délègue l'enrichissement par étudiant à `VisioParticipantsEnricher`
  *  6. Trie : présents avant absents, % décroissant, ordre alphabétique
@@ -39,7 +39,7 @@ final class VisioParticipantsListService
     private const INACTIVITY_TIMEOUT_MINUTES = 3;
 
     public function __construct(
-        private readonly SeanceQueryService $seanceQuery,
+        private readonly SeanceDetailQueryService $seanceQuery,
         private readonly VisioParticipantsEnricher $enricher,
         private readonly VisioParticipantsStatsBuilder $statsBuilder,
         private readonly LoggerInterface $logger,
@@ -219,7 +219,7 @@ final class VisioParticipantsListService
             }
         } catch (Throwable $e) {
             $this->logger->warning(
-                'Impossible de récupérer la liste complète des étudiants via SeanceQueryService',
+                'Impossible de récupérer la liste complète des étudiants via SeanceDetailQueryService',
                 [
                     'seance_id' => $seanceId,
                     'error' => $e->getMessage(),

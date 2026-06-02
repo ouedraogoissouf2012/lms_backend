@@ -12,7 +12,7 @@ use App\Http\Requests\LeaveVisioRequest;
 use App\Http\Requests\StartVisioRequest;
 use App\Services\AttendanceStatusService;
 use App\Services\KlassciProxyService;
-use App\Services\SeanceQueryService;
+use App\Services\SeanceDetailQueryService;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -29,7 +29,7 @@ class LMSVisioLifecycleController extends AuthenticatedController
 {
     public function __construct(
         private readonly KlassciProxyService $klassciService,
-        private readonly SeanceQueryService $seanceQuery,
+        private readonly SeanceDetailQueryService $seanceQuery,
         private readonly AttendanceStatusService $attendanceStatus,
     ) {}
 

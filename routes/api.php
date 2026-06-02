@@ -475,9 +475,11 @@ use App\Http\Controllers\API\LMS\LMSEnseignantsController;
 use App\Http\Controllers\API\LMS\LMSMatieresAdminController;
 use App\Http\Controllers\API\LMS\LMSMatieresQueryController;
 use App\Http\Controllers\API\LMS\LMSNotificationsPreferencesController;
+use App\Http\Controllers\API\LMS\LMSSeanceDetailsController;
 use App\Http\Controllers\API\LMS\LMSSeanceParticipantMutationController;
 use App\Http\Controllers\API\LMS\LMSSeanceVisibilityMutationController;
-use App\Http\Controllers\API\LMS\LMSSeancesQueryController;
+use App\Http\Controllers\API\LMS\LMSSeancesHistoryController;
+use App\Http\Controllers\API\LMS\LMSSeancesListController;
 use App\Http\Controllers\API\LMS\LMSVisioLifecycleController;
 use App\Http\Controllers\API\LMS\LMSVisioParticipantController;
 
@@ -514,11 +516,11 @@ Route::middleware(['auth:sanctum', 'klassci.sync'])->prefix('lms')->group(functi
     // ============================================
 
     // Séances à venir (pré-création rooms)
-    Route::get('/seances/upcoming', [LMSSeancesQueryController::class, 'upcomingSeances'])
+    Route::get('/seances/upcoming', [LMSSeancesListController::class, 'upcomingSeances'])
         ->name('lms.seances.upcoming');
 
     // Historique des séances (séances ayant eu une visio) - DOIT être AVANT {seanceId}
-    Route::get('/seances/history', [LMSSeancesQueryController::class, 'getSeancesHistory'])
+    Route::get('/seances/history', [LMSSeancesHistoryController::class, 'getSeancesHistory'])
         ->name('lms.seances.history')
         ->middleware('role:enseignant,coordinateur,superAdmin');
 
@@ -532,11 +534,11 @@ Route::middleware(['auth:sanctum', 'klassci.sync'])->prefix('lms')->group(functi
         ->middleware('role:enseignant,coordinateur,superAdmin');
 
     // Détails complets d'une séance (avec infos visio)
-    Route::get('/seances/{seanceId}/details', [LMSSeancesQueryController::class, 'seanceDetails'])
+    Route::get('/seances/{seanceId}/details', [LMSSeanceDetailsController::class, 'seanceDetails'])
         ->name('lms.seances.details');
 
     // Participants autorisés pour une séance
-    Route::get('/seances/{seanceId}/participants', [LMSSeancesQueryController::class, 'seanceParticipants'])
+    Route::get('/seances/{seanceId}/participants', [LMSSeanceDetailsController::class, 'seanceParticipants'])
         ->name('lms.seances.participants');
 
     // Valider l'accès d'un participant
@@ -562,12 +564,12 @@ Route::middleware(['auth:sanctum', 'klassci.sync'])->prefix('lms')->group(functi
         ->middleware('role:enseignant,coordinateur');
 
     // Séances de l'enseignant connecté
-    Route::get('/seances/my-teaching', [LMSSeancesQueryController::class, 'myTeachingSeances'])
+    Route::get('/seances/my-teaching', [LMSSeancesListController::class, 'myTeachingSeances'])
         ->name('lms.seances.my-teaching')
         ->middleware('role:enseignant,coordinateur');
 
     // Séances de l'étudiant connecté
-    Route::get('/seances/my-classes', [LMSSeancesQueryController::class, 'myClassesSeances'])
+    Route::get('/seances/my-classes', [LMSSeancesListController::class, 'myClassesSeances'])
         ->name('lms.seances.my-classes');
 
     // Actions visio enseignant
@@ -639,8 +641,10 @@ Route::middleware(['auth:sanctum', 'klassci.sync'])->prefix('lms')->group(functi
 // split en 4 controllers SRP sous `App\Http\Controllers\API\Evaluation\`.
 use App\Http\Controllers\API\Evaluation\EvaluationCrudController;
 use App\Http\Controllers\API\Evaluation\EvaluationKlassciSyncController;
-use App\Http\Controllers\API\Evaluation\EvaluationStudentController;
 use App\Http\Controllers\API\Evaluation\EvaluationTeacherController;
+use App\Http\Controllers\API\Evaluation\Student\EvaluationStudentAttemptController;
+use App\Http\Controllers\API\Evaluation\Student\EvaluationStudentListController;
+use App\Http\Controllers\API\Evaluation\Student\EvaluationStudentSubmissionController;
 
 // Routes accessibles à tous les utilisateurs authentifiés
 Route::middleware(['auth:sanctum', 'klassci.sync'])->group(function () {
@@ -652,25 +656,25 @@ Route::middleware(['auth:sanctum', 'klassci.sync'])->group(function () {
     // supprimée (vecteur d'IDOR — un étudiant pouvait forge l'ID d'un autre).
     // Le besoin legit "un étudiant voit ses propres évals" passe par cette
     // route sans param, dérivée du token Sanctum.
-    Route::get('evaluations/student', [EvaluationStudentController::class, 'myEvaluations']);
+    Route::get('evaluations/student', [EvaluationStudentListController::class, 'myEvaluations']);
 
     // Récupérer une évaluation spécifique (APRÈS les routes spécifiques)
     Route::get('evaluations/{id}', [EvaluationCrudController::class, 'show']);
 
     // Démarrer et soumettre une évaluation
-    Route::post('evaluations/{id}/start', [EvaluationStudentController::class, 'startEvaluation'])
+    Route::post('evaluations/{id}/start', [EvaluationStudentAttemptController::class, 'startEvaluation'])
         ->middleware('throttle:300,1');
-    Route::post('evaluations/{id}/submit', [EvaluationStudentController::class, 'submitEvaluation'])
+    Route::post('evaluations/{id}/submit', [EvaluationStudentAttemptController::class, 'submitEvaluation'])
         ->middleware('throttle:60,1');
 
     // Récupérer la soumission de l'étudiant connecté
-    Route::get('evaluations/{id}/my-submission', [EvaluationStudentController::class, 'getMySubmission']);
+    Route::get('evaluations/{id}/my-submission', [EvaluationStudentSubmissionController::class, 'getMySubmission']);
 
     // État temporel en temps réel
-    Route::get('evaluations/{id}/time-status', [EvaluationStudentController::class, 'getTimeStatus']);
+    Route::get('evaluations/{id}/time-status', [EvaluationStudentAttemptController::class, 'getTimeStatus']);
 
     // Notes de l'étudiant groupées par matière
-    Route::get('my-grades', [EvaluationStudentController::class, 'myGrades']);
+    Route::get('my-grades', [EvaluationStudentListController::class, 'myGrades']);
 });
 
 // Routes enseignants/coordinateurs uniquement

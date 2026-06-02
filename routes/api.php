@@ -260,27 +260,29 @@ Route::middleware(['auth:sanctum', 'klassci.sync', 'role:enseignant,coordinateur
 
 // ============================================
 // KNOWLEDGE CHECKS (Quiz "Testez vos connaissances")
+// Split SRP : CRUD + Attempts dans 2 controllers thin
 // ============================================
-use App\Http\Controllers\API\KnowledgeCheckController;
+use App\Http\Controllers\API\KnowledgeCheckCrudController;
+use App\Http\Controllers\API\KnowledgeCheckAttemptController;
 
 Route::middleware(['auth:sanctum', 'klassci.sync'])->group(function () {
     // Liste des quiz d'un chapitre
-    Route::get('knowledge-checks', [KnowledgeCheckController::class, 'index']);
+    Route::get('knowledge-checks', [KnowledgeCheckCrudController::class, 'index']);
     // Quiz par chapitre (doit être AVANT {id} pour éviter le conflit)
-    Route::get('knowledge-checks/chapter/{chapterId}', [KnowledgeCheckController::class, 'getByChapter']);
-    Route::get('knowledge-checks/{id}', [KnowledgeCheckController::class, 'show']);
+    Route::get('knowledge-checks/chapter/{chapterId}', [KnowledgeCheckCrudController::class, 'getByChapter']);
+    Route::get('knowledge-checks/{id}', [KnowledgeCheckCrudController::class, 'show']);
 
     // Tentatives (étudiants)
-    Route::post('knowledge-checks/{id}/start', [KnowledgeCheckController::class, 'startAttempt'])
+    Route::post('knowledge-checks/{id}/start', [KnowledgeCheckAttemptController::class, 'startAttempt'])
         ->middleware('throttle:300,1');
-    Route::post('knowledge-checks/{id}/submit', [KnowledgeCheckController::class, 'submitAttempt'])
+    Route::post('knowledge-checks/{id}/submit', [KnowledgeCheckAttemptController::class, 'submitAttempt'])
         ->middleware('throttle:60,1');
-    Route::get('knowledge-checks/{id}/my-attempts', [KnowledgeCheckController::class, 'myAttempts']);
+    Route::get('knowledge-checks/{id}/my-attempts', [KnowledgeCheckAttemptController::class, 'myAttempts']);
 
     // CRUD (enseignants/admins)
-    Route::post('knowledge-checks', [KnowledgeCheckController::class, 'store']);
-    Route::put('knowledge-checks/{id}', [KnowledgeCheckController::class, 'update']);
-    Route::delete('knowledge-checks/{id}', [KnowledgeCheckController::class, 'destroy']);
+    Route::post('knowledge-checks', [KnowledgeCheckCrudController::class, 'store']);
+    Route::put('knowledge-checks/{id}', [KnowledgeCheckCrudController::class, 'update']);
+    Route::delete('knowledge-checks/{id}', [KnowledgeCheckCrudController::class, 'destroy']);
 });
 
 // ============================================

@@ -871,88 +871,16 @@ parameters:
 			path: app/Http/Controllers/API/IntegrationController.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\Chapter\|Illuminate\\Database\\Eloquent\\Collection\<int, App\\Models\\Chapter\>\:\:\$enseignant_id\.$#'
-			identifier: property.notFound
+			message: '#^Cannot cast mixed to int\.$#'
+			identifier: cast.int
 			count: 1
-			path: app/Http/Controllers/API/KnowledgeCheckController.php
+			path: app/Http/Controllers/API/KnowledgeCheckAttemptController.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\KnowledgeCheck\:\:\$can_attempt\.$#'
-			identifier: property.notFound
-			count: 3
-			path: app/Http/Controllers/API/KnowledgeCheckController.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\KnowledgeCheck\:\:\$user_best_score\.$#'
-			identifier: property.notFound
-			count: 3
-			path: app/Http/Controllers/API/KnowledgeCheckController.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\KnowledgeCheck\:\:\$user_passed\.$#'
-			identifier: property.notFound
-			count: 3
-			path: app/Http/Controllers/API/KnowledgeCheckController.php
-
-		-
-			message: '#^Binary operation "\+\=" between int and mixed results in an error\.$#'
-			identifier: assignOp.invalid
-			count: 1
-			path: app/Http/Controllers/API/KnowledgeCheckController.php
-
-		-
-			message: '#^Cannot access offset \(int\|string\) on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 1
-			path: app/Http/Controllers/API/KnowledgeCheckController.php
-
-		-
-			message: '#^Cannot access property \$enseignant_id on Illuminate\\Database\\Eloquent\\Model\|null\.$#'
-			identifier: property.nonObject
-			count: 2
-			path: app/Http/Controllers/API/KnowledgeCheckController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\API\\KnowledgeCheckController\:\:checkAnswer\(\) has parameter \$correctAnswer with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: app/Http/Controllers/API/KnowledgeCheckController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\API\\KnowledgeCheckController\:\:checkAnswer\(\) has parameter \$userAnswer with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: app/Http/Controllers/API/KnowledgeCheckController.php
-
-		-
-			message: '#^Parameter \#1 \$chapterId of static method Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\KnowledgeCheck\>\:\:forChapter\(\) expects int, \(array\|string\) given\.$#'
+			message: '#^Parameter \#3 \$answers of method App\\Services\\KnowledgeCheck\\KnowledgeCheckAttemptService\:\:submitAttempt\(\) expects array\<int\|string, mixed\>, mixed given\.$#'
 			identifier: argument.type
 			count: 1
-			path: app/Http/Controllers/API/KnowledgeCheckController.php
-
-		-
-			message: '#^Parameter \#1 \$column of method Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\:\:where\(\) expects array\<int\|model property of Illuminate\\Database\\Eloquent\\Model, mixed\>\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\: Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\: void\)\|Illuminate\\Contracts\\Database\\Query\\Expression\|model property of Illuminate\\Database\\Eloquent\\Model, ''user_id'' given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Controllers/API/KnowledgeCheckController.php
-
-		-
-			message: '#^Parameter \#1 \$value of method Carbon\\Carbon\:\:subSeconds\(\) expects float\|int, mixed given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Controllers/API/KnowledgeCheckController.php
-
-		-
-			message: '#^Property App\\Models\\ChapterProgress\:\:\$quiz_score \(int\|null\) does not accept float\|int\.$#'
-			identifier: assign.propertyType
-			count: 1
-			path: app/Http/Controllers/API/KnowledgeCheckController.php
-
-		-
-			message: '#^Property App\\Models\\KnowledgeCheck\:\:\$attempts_count is not writable\.$#'
-			identifier: assign.propertyReadOnly
-			count: 1
-			path: app/Http/Controllers/API/KnowledgeCheckController.php
+			path: app/Http/Controllers/API/KnowledgeCheckAttemptController.php
 
 		-
 			message: '#^Access to an undefined property App\\Models\\ESBTPAttendance\:\:\$seance\.$#'
@@ -5939,6 +5867,54 @@ parameters:
 			identifier: offsetAccess.invalidOffset
 			count: 1
 			path: app/Services/Evaluation/Student/StudentGradesAggregator.php
+
+		-
+			message: '#^Method App\\Services\\KnowledgeCheck\\KnowledgeCheckAttemptService\:\:getMyAttempts\(\) should return array\{quiz_title\: string, passing_score\: int, attempts\: Illuminate\\Support\\Collection\<int, array\<string, mixed\>\>, best_score\: int\|null, has_passed\: bool\} but returns array\{quiz_title\: string, passing_score\: int, attempts\: Illuminate\\Support\\Collection\<int, array\{id\: int, score\: int, correct_answers\: int, total_questions\: int, passed\: bool, time_spent\: string, completed_at\: non\-falsy\-string\|null\}\>, best_score\: mixed, has_passed\: bool\}\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Services/KnowledgeCheck/KnowledgeCheckAttemptService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\KnowledgeCheck\:\:\$can_attempt\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Services/KnowledgeCheck/KnowledgeCheckCrudService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\KnowledgeCheck\:\:\$user_best_score\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Services/KnowledgeCheck/KnowledgeCheckCrudService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\KnowledgeCheck\:\:\$user_passed\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Services/KnowledgeCheck/KnowledgeCheckCrudService.php
+
+		-
+			message: '#^Parameter \#1 \$column of method Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\:\:where\(\) expects array\<int\|model property of Illuminate\\Database\\Eloquent\\Model, mixed\>\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\: Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\: void\)\|Illuminate\\Contracts\\Database\\Query\\Expression\|model property of Illuminate\\Database\\Eloquent\\Model, ''user_id'' given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/KnowledgeCheck/KnowledgeCheckCrudService.php
+
+		-
+			message: '#^Parameter \#2 \$chapter of method App\\Services\\KnowledgeCheck\\KnowledgeCheckCrudService\:\:assertCanManageChapter\(\) expects App\\Models\\Chapter\|null, App\\Models\\Chapter\|Illuminate\\Database\\Eloquent\\Collection\<int, App\\Models\\Chapter\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/KnowledgeCheck/KnowledgeCheckCrudService.php
+
+		-
+			message: '#^Parameter \#2 \$chapter of method App\\Services\\KnowledgeCheck\\KnowledgeCheckCrudService\:\:assertCanManageChapter\(\) expects App\\Models\\Chapter\|null, Illuminate\\Database\\Eloquent\\Model\|null given\.$#'
+			identifier: argument.type
+			count: 2
+			path: app/Services/KnowledgeCheck/KnowledgeCheckCrudService.php
+
+		-
+			message: '#^Property App\\Models\\KnowledgeCheck\:\:\$attempts_count is not writable\.$#'
+			identifier: assign.propertyReadOnly
+			count: 1
+			path: app/Services/KnowledgeCheck/KnowledgeCheckCrudService.php
 
 		-
 			message: '#^Parameter \#1 \$column of method Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\:\:where\(\) expects array\<int\|model property of Illuminate\\Database\\Eloquent\\Model, mixed\>\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\: Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\: void\)\|Illuminate\\Contracts\\Database\\Query\\Expression\|model property of Illuminate\\Database\\Eloquent\\Model, ''klassci_etudiant_id'' given\.$#'

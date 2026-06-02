@@ -1339,168 +1339,6 @@ parameters:
 			path: app/Http/Controllers/API/LMS/LMSVisioLifecycleController.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\UserClass\:\:\$email\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Controllers/API/LMS/LMSVisioParticipantController.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\UserClass\:\:\$klassci_id\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Controllers/API/LMS/LMSVisioParticipantController.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\UserClass\:\:\$name\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Http/Controllers/API/LMS/LMSVisioParticipantController.php
-
-		-
-			message: '#^Argument of an invalid type mixed supplied for foreach, only iterables are supported\.$#'
-			identifier: foreach.nonIterable
-			count: 1
-			path: app/Http/Controllers/API/LMS/LMSVisioParticipantController.php
-
-		-
-			message: '#^Cannot access offset ''email'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 1
-			path: app/Http/Controllers/API/LMS/LMSVisioParticipantController.php
-
-		-
-			message: '#^Cannot access offset ''heure_debut'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 1
-			path: app/Http/Controllers/API/LMS/LMSVisioParticipantController.php
-
-		-
-			message: '#^Cannot access offset ''heure_fin'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 1
-			path: app/Http/Controllers/API/LMS/LMSVisioParticipantController.php
-
-		-
-			message: '#^Cannot access offset ''id'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 1
-			path: app/Http/Controllers/API/LMS/LMSVisioParticipantController.php
-
-		-
-			message: '#^Cannot access offset ''nom'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 1
-			path: app/Http/Controllers/API/LMS/LMSVisioParticipantController.php
-
-		-
-			message: '#^Cannot access offset ''prenom'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 1
-			path: app/Http/Controllers/API/LMS/LMSVisioParticipantController.php
-
-		-
-			message: '#^Cannot call method format\(\) on Carbon\\Carbon\|null\.$#'
-			identifier: method.nonObject
-			count: 2
-			path: app/Http/Controllers/API/LMS/LMSVisioParticipantController.php
-
-		-
-			message: '#^Offset ''duration_minutes'' on array\{user_id\: mixed, nom\: mixed, prenom\: mixed, email\: mixed, status\: ''Absent'', status_icon\: ''❌'', percentage\: 0, duration_minutes\: 0, \.\.\.\}\|array\{user_id\: mixed, nom\: mixed, prenom\: mixed, email\: mixed, status\: string, status_icon\: string, percentage\: 0\|float, duration_minutes\: float\|int, \.\.\.\} on left side of \?\? always exists and is not nullable\.$#'
-			identifier: nullCoalesce.offset
-			count: 1
-			path: app/Http/Controllers/API/LMS/LMSVisioParticipantController.php
-
-		-
-			message: '#^Offset ''is_late'' on array\{user_id\: mixed, nom\: mixed, prenom\: mixed, email\: mixed, status\: ''Absent'', status_icon\: ''❌'', percentage\: 0, duration_minutes\: 0, \.\.\.\}\|array\{user_id\: mixed, nom\: mixed, prenom\: mixed, email\: mixed, status\: string, status_icon\: string, percentage\: 0\|float, duration_minutes\: float\|int, \.\.\.\} on left side of \?\? always exists and is not nullable\.$#'
-			identifier: nullCoalesce.offset
-			count: 1
-			path: app/Http/Controllers/API/LMS/LMSVisioParticipantController.php
-
-		-
-			message: '#^Offset ''left_early'' on array\{user_id\: mixed, nom\: mixed, prenom\: mixed, email\: mixed, status\: ''Absent'', status_icon\: ''❌'', percentage\: 0, duration_minutes\: 0, \.\.\.\}\|array\{user_id\: mixed, nom\: mixed, prenom\: mixed, email\: mixed, status\: string, status_icon\: string, percentage\: 0\|float, duration_minutes\: float\|int, \.\.\.\} on left side of \?\? always exists and is not nullable\.$#'
-			identifier: nullCoalesce.offset
-			count: 1
-			path: app/Http/Controllers/API/LMS/LMSVisioParticipantController.php
-
-		-
-			message: '#^Offset ''percentage'' on array\{user_id\: mixed, nom\: mixed, prenom\: mixed, email\: mixed, status\: ''Absent'', status_icon\: ''❌'', percentage\: 0, duration_minutes\: 0, \.\.\.\}\|array\{user_id\: mixed, nom\: mixed, prenom\: mixed, email\: mixed, status\: string, status_icon\: string, percentage\: 0\|float, duration_minutes\: float\|int, \.\.\.\} on left side of \?\? always exists and is not nullable\.$#'
-			identifier: nullCoalesce.offset
-			count: 2
-			path: app/Http/Controllers/API/LMS/LMSVisioParticipantController.php
-
-		-
-			message: '#^Offset 0 on non\-empty\-list\<string\> on left side of \?\? always exists and is not nullable\.$#'
-			identifier: nullCoalesce.offset
-			count: 1
-			path: app/Http/Controllers/API/LMS/LMSVisioParticipantController.php
-
-		-
-			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\UserClass\>\:\:map\(\) contains unresolvable type\.$#'
-			identifier: argument.unresolvableType
-			count: 1
-			path: app/Http/Controllers/API/LMS/LMSVisioParticipantController.php
-
-		-
-			message: '#^Parameter \#1 \$datetime of class DateTime constructor expects string, mixed given\.$#'
-			identifier: argument.type
-			count: 2
-			path: app/Http/Controllers/API/LMS/LMSVisioParticipantController.php
-
-		-
-			message: '#^Parameter \#1 \$string1 of function strcmp expects string, mixed given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Controllers/API/LMS/LMSVisioParticipantController.php
-
-		-
-			message: '#^Parameter \#2 \$string2 of function strcmp expects string, mixed given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Controllers/API/LMS/LMSVisioParticipantController.php
-
-		-
-			message: '#^Parameter \#4 \$heureDebut of method App\\Services\\AttendanceStatusService\:\:determine\(\) expects string\|null, mixed given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Controllers/API/LMS/LMSVisioParticipantController.php
-
-		-
-			message: '#^Parameter \#5 \$heureFin of method App\\Services\\AttendanceStatusService\:\:determine\(\) expects string\|null, mixed given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Controllers/API/LMS/LMSVisioParticipantController.php
-
-		-
-			message: '#^Possibly invalid array key type mixed\.$#'
-			identifier: offsetAccess.invalidOffset
-			count: 2
-			path: app/Http/Controllers/API/LMS/LMSVisioParticipantController.php
-
-		-
-			message: '#^Property App\\Http\\Controllers\\API\\LMS\\LMSVisioParticipantController\:\:\$klassciService is never read, only written\.$#'
-			identifier: property.onlyWritten
-			count: 1
-			path: app/Http/Controllers/API/LMS/LMSVisioParticipantController.php
-
-		-
-			message: '#^Relation ''user'' is not found in App\\Models\\ESBTPAttendance model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Http/Controllers/API/LMS/LMSVisioParticipantController.php
-
-		-
-			message: '#^Return type of call to method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\UserClass\>\:\:map\(\) contains unresolvable type\.$#'
-			identifier: method.unresolvableReturnType
-			count: 1
-			path: app/Http/Controllers/API/LMS/LMSVisioParticipantController.php
-
-		-
-			message: '#^Strict comparison using \=\=\= between 0\|float and 100 will always evaluate to false\.$#'
-			identifier: identical.alwaysFalse
-			count: 1
-			path: app/Http/Controllers/API/LMS/LMSVisioParticipantController.php
-
-		-
 			message: '#^Access to an undefined property App\\Models\\Lesson\:\:\$statistics\.$#'
 			identifier: property.notFound
 			count: 1
@@ -7259,3 +7097,99 @@ parameters:
 			identifier: missingType.iterableValue
 			count: 1
 			path: app/Services/TenantManager.php
+
+		-
+			message: '#^Possibly invalid array key type mixed\.$#'
+			identifier: offsetAccess.invalidOffset
+			count: 2
+			path: app/Services/Visio/VisioParticipantsEnricher.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\UserClass\:\:\$email\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Visio/VisioParticipantsListService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\UserClass\:\:\$klassci_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Visio/VisioParticipantsListService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\UserClass\:\:\$name\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Services/Visio/VisioParticipantsListService.php
+
+		-
+			message: '#^Cannot access offset ''heure_debut'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: app/Services/Visio/VisioParticipantsListService.php
+
+		-
+			message: '#^Cannot access offset ''heure_fin'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: app/Services/Visio/VisioParticipantsListService.php
+
+		-
+			message: '#^Cannot cast mixed to string\.$#'
+			identifier: cast.string
+			count: 2
+			path: app/Services/Visio/VisioParticipantsListService.php
+
+		-
+			message: '#^Method App\\Services\\Visio\\VisioParticipantsListService\:\:fetchStudentsFromLocalDb\(\) should return array\<int, array\<string, mixed\>\> but returns array\<mixed\>\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Services/Visio/VisioParticipantsListService.php
+
+		-
+			message: '#^Method App\\Services\\Visio\\VisioParticipantsListService\:\:resolveAllClassStudents\(\) should return array\<int, array\<string, mixed\>\> but returns mixed\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Services/Visio/VisioParticipantsListService.php
+
+		-
+			message: '#^Method App\\Services\\Visio\\VisioParticipantsListService\:\:resolveSeanceTiming\(\) should return array\{float\|int, string\|null, string\|null\} but returns array\{\(float\|int\), mixed, mixed\}\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Services/Visio/VisioParticipantsListService.php
+
+		-
+			message: '#^Offset 0 on non\-empty\-list\<string\> on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Services/Visio/VisioParticipantsListService.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\UserClass\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 1
+			path: app/Services/Visio/VisioParticipantsListService.php
+
+		-
+			message: '#^Parameter \#1 \$datetime of class DateTime constructor expects string, mixed given\.$#'
+			identifier: argument.type
+			count: 2
+			path: app/Services/Visio/VisioParticipantsListService.php
+
+		-
+			message: '#^Relation ''user'' is not found in App\\Models\\ESBTPAttendance model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/Visio/VisioParticipantsListService.php
+
+		-
+			message: '#^Return type of call to method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\UserClass\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: method.unresolvableReturnType
+			count: 1
+			path: app/Services/Visio/VisioParticipantsListService.php
+
+		-
+			message: '#^Binary operation "\+" between \(float\|int\) and mixed results in an error\.$#'
+			identifier: binaryOp.invalid
+			count: 2
+			path: app/Services/Visio/VisioParticipantsStatsBuilder.php

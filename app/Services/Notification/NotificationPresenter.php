@@ -42,23 +42,32 @@ class NotificationPresenter
     {
         $data = $notification->data ?? [];
 
+        // Helper local : récupère un ID scalaire de `$data` (mixed après le
+        // cast Eloquent `array`) et le stringify pour interpolation sûre dans
+        // l'URL. Retourne `null` si l'ID est absent / non-scalaire — protège
+        // contre les payloads malformés (ex. array imbriqué injecté).
+        $idOf = static function (string $key) use ($data): ?string {
+            $value = $data[$key] ?? null;
+            return is_scalar($value) ? (string) $value : null;
+        };
+
         return match ($notification->type) {
             Notification::TYPE_LESSON_PUBLISHED, Notification::TYPE_LESSON_UPDATED =>
-                isset($data['lesson_id']) ? "/lessons/{$data['lesson_id']}" : null,
+                ($id = $idOf('lesson_id')) !== null ? "/lessons/{$id}" : null,
 
             Notification::TYPE_FORUM_REPLY, Notification::TYPE_FORUM_SOLUTION =>
-                isset($data['topic_id']) ? "/forum/topics/{$data['topic_id']}" : null,
+                ($id = $idOf('topic_id')) !== null ? "/forum/topics/{$id}" : null,
 
             Notification::TYPE_QUIZ_AVAILABLE,
             Notification::TYPE_GRADE_RECEIVED,
             Notification::TYPE_QUIZ_DEADLINE =>
-                isset($data['quiz_id']) ? "/quizzes/{$data['quiz_id']}" : null,
+                ($id = $idOf('quiz_id')) !== null ? "/quizzes/{$id}" : null,
 
             Notification::TYPE_VISIO_SCHEDULED, Notification::TYPE_VISIO_STARTING =>
-                isset($data['seance_id']) ? "/seances/{$data['seance_id']}" : null,
+                ($id = $idOf('seance_id')) !== null ? "/seances/{$id}" : null,
 
             Notification::TYPE_EVALUATION_APPROACHING =>
-                isset($data['evaluation_id']) ? "/student/evaluations/{$data['evaluation_id']}" : null,
+                ($id = $idOf('evaluation_id')) !== null ? "/student/evaluations/{$id}" : null,
 
             default => null,
         };

@@ -2,7 +2,9 @@
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\API\ProxyController;
+use App\Http\Controllers\API\Proxy\ProxyAcademicController;
+use App\Http\Controllers\API\Proxy\ProxyDashboardController;
+use App\Http\Controllers\API\Proxy\ProxyOrganisationController;
 use App\Http\Controllers\API\AuthController;
 use App\Http\Controllers\API\AdminAnalyticsController;
 use App\Http\Controllers\API\ReportController;
@@ -105,7 +107,7 @@ Route::prefix('proxy')
     ->middleware(['auth:sanctum', 'klassci.sync', 'role:coordinateur,superAdmin,supradmin'])
     ->group(function () {
         // Test de connexion KLASSCI — réservé aux admins
-        Route::get('/test-connection', [ProxyController::class, 'testConnection']);
+        Route::get('/test-connection', [ProxyOrganisationController::class, 'testConnection']);
     });
 
 // ============================================
@@ -116,24 +118,24 @@ Route::prefix('proxy')
     ->middleware(['auth:sanctum', 'klassci.sync'])
     ->group(function () {
         // Structure organisationnelle
-        Route::get('/structure', [ProxyController::class, 'structure']);
-        Route::get('/filieres', [ProxyController::class, 'filieres']);
-        Route::get('/niveaux-etudes', [ProxyController::class, 'niveauxEtudes']);
+        Route::get('/structure', [ProxyOrganisationController::class, 'structure']);
+        Route::get('/filieres', [ProxyOrganisationController::class, 'filieres']);
+        Route::get('/niveaux-etudes', [ProxyOrganisationController::class, 'niveauxEtudes']);
 
         // Classes et étudiants
-        Route::get('/classes', [ProxyController::class, 'classes']);
-        Route::get('/classes/{id}/etudiants', [ProxyController::class, 'etudiants']);
+        Route::get('/classes', [ProxyOrganisationController::class, 'classes']);
+        Route::get('/classes/{id}/etudiants', [ProxyOrganisationController::class, 'etudiants']);
 
         // Matières et enseignants
-        Route::get('/matieres', [ProxyController::class, 'matieres']);
-        Route::get('/matieres/{id}', [ProxyController::class, 'matiereDetails']);
-        Route::get('/enseignants', [ProxyController::class, 'enseignants']);
+        Route::get('/matieres', [ProxyOrganisationController::class, 'matieres']);
+        Route::get('/matieres/{id}', [ProxyOrganisationController::class, 'matiereDetails']);
+        Route::get('/enseignants', [ProxyOrganisationController::class, 'enseignants']);
 
         // Emploi du temps
-        Route::get('/emploi-temps', [ProxyController::class, 'emploiTemps']);
+        Route::get('/emploi-temps', [ProxyAcademicController::class, 'emploiTemps']);
 
         // Évaluations - Lecture
-        Route::get('/evaluations', [ProxyController::class, 'evaluations']);
+        Route::get('/evaluations', [ProxyAcademicController::class, 'evaluations']);
     });
 
 // ============================================
@@ -144,15 +146,15 @@ Route::prefix('proxy')
     ->group(function () {
 
     // Sauvegarder les notes (Enseignants/Coordinateurs uniquement) - Rate limited: 60/min
-    Route::post('/evaluations/{id}/notes', [ProxyController::class, 'saveNotes'])
+    Route::post('/evaluations/{id}/notes', [ProxyAcademicController::class, 'saveNotes'])
         ->middleware('throttle:60,1');
 
     // Sauvegarder les présences (Enseignants/Coordinateurs uniquement) - Rate limited: 60/min
-    Route::post('/cours/{id}/presences', [ProxyController::class, 'savePresences'])
+    Route::post('/cours/{id}/presences', [ProxyAcademicController::class, 'savePresences'])
         ->middleware('throttle:60,1');
 
     // Mettre à jour statut cours (Enseignants/Coordinateurs uniquement) - Rate limited: 30/min
-    Route::put('/cours/{id}/statut', [ProxyController::class, 'updateCoursStatut'])
+    Route::put('/cours/{id}/statut', [ProxyAcademicController::class, 'updateCoursStatut'])
         ->middleware('throttle:30,1');
 });
 
@@ -202,10 +204,10 @@ Route::prefix('proxy')
     ->middleware(['auth:sanctum', 'klassci.sync'])
     ->group(function () {
         // Dashboard étudiant (récupère le token KLASSCI de l'utilisateur)
-        Route::get('/me/dashboard', [ProxyController::class, 'studentDashboard']);
+        Route::get('/me/dashboard', [ProxyDashboardController::class, 'studentDashboard']);
 
         // Dashboard enseignant (réservé aux enseignants/coordinateurs)
-        Route::get('/me/teacher-dashboard', [ProxyController::class, 'teacherDashboard'])
+        Route::get('/me/teacher-dashboard', [ProxyDashboardController::class, 'teacherDashboard'])
             ->middleware('role:enseignant,coordinateur');
     });
 
@@ -260,27 +262,29 @@ Route::middleware(['auth:sanctum', 'klassci.sync', 'role:enseignant,coordinateur
 
 // ============================================
 // KNOWLEDGE CHECKS (Quiz "Testez vos connaissances")
+// Split SRP : CRUD + Attempts dans 2 controllers thin
 // ============================================
-use App\Http\Controllers\API\KnowledgeCheckController;
+use App\Http\Controllers\API\KnowledgeCheckCrudController;
+use App\Http\Controllers\API\KnowledgeCheckAttemptController;
 
 Route::middleware(['auth:sanctum', 'klassci.sync'])->group(function () {
     // Liste des quiz d'un chapitre
-    Route::get('knowledge-checks', [KnowledgeCheckController::class, 'index']);
+    Route::get('knowledge-checks', [KnowledgeCheckCrudController::class, 'index']);
     // Quiz par chapitre (doit être AVANT {id} pour éviter le conflit)
-    Route::get('knowledge-checks/chapter/{chapterId}', [KnowledgeCheckController::class, 'getByChapter']);
-    Route::get('knowledge-checks/{id}', [KnowledgeCheckController::class, 'show']);
+    Route::get('knowledge-checks/chapter/{chapterId}', [KnowledgeCheckCrudController::class, 'getByChapter']);
+    Route::get('knowledge-checks/{id}', [KnowledgeCheckCrudController::class, 'show']);
 
     // Tentatives (étudiants)
-    Route::post('knowledge-checks/{id}/start', [KnowledgeCheckController::class, 'startAttempt'])
+    Route::post('knowledge-checks/{id}/start', [KnowledgeCheckAttemptController::class, 'startAttempt'])
         ->middleware('throttle:300,1');
-    Route::post('knowledge-checks/{id}/submit', [KnowledgeCheckController::class, 'submitAttempt'])
+    Route::post('knowledge-checks/{id}/submit', [KnowledgeCheckAttemptController::class, 'submitAttempt'])
         ->middleware('throttle:60,1');
-    Route::get('knowledge-checks/{id}/my-attempts', [KnowledgeCheckController::class, 'myAttempts']);
+    Route::get('knowledge-checks/{id}/my-attempts', [KnowledgeCheckAttemptController::class, 'myAttempts']);
 
     // CRUD (enseignants/admins)
-    Route::post('knowledge-checks', [KnowledgeCheckController::class, 'store']);
-    Route::put('knowledge-checks/{id}', [KnowledgeCheckController::class, 'update']);
-    Route::delete('knowledge-checks/{id}', [KnowledgeCheckController::class, 'destroy']);
+    Route::post('knowledge-checks', [KnowledgeCheckCrudController::class, 'store']);
+    Route::put('knowledge-checks/{id}', [KnowledgeCheckCrudController::class, 'update']);
+    Route::delete('knowledge-checks/{id}', [KnowledgeCheckCrudController::class, 'destroy']);
 });
 
 // ============================================
@@ -393,7 +397,8 @@ Route::middleware(['auth:sanctum', 'klassci.sync'])->group(function () {
 // ============================================
 // QUIZZES - Routes protégées
 // ============================================
-use App\Http\Controllers\API\Quiz\QuizAttemptController;
+use App\Http\Controllers\API\Quiz\QuizAttemptStudentController;
+use App\Http\Controllers\API\Quiz\QuizAttemptTeacherController;
 use App\Http\Controllers\API\Quiz\QuizCrudController;
 
 // Routes accessibles à tous les utilisateurs authentifiés
@@ -403,17 +408,17 @@ Route::middleware(['auth:sanctum', 'klassci.sync'])->group(function () {
     Route::get('quizzes/{quiz}', [QuizCrudController::class, 'show']);
 
     // Démarrer et soumettre une tentative
-    Route::post('quizzes/{quiz}/start', [QuizAttemptController::class, 'startAttempt'])
+    Route::post('quizzes/{quiz}/start', [QuizAttemptStudentController::class, 'startAttempt'])
         ->middleware('throttle:300,1');
-    Route::post('quiz-attempts/{id}/submit', [QuizAttemptController::class, 'submitAttempt'])
+    Route::post('quiz-attempts/{id}/submit', [QuizAttemptStudentController::class, 'submitAttempt'])
         ->middleware('throttle:60,1');
 
     // NOUVEAU: Timer et sauvegarde de progression
-    Route::get('quiz-attempts/{id}/time-remaining', [QuizAttemptController::class, 'checkTimeRemaining']);
-    Route::post('quiz-attempts/{id}/save-progress', [QuizAttemptController::class, 'saveProgress']);
+    Route::get('quiz-attempts/{id}/time-remaining', [QuizAttemptStudentController::class, 'checkTimeRemaining']);
+    Route::post('quiz-attempts/{id}/save-progress', [QuizAttemptStudentController::class, 'saveProgress']);
 
     // Consulter une tentative
-    Route::get('quiz-attempts/{id}', [QuizAttemptController::class, 'showAttempt']);
+    Route::get('quiz-attempts/{id}', [QuizAttemptStudentController::class, 'showAttempt']);
 });
 
 // Routes enseignants/coordinateurs/admins
@@ -427,8 +432,8 @@ Route::middleware(['auth:sanctum', 'klassci.sync', 'role:enseignant,coordinateur
     Route::post('quizzes/{quiz}/publish', [QuizCrudController::class, 'publish']);
 
     // Gestion des tentatives
-    Route::get('quizzes/{quiz}/attempts', [QuizAttemptController::class, 'getAttempts']);
-    Route::post('quiz-attempts/{id}/grade', [QuizAttemptController::class, 'gradeAttempt']);
+    Route::get('quizzes/{quiz}/attempts', [QuizAttemptTeacherController::class, 'getAttempts']);
+    Route::post('quiz-attempts/{id}/grade', [QuizAttemptTeacherController::class, 'gradeAttempt']);
 });
 
 // ============================================

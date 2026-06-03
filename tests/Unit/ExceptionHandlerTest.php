@@ -84,14 +84,12 @@ class ExceptionHandlerTest extends TestCase
             'getMessage()'
         );
 
-        // Seuil ajusté après les god-controller splits + centralisation
-        // de la logique de logging dans les services (TIER 1 + split-17).
-        // Le logging migre progressivement vers PSR-3 `LoggerInterface` dans
-        // les services SRP, donc le compte dans `app/Http/Controllers/` baisse
-        // au fil des splits — on garde un seuil >15 pour détecter une perte
-        // totale (vidage par erreur), pas une migration normale.
+        // de la logique de logging dans les services (TIER 1 + splits §5/§1.6 D).
+        // Les controllers migrent de la Facade `Log::` vers l'injection PSR-3
+        // `LoggerInterface` au fil des splits, donc le compteur peut baisser.
+        // Reste >5 pour garantir qu'on n'a pas vidé les logs serveur par erreur.
         $this->assertGreaterThan(
-            15,
+            5,
             count($logged),
             'Log:: should still contain getMessage() for server-side logging — found only ' . count($logged) . ' lines.'
         );

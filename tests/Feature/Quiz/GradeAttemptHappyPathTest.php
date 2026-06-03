@@ -16,7 +16,7 @@ use Tests\TestCase;
  * Integration tests for `POST /api/quiz-attempts/{id}/grade`.
  *
  * Comble le gap test-coverage identifié dans l'audit total post-TIER 2 :
- * `QuizAttemptController::gradeAttempt` permet à un enseignant de noter
+ * `QuizAttemptTeacherController::gradeAttempt` permet à un enseignant de noter
  * manuellement (override) une tentative — mutation des notes, **sans
  * couverture test feature** (seul `GradeAttemptRequest` validation testée).
  *
@@ -29,7 +29,8 @@ use Tests\TestCase;
  *  - Points négatifs → 422 (validation rule min:0)
  *  - Points > points_possible → 422 (validation rule max)
  *
- * @see app/Http/Controllers/API/Quiz/QuizAttemptController.php::gradeAttempt
+ * @see app/Http/Controllers/API/Quiz/QuizAttemptTeacherController.php::gradeAttempt
+ * @see app/Services/Quiz/QuizAttemptLifecycleService.php (split-10/quiz-attempt)
  * @see app/Http/Requests/GradeAttemptRequest.php
  */
 final class GradeAttemptHappyPathTest extends TestCase

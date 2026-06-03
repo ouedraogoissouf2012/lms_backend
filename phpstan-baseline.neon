@@ -367,96 +367,6 @@ parameters:
 			path: app/Http/Controllers/API/Dashboard/DashboardTeacherController.php
 
 		-
-			message: '#^Argument of an invalid type mixed supplied for foreach, only iterables are supported\.$#'
-			identifier: foreach.nonIterable
-			count: 4
-			path: app/Http/Controllers/API/Evaluation/EvaluationCrudController.php
-
-		-
-			message: '#^Binary operation "\+" between mixed and 1 results in an error\.$#'
-			identifier: binaryOp.invalid
-			count: 2
-			path: app/Http/Controllers/API/Evaluation/EvaluationCrudController.php
-
-		-
-			message: '#^Cannot access offset ''code'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 1
-			path: app/Http/Controllers/API/Evaluation/EvaluationCrudController.php
-
-		-
-			message: '#^Cannot access offset ''correct_answers'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 2
-			path: app/Http/Controllers/API/Evaluation/EvaluationCrudController.php
-
-		-
-			message: '#^Cannot access offset ''explanation'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 2
-			path: app/Http/Controllers/API/Evaluation/EvaluationCrudController.php
-
-		-
-			message: '#^Cannot access offset ''id'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 2
-			path: app/Http/Controllers/API/Evaluation/EvaluationCrudController.php
-
-		-
-			message: '#^Cannot access offset ''libelle'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 3
-			path: app/Http/Controllers/API/Evaluation/EvaluationCrudController.php
-
-		-
-			message: '#^Cannot access offset ''niveau'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 2
-			path: app/Http/Controllers/API/Evaluation/EvaluationCrudController.php
-
-		-
-			message: '#^Cannot access offset ''nom'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 2
-			path: app/Http/Controllers/API/Evaluation/EvaluationCrudController.php
-
-		-
-			message: '#^Cannot access offset ''options'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 2
-			path: app/Http/Controllers/API/Evaluation/EvaluationCrudController.php
-
-		-
-			message: '#^Cannot access offset ''points'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 2
-			path: app/Http/Controllers/API/Evaluation/EvaluationCrudController.php
-
-		-
-			message: '#^Cannot access offset ''question'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 2
-			path: app/Http/Controllers/API/Evaluation/EvaluationCrudController.php
-
-		-
-			message: '#^Cannot access offset ''type'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 2
-			path: app/Http/Controllers/API/Evaluation/EvaluationCrudController.php
-
-		-
-			message: '#^Parameter \#1 \$key of method Illuminate\\Support\\Collection\<\(int\|string\),mixed\>\:\:get\(\) expects int\|string\|null, mixed given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Controllers/API/Evaluation/EvaluationCrudController.php
-
-		-
-			message: '#^Strict comparison using \!\=\= between string and null will always evaluate to true\.$#'
-			identifier: notIdentical.alwaysTrue
-			count: 4
-			path: app/Http/Controllers/API/Evaluation/EvaluationCrudController.php
-
-		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$feedback\.$#'
 			identifier: property.notFound
 			count: 1
@@ -709,54 +619,6 @@ parameters:
 			path: app/Http/Controllers/API/Evaluation/Student/EvaluationStudentAttemptController.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\File\:\:\$download_url\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Services/File/FileQueryService.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\File\:\:\$formatted_size\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Services/File/FileQueryService.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\File\:\:\$download_url\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/File/FileUploadService.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\File\:\:\$formatted_size\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/File/FileUploadService.php
-
-		-
-			message: '#^Parameter \#1 \$category of method Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\File\>\:\:ofCategory\(\) expects string, mixed given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Services/File/FileQueryService.php
-
-		-
-			message: '#^Parameter \#1 \$perPage of method Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\File\>\:\:paginate\(\) expects int\|null, mixed given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Services/File/FileQueryService.php
-
-		-
-			message: '#^Parameter \#1 \$type of method Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\File\>\:\:ofType\(\) expects string, mixed given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Services/File/FileQueryService.php
-
-		-
-			message: '#^Method App\\Services\\File\\FileUploadService\:\:store\(\) has parameter \$payload with no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Services/File/FileUploadService.php
-
-		-
 			message: '#^Access to an undefined property App\\Models\\ForumPost\|Illuminate\\Database\\Eloquent\\Collection\<int, App\\Models\\ForumPost\>\:\:\$id\.$#'
 			identifier: property.notFound
 			count: 1
@@ -809,30 +671,6 @@ parameters:
 			identifier: argument.type
 			count: 1
 			path: app/Http/Controllers/API/ForumController.php
-
-		-
-			message: '#^Parameter \#1 \$column of method Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Classe\>\:\:where\(\) expects array\<int\|model property of App\\Models\\Classe, mixed\>\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Classe\>\)\: Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Classe\>\)\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Classe\>\)\: void\)\|Illuminate\\Contracts\\Database\\Query\\Expression\|model property of App\\Models\\Classe, ''institution_id'' given\.$#'
-			identifier: argument.type
-			count: 2
-			path: app/Services/Institution/InstitutionQueryService.php
-
-		-
-			message: '#^Parameter \#1 \$column of method Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Evaluation\>\:\:where\(\) expects array\<int\|model property of App\\Models\\Evaluation, mixed\>\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Evaluation\>\)\: Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Evaluation\>\)\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Evaluation\>\)\: void\)\|Illuminate\\Contracts\\Database\\Query\\Expression\|model property of App\\Models\\Evaluation, ''institution_id'' given\.$#'
-			identifier: argument.type
-			count: 2
-			path: app/Services/Institution/InstitutionQueryService.php
-
-		-
-			message: '#^Parameter \#1 \$column of method Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Lesson\>\:\:where\(\) expects array\<int\|model property of App\\Models\\Lesson, mixed\>\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Lesson\>\)\: Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Lesson\>\)\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Lesson\>\)\: void\)\|Illuminate\\Contracts\\Database\\Query\\Expression\|model property of App\\Models\\Lesson, ''institution_id'' given\.$#'
-			identifier: argument.type
-			count: 3
-			path: app/Services/Institution/InstitutionQueryService.php
-
-		-
-			message: '#^Parameter \#1 \$column of method Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\User\>\:\:pluck\(\) expects Illuminate\\Contracts\\Database\\Query\\Expression\|model property of App\\Models\\User, string given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Services/Institution/InstitutionQueryService.php
 
 		-
 			message: '#^Parameter \#1 \$string of function substr expects string, mixed given\.$#'
@@ -5341,6 +5179,66 @@ parameters:
 			path: app/Services/ConvertApiService.php
 
 		-
+			message: '#^Cannot access offset ''code'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: app/Services/Evaluation/EvaluationCreationService.php
+
+		-
+			message: '#^Cannot access offset ''id'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 2
+			path: app/Services/Evaluation/EvaluationCreationService.php
+
+		-
+			message: '#^Cannot access offset ''libelle'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 3
+			path: app/Services/Evaluation/EvaluationCreationService.php
+
+		-
+			message: '#^Cannot access offset ''niveau'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 2
+			path: app/Services/Evaluation/EvaluationCreationService.php
+
+		-
+			message: '#^Cannot access offset ''nom'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 2
+			path: app/Services/Evaluation/EvaluationCreationService.php
+
+		-
+			message: '#^Cannot cast mixed to int\.$#'
+			identifier: cast.int
+			count: 2
+			path: app/Services/Evaluation/EvaluationCreationService.php
+
+		-
+			message: '#^Method App\\Services\\Evaluation\\EvaluationCreationService\:\:resolveKlassciLabels\(\) should return array\{string\|null, string\|null\} but returns array\{mixed, mixed\}\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Services/Evaluation/EvaluationCreationService.php
+
+		-
+			message: '#^Parameter \#1 \$matiereId of method App\\Services\\Evaluation\\EvaluationCreationService\:\:resolveKlassciLabels\(\) expects int\|null, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Evaluation/EvaluationCreationService.php
+
+		-
+			message: '#^Parameter \#2 \$classeId of method App\\Services\\Evaluation\\EvaluationCreationService\:\:resolveKlassciLabels\(\) expects int\|null, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Evaluation/EvaluationCreationService.php
+
+		-
+			message: '#^Parameter \#2 \$questions of method App\\Services\\Evaluation\\EvaluationCreationService\:\:createQuestions\(\) expects array\<int, array\<string, mixed\>\>, array\<mixed, mixed\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Evaluation/EvaluationCreationService.php
+
+		-
 			message: '#^Cannot access offset ''id'' on mixed\.$#'
 			identifier: offsetAccess.nonOffsetAccessible
 			count: 2
@@ -5393,6 +5291,24 @@ parameters:
 			identifier: cast.string
 			count: 1
 			path: app/Services/Evaluation/EvaluationGradingService.php
+
+		-
+			message: '#^Method App\\Services\\Evaluation\\EvaluationListService\:\:listForTeacher\(\) should return array\<int, array\<string, mixed\>\> but returns array\<mixed\>\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Services/Evaluation/EvaluationListService.php
+
+		-
+			message: '#^Parameter \#1 \$key of method Illuminate\\Support\\Collection\<\(int\|string\),mixed\>\:\:get\(\) expects int\|string\|null, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Evaluation/EvaluationListService.php
+
+		-
+			message: '#^Parameter \#2 \$questions of method App\\Services\\Evaluation\\EvaluationUpdateService\:\:createQuestions\(\) expects array\<int, array\<string, mixed\>\>, array\<mixed, mixed\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Evaluation/EvaluationUpdateService.php
 
 		-
 			message: '#^Cannot access offset ''programmation'' on mixed\.$#'
@@ -5609,6 +5525,78 @@ parameters:
 			identifier: offsetAccess.invalidOffset
 			count: 1
 			path: app/Services/Evaluation/Student/StudentGradesAggregator.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\File\:\:\$download_url\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Services/File/FileQueryService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\File\:\:\$formatted_size\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Services/File/FileQueryService.php
+
+		-
+			message: '#^Parameter \#1 \$category of method Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\File\>\:\:ofCategory\(\) expects string, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/File/FileQueryService.php
+
+		-
+			message: '#^Parameter \#1 \$perPage of method Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\File\>\:\:paginate\(\) expects int\|null, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/File/FileQueryService.php
+
+		-
+			message: '#^Parameter \#1 \$type of method Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\File\>\:\:ofType\(\) expects string, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/File/FileQueryService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\File\:\:\$download_url\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/File/FileUploadService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\File\:\:\$formatted_size\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/File/FileUploadService.php
+
+		-
+			message: '#^Method App\\Services\\File\\FileUploadService\:\:store\(\) has parameter \$payload with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Services/File/FileUploadService.php
+
+		-
+			message: '#^Parameter \#1 \$column of method Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Classe\>\:\:where\(\) expects array\<int\|model property of App\\Models\\Classe, mixed\>\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Classe\>\)\: Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Classe\>\)\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Classe\>\)\: void\)\|Illuminate\\Contracts\\Database\\Query\\Expression\|model property of App\\Models\\Classe, ''institution_id'' given\.$#'
+			identifier: argument.type
+			count: 2
+			path: app/Services/Institution/InstitutionQueryService.php
+
+		-
+			message: '#^Parameter \#1 \$column of method Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Evaluation\>\:\:where\(\) expects array\<int\|model property of App\\Models\\Evaluation, mixed\>\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Evaluation\>\)\: Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Evaluation\>\)\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Evaluation\>\)\: void\)\|Illuminate\\Contracts\\Database\\Query\\Expression\|model property of App\\Models\\Evaluation, ''institution_id'' given\.$#'
+			identifier: argument.type
+			count: 2
+			path: app/Services/Institution/InstitutionQueryService.php
+
+		-
+			message: '#^Parameter \#1 \$column of method Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Lesson\>\:\:where\(\) expects array\<int\|model property of App\\Models\\Lesson, mixed\>\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Lesson\>\)\: Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Lesson\>\)\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Lesson\>\)\: void\)\|Illuminate\\Contracts\\Database\\Query\\Expression\|model property of App\\Models\\Lesson, ''institution_id'' given\.$#'
+			identifier: argument.type
+			count: 3
+			path: app/Services/Institution/InstitutionQueryService.php
+
+		-
+			message: '#^Parameter \#1 \$column of method Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\User\>\:\:pluck\(\) expects Illuminate\\Contracts\\Database\\Query\\Expression\|model property of App\\Models\\User, string given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Institution/InstitutionQueryService.php
 
 		-
 			message: '#^Method App\\Services\\KnowledgeCheck\\KnowledgeCheckAttemptService\:\:getMyAttempts\(\) should return array\{quiz_title\: string, passing_score\: int, attempts\: Illuminate\\Support\\Collection\<int, array\<string, mixed\>\>, best_score\: int\|null, has_passed\: bool\} but returns array\{quiz_title\: string, passing_score\: int, attempts\: Illuminate\\Support\\Collection\<int, array\{id\: int, score\: int, correct_answers\: int, total_questions\: int, passed\: bool, time_spent\: string, completed_at\: non\-falsy\-string\|null\}\>, best_score\: mixed, has_passed\: bool\}\.$#'

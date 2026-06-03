@@ -985,96 +985,6 @@ parameters:
 			path: app/Http/Controllers/API/LMS/LMSSeancesListController.php
 
 		-
-			message: '#^Access to an undefined property App\\Http\\Controllers\\API\\LMS\\LMSVisioLifecycleController\:\:\$classeSyncService\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Http/Controllers/API/LMS/LMSVisioLifecycleController.php
-
-		-
-			message: '#^Access to an undefined property App\\Http\\Controllers\\API\\LMS\\LMSVisioLifecycleController\:\:\$notificationService\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Http/Controllers/API/LMS/LMSVisioLifecycleController.php
-
-		-
-			message: '#^Cannot access offset ''classe'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 1
-			path: app/Http/Controllers/API/LMS/LMSVisioLifecycleController.php
-
-		-
-			message: '#^Cannot access offset ''id'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 3
-			path: app/Http/Controllers/API/LMS/LMSVisioLifecycleController.php
-
-		-
-			message: '#^Cannot access offset ''libelle'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 1
-			path: app/Http/Controllers/API/LMS/LMSVisioLifecycleController.php
-
-		-
-			message: '#^Cannot access offset ''matieres'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 1
-			path: app/Http/Controllers/API/LMS/LMSVisioLifecycleController.php
-
-		-
-			message: '#^Cannot access offset ''nom'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 1
-			path: app/Http/Controllers/API/LMS/LMSVisioLifecycleController.php
-
-		-
-			message: '#^Cannot access offset ''seances_programmees'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 1
-			path: app/Http/Controllers/API/LMS/LMSVisioLifecycleController.php
-
-		-
-			message: '#^Parameter \#1 \$userToken of method App\\Services\\KlassciProxyService\:\:requestWithUserToken\(\) expects string, string\|null given\.$#'
-			identifier: argument.type
-			count: 3
-			path: app/Http/Controllers/API/LMS/LMSVisioLifecycleController.php
-
-		-
-			message: '#^Parameter \#1 \$value of function collect expects Illuminate\\Contracts\\Support\\Arrayable\<\(int\|string\), mixed\>\|iterable\<\(int\|string\), mixed\>\|null, mixed given\.$#'
-			identifier: argument.type
-			count: 3
-			path: app/Http/Controllers/API/LMS/LMSVisioLifecycleController.php
-
-		-
-			message: '#^Part \$matiere\[''id''\] \(mixed\) of encapsed string cannot be cast to string\.$#'
-			identifier: encapsedStringPart.nonString
-			count: 1
-			path: app/Http/Controllers/API/LMS/LMSVisioLifecycleController.php
-
-		-
-			message: '#^Property App\\Http\\Controllers\\API\\LMS\\LMSVisioLifecycleController\:\:\$attendanceStatus is never read, only written\.$#'
-			identifier: property.onlyWritten
-			count: 1
-			path: app/Http/Controllers/API/LMS/LMSVisioLifecycleController.php
-
-		-
-			message: '#^Property App\\Http\\Controllers\\API\\LMS\\LMSVisioLifecycleController\:\:\$seanceQuery is never read, only written\.$#'
-			identifier: property.onlyWritten
-			count: 1
-			path: app/Http/Controllers/API/LMS/LMSVisioLifecycleController.php
-
-		-
-			message: '#^Unable to resolve the template type TKey in call to function collect$#'
-			identifier: argument.templateType
-			count: 3
-			path: app/Http/Controllers/API/LMS/LMSVisioLifecycleController.php
-
-		-
-			message: '#^Unable to resolve the template type TValue in call to function collect$#'
-			identifier: argument.templateType
-			count: 3
-			path: app/Http/Controllers/API/LMS/LMSVisioLifecycleController.php
-
-		-
 			message: '#^Access to an undefined property App\\Models\\Lesson\:\:\$statistics\.$#'
 			identifier: property.notFound
 			count: 1
@@ -6989,6 +6899,60 @@ parameters:
 			identifier: missingType.iterableValue
 			count: 1
 			path: app/Services/TenantManager.php
+
+		-
+			message: '#^Cannot access offset ''id'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 2
+			path: app/Services/Visio/Lifecycle/VisioActivationService.php
+
+		-
+			message: '#^Cannot access offset ''matieres'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: app/Services/Visio/Lifecycle/VisioActivationService.php
+
+		-
+			message: '#^Cannot access offset ''seances_programmees'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: app/Services/Visio/Lifecycle/VisioActivationService.php
+
+		-
+			message: '#^Method App\\Services\\Visio\\Lifecycle\\VisioActivationService\:\:locateKlassciSeance\(\) should return array\{array\<string, mixed\>\|null, array\<string, mixed\>\|null\} but returns array\{mixed, mixed\}\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Services/Visio/Lifecycle/VisioActivationService.php
+
+		-
+			message: '#^Parameter \#1 \$userToken of method App\\Services\\KlassciProxyService\:\:requestWithUserToken\(\) expects string, string\|null given\.$#'
+			identifier: argument.type
+			count: 3
+			path: app/Services/Visio/Lifecycle/VisioActivationService.php
+
+		-
+			message: '#^Parameter \#1 \$value of function collect expects Illuminate\\Contracts\\Support\\Arrayable\<\(int\|string\), mixed\>\|iterable\<\(int\|string\), mixed\>\|null, mixed given\.$#'
+			identifier: argument.type
+			count: 3
+			path: app/Services/Visio/Lifecycle/VisioActivationService.php
+
+		-
+			message: '#^Part \$matiere\[''id''\] \(mixed\) of encapsed string cannot be cast to string\.$#'
+			identifier: encapsedStringPart.nonString
+			count: 1
+			path: app/Services/Visio/Lifecycle/VisioActivationService.php
+
+		-
+			message: '#^Unable to resolve the template type TKey in call to function collect$#'
+			identifier: argument.templateType
+			count: 3
+			path: app/Services/Visio/Lifecycle/VisioActivationService.php
+
+		-
+			message: '#^Unable to resolve the template type TValue in call to function collect$#'
+			identifier: argument.templateType
+			count: 3
+			path: app/Services/Visio/Lifecycle/VisioActivationService.php
 
 		-
 			message: '#^Possibly invalid array key type mixed\.$#'

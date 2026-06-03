@@ -355,198 +355,6 @@ parameters:
 			path: app/Http/Controllers/API/Evaluation/EvaluationKlassciSyncController.php
 
 		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$attempt\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Controllers/API/Evaluation/EvaluationTeacherController.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$feedback\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Controllers/API/Evaluation/EvaluationTeacherController.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Controllers/API/Evaluation/EvaluationTeacherController.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$note_sur_20\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Controllers/API/Evaluation/EvaluationTeacherController.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$options\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Controllers/API/Evaluation/EvaluationTeacherController.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$ordre\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Controllers/API/Evaluation/EvaluationTeacherController.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$points\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Controllers/API/Evaluation/EvaluationTeacherController.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$question\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Controllers/API/Evaluation/EvaluationTeacherController.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$score\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Controllers/API/Evaluation/EvaluationTeacherController.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$status\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Controllers/API/Evaluation/EvaluationTeacherController.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$submitted_at\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Controllers/API/Evaluation/EvaluationTeacherController.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$type\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Controllers/API/Evaluation/EvaluationTeacherController.php
-
-		-
-			message: '#^Argument of an invalid type mixed supplied for foreach, only iterables are supported\.$#'
-			identifier: foreach.nonIterable
-			count: 1
-			path: app/Http/Controllers/API/Evaluation/EvaluationTeacherController.php
-
-		-
-			message: '#^Binary operation "\." between mixed and '' '' results in an error\.$#'
-			identifier: binaryOp.invalid
-			count: 1
-			path: app/Http/Controllers/API/Evaluation/EvaluationTeacherController.php
-
-		-
-			message: '#^Binary operation "\." between non\-falsy\-string and mixed results in an error\.$#'
-			identifier: binaryOp.invalid
-			count: 1
-			path: app/Http/Controllers/API/Evaluation/EvaluationTeacherController.php
-
-		-
-			message: '#^Called ''pluck'' on Laravel collection, but could have been retrieved as a query\.$#'
-			identifier: larastan.noUnnecessaryCollectionCall
-			count: 1
-			path: app/Http/Controllers/API/Evaluation/EvaluationTeacherController.php
-
-		-
-			message: '#^Cannot access offset ''email'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 1
-			path: app/Http/Controllers/API/Evaluation/EvaluationTeacherController.php
-
-		-
-			message: '#^Cannot access offset ''id'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 2
-			path: app/Http/Controllers/API/Evaluation/EvaluationTeacherController.php
-
-		-
-			message: '#^Cannot access offset ''nom'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 2
-			path: app/Http/Controllers/API/Evaluation/EvaluationTeacherController.php
-
-		-
-			message: '#^Cannot access offset ''prenom'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 2
-			path: app/Http/Controllers/API/Evaluation/EvaluationTeacherController.php
-
-		-
-			message: '#^Parameter \#1 \$array of function usort contains unresolvable type\.$#'
-			identifier: argument.unresolvableType
-			count: 1
-			path: app/Http/Controllers/API/Evaluation/EvaluationTeacherController.php
-
-		-
-			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:map\(\) contains unresolvable type\.$#'
-			identifier: argument.unresolvableType
-			count: 1
-			path: app/Http/Controllers/API/Evaluation/EvaluationTeacherController.php
-
-		-
-			message: '#^Parameter \#1 \$column of method Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\:\:orWhere\(\) expects array\<int\|model property of Illuminate\\Database\\Eloquent\\Model, mixed\>\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\: Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\: void\)\|Illuminate\\Contracts\\Database\\Query\\Expression\|model property of Illuminate\\Database\\Eloquent\\Model, ''feedback'' given\.$#'
-			identifier: argument.type
-			count: 2
-			path: app/Http/Controllers/API/Evaluation/EvaluationTeacherController.php
-
-		-
-			message: '#^Parameter \#1 \$column of method Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\:\:where\(\) expects array\<int\|model property of Illuminate\\Database\\Eloquent\\Model, mixed\>\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\: Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\: void\)\|Illuminate\\Contracts\\Database\\Query\\Expression\|model property of Illuminate\\Database\\Eloquent\\Model, ''klassci_etudiant_id'' given\.$#'
-			identifier: argument.type
-			count: 2
-			path: app/Http/Controllers/API/Evaluation/EvaluationTeacherController.php
-
-		-
-			message: '#^Parameter \#1 \$num of function round expects float\|int, float\|int\|null given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Controllers/API/Evaluation/EvaluationTeacherController.php
-
-		-
-			message: '#^Parameter \#1 \$num of function round expects float\|int, mixed given\.$#'
-			identifier: argument.type
-			count: 2
-			path: app/Http/Controllers/API/Evaluation/EvaluationTeacherController.php
-
-		-
-			message: '#^Parameter \#1 \$value of function collect contains unresolvable type\.$#'
-			identifier: argument.unresolvableType
-			count: 3
-			path: app/Http/Controllers/API/Evaluation/EvaluationTeacherController.php
-
-		-
-			message: '#^Parameter \#1 \$value of function count expects array\|Countable, mixed given\.$#'
-			identifier: argument.type
-			count: 4
-			path: app/Http/Controllers/API/Evaluation/EvaluationTeacherController.php
-
-		-
-			message: '#^Parameter \#2 \$callback of function usort contains unresolvable type\.$#'
-			identifier: argument.unresolvableType
-			count: 1
-			path: app/Http/Controllers/API/Evaluation/EvaluationTeacherController.php
-
-		-
-			message: '#^Return type of call to function collect contains unresolvable type\.$#'
-			identifier: function.unresolvableReturnType
-			count: 3
-			path: app/Http/Controllers/API/Evaluation/EvaluationTeacherController.php
-
-		-
-			message: '#^Return type of call to method Illuminate\\Database\\Eloquent\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:map\(\) contains unresolvable type\.$#'
-			identifier: method.unresolvableReturnType
-			count: 1
-			path: app/Http/Controllers/API/Evaluation/EvaluationTeacherController.php
-
-		-
-			message: '#^Using nullsafe property access "\?\-\>status" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
-			identifier: nullsafe.neverNull
-			count: 1
-			path: app/Http/Controllers/API/Evaluation/EvaluationTeacherController.php
-
-		-
 			message: '#^Offset ''message'' might not exist on array\{status\: ''max_attempts'', submission\?\: App\\Models\\EvaluationSubmission, window\?\: array\<string, mixed\>\|null, message\?\: string, is_practice\?\: bool, resumed\?\: bool\}\.$#'
 			identifier: offsetAccess.notFound
 			count: 1
@@ -5429,6 +5237,156 @@ parameters:
 			identifier: offsetAccess.invalidOffset
 			count: 1
 			path: app/Services/Evaluation/Student/StudentGradesAggregator.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$attempt\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Evaluation/Teacher/TeacherEvaluationResultsService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$feedback\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Evaluation/Teacher/TeacherEvaluationResultsService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$note_sur_20\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Evaluation/Teacher/TeacherEvaluationResultsService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$score\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Evaluation/Teacher/TeacherEvaluationResultsService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$status\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Evaluation/Teacher/TeacherEvaluationResultsService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$submitted_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Evaluation/Teacher/TeacherEvaluationResultsService.php
+
+		-
+			message: '#^Binary operation "\." between mixed and '' '' results in an error\.$#'
+			identifier: binaryOp.invalid
+			count: 1
+			path: app/Services/Evaluation/Teacher/TeacherEvaluationResultsService.php
+
+		-
+			message: '#^Binary operation "\." between non\-falsy\-string and mixed results in an error\.$#'
+			identifier: binaryOp.invalid
+			count: 1
+			path: app/Services/Evaluation/Teacher/TeacherEvaluationResultsService.php
+
+		-
+			message: '#^Cannot cast mixed to float\.$#'
+			identifier: cast.double
+			count: 2
+			path: app/Services/Evaluation/Teacher/TeacherEvaluationResultsService.php
+
+		-
+			message: '#^Parameter \#1 \$column of method Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\:\:orWhere\(\) expects array\<int\|model property of Illuminate\\Database\\Eloquent\\Model, mixed\>\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\: Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\: void\)\|Illuminate\\Contracts\\Database\\Query\\Expression\|model property of Illuminate\\Database\\Eloquent\\Model, ''feedback'' given\.$#'
+			identifier: argument.type
+			count: 2
+			path: app/Services/Evaluation/Teacher/TeacherEvaluationResultsService.php
+
+		-
+			message: '#^Parameter \#1 \$column of method Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\:\:where\(\) expects array\<int\|model property of Illuminate\\Database\\Eloquent\\Model, mixed\>\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\: Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\: void\)\|Illuminate\\Contracts\\Database\\Query\\Expression\|model property of Illuminate\\Database\\Eloquent\\Model, ''klassci_etudiant_id'' given\.$#'
+			identifier: argument.type
+			count: 2
+			path: app/Services/Evaluation/Teacher/TeacherEvaluationResultsService.php
+
+		-
+			message: '#^Parameter \#1 \$string1 of function strcmp expects string, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Evaluation/Teacher/TeacherEvaluationResultsService.php
+
+		-
+			message: '#^Parameter \#1 \$value of function count expects array\|Countable, mixed given\.$#'
+			identifier: argument.type
+			count: 2
+			path: app/Services/Evaluation/Teacher/TeacherEvaluationResultsService.php
+
+		-
+			message: '#^Parameter \#2 \$etudiants of method App\\Services\\Evaluation\\Teacher\\TeacherEvaluationResultsService\:\:buildResultats\(\) expects array\<int, array\<string, mixed\>\>, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Evaluation/Teacher/TeacherEvaluationResultsService.php
+
+		-
+			message: '#^Parameter \#2 \$string2 of function strcmp expects string, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Evaluation/Teacher/TeacherEvaluationResultsService.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>status" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Services/Evaluation/Teacher/TeacherEvaluationResultsService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Evaluation/Teacher/TeacherEvaluationViewService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$options\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Evaluation/Teacher/TeacherEvaluationViewService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$ordre\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Evaluation/Teacher/TeacherEvaluationViewService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$points\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Evaluation/Teacher/TeacherEvaluationViewService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$question\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Evaluation/Teacher/TeacherEvaluationViewService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$type\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Evaluation/Teacher/TeacherEvaluationViewService.php
+
+		-
+			message: '#^Called ''pluck'' on Laravel collection, but could have been retrieved as a query\.$#'
+			identifier: larastan.noUnnecessaryCollectionCall
+			count: 1
+			path: app/Services/Evaluation/Teacher/TeacherEvaluationViewService.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 1
+			path: app/Services/Evaluation/Teacher/TeacherEvaluationViewService.php
+
+		-
+			message: '#^Return type of call to method Illuminate\\Database\\Eloquent\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: method.unresolvableReturnType
+			count: 1
+			path: app/Services/Evaluation/Teacher/TeacherEvaluationViewService.php
 
 		-
 			message: '#^Access to an undefined property App\\Models\\File\:\:\$download_url\.$#'

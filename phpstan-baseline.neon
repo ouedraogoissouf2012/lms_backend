@@ -643,54 +643,6 @@ parameters:
 			path: app/Http/Controllers/API/KnowledgeCheckAttemptController.php
 
 		-
-			message: '#^Binary operation "/" between int\<0, max\> and mixed results in an error\.$#'
-			identifier: binaryOp.invalid
-			count: 1
-			path: app/Http/Controllers/API/LMS/LMSClassesController.php
-
-		-
-			message: '#^Cannot access offset ''filiere'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 4
-			path: app/Http/Controllers/API/LMS/LMSClassesController.php
-
-		-
-			message: '#^Cannot access offset ''id'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 4
-			path: app/Http/Controllers/API/LMS/LMSClassesController.php
-
-		-
-			message: '#^Cannot access offset ''niveau'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 4
-			path: app/Http/Controllers/API/LMS/LMSClassesController.php
-
-		-
-			message: '#^Cannot access offset ''nombre_places'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 2
-			path: app/Http/Controllers/API/LMS/LMSClassesController.php
-
-		-
-			message: '#^Parameter \#1 \$value of function count expects array\|Countable, mixed given\.$#'
-			identifier: argument.type
-			count: 3
-			path: app/Http/Controllers/API/LMS/LMSClassesController.php
-
-		-
-			message: '#^Part \$classe\[''filiere''\]\[''id''\] \(mixed\) of encapsed string cannot be cast to string\.$#'
-			identifier: encapsedStringPart.nonString
-			count: 1
-			path: app/Http/Controllers/API/LMS/LMSClassesController.php
-
-		-
-			message: '#^Part \$classe\[''niveau''\]\[''id''\] \(mixed\) of encapsed string cannot be cast to string\.$#'
-			identifier: encapsedStringPart.nonString
-			count: 1
-			path: app/Http/Controllers/API/LMS/LMSClassesController.php
-
-		-
 			message: '#^Parameter \#1 \$enseignantId of static method App\\Models\\LmsEnseignantCache\:\:store\(\) expects int, mixed given\.$#'
 			identifier: argument.type
 			count: 1
@@ -5021,6 +4973,48 @@ parameters:
 			identifier: isset.offset
 			count: 1
 			path: app/Services/Chapter/ChapterFileUploadService.php
+
+		-
+			message: '#^Cannot access offset ''filiere'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 2
+			path: app/Services/Classe/ClasseDetailsQueryService.php
+
+		-
+			message: '#^Cannot access offset ''id'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 2
+			path: app/Services/Classe/ClasseDetailsQueryService.php
+
+		-
+			message: '#^Cannot access offset ''niveau'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 2
+			path: app/Services/Classe/ClasseDetailsQueryService.php
+
+		-
+			message: '#^Offset ''classe'' might not exist on array\{status\: 200, classe\?\: array\<string, mixed\>, payload\?\: array\<string, mixed\>\}\.$#'
+			identifier: offsetAccess.notFound
+			count: 1
+			path: app/Services/Classe/ClasseDetailsQueryService.php
+
+		-
+			message: '#^Cannot access offset ''id'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 2
+			path: app/Services/Classe/ClasseSecondaryDataFetcher.php
+
+		-
+			message: '#^Part \$filiereId \(mixed\) of encapsed string cannot be cast to string\.$#'
+			identifier: encapsedStringPart.nonString
+			count: 1
+			path: app/Services/Classe/ClasseSecondaryDataFetcher.php
+
+		-
+			message: '#^Part \$niveauId \(mixed\) of encapsed string cannot be cast to string\.$#'
+			identifier: encapsedStringPart.nonString
+			count: 1
+			path: app/Services/Classe/ClasseSecondaryDataFetcher.php
 
 		-
 			message: '#^Cannot access offset ''id'' on mixed\.$#'

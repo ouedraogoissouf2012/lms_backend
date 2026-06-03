@@ -619,42 +619,6 @@ parameters:
 			path: app/Http/Controllers/API/Evaluation/Student/EvaluationStudentAttemptController.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\File\:\:\$download_url\.$#'
-			identifier: property.notFound
-			count: 3
-			path: app/Http/Controllers/API/FileController.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\File\:\:\$formatted_size\.$#'
-			identifier: property.notFound
-			count: 3
-			path: app/Http/Controllers/API/FileController.php
-
-		-
-			message: '#^Parameter \#1 \$category of method Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\File\>\:\:ofCategory\(\) expects string, mixed given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Controllers/API/FileController.php
-
-		-
-			message: '#^Parameter \#1 \$mimeType of static method App\\Models\\File\:\:determineTypeFromMime\(\) expects string, string\|null given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Controllers/API/FileController.php
-
-		-
-			message: '#^Parameter \#1 \$perPage of method Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\File\>\:\:paginate\(\) expects int\|null, mixed given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Controllers/API/FileController.php
-
-		-
-			message: '#^Parameter \#1 \$type of method Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\File\>\:\:ofType\(\) expects string, mixed given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Controllers/API/FileController.php
-
-		-
 			message: '#^Access to an undefined property App\\Models\\ForumPost\|Illuminate\\Database\\Eloquent\\Collection\<int, App\\Models\\ForumPost\>\:\:\$id\.$#'
 			identifier: property.notFound
 			count: 1
@@ -709,352 +673,22 @@ parameters:
 			path: app/Http/Controllers/API/ForumController.php
 
 		-
-			message: '#^Method App\\Http\\Controllers\\API\\InstitutionController\:\:destroy\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Http/Controllers/API/InstitutionController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\API\\InstitutionController\:\:index\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Http/Controllers/API/InstitutionController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\API\\InstitutionController\:\:show\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Http/Controllers/API/InstitutionController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\API\\InstitutionController\:\:store\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Http/Controllers/API/InstitutionController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\API\\InstitutionController\:\:testConnection\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Http/Controllers/API/InstitutionController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\API\\InstitutionController\:\:toggle\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Http/Controllers/API/InstitutionController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\API\\InstitutionController\:\:update\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Http/Controllers/API/InstitutionController.php
-
-		-
-			message: '#^Parameter \#1 \$column of method Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Classe\>\:\:where\(\) expects array\<int\|model property of App\\Models\\Classe, mixed\>\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Classe\>\)\: Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Classe\>\)\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Classe\>\)\: void\)\|Illuminate\\Contracts\\Database\\Query\\Expression\|model property of App\\Models\\Classe, ''institution_id'' given\.$#'
-			identifier: argument.type
-			count: 2
-			path: app/Http/Controllers/API/InstitutionController.php
-
-		-
-			message: '#^Parameter \#1 \$column of method Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Evaluation\>\:\:where\(\) expects array\<int\|model property of App\\Models\\Evaluation, mixed\>\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Evaluation\>\)\: Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Evaluation\>\)\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Evaluation\>\)\: void\)\|Illuminate\\Contracts\\Database\\Query\\Expression\|model property of App\\Models\\Evaluation, ''institution_id'' given\.$#'
-			identifier: argument.type
-			count: 2
-			path: app/Http/Controllers/API/InstitutionController.php
-
-		-
-			message: '#^Parameter \#1 \$column of method Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Lesson\>\:\:where\(\) expects array\<int\|model property of App\\Models\\Lesson, mixed\>\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Lesson\>\)\: Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Lesson\>\)\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Lesson\>\)\: void\)\|Illuminate\\Contracts\\Database\\Query\\Expression\|model property of App\\Models\\Lesson, ''institution_id'' given\.$#'
-			identifier: argument.type
-			count: 3
-			path: app/Http/Controllers/API/InstitutionController.php
-
-		-
-			message: '#^Parameter \#1 \$column of method Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\User\>\:\:pluck\(\) expects Illuminate\\Contracts\\Database\\Query\\Expression\|model property of App\\Models\\User, string given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Controllers/API/InstitutionController.php
-
-		-
 			message: '#^Parameter \#1 \$string of function substr expects string, mixed given\.$#'
 			identifier: argument.type
 			count: 1
 			path: app/Http/Controllers/API/IntegrationController.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\Chapter\|Illuminate\\Database\\Eloquent\\Collection\<int, App\\Models\\Chapter\>\:\:\$enseignant_id\.$#'
-			identifier: property.notFound
+			message: '#^Cannot cast mixed to int\.$#'
+			identifier: cast.int
 			count: 1
-			path: app/Http/Controllers/API/KnowledgeCheckController.php
+			path: app/Http/Controllers/API/KnowledgeCheckAttemptController.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\KnowledgeCheck\:\:\$can_attempt\.$#'
-			identifier: property.notFound
-			count: 3
-			path: app/Http/Controllers/API/KnowledgeCheckController.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\KnowledgeCheck\:\:\$user_best_score\.$#'
-			identifier: property.notFound
-			count: 3
-			path: app/Http/Controllers/API/KnowledgeCheckController.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\KnowledgeCheck\:\:\$user_passed\.$#'
-			identifier: property.notFound
-			count: 3
-			path: app/Http/Controllers/API/KnowledgeCheckController.php
-
-		-
-			message: '#^Binary operation "\+\=" between int and mixed results in an error\.$#'
-			identifier: assignOp.invalid
-			count: 1
-			path: app/Http/Controllers/API/KnowledgeCheckController.php
-
-		-
-			message: '#^Cannot access offset \(int\|string\) on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 1
-			path: app/Http/Controllers/API/KnowledgeCheckController.php
-
-		-
-			message: '#^Cannot access property \$enseignant_id on Illuminate\\Database\\Eloquent\\Model\|null\.$#'
-			identifier: property.nonObject
-			count: 2
-			path: app/Http/Controllers/API/KnowledgeCheckController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\API\\KnowledgeCheckController\:\:checkAnswer\(\) has parameter \$correctAnswer with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: app/Http/Controllers/API/KnowledgeCheckController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\API\\KnowledgeCheckController\:\:checkAnswer\(\) has parameter \$userAnswer with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: app/Http/Controllers/API/KnowledgeCheckController.php
-
-		-
-			message: '#^Parameter \#1 \$chapterId of static method Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\KnowledgeCheck\>\:\:forChapter\(\) expects int, \(array\|string\) given\.$#'
+			message: '#^Parameter \#3 \$answers of method App\\Services\\KnowledgeCheck\\KnowledgeCheckAttemptService\:\:submitAttempt\(\) expects array\<int\|string, mixed\>, mixed given\.$#'
 			identifier: argument.type
 			count: 1
-			path: app/Http/Controllers/API/KnowledgeCheckController.php
-
-		-
-			message: '#^Parameter \#1 \$column of method Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\:\:where\(\) expects array\<int\|model property of Illuminate\\Database\\Eloquent\\Model, mixed\>\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\: Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\: void\)\|Illuminate\\Contracts\\Database\\Query\\Expression\|model property of Illuminate\\Database\\Eloquent\\Model, ''user_id'' given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Controllers/API/KnowledgeCheckController.php
-
-		-
-			message: '#^Parameter \#1 \$value of method Carbon\\Carbon\:\:subSeconds\(\) expects float\|int, mixed given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Controllers/API/KnowledgeCheckController.php
-
-		-
-			message: '#^Property App\\Models\\ChapterProgress\:\:\$quiz_score \(int\|null\) does not accept float\|int\.$#'
-			identifier: assign.propertyType
-			count: 1
-			path: app/Http/Controllers/API/KnowledgeCheckController.php
-
-		-
-			message: '#^Property App\\Models\\KnowledgeCheck\:\:\$attempts_count is not writable\.$#'
-			identifier: assign.propertyReadOnly
-			count: 1
-			path: app/Http/Controllers/API/KnowledgeCheckController.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\ESBTPAttendance\:\:\$seance\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Controllers/API/LMS/LMSAttendancesController.php
-
-		-
-			message: '#^Anonymous function has an unused use \$request\.$#'
-			identifier: closure.unusedUse
-			count: 1
-			path: app/Http/Controllers/API/LMS/LMSAttendancesController.php
-
-		-
-			message: '#^Argument of an invalid type mixed supplied for foreach, only iterables are supported\.$#'
-			identifier: foreach.nonIterable
-			count: 1
-			path: app/Http/Controllers/API/LMS/LMSAttendancesController.php
-
-		-
-			message: '#^Binary operation "\." between mixed and '' 23\:59\:59'' results in an error\.$#'
-			identifier: binaryOp.invalid
-			count: 1
-			path: app/Http/Controllers/API/LMS/LMSAttendancesController.php
-
-		-
-			message: '#^Cannot access offset ''duration_minutes'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 1
-			path: app/Http/Controllers/API/LMS/LMSAttendancesController.php
-
-		-
-			message: '#^Cannot access offset ''etudiant_id'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 3
-			path: app/Http/Controllers/API/LMS/LMSAttendancesController.php
-
-		-
-			message: '#^Cannot access offset ''joined_at'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 1
-			path: app/Http/Controllers/API/LMS/LMSAttendancesController.php
-
-		-
-			message: '#^Cannot access offset ''left_at'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 1
-			path: app/Http/Controllers/API/LMS/LMSAttendancesController.php
-
-		-
-			message: '#^Cannot access offset ''statut'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 1
-			path: app/Http/Controllers/API/LMS/LMSAttendancesController.php
-
-		-
-			message: '#^Offset ''seance'' on array\{seance\: array\<string, mixed\>, visio\: array\<string, mixed\>, participants\?\: array\<string, mixed\>\} in isset\(\) always exists and is not nullable\.$#'
-			identifier: isset.offset
-			count: 1
-			path: app/Http/Controllers/API/LMS/LMSAttendancesController.php
-
-		-
-			message: '#^Parameter \#1 \$attributes of static method Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\ESBTPAttendance\>\:\:updateOrCreate\(\) expects array\<model property of App\\Models\\ESBTPAttendance, mixed\>, array\<string, mixed\> given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Controllers/API/LMS/LMSAttendancesController.php
-
-		-
-			message: '#^Parameter \#1 \$column of method Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\ESBTPAttendance\>\:\:where\(\) expects array\<int\|model property of App\\Models\\ESBTPAttendance, mixed\>\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\ESBTPAttendance\>\)\: Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\ESBTPAttendance\>\)\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\ESBTPAttendance\>\)\: void\)\|Illuminate\\Contracts\\Database\\Query\\Expression\|model property of App\\Models\\ESBTPAttendance, ''date'' given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Controllers/API/LMS/LMSAttendancesController.php
-
-		-
-			message: '#^Parameter \#1 \$column of method Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\ESBTPAttendance\>\:\:where\(\) expects array\<int\|model property of App\\Models\\ESBTPAttendance, mixed\>\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\ESBTPAttendance\>\)\: Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\ESBTPAttendance\>\)\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\ESBTPAttendance\>\)\: void\)\|Illuminate\\Contracts\\Database\\Query\\Expression\|model property of App\\Models\\ESBTPAttendance, ''etudiant_id'' given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Controllers/API/LMS/LMSAttendancesController.php
-
-		-
-			message: '#^Parameter \#1 \$column of method Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\:\:where\(\) expects array\<int\|model property of Illuminate\\Database\\Eloquent\\Model, mixed\>\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\: Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\: void\)\|Illuminate\\Contracts\\Database\\Query\\Expression\|model property of Illuminate\\Database\\Eloquent\\Model, ''enseignant_id'' given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Controllers/API/LMS/LMSAttendancesController.php
-
-		-
-			message: '#^Parameter \#1 \$column of static method Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\ESBTPAttendance\>\:\:where\(\) expects array\<int\|model property of App\\Models\\ESBTPAttendance, mixed\>\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\ESBTPAttendance\>\)\: Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\ESBTPAttendance\>\)\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\ESBTPAttendance\>\)\: void\)\|Illuminate\\Contracts\\Database\\Query\\Expression\|model property of App\\Models\\ESBTPAttendance, ''seance_cours_id'' given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Controllers/API/LMS/LMSAttendancesController.php
-
-		-
-			message: '#^Parameter \#1 \$num of function round expects float\|int, float\|int\|null given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Controllers/API/LMS/LMSAttendancesController.php
-
-		-
-			message: '#^Parameter \#1 \$perPage of method Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\ESBTPAttendance\>\:\:paginate\(\) expects int\|null, mixed given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Controllers/API/LMS/LMSAttendancesController.php
-
-		-
-			message: '#^Parameter \#1 \$value of function count expects array\|Countable, mixed given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Controllers/API/LMS/LMSAttendancesController.php
-
-		-
-			message: '#^Parameter \#2 \$values of static method Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\ESBTPAttendance\>\:\:updateOrCreate\(\) expects array\<model property of App\\Models\\ESBTPAttendance, mixed\>, array\<string, mixed\> given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Controllers/API/LMS/LMSAttendancesController.php
-
-		-
-			message: '#^Part \$durationMinutes \(mixed\) of encapsed string cannot be cast to string\.$#'
-			identifier: encapsedStringPart.nonString
-			count: 1
-			path: app/Http/Controllers/API/LMS/LMSAttendancesController.php
-
-		-
-			message: '#^Part \$joinedAt \(mixed\) of encapsed string cannot be cast to string\.$#'
-			identifier: encapsedStringPart.nonString
-			count: 1
-			path: app/Http/Controllers/API/LMS/LMSAttendancesController.php
-
-		-
-			message: '#^Part \$leftAt \(mixed\) of encapsed string cannot be cast to string\.$#'
-			identifier: encapsedStringPart.nonString
-			count: 1
-			path: app/Http/Controllers/API/LMS/LMSAttendancesController.php
-
-		-
-			message: '#^Property App\\Http\\Controllers\\API\\LMS\\LMSAttendancesController\:\:\$attendanceStatus is never read, only written\.$#'
-			identifier: property.onlyWritten
-			count: 1
-			path: app/Http/Controllers/API/LMS/LMSAttendancesController.php
-
-		-
-			message: '#^Property App\\Http\\Controllers\\API\\LMS\\LMSAttendancesController\:\:\$klassciService is never read, only written\.$#'
-			identifier: property.onlyWritten
-			count: 1
-			path: app/Http/Controllers/API/LMS/LMSAttendancesController.php
-
-		-
-			message: '#^Relation ''seance'' is not found in App\\Models\\ESBTPAttendance model\.$#'
-			identifier: larastan.relationExistence
-			count: 2
-			path: app/Http/Controllers/API/LMS/LMSAttendancesController.php
-
-		-
-			message: '#^Relation ''user'' is not found in App\\Models\\ESBTPAttendance model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Http/Controllers/API/LMS/LMSAttendancesController.php
-
-		-
-			message: '#^Undefined variable\: \$user$#'
-			identifier: variable.undefined
-			count: 1
-			path: app/Http/Controllers/API/LMS/LMSAttendancesController.php
-
-		-
-			message: '#^Using nullsafe property access "\?\-\>date_seance" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
-			identifier: nullsafe.neverNull
-			count: 1
-			path: app/Http/Controllers/API/LMS/LMSAttendancesController.php
-
-		-
-			message: '#^Using nullsafe property access "\?\-\>email" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
-			identifier: nullsafe.neverNull
-			count: 1
-			path: app/Http/Controllers/API/LMS/LMSAttendancesController.php
-
-		-
-			message: '#^Using nullsafe property access "\?\-\>id" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
-			identifier: nullsafe.neverNull
-			count: 2
-			path: app/Http/Controllers/API/LMS/LMSAttendancesController.php
-
-		-
-			message: '#^Using nullsafe property access "\?\-\>klassci_seance_id" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
-			identifier: nullsafe.neverNull
-			count: 1
-			path: app/Http/Controllers/API/LMS/LMSAttendancesController.php
-
-		-
-			message: '#^Using nullsafe property access "\?\-\>name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
-			identifier: nullsafe.neverNull
-			count: 1
-			path: app/Http/Controllers/API/LMS/LMSAttendancesController.php
+			path: app/Http/Controllers/API/KnowledgeCheckAttemptController.php
 
 		-
 			message: '#^Binary operation "/" between int\<0, max\> and mixed results in an error\.$#'
@@ -1157,96 +791,6 @@ parameters:
 			identifier: cast.int
 			count: 3
 			path: app/Http/Controllers/API/LMS/LMSSeancesListController.php
-
-		-
-			message: '#^Access to an undefined property App\\Http\\Controllers\\API\\LMS\\LMSVisioLifecycleController\:\:\$classeSyncService\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Http/Controllers/API/LMS/LMSVisioLifecycleController.php
-
-		-
-			message: '#^Access to an undefined property App\\Http\\Controllers\\API\\LMS\\LMSVisioLifecycleController\:\:\$notificationService\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Http/Controllers/API/LMS/LMSVisioLifecycleController.php
-
-		-
-			message: '#^Cannot access offset ''classe'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 1
-			path: app/Http/Controllers/API/LMS/LMSVisioLifecycleController.php
-
-		-
-			message: '#^Cannot access offset ''id'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 3
-			path: app/Http/Controllers/API/LMS/LMSVisioLifecycleController.php
-
-		-
-			message: '#^Cannot access offset ''libelle'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 1
-			path: app/Http/Controllers/API/LMS/LMSVisioLifecycleController.php
-
-		-
-			message: '#^Cannot access offset ''matieres'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 1
-			path: app/Http/Controllers/API/LMS/LMSVisioLifecycleController.php
-
-		-
-			message: '#^Cannot access offset ''nom'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 1
-			path: app/Http/Controllers/API/LMS/LMSVisioLifecycleController.php
-
-		-
-			message: '#^Cannot access offset ''seances_programmees'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 1
-			path: app/Http/Controllers/API/LMS/LMSVisioLifecycleController.php
-
-		-
-			message: '#^Parameter \#1 \$userToken of method App\\Services\\KlassciProxyService\:\:requestWithUserToken\(\) expects string, string\|null given\.$#'
-			identifier: argument.type
-			count: 3
-			path: app/Http/Controllers/API/LMS/LMSVisioLifecycleController.php
-
-		-
-			message: '#^Parameter \#1 \$value of function collect expects Illuminate\\Contracts\\Support\\Arrayable\<\(int\|string\), mixed\>\|iterable\<\(int\|string\), mixed\>\|null, mixed given\.$#'
-			identifier: argument.type
-			count: 3
-			path: app/Http/Controllers/API/LMS/LMSVisioLifecycleController.php
-
-		-
-			message: '#^Part \$matiere\[''id''\] \(mixed\) of encapsed string cannot be cast to string\.$#'
-			identifier: encapsedStringPart.nonString
-			count: 1
-			path: app/Http/Controllers/API/LMS/LMSVisioLifecycleController.php
-
-		-
-			message: '#^Property App\\Http\\Controllers\\API\\LMS\\LMSVisioLifecycleController\:\:\$attendanceStatus is never read, only written\.$#'
-			identifier: property.onlyWritten
-			count: 1
-			path: app/Http/Controllers/API/LMS/LMSVisioLifecycleController.php
-
-		-
-			message: '#^Property App\\Http\\Controllers\\API\\LMS\\LMSVisioLifecycleController\:\:\$seanceQuery is never read, only written\.$#'
-			identifier: property.onlyWritten
-			count: 1
-			path: app/Http/Controllers/API/LMS/LMSVisioLifecycleController.php
-
-		-
-			message: '#^Unable to resolve the template type TKey in call to function collect$#'
-			identifier: argument.templateType
-			count: 3
-			path: app/Http/Controllers/API/LMS/LMSVisioLifecycleController.php
-
-		-
-			message: '#^Unable to resolve the template type TValue in call to function collect$#'
-			identifier: argument.templateType
-			count: 3
-			path: app/Http/Controllers/API/LMS/LMSVisioLifecycleController.php
 
 		-
 			message: '#^Access to an undefined property App\\Models\\Lesson\:\:\$statistics\.$#'
@@ -1519,112 +1063,22 @@ parameters:
 			path: app/Http/Controllers/API/NotificationsController.php
 
 		-
-			message: '#^Parameter \#2 \$anneeId of method App\\Services\\KlassciProxyService\:\:getClasseEtudiants\(\) expects int\|null, mixed given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Controllers/API/ProxyController.php
-
-		-
 			message: '#^Parameter \#2 \$presences of method App\\Services\\KlassciProxyService\:\:savePresences\(\) expects array\<int, array\<string, mixed\>\>, array\<string, mixed\> given\.$#'
 			identifier: argument.type
 			count: 1
-			path: app/Http/Controllers/API/ProxyController.php
+			path: app/Http/Controllers/API/Proxy/ProxyAcademicController.php
 
 		-
 			message: '#^Variable \$klassciToken in empty\(\) always exists and is not falsy\.$#'
 			identifier: empty.variable
 			count: 2
-			path: app/Http/Controllers/API/ProxyController.php
+			path: app/Http/Controllers/API/Proxy/ProxyDashboardController.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\QuizAttempt\:\:\$questions_with_results\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Controllers/API/Quiz/QuizAttemptController.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\QuizAttempt\:\:\$time_remaining\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Controllers/API/Quiz/QuizAttemptController.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\QuizAttempt\:\:\$time_spent_formatted\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Controllers/API/Quiz/QuizAttemptController.php
-
-		-
-			message: '#^Call to an undefined method App\\Models\\QuizAttempt\:\:submit\(\)\.$#'
-			identifier: method.notFound
-			count: 2
-			path: app/Http/Controllers/API/Quiz/QuizAttemptController.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Relations\\HasMany\:\:ordered\(\)\.$#'
-			identifier: method.notFound
-			count: 2
-			path: app/Http/Controllers/API/Quiz/QuizAttemptController.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Relations\\HasMany\:\:submitted\(\)\.$#'
-			identifier: method.notFound
-			count: 1
-			path: app/Http/Controllers/API/Quiz/QuizAttemptController.php
-
-		-
-			message: '#^Cannot access property \$allow_review on App\\Models\\Quiz\|null\.$#'
-			identifier: property.nonObject
-			count: 1
-			path: app/Http/Controllers/API/Quiz/QuizAttemptController.php
-
-		-
-			message: '#^Cannot access property \$duration_minutes on App\\Models\\Quiz\|null\.$#'
-			identifier: property.nonObject
-			count: 1
-			path: app/Http/Controllers/API/Quiz/QuizAttemptController.php
-
-		-
-			message: '#^Cannot access property \$show_correct_answers on App\\Models\\Quiz\|null\.$#'
-			identifier: property.nonObject
-			count: 1
-			path: app/Http/Controllers/API/Quiz/QuizAttemptController.php
-
-		-
-			message: '#^Cannot call method questions\(\) on App\\Models\\Quiz\|null\.$#'
-			identifier: method.nonObject
-			count: 1
-			path: app/Http/Controllers/API/Quiz/QuizAttemptController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\API\\Quiz\\QuizAttemptController\:\:getQuestionsWithResults\(\) return type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Http/Controllers/API/Quiz/QuizAttemptController.php
-
-		-
-			message: '#^Parameter \#2 \$answers of method App\\Services\\Quiz\\QuizGradingService\:\:submitAttempt\(\) expects array, mixed given\.$#'
-			identifier: argument.type
-			count: 2
-			path: app/Http/Controllers/API/Quiz/QuizAttemptController.php
-
-		-
-			message: '#^Parameter \#2 \$pointsEarned of method App\\Services\\Quiz\\QuizGradingService\:\:manualGradeAttempt\(\) expects float, mixed given\.$#'
+			message: '#^Parameter \#2 \$anneeId of method App\\Services\\KlassciProxyService\:\:getClasseEtudiants\(\) expects int\|null, mixed given\.$#'
 			identifier: argument.type
 			count: 1
-			path: app/Http/Controllers/API/Quiz/QuizAttemptController.php
-
-		-
-			message: '#^Parameter \#4 \$feedback of method App\\Services\\Quiz\\QuizGradingService\:\:manualGradeAttempt\(\) expects string\|null, mixed given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Controllers/API/Quiz/QuizAttemptController.php
-
-		-
-			message: '#^Property App\\Models\\QuizAttempt\:\:\$answers \(array\|null\) does not accept mixed\.$#'
-			identifier: assign.propertyType
-			count: 1
-			path: app/Http/Controllers/API/Quiz/QuizAttemptController.php
+			path: app/Http/Controllers/API/Proxy/ProxyOrganisationController.php
 
 		-
 			message: '#^Access to an undefined property App\\Models\\Quiz\:\:\$user_attempts_count\.$#'
@@ -5521,6 +4975,150 @@ parameters:
 			path: app/Rules/PositiveInteger.php
 
 		-
+			message: '#^Access to an undefined property App\\Models\\ESBTPAttendance\:\:\$seance\.$#'
+			identifier: property.notFound
+			count: 3
+			path: app/Services/Attendances/AttendanceHistoryQueryService.php
+
+		-
+			message: '#^Binary operation "\." between mixed and '' 23\:59\:59'' results in an error\.$#'
+			identifier: binaryOp.invalid
+			count: 1
+			path: app/Services/Attendances/AttendanceHistoryQueryService.php
+
+		-
+			message: '#^Cannot access offset ''classe'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: app/Services/Attendances/AttendanceHistoryQueryService.php
+
+		-
+			message: '#^Cannot access offset ''matiere'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: app/Services/Attendances/AttendanceHistoryQueryService.php
+
+		-
+			message: '#^Cannot access offset ''programmation'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: app/Services/Attendances/AttendanceHistoryQueryService.php
+
+		-
+			message: '#^Cannot cast mixed to int\.$#'
+			identifier: cast.int
+			count: 1
+			path: app/Services/Attendances/AttendanceHistoryQueryService.php
+
+		-
+			message: '#^Offset ''seance'' on array\{seance\: array\<string, mixed\>, visio\: array\<string, mixed\>, participants\?\: array\<string, mixed\>\} in isset\(\) always exists and is not nullable\.$#'
+			identifier: isset.offset
+			count: 1
+			path: app/Services/Attendances/AttendanceHistoryQueryService.php
+
+		-
+			message: '#^Parameter \#1 \$column of method Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\:\:where\(\) expects array\<int\|model property of Illuminate\\Database\\Eloquent\\Model, mixed\>\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\: Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\: void\)\|Illuminate\\Contracts\\Database\\Query\\Expression\|model property of Illuminate\\Database\\Eloquent\\Model, ''enseignant_id'' given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Attendances/AttendanceHistoryQueryService.php
+
+		-
+			message: '#^Relation ''seance'' is not found in App\\Models\\ESBTPAttendance model\.$#'
+			identifier: larastan.relationExistence
+			count: 2
+			path: app/Services/Attendances/AttendanceHistoryQueryService.php
+
+		-
+			message: '#^Relation ''user'' is not found in App\\Models\\ESBTPAttendance model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/Attendances/AttendanceHistoryQueryService.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>date_seance" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Services/Attendances/AttendanceHistoryQueryService.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>email" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Services/Attendances/AttendanceHistoryQueryService.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>id" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 2
+			path: app/Services/Attendances/AttendanceHistoryQueryService.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>klassci_seance_id" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Services/Attendances/AttendanceHistoryQueryService.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Services/Attendances/AttendanceHistoryQueryService.php
+
+		-
+			message: '#^Parameter \#1 \$num of function round expects float\|int, float\|int\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Attendances/SeanceAttendancesQueryService.php
+
+		-
+			message: '#^Parameter \#1 \$attributes of static method Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\ESBTPAttendance\>\:\:updateOrCreate\(\) expects array\<model property of App\\Models\\ESBTPAttendance, mixed\>, array\<string, mixed\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Attendances/VideoSessionAttendancesSyncer.php
+
+		-
+			message: '#^Parameter \#1 \$column of method Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\ESBTPAttendance\>\:\:where\(\) expects array\<int\|model property of App\\Models\\ESBTPAttendance, mixed\>\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\ESBTPAttendance\>\)\: Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\ESBTPAttendance\>\)\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\ESBTPAttendance\>\)\: void\)\|Illuminate\\Contracts\\Database\\Query\\Expression\|model property of App\\Models\\ESBTPAttendance, ''date'' given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Attendances/VideoSessionAttendancesSyncer.php
+
+		-
+			message: '#^Parameter \#1 \$column of method Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\ESBTPAttendance\>\:\:where\(\) expects array\<int\|model property of App\\Models\\ESBTPAttendance, mixed\>\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\ESBTPAttendance\>\)\: Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\ESBTPAttendance\>\)\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\ESBTPAttendance\>\)\: void\)\|Illuminate\\Contracts\\Database\\Query\\Expression\|model property of App\\Models\\ESBTPAttendance, ''etudiant_id'' given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Attendances/VideoSessionAttendancesSyncer.php
+
+		-
+			message: '#^Parameter \#1 \$column of static method Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\ESBTPAttendance\>\:\:where\(\) expects array\<int\|model property of App\\Models\\ESBTPAttendance, mixed\>\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\ESBTPAttendance\>\)\: Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\ESBTPAttendance\>\)\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\ESBTPAttendance\>\)\: void\)\|Illuminate\\Contracts\\Database\\Query\\Expression\|model property of App\\Models\\ESBTPAttendance, ''seance_cours_id'' given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Attendances/VideoSessionAttendancesSyncer.php
+
+		-
+			message: '#^Parameter \#2 \$values of static method Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\ESBTPAttendance\>\:\:updateOrCreate\(\) expects array\<model property of App\\Models\\ESBTPAttendance, mixed\>, array\<string, mixed\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Attendances/VideoSessionAttendancesSyncer.php
+
+		-
+			message: '#^Part \$durationMinutes \(mixed\) of encapsed string cannot be cast to string\.$#'
+			identifier: encapsedStringPart.nonString
+			count: 1
+			path: app/Services/Attendances/VideoSessionAttendancesSyncer.php
+
+		-
+			message: '#^Part \$joinedAt \(mixed\) of encapsed string cannot be cast to string\.$#'
+			identifier: encapsedStringPart.nonString
+			count: 1
+			path: app/Services/Attendances/VideoSessionAttendancesSyncer.php
+
+		-
+			message: '#^Part \$leftAt \(mixed\) of encapsed string cannot be cast to string\.$#'
+			identifier: encapsedStringPart.nonString
+			count: 1
+			path: app/Services/Attendances/VideoSessionAttendancesSyncer.php
+
+		-
 			message: '#^Cannot access offset ''id'' on mixed\.$#'
 			identifier: offsetAccess.nonOffsetAccessible
 			count: 1
@@ -5929,6 +5527,126 @@ parameters:
 			path: app/Services/Evaluation/Student/StudentGradesAggregator.php
 
 		-
+			message: '#^Access to an undefined property App\\Models\\File\:\:\$download_url\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Services/File/FileQueryService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\File\:\:\$formatted_size\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Services/File/FileQueryService.php
+
+		-
+			message: '#^Parameter \#1 \$category of method Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\File\>\:\:ofCategory\(\) expects string, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/File/FileQueryService.php
+
+		-
+			message: '#^Parameter \#1 \$perPage of method Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\File\>\:\:paginate\(\) expects int\|null, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/File/FileQueryService.php
+
+		-
+			message: '#^Parameter \#1 \$type of method Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\File\>\:\:ofType\(\) expects string, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/File/FileQueryService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\File\:\:\$download_url\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/File/FileUploadService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\File\:\:\$formatted_size\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/File/FileUploadService.php
+
+		-
+			message: '#^Method App\\Services\\File\\FileUploadService\:\:store\(\) has parameter \$payload with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Services/File/FileUploadService.php
+
+		-
+			message: '#^Parameter \#1 \$column of method Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Classe\>\:\:where\(\) expects array\<int\|model property of App\\Models\\Classe, mixed\>\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Classe\>\)\: Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Classe\>\)\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Classe\>\)\: void\)\|Illuminate\\Contracts\\Database\\Query\\Expression\|model property of App\\Models\\Classe, ''institution_id'' given\.$#'
+			identifier: argument.type
+			count: 2
+			path: app/Services/Institution/InstitutionQueryService.php
+
+		-
+			message: '#^Parameter \#1 \$column of method Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Evaluation\>\:\:where\(\) expects array\<int\|model property of App\\Models\\Evaluation, mixed\>\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Evaluation\>\)\: Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Evaluation\>\)\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Evaluation\>\)\: void\)\|Illuminate\\Contracts\\Database\\Query\\Expression\|model property of App\\Models\\Evaluation, ''institution_id'' given\.$#'
+			identifier: argument.type
+			count: 2
+			path: app/Services/Institution/InstitutionQueryService.php
+
+		-
+			message: '#^Parameter \#1 \$column of method Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Lesson\>\:\:where\(\) expects array\<int\|model property of App\\Models\\Lesson, mixed\>\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Lesson\>\)\: Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Lesson\>\)\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Lesson\>\)\: void\)\|Illuminate\\Contracts\\Database\\Query\\Expression\|model property of App\\Models\\Lesson, ''institution_id'' given\.$#'
+			identifier: argument.type
+			count: 3
+			path: app/Services/Institution/InstitutionQueryService.php
+
+		-
+			message: '#^Parameter \#1 \$column of method Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\User\>\:\:pluck\(\) expects Illuminate\\Contracts\\Database\\Query\\Expression\|model property of App\\Models\\User, string given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Institution/InstitutionQueryService.php
+
+		-
+			message: '#^Method App\\Services\\KnowledgeCheck\\KnowledgeCheckAttemptService\:\:getMyAttempts\(\) should return array\{quiz_title\: string, passing_score\: int, attempts\: Illuminate\\Support\\Collection\<int, array\<string, mixed\>\>, best_score\: int\|null, has_passed\: bool\} but returns array\{quiz_title\: string, passing_score\: int, attempts\: Illuminate\\Support\\Collection\<int, array\{id\: int, score\: int, correct_answers\: int, total_questions\: int, passed\: bool, time_spent\: string, completed_at\: non\-falsy\-string\|null\}\>, best_score\: mixed, has_passed\: bool\}\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Services/KnowledgeCheck/KnowledgeCheckAttemptService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\KnowledgeCheck\:\:\$can_attempt\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Services/KnowledgeCheck/KnowledgeCheckCrudService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\KnowledgeCheck\:\:\$user_best_score\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Services/KnowledgeCheck/KnowledgeCheckCrudService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\KnowledgeCheck\:\:\$user_passed\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Services/KnowledgeCheck/KnowledgeCheckCrudService.php
+
+		-
+			message: '#^Parameter \#1 \$column of method Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\:\:where\(\) expects array\<int\|model property of Illuminate\\Database\\Eloquent\\Model, mixed\>\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\: Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\: void\)\|Illuminate\\Contracts\\Database\\Query\\Expression\|model property of Illuminate\\Database\\Eloquent\\Model, ''user_id'' given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/KnowledgeCheck/KnowledgeCheckCrudService.php
+
+		-
+			message: '#^Parameter \#2 \$chapter of method App\\Services\\KnowledgeCheck\\KnowledgeCheckCrudService\:\:assertCanManageChapter\(\) expects App\\Models\\Chapter\|null, App\\Models\\Chapter\|Illuminate\\Database\\Eloquent\\Collection\<int, App\\Models\\Chapter\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/KnowledgeCheck/KnowledgeCheckCrudService.php
+
+		-
+			message: '#^Parameter \#2 \$chapter of method App\\Services\\KnowledgeCheck\\KnowledgeCheckCrudService\:\:assertCanManageChapter\(\) expects App\\Models\\Chapter\|null, Illuminate\\Database\\Eloquent\\Model\|null given\.$#'
+			identifier: argument.type
+			count: 2
+			path: app/Services/KnowledgeCheck/KnowledgeCheckCrudService.php
+
+		-
+			message: '#^Property App\\Models\\KnowledgeCheck\:\:\$attempts_count is not writable\.$#'
+			identifier: assign.propertyReadOnly
+			count: 1
+			path: app/Services/KnowledgeCheck/KnowledgeCheckCrudService.php
+
+		-
 			message: '#^Parameter \#1 \$column of method Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\:\:where\(\) expects array\<int\|model property of Illuminate\\Database\\Eloquent\\Model, mixed\>\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\: Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\: void\)\|Illuminate\\Contracts\\Database\\Query\\Expression\|model property of Illuminate\\Database\\Eloquent\\Model, ''klassci_etudiant_id'' given\.$#'
 			identifier: argument.type
 			count: 1
@@ -6155,6 +5873,42 @@ parameters:
 			identifier: larastan.relationExistence
 			count: 2
 			path: app/Services/Notification/VisioNotificationDispatcher.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\QuizAttempt\:\:\$questions_with_results\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Quiz/QuizAttemptLifecycleService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\QuizAttempt\:\:\$time_remaining\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Quiz/QuizAttemptLifecycleService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\QuizAttempt\:\:\$time_spent_formatted\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Quiz/QuizAttemptLifecycleService.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Relations\\HasMany\:\:ordered\(\)\.$#'
+			identifier: method.notFound
+			count: 2
+			path: app/Services/Quiz/QuizAttemptLifecycleService.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Relations\\HasMany\:\:submitted\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Services/Quiz/QuizAttemptLifecycleService.php
+
+		-
+			message: '#^Method App\\Services\\Quiz\\QuizAttemptLifecycleService\:\:getAttemptsForQuiz\(\) return type with generic class Illuminate\\Pagination\\LengthAwarePaginator does not specify its types\: TKey, TValue$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Services/Quiz/QuizAttemptLifecycleService.php
 
 		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
@@ -7103,6 +6857,60 @@ parameters:
 			identifier: missingType.iterableValue
 			count: 1
 			path: app/Services/TenantManager.php
+
+		-
+			message: '#^Cannot access offset ''id'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 2
+			path: app/Services/Visio/Lifecycle/VisioActivationService.php
+
+		-
+			message: '#^Cannot access offset ''matieres'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: app/Services/Visio/Lifecycle/VisioActivationService.php
+
+		-
+			message: '#^Cannot access offset ''seances_programmees'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: app/Services/Visio/Lifecycle/VisioActivationService.php
+
+		-
+			message: '#^Method App\\Services\\Visio\\Lifecycle\\VisioActivationService\:\:locateKlassciSeance\(\) should return array\{array\<string, mixed\>\|null, array\<string, mixed\>\|null\} but returns array\{mixed, mixed\}\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Services/Visio/Lifecycle/VisioActivationService.php
+
+		-
+			message: '#^Parameter \#1 \$userToken of method App\\Services\\KlassciProxyService\:\:requestWithUserToken\(\) expects string, string\|null given\.$#'
+			identifier: argument.type
+			count: 3
+			path: app/Services/Visio/Lifecycle/VisioActivationService.php
+
+		-
+			message: '#^Parameter \#1 \$value of function collect expects Illuminate\\Contracts\\Support\\Arrayable\<\(int\|string\), mixed\>\|iterable\<\(int\|string\), mixed\>\|null, mixed given\.$#'
+			identifier: argument.type
+			count: 3
+			path: app/Services/Visio/Lifecycle/VisioActivationService.php
+
+		-
+			message: '#^Part \$matiere\[''id''\] \(mixed\) of encapsed string cannot be cast to string\.$#'
+			identifier: encapsedStringPart.nonString
+			count: 1
+			path: app/Services/Visio/Lifecycle/VisioActivationService.php
+
+		-
+			message: '#^Unable to resolve the template type TKey in call to function collect$#'
+			identifier: argument.templateType
+			count: 3
+			path: app/Services/Visio/Lifecycle/VisioActivationService.php
+
+		-
+			message: '#^Unable to resolve the template type TValue in call to function collect$#'
+			identifier: argument.templateType
+			count: 3
+			path: app/Services/Visio/Lifecycle/VisioActivationService.php
 
 		-
 			message: '#^Possibly invalid array key type mixed\.$#'

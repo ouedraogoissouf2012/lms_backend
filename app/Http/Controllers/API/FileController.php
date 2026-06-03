@@ -1,100 +1,56 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Controllers\API;
 
-use App\Enums\Role;
 use App\Http\Controllers\AuthenticatedController;
 use App\Http\Requests\Concerns\ChecksFileAuthorization;
-use App\Http\Requests\ListFilesRequest;
-use App\Http\Requests\UploadFileRequest;
-use App\Http\Requests\UpdateFileRequest;
 use App\Http\Requests\DeleteFileRequest;
+use App\Http\Requests\ListFilesRequest;
+use App\Http\Requests\UpdateFileRequest;
+use App\Http\Requests\UploadFileRequest;
 use App\Models\File;
+use App\Services\File\FileMutationService;
+use App\Services\File\FileQueryService;
+use App\Services\File\FileUploadService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Facades\Validator;
-use Illuminate\Support\Str;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
- * Controller pour la gestion des fichiers
+ * Controller thin pour la gestion des fichiers — délègue à 3 services SRP.
+ *
+ * Split-16/file (§5 controllers ≤200 lignes, §1.1 services ≤300 lignes) :
+ *   - {@see FileQueryService}    — index, show, stats (lectures + cache)
+ *   - {@see FileUploadService}   — upload (storage + persistance)
+ *   - {@see FileMutationService} — update, destroy, download
+ *
+ * L'autorisation reste ici via le trait {@see ChecksFileAuthorization} pour
+ * `show` / `download` (les autres endpoints passent par les FormRequests
+ * `UpdateFileRequest` / `DeleteFileRequest::authorize()`).
+ *
+ * @see PRODUCTION_STANDARDS.md §5 + §1.1 + §1.6 D
  */
-class FileController extends AuthenticatedController
+final class FileController extends AuthenticatedController
 {
     use ChecksFileAuthorization;
 
-    /**
-     * Configuration — now standardized in UploadFileRequest
-     * For reference: 30 MB max, strict MIME types (pdf,doc,docx,xls,xlsx,ppt,pptx,jpg,jpeg,png,gif)
-     * See UploadFileRequest::rules() for validation contract
-     */
+    public function __construct(
+        private readonly FileQueryService $queryService,
+        private readonly FileUploadService $uploadService,
+        private readonly FileMutationService $mutationService,
+    ) {}
 
     /**
-     * GET /api/files
-     * Liste des fichiers (avec filtres). Inputs whitelistés par ListFilesRequest.
+     * GET /api/files — liste paginée filtrée. Inputs whitelistés par `ListFilesRequest`.
      */
     public function index(ListFilesRequest $request): JsonResponse
     {
-        $query = File::with(['user:id,name,email,role']);
-
-        $user = $this->authenticatedUser($request);
-
-        // Les étudiants ne voient que les fichiers publics ou leurs propres fichiers
-        if ($user->isStudent()) {
-            $query->where(function ($q) use ($user) {
-                $q->where('is_public', true)
-                  ->orWhere('user_id', $user->id);
-            });
-        }
-
-        // Filtres — toutes les valeurs validées par ListFilesRequest.
-        // fileable_type est dans la whitelist config/fileables.php (issue #10 IDOR).
-        $validated = $request->validated();
-
-        if (isset($validated['type'])) {
-            $query->ofType($validated['type']);
-        }
-
-        if (isset($validated['category'])) {
-            $query->ofCategory($validated['category']);
-        }
-
-        if (isset($validated['user_id'])) {
-            $query->where('user_id', $validated['user_id']);
-        }
-
-        if (isset($validated['fileable_type'], $validated['fileable_id'])) {
-            $query->where('fileable_type', $validated['fileable_type'])
-                  ->where('fileable_id', $validated['fileable_id']);
-        }
-
-        // Tri (validé par ListFilesRequest, default 'recent')
-        $sortBy = $validated['sort'] ?? 'recent';
-        switch ($sortBy) {
-            case 'name':
-                $query->orderBy('original_name', 'asc');
-                break;
-            case 'size':
-                $query->orderBy('size_bytes', 'desc');
-                break;
-            case 'downloads':
-                $query->orderBy('downloads_count', 'desc');
-                break;
-            default: // recent
-                $query->orderBy('created_at', 'desc');
-        }
-
-        $perPage = $validated['per_page'] ?? 20;
-        $files = $query->paginate($perPage);
-
-        // Ajouter formatted_size à chaque fichier
-        $files->getCollection()->transform(function ($file) {
-            $file->formatted_size = $file->getFormattedSize();
-            $file->download_url = $file->getDownloadUrl();
-            return $file;
-        });
+        $files = $this->queryService->list(
+            $this->authenticatedUser($request),
+            $request->validated(),
+        );
 
         return response()->json([
             'success' => true,
@@ -103,102 +59,58 @@ class FileController extends AuthenticatedController
     }
 
     /**
-     * POST /api/files/upload
-     * Upload d'un nouveau fichier (Standardized to 30 MB max via UploadFileRequest)
+     * POST /api/files/upload — upload (30 MB max, MIME whitelist via UploadFileRequest).
      */
     public function upload(UploadFileRequest $request): JsonResponse
     {
-        // Validation handled by UploadFileRequest (30 MB, strict MIME types)
-        $uploadedFile = $request->file('file');
-
-        // Générer un nom unique
-        $originalName = $uploadedFile->getClientOriginalName();
-        $extension = $uploadedFile->getClientOriginalExtension();
-        $storedName = Str::uuid() . '.' . $extension;
-
-        // Déterminer le sous-dossier selon la catégorie
-        $category = $request->get('category', 'general');
-        $subfolder = match($category) {
-            'course_material' => 'courses',
-            'assignment' => 'assignments',
-            'forum_attachment' => 'forum',
-            'profile_picture' => 'profiles',
-            default => 'general',
-        };
-
-        // Stocker le fichier
-        $path = $uploadedFile->storeAs(
-            "uploads/{$subfolder}",
-            $storedName,
-            'local'
-        );
-
-        if (!$path) {
+        $uploaded = $request->file('file');
+        if (! is_object($uploaded)) {
             return response()->json([
                 'success' => false,
-                'message' => 'Erreur lors du stockage du fichier',
-            ], 500);
+                'message' => 'Un fichier est requis',
+            ], 422);
         }
 
-        // Créer l'enregistrement en base
-        $mimeType = $uploadedFile->getMimeType();
+        $result = $this->uploadService->store(
+            $uploaded,
+            $this->authenticatedUser($request),
+            $request->validated(),
+        );
 
-        $file = File::create([
-            'user_id' => $this->authenticatedUser($request)->id,
-            'fileable_type' => $request->fileable_type,
-            'fileable_id' => $request->fileable_id,
-            'original_name' => $originalName,
-            'stored_name' => $storedName,
-            'path' => $path,
-            'mime_type' => $mimeType,
-            'extension' => $extension,
-            'size_bytes' => $uploadedFile->getSize(),
-            'type' => File::determineTypeFromMime($mimeType),
-            'category' => $category,
-            'description' => $request->description,
-            'is_public' => $request->boolean('is_public', false),
-            // Le scan antivirus n'est pas encore intégré ; on garde la colonne en `pending`
-            // (au lieu de la mensonge `clean`) pour ne pas exposer aux clients/admins l'illusion
-            // qu'un scan a été effectué. Intégration ClamAV / VirusTotal à faire dans une issue dédiée.
-            'virus_scan_status' => 'pending',
-        ]);
-
-        $file->load('user:id,name,email');
-        $file->formatted_size = $file->getFormattedSize();
-        $file->download_url = $file->getDownloadUrl();
+        if ($result['file'] === null) {
+            return response()->json([
+                'success' => false,
+                'message' => $result['error'] ?? 'Erreur lors du stockage du fichier',
+            ], 500);
+        }
 
         return response()->json([
             'success' => true,
             'message' => 'Fichier uploadé avec succès',
-            'data' => $file,
+            'data' => $result['file'],
         ], 201);
     }
 
     /**
-     * GET /api/files/{id}
-     * Détails d'un fichier
+     * GET /api/files/{id} — détails d'un fichier.
      */
     public function show(Request $request, int $id): JsonResponse
     {
-        $file = File::with(['user:id,name,email,role', 'fileable'])->find($id);
+        $file = $this->queryService->find($id);
 
-        if (!$file) {
+        if ($file === null) {
             return response()->json([
                 'success' => false,
                 'message' => 'Fichier non trouvé',
             ], 404);
         }
 
-        // Authorization (tenant + ownership + admin + supradmin bypass) — issue #102 fix
-        if (!$this->canReadFile($file, $this->authenticatedUser($request))) {
+        if (! $this->canReadFile($file, $this->authenticatedUser($request))) {
             return response()->json([
                 'success' => false,
                 'message' => 'Accès refusé',
             ], 403);
         }
-
-        $file->formatted_size = $file->getFormattedSize();
-        $file->download_url = $file->getDownloadUrl();
 
         return response()->json([
             'success' => true,
@@ -207,69 +119,58 @@ class FileController extends AuthenticatedController
     }
 
     /**
-     * GET /api/files/{id}/download
-     * Télécharger un fichier
+     * GET /api/files/{id}/download — téléchargement streamé.
      */
     public function download(Request $request, int $id): StreamedResponse|JsonResponse
     {
         $file = File::find($id);
 
-        if (!$file) {
+        if ($file === null) {
             return response()->json([
                 'success' => false,
                 'message' => 'Fichier non trouvé',
             ], 404);
         }
 
-        // Authorization (tenant + ownership + admin + supradmin bypass) — issue #102 fix
-        if (!$this->canReadFile($file, $this->authenticatedUser($request))) {
+        if (! $this->canReadFile($file, $this->authenticatedUser($request))) {
             return response()->json([
                 'success' => false,
                 'message' => 'Accès refusé',
             ], 403);
         }
 
-        // Vérifier que le fichier existe
-        if (!$file->exists()) {
+        $stream = $this->mutationService->download($file);
+
+        if ($stream === null) {
             return response()->json([
                 'success' => false,
                 'message' => 'Fichier physique introuvable',
             ], 404);
         }
 
-        // Incrémenter le compteur
-        $file->incrementDownloads();
-
-        // Télécharger le fichier
-        return Storage::disk('local')->download(
-            $file->path,
-            $file->original_name,
-            ['Content-Type' => $file->mime_type]
-        );
+        return $stream;
     }
 
     /**
-     * PUT /api/files/{file}
-     * Mettre à jour les métadonnées d'un fichier (propriétaire ou admin)
+     * PUT /api/files/{file} — mise à jour des métadonnées (autorisé par UpdateFileRequest).
      */
     public function update(UpdateFileRequest $request, File $file): JsonResponse
     {
-        $file->update($request->validated());
+        $updated = $this->mutationService->update($file, $request->validated());
 
         return response()->json([
             'success' => true,
             'message' => 'Fichier mis à jour',
-            'data' => $file->fresh(['user']),
+            'data' => $updated,
         ]);
     }
 
     /**
-     * DELETE /api/files/{file}
-     * Supprimer un fichier (soft delete — propriétaire ou admin)
+     * DELETE /api/files/{file} — soft delete (autorisé par DeleteFileRequest).
      */
     public function destroy(DeleteFileRequest $request, File $file): JsonResponse
     {
-        $file->delete();
+        $this->mutationService->destroy($file);
 
         return response()->json([
             'success' => true,
@@ -278,66 +179,11 @@ class FileController extends AuthenticatedController
     }
 
     /**
-     * GET /api/files/stats
-     * Statistiques sur les fichiers.
-     *
-     * Tenant isolation (issue #102 fix):
-     *   - supradmin sees global counts cross-tenant
-     *   - non-supradmin sees counts scoped to their institution
-     *   - students additionally see their own files only (within their tenant)
-     *
-     * Cache key namespaced per institution + role to prevent cross-tenant leak
-     * via Cache::remember (same pattern as #98 NotificationsController::stats).
+     * GET /api/files/stats — agrégations, cache namespacé par tenant + rôle.
      */
     public function stats(Request $request): JsonResponse
     {
-        $caller = $this->authenticatedUser($request);
-        $isSupradmin = $caller->asRoleEnum() === Role::Supradmin;
-        $isStudent = $caller->isStudent();
-
-        $cacheKey = $isSupradmin
-            ? 'files_stats_global'
-            : ($isStudent
-                ? "files_stats_inst_{$caller->institution_id}_user_{$caller->id}"
-                : "files_stats_inst_{$caller->institution_id}");
-        $cacheTTL = 300; // 5 minutes
-
-        $applyScope = function ($query) use ($caller, $isSupradmin, $isStudent) {
-            if ($isSupradmin) {
-                return $query;
-            }
-            $query->where('institution_id', $caller->institution_id);
-            if ($isStudent) {
-                $query->where('user_id', $caller->id);
-            }
-            return $query;
-        };
-
-        $stats = Cache::remember($cacheKey, $cacheTTL, function () use ($applyScope) {
-            $payload = [
-                'total_files' => $applyScope(File::query())->count(),
-                'total_size_bytes' => $applyScope(File::query())->sum('size_bytes'),
-                'total_downloads' => $applyScope(File::query())->sum('downloads_count'),
-                'by_type' => $applyScope(File::query())
-                    ->selectRaw('type, COUNT(*) as count, SUM(size_bytes) as total_size')
-                    ->groupBy('type')
-                    ->get(),
-                'by_category' => $applyScope(File::query())
-                    ->selectRaw('category, COUNT(*) as count')
-                    ->whereNotNull('category')
-                    ->groupBy('category')
-                    ->get(),
-                'recent_uploads' => $applyScope(File::with('user:id,name'))
-                    ->orderBy('created_at', 'desc')
-                    ->limit(5)
-                    ->get(),
-            ];
-
-            $totalSizeMB = round((float) $payload['total_size_bytes'] / (1024 * 1024), 2);
-            $payload['total_size_formatted'] = $totalSizeMB . ' MB';
-
-            return $payload;
-        });
+        $stats = $this->queryService->stats($this->authenticatedUser($request));
 
         return response()->json([
             'success' => true,

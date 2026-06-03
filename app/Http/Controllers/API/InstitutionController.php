@@ -1,184 +1,88 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
-use App\Models\Institution;
-use App\Models\User;
-use App\Models\Lesson;
-use App\Models\Evaluation;
-use App\Models\Classe;
+use App\Services\Institution\InstitutionConnectionTester;
+use App\Services\Institution\InstitutionCrudService;
+use App\Services\Institution\InstitutionQueryService;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
+use Psr\Log\LoggerInterface;
+use RuntimeException;
+use Throwable;
 
 /**
- * InstitutionController — admin platform-wide.
+ * InstitutionController — admin platform-wide (supradmin only).
  *
- * SECURITY : ce controller utilise massivement `withoutGlobalScope('institution')`
- * pour aggréger des stats **cross-tenant**. Cet usage est intentionnel et sûr
- * UNIQUEMENT parce que toutes les routes pointant ici sont protégées par
- * `role:supradmin` (cf. `routes/api.php` group « admin/institutions » et
- * voisinage). Si une route est jamais ouverte à un rôle non-supradmin, ce
- * controller deviendrait une fuite cross-tenant à grande échelle.
+ * ## Split `split-12/institution`
  *
- * Ne jamais retirer la protection `role:supradmin` côté routes sans
- * réécrire les queries pour respecter le scope global, OU ajouter une
- * vérification de rôle explicite ici en début de méthode.
+ * Controller thin (≤200 l) après extraction de 3 services SRP dans
+ * `App\Services\Institution\` (§5 controllers thin + §1.1 services ≤300 l
+ * + §1.6 D DI strict, jamais `app()`).
+ *
+ *   - {@see InstitutionQueryService}      — index/show + stats cross-tenant
+ *   - {@see InstitutionCrudService}       — store/update/toggle/destroy
+ *   - {@see InstitutionConnectionTester}  — testConnection KLASSCI
+ *
+ * ## SECURITY
+ *
+ * Toutes les routes pointant ici sont protégées par `role:supradmin`
+ * (cf. `routes/api.php` group `admin/institutions`). Les services utilisent
+ * `withoutGlobalScope('institution')` pour agréger des stats cross-tenant :
+ * ne JAMAIS ouvrir ces routes à un rôle non-supradmin sans réécrire les
+ * services pour respecter le scope global.
  *
  * @see app/Models/Traits/BelongsToInstitution.php
- * @see routes/api.php (groupe admin/institutions)
  */
-class InstitutionController extends Controller
+final class InstitutionController extends Controller
 {
-    /**
-     * Liste toutes les institutions avec stats par institution + stats globales.
-     * Bypass du Global Scope pour voir les données cross-tenant.
-     */
-    public function index()
+    public function __construct(
+        private readonly InstitutionQueryService $queries,
+        private readonly InstitutionCrudService $crud,
+        private readonly InstitutionConnectionTester $connectionTester,
+        private readonly LoggerInterface $logger,
+    ) {
+    }
+
+    public function index(): JsonResponse
     {
         try {
-            $data = Cache::remember('global_institutions_list', 120, function () {
-                $institutions = Institution::orderBy('name')->get();
-
-                return $institutions->map(function ($institution) {
-                    $id = $institution->id;
-
-                    $usersCount = User::withoutGlobalScope('institution')
-                        ->where('institution_id', $id)->count();
-
-                    $lessonsCount = Lesson::withoutGlobalScope('institution')
-                        ->where('institution_id', $id)->count();
-
-                    $evaluationsCount = Evaluation::withoutGlobalScope('institution')
-                        ->where('institution_id', $id)->count();
-
-                    $classesCount = Classe::withoutGlobalScope('institution')
-                        ->where('institution_id', $id)->count();
-
-                    $lastActivity = User::withoutGlobalScope('institution')
-                        ->where('institution_id', $id)->max('updated_at');
-
-                    return [
-                        'id' => $institution->id,
-                        'slug' => $institution->slug,
-                        'name' => $institution->name,
-                        'logo_url' => $institution->logo_url,
-                        'primary_color' => $institution->primary_color,
-                        'is_active' => $institution->is_active,
-                        'klassci_api_url' => $institution->klassci_api_url,
-                        'created_at' => $institution->created_at,
-                        'updated_at' => $institution->updated_at,
-                        'stats' => [
-                            'users_count' => $usersCount,
-                            'lessons_count' => $lessonsCount,
-                            'evaluations_count' => $evaluationsCount,
-                            'classes_count' => $classesCount,
-                            'last_activity' => $lastActivity,
-                        ],
-                    ];
-                });
-            });
-
-            $globalStats = Cache::remember('global_institutions_overview', 120, function () {
-                $total = Institution::count();
-                $active = Institution::where('is_active', true)->count();
-
-                return [
-                    'total_institutions' => $total,
-                    'active_institutions' => $active,
-                    'inactive_institutions' => $total - $active,
-                    'total_users' => User::withoutGlobalScope('institution')->count(),
-                    'total_lessons' => Lesson::withoutGlobalScope('institution')->count(),
-                    'total_evaluations' => Evaluation::withoutGlobalScope('institution')->count(),
-                ];
-            });
-
             return response()->json([
                 'success' => true,
                 'data' => [
-                    'institutions' => $data,
-                    'overview' => $globalStats,
+                    'institutions' => $this->queries->listAllWithStats(),
+                    'overview' => $this->queries->getGlobalOverview(),
                 ],
             ]);
-        } catch (\Exception $e) {
-            Log::error('InstitutionController@index', ['error' => $e->getMessage()]);
-
-            return response()->json([
-                'success' => false,
-                'message' => 'Erreur lors de la récupération des institutions',
-            ], 500);
+        } catch (Throwable $e) {
+            return $this->internalError('index', $e, 'Erreur lors de la récupération des institutions');
         }
     }
 
-    /**
-     * Détails d'une institution avec stats détaillées.
-     */
-    public function show(int $id)
+    public function show(int $id): JsonResponse
     {
         try {
-            $institution = Institution::findOrFail($id);
+            $result = $this->queries->getOneWithStats($id);
 
-            $usersCount = User::withoutGlobalScope('institution')
-                ->where('institution_id', $id)->count();
-
-            $usersByRole = User::withoutGlobalScope('institution')
-                ->where('institution_id', $id)
-                ->selectRaw('role, COUNT(*) as count')
-                ->groupBy('role')
-                ->pluck('count', 'role');
-
-            $lessonsCount = Lesson::withoutGlobalScope('institution')
-                ->where('institution_id', $id)->count();
-
-            $publishedLessons = Lesson::withoutGlobalScope('institution')
-                ->where('institution_id', $id)
-                ->where('status', 'published')->count();
-
-            $evaluationsCount = Evaluation::withoutGlobalScope('institution')
-                ->where('institution_id', $id)->count();
-
-            $classesCount = Classe::withoutGlobalScope('institution')
-                ->where('institution_id', $id)->count();
-
-            return response()->json([
-                'success' => true,
-                'data' => [
-                    'institution' => $institution,
-                    'stats' => [
-                        'users_count' => $usersCount,
-                        'users_by_role' => $usersByRole,
-                        'lessons_count' => $lessonsCount,
-                        'published_lessons' => $publishedLessons,
-                        'evaluations_count' => $evaluationsCount,
-                        'classes_count' => $classesCount,
-                    ],
-                ],
-            ]);
-        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Institution non trouvée',
-            ], 404);
-        } catch (\Exception $e) {
-            Log::error('InstitutionController@show', ['id' => $id, 'error' => $e->getMessage()]);
-
-            return response()->json([
-                'success' => false,
-                'message' => 'Erreur lors de la récupération de l\'institution',
-            ], 500);
+            return $result === null
+                ? $this->notFound()
+                : response()->json(['success' => true, 'data' => $result]);
+        } catch (Throwable $e) {
+            return $this->internalError('show', $e, 'Erreur lors de la récupération de l\'institution', $id);
         }
     }
 
-    /**
-     * Créer une nouvelle institution.
-     */
-    public function store(Request $request)
+    public function store(Request $request): JsonResponse
     {
         try {
-            $validated = $request->validate([
+            $institution = $this->crud->create($request->validate([
                 'slug' => ['required', 'string', 'max:50', 'regex:/^[a-z0-9\-]+$/', 'unique:institutions,slug'],
                 'name' => 'required|string|max:191',
                 'klassci_api_url' => 'required|url|max:500',
@@ -187,43 +91,24 @@ class InstitutionController extends Controller
                 'primary_color' => ['nullable', 'string', 'max:7', 'regex:/^#[0-9A-Fa-f]{6}$/'],
                 'is_active' => 'boolean',
                 'settings' => 'nullable|array',
-            ]);
-
-            $institution = Institution::create($validated);
-
-            Cache::forget('global_institutions_list');
-            Cache::forget('global_institutions_overview');
+            ]));
 
             return response()->json([
                 'success' => true,
                 'message' => 'Institution créée avec succès',
                 'data' => $institution,
             ], 201);
-        } catch (\Illuminate\Validation\ValidationException $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Erreur de validation',
-                'errors' => $e->errors(),
-            ], 422);
-        } catch (\Exception $e) {
-            Log::error('InstitutionController@store', ['error' => $e->getMessage()]);
-
-            return response()->json([
-                'success' => false,
-                'message' => 'Erreur lors de la création de l\'institution',
-            ], 500);
+        } catch (ValidationException $e) {
+            return $this->validationError($e);
+        } catch (Throwable $e) {
+            return $this->internalError('store', $e, 'Erreur lors de la création de l\'institution');
         }
     }
 
-    /**
-     * Modifier une institution existante.
-     */
-    public function update(Request $request, int $id)
+    public function update(Request $request, int $id): JsonResponse
     {
         try {
-            $institution = Institution::findOrFail($id);
-
-            $validated = $request->validate([
+            $institution = $this->crud->update($id, $request->validate([
                 'slug' => ['sometimes', 'string', 'max:50', 'regex:/^[a-z0-9\-]+$/', Rule::unique('institutions', 'slug')->ignore($id)],
                 'name' => 'sometimes|string|max:191',
                 'klassci_api_url' => 'sometimes|url|max:500',
@@ -232,189 +117,102 @@ class InstitutionController extends Controller
                 'primary_color' => ['nullable', 'string', 'max:7', 'regex:/^#[0-9A-Fa-f]{6}$/'],
                 'is_active' => 'boolean',
                 'settings' => 'nullable|array',
-            ]);
-
-            $institution->update($validated);
-
-            Cache::forget('global_institutions_list');
-            Cache::forget('global_institutions_overview');
+            ]));
 
             return response()->json([
                 'success' => true,
                 'message' => 'Institution mise à jour avec succès',
-                'data' => $institution->fresh(),
+                'data' => $institution,
             ]);
-        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Institution non trouvée',
-            ], 404);
-        } catch (\Illuminate\Validation\ValidationException $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Erreur de validation',
-                'errors' => $e->errors(),
-            ], 422);
-        } catch (\Exception $e) {
-            Log::error('InstitutionController@update', ['id' => $id, 'error' => $e->getMessage()]);
-
-            return response()->json([
-                'success' => false,
-                'message' => 'Erreur lors de la mise à jour',
-            ], 500);
+        } catch (ModelNotFoundException) {
+            return $this->notFound();
+        } catch (ValidationException $e) {
+            return $this->validationError($e);
+        } catch (Throwable $e) {
+            return $this->internalError('update', $e, 'Erreur lors de la mise à jour', $id);
         }
     }
 
-    /**
-     * Activer/Désactiver une institution.
-     * Interdit de désactiver la dernière institution active.
-     */
-    public function toggle(int $id)
+    public function toggle(int $id): JsonResponse
     {
         try {
-            $institution = Institution::findOrFail($id);
-
-            if ($institution->is_active) {
-                $activeCount = Institution::where('is_active', true)->count();
-                if ($activeCount <= 1) {
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'Impossible de désactiver la dernière institution active',
-                    ], 422);
-                }
-            }
-
-            $institution->update(['is_active' => !$institution->is_active]);
-
-            Cache::forget('global_institutions_list');
-            Cache::forget('global_institutions_overview');
+            $institution = $this->crud->toggleActive($id);
 
             return response()->json([
                 'success' => true,
-                'message' => $institution->is_active
-                    ? 'Institution activée'
-                    : 'Institution désactivée',
-                'data' => $institution->fresh(),
+                'message' => $institution->is_active ? 'Institution activée' : 'Institution désactivée',
+                'data' => $institution,
             ]);
-        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Institution non trouvée',
-            ], 404);
-        } catch (\Exception $e) {
-            Log::error('InstitutionController@toggle', ['id' => $id, 'error' => $e->getMessage()]);
-
-            return response()->json([
-                'success' => false,
-                'message' => 'Erreur lors du changement de statut',
-            ], 500);
+        } catch (ModelNotFoundException) {
+            return $this->notFound();
+        } catch (RuntimeException $e) {
+            return $this->businessError($e->getMessage());
+        } catch (Throwable $e) {
+            return $this->internalError('toggle', $e, 'Erreur lors du changement de statut', $id);
         }
     }
 
-    /**
-     * Supprimer une institution.
-     */
-    public function destroy(int $id)
+    public function destroy(int $id): JsonResponse
     {
         try {
-            $institution = Institution::findOrFail($id);
+            $this->crud->softDelete($id);
 
-            $institution->delete();
-
-            Cache::forget('global_institutions_list');
-            Cache::forget('global_institutions_overview');
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Institution supprimée avec succès',
-            ]);
-        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Institution non trouvée',
-            ], 404);
-        } catch (\Exception $e) {
-            Log::error('InstitutionController@destroy', ['id' => $id, 'error' => $e->getMessage()]);
-
-            return response()->json([
-                'success' => false,
-                'message' => 'Erreur lors de la suppression',
-            ], 500);
+            return response()->json(['success' => true, 'message' => 'Institution supprimée avec succès']);
+        } catch (ModelNotFoundException) {
+            return $this->notFound();
+        } catch (Throwable $e) {
+            return $this->internalError('destroy', $e, 'Erreur lors de la suppression', $id);
         }
     }
 
-    /**
-     * Tester la connexion KLASSCI d'une institution.
-     */
-    public function testConnection(int $id)
+    public function testConnection(int $id): JsonResponse
     {
         try {
-            $institution = Institution::findOrFail($id);
-            $config = $institution->getKlassciConfig();
+            $result = $this->connectionTester->test($id);
 
-            if (!$config['url']) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'URL KLASSCI non configurée pour cette institution',
-                ], 422);
-            }
-
-            $startTime = microtime(true);
-
-            // Tester via l'endpoint public /auth/check-user (pas de token requis)
-            $testUrl = rtrim($config['url'], '/') . '/auth/check-user';
-
-            $http = Http::timeout(10)->withHeaders(['Accept' => 'application/json']);
-            if (!config('services.klassci.ssl_verify', true)) {
-                $http = $http->withoutVerifying();
-            }
-            $response = $http->post($testUrl, ['identifier' => 'lms-ping-test']);
-
-            $responseTime = round((microtime(true) - $startTime) * 1000);
-
-            // 200 ou 422 = serveur joignable et endpoint existe
-            if ($response->status() === 200 || $response->status() === 422 || $response->status() === 404) {
-                return response()->json([
-                    'success' => true,
-                    'message' => 'Connexion KLASSCI réussie',
-                    'data' => [
-                        'status_code' => $response->status(),
-                        'response_time_ms' => $responseTime,
-                        'api_url' => $config['url'],
-                    ],
-                ]);
-            }
-
-            return response()->json([
-                'success' => false,
-                'message' => 'Le serveur KLASSCI a répondu avec une erreur (code ' . $response->status() . ')',
-                'data' => [
-                    'status_code' => $response->status(),
-                    'api_url' => $config['url'],
-                    'response_time_ms' => $responseTime,
-                ],
-            ], 502);
-        } catch (\Illuminate\Http\Client\ConnectionException $e) {
+            return response()->json($result['payload'], $result['status']);
+        } catch (ModelNotFoundException) {
+            return $this->notFound();
+        } catch (RuntimeException $e) {
+            return $this->businessError($e->getMessage());
+        } catch (ConnectionException) {
             return response()->json([
                 'success' => false,
                 'message' => 'Impossible de se connecter au serveur KLASSCI',
-                'data' => [
-                    'api_url' => $institution->klassci_api_url ?? '',
-                    'error' => 'Erreur de connexion au serveur KLASSCI.',
-                ],
+                'data' => ['error' => 'Erreur de connexion au serveur KLASSCI.'],
             ], 502);
-        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Institution non trouvée',
-            ], 404);
-        } catch (\Exception $e) {
-            Log::error('InstitutionController@testConnection', ['id' => $id, 'error' => $e->getMessage()]);
-
-            return response()->json([
-                'success' => false,
-                'message' => 'Erreur lors du test de connexion',
-            ], 500);
+        } catch (Throwable $e) {
+            return $this->internalError('testConnection', $e, 'Erreur lors du test de connexion', $id);
         }
+    }
+
+    private function notFound(): JsonResponse
+    {
+        return response()->json(['success' => false, 'message' => 'Institution non trouvée'], 404);
+    }
+
+    private function businessError(string $message): JsonResponse
+    {
+        return response()->json(['success' => false, 'message' => $message], 422);
+    }
+
+    private function validationError(ValidationException $e): JsonResponse
+    {
+        return response()->json([
+            'success' => false,
+            'message' => 'Erreur de validation',
+            'errors' => $e->errors(),
+        ], 422);
+    }
+
+    private function internalError(string $method, Throwable $e, string $message, ?int $id = null): JsonResponse
+    {
+        $context = ['error' => $e->getMessage()];
+        if ($id !== null) {
+            $context['id'] = $id;
+        }
+        $this->logger->error('InstitutionController@' . $method, $context);
+
+        return response()->json(['success' => false, 'message' => $message], 500);
     }
 }

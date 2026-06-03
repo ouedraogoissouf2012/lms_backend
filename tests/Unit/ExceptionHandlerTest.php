@@ -85,10 +85,13 @@ class ExceptionHandlerTest extends TestCase
         );
 
         // Seuil ajusté après les god-controller splits + centralisation
-        // de la logique de logging dans les services (TIER 1). Reste >20
-        // pour s'assurer qu'on n'a pas vidé les logs serveur par erreur.
+        // de la logique de logging dans les services (TIER 1). Au fil des
+        // splits §1.6 D, les controllers migrent de la Facade `Log::` vers
+        // l'injection PSR-3 `LoggerInterface` (cf. `split-12/institution`),
+        // donc le compteur peut baisser. Reste >10 pour garantir qu'on
+        // n'a pas vidé les logs serveur par erreur.
         $this->assertGreaterThan(
-            20,
+            10,
             count($logged),
             'Log:: should still contain getMessage() for server-side logging — found only ' . count($logged) . ' lines.'
         );

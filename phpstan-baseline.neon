@@ -319,96 +319,6 @@ parameters:
 			path: app/Http/Controllers/API/Dashboard/DashboardTeacherController.php
 
 		-
-			message: '#^Argument of an invalid type mixed supplied for foreach, only iterables are supported\.$#'
-			identifier: foreach.nonIterable
-			count: 4
-			path: app/Http/Controllers/API/Evaluation/EvaluationCrudController.php
-
-		-
-			message: '#^Binary operation "\+" between mixed and 1 results in an error\.$#'
-			identifier: binaryOp.invalid
-			count: 2
-			path: app/Http/Controllers/API/Evaluation/EvaluationCrudController.php
-
-		-
-			message: '#^Cannot access offset ''code'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 1
-			path: app/Http/Controllers/API/Evaluation/EvaluationCrudController.php
-
-		-
-			message: '#^Cannot access offset ''correct_answers'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 2
-			path: app/Http/Controllers/API/Evaluation/EvaluationCrudController.php
-
-		-
-			message: '#^Cannot access offset ''explanation'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 2
-			path: app/Http/Controllers/API/Evaluation/EvaluationCrudController.php
-
-		-
-			message: '#^Cannot access offset ''id'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 2
-			path: app/Http/Controllers/API/Evaluation/EvaluationCrudController.php
-
-		-
-			message: '#^Cannot access offset ''libelle'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 3
-			path: app/Http/Controllers/API/Evaluation/EvaluationCrudController.php
-
-		-
-			message: '#^Cannot access offset ''niveau'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 2
-			path: app/Http/Controllers/API/Evaluation/EvaluationCrudController.php
-
-		-
-			message: '#^Cannot access offset ''nom'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 2
-			path: app/Http/Controllers/API/Evaluation/EvaluationCrudController.php
-
-		-
-			message: '#^Cannot access offset ''options'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 2
-			path: app/Http/Controllers/API/Evaluation/EvaluationCrudController.php
-
-		-
-			message: '#^Cannot access offset ''points'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 2
-			path: app/Http/Controllers/API/Evaluation/EvaluationCrudController.php
-
-		-
-			message: '#^Cannot access offset ''question'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 2
-			path: app/Http/Controllers/API/Evaluation/EvaluationCrudController.php
-
-		-
-			message: '#^Cannot access offset ''type'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 2
-			path: app/Http/Controllers/API/Evaluation/EvaluationCrudController.php
-
-		-
-			message: '#^Parameter \#1 \$key of method Illuminate\\Support\\Collection\<\(int\|string\),mixed\>\:\:get\(\) expects int\|string\|null, mixed given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Controllers/API/Evaluation/EvaluationCrudController.php
-
-		-
-			message: '#^Strict comparison using \!\=\= between string and null will always evaluate to true\.$#'
-			identifier: notIdentical.alwaysTrue
-			count: 4
-			path: app/Http/Controllers/API/Evaluation/EvaluationCrudController.php
-
-		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$feedback\.$#'
 			identifier: property.notFound
 			count: 1
@@ -833,108 +743,6 @@ parameters:
 			identifier: cast.int
 			count: 3
 			path: app/Http/Controllers/API/LMS/LMSSeancesListController.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\Lesson\:\:\$statistics\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Controllers/API/Lesson/LessonCrudController.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\Lesson\:\:\$titre\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Controllers/API/Lesson/LessonCrudController.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\Lesson\:\:\$user_progress\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Http/Controllers/API/Lesson/LessonCrudController.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Http/Controllers/API/Lesson/LessonCrudController.php
-
-		-
-			message: '#^Cannot access offset ''classe_ids'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 1
-			path: app/Http/Controllers/API/Lesson/LessonCrudController.php
-
-		-
-			message: '#^Cannot access offset ''etudiant_ids'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 1
-			path: app/Http/Controllers/API/Lesson/LessonCrudController.php
-
-		-
-			message: '#^Cannot access property \$id on mixed\.$#'
-			identifier: property.nonObject
-			count: 1
-			path: app/Http/Controllers/API/Lesson/LessonCrudController.php
-
-		-
-			message: '#^Cannot access property \$libelle on mixed\.$#'
-			identifier: property.nonObject
-			count: 1
-			path: app/Http/Controllers/API/Lesson/LessonCrudController.php
-
-		-
-			message: '#^Cannot access property \$name on mixed\.$#'
-			identifier: property.nonObject
-			count: 1
-			path: app/Http/Controllers/API/Lesson/LessonCrudController.php
-
-		-
-			message: '#^Parameter \#1 \$array of function array_unique expects an array of values castable to string, array\<mixed\> given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Controllers/API/Lesson/LessonCrudController.php
-
-		-
-			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\Lesson\>\:\:map\(\) contains unresolvable type\.$#'
-			identifier: argument.unresolvableType
-			count: 1
-			path: app/Http/Controllers/API/Lesson/LessonCrudController.php
-
-		-
-			message: '#^Parameter \#1 \$classeId of method Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Lesson\>\:\:forClasse\(\) expects int, mixed given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Controllers/API/Lesson/LessonCrudController.php
-
-		-
-			message: '#^Parameter \#1 \$enseignantId of method Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Lesson\>\:\:byTeacher\(\) expects int, mixed given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Controllers/API/Lesson/LessonCrudController.php
-
-		-
-			message: '#^Parameter \#1 \$matiereId of method Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Lesson\>\:\:forMatiere\(\) expects int, mixed given\.$#'
-			identifier: argument.type
-			count: 2
-			path: app/Http/Controllers/API/Lesson/LessonCrudController.php
-
-		-
-			message: '#^Parameter \#1 \$perPage of method Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Lesson\>\:\:paginate\(\) expects int\|null, mixed given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Controllers/API/Lesson/LessonCrudController.php
-
-		-
-			message: '#^Part \$classeId \(mixed\) of encapsed string cannot be cast to string\.$#'
-			identifier: encapsedStringPart.nonString
-			count: 1
-			path: app/Http/Controllers/API/Lesson/LessonCrudController.php
-
-		-
-			message: '#^Return type of call to method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\Lesson\>\:\:map\(\) contains unresolvable type\.$#'
-			identifier: method.unresolvableReturnType
-			count: 1
-			path: app/Http/Controllers/API/Lesson/LessonCrudController.php
 
 		-
 			message: '#^Parameter \#1 \$rating of method App\\Models\\LessonProgress\:\:addRating\(\) expects int, mixed given\.$#'
@@ -5275,6 +5083,66 @@ parameters:
 			path: app/Services/ConvertApiService.php
 
 		-
+			message: '#^Cannot access offset ''code'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: app/Services/Evaluation/EvaluationCreationService.php
+
+		-
+			message: '#^Cannot access offset ''id'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 2
+			path: app/Services/Evaluation/EvaluationCreationService.php
+
+		-
+			message: '#^Cannot access offset ''libelle'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 3
+			path: app/Services/Evaluation/EvaluationCreationService.php
+
+		-
+			message: '#^Cannot access offset ''niveau'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 2
+			path: app/Services/Evaluation/EvaluationCreationService.php
+
+		-
+			message: '#^Cannot access offset ''nom'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 2
+			path: app/Services/Evaluation/EvaluationCreationService.php
+
+		-
+			message: '#^Cannot cast mixed to int\.$#'
+			identifier: cast.int
+			count: 2
+			path: app/Services/Evaluation/EvaluationCreationService.php
+
+		-
+			message: '#^Method App\\Services\\Evaluation\\EvaluationCreationService\:\:resolveKlassciLabels\(\) should return array\{string\|null, string\|null\} but returns array\{mixed, mixed\}\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Services/Evaluation/EvaluationCreationService.php
+
+		-
+			message: '#^Parameter \#1 \$matiereId of method App\\Services\\Evaluation\\EvaluationCreationService\:\:resolveKlassciLabels\(\) expects int\|null, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Evaluation/EvaluationCreationService.php
+
+		-
+			message: '#^Parameter \#2 \$classeId of method App\\Services\\Evaluation\\EvaluationCreationService\:\:resolveKlassciLabels\(\) expects int\|null, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Evaluation/EvaluationCreationService.php
+
+		-
+			message: '#^Parameter \#2 \$questions of method App\\Services\\Evaluation\\EvaluationCreationService\:\:createQuestions\(\) expects array\<int, array\<string, mixed\>\>, array\<mixed, mixed\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Evaluation/EvaluationCreationService.php
+
+		-
 			message: '#^Cannot access offset ''id'' on mixed\.$#'
 			identifier: offsetAccess.nonOffsetAccessible
 			count: 2
@@ -5327,6 +5195,24 @@ parameters:
 			identifier: cast.string
 			count: 1
 			path: app/Services/Evaluation/EvaluationGradingService.php
+
+		-
+			message: '#^Method App\\Services\\Evaluation\\EvaluationListService\:\:listForTeacher\(\) should return array\<int, array\<string, mixed\>\> but returns array\<mixed\>\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Services/Evaluation/EvaluationListService.php
+
+		-
+			message: '#^Parameter \#1 \$key of method Illuminate\\Support\\Collection\<\(int\|string\),mixed\>\:\:get\(\) expects int\|string\|null, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Evaluation/EvaluationListService.php
+
+		-
+			message: '#^Parameter \#2 \$questions of method App\\Services\\Evaluation\\EvaluationUpdateService\:\:createQuestions\(\) expects array\<int, array\<string, mixed\>\>, array\<mixed, mixed\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Evaluation/EvaluationUpdateService.php
 
 		-
 			message: '#^Cannot access offset ''programmation'' on mixed\.$#'
@@ -5663,6 +5549,132 @@ parameters:
 			identifier: assign.propertyReadOnly
 			count: 1
 			path: app/Services/KnowledgeCheck/KnowledgeCheckCrudService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Lesson\:\:\$titre\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Lesson/LessonCrudOperationsService.php
+
+		-
+			message: '#^Cannot access offset ''classe_ids'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: app/Services/Lesson/LessonCrudOperationsService.php
+
+		-
+			message: '#^Cannot access offset ''etudiant_ids'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: app/Services/Lesson/LessonCrudOperationsService.php
+
+		-
+			message: '#^Parameter \#1 \$array of function array_unique expects an array of values castable to string, array\<mixed\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Lesson/LessonCrudOperationsService.php
+
+		-
+			message: '#^Part \$classeId \(mixed\) of encapsed string cannot be cast to string\.$#'
+			identifier: encapsedStringPart.nonString
+			count: 1
+			path: app/Services/Lesson/LessonCrudOperationsService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Lesson\:\:\$statistics\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Lesson/LessonListService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Lesson\:\:\$user_progress\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Services/Lesson/LessonListService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Services/Lesson/LessonListService.php
+
+		-
+			message: '#^Cannot access property \$id on mixed\.$#'
+			identifier: property.nonObject
+			count: 1
+			path: app/Services/Lesson/LessonListService.php
+
+		-
+			message: '#^Cannot access property \$libelle on mixed\.$#'
+			identifier: property.nonObject
+			count: 1
+			path: app/Services/Lesson/LessonListService.php
+
+		-
+			message: '#^Cannot access property \$name on mixed\.$#'
+			identifier: property.nonObject
+			count: 1
+			path: app/Services/Lesson/LessonListService.php
+
+		-
+			message: '#^Generic type Illuminate\\Contracts\\Pagination\\LengthAwarePaginator\<App\\Models\\Lesson\> in PHPDoc tag @return does not specify all template types of interface Illuminate\\Contracts\\Pagination\\LengthAwarePaginator\: TKey, TValue$#'
+			identifier: generics.lessTypes
+			count: 1
+			path: app/Services/Lesson/LessonListService.php
+
+		-
+			message: '#^Method App\\Services\\Lesson\\LessonListService\:\:list\(\) should return Illuminate\\Contracts\\Pagination\\LengthAwarePaginator\<App\\Models\\Lesson\> but returns Illuminate\\Pagination\\LengthAwarePaginator\<int, App\\Models\\Lesson\>\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Services/Lesson/LessonListService.php
+
+		-
+			message: '#^Method App\\Services\\Lesson\\LessonListService\:\:myCourses\(\) should return array\{courses\: Illuminate\\Support\\Collection\<int, array\<string, mixed\>\>, filters\: array\{matieres\: Illuminate\\Support\\Collection\<int, array\<string, mixed\>\>, enseignants\: Illuminate\\Support\\Collection\<int, array\<string, mixed\>\>\}, total\: int\} but returns array\{courses\: Illuminate\\Support\\Collection\<int, array\{id\: mixed, title\: mixed, description\: mixed, type\: mixed, duree_estimee\: mixed, niveau_difficulte\: mixed, enseignant\: array\{id\: int, klassci_id\: int\<0, max\>\|null, name\: string\}\|null, matiere\: array\{id\: mixed, name\: mixed\}\|null, \.\.\.\}\>, filters\: array\{matieres\: Illuminate\\Support\\Collection\<int, array\{id\: mixed, name\: mixed\}\>, enseignants\: Illuminate\\Support\\Collection\<\(int\|string\), array\{id\: mixed, name\: mixed\}\>\}, total\: int\<0, max\>\}\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Services/Lesson/LessonListService.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\Lesson\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 1
+			path: app/Services/Lesson/LessonListService.php
+
+		-
+			message: '#^Parameter \#1 \$classeId of method Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Lesson\>\:\:forClasse\(\) expects int, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Lesson/LessonListService.php
+
+		-
+			message: '#^Parameter \#1 \$enseignantId of method Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Lesson\>\:\:byTeacher\(\) expects int, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Lesson/LessonListService.php
+
+		-
+			message: '#^Parameter \#1 \$matiereId of method Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Lesson\>\:\:forMatiere\(\) expects int, mixed given\.$#'
+			identifier: argument.type
+			count: 2
+			path: app/Services/Lesson/LessonListService.php
+
+		-
+			message: '#^Parameter \#1 \$perPage of method Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Lesson\>\:\:paginate\(\) expects int\|null, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Lesson/LessonListService.php
+
+		-
+			message: '#^Return type of call to method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\Lesson\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: method.unresolvableReturnType
+			count: 1
+			path: app/Services/Lesson/LessonListService.php
+
+		-
+			message: '#^Type App\\Models\\Lesson in generic type Illuminate\\Contracts\\Pagination\\LengthAwarePaginator\<App\\Models\\Lesson\> in PHPDoc tag @return is not subtype of template type TKey of \(int\|string\) of interface Illuminate\\Contracts\\Pagination\\LengthAwarePaginator\.$#'
+			identifier: generics.notSubtype
+			count: 1
+			path: app/Services/Lesson/LessonListService.php
 
 		-
 			message: '#^Parameter \#1 \$column of method Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\:\:where\(\) expects array\<int\|model property of Illuminate\\Database\\Eloquent\\Model, mixed\>\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\: Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\: void\)\|Illuminate\\Contracts\\Database\\Query\\Expression\|model property of Illuminate\\Database\\Eloquent\\Model, ''klassci_etudiant_id'' given\.$#'

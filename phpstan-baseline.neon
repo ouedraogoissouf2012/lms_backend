@@ -1213,22 +1213,22 @@ parameters:
 			path: app/Http/Controllers/API/NotificationsController.php
 
 		-
-			message: '#^Parameter \#2 \$anneeId of method App\\Services\\KlassciProxyService\:\:getClasseEtudiants\(\) expects int\|null, mixed given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Controllers/API/ProxyController.php
-
-		-
 			message: '#^Parameter \#2 \$presences of method App\\Services\\KlassciProxyService\:\:savePresences\(\) expects array\<int, array\<string, mixed\>\>, array\<string, mixed\> given\.$#'
 			identifier: argument.type
 			count: 1
-			path: app/Http/Controllers/API/ProxyController.php
+			path: app/Http/Controllers/API/Proxy/ProxyAcademicController.php
 
 		-
 			message: '#^Variable \$klassciToken in empty\(\) always exists and is not falsy\.$#'
 			identifier: empty.variable
 			count: 2
-			path: app/Http/Controllers/API/ProxyController.php
+			path: app/Http/Controllers/API/Proxy/ProxyDashboardController.php
+
+		-
+			message: '#^Parameter \#2 \$anneeId of method App\\Services\\KlassciProxyService\:\:getClasseEtudiants\(\) expects int\|null, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/API/Proxy/ProxyOrganisationController.php
 
 		-
 			message: '#^Access to an undefined property App\\Models\\Quiz\:\:\$user_attempts_count\.$#'

@@ -2,7 +2,9 @@
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\API\ProxyController;
+use App\Http\Controllers\API\Proxy\ProxyAcademicController;
+use App\Http\Controllers\API\Proxy\ProxyDashboardController;
+use App\Http\Controllers\API\Proxy\ProxyOrganisationController;
 use App\Http\Controllers\API\AuthController;
 use App\Http\Controllers\API\AdminAnalyticsController;
 use App\Http\Controllers\API\ReportController;
@@ -105,7 +107,7 @@ Route::prefix('proxy')
     ->middleware(['auth:sanctum', 'klassci.sync', 'role:coordinateur,superAdmin,supradmin'])
     ->group(function () {
         // Test de connexion KLASSCI — réservé aux admins
-        Route::get('/test-connection', [ProxyController::class, 'testConnection']);
+        Route::get('/test-connection', [ProxyOrganisationController::class, 'testConnection']);
     });
 
 // ============================================
@@ -116,24 +118,24 @@ Route::prefix('proxy')
     ->middleware(['auth:sanctum', 'klassci.sync'])
     ->group(function () {
         // Structure organisationnelle
-        Route::get('/structure', [ProxyController::class, 'structure']);
-        Route::get('/filieres', [ProxyController::class, 'filieres']);
-        Route::get('/niveaux-etudes', [ProxyController::class, 'niveauxEtudes']);
+        Route::get('/structure', [ProxyOrganisationController::class, 'structure']);
+        Route::get('/filieres', [ProxyOrganisationController::class, 'filieres']);
+        Route::get('/niveaux-etudes', [ProxyOrganisationController::class, 'niveauxEtudes']);
 
         // Classes et étudiants
-        Route::get('/classes', [ProxyController::class, 'classes']);
-        Route::get('/classes/{id}/etudiants', [ProxyController::class, 'etudiants']);
+        Route::get('/classes', [ProxyOrganisationController::class, 'classes']);
+        Route::get('/classes/{id}/etudiants', [ProxyOrganisationController::class, 'etudiants']);
 
         // Matières et enseignants
-        Route::get('/matieres', [ProxyController::class, 'matieres']);
-        Route::get('/matieres/{id}', [ProxyController::class, 'matiereDetails']);
-        Route::get('/enseignants', [ProxyController::class, 'enseignants']);
+        Route::get('/matieres', [ProxyOrganisationController::class, 'matieres']);
+        Route::get('/matieres/{id}', [ProxyOrganisationController::class, 'matiereDetails']);
+        Route::get('/enseignants', [ProxyOrganisationController::class, 'enseignants']);
 
         // Emploi du temps
-        Route::get('/emploi-temps', [ProxyController::class, 'emploiTemps']);
+        Route::get('/emploi-temps', [ProxyAcademicController::class, 'emploiTemps']);
 
         // Évaluations - Lecture
-        Route::get('/evaluations', [ProxyController::class, 'evaluations']);
+        Route::get('/evaluations', [ProxyAcademicController::class, 'evaluations']);
     });
 
 // ============================================
@@ -144,15 +146,15 @@ Route::prefix('proxy')
     ->group(function () {
 
     // Sauvegarder les notes (Enseignants/Coordinateurs uniquement) - Rate limited: 60/min
-    Route::post('/evaluations/{id}/notes', [ProxyController::class, 'saveNotes'])
+    Route::post('/evaluations/{id}/notes', [ProxyAcademicController::class, 'saveNotes'])
         ->middleware('throttle:60,1');
 
     // Sauvegarder les présences (Enseignants/Coordinateurs uniquement) - Rate limited: 60/min
-    Route::post('/cours/{id}/presences', [ProxyController::class, 'savePresences'])
+    Route::post('/cours/{id}/presences', [ProxyAcademicController::class, 'savePresences'])
         ->middleware('throttle:60,1');
 
     // Mettre à jour statut cours (Enseignants/Coordinateurs uniquement) - Rate limited: 30/min
-    Route::put('/cours/{id}/statut', [ProxyController::class, 'updateCoursStatut'])
+    Route::put('/cours/{id}/statut', [ProxyAcademicController::class, 'updateCoursStatut'])
         ->middleware('throttle:30,1');
 });
 
@@ -202,10 +204,10 @@ Route::prefix('proxy')
     ->middleware(['auth:sanctum', 'klassci.sync'])
     ->group(function () {
         // Dashboard étudiant (récupère le token KLASSCI de l'utilisateur)
-        Route::get('/me/dashboard', [ProxyController::class, 'studentDashboard']);
+        Route::get('/me/dashboard', [ProxyDashboardController::class, 'studentDashboard']);
 
         // Dashboard enseignant (réservé aux enseignants/coordinateurs)
-        Route::get('/me/teacher-dashboard', [ProxyController::class, 'teacherDashboard'])
+        Route::get('/me/teacher-dashboard', [ProxyDashboardController::class, 'teacherDashboard'])
             ->middleware('role:enseignant,coordinateur');
     });
 

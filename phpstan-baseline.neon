@@ -1063,236 +1063,8 @@ parameters:
 			path: app/Http/Controllers/API/ReportController.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\Evaluation\:\:\$title\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Controllers/API/SearchController.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\User\:\:\$role_display_name\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Controllers/API/SearchController.php
-
-		-
-			message: '#^Binary operation "\." between ''/admin/classes/'' and mixed results in an error\.$#'
-			identifier: binaryOp.invalid
-			count: 1
-			path: app/Http/Controllers/API/SearchController.php
-
-		-
-			message: '#^Binary operation "\." between ''/admin/matieres/'' and mixed results in an error\.$#'
-			identifier: binaryOp.invalid
-			count: 1
-			path: app/Http/Controllers/API/SearchController.php
-
-		-
-			message: '#^Binary operation "\." between ''Code\: '' and mixed results in an error\.$#'
-			identifier: binaryOp.invalid
-			count: 1
-			path: app/Http/Controllers/API/SearchController.php
-
-		-
-			message: '#^Binary operation "\." between mixed and '' \- '' results in an error\.$#'
-			identifier: binaryOp.invalid
-			count: 1
-			path: app/Http/Controllers/API/SearchController.php
-
-		-
-			message: '#^Binary operation "\." between mixed and int results in an error\.$#'
-			identifier: binaryOp.invalid
-			count: 1
-			path: app/Http/Controllers/API/SearchController.php
-
-		-
-			message: '#^Binary operation "\." between non\-empty\-string and mixed results in an error\.$#'
-			identifier: binaryOp.invalid
-			count: 1
-			path: app/Http/Controllers/API/SearchController.php
-
-		-
-			message: '#^Binary operation "\." between non\-falsy\-string and mixed results in an error\.$#'
-			identifier: binaryOp.invalid
-			count: 1
-			path: app/Http/Controllers/API/SearchController.php
-
-		-
-			message: '#^Cannot access offset ''code'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 2
-			path: app/Http/Controllers/API/SearchController.php
-
-		-
-			message: '#^Cannot access offset ''filiere'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 2
-			path: app/Http/Controllers/API/SearchController.php
-
-		-
-			message: '#^Cannot access offset ''id'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 4
-			path: app/Http/Controllers/API/SearchController.php
-
-		-
-			message: '#^Cannot access offset ''name'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 6
-			path: app/Http/Controllers/API/SearchController.php
-
-		-
-			message: '#^Cannot access offset ''niveau'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 2
-			path: app/Http/Controllers/API/SearchController.php
-
-		-
-			message: '#^Cannot access offset ''nom'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 2
-			path: app/Http/Controllers/API/SearchController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\API\\SearchController\:\:globalSearch\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Http/Controllers/API/SearchController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\API\\SearchController\:\:saveSearchHistory\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Http/Controllers/API/SearchController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\API\\SearchController\:\:searchHistory\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Http/Controllers/API/SearchController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\API\\SearchController\:\:suggestions\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Http/Controllers/API/SearchController.php
-
-		-
-			message: '#^Parameter \#1 \$array of function array_slice expects array, mixed given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Controllers/API/SearchController.php
-
-		-
-			message: '#^Parameter \#1 \$array of function array_unique expects an array of values castable to string, array\<mixed\> given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Controllers/API/SearchController.php
-
-		-
-			message: '#^Parameter \#1 \$array of function array_unshift expects array, mixed given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Controllers/API/SearchController.php
-
-		-
-			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\Evaluation\>\:\:map\(\) contains unresolvable type\.$#'
-			identifier: argument.unresolvableType
-			count: 1
-			path: app/Http/Controllers/API/SearchController.php
-
-		-
-			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\User\>\:\:map\(\) contains unresolvable type\.$#'
-			identifier: argument.unresolvableType
-			count: 1
-			path: app/Http/Controllers/API/SearchController.php
-
-		-
-			message: '#^Parameter \#1 \$column of method Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Evaluation\>\:\:pluck\(\) expects Illuminate\\Contracts\\Database\\Query\\Expression\|model property of App\\Models\\Evaluation, string given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Controllers/API/SearchController.php
-
-		-
-			message: '#^Parameter \#1 \$column of method Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Evaluation\>\:\:where\(\) expects array\<int\|model property of App\\Models\\Evaluation, mixed\>\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Evaluation\>\)\: Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Evaluation\>\)\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Evaluation\>\)\: void\)\|Illuminate\\Contracts\\Database\\Query\\Expression\|model property of App\\Models\\Evaluation, ''teacher_id'' given\.$#'
-			identifier: argument.type
-			count: 2
-			path: app/Http/Controllers/API/SearchController.php
-
-		-
-			message: '#^Parameter \#1 \$column of method Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Evaluation\>\:\:where\(\) expects array\<int\|model property of App\\Models\\Evaluation, mixed\>\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Evaluation\>\)\: Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Evaluation\>\)\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Evaluation\>\)\: void\)\|Illuminate\\Contracts\\Database\\Query\\Expression\|model property of App\\Models\\Evaluation, ''title'' given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Controllers/API/SearchController.php
-
-		-
-			message: '#^Parameter \#1 \$column of method Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Lesson\>\:\:where\(\) expects array\<int\|model property of App\\Models\\Lesson, mixed\>\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Lesson\>\)\: Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Lesson\>\)\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Lesson\>\)\: void\)\|Illuminate\\Contracts\\Database\\Query\\Expression\|model property of App\\Models\\Lesson, ''teacher_id'' given\.$#'
-			identifier: argument.type
-			count: 2
-			path: app/Http/Controllers/API/SearchController.php
-
-		-
-			message: '#^Parameter \#1 \$column of static method Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Evaluation\>\:\:where\(\) expects array\<int\|model property of App\\Models\\Evaluation, mixed\>\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Evaluation\>\)\: Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Evaluation\>\)\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Evaluation\>\)\: void\)\|Illuminate\\Contracts\\Database\\Query\\Expression\|model property of App\\Models\\Evaluation, ''title'' given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Controllers/API/SearchController.php
-
-		-
-			message: '#^Parameter \#1 \$haystack of function stripos expects string, mixed given\.$#'
-			identifier: argument.type
-			count: 5
-			path: app/Http/Controllers/API/SearchController.php
-
-		-
-			message: '#^Parameter \#1 \$limit of method Illuminate\\Support\\Collection\<string,mixed\>\:\:take\(\) expects int, mixed given\.$#'
-			identifier: argument.type
-			count: 2
-			path: app/Http/Controllers/API/SearchController.php
-
-		-
-			message: '#^Parameter \#1 \$value of method Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Evaluation\>\:\:limit\(\) expects int, mixed given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Controllers/API/SearchController.php
-
-		-
-			message: '#^Parameter \#1 \$value of method Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Lesson\>\:\:limit\(\) expects int, mixed given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Controllers/API/SearchController.php
-
-		-
-			message: '#^Parameter \#1 \$value of method Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\User\>\:\:limit\(\) expects int, mixed given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Controllers/API/SearchController.php
-
-		-
-			message: '#^Parameter \#1 \$value of static method Illuminate\\Support\\Str\:\:limit\(\) expects string, string\|null given\.$#'
-			identifier: argument.type
-			count: 2
-			path: app/Http/Controllers/API/SearchController.php
-
-		-
-			message: '#^Parameter \#2 \$needle of function stripos expects string, mixed given\.$#'
-			identifier: argument.type
-			count: 5
-			path: app/Http/Controllers/API/SearchController.php
-
-		-
-			message: '#^Part \$query \(mixed\) of encapsed string cannot be cast to string\.$#'
-			identifier: encapsedStringPart.nonString
-			count: 10
-			path: app/Http/Controllers/API/SearchController.php
-
-		-
-			message: '#^Return type of call to method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\Evaluation\>\:\:map\(\) contains unresolvable type\.$#'
-			identifier: method.unresolvableReturnType
-			count: 1
-			path: app/Http/Controllers/API/SearchController.php
-
-		-
-			message: '#^Return type of call to method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\User\>\:\:map\(\) contains unresolvable type\.$#'
-			identifier: method.unresolvableReturnType
+			message: '#^Cannot cast mixed to int\.$#'
+			identifier: cast.int
 			count: 1
 			path: app/Http/Controllers/API/SearchController.php
 
@@ -6779,6 +6551,114 @@ parameters:
 			identifier: argument.type
 			count: 1
 			path: app/Services/SeancesHistoryQueryService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Evaluation\:\:\$title\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Search/GlobalSearchService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\User\:\:\$role_display_name\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Search/GlobalSearchService.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\Evaluation\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 1
+			path: app/Services/Search/GlobalSearchService.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\User\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 1
+			path: app/Services/Search/GlobalSearchService.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Support\\Collection\<string,mixed\>\:\:filter\(\) expects \(callable\(mixed, string\)\: bool\)\|null, Closure\(array\)\: bool given\.$#'
+			identifier: argument.type
+			count: 2
+			path: app/Services/Search/GlobalSearchService.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Support\\Collection\<string,mixed\>\:\:map\(\) expects callable\(mixed, string\)\: array\{id\: mixed, title\: mixed, subtitle\: ''Classe'', description\: non\-falsy\-string, type\: ''classe'', icon\: ''BuildingLibraryIcon'', url\: non\-falsy\-string\}, Closure\(array\)\: array\{id\: mixed, title\: mixed, subtitle\: ''Classe'', description\: non\-falsy\-string, type\: ''classe'', icon\: ''BuildingLibraryIcon'', url\: non\-falsy\-string\} given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Search/GlobalSearchService.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Support\\Collection\<string,mixed\>\:\:map\(\) expects callable\(mixed, string\)\: array\{id\: mixed, title\: mixed, subtitle\: ''Matière'', description\: non\-falsy\-string, type\: ''matiere'', icon\: ''AcademicCapIcon'', url\: non\-falsy\-string\}, Closure\(array\)\: array\{id\: mixed, title\: mixed, subtitle\: ''Matière'', description\: non\-falsy\-string, type\: ''matiere'', icon\: ''AcademicCapIcon'', url\: non\-falsy\-string\} given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Search/GlobalSearchService.php
+
+		-
+			message: '#^Parameter \#1 \$column of method Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Evaluation\>\:\:where\(\) expects array\<int\|model property of App\\Models\\Evaluation, mixed\>\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Evaluation\>\)\: Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Evaluation\>\)\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Evaluation\>\)\: void\)\|Illuminate\\Contracts\\Database\\Query\\Expression\|model property of App\\Models\\Evaluation, ''teacher_id'' given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Search/GlobalSearchService.php
+
+		-
+			message: '#^Parameter \#1 \$column of method Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Evaluation\>\:\:where\(\) expects array\<int\|model property of App\\Models\\Evaluation, mixed\>\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Evaluation\>\)\: Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Evaluation\>\)\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Evaluation\>\)\: void\)\|Illuminate\\Contracts\\Database\\Query\\Expression\|model property of App\\Models\\Evaluation, ''title'' given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Search/GlobalSearchService.php
+
+		-
+			message: '#^Parameter \#1 \$column of method Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Lesson\>\:\:where\(\) expects array\<int\|model property of App\\Models\\Lesson, mixed\>\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Lesson\>\)\: Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Lesson\>\)\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Lesson\>\)\: void\)\|Illuminate\\Contracts\\Database\\Query\\Expression\|model property of App\\Models\\Lesson, ''teacher_id'' given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Search/GlobalSearchService.php
+
+		-
+			message: '#^Return type of call to method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\Evaluation\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: method.unresolvableReturnType
+			count: 1
+			path: app/Services/Search/GlobalSearchService.php
+
+		-
+			message: '#^Return type of call to method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\User\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: method.unresolvableReturnType
+			count: 1
+			path: app/Services/Search/GlobalSearchService.php
+
+		-
+			message: '#^Return type of call to method Illuminate\\Support\\Collection\<int,array\<string, mixed\>\>\:\:all\(\) contains unresolvable type\.$#'
+			identifier: method.unresolvableReturnType
+			count: 2
+			path: app/Services/Search/GlobalSearchService.php
+
+		-
+			message: '#^Parameter \#1 \$array \(list\<string\>\) of array_values is already a list, call has no effect\.$#'
+			identifier: arrayValues.list
+			count: 1
+			path: app/Services/Search/SearchSuggestionsService.php
+
+		-
+			message: '#^Parameter \#1 \$column of method Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Evaluation\>\:\:pluck\(\) expects Illuminate\\Contracts\\Database\\Query\\Expression\|model property of App\\Models\\Evaluation, string given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Search/SearchSuggestionsService.php
+
+		-
+			message: '#^Parameter \#1 \$column of method Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Evaluation\>\:\:where\(\) expects array\<int\|model property of App\\Models\\Evaluation, mixed\>\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Evaluation\>\)\: Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Evaluation\>\)\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Evaluation\>\)\: void\)\|Illuminate\\Contracts\\Database\\Query\\Expression\|model property of App\\Models\\Evaluation, ''teacher_id'' given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Search/SearchSuggestionsService.php
+
+		-
+			message: '#^Parameter \#1 \$column of method Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Lesson\>\:\:where\(\) expects array\<int\|model property of App\\Models\\Lesson, mixed\>\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Lesson\>\)\: Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Lesson\>\)\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Lesson\>\)\: void\)\|Illuminate\\Contracts\\Database\\Query\\Expression\|model property of App\\Models\\Lesson, ''teacher_id'' given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Search/SearchSuggestionsService.php
+
+		-
+			message: '#^Parameter \#1 \$column of static method Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Evaluation\>\:\:where\(\) expects array\<int\|model property of App\\Models\\Evaluation, mixed\>\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Evaluation\>\)\: Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Evaluation\>\)\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Evaluation\>\)\: void\)\|Illuminate\\Contracts\\Database\\Query\\Expression\|model property of App\\Models\\Evaluation, ''title'' given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Search/SearchSuggestionsService.php
 
 		-
 			message: '#^Binary operation "\." between mixed and '' '' results in an error\.$#'

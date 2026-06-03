@@ -91,56 +91,8 @@ parameters:
 			path: app/Http/Controllers/API/AuthController.php
 
 		-
-			message: '#^Argument of an invalid type mixed supplied for foreach, only iterables are supported\.$#'
-			identifier: foreach.nonIterable
-			count: 1
-			path: app/Http/Controllers/API/ChapterController.php
-
-		-
-			message: '#^Binary operation "\+" between mixed and 1 results in an error\.$#'
-			identifier: binaryOp.invalid
-			count: 1
-			path: app/Http/Controllers/API/ChapterController.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Relations\\HasMany\:\:ordered\(\)\.$#'
-			identifier: method.notFound
-			count: 1
-			path: app/Http/Controllers/API/ChapterController.php
-
-		-
-			message: '#^Cannot access offset ''id'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 1
-			path: app/Http/Controllers/API/ChapterController.php
-
-		-
-			message: '#^Cannot access offset ''order'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 1
-			path: app/Http/Controllers/API/ChapterController.php
-
-		-
-			message: '#^Cannot cast mixed to int\.$#'
-			identifier: cast.int
-			count: 1
-			path: app/Http/Controllers/API/ChapterController.php
-
-		-
-			message: '#^Parameter \#1 \$value of function count expects array\|Countable, mixed given\.$#'
+			message: '#^Parameter \#3 \$authUserId of method App\\Services\\Chapter\\ChapterCrudService\:\:create\(\) expects int\|null, int\|string\|null given\.$#'
 			identifier: argument.type
-			count: 1
-			path: app/Http/Controllers/API/ChapterController.php
-
-		-
-			message: '#^Property App\\Http\\Controllers\\API\\ChapterController\:\:\$fileConversionService has no type specified\.$#'
-			identifier: missingType.property
-			count: 1
-			path: app/Http/Controllers/API/ChapterController.php
-
-		-
-			message: '#^Strict comparison using \!\=\= between mixed and null will always evaluate to true\.$#'
-			identifier: notIdentical.alwaysTrue
 			count: 1
 			path: app/Http/Controllers/API/ChapterController.php
 
@@ -5015,6 +4967,60 @@ parameters:
 			identifier: encapsedStringPart.nonString
 			count: 1
 			path: app/Services/Attendances/VideoSessionAttendancesSyncer.php
+
+		-
+			message: '#^Argument of an invalid type mixed supplied for foreach, only iterables are supported\.$#'
+			identifier: foreach.nonIterable
+			count: 1
+			path: app/Services/Chapter/ChapterCrudService.php
+
+		-
+			message: '#^Binary operation "\+" between mixed and 1 results in an error\.$#'
+			identifier: binaryOp.invalid
+			count: 1
+			path: app/Services/Chapter/ChapterCrudService.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Relations\\HasMany\:\:ordered\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Services/Chapter/ChapterCrudService.php
+
+		-
+			message: '#^Cannot access offset ''id'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: app/Services/Chapter/ChapterCrudService.php
+
+		-
+			message: '#^Cannot access offset ''order'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: app/Services/Chapter/ChapterCrudService.php
+
+		-
+			message: '#^Cannot cast mixed to int\.$#'
+			identifier: cast.int
+			count: 1
+			path: app/Services/Chapter/ChapterCrudService.php
+
+		-
+			message: '#^Parameter \#1 \$value of function count expects array\|Countable, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Chapter/ChapterCrudService.php
+
+		-
+			message: '#^Strict comparison using \!\=\= between mixed and null will always evaluate to true\.$#'
+			identifier: notIdentical.alwaysTrue
+			count: 1
+			path: app/Services/Chapter/ChapterCrudService.php
+
+		-
+			message: '#^Offset ''slides_images'' on array\{success\: bool, content\: string, content_type\: string, file_original_path\: string\} in isset\(\) does not exist\.$#'
+			identifier: isset.offset
+			count: 1
+			path: app/Services/Chapter/ChapterFileUploadService.php
 
 		-
 			message: '#^Cannot access offset ''id'' on mixed\.$#'

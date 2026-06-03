@@ -395,7 +395,8 @@ Route::middleware(['auth:sanctum', 'klassci.sync'])->group(function () {
 // ============================================
 // QUIZZES - Routes protégées
 // ============================================
-use App\Http\Controllers\API\Quiz\QuizAttemptController;
+use App\Http\Controllers\API\Quiz\QuizAttemptStudentController;
+use App\Http\Controllers\API\Quiz\QuizAttemptTeacherController;
 use App\Http\Controllers\API\Quiz\QuizCrudController;
 
 // Routes accessibles à tous les utilisateurs authentifiés
@@ -405,17 +406,17 @@ Route::middleware(['auth:sanctum', 'klassci.sync'])->group(function () {
     Route::get('quizzes/{quiz}', [QuizCrudController::class, 'show']);
 
     // Démarrer et soumettre une tentative
-    Route::post('quizzes/{quiz}/start', [QuizAttemptController::class, 'startAttempt'])
+    Route::post('quizzes/{quiz}/start', [QuizAttemptStudentController::class, 'startAttempt'])
         ->middleware('throttle:300,1');
-    Route::post('quiz-attempts/{id}/submit', [QuizAttemptController::class, 'submitAttempt'])
+    Route::post('quiz-attempts/{id}/submit', [QuizAttemptStudentController::class, 'submitAttempt'])
         ->middleware('throttle:60,1');
 
     // NOUVEAU: Timer et sauvegarde de progression
-    Route::get('quiz-attempts/{id}/time-remaining', [QuizAttemptController::class, 'checkTimeRemaining']);
-    Route::post('quiz-attempts/{id}/save-progress', [QuizAttemptController::class, 'saveProgress']);
+    Route::get('quiz-attempts/{id}/time-remaining', [QuizAttemptStudentController::class, 'checkTimeRemaining']);
+    Route::post('quiz-attempts/{id}/save-progress', [QuizAttemptStudentController::class, 'saveProgress']);
 
     // Consulter une tentative
-    Route::get('quiz-attempts/{id}', [QuizAttemptController::class, 'showAttempt']);
+    Route::get('quiz-attempts/{id}', [QuizAttemptStudentController::class, 'showAttempt']);
 });
 
 // Routes enseignants/coordinateurs/admins
@@ -429,8 +430,8 @@ Route::middleware(['auth:sanctum', 'klassci.sync', 'role:enseignant,coordinateur
     Route::post('quizzes/{quiz}/publish', [QuizCrudController::class, 'publish']);
 
     // Gestion des tentatives
-    Route::get('quizzes/{quiz}/attempts', [QuizAttemptController::class, 'getAttempts']);
-    Route::post('quiz-attempts/{id}/grade', [QuizAttemptController::class, 'gradeAttempt']);
+    Route::get('quizzes/{quiz}/attempts', [QuizAttemptTeacherController::class, 'getAttempts']);
+    Route::post('quiz-attempts/{id}/grade', [QuizAttemptTeacherController::class, 'gradeAttempt']);
 });
 
 // ============================================

@@ -541,90 +541,6 @@ parameters:
 			path: app/Http/Controllers/API/Quiz/QuizCrudController.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\Classe\|Illuminate\\Database\\Eloquent\\Collection\<int, App\\Models\\Classe\>\:\:\$klassci_id\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Controllers/API/ReportController.php
-
-		-
-			message: '#^Anonymous function should return array\{name\: mixed, email\: mixed, total_evaluations\: int\<0, max\>, average\: float, highest\: float, lowest\: float, evaluations\: Illuminate\\Support\\Collection\<int, array\{title\: mixed, note\: mixed, date\: mixed\}\>\} but returns array\{name\: mixed, email\: mixed, total_evaluations\: int\<0, max\>, average\: float, highest\: float, lowest\: float, evaluations\: Illuminate\\Support\\Collection\<int, array\{title\: mixed, note\: mixed, date\: mixed\}\>\}\.$#'
-			identifier: return.type
-			count: 1
-			path: app/Http/Controllers/API/ReportController.php
-
-		-
-			message: '#^Cannot access property \$student on App\\Models\\EvaluationSubmission\|null\.$#'
-			identifier: property.nonObject
-			count: 1
-			path: app/Http/Controllers/API/ReportController.php
-
-		-
-			message: '#^Cannot access property \$user on App\\Models\\ESBTPAttendance\|null\.$#'
-			identifier: property.nonObject
-			count: 1
-			path: app/Http/Controllers/API/ReportController.php
-
-		-
-			message: '#^Cannot call method format\(\) on Carbon\\Carbon\|null\.$#'
-			identifier: method.nonObject
-			count: 1
-			path: app/Http/Controllers/API/ReportController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\API\\ReportController\:\:generateActivityReport\(\) should return Illuminate\\Http\\Response but returns Illuminate\\Http\\JsonResponse\.$#'
-			identifier: return.type
-			count: 1
-			path: app/Http/Controllers/API/ReportController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\API\\ReportController\:\:generateAttendanceReport\(\) should return Illuminate\\Http\\Response but returns Illuminate\\Http\\JsonResponse\.$#'
-			identifier: return.type
-			count: 1
-			path: app/Http/Controllers/API/ReportController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\API\\ReportController\:\:generateGradesReport\(\) should return Illuminate\\Http\\Response but returns Illuminate\\Http\\JsonResponse\.$#'
-			identifier: return.type
-			count: 1
-			path: app/Http/Controllers/API/ReportController.php
-
-		-
-			message: '#^Parameter \#1 \$column of method Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\:\:where\(\) expects array\<int\|model property of Illuminate\\Database\\Eloquent\\Model, mixed\>\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\: Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\: void\)\|Illuminate\\Contracts\\Database\\Query\\Expression\|model property of Illuminate\\Database\\Eloquent\\Model, ''klassci_classe_id'' given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Controllers/API/ReportController.php
-
-		-
-			message: '#^Parameter \#1 \$num of function round expects float\|int, float\|int\|null given\.$#'
-			identifier: argument.type
-			count: 2
-			path: app/Http/Controllers/API/ReportController.php
-
-		-
-			message: '#^Parameter \#1 \$num of function round expects float\|int, mixed given\.$#'
-			identifier: argument.type
-			count: 4
-			path: app/Http/Controllers/API/ReportController.php
-
-		-
-			message: '#^Parameter \#1 \$time of static method Carbon\\Carbon\:\:parse\(\) expects Carbon\\Month\|Carbon\\WeekDay\|DateTimeInterface\|float\|int\|string\|null, mixed given\.$#'
-			identifier: argument.type
-			count: 6
-			path: app/Http/Controllers/API/ReportController.php
-
-		-
-			message: '#^Relation ''seance'' is not found in App\\Models\\ESBTPAttendance model\.$#'
-			identifier: larastan.relationExistence
-			count: 3
-			path: app/Http/Controllers/API/ReportController.php
-
-		-
-			message: '#^Relation ''user'' is not found in App\\Models\\ESBTPAttendance model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Http/Controllers/API/ReportController.php
-
-		-
 			message: '#^Cannot cast mixed to int\.$#'
 			identifier: cast.int
 			count: 1
@@ -5573,6 +5489,48 @@ parameters:
 			identifier: argument.type
 			count: 1
 			path: app/Services/Quiz/QuizGradingService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\ESBTPAttendance\:\:\$user\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Report/ReportGenerationService.php
+
+		-
+			message: '#^Cannot cast mixed to float\.$#'
+			identifier: cast.double
+			count: 4
+			path: app/Services/Report/ReportGenerationService.php
+
+		-
+			message: '#^Cannot cast mixed to int\.$#'
+			identifier: cast.int
+			count: 2
+			path: app/Services/Report/ReportGenerationService.php
+
+		-
+			message: '#^Cannot cast mixed to string\.$#'
+			identifier: cast.string
+			count: 1
+			path: app/Services/Report/ReportGenerationService.php
+
+		-
+			message: '#^Parameter \#1 \$column of method Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\:\:where\(\) expects array\<int\|model property of Illuminate\\Database\\Eloquent\\Model, mixed\>\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\: Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\: void\)\|Illuminate\\Contracts\\Database\\Query\\Expression\|model property of Illuminate\\Database\\Eloquent\\Model, ''klassci_classe_id'' given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Report/ReportGenerationService.php
+
+		-
+			message: '#^Relation ''seance'' is not found in App\\Models\\ESBTPAttendance model\.$#'
+			identifier: larastan.relationExistence
+			count: 3
+			path: app/Services/Report/ReportGenerationService.php
+
+		-
+			message: '#^Relation ''user'' is not found in App\\Models\\ESBTPAttendance model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/Report/ReportGenerationService.php
 
 		-
 			message: '#^Cannot access offset ''heure_debut'' on mixed\.$#'

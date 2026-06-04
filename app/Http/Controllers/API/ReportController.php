@@ -1,241 +1,93 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Controllers\API;
 
-use App\Http\Controllers\Controller;
+use App\Http\Controllers\AuthenticatedController;
+use App\Http\Requests\GenerateActivityReportRequest;
 use App\Http\Requests\GenerateAttendanceReportRequest;
 use App\Http\Requests\GenerateGradesReportRequest;
-use App\Http\Requests\GenerateActivityReportRequest;
-use App\Models\User;
-use App\Models\Evaluation;
-use App\Models\EvaluationSubmission;
-use App\Models\ESBTPAttendance;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
-use Carbon\Carbon;
-use Barryvdh\DomPDF\Facade\Pdf;
+use App\Services\Report\ReportGenerationService;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Response;
 
 /**
- * Contrôleur pour la génération de rapports PDF
+ * Thin controller — génération de rapports PDF (présences / notes / activité).
+ *
+ * Split §5 (≤200 l) : la totalité de l'orchestration métier + agrégation +
+ * rendu Blade → DomPDF a été extraite dans
+ * {@see ReportGenerationService}. Le controller se limite à :
+ *
+ *   1. récupérer les payloads validés via les `FormRequest`s dédiés
+ *      (l'autorisation coordinateur/admin reste appliquée par eux) ;
+ *   2. déléguer au service ;
+ *   3. transformer le `['status', 'payload']` retourné en réponse HTTP
+ *      finale — `Response` (PDF binaire) pour `status === 200`,
+ *      `JsonResponse` pour les erreurs.
+ *
+ * §1.6 D : service injecté via le constructor, jamais `app()` ni Facade.
  */
-class ReportController extends Controller
+final class ReportController extends AuthenticatedController
 {
-    /**
-     * Génère un rapport de présences (PDF)
-     *
-     * @param GenerateAttendanceReportRequest $request
-     * @return \Illuminate\Http\Response
-     */
-    public function generateAttendanceReport(GenerateAttendanceReportRequest $request)
-    {
-        try {
-            $dateStart = Carbon::parse($request->date_start);
-            $dateEnd = Carbon::parse($request->date_end);
-            $classeId = $request->classe_id;
-
-            // Récupérer la classe pour obtenir son klassci_id
-            $klassciClasseId = null;
-            if ($classeId) {
-                $classe = \App\Models\Classe::find($classeId);
-                if ($classe) {
-                    $klassciClasseId = $classe->klassci_id;
-                }
-            }
-
-            // Récupérer les données de présence (joindre avec seance pour la date)
-            $query = ESBTPAttendance::whereHas('seance', function ($q) use ($dateStart, $dateEnd) {
-                $q->whereBetween('date_seance', [$dateStart, $dateEnd->endOfDay()]);
-            });
-
-            if ($klassciClasseId) {
-                $query->whereHas('seance', function ($q) use ($klassciClasseId) {
-                    $q->where('klassci_classe_id', $klassciClasseId);
-                });
-            }
-
-            $attendances = $query->with(['user', 'seance'])->get();
-
-            // Calculer les statistiques
-            $totalAttendances = $attendances->count();
-            $presents = $attendances->where('status', 'present')->count();
-            $absents = $attendances->where('status', 'absent')->count();
-            $retards = $attendances->where('status', 'late')->count();
-
-            $tauxPresence = $totalAttendances > 0
-                ? round(($presents / $totalAttendances) * 100, 2)
-                : 0;
-
-            // Grouper par étudiant
-            $attendancesByStudent = $attendances->groupBy('user_id')->map(function ($items, $userId) {
-                $user = $items->first()->user;
-                return [
-                    'name' => $user->name ?? 'Inconnu',
-                    'email' => $user->email ?? '',
-                    'total' => $items->count(),
-                    'presents' => $items->where('status', 'present')->count(),
-                    'absents' => $items->where('status', 'absent')->count(),
-                    'retards' => $items->where('status', 'late')->count(),
-                    'taux' => round(($items->where('status', 'present')->count() / $items->count()) * 100, 2)
-                ];
-            })->values();
-
-            $data = [
-                'title' => 'Rapport de Présences',
-                'date_start' => $dateStart->format('d/m/Y'),
-                'date_end' => $dateEnd->format('d/m/Y'),
-                'generated_at' => Carbon::now()->format('d/m/Y H:i'),
-                'stats' => [
-                    'total' => $totalAttendances,
-                    'presents' => $presents,
-                    'absents' => $absents,
-                    'retards' => $retards,
-                    'taux_presence' => $tauxPresence
-                ],
-                'students' => $attendancesByStudent
-            ];
-
-            $pdf = Pdf::loadView('reports.attendance', $data);
-
-            return $pdf->download('rapport-presences-' . Carbon::now()->format('Y-m-d') . '.pdf');
-
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'error' => 'Erreur génération rapport',
-                'message' => 'Une erreur est survenue.'
-            ], 500);
-        }
+    public function __construct(
+        private readonly ReportGenerationService $reports,
+    ) {
     }
 
     /**
-     * Génère un rapport de notes (PDF)
-     *
-     * @param GenerateGradesReportRequest $request
-     * @return \Illuminate\Http\Response
+     * POST /api/admin/reports/attendance — rapport de présences (PDF).
      */
-    public function generateGradesReport(GenerateGradesReportRequest $request)
+    public function generateAttendanceReport(GenerateAttendanceReportRequest $request): Response|JsonResponse
     {
-        try {
-            $dateStart = Carbon::parse($request->date_start);
-            $dateEnd = Carbon::parse($request->date_end);
+        $user = $this->authenticatedUser($request);
+        $result = $this->reports->generateAttendance($request->validated(), $user);
 
-            // Récupérer les soumissions
-            $query = EvaluationSubmission::whereBetween('submitted_at', [$dateStart, $dateEnd])
-                ->whereNotNull('note_sur_20')
-                ->with(['evaluation', 'student']);
-
-            // Filtrer par évaluation si fournie
-            if ($request->evaluation_id) {
-                $query->where('evaluation_id', $request->evaluation_id);
-            }
-
-            $submissions = $query->get();
-
-            // Calculer les statistiques
-            $totalSubmissions = $submissions->count();
-            $averageGrade = $submissions->avg('note_sur_20');
-            $highestGrade = $submissions->max('note_sur_20');
-            $lowestGrade = $submissions->min('note_sur_20');
-
-            // Grouper par étudiant
-            $gradesByStudent = $submissions->groupBy('student_id')->map(function ($items, $studentId) {
-                $student = $items->first()->student;
-                return [
-                    'name' => $student->name ?? 'Inconnu',
-                    'email' => $student->email ?? '',
-                    'total_evaluations' => $items->count(),
-                    'average' => round($items->avg('note_sur_20'), 2),
-                    'highest' => round($items->max('note_sur_20'), 2),
-                    'lowest' => round($items->min('note_sur_20'), 2),
-                    'evaluations' => $items->map(function ($submission) {
-                        return [
-                            'title' => $submission->evaluation->titre ?? 'Sans titre',
-                            'note' => $submission->note_sur_20,
-                            'date' => $submission->submitted_at->format('d/m/Y')
-                        ];
-                    })
-                ];
-            })->values();
-
-            $data = [
-                'title' => 'Rapport de Notes',
-                'date_start' => $dateStart->format('d/m/Y'),
-                'date_end' => $dateEnd->format('d/m/Y'),
-                'generated_at' => Carbon::now()->format('d/m/Y H:i'),
-                'stats' => [
-                    'total_submissions' => $totalSubmissions,
-                    'average' => round($averageGrade, 2),
-                    'highest' => round($highestGrade, 2),
-                    'lowest' => round($lowestGrade, 2)
-                ],
-                'students' => $gradesByStudent
-            ];
-
-            $pdf = Pdf::loadView('reports.grades', $data);
-
-            return $pdf->download('rapport-notes-' . Carbon::now()->format('Y-m-d') . '.pdf');
-
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'error' => 'Erreur génération rapport',
-                'message' => 'Une erreur est survenue.'
-            ], 500);
-        }
+        return $this->toHttpResponse($result);
     }
 
     /**
-     * Génère un rapport d'activité système (PDF)
-     *
-     * @param GenerateActivityReportRequest $request
-     * @return \Illuminate\Http\Response
+     * POST /api/admin/reports/grades — rapport de notes (PDF).
      */
-    public function generateActivityReport(GenerateActivityReportRequest $request)
+    public function generateGradesReport(GenerateGradesReportRequest $request): Response|JsonResponse
     {
-        try {
-            $dateStart = Carbon::parse($request->date_start);
-            $dateEnd = Carbon::parse($request->date_end);
+        $user = $this->authenticatedUser($request);
+        $result = $this->reports->generateGrades($request->validated(), $user);
 
-            // Statistiques utilisateurs
-            $newUsers = User::whereBetween('created_at', [$dateStart, $dateEnd])->count();
-            $totalUsers = User::count();
-            $usersByRole = User::selectRaw('role, COUNT(*) as count')
-                ->groupBy('role')
-                ->get()
-                ->pluck('count', 'role');
+        return $this->toHttpResponse($result);
+    }
 
-            // Statistiques évaluations
-            $newEvaluations = Evaluation::whereBetween('created_at', [$dateStart, $dateEnd])->count();
-            $totalEvaluations = Evaluation::count();
-            $evaluationSubmissions = EvaluationSubmission::whereBetween('submitted_at', [$dateStart, $dateEnd])->count();
+    /**
+     * POST /api/admin/reports/activity — rapport d'activité système (PDF).
+     */
+    public function generateActivityReport(GenerateActivityReportRequest $request): Response|JsonResponse
+    {
+        $user = $this->authenticatedUser($request);
+        $result = $this->reports->generateActivity($request->validated(), $user);
 
-            $data = [
-                'title' => 'Rapport d\'Activité Système',
-                'date_start' => $dateStart->format('d/m/Y'),
-                'date_end' => $dateEnd->format('d/m/Y'),
-                'generated_at' => Carbon::now()->format('d/m/Y H:i'),
-                'users' => [
-                    'new' => $newUsers,
-                    'total' => $totalUsers,
-                    'by_role' => $usersByRole
-                ],
-                'evaluations' => [
-                    'new' => $newEvaluations,
-                    'total' => $totalEvaluations,
-                    'submissions' => $evaluationSubmissions
-                ]
-            ];
+        return $this->toHttpResponse($result);
+    }
 
-            $pdf = Pdf::loadView('reports.activity', $data);
+    /**
+     * Transforme le contrat de retour du service en réponse HTTP :
+     *   - `status === 200` → `payload` est déjà la `Response` PDF construite
+     *     par `Pdf::download()` (binaire + Content-Disposition attachment).
+     *   - sinon → `payload` est un tableau JSON-sérialisable enveloppé dans
+     *     une `JsonResponse` avec le code HTTP du service.
+     *
+     * @param array{status: int, payload: Response|array<string, mixed>} $result
+     */
+    private function toHttpResponse(array $result): Response|JsonResponse
+    {
+        $payload = $result['payload'];
 
-            return $pdf->download('rapport-activite-' . Carbon::now()->format('Y-m-d') . '.pdf');
-
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'error' => 'Erreur génération rapport',
-                'message' => 'Une erreur est survenue.'
-            ], 500);
+        if ($result['status'] === 200 && $payload instanceof Response) {
+            return $payload;
         }
+
+        /** @var array<string, mixed> $jsonPayload */
+        $jsonPayload = is_array($payload) ? $payload : ['success' => false];
+
+        return response()->json($jsonPayload, $result['status']);
     }
 }

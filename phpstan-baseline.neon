@@ -6743,3 +6743,27 @@ parameters:
 			identifier: binaryOp.invalid
 			count: 2
 			path: app/Services/Visio/VisioParticipantsStatsBuilder.php
+
+		-
+			message: '#^Access to an undefined property App\Models\ForumPost\|Illuminate\Database\Eloquent\Collection\<int, App\Models\ForumPost\>\:\:\$user_id\.$#'
+			identifier: property.notFound
+			count: 3
+			path: app/Services/Forum/ForumPostService.php
+
+		-
+			message: '#^Access to an undefined property App\Models\ForumPost\|Illuminate\Database\Eloquent\Collection\<int, App\Models\ForumPost\>\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Forum/ForumPostService.php
+
+		-
+			message: '#^Cannot access property \$title on App\Models\ForumTopic\|null\.$#'
+			identifier: property.nonObject
+			count: 1
+			path: app/Services/Forum/ForumPostService.php
+
+		-
+			message: '#^Cannot access property \$id on App\Models\ForumTopic\|null\.$#'
+			identifier: property.nonObject
+			count: 1
+			path: app/Services/Forum/ForumPostService.php

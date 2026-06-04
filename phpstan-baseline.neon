@@ -493,54 +493,6 @@ parameters:
 			path: app/Http/Controllers/API/Proxy/ProxyOrganisationController.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\Quiz\:\:\$user_attempts_count\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Http/Controllers/API/Quiz/QuizCrudController.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\Quiz\:\:\$user_best_attempt\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Http/Controllers/API/Quiz/QuizCrudController.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\Quiz\:\:\$user_can_attempt\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Http/Controllers/API/Quiz/QuizCrudController.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\Quiz\:\:\$user_latest_attempt\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Controllers/API/Quiz/QuizCrudController.php
-
-		-
-			message: '#^Parameter \#1 \$classeId of method Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Quiz\>\:\:forClasse\(\) expects int, mixed given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Controllers/API/Quiz/QuizCrudController.php
-
-		-
-			message: '#^Parameter \#1 \$lessonId of method Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Quiz\>\:\:forLesson\(\) expects int, mixed given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Controllers/API/Quiz/QuizCrudController.php
-
-		-
-			message: '#^Parameter \#1 \$matiereId of method Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Quiz\>\:\:forMatiere\(\) expects int, mixed given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Controllers/API/Quiz/QuizCrudController.php
-
-		-
-			message: '#^Parameter \#1 \$perPage of method Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Quiz\>\:\:paginate\(\) expects int\|null, mixed given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Controllers/API/Quiz/QuizCrudController.php
-
-		-
 			message: '#^Access to an undefined property App\\Models\\Classe\|Illuminate\\Database\\Eloquent\\Collection\<int, App\\Models\\Classe\>\:\:\$klassci_id\.$#'
 			identifier: property.notFound
 			count: 1
@@ -5519,6 +5471,30 @@ parameters:
 			identifier: missingType.generics
 			count: 1
 			path: app/Services/Quiz/QuizAttemptLifecycleService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Quiz\:\:\$user_attempts_count\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Services/Quiz/QuizCrudService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Quiz\:\:\$user_best_attempt\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Services/Quiz/QuizCrudService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Quiz\:\:\$user_can_attempt\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Services/Quiz/QuizCrudService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Quiz\:\:\$user_latest_attempt\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Quiz/QuizCrudService.php
 
 		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'

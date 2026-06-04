@@ -5047,6 +5047,36 @@ parameters:
 			path: app/Services/File/FileUploadService.php
 
 		-
+			message: '#^Access to an undefined property App\\Models\\ForumPost\|Illuminate\\Database\\Eloquent\\Collection\<int, App\\Models\\ForumPost\>\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Forum/ForumPostService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\ForumPost\|Illuminate\\Database\\Eloquent\\Collection\<int, App\\Models\\ForumPost\>\:\:\$user_id\.$#'
+			identifier: property.notFound
+			count: 3
+			path: app/Services/Forum/ForumPostService.php
+
+		-
+			message: '#^Cannot access property \$id on App\\Models\\ForumTopic\|null\.$#'
+			identifier: property.nonObject
+			count: 1
+			path: app/Services/Forum/ForumPostService.php
+
+		-
+			message: '#^Cannot access property \$title on App\\Models\\ForumTopic\|null\.$#'
+			identifier: property.nonObject
+			count: 1
+			path: app/Services/Forum/ForumPostService.php
+
+		-
+			message: '#^Parameter \#1 \$attributes of static method Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Notification\>\:\:create\(\) expects array\<model property of App\\Models\\Notification, mixed\>, array\<string, array\<string, int\|string\>\|int\|string\|null\> given\.$#'
+			identifier: argument.type
+			count: 3
+			path: app/Services/Forum/ForumPostService.php
+
+		-
 			message: '#^Method App\\Services\\Forum\\ForumTopicService\:\:list\(\) return type with generic interface Illuminate\\Contracts\\Pagination\\LengthAwarePaginator does not specify its types\: TKey, TValue$#'
 			identifier: missingType.generics
 			count: 1
@@ -5335,6 +5365,12 @@ parameters:
 			path: app/Services/Matiere/MyMatieresQueryService.php
 
 		-
+			message: '#^Cannot access property \$id on App\\Models\\ForumTopic\|null\.$#'
+			identifier: property.nonObject
+			count: 3
+			path: app/Services/Notification/ForumNotificationDispatcher.php
+
+		-
 			message: '#^Cannot access property \$id on Illuminate\\Database\\Eloquent\\Model\|null\.$#'
 			identifier: property.nonObject
 			count: 2
@@ -5344,6 +5380,18 @@ parameters:
 			message: '#^Cannot access property \$name on Illuminate\\Database\\Eloquent\\Model\|null\.$#'
 			identifier: property.nonObject
 			count: 3
+			path: app/Services/Notification/ForumNotificationDispatcher.php
+
+		-
+			message: '#^Cannot access property \$title on App\\Models\\ForumTopic\|null\.$#'
+			identifier: property.nonObject
+			count: 5
+			path: app/Services/Notification/ForumNotificationDispatcher.php
+
+		-
+			message: '#^Cannot access property \$user on App\\Models\\ForumTopic\|null\.$#'
+			identifier: property.nonObject
+			count: 1
 			path: app/Services/Notification/ForumNotificationDispatcher.php
 
 		-
@@ -6725,27 +6773,3 @@ parameters:
 			identifier: binaryOp.invalid
 			count: 2
 			path: app/Services/Visio/VisioParticipantsStatsBuilder.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\ForumPost\|Illuminate\\Database\\Eloquent\\Collection\<int, App\\Models\\ForumPost\>\:\:\$user_id\.$#'
-			identifier: property.notFound
-			count: 3
-			path: app/Services/Forum/ForumPostService.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\ForumPost\|Illuminate\\Database\\Eloquent\\Collection\<int, App\\Models\\ForumPost\>\:\:\$id\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/Forum/ForumPostService.php
-
-		-
-			message: '#^Cannot access property \$title on App\\Models\\ForumTopic\|null\.$#'
-			identifier: property.nonObject
-			count: 1
-			path: app/Services/Forum/ForumPostService.php
-
-		-
-			message: '#^Cannot access property \$id on App\\Models\\ForumTopic\|null\.$#'
-			identifier: property.nonObject
-			count: 1
-			path: app/Services/Forum/ForumPostService.php

@@ -43,42 +43,6 @@ parameters:
 			path: app/Console/Commands/NotifyUpcomingEvaluations.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\EvaluationSubmission\:\:\$count\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Controllers/API/AdminAnalyticsController.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\QuizAttempt\:\:\$count\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Controllers/API/AdminAnalyticsController.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\User\:\:\$count\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Controllers/API/AdminAnalyticsController.php
-
-		-
-			message: '#^Parameter \#3 \$callback of static method Illuminate\\Cache\\Repository\:\:remember\(\) contains unresolvable type\.$#'
-			identifier: argument.unresolvableType
-			count: 1
-			path: app/Http/Controllers/API/AdminAnalyticsController.php
-
-		-
-			message: '#^Return type of call to static method Illuminate\\Cache\\Repository\:\:remember\(\) contains unresolvable type\.$#'
-			identifier: staticMethod.unresolvableReturnType
-			count: 1
-			path: app/Http/Controllers/API/AdminAnalyticsController.php
-
-		-
-			message: '#^Using nullsafe property access "\?\-\>count" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
-			identifier: nullsafe.neverNull
-			count: 3
-			path: app/Http/Controllers/API/AdminAnalyticsController.php
-
-		-
 			message: '#^Parameter \#1 \$value of function bcrypt expects string, mixed given\.$#'
 			identifier: argument.type
 			count: 2

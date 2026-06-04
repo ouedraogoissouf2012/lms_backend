@@ -5071,12 +5071,6 @@ parameters:
 			path: app/Services/Forum/ForumPostService.php
 
 		-
-			message: '#^Parameter \#1 \$attributes of static method Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Notification\>\:\:create\(\) expects array\<model property of App\\Models\\Notification, mixed\>, array\<string, array\<string, int\|string\>\|int\|string\|null\> given\.$#'
-			identifier: argument.type
-			count: 3
-			path: app/Services/Forum/ForumPostService.php
-
-		-
 			message: '#^Method App\\Services\\Forum\\ForumTopicService\:\:list\(\) return type with generic interface Illuminate\\Contracts\\Pagination\\LengthAwarePaginator does not specify its types\: TKey, TValue$#'
 			identifier: missingType.generics
 			count: 1

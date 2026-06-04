@@ -12,16 +12,9 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
 /**
- * Proxy KLASSCI — Lecture organisationnelle.
+ * Proxy KLASSCI — Lecture organisationnelle (GET only).
  *
- * Endpoints lecture seule (GET) qui exposent la structure, classes,
- * matières, enseignants, filières, niveaux et test de connexion.
- *
- * Extrait verbatim de ProxyController (395 lignes, 16 méthodes) splitté
- * en 3 controllers SRP par concern.
- *
- * @see PRODUCTION_STANDARDS.md §5 — Controllers ≤200 lignes
- * @see PRODUCTION_STANDARDS.md §1.6 D — DI strict (constructor injection)
+ * Structure, classes, matières, enseignants, filières, niveaux, test connexion.
  */
 final class ProxyOrganisationController extends Controller
 {

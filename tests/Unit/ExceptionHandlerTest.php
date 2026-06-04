@@ -87,9 +87,13 @@ class ExceptionHandlerTest extends TestCase
         // de la logique de logging dans les services (TIER 1 + splits §5/§1.6 D).
         // Les controllers migrent de la Facade `Log::` vers l'injection PSR-3
         // `LoggerInterface` au fil des splits, donc le compteur peut baisser.
-        // Reste >5 pour garantir qu'on n'a pas vidé les logs serveur par erreur.
+        // Seuil ajusté à >3 après split-19/search (`SearchController` migré vers
+        // PSR-3 `LoggerInterface` dans `GlobalSearchService`). Le logging des
+        // détails d'exception est toujours préservé — il passe simplement par
+        // l'injection au lieu de la Facade. Reste >3 pour garantir qu'on n'a
+        // pas vidé les logs serveur par erreur.
         $this->assertGreaterThan(
-            5,
+            3,
             count($logged),
             'Log:: should still contain getMessage() for server-side logging — found only ' . count($logged) . ' lines.'
         );

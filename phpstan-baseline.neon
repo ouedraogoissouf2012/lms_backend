@@ -5335,12 +5335,6 @@ parameters:
 			path: app/Services/Matiere/MyMatieresQueryService.php
 
 		-
-			message: '#^Cannot access property \$id on App\\Models\\ForumTopic\|null\.$#'
-			identifier: property.nonObject
-			count: 3
-			path: app/Services/Notification/ForumNotificationDispatcher.php
-
-		-
 			message: '#^Cannot access property \$id on Illuminate\\Database\\Eloquent\\Model\|null\.$#'
 			identifier: property.nonObject
 			count: 2
@@ -5350,18 +5344,6 @@ parameters:
 			message: '#^Cannot access property \$name on Illuminate\\Database\\Eloquent\\Model\|null\.$#'
 			identifier: property.nonObject
 			count: 3
-			path: app/Services/Notification/ForumNotificationDispatcher.php
-
-		-
-			message: '#^Cannot access property \$title on App\\Models\\ForumTopic\|null\.$#'
-			identifier: property.nonObject
-			count: 5
-			path: app/Services/Notification/ForumNotificationDispatcher.php
-
-		-
-			message: '#^Cannot access property \$user on App\\Models\\ForumTopic\|null\.$#'
-			identifier: property.nonObject
-			count: 1
 			path: app/Services/Notification/ForumNotificationDispatcher.php
 
 		-
@@ -6745,25 +6727,25 @@ parameters:
 			path: app/Services/Visio/VisioParticipantsStatsBuilder.php
 
 		-
-			message: '#^Access to an undefined property App\Models\ForumPost\|Illuminate\Database\Eloquent\Collection\<int, App\Models\ForumPost\>\:\:\$user_id\.$#'
+			message: '#^Access to an undefined property App\\Models\\ForumPost\|Illuminate\\Database\\Eloquent\\Collection\<int, App\\Models\\ForumPost\>\:\:\$user_id\.$#'
 			identifier: property.notFound
 			count: 3
 			path: app/Services/Forum/ForumPostService.php
 
 		-
-			message: '#^Access to an undefined property App\Models\ForumPost\|Illuminate\Database\Eloquent\Collection\<int, App\Models\ForumPost\>\:\:\$id\.$#'
+			message: '#^Access to an undefined property App\\Models\\ForumPost\|Illuminate\\Database\\Eloquent\\Collection\<int, App\\Models\\ForumPost\>\:\:\$id\.$#'
 			identifier: property.notFound
 			count: 1
 			path: app/Services/Forum/ForumPostService.php
 
 		-
-			message: '#^Cannot access property \$title on App\Models\ForumTopic\|null\.$#'
+			message: '#^Cannot access property \$title on App\\Models\\ForumTopic\|null\.$#'
 			identifier: property.nonObject
 			count: 1
 			path: app/Services/Forum/ForumPostService.php
 
 		-
-			message: '#^Cannot access property \$id on App\Models\ForumTopic\|null\.$#'
+			message: '#^Cannot access property \$id on App\\Models\\ForumTopic\|null\.$#'
 			identifier: property.nonObject
 			count: 1
 			path: app/Services/Forum/ForumPostService.php

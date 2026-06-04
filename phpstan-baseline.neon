@@ -5488,37 +5488,43 @@ parameters:
 			message: '#^Access to an undefined property App\\Models\\QuizAttempt\:\:\$questions_with_results\.$#'
 			identifier: property.notFound
 			count: 1
-			path: app/Services/Quiz/QuizAttemptLifecycleService.php
+			path: app/Services/Quiz/QuizAttemptStateService.php
 
 		-
 			message: '#^Access to an undefined property App\\Models\\QuizAttempt\:\:\$time_remaining\.$#'
 			identifier: property.notFound
 			count: 1
-			path: app/Services/Quiz/QuizAttemptLifecycleService.php
+			path: app/Services/Quiz/QuizAttemptStateService.php
 
 		-
 			message: '#^Access to an undefined property App\\Models\\QuizAttempt\:\:\$time_spent_formatted\.$#'
 			identifier: property.notFound
 			count: 1
-			path: app/Services/Quiz/QuizAttemptLifecycleService.php
+			path: app/Services/Quiz/QuizAttemptStateService.php
 
 		-
 			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Relations\\HasMany\:\:ordered\(\)\.$#'
 			identifier: method.notFound
 			count: 2
-			path: app/Services/Quiz/QuizAttemptLifecycleService.php
+			path: app/Services/Quiz/QuizAttemptStartSubmitService.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Relations\\HasMany\:\:ordered\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Services/Quiz/QuizAttemptStateService.php
 
 		-
 			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Relations\\HasMany\:\:submitted\(\)\.$#'
 			identifier: method.notFound
 			count: 1
-			path: app/Services/Quiz/QuizAttemptLifecycleService.php
+			path: app/Services/Quiz/QuizAttemptStateService.php
 
 		-
-			message: '#^Method App\\Services\\Quiz\\QuizAttemptLifecycleService\:\:getAttemptsForQuiz\(\) return type with generic class Illuminate\\Pagination\\LengthAwarePaginator does not specify its types\: TKey, TValue$#'
+			message: '#^Method App\\Services\\Quiz\\QuizAttemptStateService\:\:getAttemptsForQuiz\(\) return type with generic class Illuminate\\Pagination\\LengthAwarePaginator does not specify its types\: TKey, TValue$#'
 			identifier: missingType.generics
 			count: 1
-			path: app/Services/Quiz/QuizAttemptLifecycleService.php
+			path: app/Services/Quiz/QuizAttemptStateService.php
 
 		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'

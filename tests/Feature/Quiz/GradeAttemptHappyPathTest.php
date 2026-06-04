@@ -30,7 +30,7 @@ use Tests\TestCase;
  *  - Points > points_possible → 422 (validation rule max)
  *
  * @see app/Http/Controllers/API/Quiz/QuizAttemptTeacherController.php::gradeAttempt
- * @see app/Services/Quiz/QuizAttemptLifecycleService.php (split-10/quiz-attempt)
+ * @see app/Services/Quiz/QuizAttemptTeacherGradeService.php (split-10/quiz-attempt → SRP split)
  * @see app/Http/Requests/GradeAttemptRequest.php
  */
 final class GradeAttemptHappyPathTest extends TestCase

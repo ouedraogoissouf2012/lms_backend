@@ -9,22 +9,27 @@ use App\Http\Requests\GetQuizAttemptsRequest;
 use App\Http\Requests\GradeAttemptRequest;
 use App\Models\Quiz;
 use App\Models\QuizAttempt;
-use App\Services\Quiz\QuizAttemptLifecycleService;
+use App\Services\Quiz\QuizAttemptStateService;
+use App\Services\Quiz\QuizAttemptTeacherGradeService;
 use Illuminate\Http\JsonResponse;
 
 /**
  * Thin controller — endpoints enseignants des tentatives quiz.
  *
- * Split du god-controller `QuizAttemptController` (444l -> 2 controllers SRP +
- * 1 service). Tenant + ownership enforcés via les FormRequest authorize().
+ * Split du god-controller `QuizAttemptController` (444l) puis du
+ * `QuizAttemptLifecycleService` (372l) en services SRP conformes §1.1 (≤300l).
+ * Tenant + ownership enforcés via les FormRequest authorize().
  *
- * @see app/Services/Quiz/QuizAttemptLifecycleService.php
+ * @see app/Services/Quiz/QuizAttemptStateService.php
+ * @see app/Services/Quiz/QuizAttemptTeacherGradeService.php
  * @see app/Http/Controllers/API/Quiz/QuizAttemptStudentController.php
  */
 final class QuizAttemptTeacherController extends AuthenticatedController
 {
-    public function __construct(private readonly QuizAttemptLifecycleService $lifecycle)
-    {
+    public function __construct(
+        private readonly QuizAttemptStateService $state,
+        private readonly QuizAttemptTeacherGradeService $teacherGrade,
+    ) {
     }
 
     /**
@@ -38,7 +43,7 @@ final class QuizAttemptTeacherController extends AuthenticatedController
             'per_page' => $request->input('per_page'),
         ], fn ($v): bool => $v !== null);
 
-        $attempts = $this->lifecycle->getAttemptsForQuiz($quiz, $filters);
+        $attempts = $this->state->getAttemptsForQuiz($quiz, $filters);
 
         return response()->json([
             'success' => true,
@@ -65,7 +70,7 @@ final class QuizAttemptTeacherController extends AuthenticatedController
         $pointsEarned = (float) $request->float('points_earned');
         $feedback     = $request->input('feedback');
 
-        $result = $this->lifecycle->manualGrade(
+        $result = $this->teacherGrade->manualGrade(
             $attempt,
             $this->authenticatedUser($request),
             $pointsEarned,

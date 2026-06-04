@@ -29,7 +29,7 @@ use Tests\TestCase;
  *  - cross-tenant : attaquant d'une autre institution ne peut pas soumettre
  *
  * @see app/Http/Controllers/API/Quiz/QuizAttemptStudentController.php::submitAttempt
- * @see app/Services/Quiz/QuizAttemptLifecycleService.php (split-10/quiz-attempt)
+ * @see app/Services/Quiz/QuizAttemptStartSubmitService.php (split-10/quiz-attempt → SRP split)
  * @see app/Services/Quiz/QuizGradingService.php (PERF-04 batch 1)
  */
 final class SubmitAttemptHappyPathTest extends TestCase

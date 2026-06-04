@@ -12,32 +12,33 @@ use App\Http\Requests\StartQuizAttemptRequest;
 use App\Http\Requests\SubmitQuizAttemptRequest;
 use App\Models\Quiz;
 use App\Models\QuizAttempt;
-use App\Services\Quiz\QuizAttemptLifecycleService;
+use App\Services\Quiz\QuizAttemptStartSubmitService;
+use App\Services\Quiz\QuizAttemptStateService;
 use Illuminate\Http\JsonResponse;
 
 /**
  * Thin controller — endpoints étudiants des tentatives quiz.
  *
- * Split du god-controller `QuizAttemptController` (444 lignes -> 2 controllers
- * SRP + 1 service orchestrateur). Cf. PRODUCTION_STANDARDS.md §5 (≤200l) et
- * §1.1 (services ≤300l).
- *
- * Toute la logique métier vit dans {@see QuizAttemptLifecycleService} ; ce
- * controller se borne à :
+ * Split du god-controller `QuizAttemptController` (444l) puis du
+ * `QuizAttemptLifecycleService` (372l) en services SRP conformes §1.1 (≤300l).
+ * Le controller se borne à :
  *   1. extraire l'utilisateur authentifié,
- *   2. déléguer au service,
+ *   2. déléguer au service approprié,
  *   3. transcrire le résultat normalisé en `JsonResponse`.
  *
  * Authorization (tenant + ownership) est portée par les `FormRequest::authorize`
  * — voir #87 fix.
  *
- * @see app/Services/Quiz/QuizAttemptLifecycleService.php
+ * @see app/Services/Quiz/QuizAttemptStartSubmitService.php
+ * @see app/Services/Quiz/QuizAttemptStateService.php
  * @see app/Http/Controllers/API/Quiz/QuizAttemptTeacherController.php
  */
 final class QuizAttemptStudentController extends AuthenticatedController
 {
-    public function __construct(private readonly QuizAttemptLifecycleService $lifecycle)
-    {
+    public function __construct(
+        private readonly QuizAttemptStartSubmitService $startSubmit,
+        private readonly QuizAttemptStateService $state,
+    ) {
     }
 
     /**
@@ -46,7 +47,7 @@ final class QuizAttemptStudentController extends AuthenticatedController
     public function startAttempt(StartQuizAttemptRequest $request, Quiz $quiz): JsonResponse
     {
         $user   = $this->authenticatedUser($request);
-        $result = $this->lifecycle->startAttempt($quiz, $user);
+        $result = $this->startSubmit->startAttempt($quiz, $user);
 
         return $this->toJson($result);
     }
@@ -64,7 +65,7 @@ final class QuizAttemptStudentController extends AuthenticatedController
         /** @var array<int|string,mixed> $answers */
         $answers = is_array($request->input('answers')) ? $request->input('answers') : [];
 
-        $result = $this->lifecycle->submitAttempt(
+        $result = $this->startSubmit->submitAttempt(
             $attempt,
             $this->authenticatedUser($request),
             $answers,
@@ -83,7 +84,7 @@ final class QuizAttemptStudentController extends AuthenticatedController
             return $this->notFound();
         }
 
-        $result = $this->lifecycle->showAttempt(
+        $result = $this->state->showAttempt(
             $attempt,
             $this->authenticatedUser($request),
         );
@@ -105,7 +106,7 @@ final class QuizAttemptStudentController extends AuthenticatedController
             return $this->notFound();
         }
 
-        $result = $this->lifecycle->checkTimeRemaining(
+        $result = $this->state->checkTimeRemaining(
             $attempt,
             $this->authenticatedUser($request),
         );
@@ -126,7 +127,7 @@ final class QuizAttemptStudentController extends AuthenticatedController
         /** @var array<int|string,mixed> $answers */
         $answers = is_array($request->input('answers')) ? $request->input('answers') : [];
 
-        $result = $this->lifecycle->saveProgress(
+        $result = $this->state->saveProgress(
             $attempt,
             $this->authenticatedUser($request),
             $answers,

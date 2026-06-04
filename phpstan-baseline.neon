@@ -43,42 +43,6 @@ parameters:
 			path: app/Console/Commands/NotifyUpcomingEvaluations.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\EvaluationSubmission\:\:\$count\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Controllers/API/AdminAnalyticsController.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\QuizAttempt\:\:\$count\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Controllers/API/AdminAnalyticsController.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\User\:\:\$count\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Controllers/API/AdminAnalyticsController.php
-
-		-
-			message: '#^Parameter \#3 \$callback of static method Illuminate\\Cache\\Repository\:\:remember\(\) contains unresolvable type\.$#'
-			identifier: argument.unresolvableType
-			count: 1
-			path: app/Http/Controllers/API/AdminAnalyticsController.php
-
-		-
-			message: '#^Return type of call to static method Illuminate\\Cache\\Repository\:\:remember\(\) contains unresolvable type\.$#'
-			identifier: staticMethod.unresolvableReturnType
-			count: 1
-			path: app/Http/Controllers/API/AdminAnalyticsController.php
-
-		-
-			message: '#^Using nullsafe property access "\?\-\>count" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
-			identifier: nullsafe.neverNull
-			count: 3
-			path: app/Http/Controllers/API/AdminAnalyticsController.php
-
-		-
 			message: '#^Parameter \#1 \$value of function bcrypt expects string, mixed given\.$#'
 			identifier: argument.type
 			count: 2
@@ -149,96 +113,6 @@ parameters:
 			identifier: nullsafe.neverNull
 			count: 1
 			path: app/Http/Controllers/API/ChapterProgressController.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\Quiz\:\:\$time_limit_minutes\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Controllers/API/Dashboard/DashboardStudentController.php
-
-		-
-			message: '#^Cannot access property \$id on Illuminate\\Database\\Eloquent\\Model\|null\.$#'
-			identifier: property.nonObject
-			count: 2
-			path: app/Http/Controllers/API/Dashboard/DashboardStudentController.php
-
-		-
-			message: '#^Cannot access property \$name on Illuminate\\Database\\Eloquent\\Model\|null\.$#'
-			identifier: property.nonObject
-			count: 1
-			path: app/Http/Controllers/API/Dashboard/DashboardStudentController.php
-
-		-
-			message: '#^Cannot access property \$title on Illuminate\\Database\\Eloquent\\Model\|null\.$#'
-			identifier: property.nonObject
-			count: 2
-			path: app/Http/Controllers/API/Dashboard/DashboardStudentController.php
-
-		-
-			message: '#^Expression on left side of \?\? is not nullable\.$#'
-			identifier: nullCoalesce.expr
-			count: 1
-			path: app/Http/Controllers/API/Dashboard/DashboardStudentController.php
-
-		-
-			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\ForumTopic\>\:\:map\(\) contains unresolvable type\.$#'
-			identifier: argument.unresolvableType
-			count: 1
-			path: app/Http/Controllers/API/Dashboard/DashboardStudentController.php
-
-		-
-			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\LessonProgress\>\:\:map\(\) contains unresolvable type\.$#'
-			identifier: argument.unresolvableType
-			count: 2
-			path: app/Http/Controllers/API/Dashboard/DashboardStudentController.php
-
-		-
-			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\Quiz\>\:\:map\(\) contains unresolvable type\.$#'
-			identifier: argument.unresolvableType
-			count: 1
-			path: app/Http/Controllers/API/Dashboard/DashboardStudentController.php
-
-		-
-			message: '#^Parameter \#1 \$column of method Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\:\:where\(\) expects array\<int\|model property of Illuminate\\Database\\Eloquent\\Model, mixed\>\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\: Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\: void\)\|Illuminate\\Contracts\\Database\\Query\\Expression\|model property of Illuminate\\Database\\Eloquent\\Model, ''status'' given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Controllers/API/Dashboard/DashboardStudentController.php
-
-		-
-			message: '#^Parameter \#1 \$column of method Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\:\:where\(\) expects array\<int\|model property of Illuminate\\Database\\Eloquent\\Model, mixed\>\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\: Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\: void\)\|Illuminate\\Contracts\\Database\\Query\\Expression\|model property of Illuminate\\Database\\Eloquent\\Model, ''user_id'' given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Controllers/API/Dashboard/DashboardStudentController.php
-
-		-
-			message: '#^Parameter \#1 \$minutes of method App\\Http\\Controllers\\API\\Dashboard\\DashboardStudentController\:\:formatMinutes\(\) expects int, float\|int\|string given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Controllers/API/Dashboard/DashboardStudentController.php
-
-		-
-			message: '#^Parameter \#1 \$num of function round expects float\|int, float\|int\|string given\.$#'
-			identifier: argument.type
-			count: 2
-			path: app/Http/Controllers/API/Dashboard/DashboardStudentController.php
-
-		-
-			message: '#^Return type of call to method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\ForumTopic\>\:\:map\(\) contains unresolvable type\.$#'
-			identifier: method.unresolvableReturnType
-			count: 1
-			path: app/Http/Controllers/API/Dashboard/DashboardStudentController.php
-
-		-
-			message: '#^Return type of call to method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\LessonProgress\>\:\:map\(\) contains unresolvable type\.$#'
-			identifier: method.unresolvableReturnType
-			count: 2
-			path: app/Http/Controllers/API/Dashboard/DashboardStudentController.php
-
-		-
-			message: '#^Return type of call to method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\Quiz\>\:\:map\(\) contains unresolvable type\.$#'
-			identifier: method.unresolvableReturnType
-			count: 1
-			path: app/Http/Controllers/API/Dashboard/DashboardStudentController.php
 
 		-
 			message: '#^Access to an undefined property App\\Models\\Lesson\:\:\$students_started\.$#'
@@ -539,90 +413,6 @@ parameters:
 			identifier: argument.type
 			count: 1
 			path: app/Http/Controllers/API/Quiz/QuizCrudController.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\Classe\|Illuminate\\Database\\Eloquent\\Collection\<int, App\\Models\\Classe\>\:\:\$klassci_id\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Controllers/API/ReportController.php
-
-		-
-			message: '#^Anonymous function should return array\{name\: mixed, email\: mixed, total_evaluations\: int\<0, max\>, average\: float, highest\: float, lowest\: float, evaluations\: Illuminate\\Support\\Collection\<int, array\{title\: mixed, note\: mixed, date\: mixed\}\>\} but returns array\{name\: mixed, email\: mixed, total_evaluations\: int\<0, max\>, average\: float, highest\: float, lowest\: float, evaluations\: Illuminate\\Support\\Collection\<int, array\{title\: mixed, note\: mixed, date\: mixed\}\>\}\.$#'
-			identifier: return.type
-			count: 1
-			path: app/Http/Controllers/API/ReportController.php
-
-		-
-			message: '#^Cannot access property \$student on App\\Models\\EvaluationSubmission\|null\.$#'
-			identifier: property.nonObject
-			count: 1
-			path: app/Http/Controllers/API/ReportController.php
-
-		-
-			message: '#^Cannot access property \$user on App\\Models\\ESBTPAttendance\|null\.$#'
-			identifier: property.nonObject
-			count: 1
-			path: app/Http/Controllers/API/ReportController.php
-
-		-
-			message: '#^Cannot call method format\(\) on Carbon\\Carbon\|null\.$#'
-			identifier: method.nonObject
-			count: 1
-			path: app/Http/Controllers/API/ReportController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\API\\ReportController\:\:generateActivityReport\(\) should return Illuminate\\Http\\Response but returns Illuminate\\Http\\JsonResponse\.$#'
-			identifier: return.type
-			count: 1
-			path: app/Http/Controllers/API/ReportController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\API\\ReportController\:\:generateAttendanceReport\(\) should return Illuminate\\Http\\Response but returns Illuminate\\Http\\JsonResponse\.$#'
-			identifier: return.type
-			count: 1
-			path: app/Http/Controllers/API/ReportController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\API\\ReportController\:\:generateGradesReport\(\) should return Illuminate\\Http\\Response but returns Illuminate\\Http\\JsonResponse\.$#'
-			identifier: return.type
-			count: 1
-			path: app/Http/Controllers/API/ReportController.php
-
-		-
-			message: '#^Parameter \#1 \$column of method Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\:\:where\(\) expects array\<int\|model property of Illuminate\\Database\\Eloquent\\Model, mixed\>\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\: Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\: void\)\|Illuminate\\Contracts\\Database\\Query\\Expression\|model property of Illuminate\\Database\\Eloquent\\Model, ''klassci_classe_id'' given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Controllers/API/ReportController.php
-
-		-
-			message: '#^Parameter \#1 \$num of function round expects float\|int, float\|int\|null given\.$#'
-			identifier: argument.type
-			count: 2
-			path: app/Http/Controllers/API/ReportController.php
-
-		-
-			message: '#^Parameter \#1 \$num of function round expects float\|int, mixed given\.$#'
-			identifier: argument.type
-			count: 4
-			path: app/Http/Controllers/API/ReportController.php
-
-		-
-			message: '#^Parameter \#1 \$time of static method Carbon\\Carbon\:\:parse\(\) expects Carbon\\Month\|Carbon\\WeekDay\|DateTimeInterface\|float\|int\|string\|null, mixed given\.$#'
-			identifier: argument.type
-			count: 6
-			path: app/Http/Controllers/API/ReportController.php
-
-		-
-			message: '#^Relation ''seance'' is not found in App\\Models\\ESBTPAttendance model\.$#'
-			identifier: larastan.relationExistence
-			count: 3
-			path: app/Http/Controllers/API/ReportController.php
-
-		-
-			message: '#^Relation ''user'' is not found in App\\Models\\ESBTPAttendance model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Http/Controllers/API/ReportController.php
 
 		-
 			message: '#^Cannot cast mixed to int\.$#'
@@ -4459,6 +4249,114 @@ parameters:
 			path: app/Services/ConvertApiService.php
 
 		-
+			message: '#^Access to an undefined property App\\Models\\Quiz\:\:\$time_limit_minutes\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Dashboard/StudentDashboardService.php
+
+		-
+			message: '#^Cannot access property \$id on Illuminate\\Database\\Eloquent\\Model\|null\.$#'
+			identifier: property.nonObject
+			count: 2
+			path: app/Services/Dashboard/StudentDashboardService.php
+
+		-
+			message: '#^Cannot access property \$name on Illuminate\\Database\\Eloquent\\Model\|null\.$#'
+			identifier: property.nonObject
+			count: 1
+			path: app/Services/Dashboard/StudentDashboardService.php
+
+		-
+			message: '#^Cannot access property \$title on Illuminate\\Database\\Eloquent\\Model\|null\.$#'
+			identifier: property.nonObject
+			count: 2
+			path: app/Services/Dashboard/StudentDashboardService.php
+
+		-
+			message: '#^Expression on left side of \?\? is not nullable\.$#'
+			identifier: nullCoalesce.expr
+			count: 1
+			path: app/Services/Dashboard/StudentDashboardService.php
+
+		-
+			message: '#^Method App\\Services\\Dashboard\\StudentDashboardService\:\:completedLessons\(\) should return Illuminate\\Support\\Collection\<int, array\<string, mixed\>\> but returns Illuminate\\Support\\Collection\<int, array\{lesson_id\: mixed, title\: mixed, matiere\: mixed, completed_at\: mixed, rating\: mixed\}\>\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Services/Dashboard/StudentDashboardService.php
+
+		-
+			message: '#^Method App\\Services\\Dashboard\\StudentDashboardService\:\:ongoingLessons\(\) should return Illuminate\\Support\\Collection\<int, array\<string, mixed\>\> but returns Illuminate\\Support\\Collection\<int, array\{lesson_id\: mixed, title\: mixed, matiere\: mixed, progress_percentage\: mixed, time_spent_minutes\: mixed, last_accessed_at\: mixed\}\>\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Services/Dashboard/StudentDashboardService.php
+
+		-
+			message: '#^Method App\\Services\\Dashboard\\StudentDashboardService\:\:recentForumActivity\(\) should return Illuminate\\Support\\Collection\<int, array\<string, mixed\>\> but returns Illuminate\\Support\\Collection\<int, array\{topic_id\: mixed, title\: mixed, author\: mixed, matiere\: mixed, posts_count\: mixed, is_resolved\: mixed, last_activity_at\: mixed\}\>\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Services/Dashboard/StudentDashboardService.php
+
+		-
+			message: '#^Method App\\Services\\Dashboard\\StudentDashboardService\:\:recentNotifications\(\) should return Illuminate\\Support\\Collection\<int, array\<string, mixed\>\> but returns Illuminate\\Support\\Collection\<int, array\{id\: mixed, type\: mixed, title\: mixed, message\: mixed, is_read\: mixed, icon\: mixed, color\: mixed, action_url\: string\|null, \.\.\.\}\>\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Services/Dashboard/StudentDashboardService.php
+
+		-
+			message: '#^Method App\\Services\\Dashboard\\StudentDashboardService\:\:upcomingQuizzes\(\) should return Illuminate\\Support\\Collection\<int, array\<string, mixed\>\> but returns Illuminate\\Support\\Collection\<int, array\{quiz_id\: mixed, title\: mixed, matiere\: mixed, questions_count\: mixed, time_limit_minutes\: mixed, published_at\: mixed\}\>\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Services/Dashboard/StudentDashboardService.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\ForumTopic\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 1
+			path: app/Services/Dashboard/StudentDashboardService.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\LessonProgress\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 2
+			path: app/Services/Dashboard/StudentDashboardService.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\Quiz\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 1
+			path: app/Services/Dashboard/StudentDashboardService.php
+
+		-
+			message: '#^Parameter \#1 \$column of method Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\:\:where\(\) expects array\<int\|model property of Illuminate\\Database\\Eloquent\\Model, mixed\>\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\: Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\: void\)\|Illuminate\\Contracts\\Database\\Query\\Expression\|model property of Illuminate\\Database\\Eloquent\\Model, ''status'' given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Dashboard/StudentDashboardService.php
+
+		-
+			message: '#^Parameter \#1 \$column of method Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\:\:where\(\) expects array\<int\|model property of Illuminate\\Database\\Eloquent\\Model, mixed\>\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\: Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\: void\)\|Illuminate\\Contracts\\Database\\Query\\Expression\|model property of Illuminate\\Database\\Eloquent\\Model, ''user_id'' given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Dashboard/StudentDashboardService.php
+
+		-
+			message: '#^Return type of call to method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\ForumTopic\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: method.unresolvableReturnType
+			count: 1
+			path: app/Services/Dashboard/StudentDashboardService.php
+
+		-
+			message: '#^Return type of call to method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\LessonProgress\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: method.unresolvableReturnType
+			count: 2
+			path: app/Services/Dashboard/StudentDashboardService.php
+
+		-
+			message: '#^Return type of call to method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\Quiz\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: method.unresolvableReturnType
+			count: 1
+			path: app/Services/Dashboard/StudentDashboardService.php
+
+		-
 			message: '#^Cannot access offset ''code'' on mixed\.$#'
 			identifier: offsetAccess.nonOffsetAccessible
 			count: 1
@@ -5488,37 +5386,43 @@ parameters:
 			message: '#^Access to an undefined property App\\Models\\QuizAttempt\:\:\$questions_with_results\.$#'
 			identifier: property.notFound
 			count: 1
-			path: app/Services/Quiz/QuizAttemptLifecycleService.php
+			path: app/Services/Quiz/QuizAttemptStateService.php
 
 		-
 			message: '#^Access to an undefined property App\\Models\\QuizAttempt\:\:\$time_remaining\.$#'
 			identifier: property.notFound
 			count: 1
-			path: app/Services/Quiz/QuizAttemptLifecycleService.php
+			path: app/Services/Quiz/QuizAttemptStateService.php
 
 		-
 			message: '#^Access to an undefined property App\\Models\\QuizAttempt\:\:\$time_spent_formatted\.$#'
 			identifier: property.notFound
 			count: 1
-			path: app/Services/Quiz/QuizAttemptLifecycleService.php
+			path: app/Services/Quiz/QuizAttemptStateService.php
 
 		-
 			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Relations\\HasMany\:\:ordered\(\)\.$#'
 			identifier: method.notFound
 			count: 2
-			path: app/Services/Quiz/QuizAttemptLifecycleService.php
+			path: app/Services/Quiz/QuizAttemptStartSubmitService.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Relations\\HasMany\:\:ordered\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Services/Quiz/QuizAttemptStateService.php
 
 		-
 			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Relations\\HasMany\:\:submitted\(\)\.$#'
 			identifier: method.notFound
 			count: 1
-			path: app/Services/Quiz/QuizAttemptLifecycleService.php
+			path: app/Services/Quiz/QuizAttemptStateService.php
 
 		-
-			message: '#^Method App\\Services\\Quiz\\QuizAttemptLifecycleService\:\:getAttemptsForQuiz\(\) return type with generic class Illuminate\\Pagination\\LengthAwarePaginator does not specify its types\: TKey, TValue$#'
+			message: '#^Method App\\Services\\Quiz\\QuizAttemptStateService\:\:getAttemptsForQuiz\(\) return type with generic class Illuminate\\Pagination\\LengthAwarePaginator does not specify its types\: TKey, TValue$#'
 			identifier: missingType.generics
 			count: 1
-			path: app/Services/Quiz/QuizAttemptLifecycleService.php
+			path: app/Services/Quiz/QuizAttemptStateService.php
 
 		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
@@ -5573,6 +5477,48 @@ parameters:
 			identifier: argument.type
 			count: 1
 			path: app/Services/Quiz/QuizGradingService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\ESBTPAttendance\:\:\$user\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Report/ReportGenerationService.php
+
+		-
+			message: '#^Cannot cast mixed to float\.$#'
+			identifier: cast.double
+			count: 4
+			path: app/Services/Report/ReportGenerationService.php
+
+		-
+			message: '#^Cannot cast mixed to int\.$#'
+			identifier: cast.int
+			count: 2
+			path: app/Services/Report/ReportGenerationService.php
+
+		-
+			message: '#^Cannot cast mixed to string\.$#'
+			identifier: cast.string
+			count: 1
+			path: app/Services/Report/ReportGenerationService.php
+
+		-
+			message: '#^Parameter \#1 \$column of method Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\:\:where\(\) expects array\<int\|model property of Illuminate\\Database\\Eloquent\\Model, mixed\>\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\: Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\: void\)\|Illuminate\\Contracts\\Database\\Query\\Expression\|model property of Illuminate\\Database\\Eloquent\\Model, ''klassci_classe_id'' given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Report/ReportGenerationService.php
+
+		-
+			message: '#^Relation ''seance'' is not found in App\\Models\\ESBTPAttendance model\.$#'
+			identifier: larastan.relationExistence
+			count: 3
+			path: app/Services/Report/ReportGenerationService.php
+
+		-
+			message: '#^Relation ''user'' is not found in App\\Models\\ESBTPAttendance model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/Report/ReportGenerationService.php
 
 		-
 			message: '#^Cannot access offset ''heure_debut'' on mixed\.$#'

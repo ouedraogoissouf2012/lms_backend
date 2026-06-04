@@ -10,7 +10,18 @@ use App\Models\Traits\BelongsToInstitution;
 /**
  * Model Notification
  *
- * Représente une notification pour un utilisateur
+ * Représente une notification pour un utilisateur.
+ *
+ * @property int $id
+ * @property int $user_id
+ * @property int|null $institution_id
+ * @property string $type
+ * @property string $title
+ * @property string $message
+ * @property array<string, mixed>|null $data
+ * @property \Carbon\Carbon|null $read_at
+ * @property \Carbon\Carbon|null $created_at
+ * @property \Carbon\Carbon|null $updated_at
  */
 class Notification extends Model
 {

@@ -6,35 +6,32 @@ namespace App\Services\Seances\Mutations;
 
 use App\Models\Seance;
 use App\Models\User;
+use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Http\Client\Factory as HttpFactory;
+use Illuminate\Http\Client\PendingRequest;
 use Psr\Log\LoggerInterface;
+use RuntimeException;
 use Throwable;
 
 /**
- * ParticipantValidationService — extrait verbatim de
- * `LMSSeancesMutationController::validateParticipant()`.
+ * Valide qu'un utilisateur peut rejoindre une visioconférence d'une séance.
+ * Vérifie : visio active, rôle enseignant/coordinateur/admin direct, ou
+ * inscription étudiante côté KLASSCI.
  *
- * Refactor du god-controller (split-4, PR #lms-seances-mutation) :
- * la logique de validation d'accès à une visio (vérification visio active,
- * rôle enseignant/coordinateur/admin, ou inscription étudiante via KLASSCI)
- * est désormais isolée dans ce service unitaire.
- *
- * Aucun changement comportemental — la signature de retour reste un tableau
- * `{ status: int, payload: array }` rendu tel quel par le controller.
- *
- * @see PRODUCTION_STANDARDS.md §1.1 — Services ≤300 lignes
- * @see PRODUCTION_STANDARDS.md §1.6 D — DI strict
+ * Extrait de `LMSSeancesMutationController::validateParticipant()` (split #180).
  */
 final class ParticipantValidationService
 {
+    /** Timeout HTTP des appels KLASSCI (secondes). */
+    private const KLASSCI_HTTP_TIMEOUT_SECONDS = 30;
+
     public function __construct(
         private readonly HttpFactory $http,
         private readonly LoggerInterface $logger,
+        private readonly Application $app,
     ) {}
 
     /**
-     * Valide qu'un utilisateur peut rejoindre la séance demandée.
-     *
      * @return array{status:int, payload: array<string, mixed>}
      */
     public function validate(int $seanceId, int $userIdToValidate): array
@@ -46,21 +43,13 @@ final class ParticipantValidationService
                 return $this->fail(404, 'user_not_found');
             }
 
-            $this->logger->info('Validation participant séance', [
+            $this->logger->info('Participant validation requested', [
                 'seance_id' => $seanceId,
                 'user_id' => $userIdToValidate,
                 'user_role' => $userToValidate->role,
             ]);
 
             $visioData = Seance::where('klassci_seance_id', $seanceId)->first();
-
-            $this->logger->info('DEBUG validateParticipant - Données visio', [
-                'seance_id' => $seanceId,
-                'visio_found' => $visioData ? 'oui' : 'non',
-                'visio_enabled' => $visioData?->visio_enabled,
-                'visio_status' => $visioData?->visio_status,
-                'klassci_matiere_id' => $visioData?->klassci_matiere_id,
-            ]);
 
             if (!$visioData || !$visioData->visio_enabled) {
                 return $this->fail(403, 'visio_not_enabled', 'Visioconférence non activée pour cette séance');
@@ -71,11 +60,6 @@ final class ParticipantValidationService
             }
 
             if ($userToValidate->isTeacher() || $userToValidate->isCoordinator() || $userToValidate->isAdmin()) {
-                $this->logger->info('DEBUG validateParticipant - Enseignant autorisé', [
-                    'user_id' => $userIdToValidate,
-                    'role' => $userToValidate->role,
-                ]);
-
                 return [
                     'status' => 200,
                     'payload' => [
@@ -102,7 +86,7 @@ final class ParticipantValidationService
             ];
 
         } catch (Throwable $e) {
-            $this->logger->error('Erreur validation participant', [
+            $this->logger->error('Participant validation failed', [
                 'seance_id' => $seanceId,
                 'user_id' => $userIdToValidate,
                 'error' => $e->getMessage(),
@@ -121,127 +105,60 @@ final class ParticipantValidationService
     }
 
     /**
-     * Vérifie qu'un étudiant est inscrit dans la classe associée à la séance.
+     * Résout la classe associée à la séance (via locale OU via KLASSCI /matieres)
+     * puis vérifie l'inscription étudiante via KLASSCI /classes/{id}/etudiants.
      *
      * @return array{status:int, payload: array<string, mixed>}
      */
     private function validateStudent(int $seanceId, User $userToValidate, Seance $visioData): array
     {
-        $this->logger->info('DEBUG validateParticipant - Vérification étudiant', [
-            'user_id' => $userToValidate->id,
-            'user_email' => $userToValidate->email,
-            'seance_id' => $seanceId,
-            'matiere_id' => $visioData->klassci_matiere_id,
-            'classe_id' => $visioData->klassci_classe_id,
-        ]);
-
         try {
-            $klassciUrl = env('KLASSCI_API_URL', 'https://presentation.klassci.com/api/lms');
-            $classeId = null;
+            $klassciUrl = $this->klassciBaseUrl();
+            $classeId = $visioData->klassci_classe_id;
 
-            if ($visioData->klassci_classe_id) {
-                $classeId = $visioData->klassci_classe_id;
+            if (!$classeId && $visioData->klassci_matiere_id) {
+                $classeId = $this->resolveClasseIdFromMatiere(
+                    $klassciUrl,
+                    (int) $visioData->klassci_matiere_id,
+                    $seanceId,
+                );
 
-                $this->logger->info('DEBUG validateParticipant - Utilisation classe_id de la BDD locale', [
-                    'classe_id' => $classeId,
-                ]);
-            } elseif ($visioData->klassci_matiere_id) {
-                $matiereId = $visioData->klassci_matiere_id;
-
-                $this->logger->info('DEBUG validateParticipant - Recherche via /matieres', [
-                    'matiere_id' => $matiereId,
-                ]);
-
-                $httpClient = $this->http->timeout(30);
-                if (app()->environment('local')) {
-                    $httpClient = $httpClient->withoutVerifying();
-                }
-                $matiereResponse = $httpClient->get("{$klassciUrl}/matieres/{$matiereId}");
-
-                $this->logger->info('DEBUG validateParticipant - Réponse /matieres', [
-                    'status' => $matiereResponse->status(),
-                    'success' => $matiereResponse->successful(),
-                ]);
-
-                if (!$matiereResponse->successful()) {
-                    $this->logger->error('DEBUG validateParticipant - Erreur API matieres', [
-                        'status' => $matiereResponse->status(),
-                        'body' => $matiereResponse->body(),
-                    ]);
-
-                    return $this->fail(500, 'klassci_api_error', 'Erreur lors de la vérification des inscriptions');
-                }
-
-                $matiereData = $matiereResponse->json();
-                $seancesProgrammees = $matiereData['data']['seances_programmees'] ?? [];
-
-                $this->logger->info('DEBUG validateParticipant - Séances programmées', [
-                    'count' => count($seancesProgrammees),
-                    'recherche_seance_id' => $seanceId,
-                ]);
-
-                $seanceInfo = collect($seancesProgrammees)->firstWhere('id', $seanceId);
-
-                if (!$seanceInfo) {
-                    $this->logger->warning('DEBUG validateParticipant - Séance non trouvée dans les programmations', [
-                        'seance_id' => $seanceId,
-                        'seances_disponibles' => collect($seancesProgrammees)->pluck('id')->toArray(),
-                    ]);
-
+                if ($classeId === null) {
                     return $this->fail(403, 'seance_not_found', 'Séance non trouvée dans les programmations');
                 }
-
-                $classeId = $seanceInfo['classe_id'] ?? null;
-
-                $this->logger->info('DEBUG validateParticipant - Séance trouvée via /matieres', [
-                    'seance_id' => $seanceId,
-                    'classe_id' => $classeId,
-                ]);
             }
 
             if (!$classeId) {
-                $this->logger->error('DEBUG validateParticipant - Pas de classe_id disponible', [
+                $this->logger->error('Participant validation : no classe_id available', [
                     'seance_id' => $seanceId,
-                    'has_matiere_id' => $visioData->klassci_matiere_id ? 'oui' : 'non',
-                    'has_classe_id' => $visioData->klassci_classe_id ? 'oui' : 'non',
+                    'has_matiere_id' => $visioData->klassci_matiere_id !== null,
+                    'has_classe_id' => $visioData->klassci_classe_id !== null,
                 ]);
 
                 return $this->fail(403, 'no_classe_id', 'Classe non définie pour cette séance');
             }
 
-            $httpClient2 = $this->http->timeout(30);
-            if (app()->environment('local')) {
-                $httpClient2 = $httpClient2->withoutVerifying();
-            }
-            $classesResponse = $httpClient2->get("{$klassciUrl}/classes/{$classeId}/etudiants");
-
-            $this->logger->info('DEBUG validateParticipant - Réponse /classes/etudiants', [
-                'status' => $classesResponse->status(),
-                'success' => $classesResponse->successful(),
-            ]);
+            $classesResponse = $this->httpClient()
+                ->get("{$klassciUrl}/classes/{$classeId}/etudiants");
 
             if (!$classesResponse->successful()) {
-                $this->logger->error('DEBUG validateParticipant - Erreur API classes/etudiants', [
+                $this->logger->error('KLASSCI API error on /classes/etudiants', [
+                    'seance_id' => $seanceId,
+                    'classe_id' => $classeId,
                     'status' => $classesResponse->status(),
-                    'body' => $classesResponse->body(),
                 ]);
 
                 return $this->fail(500, 'klassci_api_error', 'Erreur lors de la vérification des inscriptions');
             }
 
-            $classesData = $classesResponse->json();
-            $enrolledStudents = $classesData['data'] ?? [];
-
-            $this->logger->info('DEBUG validateParticipant - Étudiants inscrits', [
-                'count' => count($enrolledStudents),
-                'emails' => collect($enrolledStudents)->pluck('email')->toArray(),
-            ]);
-
+            $enrolledStudents = $classesResponse->json('data') ?? [];
             $isEnrolled = collect($enrolledStudents)->contains('email', $userToValidate->email);
 
-            $this->logger->info('DEBUG validateParticipant - Résultat vérification inscription', [
-                'user_email' => $userToValidate->email,
+            $this->logger->info('Participant enrollment check', [
+                'seance_id' => $seanceId,
+                'user_id' => $userToValidate->id,
                 'classe_id' => $classeId,
+                'enrolled_count' => count($enrolledStudents),
                 'is_enrolled' => $isEnrolled,
             ]);
 
@@ -260,14 +177,81 @@ final class ParticipantValidationService
             return $this->fail(403, 'not_enrolled', 'Vous n\'êtes pas inscrit dans cette classe');
 
         } catch (Throwable $e) {
-            // §1.2 — Détail technique loggé server-side, message générique au client.
-            $this->logger->error('DEBUG validateParticipant - Exception lors de la vérification', [
+            $this->logger->error('Participant enrollment verification failed', [
+                'seance_id' => $seanceId,
+                'user_id' => $userToValidate->id,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
             ]);
 
             return $this->fail(500, 'verification_error', 'Erreur lors de la vérification de l\'inscription.');
         }
+    }
+
+    /**
+     * Résout le classe_id depuis l'API KLASSCI /matieres/{id} (seances_programmees).
+     * Retourne null si la séance n'est pas trouvée dans les programmations.
+     */
+    private function resolveClasseIdFromMatiere(string $klassciUrl, int $matiereId, int $seanceId): ?int
+    {
+        $matiereResponse = $this->httpClient()
+            ->get("{$klassciUrl}/matieres/{$matiereId}");
+
+        if (!$matiereResponse->successful()) {
+            $this->logger->error('KLASSCI API error on /matieres', [
+                'matiere_id' => $matiereId,
+                'status' => $matiereResponse->status(),
+            ]);
+
+            return null;
+        }
+
+        $seancesProgrammees = $matiereResponse->json('data.seances_programmees') ?? [];
+        $seanceInfo = collect($seancesProgrammees)->firstWhere('id', $seanceId);
+
+        if (!$seanceInfo) {
+            $this->logger->warning('Seance not found in KLASSCI programmations', [
+                'matiere_id' => $matiereId,
+                'seance_id' => $seanceId,
+            ]);
+
+            return null;
+        }
+
+        return isset($seanceInfo['classe_id']) ? (int) $seanceInfo['classe_id'] : null;
+    }
+
+    /**
+     * Construit un client HTTP préconfiguré (timeout + SSL en local).
+     */
+    private function httpClient(): PendingRequest
+    {
+        $client = $this->http->timeout(self::KLASSCI_HTTP_TIMEOUT_SECONDS);
+
+        if ($this->app->environment('local')) {
+            $client = $client->withoutVerifying();
+        }
+
+        return $client;
+    }
+
+    /**
+     * Récupère l'URL de base KLASSCI depuis la config Laravel (jamais `env()`
+     * en runtime : invalide sous `config:cache`).
+     *
+     * @throws RuntimeException Si `services.klassci.url` n'est pas configuré.
+     */
+    private function klassciBaseUrl(): string
+    {
+        $url = config('services.klassci.url');
+
+        if (!is_string($url) || $url === '') {
+            throw new RuntimeException(
+                'KLASSCI API URL non configurée. Définir KLASSCI_API_URL dans .env.'
+            );
+        }
+
+        return rtrim($url, '/');
     }
 
     /**

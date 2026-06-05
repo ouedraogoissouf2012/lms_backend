@@ -367,54 +367,6 @@ parameters:
 			path: app/Http/Controllers/API/Proxy/ProxyOrganisationController.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\Quiz\:\:\$user_attempts_count\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Http/Controllers/API/Quiz/QuizCrudController.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\Quiz\:\:\$user_best_attempt\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Http/Controllers/API/Quiz/QuizCrudController.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\Quiz\:\:\$user_can_attempt\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Http/Controllers/API/Quiz/QuizCrudController.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\Quiz\:\:\$user_latest_attempt\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Controllers/API/Quiz/QuizCrudController.php
-
-		-
-			message: '#^Parameter \#1 \$classeId of method Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Quiz\>\:\:forClasse\(\) expects int, mixed given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Controllers/API/Quiz/QuizCrudController.php
-
-		-
-			message: '#^Parameter \#1 \$lessonId of method Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Quiz\>\:\:forLesson\(\) expects int, mixed given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Controllers/API/Quiz/QuizCrudController.php
-
-		-
-			message: '#^Parameter \#1 \$matiereId of method Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Quiz\>\:\:forMatiere\(\) expects int, mixed given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Controllers/API/Quiz/QuizCrudController.php
-
-		-
-			message: '#^Parameter \#1 \$perPage of method Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Quiz\>\:\:paginate\(\) expects int\|null, mixed given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Controllers/API/Quiz/QuizCrudController.php
-
-		-
 			message: '#^Cannot cast mixed to int\.$#'
 			identifier: cast.int
 			count: 1
@@ -5383,6 +5335,12 @@ parameters:
 			path: app/Services/Notification/VisioNotificationDispatcher.php
 
 		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Relations\\HasMany\:\:ordered\(\)\.$#'
+			identifier: method.notFound
+			count: 2
+			path: app/Services/Quiz/QuizAttemptStartSubmitService.php
+
+		-
 			message: '#^Access to an undefined property App\\Models\\QuizAttempt\:\:\$questions_with_results\.$#'
 			identifier: property.notFound
 			count: 1
@@ -5403,12 +5361,6 @@ parameters:
 		-
 			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Relations\\HasMany\:\:ordered\(\)\.$#'
 			identifier: method.notFound
-			count: 2
-			path: app/Services/Quiz/QuizAttemptStartSubmitService.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Relations\\HasMany\:\:ordered\(\)\.$#'
-			identifier: method.notFound
 			count: 1
 			path: app/Services/Quiz/QuizAttemptStateService.php
 
@@ -5423,6 +5375,30 @@ parameters:
 			identifier: missingType.generics
 			count: 1
 			path: app/Services/Quiz/QuizAttemptStateService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Quiz\:\:\$user_attempts_count\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Services/Quiz/QuizCrudService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Quiz\:\:\$user_best_attempt\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Services/Quiz/QuizCrudService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Quiz\:\:\$user_can_attempt\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Services/Quiz/QuizCrudService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Quiz\:\:\$user_latest_attempt\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Quiz/QuizCrudService.php
 
 		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'

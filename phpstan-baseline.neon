@@ -5335,6 +5335,12 @@ parameters:
 			path: app/Services/Notification/VisioNotificationDispatcher.php
 
 		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Relations\\HasMany\:\:ordered\(\)\.$#'
+			identifier: method.notFound
+			count: 2
+			path: app/Services/Quiz/QuizAttemptStartSubmitService.php
+
+		-
 			message: '#^Access to an undefined property App\\Models\\QuizAttempt\:\:\$questions_with_results\.$#'
 			identifier: property.notFound
 			count: 1
@@ -5355,12 +5361,6 @@ parameters:
 		-
 			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Relations\\HasMany\:\:ordered\(\)\.$#'
 			identifier: method.notFound
-			count: 2
-			path: app/Services/Quiz/QuizAttemptStartSubmitService.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Relations\\HasMany\:\:ordered\(\)\.$#'
-			identifier: method.notFound
 			count: 1
 			path: app/Services/Quiz/QuizAttemptStateService.php
 
@@ -5375,6 +5375,30 @@ parameters:
 			identifier: missingType.generics
 			count: 1
 			path: app/Services/Quiz/QuizAttemptStateService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Quiz\:\:\$user_attempts_count\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Services/Quiz/QuizCrudService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Quiz\:\:\$user_best_attempt\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Services/Quiz/QuizCrudService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Quiz\:\:\$user_can_attempt\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Services/Quiz/QuizCrudService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Quiz\:\:\$user_latest_attempt\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Quiz/QuizCrudService.php
 
 		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'

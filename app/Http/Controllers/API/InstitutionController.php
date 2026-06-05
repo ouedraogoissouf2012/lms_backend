@@ -19,27 +19,8 @@ use RuntimeException;
 use Throwable;
 
 /**
- * InstitutionController — admin platform-wide (supradmin only).
- *
- * ## Split `split-12/institution`
- *
- * Controller thin (≤200 l) après extraction de 3 services SRP dans
- * `App\Services\Institution\` (§5 controllers thin + §1.1 services ≤300 l
- * + §1.6 D DI strict, jamais `app()`).
- *
- *   - {@see InstitutionQueryService}      — index/show + stats cross-tenant
- *   - {@see InstitutionCrudService}       — store/update/toggle/destroy
- *   - {@see InstitutionConnectionTester}  — testConnection KLASSCI
- *
- * ## SECURITY
- *
- * Toutes les routes pointant ici sont protégées par `role:supradmin`
- * (cf. `routes/api.php` group `admin/institutions`). Les services utilisent
- * `withoutGlobalScope('institution')` pour agréger des stats cross-tenant :
- * ne JAMAIS ouvrir ces routes à un rôle non-supradmin sans réécrire les
- * services pour respecter le scope global.
- *
- * @see app/Models/Traits/BelongsToInstitution.php
+ * Admin platform-wide (supradmin only). SECURITY: services agrègent cross-tenant
+ * via `withoutGlobalScope('institution')` — ne JAMAIS ouvrir à un autre rôle.
  */
 final class InstitutionController extends Controller
 {

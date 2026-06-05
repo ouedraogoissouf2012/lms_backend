@@ -1555,39 +1555,9 @@ parameters:
 			path: app/Http/Requests/ViewUserDetailsRequest.php
 
 		-
-			message: '#^Cannot call method diffInMinutes\(\) on Carbon\\Carbon\|null\.$#'
-			identifier: method.nonObject
-			count: 3
-			path: app/Jobs/AutoCloseEmptySeances.php
-
-		-
-			message: '#^Cannot call method toDateTimeString\(\) on Carbon\\Carbon\|null\.$#'
-			identifier: method.nonObject
-			count: 1
-			path: app/Jobs/AutoCloseEmptySeances.php
-
-		-
-			message: '#^Parameter \#1 \$time of static method Carbon\\Carbon\:\:parse\(\) expects Carbon\\Month\|Carbon\\WeekDay\|DateTimeInterface\|float\|int\|string\|null, mixed given\.$#'
-			identifier: argument.type
-			count: 2
-			path: app/Jobs/AutoCloseEmptySeances.php
-
-		-
-			message: '#^Property App\\Models\\ESBTPAttendance\:\:\$duration_minutes \(int\|null\) does not accept float\.$#'
-			identifier: assign.propertyType
-			count: 1
-			path: app/Jobs/AutoCloseEmptySeances.php
-
-		-
 			message: '#^Relation ''attendances'' is not found in App\\Models\\Seance model\.$#'
 			identifier: larastan.relationExistence
 			count: 1
-			path: app/Jobs/AutoCloseEmptySeances.php
-
-		-
-			message: '#^Relation ''user'' is not found in App\\Models\\ESBTPAttendance model\.$#'
-			identifier: larastan.relationExistence
-			count: 2
 			path: app/Jobs/AutoCloseEmptySeances.php
 
 		-
@@ -5609,6 +5579,60 @@ parameters:
 			identifier: argument.templateType
 			count: 4
 			path: app/Services/SeanceDetailQueryService.php
+
+		-
+			message: '#^Cannot call method diffInMinutes\(\) on Carbon\\Carbon\|null\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Services/Seances/AutoClose/HeartbeatHealthChecker.php
+
+		-
+			message: '#^Parameter \#1 \$time of static method Carbon\\Carbon\:\:parse\(\) expects Carbon\\Month\|Carbon\\WeekDay\|DateTimeInterface\|float\|int\|string\|null, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Seances/AutoClose/Rules/AllParticipantsDisconnectedRule.php
+
+		-
+			message: '#^Cannot call method diffInMinutes\(\) on Carbon\\Carbon\|null\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Services/Seances/AutoClose/Rules/NoParticipantsRule.php
+
+		-
+			message: '#^Relation ''user'' is not found in App\\Models\\ESBTPAttendance model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/Seances/AutoClose/Rules/TeacherDisconnectionRule.php
+
+		-
+			message: '#^Cannot call method diffInMinutes\(\) on Carbon\\Carbon\|null\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Services/Seances/AutoClose/SeanceClosingService.php
+
+		-
+			message: '#^Cannot call method toDateTimeString\(\) on Carbon\\Carbon\|null\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Services/Seances/AutoClose/SeanceClosingService.php
+
+		-
+			message: '#^Parameter \#1 \$time of static method Carbon\\Carbon\:\:parse\(\) expects Carbon\\Month\|Carbon\\WeekDay\|DateTimeInterface\|float\|int\|string\|null, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Seances/AutoClose/SeanceClosingService.php
+
+		-
+			message: '#^Property App\\Models\\ESBTPAttendance\:\:\$duration_minutes \(int\|null\) does not accept float\.$#'
+			identifier: assign.propertyType
+			count: 1
+			path: app/Services/Seances/AutoClose/SeanceClosingService.php
+
+		-
+			message: '#^Relation ''user'' is not found in App\\Models\\ESBTPAttendance model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/Seances/AutoClose/SeanceClosingService.php
 
 		-
 			message: '#^Argument of an invalid type mixed supplied for foreach, only iterables are supported\.$#'

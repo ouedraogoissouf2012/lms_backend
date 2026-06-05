@@ -11,27 +11,11 @@ class ConvertApiService
     protected ?ConvertApi $convertApi = null;
 
     /**
-     * Lazy-load ConvertAPI : la clé n'est checkée qu'à l'usage réel, pas
-     * à la construction (TEST-01).
-     *
-     * Le constructeur d'origine throw si `CONVERTAPI_SECRET` est absent.
-     * Comme ce service est injecté transitivement dans `ChapterController`
-     * (via `FileService`), ça bloquait à la résolution du container Laravel
-     * **toutes** les requêtes `/chapters`, même celles qui n'ont jamais
-     * besoin de conversion (ex : création d'un chapitre texte sans fichier).
-     *
-     * En test, ça bloquait 56 tests (Chapter Request + UploadFile). En prod,
-     * ça aurait crashé en hard 500 toutes les routes chapitre si le secret
-     * était mal configuré. Mauvaise architecture (§1.1 — les services ne
-     * doivent pas throw en construction sur de la config runtime).
-     *
-     * Fix : on stocke rien, on appelle `ensureInitialized()` lazy avant
-     * chaque appel API. Les méthodes publiques font le check au moment où
-     * elles ont effectivement besoin du SDK.
+     * Lazy-init : le check de CONVERTAPI_SECRET est différé à la 1ère convert*()
+     * pour ne pas bloquer la résolution DI des routes qui n'utilisent pas le SDK.
      */
     public function __construct()
     {
-        // Pas d'init. Le check de config est différé à la première convert*().
     }
 
     /**

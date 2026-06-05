@@ -8,13 +8,14 @@ use App\Http\Requests\StoreLessonRequest;
 use App\Http\Requests\UpdateLessonRequest;
 use App\Http\Requests\DeleteLessonRequest;
 use App\Http\Requests\PublishLessonRequest;
+use App\Http\Requests\RateLessonRequest;
 use App\Http\Requests\UnpublishLessonRequest;
+use App\Http\Requests\UpdateLessonProgressRequest;
 use App\Models\Lesson;
 use App\Models\LessonProgress;
 use App\Services\Lesson\LessonProgressService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Validator;
 
 /**
  * LessonProgressController — extrait verbatim de LessonController.
@@ -81,21 +82,8 @@ class LessonProgressController extends AuthenticatedController
      * POST /api/lessons/{id}/progress
      * Mettre à jour sa progression (Étudiants uniquement)
      */
-    public function updateProgress(Request $request, int $id): JsonResponse
+    public function updateProgress(UpdateLessonProgressRequest $request, int $id): JsonResponse
     {
-        $validator = Validator::make($request->all(), [
-            'progress_percentage' => 'required|integer|min:0|max:100',
-            'time_spent_minutes' => 'nullable|integer|min:0',
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Données invalides',
-                'errors' => $validator->errors(),
-            ], 422);
-        }
-
         $lesson = Lesson::find($id);
 
         if (!$lesson) {
@@ -159,21 +147,8 @@ class LessonProgressController extends AuthenticatedController
      * POST /api/lessons/{id}/rating
      * Noter un cours (Étudiants uniquement)
      */
-    public function rate(Request $request, int $id): JsonResponse
+    public function rate(RateLessonRequest $request, int $id): JsonResponse
     {
-        $validator = Validator::make($request->all(), [
-            'rating' => 'required|integer|min:1|max:5',
-            'feedback' => 'nullable|string|max:1000',
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Données invalides',
-                'errors' => $validator->errors(),
-            ], 422);
-        }
-
         $lesson = Lesson::find($id);
 
         if (!$lesson) {

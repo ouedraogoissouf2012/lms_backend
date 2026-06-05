@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\API;
 
+use App\Exceptions\BusinessException;
 use App\Http\Controllers\Controller;
 use App\Services\Institution\InstitutionConnectionTester;
 use App\Services\Institution\InstitutionCrudService;
@@ -15,7 +16,6 @@ use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Psr\Log\LoggerInterface;
-use RuntimeException;
 use Throwable;
 
 /**
@@ -126,7 +126,7 @@ final class InstitutionController extends Controller
             ]);
         } catch (ModelNotFoundException) {
             return $this->notFound();
-        } catch (RuntimeException $e) {
+        } catch (BusinessException $e) {
             return $this->businessError($e->getMessage());
         } catch (Throwable $e) {
             return $this->internalError('toggle', $e, 'Erreur lors du changement de statut', $id);
@@ -154,7 +154,7 @@ final class InstitutionController extends Controller
             return response()->json($result['payload'], $result['status']);
         } catch (ModelNotFoundException) {
             return $this->notFound();
-        } catch (RuntimeException $e) {
+        } catch (BusinessException $e) {
             return $this->businessError($e->getMessage());
         } catch (ConnectionException) {
             return response()->json([

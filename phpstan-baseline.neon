@@ -61,56 +61,8 @@ parameters:
 			path: app/Http/Controllers/API/ChapterController.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\Chapter\:\:\$position\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Controllers/API/ChapterProgressController.php
-
-		-
-			message: '#^Binary operation "\+\=" between int and mixed results in an error\.$#'
-			identifier: assignOp.invalid
-			count: 2
-			path: app/Http/Controllers/API/ChapterProgressController.php
-
-		-
-			message: '#^Cannot call method toIso8601String\(\) on Carbon\\Carbon\|null\.$#'
-			identifier: method.nonObject
-			count: 1
-			path: app/Http/Controllers/API/ChapterProgressController.php
-
-		-
-			message: '#^Parameter \#1 \$column of method Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Chapter\>\:\:where\(\) expects array\<int\|model property of App\\Models\\Chapter, mixed\>\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Chapter\>\)\: Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Chapter\>\)\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Chapter\>\)\: void\)\|Illuminate\\Contracts\\Database\\Query\\Expression\|model property of App\\Models\\Chapter, ''position'' given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Controllers/API/ChapterProgressController.php
-
-		-
-			message: '#^Parameter \#2 \$lessonId of static method App\\Models\\ChapterProgress\:\:getLessonProgress\(\) expects int, int\<0, max\>\|null given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Controllers/API/ChapterProgressController.php
-
-		-
-			message: '#^Result of && is always false\.$#'
-			identifier: booleanAnd.alwaysFalse
-			count: 1
-			path: app/Http/Controllers/API/ChapterProgressController.php
-
-		-
-			message: '#^Strict comparison using \=\=\= between ''audio''\|''excel''\|''link''\|''mixed''\|''pdf''\|''powerpoint''\|''presentation''\|''text''\|''video''\|''word'' and ''quiz'' will always evaluate to false\.$#'
-			identifier: identical.alwaysFalse
-			count: 2
-			path: app/Http/Controllers/API/ChapterProgressController.php
-
-		-
-			message: '#^Using nullsafe property access "\?\-\>quiz_passed" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
-			identifier: nullsafe.neverNull
-			count: 1
-			path: app/Http/Controllers/API/ChapterProgressController.php
-
-		-
-			message: '#^Using nullsafe property access "\?\-\>time_spent_seconds" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
-			identifier: nullsafe.neverNull
+			message: '#^Cannot cast mixed to int\.$#'
+			identifier: cast.int
 			count: 1
 			path: app/Http/Controllers/API/ChapterProgressController.php
 
@@ -4097,6 +4049,72 @@ parameters:
 			identifier: isset.offset
 			count: 1
 			path: app/Services/Chapter/ChapterFileUploadService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Chapter\:\:\$position\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Chapter/ChapterProgressService.php
+
+		-
+			message: '#^Cannot cast mixed to int\.$#'
+			identifier: cast.int
+			count: 1
+			path: app/Services/Chapter/ChapterProgressService.php
+
+		-
+			message: '#^Method App\\Services\\Chapter\\ChapterProgressService\:\:resolveBlockingQuiz\(\) never returns array\{chapter_id\: int, chapter_title\: string, quiz_title\: string, passing_score\: int\} so it can be removed from the return type\.$#'
+			identifier: return.unusedType
+			count: 1
+			path: app/Services/Chapter/ChapterProgressService.php
+
+		-
+			message: '#^Parameter \#1 \$column of method Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Chapter\>\:\:where\(\) expects array\<int\|model property of App\\Models\\Chapter, mixed\>\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Chapter\>\)\: Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Chapter\>\)\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Chapter\>\)\: void\)\|Illuminate\\Contracts\\Database\\Query\\Expression\|model property of App\\Models\\Chapter, ''position'' given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Chapter/ChapterProgressService.php
+
+		-
+			message: '#^Parameter \#2 \$lessonId of static method App\\Models\\ChapterProgress\:\:getLessonProgress\(\) expects int, int\<0, max\>\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Chapter/ChapterProgressService.php
+
+		-
+			message: '#^Result of \|\| is always true\.$#'
+			identifier: booleanOr.alwaysTrue
+			count: 1
+			path: app/Services/Chapter/ChapterProgressService.php
+
+		-
+			message: '#^Strict comparison using \!\=\= between ''audio''\|''excel''\|''link''\|''mixed''\|''pdf''\|''powerpoint''\|''presentation''\|''text''\|''video''\|''word'' and ''quiz'' will always evaluate to true\.$#'
+			identifier: notIdentical.alwaysTrue
+			count: 1
+			path: app/Services/Chapter/ChapterProgressService.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between ''audio''\|''excel''\|''link''\|''mixed''\|''pdf''\|''powerpoint''\|''presentation''\|''text''\|''video''\|''word'' and ''quiz'' will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 1
+			path: app/Services/Chapter/ChapterProgressService.php
+
+		-
+			message: '#^Unreachable statement \- code above always terminates\.$#'
+			identifier: deadCode.unreachable
+			count: 1
+			path: app/Services/Chapter/ChapterProgressService.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>quiz_passed" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Services/Chapter/ChapterProgressService.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>time_spent_seconds" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Services/Chapter/ChapterProgressService.php
 
 		-
 			message: '#^Cannot access offset ''filiere'' on mixed\.$#'

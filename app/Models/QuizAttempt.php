@@ -57,21 +57,6 @@ class QuizAttempt extends Model
     ];
 
     /**
-     * Boot du model
-     */
-    protected static function boot()
-    {
-        parent::boot();
-
-        // Mettre à jour les stats du quiz après soumission
-        static::updated(function ($attempt) {
-            if ($attempt->status === 'submitted' && $attempt->wasChanged('status')) {
-                $attempt->quiz->updateStatistics();
-            }
-        });
-    }
-
-    /**
      * Relation: Quiz
      */
     public function quiz(): BelongsTo

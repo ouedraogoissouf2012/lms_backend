@@ -30,7 +30,8 @@ class ConvertApiService
             return $this->convertApi;
         }
 
-        $secret = config('services.convertapi.secret') ?: env('CONVERTAPI_SECRET');
+        // §1.6 / Laravel docs : jamais `env()` en runtime — invalide sous `config:cache`.
+        $secret = config('services.convertapi.secret');
 
         Log::info('[ConvertAPI] Initialisation', [
             'secret_present' => $secret ? 'YES' : 'NO',

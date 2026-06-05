@@ -8,7 +8,6 @@ use App\Models\Institution;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Factory as HttpFactory;
 use Psr\Log\LoggerInterface;
-use RuntimeException;
 
 /**
  * Test de connexion KLASSCI pour une institution.
@@ -41,7 +40,7 @@ final class InstitutionConnectionTester
      * @return array{status: int, payload: array<string, mixed>}
      *
      * @throws \Illuminate\Database\Eloquent\ModelNotFoundException
-     * @throws \RuntimeException  Si l'URL KLASSCI n'est pas configurée (HTTP 422).
+     * @throws \App\Exceptions\BusinessException  Si l'URL KLASSCI n'est pas configurée (HTTP 422).
      * @throws \Illuminate\Http\Client\ConnectionException  Serveur injoignable (HTTP 502).
      */
     public function test(int $institutionId): array
@@ -51,7 +50,7 @@ final class InstitutionConnectionTester
         $config = $institution->getKlassciConfig();
 
         if (empty($config['url'])) {
-            throw new RuntimeException('URL KLASSCI non configurée pour cette institution');
+            throw new \App\Exceptions\BusinessException('URL KLASSCI non configurée pour cette institution');
         }
 
         $url = (string) $config['url'];

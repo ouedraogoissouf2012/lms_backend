@@ -7,9 +7,9 @@ namespace App\Http\Requests;
 use Illuminate\Foundation\Http\FormRequest;
 
 /**
- * Valide la notation d'une leçon (POST /api/lessons/{id}/rating).
+ * Valide la mise à jour de progression d'une leçon (POST /api/lessons/{id}/progress).
  */
-final class RateLessonRequest extends FormRequest
+final class UpdateLessonProgressRequest extends FormRequest
 {
     public function authorize(): bool
     {
@@ -22,8 +22,8 @@ final class RateLessonRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'rating' => 'required|integer|min:1|max:5',
-            'feedback' => 'nullable|string|max:1000',
+            'progress_percentage' => 'required|integer|min:0|max:100',
+            'time_spent_minutes' => 'nullable|integer|min:0',
         ];
     }
 }

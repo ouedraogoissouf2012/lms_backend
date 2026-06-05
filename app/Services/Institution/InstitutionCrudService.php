@@ -7,7 +7,6 @@ namespace App\Services\Institution;
 use App\Models\Institution;
 use Illuminate\Contracts\Cache\Repository as CacheRepository;
 use Psr\Log\LoggerInterface;
-use RuntimeException;
 
 /**
  * CRUD des institutions (admin/supradmin only).
@@ -80,7 +79,7 @@ final class InstitutionCrudService
      * Inverse le flag is_active. Refuse si on désactiverait la dernière active.
      *
      * @throws \Illuminate\Database\Eloquent\ModelNotFoundException
-     * @throws \RuntimeException  Si tentative de désactiver la dernière institution active.
+     * @throws \App\Exceptions\BusinessException  Si tentative de désactiver la dernière institution active.
      */
     public function toggleActive(int $id): Institution
     {
@@ -90,7 +89,7 @@ final class InstitutionCrudService
         if ($institution->is_active) {
             $activeCount = Institution::where('is_active', true)->count();
             if ($activeCount <= 1) {
-                throw new RuntimeException(
+                throw new \App\Exceptions\BusinessException(
                     'Impossible de désactiver la dernière institution active'
                 );
             }

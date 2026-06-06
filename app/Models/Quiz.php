@@ -226,25 +226,6 @@ class Quiz extends Model
     }
 
     /**
-     * Mettre à jour les statistiques
-     */
-    public function updateStatistics(): void
-    {
-        $this->total_questions = $this->questions()->count();
-        $this->total_points = $this->questions()->sum('points');
-        $this->attempts_count = $this->attempts()->where('status', 'submitted')->count();
-
-        $avgScore = $this->attempts()
-            ->where('status', 'submitted')
-            ->whereNotNull('score')
-            ->avg('score');
-
-        $this->average_score = $avgScore ? round($avgScore, 2) : null;
-
-        $this->save();
-    }
-
-    /**
      * Obtenir le nombre de tentatives d'un utilisateur
      */
     public function getAttemptsCountForUser(int $userId): int

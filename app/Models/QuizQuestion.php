@@ -43,23 +43,6 @@ class QuizQuestion extends Model
     ];
 
     /**
-     * Boot du model
-     */
-    protected static function boot()
-    {
-        parent::boot();
-
-        // Mettre à jour les stats du quiz après création/modification
-        static::saved(function ($question) {
-            $question->quiz->updateStatistics();
-        });
-
-        static::deleted(function ($question) {
-            $question->quiz->updateStatistics();
-        });
-    }
-
-    /**
      * Relation: Quiz parent
      */
     public function quiz(): BelongsTo
@@ -92,11 +75,15 @@ class QuizQuestion extends Model
     }
 
     /**
-     * Obtenir les bonnes réponses (pour QCM)
+     * Obtenir les bonnes réponses (pour QCM).
+     *
+     * H1 (audit) : utilise la collection `answers` eager-loadée si présente
+     * pour éviter le N+1 — sinon lazy-load une fois et retourne la sous-
+     * collection filtrée.
      */
     public function getCorrectAnswers()
     {
-        return $this->answers()->where('is_correct', true)->get();
+        return $this->answers->where('is_correct', true)->values();
     }
 
     /**

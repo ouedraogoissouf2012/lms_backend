@@ -38,6 +38,11 @@ use App\Models\QuizQuestion;
  */
 class QuizGradingService
 {
+    public function __construct(
+        private readonly QuizStatisticsService $statistics,
+    ) {}
+
+
     /**
      * Vérifie si la réponse user à une question est correcte.
      *
@@ -48,22 +53,30 @@ class QuizGradingService
      */
     public function checkAnswer(QuizQuestion $question, $userAnswer): ?bool
     {
+        // H1 (audit) : utilise la collection `answers` eager-loadée (cf.
+        // `gradeAttempt` ci-dessous : `->with('answers')`) pour éviter N+1.
+        // Si non-chargée, l'accès `$question->answers` déclenche un lazy-load
+        // unique (préférable aux 1-3 sous-queries par appel précédent).
+        $answers = $question->answers;
+
         switch ($question->type) {
             case 'multiple_choice':
                 // Une seule réponse correcte
-                return $question->answers()
-                    ->where('id', $userAnswer)
-                    ->where('is_correct', true)
-                    ->exists();
+                return $answers->contains(
+                    fn ($a): bool => $a->id == $userAnswer && $a->is_correct
+                );
 
             case 'multiple_response':
                 // Plusieurs réponses correctes — exact set match
-                $correctIds = $question->getCorrectAnswers()->pluck('id')->sort()->values()->toArray();
-                $userIds = is_array($userAnswer) ? collect($userAnswer)->sort()->values()->toArray() : [];
+                $correctIds = $answers->where('is_correct', true)
+                    ->pluck('id')->sort()->values()->toArray();
+                $userIds = is_array($userAnswer)
+                    ? collect($userAnswer)->sort()->values()->toArray()
+                    : [];
                 return $correctIds === $userIds;
 
             case 'true_false':
-                $correctAnswer = $question->answers()->where('is_correct', true)->first();
+                $correctAnswer = $answers->firstWhere('is_correct', true);
                 return $correctAnswer !== null && $correctAnswer->id == $userAnswer;
 
             case 'short_answer':
@@ -165,7 +178,12 @@ class QuizGradingService
 
         $this->gradeAttempt($attempt);
 
-        return $attempt->save();
+        $saved = $attempt->save();
+
+        // Recompute Quiz stats explicitly (boot hook supprimé : §5 anti-pattern).
+        $this->statistics->recompute($attempt->quiz);
+
+        return $saved;
     }
 
     /**
@@ -193,6 +211,11 @@ class QuizGradingService
         $attempt->graded_at = now();
         $attempt->teacher_feedback = $feedback;
 
-        return $attempt->save();
+        $saved = $attempt->save();
+
+        // Recompute Quiz stats explicitly (boot hook supprimé : §5 anti-pattern).
+        $this->statistics->recompute($attempt->quiz);
+
+        return $saved;
     }
 }

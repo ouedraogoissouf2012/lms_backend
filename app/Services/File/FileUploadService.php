@@ -46,6 +46,24 @@ final class FileUploadService
     ];
 
     /**
+     * MIME types considérés comme documents (mapping type fichier).
+     */
+    private const DOCUMENT_MIMES = [
+        'application/pdf',
+        'application/msword',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'application/vnd.ms-excel',
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        'application/vnd.ms-powerpoint',
+        'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+        'text/plain',
+    ];
+
+    public function __construct(private readonly FilePresenter $presenter)
+    {
+    }
+
+    /**
      * Persiste le fichier uploadé sur le disque `local` puis crée la row
      * `files` correspondante.
      *
@@ -87,7 +105,7 @@ final class FileUploadService
             'mime_type' => $mimeType,
             'extension' => $extension,
             'size_bytes' => $uploadedFile->getSize(),
-            'type' => File::determineTypeFromMime($mimeType),
+            'type' => $this->determineTypeFromMime($mimeType),
             'category' => $category,
             'description' => $payload['description'] ?? null,
             'is_public' => (bool) ($payload['is_public'] ?? false),
@@ -98,12 +116,37 @@ final class FileUploadService
         ]);
 
         $file->load('user:id,name,email');
-        $file->formatted_size = $file->getFormattedSize();
-        $file->download_url = $file->getDownloadUrl();
+        $file->formatted_size = $this->presenter->formattedSize($file);
+        $file->download_url = $this->presenter->downloadUrl($file);
 
         return [
             'file' => $file,
             'error' => null,
         ];
+    }
+
+    /**
+     * Détermine le type logique d'un fichier depuis son MIME type —
+     * ex-`File::determineTypeFromMime` (H2 §5).
+     */
+    private function determineTypeFromMime(string $mimeType): string
+    {
+        if (str_starts_with($mimeType, 'image/')) {
+            return 'image';
+        }
+
+        if (str_starts_with($mimeType, 'video/')) {
+            return 'video';
+        }
+
+        if (str_starts_with($mimeType, 'audio/')) {
+            return 'audio';
+        }
+
+        if (in_array($mimeType, self::DOCUMENT_MIMES, true)) {
+            return 'document';
+        }
+
+        return 'other';
     }
 }

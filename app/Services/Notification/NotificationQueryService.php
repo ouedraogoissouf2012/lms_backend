@@ -148,8 +148,8 @@ final class NotificationQueryService
                         'time_ago' => $createdAt?->diffForHumans(),
                         'is_unread' => is_null($notification->read_at),
                         'action_url' => $this->presenter->getActionUrl($notification),
-                        'icon' => $notification->getIcon(),
-                        'color' => $notification->getColor(),
+                        'icon' => $this->presenter->icon($notification),
+                        'color' => $this->presenter->color($notification),
                     ];
                 });
         });

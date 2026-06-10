@@ -19,8 +19,8 @@ use App\Models\Notification;
  * faciliter la maintenance quand les routes front bougeront (cf. spec
  * lms-data-controller-split — extraction de présenters envisagée).
  *
- * `getIcon()` et `getColor()` restent sur le modèle : pure `match` enum sans
- * dépendance externe — extraction = bruit sans valeur.
+ * `icon()`, `color()` et `isRead()` déplacés ici depuis le modèle (H2 audit,
+ * §5 modèles ≤150l) — mapping de présentation, même domaine que getActionUrl.
  *
  * ## DI strict (§1.6 D)
  *
@@ -70,6 +70,48 @@ class NotificationPresenter
                 ($id = $idOf('evaluation_id')) !== null ? "/student/evaluations/{$id}" : null,
 
             default => null,
+        };
+    }
+
+    /** La notification a-t-elle été lue ? */
+    public function isRead(Notification $notification): bool
+    {
+        return $notification->read_at !== null;
+    }
+
+    /** Icône MDI selon le type. */
+    public function icon(Notification $notification): string
+    {
+        return match ($notification->type) {
+            Notification::TYPE_LESSON_PUBLISHED => 'mdi-book-open',
+            Notification::TYPE_FORUM_REPLY => 'mdi-message-reply',
+            Notification::TYPE_QUIZ_AVAILABLE => 'mdi-clipboard-list',
+            Notification::TYPE_GRADE_RECEIVED => 'mdi-star',
+            Notification::TYPE_LESSON_UPDATED => 'mdi-book-edit',
+            Notification::TYPE_FORUM_SOLUTION => 'mdi-check-circle',
+            Notification::TYPE_QUIZ_DEADLINE => 'mdi-clock-alert',
+            Notification::TYPE_VISIO_SCHEDULED => 'mdi-video-outline',
+            Notification::TYPE_VISIO_STARTING => 'mdi-video-check',
+            Notification::TYPE_EVALUATION_APPROACHING => 'mdi-calendar-alert',
+            default => 'mdi-bell',
+        };
+    }
+
+    /** Couleur UI selon le type. */
+    public function color(Notification $notification): string
+    {
+        return match ($notification->type) {
+            Notification::TYPE_LESSON_PUBLISHED => 'primary',
+            Notification::TYPE_FORUM_REPLY => 'info',
+            Notification::TYPE_QUIZ_AVAILABLE => 'warning',
+            Notification::TYPE_GRADE_RECEIVED => 'success',
+            Notification::TYPE_LESSON_UPDATED => 'primary',
+            Notification::TYPE_FORUM_SOLUTION => 'success',
+            Notification::TYPE_QUIZ_DEADLINE => 'error',
+            Notification::TYPE_VISIO_SCHEDULED => 'info',
+            Notification::TYPE_VISIO_STARTING => 'warning',
+            Notification::TYPE_EVALUATION_APPROACHING => 'warning',
+            default => 'secondary',
         };
     }
 }

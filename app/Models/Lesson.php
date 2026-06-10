@@ -52,41 +52,31 @@ class Lesson extends Model
         'order' => 0,
     ];
 
-    /**
-     * Relation: Matière liée
-     */
+    /** Relation: Matière liée */
     public function matiere(): BelongsTo
     {
         return $this->belongsTo(Matiere::class);
     }
 
-    /**
-     * Relation: Classe liée
-     */
+    /** Relation: Classe liée */
     public function classe(): BelongsTo
     {
         return $this->belongsTo(Classe::class);
     }
 
-    /**
-     * Relation: Enseignant créateur
-     */
+    /** Relation: Enseignant créateur */
     public function enseignant(): BelongsTo
     {
         return $this->belongsTo(User::class, 'enseignant_id');
     }
 
-    /**
-     * Relation: Progression des étudiants
-     */
+    /** Relation: Progression des étudiants */
     public function progress(): HasMany
     {
         return $this->hasMany(LessonProgress::class);
     }
 
-    /**
-     * Relation: Fichiers attachés au cours
-     */
+    /** Relation: Fichiers attachés au cours */
     public function files(): MorphMany
     {
         return $this->morphMany(File::class, 'fileable');
@@ -101,25 +91,13 @@ class Lesson extends Model
         return $this->hasMany(Chapter::class)->orderBy('order')->orderBy('created_at');
     }
 
-    /**
-     * Relation: Ressources complémentaires
-     */
+    /** Relation: Ressources complémentaires */
     public function resources(): HasMany
     {
         return $this->hasMany(LessonResource::class)->ordered();
     }
 
-    /**
-     * Progression pour un utilisateur spécifique
-     */
-    public function progressForUser(int $userId)
-    {
-        return $this->progress()->where('user_id', $userId)->first();
-    }
-
-    /**
-     * Scope: Cours publiés uniquement
-     */
+    /** Scope: Cours publiés uniquement */
     public function scopePublished($query)
     {
         return $query->where('status', 'published')
@@ -127,128 +105,35 @@ class Lesson extends Model
             ->where('published_at', '<=', now());
     }
 
-    /**
-     * Scope: Par matière
-     */
+    /** Scope: Par matière */
     public function scopeForMatiere($query, int $matiereId)
     {
         return $query->where('matiere_id', $matiereId);
     }
 
-    /**
-     * Scope: Par classe
-     */
+    /** Scope: Par classe */
     public function scopeForClasse($query, int $classeId)
     {
         return $query->where('classe_id', $classeId);
     }
 
-    /**
-     * Scope: Par enseignant
-     */
+    /** Scope: Par enseignant */
     public function scopeByTeacher($query, int $enseignantId)
     {
         return $query->where('enseignant_id', $enseignantId);
     }
 
-    /**
-     * Scope: Ordonné
-     */
+    /** Scope: Ordonné */
     public function scopeOrdered($query)
     {
         return $query->orderBy('order')->orderBy('created_at');
     }
 
-    /**
-     * Vérifie si le cours est publié
-     */
+    /** Vérifie si le cours est publié (état pur, sans DB). */
     public function isPublished(): bool
     {
         return $this->status === 'published'
             && $this->published_at !== null
             && $this->published_at->isPast();
-    }
-
-    /**
-     * Vérifie si le cours est un brouillon
-     */
-    public function isDraft(): bool
-    {
-        return $this->status === 'draft';
-    }
-
-    /**
-     * Vérifie si le cours est archivé
-     */
-    public function isArchived(): bool
-    {
-        return $this->status === 'archived';
-    }
-
-    /**
-     * Publier le cours
-     */
-    public function publish(): bool
-    {
-        return $this->update([
-            'status' => 'published',
-            'published_at' => now(),
-        ]);
-    }
-
-    /**
-     * Archiver le cours
-     */
-    public function archive(): bool
-    {
-        return $this->update([
-            'status' => 'archived',
-            'archived_at' => now(),
-        ]);
-    }
-
-    /**
-     * Remettre en brouillon
-     */
-    public function unpublish(): bool
-    {
-        return $this->update([
-            'status' => 'draft',
-            'published_at' => null,
-        ]);
-    }
-
-    /**
-     * Obtenir le taux de complétion moyen
-     */
-    public function getAverageCompletionRate(): float
-    {
-        $completedCount = $this->progress()
-            ->where('status', 'completed')
-            ->count();
-
-        $totalCount = $this->progress()->count();
-
-        return $totalCount > 0 ? ($completedCount / $totalCount) * 100 : 0;
-    }
-
-    /**
-     * Obtenir le nombre d'étudiants ayant commencé
-     */
-    public function getStudentsStartedCount(): int
-    {
-        return $this->progress()
-            ->whereIn('status', ['in_progress', 'completed'])
-            ->count();
-    }
-
-    /**
-     * Obtenir le nombre d'étudiants ayant terminé
-     */
-    public function getStudentsCompletedCount(): int
-    {
-        return $this->progress()
-            ->where('status', 'completed')
-            ->count();
     }
 }

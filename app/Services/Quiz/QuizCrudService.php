@@ -35,6 +35,10 @@ use Illuminate\Pagination\LengthAwarePaginator;
  */
 final class QuizCrudService
 {
+    public function __construct(private readonly QuizAccessService $access)
+    {
+    }
+
     /**
      * Liste paginée filtrée + enrichissement par utilisateur.
      *
@@ -100,9 +104,9 @@ final class QuizCrudService
         $quizzes = $query->paginate($perPage);
 
         $quizzes->getCollection()->transform(function (Quiz $quiz) use ($user): Quiz {
-            $quiz->user_attempts_count = $quiz->getAttemptsCountForUser($user->id);
-            $quiz->user_can_attempt    = $quiz->canUserAttempt($user->id);
-            $quiz->user_best_attempt   = $quiz->getBestAttemptForUser($user->id);
+            $quiz->user_attempts_count = $this->access->attemptsCountForUser($quiz, $user->id);
+            $quiz->user_can_attempt    = $this->access->canUserAttempt($quiz, $user->id);
+            $quiz->user_best_attempt   = $this->access->bestAttemptForUser($quiz, $user->id);
 
             return $quiz;
         });
@@ -142,7 +146,7 @@ final class QuizCrudService
             'lesson:id,title',
         ]);
 
-        if ($user->isStudent() && ! $quiz->isAvailable()) {
+        if ($user->isStudent() && ! $this->access->isAvailable($quiz)) {
             return [
                 'status'  => 403,
                 'success' => false,
@@ -163,10 +167,10 @@ final class QuizCrudService
             }]);
         }
 
-        $quiz->user_attempts_count = $quiz->getAttemptsCountForUser($user->id);
-        $quiz->user_can_attempt    = $quiz->canUserAttempt($user->id);
-        $quiz->user_best_attempt   = $quiz->getBestAttemptForUser($user->id);
-        $quiz->user_latest_attempt = $quiz->getLatestAttemptForUser($user->id);
+        $quiz->user_attempts_count = $this->access->attemptsCountForUser($quiz, $user->id);
+        $quiz->user_can_attempt    = $this->access->canUserAttempt($quiz, $user->id);
+        $quiz->user_best_attempt   = $this->access->bestAttemptForUser($quiz, $user->id);
+        $quiz->user_latest_attempt = $this->access->latestAttemptForUser($quiz, $user->id);
 
         return [
             'status'  => 200,
@@ -214,7 +218,7 @@ final class QuizCrudService
             ];
         }
 
-        $quiz->publish();
+        $this->access->publish($quiz);
 
         return [
             'status'  => 200,

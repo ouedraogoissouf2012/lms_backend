@@ -47,7 +47,7 @@ class LessonProgressController extends AuthenticatedController
 
         // Étudiant: sa propre progression
         if ($user->isStudent()) {
-            $progress = $lesson->progressForUser($user->id);
+            $progress = $this->progressService->progressForUser($lesson, $user->id);
 
             if (!$progress) {
                 // Créer une nouvelle progression
@@ -71,9 +71,9 @@ class LessonProgressController extends AuthenticatedController
             'data' => $progresses,
             'statistics' => [
                 'total_students' => $progresses->count(),
-                'students_started' => $lesson->getStudentsStartedCount(),
-                'students_completed' => $lesson->getStudentsCompletedCount(),
-                'average_completion_rate' => round($lesson->getAverageCompletionRate(), 2),
+                'students_started' => $this->progressService->studentsStartedCount($lesson),
+                'students_completed' => $this->progressService->studentsCompletedCount($lesson),
+                'average_completion_rate' => round($this->progressService->averageCompletionRate($lesson), 2),
             ],
         ]);
     }
@@ -134,7 +134,7 @@ class LessonProgressController extends AuthenticatedController
             ['user_id' => $user->id, 'lesson_id' => $lesson->id]
         );
 
-        $progress->complete();
+        $this->progressService->complete($progress);
 
         return response()->json([
             'success' => true,
@@ -164,7 +164,7 @@ class LessonProgressController extends AuthenticatedController
             ['user_id' => $user->id, 'lesson_id' => $lesson->id]
         );
 
-        $progress->addRating($request->rating, $request->feedback);
+        $this->progressService->addRating($progress, $request->rating, $request->feedback);
 
         return response()->json([
             'success' => true,

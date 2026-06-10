@@ -75,51 +75,6 @@ class KnowledgeCheck extends Model
     }
 
     /**
-     * Obtenir les tentatives d'un utilisateur specifique
-     */
-    public function userAttempts(int $userId): HasMany
-    {
-        return $this->attempts()->where('user_id', $userId);
-    }
-
-    /**
-     * Verifier si un utilisateur a reussi ce quiz
-     */
-    public function isPassedByUser(int $userId): bool
-    {
-        return $this->attempts()
-            ->where('user_id', $userId)
-            ->where('passed', true)
-            ->exists();
-    }
-
-    /**
-     * Obtenir le meilleur score d'un utilisateur
-     */
-    public function getBestScore(int $userId): ?int
-    {
-        return $this->attempts()
-            ->where('user_id', $userId)
-            ->max('score');
-    }
-
-    /**
-     * Verifier si un utilisateur peut encore tenter ce quiz
-     */
-    public function canAttempt(int $userId): bool
-    {
-        if ($this->max_attempts === null) {
-            return true;
-        }
-
-        $attemptCount = $this->attempts()
-            ->where('user_id', $userId)
-            ->count();
-
-        return $attemptCount < $this->max_attempts;
-    }
-
-    /**
      * Nombre de questions
      */
     public function getQuestionsCountAttribute(): int

@@ -43,6 +43,7 @@ final class VisioParticipantsListService
         private readonly VisioParticipantsEnricher $enricher,
         private readonly VisioParticipantsStatsBuilder $statsBuilder,
         private readonly LoggerInterface $logger,
+        private readonly AttendanceLifecycleService $lifecycle,
     ) {}
 
     /**
@@ -66,7 +67,7 @@ final class VisioParticipantsListService
             // 0. Déconnecter automatiquement les participants inactifs (timeout 3 minutes)
             // SYSTÈME DE TIMEOUT : Détecte les participants qui n'envoient plus de heartbeat
             // et les marque automatiquement comme déconnectés
-            $disconnectedCount = ESBTPAttendance::disconnectInactiveParticipants(
+            $disconnectedCount = $this->lifecycle->disconnectInactive(
                 self::INACTIVITY_TIMEOUT_MINUTES,
             );
             if ($disconnectedCount > 0) {

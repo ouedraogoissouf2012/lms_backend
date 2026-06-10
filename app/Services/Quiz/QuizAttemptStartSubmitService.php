@@ -29,8 +29,11 @@ final class QuizAttemptStartSubmitService
 {
     use BuildsAttemptResponses;
 
-    public function __construct(private readonly QuizGradingService $grading)
-    {
+    public function __construct(
+        private readonly QuizGradingService $grading,
+        private readonly QuizAccessService $access,
+        private readonly QuizAttemptTimerService $timer,
+    ) {
     }
 
     /**
@@ -40,15 +43,15 @@ final class QuizAttemptStartSubmitService
      */
     public function startAttempt(Quiz $quiz, User $user): array
     {
-        if (! $quiz->isAvailable()) {
+        if (! $this->access->isAvailable($quiz)) {
             return $this->failure(403, 'Ce quiz n\'est pas disponible actuellement');
         }
 
-        if (! $quiz->canUserAttempt($user->id)) {
+        if (! $this->access->canUserAttempt($quiz, $user->id)) {
             return $this->failure(403, 'Vous avez atteint le nombre maximum de tentatives');
         }
 
-        $attemptNumber = $quiz->getAttemptsCountForUser($user->id) + 1;
+        $attemptNumber = $this->access->attemptsCountForUser($quiz, $user->id) + 1;
 
         $attempt = QuizAttempt::create([
             'quiz_id'        => $quiz->id,
@@ -80,7 +83,7 @@ final class QuizAttemptStartSubmitService
                 'attempt'        => $attempt,
                 'quiz'           => $quiz,
                 'questions'      => $questions,
-                'time_remaining' => $attempt->getTimeRemaining(),
+                'time_remaining' => $this->timer->timeRemaining($attempt),
             ],
             'errors'  => null,
         ];
@@ -103,7 +106,7 @@ final class QuizAttemptStartSubmitService
             return $this->failure(422, 'Cette tentative a déjà été soumise');
         }
 
-        if ($attempt->isTimeExpired()) {
+        if ($this->timer->hasExpired($attempt)) {
             $this->grading->submitAttempt($attempt, $answers);
 
             return [
@@ -127,7 +130,7 @@ final class QuizAttemptStartSubmitService
             'points_earned'   => $attempt->points_earned,
             'points_possible' => $attempt->points_possible,
             'passed'          => $attempt->passed,
-            'time_spent'      => $attempt->getFormattedTimeSpent(),
+            'time_spent'      => $this->timer->formattedTimeSpent($attempt),
         ];
 
         $quiz = $attempt->quiz;

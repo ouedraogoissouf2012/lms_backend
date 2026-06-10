@@ -3,10 +3,18 @@
 namespace App\Console\Commands;
 
 use App\Models\QuizAttempt;
+use App\Services\Quiz\QuizAttemptTimerService;
+use App\Services\Quiz\QuizGradingService;
 use Illuminate\Console\Command;
 
 /**
- * Commande pour expirer automatiquement les tentatives de quiz dont le temps est écoulé
+ * Expire automatiquement les tentatives de quiz dont le temps est écoulé
+ * et les soumet avec les réponses sauvegardées.
+ *
+ * Fix audit H2 : l'ancien code appelait `$attempt->submit()` — méthode
+ * supprimée du modèle en #176 (anti-pattern Service Locator). La commande
+ * aurait crashé en runtime. Services injectés via method injection (pattern
+ * Laravel officiel pour les commands).
  */
 class ExpireQuizAttempts extends Command
 {
@@ -27,7 +35,7 @@ class ExpireQuizAttempts extends Command
     /**
      * Execute the console command.
      */
-    public function handle(): int
+    public function handle(QuizAttemptTimerService $timer, QuizGradingService $grading): int
     {
         $this->info('Recherche des tentatives de quiz expirées...');
 
@@ -42,12 +50,11 @@ class ExpireQuizAttempts extends Command
         $expiredCount = 0;
 
         foreach ($attempts as $attempt) {
-            // Vérifier si la tentative a expiré
-            if ($attempt->isTimeExpired()) {
+            if ($timer->hasExpired($attempt)) {
                 $this->warn("Tentative #{$attempt->id} expirée pour l'utilisateur #{$attempt->user_id}");
 
-                // Soumettre automatiquement avec les réponses actuelles
-                $attempt->submit($attempt->answers ?? []);
+                // Soumettre automatiquement avec les réponses sauvegardées
+                $grading->submitAttempt($attempt, $attempt->answers ?? []);
 
                 $expiredCount++;
             }

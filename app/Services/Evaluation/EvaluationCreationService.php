@@ -8,7 +8,7 @@ use App\Models\Evaluation;
 use App\Models\EvaluationQuestion;
 use App\Models\User;
 use App\Services\KlassciProxyService;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Database\DatabaseManager;
 use Psr\Log\LoggerInterface;
 use Throwable;
 
@@ -64,6 +64,7 @@ final class EvaluationCreationService
     ];
 
     public function __construct(
+        private readonly DatabaseManager $db,
         private readonly KlassciProxyService $klassciService,
         private readonly LoggerInterface $logger,
     ) {}
@@ -94,7 +95,7 @@ final class EvaluationCreationService
         }
 
         try {
-            DB::beginTransaction();
+            $this->db->beginTransaction();
 
             [$matiereNom, $classeNom] = $this->resolveKlassciLabels(
                 $data['klassci_matiere_id'] ?? null,
@@ -114,7 +115,7 @@ final class EvaluationCreationService
                 $this->createQuestions($evaluation, $data['questions']);
             }
 
-            DB::commit();
+            $this->db->commit();
 
             $evaluation->load('questions');
 
@@ -127,7 +128,7 @@ final class EvaluationCreationService
                 ],
             ];
         } catch (Throwable $e) {
-            DB::rollBack();
+            $this->db->rollBack();
             $this->logger->error('Erreur création évaluation', ['error' => $e->getMessage()]);
 
             return [

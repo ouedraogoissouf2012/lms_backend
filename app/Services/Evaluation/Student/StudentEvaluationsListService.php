@@ -7,7 +7,7 @@ namespace App\Services\Evaluation\Student;
 use App\Models\Evaluation;
 use App\Models\User;
 use App\Services\KlassciProxyService;
-use Illuminate\Support\Facades\Log;
+use Psr\Log\LoggerInterface;
 use RuntimeException;
 
 /**
@@ -25,6 +25,7 @@ use RuntimeException;
 final class StudentEvaluationsListService
 {
     public function __construct(
+        private readonly LoggerInterface $logger,
         private readonly KlassciProxyService $klassciService,
     ) {}
 
@@ -41,7 +42,7 @@ final class StudentEvaluationsListService
 
         $klassciEtudiantId = $user->klassci_id;
 
-        Log::info('Student Evaluations request', [
+        $this->logger->info('Student Evaluations request', [
             'user_id' => $user->id,
             'klassci_id' => $klassciEtudiantId,
         ]);
@@ -76,7 +77,7 @@ final class StudentEvaluationsListService
             $response = $this->klassciService->requestWithUserToken($klassciToken, 'evaluations', 'GET');
             return collect($response['data'] ?? []);
         } catch (\Exception $e) {
-            Log::warning('Could not fetch KLASSCI evaluations for windows', ['error' => $e->getMessage()]);
+            $this->logger->warning('Could not fetch KLASSCI evaluations for windows', ['error' => $e->getMessage()]);
             return collect([]);
         }
     }
@@ -139,7 +140,7 @@ final class StudentEvaluationsListService
                 $evalArray['classe'] = $classeResponse['data'] ?? null;
             }
         } catch (\Exception $e) {
-            Log::warning('Could not fetch matiere/classe for pure LMS eval', ['error' => $e->getMessage()]);
+            $this->logger->warning('Could not fetch matiere/classe for pure LMS eval', ['error' => $e->getMessage()]);
         }
     }
 }

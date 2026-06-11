@@ -7,7 +7,7 @@ namespace App\Services\Evaluation;
 use App\Models\Evaluation;
 use App\Models\EvaluationQuestion;
 use App\Models\User;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Database\DatabaseManager;
 use Psr\Log\LoggerInterface;
 use Throwable;
 
@@ -20,7 +20,7 @@ use Throwable;
  * ## DI strict (§1.6 D du manifeste)
  *
  * Constructeur injecte uniquement `LoggerInterface` (PSR-3). Aucune Facade
- * `Log::`, aucun `app()`. La transaction utilise `DB::beginTransaction()` —
+ * `Log::`, aucun `app()`. La transaction utilise `$this->db->beginTransaction()` —
  * Facade autorisée car bas niveau Eloquent/transactional (cf. autres services
  * du projet).
  *
@@ -58,6 +58,7 @@ final class EvaluationUpdateService
     ];
 
     public function __construct(
+        private readonly DatabaseManager $db,
         private readonly LoggerInterface $logger,
         private readonly EvaluationStateService $state,
     ) {}
@@ -83,7 +84,7 @@ final class EvaluationUpdateService
         }
 
         try {
-            DB::beginTransaction();
+            $this->db->beginTransaction();
 
             // Filtre les champs immuables (sécurité issue #124).
             $updatePayload = array_diff_key($data, array_flip(self::IMMUTABLE_FIELDS));
@@ -95,7 +96,7 @@ final class EvaluationUpdateService
                 $this->createQuestions($evaluation, $data['questions']);
             }
 
-            DB::commit();
+            $this->db->commit();
 
             $evaluation->load('questions');
 
@@ -108,7 +109,7 @@ final class EvaluationUpdateService
                 ],
             ];
         } catch (Throwable $e) {
-            DB::rollBack();
+            $this->db->rollBack();
             $this->logger->error('Erreur mise à jour évaluation', ['error' => $e->getMessage()]);
 
             return [

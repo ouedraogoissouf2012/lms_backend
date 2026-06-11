@@ -7,7 +7,7 @@ namespace App\Services\Evaluation\Student;
 use App\Models\EvaluationSubmission;
 use App\Models\User;
 use App\Services\KlassciProxyService;
-use Illuminate\Support\Facades\Log;
+use Psr\Log\LoggerInterface;
 
 /**
  * Agrégation des notes étudiantes par matière — extrait de
@@ -21,6 +21,7 @@ use Illuminate\Support\Facades\Log;
 final class StudentGradesAggregator
 {
     public function __construct(
+        private readonly LoggerInterface $logger,
         private readonly KlassciProxyService $klassciService,
     ) {}
 
@@ -61,7 +62,7 @@ final class StudentGradesAggregator
                 }
             }
         } catch (\Exception $e) {
-            Log::warning('Impossible de récupérer les matières depuis KLASSCI', ['error' => $e->getMessage()]);
+            $this->logger->warning('Impossible de récupérer les matières depuis KLASSCI', ['error' => $e->getMessage()]);
         }
         return $matieresData;
     }

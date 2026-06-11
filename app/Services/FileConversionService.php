@@ -8,8 +8,8 @@ use App\Services\FileConversion\PdfConverter;
 use App\Services\FileConversion\PowerPointConverter;
 use App\Services\FileConversion\WordConverter;
 use Illuminate\Http\UploadedFile;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Storage;
+use Psr\Log\LoggerInterface;
+use Illuminate\Contracts\Filesystem\Factory as FilesystemFactory;
 
 /**
  * Façade preserving the legacy public API consumed by `ChapterController`,
@@ -32,6 +32,8 @@ use Illuminate\Support\Facades\Storage;
 final class FileConversionService
 {
     public function __construct(
+        private readonly LoggerInterface $logger,
+        private readonly FilesystemFactory $filesystem,
         private readonly PowerPointConverter $powerPoint,
         private readonly WordConverter $word,
         private readonly PdfConverter $pdf,
@@ -70,9 +72,9 @@ final class FileConversionService
      */
     public function deleteChapterFiles(int $chapterId): void
     {
-        Storage::disk('public')->deleteDirectory("chapters/{$chapterId}");
+        $this->filesystem->disk('public')->deleteDirectory("chapters/{$chapterId}");
 
-        Log::info('🗑️ Fichiers chapitre supprimés', ['chapter_id' => $chapterId]);
+        $this->logger->info('🗑️ Fichiers chapitre supprimés', ['chapter_id' => $chapterId]);
     }
 
     /**

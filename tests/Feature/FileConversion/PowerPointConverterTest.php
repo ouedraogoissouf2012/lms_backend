@@ -242,6 +242,7 @@ final class PowerPointConverterTest extends TestCase
     private function makeConverter(): PowerPointConverter
     {
         return new PowerPointConverter(
+            new \Psr\Log\NullLogger(),
             $this->shellMock,
             $this->convertApiMock,
             $this->pdfRendererMock,

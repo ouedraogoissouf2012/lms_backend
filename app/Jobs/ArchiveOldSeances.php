@@ -8,7 +8,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Facades\Log;
+use Psr\Log\LoggerInterface;
 
 /**
  * Job pour archiver automatiquement les séances obsolètes
@@ -37,9 +37,9 @@ class ArchiveOldSeances implements ShouldQueue
     /**
      * Exécuter le job
      */
-    public function handle(): void
+    public function handle(LoggerInterface $logger): void
     {
-        Log::info('🗂️ Début de l\'archivage automatique des séances obsolètes');
+        $logger->info('🗂️ Début de l\'archivage automatique des séances obsolètes');
 
         $twoWeeksAgo = now()->subWeeks(2);
         $archivedCount = 0;
@@ -60,7 +60,7 @@ class ArchiveOldSeances implements ShouldQueue
 
                 $archivedCount++;
 
-                Log::debug('Séance archivée', [
+                $logger->debug('Séance archivée', [
                     'seance_id' => $seance->id,
                     'klassci_seance_id' => $seance->klassci_seance_id,
                     'date' => $seance->programmation['date'] ?? 'N/A',
@@ -68,13 +68,13 @@ class ArchiveOldSeances implements ShouldQueue
                 ]);
             }
 
-            Log::info('✅ Archivage automatique terminé', [
+            $logger->info('✅ Archivage automatique terminé', [
                 'seances_archivees' => $archivedCount,
                 'date_limite' => $twoWeeksAgo->toDateString()
             ]);
 
         } catch (\Exception $e) {
-            Log::error('❌ Erreur lors de l\'archivage automatique', [
+            $logger->error('❌ Erreur lors de l\'archivage automatique', [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
             ]);
@@ -89,7 +89,12 @@ class ArchiveOldSeances implements ShouldQueue
      */
     public function failed(\Throwable $exception): void
     {
-        Log::error('Job ArchiveOldSeances failed after all retries', [
+        // Pattern AutoCloseEmptySeances (#209) : failed() est appelée hors
+        // container (aucune injection possible) — résolution explicite.
+        /** @var LoggerInterface $logger */
+        $logger = app(LoggerInterface::class);
+
+        $logger->error('Job ArchiveOldSeances failed after all retries', [
             'tries'     => $this->tries,
             'exception' => $exception->getMessage(),
         ]);

@@ -7,7 +7,7 @@ namespace App\Services\FileConversion;
 use App\Support\Shell\ShellExecutionException;
 use App\Support\Shell\ShellExecutorInterface;
 use Illuminate\Http\UploadedFile;
-use Illuminate\Support\Facades\Log;
+use Psr\Log\LoggerInterface;
 use RuntimeException;
 
 /**
@@ -46,6 +46,7 @@ final class WordConverter
     ];
 
     public function __construct(
+        private readonly LoggerInterface $logger,
         private readonly ShellExecutorInterface $shell,
         private readonly FileValidator $validator,
     ) {
@@ -112,7 +113,7 @@ final class WordConverter
                 $docxPath,
             ]);
         } catch (ShellExecutionException $e) {
-            Log::error('Erreur LibreOffice Word', [
+            $this->logger->error('Erreur LibreOffice Word', [
                 'exit'   => $e->exitCode,
                 'stderr' => $e->stderr,
             ]);

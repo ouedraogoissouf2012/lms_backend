@@ -31,10 +31,16 @@ final class QuizStatisticsService
     {
         $quiz->total_questions = $quiz->questions()->count();
         $quiz->total_points = $quiz->questions()->sum('points');
-        $quiz->attempts_count = $quiz->attempts()->where('status', 'submitted')->count();
+
+        // Fix E2E #211 : inclure `graded` (grading auto) — filtrer `submitted`
+        // seul laissait attempts_count=0 et average_score=null pour tous les
+        // quiz auto-gradés.
+        $quiz->attempts_count = $quiz->attempts()
+            ->whereIn('status', ['submitted', 'graded'])
+            ->count();
 
         $avgScore = $quiz->attempts()
-            ->where('status', 'submitted')
+            ->whereIn('status', ['submitted', 'graded'])
             ->whereNotNull('score')
             ->avg('score');
 

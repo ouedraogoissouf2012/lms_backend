@@ -5137,6 +5137,12 @@ parameters:
 			path: app/Services/Notification/VisioNotificationDispatcher.php
 
 		-
+			message: '#^Cannot cast mixed to int\.$#'
+			identifier: cast.int
+			count: 1
+			path: app/Services/Quiz/QuizAccessService.php
+
+		-
 			message: '#^Method App\\Services\\Quiz\\QuizAccessService\:\:bestAttemptForUser\(\) should return App\\Models\\QuizAttempt\|null but returns Illuminate\\Database\\Eloquent\\Model\|null\.$#'
 			identifier: return.type
 			count: 1
@@ -5149,15 +5155,9 @@ parameters:
 			path: app/Services/Quiz/QuizAccessService.php
 
 		-
-			message: '#^Parameter \#1 \$column of method Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\:\:where\(\) expects array\<int\|model property of Illuminate\\Database\\Eloquent\\Model, mixed\>\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\: Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\: void\)\|Illuminate\\Contracts\\Database\\Query\\Expression\|model property of Illuminate\\Database\\Eloquent\\Model, ''status'' given\.$#'
-			identifier: argument.type
-			count: 2
-			path: app/Services/Quiz/QuizAccessService.php
-
-		-
 			message: '#^Parameter \#1 \$column of method Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\:\:where\(\) expects array\<int\|model property of Illuminate\\Database\\Eloquent\\Model, mixed\>\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\: Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\: void\)\|Illuminate\\Contracts\\Database\\Query\\Expression\|model property of Illuminate\\Database\\Eloquent\\Model, ''user_id'' given\.$#'
 			identifier: argument.type
-			count: 3
+			count: 4
 			path: app/Services/Quiz/QuizAccessService.php
 
 		-
@@ -5285,12 +5285,6 @@ parameters:
 			identifier: argument.type
 			count: 2
 			path: app/Services/Quiz/QuizGradingService.php
-
-		-
-			message: '#^Parameter \#1 \$column of method Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\:\:where\(\) expects array\<int\|model property of Illuminate\\Database\\Eloquent\\Model, mixed\>\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\: Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\: void\)\|Illuminate\\Contracts\\Database\\Query\\Expression\|model property of Illuminate\\Database\\Eloquent\\Model, ''status'' given\.$#'
-			identifier: argument.type
-			count: 2
-			path: app/Services/Quiz/QuizStatisticsService.php
 
 		-
 			message: '#^Access to an undefined property App\\Models\\ESBTPAttendance\:\:\$user\.$#'

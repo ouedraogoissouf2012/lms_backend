@@ -123,6 +123,8 @@ final class QuizCrudService
     {
         $data['created_by'] = $creator->id;
 
+        // Scope tenant explicite (defense en profondeur, fix E2E #211 flow 2).
+        $data['institution_id'] = $creator->institution_id;
         $quiz = Quiz::create($data);
         $quiz->load('creator', 'matiere', 'classe');
 

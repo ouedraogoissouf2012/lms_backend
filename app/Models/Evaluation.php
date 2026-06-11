@@ -73,39 +73,6 @@ class Evaluation extends Model
     }
 
     /**
-     * Vérifie si l'évaluation est disponible pour les étudiants
-     */
-    public function isAvailable(): bool
-    {
-        return $this->is_published &&
-               in_array($this->status, ['planifiee', 'en_cours']);
-    }
-
-    /**
-     * Vérifie si l'évaluation est en cours
-     */
-    public function isActive(): bool
-    {
-        return $this->status === 'en_cours';
-    }
-
-    /**
-     * Vérifie si l'évaluation est verrouillée (ne peut plus être modifiée)
-     */
-    public function isLocked(): bool
-    {
-        return $this->is_locked || $this->submissions()->count() > 0;
-    }
-
-    /**
-     * Vérifie si l'évaluation peut être modifiée par l'enseignant
-     */
-    public function canBeEdited(): bool
-    {
-        return !$this->isLocked();
-    }
-
-    /**
      * Retourne le statut EFFECTIF de l'évaluation
      * Logique centralisée et réutilisable
      *
@@ -141,60 +108,4 @@ class Evaluation extends Model
         return $this->getEffectiveStatus() === 'terminee';
     }
 
-    /**
-     * Verrouille l'évaluation
-     */
-    public function lock(): void
-    {
-        if (!$this->is_locked) {
-            $this->update([
-                'is_locked' => true,
-                'locked_at' => now(),
-            ]);
-        }
-    }
-
-    /**
-     * Publie l'évaluation (la rend visible aux étudiants)
-     */
-    public function publish(): void
-    {
-        $this->update([
-            'is_published' => true,
-            'status' => 'planifiee', // Planifiée = prête à être passée
-        ]);
-    }
-
-    /**
-     * Dépublie l'évaluation (la cache aux étudiants)
-     */
-    public function unpublish(): void
-    {
-        $this->update([
-            'is_published' => false,
-            'status' => 'brouillon',
-        ]);
-    }
-
-    /**
-     * Démarre l'évaluation (change le statut en cours)
-     */
-    public function start(): void
-    {
-        if ($this->is_published && $this->status === 'planifiee') {
-            $this->update([
-                'status' => 'en_cours',
-            ]);
-        }
-    }
-
-    /**
-     * Termine l'évaluation
-     */
-    public function finish(): void
-    {
-        $this->update([
-            'status' => 'terminee',
-        ]);
-    }
 }

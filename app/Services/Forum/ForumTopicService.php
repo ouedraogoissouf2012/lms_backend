@@ -120,7 +120,7 @@ final class ForumTopicService
             }
         ]);
 
-        $topic->incrementViews();
+        $topic->increment('views_count');
 
         return $topic;
     }
@@ -154,7 +154,7 @@ final class ForumTopicService
      */
     public function close(ForumTopic $topic): ForumTopic
     {
-        $topic->close();
+        $topic->update(['status' => 'closed']);
 
         return $topic;
     }
@@ -164,7 +164,7 @@ final class ForumTopicService
      */
     public function pin(ForumTopic $topic): ForumTopic
     {
-        $topic->pin();
+        $topic->update(['status' => 'pinned']);
 
         return $topic;
     }

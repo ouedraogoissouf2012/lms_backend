@@ -35,8 +35,10 @@ final class QuizAttemptStateService
 {
     use BuildsAttemptResponses;
 
-    public function __construct(private readonly QuizGradingService $grading)
-    {
+    public function __construct(
+        private readonly QuizGradingService $grading,
+        private readonly QuizAttemptTimerService $timer,
+    ) {
     }
 
     /**
@@ -56,8 +58,8 @@ final class QuizAttemptStateService
             $attempt->questions_with_results = $this->buildQuestionsWithResults($attempt, $this->grading);
         }
 
-        $attempt->time_spent_formatted = $attempt->getFormattedTimeSpent();
-        $attempt->time_remaining       = $attempt->getTimeRemaining();
+        $attempt->time_spent_formatted = $this->timer->formattedTimeSpent($attempt);
+        $attempt->time_remaining       = $this->timer->timeRemaining($attempt);
 
         return [
             'status'  => 200,
@@ -86,7 +88,7 @@ final class QuizAttemptStateService
         $attempts = $query->paginate((int) ($filters['per_page'] ?? 20));
 
         $attempts->getCollection()->transform(function ($attempt) {
-            $attempt->time_spent_formatted = $attempt->getFormattedTimeSpent();
+            $attempt->time_spent_formatted = $this->timer->formattedTimeSpent($attempt);
             return $attempt;
         });
 
@@ -118,9 +120,9 @@ final class QuizAttemptStateService
             ];
         }
 
-        $timeRemaining = $attempt->getTimeRemaining();
+        $timeRemaining = $this->timer->timeRemaining($attempt);
 
-        if ($attempt->isTimeExpired()) {
+        if ($this->timer->hasExpired($attempt)) {
             // Auto-submit via grading service (plus de `QuizAttempt::submit()`
             // qui appelait `app(...)` — DI strict).
             $this->grading->submitAttempt($attempt, $attempt->answers ?? []);
@@ -171,7 +173,7 @@ final class QuizAttemptStateService
             return $this->failure(422, 'Cette tentative ne peut plus être modifiée');
         }
 
-        if ($attempt->isTimeExpired()) {
+        if ($this->timer->hasExpired($attempt)) {
             $this->grading->submitAttempt($attempt, $answers);
 
             return [
@@ -194,7 +196,7 @@ final class QuizAttemptStateService
             'success' => true,
             'message' => 'Progression sauvegardée',
             'data'    => [
-                'time_remaining' => $attempt->getTimeRemaining(),
+                'time_remaining' => $this->timer->timeRemaining($attempt),
                 'saved_at'       => Carbon::now(),
             ],
             'errors'  => null,

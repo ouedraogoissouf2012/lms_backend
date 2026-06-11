@@ -110,7 +110,10 @@ final class LessonCrudOperationsService
     public function publish(Lesson $lesson): Lesson
     {
         $wasUnpublished = $lesson->status === 'draft';
-        $lesson->publish();
+        $lesson->update([
+            'status' => 'published',
+            'published_at' => now(),
+        ]);
 
         // Créer des notifications pour les étudiants concernés si le cours vient d'être publié
         if ($wasUnpublished && $lesson->matiere_id) {
@@ -125,7 +128,10 @@ final class LessonCrudOperationsService
      */
     public function unpublish(Lesson $lesson): Lesson
     {
-        $lesson->unpublish();
+        $lesson->update([
+            'status' => 'draft',
+            'published_at' => null,
+        ]);
 
         return $lesson;
     }

@@ -58,6 +58,10 @@ final class ForumPostService
         $post = ForumPost::create($data);
         $post->load('user:id,name,email,role');
 
+        // Compteur posts + activité du topic — appel explicite (remplace
+        // l'ancien boot hook `ForumPost::created`, anti-pattern §5).
+        $this->refreshTopicCounters($topic);
+
         // Créer une notification pour l'auteur du topic (sauf si c'est lui qui répond)
         if ($topic->user_id !== $author->id) {
             Notification::create([
@@ -110,7 +114,7 @@ final class ForumPostService
     public function update(ForumPost $post, array $data): ForumPost
     {
         $post->update($data);
-        $post->markAsEdited();
+        $post->update(['is_edited' => true, 'edited_at' => now()]);
 
         /** @var ForumPost $fresh */
         $fresh = $post->fresh(['user']);
@@ -119,24 +123,32 @@ final class ForumPostService
     }
 
     /**
-     * Supprime un post (soft delete via `SoftDeletes`).
+     * Supprime un post (soft delete) + recompte le topic (remplace l'ancien
+     * boot hook `ForumPost::deleted`).
      */
     public function delete(ForumPost $post): void
     {
+        $topic = $post->topic;
         $post->delete();
+
+        if ($topic !== null) {
+            $this->refreshTopicCounters($topic);
+        }
     }
 
     /**
-     * Marquer un post comme solution. Le model `ForumPost::markAsSolution()`
-     * démarque les autres posts solution du topic et marque le topic
-     * comme résolu. Fan-out notification à l'auteur du post (sauf
-     * self-marking).
+     * Marquer un post comme solution : démarque les autres posts solution du
+     * topic, marque ce post, passe le topic en résolu. Fan-out notification
+     * à l'auteur du post (sauf self-marking).
      */
     public function markAsSolution(ForumPost $post, User $markedBy): ForumPost
     {
         $topic = $post->topic;
 
-        $post->markAsSolution();
+        // Un seul post solution par topic.
+        $topic->posts()->where('id', '!=', $post->id)->update(['is_solution' => false]);
+        $post->update(['is_solution' => true]);
+        $topic->update(['is_resolved' => true]);
 
         // Créer une notification pour l'auteur du post (sauf si c'est lui qui marque)
         if ($post->user_id !== $markedBy->id) {
@@ -158,5 +170,17 @@ final class ForumPostService
         $fresh = $post->fresh(['user']);
 
         return $fresh;
+    }
+
+    /**
+     * Recompte `posts_count` + horodate `last_activity_at` du topic.
+     * Appel explicite à chaque create/delete de post — remplace les boot
+     * hooks `ForumPost::created/deleted` (anti-pattern §5, cf. fix C1/C2).
+     */
+    private function refreshTopicCounters(ForumTopic $topic): void
+    {
+        $topic->posts_count = $topic->posts()->count();
+        $topic->last_activity_at = now();
+        $topic->save();
     }
 }

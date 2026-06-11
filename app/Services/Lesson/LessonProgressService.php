@@ -4,33 +4,77 @@ declare(strict_types=1);
 
 namespace App\Services\Lesson;
 
+use App\Models\Lesson;
 use App\Models\LessonProgress;
 
 /**
- * State machine de progression sur une leçon — extraite de
- * `LessonProgress` (PERF-04 batch 3).
- *
- * ## Pourquoi extraire
- *
- * `LessonProgress::updateProgress` était une state machine (transitions
- * not_started → in_progress → completed selon le pourcentage), accumulateur
- * de temps, et clamp 0-100. Logique métier qui n'a pas sa place dans un
- * modèle Eloquent (§1.1).
- *
- * ## Comportement
- *
- * Aucun changement runtime — logique déplacée verbatim. `LessonProgress`
- * conserve un thin wrapper pour préserver les callers existants.
- *
- * ## DI strict (§1.6 D)
- *
- * Pas de dépendance constructeur — pure logique sur le model passé en
- * argument. Pas de Facade.
- *
- * @see app/Models/LessonProgress.php::updateProgress (thin wrapper)
+ * Progression sur une leçon : state machine de mise à jour (PERF-04 batch 3)
+ * + lectures/statistiques par leçon (H2 audit — extraites du modèle `Lesson`,
+ * §5 : jamais de requêtes DB dans un modèle).
  */
 class LessonProgressService
 {
+    /**
+     * Progression d'un utilisateur sur une leçon (null si jamais commencée).
+     */
+    public function progressForUser(Lesson $lesson, int $userId): ?LessonProgress
+    {
+        return $lesson->progress()->where('user_id', $userId)->first();
+    }
+
+    /**
+     * Taux de complétion moyen de la leçon (0-100).
+     */
+    public function averageCompletionRate(Lesson $lesson): float
+    {
+        $completedCount = $lesson->progress()->where('status', 'completed')->count();
+        $totalCount = $lesson->progress()->count();
+
+        return $totalCount > 0 ? ($completedCount / $totalCount) * 100 : 0;
+    }
+
+    /**
+     * Nombre d'étudiants ayant commencé (in_progress ou completed).
+     */
+    public function studentsStartedCount(Lesson $lesson): int
+    {
+        return $lesson->progress()
+            ->whereIn('status', ['in_progress', 'completed'])
+            ->count();
+    }
+
+    /**
+     * Nombre d'étudiants ayant terminé.
+     */
+    public function studentsCompletedCount(Lesson $lesson): int
+    {
+        return $lesson->progress()->where('status', 'completed')->count();
+    }
+
+    /**
+     * Marque la leçon comme complétée (100%, horodatée).
+     */
+    public function complete(LessonProgress $progress): bool
+    {
+        return $progress->update([
+            'status' => 'completed',
+            'progress_percentage' => 100,
+            'completed_at' => now(),
+            'last_accessed_at' => now(),
+        ]);
+    }
+
+    /**
+     * Enregistre une note (clamp 1-5) + feedback optionnel.
+     */
+    public function addRating(LessonProgress $progress, int $rating, ?string $feedback = null): bool
+    {
+        return $progress->update([
+            'rating' => min(5, max(1, $rating)),
+            'feedback' => $feedback,
+        ]);
+    }
+
     /**
      * Met à jour la progression d'un user sur une leçon.
      *

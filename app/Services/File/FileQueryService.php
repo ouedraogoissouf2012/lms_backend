@@ -43,6 +43,7 @@ final class FileQueryService
 
     public function __construct(
         private readonly CacheRepository $cache,
+        private readonly FilePresenter $presenter,
     ) {}
 
     /**
@@ -102,8 +103,8 @@ final class FileQueryService
         $files = $query->paginate($perPage);
 
         $files->getCollection()->transform(function (File $file): File {
-            $file->formatted_size = $file->getFormattedSize();
-            $file->download_url = $file->getDownloadUrl();
+            $file->formatted_size = $this->presenter->formattedSize($file);
+            $file->download_url = $this->presenter->downloadUrl($file);
             return $file;
         });
 
@@ -128,8 +129,8 @@ final class FileQueryService
             return null;
         }
 
-        $file->formatted_size = $file->getFormattedSize();
-        $file->download_url = $file->getDownloadUrl();
+        $file->formatted_size = $this->presenter->formattedSize($file);
+        $file->download_url = $this->presenter->downloadUrl($file);
 
         return $file;
     }

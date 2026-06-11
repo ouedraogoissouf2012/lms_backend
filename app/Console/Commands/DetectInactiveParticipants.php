@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
 use App\Models\ESBTPAttendance;
+use App\Services\Visio\AttendanceLifecycleService;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
 
@@ -26,7 +27,7 @@ class DetectInactiveParticipants extends Command
     /**
      * Execute the console command.
      */
-    public function handle()
+    public function handle(AttendanceLifecycleService $lifecycle)
     {
         $timeoutMinutes = (int) $this->option('timeout');
         $threshold = Carbon::now()->subMinutes($timeoutMinutes);
@@ -52,7 +53,7 @@ class DetectInactiveParticipants extends Command
             $this->warn("⚠️  Participant inactif détecté: {$attendance->nom} {$attendance->prenom} (Séance ID: {$attendance->seance_id})");
 
             // Marquer comme déconnecté
-            $attendance->markAsDisconnected();
+            $lifecycle->disconnect($attendance);
             $disconnectedCount++;
 
             Log::info('Participant auto-déconnecté pour inactivité', [

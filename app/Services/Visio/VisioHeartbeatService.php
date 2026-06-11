@@ -26,6 +26,7 @@ final class VisioHeartbeatService
 {
     public function __construct(
         private readonly LoggerInterface $logger,
+        private readonly AttendanceLifecycleService $lifecycle,
     ) {}
 
     /**
@@ -69,7 +70,7 @@ final class VisioHeartbeatService
             }
 
             // Mettre à jour le heartbeat
-            $attendance->updateHeartbeat();
+            $this->lifecycle->heartbeat($attendance);
 
             return [
                 'status' => 200,

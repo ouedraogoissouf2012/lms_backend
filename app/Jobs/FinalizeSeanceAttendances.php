@@ -10,7 +10,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Facades\Log;
+use Psr\Log\LoggerInterface;
 
 class FinalizeSeanceAttendances implements ShouldQueue
 {
@@ -42,12 +42,12 @@ class FinalizeSeanceAttendances implements ShouldQueue
      * - Calcule la durée de participation
      * - Enregistre left_at comme heure_fin de la séance
      */
-    public function handle(): void
+    public function handle(LoggerInterface $logger): void
     {
         $now = Carbon::now();
         $finalizedCount = 0;
 
-        Log::info('[FinalizeSeanceAttendances] Démarrage du job');
+        $logger->info('[FinalizeSeanceAttendances] Démarrage du job');
 
         // Récupérer toutes les séances actives qui sont terminées depuis > GRACE_PERIOD
         $seancesTerminees = Seance::where('is_active', true)
@@ -63,7 +63,7 @@ class FinalizeSeanceAttendances implements ShouldQueue
                 return $graceDeadline->isPast();
             });
 
-        Log::info('[FinalizeSeanceAttendances] Séances à traiter', [
+        $logger->info('[FinalizeSeanceAttendances] Séances à traiter', [
             'count' => $seancesTerminees->count()
         ]);
 
@@ -77,7 +77,7 @@ class FinalizeSeanceAttendances implements ShouldQueue
                 continue;
             }
 
-            Log::info('[FinalizeSeanceAttendances] Finalisation séance', [
+            $logger->info('[FinalizeSeanceAttendances] Finalisation séance', [
                 'seance_id' => $seance->id,
                 'klassci_seance_id' => $seance->klassci_seance_id,
                 'titre' => $seance->titre,
@@ -108,7 +108,7 @@ class FinalizeSeanceAttendances implements ShouldQueue
 
                 $finalizedCount++;
 
-                Log::info('[FinalizeSeanceAttendances] Participant finalisé', [
+                $logger->info('[FinalizeSeanceAttendances] Participant finalisé', [
                     'user_id' => $attendance->user_id,
                     'joined_at' => $attendance->joined_at?->format('Y-m-d H:i:s'),
                     'left_at' => $leftAt->format('Y-m-d H:i:s'),
@@ -117,7 +117,7 @@ class FinalizeSeanceAttendances implements ShouldQueue
             }
         }
 
-        Log::info('[FinalizeSeanceAttendances] Job terminé', [
+        $logger->info('[FinalizeSeanceAttendances] Job terminé', [
             'seances_traitees' => $seancesTerminees->count(),
             'participants_finalises' => $finalizedCount
         ]);
@@ -128,7 +128,12 @@ class FinalizeSeanceAttendances implements ShouldQueue
      */
     public function failed(\Throwable $exception): void
     {
-        Log::error('[FinalizeSeanceAttendances] Job échoué', [
+                // Pattern AutoCloseEmptySeances (#209) : failed() est appelée hors
+        // container (aucune injection possible) — résolution explicite.
+        /** @var LoggerInterface $logger */
+        $logger = app(LoggerInterface::class);
+
+        $logger->error('[FinalizeSeanceAttendances] Job échoué', [
             'error' => $exception->getMessage(),
             'trace' => $exception->getTraceAsString()
         ]);

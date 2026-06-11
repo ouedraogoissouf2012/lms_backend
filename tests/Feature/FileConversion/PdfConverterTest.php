@@ -145,6 +145,7 @@ final class PdfConverterTest extends TestCase
     private function makeConverter(): PdfConverter
     {
         return new PdfConverter(
+            new \Psr\Log\NullLogger(),
             $this->convertApiMock,
             $this->pdfRendererMock,
             $this->validator,

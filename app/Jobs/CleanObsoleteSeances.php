@@ -7,7 +7,7 @@ use App\Models\User;
 use App\Services\KlassciProxyService;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
-use Illuminate\Support\Facades\Log;
+use Psr\Log\LoggerInterface;
 
 /**
  * Job pour nettoyer les séances obsolètes du LMS
@@ -45,21 +45,21 @@ class CleanObsoleteSeances implements ShouldQueue
     /**
      * Execute the job.
      */
-    public function handle(KlassciProxyService $klassciService): void
+    public function handle(KlassciProxyService $klassciService, LoggerInterface $logger): void
     {
-        Log::info('🧹 [CleanObsoleteSeances] Début du nettoyage des séances obsolètes');
+        $logger->info('🧹 [CleanObsoleteSeances] Début du nettoyage des séances obsolètes');
 
         // Récupérer toutes les séances actives avec un klassci_seance_id
         $seancesLocales = Seance::where('is_active', true)
             ->whereNotNull('klassci_seance_id')
             ->get();
 
-        Log::info('📊 [CleanObsoleteSeances] Séances actives à vérifier', [
+        $logger->info('📊 [CleanObsoleteSeances] Séances actives à vérifier', [
             'count' => $seancesLocales->count()
         ]);
 
         if ($seancesLocales->isEmpty()) {
-            Log::info('✅ [CleanObsoleteSeances] Aucune séance à vérifier');
+            $logger->info('✅ [CleanObsoleteSeances] Aucune séance à vérifier');
             return;
         }
 
@@ -69,7 +69,7 @@ class CleanObsoleteSeances implements ShouldQueue
             ->first();
 
         if (!$admin) {
-            Log::warning('⚠️ [CleanObsoleteSeances] Aucun admin/coordinateur avec token Klassci trouvé');
+            $logger->warning('⚠️ [CleanObsoleteSeances] Aucun admin/coordinateur avec token Klassci trouvé');
             return;
         }
 
@@ -90,7 +90,7 @@ class CleanObsoleteSeances implements ShouldQueue
                 );
 
                 // Si on arrive ici, la séance existe encore dans Klassci
-                Log::debug("✅ Séance #{$klassciSeanceId} existe toujours dans Klassci");
+                $logger->debug("✅ Séance #{$klassciSeanceId} existe toujours dans Klassci");
 
             } catch (\Exception $e) {
                 // Si 404 ou autre erreur, la séance n'existe plus
@@ -101,7 +101,7 @@ class CleanObsoleteSeances implements ShouldQueue
 
                     $archivedCount++;
 
-                    Log::info('🗑️ [CleanObsoleteSeances] Séance archivée', [
+                    $logger->info('🗑️ [CleanObsoleteSeances] Séance archivée', [
                         'seance_id' => $seance->id,
                         'klassci_seance_id' => $klassciSeanceId,
                         'matiere' => $seance->matiere_nom,
@@ -111,7 +111,7 @@ class CleanObsoleteSeances implements ShouldQueue
                 } else {
                     // Autre type d'erreur (réseau, etc.)
                     $errorCount++;
-                    Log::warning('⚠️ [CleanObsoleteSeances] Erreur lors de la vérification', [
+                    $logger->warning('⚠️ [CleanObsoleteSeances] Erreur lors de la vérification', [
                         'seance_id' => $seance->id,
                         'klassci_seance_id' => $klassciSeanceId,
                         'error' => substr($e->getMessage(), 0, 200)
@@ -120,7 +120,7 @@ class CleanObsoleteSeances implements ShouldQueue
             }
         }
 
-        Log::info('✅ [CleanObsoleteSeances] Nettoyage terminé', [
+        $logger->info('✅ [CleanObsoleteSeances] Nettoyage terminé', [
             'checked' => $checkedCount,
             'archived' => $archivedCount,
             'errors' => $errorCount,
@@ -133,7 +133,12 @@ class CleanObsoleteSeances implements ShouldQueue
      */
     public function failed(\Throwable $exception): void
     {
-        Log::error('[CleanObsoleteSeances] Job failed after all retries', [
+                // Pattern AutoCloseEmptySeances (#209) : failed() est appelée hors
+        // container (aucune injection possible) — résolution explicite.
+        /** @var LoggerInterface $logger */
+        $logger = app(LoggerInterface::class);
+
+        $logger->error('[CleanObsoleteSeances] Job failed after all retries', [
             'tries'     => $this->tries,
             'exception' => $exception->getMessage(),
         ]);

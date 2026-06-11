@@ -9,7 +9,7 @@ use App\Models\User;
 use App\Models\UserClass;
 use App\Services\KlassciProxyService;
 use Carbon\Carbon;
-use Illuminate\Support\Facades\Log;
+use Psr\Log\LoggerInterface;
 
 /**
  * SeanceVisioEnricher — local-DB + visio enrichment for séance payloads.
@@ -31,6 +31,7 @@ use Illuminate\Support\Facades\Log;
 final class SeanceVisioEnricher
 {
     public function __construct(
+        private readonly LoggerInterface $logger,
         private readonly KlassciProxyService $klassciService,
     ) {}
 
@@ -43,7 +44,7 @@ final class SeanceVisioEnricher
      */
     public function loadFromLocalDbFallback(int $seanceId, User $user): ?array
     {
-        Log::info('Séance non trouvée via API KLASSCI, tentative BDD locale', [
+        $this->logger->info('Séance non trouvée via API KLASSCI, tentative BDD locale', [
             'seance_id' => $seanceId
         ]);
 
@@ -94,7 +95,7 @@ final class SeanceVisioEnricher
 
         $matiereInfo = $seance['matiere'];
 
-        Log::info('Séance récupérée depuis BDD locale (fallback global)', [
+        $this->logger->info('Séance récupérée depuis BDD locale (fallback global)', [
             'seance_id' => $seanceId,
             'matiere' => $matiereInfo['nom']
         ]);
@@ -134,7 +135,7 @@ final class SeanceVisioEnricher
             return null;
 
         } catch (\Exception $e) {
-            Log::warning('Erreur accès table seances', ['error' => $e->getMessage()]);
+            $this->logger->warning('Erreur accès table seances', ['error' => $e->getMessage()]);
             $this->applyVisioDefaults($seance);
             return null;
         }
@@ -214,7 +215,7 @@ final class SeanceVisioEnricher
                 ->toArray();
 
         } catch (\Exception $e) {
-            Log::warning('Erreur récupération étudiants séance via KLASSCI', [
+            $this->logger->warning('Erreur récupération étudiants séance via KLASSCI', [
                 'classe_id' => $classeId,
                 'error' => $e->getMessage()
             ]);
@@ -241,7 +242,7 @@ final class SeanceVisioEnricher
                     ];
                 })->toArray();
             } catch (\Exception $e) {
-                Log::error('Erreur fallback BDD pour étudiants', [
+                $this->logger->error('Erreur fallback BDD pour étudiants', [
                     'classe_id' => $visioData->klassci_classe_id,
                     'error' => $e->getMessage()
                 ]);

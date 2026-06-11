@@ -8,7 +8,7 @@ use App\Models\User;
 use App\Services\Seances\KlassciSeanceLookupService;
 use App\Services\Seances\SeanceVisioEnricher;
 use Carbon\Carbon;
-use Illuminate\Support\Facades\Log;
+use Psr\Log\LoggerInterface;
 use RuntimeException;
 
 /**
@@ -48,6 +48,7 @@ use RuntimeException;
 final class SeanceDetailQueryService
 {
     public function __construct(
+        private readonly LoggerInterface $logger,
         private readonly KlassciProxyService $klassciService,
         private readonly KlassciSeanceLookupService $klassciLookup,
         private readonly SeanceVisioEnricher $visioEnricher,
@@ -71,7 +72,7 @@ final class SeanceDetailQueryService
             throw new RuntimeException('Token KLASSCI non trouvé');
         }
 
-        Log::info('Récupération détails séance', ['seance_id' => $seanceId]);
+        $this->logger->info('Récupération détails séance', ['seance_id' => $seanceId]);
 
         // 1. Récupérer la séance depuis KLASSCI selon le rôle
         [$seance, $matiereInfo] = $this->klassciLookup->lookup($seanceId, $user, $klassciToken);
@@ -178,7 +179,7 @@ final class SeanceDetailQueryService
             throw new RuntimeException('Token KLASSCI non trouvé');
         }
 
-        Log::info('Récupération participants séance', ['seance_id' => $seanceId]);
+        $this->logger->info('Récupération participants séance', ['seance_id' => $seanceId]);
 
         $seance = $this->findSeanceForParticipants($seanceId, $user, $klassciToken);
         if (!$seance) {
@@ -266,7 +267,7 @@ final class SeanceDetailQueryService
                 ->toArray();
 
         } catch (\Exception $e) {
-            Log::warning('Erreur récupération étudiants', [
+            $this->logger->warning('Erreur récupération étudiants', [
                 'classe_id' => $classeId,
                 'error' => $e->getMessage()
             ]);

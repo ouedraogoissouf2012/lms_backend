@@ -10,7 +10,7 @@ use App\Models\User;
 use App\Services\KlassciProxyService;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\Log;
+use Psr\Log\LoggerInterface;
 
 /**
  * UpcomingSeancesFetcher — KLASSCI walker for the "upcoming séances" listing.
@@ -31,6 +31,7 @@ use Illuminate\Support\Facades\Log;
 final class UpcomingSeancesFetcher
 {
     public function __construct(
+        private readonly LoggerInterface $logger,
         private readonly KlassciProxyService $klassciService,
     ) {}
 
@@ -41,7 +42,7 @@ final class UpcomingSeancesFetcher
     {
         // WORKAROUND: endpoint emploi-temps bugué, on utilise matieres/{id}
         // qui retourne seances_programmees (fonctionne!)
-        Log::info('Récupération séances via endpoint /matieres (workaround)');
+        $this->logger->info('Récupération séances via endpoint /matieres (workaround)');
 
         /** @var Collection<int, array<string, mixed>> $seances */
         $seances = collect([]);
@@ -71,14 +72,14 @@ final class UpcomingSeancesFetcher
                     $seances = $seances->concat($seancesMapped);
 
                 } catch (\Exception $matiereError) {
-                    Log::warning("Erreur matière {$matiereId}", ['error' => $matiereError->getMessage()]);
+                    $this->logger->warning("Erreur matière {$matiereId}", ['error' => $matiereError->getMessage()]);
                 }
             }
 
-            Log::info('Séances récupérées via matieres', ['count' => $seances->count()]);
+            $this->logger->info('Séances récupérées via matieres', ['count' => $seances->count()]);
 
         } catch (\Exception $e) {
-            Log::error('Erreur récupération séances via matieres', [
+            $this->logger->error('Erreur récupération séances via matieres', [
                 'error' => $e->getMessage()
             ]);
         }

@@ -7,7 +7,7 @@ namespace App\Services\Seances\AutoClose;
 use App\Models\ESBTPAttendance;
 use App\Models\Seance;
 use Carbon\Carbon;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Database\DatabaseManager;
 use Psr\Log\LoggerInterface;
 use Throwable;
 
@@ -32,6 +32,7 @@ use Throwable;
 final class SeanceClosingService
 {
     public function __construct(
+        private readonly DatabaseManager $db,
         private readonly LoggerInterface $logger,
     ) {}
 
@@ -46,7 +47,7 @@ final class SeanceClosingService
      */
     public function close(Seance $seance, string $reason, Carbon $now): void
     {
-        DB::beginTransaction();
+        $this->db->beginTransaction();
 
         try {
             // Déterminer le timestamp de fin selon la raison
@@ -73,7 +74,7 @@ final class SeanceClosingService
             $seance->visio_ended_at = $endTimestamp;
             $seance->save();
 
-            DB::commit();
+            $this->db->commit();
 
             $this->logger->info('[AutoCloseEmptySeances] Séance fermée avec succès', [
                 'seance_id' => $seance->id,
@@ -86,7 +87,7 @@ final class SeanceClosingService
             ]);
 
         } catch (Throwable $e) {
-            DB::rollBack();
+            $this->db->rollBack();
 
             $this->logger->error('[AutoCloseEmptySeances] Erreur lors de la fermeture de la séance', [
                 'seance_id' => $seance->id,

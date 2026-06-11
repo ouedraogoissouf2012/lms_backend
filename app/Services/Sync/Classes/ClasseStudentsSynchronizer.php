@@ -8,7 +8,7 @@ use App\Models\Classe;
 use App\Models\User;
 use App\Services\KlassciProxyService;
 use App\Services\TenantManager;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Database\DatabaseManager;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -55,6 +55,7 @@ use Psr\Log\LoggerInterface;
 final class ClasseStudentsSynchronizer
 {
     public function __construct(
+        private readonly DatabaseManager $db,
         private readonly TenantManager $tenantManager,
         private readonly LoggerInterface $logger,
     ) {
@@ -168,14 +169,14 @@ final class ClasseStudentsSynchronizer
      */
     private function upsertEnrollment(Classe $classe, User $student, int $institutionId, array &$stats): void
     {
-        $exists = DB::table('classe_etudiant')
+        $exists = $this->db->table('classe_etudiant')
             ->where('classe_id', $classe->id)
             ->where('user_id', $student->id)
             ->where('institution_id', $institutionId)
             ->exists();
 
         if (!$exists) {
-            DB::table('classe_etudiant')->insert([
+            $this->db->table('classe_etudiant')->insert([
                 'classe_id' => $classe->id,
                 'user_id' => $student->id,
                 'institution_id' => $institutionId,
@@ -188,7 +189,7 @@ final class ClasseStudentsSynchronizer
             $stats['enrollments_created']++;
         } else {
             // Mettre à jour le statut si nécessaire
-            DB::table('classe_etudiant')
+            $this->db->table('classe_etudiant')
                 ->where('classe_id', $classe->id)
                 ->where('user_id', $student->id)
                 ->where('institution_id', $institutionId)

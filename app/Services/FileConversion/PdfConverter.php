@@ -7,7 +7,7 @@ namespace App\Services\FileConversion;
 use App\Services\ConvertApiService;
 use Exception;
 use Illuminate\Http\UploadedFile;
-use Illuminate\Support\Facades\Log;
+use Psr\Log\LoggerInterface;
 use RuntimeException;
 
 /**
@@ -32,6 +32,7 @@ use RuntimeException;
 final class PdfConverter
 {
     public function __construct(
+        private readonly LoggerInterface $logger,
         private readonly ConvertApiService $convertApi,
         private readonly PdfToPngRendererInterface $pdfRenderer,
         private readonly FileValidator $validator,
@@ -50,7 +51,7 @@ final class PdfConverter
      */
     public function convert(UploadedFile $file, int $chapterId): array
     {
-        Log::info('📄 Conversion PDF démarrée', ['file' => $file->getClientOriginalName()]);
+        $this->logger->info('📄 Conversion PDF démarrée', ['file' => $file->getClientOriginalName()]);
 
         $this->validator->validate($file, ['pdf']);
 
@@ -63,7 +64,7 @@ final class PdfConverter
         try {
             return $this->tryConvertApi($fullOriginalPath, $originalPath, $chapterId);
         } catch (Exception $convertApiError) {
-            Log::warning('⚠️ ConvertAPI échoué, fallback sur Imagick', [
+            $this->logger->warning('⚠️ ConvertAPI échoué, fallback sur Imagick', [
                 'error' => $convertApiError->getMessage(),
             ]);
 
@@ -81,7 +82,7 @@ final class PdfConverter
             "chapters/{$chapterId}/slides",
         );
 
-        Log::info('✓ Conversion ConvertAPI PDF terminée', ['count' => count($pngImages)]);
+        $this->logger->info('✓ Conversion ConvertAPI PDF terminée', ['count' => count($pngImages)]);
 
         return [
             'success'             => true,
@@ -100,7 +101,7 @@ final class PdfConverter
     {
         $pngImages = $this->pdfRenderer->render($fullOriginalPath, $chapterId);
 
-        Log::info('✓ Conversion Imagick/GD terminée', ['count' => count($pngImages)]);
+        $this->logger->info('✓ Conversion Imagick/GD terminée', ['count' => count($pngImages)]);
 
         return [
             'success'             => true,

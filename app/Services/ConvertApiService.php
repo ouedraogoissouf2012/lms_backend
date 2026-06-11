@@ -3,8 +3,7 @@
 namespace App\Services;
 
 use ConvertApi\ConvertApi;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Storage;
+use Psr\Log\LoggerInterface;
 
 class ConvertApiService
 {
@@ -14,7 +13,8 @@ class ConvertApiService
      * Lazy-init : le check de CONVERTAPI_SECRET est différé à la 1ère convert*()
      * pour ne pas bloquer la résolution DI des routes qui n'utilisent pas le SDK.
      */
-    public function __construct()
+    public function __construct(
+        private readonly LoggerInterface $logger)
     {
     }
 
@@ -33,7 +33,7 @@ class ConvertApiService
         // §1.6 / Laravel docs : jamais `env()` en runtime — invalide sous `config:cache`.
         $secret = config('services.convertapi.secret');
 
-        Log::info('[ConvertAPI] Initialisation', [
+        $this->logger->info('[ConvertAPI] Initialisation', [
             'secret_present' => $secret ? 'YES' : 'NO',
             'secret_length' => $secret ? strlen($secret) : 0,
         ]);
@@ -58,7 +58,7 @@ class ConvertApiService
         $client = $this->getClient();
 
         try {
-            Log::info('[ConvertAPI] Début conversion PowerPoint', [
+            $this->logger->info('[ConvertAPI] Début conversion PowerPoint', [
                 'file' => $filePath,
                 'output_dir' => $outputDir
             ]);
@@ -72,7 +72,7 @@ class ConvertApiService
                 'pptx'
             );
 
-            Log::info('[ConvertAPI] PowerPoint → PDF OK');
+            $this->logger->info('[ConvertAPI] PowerPoint → PDF OK');
 
             // Télécharger le PDF temporairement
             $tempPdfPath = storage_path('app/temp/' . uniqid() . '.pdf');
@@ -93,7 +93,7 @@ class ConvertApiService
                 'pdf'
             );
 
-            Log::info('[ConvertAPI] PDF → PNG OK', [
+            $this->logger->info('[ConvertAPI] PDF → PNG OK', [
                 'pages' => count($pngResult->getFiles())
             ]);
 
@@ -119,14 +119,14 @@ class ConvertApiService
                 unlink($tempPdfPath);
             }
 
-            Log::info('[ConvertAPI] Conversion terminée', [
+            $this->logger->info('[ConvertAPI] Conversion terminée', [
                 'images_count' => count($images)
             ]);
 
             return $images;
 
         } catch (\Exception $e) {
-            Log::error('[ConvertAPI] Erreur conversion PowerPoint', [
+            $this->logger->error('[ConvertAPI] Erreur conversion PowerPoint', [
                 'error' => $e->getMessage(),
                 'file' => $filePath
             ]);
@@ -146,7 +146,7 @@ class ConvertApiService
         $client = $this->getClient();
 
         try {
-            Log::info('[ConvertAPI] Début conversion Word', [
+            $this->logger->info('[ConvertAPI] Début conversion Word', [
                 'file' => $filePath,
                 'output_dir' => $outputDir
             ]);
@@ -160,7 +160,7 @@ class ConvertApiService
                 'docx'
             );
 
-            Log::info('[ConvertAPI] Word → PDF OK');
+            $this->logger->info('[ConvertAPI] Word → PDF OK');
 
             // Télécharger le PDF temporairement
             $tempPdfPath = storage_path('app/temp/' . uniqid() . '.pdf');
@@ -181,7 +181,7 @@ class ConvertApiService
                 'pdf'
             );
 
-            Log::info('[ConvertAPI] PDF → PNG OK', [
+            $this->logger->info('[ConvertAPI] PDF → PNG OK', [
                 'pages' => count($pngResult->getFiles())
             ]);
 
@@ -206,14 +206,14 @@ class ConvertApiService
                 unlink($tempPdfPath);
             }
 
-            Log::info('[ConvertAPI] Conversion Word terminée', [
+            $this->logger->info('[ConvertAPI] Conversion Word terminée', [
                 'images_count' => count($images)
             ]);
 
             return $images;
 
         } catch (\Exception $e) {
-            Log::error('[ConvertAPI] Erreur conversion Word', [
+            $this->logger->error('[ConvertAPI] Erreur conversion Word', [
                 'error' => $e->getMessage(),
                 'file' => $filePath
             ]);
@@ -233,7 +233,7 @@ class ConvertApiService
         $client = $this->getClient();
 
         try {
-            Log::info('[ConvertAPI] Début conversion PDF', [
+            $this->logger->info('[ConvertAPI] Début conversion PDF', [
                 'file' => $filePath,
                 'output_dir' => $outputDir
             ]);
@@ -250,7 +250,7 @@ class ConvertApiService
                 'pdf'
             );
 
-            Log::info('[ConvertAPI] PDF → PNG OK', [
+            $this->logger->info('[ConvertAPI] PDF → PNG OK', [
                 'pages' => count($pngResult->getFiles())
             ]);
 
@@ -270,14 +270,14 @@ class ConvertApiService
                 $images[] = $imagePath;
             }
 
-            Log::info('[ConvertAPI] Conversion PDF terminée', [
+            $this->logger->info('[ConvertAPI] Conversion PDF terminée', [
                 'images_count' => count($images)
             ]);
 
             return $images;
 
         } catch (\Exception $e) {
-            Log::error('[ConvertAPI] Erreur conversion PDF', [
+            $this->logger->error('[ConvertAPI] Erreur conversion PDF', [
                 'error' => $e->getMessage(),
                 'file' => $filePath
             ]);

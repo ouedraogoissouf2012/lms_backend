@@ -9,7 +9,7 @@ use App\Models\SeanceUserHidden;
 use App\Models\User;
 use App\Services\KlassciProxyService;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\Log;
+use Psr\Log\LoggerInterface;
 
 /**
  * StudentClassesSeancesFetcher — KLASSCI walker for the student "my-classes" listing.
@@ -38,6 +38,7 @@ use Illuminate\Support\Facades\Log;
 final class StudentClassesSeancesFetcher
 {
     public function __construct(
+        private readonly LoggerInterface $logger,
         private readonly KlassciProxyService $klassciService,
     ) {}
 
@@ -54,7 +55,7 @@ final class StudentClassesSeancesFetcher
      */
     public function fetch(User $user, string $klassciToken): Collection|string|null
     {
-        Log::info('Récupération séances étudiant', [
+        $this->logger->info('Récupération séances étudiant', [
             'user_id' => $user->id,
             'klassci_id' => $user->klassci_id
         ]);
@@ -88,7 +89,7 @@ final class StudentClassesSeancesFetcher
                 $matiereId = $matiere['id'] ?? $matiere['matiere_id'] ?? $matiere['matiere']['id'] ?? null;
 
                 if (!$matiereId) {
-                    Log::warning('[LMS] Matière sans ID valide', ['matiere' => $matiere]);
+                    $this->logger->warning('[LMS] Matière sans ID valide', ['matiere' => $matiere]);
                     continue;
                 }
 
@@ -104,7 +105,7 @@ final class StudentClassesSeancesFetcher
 
                 $seances = $seances->concat($seancesEnrichies);
             } catch (\Exception $e) {
-                Log::warning('Erreur récupération séances matière', [
+                $this->logger->warning('Erreur récupération séances matière', [
                     'matiere_id' => $matiere['id'],
                     'error' => $e->getMessage()
                 ]);
@@ -228,7 +229,7 @@ final class StudentClassesSeancesFetcher
             return 'Non assigné';
         }
 
-        Log::info('Enseignant récupéré depuis autre séance même matière', [
+        $this->logger->info('Enseignant récupéré depuis autre séance même matière', [
             'seance_id' => $seance['id'],
             'matiere' => $matiereNom,
             'enseignant' => $autreSeance->enseignant_nom

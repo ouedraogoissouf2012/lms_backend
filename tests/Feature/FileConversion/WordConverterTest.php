@@ -166,6 +166,7 @@ final class WordConverterTest extends TestCase
     private function makeConverter(): WordConverter
     {
         return new WordConverter(
+            new \Psr\Log\NullLogger(),
             $this->shellMock,
             $this->validator,
         );

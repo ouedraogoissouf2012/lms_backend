@@ -29,6 +29,10 @@ use Illuminate\Http\Request;
  */
 final class LessonListService
 {
+    public function __construct(private readonly LessonProgressService $progressService)
+    {
+    }
+
     /**
      * Liste paginée des cours (filtres optionnels + restriction étudiant
      * aux cours publiés + enrichissement progression).
@@ -71,8 +75,7 @@ final class LessonListService
         // Ajouter la progression pour chaque cours (si étudiant)
         if ($user->isStudent()) {
             $lessons->getCollection()->transform(function ($lesson) use ($user) {
-                $progress = $lesson->progressForUser($user->id);
-                $lesson->user_progress = $progress;
+                $lesson->user_progress = $this->progressService->progressForUser($lesson, $user->id);
                 return $lesson;
             });
         }
@@ -140,7 +143,7 @@ final class LessonListService
 
         // Transformer pour avoir un format cohérent
         $coursesData = $lessons->map(function ($lesson) use ($user, $enseignants, $enseignantsByKlassci) {
-            $progress = $lesson->progressForUser($user->id);
+            $progress = $this->progressService->progressForUser($lesson, $user->id);
 
             // Résoudre l'enseignant (essayer par id puis par klassci_id)
             $enseignant = $enseignants->get($lesson->enseignant_id)
@@ -217,15 +220,14 @@ final class LessonListService
         }
 
         // Charger la progression de l'utilisateur
-        $progress = $lesson->progressForUser($user->id);
-        $lesson->user_progress = $progress;
+        $lesson->user_progress = $this->progressService->progressForUser($lesson, $user->id);
 
         // Statistiques (pour enseignants uniquement)
         if ($user->isTeacher() || $user->isCoordinator() || $user->isAdmin()) {
             $lesson->statistics = [
-                'students_started' => $lesson->getStudentsStartedCount(),
-                'students_completed' => $lesson->getStudentsCompletedCount(),
-                'average_completion_rate' => round($lesson->getAverageCompletionRate(), 2),
+                'students_started' => $this->progressService->studentsStartedCount($lesson),
+                'students_completed' => $this->progressService->studentsCompletedCount($lesson),
+                'average_completion_rate' => round($this->progressService->averageCompletionRate($lesson), 2),
             ];
         }
 

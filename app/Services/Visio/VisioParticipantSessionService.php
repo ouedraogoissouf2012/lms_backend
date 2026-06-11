@@ -34,6 +34,7 @@ final class VisioParticipantSessionService
 {
     public function __construct(
         private readonly LoggerInterface $logger,
+        private readonly AttendanceLifecycleService $lifecycle,
     ) {}
 
     /**
@@ -156,7 +157,7 @@ final class VisioParticipantSessionService
             }
 
             // Marquer comme déconnecté
-            $attendance->markAsDisconnected();
+            $this->lifecycle->disconnect($attendance);
 
             $this->logger->info('Participant quitté visio', [
                 'seance_id' => $seanceId,

@@ -37,6 +37,7 @@ final class KnowledgeCheckAttemptService
 {
     public function __construct(
         private readonly KnowledgeCheckGradingService $grader,
+        private readonly KnowledgeCheckAccessService $access,
     ) {
     }
 
@@ -61,7 +62,7 @@ final class KnowledgeCheckAttemptService
     {
         $quiz = KnowledgeCheck::findOrFail($quizId);
 
-        if (! $quiz->canAttempt($user->id)) {
+        if (! $this->access->canAttempt($quiz, $user->id)) {
             return null;
         }
 
@@ -160,7 +161,7 @@ final class KnowledgeCheckAttemptService
             'passing_score' => (int) $quiz->passing_score,
             'time_spent' => $attempt->formatted_duration,
             'answers' => $quiz->show_correct_answers ? $result['detailed_answers'] : null,
-            'can_retry' => $quiz->canAttempt($user->id),
+            'can_retry' => $this->access->canAttempt($quiz, $user->id),
             'message' => $result['passed']
                 ? 'Felicitations! Vous avez reussi!'
                 : 'Quiz termine. Continuez a vous entrainer!',
@@ -225,7 +226,10 @@ final class KnowledgeCheckAttemptService
         bool $passed,
         int $timeSpentSeconds
     ): void {
-        $progress = ChapterProgress::getOrCreate($userId, $chapterId);
+        $progress = ChapterProgress::firstOrCreate(
+            ['user_id' => $userId, 'chapter_id' => $chapterId],
+            ['time_spent_seconds' => 0]
+        );
 
         if ($progress->quiz_score === null || $score > $progress->quiz_score) {
             $progress->quiz_score = $score;

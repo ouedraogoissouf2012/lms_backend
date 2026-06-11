@@ -38,6 +38,7 @@ final class MatiereEvaluationsFetcher
     public function __construct(
         private readonly KlassciProxyService $klassciService,
         private readonly LoggerInterface $logger,
+        private readonly \App\Services\Evaluation\EvaluationStateService $evaluationState,
     ) {}
 
     /**
@@ -184,8 +185,8 @@ final class MatiereEvaluationsFetcher
                     'id' => $eval->id,
                     'status' => $eval->status,
                     'is_published' => $eval->is_published,
-                    'is_locked' => $eval->isLocked(),
-                    'can_be_edited' => $eval->canBeEdited(),
+                    'is_locked' => $this->evaluationState->isLocked($eval),
+                    'can_be_edited' => $this->evaluationState->canBeEdited($eval),
                     'questions_count' => $eval->questions_count,
                     'submissions_count' => $eval->submissions_count,
                 ],

@@ -46,7 +46,7 @@ final class EvaluationStateService
      */
     public function softDelete(Evaluation $evaluation, User $user): array
     {
-        if (! $evaluation->canBeEdited()) {
+        if (! $this->canBeEdited($evaluation)) {
             return [
                 'status'  => 403,
                 'payload' => [
@@ -104,7 +104,11 @@ final class EvaluationStateService
             ];
         }
 
-        $evaluation->publish();
+        // Publication : visible aux étudiants, statut planifiée (= prête).
+        $evaluation->update([
+            'is_published' => true,
+            'status' => 'planifiee',
+        ]);
 
         $this->logger->info('Évaluation publiée', [
             'evaluation_id' => $evaluation->id,
@@ -119,5 +123,22 @@ final class EvaluationStateService
                 'data'    => $evaluation->fresh(),
             ],
         ];
+    }
+
+    /**
+     * L'évaluation est-elle verrouillée (flag explicite OU soumissions
+     * étudiantes existantes) ? Ex-`Evaluation::isLocked` (H2 §5 — COUNT DB).
+     */
+    public function isLocked(Evaluation $evaluation): bool
+    {
+        return $evaluation->is_locked || $evaluation->submissions()->count() > 0;
+    }
+
+    /**
+     * L'enseignant peut-il encore modifier l'évaluation ?
+     */
+    public function canBeEdited(Evaluation $evaluation): bool
+    {
+        return ! $this->isLocked($evaluation);
     }
 }

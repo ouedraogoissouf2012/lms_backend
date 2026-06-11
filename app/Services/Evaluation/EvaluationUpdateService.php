@@ -59,6 +59,7 @@ final class EvaluationUpdateService
 
     public function __construct(
         private readonly LoggerInterface $logger,
+        private readonly EvaluationStateService $state,
     ) {}
 
     /**
@@ -71,7 +72,7 @@ final class EvaluationUpdateService
      */
     public function update(Evaluation $evaluation, array $data, User $user): array
     {
-        if (! $evaluation->canBeEdited()) {
+        if (! $this->state->canBeEdited($evaluation)) {
             return [
                 'status'  => 403,
                 'payload' => [

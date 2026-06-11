@@ -30,6 +30,10 @@ use Illuminate\Database\Eloquent\Collection;
  */
 final class KnowledgeCheckCrudService
 {
+    public function __construct(private readonly KnowledgeCheckAccessService $access)
+    {
+    }
+
     /**
      * Liste les quiz d'un chapitre avec enrichissement utilisateur.
      *
@@ -75,9 +79,9 @@ final class KnowledgeCheckCrudService
     {
         $quiz = KnowledgeCheck::with('chapter')->findOrFail($id);
 
-        $quiz->user_passed = $quiz->isPassedByUser($userId);
-        $quiz->user_best_score = $quiz->getBestScore($userId);
-        $quiz->can_attempt = $quiz->canAttempt($userId);
+        $quiz->user_passed = $this->access->isPassedByUser($quiz, $userId);
+        $quiz->user_best_score = $this->access->bestScore($quiz, $userId);
+        $quiz->can_attempt = $this->access->canAttempt($quiz, $userId);
         $quiz->attempts_count = $quiz->attempts()->where('user_id', $userId)->count();
 
         return $quiz;
@@ -150,9 +154,9 @@ final class KnowledgeCheckCrudService
      */
     private function enrichWithUserStats(KnowledgeCheck $quiz, int $userId): KnowledgeCheck
     {
-        $quiz->user_passed = $quiz->isPassedByUser($userId);
-        $quiz->user_best_score = $quiz->getBestScore($userId);
-        $quiz->can_attempt = $quiz->canAttempt($userId);
+        $quiz->user_passed = $this->access->isPassedByUser($quiz, $userId);
+        $quiz->user_best_score = $this->access->bestScore($quiz, $userId);
+        $quiz->can_attempt = $this->access->canAttempt($quiz, $userId);
         $quiz->questions_count = $quiz->questions_count;
 
         return $quiz;

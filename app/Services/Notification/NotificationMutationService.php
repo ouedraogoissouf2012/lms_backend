@@ -63,7 +63,7 @@ final class NotificationMutationService
         $notification = Notification::where('user_id', $user->id)->findOrFail($id);
 
         if ($notification->read_at === null) {
-            $notification->markAsRead();
+            $notification->update(['read_at' => now()]);
         }
 
         $this->invalidateUnreadCount($user);

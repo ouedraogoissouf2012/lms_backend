@@ -43,6 +43,7 @@ class EvaluationEnrichmentService
     public function __construct(
         private readonly KlassciProxyService $klassciService,
         private readonly LoggerInterface $logger,
+        private readonly EvaluationStateService $state,
     ) {}
 
     /**
@@ -224,8 +225,8 @@ class EvaluationEnrichmentService
      */
     private function attachComputedMetadata(array &$evalArray, Evaluation $evaluation): void
     {
-        $evalArray['is_locked'] = $evaluation->isLocked();
-        $evalArray['can_be_edited'] = $evaluation->canBeEdited();
+        $evalArray['is_locked'] = $this->state->isLocked($evaluation);
+        $evalArray['can_be_edited'] = $this->state->canBeEdited($evaluation);
         $evalArray['submissions_count'] = $evaluation->submissions()->count();
         $evalArray['questions_count'] = $evaluation->questions()->count();
         $evalArray['effective_status'] = $evaluation->getEffectiveStatus();

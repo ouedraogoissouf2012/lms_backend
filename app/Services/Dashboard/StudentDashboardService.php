@@ -220,9 +220,9 @@ final class StudentDashboardService
                     'type' => $notification->type,
                     'title' => $notification->title,
                     'message' => $notification->message,
-                    'is_read' => $notification->isRead(),
-                    'icon' => $notification->getIcon(),
-                    'color' => $notification->getColor(),
+                    'is_read' => $this->presenter->isRead($notification),
+                    'icon' => $this->presenter->icon($notification),
+                    'color' => $this->presenter->color($notification),
                     'action_url' => $this->presenter->getActionUrl($notification),
                     'created_at' => $notification->created_at,
                 ];

@@ -5,7 +5,6 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use Carbon\Carbon;
 use App\Models\Traits\BelongsToInstitution;
 
 class Seance extends Model
@@ -56,91 +55,20 @@ class Seance extends Model
     protected $appends = ['current_participants_count'];
 
     /**
-     * Compte les participants actuellement connectés
+     * Compte les participants actuellement connectés.
+     *
+     * ⚠️ DETTE TRACÉE (§5 « JAMAIS: accessors DB ») : cet accessor `$appends`
+     * exécute 1 COUNT par séance sérialisée (N+1 sur les listes). 6 services
+     * en dépendent via le contrat JSON (`current_participants_count`).
+     * Migration prévue : `withCount(['attendances as current_participants_count'
+     * => fn($q) => $q->where('status','connected')])` côté queries + retrait
+     * de `$appends` — chantier API dédié (cf. issue GitHub H2-Seance).
      */
     public function getCurrentParticipantsCountAttribute(): int
     {
         return ESBTPAttendance::where('seance_id', $this->id)
             ->where('status', 'connected')
             ->count();
-    }
-
-    /**
-     * Vérifie si la visio est activée
-     */
-    public function hasVisio(): bool
-    {
-        return $this->visio_enabled;
-    }
-
-    /**
-     * Vérifie si la visio est actuellement active
-     */
-    public function isVisioActive(): bool
-    {
-        return $this->visio_active;
-    }
-
-    /**
-     * Générer un Room ID unique pour la visio
-     */
-    public function generateVisioRoomId(): string
-    {
-        return 'lms_seance_' . $this->id . '_' . time();
-    }
-
-    /**
-     * Activer la visioconférence
-     */
-    public function enableVisio(string $type = 'jitsi'): void
-    {
-        $this->visio_enabled = true;
-        $this->visio_type = $type;
-
-        if (!$this->visio_room_id) {
-            $this->visio_room_id = $this->generateVisioRoomId();
-        }
-
-        $this->save();
-    }
-
-    /**
-     * Désactiver la visioconférence
-     */
-    public function disableVisio(): void
-    {
-        $this->visio_enabled = false;
-        $this->visio_type = null;
-        $this->visio_active = false;
-        $this->visio_started_at = null;
-        $this->visio_ended_at = null;
-        $this->save();
-    }
-
-    /**
-     * Démarrer la visioconférence
-     */
-    public function startVisio(): void
-    {
-        if (!$this->visio_enabled) {
-            throw new \Exception('Visioconférence non programmée pour cette séance');
-        }
-
-        $this->visio_active = true;
-        $this->visio_started_at = Carbon::now();
-        $this->status = 'en_cours';
-        $this->save();
-    }
-
-    /**
-     * Terminer la visioconférence
-     */
-    public function endVisio(): void
-    {
-        $this->visio_active = false;
-        $this->visio_ended_at = Carbon::now();
-        $this->status = 'terminee';
-        $this->save();
     }
 
     /**

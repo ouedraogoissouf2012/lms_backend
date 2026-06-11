@@ -21,12 +21,14 @@ final class ChapterProgressService
 {
     public function __construct(
         private readonly LoggerInterface $logger,
+        private readonly ChapterAccessGate $accessGate,
+        private readonly LessonChapterProgressCalculator $progressCalculator,
     ) {}
 
     /** @return array{status:int, payload: array<string, mixed>} */
     public function getLessonProgress(int $lessonId, User $user): array
     {
-        $progress = ChapterProgress::getLessonProgress($user->id, $lessonId);
+        $progress = $this->progressCalculator->calculate($user->id, $lessonId);
 
         return [
             'status' => 200,
@@ -52,11 +54,11 @@ final class ChapterProgressService
             ->where('chapter_id', $chapterId)
             ->first();
 
-        $canAccess = ChapterProgress::canAccessChapter($userId, $chapter);
+        $canAccess = $this->accessGate->canAccess($userId, $chapter);
 
         $blockedByQuiz = null;
         if (! $canAccess) {
-            $blockedByQuiz = $this->resolveBlockingQuiz($chapter);
+            $blockedByQuiz = $this->accessGate->blockingQuiz($chapter);
         }
 
         return [
@@ -89,7 +91,7 @@ final class ChapterProgressService
         $userId = $user->id;
         $chapter = Chapter::findOrFail($chapterId);
 
-        if (! ChapterProgress::canAccessChapter($userId, $chapter)) {
+        if (! $this->accessGate->canAccess($userId, $chapter)) {
             return [
                 'status' => 403,
                 'payload' => [
@@ -121,15 +123,16 @@ final class ChapterProgressService
             }
         }
 
-        $progress = ChapterProgress::getOrCreate($userId, $chapterId);
+        $progress = $this->getOrCreateProgress($userId, $chapterId);
 
         if (array_key_exists('time_spent_seconds', $input)) {
             $progress->time_spent_seconds += (int) ($input['time_spent_seconds'] ?? 0);
         }
 
-        $progress->markAsCompleted();
+        $progress->completed_at = now();
+        $progress->save();
 
-        $lessonProgress = ChapterProgress::getLessonProgress($userId, $chapter->lesson_id);
+        $lessonProgress = $this->progressCalculator->calculate($userId, $chapter->lesson_id);
 
         return [
             'status' => 200,
@@ -150,7 +153,7 @@ final class ChapterProgressService
     /** Enregistre score quiz (best-score wins + completed si réussi). */
     public function recordQuizScore(int $chapterId, int $score, bool $passed, User $user): void
     {
-        $progress = ChapterProgress::getOrCreate($user->id, $chapterId);
+        $progress = $this->getOrCreateProgress($user->id, $chapterId);
 
         if ($progress->quiz_score === null || $score > $progress->quiz_score) {
             $progress->quiz_score = $score;
@@ -158,7 +161,7 @@ final class ChapterProgressService
 
         if ($passed) {
             $progress->quiz_passed = true;
-            $progress->markAsCompleted();
+            $progress->completed_at = now();
         }
 
         $progress->save();
@@ -175,7 +178,7 @@ final class ChapterProgressService
         // findOrFail conservé pour parité (404 si chapitre inexistant)
         Chapter::findOrFail($chapterId);
 
-        $progress = ChapterProgress::getOrCreate($user->id, $chapterId);
+        $progress = $this->getOrCreateProgress($user->id, $chapterId);
         $progress->time_spent_seconds += $additionalSeconds;
         $progress->save();
 
@@ -260,37 +263,16 @@ final class ChapterProgressService
         }
     }
 
+
     /**
-     * Résout le descripteur du quiz obligatoire bloquant l'accès — null
-     * si aucun chapitre précédent n'est de type quiz obligatoire actif.
-     *
-     * @return array{chapter_id:int, chapter_title:string, quiz_title:string, passing_score:int}|null
+     * Récupère ou crée la progression user×chapitre —
+     * ex-`ChapterProgress::getOrCreate` (H2 §5).
      */
-    private function resolveBlockingQuiz(Chapter $chapter): ?array
+    private function getOrCreateProgress(int $userId, int $chapterId): ChapterProgress
     {
-        $previousChapter = Chapter::where('lesson_id', $chapter->lesson_id)
-            ->where('position', '<', $chapter->position)
-            ->orderBy('position', 'desc')
-            ->first();
-
-        if (! $previousChapter || $previousChapter->content_type !== 'quiz') {
-            return null;
-        }
-
-        $quiz = KnowledgeCheck::where('chapter_id', $previousChapter->id)
-            ->where('is_active', true)
-            ->where('is_required', true)
-            ->first();
-
-        if (! $quiz) {
-            return null;
-        }
-
-        return [
-            'chapter_id' => $previousChapter->id,
-            'chapter_title' => $previousChapter->title,
-            'quiz_title' => $quiz->title,
-            'passing_score' => $quiz->passing_score,
-        ];
+        return ChapterProgress::firstOrCreate(
+            ['user_id' => $userId, 'chapter_id' => $chapterId],
+            ['time_spent_seconds' => 0]
+        );
     }
 }

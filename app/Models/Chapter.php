@@ -112,30 +112,6 @@ class Chapter extends Model
     }
 
     /**
-     * Vérifier si le chapitre contient un fichier PowerPoint converti
-     */
-    public function hasPowerPoint(): bool
-    {
-        return $this->content_type === 'powerpoint' && !empty($this->slides_images);
-    }
-
-    /**
-     * Vérifier si le chapitre contient une vidéo
-     */
-    public function hasVideo(): bool
-    {
-        return $this->content_type === 'video' && !empty($this->video_url);
-    }
-
-    /**
-     * Obtenir le nombre de slides pour PowerPoint
-     */
-    public function getSlidesCount(): int
-    {
-        return $this->slides_count ?? count($this->slides_images ?? []);
-    }
-
-    /**
      * Scope: Par leçon
      */
     public function scopeForLesson($query, int $lessonId)

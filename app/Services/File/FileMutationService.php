@@ -53,14 +53,27 @@ final class FileMutationService
 
     /**
      * Soft-delete d'un fichier — appelée par `DELETE /api/files/{file}`.
-     *
-     * Le boot `static::deleting` du model gère le cleanup storage uniquement
-     * sur un force-delete (cf. `File::boot`). Ici on conserve le comportement
-     * soft-delete d'origine ; aucun nettoyage disque effectué.
+     * Aucun nettoyage disque (le fichier physique reste restaurable).
      */
     public function destroy(File $file): void
     {
         $file->delete();
+    }
+
+    /**
+     * Suppression DÉFINITIVE : force-delete + purge du fichier physique.
+     * Remplace l'ancien boot hook `File::deleting` (anti-pattern §5) — la
+     * purge disque est désormais une décision EXPLICITE du caller.
+     */
+    public function forceDestroy(File $file): void
+    {
+        $disk = $this->filesystem->disk('local');
+
+        if ($disk->exists($file->path)) {
+            $disk->delete($file->path);
+        }
+
+        $file->forceDelete();
     }
 
     /**
@@ -74,11 +87,13 @@ final class FileMutationService
      */
     public function download(File $file): ?StreamedResponse
     {
-        if (! $file->exists()) {
+        if (! $this->filesystem->disk('local')->exists($file->path)) {
             return null;
         }
 
-        $file->incrementDownloads();
+        // Compteur téléchargements — ex-`File::incrementDownloads` (H2 §5).
+        $file->increment('downloads_count');
+        $file->update(['last_downloaded_at' => now()]);
 
         return $this->filesystem->disk('local')->download(
             $file->path,

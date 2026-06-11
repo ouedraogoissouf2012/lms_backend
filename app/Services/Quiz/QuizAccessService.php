@@ -47,13 +47,18 @@ final class QuizAccessService
     }
 
     /**
-     * Nombre de tentatives soumises par un utilisateur.
+     * Nombre de tentatives FINALISÉES par un utilisateur.
+     *
+     * Fix E2E #211 : le grading auto passe la tentative en `graded` (pas
+     * `submitted`) — filtrer `submitted` seul faisait sauter le quota
+     * `max_attempts` ET provoquait un 500 (attempt_number dupliqué) au
+     * restart d'un quiz auto-gradé.
      */
     public function attemptsCountForUser(Quiz $quiz, int $userId): int
     {
         return $quiz->attempts()
             ->where('user_id', $userId)
-            ->where('status', 'submitted')
+            ->whereIn('status', ['submitted', 'graded'])
             ->count();
     }
 
@@ -70,13 +75,28 @@ final class QuizAccessService
     }
 
     /**
-     * Meilleure tentative soumise (score décroissant).
+     * Prochain numéro de tentative pour un utilisateur — max+1 sur TOUTES
+     * les tentatives (in_progress/abandoned incluses). Fix E2E #211 :
+     * `attemptsCountForUser + 1` entrait en collision avec la contrainte
+     * unique (quiz_id, user_id, attempt_number) dès qu'une tentative
+     * non finalisée existait.
+     */
+    public function nextAttemptNumberForUser(Quiz $quiz, int $userId): int
+    {
+        return (int) $quiz->attempts()
+            ->where('user_id', $userId)
+            ->max('attempt_number') + 1;
+    }
+
+    /**
+     * Meilleure tentative finalisée (score décroissant). Inclut `graded`
+     * (grading auto) — même fix E2E #211 que attemptsCountForUser.
      */
     public function bestAttemptForUser(Quiz $quiz, int $userId): ?QuizAttempt
     {
         return $quiz->attempts()
             ->where('user_id', $userId)
-            ->where('status', 'submitted')
+            ->whereIn('status', ['submitted', 'graded'])
             ->orderBy('score', 'desc')
             ->first();
     }

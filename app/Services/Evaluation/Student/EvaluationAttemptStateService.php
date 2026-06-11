@@ -8,7 +8,7 @@ use App\Models\Evaluation;
 use App\Models\EvaluationSubmission;
 use App\Models\User;
 use App\Services\KlassciProxyService;
-use Illuminate\Support\Facades\Log;
+use Psr\Log\LoggerInterface;
 use RuntimeException;
 
 /**
@@ -23,6 +23,7 @@ use RuntimeException;
 final class EvaluationAttemptStateService
 {
     public function __construct(
+        private readonly LoggerInterface $logger,
         private readonly KlassciProxyService $klassciService,
     ) {}
 
@@ -142,7 +143,7 @@ final class EvaluationAttemptStateService
             $klassciEval = collect($response['data'] ?? [])->firstWhere('id', $klassciEvaluationId);
             return $klassciEval['programmation']['window'] ?? null;
         } catch (\Exception $e) {
-            Log::warning('Window check failed (KLASSCI)', ['error' => $e->getMessage()]);
+            $this->logger->warning('Window check failed (KLASSCI)', ['error' => $e->getMessage()]);
             return null;
         }
     }
@@ -166,7 +167,7 @@ final class EvaluationAttemptStateService
             $message = "L'évaluation est fermée depuis le {$endAt}";
         }
 
-        Log::warning('Tentative de démarrage hors fenêtre', [
+        $this->logger->warning('Tentative de démarrage hors fenêtre', [
             'evaluation_id' => $evaluationId,
             'student_id' => $klassciEtudiantId,
             'window' => $window,

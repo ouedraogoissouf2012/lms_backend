@@ -9,7 +9,7 @@ use App\Support\Shell\ShellExecutionException;
 use App\Support\Shell\ShellExecutorInterface;
 use Exception;
 use Illuminate\Http\UploadedFile;
-use Illuminate\Support\Facades\Log;
+use Psr\Log\LoggerInterface;
 use RuntimeException;
 
 /**
@@ -48,6 +48,7 @@ final class PowerPointConverter
     ];
 
     public function __construct(
+        private readonly LoggerInterface $logger,
         private readonly ShellExecutorInterface $shell,
         private readonly ConvertApiService $convertApi,
         private readonly PdfToPngRendererInterface $pdfRenderer,
@@ -67,7 +68,7 @@ final class PowerPointConverter
      */
     public function convert(UploadedFile $file, int $chapterId): array
     {
-        Log::info('📊 Conversion PowerPoint démarrée', ['file' => $file->getClientOriginalName()]);
+        $this->logger->info('📊 Conversion PowerPoint démarrée', ['file' => $file->getClientOriginalName()]);
 
         $this->validator->validate($file, ['pptx', 'ppt']);
 
@@ -77,12 +78,12 @@ final class PowerPointConverter
         }
         $fullOriginalPath = storage_path("app/public/{$originalPath}");
 
-        Log::info('✓ Fichier original sauvegardé', ['path' => $originalPath]);
+        $this->logger->info('✓ Fichier original sauvegardé', ['path' => $originalPath]);
 
         try {
             return $this->tryConvertApi($fullOriginalPath, $originalPath, $chapterId);
         } catch (Exception $convertApiError) {
-            Log::warning('⚠️ ConvertAPI échoué, fallback sur LibreOffice', [
+            $this->logger->warning('⚠️ ConvertAPI échoué, fallback sur LibreOffice', [
                 'error' => $convertApiError->getMessage(),
             ]);
 
@@ -100,7 +101,7 @@ final class PowerPointConverter
             "chapters/{$chapterId}/slides",
         );
 
-        Log::info('✓ Conversion ConvertAPI terminée', ['count' => count($pngImages)]);
+        $this->logger->info('✓ Conversion ConvertAPI terminée', ['count' => count($pngImages)]);
 
         return [
             'success'             => true,
@@ -158,7 +159,7 @@ final class PowerPointConverter
                 $pptxPath,
             ]);
         } catch (ShellExecutionException $e) {
-            Log::error('Erreur LibreOffice', [
+            $this->logger->error('Erreur LibreOffice', [
                 'exit'   => $e->exitCode,
                 'stderr' => $e->stderr,
             ]);

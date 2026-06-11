@@ -9,7 +9,7 @@ use App\Models\User;
 use App\Services\ClasseSyncService;
 use App\Services\KlassciProxyService;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\Log;
+use Psr\Log\LoggerInterface;
 
 /**
  * TeachingSeancesFetcher — KLASSCI walker for "my teaching séances" (enseignant).
@@ -31,6 +31,7 @@ use Illuminate\Support\Facades\Log;
 final class TeachingSeancesFetcher
 {
     public function __construct(
+        private readonly LoggerInterface $logger,
         private readonly KlassciProxyService $klassciService,
         private readonly ClasseSyncService $classeSyncService,
     ) {}
@@ -40,7 +41,7 @@ final class TeachingSeancesFetcher
      */
     public function fetch(User $user, string $klassciToken): Collection
     {
-        Log::info('Récupération séances enseignant', [
+        $this->logger->info('Récupération séances enseignant', [
             'user_id' => $user->id,
             'klassci_id' => $user->klassci_id
         ]);
@@ -74,7 +75,7 @@ final class TeachingSeancesFetcher
 
                 $seances = $seances->concat($seancesEnrichies);
             } catch (\Exception $e) {
-                Log::warning('Erreur récupération séances matière', [
+                $this->logger->warning('Erreur récupération séances matière', [
                     'matiere_id' => $matiere['id'],
                     'error' => $e->getMessage()
                 ]);
@@ -126,12 +127,12 @@ final class TeachingSeancesFetcher
                 'created_by' => $user->id,
             ]);
 
-            Log::info('Séance Klassci détectée - En attente d\'activation par l\'enseignant', [
+            $this->logger->info('Séance Klassci détectée - En attente d\'activation par l\'enseignant', [
                 'seance_id' => $seance['id'],
                 'klassci_enseignant_id' => $user->klassci_id
             ]);
         } catch (\Exception $e) {
-            Log::error('Erreur création entrée séance locale', [
+            $this->logger->error('Erreur création entrée séance locale', [
                 'seance_id' => $seance['id'],
                 'error' => $e->getMessage()
             ]);

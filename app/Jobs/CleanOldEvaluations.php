@@ -6,7 +6,7 @@ use App\Models\Evaluation;
 use App\Models\EvaluationSubmission;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
-use Illuminate\Support\Facades\Log;
+use Psr\Log\LoggerInterface;
 use Carbon\Carbon;
 
 /**
@@ -53,9 +53,9 @@ class CleanOldEvaluations implements ShouldQueue
     /**
      * Execute the job.
      */
-    public function handle(): void
+    public function handle(LoggerInterface $logger): void
     {
-        Log::info('🧹 [CleanOldEvaluations] Début du nettoyage des évaluations passées');
+        $logger->info('🧹 [CleanOldEvaluations] Début du nettoyage des évaluations passées');
 
         // Date limite: évaluations terminées depuis plus de X jours
         $cutoffDate = Carbon::now()->subDays(self::DAYS_AFTER_EVALUATION);
@@ -74,13 +74,13 @@ class CleanOldEvaluations implements ShouldQueue
             ->whereNull('deleted_at') // Pas déjà archivées
             ->get();
 
-        Log::info('📊 [CleanOldEvaluations] Évaluations candidates', [
+        $logger->info('📊 [CleanOldEvaluations] Évaluations candidates', [
             'count' => $oldEvaluations->count(),
             'cutoff_date' => $cutoffDate->toDateTimeString()
         ]);
 
         if ($oldEvaluations->isEmpty()) {
-            Log::info('✅ [CleanOldEvaluations] Aucune évaluation à archiver');
+            $logger->info('✅ [CleanOldEvaluations] Aucune évaluation à archiver');
             return;
         }
 
@@ -99,7 +99,7 @@ class CleanOldEvaluations implements ShouldQueue
 
                 $archivedCount++;
 
-                Log::info('🗑️ [CleanOldEvaluations] Évaluation archivée', [
+                $logger->info('🗑️ [CleanOldEvaluations] Évaluation archivée', [
                     'evaluation_id' => $evaluation->id,
                     'titre' => $evaluation->titre,
                     'date_evaluation' => $evaluation->date_evaluation,
@@ -110,7 +110,7 @@ class CleanOldEvaluations implements ShouldQueue
                 // Garder si au moins 1 soumission
                 $keptCount++;
 
-                Log::debug('✅ [CleanOldEvaluations] Évaluation conservée', [
+                $logger->debug('✅ [CleanOldEvaluations] Évaluation conservée', [
                     'evaluation_id' => $evaluation->id,
                     'titre' => $evaluation->titre,
                     'submissions_count' => $submissionsCount,
@@ -119,7 +119,7 @@ class CleanOldEvaluations implements ShouldQueue
             }
         }
 
-        Log::info('✅ [CleanOldEvaluations] Nettoyage terminé', [
+        $logger->info('✅ [CleanOldEvaluations] Nettoyage terminé', [
             'checked' => $oldEvaluations->count(),
             'archived' => $archivedCount,
             'kept' => $keptCount,
@@ -132,7 +132,12 @@ class CleanOldEvaluations implements ShouldQueue
      */
     public function failed(\Throwable $exception): void
     {
-        Log::error('[CleanOldEvaluations] Job failed after all retries', [
+                // Pattern AutoCloseEmptySeances (#209) : failed() est appelée hors
+        // container (aucune injection possible) — résolution explicite.
+        /** @var LoggerInterface $logger */
+        $logger = app(LoggerInterface::class);
+
+        $logger->error('[CleanOldEvaluations] Job failed after all retries', [
             'tries'     => $this->tries,
             'exception' => $exception->getMessage(),
         ]);

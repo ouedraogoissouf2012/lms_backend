@@ -9,7 +9,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Facades\Log;
+use Psr\Log\LoggerInterface;
 
 class DetectDisconnectedParticipants implements ShouldQueue
 {
@@ -35,19 +35,19 @@ class DetectDisconnectedParticipants implements ShouldQueue
      * Détecte les participants qui n'ont pas envoyé de heartbeat depuis INACTIVITY_THRESHOLD
      * et les marque automatiquement comme déconnectés.
      */
-    public function handle(): void
+    public function handle(LoggerInterface $logger): void
     {
         $now = Carbon::now();
         $disconnectedCount = 0;
 
-        Log::info('[DetectDisconnectedParticipants] Démarrage du job');
+        $logger->info('[DetectDisconnectedParticipants] Démarrage du job');
 
         // Récupérer tous les participants marqués 'connected'
         $participantsConnectes = ESBTPAttendance::where('status', 'connected')
             ->whereNotNull('last_seen_at') // Doit avoir au moins un heartbeat
             ->get();
 
-        Log::info('[DetectDisconnectedParticipants] Participants à vérifier', [
+        $logger->info('[DetectDisconnectedParticipants] Participants à vérifier', [
             'count' => $participantsConnectes->count()
         ]);
 
@@ -69,7 +69,7 @@ class DetectDisconnectedParticipants implements ShouldQueue
 
                 $disconnectedCount++;
 
-                Log::info('[DetectDisconnectedParticipants] Participant déconnecté (inactivité)', [
+                $logger->info('[DetectDisconnectedParticipants] Participant déconnecté (inactivité)', [
                     'user_id' => $attendance->user_id,
                     'seance_id' => $attendance->seance_id,
                     'last_seen_at' => $attendance->last_seen_at->format('Y-m-d H:i:s'),
@@ -99,7 +99,7 @@ class DetectDisconnectedParticipants implements ShouldQueue
 
                     $disconnectedCount++;
 
-                    Log::info('[DetectDisconnectedParticipants] Participant déconnecté (sans heartbeat)', [
+                    $logger->info('[DetectDisconnectedParticipants] Participant déconnecté (sans heartbeat)', [
                         'user_id' => $attendance->user_id,
                         'seance_id' => $attendance->seance_id,
                         'joined_at' => $attendance->joined_at->format('Y-m-d H:i:s'),
@@ -109,7 +109,7 @@ class DetectDisconnectedParticipants implements ShouldQueue
             }
         }
 
-        Log::info('[DetectDisconnectedParticipants] Job terminé', [
+        $logger->info('[DetectDisconnectedParticipants] Job terminé', [
             'participants_deconnectes' => $disconnectedCount
         ]);
     }
@@ -119,7 +119,12 @@ class DetectDisconnectedParticipants implements ShouldQueue
      */
     public function failed(\Throwable $exception): void
     {
-        Log::error('[DetectDisconnectedParticipants] Job échoué', [
+                // Pattern AutoCloseEmptySeances (#209) : failed() est appelée hors
+        // container (aucune injection possible) — résolution explicite.
+        /** @var LoggerInterface $logger */
+        $logger = app(LoggerInterface::class);
+
+        $logger->error('[DetectDisconnectedParticipants] Job échoué', [
             'error' => $exception->getMessage(),
             'trace' => $exception->getTraceAsString()
         ]);

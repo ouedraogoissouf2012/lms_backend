@@ -12,7 +12,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Facades\Log;
+use Psr\Log\LoggerInterface;
 
 class SyncKlassciSeances implements ShouldQueue
 {
@@ -37,10 +37,11 @@ class SyncKlassciSeances implements ShouldQueue
     public function handle(
         KlassciProxyService $klassciService,
         ClasseSyncService $classeSyncService,
-        NotificationService $notificationService
+        NotificationService $notificationService,
+        LoggerInterface $logger
     ): void
     {
-        Log::info('Job SyncKlassciSeances démarré');
+        $logger->info('Job SyncKlassciSeances démarré');
 
         try {
             // Récupérer tous les enseignants avec token Klassci
@@ -94,7 +95,7 @@ class SyncKlassciSeances implements ShouldQueue
                                     // Nouvelle séance découverte!
                                     $stats['seances_new']++;
 
-                                    Log::info('Nouvelle séance Klassci détectée par le job', [
+                                    $logger->info('Nouvelle séance Klassci détectée par le job', [
                                         'seance_id' => $seanceKlassci['id'],
                                         'matiere' => $matiere['nom'] ?? 'N/A',
                                         'teacher_id' => $teacher->id,
@@ -134,7 +135,7 @@ class SyncKlassciSeances implements ShouldQueue
 
                                     $stats['notifications_sent'] += $count;
 
-                                    Log::info('Notifications envoyées par le job', [
+                                    $logger->info('Notifications envoyées par le job', [
                                         'seance_id' => $seanceKlassci['id'],
                                         'notifications_count' => $count,
                                     ]);
@@ -142,7 +143,7 @@ class SyncKlassciSeances implements ShouldQueue
 
                             } catch (\Exception $e) {
                                 $stats['errors']++;
-                                Log::error('Erreur traitement séance dans job', [
+                                $logger->error('Erreur traitement séance dans job', [
                                     'seance_id' => $seanceKlassci['id'] ?? 'unknown',
                                     'error' => $e->getMessage(),
                                 ]);
@@ -152,7 +153,7 @@ class SyncKlassciSeances implements ShouldQueue
 
                 } catch (\Exception $e) {
                     $stats['errors']++;
-                    Log::error('Erreur traitement enseignant dans job', [
+                    $logger->error('Erreur traitement enseignant dans job', [
                         'teacher_id' => $teacher->id,
                         'error' => $e->getMessage(),
                     ]);
@@ -176,7 +177,7 @@ class SyncKlassciSeances implements ShouldQueue
 
                     $stats['seances_archived']++;
 
-                    Log::info('Séance archivée (supprimée de Klassci)', [
+                    $logger->info('Séance archivée (supprimée de Klassci)', [
                         'seance_id' => $seance->id,
                         'klassci_seance_id' => $seance->klassci_seance_id,
                         'matiere' => $seance->matiere_nom,
@@ -184,10 +185,10 @@ class SyncKlassciSeances implements ShouldQueue
                 }
             }
 
-            Log::info('Job SyncKlassciSeances terminé', $stats);
+            $logger->info('Job SyncKlassciSeances terminé', $stats);
 
         } catch (\Exception $e) {
-            Log::error('Erreur fatale dans job SyncKlassciSeances', [
+            $logger->error('Erreur fatale dans job SyncKlassciSeances', [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
             ]);
@@ -201,7 +202,12 @@ class SyncKlassciSeances implements ShouldQueue
      */
     public function failed(\Throwable $exception): void
     {
-        Log::error('[SyncKlassciSeances] Job failed after all retries', [
+                // Pattern AutoCloseEmptySeances (#209) : failed() est appelée hors
+        // container (aucune injection possible) — résolution explicite.
+        /** @var LoggerInterface $logger */
+        $logger = app(LoggerInterface::class);
+
+        $logger->error('[SyncKlassciSeances] Job failed after all retries', [
             'tries'     => $this->tries,
             'exception' => $exception->getMessage(),
         ]);

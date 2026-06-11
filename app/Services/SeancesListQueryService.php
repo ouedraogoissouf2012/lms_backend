@@ -10,7 +10,7 @@ use App\Services\Seances\TeachingSeancesFetcher;
 use App\Services\Seances\UpcomingSeancesFetcher;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\Log;
+use Psr\Log\LoggerInterface;
 use RuntimeException;
 
 /**
@@ -52,6 +52,7 @@ use RuntimeException;
 final class SeancesListQueryService
 {
     public function __construct(
+        private readonly LoggerInterface $logger,
         private readonly UpcomingSeancesFetcher $upcomingFetcher,
         private readonly TeachingSeancesFetcher $teachingFetcher,
         private readonly StudentClassesSeancesFetcher $studentFetcher,
@@ -71,7 +72,7 @@ final class SeancesListQueryService
         $dateDebut = Carbon::now()->format('Y-m-d');
         $dateFin = Carbon::now()->addDays($days)->format('Y-m-d');
 
-        Log::info('Récupération séances à venir', [
+        $this->logger->info('Récupération séances à venir', [
             'date_debut' => $dateDebut,
             'date_fin' => $dateFin,
             'teacher_id' => $teacherId,

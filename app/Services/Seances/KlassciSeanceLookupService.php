@@ -6,7 +6,7 @@ namespace App\Services\Seances;
 
 use App\Models\User;
 use App\Services\KlassciProxyService;
-use Illuminate\Support\Facades\Log;
+use Psr\Log\LoggerInterface;
 
 /**
  * KlassciSeanceLookupService — resolves a single séance from the KLASSCI API
@@ -30,6 +30,7 @@ use Illuminate\Support\Facades\Log;
 final class KlassciSeanceLookupService
 {
     public function __construct(
+        private readonly LoggerInterface $logger,
         private readonly KlassciProxyService $klassciService,
     ) {}
 
@@ -133,7 +134,7 @@ final class KlassciSeanceLookupService
             return [null, null];
 
         } catch (\Exception $e) {
-            Log::error('Erreur récupération séance étudiant via API KLASSCI', [
+            $this->logger->error('Erreur récupération séance étudiant via API KLASSCI', [
                 'seance_id' => $seanceId,
                 'error' => $e->getMessage()
             ]);

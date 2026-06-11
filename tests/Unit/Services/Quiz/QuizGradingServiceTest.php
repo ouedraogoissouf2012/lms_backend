@@ -221,12 +221,13 @@ final class QuizGradingServiceTest extends TestCase
         $this->assertNotNull($attempt->submitted_at);
         $this->assertGreaterThan(0, $attempt->time_spent_seconds);
 
-        // Stats recompute : total_questions/total_points doivent refléter le quiz.
-        // (Note: attempts_count ne compte que `status='submitted'`, pas `'graded'`
-        // — bug latent du code original préservé verbatim, non corrigé ici.)
+        // Stats recompute : depuis le fix E2E #211, les tentatives `graded`
+        // (grading auto) comptent dans attempts_count / average_score.
         $quiz->refresh();
         $this->assertSame(1, $quiz->total_questions);
         $this->assertEquals(10.0, $quiz->total_points);
+        $this->assertSame(1, $quiz->attempts_count);
+        $this->assertEquals(100.0, (float) $quiz->average_score);
     }
 
     /** @test */

@@ -51,7 +51,7 @@ final class QuizAttemptStartSubmitService
             return $this->failure(403, 'Vous avez atteint le nombre maximum de tentatives');
         }
 
-        $attemptNumber = $this->access->attemptsCountForUser($quiz, $user->id) + 1;
+        $attemptNumber = $this->access->nextAttemptNumberForUser($quiz, $user->id);
 
         $attempt = QuizAttempt::create([
             'quiz_id'        => $quiz->id,
@@ -59,6 +59,10 @@ final class QuizAttemptStartSubmitService
             'attempt_number' => $attemptNumber,
             'status'         => 'in_progress',
             'started_at'     => now(),
+            // Scope tenant explicite (défense en profondeur, fix E2E #211) :
+            // un tenant non résolu persistait la tentative avec institution_id
+            // NULL → owner verrouillé dehors par ShowAttemptRequest.
+            'institution_id' => $user->institution_id,
         ]);
 
         $questions = $quiz->questions()->with(['answers' => function ($query): void {

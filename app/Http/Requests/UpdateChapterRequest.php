@@ -98,7 +98,8 @@ final class UpdateChapterRequest extends FormRequest
         }
 
         if ($this->has('content')) {
-            $this->merge(['content' => trim($this->content ?? '')]);
+            // Fix #212 : `$this->content` = corps HTTP brut, pas l'input.
+            $this->merge(['content' => trim((string) $this->input('content', ''))]);
         }
     }
 }

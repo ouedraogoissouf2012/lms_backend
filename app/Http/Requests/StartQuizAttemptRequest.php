@@ -24,7 +24,22 @@ final class StartQuizAttemptRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return auth()->check();
+        $user = auth()->user();
+        if ($user === null) {
+            return false;
+        }
+
+        // Defense en profondeur (fix E2E #211 flow 5) : le route binding
+        // {quiz} n'est pas filtre si le tenant n'est pas resolu — un user
+        // du tenant B ne doit pas demarrer un quiz du tenant A.
+        $quiz = $this->route('quiz');
+        if ($quiz instanceof \App\Models\Quiz
+            && $user->institution_id !== null
+            && $quiz->institution_id !== $user->institution_id) {
+            return false;
+        }
+
+        return true;
     }
 
     public function rules(): array

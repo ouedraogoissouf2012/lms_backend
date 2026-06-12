@@ -69,6 +69,13 @@ final class QuizCrudService
             'classe:id,libelle',
         ]);
 
+        // Defense en profondeur (fix E2E #211 flow 5) : le global scope
+        // BelongsToInstitution est no-op si le tenant n'est pas resolu —
+        // filtre tenant EXPLICITE. institution_id null = supradmin.
+        if ($user->institution_id !== null) {
+            $query->where('institution_id', $user->institution_id);
+        }
+
         if ($user->isStudent()) {
             $query->available();
         }
@@ -141,6 +148,16 @@ final class QuizCrudService
      */
     public function show(Quiz $quiz, User $user): array
     {
+        // Defense en profondeur (fix E2E #211 flow 5) : binding cross-tenant -> 404.
+        if ($user->institution_id !== null && $quiz->institution_id !== $user->institution_id) {
+            return [
+                'status'  => 404,
+                'success' => false,
+                'message' => 'Quiz non trouvé',
+                'data'    => null,
+            ];
+        }
+
         $quiz->load([
             'creator:id,name,email,role',
             'matiere:id,libelle',

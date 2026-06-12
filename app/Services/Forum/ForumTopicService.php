@@ -45,6 +45,13 @@ final class ForumTopicService
     {
         $query = ForumTopic::with(['user:id,name,email,role']);
 
+        // Defense en profondeur (fix E2E #211 flow 5) : filtre tenant explicite
+        // (le global scope est no-op sans tenant resolu). null = supradmin.
+        $caller = $request->user();
+        if ($caller !== null && $caller->institution_id !== null) {
+            $query->where('institution_id', $caller->institution_id);
+        }
+
         // Filtres
         if ($request->has('lesson_id')) {
             $query->forLesson($request->lesson_id);

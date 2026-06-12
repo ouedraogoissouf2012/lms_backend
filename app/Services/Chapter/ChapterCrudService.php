@@ -124,6 +124,9 @@ final class ChapterCrudService
                 'lesson_id' => $lessonId,
                 'matiere_id' => $lesson->matiere_id,
                 'enseignant_id' => $authUserId,
+                // Scope tenant explicite hérité de la leçon parente (défense
+                // en profondeur, fix E2E #211 flow 2).
+                'institution_id' => $lesson->institution_id,
             ];
 
             if (isset($validated['type_contenu'])) {

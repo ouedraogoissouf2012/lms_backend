@@ -142,6 +142,8 @@ final class KnowledgeCheckAttemptService
             'passed' => $result['passed'],
             'started_at' => now()->subSeconds($timeSpentSeconds),
             'completed_at' => now(),
+            // Scope tenant explicite (fix E2E #211 flow 2).
+            'institution_id' => $user->institution_id,
         ]);
 
         $this->updateChapterProgress(

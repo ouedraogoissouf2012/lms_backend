@@ -3757,6 +3757,12 @@ parameters:
 			path: app/Services/Chapter/ChapterAccessGate.php
 
 		-
+			message: '#^Access to an undefined property App\\Models\\Lesson\:\:\$institution_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Chapter/ChapterCrudService.php
+
+		-
 			message: '#^Argument of an invalid type mixed supplied for foreach, only iterables are supported\.$#'
 			identifier: foreach.nonIterable
 			count: 1
@@ -3789,6 +3795,12 @@ parameters:
 		-
 			message: '#^Cannot cast mixed to int\.$#'
 			identifier: cast.int
+			count: 1
+			path: app/Services/Chapter/ChapterCrudService.php
+
+		-
+			message: '#^Parameter \#1 \$attributes of static method Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Chapter\>\:\:create\(\) expects array\<model property of App\\Models\\Chapter, mixed\>, array\<string, mixed\> given\.$#'
+			identifier: argument.type
 			count: 1
 			path: app/Services/Chapter/ChapterCrudService.php
 
@@ -4105,6 +4117,12 @@ parameters:
 			path: app/Services/Evaluation/EvaluationCreationService.php
 
 		-
+			message: '#^Parameter \#1 \$attributes of static method Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Evaluation\>\:\:create\(\) expects array\<model property of App\\Models\\Evaluation, mixed\>, array\<string, mixed\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Evaluation/EvaluationCreationService.php
+
+		-
 			message: '#^Parameter \#1 \$matiereId of method App\\Services\\Evaluation\\EvaluationCreationService\:\:resolveKlassciLabels\(\) expects int\|null, mixed given\.$#'
 			identifier: argument.type
 			count: 1
@@ -4195,6 +4213,12 @@ parameters:
 			path: app/Services/Evaluation/EvaluationUpdateService.php
 
 		-
+			message: '#^Access to an undefined property App\\Models\\Evaluation\:\:\$institution_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Evaluation/Student/EvaluationAttemptStateService.php
+
+		-
 			message: '#^Cannot access offset ''programmation'' on mixed\.$#'
 			identifier: offsetAccess.nonOffsetAccessible
 			count: 1
@@ -4209,6 +4233,12 @@ parameters:
 		-
 			message: '#^Method App\\Services\\Evaluation\\Student\\EvaluationAttemptStateService\:\:fetchWindowSafe\(\) should return array\<string, mixed\>\|null but returns mixed\.$#'
 			identifier: return.type
+			count: 1
+			path: app/Services/Evaluation/Student/EvaluationAttemptStateService.php
+
+		-
+			message: '#^Parameter \#1 \$attributes of static method Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\EvaluationSubmission\>\:\:create\(\) expects array\<model property of App\\Models\\EvaluationSubmission, mixed\>, array\<string, mixed\> given\.$#'
+			identifier: argument.type
 			count: 1
 			path: app/Services/Evaluation/Student/EvaluationAttemptStateService.php
 
@@ -4737,6 +4767,12 @@ parameters:
 		-
 			message: '#^Method App\\Services\\KnowledgeCheck\\KnowledgeCheckAttemptService\:\:getMyAttempts\(\) should return array\{quiz_title\: string, passing_score\: int, attempts\: Illuminate\\Support\\Collection\<int, array\<string, mixed\>\>, best_score\: int\|null, has_passed\: bool\} but returns array\{quiz_title\: string, passing_score\: int, attempts\: Illuminate\\Support\\Collection\<int, array\{id\: int, score\: int, correct_answers\: int, total_questions\: int, passed\: bool, time_spent\: string, completed_at\: non\-falsy\-string\|null\}\>, best_score\: mixed, has_passed\: bool\}\.$#'
 			identifier: return.type
+			count: 1
+			path: app/Services/KnowledgeCheck/KnowledgeCheckAttemptService.php
+
+		-
+			message: '#^Parameter \#1 \$attributes of static method Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\KnowledgeCheckAttempt\>\:\:create\(\) expects array\<model property of App\\Models\\KnowledgeCheckAttempt, mixed\>, array\<string, array\<int, array\<string, mixed\>\>\|bool\|Illuminate\\Support\\Carbon\|int\|null\> given\.$#'
+			identifier: argument.type
 			count: 1
 			path: app/Services/KnowledgeCheck/KnowledgeCheckAttemptService.php
 

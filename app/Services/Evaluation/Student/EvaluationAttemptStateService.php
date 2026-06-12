@@ -98,6 +98,8 @@ final class EvaluationAttemptStateService
             'attempt' => $attemptsCount + 1,
             'status' => 'en_cours',
             'started_at' => now(),
+            // Scope tenant explicite herite de l'evaluation (fix E2E #211).
+            'institution_id' => $evaluation->institution_id,
             'feedback' => $isPracticeMode ? '[PRACTICE] Entraînement - note non officielle' : null,
         ]);
 

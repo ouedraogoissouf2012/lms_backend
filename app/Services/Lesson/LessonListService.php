@@ -45,6 +45,14 @@ final class LessonListService
     {
         $query = Lesson::with(['matiere', 'enseignant', 'classe']);
 
+        // Defense en profondeur (fix E2E #211 flow 5) : le global scope
+        // BelongsToInstitution est no-op si le tenant n'est pas resolu —
+        // filtre tenant EXPLICITE depuis le user authentifie.
+        // institution_id null = supradmin cross-tenant by design.
+        if ($user->institution_id !== null) {
+            $query->where('institution_id', $user->institution_id);
+        }
+
         if ($request->has('matiere_id')) {
             $query->forMatiere($request->matiere_id);
         }
@@ -102,6 +110,11 @@ final class LessonListService
         $query = Lesson::with(['matiere', 'classe'])
             ->published()
             ->ordered();
+
+        // Defense en profondeur (fix E2E #211 flow 5) — cf. list().
+        if ($user->institution_id !== null) {
+            $query->where('institution_id', $user->institution_id);
+        }
 
         // Filtres optionnels
         if ($request->has('matiere_id')) {
@@ -211,6 +224,12 @@ final class LessonListService
         $lesson = Lesson::find($id);
 
         if (!$lesson) {
+            return ['error' => 'Cours non trouvé', 'status' => 404];
+        }
+
+        // Defense en profondeur (fix E2E #211 flow 5) : acces direct par ID
+        // cross-tenant -> 404 (ne pas revelér l'existence de la ressource).
+        if ($user->institution_id !== null && $lesson->institution_id !== $user->institution_id) {
             return ['error' => 'Cours non trouvé', 'status' => 404];
         }
 

@@ -28,7 +28,10 @@ class PinTopicRequest extends FormRequest
             ownerUserId: $topic?->user_id,
             tenantInstitutionId: $topic?->institution_id,
             user: Auth::user(),
-            moderatorRoles: ['admin', 'administrateur', 'superAdmin', 'coordinateur'],
+            // Fix E2E #211 flow 4 : la route est declaree pour les formateurs
+            // (role:enseignant,coordinateur,admin) mais la FormRequest les
+            // excluait -> close/pin de facto inaccessibles aux enseignants.
+            moderatorRoles: ['admin', 'administrateur', 'superAdmin', 'coordinateur', 'enseignant'],
         );
     }
 

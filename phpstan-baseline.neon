@@ -1159,6 +1159,12 @@ parameters:
 			path: app/Http/Requests/StoreForumPostRequest.php
 
 		-
+			message: '#^Access to an undefined property \(object\|string\|null\)\:\:\$institution_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Requests/StoreForumPostRequest.php
+
+		-
 			message: '#^Call to an undefined method \(object\|string\|null\)\:\:isOpen\(\)\.$#'
 			identifier: method.notFound
 			count: 1
@@ -4837,6 +4843,12 @@ parameters:
 			path: app/Services/Lesson/LessonCrudOperationsService.php
 
 		-
+			message: '#^Access to an undefined property App\\Models\\Lesson\:\:\$institution_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Lesson/LessonListService.php
+
+		-
 			message: '#^Access to an undefined property App\\Models\\Lesson\:\:\$statistics\.$#'
 			identifier: property.notFound
 			count: 1
@@ -4900,6 +4912,12 @@ parameters:
 			message: '#^Parameter \#1 \$classeId of method Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Lesson\>\:\:forClasse\(\) expects int, mixed given\.$#'
 			identifier: argument.type
 			count: 1
+			path: app/Services/Lesson/LessonListService.php
+
+		-
+			message: '#^Parameter \#1 \$column of method Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Lesson\>\:\:where\(\) expects array\<int\|model property of App\\Models\\Lesson, mixed\>\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Lesson\>\)\: Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Lesson\>\)\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Lesson\>\)\: void\)\|Illuminate\\Contracts\\Database\\Query\\Expression\|model property of App\\Models\\Lesson, ''institution_id'' given\.$#'
+			identifier: argument.type
+			count: 2
 			path: app/Services/Lesson/LessonListService.php
 
 		-

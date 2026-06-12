@@ -55,20 +55,37 @@ class Seance extends Model
     protected $appends = ['current_participants_count'];
 
     /**
-     * Compte les participants actuellement connectés.
+     * Compte les participants actuellement connectés (#224).
      *
-     * ⚠️ DETTE TRACÉE (§5 « JAMAIS: accessors DB ») : cet accessor `$appends`
-     * exécute 1 COUNT par séance sérialisée (N+1 sur les listes). 6 services
-     * en dépendent via le contrat JSON (`current_participants_count`).
-     * Migration prévue : `withCount(['attendances as current_participants_count'
-     * => fn($q) => $q->where('status','connected')])` côté queries + retrait
-     * de `$appends` — chantier API dédié (cf. issue GitHub H2-Seance).
+     * Optimisé : si une query parente a préchargé le compteur via
+     * `withConnectedParticipantsCount()` (scope ci-dessous), l'attribut
+     * `connected_participants_count` est déjà présent → 0 requête. Sinon
+     * (accès unitaire à une séance isolée), fallback en 1 COUNT.
+     *
+     * Le champ JSON `current_participants_count` (contrat frontend) et
+     * `$appends` sont conservés : aucune régression côté API.
      */
     public function getCurrentParticipantsCountAttribute(): int
     {
-        return ESBTPAttendance::where('seance_id', $this->id)
-            ->where('status', 'connected')
-            ->count();
+        $preloaded = $this->attributes['connected_participants_count'] ?? null;
+        if ($preloaded !== null) {
+            return (int) $preloaded;
+        }
+
+        return $this->attendances()->where('status', 'connected')->count();
+    }
+
+    /**
+     * Scope: précharge le compteur de participants connectés en 1 sous-requête
+     * (élimine le N+1 de l'accessor sur les listes — #224).
+     *
+     * @param  \Illuminate\Database\Eloquent\Builder<Seance>  $query
+     */
+    public function scopeWithConnectedParticipantsCount($query)
+    {
+        return $query->withCount(['attendances as connected_participants_count' => function ($q): void {
+            $q->where('status', 'connected');
+        }]);
     }
 
     /**

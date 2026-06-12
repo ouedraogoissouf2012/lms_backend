@@ -50,6 +50,7 @@ final class SeanceVisioEnricher
 
         $visioData = Seance::where('klassci_seance_id', $seanceId)
             ->orWhere('id', $seanceId)
+            ->withConnectedParticipantsCount()
             ->first();
 
         if (!$visioData) {
@@ -111,7 +112,7 @@ final class SeanceVisioEnricher
     public function enrichWithVisioData(array &$seance, int $seanceId): ?Seance
     {
         try {
-            $visioData = Seance::where('klassci_seance_id', $seanceId)->first();
+            $visioData = Seance::where('klassci_seance_id', $seanceId)->withConnectedParticipantsCount()->first();
 
             if ($visioData) {
                 $seance['visio_enabled'] = $visioData->visio_enabled ?? false;

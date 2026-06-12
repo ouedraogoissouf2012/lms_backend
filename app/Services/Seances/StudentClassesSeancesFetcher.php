@@ -163,6 +163,7 @@ final class StudentClassesSeancesFetcher
             // Chercher la séance dans la BDD locale par klassci_seance_id
             // IMPORTANT: Les étudiants ne voient que les séances actives (is_active = true)
             $visioData = Seance::where('klassci_seance_id', $seance['id'])
+                ->withConnectedParticipantsCount()
                 ->where('is_active', true)
                 ->first();
 

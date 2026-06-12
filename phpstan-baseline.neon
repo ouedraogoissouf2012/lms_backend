@@ -3313,6 +3313,12 @@ parameters:
 			path: app/Models/Seance.php
 
 		-
+			message: '#^Cannot cast mixed to int\.$#'
+			identifier: cast.int
+			count: 1
+			path: app/Models/Seance.php
+
+		-
 			message: '#^Class App\\Models\\Seance uses generic trait Illuminate\\Database\\Eloquent\\Factories\\HasFactory but does not specify its types\: TFactory$#'
 			identifier: missingType.generics
 			count: 1
@@ -3363,6 +3369,12 @@ parameters:
 		-
 			message: '#^Method App\\Models\\Seance\:\:scopeByTeacher\(\) has parameter \$query with no type specified\.$#'
 			identifier: missingType.parameter
+			count: 1
+			path: app/Models/Seance.php
+
+		-
+			message: '#^Method App\\Models\\Seance\:\:scopeWithConnectedParticipantsCount\(\) has no return type specified\.$#'
+			identifier: missingType.return
 			count: 1
 			path: app/Models/Seance.php
 

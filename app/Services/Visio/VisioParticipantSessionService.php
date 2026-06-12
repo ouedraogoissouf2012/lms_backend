@@ -200,10 +200,10 @@ final class VisioParticipantSessionService
      */
     private function resolveSeance(int $seanceId): ?Seance
     {
-        $visio = Seance::find($seanceId);
+        $visio = Seance::withConnectedParticipantsCount()->find($seanceId);
 
         if ($visio === null) {
-            $visio = Seance::where('klassci_seance_id', $seanceId)->first();
+            $visio = Seance::where('klassci_seance_id', $seanceId)->withConnectedParticipantsCount()->first();
         }
 
         return $visio;

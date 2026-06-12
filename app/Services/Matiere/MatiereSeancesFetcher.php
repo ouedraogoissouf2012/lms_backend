@@ -194,7 +194,7 @@ final class MatiereSeancesFetcher
     {
         return collect($seances)->map(function (array $seance) use ($klassciToken): array {
             $visioData = isset($seance['id'])
-                ? Seance::where('klassci_seance_id', $seance['id'])->first()
+                ? Seance::where('klassci_seance_id', $seance['id'])->withConnectedParticipantsCount()->first()
                 : null;
 
             $seanceEnrichie = $seance;

@@ -96,7 +96,7 @@ final class TeachingSeancesFetcher
      */
     private function ensureLocalSeanceExists(array $seance, array $matiere, User $user, string $klassciToken): ?Seance
     {
-        $visioData = Seance::where('klassci_seance_id', $seance['id'])->first();
+        $visioData = Seance::where('klassci_seance_id', $seance['id'])->withConnectedParticipantsCount()->first();
         if ($visioData) {
             return $visioData;
         }

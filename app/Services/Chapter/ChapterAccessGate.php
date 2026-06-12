@@ -23,15 +23,18 @@ final class ChapterAccessGate
      */
     public function canAccess(int $userId, Chapter $chapter): bool
     {
-        // Si position est null ou 0, c'est le premier chapitre - toujours accessible
-        if ($chapter->position === null || $chapter->position === 0) {
+        // Fix E2E #211 flow 3 : la colonne DB est `order` (pas `position`,
+        // qui n'a jamais existe) — l'attribut inexistant valait toujours null
+        // et le verrou quiz obligatoire ne bloquait JAMAIS rien.
+        // Si order est null ou 0, c'est le premier chapitre - toujours accessible
+        if ($chapter->order === null || $chapter->order === 0) {
             return true;
         }
 
         $previousChapter = Chapter::where('lesson_id', $chapter->lesson_id)
-            ->whereNotNull('position')
-            ->where('position', '<', $chapter->position)
-            ->orderBy('position', 'desc')
+            ->whereNotNull('order')
+            ->where('order', '<', $chapter->order)
+            ->orderBy('order', 'desc')
             ->first();
 
         if (!$previousChapter) {
@@ -70,8 +73,8 @@ final class ChapterAccessGate
     public function blockingQuiz(Chapter $chapter): ?array
     {
         $previousChapter = Chapter::where('lesson_id', $chapter->lesson_id)
-            ->where('position', '<', $chapter->position)
-            ->orderBy('position', 'desc')
+            ->where('order', '<', $chapter->order)
+            ->orderBy('order', 'desc')
             ->first();
 
         if (! $previousChapter || $previousChapter->content_type !== 'quiz') {

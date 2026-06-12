@@ -1171,16 +1171,22 @@ parameters:
 			path: app/Http/Requests/StoreForumPostRequest.php
 
 		-
+			message: '#^Cannot cast mixed to string\.$#'
+			identifier: cast.string
+			count: 1
+			path: app/Http/Requests/StoreForumPostRequest.php
+
+		-
 			message: '#^Method App\\Http\\Requests\\StoreForumPostRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
 			identifier: missingType.iterableValue
 			count: 1
 			path: app/Http/Requests/StoreForumPostRequest.php
 
 		-
-			message: '#^Parameter \#1 \$string of function trim expects string, resource\|string\|false\|null given\.$#'
-			identifier: argument.type
+			message: '#^Cannot cast mixed to string\.$#'
+			identifier: cast.string
 			count: 1
-			path: app/Http/Requests/StoreForumPostRequest.php
+			path: app/Http/Requests/StoreForumTopicRequest.php
 
 		-
 			message: '#^Method App\\Http\\Requests\\StoreForumTopicRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
@@ -1195,10 +1201,10 @@ parameters:
 			path: app/Http/Requests/StoreForumTopicRequest.php
 
 		-
-			message: '#^Parameter \#1 \$string of function trim expects string, resource\|string\|false\|null given\.$#'
-			identifier: argument.type
+			message: '#^Cannot cast mixed to string\.$#'
+			identifier: cast.string
 			count: 1
-			path: app/Http/Requests/StoreForumTopicRequest.php
+			path: app/Http/Requests/StoreLessonRequest.php
 
 		-
 			message: '#^Method App\\Http\\Requests\\StoreLessonRequest\:\:messages\(\) return type has no value type specified in iterable type array\.$#'
@@ -1222,12 +1228,6 @@ parameters:
 			message: '#^Parameter \#1 \$string of function trim expects string, mixed given\.$#'
 			identifier: argument.type
 			count: 2
-			path: app/Http/Requests/StoreLessonRequest.php
-
-		-
-			message: '#^Parameter \#1 \$string of function trim expects string, resource\|string\|false given\.$#'
-			identifier: argument.type
-			count: 1
 			path: app/Http/Requests/StoreLessonRequest.php
 
 		-
@@ -1369,6 +1369,12 @@ parameters:
 			path: app/Http/Requests/UpdateChapterRequest.php
 
 		-
+			message: '#^Cannot cast mixed to string\.$#'
+			identifier: cast.string
+			count: 1
+			path: app/Http/Requests/UpdateChapterRequest.php
+
+		-
 			message: '#^Method App\\Http\\Requests\\UpdateChapterRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
 			identifier: missingType.iterableValue
 			count: 1
@@ -1384,12 +1390,6 @@ parameters:
 			message: '#^Parameter \#1 \$string of function trim expects string, mixed given\.$#'
 			identifier: argument.type
 			count: 2
-			path: app/Http/Requests/UpdateChapterRequest.php
-
-		-
-			message: '#^Parameter \#1 \$string of function trim expects string, resource\|string\|false given\.$#'
-			identifier: argument.type
-			count: 1
 			path: app/Http/Requests/UpdateChapterRequest.php
 
 		-
@@ -1423,16 +1423,22 @@ parameters:
 			path: app/Http/Requests/UpdateEvaluationRequest.php
 
 		-
+			message: '#^Cannot cast mixed to string\.$#'
+			identifier: cast.string
+			count: 1
+			path: app/Http/Requests/UpdateForumPostRequest.php
+
+		-
 			message: '#^Method App\\Http\\Requests\\UpdateForumPostRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
 			identifier: missingType.iterableValue
 			count: 1
 			path: app/Http/Requests/UpdateForumPostRequest.php
 
 		-
-			message: '#^Parameter \#1 \$string of function trim expects string, resource\|string\|false\|null given\.$#'
-			identifier: argument.type
+			message: '#^Cannot cast mixed to string\.$#'
+			identifier: cast.string
 			count: 1
-			path: app/Http/Requests/UpdateForumPostRequest.php
+			path: app/Http/Requests/UpdateForumTopicRequest.php
 
 		-
 			message: '#^Method App\\Http\\Requests\\UpdateForumTopicRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
@@ -1442,12 +1448,6 @@ parameters:
 
 		-
 			message: '#^Parameter \#1 \$string of function trim expects string, mixed given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Requests/UpdateForumTopicRequest.php
-
-		-
-			message: '#^Parameter \#1 \$string of function trim expects string, resource\|string\|false\|null given\.$#'
 			identifier: argument.type
 			count: 1
 			path: app/Http/Requests/UpdateForumTopicRequest.php

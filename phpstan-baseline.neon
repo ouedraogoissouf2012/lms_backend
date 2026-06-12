@@ -3715,21 +3715,9 @@ parameters:
 			path: app/Services/Attendances/VideoSessionAttendancesSyncer.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\Chapter\:\:\$position\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Services/Chapter/ChapterAccessGate.php
-
-		-
 			message: '#^Method App\\Services\\Chapter\\ChapterAccessGate\:\:blockingQuiz\(\) never returns array\{chapter_id\: int, chapter_title\: string, quiz_title\: string, passing_score\: int\} so it can be removed from the return type\.$#'
 			identifier: return.unusedType
 			count: 1
-			path: app/Services/Chapter/ChapterAccessGate.php
-
-		-
-			message: '#^Parameter \#1 \$column of method Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Chapter\>\:\:where\(\) expects array\<int\|model property of App\\Models\\Chapter, mixed\>\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Chapter\>\)\: Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Chapter\>\)\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Chapter\>\)\: void\)\|Illuminate\\Contracts\\Database\\Query\\Expression\|model property of App\\Models\\Chapter, ''position'' given\.$#'
-			identifier: argument.type
-			count: 2
 			path: app/Services/Chapter/ChapterAccessGate.php
 
 		-
@@ -3746,6 +3734,12 @@ parameters:
 
 		-
 			message: '#^Strict comparison using \=\=\= between ''audio''\|''excel''\|''link''\|''mixed''\|''pdf''\|''powerpoint''\|''presentation''\|''text''\|''video''\|''word'' and ''quiz'' will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 1
+			path: app/Services/Chapter/ChapterAccessGate.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between int and null will always evaluate to false\.$#'
 			identifier: identical.alwaysFalse
 			count: 1
 			path: app/Services/Chapter/ChapterAccessGate.php
@@ -3851,12 +3845,6 @@ parameters:
 			identifier: nullsafe.neverNull
 			count: 1
 			path: app/Services/Chapter/ChapterProgressService.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\Chapter\:\:\$position\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/Chapter/LessonChapterProgressCalculator.php
 
 		-
 			message: '#^Using nullsafe property access "\?\-\>quiz_passed" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'

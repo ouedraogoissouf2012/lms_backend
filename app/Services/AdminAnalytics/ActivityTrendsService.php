@@ -206,6 +206,17 @@ final class ActivityTrendsService
      */
     private function pluckDailyCounts(Builder $builder, string $dateColumn): array
     {
+        // Sécurité (#212) : `$dateColumn` est interpolé dans du SQL brut.
+        // Tous les call sites passent un littéral hardcodé, mais on impose une
+        // whitelist stricte pour qu'aucune évolution future ne puisse y router
+        // un input utilisateur (défense en profondeur contre l'injection SQL).
+        $allowedColumns = ['created_at', 'submitted_at', 'started_at', 'updated_at'];
+        if (! in_array($dateColumn, $allowedColumns, true)) {
+            throw new \InvalidArgumentException(
+                "Colonne de date non autorisée pour l'agrégation journalière : {$dateColumn}"
+            );
+        }
+
         // On collecte d'abord les rows brutes (stdClass-like) puis on construit
         // manuellement le tableau `date => count` : `pluck('count', 'date')`
         // sur un Eloquent Builder rejette l'alias `count` (PHPStan attend une

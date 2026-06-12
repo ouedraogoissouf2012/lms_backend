@@ -25,9 +25,20 @@ use Illuminate\Foundation\Http\FormRequest;
  * ## Security Checks Applied
  * 1. Authorization: only teachers/coordinators can create
  * 2. Institution: classe must belong to user's institution
- * 3. Input validation: all fields type-checked + sanitized
- * 4. XSS prevention: description/content sanitized in middleware
- * 5. DOS prevention: title max length enforced
+ * 3. Input validation: all fields type-checked (length, type, enum)
+ * 4. DOS prevention: title/description/content max length enforced
+ *
+ * ## XSS model (#212)
+ * Défense principale (commune à toute l'API) : les réponses sont du JSON
+ * (`Content-Type: application/json`) que le navigateur n'interprète pas
+ * comme HTML, le frontend Vue échappe à l'affichage, et les vues Blade
+ * (rapports/PDF) échappent via `{{ }}`.
+ *
+ * Spécificité lesson : `description` et `content` passent un `strip_tags`
+ * (sanitization HTML héritée, propre à ce FormRequest). Le reste du projet
+ * (forum topics/posts, chapters) stocke VERBATIM — incohérence historique
+ * tracée, à uniformiser dans une décision produit dédiée. `title` reste
+ * verbatim. Couvert par tests/Feature/Security/XssTest.php.
  */
 final class StoreLessonRequest extends FormRequest
 {
@@ -158,7 +169,8 @@ final class StoreLessonRequest extends FormRequest
         $this->merge([
             'title' => trim($this->title ?? ''),
             'description' => strip_tags(trim($this->description ?? '')),
-            'content' => strip_tags(trim($this->content ?? '')),
+            // Fix #212 : `$this->content` = corps HTTP brut, pas l'input nomme.
+            'content' => strip_tags(trim((string) $this->input('content', ''))),
         ]);
     }
 }

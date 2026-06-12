@@ -52,7 +52,8 @@ class StoreForumTopicRequest extends FormRequest
             $merge['title'] = trim($this->title);
         }
         if ($this->has('content')) {
-            $merge['content'] = trim($this->content);
+            // Fix #212 : `$this->content` = corps HTTP brut, pas l'input.
+            $merge['content'] = trim((string) $this->input('content'));
         }
         if (!empty($merge)) {
             $this->merge($merge);

@@ -61,7 +61,9 @@ class StoreForumPostRequest extends FormRequest
     protected function prepareForValidation(): void
     {
         if ($this->has('content')) {
-            $this->merge(['content' => trim($this->content)]);
+            // Fix #212 : `$this->content` renvoie le CORPS HTTP brut (propriete
+            // Symfony Request), pas l'input nomme. Utiliser input('content').
+            $this->merge(['content' => trim((string) $this->input('content'))]);
         }
     }
 }

@@ -18,7 +18,21 @@ class StoreForumPostRequest extends FormRequest
     public function authorize(): bool
     {
         $topic = $this->route('topic');
-        return Auth::check() && $topic->isOpen();
+        $user = Auth::user();
+
+        if ($user === null || ! $topic->isOpen()) {
+            return false;
+        }
+
+        // Defense en profondeur (fix E2E #211 flow 5) : un user du tenant B
+        // ne doit pas poster dans un topic du tenant A (binding non filtre
+        // si le tenant n'est pas resolu).
+        if ($user->institution_id !== null
+            && $topic->institution_id !== $user->institution_id) {
+            return false;
+        }
+
+        return true;
     }
 
     public function rules(): array

@@ -108,6 +108,8 @@ final class EvaluationCreationService
                     'matiere_nom'           => $matiereNom,
                     'classe_nom'            => $classeNom,
                     'klassci_enseignant_id' => $teacher->klassci_enseignant_id,
+                    // Scope tenant explicite (fix E2E #211 flow 2).
+                    'institution_id'        => $teacher->institution_id,
                 ],
             ));
 

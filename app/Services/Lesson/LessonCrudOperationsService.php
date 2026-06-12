@@ -49,6 +49,8 @@ final class LessonCrudOperationsService
     public function create(array $data, User $author): Lesson
     {
         $data['enseignant_id'] = $author->id;
+        // Scope tenant explicite (defense en profondeur, fix E2E #211 flow 2).
+        $data['institution_id'] = $author->institution_id;
 
         // Résoudre matiere_id : le frontend peut envoyer un KLASSCI ID
         if (isset($data['matiere_id'])) {

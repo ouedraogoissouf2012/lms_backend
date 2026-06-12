@@ -98,6 +98,9 @@ final class KnowledgeCheckCrudService
         $chapter = Chapter::findOrFail($data['chapter_id']);
         $this->assertCanManageChapter($user, $chapter);
 
+        // Scope tenant explicite (defense en profondeur, fix E2E #211 flow 2).
+        $data['institution_id'] = $user->institution_id;
+
         return KnowledgeCheck::create($data);
     }
 

@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Services\Auth\LocalLmsAuthenticator;
 use App\Services\Klassci\Auth\KlassciAuthClient;
 use App\Services\Klassci\Auth\KlassciTenantDiscovery;
+use App\Services\Audit\AuditLogger;
 use App\Services\Klassci\Auth\KlassciUserSynchronizer;
 use App\Services\KlassciProxyService;
 use Illuminate\Http\JsonResponse;
@@ -41,6 +42,7 @@ class AuthController extends AuthenticatedController
         private KlassciAuthClient $klassciAuthClient,
         private KlassciUserSynchronizer $userSync,
         private AuthResponsePresenter $presenter,
+        private AuditLogger $auditLogger,
     ) {}
 
     /**
@@ -90,7 +92,9 @@ class AuthController extends AuthenticatedController
     public function logout(Request $request): JsonResponse
     {
         try {
-            $this->authenticatedUser($request)->currentAccessToken()->delete();
+            $user = $this->authenticatedUser($request);
+            $this->auditLogger->logAuthEvent('logout', $user->id);
+            $user->currentAccessToken()->delete();
 
             try {
                 $this->klassciService->post('auth/logout', []);
@@ -145,6 +149,8 @@ class AuthController extends AuthenticatedController
 
         $token = $user->createToken('lms-backend-token', ['lms:access'])->plainTextToken;
 
+        $this->auditLogger->logAuthEvent('login', $user->id, ['method' => 'local']);
+
         return $this->presenter->successfulLocal($user, $token);
     }
 
@@ -167,6 +173,9 @@ class AuthController extends AuthenticatedController
             return $this->buildKlassciSuccessResponse($payload, $tenant);
         }
 
+        // Aucun tenant n'a validé les identifiants → échec d'authentification.
+        $this->auditLogger->logAuthEvent('login_failed', null, ['username' => $username]);
+
         return $this->presenter->invalidCredentials();
     }
 
@@ -187,6 +196,8 @@ class AuthController extends AuthenticatedController
         $institution  = Institution::where('slug', $tenant['code'])->first();
         $localUser    = $this->userSync->sync($klassciUser, $klassciToken, $tenant['api_base_url'], $institution);
         $sanctumToken = $localUser->createToken('lms-backend-token', ['lms:access'])->plainTextToken;
+
+        $this->auditLogger->logAuthEvent('login', $localUser->id, ['method' => 'klassci', 'tenant' => $tenant['code']]);
 
         return $this->presenter->successfulKlassci($localUser, $sanctumToken, $klassciUser, $meta, $tenant);
     }

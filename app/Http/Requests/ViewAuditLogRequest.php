@@ -2,14 +2,18 @@
 
 namespace App\Http\Requests;
 
-use App\Enums\Role;
 use Illuminate\Foundation\Http\FormRequest;
 
 final class ViewAuditLogRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return auth()->user()?->asRoleEnum() === Role::Supradmin;
+        // Strict lowercase 'supradmin' UNIQUEMENT : le journal d'audit est
+        // cross-tenant (toutes institutions). NE PAS utiliser asRoleEnum() qui
+        // normalise 'superAdmin' (admin intra-tenant) en Role::Supradmin et
+        // laisserait un admin d'institution lire les logs des autres tenants.
+        // Même distinction que ChecksForumAuthorization / RateLimitServiceProvider.
+        return auth()->user()?->role === 'supradmin';
     }
 
     public function rules(): array
@@ -17,7 +21,7 @@ final class ViewAuditLogRequest extends FormRequest
         return [
             'per_page' => 'sometimes|integer|min:1|max:100',
             'page' => 'sometimes|integer|min:1',
-            'action' => 'sometimes|string|in:create,update,delete,view,export,import',
+            'action' => 'sometimes|string|in:create,update,delete,view,export,import,login,logout,login_failed',
             'user_id' => 'sometimes|integer|exists:users,id',
         ];
     }

@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use App\Models\Traits\BelongsToInstitution;
+use App\Models\Concerns\Auditable;
 
 /**
  * Model QuizAttempt
@@ -19,7 +20,7 @@ use App\Models\Traits\BelongsToInstitution;
  */
 class QuizAttempt extends Model
 {
-    use HasFactory, BelongsToInstitution;
+    use HasFactory, BelongsToInstitution, Auditable;
 
     protected $fillable = [
         'quiz_id',

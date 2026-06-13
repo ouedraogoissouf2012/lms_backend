@@ -7,10 +7,11 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use App\Models\Traits\BelongsToInstitution;
+use App\Models\Concerns\Auditable;
 
 class Evaluation extends Model
 {
-    use HasFactory, SoftDeletes, BelongsToInstitution;
+    use HasFactory, SoftDeletes, BelongsToInstitution, Auditable;
 
     protected $fillable = [
         'klassci_evaluation_id',

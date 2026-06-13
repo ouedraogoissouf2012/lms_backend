@@ -81,3 +81,11 @@ Schedule::job(new FinalizeSeanceAttendances)
     ->name('finalize-seance-attendances')
     ->withoutOverlapping()
     ->onOneServer();
+
+// Purge quotidienne du journal d'audit au-delà du seuil de rétention (#215).
+// Le journal est append-only ; ceci est le seul mécanisme de suppression.
+Schedule::command('audit:purge')
+    ->dailyAt('03:30')
+    ->name('purge-audit-logs')
+    ->withoutOverlapping()
+    ->onOneServer();

@@ -29,7 +29,9 @@ final class PurgeAuditLogs extends Command
 
     public function handle(ConfigRepository $config): int
     {
-        $retentionDays = (int) $config->get('audit.retention_days', 365);
+        // intval() accepte mixed et retourne int (pas de cast `(int) mixed`
+        // interdit au niveau 9). config() retourne mixed.
+        $retentionDays = intval($config->get('audit.retention_days', 365));
         $cutoff = now()->subDays($retentionDays);
 
         $query = AuditLog::where('created_at', '<', $cutoff);
@@ -40,7 +42,7 @@ final class PurgeAuditLogs extends Command
             return self::SUCCESS;
         }
 
-        $deleted = $query->delete();
+        $deleted = intval($query->delete());
         $this->info("✓ {$deleted} entrée(s) d'audit supprimée(s) (antérieures à {$cutoff->toDateString()}, rétention {$retentionDays} j).");
 
         return self::SUCCESS;

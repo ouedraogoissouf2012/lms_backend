@@ -19,6 +19,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  */
 class AuditLog extends Model
 {
+    /** @use HasFactory<\Database\Factories\AuditLogFactory> */
     use HasFactory;
 
     // Append-only : pas d'updated_at (les logs ne sont jamais modifiés).
@@ -36,7 +37,11 @@ class AuditLog extends Model
         'created_at' => 'datetime',
     ];
 
-    /** Acteur de l'action (null si échec d'auth ou job système). */
+    /**
+     * Acteur de l'action (null si échec d'auth ou job système).
+     *
+     * @return BelongsTo<User, $this>
+     */
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);

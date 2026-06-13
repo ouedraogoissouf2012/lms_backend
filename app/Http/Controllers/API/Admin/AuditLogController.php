@@ -27,19 +27,19 @@ final class AuditLogController extends Controller
      */
     public function index(ViewAuditLogRequest $request): JsonResponse
     {
-        $filters = $request->validated();
-
+        // Helpers typés de la Request (string/integer) plutôt que des casts de
+        // `mixed` issus de validated() — conforme PHPStan niveau 9.
         $query = AuditLog::query()->with('user:id,name,email,role')->recent();
 
-        if (isset($filters['action'])) {
-            $query->forAction($filters['action']);
+        if ($request->filled('action')) {
+            $query->forAction($request->string('action')->value());
         }
 
-        if (isset($filters['user_id'])) {
-            $query->forUser((int) $filters['user_id']);
+        if ($request->filled('user_id')) {
+            $query->forUser($request->integer('user_id'));
         }
 
-        $perPage = (int) ($filters['per_page'] ?? 50);
+        $perPage = $request->integer('per_page', 50);
 
         return response()->json([
             'success' => true,

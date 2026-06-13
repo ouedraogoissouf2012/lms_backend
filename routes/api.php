@@ -707,6 +707,14 @@ Route::middleware(['auth:sanctum', 'klassci.sync', 'role:enseignant,coordinateur
 });
 
 // ============================================
+// ADMIN - Journal d'audit (#215) — supradmin uniquement (lecture seule)
+// L'autorisation stricte supradmin est portée par ViewAuditLogRequest.
+// ============================================
+Route::middleware(['auth:sanctum'])->prefix('admin')->group(function () {
+    Route::get('/audit-log', [\App\Http\Controllers\API\Admin\AuditLogController::class, 'index']);
+});
+
+// ============================================
 // ADMIN ANALYTICS - Routes protégées (admin/coordinateur uniquement)
 // ============================================
 Route::middleware(['auth:sanctum', 'role:coordinateur,superAdmin'])->prefix('admin/analytics')->group(function () {

@@ -6,10 +6,11 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use App\Models\Traits\BelongsToInstitution;
+use App\Models\Concerns\Auditable;
 
 class EvaluationSubmission extends Model
 {
-    use HasFactory, BelongsToInstitution;
+    use HasFactory, BelongsToInstitution, Auditable;
 
     protected $fillable = [
         'evaluation_id',

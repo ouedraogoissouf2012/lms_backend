@@ -48,6 +48,19 @@ $app = Application::configure(basePath: dirname(__DIR__))
             }
         });
 
+        // Rate limiting (#214) : le 429 DOIT porter `Retry-After` + les en-têtes
+        // `X-RateLimit-*` (RFC 6585) pour que le client sache quand réessayer.
+        // Sans ce handler dédié, le handler générique \Throwable ci-dessous
+        // reconstruirait la réponse JSON en PERDANT les headers de l'exception.
+        $exceptions->render(function (\Illuminate\Http\Exceptions\ThrottleRequestsException $e, $request) {
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Trop de requêtes. Veuillez réessayer plus tard.',
+                ], 429, $e->getHeaders());
+            }
+        });
+
         $exceptions->render(function (\Throwable $e, $request) {
             if ($request->expectsJson()) {
                 $statusCode = method_exists($e, 'getStatusCode') ? $e->getStatusCode() : 500;

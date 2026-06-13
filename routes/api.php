@@ -104,7 +104,7 @@ Route::prefix('auth')->middleware('auth:sanctum')->group(function () {
 // PROXY KLASSCI - Test de connexion (SÉCURISÉ)
 // ============================================
 Route::prefix('proxy')
-    ->middleware(['auth:sanctum', 'klassci.sync', 'role:coordinateur,superAdmin,supradmin'])
+    ->middleware(['auth:sanctum', 'klassci.sync', 'role:coordinateur,superAdmin,supradmin', 'throttle:proxy'])
     ->group(function () {
         // Test de connexion KLASSCI — réservé aux admins
         Route::get('/test-connection', [ProxyOrganisationController::class, 'testConnection']);
@@ -115,7 +115,7 @@ Route::prefix('proxy')
 // Routes authentifiées pour tous les rôles
 // ============================================
 Route::prefix('proxy')
-    ->middleware(['auth:sanctum', 'klassci.sync'])
+    ->middleware(['auth:sanctum', 'klassci.sync', 'throttle:proxy'])
     ->group(function () {
         // Structure organisationnelle
         Route::get('/structure', [ProxyOrganisationController::class, 'structure']);
@@ -142,20 +142,17 @@ Route::prefix('proxy')
 // PROXY KLASSCI - Routes ENSEIGNANTS uniquement
 // ============================================
 Route::prefix('proxy')
-    ->middleware(['auth:sanctum', 'klassci.sync', 'role:enseignant,coordinateur'])
+    ->middleware(['auth:sanctum', 'klassci.sync', 'role:enseignant,coordinateur', 'throttle:proxy-write'])
     ->group(function () {
 
-    // Sauvegarder les notes (Enseignants/Coordinateurs uniquement) - Rate limited: 60/min
-    Route::post('/evaluations/{id}/notes', [ProxyAcademicController::class, 'saveNotes'])
-        ->middleware('throttle:60,1');
+    // Sauvegarder les notes (Enseignants/Coordinateurs uniquement)
+    Route::post('/evaluations/{id}/notes', [ProxyAcademicController::class, 'saveNotes']);
 
-    // Sauvegarder les présences (Enseignants/Coordinateurs uniquement) - Rate limited: 60/min
-    Route::post('/cours/{id}/presences', [ProxyAcademicController::class, 'savePresences'])
-        ->middleware('throttle:60,1');
+    // Sauvegarder les présences (Enseignants/Coordinateurs uniquement)
+    Route::post('/cours/{id}/presences', [ProxyAcademicController::class, 'savePresences']);
 
-    // Mettre à jour statut cours (Enseignants/Coordinateurs uniquement) - Rate limited: 30/min
-    Route::put('/cours/{id}/statut', [ProxyAcademicController::class, 'updateCoursStatut'])
-        ->middleware('throttle:30,1');
+    // Mettre à jour statut cours (Enseignants/Coordinateurs uniquement)
+    Route::put('/cours/{id}/statut', [ProxyAcademicController::class, 'updateCoursStatut']);
 });
 
 // ============================================

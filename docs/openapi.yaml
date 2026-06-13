@@ -1,7 +1,21 @@
 openapi: 3.0.0
 info:
   title: "LMS Backend API"
-  description: "API complète pour la plateforme LMS - Learning Management System avec intégration KLASSCI"
+  description: |
+    API complète pour la plateforme LMS - Learning Management System avec intégration KLASSCI.
+
+    ## Rate limiting (#214)
+
+    Les routes proxy KLASSCI sont limitées par utilisateur authentifié :
+      - `GET /proxy/*` (lecture) : **100 requêtes / minute / utilisateur**.
+      - écritures `/proxy/evaluations/{id}/notes`, `/proxy/cours/{id}/presences`,
+        `/proxy/cours/{id}/statut` : **30 requêtes / minute / utilisateur**.
+
+    Le rôle `supradmin` (gestionnaire plateforme) est exempté.
+
+    Chaque réponse expose les en-têtes `X-RateLimit-Limit` et
+    `X-RateLimit-Remaining`. Au dépassement, l'API répond `429 Too Many
+    Requests` avec `Retry-After` (secondes) et `X-RateLimit-Reset`.
   version: "1.0.0"
   contact:
     name: "LMS Team"
@@ -23,6 +37,35 @@ components:
       scheme: bearer
       bearerFormat: JWT
       description: "Sanctum token authentication"
+
+  responses:
+    # Réponse standard de dépassement du rate limit (#214/#219).
+    TooManyRequests:
+      description: "Rate limit dépassé (voir en-têtes X-RateLimit-* et Retry-After)."
+      headers:
+        Retry-After:
+          schema:
+            type: integer
+          description: "Secondes à attendre avant de réessayer."
+        X-RateLimit-Limit:
+          schema:
+            type: integer
+          description: "Quota maximum par minute."
+        X-RateLimit-Remaining:
+          schema:
+            type: integer
+          description: "Requêtes restantes dans la fenêtre courante."
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: false
+              message:
+                type: string
+                example: "Trop de requêtes. Veuillez réessayer plus tard."
 
   schemas:
     # Error Response
@@ -187,7 +230,7 @@ paths:
       tags:
         - Proxy / KLASSCI
       summary: "Get organizational structure"
-      description: "Retrieve organizational structure (branches, levels)"
+      description: "Retrieve organizational structure (branches, levels). Rate limit : 100 req/min/utilisateur (#214)."
       security:
         - sanctum: []
       responses:
@@ -195,6 +238,8 @@ paths:
           description: "Structure data"
         '401':
           description: "Unauthenticated"
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
 
   /proxy/classes:
     get:
@@ -484,13 +529,19 @@ paths:
           description: "Unauthenticated"
 
   # ============ CHAPTERS ============
-  /chapters:
+  /lessons/{lessonId}/chapters:
     get:
       tags:
         - Chapters
-      summary: "List chapters"
+      summary: "List chapters of a lesson"
       security:
         - sanctum: []
+      parameters:
+        - name: lessonId
+          in: path
+          required: true
+          schema:
+            type: integer
       responses:
         '200':
           description: "List of chapters"
@@ -498,9 +549,15 @@ paths:
     post:
       tags:
         - Chapters
-      summary: "Create chapter"
+      summary: "Create chapter in a lesson"
       security:
         - sanctum: []
+      parameters:
+        - name: lessonId
+          in: path
+          required: true
+          schema:
+            type: integer
       requestBody:
         required: true
         content:
@@ -508,7 +565,7 @@ paths:
             schema:
               type: object
               properties:
-                title:
+                titre:
                   type: string
       responses:
         '201':

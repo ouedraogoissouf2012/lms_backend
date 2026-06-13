@@ -175,3 +175,52 @@ jobs:
         if: always()
         continue-on-error: true
         run: semgrep scan --config p/default --config p/owasp-top-ten --severity WARNING --severity INFO
+
+  docs-sync:
+    # Docs-sync (#221) : empêche la documentation OpenAPI de diverger du code.
+    #   1. Test PHPUnit OpenApiSyncTest — tout endpoint documenté existe en route.
+    #   2. Validator OpenAPI (--json) — standards de la spec, fail si errors > 0.
+    # Dépend des outils #213 (tests) et #220 (validator JSON).
+    name: Docs Sync (OpenAPI ↔ code)
+    runs-on: ubuntu-latest
+
+    # Clé de test (NON secrète) : phpunit.xml ne hardcode pas APP_KEY et attend
+    # qu'elle vienne de l'environnement CI. Clé jetable, usage test uniquement.
+    env:
+      APP_ENV: testing
+      APP_KEY: "base64:Cg9vQ0xtc1Rlc3RLZXkxMjM0NTY3ODkwYWJjZGVmZ2g="
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup PHP 8.3
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.3"
+          coverage: none
+          tools: composer:v2
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install PyYAML
+        run: pip install pyyaml
+
+      - name: Install PHP dependencies
+        run: composer install --no-interaction --no-progress --prefer-dist --no-scripts
+
+      # OpenApiSyncTest n'utilise pas la base, mais le bootstrap de test peut
+      # référencer la connexion sqlite de phpunit.xml — fichier vide par sécurité.
+      - name: Prepare sqlite test database
+        run: mkdir -p database && touch database/database.testing.sqlite
+
+      # 1. Tout endpoint documenté doit exister réellement en route (#213).
+      - name: OpenAPI ↔ routes sync test
+        run: vendor/bin/phpunit --filter OpenApiSyncTest
+
+      # 2. La spec respecte les standards internes (#220). Fail si errors > 0.
+      - name: OpenAPI spec validation (JSON output)
+        run: python scripts/openapi-validator.py docs/openapi.yaml --json

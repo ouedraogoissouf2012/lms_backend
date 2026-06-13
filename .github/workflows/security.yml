@@ -224,3 +224,22 @@ jobs:
       # 2. La spec respecte les standards internes (#220). Fail si errors > 0.
       - name: OpenAPI spec validation (JSON output)
         run: python scripts/openapi-validator.py docs/openapi.yaml --json
+
+  commitlint:
+    # Conventional commits (#218) : valide le format des messages de commit de
+    # la PR contre .commitlintrc.json. commitlint est installé côté CI seulement
+    # — aucune dépendance Node imposée localement (projet PHP pur).
+    name: Commit messages (conventional)
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # historique complet requis pour valider la plage de commits
+
+      - name: Validate commit messages
+        uses: wagoid/commitlint-github-action@v6
+        with:
+          configFile: .commitlintrc.json

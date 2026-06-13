@@ -29,9 +29,10 @@ final class PurgeAuditLogs extends Command
 
     public function handle(ConfigRepository $config): int
     {
-        // intval() accepte mixed et retourne int (pas de cast `(int) mixed`
-        // interdit au niveau 9). config() retourne mixed.
-        $retentionDays = intval($config->get('audit.retention_days', 365));
+        // config() retourne mixed → garde is_numeric avant cast (niveau 9
+        // interdit `(int) mixed` et `intval(mixed)`).
+        $rawRetention = $config->get('audit.retention_days', 365);
+        $retentionDays = is_numeric($rawRetention) ? (int) $rawRetention : 365;
         $cutoff = now()->subDays($retentionDays);
 
         $query = AuditLog::where('created_at', '<', $cutoff);
@@ -42,8 +43,11 @@ final class PurgeAuditLogs extends Command
             return self::SUCCESS;
         }
 
-        $deleted = intval($query->delete());
-        $this->info("✓ {$deleted} entrée(s) d'audit supprimée(s) (antérieures à {$cutoff->toDateString()}, rétention {$retentionDays} j).");
+        // On supprime exactement les rows comptées juste avant (aucune nouvelle
+        // entrée ne peut avoir created_at < cutoff) → on réutilise `$count`
+        // (int typé) plutôt que le retour `mixed` de delete().
+        $query->delete();
+        $this->info("✓ {$count} entrée(s) d'audit supprimée(s) (antérieures à {$cutoff->toDateString()}, rétention {$retentionDays} j).");
 
         return self::SUCCESS;
     }

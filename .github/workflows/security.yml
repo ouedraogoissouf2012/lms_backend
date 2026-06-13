@@ -243,3 +243,43 @@ jobs:
         uses: wagoid/commitlint-github-action@v6
         with:
           configFile: .commitlintrc.json
+
+  sdk-generation:
+    # SDK smoke test (#222) : garantit que la spec OpenAPI GÉNÈRE un SDK client
+    # sans erreur. C'est le prérequis réel — si la spec diverge ou se casse, la
+    # génération échoue et bloque la PR. Les tests contractuels du SDK contre
+    # l'API live seront ajoutés quand un SDK sera réellement publié
+    # (cf. docs/SDK_TESTING.md).
+    name: SDK Generation (smoke test)
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Setup Java (required by openapi-generator)
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Generate TypeScript SDK from spec
+        run: |
+          npx --yes @openapitools/openapi-generator-cli@2.13.4 generate \
+            -i docs/openapi.yaml \
+            -g typescript-fetch \
+            -o sdk-smoke-ts
+
+      - name: Verify SDK artifacts were produced
+        run: |
+          if [ ! -f sdk-smoke-ts/runtime.ts ]; then
+            echo "❌ La génération SDK n'a produit aucun artefact — spec invalide ?"
+            exit 1
+          fi
+          echo "✅ SDK TypeScript généré ($(find sdk-smoke-ts -name '*.ts' | wc -l) fichiers .ts)"

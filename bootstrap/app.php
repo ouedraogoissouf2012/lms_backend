@@ -10,6 +10,24 @@ $app = Application::configure(basePath: dirname(__DIR__))
         api: __DIR__.'/../routes/api.php',
         commands: __DIR__.'/../routes/console.php',
         health: '/up',
+        // Versioning par path (#217). Le montage `api:` ci-dessus sert le path
+        // NON-VERSIONNÉ `/api/...` (conservé pour rétrocompat — pas de 301 qui
+        // casserait le frontend en prod). On ajoute ici les alias versionnés :
+        //   - `/api/v1/...` : MÊMES routes (noms préfixés `v1.` pour éviter les
+        //     collisions avec le montage non-versionné).
+        //   - `/api/v2/...` : espace réservé aux futurs breaking changes.
+        // Cf. docs/API_VERSIONING.md.
+        then: function (): void {
+            \Illuminate\Support\Facades\Route::middleware('api')
+                ->prefix('api/v1')
+                ->name('v1.')
+                ->group(base_path('routes/api.php'));
+
+            \Illuminate\Support\Facades\Route::middleware('api')
+                ->prefix('api/v2')
+                ->name('v2.')
+                ->group(base_path('routes/v2.php'));
+        },
     )
     ->withMiddleware(function (Middleware $middleware): void {
         // Middleware global API : résolution de l'institution (multi-tenant)

@@ -49,9 +49,14 @@ class OpenAPIValidator:
             'tags': 0,
         }
 
-    def validate(self) -> bool:
-        """Run all validation checks."""
-        print(f"\n📋 Validating: {self.filepath}\n")
+    def validate(self, json_output: bool = False) -> bool:
+        """Run all validation checks.
+
+        When ``json_output`` is True, emit a single machine-readable JSON
+        document (for CI parsing, #220) instead of the human report.
+        """
+        if not json_output:
+            print(f"\n📋 Validating: {self.filepath}\n")
 
         self.check_required_fields()
         self.check_endpoints()
@@ -59,8 +64,25 @@ class OpenAPIValidator:
         self.check_error_responses()
         self.check_security()
 
-        self.report()
+        if json_output:
+            self.report_json()
+        else:
+            self.report()
+
         return len(self.errors) == 0
+
+    def report_json(self) -> None:
+        """Emit a structured JSON report parseable by CI (#220)."""
+        import json
+
+        payload = {
+            "file": self.filepath,
+            "errors": self.errors,
+            "warnings": self.warnings,
+            "stats": self.stats,
+            "passed": len(self.errors) == 0,
+        }
+        print(json.dumps(payload, indent=2, ensure_ascii=False))
 
     def check_required_fields(self):
         """Validate required top-level fields."""
@@ -336,19 +358,25 @@ class OpenAPIValidator:
 
 def main():
     """Main entry point."""
-    if len(sys.argv) < 2:
-        print("Usage: python openapi-validator.py <filepath>")
+    args = [a for a in sys.argv[1:] if a != '--json']
+    json_output = '--json' in sys.argv
+
+    if len(args) < 1:
+        print("Usage: python openapi-validator.py <filepath> [--json]")
         print()
         print("Validates OpenAPI 3.0.0 specification against internal standards.")
         print()
+        print("Options:")
+        print("  --json    Emit a machine-readable JSON report (for CI, #220).")
+        print()
         print("Example:")
-        print("  python openapi-validator.py docs/openapi-full.yaml")
+        print("  python openapi-validator.py docs/openapi.yaml --json")
         sys.exit(1)
 
-    filepath = sys.argv[1]
+    filepath = args[0]
     validator = OpenAPIValidator(filepath)
 
-    if not validator.validate():
+    if not validator.validate(json_output=json_output):
         sys.exit(1)
 
     sys.exit(0)

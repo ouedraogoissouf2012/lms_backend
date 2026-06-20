@@ -7,6 +7,7 @@ namespace App\Services\Klassci\Auth;
 use App\Models\Institution;
 use Illuminate\Http\Client\Factory as HttpFactory;
 use Illuminate\Http\Client\Pool;
+use App\Exceptions\KlassciUnavailableException;
 use Illuminate\Http\Client\Response;
 use Psr\Log\LoggerInterface;
 
@@ -79,6 +80,18 @@ class KlassciTenantDiscovery
 
             return $requests;
         });
+
+        // #243 : si AUCUN tenant n'a répondu (toutes ConnectionException), c'est
+        // une panne KLASSCI, pas un échec d'identifiants → on le signale pour
+        // que le caller renvoie un 503 (et non un 401/500 trompeur). On distingue
+        // bien « tous injoignables » de « joignables sans match » (= 401).
+        $reachable = array_filter($responses, static fn ($r): bool => $r instanceof Response);
+        if ($reachable === []) {
+            $this->logger->error('KLASSCI totalement injoignable lors de la discovery', [
+                'tenants_count' => count($tenants),
+            ]);
+            throw new KlassciUnavailableException('Aucun tenant KLASSCI joignable.');
+        }
 
         $matching = $this->filterMatchingResponses($tenants, $responses);
 

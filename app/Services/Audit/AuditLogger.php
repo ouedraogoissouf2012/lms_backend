@@ -10,6 +10,7 @@ use Illuminate\Contracts\Auth\Factory as AuthFactory;
 use Illuminate\Contracts\Config\Repository as ConfigRepository;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
+use Psr\Log\LoggerInterface;
 
 /**
  * Point d'entrée unique pour écrire dans le journal d'audit (#215).
@@ -31,6 +32,7 @@ final class AuditLogger
         private readonly AuthFactory $auth,
         private readonly Request $request,
         private readonly ConfigRepository $config,
+        private readonly LoggerInterface $logger,
     ) {
     }
 
@@ -79,12 +81,25 @@ final class AuditLogger
         $userId = $explicitUserId ?? $user?->getAuthIdentifier();
         $institutionId = $user instanceof User ? $user->institution_id : null;
 
-        AuditLog::create(array_merge([
-            'user_id' => $userId,
-            'institution_id' => $institutionId,
-            'action' => $action,
-            'ip_address' => $this->request->ip(),
-            'user_agent' => substr((string) $this->request->userAgent(), 0, 512),
-        ], $attributes));
+        // #241 : l'audit est transversal — un échec d'écriture (table absente,
+        // DB momentanément indisponible…) ne doit JAMAIS casser l'action métier
+        // qui l'a déclenché (notamment le login). On loggue l'échec et on
+        // continue : la traçabilité est importante mais secondaire devant la
+        // disponibilité de l'opération auditée.
+        try {
+            AuditLog::create(array_merge([
+                'user_id' => $userId,
+                'institution_id' => $institutionId,
+                'action' => $action,
+                'ip_address' => $this->request->ip(),
+                'user_agent' => substr((string) $this->request->userAgent(), 0, 512),
+            ], $attributes));
+        } catch (\Throwable $e) {
+            $this->logger->warning('Échec écriture audit log — action métier préservée', [
+                'audit_action' => $action,
+                'exception' => $e::class,
+                'message' => $e->getMessage(),
+            ]);
+        }
     }
 }

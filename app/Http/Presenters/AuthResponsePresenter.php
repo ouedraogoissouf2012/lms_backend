@@ -124,6 +124,19 @@ class AuthResponsePresenter
     }
 
     /**
+     * #243 — Service d'authentification externe (KLASSCI) injoignable.
+     * 503 (et non 500/401) : panne temporaire d'un service tiers, le client
+     * doit comprendre que ce n'est pas ses identifiants et qu'il peut réessayer.
+     */
+    public function authServiceUnavailable(): JsonResponse
+    {
+        return response()->json([
+            'success' => false,
+            'message' => 'Service d\'authentification temporairement indisponible. Veuillez réessayer dans quelques instants.',
+        ], 503);
+    }
+
+    /**
      * @param  array<string, mixed>  $klassciData
      */
     public function profile(User $user, array $klassciData): JsonResponse

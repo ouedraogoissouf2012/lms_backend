@@ -62,6 +62,14 @@ class AuthController extends AuthenticatedController
             }
 
             return $this->attemptKlassciLogin($username, $password);
+        } catch (\App\Exceptions\KlassciUnavailableException $e) {
+            // #243 : KLASSCI totalement injoignable → 503 (panne externe
+            // temporaire), pas un 500 ni un 401. L'utilisateur peut réessayer.
+            $this->logger->warning('Login indisponible — KLASSCI injoignable', [
+                'username' => $request->username(),
+            ]);
+
+            return $this->presenter->authServiceUnavailable();
         } catch (\Throwable $e) {
             // #242 : tracer l'exception côté serveur AVANT de renvoyer un 500
             // générique. Sans ce log, les vrais plantages du login (ex. table

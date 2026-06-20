@@ -15,6 +15,7 @@ use App\Services\Klassci\Auth\KlassciUserSynchronizer;
 use App\Services\KlassciProxyService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Psr\Log\LoggerInterface;
 
 /**
  * Controller d'authentification — orchestrateur fin (≤ 200 lignes §5).
@@ -43,6 +44,7 @@ class AuthController extends AuthenticatedController
         private KlassciUserSynchronizer $userSync,
         private AuthResponsePresenter $presenter,
         private AuditLogger $auditLogger,
+        private LoggerInterface $logger,
     ) {}
 
     /**
@@ -60,7 +62,19 @@ class AuthController extends AuthenticatedController
             }
 
             return $this->attemptKlassciLogin($username, $password);
-        } catch (\Exception) {
+        } catch (\Throwable $e) {
+            // #242 : tracer l'exception côté serveur AVANT de renvoyer un 500
+            // générique. Sans ce log, les vrais plantages du login (ex. table
+            // audit absente — incident 2026-06-20) restaient invisibles dans
+            // laravel.log. On ne logue JAMAIS le mot de passe ; le username
+            // (déjà fourni par l'utilisateur) aide à corréler l'incident.
+            $this->logger->error('Échec inattendu du login', [
+                'username' => $request->username(),
+                'exception' => $e::class,
+                'message' => $e->getMessage(),
+                'at' => $e->getFile() . ':' . $e->getLine(),
+            ]);
+
             return $this->presenter->loginError();
         }
     }

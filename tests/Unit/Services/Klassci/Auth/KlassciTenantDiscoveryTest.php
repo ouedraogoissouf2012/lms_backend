@@ -225,7 +225,15 @@ final class KlassciTenantDiscoveryTest extends TestCase
             });
 
         $discovery = new KlassciTenantDiscovery($http, $logger);
-        $discovery->findMatchingTenants('user@sensitive.com');
+
+        // Depuis #243 : tous les tenants injoignables → KlassciUnavailableException.
+        // On capture l'exception ; le but du test reste inchangé : vérifier le
+        // non-log du password, y compris dans le message d'indisponibilité.
+        try {
+            $discovery->findMatchingTenants('user@sensitive.com');
+        } catch (\App\Exceptions\KlassciUnavailableException) {
+            // attendu
+        }
 
         // Aucune trace de "password" attendue (rien dans `findMatchingTenants` ne devrait pouvoir leak un password — on garde le test au cas où)
         $allLogged = json_encode($loggedMessages);

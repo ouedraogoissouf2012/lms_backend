@@ -41,6 +41,13 @@ $app = Application::configure(basePath: dirname(__DIR__))
             'role' => \App\Http\Middleware\EnsureRole::class,
             'institution' => \App\Http\Middleware\ResolveInstitution::class,
         ]);
+
+        // #244 : API stateless — ne JAMAIS rediriger un invité vers une page de
+        // login web (`route('login')` n'existe pas → 500 RouteNotFoundException
+        // quand la requête n'a pas `Accept: application/json`). En retournant
+        // null, le middleware Authenticate laisse remonter l'AuthenticationException
+        // qui est rendue en 401 JSON (cf. withExceptions ci-dessous).
+        $middleware->redirectGuestsTo(fn () => null);
     })
     // OPS-03 — les schedules vivent dans `routes/console.php` (convention Laravel 11).
     // Avant cette PR, 2 commandes étaient déclarées en double ici ET dans routes/console.php :
@@ -50,8 +57,16 @@ $app = Application::configure(basePath: dirname(__DIR__))
     // Source unique conservée : `routes/console.php`.
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->render(function (\Illuminate\Auth\AuthenticationException $e, $request) {
-            if ($request->expectsJson()) {
-                return response()->json(['message' => 'Unauthenticated.'], 401);
+            // #244 : l'API est stateless. Toute route `api/*` (versionnée ou non)
+            // doit répondre 401 JSON, même si la requête n'envoie pas
+            // `Accept: application/json` (ex. Swagger mal configuré, navigateur).
+            // Sans ce `is('api/*')`, Laravel tenterait une redirection web vers
+            // `route('login')` — inexistante en API → 500 `Route [login] not defined`.
+            if ($request->expectsJson() || $request->is('api/*')) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Unauthenticated.',
+                ], 401);
             }
         });
 

@@ -306,6 +306,14 @@ jobs:
           php-version: "8.3"
           coverage: none
           tools: composer:v2
+          # `:imagick` DÉSACTIVE imagick. Le test PdfToPngRendererTest se skip
+          # déjà partout où imagick est absent (dont le dev local). Sur le runner
+          # CI, imagick est présent mais la policy ImageMagick bloque la lecture
+          # des PDF (sécurité Ghostscript) → "Failed to read the file". Plutôt
+          # qu'un faux négatif, on aligne la CI sur l'environnement de dev :
+          # le chemin imagick (qui nécessite gs + policy PDF autorisée) sera
+          # couvert par une issue dédiée si besoin. Couverture inchangée.
+          extensions: ":imagick"
 
       # phpunit est en require-dev → installer les dev deps.
       - name: Install dependencies (including dev)

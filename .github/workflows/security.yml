@@ -283,3 +283,37 @@ jobs:
             exit 1
           fi
           echo "✅ SDK TypeScript généré ($(find sdk-smoke-ts -name '*.ts' | wc -l) fichiers .ts)"
+
+  tests:
+    # Suite PHPUnit complète (#250) : filet de sécurité contre les régressions.
+    # Avant ce job, seul OpenApiSyncTest tournait en CI → des tests cassés
+    # passaient inaperçus (ex. régression #243 détectée seulement en local).
+    name: Tests (PHPUnit)
+    runs-on: ubuntu-latest
+
+    # Clé de test NON secrète (phpunit.xml ne hardcode pas APP_KEY).
+    env:
+      APP_ENV: testing
+      APP_KEY: "base64:Cg9vQ0xtc1Rlc3RLZXkxMjM0NTY3ODkwYWJjZGVmZ2g="
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup PHP 8.3
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.3"
+          coverage: none
+          tools: composer:v2
+
+      # phpunit est en require-dev → installer les dev deps.
+      - name: Install dependencies (including dev)
+        run: composer install --no-interaction --no-progress --prefer-dist --no-scripts
+
+      - name: Prepare sqlite test database
+        run: mkdir -p database && touch database/database.testing.sqlite
+
+      # RefreshDatabase migre la base de test ; le job échoue si un test échoue.
+      - name: Run PHPUnit suite
+        run: vendor/bin/phpunit --no-coverage

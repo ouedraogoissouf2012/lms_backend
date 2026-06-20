@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Klassci\Auth;
 
+use App\Exceptions\KlassciAccountConflictException;
 use App\Models\Institution;
 use App\Models\User;
 use App\Models\UserClass;
@@ -102,6 +103,18 @@ class KlassciUserSynchronizer
         $email     = $klassciUser['email'];
 
         $user = $this->findExistingUser($klassciId, $email, $institutionId);
+
+        // Détection serveur AVANT écriture : l'email cible est-il déjà détenu par
+        // un AUTRE compte de l'institution ? Email = un compte à vie côté KLASSCI,
+        // donc ce conflit est toujours une anomalie de données. On échoue proprement
+        // (KlassciAccountConflictException → 409) plutôt que de laisser la contrainte
+        // unique remonter en 500, ou d'écraser silencieusement l'autre compte.
+        $this->assertEmailNotOwnedByAnotherAccount(
+            is_string($email) ? $email : '',
+            $institutionId,
+            $user?->id,
+        );
+
         $commonData = $this->buildCommonData($klassciUser, $klassciToken, $tenantUrl, $institutionId);
 
         if ($user !== null) {
@@ -123,6 +136,47 @@ class KlassciUserSynchronizer
      * Recherche un user existant par (klassci_id, institution_id),
      * avec fallback email scopé.
      */
+    /**
+     * Garde-fou : refuse d'assigner un email déjà détenu par un autre compte de
+     * la même institution. `$currentUserId` est l'id du compte en cours de sync
+     * (exclu du contrôle), null lors d'une création.
+     *
+     * @throws KlassciAccountConflictException si un autre compte détient l'email.
+     */
+    private function assertEmailNotOwnedByAnotherAccount(string $email, ?int $institutionId, ?int $currentUserId): void
+    {
+        if ($email === '') {
+            return;
+        }
+
+        $query = User::withoutGlobalScope('institution')
+            ->where('email', $email)
+            ->where('institution_id', $institutionId);
+
+        if ($currentUserId !== null) {
+            $query->where('id', '!=', $currentUserId);
+        }
+
+        $conflict = $query->first();
+        if ($conflict === null) {
+            return;
+        }
+
+        // Anomalie de données : tracée pour réconciliation admin. On hash l'email
+        // (PII) et on garde les klassci_id pour corréler sans exposer le clair.
+        $this->logger->error('Conflit email au sync KLASSCI — compte non synchronisé', [
+            'email_hash'               => substr(hash('sha256', $email), 0, 8),
+            'institution_id'           => $institutionId,
+            'conflicting_user_id'      => $conflict->id,
+            'conflicting_klassci_id'   => $conflict->klassci_id,
+            'incoming_user_id'         => $currentUserId,
+        ]);
+
+        throw new KlassciAccountConflictException(
+            'Conflit de compte : cet email est déjà associé à un autre compte de l\'institution.'
+        );
+    }
+
     private function findExistingUser(mixed $klassciId, mixed $email, ?int $institutionId): ?User
     {
         $user = User::withoutGlobalScope('institution')

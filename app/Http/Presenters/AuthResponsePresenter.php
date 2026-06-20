@@ -124,6 +124,19 @@ class AuthResponsePresenter
     }
 
     /**
+     * Conflit de compte : l'email confirmé par KLASSCI est déjà détenu par un
+     * autre compte de l'institution (anomalie de données). 409 (pas 500) +
+     * message orientant vers le support — la résolution est une action admin.
+     */
+    public function accountConflict(): JsonResponse
+    {
+        return response()->json([
+            'success' => false,
+            'message' => 'Conflit de compte détecté : votre adresse e-mail est déjà associée à un autre compte. Contactez l\'administrateur.',
+        ], 409);
+    }
+
+    /**
      * #243 — Service d'authentification externe (KLASSCI) injoignable.
      * 503 (et non 500/401) : panne temporaire d'un service tiers, le client
      * doit comprendre que ce n'est pas ses identifiants et qu'il peut réessayer.

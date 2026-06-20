@@ -62,6 +62,15 @@ class AuthController extends AuthenticatedController
             }
 
             return $this->attemptKlassciLogin($username, $password);
+        } catch (\App\Exceptions\KlassciAccountConflictException $e) {
+            // Anomalie de données (email déjà pris par un autre compte) → 409
+            // propre. Déjà loggé en détail par le synchronizer ; ici on trace
+            // juste le blocage du login pour corrélation.
+            $this->logger->warning('Login bloqué — conflit de compte KLASSCI', [
+                'username' => $request->username(),
+            ]);
+
+            return $this->presenter->accountConflict();
         } catch (\App\Exceptions\KlassciUnavailableException $e) {
             // #243 : KLASSCI totalement injoignable → 503 (panne externe
             // temporaire), pas un 500 ni un 401. L'utilisateur peut réessayer.

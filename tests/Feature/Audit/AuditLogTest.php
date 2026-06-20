@@ -98,6 +98,27 @@ final class AuditLogTest extends TestCase
         ]);
     }
 
+    /**
+     * #241 — Régression : un échec d'écriture de l'audit (ici table absente,
+     * comme lors de l'incident 2026-06-20 où la migration n'était pas exécutée)
+     * ne doit PAS casser l'action métier. Le logout doit réussir (200), pas 500.
+     */
+    public function test_audit_write_failure_does_not_break_the_action(): void
+    {
+        $user = User::factory()->create([
+            'institution_id' => $this->institution->id,
+            'role' => 'etudiant',
+        ]);
+
+        // Simule l'absence de la table d'audit (migration non exécutée / DB KO).
+        \Illuminate\Support\Facades\Schema::drop('audit_logs');
+
+        Sanctum::actingAs($user);
+
+        // Sans le fix #241, logAuthEvent('logout') planterait en 500.
+        $this->postJson('/api/auth/logout')->assertStatus(200);
+    }
+
     public function test_audit_log_endpoint_requires_supradmin(): void
     {
         AuditLog::factory()->count(3)->create();

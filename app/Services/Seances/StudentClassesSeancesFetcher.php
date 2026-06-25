@@ -74,42 +74,57 @@ final class StudentClassesSeancesFetcher
         }
 
         // Utiliser les matières du dashboard au lieu de faire un nouvel appel API
-        $coursFromDashboard = $dashboard['data']['cours'] ?? [];
+        $coursFromDashboard = KlassciPayload::asList($dashboard['data']['cours'] ?? null);
 
         /** @var Collection<int, array<string, mixed>> $seances */
         $seances = collect([]);
 
-        if (empty($coursFromDashboard)) {
+        if ($coursFromDashboard === []) {
             return self::RESULT_NO_MATIERES;
         }
 
-        foreach ($coursFromDashboard as $matiere) {
-            try {
-                // Gérer les différents formats de données (id ou matiere_id ou matiere.id)
-                $matiereId = $matiere['id'] ?? $matiere['matiere_id'] ?? $matiere['matiere']['id'] ?? null;
-
-                if (!$matiereId) {
-                    $this->logger->warning('[LMS] Matière sans ID valide', ['matiere' => $matiere]);
-                    continue;
-                }
-
-                $matiereDetails = $this->klassciService->requestWithUserToken(
-                    $klassciToken,
-                    "matieres/{$matiereId}",
-                    'GET'
-                );
-
-                $seancesProgrammees = collect($matiereDetails['data']['seances_programmees'] ?? []);
-                $seancesClasse = $this->filterForStudent($seancesProgrammees, $classeId, $user);
-                $seancesEnrichies = $this->mapStudentSeances($seancesClasse, $matiere, $matiereId);
-
-                $seances = $seances->concat($seancesEnrichies);
-            } catch (\Exception $e) {
-                $this->logger->warning('Erreur récupération séances matière', [
-                    'matiere_id' => $matiere['id'],
-                    'error' => $e->getMessage()
-                ]);
+        // Gérer les différents formats de données (id ou matiere_id ou matiere.id)
+        // puis paralléliser les détails matières — PERF (#135) : était N appels
+        // `matieres/{id}` séquentiels.
+        $matiereIdByIndex = [];
+        foreach ($coursFromDashboard as $index => $matiere) {
+            $matiereArr = KlassciPayload::asArray($matiere);
+            $matiereId = KlassciPayload::toInt(
+                $matiereArr['id']
+                    ?? $matiereArr['matiere_id']
+                    ?? (KlassciPayload::asArray($matiereArr['matiere'] ?? null)['id'] ?? null)
+            );
+            if ($matiereId === null) {
+                $this->logger->warning('[LMS] Matière sans ID valide', ['matiere' => $matiere]);
+                continue;
             }
+            $matiereIdByIndex[$index] = $matiereId;
+        }
+
+        $matieresDetails = $this->klassciService->fetchManyMatieresDetails(
+            array_values(array_unique($matiereIdByIndex)),
+            $klassciToken
+        );
+
+        foreach ($coursFromDashboard as $index => $matiere) {
+            $matiereId = $matiereIdByIndex[$index] ?? null;
+            if ($matiereId === null) {
+                continue;
+            }
+
+            $matiereDetails = $matieresDetails[$matiereId] ?? null;
+            if ($matiereDetails === null) {
+                continue; // matière échouée dans le pool — log déjà émis par le batch fetcher
+            }
+
+            $matiereArr = KlassciPayload::asArray($matiere);
+            $seancesProgrammees = collect(
+                KlassciPayload::listOfArrays(KlassciPayload::asArray($matiereDetails['data'] ?? null)['seances_programmees'] ?? null)
+            );
+            $seancesClasse = $this->filterForStudent($seancesProgrammees, $classeId, $user);
+            $seancesEnrichies = $this->mapStudentSeances($seancesClasse, $matiereArr, $matiereId);
+
+            $seances = $seances->concat($seancesEnrichies);
         }
 
         // Trier par date/heure
@@ -159,34 +174,45 @@ final class StudentClassesSeancesFetcher
      */
     private function mapStudentSeances(Collection $seancesClasse, array $matiere, int $matiereId): Collection
     {
-        return $seancesClasse->map(function ($seance) use ($matiere, $matiereId) {
+        return $seancesClasse->map(function (array $seance) use ($matiere, $matiereId) {
             // Chercher la séance dans la BDD locale par klassci_seance_id
             // IMPORTANT: Les étudiants ne voient que les séances actives (is_active = true)
-            $visioData = Seance::where('klassci_seance_id', $seance['id'])
+            $visioData = Seance::where('klassci_seance_id', $seance['id'] ?? null)
                 ->withConnectedParticipantsCount()
                 ->where('is_active', true)
                 ->first();
 
             $enseignantNom = $this->resolveEnseignantNom($seance, $matiere, $visioData);
 
+            $prog = KlassciPayload::asArray($seance['programmation'] ?? null);
+            $classe = KlassciPayload::asArray($seance['classe'] ?? null);
+            $date = KlassciPayload::toStringOrNull($prog['date'] ?? null);
+
             // IMPORTANT: Utiliser la structure programmation comme les autres endpoints
             return [
-                'id' => $seance['id'],
+                'id' => $seance['id'] ?? null,
                 'programmation' => [
-                    'date' => $seance['programmation']['date'] ?? null,
-                    'heure_debut' => $seance['programmation']['heure_debut'] ?? null,
-                    'heure_fin' => $seance['programmation']['heure_fin'] ?? null,
-                    'salle' => $seance['programmation']['salle'] ?? null
+                    'date' => $date,
+                    // KLASSCI date heure_debut/heure_fin au jour courant → réaligner sur la date de la séance.
+                    'heure_debut' => SeanceProgrammationNormalizer::alignDate(
+                        KlassciPayload::toStringOrNull($prog['heure_debut'] ?? null),
+                        $date
+                    ),
+                    'heure_fin' => SeanceProgrammationNormalizer::alignDate(
+                        KlassciPayload::toStringOrNull($prog['heure_fin'] ?? null),
+                        $date
+                    ),
+                    'salle' => $prog['salle'] ?? null
                 ],
-                'salle' => $seance['programmation']['salle'] ?? null, // Aussi en racine pour compatibilité
+                'salle' => $prog['salle'] ?? null, // Aussi en racine pour compatibilité
                 'matiere' => [
                     'id' => $matiereId,
                     'nom' => $matiere['nom'] ?? $matiere['name'] ?? $matiere['libelle'] ?? 'N/A',
                     'code' => $matiere['code'] ?? null
                 ],
                 'classe' => [
-                    'id' => $seance['classe']['id'] ?? null,
-                    'nom' => $seance['classe']['nom'] ?? 'N/A'
+                    'id' => $classe['id'] ?? null,
+                    'nom' => $classe['nom'] ?? 'N/A'
                 ],
                 'enseignant' => [
                     'nom' => $enseignantNom

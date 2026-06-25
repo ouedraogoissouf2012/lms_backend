@@ -57,33 +57,78 @@ final class TeachingSeancesFetcher
         /** @var Collection<int, array<string, mixed>> $seances */
         $seances = collect([]);
 
+        // PERF (#135) : paralléliser les détails matières — était N appels
+        // `matieres/{id}` séquentiels (N+1). Le pool gère memo + cache + erreurs
+        // partielles (ID échoué = absent du map → matière silencieusement omise,
+        // log émis par le batch fetcher : même sémantique que l'ancien try/catch).
+        $matiereIds = [];
         foreach ($matieres as $matiere) {
-            try {
-                $matiereDetails = $this->klassciService->requestWithUserToken(
-                    $klassciToken,
-                    "matieres/{$matiere['id']}",
-                    'GET'
-                );
-
-                $seancesProgrammees = collect($matiereDetails['data']['seances_programmees'] ?? []);
-
-                $seancesEnrichies = $seancesProgrammees->map(function ($seance) use ($matiere, $user, $klassciToken) {
-                    $visioData = $this->ensureLocalSeanceExists($seance, $matiere, $user, $klassciToken);
-                    $classeEffectif = $this->fetchClasseEffectif($seance, $klassciToken);
-                    return $this->mapSeance($seance, $matiere, $user, $visioData, $classeEffectif);
-                });
-
-                $seances = $seances->concat($seancesEnrichies);
-            } catch (\Exception $e) {
-                $this->logger->warning('Erreur récupération séances matière', [
-                    'matiere_id' => $matiere['id'],
-                    'error' => $e->getMessage()
-                ]);
+            $id = KlassciPayload::toInt(KlassciPayload::asArray($matiere)['id'] ?? null);
+            if ($id !== null) {
+                $matiereIds[] = $id;
             }
+        }
+        $matiereIds = array_values(array_unique($matiereIds));
+        $matieresDetails = $this->klassciService->fetchManyMatieresDetails($matiereIds, $klassciToken);
+
+        // PERF (#135) : pré-charger en UN pool dédupliqué tous les effectifs de
+        // classe — était 1 appel `classes/{id}` séquentiel PAR séance.
+        $classesDetails = $this->klassciService->fetchManyClassesDetails(
+            $this->collectClasseIds($matieresDetails),
+            $klassciToken
+        );
+
+        foreach ($matieres as $matiere) {
+            $matiereArr = KlassciPayload::asArray($matiere);
+            $matiereId = KlassciPayload::toInt($matiereArr['id'] ?? null);
+            if ($matiereId === null) {
+                continue;
+            }
+
+            $matiereDetails = $matieresDetails[$matiereId] ?? null;
+            if ($matiereDetails === null) {
+                continue; // matière échouée dans le pool — log déjà émis par le batch fetcher
+            }
+
+            $seancesProgrammees = collect(
+                KlassciPayload::listOfArrays(KlassciPayload::asArray($matiereDetails['data'] ?? null)['seances_programmees'] ?? null)
+            );
+
+            $seancesEnrichies = $seancesProgrammees->map(function (array $seance) use ($matiereArr, $user, $klassciToken, $classesDetails) {
+                $visioData = $this->ensureLocalSeanceExists($seance, $matiereArr, $user, $klassciToken);
+                $classeEffectif = $this->resolveClasseEffectif($seance, $classesDetails);
+                return $this->mapSeance($seance, $matiereArr, $user, $visioData, $classeEffectif);
+            });
+
+            $seances = $seances->concat($seancesEnrichies);
         }
 
         // Trier par date/heure
         return $seances->sortBy('date_seance')->values();
+    }
+
+    /**
+     * Collecte les IDs de classe (dédupliqués) de toutes les séances programmées
+     * pour les pré-charger en un seul pool.
+     *
+     * @param  array<int, array<string, mixed>>  $matieresDetails
+     * @return array<int>
+     */
+    private function collectClasseIds(array $matieresDetails): array
+    {
+        $ids = [];
+        foreach ($matieresDetails as $details) {
+            $data = KlassciPayload::asArray(KlassciPayload::asArray($details)['data'] ?? null);
+            foreach (KlassciPayload::asList($data['seances_programmees'] ?? null) as $seance) {
+                $classe = KlassciPayload::asArray(KlassciPayload::asArray($seance)['classe'] ?? null);
+                $id = KlassciPayload::toInt($classe['id'] ?? null);
+                if ($id !== null) {
+                    $ids[] = $id;
+                }
+            }
+        }
+
+        return array_values(array_unique($ids));
     }
 
     /**
@@ -142,24 +187,25 @@ final class TeachingSeancesFetcher
     }
 
     /**
+     * Résout l'effectif d'une classe depuis le map pré-chargé en pool, sans appel
+     * réseau supplémentaire. Classe absente (ID échoué dans le pool) → 0.
+     *
      * @param array<string, mixed> $seance
+     * @param array<int, array<string, mixed>> $classesDetails
      */
-    private function fetchClasseEffectif(array $seance, string $klassciToken): int
+    private function resolveClasseEffectif(array $seance, array $classesDetails): int
     {
-        if (!isset($seance['classe']['id'])) {
+        $classeId = KlassciPayload::toInt(KlassciPayload::asArray($seance['classe'] ?? null)['id'] ?? null);
+        if ($classeId === null) {
             return 0;
         }
 
-        try {
-            $classeDetails = $this->klassciService->requestWithUserToken(
-                $klassciToken,
-                "classes/{$seance['classe']['id']}",
-                'GET'
-            );
-            return $classeDetails['data']['classe']['places_occupees'] ?? 0;
-        } catch (\Exception $e) {
-            return 0;
-        }
+        $classe = KlassciPayload::asArray(
+            KlassciPayload::asArray($classesDetails[$classeId]['data'] ?? null)['classe'] ?? null
+        );
+        $occupees = $classe['places_occupees'] ?? 0;
+
+        return is_int($occupees) ? $occupees : (is_numeric($occupees) ? (int) $occupees : 0);
     }
 
     /**
@@ -169,32 +215,35 @@ final class TeachingSeancesFetcher
      */
     private function mapSeance(array $seance, array $matiere, User $user, ?Seance $visioData, int $classeEffectif): array
     {
+        $prog = KlassciPayload::asArray($seance['programmation'] ?? null);
+        $classe = KlassciPayload::asArray($seance['classe'] ?? null);
+        $date = KlassciPayload::toStringOrNull($prog['date'] ?? null);
+        $heureDebut = KlassciPayload::toStringOrNull($prog['heure_debut'] ?? null);
+        $heureFin = KlassciPayload::toStringOrNull($prog['heure_fin'] ?? null);
+
         return [
-            'id' => $seance['id'],
+            'id' => $seance['id'] ?? null,
             // Garder compatibilité ancienne structure
-            'date_seance' => $seance['programmation']['date'] ?? null,
-            'heure_debut' => isset($seance['programmation']['heure_debut'])
-                ? substr($seance['programmation']['heure_debut'], 11, 5)
-                : null,
-            'heure_fin' => isset($seance['programmation']['heure_fin'])
-                ? substr($seance['programmation']['heure_fin'], 11, 5)
-                : null,
-            'salle' => $seance['programmation']['salle'] ?? null,
+            'date_seance' => $date,
+            'heure_debut' => $heureDebut !== null ? substr($heureDebut, 11, 5) : null,
+            'heure_fin' => $heureFin !== null ? substr($heureFin, 11, 5) : null,
+            'salle' => $prog['salle'] ?? null,
             // Ajouter structure programmation pour cohérence avec autres endpoints
             'programmation' => [
-                'date' => $seance['programmation']['date'] ?? null,
-                'heure_debut' => $seance['programmation']['heure_debut'] ?? null,
-                'heure_fin' => $seance['programmation']['heure_fin'] ?? null,
-                'salle' => $seance['programmation']['salle'] ?? null
+                'date' => $date,
+                // KLASSCI date heure_debut/heure_fin au jour courant → on réaligne sur la date de la séance.
+                'heure_debut' => SeanceProgrammationNormalizer::alignDate($heureDebut, $date),
+                'heure_fin' => SeanceProgrammationNormalizer::alignDate($heureFin, $date),
+                'salle' => $prog['salle'] ?? null
             ],
             'matiere' => [
-                'id' => $matiere['id'],
+                'id' => $matiere['id'] ?? null,
                 'nom' => $matiere['nom'] ?? $matiere['libelle'] ?? 'N/A',
                 'code' => $matiere['code'] ?? null
             ],
             'classe' => [
-                'id' => $seance['classe']['id'] ?? null,
-                'nom' => $seance['classe']['nom'] ?? 'N/A',
+                'id' => $classe['id'] ?? null,
+                'nom' => $classe['nom'] ?? 'N/A',
                 'effectif' => $classeEffectif
             ],
             'enseignant' => [

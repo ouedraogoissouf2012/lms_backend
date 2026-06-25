@@ -56,24 +56,37 @@ final class UpcomingSeancesFetcher
 
             $matieres = collect($matieresResponse['data'] ?? []);
 
+            // PERF (#135) : paralléliser les détails matières — était N appels
+            // `matieres/{id}` séquentiels. ID échoué = absent du map (log émis par
+            // le batch fetcher) → matière omise, comme l'ancien try/catch.
+            $matiereIds = [];
             foreach ($matieres as $matiere) {
-                $matiereId = $matiere['id'];
-
-                try {
-                    $matiereDetails = $this->klassciService->requestWithUserToken(
-                        $klassciToken,
-                        "matieres/{$matiereId}",
-                        'GET'
-                    );
-
-                    $seancesProgrammees = collect($matiereDetails['data']['seances_programmees'] ?? []);
-                    $seancesFiltrees = $this->filterSeances($seancesProgrammees, $user, $dateDebut, $dateFin, $classeId);
-                    $seancesMapped = $this->mapSeances($seancesFiltrees, $matiere);
-                    $seances = $seances->concat($seancesMapped);
-
-                } catch (\Exception $matiereError) {
-                    $this->logger->warning("Erreur matière {$matiereId}", ['error' => $matiereError->getMessage()]);
+                $id = KlassciPayload::toInt(KlassciPayload::asArray($matiere)['id'] ?? null);
+                if ($id !== null) {
+                    $matiereIds[] = $id;
                 }
+            }
+            $matiereIds = array_values(array_unique($matiereIds));
+            $matieresDetails = $this->klassciService->fetchManyMatieresDetails($matiereIds, $klassciToken);
+
+            foreach ($matieres as $matiere) {
+                $matiereArr = KlassciPayload::asArray($matiere);
+                $matiereId = KlassciPayload::toInt($matiereArr['id'] ?? null);
+                if ($matiereId === null) {
+                    continue;
+                }
+
+                $matiereDetails = $matieresDetails[$matiereId] ?? null;
+                if ($matiereDetails === null) {
+                    continue;
+                }
+
+                $seancesProgrammees = collect(
+                    KlassciPayload::listOfArrays(KlassciPayload::asArray($matiereDetails['data'] ?? null)['seances_programmees'] ?? null)
+                );
+                $seancesFiltrees = $this->filterSeances($seancesProgrammees, $user, $dateDebut, $dateFin, $classeId);
+                $seancesMapped = $this->mapSeances($seancesFiltrees, $matiereArr);
+                $seances = $seances->concat($seancesMapped);
             }
 
             $this->logger->info('Séances récupérées via matieres', ['count' => $seances->count()]);
@@ -138,24 +151,36 @@ final class UpcomingSeancesFetcher
     {
         // Enrichir avec info matière et formater
         // IMPORTANT: Le frontend attend seance.programmation.date, pas seance.date_seance
-        return $seances->map(function ($seance) use ($matiere) {
+        return $seances->map(function (array $seance) use ($matiere) {
+            $prog = KlassciPayload::asArray($seance['programmation'] ?? null);
+            $classe = KlassciPayload::asArray($seance['classe'] ?? null);
+            $date = KlassciPayload::toStringOrNull($prog['date'] ?? null);
+
             return [
-                'id' => $seance['id'],
+                'id' => $seance['id'] ?? null,
                 'programmation' => [
-                    'date' => $seance['programmation']['date'],
-                    'heure_debut' => $seance['programmation']['heure_debut'], // Garder le format complet ISO
-                    'heure_fin' => $seance['programmation']['heure_fin'],
-                    'salle' => $seance['programmation']['salle'] ?? null
+                    'date' => $date,
+                    // Format ISO complet, mais KLASSCI date heure_debut/heure_fin au jour
+                    // courant → réaligner la date sur celle de la séance.
+                    'heure_debut' => SeanceProgrammationNormalizer::alignDate(
+                        KlassciPayload::toStringOrNull($prog['heure_debut'] ?? null),
+                        $date
+                    ),
+                    'heure_fin' => SeanceProgrammationNormalizer::alignDate(
+                        KlassciPayload::toStringOrNull($prog['heure_fin'] ?? null),
+                        $date
+                    ),
+                    'salle' => $prog['salle'] ?? null
                 ],
-                'salle' => $seance['programmation']['salle'] ?? null, // Aussi en racine pour compatibilité
+                'salle' => $prog['salle'] ?? null, // Aussi en racine pour compatibilité
                 'matiere' => [
-                    'id' => $matiere['id'],
+                    'id' => $matiere['id'] ?? null,
                     'libelle' => $matiere['nom'] ?? $matiere['libelle'] ?? 'N/A', // KLASSCI utilise 'nom' pas 'libelle'
                     'code' => $matiere['code'] ?? null
                 ],
                 'classe' => [
-                    'id' => $seance['classe']['id'] ?? null,
-                    'libelle' => $seance['classe']['nom'] ?? 'N/A'
+                    'id' => $classe['id'] ?? null,
+                    'libelle' => $classe['nom'] ?? 'N/A'
                 ],
                 // `enseignant` est intentionnellement null sur ce chemin :
                 // KLASSCI ne le fournit pas à ce niveau. Il est résolu côté frontend

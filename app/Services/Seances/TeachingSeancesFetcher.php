@@ -183,8 +183,15 @@ final class TeachingSeancesFetcher
             // Ajouter structure programmation pour cohérence avec autres endpoints
             'programmation' => [
                 'date' => $seance['programmation']['date'] ?? null,
-                'heure_debut' => $seance['programmation']['heure_debut'] ?? null,
-                'heure_fin' => $seance['programmation']['heure_fin'] ?? null,
+                // KLASSCI date heure_debut/heure_fin au jour courant → on réaligne sur la date de la séance.
+                'heure_debut' => SeanceProgrammationNormalizer::alignDate(
+                    $seance['programmation']['heure_debut'] ?? null,
+                    $seance['programmation']['date'] ?? null
+                ),
+                'heure_fin' => SeanceProgrammationNormalizer::alignDate(
+                    $seance['programmation']['heure_fin'] ?? null,
+                    $seance['programmation']['date'] ?? null
+                ),
                 'salle' => $seance['programmation']['salle'] ?? null
             ],
             'matiere' => [

@@ -143,8 +143,16 @@ final class UpcomingSeancesFetcher
                 'id' => $seance['id'],
                 'programmation' => [
                     'date' => $seance['programmation']['date'],
-                    'heure_debut' => $seance['programmation']['heure_debut'], // Garder le format complet ISO
-                    'heure_fin' => $seance['programmation']['heure_fin'],
+                    // Format ISO complet, mais KLASSCI date heure_debut/heure_fin au jour
+                    // courant → réaligner la date sur celle de la séance.
+                    'heure_debut' => SeanceProgrammationNormalizer::alignDate(
+                        $seance['programmation']['heure_debut'] ?? null,
+                        $seance['programmation']['date'] ?? null
+                    ),
+                    'heure_fin' => SeanceProgrammationNormalizer::alignDate(
+                        $seance['programmation']['heure_fin'] ?? null,
+                        $seance['programmation']['date'] ?? null
+                    ),
                     'salle' => $seance['programmation']['salle'] ?? null
                 ],
                 'salle' => $seance['programmation']['salle'] ?? null, // Aussi en racine pour compatibilité

@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace App\Services\Klassci;
 
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Factory as HttpFactory;
 use Illuminate\Http\Client\PendingRequest;
 use Psr\Log\LoggerInterface;
+use Psr\Log\LogLevel;
 
 /**
  * PERF-02 (issue #137) — Client HTTP unifié pour KLASSCI.
@@ -38,6 +40,12 @@ use Psr\Log\LoggerInterface;
  */
 final class KlassciHttpClient
 {
+    /**
+     * Frontière 4xx/5xx : à partir de ce status, l'échec est une panne serveur
+     * KLASSCI (error) ; en-dessous c'est une réponse client attendue (warning).
+     */
+    private const SERVER_ERROR_THRESHOLD = 500;
+
     private readonly int $timeout;
 
     private readonly bool $sslVerify;
@@ -62,7 +70,9 @@ final class KlassciHttpClient
      * @param  array<string, mixed>  $data  Body pour POST/PUT, query string pour GET
      * @return array<string, mixed>
      *
-     * @throws \Exception sur HTTP 4xx/5xx ou méthode non supportée
+     * @throws ConnectionException si KLASSCI est injoignable (panne réseau/transport)
+     * @throws \RuntimeException sur réponse HTTP 4xx/5xx
+     * @throws \InvalidArgumentException si la méthode HTTP n'est pas supportée
      */
     public function executeHttp(
         string $method,
@@ -76,52 +86,33 @@ final class KlassciHttpClient
 
         $logSuffix = $overrideToken !== null ? ' (User Token)' : '';
 
+        $this->logger->info("KLASSCI API Request{$logSuffix}", [
+            'method'         => $method,
+            'url'            => $url,
+            'params'         => $method === 'GET' ? $data : [],
+            'has_user_token' => $overrideToken !== null && !empty($overrideToken),
+        ]);
+
+        $request = self::decorateRequest(
+            $this->http->timeout($this->timeout),
+            $url,
+            $this->sslVerify,
+            $token,
+        );
+
+        // On isole UNIQUEMENT l'appel transport : une ConnectionException (DNS,
+        // timeout, connexion refusée) est une panne serveur réelle → error. Les
+        // codes HTTP d'échec (4xx/5xx) ne lèvent pas ici ; ils sont gérés via
+        // failed() ci-dessous, à leur niveau de log propre (issue #256).
         try {
-            $this->logger->info("KLASSCI API Request{$logSuffix}", [
-                'method'         => $method,
-                'url'            => $url,
-                'params'         => $method === 'GET' ? $data : [],
-                'has_user_token' => $overrideToken !== null && !empty($overrideToken),
-            ]);
-
-            $request = self::decorateRequest(
-                $this->http->timeout($this->timeout),
-                $url,
-                $this->sslVerify,
-                $token,
-            );
-
             $response = match ($method) {
                 'GET'    => $request->get($url, $data),
                 'POST'   => $request->post($url, $data),
                 'PUT'    => $request->put($url, $data),
                 'DELETE' => $request->delete($url),
-                default  => throw new \Exception("Méthode HTTP non supportée: {$method}"),
+                default  => throw new \InvalidArgumentException("Méthode HTTP non supportée: {$method}"),
             };
-
-            if ($response->failed()) {
-                $this->logger->error("KLASSCI API Error{$logSuffix}", [
-                    'status' => $response->status(),
-                    'body'   => $response->body(),
-                ]);
-
-                throw new \Exception(
-                    "Erreur API KLASSCI: " . $response->status() . " - " . $response->body()
-                );
-            }
-
-            $result = $response->json();
-            if (!is_array($result)) {
-                $result = [];
-            }
-
-            $this->logger->info("KLASSCI API Response{$logSuffix}", [
-                'success' => $result['success'] ?? false,
-            ]);
-
-            /** @var array<string, mixed> $result */
-            return $result;
-        } catch (\Exception $e) {
+        } catch (ConnectionException $e) {
             $this->logger->error("KLASSCI API Exception{$logSuffix}", [
                 'message'  => $e->getMessage(),
                 'endpoint' => $endpoint,
@@ -129,6 +120,35 @@ final class KlassciHttpClient
 
             throw $e;
         }
+
+        if ($response->failed()) {
+            $status = $response->status();
+
+            // Un 4xx (403 autorisation, 404 introuvable, 429 throttle) est une
+            // réponse ATTENDUE côté client, pas une panne : warning, jamais error.
+            // Seul un 5xx (panne KLASSCI réelle) reste un error. Contexte réduit à
+            // status + endpoint — le body n'est NI loggé NI exposé dans l'exception
+            // (issue #256 : 239 Mo de logs sur des 403/429 répétés avec body complet).
+            $level = $status >= self::SERVER_ERROR_THRESHOLD ? LogLevel::ERROR : LogLevel::WARNING;
+            $this->logger->log($level, "KLASSCI API Error{$logSuffix}", [
+                'status'   => $status,
+                'endpoint' => $endpoint,
+            ]);
+
+            throw new \RuntimeException("Erreur API KLASSCI: {$status}", $status);
+        }
+
+        $result = $response->json();
+        if (!is_array($result)) {
+            $result = [];
+        }
+
+        $this->logger->info("KLASSCI API Response{$logSuffix}", [
+            'success' => $result['success'] ?? false,
+        ]);
+
+        /** @var array<string, mixed> $result */
+        return $result;
     }
 
     /**

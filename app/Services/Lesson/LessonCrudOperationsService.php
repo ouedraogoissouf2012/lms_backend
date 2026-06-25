@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Lesson;
 
+use App\Models\Classe;
 use App\Models\Lesson;
 use App\Models\Matiere;
 use App\Models\Notification;
@@ -61,6 +62,27 @@ final class LessonCrudOperationsService
                 if ($matiere) {
                     $data['matiere_id'] = $matiere->id;
                 }
+            }
+        }
+
+        // #265 — Résoudre classe_id : le frontend envoie un id KLASSCI de classe
+        // (comme matiere_id). On préfère l'id local, sinon on traduit le
+        // klassci_id → id local pour conserver la relation Lesson->Classe (FK
+        // local). Scopé à l'institution de l'auteur (isolation multi-tenant :
+        // le klassci_id n'est unique que par institution).
+        if (isset($data['classe_id'])) {
+            $classe = Classe::where('institution_id', $author->institution_id)
+                ->where('id', $data['classe_id'])
+                ->first();
+
+            if (!$classe) {
+                $classe = Classe::where('institution_id', $author->institution_id)
+                    ->where('klassci_id', $data['classe_id'])
+                    ->first();
+            }
+
+            if ($classe) {
+                $data['classe_id'] = $classe->id;
             }
         }
 

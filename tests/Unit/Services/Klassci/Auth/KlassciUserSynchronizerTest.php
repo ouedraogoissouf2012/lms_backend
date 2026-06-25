@@ -8,6 +8,7 @@ use App\Models\Institution;
 use App\Models\User;
 use App\Services\Klassci\Auth\KlassciUserSynchronizer;
 use App\Services\KlassciProxyService;
+use App\Services\MatiereSyncService;
 use Illuminate\Contracts\Hashing\Hasher;
 use Illuminate\Database\ConnectionInterface;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -40,6 +41,8 @@ final class KlassciUserSynchronizerTest extends TestCase
 
     private KlassciProxyService $klassciService;
 
+    private MatiereSyncService $matiereSync;
+
     private LoggerInterface $logger;
 
     private KlassciUserSynchronizer $synchronizer;
@@ -51,12 +54,16 @@ final class KlassciUserSynchronizerTest extends TestCase
         $this->institution = Institution::factory()->create(['slug' => 'test-inst']);
 
         $this->klassciService = Mockery::mock(KlassciProxyService::class);
+        // Spy : la sync matières (enseignant/coordinateur, #258) est interceptée sans
+        // exécution — ces tests couvrent la logique user, pas la sync matières.
+        $this->matiereSync = Mockery::spy(MatiereSyncService::class);
         $this->logger = Mockery::spy(LoggerInterface::class);
 
         $this->synchronizer = new KlassciUserSynchronizer(
             DB::connection(),
             Hash::driver(),
             $this->klassciService,
+            $this->matiereSync,
             $this->logger,
         );
     }

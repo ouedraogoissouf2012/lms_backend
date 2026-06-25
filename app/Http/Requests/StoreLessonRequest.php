@@ -61,10 +61,15 @@ final class StoreLessonRequest extends FormRequest
             return false;
         }
 
-        // Check 3: Multi-tenant safety - classe must belong to user's institution
-        // Use exists() to avoid loading unnecessarily
-        $classeExists = \App\Models\Classe::where('id', $this->classe_id)
-            ->where('institution_id', $user->institution_id)
+        // Check 3: Multi-tenant safety — la classe doit appartenir à l'institution
+        // du user. #265 : le frontend envoie un id KLASSCI de classe (comme pour
+        // les évaluations), pas l'id local — on accepte donc l'id local OU le
+        // klassci_id (le service traduit ensuite en id local). Scopé institution.
+        $classeExists = \App\Models\Classe::where('institution_id', $user->institution_id)
+            ->where(function ($query): void {
+                $query->where('id', $this->classe_id)
+                    ->orWhere('klassci_id', $this->classe_id);
+            })
             ->exists();
 
         if (!$classeExists) {

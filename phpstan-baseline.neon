@@ -5533,6 +5533,12 @@ parameters:
 			path: app/Services/Seances/AutoClose/SeanceClosingService.php
 
 		-
+			message: '#^Call to function is_array\(\) with array\<string, mixed\> will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: app/Services/Seances/KlassciPayload.php
+
+		-
 			message: '#^Argument of an invalid type mixed supplied for foreach, only iterables are supported\.$#'
 			identifier: foreach.nonIterable
 			count: 3
@@ -5809,12 +5815,6 @@ parameters:
 			path: app/Services/Seances/SeanceVisioEnricher.php
 
 		-
-			message: '#^Argument of an invalid type mixed supplied for foreach, only iterables are supported\.$#'
-			identifier: foreach.nonIterable
-			count: 1
-			path: app/Services/Seances/StudentClassesSeancesFetcher.php
-
-		-
 			message: '#^Cannot access offset ''classe'' on mixed\.$#'
 			identifier: offsetAccess.nonOffsetAccessible
 			count: 1
@@ -5827,61 +5827,13 @@ parameters:
 			path: app/Services/Seances/StudentClassesSeancesFetcher.php
 
 		-
-			message: '#^Cannot access offset ''date'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 1
-			path: app/Services/Seances/StudentClassesSeancesFetcher.php
-
-		-
-			message: '#^Cannot access offset ''heure_debut'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 1
-			path: app/Services/Seances/StudentClassesSeancesFetcher.php
-
-		-
-			message: '#^Cannot access offset ''heure_fin'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 1
-			path: app/Services/Seances/StudentClassesSeancesFetcher.php
-
-		-
 			message: '#^Cannot access offset ''id'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 6
-			path: app/Services/Seances/StudentClassesSeancesFetcher.php
-
-		-
-			message: '#^Cannot access offset ''matiere'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 1
-			path: app/Services/Seances/StudentClassesSeancesFetcher.php
-
-		-
-			message: '#^Cannot access offset ''matiere_id'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 1
-			path: app/Services/Seances/StudentClassesSeancesFetcher.php
-
-		-
-			message: '#^Cannot access offset ''nom'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 1
-			path: app/Services/Seances/StudentClassesSeancesFetcher.php
-
-		-
-			message: '#^Cannot access offset ''salle'' on mixed\.$#'
 			identifier: offsetAccess.nonOffsetAccessible
 			count: 2
 			path: app/Services/Seances/StudentClassesSeancesFetcher.php
 
 		-
-			message: '#^Cannot access offset ''seances_programmees'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 1
-			path: app/Services/Seances/StudentClassesSeancesFetcher.php
-
-		-
-			message: '#^Method App\\Services\\Seances\\StudentClassesSeancesFetcher\:\:mapStudentSeances\(\) should return Illuminate\\Support\\Collection\<int, array\<string, mixed\>\> but returns Illuminate\\Support\\Collection\<int, array\{id\: mixed, programmation\: array\{date\: mixed, heure_debut\: mixed, heure_fin\: mixed, salle\: mixed\}, salle\: mixed, matiere\: array\{id\: int, nom\: mixed, code\: mixed\}, classe\: array\{id\: mixed, nom\: mixed\}, enseignant\: array\{nom\: string\}, visio\: array\{enabled\: bool, status\: string\|null, room_id\: string\|null, started_at\: Carbon\\Carbon\|null, participants_count\: int\}\|null\}\>\.$#'
+			message: '#^Method App\\Services\\Seances\\StudentClassesSeancesFetcher\:\:mapStudentSeances\(\) should return Illuminate\\Support\\Collection\<int, array\<string, mixed\>\> but returns Illuminate\\Support\\Collection\<int, array\{id\: mixed, programmation\: array\{date\: string\|null, heure_debut\: string\|null, heure_fin\: string\|null, salle\: mixed\}, salle\: mixed, matiere\: array\{id\: int, nom\: mixed, code\: mixed\}, classe\: array\{id\: mixed, nom\: mixed\}, enseignant\: array\{nom\: string\}, visio\: array\{enabled\: bool, status\: string\|null, room_id\: string\|null, started_at\: Carbon\\Carbon\|null, participants_count\: int\}\|null\}\>\.$#'
 			identifier: return.type
 			count: 1
 			path: app/Services/Seances/StudentClassesSeancesFetcher.php
@@ -5893,116 +5845,20 @@ parameters:
 			path: app/Services/Seances/StudentClassesSeancesFetcher.php
 
 		-
-			message: '#^Parameter \#1 \$seances of method App\\Services\\Seances\\StudentClassesSeancesFetcher\:\:filterForStudent\(\) expects Illuminate\\Support\\Collection\<int, array\<string, mixed\>\>, Illuminate\\Support\\Collection\<\(int\|string\), mixed\> given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Services/Seances/StudentClassesSeancesFetcher.php
-
-		-
-			message: '#^Parameter \#1 \$value of function collect expects Illuminate\\Contracts\\Support\\Arrayable\<\(int\|string\), mixed\>\|iterable\<\(int\|string\), mixed\>\|null, mixed given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Services/Seances/StudentClassesSeancesFetcher.php
-
-		-
 			message: '#^Parameter \#2 \$classeId of method App\\Services\\Seances\\StudentClassesSeancesFetcher\:\:filterForStudent\(\) expects int, mixed given\.$#'
 			identifier: argument.type
 			count: 1
 			path: app/Services/Seances/StudentClassesSeancesFetcher.php
 
 		-
-			message: '#^Parameter \#2 \$matiere of method App\\Services\\Seances\\StudentClassesSeancesFetcher\:\:mapStudentSeances\(\) expects array\<string, mixed\>, mixed given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Services/Seances/StudentClassesSeancesFetcher.php
-
-		-
-			message: '#^Parameter \#3 \$matiereId of method App\\Services\\Seances\\StudentClassesSeancesFetcher\:\:mapStudentSeances\(\) expects int, mixed given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Services/Seances/StudentClassesSeancesFetcher.php
-
-		-
-			message: '#^Part \$matiereId \(mixed\) of encapsed string cannot be cast to string\.$#'
-			identifier: encapsedStringPart.nonString
-			count: 1
-			path: app/Services/Seances/StudentClassesSeancesFetcher.php
-
-		-
-			message: '#^Unable to resolve the template type TKey in call to function collect$#'
-			identifier: argument.templateType
-			count: 1
-			path: app/Services/Seances/StudentClassesSeancesFetcher.php
-
-		-
-			message: '#^Unable to resolve the template type TValue in call to function collect$#'
-			identifier: argument.templateType
-			count: 1
-			path: app/Services/Seances/StudentClassesSeancesFetcher.php
-
-		-
-			message: '#^Cannot access offset ''classe'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 1
-			path: app/Services/Seances/TeachingSeancesFetcher.php
-
-		-
-			message: '#^Cannot access offset ''date'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 2
-			path: app/Services/Seances/TeachingSeancesFetcher.php
-
-		-
-			message: '#^Cannot access offset ''heure_debut'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 2
-			path: app/Services/Seances/TeachingSeancesFetcher.php
-
-		-
-			message: '#^Cannot access offset ''heure_fin'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 2
-			path: app/Services/Seances/TeachingSeancesFetcher.php
-
-		-
 			message: '#^Cannot access offset ''id'' on mixed\.$#'
 			identifier: offsetAccess.nonOffsetAccessible
-			count: 6
+			count: 2
 			path: app/Services/Seances/TeachingSeancesFetcher.php
 
 		-
 			message: '#^Cannot access offset ''matieres'' on mixed\.$#'
 			identifier: offsetAccess.nonOffsetAccessible
-			count: 1
-			path: app/Services/Seances/TeachingSeancesFetcher.php
-
-		-
-			message: '#^Cannot access offset ''nom'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 1
-			path: app/Services/Seances/TeachingSeancesFetcher.php
-
-		-
-			message: '#^Cannot access offset ''places_occupees'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 1
-			path: app/Services/Seances/TeachingSeancesFetcher.php
-
-		-
-			message: '#^Cannot access offset ''salle'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 2
-			path: app/Services/Seances/TeachingSeancesFetcher.php
-
-		-
-			message: '#^Cannot access offset ''seances_programmees'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 1
-			path: app/Services/Seances/TeachingSeancesFetcher.php
-
-		-
-			message: '#^Method App\\Services\\Seances\\TeachingSeancesFetcher\:\:fetchClasseEffectif\(\) should return int but returns mixed\.$#'
-			identifier: return.type
 			count: 1
 			path: app/Services/Seances/TeachingSeancesFetcher.php
 
@@ -6013,69 +5869,21 @@ parameters:
 			path: app/Services/Seances/TeachingSeancesFetcher.php
 
 		-
-			message: '#^Parameter \#1 \$seance of method App\\Services\\Seances\\TeachingSeancesFetcher\:\:ensureLocalSeanceExists\(\) expects array\<string, mixed\>, mixed given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Services/Seances/TeachingSeancesFetcher.php
-
-		-
-			message: '#^Parameter \#1 \$seance of method App\\Services\\Seances\\TeachingSeancesFetcher\:\:fetchClasseEffectif\(\) expects array\<string, mixed\>, mixed given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Services/Seances/TeachingSeancesFetcher.php
-
-		-
-			message: '#^Parameter \#1 \$seance of method App\\Services\\Seances\\TeachingSeancesFetcher\:\:mapSeance\(\) expects array\<string, mixed\>, mixed given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Services/Seances/TeachingSeancesFetcher.php
-
-		-
-			message: '#^Parameter \#1 \$string of function substr expects string, mixed given\.$#'
-			identifier: argument.type
-			count: 2
-			path: app/Services/Seances/TeachingSeancesFetcher.php
-
-		-
 			message: '#^Parameter \#1 \$value of function collect expects Illuminate\\Contracts\\Support\\Arrayable\<\(int\|string\), mixed\>\|iterable\<\(int\|string\), mixed\>\|null, mixed given\.$#'
 			identifier: argument.type
-			count: 2
-			path: app/Services/Seances/TeachingSeancesFetcher.php
-
-		-
-			message: '#^Parameter \#2 \$matiere of method App\\Services\\Seances\\TeachingSeancesFetcher\:\:ensureLocalSeanceExists\(\) expects array\<string, mixed\>, mixed given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Services/Seances/TeachingSeancesFetcher.php
-
-		-
-			message: '#^Parameter \#2 \$matiere of method App\\Services\\Seances\\TeachingSeancesFetcher\:\:mapSeance\(\) expects array\<string, mixed\>, mixed given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Services/Seances/TeachingSeancesFetcher.php
-
-		-
-			message: '#^Part \$matiere\[''id''\] \(mixed\) of encapsed string cannot be cast to string\.$#'
-			identifier: encapsedStringPart.nonString
-			count: 1
-			path: app/Services/Seances/TeachingSeancesFetcher.php
-
-		-
-			message: '#^Part \$seance\[''classe''\]\[''id''\] \(mixed\) of encapsed string cannot be cast to string\.$#'
-			identifier: encapsedStringPart.nonString
 			count: 1
 			path: app/Services/Seances/TeachingSeancesFetcher.php
 
 		-
 			message: '#^Unable to resolve the template type TKey in call to function collect$#'
 			identifier: argument.templateType
-			count: 2
+			count: 1
 			path: app/Services/Seances/TeachingSeancesFetcher.php
 
 		-
 			message: '#^Unable to resolve the template type TValue in call to function collect$#'
 			identifier: argument.templateType
-			count: 2
+			count: 1
 			path: app/Services/Seances/TeachingSeancesFetcher.php
 
 		-
@@ -6093,41 +5901,11 @@ parameters:
 		-
 			message: '#^Cannot access offset ''date'' on mixed\.$#'
 			identifier: offsetAccess.nonOffsetAccessible
-			count: 2
-			path: app/Services/Seances/UpcomingSeancesFetcher.php
-
-		-
-			message: '#^Cannot access offset ''heure_debut'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 1
-			path: app/Services/Seances/UpcomingSeancesFetcher.php
-
-		-
-			message: '#^Cannot access offset ''heure_fin'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
 			count: 1
 			path: app/Services/Seances/UpcomingSeancesFetcher.php
 
 		-
 			message: '#^Cannot access offset ''id'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 3
-			path: app/Services/Seances/UpcomingSeancesFetcher.php
-
-		-
-			message: '#^Cannot access offset ''nom'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 1
-			path: app/Services/Seances/UpcomingSeancesFetcher.php
-
-		-
-			message: '#^Cannot access offset ''salle'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 2
-			path: app/Services/Seances/UpcomingSeancesFetcher.php
-
-		-
-			message: '#^Cannot access offset ''seances_programmees'' on mixed\.$#'
 			identifier: offsetAccess.nonOffsetAccessible
 			count: 1
 			path: app/Services/Seances/UpcomingSeancesFetcher.php
@@ -6145,7 +5923,7 @@ parameters:
 			path: app/Services/Seances/UpcomingSeancesFetcher.php
 
 		-
-			message: '#^Method App\\Services\\Seances\\UpcomingSeancesFetcher\:\:mapSeances\(\) should return Illuminate\\Support\\Collection\<int, array\<string, mixed\>\> but returns Illuminate\\Support\\Collection\<int, array\{id\: mixed, programmation\: array\{date\: mixed, heure_debut\: mixed, heure_fin\: mixed, salle\: mixed\}, salle\: mixed, matiere\: array\{id\: mixed, libelle\: mixed, code\: mixed\}, classe\: array\{id\: mixed, libelle\: mixed\}, enseignant\: null\}\>\.$#'
+			message: '#^Method App\\Services\\Seances\\UpcomingSeancesFetcher\:\:mapSeances\(\) should return Illuminate\\Support\\Collection\<int, array\<string, mixed\>\> but returns Illuminate\\Support\\Collection\<int, array\{id\: mixed, programmation\: array\{date\: string\|null, heure_debut\: string\|null, heure_fin\: string\|null, salle\: mixed\}, salle\: mixed, matiere\: array\{id\: mixed, libelle\: mixed, code\: mixed\}, classe\: array\{id\: mixed, libelle\: mixed\}, enseignant\: null\}\>\.$#'
 			identifier: return.type
 			count: 1
 			path: app/Services/Seances/UpcomingSeancesFetcher.php
@@ -6157,39 +5935,21 @@ parameters:
 			path: app/Services/Seances/UpcomingSeancesFetcher.php
 
 		-
-			message: '#^Parameter \#1 \$seancesProgrammees of method App\\Services\\Seances\\UpcomingSeancesFetcher\:\:filterSeances\(\) expects Illuminate\\Support\\Collection\<int, array\<string, mixed\>\>, Illuminate\\Support\\Collection\<\(int\|string\), mixed\> given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Services/Seances/UpcomingSeancesFetcher.php
-
-		-
 			message: '#^Parameter \#1 \$value of function collect expects Illuminate\\Contracts\\Support\\Arrayable\<\(int\|string\), mixed\>\|iterable\<\(int\|string\), mixed\>\|null, mixed given\.$#'
 			identifier: argument.type
-			count: 2
-			path: app/Services/Seances/UpcomingSeancesFetcher.php
-
-		-
-			message: '#^Parameter \#2 \$matiere of method App\\Services\\Seances\\UpcomingSeancesFetcher\:\:mapSeances\(\) expects array\<string, mixed\>, mixed given\.$#'
-			identifier: argument.type
 			count: 1
-			path: app/Services/Seances/UpcomingSeancesFetcher.php
-
-		-
-			message: '#^Part \$matiereId \(mixed\) of encapsed string cannot be cast to string\.$#'
-			identifier: encapsedStringPart.nonString
-			count: 2
 			path: app/Services/Seances/UpcomingSeancesFetcher.php
 
 		-
 			message: '#^Unable to resolve the template type TKey in call to function collect$#'
 			identifier: argument.templateType
-			count: 2
+			count: 1
 			path: app/Services/Seances/UpcomingSeancesFetcher.php
 
 		-
 			message: '#^Unable to resolve the template type TValue in call to function collect$#'
 			identifier: argument.templateType
-			count: 2
+			count: 1
 			path: app/Services/Seances/UpcomingSeancesFetcher.php
 
 		-

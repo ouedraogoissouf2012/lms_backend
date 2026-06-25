@@ -24,13 +24,19 @@ use Illuminate\Support\Facades\DB;
  * sur la migration originale. Une fois le backfill effectué, le 2ᵉ run trouve
  * 0 row candidate et exit en SUCCESS sans rien faire.
  *
+ * ## Fallback klassci_id (aligné synchroniseur)
+ *
+ * Si le blob n'a pas d'`enseignant_id` numérique mais que l'user est un
+ * ENSEIGNANT (`role` ou `klassci_role` = enseignant), on retombe sur son
+ * `klassci_id` — cohérent avec `KlassciUserSynchronizer::resolveKlassciEnseignantId()`
+ * et le domaine séances. Couvre les tenants où KLASSCI n'expose pas d'id
+ * enseignant dédié dans `auth/me`.
+ *
  * ## Skips (compteur "skipped")
  *
- * Un user est skippé silencieusement si son `klassci_data` :
- *   - est NULL ou vide
- *   - n'est pas un JSON valide (parsing échoue)
- *   - ne contient pas la clé `enseignant_id` (typique pour les étudiants)
- *   - contient `enseignant_id` non numérique
+ * Un user est skippé silencieusement si :
+ *   - `klassci_data` est NULL/vide ou JSON invalide ET ce n'est pas un enseignant
+ *   - pas d'`enseignant_id` numérique ET l'user n'est pas enseignant (étudiant/admin)
  *
  * ## Usage
  *
@@ -98,6 +104,16 @@ final class BackfillEnseignantIdCommand extends Command
                         : (is_array($u->klassci_data) ? $u->klassci_data : null);
 
                     $enseignantId = is_array($blob) ? data_get($blob, 'enseignant_id') : null;
+
+                    // Fallback aligné sur KlassciUserSynchronizer::resolveKlassciEnseignantId() :
+                    // les tenants sans `enseignant_id` dédié (KLASSCI renvoie `enseignant_data`
+                    // sans id) → pour un ENSEIGNANT, l'identité enseignant == klassci_id.
+                    // Les non-enseignants restent skippés (pas de création d'éval — #119).
+                    if (!is_numeric($enseignantId)) {
+                        $isTeacher = ($u->role ?? null) === 'enseignant'
+                            || ($u->klassci_role ?? null) === 'enseignant';
+                        $enseignantId = $isTeacher ? $u->klassci_id : null;
+                    }
 
                     if (is_numeric($enseignantId)) {
                         if (!$dryRun) {

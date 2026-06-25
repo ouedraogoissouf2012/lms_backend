@@ -9,6 +9,7 @@ use App\Models\Institution;
 use App\Models\User;
 use App\Models\UserClass;
 use App\Services\KlassciProxyService;
+use App\Services\MatiereSyncService;
 use Illuminate\Contracts\Hashing\Hasher;
 use Illuminate\Database\ConnectionInterface;
 use Psr\Log\LoggerInterface;
@@ -53,6 +54,7 @@ use Psr\Log\LoggerInterface;
  * - `ConnectionInterface` (DB) pour `transaction()` — pas de Facade `DB::`
  * - `Hasher` (contract) pour `Hash::make()` — pas de Facade `Hash::`
  * - `KlassciProxyService` pour `me/dashboard` (sync classes étudiant)
+ * - `MatiereSyncService` pour la sync des matières (enseignant/coordinateur) — #258
  * - `LoggerInterface` (PSR-3) pour les logs
  *
  * @see app/Http/Controllers/API/AuthController.php (avant refactor) lignes 388-528
@@ -64,6 +66,7 @@ class KlassciUserSynchronizer
         private readonly ConnectionInterface $db,
         private readonly Hasher $hasher,
         private readonly KlassciProxyService $klassciService,
+        private readonly MatiereSyncService $matiereSync,
         private readonly LoggerInterface $logger,
     ) {
     }
@@ -127,9 +130,32 @@ class KlassciUserSynchronizer
 
         if ($user->isStudent()) {
             $this->syncStudentClasses($user, $klassciToken);
+        } elseif ($institutionId !== null && ($user->isTeacher() || $user->isCoordinator())) {
+            // #258 — peupler les matières locales (validations exists:matieres,id +
+            // affichage du libellé). Au login le tenant n'est pas résolu, on passe
+            // donc l'institution_id explicitement.
+            $this->syncTeacherMatieres($klassciToken, $institutionId);
         }
 
         return $user;
+    }
+
+    /**
+     * Synchronise les matières de l'enseignant/coordinateur au login.
+     *
+     * Calqué sur {@see syncStudentClasses()} : un échec de la sync matières ne
+     * doit JAMAIS interrompre le login (try/catch, log, pas de rethrow).
+     */
+    private function syncTeacherMatieres(string $klassciToken, int $institutionId): void
+    {
+        try {
+            $this->matiereSync->syncUserMatieres($klassciToken, $institutionId);
+        } catch (\Throwable $e) {
+            $this->logger->error('Erreur sync matières au login', [
+                'institution_id' => $institutionId,
+                'error'          => $e->getMessage(),
+            ]);
+        }
     }
 
     /**

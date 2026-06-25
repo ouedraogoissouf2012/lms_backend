@@ -164,11 +164,40 @@ final class ClasseDetailsQueryService
         $etudiants = $etudiantsResponse['data'] ?? [];
 
         return collect($etudiants)
-            ->filter(static function (array $etudiant): bool {
-                return isset($etudiant['statut']) && $etudiant['statut'] === 'actif';
-            })
+            ->filter(fn (array $etudiant): bool => $this->estEtudiantActif($etudiant, $classeId))
             ->values()
             ->all();
+    }
+
+    /**
+     * Prédicat « étudiant actif » du filtre strict (issue #257).
+     *
+     * Le filtre reste strict — seul `statut === 'actif'` est conservé — mais on
+     * distingue deux familles d'exclusion :
+     *   - intentionnelle : `statut` est une chaîne valide ≠ 'actif' (ex.
+     *     'inactif', 'suspendu') → exclusion silencieuse, métier nominal ;
+     *   - anormale : `statut` absent / null / vide / non-string (anomalie amont
+     *     KLASSCI) → l'étudiant reste exclu MAIS l'exclusion est tracée (warning
+     *     structuré id étudiant + id classe), pour qu'un effectif sous-compté
+     *     soit diagnosticable au lieu de disparaître sans laisser de trace.
+     *
+     * @param  array<string, mixed>  $etudiant
+     */
+    private function estEtudiantActif(array $etudiant, int $classeId): bool
+    {
+        $statut = $etudiant['statut'] ?? null;
+
+        if (!is_string($statut) || $statut === '') {
+            $this->logger->warning('Étudiant exclu de l\'effectif : statut manquant ou malformé', [
+                'classe_id' => $classeId,
+                'etudiant_id' => $etudiant['id'] ?? null,
+                'statut_recu' => is_scalar($statut) ? $statut : gettype($statut),
+            ]);
+
+            return false;
+        }
+
+        return $statut === 'actif';
     }
 
     /**

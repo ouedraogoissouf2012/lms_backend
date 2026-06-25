@@ -73,6 +73,31 @@ class StoreLessonRequestTest extends TestCase
     }
 
     /**
+     * ✅ #265 : le frontend envoie un id KLASSCI de classe (pas l'id local).
+     * authorize() doit l'accepter et le service le traduire en id local.
+     */
+    public function test_accepts_klassci_classe_id_and_stores_local_id(): void
+    {
+        Sanctum::actingAs($this->teacher);
+
+        // Classe dont l'id local diffère du klassci_id (cas réel multi-tenant).
+        $classe = Classe::factory()->for($this->institution)->create(['klassci_id' => 99001]);
+
+        $response = $this->postJson('/api/lessons', [
+            'title' => 'Cours via id KLASSCI',
+            'type' => 'cours',
+            'classe_id' => 99001, // id KLASSCI, PAS l'id local
+        ]);
+
+        $response->assertStatus(201);
+        // Stocké avec l'id LOCAL (relation Lesson->Classe reste valide).
+        $this->assertDatabaseHas('lessons', [
+            'title' => 'Cours via id KLASSCI',
+            'classe_id' => $classe->id,
+        ]);
+    }
+
+    /**
      * ✅ EDGE CASE: Title with spaces is trimmed
      */
     public function test_title_with_leading_trailing_spaces_is_trimmed(): void

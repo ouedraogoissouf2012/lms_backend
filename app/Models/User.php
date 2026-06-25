@@ -30,7 +30,10 @@ class User extends Authenticatable
     protected $fillable = [
         'klassci_id', 'name', 'email', 'password',
         'role', 'klassci_role', 'klassci_enseignant_id',
-        'klassci_token_encrypted', 'klassci_tenant_url', 'klassci_data',
+        // 'klassci_token' = alias mass-assignable du mutateur setKlassciTokenAttribute
+        // (→ colonne chiffrée klassci_token_encrypted). Sans lui, le sync droppait
+        // silencieusement le token au login → 401 "Token KLASSCI non trouvé".
+        'klassci_token', 'klassci_token_encrypted', 'klassci_tenant_url', 'klassci_data',
         'last_klassci_sync', 'institution_id',
     ];
 

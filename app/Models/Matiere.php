@@ -11,7 +11,13 @@ use App\Models\Traits\BelongsToInstitution;
 /**
  * Model Matiere
  *
- * Représente une matière synchronisée depuis KLASSCI
+ * Représente une matière synchronisée depuis KLASSCI.
+ *
+ * `institution_id` est ajouté par la migration dynamique
+ * `2026_02_11_000002_add_institution_id_to_all_tables` (non détectée par le
+ * scanner Larastan) — on le déclare ici pour le typage statique. Issue #258.
+ *
+ * @property int|null $institution_id
  */
 class Matiere extends Model
 {

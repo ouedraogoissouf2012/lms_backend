@@ -107,7 +107,27 @@ final class StoreChapterRequest extends FormRequest
             'type_contenu' => [
                 'nullable',
                 'string',
-                'in:text,video,pdf,powerpoint,word,image',
+                'in:text,video,pdf,powerpoint,word,image,link,quiz',
+            ],
+            // Corps du chapitre selon son type (texte/markdown, lien vidéo,
+            // lien externe). Sans ces champs, un chapitre créé via l'API n'avait
+            // jamais de contenu (seul l'upload de fichier était géré).
+            'content' => [
+                'nullable',
+                'string',
+                'max:10000',
+            ],
+            'video_url' => [
+                'nullable',
+                'url',
+            ],
+            'external_link' => [
+                'nullable',
+                'url',
+            ],
+            'autoplay_video' => [
+                'nullable',
+                'boolean',
             ],
         ];
     }
@@ -142,10 +162,19 @@ final class StoreChapterRequest extends FormRequest
      */
     protected function prepareForValidation(): void
     {
+        // Le frontend ET l'endpoint UPDATE emploient des clés EN (title,
+        // content_type, order). On les normalise vers les clés FR validées ici,
+        // en gardant la priorité aux clés FR (contrat existant + tests intacts).
+        $titre = $this->input('titre', $this->input('title'));
+        $description = $this->input('description');
+        $typeContenu = $this->input('type_contenu', $this->input('content_type'));
+        $ordre = $this->input('ordre', $this->input('order'));
+
         $this->merge([
-            'titre' => trim($this->titre ?? ''),
-            'description' => trim($this->description ?? ''),
-            'ordre' => $this->has('ordre') ? (int) $this->ordre : null,
+            'titre' => trim(is_string($titre) ? $titre : ''),
+            'description' => trim(is_string($description) ? $description : ''),
+            'type_contenu' => $typeContenu,
+            'ordre' => is_numeric($ordre) ? (int) $ordre : null,
         ]);
     }
 }

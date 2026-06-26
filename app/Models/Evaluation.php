@@ -79,6 +79,7 @@ class Evaluation extends Model
      *
      * Règles métier:
      * - Si date passée ET (date + durée) passée → 'terminee'
+     * - Si date_evaluation est null (brouillon non daté) → status stocké
      * - Sinon, retourne le status actuel de la BDD
      */
     public function getEffectiveStatus(): string
@@ -86,6 +87,13 @@ class Evaluation extends Model
         // Si le status est déjà 'terminee', on garde
         if ($this->status === 'terminee') {
             return 'terminee';
+        }
+
+        // `date_evaluation` est nullable (brouillon non daté) : sans échéance,
+        // impossible de déduire "terminée" → on garde le status stocké.
+        // Évite un fatal `copy() on null` qui cassait tout le listing (#268).
+        if ($this->date_evaluation === null) {
+            return $this->status;
         }
 
         // Calculer la date de fin (date_evaluation + durée)

@@ -269,30 +269,12 @@ jobs:
           distribution: temurin
           java-version: "17"
 
-      # openapi-generator-cli télécharge/résout son générateur depuis un CDN au
-      # runtime ; ce CDN renvoie parfois des 504 transitoires (CloudFront,
-      # "Unable to query repository"). On retry (3 essais, backoff) pour ne pas
-      # bloquer une PR sur une panne CDN externe sans rapport avec le code.
       - name: Generate TypeScript SDK from spec
-        env:
-          # Pin la version du générateur : l'openapi-generator-cli télécharge ce
-          # JAR directement depuis Maven Central, SANS interroger son CDN de
-          # versions (CloudFront — source des 504 "Unable to query repository").
-          # Le retry ci-dessous couvre les aléas réseau résiduels.
-          OPENAPI_GENERATOR_VERSION: "7.10.0"
         run: |
-          for attempt in 1 2 3; do
-            if npx --yes @openapitools/openapi-generator-cli@2.13.4 generate \
-                 -i docs/openapi.yaml \
-                 -g typescript-fetch \
-                 -o sdk-smoke-ts; then
-              exit 0
-            fi
-            echo "Tentative ${attempt}/3 échouée (probable 504 CDN openapi-generator) — nouvel essai dans 20s..."
-            sleep 20
-          done
-          echo "Echec de la generation SDK apres 3 tentatives."
-          exit 1
+          npx --yes @openapitools/openapi-generator-cli@2.13.4 generate \
+            -i docs/openapi.yaml \
+            -g typescript-fetch \
+            -o sdk-smoke-ts
 
       - name: Verify SDK artifacts were produced
         run: |

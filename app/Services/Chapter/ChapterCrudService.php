@@ -133,6 +133,15 @@ final class ChapterCrudService
                 $data['content_type'] = $validated['type_contenu'];
             }
 
+            // Corps du chapitre (clés EN = colonnes du modèle) : texte/markdown,
+            // lien vidéo, lien externe, autoplay. Sans ça, un chapitre créé via
+            // l'API restait vide (seul l'upload de fichier était persisté).
+            foreach (['content', 'video_url', 'external_link', 'autoplay_video'] as $field) {
+                if (array_key_exists($field, $validated)) {
+                    $data[$field] = $validated[$field];
+                }
+            }
+
             if (isset($validated['ordre']) && $validated['ordre'] !== null) {
                 $data['order'] = (int) $validated['ordre'];
             } else {

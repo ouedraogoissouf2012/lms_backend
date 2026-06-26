@@ -4981,18 +4981,6 @@ parameters:
 			path: app/Services/Lesson/LessonProgressService.php
 
 		-
-			message: '#^Call to an undefined method App\\Models\\Evaluation\:\:canBeEdited\(\)\.$#'
-			identifier: method.notFound
-			count: 1
-			path: app/Services/Matiere/MatiereEvaluationsFetcher.php
-
-		-
-			message: '#^Call to an undefined method App\\Models\\Evaluation\:\:isLocked\(\)\.$#'
-			identifier: method.notFound
-			count: 1
-			path: app/Services/Matiere/MatiereEvaluationsFetcher.php
-
-		-
 			message: '#^Parameter \#1 \$column of method Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\:\:where\(\) expects array\<int\|model property of Illuminate\\Database\\Eloquent\\Model, mixed\>\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\: Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\: void\)\|Illuminate\\Contracts\\Database\\Query\\Expression\|model property of Illuminate\\Database\\Eloquent\\Model, ''klassci_etudiant_id'' given\.$#'
 			identifier: argument.type
 			count: 1

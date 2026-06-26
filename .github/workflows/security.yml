@@ -274,6 +274,12 @@ jobs:
       # "Unable to query repository"). On retry (3 essais, backoff) pour ne pas
       # bloquer une PR sur une panne CDN externe sans rapport avec le code.
       - name: Generate TypeScript SDK from spec
+        env:
+          # Pin la version du générateur : l'openapi-generator-cli télécharge ce
+          # JAR directement depuis Maven Central, SANS interroger son CDN de
+          # versions (CloudFront — source des 504 "Unable to query repository").
+          # Le retry ci-dessous couvre les aléas réseau résiduels.
+          OPENAPI_GENERATOR_VERSION: "7.10.0"
         run: |
           for attempt in 1 2 3; do
             if npx --yes @openapitools/openapi-generator-cli@2.13.4 generate \

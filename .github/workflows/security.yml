@@ -325,3 +325,41 @@ jobs:
       # RefreshDatabase migre la base de test ; le job échoue si un test échoue.
       - name: Run PHPUnit suite
         run: vendor/bin/phpunit --no-coverage
+
+  # Garde-fou taille de fichiers (issue #276) — applique PRODUCTION_STANDARDS.md
+  # §1.1 (app/** ≤300) et §5 (app/Models/** ≤150). Ne contrôle que les fichiers
+  # MODIFIÉS par la PR : le legacy non touché n'est jamais bloqué, seul le code
+  # qu'on ajoute/modifie doit respecter la limite. Cf. docs/MANIFESTE_REFACTORING.md.
+  file-size-guard:
+    name: File size guard (app ≤300 / models ≤150)
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup PHP 8.3
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.3"
+          coverage: none
+
+      # Sécurité : `github.base_ref` passe par une variable d'env (jamais
+      # interpolé directement dans le script) — évite l'injection d'expression
+      # GitHub Actions (Semgrep github-actions/...-injection).
+      - name: Check changed app/ files size
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          git fetch --no-tags origin "$BASE_REF"
+          files=$(git diff --name-only --diff-filter=ACMR "origin/$BASE_REF...HEAD" -- app)
+          if [ -z "$files" ]; then
+            echo "Aucun fichier app/ modifié — rien à contrôler."
+            exit 0
+          fi
+          echo "Fichiers app/ modifiés :"
+          echo "$files"
+          php scripts/check-file-sizes.php $files

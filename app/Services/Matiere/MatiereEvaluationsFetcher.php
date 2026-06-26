@@ -119,8 +119,8 @@ final class MatiereEvaluationsFetcher
                 'id' => $quizLMS->id,
                 'status' => $quizLMS->status,
                 'is_published' => $quizLMS->is_published,
-                'is_locked' => $quizLMS->isLocked(),
-                'can_be_edited' => $quizLMS->canBeEdited(),
+                'is_locked' => $this->evaluationState->isLocked($quizLMS),
+                'can_be_edited' => $this->evaluationState->canBeEdited($quizLMS),
                 'questions_count' => $quizLMS->questions()->count(),
                 'submissions_count' => $quizLMS->submissions()->count(),
             ];

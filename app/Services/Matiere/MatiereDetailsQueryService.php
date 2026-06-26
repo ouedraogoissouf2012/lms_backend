@@ -38,7 +38,7 @@ final class MatiereDetailsQueryService
     ) {}
 
     /**
-     * @return array{matiere: array<string, mixed>, combinaisons: array<int, array<string, mixed>>, enseignants: array<int, array<string, mixed>>, lessons: array<int, array<string, mixed>>, seances_programmees: array<int, array<string, mixed>>, evaluations_programmees: array<int, array<string, mixed>>, statistiques: array<string, mixed>}|null
+     * @return array{matiere: array<string, mixed>, combinaisons: array<int, array<string, mixed>>, enseignants: array<int, array<string, mixed>>, lessons: array<int, array<string, mixed>>, seances_programmees: array<int, array<string, mixed>>, evaluations_programmees: array<int, array<string, mixed>>, classes_concernees: array<int, array{id: int, nom: string}>, statistiques: array<string, mixed>}|null
      */
     public function getDetailsForUser(int $matiereId, User $user): ?array
     {
@@ -88,6 +88,7 @@ final class MatiereDetailsQueryService
             'lessons' => $lessonsAndStats['lessons'],
             'seances_programmees' => $seancesPayload['seances_enrichies'],
             'evaluations_programmees' => $evaluationsPayload['evaluations_enrichies'],
+            'classes_concernees' => MatiereClassesExtractor::fromSeances($seancesPayload['seances_enrichies']),
             'statistiques' => $lessonsAndStats['stats'],
         ];
     }

@@ -24,12 +24,23 @@ use Illuminate\Http\JsonResponse;
  * forme sans la réinventer (PRODUCTION_STANDARDS §1.5 : format JSON identique
  * pour tous les endpoints).
  *
- * ## Contrat
+ * ## Contrat (préservation, DRY-only)
  *
- * - Succès : `{ "success": true, "message": string, "data": mixed, "meta"?: object }`
- *   — `data` toujours présent (null si absent) ; `meta` OMIS si vide.
+ * Les controllers existants émettent des formes hétérogènes — `{success, data}`
+ * sans message, `{success, message}` sans data, `{success, message, data}`. Pour
+ * migrer **sans changer le JSON vu par le client** (axe #1, objectif « DRY only »),
+ * chaque clé optionnelle est OMISE quand sa valeur est absente :
+ *
+ * - Succès : `{ "success": true, "message"?: string, "data"?: mixed, "meta"?: object }`
+ *   — `message` omis si `''` ; `data` omis si `null` ; `meta` omis si vide.
  * - Erreur : `{ "success": false, "message": string, "errors"?: object }` + status HTTP
- *   — `errors` OMIS si vide.
+ *   — `errors` omis si vide.
+ *
+ * Le trait centralise donc la **construction** sans imposer une forme unique :
+ * pour reproduire `{success, data}` on appelle `successResponse($data)` ; pour
+ * `{success, message}` on appelle `successResponse(null, $message)`. L'uniformisation
+ * du contrat (toujours les 3 clés) est un chantier distinct nécessitant une
+ * coordination frontend (hors périmètre de cette spec).
  *
  * ## Sécurité
  *
@@ -44,8 +55,8 @@ trait RespondsWithJson
     /**
      * Construit une réponse de succès au contrat canonique.
      *
-     * @param  mixed  $data  Payload métier ; la clé `data` reste présente même si null.
-     * @param  string  $message  Message métier ; vide autorisé pour les endpoints purement « data ».
+     * @param  mixed  $data  Payload métier ; clé `data` OMISE si `null` (préservation des formes sans data).
+     * @param  string  $message  Message métier ; clé `message` OMISE si `''` (préservation des formes sans message).
      * @param  int  $status  Code HTTP (200 par défaut ; 201 pour une création, etc.).
      * @param  array<string, mixed>  $meta  Métadonnées optionnelles (pagination…) ; clé `meta` omise si vide.
      */
@@ -55,11 +66,15 @@ trait RespondsWithJson
         int $status = 200,
         array $meta = [],
     ): JsonResponse {
-        $payload = [
-            'success' => true,
-            'message' => $message,
-            'data'    => $data,
-        ];
+        $payload = ['success' => true];
+
+        if ($message !== '') {
+            $payload['message'] = $message;
+        }
+
+        if ($data !== null) {
+            $payload['data'] = $data;
+        }
 
         if ($meta !== []) {
             $payload['meta'] = $meta;

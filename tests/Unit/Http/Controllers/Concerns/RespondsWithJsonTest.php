@@ -64,14 +64,31 @@ final class RespondsWithJsonTest extends TestCase
         );
     }
 
-    public function test_success_without_data_keeps_null_key(): void
+    public function test_success_empty_omits_message_and_data(): void
     {
+        // DRY-only : sans message ni data, on ne produit QUE {success:true}
+        // (reproduit les réponses qui n'ont ni l'une ni l'autre clé).
         $response = $this->subject()->success();
 
-        $data = $response->getData(true);
-        $this->assertArrayHasKey('data', $data);
-        $this->assertNull($data['data']);
-        $this->assertSame(['success' => true, 'message' => '', 'data' => null], $data);
+        $this->assertSame(['success' => true], $response->getData(true));
+    }
+
+    public function test_success_message_omitted_when_empty(): void
+    {
+        // Reproduit la forme {success, data} (ex. index/show) : pas de clé message.
+        $data = $this->subject()->success(['x' => 1])->getData(true);
+
+        $this->assertSame(['success' => true, 'data' => ['x' => 1]], $data);
+        $this->assertArrayNotHasKey('message', $data);
+    }
+
+    public function test_success_data_omitted_when_null(): void
+    {
+        // Reproduit la forme {success, message} (ex. destroy) : pas de clé data.
+        $data = $this->subject()->success(null, 'Topic supprimé')->getData(true);
+
+        $this->assertSame(['success' => true, 'message' => 'Topic supprimé'], $data);
+        $this->assertArrayNotHasKey('data', $data);
     }
 
     public function test_success_without_meta_omits_meta_key(): void

@@ -32,11 +32,12 @@
 - **R1.2** — WHEN un controller doit produire une réponse d'erreur, il SHALL le faire via une méthode `errorResponse()` du même trait.
 - **R1.3** — WHERE le trait est utilisé, il SHALL retourner un `Illuminate\Http\JsonResponse` (jamais un array brut), cohérent avec `AuthResponsePresenter`.
 
-### R2 — Contrat canonique d'enveloppe
-- **R2.1** — L'enveloppe de succès SHALL être exactement `{ "success": true, "message": string, "data": mixed, "meta": object }`, où `meta` est **omis** s'il n'est pas fourni (pas de clé `meta: null`).
-- **R2.2** — L'enveloppe d'erreur SHALL être exactement `{ "success": false, "message": string, "errors": object }`, où `errors` est **omis** s'il n'est pas fourni, accompagnée d'un **code HTTP** explicite (défaut 200 pour succès, 400 pour erreur si non précisé).
-- **R2.3** — WHEN `data` n'est pas fourni pour un succès, il SHALL valoir `null` (la clé `data` reste présente, contrat stable côté client).
-- **R2.4** — Le contrat SHALL être identique, au champ près, à celui produit aujourd'hui par `AuthResponsePresenter::successfulLocal()` (back-compat des clients existants).
+### R2 — Contrat d'enveloppe (préservation / DRY-only) — _amendé Phase 4_
+> **Amendement (décision utilisateur, Phase 4)** : le code réel montre que les controllers émettent des formes hétérogènes (`{success, data}` sans message, `{success, message}` sans data, `{success, message, data}`). L'hypothèse initiale R2.4 (forme universelle d'`AuthResponsePresenter`) était **fausse**. Objectif retenu : **DRY sans changer le JSON** → chaque clé optionnelle est OMISE quand absente. L'uniformisation (toujours les 3 clés) est un chantier distinct (coordination frontend).
+
+- **R2.1** — L'enveloppe de succès SHALL être `{ "success": true, "message"?: string, "data"?: mixed, "meta"?: object }` : `message` **omis** si `''`, `data` **omis** si `null`, `meta` **omis** si vide. Ainsi `successResponse($d)` reproduit `{success, data}` et `successResponse(null, $m)` reproduit `{success, message}`.
+- **R2.2** — L'enveloppe d'erreur SHALL être `{ "success": false, "message": string, "errors"?: object }`, `errors` **omis** si vide, + **code HTTP** explicite (défaut succès 200, erreur 400).
+- **R2.3** — Le trait SHALL être capable de reproduire **à l'identique** chacune des 3 formes existantes, de sorte qu'une migration ne modifie aucune clé visible par le client (cf. R3).
 
 ### R3 — Non-régression du contrat d'API (le plus critique)
 - **R3.1** — WHERE un endpoint existant est ultérieurement migré vers le trait, la forme JSON de sa réponse SHALL rester identique sur tous les champs déjà exposés (aucun ajout/retrait/renommage de clé visible par le client).

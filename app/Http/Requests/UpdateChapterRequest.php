@@ -63,6 +63,7 @@ final class UpdateChapterRequest extends FormRequest
         return [
             'title' => 'sometimes|string|min:3|max:255',
             'description' => 'nullable|string|max:1000',
+            'content_type' => 'nullable|string|in:text,video,pdf,powerpoint,word,image,link,quiz',
             'content' => 'nullable|string|max:10000',
             'video_url' => 'nullable|url',
             'external_link' => 'nullable|url',

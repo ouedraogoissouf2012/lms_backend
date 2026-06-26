@@ -437,4 +437,66 @@ class StoreChapterRequestTest extends TestCase
         $response->assertStatus(422);
         $this->assertNotEmpty($response->json('errors.type_contenu'));
     }
+
+    /**
+     * ✅ FRONTEND: clés EN (title/content_type/order) acceptées et normalisées
+     * vers les colonnes du modèle (le front et l'endpoint UPDATE utilisent l'EN).
+     */
+    public function test_accepte_les_cles_anglaises_du_frontend(): void
+    {
+        Sanctum::actingAs($this->teacher);
+
+        $response = $this->postJson("/api/lessons/{$this->lesson->id}/chapters", [
+            'title' => 'Chapitre via cles EN',
+            'content_type' => 'text',
+            'order' => 3,
+        ]);
+
+        $response->assertStatus(201);
+        $this->assertDatabaseHas('chapters', [
+            'lesson_id' => $this->lesson->id,
+            'title' => 'Chapitre via cles EN',
+            'content_type' => 'text',
+            'order' => 3,
+        ]);
+    }
+
+    /**
+     * ✅ CONTENU: content + video_url désormais persistés (avant : jamais sauvés
+     * → chapitre vide même créé via l'API).
+     */
+    public function test_persiste_le_contenu_et_la_video(): void
+    {
+        Sanctum::actingAs($this->teacher);
+
+        $response = $this->postJson("/api/lessons/{$this->lesson->id}/chapters", [
+            'title' => 'Chapitre avec contenu',
+            'content_type' => 'video',
+            'content' => '<p>Corps du chapitre</p>',
+            'video_url' => 'https://youtube.com/watch?v=abc',
+        ]);
+
+        $response->assertStatus(201);
+        $this->assertDatabaseHas('chapters', [
+            'lesson_id' => $this->lesson->id,
+            'content' => '<p>Corps du chapitre</p>',
+            'video_url' => 'https://youtube.com/watch?v=abc',
+        ]);
+    }
+
+    /**
+     * ✅ TYPES: link / quiz (offerts par le frontend) acceptés par l'enum.
+     */
+    public function test_accepte_les_types_link_et_quiz(): void
+    {
+        Sanctum::actingAs($this->teacher);
+
+        foreach (['link', 'quiz'] as $type) {
+            $response = $this->postJson("/api/lessons/{$this->lesson->id}/chapters", [
+                'title' => "Chapitre {$type}",
+                'content_type' => $type,
+            ]);
+            $response->assertStatus(201);
+        }
+    }
 }

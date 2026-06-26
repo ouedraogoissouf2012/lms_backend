@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Klassci;
 
+use App\Exceptions\KlassciUnavailableException;
 use App\Models\Institution;
 use App\Models\User;
 use App\Services\TenantManager;
@@ -73,6 +74,56 @@ final class KlassciConfigResolver
         $this->resolve();
 
         return $this->token;
+    }
+
+    /**
+     * Retourne la baseUrl résolue en GARANTISSANT qu'elle est exploitable pour un
+     * appel HTTP : non vide, scheme http/https, host présent.
+     *
+     * #270 — À utiliser AVANT toute requête KLASSCI (au lieu de {@see self::baseUrl()}
+     * qui, lui, tolère null pour les appelants qui n'émettent pas de requête). Si
+     * l'URL est absente/invalide (`KLASSCI_API_URL` non configurée), construire une
+     * URL produirait un scheme vide (`"/endpoint"`) et Guzzle lèverait un
+     * `InvalidArgumentException` rendu en 500 trompeur. On lève plutôt
+     * {@see KlassciUnavailableException} → 503 (panne/mauvaise config externe).
+     *
+     * @throws KlassciUnavailableException si l'URL de base est absente ou invalide.
+     */
+    public function requireBaseUrl(): string
+    {
+        $this->resolve();
+
+        if (!is_string($this->baseUrl) || !self::isUsableHttpUrl($this->baseUrl)) {
+            // Warning (pas error) : situation exceptionnelle de config, pas une
+            // panne applicative. Catégorie seulement — on ne logge jamais la valeur
+            // brute (un token pourrait s'y trouver) ni le body (#256).
+            $this->logger->warning('KLASSCI base URL absente ou invalide — requête proxy dégradée en 503 (#270).', [
+                'reason' => $this->baseUrl === null ? 'missing' : 'invalid_scheme_or_host',
+            ]);
+
+            throw KlassciUnavailableException::missingBaseUrl();
+        }
+
+        return $this->baseUrl;
+    }
+
+    /**
+     * Une URL est exploitable ssi elle porte un scheme http(s) ET un host non vide.
+     * `parse_url` isole la cause historique du 500 (#270) : une valeur sans scheme.
+     */
+    private static function isUsableHttpUrl(string $url): bool
+    {
+        if (trim($url) === '') {
+            return false;
+        }
+
+        $scheme = parse_url($url, PHP_URL_SCHEME);
+        $host   = parse_url($url, PHP_URL_HOST);
+
+        return is_string($scheme)
+            && in_array(strtolower($scheme), ['http', 'https'], true)
+            && is_string($host)
+            && $host !== '';
     }
 
     /**

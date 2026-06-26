@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\API\Proxy;
 
+use App\Http\Controllers\API\Proxy\Concerns\RendersKlassciProxyErrors;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Services\KlassciProxyService;
@@ -18,6 +19,8 @@ use Illuminate\Support\Facades\Log;
  */
 final class ProxyOrganisationController extends Controller
 {
+    use RendersKlassciProxyErrors;
+
     public function __construct(
         private readonly KlassciProxyService $klassciService,
     ) {
@@ -32,7 +35,7 @@ final class ProxyOrganisationController extends Controller
             $data = $this->klassciService->getStructure();
             return response()->json($data);
         } catch (\Exception $e) {
-            return $this->errorResponse('Service indisponible. Veuillez réessayer.');
+            return $this->proxyErrorResponse($e);
         }
     }
 
@@ -46,7 +49,7 @@ final class ProxyOrganisationController extends Controller
             $data = $this->klassciService->getClasses($filters);
             return response()->json($data);
         } catch (\Exception $e) {
-            return $this->errorResponse('Service indisponible. Veuillez réessayer.');
+            return $this->proxyErrorResponse($e);
         }
     }
 
@@ -60,7 +63,7 @@ final class ProxyOrganisationController extends Controller
             $data = $this->klassciService->getClasseEtudiants($id, $anneeId);
             return response()->json($data);
         } catch (\Exception $e) {
-            return $this->errorResponse('Service indisponible. Veuillez réessayer.');
+            return $this->proxyErrorResponse($e);
         }
     }
 
@@ -74,7 +77,7 @@ final class ProxyOrganisationController extends Controller
             $data = $this->klassciService->getMatieres($filters);
             return response()->json($data);
         } catch (\Exception $e) {
-            return $this->errorResponse('Service indisponible. Veuillez réessayer.');
+            return $this->proxyErrorResponse($e);
         }
     }
 
@@ -87,7 +90,7 @@ final class ProxyOrganisationController extends Controller
             $data = $this->klassciService->getMatiereDetails($id);
             return response()->json($data);
         } catch (\Exception $e) {
-            return $this->errorResponse('Service indisponible. Veuillez réessayer.');
+            return $this->proxyErrorResponse($e);
         }
     }
 
@@ -133,7 +136,7 @@ final class ProxyOrganisationController extends Controller
 
             return response()->json($data);
         } catch (\Exception $e) {
-            return $this->errorResponse('Service indisponible. Veuillez réessayer.');
+            return $this->proxyErrorResponse($e);
         }
     }
 
@@ -146,7 +149,7 @@ final class ProxyOrganisationController extends Controller
             $data = $this->klassciService->getFilieres();
             return response()->json($data);
         } catch (\Exception $e) {
-            return $this->errorResponse('Service indisponible. Veuillez réessayer.');
+            return $this->proxyErrorResponse($e);
         }
     }
 
@@ -159,7 +162,7 @@ final class ProxyOrganisationController extends Controller
             $data = $this->klassciService->getNiveauxEtudes();
             return response()->json($data);
         } catch (\Exception $e) {
-            return $this->errorResponse('Service indisponible. Veuillez réessayer.');
+            return $this->proxyErrorResponse($e);
         }
     }
 
@@ -179,18 +182,7 @@ final class ProxyOrganisationController extends Controller
                 'api_url' => config('services.klassci.url'),
             ]);
         } catch (\Exception $e) {
-            return $this->errorResponse('Service indisponible. Veuillez réessayer.');
+            return $this->proxyErrorResponse($e);
         }
-    }
-
-    /**
-     * Réponse d'erreur standardisée.
-     */
-    private function errorResponse(string $message, int $status = 500): JsonResponse
-    {
-        return response()->json([
-            'success' => false,
-            'message' => $message,
-        ], $status);
     }
 }

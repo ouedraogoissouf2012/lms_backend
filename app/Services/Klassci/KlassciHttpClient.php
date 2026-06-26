@@ -70,6 +70,7 @@ final class KlassciHttpClient
      * @param  array<string, mixed>  $data  Body pour POST/PUT, query string pour GET
      * @return array<string, mixed>
      *
+     * @throws \App\Exceptions\KlassciUnavailableException si l'URL de base KLASSCI est absente/invalide (#270)
      * @throws ConnectionException si KLASSCI est injoignable (panne réseau/transport)
      * @throws \RuntimeException sur réponse HTTP 4xx/5xx
      * @throws \InvalidArgumentException si la méthode HTTP n'est pas supportée
@@ -81,7 +82,10 @@ final class KlassciHttpClient
         ?string $overrideToken = null,
     ): array {
         $token = $overrideToken ?? $this->config->token();
-        $baseUrl = $this->config->baseUrl();
+        // #270 — valide l'URL de base AVANT de construire la requête : sans scheme
+        // http(s), Guzzle lèverait « The scheme '' is not allowed » rendu en 500.
+        // requireBaseUrl() lève KlassciUnavailableException (→ 503) à la place.
+        $baseUrl = $this->config->requireBaseUrl();
         $url = $baseUrl . '/' . ltrim($endpoint, '/');
 
         $logSuffix = $overrideToken !== null ? ' (User Token)' : '';

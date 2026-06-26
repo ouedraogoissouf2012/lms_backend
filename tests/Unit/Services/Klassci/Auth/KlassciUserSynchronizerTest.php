@@ -6,7 +6,10 @@ namespace Tests\Unit\Services\Klassci\Auth;
 
 use App\Models\Institution;
 use App\Models\User;
+use App\Services\Klassci\Auth\KlassciEmailConflictGuard;
+use App\Services\Klassci\Auth\KlassciEnseignantIdResolver;
 use App\Services\Klassci\Auth\KlassciUserSynchronizer;
+use App\Services\Klassci\Auth\StudentClassSynchronizer;
 use App\Services\KlassciProxyService;
 use App\Services\MatiereSyncService;
 use Illuminate\Contracts\Hashing\Hasher;
@@ -59,11 +62,16 @@ final class KlassciUserSynchronizerTest extends TestCase
         $this->matiereSync = Mockery::spy(MatiereSyncService::class);
         $this->logger = Mockery::spy(LoggerInterface::class);
 
+        // #275 — collaborateurs réels : le klassciService mocké vit désormais
+        // dans StudentClassSynchronizer ; resolver/guard sont du code pur testé
+        // de bout en bout via sync() (corps de test inchangés).
         $this->synchronizer = new KlassciUserSynchronizer(
             DB::connection(),
             Hash::driver(),
-            $this->klassciService,
             $this->matiereSync,
+            new StudentClassSynchronizer($this->klassciService, $this->logger),
+            new KlassciEnseignantIdResolver(),
+            new KlassciEmailConflictGuard($this->logger),
             $this->logger,
         );
     }

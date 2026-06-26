@@ -41,11 +41,12 @@ final class BackfillEnseignantIdCommandTest extends TestCase
      * la spec passée. La factory `UserFactory` par défaut produit un user complet,
      * on overwrite les colonnes ciblées via raw DB::update pour bypass mutators.
      */
-    private function userWithBlob(?string $klassciDataJson, ?int $klassciId = 100): User
+    private function userWithBlob(?string $klassciDataJson, ?int $klassciId = 100, string $role = 'enseignant'): User
     {
         $user = User::factory()->create([
             'institution_id' => $this->institution->id,
-            'role'           => 'enseignant',
+            'role'           => $role,
+            'klassci_role'   => $role,
             'klassci_id'     => $klassciId,
         ]);
 
@@ -69,11 +70,13 @@ final class BackfillEnseignantIdCommandTest extends TestCase
         self::assertSame(42, User::find($teacher->id)->klassci_enseignant_id);
     }
 
-    public function test_backfill_skips_users_without_enseignant_id_in_blob(): void
+    public function test_backfill_skips_non_teachers_without_enseignant_id(): void
     {
-        // User étudiant : klassci_data contient etudiant_id, pas enseignant_id.
+        // Un ÉTUDIANT sans enseignant_id reste null : pas de fallback klassci_id
+        // pour les non-enseignants (ils ne créent pas d'évaluation — #119).
         $student = $this->userWithBlob(
             klassciDataJson: json_encode(['etudiant_id' => 99, 'nom' => 'Bar']),
+            role: 'etudiant',
         );
 
         $this->artisan('klassci:backfill-enseignant-id')
@@ -81,6 +84,24 @@ final class BackfillEnseignantIdCommandTest extends TestCase
             ->assertExitCode(0);
 
         self::assertNull(User::find($student->id)->klassci_enseignant_id);
+    }
+
+    public function test_backfill_falls_back_to_klassci_id_for_teacher_without_enseignant_id(): void
+    {
+        // LE cas de l'incident : enseignant dont le blob KLASSCI n'a pas
+        // `enseignant_id` (KLASSCI renvoie `enseignant_data` sans id) → fallback
+        // sur klassci_id pour débloquer la création d'évaluation (plus de 403).
+        $teacher = $this->userWithBlob(
+            klassciDataJson: json_encode(['enseignant_data' => ['nb_matieres' => 0], 'nom' => 'Bede']),
+            klassciId: 9,
+            role: 'enseignant',
+        );
+
+        $this->artisan('klassci:backfill-enseignant-id')
+            ->expectsOutputToContain('Updated 1')
+            ->assertExitCode(0);
+
+        self::assertSame(9, User::find($teacher->id)->klassci_enseignant_id);
     }
 
     public function test_backfill_is_idempotent(): void
@@ -121,10 +142,10 @@ final class BackfillEnseignantIdCommandTest extends TestCase
 
     public function test_handles_malformed_klassci_data_gracefully(): void
     {
-        // 3 cas malformés différents
-        $u1 = $this->userWithBlob(klassciDataJson: 'invalid json{', klassciId: 100);
-        $u2 = $this->userWithBlob(klassciDataJson: null, klassciId: 200);
-        $u3 = $this->userWithBlob(klassciDataJson: '[]', klassciId: 300);  // array vide
+        // 3 cas malformés différents (non-enseignants → skip, pas de fallback).
+        $u1 = $this->userWithBlob(klassciDataJson: 'invalid json{', klassciId: 100, role: 'etudiant');
+        $u2 = $this->userWithBlob(klassciDataJson: null, klassciId: 200, role: 'etudiant');
+        $u3 = $this->userWithBlob(klassciDataJson: '[]', klassciId: 300, role: 'etudiant');  // array vide
 
         $this->artisan('klassci:backfill-enseignant-id')
             ->expectsOutputToContain('skipped 3')

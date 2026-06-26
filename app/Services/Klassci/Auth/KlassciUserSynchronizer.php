@@ -35,14 +35,21 @@ use Psr\Log\LoggerInterface;
  * Pour un user **nouveau** : `role` est initialisé à la valeur KLASSCI — seul
  * chemin où KLASSCI peut initialiser l'autorisation LMS d'un user découvert.
  *
- * ### Issue #119 — `klassci_enseignant_id` write-once (PR #122)
+ * ### Issue #119 — `klassci_enseignant_id` write-once-IF-NULL (PR #122, étendu)
  *
- * Pour un user **nouveau** : initialisé depuis `klassci_data['enseignant_id']`
- * UNE SEULE FOIS à la création.
+ * Résolu via {@see resolveKlassciEnseignantId()} : `enseignant_id` KLASSCI si
+ * fourni, sinon `klassci_id` pour les enseignants (cohérent avec le domaine
+ * séances — voir TeachingSeancesFetcher). Certains tenants n'exposent pas
+ * d'`enseignant_id` dans `auth/me` (ils renvoient `enseignant_data` sans id),
+ * d'où le fallback : sans lui, `klassci_enseignant_id` reste null et toute
+ * création d'évaluation est refusée en 403.
  *
- * Pour un user **existant** : `klassci_enseignant_id` n'est **JAMAIS** réécrit
- * (ni au login ni au re-sync passif 24h). Source d'autorité unique pour
- * l'ownership des évaluations. Cf. `.claude/specs/klassci-enseignant-id-separation/`.
+ * Pour un user **nouveau** : initialisé à la création.
+ *
+ * Pour un user **existant** : initialisé UNE FOIS au login s'il est null
+ * ({@see healEnseignantIdIfNull()}) — auto-réparation des comptes antérieurs.
+ * Une valeur déjà établie n'est **JAMAIS** réécrite (invariant #119 : pas de
+ * changement d'autorité d'ownership). Cf. `.claude/specs/klassci-enseignant-id-separation/`.
  *
  * ### Issue #75 — isolation cross-tenant (PR #136)
  *
@@ -124,6 +131,7 @@ class KlassciUserSynchronizer
             // SÉCURITÉ — REQ-3 spec critical-05 : pour un user existant, `role` LMS
             // reste figé. Seul `klassci_role` capture la valeur de KLASSCI.
             $user->update($commonData);
+            $this->healEnseignantIdIfNull($user, $klassciUser);
         } else {
             $user = $this->createNewUser($klassciUser, $commonData, $institutionId, $tenantUrl);
         }
@@ -265,9 +273,7 @@ class KlassciUserSynchronizer
 
         $user = User::withoutGlobalScope('institution')->create(array_merge($commonData, [
             'role'                  => $klassciRole,
-            'klassci_enseignant_id' => isset($klassciUser['enseignant_id']) && is_numeric($klassciUser['enseignant_id'])
-                ? (int) $klassciUser['enseignant_id']
-                : null,
+            'klassci_enseignant_id' => $this->resolveKlassciEnseignantId($klassciUser),
             'password' => $this->hasher->make(uniqid()),
         ]));
 
@@ -280,6 +286,60 @@ class KlassciUserSynchronizer
         ]);
 
         return $user;
+    }
+
+    /**
+     * Initialise `klassci_enseignant_id` UNE FOIS pour un user existant qui ne
+     * l'a pas encore (null) — auto-réparation au login.
+     *
+     * Pourquoi : les comptes enseignants créés avant l'exposition de l'id, ou
+     * dans un tenant où KLASSCI ne renvoie pas `enseignant_id` dans `auth/me`
+     * (il fournit `enseignant_data` sans id), ont `klassci_enseignant_id = null`
+     * → création d'évaluation bloquée en 403.
+     *
+     * Invariant sécurité #119 PRÉSERVÉ : une valeur déjà établie n'est JAMAIS
+     * réécrite (return anticipé si non-null). Passer null→valeur n'est pas un
+     * changement d'autorité — et la valeur dérive de l'identité authentifiée de
+     * l'utilisateur (klassci_id), non d'un champ spoofable.
+     *
+     * @param array<string, mixed> $klassciUser
+     */
+    private function healEnseignantIdIfNull(User $user, array $klassciUser): void
+    {
+        if ($user->klassci_enseignant_id !== null) {
+            return;
+        }
+
+        $resolved = $this->resolveKlassciEnseignantId($klassciUser);
+        if ($resolved !== null) {
+            $user->update(['klassci_enseignant_id' => $resolved]);
+        }
+    }
+
+    /**
+     * Résout l'id enseignant KLASSCI à stocker :
+     *   1. `enseignant_id` dédié si KLASSCI le fournit (numérique) ;
+     *   2. sinon, pour un ENSEIGNANT, fallback sur `klassci_id` (identité
+     *      utilisateur) — cohérent avec le domaine séances
+     *      ({@see \App\Services\Seances\TeachingSeancesFetcher} :
+     *      `klassci_enseignant_id => $user->klassci_id`).
+     *   3. sinon null (étudiant/admin sans enseignant_id : pas de création d'éval,
+     *      comportement #119 préservé).
+     *
+     * @param array<string, mixed> $klassciUser
+     */
+    private function resolveKlassciEnseignantId(array $klassciUser): ?int
+    {
+        if (isset($klassciUser['enseignant_id']) && is_numeric($klassciUser['enseignant_id'])) {
+            return (int) $klassciUser['enseignant_id'];
+        }
+
+        $role = $klassciUser['role'] ?? null;
+        if ($role === 'enseignant' && isset($klassciUser['id']) && is_numeric($klassciUser['id'])) {
+            return (int) $klassciUser['id'];
+        }
+
+        return null;
     }
 
     /**

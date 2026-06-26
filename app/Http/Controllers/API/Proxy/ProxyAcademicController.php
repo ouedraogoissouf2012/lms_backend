@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\API\Proxy;
 
+use App\Http\Controllers\API\Proxy\Concerns\RendersKlassciProxyErrors;
 use App\Http\Controllers\Controller;
 use App\Services\KlassciProxyService;
 use Illuminate\Http\JsonResponse;
@@ -23,6 +24,8 @@ use Illuminate\Http\Request;
  */
 final class ProxyAcademicController extends Controller
 {
+    use RendersKlassciProxyErrors;
+
     public function __construct(
         private readonly KlassciProxyService $klassciService,
     ) {
@@ -38,7 +41,7 @@ final class ProxyAcademicController extends Controller
             $data = $this->klassciService->getEvaluations($filters);
             return response()->json($data);
         } catch (\Exception $e) {
-            return $this->errorResponse('Service indisponible. Veuillez réessayer.');
+            return $this->proxyErrorResponse($e);
         }
     }
 
@@ -52,7 +55,7 @@ final class ProxyAcademicController extends Controller
             $data = $this->klassciService->getEmploiTemps($filters);
             return response()->json($data);
         } catch (\Exception $e) {
-            return $this->errorResponse('Service indisponible. Veuillez réessayer.');
+            return $this->proxyErrorResponse($e);
         }
     }
 
@@ -73,7 +76,7 @@ final class ProxyAcademicController extends Controller
             $data = $this->klassciService->saveNotes($id, $validated['notes']);
             return response()->json($data);
         } catch (\Exception $e) {
-            return $this->errorResponse('Service indisponible. Veuillez réessayer.');
+            return $this->proxyErrorResponse($e);
         }
     }
 
@@ -102,7 +105,7 @@ final class ProxyAcademicController extends Controller
             $data = $this->klassciService->savePresences($id, $presences);
             return response()->json($data);
         } catch (\Exception $e) {
-            return $this->errorResponse('Service indisponible. Veuillez réessayer.');
+            return $this->proxyErrorResponse($e);
         }
     }
 
@@ -125,18 +128,7 @@ final class ProxyAcademicController extends Controller
 
             return response()->json($data);
         } catch (\Exception $e) {
-            return $this->errorResponse('Service indisponible. Veuillez réessayer.');
+            return $this->proxyErrorResponse($e);
         }
-    }
-
-    /**
-     * Réponse d'erreur standardisée.
-     */
-    private function errorResponse(string $message, int $status = 500): JsonResponse
-    {
-        return response()->json([
-            'success' => false,
-            'message' => $message,
-        ], $status);
     }
 }

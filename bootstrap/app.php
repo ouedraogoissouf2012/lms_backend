@@ -94,6 +94,22 @@ $app = Application::configure(basePath: dirname(__DIR__))
             }
         });
 
+        // #270 — KLASSCI indisponible (URL de base absente/invalide, ou service
+        // injoignable) = panne EXTERNE temporaire → 503 (retryable), jamais 500.
+        // Handler canonique : couvre tout appelant qui laisse remonter l'exception
+        // (les contrôleurs proxy, eux, la traduisent localement via le trait
+        // RendersKlassciProxyErrors car ils enveloppent chaque appel dans un catch).
+        // Doit précéder le handler \Throwable générique ci-dessous, sinon ce dernier
+        // la rendrait en 500. On n'expose JAMAIS le détail technique (§1.2).
+        $exceptions->render(function (\App\Exceptions\KlassciUnavailableException $e, $request) {
+            if ($request->expectsJson() || $request->is('api/*')) {
+                return response()->json([
+                    'success' => false,
+                    'message' => \App\Exceptions\KlassciUnavailableException::CLIENT_MESSAGE,
+                ], 503);
+            }
+        });
+
         $exceptions->render(function (\Throwable $e, $request) {
             if ($request->expectsJson()) {
                 $statusCode = method_exists($e, 'getStatusCode') ? $e->getStatusCode() : 500;

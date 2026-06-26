@@ -46,8 +46,12 @@
   - [x] P1.1 **Migrer `ForumController`** (candidat pur : 11 réponses, 0 payload-racine). 195→155 l. Mapping 1:1 vérifié, `response()->json` éliminé. _(R3.1)_
   - [x] P1.2 Vérif non-régression : `ForumDiscussionFlowTest` (E2E, assère `data.*`) + Forum auth + trait = **25 passed**, PHPStan vert. Sortie identique prouvée.
   - [ ] P1.3 _(optionnel, à décider)_ étendre à `LessonCrudController` / `KnowledgeCheckCrudController` (autres candidats purs) avant de commiter PR-1, ou les garder pour PR-2.
-- [ ] **PR-2 — Domaine couvert B** : Evaluation / KnowledgeCheck / Notifications testés. _(R3, R7.2)_
-- [ ] **PR-3 — Controllers sans test** : test de caractérisation **puis** migration (Proxy*, Dashboard*, TeacherStats, Report, Search…). _(R7.1)_
+- [~] **PR-2 — Migration `LessonCrudController`** _(R3, R7.2)_ — _branche `refactor/api-response-pr2-migration`_
+  - [x] P2.1 Migrer 8/9 réponses (index, show succès+erreur, store, update, destroy, publish, unpublish). 172→148 l. `errorResponse` utilisé pour le chemin d'erreur de `show` (`(int) $result['status']`).
+  - [x] P2.2 **`myCourses` conservé inline** (justifié en commentaire) : expose `filters`/`total` à la racine, hors enveloppe → le trait ne peut pas les reproduire sans changer le contrat.
+  - [x] P2.3 Non-régression : `TeacherLessonPublicationFlowTest` + `StudentChapterProgressionFlowTest` (E2E, assèrent `data.id/status/lesson.title`, statuts 201/200/403) = **4 passed (58 assertions)**, PHPStan vert.
+- [ ] **PR-3 — `KnowledgeCheckCrudController` (test-first)** _(R7.1)_ : candidat pur (11 réponses) MAIS **aucun test Feature** ne couvre son CRUD (le flow étudiant ne teste que les endpoints Attempt). Écrire d'abord un test de caractérisation des 11 réponses (dont 5 chemins d'erreur 403/404/400 via `DomainException`), **puis** migrer.
+- [ ] **PR-4+ — Autres controllers** : Evaluation/Quiz (mixtes, réponses payload-racine à exclure), Proxy*/Dashboard*/TeacherStats/Report/Search (test de caractérisation d'abord). _(R7.1)_
 
 ---
 

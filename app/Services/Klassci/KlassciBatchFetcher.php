@@ -115,8 +115,11 @@ final class KlassciBatchFetcher
         }
 
         // Étape 2 — Pool HTTP parallèle sur les IDs restants.
+        // #270 — même garde que KlassciHttpClient : une URL de base absente/invalide
+        // lève KlassciUnavailableException (→ 503) plutôt que de partir en pool avec
+        // des URLs sans scheme (« The scheme '' is not allowed » → 500 trompeur).
         $effectiveToken = $userToken ?? $this->config->token();
-        $baseUrl = $this->config->baseUrl() ?? '';
+        $baseUrl = $this->config->requireBaseUrl();
 
         foreach (array_chunk($needsFetch, $this->poolSize, true) as $batch) {
             $responses = $this->http->pool($this->buildPoolRequests($batch, $baseUrl, $effectiveToken));

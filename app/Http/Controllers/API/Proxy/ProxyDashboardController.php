@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\API\Proxy;
 
+use App\Http\Controllers\API\Proxy\Concerns\RendersKlassciProxyErrors;
 use App\Http\Controllers\Controller;
 use App\Services\KlassciProxyService;
 use Illuminate\Http\JsonResponse;
@@ -24,6 +25,8 @@ use Illuminate\Support\Facades\Log;
  */
 final class ProxyDashboardController extends Controller
 {
+    use RendersKlassciProxyErrors;
+
     public function __construct(
         private readonly KlassciProxyService $klassciService,
     ) {
@@ -65,7 +68,7 @@ final class ProxyDashboardController extends Controller
             return response()->json($data);
         } catch (\Exception $e) {
             Log::error('Student Dashboard error', ['error' => $e->getMessage()]);
-            return $this->errorResponse('Service indisponible. Veuillez réessayer.');
+            return $this->proxyErrorResponse($e);
         }
     }
 
@@ -104,7 +107,7 @@ final class ProxyDashboardController extends Controller
             return response()->json($data);
         } catch (\Exception $e) {
             Log::error('Teacher Dashboard error', ['error' => $e->getMessage()]);
-            return $this->errorResponse('Service indisponible. Veuillez réessayer.');
+            return $this->proxyErrorResponse($e);
         }
     }
 

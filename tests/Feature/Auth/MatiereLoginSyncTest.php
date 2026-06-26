@@ -25,6 +25,20 @@ final class MatiereLoginSyncTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        // #270 — la sync matières résout l'URL de base via la config globale
+        // (priorité 3, aucun user Sanctum authentifié pendant le login). Le garde
+        // #270 exige désormais une URL valide AVANT toute requête ; en prod
+        // `KLASSCI_API_URL` est toujours renseignée. On la configure donc ici pour
+        // refléter cet environnement (auparavant l'URL vide était silencieusement
+        // masquée par `Http::fake('*')`).
+        config()->set('services.klassci.url', 'https://klassci.test');
+        config()->set('services.klassci.token', 'system-token');
+    }
+
     private function synchronizer(): KlassciUserSynchronizer
     {
         return app(KlassciUserSynchronizer::class);

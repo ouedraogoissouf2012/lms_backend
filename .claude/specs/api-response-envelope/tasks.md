@@ -41,7 +41,11 @@
 
 > Détaillées en tasks dédiées au moment de chaque PR. Listées pour visibilité du séquencement (R7). **Aucune** ne fait partie de cette livraison.
 
-- [ ] **PR-1 — Domaine couvert A** : migrer les controllers Quiz / Chapter / Lesson / Forum déjà testés vers `successResponse`/`errorResponse`. _(R3, R7.2)_
+- [~] **PR-1 — Pilote de migration** _(R3, R7.2)_ — _stacké sur PR-0, branche `refactor/api-response-pr1-migration`_
+  - [x] P1.0 **Affiner le trait** (découverte Phase 4) : omettre `message` si vide et `data` si null, pour reproduire les 3 formes existantes sans changer la sortie. Tests trait 10/10. _(R2 amendé)_
+  - [x] P1.1 **Migrer `ForumController`** (candidat pur : 11 réponses, 0 payload-racine). 195→155 l. Mapping 1:1 vérifié, `response()->json` éliminé. _(R3.1)_
+  - [x] P1.2 Vérif non-régression : `ForumDiscussionFlowTest` (E2E, assère `data.*`) + Forum auth + trait = **25 passed**, PHPStan vert. Sortie identique prouvée.
+  - [ ] P1.3 _(optionnel, à décider)_ étendre à `LessonCrudController` / `KnowledgeCheckCrudController` (autres candidats purs) avant de commiter PR-1, ou les garder pour PR-2.
 - [ ] **PR-2 — Domaine couvert B** : Evaluation / KnowledgeCheck / Notifications testés. _(R3, R7.2)_
 - [ ] **PR-3 — Controllers sans test** : test de caractérisation **puis** migration (Proxy*, Dashboard*, TeacherStats, Report, Search…). _(R7.1)_
 

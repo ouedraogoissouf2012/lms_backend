@@ -47,10 +47,7 @@ final class ForumController extends AuthenticatedController
     {
         $topics = $this->topicService->list($request);
 
-        return response()->json([
-            'success' => true,
-            'data' => $topics,
-        ]);
+        return $this->successResponse($topics);
     }
 
     /**
@@ -61,11 +58,7 @@ final class ForumController extends AuthenticatedController
         $user = $this->authenticatedUser($request);
         $topic = $this->topicService->create($request->validated(), $user);
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Topic créé avec succès',
-            'data' => $topic,
-        ], 201);
+        return $this->successResponse($topic, 'Topic créé avec succès', 201);
     }
 
     /**
@@ -75,10 +68,7 @@ final class ForumController extends AuthenticatedController
     {
         $topic = $this->topicService->showWithPosts($topic);
 
-        return response()->json([
-            'success' => true,
-            'data' => $topic,
-        ]);
+        return $this->successResponse($topic);
     }
 
     /**
@@ -88,11 +78,7 @@ final class ForumController extends AuthenticatedController
     {
         $topic = $this->topicService->update($topic, $request->validated());
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Topic mis à jour',
-            'data' => $topic,
-        ]);
+        return $this->successResponse($topic, 'Topic mis à jour');
     }
 
     /**
@@ -102,10 +88,7 @@ final class ForumController extends AuthenticatedController
     {
         $this->topicService->delete($topic);
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Topic supprimé',
-        ]);
+        return $this->successResponse(null, 'Topic supprimé');
     }
 
     /**
@@ -116,11 +99,7 @@ final class ForumController extends AuthenticatedController
         $user = $this->authenticatedUser($request);
         $post = $this->postService->create($request->validated(), $topic, $user);
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Post ajouté',
-            'data' => $post,
-        ], 201);
+        return $this->successResponse($post, 'Post ajouté', 201);
     }
 
     /**
@@ -130,11 +109,7 @@ final class ForumController extends AuthenticatedController
     {
         $post = $this->postService->update($post, $request->validated());
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Post mis à jour',
-            'data' => $post,
-        ]);
+        return $this->successResponse($post, 'Post mis à jour');
     }
 
     /**
@@ -144,10 +119,7 @@ final class ForumController extends AuthenticatedController
     {
         $this->postService->delete($post);
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Post supprimé',
-        ]);
+        return $this->successResponse(null, 'Post supprimé');
     }
 
     /**
@@ -158,11 +130,7 @@ final class ForumController extends AuthenticatedController
         $user = $this->authenticatedUser($request);
         $post = $this->postService->markAsSolution($post, $user);
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Post marqué comme solution',
-            'data' => $post,
-        ]);
+        return $this->successResponse($post, 'Post marqué comme solution');
     }
 
     /**
@@ -172,11 +140,7 @@ final class ForumController extends AuthenticatedController
     {
         $topic = $this->topicService->close($topic);
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Topic fermé',
-            'data' => $topic,
-        ]);
+        return $this->successResponse($topic, 'Topic fermé');
     }
 
     /**
@@ -186,10 +150,6 @@ final class ForumController extends AuthenticatedController
     {
         $topic = $this->topicService->pin($topic);
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Topic épinglé',
-            'data' => $topic,
-        ]);
+        return $this->successResponse($topic, 'Topic épinglé');
     }
 }

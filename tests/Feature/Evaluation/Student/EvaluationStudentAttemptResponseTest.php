@@ -10,7 +10,6 @@ use App\Models\EvaluationSubmission;
 use App\Models\Institution;
 use App\Models\User;
 use App\Services\Evaluation\EvaluationGradingService;
-use App\Services\Evaluation\Student\EvaluationAttemptStateService;
 use App\Services\KlassciProxyService;
 use Exception;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -34,10 +33,14 @@ use Tests\TestCase;
  *   - arm `window_closed` : clé racine `window`.
  *   - arm `ok` (succès start) : clés racine `window` + `is_practice`.
  *
- * Non couverts (justifiés) :
- *   - arm `default` (500 « Erreur inconnue ») : défensif, injoignable —
+ * Non couverts (handlers défensifs injoignables — migration 1:1 littérale) :
+ *   - arm `default` (500 « Erreur inconnue ») :
  *     `EvaluationAttemptStateService::startAttempt` ne renvoie jamais de statut
- *     hors de l'ensemble connu ; migration 1:1 littérale.
+ *     hors de l'ensemble connu.
+ *   - `getTimeStatus` `catch (\Exception)` (500) : le service `final`
+ *     `EvaluationAttemptStateService::getTimeStatus` ne lève QUE des
+ *     `RuntimeException` (déjà couvertes en 404/401) ; aucun chemin réel n'atteint
+ *     le catch générique, et la classe `final` interdit un mock de substitution.
  *
  * @see app/Http/Controllers/API/Evaluation/Student/EvaluationStudentAttemptController.php
  */
@@ -284,20 +287,5 @@ final class EvaluationStudentAttemptResponseTest extends TestCase
 
         $response->assertStatus(401)
             ->assertExactJson(['success' => false, 'message' => 'Token KLASSCI non trouvé']);
-    }
-
-    public function test_time_status_unexpected_error_returns_500_error_envelope(): void
-    {
-        $evaluation = $this->publishedEvaluation();
-        $this->mock(
-            EvaluationAttemptStateService::class,
-            fn (MockInterface $mock) => $mock->shouldReceive('getTimeStatus')->andThrow(new Exception('boom')),
-        );
-        Sanctum::actingAs($this->student);
-
-        $response = $this->getJson("/api/evaluations/{$evaluation->id}/time-status");
-
-        $response->assertStatus(500)
-            ->assertExactJson(['success' => false, 'message' => 'Impossible de récupérer l\'état temporel']);
     }
 }

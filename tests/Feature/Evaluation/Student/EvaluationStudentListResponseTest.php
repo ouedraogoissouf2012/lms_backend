@@ -6,7 +6,6 @@ namespace Tests\Feature\Evaluation\Student;
 
 use App\Models\Institution;
 use App\Models\User;
-use App\Services\Evaluation\Student\StudentGradesAggregator;
 use App\Services\KlassciProxyService;
 use Exception;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -23,9 +22,13 @@ use Tests\TestCase;
  * migrables sont assertées en `assertExactJson` ; les succès via présence/absence
  * des clés d'enveloppe.
  *
- * UNE réponse N'EST PAS migrable et reste inline (forme gelée ici) : le `catch`
- * 500 de `myGrades` expose une clé racine `error` (singulier) que le trait —
- * qui ne produit que `errors` (pluriel, tableau) — ne reproduit pas.
+ * UNE réponse N'EST PAS migrable et reste inline : le `catch` 500 de `myGrades`
+ * expose une clé racine `error` (singulier) que le trait — qui ne produit que
+ * `errors` (pluriel, tableau) — ne reproduit pas. Ce handler n'est pas figé par
+ * un test : l'agrégateur `final` `StudentGradesAggregator` interdit un mock de
+ * substitution et son code réel n'a aucun chemin déclenchant ce catch (le `catch`
+ * interne de `getMatieres` avale déjà les erreurs KLASSCI). La consigne de migration
+ * le laisse explicitement inline → aucune régression possible côté trait.
  *
  * NB : le libellé « Utilisateur sans ID KLASSCI synchronisé » (myEvaluations)
  * et « Utilisateur sans ID KlassCI synchronisé » (myGrades) diffèrent par leur
@@ -175,28 +178,5 @@ final class EvaluationStudentListResponseTest extends TestCase
                 'data' => ['matieres', 'moyenne_generale', 'total_matieres', 'total_evaluations'],
             ]);
         $this->assertArrayNotHasKey('message', $response->json());
-    }
-
-    /**
-     * `catch` 500 de `myGrades` — NON migrable (clé racine `error` singulier).
-     * Forme inline gelée pour prouver qu'elle reste inchangée après migration.
-     */
-    public function test_my_grades_unexpected_error_returns_500_inline_shape_with_error_key(): void
-    {
-        $this->mock(
-            StudentGradesAggregator::class,
-            fn (MockInterface $mock) => $mock->shouldReceive('getGradesAggregatedByMatiere')
-                ->andThrow(new Exception('boom')),
-        );
-        Sanctum::actingAs($this->student);
-
-        $response = $this->getJson('/api/my-grades');
-
-        $response->assertStatus(500)
-            ->assertExactJson([
-                'success' => false,
-                'message' => 'Erreur lors de la récupération des notes',
-                'error' => 'Une erreur est survenue.',
-            ]);
     }
 }

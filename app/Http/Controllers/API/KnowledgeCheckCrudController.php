@@ -28,19 +28,13 @@ final class KnowledgeCheckCrudController extends AuthenticatedController
         $chapterId = $request->query('chapter_id');
 
         if (! $chapterId) {
-            return response()->json([
-                'success' => false,
-                'message' => 'chapter_id requis',
-            ], 400);
+            return $this->errorResponse('chapter_id requis', 400);
         }
 
         $userId = $this->authenticatedUser($request)->id;
         $quizzes = $this->service->listForChapter((int) $chapterId, $userId);
 
-        return response()->json([
-            'success' => true,
-            'data' => $quizzes,
-        ]);
+        return $this->successResponse($quizzes);
     }
 
     /** POST /api/knowledge-checks — créer un quiz (admin / enseignant propriétaire). */
@@ -49,17 +43,10 @@ final class KnowledgeCheckCrudController extends AuthenticatedController
         try {
             $quiz = $this->service->create($request->validated(), $this->authenticatedUser($request));
         } catch (\DomainException $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Non autorise a modifier ce chapitre',
-            ], 403);
+            return $this->errorResponse('Non autorise a modifier ce chapitre', 403);
         }
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Quiz cree avec succes',
-            'data' => $quiz,
-        ], 201);
+        return $this->successResponse($quiz, 'Quiz cree avec succes', 201);
     }
 
     /** GET /api/knowledge-checks/chapter/{chapterId} — quiz actif d'un chapitre. */
@@ -69,16 +56,10 @@ final class KnowledgeCheckCrudController extends AuthenticatedController
         $quiz = $this->service->findActiveForChapter($chapterId, $userId);
 
         if ($quiz === null) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Aucun quiz actif pour ce chapitre',
-            ], 404);
+            return $this->errorResponse('Aucun quiz actif pour ce chapitre', 404);
         }
 
-        return response()->json([
-            'success' => true,
-            'data' => $quiz,
-        ]);
+        return $this->successResponse($quiz);
     }
 
     /** GET /api/knowledge-checks/{id} — détail d'un quiz. */
@@ -87,10 +68,7 @@ final class KnowledgeCheckCrudController extends AuthenticatedController
         $userId = $this->authenticatedUser($request)->id;
         $quiz = $this->service->findById($id, $userId);
 
-        return response()->json([
-            'success' => true,
-            'data' => $quiz,
-        ]);
+        return $this->successResponse($quiz);
     }
 
     /** PUT /api/knowledge-checks/{id} — update un quiz (admin / enseignant propriétaire). */
@@ -99,17 +77,10 @@ final class KnowledgeCheckCrudController extends AuthenticatedController
         try {
             $quiz = $this->service->update($id, $request->validated(), $this->authenticatedUser($request));
         } catch (\DomainException $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Non autorise a modifier ce quiz',
-            ], 403);
+            return $this->errorResponse('Non autorise a modifier ce quiz', 403);
         }
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Quiz mis a jour',
-            'data' => $quiz,
-        ]);
+        return $this->successResponse($quiz, 'Quiz mis a jour');
     }
 
     /** DELETE /api/knowledge-checks/{id} — supprimer un quiz (admin / enseignant propriétaire). */
@@ -118,15 +89,9 @@ final class KnowledgeCheckCrudController extends AuthenticatedController
         try {
             $this->service->delete($id, $this->authenticatedUser($request));
         } catch (\DomainException $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Non autorise a supprimer ce quiz',
-            ], 403);
+            return $this->errorResponse('Non autorise a supprimer ce quiz', 403);
         }
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Quiz supprime',
-        ]);
+        return $this->successResponse(null, 'Quiz supprime');
     }
 }

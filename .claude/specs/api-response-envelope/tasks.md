@@ -50,7 +50,10 @@
   - [x] P2.1 Migrer 8/9 réponses (index, show succès+erreur, store, update, destroy, publish, unpublish). 172→148 l. `errorResponse` utilisé pour le chemin d'erreur de `show` (`(int) $result['status']`).
   - [x] P2.2 **`myCourses` conservé inline** (justifié en commentaire) : expose `filters`/`total` à la racine, hors enveloppe → le trait ne peut pas les reproduire sans changer le contrat.
   - [x] P2.3 Non-régression : `TeacherLessonPublicationFlowTest` + `StudentChapterProgressionFlowTest` (E2E, assèrent `data.id/status/lesson.title`, statuts 201/200/403) = **4 passed (58 assertions)**, PHPStan vert.
-- [ ] **PR-3 — `KnowledgeCheckCrudController` (test-first)** _(R7.1)_ : candidat pur (11 réponses) MAIS **aucun test Feature** ne couvre son CRUD (le flow étudiant ne teste que les endpoints Attempt). Écrire d'abord un test de caractérisation des 11 réponses (dont 5 chemins d'erreur 403/404/400 via `DomainException`), **puis** migrer.
+- [x] **PR-3 — `KnowledgeCheckCrudController` (test-first)** _(R7.1)_ — _branche `refactor/api-response-pr3-knowledgecheck` (depuis #281 à jour sur lms)_
+  - [x] P3.1 Test de caractérisation `KnowledgeCheckCrudResponseTest` : 11 réponses (6 succès + 5 erreurs 403/404/400), erreurs en `assertExactJson`, succès via présence/absence de clés. **Vert sur le code NON migré** (capture du comportement).
+  - [x] P3.2 Migration des 11 réponses vers `successResponse`/`errorResponse`. 132→97 l, `response()->json` éliminé.
+  - [x] P3.3 Test rejoué après migration : **11 passed (37 assertions)**, PHPStan vert → sortie identique prouvée.
 - [ ] **PR-4+ — Autres controllers** : Evaluation/Quiz (mixtes, réponses payload-racine à exclure), Proxy*/Dashboard*/TeacherStats/Report/Search (test de caractérisation d'abord). _(R7.1)_
 
 ---

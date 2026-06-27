@@ -53,29 +53,23 @@ final class LMSNotificationsPreferencesController extends AuthenticatedControlle
             $currentUser = $this->authenticatedUser($request);
 
             if ($currentUser->id !== $userId && !($currentUser->isCoordinator() || $currentUser->isAdmin())) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Accès refusé'
-                ], 403);
+                return $this->errorResponse('Accès refusé', 403);
             }
 
             // Stub : retourne les defaults par contrat. L'intégration avec
             // `parent_notification_preferences` est suivie en follow-up séparé.
-            return response()->json([
-                'success' => true,
-                'data' => [
-                    'user_id' => $userId,
-                    'channels' => [
-                        'whatsapp' => true,
-                        'email'    => true,
-                        'sms'      => false,
-                        'app'      => true,
-                    ],
-                    'preferences' => [
-                        'session_reminder_minutes'  => 15,
-                        'evaluation_reminder_hours' => 24,
-                        'absence_notification'      => true,
-                    ],
+            return $this->successResponse([
+                'user_id' => $userId,
+                'channels' => [
+                    'whatsapp' => true,
+                    'email'    => true,
+                    'sms'      => false,
+                    'app'      => true,
+                ],
+                'preferences' => [
+                    'session_reminder_minutes'  => 15,
+                    'evaluation_reminder_hours' => 24,
+                    'absence_notification'      => true,
                 ],
             ]);
 
@@ -85,6 +79,9 @@ final class LMSNotificationsPreferencesController extends AuthenticatedControlle
                 'error' => $e->getMessage()
             ]);
 
+            // NON migré : la clé `error` (singulier) n'est pas reproductible par
+            // `errorResponse` (qui n'expose qu'`errors` pluriel). Laisser intact
+            // pour préserver le JSON client (axe #1 « DRY-only »).
             return response()->json([
                 'success' => false,
                 'message' => 'Erreur lors de la récupération des préférences',
@@ -122,15 +119,14 @@ final class LMSNotificationsPreferencesController extends AuthenticatedControlle
             // Stub : valide la requête et retourne success sans envoyer réellement.
             // Intégration avec `NotificationService` suivie en follow-up séparé.
             // Le `sent_count = 0` est intentionnellement honnête (rien n'a été envoyé).
-            return response()->json([
-                'success' => true,
-                'message' => 'Rappels acceptés (intégration NotificationService en cours).',
-                'data' => [
+            return $this->successResponse(
+                [
                     'seance_cours_id' => $seanceCoursId,
                     'channels'        => $channels,
                     'sent_count'      => 0,
                 ],
-            ]);
+                'Rappels acceptés (intégration NotificationService en cours).',
+            );
 
         } catch (\Exception $e) {
             Log::error('Erreur envoi rappel séance', [
@@ -138,6 +134,9 @@ final class LMSNotificationsPreferencesController extends AuthenticatedControlle
                 'trace' => $e->getTraceAsString()
             ]);
 
+            // NON migré : la clé `error` (singulier) n'est pas reproductible par
+            // `errorResponse` (qui n'expose qu'`errors` pluriel). Laisser intact
+            // pour préserver le JSON client (axe #1 « DRY-only »).
             return response()->json([
                 'success' => false,
                 'message' => 'Erreur lors de l\'envoi des rappels',

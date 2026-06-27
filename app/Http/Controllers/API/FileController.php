@@ -52,10 +52,7 @@ final class FileController extends AuthenticatedController
             $request->validated(),
         );
 
-        return response()->json([
-            'success' => true,
-            'data' => $files,
-        ]);
+        return $this->successResponse($files);
     }
 
     /**
@@ -65,10 +62,7 @@ final class FileController extends AuthenticatedController
     {
         $uploaded = $request->file('file');
         if (! is_object($uploaded)) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Un fichier est requis',
-            ], 422);
+            return $this->errorResponse('Un fichier est requis', 422);
         }
 
         $result = $this->uploadService->store(
@@ -78,17 +72,10 @@ final class FileController extends AuthenticatedController
         );
 
         if ($result['file'] === null) {
-            return response()->json([
-                'success' => false,
-                'message' => $result['error'] ?? 'Erreur lors du stockage du fichier',
-            ], 500);
+            return $this->errorResponse($result['error'] ?? 'Erreur lors du stockage du fichier', 500);
         }
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Fichier uploadé avec succès',
-            'data' => $result['file'],
-        ], 201);
+        return $this->successResponse($result['file'], 'Fichier uploadé avec succès', 201);
     }
 
     /**
@@ -99,23 +86,14 @@ final class FileController extends AuthenticatedController
         $file = $this->queryService->find($id);
 
         if ($file === null) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Fichier non trouvé',
-            ], 404);
+            return $this->errorResponse('Fichier non trouvé', 404);
         }
 
         if (! $this->canReadFile($file, $this->authenticatedUser($request))) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Accès refusé',
-            ], 403);
+            return $this->errorResponse('Accès refusé', 403);
         }
 
-        return response()->json([
-            'success' => true,
-            'data' => $file,
-        ]);
+        return $this->successResponse($file);
     }
 
     /**
@@ -126,26 +104,17 @@ final class FileController extends AuthenticatedController
         $file = File::find($id);
 
         if ($file === null) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Fichier non trouvé',
-            ], 404);
+            return $this->errorResponse('Fichier non trouvé', 404);
         }
 
         if (! $this->canReadFile($file, $this->authenticatedUser($request))) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Accès refusé',
-            ], 403);
+            return $this->errorResponse('Accès refusé', 403);
         }
 
         $stream = $this->mutationService->download($file);
 
         if ($stream === null) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Fichier physique introuvable',
-            ], 404);
+            return $this->errorResponse('Fichier physique introuvable', 404);
         }
 
         return $stream;
@@ -158,11 +127,7 @@ final class FileController extends AuthenticatedController
     {
         $updated = $this->mutationService->update($file, $request->validated());
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Fichier mis à jour',
-            'data' => $updated,
-        ]);
+        return $this->successResponse($updated, 'Fichier mis à jour');
     }
 
     /**
@@ -172,10 +137,7 @@ final class FileController extends AuthenticatedController
     {
         $this->mutationService->destroy($file);
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Fichier supprimé',
-        ]);
+        return $this->successResponse(null, 'Fichier supprimé');
     }
 
     /**
@@ -185,9 +147,6 @@ final class FileController extends AuthenticatedController
     {
         $stats = $this->queryService->stats($this->authenticatedUser($request));
 
-        return response()->json([
-            'success' => true,
-            'data' => $stats,
-        ]);
+        return $this->successResponse($stats);
     }
 }

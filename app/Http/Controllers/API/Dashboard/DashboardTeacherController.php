@@ -167,30 +167,27 @@ class DashboardTeacherController extends AuthenticatedController
             ->where('status', 'completed')
             ->avg('percentage') ?? 0;
 
-        return response()->json([
-            'success' => true,
-            'data' => [
-                'lessons' => [
-                    'total' => $totalLessons,
-                    'published' => $publishedLessons,
-                    'draft' => $draftLessons,
-                    'top_lessons' => $topLessons,
-                ],
-                'students' => [
-                    'active_last_7_days' => $activeStudentsCount,
-                ],
-                'quizzes' => [
-                    'total' => $totalQuizzes,
-                    'published' => $publishedQuizzes,
-                    'to_grade' => $quizzesToGradeCount,
-                    'to_grade_list' => $quizzesToGrade,
-                    'total_attempts' => $totalQuizAttempts,
-                    'average_score' => round($averageQuizScore, 1),
-                ],
-                'forum' => [
-                    'unresolved_topics' => $unresolvedTopicsCount,
-                    'unresolved_topics_list' => $unresolvedTopics,
-                ],
+        return $this->successResponse([
+            'lessons' => [
+                'total' => $totalLessons,
+                'published' => $publishedLessons,
+                'draft' => $draftLessons,
+                'top_lessons' => $topLessons,
+            ],
+            'students' => [
+                'active_last_7_days' => $activeStudentsCount,
+            ],
+            'quizzes' => [
+                'total' => $totalQuizzes,
+                'published' => $publishedQuizzes,
+                'to_grade' => $quizzesToGradeCount,
+                'to_grade_list' => $quizzesToGrade,
+                'total_attempts' => $totalQuizAttempts,
+                'average_score' => round($averageQuizScore, 1),
+            ],
+            'forum' => [
+                'unresolved_topics' => $unresolvedTopicsCount,
+                'unresolved_topics_list' => $unresolvedTopics,
             ],
         ]);
     }

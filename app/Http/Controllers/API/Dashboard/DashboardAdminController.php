@@ -57,32 +57,29 @@ class DashboardAdminController extends AuthenticatedController
             'new_forum_topics' => ForumTopic::where('created_at', '>=', now()->subDays(7))->count(),
         ];
 
-        return response()->json([
-            'success' => true,
-            'data' => [
-                'users' => [
-                    'total' => $totalUsers,
-                    'students' => $totalStudents,
-                    'teachers' => $totalTeachers,
-                ],
-                'lessons' => [
-                    'total' => $totalLessons,
-                    'published' => $publishedLessons,
-                ],
-                'quizzes' => [
-                    'total' => $totalQuizzes,
-                    'total_attempts' => $totalQuizAttempts,
-                ],
-                'forum' => [
-                    'total_topics' => $totalForumTopics,
-                    'total_posts' => $totalForumPosts,
-                ],
-                'notifications' => [
-                    'total' => $totalNotifications,
-                    'unread' => $unreadNotifications,
-                ],
-                'recent_activity' => $recentActivity,
+        return $this->successResponse([
+            'users' => [
+                'total' => $totalUsers,
+                'students' => $totalStudents,
+                'teachers' => $totalTeachers,
             ],
+            'lessons' => [
+                'total' => $totalLessons,
+                'published' => $publishedLessons,
+            ],
+            'quizzes' => [
+                'total' => $totalQuizzes,
+                'total_attempts' => $totalQuizAttempts,
+            ],
+            'forum' => [
+                'total_topics' => $totalForumTopics,
+                'total_posts' => $totalForumPosts,
+            ],
+            'notifications' => [
+                'total' => $totalNotifications,
+                'unread' => $unreadNotifications,
+            ],
+            'recent_activity' => $recentActivity,
         ]);
     }
 }

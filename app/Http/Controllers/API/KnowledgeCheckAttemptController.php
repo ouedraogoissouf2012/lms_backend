@@ -38,16 +38,10 @@ final class KnowledgeCheckAttemptController extends AuthenticatedController
         $payload = $this->service->startAttempt($id, $user);
 
         if ($payload === null) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Nombre maximum de tentatives atteint',
-            ], 400);
+            return $this->errorResponse('Nombre maximum de tentatives atteint', 400);
         }
 
-        return response()->json([
-            'success' => true,
-            'data' => $payload,
-        ]);
+        return $this->successResponse($payload);
     }
 
     /**
@@ -67,11 +61,7 @@ final class KnowledgeCheckAttemptController extends AuthenticatedController
         $message = $result['message'];
         unset($result['message']);
 
-        return response()->json([
-            'success' => true,
-            'message' => $message,
-            'data' => $result,
-        ]);
+        return $this->successResponse($result, $message);
     }
 
     /**
@@ -82,9 +72,6 @@ final class KnowledgeCheckAttemptController extends AuthenticatedController
     {
         $user = $this->authenticatedUser($request);
 
-        return response()->json([
-            'success' => true,
-            'data' => $this->service->getMyAttempts($id, $user),
-        ]);
+        return $this->successResponse($this->service->getMyAttempts($id, $user));
     }
 }

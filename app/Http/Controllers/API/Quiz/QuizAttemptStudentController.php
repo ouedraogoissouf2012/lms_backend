@@ -143,6 +143,10 @@ final class QuizAttemptStudentController extends AuthenticatedController
      */
     private function toJson(array $result): JsonResponse
     {
+        // Non migré vers le trait : `success` est DYNAMIQUE (porté par le
+        // contrat normalisé du service, donc true OU false) avec un status
+        // variable — aucune fabrique du trait ne couvre ce dispatcher en un
+        // appel. Conservé inline (axe #1 « DRY-only »).
         $payload = ['success' => $result['success']];
 
         if ($result['message'] !== null) {
@@ -162,9 +166,6 @@ final class QuizAttemptStudentController extends AuthenticatedController
 
     private function notFound(): JsonResponse
     {
-        return response()->json([
-            'success' => false,
-            'message' => 'Tentative non trouvée',
-        ], 404);
+        return $this->errorResponse('Tentative non trouvée', 404);
     }
 }

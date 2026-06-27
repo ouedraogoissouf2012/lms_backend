@@ -18,12 +18,9 @@ class ConfigurationController extends Controller
     {
         $data = $request->validated();
 
-        return response()->json([
-            'success' => true,
-            'data' => [
-                'key' => $data['key'] ?? null,
-                'category' => $data['category'] ?? null,
-            ],
+        return $this->successResponse([
+            'key' => $data['key'] ?? null,
+            'category' => $data['category'] ?? null,
         ]);
     }
 
@@ -35,15 +32,11 @@ class ConfigurationController extends Controller
     {
         $data = $request->validated();
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Configuration mise à jour avec succès',
-            'data' => [
-                'key' => $data['key'],
-                'value' => $data['value'],
-                'category' => $data['category'],
-            ],
-        ]);
+        return $this->successResponse([
+            'key' => $data['key'],
+            'value' => $data['value'],
+            'category' => $data['category'],
+        ], 'Configuration mise à jour avec succès');
     }
 
     /**
@@ -54,12 +47,11 @@ class ConfigurationController extends Controller
     {
         $data = $request->validated();
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Configuration supprimée',
-            'data' => [
-                'key' => $data['key'],
-            ],
-        ]);
+        // NB: `$data['key']` n'est pas validé (DeleteConfigurationRequest::rules()
+        // est vide) → accès clé absente → 500 (bug latent pré-existant, cf. test
+        // de caractérisation). Comportement PRÉSERVÉ tel quel (axe #1 iso-sortie).
+        return $this->successResponse([
+            'key' => $data['key'],
+        ], 'Configuration supprimée');
     }
 }

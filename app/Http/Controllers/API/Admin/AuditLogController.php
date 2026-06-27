@@ -41,9 +41,6 @@ final class AuditLogController extends Controller
 
         $perPage = $request->integer('per_page', 50);
 
-        return response()->json([
-            'success' => true,
-            'data' => $query->paginate($perPage),
-        ]);
+        return $this->successResponse($query->paginate($perPage));
     }
 }

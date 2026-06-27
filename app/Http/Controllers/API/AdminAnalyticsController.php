@@ -56,10 +56,7 @@ final class AdminAnalyticsController extends Controller
      */
     public function getActivityTrends(GetActivityTrendsRequest $request): JsonResponse
     {
-        return response()->json([
-            'success' => true,
-            'data' => $this->activityTrendsService->getTrends(30),
-        ]);
+        return $this->successResponse($this->activityTrendsService->getTrends(30));
     }
 
     /**
@@ -67,10 +64,7 @@ final class AdminAnalyticsController extends Controller
      */
     public function getSystemMetrics(GetSystemMetricsRequest $request): JsonResponse
     {
-        return response()->json([
-            'success' => true,
-            'data' => $this->systemMetricsService->getMetrics(),
-        ]);
+        return $this->successResponse($this->systemMetricsService->getMetrics());
     }
 
     /**
@@ -79,10 +73,7 @@ final class AdminAnalyticsController extends Controller
      */
     public function getPendingTasks(GetPendingTasksRequest $request): JsonResponse
     {
-        return response()->json([
-            'success' => true,
-            'data' => $this->pendingTasksService->getPendingTasks(),
-        ]);
+        return $this->successResponse($this->pendingTasksService->getPendingTasks());
     }
 
     /**
@@ -90,9 +81,6 @@ final class AdminAnalyticsController extends Controller
      */
     public function getRecentUsers(GetRecentUsersRequest $request): JsonResponse
     {
-        return response()->json([
-            'success' => true,
-            'data' => $this->pendingTasksService->getRecentUsers(10),
-        ]);
+        return $this->successResponse($this->pendingTasksService->getRecentUsers(10));
     }
 }

@@ -19,15 +19,11 @@ class IntegrationController extends Controller
     {
         $data = $request->validated();
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Service connecté avec succès',
-            'data' => [
-                'service' => $data['service'],
-                'status' => 'connected',
-                'api_key' => substr($data['api_key'], 0, 10) . '****',
-            ],
-        ], 201);
+        return $this->successResponse([
+            'service' => $data['service'],
+            'status' => 'connected',
+            'api_key' => substr($data['api_key'], 0, 10) . '****',
+        ], 'Service connecté avec succès', 201);
     }
 
     /**
@@ -38,14 +34,10 @@ class IntegrationController extends Controller
     {
         $data = $request->validated();
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Service autorisé avec succès',
-            'data' => [
-                'service' => $data['service'],
-                'status' => 'authorized',
-            ],
-        ]);
+        return $this->successResponse([
+            'service' => $data['service'],
+            'status' => 'authorized',
+        ], 'Service autorisé avec succès');
     }
 
     /**
@@ -56,14 +48,13 @@ class IntegrationController extends Controller
     {
         $data = $request->validated();
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Connexion valide',
-            'data' => [
-                'service' => $data['service'],
-                'status' => 'connected',
-            ],
-        ]);
+        // NB: `$data['service']` n'est pas validé (TestServiceConnectionRequest::rules()
+        // est vide) → accès clé absente → 500 (bug latent pré-existant, cf. test
+        // de caractérisation). Comportement PRÉSERVÉ tel quel (axe #1 iso-sortie).
+        return $this->successResponse([
+            'service' => $data['service'],
+            'status' => 'connected',
+        ], 'Connexion valide');
     }
 
     /**
@@ -74,12 +65,11 @@ class IntegrationController extends Controller
     {
         $data = $request->validated();
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Service déconnecté',
-            'data' => [
-                'service' => $data['service'],
-            ],
-        ]);
+        // NB: `$data['service']` n'est pas validé (DisconnectServiceRequest::rules()
+        // est vide) → accès clé absente → 500 (bug latent pré-existant, cf. test
+        // de caractérisation). Comportement PRÉSERVÉ tel quel (axe #1 iso-sortie).
+        return $this->successResponse([
+            'service' => $data['service'],
+        ], 'Service déconnecté');
     }
 }

@@ -56,10 +56,7 @@ final class EvaluationCrudController extends AuthenticatedController
 
         $evaluations = $this->listService->listForTeacher($user, $filters);
 
-        return response()->json([
-            'success' => true,
-            'data'    => $evaluations,
-        ]);
+        return $this->successResponse($evaluations);
     }
 
     public function show(int $id): JsonResponse
@@ -67,16 +64,10 @@ final class EvaluationCrudController extends AuthenticatedController
         $enriched = $this->listService->findOne($id);
 
         if ($enriched === null) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Évaluation non trouvée',
-            ], 404);
+            return $this->errorResponse('Évaluation non trouvée', 404);
         }
 
-        return response()->json([
-            'success' => true,
-            'data'    => $enriched,
-        ]);
+        return $this->successResponse($enriched);
     }
 
     public function store(StoreEvaluationRequest $request): JsonResponse
@@ -90,10 +81,10 @@ final class EvaluationCrudController extends AuthenticatedController
         // d'ownership qui échouerait plus tard.
         $user = $this->authenticatedUser($request);
         if ($user->klassci_enseignant_id === null) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Vous devez être un enseignant KLASSCI synchronisé pour créer une évaluation.',
-            ], 403);
+            return $this->errorResponse(
+                'Vous devez être un enseignant KLASSCI synchronisé pour créer une évaluation.',
+                403,
+            );
         }
 
         // Le service applique sa propre whitelist (FILLABLE_FROM_REQUEST) — on
@@ -102,6 +93,12 @@ final class EvaluationCrudController extends AuthenticatedController
         // `$request->only([...])`.
         $result = $this->creationService->create($request->all(), $user);
 
+        // Non migré vers successResponse()/errorResponse() : l'enveloppe est
+        // déjà construite PAR LE SERVICE (`$result['payload']` = {success, …}
+        // avec un statut dynamique 201/409/500). Le trait vit sur le controller,
+        // pas sur le service ; la re-router via le trait imposerait de dépaqueter
+        // puis brancher sur le contenu du résultat. Forwardé verbatim pour
+        // préserver le JSON exact (axe #1 « DRY-only »). Idem update/destroy/publish.
         return response()->json($result['payload'], $result['status']);
     }
 
@@ -112,6 +109,7 @@ final class EvaluationCrudController extends AuthenticatedController
 
         $result = $this->updateService->update($evaluation, $request->all(), $user);
 
+        // Enveloppe construite par le service (cf. store) — forwardée verbatim.
         return response()->json($result['payload'], $result['status']);
     }
 
@@ -122,6 +120,7 @@ final class EvaluationCrudController extends AuthenticatedController
 
         $result = $this->stateService->softDelete($evaluation, $user);
 
+        // Enveloppe construite par le service (cf. store) — forwardée verbatim.
         return response()->json($result['payload'], $result['status']);
     }
 
@@ -132,6 +131,7 @@ final class EvaluationCrudController extends AuthenticatedController
 
         $result = $this->stateService->publish($evaluation, $user);
 
+        // Enveloppe construite par le service (cf. store) — forwardée verbatim.
         return response()->json($result['payload'], $result['status']);
     }
 }

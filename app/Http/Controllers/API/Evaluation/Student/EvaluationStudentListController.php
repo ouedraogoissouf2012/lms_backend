@@ -31,32 +31,23 @@ final class EvaluationStudentListController extends AuthenticatedController
     {
         $user = $this->authenticatedUser($request);
         if (!$user->klassci_id) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Utilisateur sans ID KLASSCI synchronisé',
-            ], 401);
+            return $this->errorResponse('Utilisateur sans ID KLASSCI synchronisé', 401);
         }
 
         try {
             $data = $this->listService->getEnrichedEvaluationsForStudent($user);
             if ($data === null) {
-                return response()->json(['success' => false, 'message' => 'Classe non trouvée'], 404);
+                return $this->errorResponse('Classe non trouvée', 404);
             }
-            return response()->json(['success' => true, 'data' => $data]);
+            return $this->successResponse($data);
         } catch (RuntimeException $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Token KLASSCI non trouvé. Veuillez vous reconnecter.',
-            ], 401);
+            return $this->errorResponse('Token KLASSCI non trouvé. Veuillez vous reconnecter.', 401);
         } catch (\Exception $e) {
             Log::error('Erreur récupération évaluations étudiant', [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
             ]);
-            return response()->json([
-                'success' => false,
-                'message' => 'Erreur lors de la récupération des évaluations',
-            ], 500);
+            return $this->errorResponse('Erreur lors de la récupération des évaluations', 500);
         }
     }
 
@@ -65,19 +56,20 @@ final class EvaluationStudentListController extends AuthenticatedController
         try {
             $user = $this->authenticatedUser($request);
             if (!$user->klassci_id) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Utilisateur sans ID KlassCI synchronisé',
-                ], 401);
+                return $this->errorResponse('Utilisateur sans ID KlassCI synchronisé', 401);
             }
 
             $data = $this->gradesAggregator->getGradesAggregatedByMatiere($user);
-            return response()->json(['success' => true, 'data' => $data]);
+            return $this->successResponse($data);
         } catch (\Exception $e) {
             Log::error('Erreur récupération notes étudiant', [
                 'user_id' => $request->user()?->id,
                 'error' => $e->getMessage(),
             ]);
+            // Non migré vers errorResponse() : cette réponse expose une clé racine
+            // `error` (singulier, string) que le trait ne reproduit pas — il ne
+            // produit que `errors` (pluriel, tableau). La migrer changerait le
+            // contrat client → conservé tel quel (axe #1 « DRY-only »).
             return response()->json([
                 'success' => false,
                 'message' => 'Erreur lors de la récupération des notes',

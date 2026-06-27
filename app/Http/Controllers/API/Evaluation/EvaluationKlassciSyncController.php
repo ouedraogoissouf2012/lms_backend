@@ -39,10 +39,7 @@ class EvaluationKlassciSyncController extends AuthenticatedController
         $evaluation = Evaluation::with('submissions')->find($id);
 
         if (!$evaluation) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Évaluation non trouvée'
-            ], 404);
+            return $this->errorResponse('Évaluation non trouvée', 404);
         }
 
         try {
@@ -74,21 +71,18 @@ class EvaluationKlassciSyncController extends AuthenticatedController
                     'synced_at' => now()
                 ]);
 
-                return response()->json([
-                    'success' => true,
-                    'message' => 'Notes synchronisées vers KLASSCI',
-                    'data' => $result
-                ]);
+                return $this->successResponse($result, 'Notes synchronisées vers KLASSCI');
             }
 
-            return response()->json([
-                'success' => false,
-                'message' => 'Aucune évaluation KLASSCI liée'
-            ], 400);
+            return $this->errorResponse('Aucune évaluation KLASSCI liée', 400);
 
         } catch (\Exception $e) {
             \Log::error('Erreur synchronisation KLASSCI', ['error' => $e->getMessage()]);
 
+            // Non migré vers errorResponse() : cette réponse porte une clé racine
+            // `error` (singulier) hors contrat du trait ({success, message, errors?}).
+            // La migrer supprimerait `error` → changerait le JSON client (interdit,
+            // axe #1 « DRY-only »). Conservée inline.
             return response()->json([
                 'success' => false,
                 'message' => 'Erreur lors de la synchronisation',
@@ -109,6 +103,9 @@ class EvaluationKlassciSyncController extends AuthenticatedController
                 ->get();
 
             if ($submissions->isEmpty()) {
+                // Non migré vers successResponse() : clé racine `synced_count` hors
+                // contrat du trait ({success, message, data?, meta?}). La déplacer
+                // (sous `data`/`meta`) changerait le JSON client. Conservée inline.
                 return response()->json([
                     'success' => true,
                     'message' => 'Toutes les notes sont déjà synchronisées',
@@ -153,6 +150,9 @@ class EvaluationKlassciSyncController extends AuthenticatedController
                 'errors_count' => count($errors)
             ]);
 
+            // Non migré vers successResponse() : clés racine `synced_count` et
+            // `errors` (sur un succès) hors contrat du trait. Les déplacer
+            // changerait le JSON client (axe #1 « DRY-only »). Conservée inline.
             return response()->json([
                 'success' => true,
                 'message' => "Synchronisation terminée : {$syncedCount} note(s) synchronisée(s)",
@@ -165,6 +165,8 @@ class EvaluationKlassciSyncController extends AuthenticatedController
                 'error' => $e->getMessage()
             ]);
 
+            // Non migré : clé racine `error` (singulier) hors contrat du trait
+            // (cf. syncToKlassci). Conservée inline pour préserver le JSON client.
             return response()->json([
                 'success' => false,
                 'message' => 'Erreur lors de la synchronisation des notes',

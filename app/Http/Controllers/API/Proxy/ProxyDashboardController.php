@@ -110,15 +110,4 @@ final class ProxyDashboardController extends Controller
             return $this->proxyErrorResponse($e);
         }
     }
-
-    /**
-     * Réponse d'erreur standardisée.
-     */
-    private function errorResponse(string $message, int $status = 500): JsonResponse
-    {
-        return response()->json([
-            'success' => false,
-            'message' => $message,
-        ], $status);
-    }
 }

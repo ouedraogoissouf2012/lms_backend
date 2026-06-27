@@ -60,20 +60,20 @@ final class NotificationsController extends AuthenticatedController
 
         $notifications = $this->queryService->paginate($user, $perPage, $unreadOnly, $page);
 
-        return response()->json([
-            'success' => true,
-            'data' => $notifications->items(),
-            'meta' => [
-                'current_page' => $notifications->currentPage(),
-                'last_page' => $notifications->lastPage(),
-                'per_page' => $notifications->perPage(),
-                'total' => $notifications->total(),
-            ],
+        return $this->successResponse($notifications->items(), '', 200, [
+            'current_page' => $notifications->currentPage(),
+            'last_page' => $notifications->lastPage(),
+            'per_page' => $notifications->perPage(),
+            'total' => $notifications->total(),
         ]);
     }
 
     /**
      * GET /notifications/unread-count — Compteur pour badge UI.
+     *
+     * NON migré vers `successResponse` : la clé `count` est placée à la racine
+     * de l'enveloppe, forme que le contrat du trait (`data`/`meta`) ne peut pas
+     * reproduire sans changer le JSON vu par le client (axe #1 « DRY-only »).
      */
     public function unreadCount(Request $request): JsonResponse
     {
@@ -93,10 +93,7 @@ final class NotificationsController extends AuthenticatedController
         $user = $this->authenticatedUser($request);
         $limit = $request->integer('limit', 5);
 
-        return response()->json([
-            'success' => true,
-            'data' => $this->queryService->recent($user, $limit),
-        ]);
+        return $this->successResponse($this->queryService->recent($user, $limit));
     }
 
     /**
@@ -107,10 +104,7 @@ final class NotificationsController extends AuthenticatedController
         $user = $this->authenticatedUser($request);
         $this->mutationService->markAsRead($user, $id);
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Notification marquée comme lue',
-        ]);
+        return $this->successResponse(null, 'Notification marquée comme lue');
     }
 
     /**
@@ -121,10 +115,7 @@ final class NotificationsController extends AuthenticatedController
         $user = $this->authenticatedUser($request);
         $this->mutationService->markAllAsRead($user);
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Toutes les notifications ont été marquées comme lues',
-        ]);
+        return $this->successResponse(null, 'Toutes les notifications ont été marquées comme lues');
     }
 
     /**
@@ -135,10 +126,7 @@ final class NotificationsController extends AuthenticatedController
         $user = $this->authenticatedUser($request);
         $this->mutationService->delete($user, $id);
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Notification supprimée',
-        ]);
+        return $this->successResponse(null, 'Notification supprimée');
     }
 
     /**
@@ -149,10 +137,7 @@ final class NotificationsController extends AuthenticatedController
         $user = $this->authenticatedUser($request);
         $this->mutationService->deleteAllRead($user);
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Toutes les notifications lues ont été supprimées',
-        ]);
+        return $this->successResponse(null, 'Toutes les notifications lues ont été supprimées');
     }
 
     /**
@@ -170,10 +155,7 @@ final class NotificationsController extends AuthenticatedController
             'action_url' => $request->action_url,
         ]);
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Notification envoyée',
-        ]);
+        return $this->successResponse(null, 'Notification envoyée');
     }
 
     /**
@@ -184,9 +166,6 @@ final class NotificationsController extends AuthenticatedController
     {
         $caller = $this->authenticatedUser($request);
 
-        return response()->json([
-            'success' => true,
-            'data' => $this->queryService->stats($caller),
-        ]);
+        return $this->successResponse($this->queryService->stats($caller));
     }
 }

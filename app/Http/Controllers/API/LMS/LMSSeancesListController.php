@@ -53,6 +53,10 @@ final class LMSSeancesListController extends AuthenticatedController
 
             $payload = $this->seancesList->getUpcomingForUser($user, $days, $teacherId, $classeId);
 
+            // NON migré vers successResponse() : cette réponse expose une clé sœur
+            // `meta` à la racine. Le trait (DRY-only) OMET `meta` quand il est vide,
+            // alors que cette enveloppe doit TOUJOURS émettre la clé — la migration
+            // changerait la sortie sur le cas limite `meta = []`. Laissé inline.
             return response()->json([
                 'success' => true,
                 'data' => $payload['data'],
@@ -60,16 +64,16 @@ final class LMSSeancesListController extends AuthenticatedController
             ]);
 
         } catch (RuntimeException $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Token KLASSCI non trouvé'
-            ], 401);
+            // §1.2 — message fixé au site du catch, jamais dérivé de l'exception.
+            return $this->errorResponse('Token KLASSCI non trouvé', 401);
         } catch (\Exception $e) {
             Log::error('Erreur récupération séances à venir', [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
             ]);
 
+            // NON migré : enveloppe d'erreur portant une clé sœur `error` (singulier)
+            // que le trait ne reproduit pas (errorResponse n'a qu'un `errors` pluriel).
             return response()->json([
                 'success' => false,
                 'message' => 'Erreur lors de la récupération des séances',
@@ -88,22 +92,19 @@ final class LMSSeancesListController extends AuthenticatedController
             $user = $this->authenticatedUser($request);
             $seances = $this->seancesList->getMyTeachingForUser($user);
 
-            return response()->json([
-                'success' => true,
-                'data' => $seances,
-            ]);
+            return $this->successResponse($seances);
 
         } catch (RuntimeException $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Token KLASSCI non trouvé'
-            ], 401);
+            // §1.2 — message fixé au site du catch, jamais dérivé de l'exception.
+            return $this->errorResponse('Token KLASSCI non trouvé', 401);
         } catch (\Exception $e) {
             Log::error('Erreur récupération séances enseignant', [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
             ]);
 
+            // NON migré : enveloppe d'erreur portant une clé sœur `error` (singulier)
+            // que le trait ne reproduit pas (errorResponse n'a qu'un `errors` pluriel).
             return response()->json([
                 'success' => false,
                 'message' => 'Erreur lors de la récupération des séances',
@@ -124,37 +125,27 @@ final class LMSSeancesListController extends AuthenticatedController
 
             // Cas particulier : étudiant sans classe résoluble
             if (isset($result['classe_missing']) && $result['classe_missing'] === true) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Aucune classe trouvée pour cet étudiant'
-                ], 404);
+                return $this->errorResponse('Aucune classe trouvée pour cet étudiant', 404);
             }
 
             // Cas particulier : étudiant avec classe mais aucune matière (200 + message)
             if (isset($result['empty_matieres']) && $result['empty_matieres'] === true) {
-                return response()->json([
-                    'success' => true,
-                    'data' => [],
-                    'message' => 'Aucune matière trouvée pour cet étudiant'
-                ]);
+                return $this->successResponse([], 'Aucune matière trouvée pour cet étudiant');
             }
 
-            return response()->json([
-                'success' => true,
-                'data' => $result,
-            ]);
+            return $this->successResponse($result);
 
         } catch (RuntimeException $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Token KLASSCI non trouvé'
-            ], 401);
+            // §1.2 — message fixé au site du catch, jamais dérivé de l'exception.
+            return $this->errorResponse('Token KLASSCI non trouvé', 401);
         } catch (\Exception $e) {
             Log::error('Erreur récupération séances étudiant', [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
             ]);
 
+            // NON migré : enveloppe d'erreur portant une clé sœur `error` (singulier)
+            // que le trait ne reproduit pas (errorResponse n'a qu'un `errors` pluriel).
             return response()->json([
                 'success' => false,
                 'message' => 'Erreur lors de la récupération des séances',

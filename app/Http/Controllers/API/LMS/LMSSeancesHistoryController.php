@@ -52,6 +52,10 @@ final class LMSSeancesHistoryController extends AuthenticatedController
 
             $payload = $this->seancesHistory->getHistoryForUser($user, $filters);
 
+            // NON migré vers successResponse() : cette réponse expose une clé sœur
+            // `pagination` à la racine. Le trait (DRY-only) n'a aucun paramètre
+            // `pagination` ; son paramètre `meta` renommerait la clé en `meta` →
+            // sortie NON identique pour le client. Laissé inline.
             return response()->json([
                 'success' => true,
                 'data' => $payload['data'],
@@ -64,6 +68,8 @@ final class LMSSeancesHistoryController extends AuthenticatedController
                 'trace' => $e->getTraceAsString(),
             ]);
 
+            // NON migré : enveloppe d'erreur portant une clé sœur `error` (singulier)
+            // que le trait ne reproduit pas (errorResponse n'a qu'un `errors` pluriel).
             return response()->json([
                 'success' => false,
                 'message' => 'Erreur lors de la récupération de l\'historique des séances',

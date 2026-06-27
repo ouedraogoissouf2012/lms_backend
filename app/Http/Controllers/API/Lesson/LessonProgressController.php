@@ -37,10 +37,7 @@ class LessonProgressController extends AuthenticatedController
         $lesson = Lesson::find($id);
 
         if (!$lesson) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Cours non trouvé',
-            ], 404);
+            return $this->errorResponse('Cours non trouvé', 404);
         }
 
         $user = $this->authenticatedUser($request);
@@ -57,15 +54,15 @@ class LessonProgressController extends AuthenticatedController
                 ]);
             }
 
-            return response()->json([
-                'success' => true,
-                'data' => $progress,
-            ]);
+            return $this->successResponse($progress);
         }
 
         // Enseignant: progression de tous les étudiants
         $progresses = $lesson->progress()->with('user')->get();
 
+        // Non migré vers successResponse() : expose une clé racine `statistics`
+        // hors enveloppe que le trait ne reproduit pas (axe #1 « DRY-only »,
+        // cf. LessonCrudController::myCourses).
         return response()->json([
             'success' => true,
             'data' => $progresses,
@@ -87,10 +84,7 @@ class LessonProgressController extends AuthenticatedController
         $lesson = Lesson::find($id);
 
         if (!$lesson) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Cours non trouvé',
-            ], 404);
+            return $this->errorResponse('Cours non trouvé', 404);
         }
 
         $user = $this->authenticatedUser($request);
@@ -106,11 +100,7 @@ class LessonProgressController extends AuthenticatedController
             $request->time_spent_minutes
         );
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Progression mise à jour',
-            'data' => $progress->fresh(),
-        ]);
+        return $this->successResponse($progress->fresh(), 'Progression mise à jour');
     }
 
     /**
@@ -122,10 +112,7 @@ class LessonProgressController extends AuthenticatedController
         $lesson = Lesson::find($id);
 
         if (!$lesson) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Cours non trouvé',
-            ], 404);
+            return $this->errorResponse('Cours non trouvé', 404);
         }
 
         $user = $this->authenticatedUser($request);
@@ -136,11 +123,7 @@ class LessonProgressController extends AuthenticatedController
 
         $this->progressService->complete($progress);
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Cours marqué comme complété',
-            'data' => $progress->fresh(),
-        ]);
+        return $this->successResponse($progress->fresh(), 'Cours marqué comme complété');
     }
 
     /**
@@ -152,10 +135,7 @@ class LessonProgressController extends AuthenticatedController
         $lesson = Lesson::find($id);
 
         if (!$lesson) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Cours non trouvé',
-            ], 404);
+            return $this->errorResponse('Cours non trouvé', 404);
         }
 
         $user = $this->authenticatedUser($request);
@@ -166,10 +146,6 @@ class LessonProgressController extends AuthenticatedController
 
         $this->progressService->addRating($progress, $request->rating, $request->feedback);
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Note enregistrée',
-            'data' => $progress->fresh(),
-        ]);
+        return $this->successResponse($progress->fresh(), 'Note enregistrée');
     }
 }

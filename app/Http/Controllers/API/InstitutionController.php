@@ -35,12 +35,9 @@ final class InstitutionController extends Controller
     public function index(): JsonResponse
     {
         try {
-            return response()->json([
-                'success' => true,
-                'data' => [
-                    'institutions' => $this->queries->listAllWithStats(),
-                    'overview' => $this->queries->getGlobalOverview(),
-                ],
+            return $this->successResponse([
+                'institutions' => $this->queries->listAllWithStats(),
+                'overview' => $this->queries->getGlobalOverview(),
             ]);
         } catch (Throwable $e) {
             return $this->internalError('index', $e, 'Erreur lors de la récupération des institutions');
@@ -54,7 +51,7 @@ final class InstitutionController extends Controller
 
             return $result === null
                 ? $this->notFound()
-                : response()->json(['success' => true, 'data' => $result]);
+                : $this->successResponse($result);
         } catch (Throwable $e) {
             return $this->internalError('show', $e, 'Erreur lors de la récupération de l\'institution', $id);
         }
@@ -74,11 +71,7 @@ final class InstitutionController extends Controller
                 'settings' => 'nullable|array',
             ]));
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Institution créée avec succès',
-                'data' => $institution,
-            ], 201);
+            return $this->successResponse($institution, 'Institution créée avec succès', 201);
         } catch (ValidationException $e) {
             return $this->validationError($e);
         } catch (Throwable $e) {
@@ -100,11 +93,7 @@ final class InstitutionController extends Controller
                 'settings' => 'nullable|array',
             ]));
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Institution mise à jour avec succès',
-                'data' => $institution,
-            ]);
+            return $this->successResponse($institution, 'Institution mise à jour avec succès');
         } catch (ModelNotFoundException) {
             return $this->notFound();
         } catch (ValidationException $e) {
@@ -119,11 +108,10 @@ final class InstitutionController extends Controller
         try {
             $institution = $this->crud->toggleActive($id);
 
-            return response()->json([
-                'success' => true,
-                'message' => $institution->is_active ? 'Institution activée' : 'Institution désactivée',
-                'data' => $institution,
-            ]);
+            return $this->successResponse(
+                $institution,
+                $institution->is_active ? 'Institution activée' : 'Institution désactivée',
+            );
         } catch (ModelNotFoundException) {
             return $this->notFound();
         } catch (BusinessException $e) {
@@ -138,7 +126,7 @@ final class InstitutionController extends Controller
         try {
             $this->crud->softDelete($id);
 
-            return response()->json(['success' => true, 'message' => 'Institution supprimée avec succès']);
+            return $this->successResponse(null, 'Institution supprimée avec succès');
         } catch (ModelNotFoundException) {
             return $this->notFound();
         } catch (Throwable $e) {
@@ -151,12 +139,18 @@ final class InstitutionController extends Controller
         try {
             $result = $this->connectionTester->test($id);
 
+            // Non migré : payload BRUT du service (clés racine variables selon le
+            // résultat du test KLASSCI), sans enveloppe contrôlée — RACINE laissée
+            // inline (axe #1, règle MIXTE).
             return response()->json($result['payload'], $result['status']);
         } catch (ModelNotFoundException) {
             return $this->notFound();
         } catch (BusinessException $e) {
             return $this->businessError($e->getMessage());
         } catch (ConnectionException) {
+            // Non migré vers errorResponse() : porte une clé `data` sur une réponse
+            // d'erreur, que le trait ne reproduit pas (il n'émet que `errors`).
+            // Conservé inline (axe #1 « DRY-only »).
             return response()->json([
                 'success' => false,
                 'message' => 'Impossible de se connecter au serveur KLASSCI',
@@ -169,21 +163,17 @@ final class InstitutionController extends Controller
 
     private function notFound(): JsonResponse
     {
-        return response()->json(['success' => false, 'message' => 'Institution non trouvée'], 404);
+        return $this->errorResponse('Institution non trouvée', 404);
     }
 
     private function businessError(string $message): JsonResponse
     {
-        return response()->json(['success' => false, 'message' => $message], 422);
+        return $this->errorResponse($message, 422);
     }
 
     private function validationError(ValidationException $e): JsonResponse
     {
-        return response()->json([
-            'success' => false,
-            'message' => 'Erreur de validation',
-            'errors' => $e->errors(),
-        ], 422);
+        return $this->errorResponse('Erreur de validation', 422, $e->errors());
     }
 
     private function internalError(string $method, Throwable $e, string $message, ?int $id = null): JsonResponse
@@ -194,6 +184,6 @@ final class InstitutionController extends Controller
         }
         $this->logger->error('InstitutionController@' . $method, $context);
 
-        return response()->json(['success' => false, 'message' => $message], 500);
+        return $this->errorResponse($message, 500);
     }
 }

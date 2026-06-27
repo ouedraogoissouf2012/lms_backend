@@ -27,10 +27,7 @@ class TeacherStatsController extends Controller
             $user = $request->user();
 
             if (!$user || !($user->isTeacher() || $user->isCoordinator() || $user->isAdmin())) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Accès réservé aux enseignants'
-                ], 403);
+                return $this->errorResponse('Accès réservé aux enseignants', 403);
             }
 
             // Récupérer le klassci_id de l'utilisateur
@@ -93,14 +90,11 @@ class TeacherStatsController extends Controller
             $matieresCount = count($matieresSet);
             $classesCount = count($classesSet);
 
-            return response()->json([
-                'success' => true,
-                'data' => [
-                    'matieres' => $matieresCount,
-                    'classes' => $classesCount,
-                    'evaluations' => $evaluationsCount,
-                    'lessons' => $lessonsCount
-                ]
+            return $this->successResponse([
+                'matieres' => $matieresCount,
+                'classes' => $classesCount,
+                'evaluations' => $evaluationsCount,
+                'lessons' => $lessonsCount,
             ]);
 
         } catch (\Exception $e) {
@@ -109,6 +103,9 @@ class TeacherStatsController extends Controller
                 'trace' => $e->getTraceAsString()
             ]);
 
+            // Non migré vers errorResponse() : expose une clé racine `error`
+            // (chaîne) que le trait ne reproduit pas — il n'émet que `errors`
+            // (tableau structuré). Conservé inline (axe #1 « DRY-only »).
             return response()->json([
                 'success' => false,
                 'message' => 'Erreur lors de la récupération des statistiques',

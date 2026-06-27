@@ -37,24 +37,22 @@ final class EvaluationStudentAttemptController extends AuthenticatedController
         $result = $this->attemptState->startAttempt($id, $user);
 
         return match ($result['status']) {
-            'not_found' => response()->json(['success' => false, 'message' => 'Évaluation non disponible'], 404),
-            'no_questions' => response()->json([
-                'success' => false,
-                'message' => 'Cette évaluation n\'a pas encore de questions.',
-            ], 422),
-            'no_token' => response()->json([
-                'success' => false,
-                'message' => 'Token KLASSCI non trouvé. Veuillez vous reconnecter.',
-            ], 401),
+            'not_found' => $this->errorResponse('Évaluation non disponible', 404),
+            'no_questions' => $this->errorResponse('Cette évaluation n\'a pas encore de questions.', 422),
+            'no_token' => $this->errorResponse('Token KLASSCI non trouvé. Veuillez vous reconnecter.', 401),
+            // Non migré vers errorResponse() : cette réponse expose une clé racine
+            // `window` hors enveloppe que le trait ne reproduit pas. La déplacer
+            // (sous `errors`) changerait le contrat client → conservé tel quel
+            // (axe #1 « DRY-only », préservation de la sortie).
             'window_closed' => response()->json([
                 'success' => false,
                 'message' => $result['message'],
                 'window' => $result['window'] ?? null,
             ], 403),
-            'max_attempts' => response()->json([
-                'success' => false,
-                'message' => $result['message'],
-            ], 403),
+            'max_attempts' => $this->errorResponse($result['message'], 403),
+            // Non migré vers successResponse() : cette réponse expose des clés
+            // racine `window` + `is_practice` hors enveloppe que le trait ne
+            // reproduit pas → conservé tel quel (axe #1 « DRY-only »).
             'ok' => response()->json([
                 'success' => true,
                 'message' => ($result['resumed'] ?? false)
@@ -64,7 +62,7 @@ final class EvaluationStudentAttemptController extends AuthenticatedController
                 'window' => $result['window'] ?? null,
                 'is_practice' => $result['is_practice'] ?? false,
             ], ($result['resumed'] ?? false) ? 200 : 200),
-            default => response()->json(['success' => false, 'message' => 'Erreur inconnue'], 500),
+            default => $this->errorResponse('Erreur inconnue', 500),
         };
     }
 
@@ -92,18 +90,14 @@ final class EvaluationStudentAttemptController extends AuthenticatedController
             $submission->answers = $request->validated('answers');
             $this->gradingService->submit($submission);
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Évaluation soumise avec succès',
-                'data' => [
-                    'submission' => $submission,
-                    'score' => $submission->score,
-                    'note_sur_20' => $submission->note_sur_20,
-                ],
-            ], 201);
+            return $this->successResponse([
+                'submission' => $submission,
+                'score' => $submission->score,
+                'note_sur_20' => $submission->note_sur_20,
+            ], 'Évaluation soumise avec succès', 201);
         } catch (\Exception $e) {
             Log::error('Erreur soumission évaluation', ['error' => $e->getMessage()]);
-            return response()->json(['success' => false, 'message' => 'Erreur lors de la soumission'], 500);
+            return $this->errorResponse('Erreur lors de la soumission', 500);
         }
     }
 
@@ -112,23 +106,20 @@ final class EvaluationStudentAttemptController extends AuthenticatedController
         try {
             $user = $this->authenticatedUser($request);
             $data = $this->attemptState->getTimeStatus($id, $user);
-            return response()->json(['success' => true, 'data' => $data]);
+            return $this->successResponse($data);
         } catch (RuntimeException $e) {
             // §1.2 — message fixé au site du catch, pas dérivé de getMessage()
             $isMissingEval = $e->getMessage() === 'Évaluation non trouvée';
-            return response()->json([
-                'success' => false,
-                'message' => $isMissingEval ? 'Évaluation non trouvée' : 'Token KLASSCI non trouvé',
-            ], $isMissingEval ? 404 : 401);
+            return $this->errorResponse(
+                $isMissingEval ? 'Évaluation non trouvée' : 'Token KLASSCI non trouvé',
+                $isMissingEval ? 404 : 401,
+            );
         } catch (\Exception $e) {
             Log::error('Erreur récupération état temporel', [
                 'evaluation_id' => $id,
                 'error' => $e->getMessage(),
             ]);
-            return response()->json([
-                'success' => false,
-                'message' => 'Impossible de récupérer l\'état temporel',
-            ], 500);
+            return $this->errorResponse('Impossible de récupérer l\'état temporel', 500);
         }
     }
 }

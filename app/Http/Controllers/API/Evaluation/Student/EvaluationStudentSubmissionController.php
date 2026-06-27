@@ -31,18 +31,12 @@ final class EvaluationStudentSubmissionController extends AuthenticatedControlle
         try {
             $user = $this->authenticatedUser($request);
             if (!$user->klassci_id) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Utilisateur sans ID KLASSCI synchronisé',
-                ], 401);
+                return $this->errorResponse('Utilisateur sans ID KLASSCI synchronisé', 401);
             }
 
             $evaluation = Evaluation::find($id);
             if (!$evaluation) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Évaluation non trouvée',
-                ], 404);
+                return $this->errorResponse('Évaluation non trouvée', 404);
             }
 
             $submission = EvaluationSubmission::where('evaluation_id', $id)
@@ -51,10 +45,7 @@ final class EvaluationStudentSubmissionController extends AuthenticatedControlle
                 ->first();
 
             if (!$submission) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Aucune soumission trouvée pour cette évaluation',
-                ], 404);
+                return $this->errorResponse('Aucune soumission trouvée pour cette évaluation', 404);
             }
 
             $submittedAt = $submission->submitted_at ? Carbon::parse($submission->submitted_at) : null;
@@ -71,29 +62,26 @@ final class EvaluationStudentSubmissionController extends AuthenticatedControlle
                 return $q;
             });
 
-            return response()->json([
-                'success' => true,
-                'data' => [
-                    'id' => $submission->id,
-                    'evaluation_id' => $submission->evaluation_id,
-                    'attempt' => $submission->attempt,
-                    'status' => $submission->status,
-                    'started_at' => $submission->started_at,
-                    'submitted_at' => $submission->submitted_at,
-                    'score' => $submission->score,
-                    'note_sur_20' => $submission->note_sur_20,
-                    'feedback' => $submission->feedback,
-                    'questions' => $questionsData,
-                    'answers' => $submission->answers ?? [],
-                    'correction_available' => $correctionAvailable,
-                    'correction_available_at' => $correctionAvailableAt,
-                    'correction_delay_days' => self::CORRECTION_DELAY_DAYS,
-                    'evaluation' => [
-                        'id' => $evaluation->id,
-                        'titre' => $evaluation->titre,
-                        'bareme' => $evaluation->bareme,
-                        'coefficient' => $evaluation->coefficient,
-                    ],
+            return $this->successResponse([
+                'id' => $submission->id,
+                'evaluation_id' => $submission->evaluation_id,
+                'attempt' => $submission->attempt,
+                'status' => $submission->status,
+                'started_at' => $submission->started_at,
+                'submitted_at' => $submission->submitted_at,
+                'score' => $submission->score,
+                'note_sur_20' => $submission->note_sur_20,
+                'feedback' => $submission->feedback,
+                'questions' => $questionsData,
+                'answers' => $submission->answers ?? [],
+                'correction_available' => $correctionAvailable,
+                'correction_available_at' => $correctionAvailableAt,
+                'correction_delay_days' => self::CORRECTION_DELAY_DAYS,
+                'evaluation' => [
+                    'id' => $evaluation->id,
+                    'titre' => $evaluation->titre,
+                    'bareme' => $evaluation->bareme,
+                    'coefficient' => $evaluation->coefficient,
                 ],
             ]);
         } catch (\Exception $e) {
@@ -101,10 +89,7 @@ final class EvaluationStudentSubmissionController extends AuthenticatedControlle
                 'evaluation_id' => $id,
                 'error' => $e->getMessage(),
             ]);
-            return response()->json([
-                'success' => false,
-                'message' => 'Erreur lors de la récupération de la soumission',
-            ], 500);
+            return $this->errorResponse('Erreur lors de la récupération de la soumission', 500);
         }
     }
 }

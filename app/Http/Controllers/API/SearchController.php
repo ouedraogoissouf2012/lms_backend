@@ -60,6 +60,10 @@ final class SearchController extends AuthenticatedController
 
         $payload = $this->globalSearch->search($query, $user, $limit);
 
+        // Non migré vers successResponse() : expose des clés racine hors enveloppe
+        // (`query`, `results`, `total`, `categories`) que le trait ne reproduit pas.
+        // Les déplacer changerait le contrat client → conservé tel quel (axe #1
+        // « DRY-only », cf. LessonCrudController::myCourses).
         return response()->json([
             'success' => true,
             'query' => $query,
@@ -82,6 +86,7 @@ final class SearchController extends AuthenticatedController
         $query = $request->input('query');
         $user = $this->authenticatedUser($request);
 
+        // Non migré : clé racine `suggestions` hors enveloppe (cf. globalSearch).
         return response()->json([
             'success' => true,
             'suggestions' => $this->suggestions->getSuggestions($query, $user),
@@ -95,6 +100,7 @@ final class SearchController extends AuthenticatedController
     {
         $user = $this->authenticatedUser($request);
 
+        // Non migré : clé racine `history` hors enveloppe (cf. globalSearch).
         return response()->json([
             'success' => true,
             'history' => $this->history->getHistory($user),
@@ -116,9 +122,6 @@ final class SearchController extends AuthenticatedController
 
         $this->history->save($user, $query);
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Recherche sauvegardée',
-        ]);
+        return $this->successResponse(null, 'Recherche sauvegardée');
     }
 }

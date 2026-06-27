@@ -88,6 +88,11 @@ final class ReportController extends AuthenticatedController
         /** @var array<string, mixed> $jsonPayload */
         $jsonPayload = is_array($payload) ? $payload : ['success' => false];
 
+        // Non migré vers successResponse()/errorResponse() : `$jsonPayload` est le
+        // payload BRUT du service (clés racine décidées par ReportGenerationService),
+        // et le repli `['success' => false]` n'a pas de `message`. Aucune enveloppe
+        // `{...success...}` standardisable ici — RACINE laissée inline (axe #1,
+        // règle MIXTE).
         return response()->json($jsonPayload, $result['status']);
     }
 }

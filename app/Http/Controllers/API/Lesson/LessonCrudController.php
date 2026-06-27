@@ -45,10 +45,7 @@ final class LessonCrudController extends AuthenticatedController
         $user = $this->authenticatedUser($request);
         $lessons = $this->listService->list($request, $user);
 
-        return response()->json([
-            'success' => true,
-            'data' => $lessons,
-        ]);
+        return $this->successResponse($lessons);
     }
 
     /**
@@ -61,6 +58,10 @@ final class LessonCrudController extends AuthenticatedController
         $user = $this->authenticatedUser($request);
         $result = $this->listService->myCourses($request, $user);
 
+        // Non migré vers successResponse() : cette réponse expose des clés
+        // racine hors enveloppe (`filters`, `total`) que le trait ne reproduit
+        // pas. Les y déplacer (sous `meta`) changerait le contrat client →
+        // conservé tel quel (axe #1 « DRY-only », préservation de la sortie).
         return response()->json([
             'success' => true,
             'data' => $result['courses'],
@@ -79,16 +80,10 @@ final class LessonCrudController extends AuthenticatedController
         $result = $this->listService->show($user, $id);
 
         if (isset($result['error'])) {
-            return response()->json([
-                'success' => false,
-                'message' => $result['error'],
-            ], $result['status']);
+            return $this->errorResponse($result['error'], (int) $result['status']);
         }
 
-        return response()->json([
-            'success' => true,
-            'data' => $result['lesson'],
-        ]);
+        return $this->successResponse($result['lesson']);
     }
 
     /**
@@ -100,11 +95,7 @@ final class LessonCrudController extends AuthenticatedController
         $user = $this->authenticatedUser($request);
         $lesson = $this->operationsService->create($request->validated(), $user);
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Cours créé avec succès',
-            'data' => $lesson,
-        ], 201);
+        return $this->successResponse($lesson, 'Cours créé avec succès', 201);
     }
 
     /**
@@ -116,11 +107,7 @@ final class LessonCrudController extends AuthenticatedController
         $lesson = Lesson::findOrFail($id);
         $lesson = $this->operationsService->update($lesson, $request->validated());
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Cours mis à jour avec succès',
-            'data' => $lesson,
-        ]);
+        return $this->successResponse($lesson, 'Cours mis à jour avec succès');
     }
 
     /**
@@ -132,10 +119,7 @@ final class LessonCrudController extends AuthenticatedController
         $lesson = Lesson::findOrFail($id);
         $this->operationsService->delete($lesson);
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Cours supprimé avec succès',
-        ]);
+        return $this->successResponse(null, 'Cours supprimé avec succès');
     }
 
     /**
@@ -147,11 +131,7 @@ final class LessonCrudController extends AuthenticatedController
         $lesson = Lesson::findOrFail($id);
         $lesson = $this->operationsService->publish($lesson);
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Cours publié avec succès',
-            'data' => $lesson,
-        ]);
+        return $this->successResponse($lesson, 'Cours publié avec succès');
     }
 
     /**
@@ -163,10 +143,6 @@ final class LessonCrudController extends AuthenticatedController
         $lesson = Lesson::findOrFail($id);
         $lesson = $this->operationsService->unpublish($lesson);
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Cours remis en brouillon',
-            'data' => $lesson,
-        ]);
+        return $this->successResponse($lesson, 'Cours remis en brouillon');
     }
 }

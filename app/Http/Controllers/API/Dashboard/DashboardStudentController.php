@@ -51,9 +51,6 @@ final class DashboardStudentController extends AuthenticatedController
     {
         $user = $this->authenticatedUser($request);
 
-        return response()->json([
-            'success' => true,
-            'data' => $this->service->buildDashboard($user),
-        ]);
+        return $this->successResponse($this->service->buildDashboard($user));
     }
 }

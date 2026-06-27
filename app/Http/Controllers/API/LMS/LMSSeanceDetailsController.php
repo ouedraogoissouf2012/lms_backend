@@ -46,25 +46,16 @@ final class LMSSeanceDetailsController extends AuthenticatedController
             $data = $this->seanceDetailQuery->getSeanceDetailsArray($seanceId, $user);
 
             if ($data === null) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Séance non trouvée'
-                ], 404);
+                return $this->errorResponse('Séance non trouvée', 404);
             }
 
-            return response()->json([
-                'success' => true,
-                'data' => $data
-            ]);
+            return $this->successResponse($data);
 
         } catch (RuntimeException $e) {
             // Thrown by SeanceDetailQueryService when user has no klassci_token.
             // §1.2 — message fixé au site du catch, pas dérivé de l'exception
             // (le thrower peut changer son message sans que le client soit reformaté).
-            return response()->json([
-                'success' => false,
-                'message' => 'Token KLASSCI non trouvé. Veuillez vous reconnecter.',
-            ], 401);
+            return $this->errorResponse('Token KLASSCI non trouvé. Veuillez vous reconnecter.', 401);
         } catch (\Exception $e) {
             Log::error('Erreur récupération détails séance', [
                 'seance_id' => $seanceId,
@@ -72,6 +63,8 @@ final class LMSSeanceDetailsController extends AuthenticatedController
                 'trace' => $e->getTraceAsString()
             ]);
 
+            // NON migré : enveloppe d'erreur portant une clé sœur `error` (singulier)
+            // que le trait ne reproduit pas (errorResponse n'a qu'un `errors` pluriel).
             return response()->json([
                 'success' => false,
                 'message' => 'Erreur lors de la récupération des détails de la séance',
@@ -90,22 +83,13 @@ final class LMSSeanceDetailsController extends AuthenticatedController
             $data = $this->seanceDetailQuery->getSeanceParticipantsArray($seanceId, $user);
 
             if ($data === null) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Séance non trouvée'
-                ], 404);
+                return $this->errorResponse('Séance non trouvée', 404);
             }
 
-            return response()->json([
-                'success' => true,
-                'data' => $data
-            ]);
+            return $this->successResponse($data);
 
         } catch (RuntimeException $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Token KLASSCI non trouvé. Veuillez vous reconnecter.',
-            ], 401);
+            return $this->errorResponse('Token KLASSCI non trouvé. Veuillez vous reconnecter.', 401);
         } catch (\Exception $e) {
             Log::error('Erreur récupération participants séance', [
                 'seance_id' => $seanceId,
@@ -113,6 +97,8 @@ final class LMSSeanceDetailsController extends AuthenticatedController
                 'trace' => $e->getTraceAsString()
             ]);
 
+            // NON migré : enveloppe d'erreur portant une clé sœur `error` (singulier)
+            // que le trait ne reproduit pas (errorResponse n'a qu'un `errors` pluriel).
             return response()->json([
                 'success' => false,
                 'message' => 'Erreur lors de la récupération des participants',

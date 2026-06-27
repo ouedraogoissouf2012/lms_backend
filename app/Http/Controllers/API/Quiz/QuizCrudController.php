@@ -46,10 +46,7 @@ final class QuizCrudController extends AuthenticatedController
         $user      = $this->authenticatedUser($request);
         $paginator = $this->crud->list($user, $request->all());
 
-        return response()->json([
-            'success' => true,
-            'data'    => $paginator,
-        ]);
+        return $this->successResponse($paginator);
     }
 
     /**
@@ -62,11 +59,7 @@ final class QuizCrudController extends AuthenticatedController
             $this->authenticatedUser($request),
         );
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Quiz créé avec succès',
-            'data'    => $quiz,
-        ], 201);
+        return $this->successResponse($quiz, 'Quiz créé avec succès', 201);
     }
 
     /**
@@ -76,6 +69,11 @@ final class QuizCrudController extends AuthenticatedController
     {
         $result = $this->crud->show($quiz, $this->authenticatedUser($request));
 
+        // Non migré vers successResponse()/errorResponse() : `success` est
+        // DYNAMIQUE (porté par le contrat du service, donc potentiellement
+        // `false` avec un status variable 200/403/404). Aucune fabrique du
+        // trait ne couvre ce cas en un appel — conservé inline (axe #1
+        // « DRY-only », cf. LessonCrudController::myCourses).
         $payload = ['success' => $result['success']];
         if ($result['message'] !== null) {
             $payload['message'] = $result['message'];
@@ -94,11 +92,7 @@ final class QuizCrudController extends AuthenticatedController
     {
         $fresh = $this->crud->update($quiz, $request->validated());
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Quiz mis à jour',
-            'data'    => $fresh,
-        ]);
+        return $this->successResponse($fresh, 'Quiz mis à jour');
     }
 
     /**
@@ -108,10 +102,7 @@ final class QuizCrudController extends AuthenticatedController
     {
         $this->crud->delete($quiz);
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Quiz supprimé',
-        ]);
+        return $this->successResponse(null, 'Quiz supprimé');
     }
 
     /**
@@ -121,6 +112,8 @@ final class QuizCrudController extends AuthenticatedController
     {
         $result = $this->crud->publish($quiz);
 
+        // Non migré : `success` DYNAMIQUE + status variable (200 publié / 422
+        // sans questions). Inline préservé (axe #1 « DRY-only »), cf. show().
         $payload = [
             'success' => $result['success'],
             'message' => $result['message'],

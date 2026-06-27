@@ -45,10 +45,7 @@ final class QuizAttemptTeacherController extends AuthenticatedController
 
         $attempts = $this->state->getAttemptsForQuiz($quiz, $filters);
 
-        return response()->json([
-            'success' => true,
-            'data'    => $attempts,
-        ]);
+        return $this->successResponse($attempts);
     }
 
     /**
@@ -58,10 +55,7 @@ final class QuizAttemptTeacherController extends AuthenticatedController
     {
         $attempt = QuizAttempt::with('quiz')->find($id);
         if ($attempt === null) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Tentative non trouvée',
-            ], 404);
+            return $this->errorResponse('Tentative non trouvée', 404);
         }
 
         // FormRequest GradeAttemptRequest valide déjà points_earned (numeric,
@@ -77,6 +71,8 @@ final class QuizAttemptTeacherController extends AuthenticatedController
             is_string($feedback) ? $feedback : null,
         );
 
+        // Non migré : `success` DYNAMIQUE (contrat du service) + status
+        // variable. Inline préservé (axe #1 « DRY-only »).
         return response()->json([
             'success' => $result['success'],
             'message' => $result['message'],

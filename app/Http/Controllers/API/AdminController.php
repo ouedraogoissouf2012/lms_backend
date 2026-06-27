@@ -30,11 +30,7 @@ class AdminController extends Controller
         $user = User::create($data);
         $user->load('institution');
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Utilisateur créé avec succès',
-            'data' => $user,
-        ], 201);
+        return $this->successResponse($user, 'Utilisateur créé avec succès', 201);
     }
 
     /**
@@ -52,11 +48,7 @@ class AdminController extends Controller
         $user->update($data);
         $user->load('institution');
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Utilisateur mis à jour',
-            'data' => $user,
-        ]);
+        return $this->successResponse($user, 'Utilisateur mis à jour');
     }
 
     /**
@@ -67,9 +59,6 @@ class AdminController extends Controller
     {
         $user->delete();
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Utilisateur supprimé',
-        ]);
+        return $this->successResponse(null, 'Utilisateur supprimé');
     }
 }

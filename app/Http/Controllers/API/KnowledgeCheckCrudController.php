@@ -7,6 +7,7 @@ namespace App\Http\Controllers\API;
 use App\Http\Controllers\AuthenticatedController;
 use App\Http\Requests\StoreKnowledgeCheckRequest;
 use App\Http\Requests\UpdateKnowledgeCheckRequest;
+use App\Http\Resources\KnowledgeCheckResource;
 use App\Services\KnowledgeCheck\KnowledgeCheckCrudService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -34,7 +35,8 @@ final class KnowledgeCheckCrudController extends AuthenticatedController
         $userId = $this->authenticatedUser($request)->id;
         $quizzes = $this->service->listForChapter((int) $chapterId, $userId);
 
-        return $this->successResponse($quizzes);
+        // Resource : masque les réponses correctes pour les non-staff (sécurité).
+        return $this->successResponse(KnowledgeCheckResource::collection($quizzes)->resolve($request));
     }
 
     /** POST /api/knowledge-checks — créer un quiz (admin / enseignant propriétaire). */
@@ -59,7 +61,7 @@ final class KnowledgeCheckCrudController extends AuthenticatedController
             return $this->errorResponse('Aucun quiz actif pour ce chapitre', 404);
         }
 
-        return $this->successResponse($quiz);
+        return $this->successResponse((new KnowledgeCheckResource($quiz))->resolve($request));
     }
 
     /** GET /api/knowledge-checks/{id} — détail d'un quiz. */
@@ -68,7 +70,7 @@ final class KnowledgeCheckCrudController extends AuthenticatedController
         $userId = $this->authenticatedUser($request)->id;
         $quiz = $this->service->findById($id, $userId);
 
-        return $this->successResponse($quiz);
+        return $this->successResponse((new KnowledgeCheckResource($quiz))->resolve($request));
     }
 
     /** PUT /api/knowledge-checks/{id} — update un quiz (admin / enseignant propriétaire). */

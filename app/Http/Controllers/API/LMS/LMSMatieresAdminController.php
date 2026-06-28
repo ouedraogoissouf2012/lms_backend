@@ -43,7 +43,7 @@ final class LMSMatieresAdminController extends AuthenticatedController
             // Defense in depth: la route middleware `role:admin,coordinateur` filtre
             // déjà, mais on garde le check controller comme garde supplémentaire.
             // Note: `superAdmin` accepté car role intra-tenant admin (cf. EnsureRole.php).
-            if (!($user->isCoordinator() || $user->isAdmin())) {
+            if (! $user->isManager()) {
                 return $this->errorResponse('Accès non autorisé. Réservé aux administrateurs et coordinateurs.', 403);
             }
 

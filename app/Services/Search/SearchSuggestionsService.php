@@ -41,7 +41,7 @@ final class SearchSuggestionsService
         $limit = self::DEFAULT_LIMIT;
         $suggestions = [];
 
-        if ($user->isCoordinator() || $user->isAdmin()) {
+        if ($user->isManager()) {
             /** @var array<int, string> $userSuggestions */
             $userSuggestions = User::where('name', 'LIKE', "%{$query}%")
                 ->limit($limit)

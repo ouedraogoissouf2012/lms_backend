@@ -59,13 +59,13 @@ final class ParticipantValidationService
                 return $this->fail(403, 'visio_not_started', 'La visioconférence n\'a pas encore démarré');
             }
 
-            if ($userToValidate->isTeacher() || $userToValidate->isCoordinator() || $userToValidate->isAdmin()) {
+            if ($userToValidate->isStaff()) {
                 return [
                     'status' => 200,
                     'payload' => [
                         'success' => true,
                         'authorized' => true,
-                        'role' => ($userToValidate->isCoordinator() || $userToValidate->isAdmin()) ? 'moderator' : 'teacher',
+                        'role' => $userToValidate->isManager() ? 'moderator' : 'teacher',
                         'message' => 'Enseignant ou coordinateur autorisé',
                     ],
                 ];

@@ -242,7 +242,7 @@ final class LessonListService
         $lesson->user_progress = $this->progressService->progressForUser($lesson, $user->id);
 
         // Statistiques (pour enseignants uniquement)
-        if ($user->isTeacher() || $user->isCoordinator() || $user->isAdmin()) {
+        if ($user->isStaff()) {
             $lesson->statistics = [
                 'students_started' => $this->progressService->studentsStartedCount($lesson),
                 'students_completed' => $this->progressService->studentsCompletedCount($lesson),

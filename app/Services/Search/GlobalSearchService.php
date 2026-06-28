@@ -119,7 +119,7 @@ final class GlobalSearchService
      */
     private function searchUsers(string $query, User $user, int $limit): array
     {
-        if (! $user->isCoordinator() && ! $user->isAdmin()) {
+        if (! $user->isManager()) {
             return [];
         }
 
@@ -209,7 +209,7 @@ final class GlobalSearchService
      */
     private function searchClasses(string $query, User $user, int $limit): array
     {
-        if (! $user->isCoordinator() && ! $user->isAdmin() && ! $user->isTeacher()) {
+        if (! $user->isStaff()) {
             return [];
         }
 
@@ -244,7 +244,7 @@ final class GlobalSearchService
      */
     private function searchMatieres(string $query, User $user, int $limit): array
     {
-        if (! $user->isCoordinator() && ! $user->isAdmin() && ! $user->isTeacher()) {
+        if (! $user->isStaff()) {
             return [];
         }
 

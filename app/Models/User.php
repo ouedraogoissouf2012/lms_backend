@@ -3,13 +3,13 @@
 namespace App\Models;
 
 use App\Casts\KlassciData;
-use App\Enums\Role;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
+use App\Models\Concerns\InteractsWithRoles;
 use App\Models\Traits\BelongsToInstitution;
 
 /**
@@ -25,7 +25,7 @@ use App\Models\Traits\BelongsToInstitution;
  */
 class User extends Authenticatable
 {
-    use HasFactory, Notifiable, HasApiTokens, BelongsToInstitution;
+    use HasFactory, Notifiable, HasApiTokens, BelongsToInstitution, InteractsWithRoles;
 
     protected $fillable = [
         'klassci_id', 'name', 'email', 'password',
@@ -65,39 +65,6 @@ class User extends Authenticatable
     public function setKlassciTokenAttribute(?string $value): void
     {
         $this->klassci_token_encrypted = $value;
-    }
-
-    /**
-     * `$this->role` → case enum `Role` (normalise les alias EN/FR, null si
-     * inconnu — fail-soft). Issue #121 : source de vérité unique des rôles.
-     */
-    public function asRoleEnum(): ?Role
-    {
-        return Role::tryFromString($this->role);
-    }
-
-    /** L'utilisateur est-il enseignant ? */
-    public function isTeacher(): bool
-    {
-        return $this->asRoleEnum() === Role::Enseignant;
-    }
-
-    /** L'utilisateur est-il coordinateur ? */
-    public function isCoordinator(): bool
-    {
-        return $this->asRoleEnum() === Role::Coordinateur;
-    }
-
-    /** L'utilisateur est-il étudiant ? */
-    public function isStudent(): bool
-    {
-        return $this->asRoleEnum() === Role::Etudiant;
-    }
-
-    /** Admin au sens large (admin/administrateur/superAdmin/supradmin — cf. Role::isAdmin, #121). */
-    public function isAdmin(): bool
-    {
-        return $this->asRoleEnum()?->isAdmin() ?? false;
     }
 
     /** Les données KLASSCI sont-elles fraîches (< 24h) ? Utilisé par EnsureKlassciSync. */

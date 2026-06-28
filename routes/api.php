@@ -528,7 +528,11 @@ Route::middleware(['auth:sanctum', 'klassci.sync'])->prefix('lms')->group(functi
 
     // Présences détaillées d'une séance
     Route::get('/seances/{seanceId}/attendances', [LMSAttendancesController::class, 'getSeanceAttendances'])
-        ->name('lms.seances.attendances');
+        ->name('lms.seances.attendances')
+        // Sécurité : liste les emails des participants -> réservé au staff (comme
+        // la voisine /seances/history). Sans ce garde, un étudiant listait les
+        // emails de toute séance (checkAccess ne bloque que l'enseignant non-owner).
+        ->middleware('role:enseignant,coordinateur,superAdmin');
 
     // Suppression d'une séance (soft delete)
     Route::delete('/seances/{seanceId}', [LMSSeanceVisibilityMutationController::class, 'deleteSeance'])

@@ -26,7 +26,7 @@ class TeacherStatsController extends Controller
         try {
             $user = $request->user();
 
-            if (!$user || !($user->isTeacher() || $user->isCoordinator() || $user->isAdmin())) {
+            if (!$user || ! $user->isStaff()) {
                 return $this->errorResponse('Accès réservé aux enseignants', 403);
             }
 

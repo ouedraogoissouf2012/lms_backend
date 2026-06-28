@@ -124,7 +124,7 @@ final class SeanceDetailQueryService
         ];
 
         // 9. Les participants sont visibles QUE pour les enseignants et coordinateurs
-        if ($user->isTeacher() || $user->isCoordinator() || $user->isAdmin()) {
+        if ($user->isStaff()) {
             $response['participants'] = [
                 'teacher' => $teacher,
                 'students' => $students,

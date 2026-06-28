@@ -50,26 +50,26 @@ final class UserRoleHelpersTest extends TestCase
 
     public function test_user_helpers_handle_all_canonical_and_alias_roles(): void
     {
-        // [role_db_value, isStudent, isTeacher, isCoordinator, isAdmin]
+        // [role_db_value, isStudent, isTeacher, isCoordinator, isAdmin, isStaff, isManager]
         $cases = [
             // Canoniques FR
-            ['etudiant',       true,  false, false, false],
-            ['enseignant',     false, true,  false, false],
-            ['coordinateur',   false, false, true,  false],
-            ['admin',          false, false, false, true],
-            ['supradmin',      false, false, false, true],
+            ['etudiant',       true,  false, false, false, false, false],
+            ['enseignant',     false, true,  false, false, true,  false],
+            ['coordinateur',   false, false, true,  false, true,  true],
+            ['admin',          false, false, false, true,  true,  true],
+            ['supradmin',      false, false, false, true,  true,  true],
 
             // Alias EN historiques
-            ['student',        true,  false, false, false],
-            ['teacher',        false, true,  false, false],
-            ['coordinator',    false, false, true,  false],
+            ['student',        true,  false, false, false, false, false],
+            ['teacher',        false, true,  false, false, true,  false],
+            ['coordinator',    false, false, true,  false, true,  true],
 
             // Alias admin historiques
-            ['administrateur', false, false, false, true],
-            ['superAdmin',     false, false, false, true],
+            ['administrateur', false, false, false, true,  true,  true],
+            ['superAdmin',     false, false, false, true,  true,  true],
         ];
 
-        foreach ($cases as [$role, $student, $teacher, $coord, $admin]) {
+        foreach ($cases as [$role, $student, $teacher, $coord, $admin, $staff, $manager]) {
             $user = $this->userWithRole($role);
 
             self::assertSame(
@@ -92,6 +92,16 @@ final class UserRoleHelpersTest extends TestCase
                 $user->isAdmin(),
                 "isAdmin() pour role={$role} doit retourner " . ($admin ? 'true' : 'false'),
             );
+            self::assertSame(
+                $staff,
+                $user->isStaff(),
+                "isStaff() pour role={$role} doit retourner " . ($staff ? 'true' : 'false'),
+            );
+            self::assertSame(
+                $manager,
+                $user->isManager(),
+                "isManager() pour role={$role} doit retourner " . ($manager ? 'true' : 'false'),
+            );
         }
     }
 
@@ -103,6 +113,8 @@ final class UserRoleHelpersTest extends TestCase
         self::assertFalse($user->isTeacher());
         self::assertFalse($user->isCoordinator());
         self::assertFalse($user->isAdmin());
+        self::assertFalse($user->isStaff());
+        self::assertFalse($user->isManager());
     }
 
     public function test_as_role_enum_returns_null_for_unknown_role(): void
@@ -131,5 +143,7 @@ final class UserRoleHelpersTest extends TestCase
         self::assertFalse($user->isTeacher());
         self::assertFalse($user->isCoordinator());
         self::assertFalse($user->isAdmin());
+        self::assertFalse($user->isStaff());
+        self::assertFalse($user->isManager());
     }
 }

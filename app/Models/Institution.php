@@ -27,6 +27,16 @@ class Institution extends Model
     ];
 
     /**
+     * Jamais sérialisé en réponse API. Le token KLASSCI (cast `encrypted`,
+     * donc déchiffré à l'accès) fuyait en clair quand le modèle complet était
+     * renvoyé (InstitutionController store/update/toggle, route `role:supradmin`).
+     * L'accès interne reste intact via l'accessor `klassci_api_token`.
+     */
+    protected $hidden = [
+        'klassci_api_token_encrypted',
+    ];
+
+    /**
      * Accessor: transparent access to encrypted API token via old attribute name
      * Allows KlassciProxyService to continue using $institution->klassci_api_token without changes
      */

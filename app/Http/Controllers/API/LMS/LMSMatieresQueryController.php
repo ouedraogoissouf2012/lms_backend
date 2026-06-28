@@ -51,10 +51,7 @@ final class LMSMatieresQueryController extends AuthenticatedController
             $data = $this->detailsService->getDetailsForUser($matiereId, $user);
 
             if ($data === null) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Matière non trouvée',
-                ], 404);
+                return $this->errorResponse('Matière non trouvée', 404);
             }
 
             $this->logger->info('✅ Matière details response', [
@@ -65,15 +62,9 @@ final class LMSMatieresQueryController extends AuthenticatedController
                 'evaluations_count' => count($data['evaluations_programmees']),
             ]);
 
-            return response()->json([
-                'success' => true,
-                'data' => $data,
-            ]);
+            return $this->successResponse($data);
         } catch (RuntimeException $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Token KLASSCI non trouvé. Veuillez vous reconnecter.',
-            ], 401);
+            return $this->errorResponse('Token KLASSCI non trouvé. Veuillez vous reconnecter.', 401);
         } catch (Throwable $e) {
             $this->logger->error('Erreur récupération détails matière', [
                 'matiere_id' => $matiereId,
@@ -81,6 +72,8 @@ final class LMSMatieresQueryController extends AuthenticatedController
                 'trace' => $e->getTraceAsString(),
             ]);
 
+            // Réponse NON migrée : la clé racine `error` (hors enveloppe standard)
+            // ne peut pas être reproduite par errorResponse() — DRY-only.
             return response()->json([
                 'success' => false,
                 'message' => 'Erreur lors de la récupération des détails de la matière',
@@ -99,15 +92,9 @@ final class LMSMatieresQueryController extends AuthenticatedController
             $user = $this->authenticatedUser($request);
             $matieres = $this->myMatieresService->getMatieresForUser($user);
 
-            return response()->json([
-                'success' => true,
-                'data' => $matieres,
-            ]);
+            return $this->successResponse($matieres);
         } catch (RuntimeException $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Token KLASSCI non trouvé. Veuillez vous reconnecter.',
-            ], 401);
+            return $this->errorResponse('Token KLASSCI non trouvé. Veuillez vous reconnecter.', 401);
         } catch (Throwable $e) {
             // §1.2 — Detail logged server-side, generic message to client.
             $this->logger->error('Erreur myMatieres', [
@@ -115,10 +102,7 @@ final class LMSMatieresQueryController extends AuthenticatedController
                 'trace' => $e->getTraceAsString(),
             ]);
 
-            return response()->json([
-                'success' => false,
-                'message' => 'Erreur lors du chargement des matières.',
-            ], 500);
+            return $this->errorResponse('Erreur lors du chargement des matières.', 500);
         }
     }
 }

@@ -37,20 +37,14 @@ final class LMSMatieresAdminController extends AuthenticatedController
             $klassciToken = $user->klassci_token;
 
             if (!$klassciToken) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Token KLASSCI non trouvé. Veuillez vous reconnecter.'
-                ], 401);
+                return $this->errorResponse('Token KLASSCI non trouvé. Veuillez vous reconnecter.', 401);
             }
 
             // Defense in depth: la route middleware `role:admin,coordinateur` filtre
             // déjà, mais on garde le check controller comme garde supplémentaire.
             // Note: `superAdmin` accepté car role intra-tenant admin (cf. EnsureRole.php).
             if (!($user->isCoordinator() || $user->isAdmin())) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Accès non autorisé. Réservé aux administrateurs et coordinateurs.'
-                ], 403);
+                return $this->errorResponse('Accès non autorisé. Réservé aux administrateurs et coordinateurs.', 403);
             }
 
             Log::info('Récupération liste matières admin', [
@@ -69,18 +63,14 @@ final class LMSMatieresAdminController extends AuthenticatedController
             $matieres = $matieresResponse['data'] ?? [];
 
             if (count($matieres) === 0) {
-                return response()->json([
-                    'success' => true,
-                    'data' => [
-                        'matieres' => [],
-                        'statistiques' => [
-                            'total' => 0,
-                            'total_heures' => 0,
-                            'total_seances' => 0
-                        ]
+                return $this->successResponse([
+                    'matieres' => [],
+                    'statistiques' => [
+                        'total' => 0,
+                        'total_heures' => 0,
+                        'total_seances' => 0,
                     ],
-                    'message' => 'Aucune matière trouvée'
-                ]);
+                ], 'Aucune matière trouvée');
             }
 
             Log::info('Matières trouvées', ['count' => count($matieres)]);
@@ -154,14 +144,10 @@ final class LMSMatieresAdminController extends AuthenticatedController
                 'total_seances' => $totalSeances
             ];
 
-            return response()->json([
-                'success' => true,
-                'data' => [
-                    'matieres' => $matieresEnrichies,
-                    'statistiques' => $stats
-                ],
-                'message' => count($matieresEnrichies) . ' matière(s) récupérée(s)'
-            ]);
+            return $this->successResponse([
+                'matieres' => $matieresEnrichies,
+                'statistiques' => $stats,
+            ], count($matieresEnrichies) . ' matière(s) récupérée(s)');
 
         } catch (\Exception $e) {
             Log::error('Erreur liste matières admin', [

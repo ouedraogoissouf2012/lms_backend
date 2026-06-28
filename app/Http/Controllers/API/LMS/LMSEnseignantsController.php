@@ -91,17 +91,17 @@ final class LMSEnseignantsController extends AuthenticatedController
 
             $duration = round((microtime(true) - $startTime) * 1000, 2);
 
-            return response()->json([
-                'success' => true,
-                'data' => $enseignants,
-                'meta' => array_merge($response['meta'] ?? [], [
-                    'source' => 'klassci_externe',
-                    'lms_cache_enabled' => true,
-                    'lms_performance' => [
-                        'total_time_ms' => $duration
-                    ]
-                ])
+            $klassciMeta = $response['meta'] ?? [];
+            /** @var array<string, mixed> $meta */
+            $meta = array_merge(is_array($klassciMeta) ? $klassciMeta : [], [
+                'source' => 'klassci_externe',
+                'lms_cache_enabled' => true,
+                'lms_performance' => [
+                    'total_time_ms' => $duration,
+                ],
             ]);
+
+            return $this->successResponse($enseignants, '', 200, $meta);
 
         } catch (\Exception $e) {
             // §1.2 — Détail technique loggé server-side, message générique au client.

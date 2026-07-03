@@ -6,6 +6,16 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use App\Models\Traits\BelongsToInstitution;
 
+/**
+ * Convention `status` — participation à une visio en direct (`connected`/`disconnected`/
+ * `kicked`, contrainte CHECK réelle, cf. migration `add_tracking_fields_to_esbtp_attendance_table`).
+ * Ne représente PAS une présence pédagogique au sens `present`/`absent`/`late` utilisée par
+ * {@see \App\Services\Report\ReportGenerationService::generateAttendance()} — cette dernière
+ * convention n'est actuellement alimentée par AUCUNE donnée réelle de cette table (voir #391 :
+ * le rapport PDF affiche 0% pour tout le monde car aucune conversion `connected`/`disconnected`
+ * → `present`/`absent`/`late` n'existe). Ne pas supposer que ces deux jeux de valeurs sont
+ * interchangeables ni qu'une conversion a déjà lieu quelque part.
+ */
 class ESBTPAttendance extends Model
 {
     /** @use HasFactory<\Database\Factories\ESBTPAttendanceFactory> */

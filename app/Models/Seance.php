@@ -7,6 +7,10 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use App\Models\Traits\BelongsToInstitution;
 
+/**
+ * `heure_debut`/`heure_fin` n'existent sur AUCUNE migration (vérifié) ; lues à tort par
+ * `FinalizeSeanceAttendances`, qui échoue à chaque exécution planifiée — voir #390 avant `$fillable`.
+ */
 class Seance extends Model
 {
     /** @use HasFactory<\Database\Factories\SeanceFactory> */

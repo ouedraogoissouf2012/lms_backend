@@ -7,6 +7,15 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use App\Models\Traits\BelongsToInstitution;
 
+/**
+ * ATTENTION — `heure_debut`/`heure_fin` n'existent PAS sur cette table (vérifié :
+ * aucune migration ne les crée, `phpstan-baseline.neon` grand-father déjà l'accès à
+ * une propriété inexistante). `App\Jobs\FinalizeSeanceAttendances` les lit pourtant
+ * (`whereNotNull('heure_fin')`), ce qui fait échouer ce job planifié toutes les
+ * 10 minutes en production — voir #390 pour le suivi de correction. Ne pas ajouter
+ * ces colonnes au `$fillable` sans avoir traité #390 : ça masquerait le bug au lieu
+ * de le documenter.
+ */
 class Seance extends Model
 {
     /** @use HasFactory<\Database\Factories\SeanceFactory> */

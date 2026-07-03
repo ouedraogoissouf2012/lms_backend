@@ -26,6 +26,13 @@ Thumbs.db
 nul
 **/nul
 
+# Bases de données SQLite — jamais versionnées (issue #362)
+# *.sqlite* couvre aussi les fichiers annexes WAL/SHM/journal qui contiennent des pages de données
+*.sqlite*
+/database.sqlite
+*.sqlite.backup*
+database/*.backup-*.sqlite
+
 # Fichiers de développement — ne pas déployer en production
 *.md
 !README.md

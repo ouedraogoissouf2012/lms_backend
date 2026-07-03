@@ -63,32 +63,19 @@ class Chapter extends Model
         'order' => 0,
     ];
 
-    /**
-     * Relation: Matière liée
-     *
-     * @return BelongsTo<Matiere, $this>
-     */
+    /** @return BelongsTo<Matiere, $this> Matière liée. */
     public function matiere(): BelongsTo
     {
         return $this->belongsTo(Matiere::class);
     }
 
-    /**
-     * Relation: Enseignant créateur
-     *
-     * @return BelongsTo<User, $this>
-     */
+    /** @return BelongsTo<User, $this> Enseignant créateur. */
     public function enseignant(): BelongsTo
     {
         return $this->belongsTo(User::class, 'enseignant_id');
     }
 
-    /**
-     * Relation: Leçon parente (NOUVELLE STRUCTURE)
-     * Un chapitre appartient à une leçon
-     *
-     * @return BelongsTo<Lesson, $this>
-     */
+    /** @return BelongsTo<Lesson, $this> Leçon parente (un chapitre appartient à une leçon). */
     public function lesson(): BelongsTo
     {
         return $this->belongsTo(Lesson::class);

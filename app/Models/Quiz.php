@@ -62,72 +62,43 @@ class Quiz extends Model
         'attempts_count' => 0,
     ];
 
-    /**
-     * Relation: Cours lié (optionnel)
-     *
-     * @return BelongsTo<Lesson, $this>
-     */
+    /** @return BelongsTo<Lesson, $this> Cours lié (optionnel). */
     public function lesson(): BelongsTo
     {
         return $this->belongsTo(Lesson::class);
     }
 
-    /**
-     * Relation: Matière liée (optionnel)
-     *
-     * @return BelongsTo<Matiere, $this>
-     */
+    /** @return BelongsTo<Matiere, $this> Matière liée (optionnel). */
     public function matiere(): BelongsTo
     {
         return $this->belongsTo(Matiere::class);
     }
 
-    /**
-     * Relation: Classe liée (optionnel)
-     *
-     * @return BelongsTo<Classe, $this>
-     */
+    /** @return BelongsTo<Classe, $this> Classe liée (optionnel). */
     public function classe(): BelongsTo
     {
         return $this->belongsTo(Classe::class);
     }
 
-    /**
-     * Relation: Créateur du quiz
-     *
-     * @return BelongsTo<User, $this>
-     */
+    /** @return BelongsTo<User, $this> Créateur du quiz. */
     public function creator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');
     }
 
-    /**
-     * Relation: Questions du quiz
-     *
-     * @return HasMany<QuizQuestion, $this>
-     */
+    /** @return HasMany<QuizQuestion, $this> Questions du quiz. */
     public function questions(): HasMany
     {
         return $this->hasMany(QuizQuestion::class);
     }
 
-    /**
-     * Relation: Tentatives du quiz
-     *
-     * @return HasMany<QuizAttempt, $this>
-     */
+    /** @return HasMany<QuizAttempt, $this> Tentatives du quiz. */
     public function attempts(): HasMany
     {
         return $this->hasMany(QuizAttempt::class);
     }
 
-    /**
-     * Scope: Quiz publiés
-     *
-     * @param  \Illuminate\Database\Eloquent\Builder<Quiz>  $query
-     * @return \Illuminate\Database\Eloquent\Builder<Quiz>
-     */
+    /** Scope: Quiz publiés */
     public function scopePublished($query)
     {
         return $query->where('status', 'published')
@@ -135,12 +106,7 @@ class Quiz extends Model
             ->where('published_at', '<=', now());
     }
 
-    /**
-     * Scope: Quiz disponibles (publiés + dans la période de disponibilité)
-     *
-     * @param  \Illuminate\Database\Eloquent\Builder<Quiz>  $query
-     * @return \Illuminate\Database\Eloquent\Builder<Quiz>
-     */
+    /** Scope: Quiz disponibles (publiés + dans la période de disponibilité) */
     public function scopeAvailable($query)
     {
         return $query->published()
@@ -154,34 +120,19 @@ class Quiz extends Model
             });
     }
 
-    /**
-     * Scope: Par matière
-     *
-     * @param  \Illuminate\Database\Eloquent\Builder<Quiz>  $query
-     * @return \Illuminate\Database\Eloquent\Builder<Quiz>
-     */
+    /** Scope: Par matière */
     public function scopeForMatiere($query, int $matiereId)
     {
         return $query->where('matiere_id', $matiereId);
     }
 
-    /**
-     * Scope: Par classe
-     *
-     * @param  \Illuminate\Database\Eloquent\Builder<Quiz>  $query
-     * @return \Illuminate\Database\Eloquent\Builder<Quiz>
-     */
+    /** Scope: Par classe */
     public function scopeForClasse($query, int $classeId)
     {
         return $query->where('classe_id', $classeId);
     }
 
-    /**
-     * Scope: Par cours
-     *
-     * @param  \Illuminate\Database\Eloquent\Builder<Quiz>  $query
-     * @return \Illuminate\Database\Eloquent\Builder<Quiz>
-     */
+    /** Scope: Par cours */
     public function scopeForLesson($query, int $lessonId)
     {
         return $query->where('lesson_id', $lessonId);

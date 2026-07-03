@@ -1567,6 +1567,90 @@ parameters:
 			path: app/Models/ForumTopic.php
 
 		-
+			message: '#^Method App\\Models\\ForumTopic\:\:scopeByActivity\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Models/ForumTopic.php
+
+		-
+			message: '#^Method App\\Models\\ForumTopic\:\:scopeByActivity\(\) has parameter \$query with no type specified\.$#'
+			identifier: missingType.parameter
+			count: 1
+			path: app/Models/ForumTopic.php
+
+		-
+			message: '#^Method App\\Models\\ForumTopic\:\:scopeForClasse\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Models/ForumTopic.php
+
+		-
+			message: '#^Method App\\Models\\ForumTopic\:\:scopeForClasse\(\) has parameter \$query with no type specified\.$#'
+			identifier: missingType.parameter
+			count: 1
+			path: app/Models/ForumTopic.php
+
+		-
+			message: '#^Method App\\Models\\ForumTopic\:\:scopeForLesson\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Models/ForumTopic.php
+
+		-
+			message: '#^Method App\\Models\\ForumTopic\:\:scopeForLesson\(\) has parameter \$query with no type specified\.$#'
+			identifier: missingType.parameter
+			count: 1
+			path: app/Models/ForumTopic.php
+
+		-
+			message: '#^Method App\\Models\\ForumTopic\:\:scopeForMatiere\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Models/ForumTopic.php
+
+		-
+			message: '#^Method App\\Models\\ForumTopic\:\:scopeForMatiere\(\) has parameter \$query with no type specified\.$#'
+			identifier: missingType.parameter
+			count: 1
+			path: app/Models/ForumTopic.php
+
+		-
+			message: '#^Method App\\Models\\ForumTopic\:\:scopeOpen\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Models/ForumTopic.php
+
+		-
+			message: '#^Method App\\Models\\ForumTopic\:\:scopeOpen\(\) has parameter \$query with no type specified\.$#'
+			identifier: missingType.parameter
+			count: 1
+			path: app/Models/ForumTopic.php
+
+		-
+			message: '#^Method App\\Models\\ForumTopic\:\:scopePinned\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Models/ForumTopic.php
+
+		-
+			message: '#^Method App\\Models\\ForumTopic\:\:scopePinned\(\) has parameter \$query with no type specified\.$#'
+			identifier: missingType.parameter
+			count: 1
+			path: app/Models/ForumTopic.php
+
+		-
+			message: '#^Method App\\Models\\ForumTopic\:\:scopeResolved\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Models/ForumTopic.php
+
+		-
+			message: '#^Method App\\Models\\ForumTopic\:\:scopeResolved\(\) has parameter \$query with no type specified\.$#'
+			identifier: missingType.parameter
+			count: 1
+			path: app/Models/ForumTopic.php
+
+		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$institution_id\.$#'
 			identifier: property.notFound
 			count: 1
@@ -1593,6 +1677,66 @@ parameters:
 		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$institution_id\.$#'
 			identifier: property.notFound
+			count: 1
+			path: app/Models/Lesson.php
+
+		-
+			message: '#^Method App\\Models\\Lesson\:\:scopeByTeacher\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Models/Lesson.php
+
+		-
+			message: '#^Method App\\Models\\Lesson\:\:scopeByTeacher\(\) has parameter \$query with no type specified\.$#'
+			identifier: missingType.parameter
+			count: 1
+			path: app/Models/Lesson.php
+
+		-
+			message: '#^Method App\\Models\\Lesson\:\:scopeForClasse\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Models/Lesson.php
+
+		-
+			message: '#^Method App\\Models\\Lesson\:\:scopeForClasse\(\) has parameter \$query with no type specified\.$#'
+			identifier: missingType.parameter
+			count: 1
+			path: app/Models/Lesson.php
+
+		-
+			message: '#^Method App\\Models\\Lesson\:\:scopeForMatiere\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Models/Lesson.php
+
+		-
+			message: '#^Method App\\Models\\Lesson\:\:scopeForMatiere\(\) has parameter \$query with no type specified\.$#'
+			identifier: missingType.parameter
+			count: 1
+			path: app/Models/Lesson.php
+
+		-
+			message: '#^Method App\\Models\\Lesson\:\:scopeOrdered\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Models/Lesson.php
+
+		-
+			message: '#^Method App\\Models\\Lesson\:\:scopeOrdered\(\) has parameter \$query with no type specified\.$#'
+			identifier: missingType.parameter
+			count: 1
+			path: app/Models/Lesson.php
+
+		-
+			message: '#^Method App\\Models\\Lesson\:\:scopePublished\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Models/Lesson.php
+
+		-
+			message: '#^Method App\\Models\\Lesson\:\:scopePublished\(\) has parameter \$query with no type specified\.$#'
+			identifier: missingType.parameter
 			count: 1
 			path: app/Models/Lesson.php
 
@@ -1677,6 +1821,66 @@ parameters:
 		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$institution_id\.$#'
 			identifier: property.notFound
+			count: 1
+			path: app/Models/Quiz.php
+
+		-
+			message: '#^Method App\\Models\\Quiz\:\:scopeAvailable\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Models/Quiz.php
+
+		-
+			message: '#^Method App\\Models\\Quiz\:\:scopeAvailable\(\) has parameter \$query with no type specified\.$#'
+			identifier: missingType.parameter
+			count: 1
+			path: app/Models/Quiz.php
+
+		-
+			message: '#^Method App\\Models\\Quiz\:\:scopeForClasse\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Models/Quiz.php
+
+		-
+			message: '#^Method App\\Models\\Quiz\:\:scopeForClasse\(\) has parameter \$query with no type specified\.$#'
+			identifier: missingType.parameter
+			count: 1
+			path: app/Models/Quiz.php
+
+		-
+			message: '#^Method App\\Models\\Quiz\:\:scopeForLesson\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Models/Quiz.php
+
+		-
+			message: '#^Method App\\Models\\Quiz\:\:scopeForLesson\(\) has parameter \$query with no type specified\.$#'
+			identifier: missingType.parameter
+			count: 1
+			path: app/Models/Quiz.php
+
+		-
+			message: '#^Method App\\Models\\Quiz\:\:scopeForMatiere\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Models/Quiz.php
+
+		-
+			message: '#^Method App\\Models\\Quiz\:\:scopeForMatiere\(\) has parameter \$query with no type specified\.$#'
+			identifier: missingType.parameter
+			count: 1
+			path: app/Models/Quiz.php
+
+		-
+			message: '#^Method App\\Models\\Quiz\:\:scopePublished\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Models/Quiz.php
+
+		-
+			message: '#^Method App\\Models\\Quiz\:\:scopePublished\(\) has parameter \$query with no type specified\.$#'
+			identifier: missingType.parameter
 			count: 1
 			path: app/Models/Quiz.php
 

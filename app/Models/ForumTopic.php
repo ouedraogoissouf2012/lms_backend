@@ -52,138 +52,79 @@ class ForumTopic extends Model
         'posts_count' => 0,
     ];
 
-    /**
-     * Relation: Auteur du topic
-     *
-     * @return BelongsTo<User, $this>
-     */
+    /** @return BelongsTo<User, $this> Auteur du topic. */
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
     }
 
-    /**
-     * Relation: Cours lié (optionnel)
-     *
-     * @return BelongsTo<Lesson, $this>
-     */
+    /** @return BelongsTo<Lesson, $this> Cours lié (optionnel). */
     public function lesson(): BelongsTo
     {
         return $this->belongsTo(Lesson::class);
     }
 
-    /**
-     * Relation: Matière liée (optionnel)
-     *
-     * @return BelongsTo<Matiere, $this>
-     */
+    /** @return BelongsTo<Matiere, $this> Matière liée (optionnel). */
     public function matiere(): BelongsTo
     {
         return $this->belongsTo(Matiere::class);
     }
 
-    /**
-     * Relation: Classe liée (optionnel)
-     *
-     * @return BelongsTo<Classe, $this>
-     */
+    /** @return BelongsTo<Classe, $this> Classe liée (optionnel). */
     public function classe(): BelongsTo
     {
         return $this->belongsTo(Classe::class);
     }
 
-    /**
-     * Relation: Posts/Réponses
-     *
-     * @return HasMany<ForumPost, $this>
-     */
+    /** @return HasMany<ForumPost, $this> Posts/Réponses. */
     public function posts(): HasMany
     {
         return $this->hasMany(ForumPost::class, 'topic_id');
     }
 
-    /**
-     * Relation: Fichiers attachés au topic
-     *
-     * @return MorphMany<File, $this>
-     */
+    /** @return MorphMany<File, $this> Fichiers attachés au topic. */
     public function files(): MorphMany
     {
         return $this->morphMany(File::class, 'fileable');
     }
 
-    /**
-     * Scope: Topics ouverts
-     *
-     * @param  \Illuminate\Database\Eloquent\Builder<ForumTopic>  $query
-     * @return \Illuminate\Database\Eloquent\Builder<ForumTopic>
-     */
+    /** Scope: Topics ouverts */
     public function scopeOpen($query)
     {
         return $query->where('status', 'open');
     }
 
-    /**
-     * Scope: Topics épinglés
-     *
-     * @param  \Illuminate\Database\Eloquent\Builder<ForumTopic>  $query
-     * @return \Illuminate\Database\Eloquent\Builder<ForumTopic>
-     */
+    /** Scope: Topics épinglés */
     public function scopePinned($query)
     {
         return $query->where('status', 'pinned');
     }
 
-    /**
-     * Scope: Topics résolus
-     *
-     * @param  \Illuminate\Database\Eloquent\Builder<ForumTopic>  $query
-     * @return \Illuminate\Database\Eloquent\Builder<ForumTopic>
-     */
+    /** Scope: Topics résolus */
     public function scopeResolved($query)
     {
         return $query->where('is_resolved', true);
     }
 
-    /**
-     * Scope: Topics par activité récente
-     *
-     * @param  \Illuminate\Database\Eloquent\Builder<ForumTopic>  $query
-     * @return \Illuminate\Database\Eloquent\Builder<ForumTopic>
-     */
+    /** Scope: Topics par activité récente */
     public function scopeByActivity($query)
     {
         return $query->orderBy('last_activity_at', 'desc');
     }
 
-    /**
-     * Scope: Topics par matière
-     *
-     * @param  \Illuminate\Database\Eloquent\Builder<ForumTopic>  $query
-     * @return \Illuminate\Database\Eloquent\Builder<ForumTopic>
-     */
+    /** Scope: Topics par matière */
     public function scopeForMatiere($query, int $matiereId)
     {
         return $query->where('matiere_id', $matiereId);
     }
 
-    /**
-     * Scope: Topics par classe
-     *
-     * @param  \Illuminate\Database\Eloquent\Builder<ForumTopic>  $query
-     * @return \Illuminate\Database\Eloquent\Builder<ForumTopic>
-     */
+    /** Scope: Topics par classe */
     public function scopeForClasse($query, int $classeId)
     {
         return $query->where('classe_id', $classeId);
     }
 
-    /**
-     * Scope: Topics par cours
-     *
-     * @param  \Illuminate\Database\Eloquent\Builder<ForumTopic>  $query
-     * @return \Illuminate\Database\Eloquent\Builder<ForumTopic>
-     */
+    /** Scope: Topics par cours */
     public function scopeForLesson($query, int $lessonId)
     {
         return $query->where('lesson_id', $lessonId);

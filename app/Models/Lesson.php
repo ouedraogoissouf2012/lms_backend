@@ -57,83 +57,49 @@ class Lesson extends Model
         'order' => 0,
     ];
 
-    /**
-     * Relation: Matière liée
-     *
-     * @return BelongsTo<Matiere, $this>
-     */
+    /** @return BelongsTo<Matiere, $this> Matière liée. */
     public function matiere(): BelongsTo
     {
         return $this->belongsTo(Matiere::class);
     }
 
-    /**
-     * Relation: Classe liée
-     *
-     * @return BelongsTo<Classe, $this>
-     */
+    /** @return BelongsTo<Classe, $this> Classe liée. */
     public function classe(): BelongsTo
     {
         return $this->belongsTo(Classe::class);
     }
 
-    /**
-     * Relation: Enseignant créateur
-     *
-     * @return BelongsTo<User, $this>
-     */
+    /** @return BelongsTo<User, $this> Enseignant créateur. */
     public function enseignant(): BelongsTo
     {
         return $this->belongsTo(User::class, 'enseignant_id');
     }
 
-    /**
-     * Relation: Progression des étudiants
-     *
-     * @return HasMany<LessonProgress, $this>
-     */
+    /** @return HasMany<LessonProgress, $this> Progression des étudiants. */
     public function progress(): HasMany
     {
         return $this->hasMany(LessonProgress::class);
     }
 
-    /**
-     * Relation: Fichiers attachés au cours
-     *
-     * @return MorphMany<File, $this>
-     */
+    /** @return MorphMany<File, $this> Fichiers attachés au cours. */
     public function files(): MorphMany
     {
         return $this->morphMany(File::class, 'fileable');
     }
 
-    /**
-     * Relation: Chapitres de la leçon (NOUVELLE STRUCTURE)
-     * Une leçon contient plusieurs chapitres
-     *
-     * @return HasMany<Chapter, $this>
-     */
+    /** @return HasMany<Chapter, $this> Chapitres de la leçon (une leçon contient plusieurs chapitres). */
     public function chapters(): HasMany
     {
         return $this->hasMany(Chapter::class)->orderBy('order')->orderBy('created_at');
     }
 
-    /**
-     * Relation: Ressources complémentaires
-     *
-     * @return HasMany<LessonResource, $this>
-     */
+    /** @return HasMany<LessonResource, $this> Ressources complémentaires. */
     public function resources(): HasMany
     {
         return $this->hasMany(LessonResource::class)->ordered();
     }
 
-    /**
-     * Scope: Cours publiés uniquement
-     *
-     * @param  \Illuminate\Database\Eloquent\Builder<Lesson>  $query
-     * @return \Illuminate\Database\Eloquent\Builder<Lesson>
-     */
+    /** Scope: Cours publiés uniquement */
     public function scopePublished($query)
     {
         return $query->where('status', 'published')
@@ -141,45 +107,25 @@ class Lesson extends Model
             ->where('published_at', '<=', now());
     }
 
-    /**
-     * Scope: Par matière
-     *
-     * @param  \Illuminate\Database\Eloquent\Builder<Lesson>  $query
-     * @return \Illuminate\Database\Eloquent\Builder<Lesson>
-     */
+    /** Scope: Par matière */
     public function scopeForMatiere($query, int $matiereId)
     {
         return $query->where('matiere_id', $matiereId);
     }
 
-    /**
-     * Scope: Par classe
-     *
-     * @param  \Illuminate\Database\Eloquent\Builder<Lesson>  $query
-     * @return \Illuminate\Database\Eloquent\Builder<Lesson>
-     */
+    /** Scope: Par classe */
     public function scopeForClasse($query, int $classeId)
     {
         return $query->where('classe_id', $classeId);
     }
 
-    /**
-     * Scope: Par enseignant
-     *
-     * @param  \Illuminate\Database\Eloquent\Builder<Lesson>  $query
-     * @return \Illuminate\Database\Eloquent\Builder<Lesson>
-     */
+    /** Scope: Par enseignant */
     public function scopeByTeacher($query, int $enseignantId)
     {
         return $query->where('enseignant_id', $enseignantId);
     }
 
-    /**
-     * Scope: Ordonné
-     *
-     * @param  \Illuminate\Database\Eloquent\Builder<Lesson>  $query
-     * @return \Illuminate\Database\Eloquent\Builder<Lesson>
-     */
+    /** Scope: Ordonné */
     public function scopeOrdered($query)
     {
         return $query->orderBy('order')->orderBy('created_at');

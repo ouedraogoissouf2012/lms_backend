@@ -24,7 +24,11 @@ class UserClass extends Model
         'synced_at' => 'datetime',
     ];
 
-    // Relation avec User
+    /**
+     * Relation avec User
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo<User, $this>
+     */
     public function user()
     {
         return $this->belongsTo(User::class);

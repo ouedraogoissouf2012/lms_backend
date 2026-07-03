@@ -17,10 +17,10 @@ use App\Models\Traits\BelongsToInstitution;
  *
  * @property int $id
  * @property int $user_id
- * @property int|null $institution_id
  */
 class ForumTopic extends Model
 {
+    /** @use HasFactory<\Database\Factories\ForumTopicFactory> */
     use HasFactory, SoftDeletes, BelongsToInstitution;
 
     protected $fillable = [
@@ -52,37 +52,37 @@ class ForumTopic extends Model
         'posts_count' => 0,
     ];
 
-    /** Relation: Auteur du topic */
+    /** @return BelongsTo<User, $this> Auteur du topic. */
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
     }
 
-    /** Relation: Cours lié (optionnel) */
+    /** @return BelongsTo<Lesson, $this> Cours lié (optionnel). */
     public function lesson(): BelongsTo
     {
         return $this->belongsTo(Lesson::class);
     }
 
-    /** Relation: Matière liée (optionnel) */
+    /** @return BelongsTo<Matiere, $this> Matière liée (optionnel). */
     public function matiere(): BelongsTo
     {
         return $this->belongsTo(Matiere::class);
     }
 
-    /** Relation: Classe liée (optionnel) */
+    /** @return BelongsTo<Classe, $this> Classe liée (optionnel). */
     public function classe(): BelongsTo
     {
         return $this->belongsTo(Classe::class);
     }
 
-    /** Relation: Posts/Réponses */
+    /** @return HasMany<ForumPost, $this> Posts/Réponses. */
     public function posts(): HasMany
     {
         return $this->hasMany(ForumPost::class, 'topic_id');
     }
 
-    /** Relation: Fichiers attachés au topic */
+    /** @return MorphMany<File, $this> Fichiers attachés au topic. */
     public function files(): MorphMany
     {
         return $this->morphMany(File::class, 'fileable');

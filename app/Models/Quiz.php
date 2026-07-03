@@ -15,10 +15,14 @@ use App\Models\Traits\BelongsToInstitution;
  *
  * @property int $id
  * @property int $created_by
- * @property int|null $institution_id
+ * @property int $user_attempts_count            Attribut posé par QuizCrudService (QuizAccessService::attemptsCountForUser).
+ * @property bool $user_can_attempt              Attribut posé par QuizCrudService (QuizAccessService::canUserAttempt).
+ * @property QuizAttempt|null $user_best_attempt Attribut posé par QuizCrudService (QuizAccessService::bestAttemptForUser).
+ * @property QuizAttempt|null $user_latest_attempt Attribut posé par QuizCrudService (QuizAccessService::latestAttemptForUser).
  */
 class Quiz extends Model
 {
+    /** @use HasFactory<\Database\Factories\QuizFactory> */
     use HasFactory, SoftDeletes, BelongsToInstitution;
 
     protected $fillable = [
@@ -58,37 +62,37 @@ class Quiz extends Model
         'attempts_count' => 0,
     ];
 
-    /** Relation: Cours lié (optionnel) */
+    /** @return BelongsTo<Lesson, $this> Cours lié (optionnel). */
     public function lesson(): BelongsTo
     {
         return $this->belongsTo(Lesson::class);
     }
 
-    /** Relation: Matière liée (optionnel) */
+    /** @return BelongsTo<Matiere, $this> Matière liée (optionnel). */
     public function matiere(): BelongsTo
     {
         return $this->belongsTo(Matiere::class);
     }
 
-    /** Relation: Classe liée (optionnel) */
+    /** @return BelongsTo<Classe, $this> Classe liée (optionnel). */
     public function classe(): BelongsTo
     {
         return $this->belongsTo(Classe::class);
     }
 
-    /** Relation: Créateur du quiz */
+    /** @return BelongsTo<User, $this> Créateur du quiz. */
     public function creator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');
     }
 
-    /** Relation: Questions du quiz */
+    /** @return HasMany<QuizQuestion, $this> Questions du quiz. */
     public function questions(): HasMany
     {
         return $this->hasMany(QuizQuestion::class);
     }
 
-    /** Relation: Tentatives du quiz */
+    /** @return HasMany<QuizAttempt, $this> Tentatives du quiz. */
     public function attempts(): HasMany
     {
         return $this->hasMany(QuizAttempt::class);

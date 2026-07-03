@@ -51,6 +51,13 @@ use Illuminate\Support\Facades\Log;
  *
  * @see PRODUCTION_STANDARDS.md §1.2 + §1.6
  * @see .claude/agents/kfc/spec-security.md Check 5 IDOR / cross-tenant
+ *
+ * `institution_id` est ajouté par la migration dynamique
+ * `2026_02_11_000002_add_institution_id_to_all_tables` (boucle non détectée
+ * par le scanner Larastan) — déclaré ici une seule fois pour TOUS les modèles
+ * utilisant le trait, au lieu de 28 annotations dupliquées. Issue #363.
+ *
+ * @property int|null $institution_id
  */
 trait BelongsToInstitution
 {
@@ -103,6 +110,8 @@ trait BelongsToInstitution
 
     /**
      * Relation vers l'institution
+     *
+     * @return BelongsTo<Institution, $this>
      */
     public function institution(): BelongsTo
     {

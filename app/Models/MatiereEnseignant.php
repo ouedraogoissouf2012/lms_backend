@@ -5,6 +5,15 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use App\Models\Traits\BelongsToInstitution;
 
+/**
+ * Assignation matière ↔ enseignant (IDs KLASSCI, cast `integer`).
+ *
+ * @property int $klassci_matiere_id
+ * @property int $klassci_enseignant_id
+ * @property int|null $annee_universitaire_id
+ * @property string $status
+ * @property int|null $created_by
+ */
 class MatiereEnseignant extends Model
 {
     use BelongsToInstitution;
@@ -29,6 +38,8 @@ class MatiereEnseignant extends Model
 
     /**
      * Relation avec l'utilisateur qui a créé l'assignation
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo<User, $this>
      */
     public function creator()
     {
@@ -37,6 +48,9 @@ class MatiereEnseignant extends Model
 
     /**
      * Scope pour récupérer les assignations actives uniquement
+     *
+     * @param  \Illuminate\Database\Eloquent\Builder<MatiereEnseignant>  $query
+     * @return \Illuminate\Database\Eloquent\Builder<MatiereEnseignant>
      */
     public function scopeActive($query)
     {
@@ -45,6 +59,10 @@ class MatiereEnseignant extends Model
 
     /**
      * Récupérer les enseignants assignés à une matière
+     *
+     * @param  int  $klassciMatiereId
+     * @param  bool  $activeOnly
+     * @return array<mixed> IDs KLASSCI des enseignants (ints en pratique — pluck() non résolu par Larastan ici).
      */
     public static function getEnseignantsForMatiere($klassciMatiereId, $activeOnly = true)
     {
@@ -59,6 +77,10 @@ class MatiereEnseignant extends Model
 
     /**
      * Récupérer les matières assignées à un enseignant
+     *
+     * @param  int  $klassciEnseignantId
+     * @param  bool  $activeOnly
+     * @return array<mixed> IDs KLASSCI des matières (ints en pratique — pluck() non résolu par Larastan ici).
      */
     public static function getMatieresForEnseignant($klassciEnseignantId, $activeOnly = true)
     {
@@ -73,6 +95,11 @@ class MatiereEnseignant extends Model
 
     /**
      * Assigner un enseignant à une matière
+     *
+     * @param  int  $klassciMatiereId
+     * @param  int  $klassciEnseignantId
+     * @param  int|null  $createdBy
+     * @return self
      */
     public static function assignEnseignant($klassciMatiereId, $klassciEnseignantId, $createdBy = null)
     {
@@ -91,6 +118,10 @@ class MatiereEnseignant extends Model
 
     /**
      * Retirer un enseignant d'une matière
+     *
+     * @param  int  $klassciMatiereId
+     * @param  int  $klassciEnseignantId
+     * @return mixed Nombre de lignes supprimées (Builder::delete()).
      */
     public static function removeEnseignant($klassciMatiereId, $klassciEnseignantId)
     {

@@ -5,8 +5,14 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
+/**
+ * Tenant du SaaS multi-institution.
+ *
+ * @property-read string|null $klassci_api_token Alias accessor de la colonne chiffrée `klassci_api_token_encrypted`.
+ */
 class Institution extends Model
 {
+    /** @use HasFactory<\Database\Factories\InstitutionFactory> */
     use HasFactory;
 
     protected $fillable = [
@@ -63,6 +69,8 @@ class Institution extends Model
 
     /**
      * Retourne la config KLASSCI pour cette institution
+     *
+     * @return array{url: string|null, token: string|null}
      */
     public function getKlassciConfig(): array
     {
@@ -74,22 +82,33 @@ class Institution extends Model
 
     /**
      * Relation : tous les users de cette institution
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\HasMany<User, $this>
      */
     public function users()
     {
         return $this->hasMany(User::class);
     }
 
+    /**
+     * @return \Illuminate\Database\Eloquent\Relations\HasMany<Classe, $this>
+     */
     public function classes()
     {
         return $this->hasMany(Classe::class);
     }
 
+    /**
+     * @return \Illuminate\Database\Eloquent\Relations\HasMany<Lesson, $this>
+     */
     public function lessons()
     {
         return $this->hasMany(Lesson::class);
     }
 
+    /**
+     * @return \Illuminate\Database\Eloquent\Relations\HasMany<Evaluation, $this>
+     */
     public function evaluations()
     {
         return $this->hasMany(Evaluation::class);

@@ -15,11 +15,14 @@ use App\Models\Concerns\Auditable;
  *
  * @property int $id
  * @property int $user_id
- * @property int|null $institution_id
  * @property-read \App\Models\Quiz|null $quiz
+ * @property array<int, array<string, mixed>> $questions_with_results Attribut posé par QuizAttemptStateService (BuildsAttemptResponses::buildQuestionsWithResults).
+ * @property string $time_spent_formatted Attribut posé par QuizAttemptStateService (QuizAttemptTimerService::formattedTimeSpent).
+ * @property int|null $time_remaining     Attribut posé par QuizAttemptStateService (QuizAttemptTimerService::timeRemaining).
  */
 class QuizAttempt extends Model
 {
+    /** @use HasFactory<\Database\Factories\QuizAttemptFactory> */
     use HasFactory, BelongsToInstitution, Auditable;
 
     protected $fillable = [
@@ -59,6 +62,8 @@ class QuizAttempt extends Model
 
     /**
      * Relation: Quiz
+     *
+     * @return BelongsTo<Quiz, $this>
      */
     public function quiz(): BelongsTo
     {
@@ -67,6 +72,8 @@ class QuizAttempt extends Model
 
     /**
      * Relation: Étudiant
+     *
+     * @return BelongsTo<User, $this>
      */
     public function user(): BelongsTo
     {
@@ -75,6 +82,8 @@ class QuizAttempt extends Model
 
     /**
      * Relation: Enseignant qui a noté (optionnel)
+     *
+     * @return BelongsTo<User, $this>
      */
     public function grader(): BelongsTo
     {
@@ -83,6 +92,9 @@ class QuizAttempt extends Model
 
     /**
      * Scope: Tentatives soumises
+     *
+     * @param  \Illuminate\Database\Eloquent\Builder<QuizAttempt>  $query
+     * @return \Illuminate\Database\Eloquent\Builder<QuizAttempt>
      */
     public function scopeSubmitted($query)
     {
@@ -91,6 +103,9 @@ class QuizAttempt extends Model
 
     /**
      * Scope: Tentatives en cours
+     *
+     * @param  \Illuminate\Database\Eloquent\Builder<QuizAttempt>  $query
+     * @return \Illuminate\Database\Eloquent\Builder<QuizAttempt>
      */
     public function scopeInProgress($query)
     {
@@ -99,6 +114,9 @@ class QuizAttempt extends Model
 
     /**
      * Scope: Tentatives réussies
+     *
+     * @param  \Illuminate\Database\Eloquent\Builder<QuizAttempt>  $query
+     * @return \Illuminate\Database\Eloquent\Builder<QuizAttempt>
      */
     public function scopePassed($query)
     {

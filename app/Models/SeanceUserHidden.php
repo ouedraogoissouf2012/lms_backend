@@ -31,6 +31,8 @@ class SeanceUserHidden extends Model
 
     /**
      * Relation vers la séance
+     *
+     * @return BelongsTo<Seance, $this>
      */
     public function seance(): BelongsTo
     {
@@ -39,6 +41,8 @@ class SeanceUserHidden extends Model
 
     /**
      * Relation vers l'utilisateur
+     *
+     * @return BelongsTo<User, $this>
      */
     public function user(): BelongsTo
     {

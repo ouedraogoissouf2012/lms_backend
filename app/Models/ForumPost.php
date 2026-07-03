@@ -17,11 +17,11 @@ use App\Models\Traits\BelongsToInstitution;
  *
  * @property int $id
  * @property int $user_id
- * @property int|null $institution_id
  * @property-read \App\Models\ForumTopic|null $topic
  */
 class ForumPost extends Model
 {
+    /** @use HasFactory<\Database\Factories\ForumPostFactory> */
     use HasFactory, SoftDeletes, BelongsToInstitution;
 
     protected $fillable = [
@@ -49,43 +49,73 @@ class ForumPost extends Model
         'likes_count' => 0,
     ];
 
-    /** Relation: Topic parent */
+    /**
+     * Relation: Topic parent
+     *
+     * @return BelongsTo<ForumTopic, $this>
+     */
     public function topic(): BelongsTo
     {
         return $this->belongsTo(ForumTopic::class, 'topic_id');
     }
 
-    /** Relation: Auteur du post */
+    /**
+     * Relation: Auteur du post
+     *
+     * @return BelongsTo<User, $this>
+     */
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
     }
 
-    /** Relation: Post parent (si c'est une réponse) */
+    /**
+     * Relation: Post parent (si c'est une réponse)
+     *
+     * @return BelongsTo<ForumPost, $this>
+     */
     public function parent(): BelongsTo
     {
         return $this->belongsTo(ForumPost::class, 'parent_id');
     }
 
-    /** Relation: Réponses à ce post */
+    /**
+     * Relation: Réponses à ce post
+     *
+     * @return HasMany<ForumPost, $this>
+     */
     public function replies(): HasMany
     {
         return $this->hasMany(ForumPost::class, 'parent_id');
     }
 
-    /** Relation: Fichiers attachés au post */
+    /**
+     * Relation: Fichiers attachés au post
+     *
+     * @return MorphMany<File, $this>
+     */
     public function files(): MorphMany
     {
         return $this->morphMany(File::class, 'fileable');
     }
 
-    /** Scope: Posts de niveau racine (pas de parent) */
+    /**
+     * Scope: Posts de niveau racine (pas de parent)
+     *
+     * @param  \Illuminate\Database\Eloquent\Builder<ForumPost>  $query
+     * @return \Illuminate\Database\Eloquent\Builder<ForumPost>
+     */
     public function scopeRootLevel($query)
     {
         return $query->whereNull('parent_id');
     }
 
-    /** Scope: Solutions marquées */
+    /**
+     * Scope: Solutions marquées
+     *
+     * @param  \Illuminate\Database\Eloquent\Builder<ForumPost>  $query
+     * @return \Illuminate\Database\Eloquent\Builder<ForumPost>
+     */
     public function scopeSolutions($query)
     {
         return $query->where('is_solution', true);

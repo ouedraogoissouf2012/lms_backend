@@ -10,6 +10,7 @@ use App\Models\Concerns\Auditable;
 
 class EvaluationSubmission extends Model
 {
+    /** @use HasFactory<\Database\Factories\EvaluationSubmissionFactory> */
     use HasFactory, BelongsToInstitution, Auditable;
 
     protected $fillable = [
@@ -41,6 +42,8 @@ class EvaluationSubmission extends Model
 
     /**
      * Une soumission appartient à une évaluation
+     *
+     * @return BelongsTo<Evaluation, $this>
      */
     public function evaluation(): BelongsTo
     {
@@ -49,6 +52,8 @@ class EvaluationSubmission extends Model
 
     /**
      * Une soumission appartient à un étudiant (user local)
+     *
+     * @return BelongsTo<User, $this>
      */
     public function student(): BelongsTo
     {

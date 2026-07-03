@@ -9,6 +9,7 @@ use App\Models\Traits\BelongsToInstitution;
 
 class EvaluationQuestion extends Model
 {
+    /** @use HasFactory<\Database\Factories\EvaluationQuestionFactory> */
     use HasFactory, BelongsToInstitution;
 
     protected $fillable = [
@@ -33,6 +34,8 @@ class EvaluationQuestion extends Model
 
     /**
      * Une question appartient à une évaluation
+     *
+     * @return BelongsTo<Evaluation, $this>
      */
     public function evaluation(): BelongsTo
     {

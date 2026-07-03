@@ -17,6 +17,7 @@ use App\Models\Traits\BelongsToInstitution;
  */
 class Chapter extends Model
 {
+    /** @use HasFactory<\Database\Factories\ChapterFactory> */
     use HasFactory, SoftDeletes, BelongsToInstitution;
 
     protected $fillable = [
@@ -62,26 +63,19 @@ class Chapter extends Model
         'order' => 0,
     ];
 
-    /**
-     * Relation: Matière liée
-     */
+    /** @return BelongsTo<Matiere, $this> Matière liée. */
     public function matiere(): BelongsTo
     {
         return $this->belongsTo(Matiere::class);
     }
 
-    /**
-     * Relation: Enseignant créateur
-     */
+    /** @return BelongsTo<User, $this> Enseignant créateur. */
     public function enseignant(): BelongsTo
     {
         return $this->belongsTo(User::class, 'enseignant_id');
     }
 
-    /**
-     * Relation: Leçon parente (NOUVELLE STRUCTURE)
-     * Un chapitre appartient à une leçon
-     */
+    /** @return BelongsTo<Lesson, $this> Leçon parente (un chapitre appartient à une leçon). */
     public function lesson(): BelongsTo
     {
         return $this->belongsTo(Lesson::class);
@@ -89,6 +83,9 @@ class Chapter extends Model
 
     /**
      * Scope: Ordonné
+     *
+     * @param  \Illuminate\Database\Eloquent\Builder<Chapter>  $query
+     * @return \Illuminate\Database\Eloquent\Builder<Chapter>
      */
     public function scopeOrdered($query)
     {
@@ -97,6 +94,9 @@ class Chapter extends Model
 
     /**
      * Scope: Par matière
+     *
+     * @param  \Illuminate\Database\Eloquent\Builder<Chapter>  $query
+     * @return \Illuminate\Database\Eloquent\Builder<Chapter>
      */
     public function scopeForMatiere($query, int $matiereId)
     {
@@ -105,6 +105,9 @@ class Chapter extends Model
 
     /**
      * Scope: Par enseignant
+     *
+     * @param  \Illuminate\Database\Eloquent\Builder<Chapter>  $query
+     * @return \Illuminate\Database\Eloquent\Builder<Chapter>
      */
     public function scopeByTeacher($query, int $enseignantId)
     {
@@ -113,6 +116,9 @@ class Chapter extends Model
 
     /**
      * Scope: Par leçon
+     *
+     * @param  \Illuminate\Database\Eloquent\Builder<Chapter>  $query
+     * @return \Illuminate\Database\Eloquent\Builder<Chapter>
      */
     public function scopeForLesson($query, int $lessonId)
     {
@@ -121,6 +127,9 @@ class Chapter extends Model
 
     /**
      * Scope: Par type de contenu
+     *
+     * @param  \Illuminate\Database\Eloquent\Builder<Chapter>  $query
+     * @return \Illuminate\Database\Eloquent\Builder<Chapter>
      */
     public function scopeByContentType($query, string $contentType)
     {

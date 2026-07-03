@@ -4,6 +4,7 @@ use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;
 use App\Jobs\SyncKlassciSeances;
+use App\Jobs\AutoCloseEmptySeances;
 use App\Jobs\ArchiveOldSeances;
 use App\Jobs\CleanObsoleteSeances;
 use App\Jobs\CleanOldEvaluations;
@@ -82,6 +83,18 @@ Schedule::job(new FinalizeSeanceAttendances)
     ->withoutOverlapping()
     ->onOneServer();
 
+// Planifier la fermeture automatique des séances visio vides ou abandonnées (#369)
+// Le job existait mais n'était PAS planifié — origine des incidents « visios
+// jamais fermées » (DIAGNOSTIC_HEARTBEAT_PROBLEM.md, ANALYSE_SEANCES_OBSOLETES.md).
+// Fréquence 5 min = plus petit seuil des règles de fermeture (enseignant
+// déconnecté 5 min / tous déconnectés 10 min / aucun participant 30 min) :
+// latence de détection max = seuil + 5 min, proportionnée sans sur-scanner.
+Schedule::job(new AutoCloseEmptySeances)
+    ->everyFiveMinutes()
+    ->name('auto-close-empty-seances')
+    ->withoutOverlapping()
+    ->onOneServer();
+
 // Purge quotidienne du journal d'audit au-delà du seuil de rétention (#215).
 // Le journal est append-only ; ceci est le seul mécanisme de suppression.
 Schedule::command('audit:purge')
@@ -89,3 +102,27 @@ Schedule::command('audit:purge')
     ->name('purge-audit-logs')
     ->withoutOverlapping()
     ->onOneServer();
+
+// Battement de vie du scheduler (#369) — marqueur cache lu par
+// `scheduler:healthcheck` pour détecter un cron mort en < 10 min.
+// Chaque minute : c'est la granularité du cron `schedule:run` lui-même.
+Schedule::command('scheduler:heartbeat')
+    ->everyMinute()
+    ->name('scheduler-heartbeat');
+
+// Worker de queue pour mutualisé cPanel (#369) — pas de Supervisor disponible,
+// donc pas de démon `queue:work` permanent. Stratégie : drainer la table `jobs`
+// chaque minute puis rendre la main (--stop-when-empty).
+//   --max-time=55     : borne le drain sous le tick d'1 min (l'hébergeur
+//                       mutualisé tue les process longs).
+//   runInBackground   : le drain ne doit pas bloquer les autres tâches du
+//                       même tick `schedule:run`.
+//   withoutOverlapping(10) : verrou à expiration COURTE — si le process est
+//                       tué net (kill -9 hébergeur), le verrou par défaut
+//                       (24 h) gèlerait la queue ; 10 min = auto-guérison.
+Schedule::command('queue:work --stop-when-empty --max-time=55')
+    ->everyMinute()
+    ->name('queue-worker')
+    ->withoutOverlapping(10)
+    ->onOneServer()
+    ->runInBackground();

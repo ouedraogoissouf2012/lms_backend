@@ -1,106 +1,66 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
+use App\Models\User;
+use App\Services\Dashboard\TeacherStatsService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use App\Models\Lesson;
-use App\Models\Evaluation;
-use App\Services\KlassciProxyService;
-use Illuminate\Support\Facades\Log;
+use Psr\Log\LoggerInterface;
 
+/**
+ * TeacherStatsController — endpoint thin pour les compteurs de contenu
+ * d'un enseignant (matières, classes, évaluations, leçons).
+ *
+ * Issue #364 : l'agrégation est extraite verbatim dans
+ * {@see TeacherStatsService}. Restent ici les préoccupations HTTP :
+ *
+ *   - le garde de rôle 403 (défense en profondeur : la route porte déjà
+ *     `role:enseignant,coordinateur`) ;
+ *   - le catch 500 avec son enveloppe legacy à clé racine `error`
+ *     (chaîne) que `errorResponse()` ne reproduit pas — conservé inline
+ *     (axe #1 « DRY-only »).
+ *
+ * ## DI strict (§1.6 D)
+ *
+ * `TeacherStatsService` et le logger PSR-3 sont injectés par le
+ * constructeur (la dépendance morte `KlassciProxyService`, jamais
+ * utilisée par `getStats`, a été supprimée).
+ *
+ * @see app/Services/Dashboard/TeacherStatsService.php
+ */
 class TeacherStatsController extends Controller
 {
-    protected $klassciService;
-
-    public function __construct(KlassciProxyService $klassciService)
-    {
-        $this->klassciService = $klassciService;
+    public function __construct(
+        private readonly TeacherStatsService $statsService,
+        private readonly LoggerInterface $logger,
+    ) {
     }
 
     /**
-     * Récupérer les statistiques d'un enseignant
+     * Récupérer les statistiques d'un enseignant.
+     *
+     * GET /api/teacher/stats
      */
-    public function getStats(Request $request)
+    public function getStats(Request $request): JsonResponse
     {
         try {
             $user = $request->user();
 
-            if (!$user || ! $user->isStaff()) {
+            // `instanceof` couvre le null ET type la variable pour le
+            // service — même sémantique que l'ancien `!$user`.
+            if (! $user instanceof User || ! $user->isStaff()) {
                 return $this->errorResponse('Accès réservé aux enseignants', 403);
             }
 
-            // Récupérer le klassci_id de l'utilisateur
-            $klassciId = $user->klassci_id;
-
-            // 1. Compter les leçons créées par cet enseignant
-            $lessonsCount = Lesson::where('enseignant_id', $klassciId)->count();
-
-            // 2. Compter les évaluations créées par cet enseignant
-            $evaluationsCount = Evaluation::where('enseignant_id', $klassciId)->count();
-
-            // 3. Compter les matières et classes uniques depuis les leçons et évaluations
-            $matieresSet = [];
-            $classesSet = [];
-
-            // Récupérer les matière_id uniques depuis les leçons
-            $lessonMatieres = Lesson::where('enseignant_id', $klassciId)
-                ->whereNotNull('matiere_id')
-                ->distinct()
-                ->pluck('matiere_id')
-                ->toArray();
-
-            foreach ($lessonMatieres as $matiereId) {
-                $matieresSet[$matiereId] = true;
-            }
-
-            // Récupérer les matière_id uniques depuis les évaluations
-            $evaluationMatieres = Evaluation::where('enseignant_id', $klassciId)
-                ->whereNotNull('matiere_id')
-                ->distinct()
-                ->pluck('matiere_id')
-                ->toArray();
-
-            foreach ($evaluationMatieres as $matiereId) {
-                $matieresSet[$matiereId] = true;
-            }
-
-            // Récupérer les classe_id uniques depuis les leçons
-            $lessonClasses = Lesson::where('enseignant_id', $klassciId)
-                ->whereNotNull('classe_id')
-                ->distinct()
-                ->pluck('classe_id')
-                ->toArray();
-
-            foreach ($lessonClasses as $classeId) {
-                $classesSet[$classeId] = true;
-            }
-
-            // Récupérer les classe_id uniques depuis les évaluations
-            $evaluationClasses = Evaluation::where('enseignant_id', $klassciId)
-                ->whereNotNull('classe_id')
-                ->distinct()
-                ->pluck('classe_id')
-                ->toArray();
-
-            foreach ($evaluationClasses as $classeId) {
-                $classesSet[$classeId] = true;
-            }
-
-            $matieresCount = count($matieresSet);
-            $classesCount = count($classesSet);
-
-            return $this->successResponse([
-                'matieres' => $matieresCount,
-                'classes' => $classesCount,
-                'evaluations' => $evaluationsCount,
-                'lessons' => $lessonsCount,
-            ]);
-
+            return $this->successResponse($this->statsService->buildStats($user));
         } catch (\Exception $e) {
-            Log::error('Erreur récupération statistiques enseignant:', [
+            $this->logger->error('Erreur récupération statistiques enseignant:', [
                 'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
+                'trace' => $e->getTraceAsString(),
             ]);
 
             // Non migré vers errorResponse() : expose une clé racine `error`

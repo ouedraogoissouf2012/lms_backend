@@ -39,6 +39,8 @@ class KnowledgeCheckAttempt extends Model
 
     /**
      * Relation: Quiz parent
+     *
+     * @return BelongsTo<KnowledgeCheck, $this>
      */
     public function knowledgeCheck(): BelongsTo
     {
@@ -47,6 +49,8 @@ class KnowledgeCheckAttempt extends Model
 
     /**
      * Relation: Utilisateur
+     *
+     * @return BelongsTo<User, $this>
      */
     public function user(): BelongsTo
     {
@@ -83,6 +87,9 @@ class KnowledgeCheckAttempt extends Model
 
     /**
      * Scope: Par utilisateur
+     *
+     * @param  \Illuminate\Database\Eloquent\Builder<KnowledgeCheckAttempt>  $query
+     * @return \Illuminate\Database\Eloquent\Builder<KnowledgeCheckAttempt>
      */
     public function scopeForUser($query, int $userId)
     {
@@ -91,6 +98,9 @@ class KnowledgeCheckAttempt extends Model
 
     /**
      * Scope: Reussies
+     *
+     * @param  \Illuminate\Database\Eloquent\Builder<KnowledgeCheckAttempt>  $query
+     * @return \Illuminate\Database\Eloquent\Builder<KnowledgeCheckAttempt>
      */
     public function scopePassed($query)
     {
@@ -99,6 +109,9 @@ class KnowledgeCheckAttempt extends Model
 
     /**
      * Scope: Recentes d'abord
+     *
+     * @param  \Illuminate\Database\Eloquent\Builder<KnowledgeCheckAttempt>  $query
+     * @return \Illuminate\Database\Eloquent\Builder<KnowledgeCheckAttempt>
      */
     public function scopeLatest($query)
     {

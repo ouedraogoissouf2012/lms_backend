@@ -39,6 +39,8 @@ class LessonResource extends Model
 
     /**
      * Relation: Leçon parente
+     *
+     * @return BelongsTo<Lesson, $this>
      */
     public function lesson(): BelongsTo
     {
@@ -47,6 +49,9 @@ class LessonResource extends Model
 
     /**
      * Scope: Ordonné
+     *
+     * @param  \Illuminate\Database\Eloquent\Builder<LessonResource>  $query
+     * @return \Illuminate\Database\Eloquent\Builder<LessonResource>
      */
     public function scopeOrdered($query)
     {
@@ -55,6 +60,9 @@ class LessonResource extends Model
 
     /**
      * Scope: Par type
+     *
+     * @param  \Illuminate\Database\Eloquent\Builder<LessonResource>  $query
+     * @return \Illuminate\Database\Eloquent\Builder<LessonResource>
      */
     public function scopeOfType($query, string $type)
     {

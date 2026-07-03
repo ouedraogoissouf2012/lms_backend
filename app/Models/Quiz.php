@@ -15,10 +15,14 @@ use App\Models\Traits\BelongsToInstitution;
  *
  * @property int $id
  * @property int $created_by
- * @property int|null $institution_id
+ * @property int $user_attempts_count            Attribut posé par QuizCrudService (QuizAccessService::attemptsCountForUser).
+ * @property bool $user_can_attempt              Attribut posé par QuizCrudService (QuizAccessService::canUserAttempt).
+ * @property QuizAttempt|null $user_best_attempt Attribut posé par QuizCrudService (QuizAccessService::bestAttemptForUser).
+ * @property QuizAttempt|null $user_latest_attempt Attribut posé par QuizCrudService (QuizAccessService::latestAttemptForUser).
  */
 class Quiz extends Model
 {
+    /** @use HasFactory<\Database\Factories\QuizFactory> */
     use HasFactory, SoftDeletes, BelongsToInstitution;
 
     protected $fillable = [
@@ -58,43 +62,72 @@ class Quiz extends Model
         'attempts_count' => 0,
     ];
 
-    /** Relation: Cours lié (optionnel) */
+    /**
+     * Relation: Cours lié (optionnel)
+     *
+     * @return BelongsTo<Lesson, $this>
+     */
     public function lesson(): BelongsTo
     {
         return $this->belongsTo(Lesson::class);
     }
 
-    /** Relation: Matière liée (optionnel) */
+    /**
+     * Relation: Matière liée (optionnel)
+     *
+     * @return BelongsTo<Matiere, $this>
+     */
     public function matiere(): BelongsTo
     {
         return $this->belongsTo(Matiere::class);
     }
 
-    /** Relation: Classe liée (optionnel) */
+    /**
+     * Relation: Classe liée (optionnel)
+     *
+     * @return BelongsTo<Classe, $this>
+     */
     public function classe(): BelongsTo
     {
         return $this->belongsTo(Classe::class);
     }
 
-    /** Relation: Créateur du quiz */
+    /**
+     * Relation: Créateur du quiz
+     *
+     * @return BelongsTo<User, $this>
+     */
     public function creator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');
     }
 
-    /** Relation: Questions du quiz */
+    /**
+     * Relation: Questions du quiz
+     *
+     * @return HasMany<QuizQuestion, $this>
+     */
     public function questions(): HasMany
     {
         return $this->hasMany(QuizQuestion::class);
     }
 
-    /** Relation: Tentatives du quiz */
+    /**
+     * Relation: Tentatives du quiz
+     *
+     * @return HasMany<QuizAttempt, $this>
+     */
     public function attempts(): HasMany
     {
         return $this->hasMany(QuizAttempt::class);
     }
 
-    /** Scope: Quiz publiés */
+    /**
+     * Scope: Quiz publiés
+     *
+     * @param  \Illuminate\Database\Eloquent\Builder<Quiz>  $query
+     * @return \Illuminate\Database\Eloquent\Builder<Quiz>
+     */
     public function scopePublished($query)
     {
         return $query->where('status', 'published')
@@ -102,7 +135,12 @@ class Quiz extends Model
             ->where('published_at', '<=', now());
     }
 
-    /** Scope: Quiz disponibles (publiés + dans la période de disponibilité) */
+    /**
+     * Scope: Quiz disponibles (publiés + dans la période de disponibilité)
+     *
+     * @param  \Illuminate\Database\Eloquent\Builder<Quiz>  $query
+     * @return \Illuminate\Database\Eloquent\Builder<Quiz>
+     */
     public function scopeAvailable($query)
     {
         return $query->published()
@@ -116,19 +154,34 @@ class Quiz extends Model
             });
     }
 
-    /** Scope: Par matière */
+    /**
+     * Scope: Par matière
+     *
+     * @param  \Illuminate\Database\Eloquent\Builder<Quiz>  $query
+     * @return \Illuminate\Database\Eloquent\Builder<Quiz>
+     */
     public function scopeForMatiere($query, int $matiereId)
     {
         return $query->where('matiere_id', $matiereId);
     }
 
-    /** Scope: Par classe */
+    /**
+     * Scope: Par classe
+     *
+     * @param  \Illuminate\Database\Eloquent\Builder<Quiz>  $query
+     * @return \Illuminate\Database\Eloquent\Builder<Quiz>
+     */
     public function scopeForClasse($query, int $classeId)
     {
         return $query->where('classe_id', $classeId);
     }
 
-    /** Scope: Par cours */
+    /**
+     * Scope: Par cours
+     *
+     * @param  \Illuminate\Database\Eloquent\Builder<Quiz>  $query
+     * @return \Illuminate\Database\Eloquent\Builder<Quiz>
+     */
     public function scopeForLesson($query, int $lessonId)
     {
         return $query->where('lesson_id', $lessonId);

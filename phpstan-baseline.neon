@@ -73,13 +73,7 @@ parameters:
 			path: app/Http/Controllers/API/ChapterProgressController.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\Lesson\:\:\$students_started\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Controllers/API/Dashboard/DashboardTeacherController.php
-
-		-
-			message: '#^Cannot access property \$name on Illuminate\\Database\\Eloquent\\Model\|null\.$#'
+			message: '#^Cannot access property \$name on App\\Models\\User\|null\.$#'
 			identifier: property.nonObject
 			count: 2
 			path: app/Http/Controllers/API/Dashboard/DashboardTeacherController.php
@@ -87,24 +81,6 @@ parameters:
 		-
 			message: '#^Cannot access property \$title on App\\Models\\Quiz\|null\.$#'
 			identifier: property.nonObject
-			count: 1
-			path: app/Http/Controllers/API/Dashboard/DashboardTeacherController.php
-
-		-
-			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\ForumTopic\>\:\:map\(\) contains unresolvable type\.$#'
-			identifier: argument.unresolvableType
-			count: 1
-			path: app/Http/Controllers/API/Dashboard/DashboardTeacherController.php
-
-		-
-			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\Lesson\>\:\:map\(\) contains unresolvable type\.$#'
-			identifier: argument.unresolvableType
-			count: 1
-			path: app/Http/Controllers/API/Dashboard/DashboardTeacherController.php
-
-		-
-			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\QuizAttempt\>\:\:map\(\) contains unresolvable type\.$#'
-			identifier: argument.unresolvableType
 			count: 1
 			path: app/Http/Controllers/API/Dashboard/DashboardTeacherController.php
 
@@ -131,54 +107,6 @@ parameters:
 			identifier: argument.type
 			count: 1
 			path: app/Http/Controllers/API/Dashboard/DashboardTeacherController.php
-
-		-
-			message: '#^Return type of call to method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\ForumTopic\>\:\:map\(\) contains unresolvable type\.$#'
-			identifier: method.unresolvableReturnType
-			count: 1
-			path: app/Http/Controllers/API/Dashboard/DashboardTeacherController.php
-
-		-
-			message: '#^Return type of call to method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\Lesson\>\:\:map\(\) contains unresolvable type\.$#'
-			identifier: method.unresolvableReturnType
-			count: 1
-			path: app/Http/Controllers/API/Dashboard/DashboardTeacherController.php
-
-		-
-			message: '#^Return type of call to method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\QuizAttempt\>\:\:map\(\) contains unresolvable type\.$#'
-			identifier: method.unresolvableReturnType
-			count: 1
-			path: app/Http/Controllers/API/Dashboard/DashboardTeacherController.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$feedback\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Controllers/API/Evaluation/EvaluationKlassciSyncController.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$klassci_etudiant_id\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Controllers/API/Evaluation/EvaluationKlassciSyncController.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$note_sur_20\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Controllers/API/Evaluation/EvaluationKlassciSyncController.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$status\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Controllers/API/Evaluation/EvaluationKlassciSyncController.php
-
-		-
-			message: '#^Parameter \#1 \$values of method Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\:\:update\(\) expects array\<model property of Illuminate\\Database\\Eloquent\\Model, mixed\>, array\<string, Illuminate\\Support\\Carbon\|true\> given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Controllers/API/Evaluation/EvaluationKlassciSyncController.php
 
 		-
 			message: '#^Property App\\Http\\Controllers\\API\\Evaluation\\EvaluationKlassciSyncController\:\:\$enrichmentService is never read, only written\.$#'
@@ -379,12 +307,6 @@ parameters:
 			path: app/Http/Middleware/EnsureKlassciSync.php
 
 		-
-			message: '#^Cannot call method toIso8601String\(\) on string\.$#'
-			identifier: method.nonObject
-			count: 1
-			path: app/Http/Middleware/EnsureKlassciSync.php
-
-		-
 			message: '#^Parameter \#2 \$klassciUser of method App\\Http\\Middleware\\EnsureKlassciSync\:\:detectAndLogRoleDivergence\(\) expects array\<string, mixed\>, mixed given\.$#'
 			identifier: argument.type
 			count: 1
@@ -511,20 +433,8 @@ parameters:
 			path: app/Http/Requests/DeleteAllReadNotificationsRequest.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\Lesson\:\:\$institution_id\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Requests/DeleteChapterRequest.php
-
-		-
 			message: '#^Method App\\Http\\Requests\\DeleteChapterRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
 			identifier: missingType.iterableValue
-			count: 1
-			path: app/Http/Requests/DeleteChapterRequest.php
-
-		-
-			message: '#^Parameter \#1 \$column of method Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Chapter\>\:\:where\(\) expects array\<int\|model property of App\\Models\\Chapter, mixed\>\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Chapter\>\)\: Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Chapter\>\)\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Chapter\>\)\: void\)\|Illuminate\\Contracts\\Database\\Query\\Expression\|model property of App\\Models\\Chapter, ''institution_id'' given\.$#'
-			identifier: argument.type
 			count: 1
 			path: app/Http/Requests/DeleteChapterRequest.php
 
@@ -537,12 +447,6 @@ parameters:
 		-
 			message: '#^Method App\\Http\\Requests\\DeleteEvaluationRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
 			identifier: missingType.iterableValue
-			count: 1
-			path: app/Http/Requests/DeleteEvaluationRequest.php
-
-		-
-			message: '#^Parameter \#1 \$column of method Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Evaluation\>\:\:where\(\) expects array\<int\|model property of App\\Models\\Evaluation, mixed\>\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Evaluation\>\)\: Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Evaluation\>\)\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Evaluation\>\)\: void\)\|Illuminate\\Contracts\\Database\\Query\\Expression\|model property of App\\Models\\Evaluation, ''institution_id'' given\.$#'
-			identifier: argument.type
 			count: 1
 			path: app/Http/Requests/DeleteEvaluationRequest.php
 
@@ -579,12 +483,6 @@ parameters:
 		-
 			message: '#^Method App\\Http\\Requests\\DeleteLessonRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
 			identifier: missingType.iterableValue
-			count: 1
-			path: app/Http/Requests/DeleteLessonRequest.php
-
-		-
-			message: '#^Parameter \#1 \$column of method Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Lesson\>\:\:where\(\) expects array\<int\|model property of App\\Models\\Lesson, mixed\>\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Lesson\>\)\: Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Lesson\>\)\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Lesson\>\)\: void\)\|Illuminate\\Contracts\\Database\\Query\\Expression\|model property of App\\Models\\Lesson, ''institution_id'' given\.$#'
-			identifier: argument.type
 			count: 1
 			path: app/Http/Requests/DeleteLessonRequest.php
 
@@ -949,20 +847,8 @@ parameters:
 			path: app/Http/Requests/PublishEvaluationRequest.php
 
 		-
-			message: '#^Parameter \#1 \$column of method Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Evaluation\>\:\:where\(\) expects array\<int\|model property of App\\Models\\Evaluation, mixed\>\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Evaluation\>\)\: Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Evaluation\>\)\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Evaluation\>\)\: void\)\|Illuminate\\Contracts\\Database\\Query\\Expression\|model property of App\\Models\\Evaluation, ''institution_id'' given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Requests/PublishEvaluationRequest.php
-
-		-
 			message: '#^Method App\\Http\\Requests\\PublishLessonRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
 			identifier: missingType.iterableValue
-			count: 1
-			path: app/Http/Requests/PublishLessonRequest.php
-
-		-
-			message: '#^Parameter \#1 \$column of method Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Lesson\>\:\:where\(\) expects array\<int\|model property of App\\Models\\Lesson, mixed\>\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Lesson\>\)\: Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Lesson\>\)\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Lesson\>\)\: void\)\|Illuminate\\Contracts\\Database\\Query\\Expression\|model property of App\\Models\\Lesson, ''institution_id'' given\.$#'
-			identifier: argument.type
 			count: 1
 			path: app/Http/Requests/PublishLessonRequest.php
 
@@ -999,12 +885,6 @@ parameters:
 		-
 			message: '#^Method App\\Http\\Requests\\ReorderChaptersRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
 			identifier: missingType.iterableValue
-			count: 1
-			path: app/Http/Requests/ReorderChaptersRequest.php
-
-		-
-			message: '#^Parameter \#1 \$column of method Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Lesson\>\:\:where\(\) expects array\<int\|model property of App\\Models\\Lesson, mixed\>\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Lesson\>\)\: Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Lesson\>\)\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Lesson\>\)\: void\)\|Illuminate\\Contracts\\Database\\Query\\Expression\|model property of App\\Models\\Lesson, ''institution_id'' given\.$#'
-			identifier: argument.type
 			count: 1
 			path: app/Http/Requests/ReorderChaptersRequest.php
 
@@ -1107,12 +987,6 @@ parameters:
 		-
 			message: '#^Method App\\Http\\Requests\\StoreChapterRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
 			identifier: missingType.iterableValue
-			count: 1
-			path: app/Http/Requests/StoreChapterRequest.php
-
-		-
-			message: '#^Parameter \#1 \$column of method Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Lesson\>\:\:where\(\) expects array\<int\|model property of App\\Models\\Lesson, mixed\>\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Lesson\>\)\: Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Lesson\>\)\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Lesson\>\)\: void\)\|Illuminate\\Contracts\\Database\\Query\\Expression\|model property of App\\Models\\Lesson, ''institution_id'' given\.$#'
-			identifier: argument.type
 			count: 1
 			path: app/Http/Requests/StoreChapterRequest.php
 
@@ -1333,18 +1207,6 @@ parameters:
 			path: app/Http/Requests/UnpublishLessonRequest.php
 
 		-
-			message: '#^Parameter \#1 \$column of method Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Lesson\>\:\:where\(\) expects array\<int\|model property of App\\Models\\Lesson, mixed\>\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Lesson\>\)\: Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Lesson\>\)\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Lesson\>\)\: void\)\|Illuminate\\Contracts\\Database\\Query\\Expression\|model property of App\\Models\\Lesson, ''institution_id'' given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Requests/UnpublishLessonRequest.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\Lesson\:\:\$institution_id\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Requests/UpdateChapterRequest.php
-
-		-
 			message: '#^Cannot cast mixed to string\.$#'
 			identifier: cast.string
 			count: 1
@@ -1353,12 +1215,6 @@ parameters:
 		-
 			message: '#^Method App\\Http\\Requests\\UpdateChapterRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
 			identifier: missingType.iterableValue
-			count: 1
-			path: app/Http/Requests/UpdateChapterRequest.php
-
-		-
-			message: '#^Parameter \#1 \$column of method Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Chapter\>\:\:where\(\) expects array\<int\|model property of App\\Models\\Chapter, mixed\>\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Chapter\>\)\: Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Chapter\>\)\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Chapter\>\)\: void\)\|Illuminate\\Contracts\\Database\\Query\\Expression\|model property of App\\Models\\Chapter, ''institution_id'' given\.$#'
-			identifier: argument.type
 			count: 1
 			path: app/Http/Requests/UpdateChapterRequest.php
 
@@ -1383,12 +1239,6 @@ parameters:
 		-
 			message: '#^Method App\\Http\\Requests\\UpdateEvaluationRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
 			identifier: missingType.iterableValue
-			count: 1
-			path: app/Http/Requests/UpdateEvaluationRequest.php
-
-		-
-			message: '#^Parameter \#1 \$column of method Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Evaluation\>\:\:where\(\) expects array\<int\|model property of App\\Models\\Evaluation, mixed\>\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Evaluation\>\)\: Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Evaluation\>\)\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Evaluation\>\)\: void\)\|Illuminate\\Contracts\\Database\\Query\\Expression\|model property of App\\Models\\Evaluation, ''institution_id'' given\.$#'
-			identifier: argument.type
 			count: 1
 			path: app/Http/Requests/UpdateEvaluationRequest.php
 
@@ -1437,12 +1287,6 @@ parameters:
 		-
 			message: '#^Method App\\Http\\Requests\\UpdateLessonRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
 			identifier: missingType.iterableValue
-			count: 1
-			path: app/Http/Requests/UpdateLessonRequest.php
-
-		-
-			message: '#^Parameter \#1 \$column of method Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Lesson\>\:\:where\(\) expects array\<int\|model property of App\\Models\\Lesson, mixed\>\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Lesson\>\)\: Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Lesson\>\)\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Lesson\>\)\: void\)\|Illuminate\\Contracts\\Database\\Query\\Expression\|model property of App\\Models\\Lesson, ''institution_id'' given\.$#'
-			identifier: argument.type
 			count: 1
 			path: app/Http/Requests/UpdateLessonRequest.php
 
@@ -1535,12 +1379,6 @@ parameters:
 			identifier: missingType.iterableValue
 			count: 1
 			path: app/Http/Requests/ViewUserDetailsRequest.php
-
-		-
-			message: '#^Relation ''attendances'' is not found in App\\Models\\Seance model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Jobs/AutoCloseEmptySeances.php
 
 		-
 			message: '#^Parameter \#1 \$userToken of method App\\Services\\KlassciProxyService\:\:requestWithUserToken\(\) expects string, string\|null given\.$#'
@@ -1663,96 +1501,6 @@ parameters:
 			path: app/Models/Chapter.php
 
 		-
-			message: '#^Class App\\Models\\Chapter uses generic trait Illuminate\\Database\\Eloquent\\Factories\\HasFactory but does not specify its types\: TFactory$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/Chapter.php
-
-		-
-			message: '#^Method App\\Models\\Chapter\:\:enseignant\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/Chapter.php
-
-		-
-			message: '#^Method App\\Models\\Chapter\:\:institution\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/Chapter.php
-
-		-
-			message: '#^Method App\\Models\\Chapter\:\:lesson\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/Chapter.php
-
-		-
-			message: '#^Method App\\Models\\Chapter\:\:matiere\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/Chapter.php
-
-		-
-			message: '#^Method App\\Models\\Chapter\:\:scopeByContentType\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Models/Chapter.php
-
-		-
-			message: '#^Method App\\Models\\Chapter\:\:scopeByContentType\(\) has parameter \$query with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: app/Models/Chapter.php
-
-		-
-			message: '#^Method App\\Models\\Chapter\:\:scopeByTeacher\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Models/Chapter.php
-
-		-
-			message: '#^Method App\\Models\\Chapter\:\:scopeByTeacher\(\) has parameter \$query with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: app/Models/Chapter.php
-
-		-
-			message: '#^Method App\\Models\\Chapter\:\:scopeForLesson\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Models/Chapter.php
-
-		-
-			message: '#^Method App\\Models\\Chapter\:\:scopeForLesson\(\) has parameter \$query with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: app/Models/Chapter.php
-
-		-
-			message: '#^Method App\\Models\\Chapter\:\:scopeForMatiere\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Models/Chapter.php
-
-		-
-			message: '#^Method App\\Models\\Chapter\:\:scopeForMatiere\(\) has parameter \$query with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: app/Models/Chapter.php
-
-		-
-			message: '#^Method App\\Models\\Chapter\:\:scopeOrdered\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Models/Chapter.php
-
-		-
-			message: '#^Method App\\Models\\Chapter\:\:scopeOrdered\(\) has parameter \$query with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: app/Models/Chapter.php
-
-		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$institution_id\.$#'
 			identifier: property.notFound
 			count: 1
@@ -1765,68 +1513,8 @@ parameters:
 			path: app/Models/ChapterProgress.php
 
 		-
-			message: '#^Method App\\Models\\ChapterProgress\:\:chapter\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Models/ChapterProgress.php
-
-		-
-			message: '#^Method App\\Models\\ChapterProgress\:\:institution\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/ChapterProgress.php
-
-		-
-			message: '#^Method App\\Models\\ChapterProgress\:\:user\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Models/ChapterProgress.php
-
-		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$institution_id\.$#'
 			identifier: property.notFound
-			count: 1
-			path: app/Models/Classe.php
-
-		-
-			message: '#^Class App\\Models\\Classe uses generic trait Illuminate\\Database\\Eloquent\\Factories\\HasFactory but does not specify its types\: TFactory$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/Classe.php
-
-		-
-			message: '#^Method App\\Models\\Classe\:\:etudiants\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsToMany does not specify its types\: TRelatedModel, TDeclaringModel, TPivotModel, TAccessor \(2\-4 required\)$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/Classe.php
-
-		-
-			message: '#^Method App\\Models\\Classe\:\:etudiantsActifs\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsToMany does not specify its types\: TRelatedModel, TDeclaringModel, TPivotModel, TAccessor \(2\-4 required\)$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/Classe.php
-
-		-
-			message: '#^Method App\\Models\\Classe\:\:forumTopics\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\HasMany does not specify its types\: TRelatedModel, TDeclaringModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/Classe.php
-
-		-
-			message: '#^Method App\\Models\\Classe\:\:institution\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/Classe.php
-
-		-
-			message: '#^Method App\\Models\\Classe\:\:lessons\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\HasMany does not specify its types\: TRelatedModel, TDeclaringModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/Classe.php
-
-		-
-			message: '#^Method App\\Models\\Classe\:\:matieres\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsToMany does not specify its types\: TRelatedModel, TDeclaringModel, TPivotModel, TAccessor \(2\-4 required\)$#'
-			identifier: missingType.generics
 			count: 1
 			path: app/Models/Classe.php
 
@@ -1837,104 +1525,8 @@ parameters:
 			path: app/Models/ESBTPAttendance.php
 
 		-
-			message: '#^Class App\\Models\\ESBTPAttendance uses generic trait Illuminate\\Database\\Eloquent\\Factories\\HasFactory but does not specify its types\: TFactory$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/ESBTPAttendance.php
-
-		-
-			message: '#^Method App\\Models\\ESBTPAttendance\:\:institution\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/ESBTPAttendance.php
-
-		-
-			message: '#^Method App\\Models\\ESBTPAttendance\:\:scopeConnected\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Models/ESBTPAttendance.php
-
-		-
-			message: '#^Method App\\Models\\ESBTPAttendance\:\:scopeConnected\(\) has parameter \$query with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: app/Models/ESBTPAttendance.php
-
-		-
-			message: '#^Method App\\Models\\ESBTPAttendance\:\:scopeDisconnected\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Models/ESBTPAttendance.php
-
-		-
-			message: '#^Method App\\Models\\ESBTPAttendance\:\:scopeDisconnected\(\) has parameter \$query with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: app/Models/ESBTPAttendance.php
-
-		-
-			message: '#^Method App\\Models\\ESBTPAttendance\:\:scopeForSeance\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Models/ESBTPAttendance.php
-
-		-
-			message: '#^Method App\\Models\\ESBTPAttendance\:\:scopeForSeance\(\) has parameter \$query with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: app/Models/ESBTPAttendance.php
-
-		-
-			message: '#^Method App\\Models\\ESBTPAttendance\:\:scopeValidated\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Models/ESBTPAttendance.php
-
-		-
-			message: '#^Method App\\Models\\ESBTPAttendance\:\:scopeValidated\(\) has parameter \$query with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: app/Models/ESBTPAttendance.php
-
-		-
-			message: '#^Method App\\Models\\ESBTPAttendance\:\:seance\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Models/ESBTPAttendance.php
-
-		-
-			message: '#^Method App\\Models\\ESBTPAttendance\:\:user\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Models/ESBTPAttendance.php
-
-		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$institution_id\.$#'
 			identifier: property.notFound
-			count: 1
-			path: app/Models/Evaluation.php
-
-		-
-			message: '#^Class App\\Models\\Evaluation uses generic trait Illuminate\\Database\\Eloquent\\Factories\\HasFactory but does not specify its types\: TFactory$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/Evaluation.php
-
-		-
-			message: '#^Method App\\Models\\Evaluation\:\:institution\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/Evaluation.php
-
-		-
-			message: '#^Method App\\Models\\Evaluation\:\:questions\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\HasMany does not specify its types\: TRelatedModel, TDeclaringModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/Evaluation.php
-
-		-
-			message: '#^Method App\\Models\\Evaluation\:\:submissions\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\HasMany does not specify its types\: TRelatedModel, TDeclaringModel$#'
-			identifier: missingType.generics
 			count: 1
 			path: app/Models/Evaluation.php
 
@@ -1945,50 +1537,8 @@ parameters:
 			path: app/Models/EvaluationQuestion.php
 
 		-
-			message: '#^Class App\\Models\\EvaluationQuestion uses generic trait Illuminate\\Database\\Eloquent\\Factories\\HasFactory but does not specify its types\: TFactory$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/EvaluationQuestion.php
-
-		-
-			message: '#^Method App\\Models\\EvaluationQuestion\:\:evaluation\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/EvaluationQuestion.php
-
-		-
-			message: '#^Method App\\Models\\EvaluationQuestion\:\:institution\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/EvaluationQuestion.php
-
-		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$institution_id\.$#'
 			identifier: property.notFound
-			count: 1
-			path: app/Models/EvaluationSubmission.php
-
-		-
-			message: '#^Class App\\Models\\EvaluationSubmission uses generic trait Illuminate\\Database\\Eloquent\\Factories\\HasFactory but does not specify its types\: TFactory$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/EvaluationSubmission.php
-
-		-
-			message: '#^Method App\\Models\\EvaluationSubmission\:\:evaluation\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/EvaluationSubmission.php
-
-		-
-			message: '#^Method App\\Models\\EvaluationSubmission\:\:institution\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/EvaluationSubmission.php
-
-		-
-			message: '#^Method App\\Models\\EvaluationSubmission\:\:student\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
-			identifier: missingType.generics
 			count: 1
 			path: app/Models/EvaluationSubmission.php
 
@@ -1999,110 +1549,8 @@ parameters:
 			path: app/Models/File.php
 
 		-
-			message: '#^Class App\\Models\\File uses generic trait Illuminate\\Database\\Eloquent\\Factories\\HasFactory but does not specify its types\: TFactory$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/File.php
-
-		-
-			message: '#^Method App\\Models\\File\:\:fileable\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\MorphTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/File.php
-
-		-
-			message: '#^Method App\\Models\\File\:\:institution\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/File.php
-
-		-
-			message: '#^Method App\\Models\\File\:\:scopeOfCategory\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Models/File.php
-
-		-
-			message: '#^Method App\\Models\\File\:\:scopeOfCategory\(\) has parameter \$query with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: app/Models/File.php
-
-		-
-			message: '#^Method App\\Models\\File\:\:scopeOfType\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Models/File.php
-
-		-
-			message: '#^Method App\\Models\\File\:\:scopeOfType\(\) has parameter \$query with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: app/Models/File.php
-
-		-
-			message: '#^Method App\\Models\\File\:\:scopePublic\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Models/File.php
-
-		-
-			message: '#^Method App\\Models\\File\:\:scopePublic\(\) has parameter \$query with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: app/Models/File.php
-
-		-
-			message: '#^Method App\\Models\\File\:\:scopeValidated\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Models/File.php
-
-		-
-			message: '#^Method App\\Models\\File\:\:scopeValidated\(\) has parameter \$query with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: app/Models/File.php
-
-		-
-			message: '#^Method App\\Models\\File\:\:user\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/File.php
-
-		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$institution_id\.$#'
 			identifier: property.notFound
-			count: 1
-			path: app/Models/ForumCategory.php
-
-		-
-			message: '#^Class App\\Models\\ForumCategory uses generic trait Illuminate\\Database\\Eloquent\\Factories\\HasFactory but does not specify its types\: TFactory$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/ForumCategory.php
-
-		-
-			message: '#^Method App\\Models\\ForumCategory\:\:institution\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/ForumCategory.php
-
-		-
-			message: '#^Method App\\Models\\ForumCategory\:\:scopeOrdered\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Models/ForumCategory.php
-
-		-
-			message: '#^Method App\\Models\\ForumCategory\:\:scopeOrdered\(\) has parameter \$query with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: app/Models/ForumCategory.php
-
-		-
-			message: '#^Method App\\Models\\ForumCategory\:\:topics\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\HasMany does not specify its types\: TRelatedModel, TDeclaringModel$#'
-			identifier: missingType.generics
 			count: 1
 			path: app/Models/ForumCategory.php
 
@@ -2113,244 +1561,10 @@ parameters:
 			path: app/Models/ForumPost.php
 
 		-
-			message: '#^Class App\\Models\\ForumPost uses generic trait Illuminate\\Database\\Eloquent\\Factories\\HasFactory but does not specify its types\: TFactory$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/ForumPost.php
-
-		-
-			message: '#^Method App\\Models\\ForumPost\:\:files\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\MorphMany does not specify its types\: TRelatedModel, TDeclaringModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/ForumPost.php
-
-		-
-			message: '#^Method App\\Models\\ForumPost\:\:institution\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/ForumPost.php
-
-		-
-			message: '#^Method App\\Models\\ForumPost\:\:parent\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/ForumPost.php
-
-		-
-			message: '#^Method App\\Models\\ForumPost\:\:replies\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\HasMany does not specify its types\: TRelatedModel, TDeclaringModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/ForumPost.php
-
-		-
-			message: '#^Method App\\Models\\ForumPost\:\:scopeRootLevel\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Models/ForumPost.php
-
-		-
-			message: '#^Method App\\Models\\ForumPost\:\:scopeRootLevel\(\) has parameter \$query with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: app/Models/ForumPost.php
-
-		-
-			message: '#^Method App\\Models\\ForumPost\:\:scopeSolutions\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Models/ForumPost.php
-
-		-
-			message: '#^Method App\\Models\\ForumPost\:\:scopeSolutions\(\) has parameter \$query with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: app/Models/ForumPost.php
-
-		-
-			message: '#^Method App\\Models\\ForumPost\:\:topic\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/ForumPost.php
-
-		-
-			message: '#^Method App\\Models\\ForumPost\:\:user\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/ForumPost.php
-
-		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$institution_id\.$#'
 			identifier: property.notFound
 			count: 1
 			path: app/Models/ForumTopic.php
-
-		-
-			message: '#^Class App\\Models\\ForumTopic uses generic trait Illuminate\\Database\\Eloquent\\Factories\\HasFactory but does not specify its types\: TFactory$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/ForumTopic.php
-
-		-
-			message: '#^Method App\\Models\\ForumTopic\:\:classe\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/ForumTopic.php
-
-		-
-			message: '#^Method App\\Models\\ForumTopic\:\:files\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\MorphMany does not specify its types\: TRelatedModel, TDeclaringModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/ForumTopic.php
-
-		-
-			message: '#^Method App\\Models\\ForumTopic\:\:institution\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/ForumTopic.php
-
-		-
-			message: '#^Method App\\Models\\ForumTopic\:\:lesson\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/ForumTopic.php
-
-		-
-			message: '#^Method App\\Models\\ForumTopic\:\:matiere\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/ForumTopic.php
-
-		-
-			message: '#^Method App\\Models\\ForumTopic\:\:posts\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\HasMany does not specify its types\: TRelatedModel, TDeclaringModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/ForumTopic.php
-
-		-
-			message: '#^Method App\\Models\\ForumTopic\:\:scopeByActivity\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Models/ForumTopic.php
-
-		-
-			message: '#^Method App\\Models\\ForumTopic\:\:scopeByActivity\(\) has parameter \$query with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: app/Models/ForumTopic.php
-
-		-
-			message: '#^Method App\\Models\\ForumTopic\:\:scopeForClasse\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Models/ForumTopic.php
-
-		-
-			message: '#^Method App\\Models\\ForumTopic\:\:scopeForClasse\(\) has parameter \$query with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: app/Models/ForumTopic.php
-
-		-
-			message: '#^Method App\\Models\\ForumTopic\:\:scopeForLesson\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Models/ForumTopic.php
-
-		-
-			message: '#^Method App\\Models\\ForumTopic\:\:scopeForLesson\(\) has parameter \$query with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: app/Models/ForumTopic.php
-
-		-
-			message: '#^Method App\\Models\\ForumTopic\:\:scopeForMatiere\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Models/ForumTopic.php
-
-		-
-			message: '#^Method App\\Models\\ForumTopic\:\:scopeForMatiere\(\) has parameter \$query with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: app/Models/ForumTopic.php
-
-		-
-			message: '#^Method App\\Models\\ForumTopic\:\:scopeOpen\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Models/ForumTopic.php
-
-		-
-			message: '#^Method App\\Models\\ForumTopic\:\:scopeOpen\(\) has parameter \$query with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: app/Models/ForumTopic.php
-
-		-
-			message: '#^Method App\\Models\\ForumTopic\:\:scopePinned\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Models/ForumTopic.php
-
-		-
-			message: '#^Method App\\Models\\ForumTopic\:\:scopePinned\(\) has parameter \$query with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: app/Models/ForumTopic.php
-
-		-
-			message: '#^Method App\\Models\\ForumTopic\:\:scopeResolved\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Models/ForumTopic.php
-
-		-
-			message: '#^Method App\\Models\\ForumTopic\:\:scopeResolved\(\) has parameter \$query with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: app/Models/ForumTopic.php
-
-		-
-			message: '#^Method App\\Models\\ForumTopic\:\:user\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/ForumTopic.php
-
-		-
-			message: '#^Class App\\Models\\Institution uses generic trait Illuminate\\Database\\Eloquent\\Factories\\HasFactory but does not specify its types\: TFactory$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/Institution.php
-
-		-
-			message: '#^Method App\\Models\\Institution\:\:classes\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Models/Institution.php
-
-		-
-			message: '#^Method App\\Models\\Institution\:\:evaluations\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Models/Institution.php
-
-		-
-			message: '#^Method App\\Models\\Institution\:\:getKlassciConfig\(\) return type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Models/Institution.php
-
-		-
-			message: '#^Method App\\Models\\Institution\:\:lessons\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Models/Institution.php
-
-		-
-			message: '#^Method App\\Models\\Institution\:\:users\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Models/Institution.php
 
 		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$institution_id\.$#'
@@ -2361,66 +1575,6 @@ parameters:
 		-
 			message: '#^Call to function is_array\(\) with array will always evaluate to true\.$#'
 			identifier: function.alreadyNarrowedType
-			count: 1
-			path: app/Models/KnowledgeCheck.php
-
-		-
-			message: '#^Class App\\Models\\KnowledgeCheck uses generic trait Illuminate\\Database\\Eloquent\\Factories\\HasFactory but does not specify its types\: TFactory$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/KnowledgeCheck.php
-
-		-
-			message: '#^Method App\\Models\\KnowledgeCheck\:\:attempts\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\HasMany does not specify its types\: TRelatedModel, TDeclaringModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/KnowledgeCheck.php
-
-		-
-			message: '#^Method App\\Models\\KnowledgeCheck\:\:chapter\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/KnowledgeCheck.php
-
-		-
-			message: '#^Method App\\Models\\KnowledgeCheck\:\:institution\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/KnowledgeCheck.php
-
-		-
-			message: '#^Method App\\Models\\KnowledgeCheck\:\:scopeActive\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Models/KnowledgeCheck.php
-
-		-
-			message: '#^Method App\\Models\\KnowledgeCheck\:\:scopeActive\(\) has parameter \$query with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: app/Models/KnowledgeCheck.php
-
-		-
-			message: '#^Method App\\Models\\KnowledgeCheck\:\:scopeForChapter\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Models/KnowledgeCheck.php
-
-		-
-			message: '#^Method App\\Models\\KnowledgeCheck\:\:scopeForChapter\(\) has parameter \$query with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: app/Models/KnowledgeCheck.php
-
-		-
-			message: '#^Method App\\Models\\KnowledgeCheck\:\:scopeOrdered\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Models/KnowledgeCheck.php
-
-		-
-			message: '#^Method App\\Models\\KnowledgeCheck\:\:scopeOrdered\(\) has parameter \$query with no type specified\.$#'
-			identifier: missingType.parameter
 			count: 1
 			path: app/Models/KnowledgeCheck.php
 
@@ -2437,206 +1591,14 @@ parameters:
 			path: app/Models/KnowledgeCheckAttempt.php
 
 		-
-			message: '#^Method App\\Models\\KnowledgeCheckAttempt\:\:institution\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/KnowledgeCheckAttempt.php
-
-		-
-			message: '#^Method App\\Models\\KnowledgeCheckAttempt\:\:knowledgeCheck\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/KnowledgeCheckAttempt.php
-
-		-
-			message: '#^Method App\\Models\\KnowledgeCheckAttempt\:\:scopeForUser\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Models/KnowledgeCheckAttempt.php
-
-		-
-			message: '#^Method App\\Models\\KnowledgeCheckAttempt\:\:scopeForUser\(\) has parameter \$query with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: app/Models/KnowledgeCheckAttempt.php
-
-		-
-			message: '#^Method App\\Models\\KnowledgeCheckAttempt\:\:scopeLatest\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Models/KnowledgeCheckAttempt.php
-
-		-
-			message: '#^Method App\\Models\\KnowledgeCheckAttempt\:\:scopeLatest\(\) has parameter \$query with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: app/Models/KnowledgeCheckAttempt.php
-
-		-
-			message: '#^Method App\\Models\\KnowledgeCheckAttempt\:\:scopePassed\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Models/KnowledgeCheckAttempt.php
-
-		-
-			message: '#^Method App\\Models\\KnowledgeCheckAttempt\:\:scopePassed\(\) has parameter \$query with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: app/Models/KnowledgeCheckAttempt.php
-
-		-
-			message: '#^Method App\\Models\\KnowledgeCheckAttempt\:\:user\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/KnowledgeCheckAttempt.php
-
-		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$institution_id\.$#'
 			identifier: property.notFound
 			count: 1
 			path: app/Models/Lesson.php
 
 		-
-			message: '#^Class App\\Models\\Lesson uses generic trait Illuminate\\Database\\Eloquent\\Factories\\HasFactory but does not specify its types\: TFactory$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/Lesson.php
-
-		-
-			message: '#^Method App\\Models\\Lesson\:\:chapters\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\HasMany does not specify its types\: TRelatedModel, TDeclaringModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/Lesson.php
-
-		-
-			message: '#^Method App\\Models\\Lesson\:\:classe\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/Lesson.php
-
-		-
-			message: '#^Method App\\Models\\Lesson\:\:enseignant\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/Lesson.php
-
-		-
-			message: '#^Method App\\Models\\Lesson\:\:files\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\MorphMany does not specify its types\: TRelatedModel, TDeclaringModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/Lesson.php
-
-		-
-			message: '#^Method App\\Models\\Lesson\:\:institution\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/Lesson.php
-
-		-
-			message: '#^Method App\\Models\\Lesson\:\:matiere\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/Lesson.php
-
-		-
-			message: '#^Method App\\Models\\Lesson\:\:progress\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\HasMany does not specify its types\: TRelatedModel, TDeclaringModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/Lesson.php
-
-		-
-			message: '#^Method App\\Models\\Lesson\:\:resources\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\HasMany does not specify its types\: TRelatedModel, TDeclaringModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/Lesson.php
-
-		-
-			message: '#^Method App\\Models\\Lesson\:\:scopeByTeacher\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Models/Lesson.php
-
-		-
-			message: '#^Method App\\Models\\Lesson\:\:scopeByTeacher\(\) has parameter \$query with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: app/Models/Lesson.php
-
-		-
-			message: '#^Method App\\Models\\Lesson\:\:scopeForClasse\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Models/Lesson.php
-
-		-
-			message: '#^Method App\\Models\\Lesson\:\:scopeForClasse\(\) has parameter \$query with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: app/Models/Lesson.php
-
-		-
-			message: '#^Method App\\Models\\Lesson\:\:scopeForMatiere\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Models/Lesson.php
-
-		-
-			message: '#^Method App\\Models\\Lesson\:\:scopeForMatiere\(\) has parameter \$query with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: app/Models/Lesson.php
-
-		-
-			message: '#^Method App\\Models\\Lesson\:\:scopeOrdered\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Models/Lesson.php
-
-		-
-			message: '#^Method App\\Models\\Lesson\:\:scopeOrdered\(\) has parameter \$query with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: app/Models/Lesson.php
-
-		-
-			message: '#^Method App\\Models\\Lesson\:\:scopePublished\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Models/Lesson.php
-
-		-
-			message: '#^Method App\\Models\\Lesson\:\:scopePublished\(\) has parameter \$query with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: app/Models/Lesson.php
-
-		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$institution_id\.$#'
 			identifier: property.notFound
-			count: 1
-			path: app/Models/LessonProgress.php
-
-		-
-			message: '#^Class App\\Models\\LessonProgress uses generic trait Illuminate\\Database\\Eloquent\\Factories\\HasFactory but does not specify its types\: TFactory$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/LessonProgress.php
-
-		-
-			message: '#^Method App\\Models\\LessonProgress\:\:institution\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/LessonProgress.php
-
-		-
-			message: '#^Method App\\Models\\LessonProgress\:\:lesson\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/LessonProgress.php
-
-		-
-			message: '#^Method App\\Models\\LessonProgress\:\:user\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
-			identifier: missingType.generics
 			count: 1
 			path: app/Models/LessonProgress.php
 
@@ -2665,42 +1627,6 @@ parameters:
 			path: app/Models/LessonResource.php
 
 		-
-			message: '#^Method App\\Models\\LessonResource\:\:institution\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/LessonResource.php
-
-		-
-			message: '#^Method App\\Models\\LessonResource\:\:lesson\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/LessonResource.php
-
-		-
-			message: '#^Method App\\Models\\LessonResource\:\:scopeOfType\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Models/LessonResource.php
-
-		-
-			message: '#^Method App\\Models\\LessonResource\:\:scopeOfType\(\) has parameter \$query with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: app/Models/LessonResource.php
-
-		-
-			message: '#^Method App\\Models\\LessonResource\:\:scopeOrdered\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Models/LessonResource.php
-
-		-
-			message: '#^Method App\\Models\\LessonResource\:\:scopeOrdered\(\) has parameter \$query with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: app/Models/LessonResource.php
-
-		-
 			message: '#^Parameter \#1 \$string of function strlen expects string, int\<min, \-1\>\|int\<1, max\> given\.$#'
 			identifier: argument.type
 			count: 1
@@ -2725,18 +1651,6 @@ parameters:
 			path: app/Models/LmsEnseignantCache.php
 
 		-
-			message: '#^Method App\\Models\\LmsEnseignantCache\:\:institution\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/LmsEnseignantCache.php
-
-		-
-			message: '#^Method App\\Models\\LmsEnseignantCache\:\:store\(\) has parameter \$data with no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Models/LmsEnseignantCache.php
-
-		-
 			message: '#^Access to an undefined property App\\Models\\Matiere\:\:\$pivot\.$#'
 			identifier: property.notFound
 			count: 1
@@ -2749,140 +1663,8 @@ parameters:
 			path: app/Models/Matiere.php
 
 		-
-			message: '#^Class App\\Models\\Matiere uses generic trait Illuminate\\Database\\Eloquent\\Factories\\HasFactory but does not specify its types\: TFactory$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/Matiere.php
-
-		-
-			message: '#^Method App\\Models\\Matiere\:\:classes\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsToMany does not specify its types\: TRelatedModel, TDeclaringModel, TPivotModel, TAccessor \(2\-4 required\)$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/Matiere.php
-
-		-
-			message: '#^Method App\\Models\\Matiere\:\:forumTopics\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\HasMany does not specify its types\: TRelatedModel, TDeclaringModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/Matiere.php
-
-		-
-			message: '#^Method App\\Models\\Matiere\:\:institution\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/Matiere.php
-
-		-
-			message: '#^Method App\\Models\\Matiere\:\:lessons\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\HasMany does not specify its types\: TRelatedModel, TDeclaringModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/Matiere.php
-
-		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$institution_id\.$#'
 			identifier: property.notFound
-			count: 1
-			path: app/Models/MatiereEnseignant.php
-
-		-
-			message: '#^Method App\\Models\\MatiereEnseignant\:\:assignEnseignant\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Models/MatiereEnseignant.php
-
-		-
-			message: '#^Method App\\Models\\MatiereEnseignant\:\:assignEnseignant\(\) has parameter \$createdBy with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: app/Models/MatiereEnseignant.php
-
-		-
-			message: '#^Method App\\Models\\MatiereEnseignant\:\:assignEnseignant\(\) has parameter \$klassciEnseignantId with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: app/Models/MatiereEnseignant.php
-
-		-
-			message: '#^Method App\\Models\\MatiereEnseignant\:\:assignEnseignant\(\) has parameter \$klassciMatiereId with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: app/Models/MatiereEnseignant.php
-
-		-
-			message: '#^Method App\\Models\\MatiereEnseignant\:\:creator\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Models/MatiereEnseignant.php
-
-		-
-			message: '#^Method App\\Models\\MatiereEnseignant\:\:getEnseignantsForMatiere\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Models/MatiereEnseignant.php
-
-		-
-			message: '#^Method App\\Models\\MatiereEnseignant\:\:getEnseignantsForMatiere\(\) has parameter \$activeOnly with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: app/Models/MatiereEnseignant.php
-
-		-
-			message: '#^Method App\\Models\\MatiereEnseignant\:\:getEnseignantsForMatiere\(\) has parameter \$klassciMatiereId with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: app/Models/MatiereEnseignant.php
-
-		-
-			message: '#^Method App\\Models\\MatiereEnseignant\:\:getMatieresForEnseignant\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Models/MatiereEnseignant.php
-
-		-
-			message: '#^Method App\\Models\\MatiereEnseignant\:\:getMatieresForEnseignant\(\) has parameter \$activeOnly with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: app/Models/MatiereEnseignant.php
-
-		-
-			message: '#^Method App\\Models\\MatiereEnseignant\:\:getMatieresForEnseignant\(\) has parameter \$klassciEnseignantId with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: app/Models/MatiereEnseignant.php
-
-		-
-			message: '#^Method App\\Models\\MatiereEnseignant\:\:institution\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/MatiereEnseignant.php
-
-		-
-			message: '#^Method App\\Models\\MatiereEnseignant\:\:removeEnseignant\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Models/MatiereEnseignant.php
-
-		-
-			message: '#^Method App\\Models\\MatiereEnseignant\:\:removeEnseignant\(\) has parameter \$klassciEnseignantId with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: app/Models/MatiereEnseignant.php
-
-		-
-			message: '#^Method App\\Models\\MatiereEnseignant\:\:removeEnseignant\(\) has parameter \$klassciMatiereId with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: app/Models/MatiereEnseignant.php
-
-		-
-			message: '#^Method App\\Models\\MatiereEnseignant\:\:scopeActive\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Models/MatiereEnseignant.php
-
-		-
-			message: '#^Method App\\Models\\MatiereEnseignant\:\:scopeActive\(\) has parameter \$query with no type specified\.$#'
-			identifier: missingType.parameter
 			count: 1
 			path: app/Models/MatiereEnseignant.php
 
@@ -2893,200 +1675,8 @@ parameters:
 			path: app/Models/Notification.php
 
 		-
-			message: '#^Class App\\Models\\Notification uses generic trait Illuminate\\Database\\Eloquent\\Factories\\HasFactory but does not specify its types\: TFactory$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/Notification.php
-
-		-
-			message: '#^Method App\\Models\\Notification\:\:institution\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/Notification.php
-
-		-
-			message: '#^Method App\\Models\\Notification\:\:scopeForUser\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Models/Notification.php
-
-		-
-			message: '#^Method App\\Models\\Notification\:\:scopeForUser\(\) has parameter \$query with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: app/Models/Notification.php
-
-		-
-			message: '#^Method App\\Models\\Notification\:\:scopeOfType\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Models/Notification.php
-
-		-
-			message: '#^Method App\\Models\\Notification\:\:scopeOfType\(\) has parameter \$query with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: app/Models/Notification.php
-
-		-
-			message: '#^Method App\\Models\\Notification\:\:scopeRead\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Models/Notification.php
-
-		-
-			message: '#^Method App\\Models\\Notification\:\:scopeRead\(\) has parameter \$query with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: app/Models/Notification.php
-
-		-
-			message: '#^Method App\\Models\\Notification\:\:scopeRecent\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Models/Notification.php
-
-		-
-			message: '#^Method App\\Models\\Notification\:\:scopeRecent\(\) has parameter \$query with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: app/Models/Notification.php
-
-		-
-			message: '#^Method App\\Models\\Notification\:\:scopeUnread\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Models/Notification.php
-
-		-
-			message: '#^Method App\\Models\\Notification\:\:scopeUnread\(\) has parameter \$query with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: app/Models/Notification.php
-
-		-
-			message: '#^Method App\\Models\\Notification\:\:user\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/Notification.php
-
-		-
-			message: '#^Method App\\Models\\PersonalAccessToken\:\:tokenable\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\MorphTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/PersonalAccessToken.php
-
-		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$institution_id\.$#'
 			identifier: property.notFound
-			count: 1
-			path: app/Models/Quiz.php
-
-		-
-			message: '#^Class App\\Models\\Quiz uses generic trait Illuminate\\Database\\Eloquent\\Factories\\HasFactory but does not specify its types\: TFactory$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/Quiz.php
-
-		-
-			message: '#^Method App\\Models\\Quiz\:\:attempts\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\HasMany does not specify its types\: TRelatedModel, TDeclaringModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/Quiz.php
-
-		-
-			message: '#^Method App\\Models\\Quiz\:\:classe\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/Quiz.php
-
-		-
-			message: '#^Method App\\Models\\Quiz\:\:creator\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/Quiz.php
-
-		-
-			message: '#^Method App\\Models\\Quiz\:\:institution\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/Quiz.php
-
-		-
-			message: '#^Method App\\Models\\Quiz\:\:lesson\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/Quiz.php
-
-		-
-			message: '#^Method App\\Models\\Quiz\:\:matiere\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/Quiz.php
-
-		-
-			message: '#^Method App\\Models\\Quiz\:\:questions\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\HasMany does not specify its types\: TRelatedModel, TDeclaringModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/Quiz.php
-
-		-
-			message: '#^Method App\\Models\\Quiz\:\:scopeAvailable\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Models/Quiz.php
-
-		-
-			message: '#^Method App\\Models\\Quiz\:\:scopeAvailable\(\) has parameter \$query with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: app/Models/Quiz.php
-
-		-
-			message: '#^Method App\\Models\\Quiz\:\:scopeForClasse\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Models/Quiz.php
-
-		-
-			message: '#^Method App\\Models\\Quiz\:\:scopeForClasse\(\) has parameter \$query with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: app/Models/Quiz.php
-
-		-
-			message: '#^Method App\\Models\\Quiz\:\:scopeForLesson\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Models/Quiz.php
-
-		-
-			message: '#^Method App\\Models\\Quiz\:\:scopeForLesson\(\) has parameter \$query with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: app/Models/Quiz.php
-
-		-
-			message: '#^Method App\\Models\\Quiz\:\:scopeForMatiere\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Models/Quiz.php
-
-		-
-			message: '#^Method App\\Models\\Quiz\:\:scopeForMatiere\(\) has parameter \$query with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: app/Models/Quiz.php
-
-		-
-			message: '#^Method App\\Models\\Quiz\:\:scopePublished\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Models/Quiz.php
-
-		-
-			message: '#^Method App\\Models\\Quiz\:\:scopePublished\(\) has parameter \$query with no type specified\.$#'
-			identifier: missingType.parameter
 			count: 1
 			path: app/Models/Quiz.php
 
@@ -3103,176 +1693,20 @@ parameters:
 			path: app/Models/QuizAnswer.php
 
 		-
-			message: '#^Method App\\Models\\QuizAnswer\:\:institution\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/QuizAnswer.php
-
-		-
-			message: '#^Method App\\Models\\QuizAnswer\:\:question\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/QuizAnswer.php
-
-		-
-			message: '#^Method App\\Models\\QuizAnswer\:\:scopeCorrect\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Models/QuizAnswer.php
-
-		-
-			message: '#^Method App\\Models\\QuizAnswer\:\:scopeCorrect\(\) has parameter \$query with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: app/Models/QuizAnswer.php
-
-		-
-			message: '#^Method App\\Models\\QuizAnswer\:\:scopeOrdered\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Models/QuizAnswer.php
-
-		-
-			message: '#^Method App\\Models\\QuizAnswer\:\:scopeOrdered\(\) has parameter \$query with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: app/Models/QuizAnswer.php
-
-		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$institution_id\.$#'
 			identifier: property.notFound
 			count: 1
 			path: app/Models/QuizAttempt.php
 
 		-
-			message: '#^Class App\\Models\\QuizAttempt uses generic trait Illuminate\\Database\\Eloquent\\Factories\\HasFactory but does not specify its types\: TFactory$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/QuizAttempt.php
-
-		-
-			message: '#^Method App\\Models\\QuizAttempt\:\:grader\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/QuizAttempt.php
-
-		-
-			message: '#^Method App\\Models\\QuizAttempt\:\:institution\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/QuizAttempt.php
-
-		-
-			message: '#^Method App\\Models\\QuizAttempt\:\:quiz\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/QuizAttempt.php
-
-		-
-			message: '#^Method App\\Models\\QuizAttempt\:\:scopeInProgress\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Models/QuizAttempt.php
-
-		-
-			message: '#^Method App\\Models\\QuizAttempt\:\:scopeInProgress\(\) has parameter \$query with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: app/Models/QuizAttempt.php
-
-		-
-			message: '#^Method App\\Models\\QuizAttempt\:\:scopePassed\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Models/QuizAttempt.php
-
-		-
-			message: '#^Method App\\Models\\QuizAttempt\:\:scopePassed\(\) has parameter \$query with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: app/Models/QuizAttempt.php
-
-		-
-			message: '#^Method App\\Models\\QuizAttempt\:\:scopeSubmitted\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Models/QuizAttempt.php
-
-		-
-			message: '#^Method App\\Models\\QuizAttempt\:\:scopeSubmitted\(\) has parameter \$query with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: app/Models/QuizAttempt.php
-
-		-
-			message: '#^Method App\\Models\\QuizAttempt\:\:user\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/QuizAttempt.php
-
-		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$institution_id\.$#'
 			identifier: property.notFound
-			count: 1
-			path: app/Models/QuizQuestion.php
-
-		-
-			message: '#^Class App\\Models\\QuizQuestion uses generic trait Illuminate\\Database\\Eloquent\\Factories\\HasFactory but does not specify its types\: TFactory$#'
-			identifier: missingType.generics
 			count: 1
 			path: app/Models/QuizQuestion.php
 
 		-
 			message: '#^Match arm comparison between ''essay'' and ''essay'' is always true\.$#'
 			identifier: match.alwaysTrue
-			count: 1
-			path: app/Models/QuizQuestion.php
-
-		-
-			message: '#^Method App\\Models\\QuizQuestion\:\:answers\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\HasMany does not specify its types\: TRelatedModel, TDeclaringModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/QuizQuestion.php
-
-		-
-			message: '#^Method App\\Models\\QuizQuestion\:\:getCorrectAnswers\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Models/QuizQuestion.php
-
-		-
-			message: '#^Method App\\Models\\QuizQuestion\:\:institution\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/QuizQuestion.php
-
-		-
-			message: '#^Method App\\Models\\QuizQuestion\:\:quiz\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/QuizQuestion.php
-
-		-
-			message: '#^Method App\\Models\\QuizQuestion\:\:scopeOrdered\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Models/QuizQuestion.php
-
-		-
-			message: '#^Method App\\Models\\QuizQuestion\:\:scopeOrdered\(\) has parameter \$query with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: app/Models/QuizQuestion.php
-
-		-
-			message: '#^Method App\\Models\\QuizQuestion\:\:scopeRequired\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Models/QuizQuestion.php
-
-		-
-			message: '#^Method App\\Models\\QuizQuestion\:\:scopeRequired\(\) has parameter \$query with no type specified\.$#'
-			identifier: missingType.parameter
 			count: 1
 			path: app/Models/QuizQuestion.php
 
@@ -3289,98 +1723,8 @@ parameters:
 			path: app/Models/Seance.php
 
 		-
-			message: '#^Class App\\Models\\Seance uses generic trait Illuminate\\Database\\Eloquent\\Factories\\HasFactory but does not specify its types\: TFactory$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/Seance.php
-
-		-
-			message: '#^Method App\\Models\\Seance\:\:attendances\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Models/Seance.php
-
-		-
-			message: '#^Method App\\Models\\Seance\:\:institution\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/Seance.php
-
-		-
-			message: '#^Method App\\Models\\Seance\:\:scopeByClasse\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Models/Seance.php
-
-		-
-			message: '#^Method App\\Models\\Seance\:\:scopeByClasse\(\) has parameter \$query with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: app/Models/Seance.php
-
-		-
-			message: '#^Method App\\Models\\Seance\:\:scopeByKlassciId\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Models/Seance.php
-
-		-
-			message: '#^Method App\\Models\\Seance\:\:scopeByKlassciId\(\) has parameter \$query with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: app/Models/Seance.php
-
-		-
-			message: '#^Method App\\Models\\Seance\:\:scopeByTeacher\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Models/Seance.php
-
-		-
-			message: '#^Method App\\Models\\Seance\:\:scopeByTeacher\(\) has parameter \$query with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: app/Models/Seance.php
-
-		-
-			message: '#^Method App\\Models\\Seance\:\:scopeWithConnectedParticipantsCount\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Models/Seance.php
-
-		-
-			message: '#^Method App\\Models\\Seance\:\:scopeWithVisio\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Models/Seance.php
-
-		-
-			message: '#^Method App\\Models\\Seance\:\:scopeWithVisio\(\) has parameter \$query with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: app/Models/Seance.php
-
-		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$institution_id\.$#'
 			identifier: property.notFound
-			count: 1
-			path: app/Models/SeanceUserHidden.php
-
-		-
-			message: '#^Method App\\Models\\SeanceUserHidden\:\:institution\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/SeanceUserHidden.php
-
-		-
-			message: '#^Method App\\Models\\SeanceUserHidden\:\:seance\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/SeanceUserHidden.php
-
-		-
-			message: '#^Method App\\Models\\SeanceUserHidden\:\:user\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
-			identifier: missingType.generics
 			count: 1
 			path: app/Models/SeanceUserHidden.php
 
@@ -3391,68 +1735,8 @@ parameters:
 			path: app/Models/User.php
 
 		-
-			message: '#^Cannot call method isAfter\(\) on string\.$#'
-			identifier: method.nonObject
-			count: 1
-			path: app/Models/User.php
-
-		-
-			message: '#^Class App\\Models\\User uses generic trait Illuminate\\Database\\Eloquent\\Factories\\HasFactory but does not specify its types\: TFactory$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/User.php
-
-		-
-			message: '#^Method App\\Models\\User\:\:classes\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsToMany does not specify its types\: TRelatedModel, TDeclaringModel, TPivotModel, TAccessor \(2\-4 required\)$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/User.php
-
-		-
-			message: '#^Method App\\Models\\User\:\:forumPosts\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\HasMany does not specify its types\: TRelatedModel, TDeclaringModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/User.php
-
-		-
-			message: '#^Method App\\Models\\User\:\:institution\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/User.php
-
-		-
-			message: '#^Method App\\Models\\User\:\:klassciClasses\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\HasMany does not specify its types\: TRelatedModel, TDeclaringModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/User.php
-
-		-
-			message: '#^Method App\\Models\\User\:\:notifications\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\HasMany does not specify its types\: TRelatedModel, TDeclaringModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/User.php
-
-		-
-			message: '#^Method App\\Models\\User\:\:quizAttempts\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\HasMany does not specify its types\: TRelatedModel, TDeclaringModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/User.php
-
-		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$institution_id\.$#'
 			identifier: property.notFound
-			count: 1
-			path: app/Models/UserClass.php
-
-		-
-			message: '#^Method App\\Models\\UserClass\:\:institution\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/UserClass.php
-
-		-
-			message: '#^Method App\\Models\\UserClass\:\:user\(\) has no return type specified\.$#'
-			identifier: missingType.return
 			count: 1
 			path: app/Models/UserClass.php
 
@@ -3559,12 +1843,6 @@ parameters:
 			path: app/Rules/PositiveInteger.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\ESBTPAttendance\:\:\$seance\.$#'
-			identifier: property.notFound
-			count: 3
-			path: app/Services/Attendances/AttendanceHistoryQueryService.php
-
-		-
 			message: '#^Binary operation "\." between mixed and '' 23\:59\:59'' results in an error\.$#'
 			identifier: binaryOp.invalid
 			count: 1
@@ -3589,6 +1867,12 @@ parameters:
 			path: app/Services/Attendances/AttendanceHistoryQueryService.php
 
 		-
+			message: '#^Cannot access property \$klassci_seance_id on App\\Models\\Seance\|null\.$#'
+			identifier: property.nonObject
+			count: 2
+			path: app/Services/Attendances/AttendanceHistoryQueryService.php
+
+		-
 			message: '#^Cannot cast mixed to int\.$#'
 			identifier: cast.int
 			count: 1
@@ -3603,18 +1887,6 @@ parameters:
 		-
 			message: '#^Parameter \#1 \$column of method Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\:\:where\(\) expects array\<int\|model property of Illuminate\\Database\\Eloquent\\Model, mixed\>\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\: Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\: void\)\|Illuminate\\Contracts\\Database\\Query\\Expression\|model property of Illuminate\\Database\\Eloquent\\Model, ''enseignant_id'' given\.$#'
 			identifier: argument.type
-			count: 1
-			path: app/Services/Attendances/AttendanceHistoryQueryService.php
-
-		-
-			message: '#^Relation ''seance'' is not found in App\\Models\\ESBTPAttendance model\.$#'
-			identifier: larastan.relationExistence
-			count: 2
-			path: app/Services/Attendances/AttendanceHistoryQueryService.php
-
-		-
-			message: '#^Relation ''user'' is not found in App\\Models\\ESBTPAttendance model\.$#'
-			identifier: larastan.relationExistence
 			count: 1
 			path: app/Services/Attendances/AttendanceHistoryQueryService.php
 
@@ -3739,12 +2011,6 @@ parameters:
 			path: app/Services/Chapter/ChapterAccessGate.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\Lesson\:\:\$institution_id\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/Chapter/ChapterCrudService.php
-
-		-
 			message: '#^Argument of an invalid type mixed supplied for foreach, only iterables are supported\.$#'
 			identifier: foreach.nonIterable
 			count: 1
@@ -3753,12 +2019,6 @@ parameters:
 		-
 			message: '#^Binary operation "\+" between mixed and 1 results in an error\.$#'
 			identifier: binaryOp.invalid
-			count: 1
-			path: app/Services/Chapter/ChapterCrudService.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Relations\\HasMany\:\:ordered\(\)\.$#'
-			identifier: method.notFound
 			count: 1
 			path: app/Services/Chapter/ChapterCrudService.php
 
@@ -3777,12 +2037,6 @@ parameters:
 		-
 			message: '#^Cannot cast mixed to int\.$#'
 			identifier: cast.int
-			count: 1
-			path: app/Services/Chapter/ChapterCrudService.php
-
-		-
-			message: '#^Parameter \#1 \$attributes of static method Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Chapter\>\:\:create\(\) expects array\<model property of App\\Models\\Chapter, mixed\>, array\<string, mixed\> given\.$#'
-			identifier: argument.type
 			count: 1
 			path: app/Services/Chapter/ChapterCrudService.php
 
@@ -3949,19 +2203,19 @@ parameters:
 			path: app/Services/Dashboard/StudentDashboardService.php
 
 		-
-			message: '#^Cannot access property \$id on Illuminate\\Database\\Eloquent\\Model\|null\.$#'
+			message: '#^Cannot access property \$id on App\\Models\\Lesson\|null\.$#'
 			identifier: property.nonObject
 			count: 2
 			path: app/Services/Dashboard/StudentDashboardService.php
 
 		-
-			message: '#^Cannot access property \$name on Illuminate\\Database\\Eloquent\\Model\|null\.$#'
+			message: '#^Cannot access property \$name on App\\Models\\User\|null\.$#'
 			identifier: property.nonObject
 			count: 1
 			path: app/Services/Dashboard/StudentDashboardService.php
 
 		-
-			message: '#^Cannot access property \$title on Illuminate\\Database\\Eloquent\\Model\|null\.$#'
+			message: '#^Cannot access property \$title on App\\Models\\Lesson\|null\.$#'
 			identifier: property.nonObject
 			count: 2
 			path: app/Services/Dashboard/StudentDashboardService.php
@@ -4003,18 +2257,6 @@ parameters:
 			path: app/Services/Dashboard/StudentDashboardService.php
 
 		-
-			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\ForumTopic\>\:\:map\(\) contains unresolvable type\.$#'
-			identifier: argument.unresolvableType
-			count: 1
-			path: app/Services/Dashboard/StudentDashboardService.php
-
-		-
-			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\LessonProgress\>\:\:map\(\) contains unresolvable type\.$#'
-			identifier: argument.unresolvableType
-			count: 2
-			path: app/Services/Dashboard/StudentDashboardService.php
-
-		-
 			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\Quiz\>\:\:map\(\) contains unresolvable type\.$#'
 			identifier: argument.unresolvableType
 			count: 1
@@ -4030,18 +2272,6 @@ parameters:
 			message: '#^Parameter \#1 \$column of method Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\:\:where\(\) expects array\<int\|model property of Illuminate\\Database\\Eloquent\\Model, mixed\>\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\: Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\: void\)\|Illuminate\\Contracts\\Database\\Query\\Expression\|model property of Illuminate\\Database\\Eloquent\\Model, ''user_id'' given\.$#'
 			identifier: argument.type
 			count: 1
-			path: app/Services/Dashboard/StudentDashboardService.php
-
-		-
-			message: '#^Return type of call to method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\ForumTopic\>\:\:map\(\) contains unresolvable type\.$#'
-			identifier: method.unresolvableReturnType
-			count: 1
-			path: app/Services/Dashboard/StudentDashboardService.php
-
-		-
-			message: '#^Return type of call to method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\LessonProgress\>\:\:map\(\) contains unresolvable type\.$#'
-			identifier: method.unresolvableReturnType
-			count: 2
 			path: app/Services/Dashboard/StudentDashboardService.php
 
 		-
@@ -4089,12 +2319,6 @@ parameters:
 		-
 			message: '#^Method App\\Services\\Evaluation\\EvaluationCreationService\:\:resolveKlassciLabels\(\) should return array\{string\|null, string\|null\} but returns array\{mixed, mixed\}\.$#'
 			identifier: return.type
-			count: 1
-			path: app/Services/Evaluation/EvaluationCreationService.php
-
-		-
-			message: '#^Parameter \#1 \$attributes of static method Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Evaluation\>\:\:create\(\) expects array\<model property of App\\Models\\Evaluation, mixed\>, array\<string, mixed\> given\.$#'
-			identifier: argument.type
 			count: 1
 			path: app/Services/Evaluation/EvaluationCreationService.php
 
@@ -4153,13 +2377,13 @@ parameters:
 			path: app/Services/Evaluation/EvaluationEnrichmentService.php
 
 		-
-			message: '#^Cannot access property \$bareme on Illuminate\\Database\\Eloquent\\Model\|null\.$#'
+			message: '#^Cannot access property \$bareme on App\\Models\\Evaluation\|null\.$#'
 			identifier: property.nonObject
 			count: 1
 			path: app/Services/Evaluation/EvaluationGradingService.php
 
 		-
-			message: '#^Cannot access property \$questions on Illuminate\\Database\\Eloquent\\Model\|null\.$#'
+			message: '#^Cannot access property \$questions on App\\Models\\Evaluation\|null\.$#'
 			identifier: property.nonObject
 			count: 1
 			path: app/Services/Evaluation/EvaluationGradingService.php
@@ -4189,12 +2413,6 @@ parameters:
 			path: app/Services/Evaluation/EvaluationUpdateService.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\Evaluation\:\:\$institution_id\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/Evaluation/Student/EvaluationAttemptStateService.php
-
-		-
 			message: '#^Cannot access offset ''programmation'' on mixed\.$#'
 			identifier: offsetAccess.nonOffsetAccessible
 			count: 1
@@ -4209,12 +2427,6 @@ parameters:
 		-
 			message: '#^Method App\\Services\\Evaluation\\Student\\EvaluationAttemptStateService\:\:fetchWindowSafe\(\) should return array\<string, mixed\>\|null but returns mixed\.$#'
 			identifier: return.type
-			count: 1
-			path: app/Services/Evaluation/Student/EvaluationAttemptStateService.php
-
-		-
-			message: '#^Parameter \#1 \$attributes of static method Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\EvaluationSubmission\>\:\:create\(\) expects array\<model property of App\\Models\\EvaluationSubmission, mixed\>, array\<string, mixed\> given\.$#'
-			identifier: argument.type
 			count: 1
 			path: app/Services/Evaluation/Student/EvaluationAttemptStateService.php
 
@@ -4279,12 +2491,6 @@ parameters:
 			path: app/Services/Evaluation/Student/StudentEvaluationsListService.php
 
 		-
-			message: '#^Parameter \#1 \$column of method Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\:\:where\(\) expects array\<int\|model property of Illuminate\\Database\\Eloquent\\Model, mixed\>\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\: Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\: void\)\|Illuminate\\Contracts\\Database\\Query\\Expression\|model property of Illuminate\\Database\\Eloquent\\Model, ''klassci_etudiant_id'' given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Services/Evaluation/Student/StudentEvaluationsListService.php
-
-		-
 			message: '#^Parameter \#1 \$value of function collect expects Illuminate\\Contracts\\Support\\Arrayable\<\(int\|string\), mixed\>\|iterable\<\(int\|string\), mixed\>\|null, mixed given\.$#'
 			identifier: argument.type
 			count: 1
@@ -4304,36 +2510,6 @@ parameters:
 
 		-
 			message: '#^Access to an undefined property App\\Models\\EvaluationSubmission\:\:\$temps_passe_minutes\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/Evaluation/Student/StudentGradesAggregator.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$date_evaluation\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/Evaluation/Student/StudentGradesAggregator.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/Evaluation/Student/StudentGradesAggregator.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$klassci_matiere_id\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/Evaluation/Student/StudentGradesAggregator.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$titre\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/Evaluation/Student/StudentGradesAggregator.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$type\.$#'
 			identifier: property.notFound
 			count: 1
 			path: app/Services/Evaluation/Student/StudentGradesAggregator.php
@@ -4417,42 +2593,6 @@ parameters:
 			path: app/Services/Evaluation/Student/StudentGradesAggregator.php
 
 		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$attempt\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/Evaluation/Teacher/TeacherEvaluationResultsService.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$feedback\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/Evaluation/Teacher/TeacherEvaluationResultsService.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$note_sur_20\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/Evaluation/Teacher/TeacherEvaluationResultsService.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$score\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/Evaluation/Teacher/TeacherEvaluationResultsService.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$status\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/Evaluation/Teacher/TeacherEvaluationResultsService.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$submitted_at\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/Evaluation/Teacher/TeacherEvaluationResultsService.php
-
-		-
 			message: '#^Binary operation "\." between mixed and '' '' results in an error\.$#'
 			identifier: binaryOp.invalid
 			count: 1
@@ -4467,18 +2607,6 @@ parameters:
 		-
 			message: '#^Cannot cast mixed to float\.$#'
 			identifier: cast.double
-			count: 2
-			path: app/Services/Evaluation/Teacher/TeacherEvaluationResultsService.php
-
-		-
-			message: '#^Parameter \#1 \$column of method Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\:\:orWhere\(\) expects array\<int\|model property of Illuminate\\Database\\Eloquent\\Model, mixed\>\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\: Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\: void\)\|Illuminate\\Contracts\\Database\\Query\\Expression\|model property of Illuminate\\Database\\Eloquent\\Model, ''feedback'' given\.$#'
-			identifier: argument.type
-			count: 2
-			path: app/Services/Evaluation/Teacher/TeacherEvaluationResultsService.php
-
-		-
-			message: '#^Parameter \#1 \$column of method Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\:\:where\(\) expects array\<int\|model property of Illuminate\\Database\\Eloquent\\Model, mixed\>\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\: Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\: void\)\|Illuminate\\Contracts\\Database\\Query\\Expression\|model property of Illuminate\\Database\\Eloquent\\Model, ''klassci_etudiant_id'' given\.$#'
-			identifier: argument.type
 			count: 2
 			path: app/Services/Evaluation/Teacher/TeacherEvaluationResultsService.php
 
@@ -4513,70 +2641,10 @@ parameters:
 			path: app/Services/Evaluation/Teacher/TeacherEvaluationResultsService.php
 
 		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/Evaluation/Teacher/TeacherEvaluationViewService.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$options\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/Evaluation/Teacher/TeacherEvaluationViewService.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$ordre\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/Evaluation/Teacher/TeacherEvaluationViewService.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$points\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/Evaluation/Teacher/TeacherEvaluationViewService.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$question\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/Evaluation/Teacher/TeacherEvaluationViewService.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$type\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/Evaluation/Teacher/TeacherEvaluationViewService.php
-
-		-
 			message: '#^Called ''pluck'' on Laravel collection, but could have been retrieved as a query\.$#'
 			identifier: larastan.noUnnecessaryCollectionCall
 			count: 1
 			path: app/Services/Evaluation/Teacher/TeacherEvaluationViewService.php
-
-		-
-			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:map\(\) contains unresolvable type\.$#'
-			identifier: argument.unresolvableType
-			count: 1
-			path: app/Services/Evaluation/Teacher/TeacherEvaluationViewService.php
-
-		-
-			message: '#^Return type of call to method Illuminate\\Database\\Eloquent\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:map\(\) contains unresolvable type\.$#'
-			identifier: method.unresolvableReturnType
-			count: 1
-			path: app/Services/Evaluation/Teacher/TeacherEvaluationViewService.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\File\:\:\$download_url\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Services/File/FileQueryService.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\File\:\:\$formatted_size\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Services/File/FileQueryService.php
 
 		-
 			message: '#^Parameter \#1 \$category of method Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\File\>\:\:ofCategory\(\) expects string, mixed given\.$#'
@@ -4595,18 +2663,6 @@ parameters:
 			identifier: argument.type
 			count: 1
 			path: app/Services/File/FileQueryService.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\File\:\:\$download_url\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/File/FileUploadService.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\File\:\:\$formatted_size\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/File/FileUploadService.php
 
 		-
 			message: '#^Method App\\Services\\File\\FileUploadService\:\:store\(\) has parameter \$payload with no value type specified in iterable type array\.$#'
@@ -4651,18 +2707,6 @@ parameters:
 			path: app/Services/Forum/ForumPostService.php
 
 		-
-			message: '#^Parameter \#1 \$column of method Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\:\:where\(\) expects array\<int\|model property of Illuminate\\Database\\Eloquent\\Model, mixed\>\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\: Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\: void\)\|Illuminate\\Contracts\\Database\\Query\\Expression\|model property of Illuminate\\Database\\Eloquent\\Model, ''id'' given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Services/Forum/ForumPostService.php
-
-		-
-			message: '#^Parameter \#1 \$values of method Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\:\:update\(\) expects array\<model property of Illuminate\\Database\\Eloquent\\Model, mixed\>, array\<string, false\> given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Services/Forum/ForumPostService.php
-
-		-
 			message: '#^Method App\\Services\\Forum\\ForumTopicService\:\:list\(\) return type with generic interface Illuminate\\Contracts\\Pagination\\LengthAwarePaginator does not specify its types\: TKey, TValue$#'
 			identifier: missingType.generics
 			count: 1
@@ -4693,18 +2737,6 @@ parameters:
 			path: app/Services/Forum/ForumTopicService.php
 
 		-
-			message: '#^Parameter \#1 \$column of method Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Evaluation\>\:\:where\(\) expects array\<int\|model property of App\\Models\\Evaluation, mixed\>\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Evaluation\>\)\: Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Evaluation\>\)\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Evaluation\>\)\: void\)\|Illuminate\\Contracts\\Database\\Query\\Expression\|model property of App\\Models\\Evaluation, ''institution_id'' given\.$#'
-			identifier: argument.type
-			count: 2
-			path: app/Services/Institution/InstitutionQueryService.php
-
-		-
-			message: '#^Parameter \#1 \$column of method Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Lesson\>\:\:where\(\) expects array\<int\|model property of App\\Models\\Lesson, mixed\>\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Lesson\>\)\: Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Lesson\>\)\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Lesson\>\)\: void\)\|Illuminate\\Contracts\\Database\\Query\\Expression\|model property of App\\Models\\Lesson, ''institution_id'' given\.$#'
-			identifier: argument.type
-			count: 3
-			path: app/Services/Institution/InstitutionQueryService.php
-
-		-
 			message: '#^Parameter \#1 \$column of method Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\User\>\:\:pluck\(\) expects Illuminate\\Contracts\\Database\\Query\\Expression\|model property of App\\Models\\User, string given\.$#'
 			identifier: argument.type
 			count: 1
@@ -4723,63 +2755,15 @@ parameters:
 			path: app/Services/KnowledgeCheck/KnowledgeCheckAccessService.php
 
 		-
-			message: '#^Parameter \#1 \$column of method Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\:\:where\(\) expects array\<int\|model property of Illuminate\\Database\\Eloquent\\Model, mixed\>\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\: Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\: void\)\|Illuminate\\Contracts\\Database\\Query\\Expression\|model property of Illuminate\\Database\\Eloquent\\Model, ''passed'' given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Services/KnowledgeCheck/KnowledgeCheckAccessService.php
-
-		-
-			message: '#^Parameter \#1 \$column of method Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\:\:where\(\) expects array\<int\|model property of Illuminate\\Database\\Eloquent\\Model, mixed\>\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\: Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\: void\)\|Illuminate\\Contracts\\Database\\Query\\Expression\|model property of Illuminate\\Database\\Eloquent\\Model, ''user_id'' given\.$#'
-			identifier: argument.type
-			count: 3
-			path: app/Services/KnowledgeCheck/KnowledgeCheckAccessService.php
-
-		-
 			message: '#^Method App\\Services\\KnowledgeCheck\\KnowledgeCheckAttemptService\:\:getMyAttempts\(\) should return array\{quiz_title\: string, passing_score\: int, attempts\: Illuminate\\Support\\Collection\<int, array\<string, mixed\>\>, best_score\: int\|null, has_passed\: bool\} but returns array\{quiz_title\: string, passing_score\: int, attempts\: Illuminate\\Support\\Collection\<int, array\{id\: int, score\: int, correct_answers\: int, total_questions\: int, passed\: bool, time_spent\: string, completed_at\: non\-falsy\-string\|null\}\>, best_score\: mixed, has_passed\: bool\}\.$#'
 			identifier: return.type
 			count: 1
 			path: app/Services/KnowledgeCheck/KnowledgeCheckAttemptService.php
 
 		-
-			message: '#^Parameter \#1 \$attributes of static method Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\KnowledgeCheckAttempt\>\:\:create\(\) expects array\<model property of App\\Models\\KnowledgeCheckAttempt, mixed\>, array\<string, array\<int, array\<string, mixed\>\>\|bool\|Illuminate\\Support\\Carbon\|int\|null\> given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Services/KnowledgeCheck/KnowledgeCheckAttemptService.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\KnowledgeCheck\:\:\$can_attempt\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Services/KnowledgeCheck/KnowledgeCheckCrudService.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\KnowledgeCheck\:\:\$user_best_score\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Services/KnowledgeCheck/KnowledgeCheckCrudService.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\KnowledgeCheck\:\:\$user_passed\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Services/KnowledgeCheck/KnowledgeCheckCrudService.php
-
-		-
-			message: '#^Parameter \#1 \$column of method Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\:\:where\(\) expects array\<int\|model property of Illuminate\\Database\\Eloquent\\Model, mixed\>\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\: Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\: void\)\|Illuminate\\Contracts\\Database\\Query\\Expression\|model property of Illuminate\\Database\\Eloquent\\Model, ''user_id'' given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Services/KnowledgeCheck/KnowledgeCheckCrudService.php
-
-		-
 			message: '#^Parameter \#2 \$chapter of method App\\Services\\KnowledgeCheck\\KnowledgeCheckCrudService\:\:assertCanManageChapter\(\) expects App\\Models\\Chapter\|null, App\\Models\\Chapter\|Illuminate\\Database\\Eloquent\\Collection\<int, App\\Models\\Chapter\> given\.$#'
 			identifier: argument.type
 			count: 1
-			path: app/Services/KnowledgeCheck/KnowledgeCheckCrudService.php
-
-		-
-			message: '#^Parameter \#2 \$chapter of method App\\Services\\KnowledgeCheck\\KnowledgeCheckCrudService\:\:assertCanManageChapter\(\) expects App\\Models\\Chapter\|null, Illuminate\\Database\\Eloquent\\Model\|null given\.$#'
-			identifier: argument.type
-			count: 2
 			path: app/Services/KnowledgeCheck/KnowledgeCheckCrudService.php
 
 		-
@@ -4819,30 +2803,6 @@ parameters:
 			path: app/Services/Lesson/LessonCrudOperationsService.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\Lesson\:\:\$institution_id\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/Lesson/LessonListService.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\Lesson\:\:\$statistics\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/Lesson/LessonListService.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\Lesson\:\:\$user_progress\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Services/Lesson/LessonListService.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Services/Lesson/LessonListService.php
-
-		-
 			message: '#^Cannot access property \$id on mixed\.$#'
 			identifier: property.nonObject
 			count: 1
@@ -4879,21 +2839,9 @@ parameters:
 			path: app/Services/Lesson/LessonListService.php
 
 		-
-			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\Lesson\>\:\:map\(\) contains unresolvable type\.$#'
-			identifier: argument.unresolvableType
-			count: 1
-			path: app/Services/Lesson/LessonListService.php
-
-		-
 			message: '#^Parameter \#1 \$classeId of method Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Lesson\>\:\:forClasse\(\) expects int, mixed given\.$#'
 			identifier: argument.type
 			count: 1
-			path: app/Services/Lesson/LessonListService.php
-
-		-
-			message: '#^Parameter \#1 \$column of method Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Lesson\>\:\:where\(\) expects array\<int\|model property of App\\Models\\Lesson, mixed\>\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Lesson\>\)\: Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Lesson\>\)\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Lesson\>\)\: void\)\|Illuminate\\Contracts\\Database\\Query\\Expression\|model property of App\\Models\\Lesson, ''institution_id'' given\.$#'
-			identifier: argument.type
-			count: 2
 			path: app/Services/Lesson/LessonListService.php
 
 		-
@@ -4915,40 +2863,10 @@ parameters:
 			path: app/Services/Lesson/LessonListService.php
 
 		-
-			message: '#^Return type of call to method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\Lesson\>\:\:map\(\) contains unresolvable type\.$#'
-			identifier: method.unresolvableReturnType
-			count: 1
-			path: app/Services/Lesson/LessonListService.php
-
-		-
 			message: '#^Type App\\Models\\Lesson in generic type Illuminate\\Contracts\\Pagination\\LengthAwarePaginator\<App\\Models\\Lesson\> in PHPDoc tag @return is not subtype of template type TKey of \(int\|string\) of interface Illuminate\\Contracts\\Pagination\\LengthAwarePaginator\.$#'
 			identifier: generics.notSubtype
 			count: 1
 			path: app/Services/Lesson/LessonListService.php
-
-		-
-			message: '#^Method App\\Services\\Lesson\\LessonProgressService\:\:progressForUser\(\) should return App\\Models\\LessonProgress\|null but returns Illuminate\\Database\\Eloquent\\Model\|null\.$#'
-			identifier: return.type
-			count: 1
-			path: app/Services/Lesson/LessonProgressService.php
-
-		-
-			message: '#^Parameter \#1 \$column of method Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\:\:where\(\) expects array\<int\|model property of Illuminate\\Database\\Eloquent\\Model, mixed\>\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\: Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\: void\)\|Illuminate\\Contracts\\Database\\Query\\Expression\|model property of Illuminate\\Database\\Eloquent\\Model, ''status'' given\.$#'
-			identifier: argument.type
-			count: 2
-			path: app/Services/Lesson/LessonProgressService.php
-
-		-
-			message: '#^Parameter \#1 \$column of method Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\:\:where\(\) expects array\<int\|model property of Illuminate\\Database\\Eloquent\\Model, mixed\>\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\: Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\: void\)\|Illuminate\\Contracts\\Database\\Query\\Expression\|model property of Illuminate\\Database\\Eloquent\\Model, ''user_id'' given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Services/Lesson/LessonProgressService.php
-
-		-
-			message: '#^Parameter \#1 \$column of method Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\:\:where\(\) expects array\<int\|model property of Illuminate\\Database\\Eloquent\\Model, mixed\>\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\: Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\: void\)\|Illuminate\\Contracts\\Database\\Query\\Expression\|model property of Illuminate\\Database\\Eloquent\\Model, ''klassci_etudiant_id'' given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Services/Matiere/MatiereEvaluationsFetcher.php
 
 		-
 			message: '#^Cannot access offset ''classe'' on mixed\.$#'
@@ -5011,13 +2929,13 @@ parameters:
 			path: app/Services/Notification/ForumNotificationDispatcher.php
 
 		-
-			message: '#^Cannot access property \$id on Illuminate\\Database\\Eloquent\\Model\|null\.$#'
+			message: '#^Cannot access property \$id on App\\Models\\User\|null\.$#'
 			identifier: property.nonObject
 			count: 2
 			path: app/Services/Notification/ForumNotificationDispatcher.php
 
 		-
-			message: '#^Cannot access property \$name on Illuminate\\Database\\Eloquent\\Model\|null\.$#'
+			message: '#^Cannot access property \$name on App\\Models\\User\|null\.$#'
 			identifier: property.nonObject
 			count: 3
 			path: app/Services/Notification/ForumNotificationDispatcher.php
@@ -5041,7 +2959,7 @@ parameters:
 			path: app/Services/Notification/ForumNotificationDispatcher.php
 
 		-
-			message: '#^Parameter \#1 \$user of method App\\Services\\Notification\\NotificationDispatcher\:\:send\(\) expects App\\Models\\User, Illuminate\\Database\\Eloquent\\Model\|null given\.$#'
+			message: '#^Parameter \#1 \$user of method App\\Services\\Notification\\NotificationDispatcher\:\:send\(\) expects App\\Models\\User, App\\Models\\User\|null given\.$#'
 			identifier: argument.type
 			count: 2
 			path: app/Services/Notification/ForumNotificationDispatcher.php
@@ -5053,7 +2971,7 @@ parameters:
 			path: app/Services/Notification/ForumNotificationDispatcher.php
 
 		-
-			message: '#^Cannot access property \$libelle on Illuminate\\Database\\Eloquent\\Model\|null\.$#'
+			message: '#^Cannot access property \$libelle on App\\Models\\Matiere\|null\.$#'
 			identifier: property.nonObject
 			count: 1
 			path: app/Services/Notification/LessonNotificationDispatcher.php
@@ -5113,7 +3031,7 @@ parameters:
 			path: app/Services/Notification/QuizNotificationDispatcher.php
 
 		-
-			message: '#^Parameter \#1 \$user of method App\\Services\\Notification\\NotificationDispatcher\:\:send\(\) expects App\\Models\\User, Illuminate\\Database\\Eloquent\\Model\|null given\.$#'
+			message: '#^Parameter \#1 \$user of method App\\Services\\Notification\\NotificationDispatcher\:\:send\(\) expects App\\Models\\User, App\\Models\\User\|null given\.$#'
 			identifier: argument.type
 			count: 1
 			path: app/Services/Notification/QuizNotificationDispatcher.php
@@ -5149,56 +3067,14 @@ parameters:
 			path: app/Services/Quiz/QuizAccessService.php
 
 		-
-			message: '#^Method App\\Services\\Quiz\\QuizAccessService\:\:bestAttemptForUser\(\) should return App\\Models\\QuizAttempt\|null but returns Illuminate\\Database\\Eloquent\\Model\|null\.$#'
+			message: '#^Method App\\Services\\Quiz\\QuizAttemptStartSubmitService\:\:buildQuestionsWithResults\(\) should return array\<int, array\{question\: mixed, user_answer\: mixed, is_correct\: bool\|null, points_earned\: float, correct_answers\: mixed\}\> but returns array\<mixed\>\.$#'
 			identifier: return.type
 			count: 1
-			path: app/Services/Quiz/QuizAccessService.php
-
-		-
-			message: '#^Method App\\Services\\Quiz\\QuizAccessService\:\:latestAttemptForUser\(\) should return App\\Models\\QuizAttempt\|null but returns Illuminate\\Database\\Eloquent\\Model\|null\.$#'
-			identifier: return.type
-			count: 1
-			path: app/Services/Quiz/QuizAccessService.php
-
-		-
-			message: '#^Parameter \#1 \$column of method Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\:\:where\(\) expects array\<int\|model property of Illuminate\\Database\\Eloquent\\Model, mixed\>\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\: Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\: void\)\|Illuminate\\Contracts\\Database\\Query\\Expression\|model property of Illuminate\\Database\\Eloquent\\Model, ''user_id'' given\.$#'
-			identifier: argument.type
-			count: 4
-			path: app/Services/Quiz/QuizAccessService.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Relations\\HasMany\:\:ordered\(\)\.$#'
-			identifier: method.notFound
-			count: 2
 			path: app/Services/Quiz/QuizAttemptStartSubmitService.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\QuizAttempt\:\:\$questions_with_results\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/Quiz/QuizAttemptStateService.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\QuizAttempt\:\:\$time_remaining\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/Quiz/QuizAttemptStateService.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\QuizAttempt\:\:\$time_spent_formatted\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/Quiz/QuizAttemptStateService.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Relations\\HasMany\:\:ordered\(\)\.$#'
-			identifier: method.notFound
-			count: 1
-			path: app/Services/Quiz/QuizAttemptStateService.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Relations\\HasMany\:\:submitted\(\)\.$#'
-			identifier: method.notFound
+			message: '#^Method App\\Services\\Quiz\\QuizAttemptStateService\:\:buildQuestionsWithResults\(\) should return array\<int, array\{question\: mixed, user_answer\: mixed, is_correct\: bool\|null, points_earned\: float, correct_answers\: mixed\}\> but returns array\<mixed\>\.$#'
+			identifier: return.type
 			count: 1
 			path: app/Services/Quiz/QuizAttemptStateService.php
 
@@ -5213,54 +3089,6 @@ parameters:
 			identifier: property.nonObject
 			count: 4
 			path: app/Services/Quiz/QuizAttemptTimerService.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\Quiz\:\:\$user_attempts_count\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Services/Quiz/QuizCrudService.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\Quiz\:\:\$user_best_attempt\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Services/Quiz/QuizCrudService.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\Quiz\:\:\$user_can_attempt\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Services/Quiz/QuizCrudService.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\Quiz\:\:\$user_latest_attempt\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/Quiz/QuizCrudService.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
-			identifier: property.notFound
-			count: 3
-			path: app/Services/Quiz/QuizGradingService.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$is_correct\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/Quiz/QuizGradingService.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$points\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/Quiz/QuizGradingService.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:requiresManualGrading\(\)\.$#'
-			identifier: method.notFound
-			count: 1
-			path: app/Services/Quiz/QuizGradingService.php
 
 		-
 			message: '#^Cannot access property \$passing_score on App\\Models\\Quiz\|null\.$#'
@@ -5281,22 +3109,10 @@ parameters:
 			path: app/Services/Quiz/QuizGradingService.php
 
 		-
-			message: '#^Parameter \#1 \$question of method App\\Services\\Quiz\\QuizGradingService\:\:calculatePoints\(\) expects App\\Models\\QuizQuestion, Illuminate\\Database\\Eloquent\\Model given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Services/Quiz/QuizGradingService.php
-
-		-
 			message: '#^Parameter \#1 \$quiz of method App\\Services\\Quiz\\QuizStatisticsService\:\:recompute\(\) expects App\\Models\\Quiz, App\\Models\\Quiz\|null given\.$#'
 			identifier: argument.type
 			count: 2
 			path: app/Services/Quiz/QuizGradingService.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\ESBTPAttendance\:\:\$user\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/Report/ReportGenerationService.php
 
 		-
 			message: '#^Cannot cast mixed to float\.$#'
@@ -5319,18 +3135,6 @@ parameters:
 		-
 			message: '#^Parameter \#1 \$column of method Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\:\:where\(\) expects array\<int\|model property of Illuminate\\Database\\Eloquent\\Model, mixed\>\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\: Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\: void\)\|Illuminate\\Contracts\\Database\\Query\\Expression\|model property of Illuminate\\Database\\Eloquent\\Model, ''klassci_classe_id'' given\.$#'
 			identifier: argument.type
-			count: 1
-			path: app/Services/Report/ReportGenerationService.php
-
-		-
-			message: '#^Relation ''seance'' is not found in App\\Models\\ESBTPAttendance model\.$#'
-			identifier: larastan.relationExistence
-			count: 3
-			path: app/Services/Report/ReportGenerationService.php
-
-		-
-			message: '#^Relation ''user'' is not found in App\\Models\\ESBTPAttendance model\.$#'
-			identifier: larastan.relationExistence
 			count: 1
 			path: app/Services/Report/ReportGenerationService.php
 
@@ -5449,12 +3253,6 @@ parameters:
 			path: app/Services/Seances/AutoClose/Rules/NoParticipantsRule.php
 
 		-
-			message: '#^Relation ''user'' is not found in App\\Models\\ESBTPAttendance model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Services/Seances/AutoClose/Rules/TeacherDisconnectionRule.php
-
-		-
 			message: '#^Cannot call method diffInMinutes\(\) on Carbon\\Carbon\|null\.$#'
 			identifier: method.nonObject
 			count: 1
@@ -5475,12 +3273,6 @@ parameters:
 		-
 			message: '#^Property App\\Models\\ESBTPAttendance\:\:\$duration_minutes \(int\|null\) does not accept float\.$#'
 			identifier: assign.propertyType
-			count: 1
-			path: app/Services/Seances/AutoClose/SeanceClosingService.php
-
-		-
-			message: '#^Relation ''user'' is not found in App\\Models\\ESBTPAttendance model\.$#'
-			identifier: larastan.relationExistence
 			count: 1
 			path: app/Services/Seances/AutoClose/SeanceClosingService.php
 
@@ -6268,12 +4060,6 @@ parameters:
 			message: '#^Parameter \#1 \$datetime of class DateTime constructor expects string, mixed given\.$#'
 			identifier: argument.type
 			count: 2
-			path: app/Services/Visio/VisioParticipantsListService.php
-
-		-
-			message: '#^Relation ''user'' is not found in App\\Models\\ESBTPAttendance model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
 			path: app/Services/Visio/VisioParticipantsListService.php
 
 		-

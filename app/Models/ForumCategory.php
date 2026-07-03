@@ -14,6 +14,7 @@ use App\Models\Traits\BelongsToInstitution;
  */
 class ForumCategory extends Model
 {
+    /** @use HasFactory<\Database\Factories\ForumCategoryFactory> */
     use HasFactory, BelongsToInstitution;
 
     protected $table = 'forum_categories';
@@ -31,6 +32,8 @@ class ForumCategory extends Model
 
     /**
      * Relation: Topics dans cette catégorie
+     *
+     * @return HasMany<ForumTopic, $this>
      */
     public function topics(): HasMany
     {
@@ -39,6 +42,9 @@ class ForumCategory extends Model
 
     /**
      * Scope: Trier par ordre
+     *
+     * @param  \Illuminate\Database\Eloquent\Builder<ForumCategory>  $query
+     * @return \Illuminate\Database\Eloquent\Builder<ForumCategory>
      */
     public function scopeOrdered($query)
     {

@@ -8,6 +8,7 @@ use App\Models\Traits\BelongsToInstitution;
 
 class ESBTPAttendance extends Model
 {
+    /** @use HasFactory<\Database\Factories\ESBTPAttendanceFactory> */
     use HasFactory, BelongsToInstitution;
 
     protected $table = 'esbtp_attendance';
@@ -42,6 +43,8 @@ class ESBTPAttendance extends Model
 
     /**
      * Relation avec la séance
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo<Seance, $this>
      */
     public function seance()
     {
@@ -50,6 +53,8 @@ class ESBTPAttendance extends Model
 
     /**
      * Relation avec l'utilisateur
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo<User, $this>
      */
     public function user()
     {
@@ -58,6 +63,9 @@ class ESBTPAttendance extends Model
 
     /**
      * Scope pour filtrer par séance
+     *
+     * @param  \Illuminate\Database\Eloquent\Builder<ESBTPAttendance>  $query
+     * @return \Illuminate\Database\Eloquent\Builder<ESBTPAttendance>
      */
     public function scopeForSeance($query, int $seanceId)
     {
@@ -66,6 +74,9 @@ class ESBTPAttendance extends Model
 
     /**
      * Scope pour filtrer les participations validées
+     *
+     * @param  \Illuminate\Database\Eloquent\Builder<ESBTPAttendance>  $query
+     * @return \Illuminate\Database\Eloquent\Builder<ESBTPAttendance>
      */
     public function scopeValidated($query)
     {
@@ -93,6 +104,9 @@ class ESBTPAttendance extends Model
 
     /**
      * Scope pour filtrer les participants connectés
+     *
+     * @param  \Illuminate\Database\Eloquent\Builder<ESBTPAttendance>  $query
+     * @return \Illuminate\Database\Eloquent\Builder<ESBTPAttendance>
      */
     public function scopeConnected($query)
     {
@@ -101,6 +115,9 @@ class ESBTPAttendance extends Model
 
     /**
      * Scope pour filtrer les participants déconnectés
+     *
+     * @param  \Illuminate\Database\Eloquent\Builder<ESBTPAttendance>  $query
+     * @return \Illuminate\Database\Eloquent\Builder<ESBTPAttendance>
      */
     public function scopeDisconnected($query)
     {

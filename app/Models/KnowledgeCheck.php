@@ -14,9 +14,14 @@ use App\Models\Traits\BelongsToInstitution;
  *
  * Quiz "Testez vos connaissances" integre dans les chapitres
  * ATTENTION: Ceci est SEPARE des Evaluations KLASSCI
+ *
+ * @property bool $user_passed         Attribut posé par KnowledgeCheckCrudService (KnowledgeCheckAccessService::isPassedByUser).
+ * @property int|null $user_best_score Attribut posé par KnowledgeCheckCrudService (KnowledgeCheckAccessService::bestScore).
+ * @property bool $can_attempt         Attribut posé par KnowledgeCheckCrudService (KnowledgeCheckAccessService::canAttempt).
  */
 class KnowledgeCheck extends Model
 {
+    /** @use HasFactory<\Database\Factories\KnowledgeCheckFactory> */
     use HasFactory, SoftDeletes, BelongsToInstitution;
 
     protected $fillable = [
@@ -60,6 +65,8 @@ class KnowledgeCheck extends Model
 
     /**
      * Relation: Chapitre parent
+     *
+     * @return BelongsTo<Chapter, $this>
      */
     public function chapter(): BelongsTo
     {
@@ -68,6 +75,8 @@ class KnowledgeCheck extends Model
 
     /**
      * Relation: Tentatives des utilisateurs
+     *
+     * @return HasMany<KnowledgeCheckAttempt, $this>
      */
     public function attempts(): HasMany
     {
@@ -84,6 +93,9 @@ class KnowledgeCheck extends Model
 
     /**
      * Scope: Quiz actifs
+     *
+     * @param  \Illuminate\Database\Eloquent\Builder<KnowledgeCheck>  $query
+     * @return \Illuminate\Database\Eloquent\Builder<KnowledgeCheck>
      */
     public function scopeActive($query)
     {
@@ -92,6 +104,9 @@ class KnowledgeCheck extends Model
 
     /**
      * Scope: Par chapitre
+     *
+     * @param  \Illuminate\Database\Eloquent\Builder<KnowledgeCheck>  $query
+     * @return \Illuminate\Database\Eloquent\Builder<KnowledgeCheck>
      */
     public function scopeForChapter($query, int $chapterId)
     {
@@ -100,6 +115,9 @@ class KnowledgeCheck extends Model
 
     /**
      * Scope: Ordonne par position
+     *
+     * @param  \Illuminate\Database\Eloquent\Builder<KnowledgeCheck>  $query
+     * @return \Illuminate\Database\Eloquent\Builder<KnowledgeCheck>
      */
     public function scopeOrdered($query)
     {

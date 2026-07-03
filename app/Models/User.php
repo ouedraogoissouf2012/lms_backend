@@ -21,10 +21,11 @@ use App\Models\Traits\BelongsToInstitution;
  *                                    autoriser (CRITICAL-05, `.claude/specs/critical-05-klassci-role-separation/`).
  * @property int|null $klassci_enseignant_id Write-once — autorité ownership enseignant (#119).
  *                                    Ne JAMAIS lire `klassci_data['enseignant_id']` pour autoriser.
- * @property int|null $institution_id
+ * @property \Illuminate\Support\Carbon|null $last_klassci_sync Cast `datetime` (déclaré dans la méthode casts()).
  */
 class User extends Authenticatable
 {
+    /** @use HasFactory<\Database\Factories\UserFactory> */
     use HasFactory, Notifiable, HasApiTokens, BelongsToInstitution, InteractsWithRoles;
 
     protected $fillable = [
@@ -77,7 +78,11 @@ class User extends Authenticatable
         return $this->last_klassci_sync->isAfter(now()->subDay());
     }
 
-    /** Relation: Classes où l'utilisateur est inscrit (pivot classe_etudiant). */
+    /**
+     * Relation: Classes où l'utilisateur est inscrit (pivot classe_etudiant).
+     *
+     * @return BelongsToMany<Classe, $this>
+     */
     public function classes(): BelongsToMany
     {
         return $this->belongsToMany(\App\Models\Classe::class, 'classe_etudiant')
@@ -85,13 +90,21 @@ class User extends Authenticatable
             ->withTimestamps();
     }
 
-    /** Relation: Classes KLASSCI synchronisées (KlassciUserSynchronizer). */
+    /**
+     * Relation: Classes KLASSCI synchronisées (KlassciUserSynchronizer).
+     *
+     * @return HasMany<UserClass, $this>
+     */
     public function klassciClasses(): HasMany
     {
         return $this->hasMany(\App\Models\UserClass::class);
     }
 
-    /** Relation: Posts de forum créés. */
+    /**
+     * Relation: Posts de forum créés.
+     *
+     * @return HasMany<ForumPost, $this>
+     */
     public function forumPosts(): HasMany
     {
         return $this->hasMany(\App\Models\ForumPost::class);
@@ -101,13 +114,19 @@ class User extends Authenticatable
      * Relation: Notifications applicatives (table custom `notifications`).
      * ⚠️ Override volontaire du trait Notifiable — sans lui, `$user->notifications`
      * pointerait sur les DatabaseNotification Laravel (schéma incompatible).
+     *
+     * @return HasMany<Notification, $this>
      */
     public function notifications(): HasMany
     {
         return $this->hasMany(\App\Models\Notification::class);
     }
 
-    /** Relation: Tentatives de quiz. */
+    /**
+     * Relation: Tentatives de quiz.
+     *
+     * @return HasMany<QuizAttempt, $this>
+     */
     public function quizAttempts(): HasMany
     {
         return $this->hasMany(\App\Models\QuizAttempt::class);

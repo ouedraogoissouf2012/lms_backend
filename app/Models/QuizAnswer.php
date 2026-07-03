@@ -36,6 +36,8 @@ class QuizAnswer extends Model
 
     /**
      * Relation: Question parente
+     *
+     * @return BelongsTo<QuizQuestion, $this>
      */
     public function question(): BelongsTo
     {
@@ -44,6 +46,9 @@ class QuizAnswer extends Model
 
     /**
      * Scope: Réponses ordonnées
+     *
+     * @param  \Illuminate\Database\Eloquent\Builder<QuizAnswer>  $query
+     * @return \Illuminate\Database\Eloquent\Builder<QuizAnswer>
      */
     public function scopeOrdered($query)
     {
@@ -52,6 +57,9 @@ class QuizAnswer extends Model
 
     /**
      * Scope: Réponses correctes
+     *
+     * @param  \Illuminate\Database\Eloquent\Builder<QuizAnswer>  $query
+     * @return \Illuminate\Database\Eloquent\Builder<QuizAnswer>
      */
     public function scopeCorrect($query)
     {

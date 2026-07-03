@@ -14,7 +14,6 @@ use App\Models\Traits\BelongsToInstitution;
  *
  * @property int $id
  * @property int $user_id
- * @property int|null $institution_id
  * @property string $type
  * @property string $title
  * @property string $message
@@ -25,6 +24,7 @@ use App\Models\Traits\BelongsToInstitution;
  */
 class Notification extends Model
 {
+    /** @use HasFactory<\Database\Factories\NotificationFactory> */
     use HasFactory, BelongsToInstitution;
 
     protected $fillable = [
@@ -58,6 +58,8 @@ class Notification extends Model
 
     /**
      * Relation: Utilisateur destinataire
+     *
+     * @return BelongsTo<User, $this>
      */
     public function user(): BelongsTo
     {
@@ -66,6 +68,9 @@ class Notification extends Model
 
     /**
      * Scope: Notifications non lues
+     *
+     * @param  \Illuminate\Database\Eloquent\Builder<Notification>  $query
+     * @return \Illuminate\Database\Eloquent\Builder<Notification>
      */
     public function scopeUnread($query)
     {
@@ -74,6 +79,9 @@ class Notification extends Model
 
     /**
      * Scope: Notifications lues
+     *
+     * @param  \Illuminate\Database\Eloquent\Builder<Notification>  $query
+     * @return \Illuminate\Database\Eloquent\Builder<Notification>
      */
     public function scopeRead($query)
     {
@@ -82,6 +90,9 @@ class Notification extends Model
 
     /**
      * Scope: Notifications d'un utilisateur
+     *
+     * @param  \Illuminate\Database\Eloquent\Builder<Notification>  $query
+     * @return \Illuminate\Database\Eloquent\Builder<Notification>
      */
     public function scopeForUser($query, int $userId)
     {
@@ -90,6 +101,9 @@ class Notification extends Model
 
     /**
      * Scope: Par type
+     *
+     * @param  \Illuminate\Database\Eloquent\Builder<Notification>  $query
+     * @return \Illuminate\Database\Eloquent\Builder<Notification>
      */
     public function scopeOfType($query, string $type)
     {
@@ -98,6 +112,9 @@ class Notification extends Model
 
     /**
      * Scope: Récentes d'abord
+     *
+     * @param  \Illuminate\Database\Eloquent\Builder<Notification>  $query
+     * @return \Illuminate\Database\Eloquent\Builder<Notification>
      */
     public function scopeRecent($query)
     {

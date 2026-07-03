@@ -47,7 +47,12 @@ final class ToggleVisioSeanceRequest extends FormRequest
     {
         return [
             'enabled' => 'required|boolean',
-            'visio_type' => 'nullable|in:jitsi,zoom,teams,bbb',
+            // Seul Jitsi est câblé (hardcodé en 8+ points : SeanceVisioEnricher,
+            // VisioParticipantSessionService, etc.). La colonne `seances.visio_type`
+            // accepte encore zoom/teams/bbb au niveau DB (migration historique) mais
+            // aucun de ces providers n'est implémenté — accepter la valeur ici ferait
+            // croire à une fonctionnalité qui n'existe pas (fail-fast honnête #377).
+            'visio_type' => 'nullable|in:jitsi',
         ];
     }
 
@@ -56,7 +61,7 @@ final class ToggleVisioSeanceRequest extends FormRequest
         return [
             'enabled.required' => 'Le champ enabled est obligatoire.',
             'enabled.boolean' => 'Le champ enabled doit être un booléen (true/false).',
-            'visio_type.in' => 'Le type de visio doit être l\'un de: jitsi, zoom, teams, bbb.',
+            'visio_type.in' => 'Le type de visio doit être: jitsi (seul provider disponible).',
         ];
     }
 }

@@ -1,0 +1,60 @@
+CORRECTION À FAIRE DANS ParticipantsModal.vue
+==============================================
+
+Fichier: lms-frontend/src/components/visio/ParticipantsModal.vue
+
+LIGNES 5-20:
+
+REMPLACER:
+----------
+      <div class="bg-gradient-to-r from-purple-600 to-purple-800 text-white px-6 py-4 flex items-center justify-between">
+        <h3 class="text-xl font-bold flex items-center">
+          <svg class="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+          </svg>
+          📋 Liste de Présence - Séance #{{ seanceId }}
+        </h3>
+        <p v-if="teacher && teacher.nom" class="text-sm font-normal opacity-90 mt-1">
+  Enseignant: {{ teacher.prenom ? teacher.prenom + ' ' : '' }}{{ teacher.nom }}
+</p>
+        <button @click="close" class="text-white hover:text-gray-200">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+
+PAR:
+----
+      <div class="bg-gradient-to-r from-purple-600 to-purple-800 text-white px-6 py-4 flex items-center justify-between">
+        <div>
+          <h3 class="text-xl font-bold flex items-center">
+            <svg class="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+            </svg>
+            📋 Liste de Présence - Séance #{{ seanceId }}
+          </h3>
+          <p v-if="teacher && teacher.nom" class="text-sm font-normal opacity-90 mt-1">
+            Enseignant: {{ teacher.prenom ? teacher.prenom + ' ' : '' }}{{ teacher.nom }}
+          </p>
+        </div>
+        <button @click="close" class="text-white hover:text-gray-200">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+
+CHANGEMENTS:
+------------
+1. Ajout d'un <div> qui englobe le <h3> et le <p>
+2. Meilleure indentation du <p>
+3. Le texte "Enseignant:" sera maintenant visible en BLANC sur fond VIOLET
+
+RÉSULTAT:
+---------
+Vous verrez maintenant:
+┌────────────────────────────────────────────┐
+│ 📋 Liste de Présence - Séance #50      [X]│
+│ Enseignant: BEDE ABEL TEST                │
+└────────────────────────────────────────────┘

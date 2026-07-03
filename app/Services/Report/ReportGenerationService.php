@@ -33,6 +33,7 @@ final class ReportGenerationService
 
     /**
      * Rapport de présences (filtre classe via `Classe.klassci_id` ↔ `seance.klassci_classe_id`).
+     * Filtre `present`/`absent`/`late` : aucune conversion depuis {@see \App\Models\ESBTPAttendance::$status} (`connected`/`disconnected`) n'existe, `$presents` etc. valent toujours 0 — voir #391.
      * @param array<string, mixed> $data Payload `GenerateAttendanceReportRequest`.
      * @return ServiceResult
      */

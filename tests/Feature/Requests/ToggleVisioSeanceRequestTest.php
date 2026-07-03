@@ -128,10 +128,24 @@ class ToggleVisioSeanceRequestTest extends TestCase
         Sanctum::actingAs($this->coordinator);
         $response = $this->postJson("/api/lms/seances/{$this->seance->klassci_seance_id}/toggle-visio", [
             'enabled' => true,
-            'visio_type' => 'zoom',
+            'visio_type' => 'jitsi',
         ]);
 
         $this->assertTrue(in_array($response->status(), [200, 201]));
+    }
+
+    public function test_non_jitsi_visio_type_returns_422(): void
+    {
+        // #377 : seul jitsi est câblé, zoom/teams/bbb ne doivent plus être acceptés
+        // même s'ils restent valides au niveau de la contrainte DB.
+        Sanctum::actingAs($this->coordinator);
+        $response = $this->postJson("/api/lms/seances/{$this->seance->klassci_seance_id}/toggle-visio", [
+            'enabled' => true,
+            'visio_type' => 'zoom',
+        ]);
+
+        $response->assertStatus(422);
+        $this->assertNotEmpty($response->json('errors.visio_type'));
     }
 
     public function test_disabled_without_visio_type(): void

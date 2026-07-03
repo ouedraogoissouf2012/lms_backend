@@ -33,14 +33,7 @@ final class ReportGenerationService
 
     /**
      * Rapport de présences (filtre classe via `Classe.klassci_id` ↔ `seance.klassci_classe_id`).
-     *
-     * Convention de statut attendue ici : `present`/`absent`/`late`. Ce n'est PAS la même
-     * convention que {@see \App\Models\ESBTPAttendance::$status} en base (`connected`/
-     * `disconnected`/`kicked`, contrainte CHECK) — aucune conversion entre les deux n'existe
-     * actuellement, donc `$presents`/`$absents`/`$retards` valent toujours 0 en production
-     * (voir #391). Ne pas corriger silencieusement ce filtre sans traiter #391 : la règle de
-     * conversion (seuil `duration_minutes` ? dépendance à #390 ?) reste à décider.
-     *
+     * Filtre `present`/`absent`/`late` : aucune conversion depuis {@see \App\Models\ESBTPAttendance::$status} (`connected`/`disconnected`) n'existe, `$presents` etc. valent toujours 0 — voir #391.
      * @param array<string, mixed> $data Payload `GenerateAttendanceReportRequest`.
      * @return ServiceResult
      */

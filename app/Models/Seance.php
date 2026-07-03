@@ -9,6 +9,7 @@ use App\Models\Traits\BelongsToInstitution;
 
 class Seance extends Model
 {
+    /** @use HasFactory<\Database\Factories\SeanceFactory> */
     use HasFactory, SoftDeletes, BelongsToInstitution;
 
     protected $fillable = [
@@ -80,6 +81,7 @@ class Seance extends Model
      * (élimine le N+1 de l'accessor sur les listes — #224).
      *
      * @param  \Illuminate\Database\Eloquent\Builder<Seance>  $query
+     * @return \Illuminate\Database\Eloquent\Builder<Seance>
      */
     public function scopeWithConnectedParticipantsCount($query)
     {
@@ -90,6 +92,8 @@ class Seance extends Model
 
     /**
      * Relation: toutes les participations à cette séance
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\HasMany<ESBTPAttendance, $this>
      */
     public function attendances()
     {
@@ -98,6 +102,9 @@ class Seance extends Model
 
     /**
      * Scope: Séances d'un enseignant
+     *
+     * @param  \Illuminate\Database\Eloquent\Builder<Seance>  $query
+     * @return \Illuminate\Database\Eloquent\Builder<Seance>
      */
     public function scopeByTeacher($query, int $teacherId)
     {
@@ -106,6 +113,9 @@ class Seance extends Model
 
     /**
      * Scope: Séances d'une classe
+     *
+     * @param  \Illuminate\Database\Eloquent\Builder<Seance>  $query
+     * @return \Illuminate\Database\Eloquent\Builder<Seance>
      */
     public function scopeByClasse($query, int $classeId)
     {
@@ -114,6 +124,9 @@ class Seance extends Model
 
     /**
      * Scope: Séances avec visio activée
+     *
+     * @param  \Illuminate\Database\Eloquent\Builder<Seance>  $query
+     * @return \Illuminate\Database\Eloquent\Builder<Seance>
      */
     public function scopeWithVisio($query)
     {
@@ -122,6 +135,9 @@ class Seance extends Model
 
     /**
      * Scope: Par ID KLASSCI
+     *
+     * @param  \Illuminate\Database\Eloquent\Builder<Seance>  $query
+     * @return \Illuminate\Database\Eloquent\Builder<Seance>
      */
     public function scopeByKlassciId($query, int $klassciSeanceId)
     {

@@ -15,6 +15,7 @@ use App\Models\Traits\BelongsToInstitution;
  */
 class QuizQuestion extends Model
 {
+    /** @use HasFactory<\Database\Factories\QuizQuestionFactory> */
     use HasFactory, BelongsToInstitution;
 
     protected $fillable = [
@@ -44,6 +45,8 @@ class QuizQuestion extends Model
 
     /**
      * Relation: Quiz parent
+     *
+     * @return BelongsTo<Quiz, $this>
      */
     public function quiz(): BelongsTo
     {
@@ -52,6 +55,8 @@ class QuizQuestion extends Model
 
     /**
      * Relation: Réponses possibles (pour QCM)
+     *
+     * @return HasMany<QuizAnswer, $this>
      */
     public function answers(): HasMany
     {
@@ -60,6 +65,9 @@ class QuizQuestion extends Model
 
     /**
      * Scope: Questions ordonnées
+     *
+     * @param  \Illuminate\Database\Eloquent\Builder<QuizQuestion>  $query
+     * @return \Illuminate\Database\Eloquent\Builder<QuizQuestion>
      */
     public function scopeOrdered($query)
     {
@@ -68,6 +76,9 @@ class QuizQuestion extends Model
 
     /**
      * Scope: Questions obligatoires
+     *
+     * @param  \Illuminate\Database\Eloquent\Builder<QuizQuestion>  $query
+     * @return \Illuminate\Database\Eloquent\Builder<QuizQuestion>
      */
     public function scopeRequired($query)
     {
@@ -80,6 +91,8 @@ class QuizQuestion extends Model
      * H1 (audit) : utilise la collection `answers` eager-loadée si présente
      * pour éviter le N+1 — sinon lazy-load une fois et retourne la sous-
      * collection filtrée.
+     *
+     * @return \Illuminate\Database\Eloquent\Collection<int, QuizAnswer>
      */
     public function getCorrectAnswers()
     {

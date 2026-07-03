@@ -11,6 +11,7 @@ use App\Models\Concerns\Auditable;
 
 class Evaluation extends Model
 {
+    /** @use HasFactory<\Database\Factories\EvaluationFactory> */
     use HasFactory, SoftDeletes, BelongsToInstitution, Auditable;
 
     protected $fillable = [
@@ -59,6 +60,8 @@ class Evaluation extends Model
 
     /**
      * Une évaluation a plusieurs questions
+     *
+     * @return HasMany<EvaluationQuestion, $this>
      */
     public function questions(): HasMany
     {
@@ -67,6 +70,8 @@ class Evaluation extends Model
 
     /**
      * Une évaluation a plusieurs soumissions (étudiants)
+     *
+     * @return HasMany<EvaluationSubmission, $this>
      */
     public function submissions(): HasMany
     {

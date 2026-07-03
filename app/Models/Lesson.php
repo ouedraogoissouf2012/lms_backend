@@ -14,9 +14,14 @@ use App\Models\Traits\BelongsToInstitution;
  * Model Lesson
  *
  * Représente un cours/leçon dans le LMS
+ *
+ * @property LessonProgress|null $user_progress Attribut posé par LessonListService (LessonProgressService::progressForUser).
+ * @property array{students_started: int, students_completed: int, average_completion_rate: float} $statistics Attribut posé par LessonListService (staff uniquement).
+ * @property-read int|null $students_started Alias `withCount(['progress as students_started'])` (DashboardTeacherController).
  */
 class Lesson extends Model
 {
+    /** @use HasFactory<\Database\Factories\LessonFactory> */
     use HasFactory, SoftDeletes, BelongsToInstitution;
 
     protected $fillable = [
@@ -52,46 +57,43 @@ class Lesson extends Model
         'order' => 0,
     ];
 
-    /** Relation: Matière liée */
+    /** @return BelongsTo<Matiere, $this> Matière liée. */
     public function matiere(): BelongsTo
     {
         return $this->belongsTo(Matiere::class);
     }
 
-    /** Relation: Classe liée */
+    /** @return BelongsTo<Classe, $this> Classe liée. */
     public function classe(): BelongsTo
     {
         return $this->belongsTo(Classe::class);
     }
 
-    /** Relation: Enseignant créateur */
+    /** @return BelongsTo<User, $this> Enseignant créateur. */
     public function enseignant(): BelongsTo
     {
         return $this->belongsTo(User::class, 'enseignant_id');
     }
 
-    /** Relation: Progression des étudiants */
+    /** @return HasMany<LessonProgress, $this> Progression des étudiants. */
     public function progress(): HasMany
     {
         return $this->hasMany(LessonProgress::class);
     }
 
-    /** Relation: Fichiers attachés au cours */
+    /** @return MorphMany<File, $this> Fichiers attachés au cours. */
     public function files(): MorphMany
     {
         return $this->morphMany(File::class, 'fileable');
     }
 
-    /**
-     * Relation: Chapitres de la leçon (NOUVELLE STRUCTURE)
-     * Une leçon contient plusieurs chapitres
-     */
+    /** @return HasMany<Chapter, $this> Chapitres de la leçon (une leçon contient plusieurs chapitres). */
     public function chapters(): HasMany
     {
         return $this->hasMany(Chapter::class)->orderBy('order')->orderBy('created_at');
     }
 
-    /** Relation: Ressources complémentaires */
+    /** @return HasMany<LessonResource, $this> Ressources complémentaires. */
     public function resources(): HasMany
     {
         return $this->hasMany(LessonResource::class)->ordered();

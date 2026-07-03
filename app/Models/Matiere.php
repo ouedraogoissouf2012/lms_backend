@@ -13,14 +13,12 @@ use App\Models\Traits\BelongsToInstitution;
  *
  * Représente une matière synchronisée depuis KLASSCI.
  *
- * `institution_id` est ajouté par la migration dynamique
- * `2026_02_11_000002_add_institution_id_to_all_tables` (non détectée par le
- * scanner Larastan) — on le déclare ici pour le typage statique. Issue #258.
- *
- * @property int|null $institution_id
+ * `institution_id` : hérité du trait {@see BelongsToInstitution} (#363,
+ * remplace l'annotation locale posée par #258).
  */
 class Matiere extends Model
 {
+    /** @use HasFactory<\Database\Factories\MatiereFactory> */
     use HasFactory, BelongsToInstitution;
 
     protected $fillable = [
@@ -45,6 +43,8 @@ class Matiere extends Model
 
     /**
      * Relation: Classes qui enseignent cette matière
+     *
+     * @return BelongsToMany<Classe, $this>
      */
     public function classes(): BelongsToMany
     {
@@ -55,6 +55,8 @@ class Matiere extends Model
 
     /**
      * Relation: Cours (Lessons) de cette matière
+     *
+     * @return HasMany<Lesson, $this>
      */
     public function lessons(): HasMany
     {
@@ -63,6 +65,8 @@ class Matiere extends Model
 
     /**
      * Relation: Topics de forum liés à cette matière
+     *
+     * @return HasMany<ForumTopic, $this>
      */
     public function forumTopics(): HasMany
     {

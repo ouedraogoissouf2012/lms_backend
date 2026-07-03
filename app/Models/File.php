@@ -15,11 +15,13 @@ use App\Models\Traits\BelongsToInstitution;
  *
  * @property int $id
  * @property int $user_id
- * @property int|null $institution_id
  * @property bool $is_public
+ * @property string $formatted_size Attribut de présentation posé par FileQueryService/FileUploadService (FilePresenter::formattedSize).
+ * @property string $download_url   Attribut de présentation posé par FileQueryService/FileUploadService (FilePresenter::downloadUrl).
  */
 class File extends Model
 {
+    /** @use HasFactory<\Database\Factories\FileFactory> */
     use HasFactory, SoftDeletes, BelongsToInstitution;
 
     protected $fillable = [
@@ -61,6 +63,8 @@ class File extends Model
 
     /**
      * Relation: Utilisateur qui a uploadé
+     *
+     * @return BelongsTo<User, $this>
      */
     public function user(): BelongsTo
     {
@@ -69,6 +73,8 @@ class File extends Model
 
     /**
      * Relation polymorphique: Entité parente
+     *
+     * @return MorphTo<Model, $this>
      */
     public function fileable(): MorphTo
     {
@@ -77,6 +83,9 @@ class File extends Model
 
     /**
      * Scope: Fichiers publics
+     *
+     * @param  \Illuminate\Database\Eloquent\Builder<File>  $query
+     * @return \Illuminate\Database\Eloquent\Builder<File>
      */
     public function scopePublic($query)
     {
@@ -85,6 +94,9 @@ class File extends Model
 
     /**
      * Scope: Fichiers validés
+     *
+     * @param  \Illuminate\Database\Eloquent\Builder<File>  $query
+     * @return \Illuminate\Database\Eloquent\Builder<File>
      */
     public function scopeValidated($query)
     {
@@ -93,6 +105,9 @@ class File extends Model
 
     /**
      * Scope: Fichiers par type
+     *
+     * @param  \Illuminate\Database\Eloquent\Builder<File>  $query
+     * @return \Illuminate\Database\Eloquent\Builder<File>
      */
     public function scopeOfType($query, string $type)
     {
@@ -101,6 +116,9 @@ class File extends Model
 
     /**
      * Scope: Fichiers par catégorie
+     *
+     * @param  \Illuminate\Database\Eloquent\Builder<File>  $query
+     * @return \Illuminate\Database\Eloquent\Builder<File>
      */
     public function scopeOfCategory($query, string $category)
     {

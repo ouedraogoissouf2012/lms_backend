@@ -14,6 +14,7 @@ use App\Models\Traits\BelongsToInstitution;
  */
 class LessonProgress extends Model
 {
+    /** @use HasFactory<\Database\Factories\LessonProgressFactory> */
     use HasFactory, BelongsToInstitution;
 
     protected $table = 'lesson_progress';
@@ -50,6 +51,8 @@ class LessonProgress extends Model
 
     /**
      * Relation: Utilisateur
+     *
+     * @return BelongsTo<User, $this>
      */
     public function user(): BelongsTo
     {
@@ -58,6 +61,8 @@ class LessonProgress extends Model
 
     /**
      * Relation: Leçon
+     *
+     * @return BelongsTo<Lesson, $this>
      */
     public function lesson(): BelongsTo
     {

@@ -13,14 +13,12 @@ use App\Models\Traits\BelongsToInstitution;
  *
  * Représente une classe synchronisée depuis KLASSCI.
  *
- * `institution_id` est ajouté par la migration dynamique
- * `2026_02_11_000002_add_institution_id_to_all_tables` (non détectée par le
- * scanner Larastan) — on le déclare ici pour le typage statique. Issue #265.
- *
- * @property int|null $institution_id
+ * `institution_id` : hérité du trait {@see BelongsToInstitution} (#363,
+ * remplace l'annotation locale posée par #265).
  */
 class Classe extends Model
 {
+    /** @use HasFactory<\Database\Factories\ClasseFactory> */
     use HasFactory, BelongsToInstitution;
 
     protected $fillable = [
@@ -44,6 +42,8 @@ class Classe extends Model
 
     /**
      * Relation: Matières enseignées dans cette classe
+     *
+     * @return BelongsToMany<Matiere, $this>
      */
     public function matieres(): BelongsToMany
     {
@@ -54,6 +54,8 @@ class Classe extends Model
 
     /**
      * Relation: Étudiants inscrits dans cette classe
+     *
+     * @return BelongsToMany<User, $this>
      */
     public function etudiants(): BelongsToMany
     {
@@ -64,6 +66,8 @@ class Classe extends Model
 
     /**
      * Relation: Étudiants actifs uniquement
+     *
+     * @return BelongsToMany<User, $this>
      */
     public function etudiantsActifs(): BelongsToMany
     {
@@ -72,6 +76,8 @@ class Classe extends Model
 
     /**
      * Relation: Cours (Lessons) de cette classe
+     *
+     * @return HasMany<Lesson, $this>
      */
     public function lessons(): HasMany
     {
@@ -80,6 +86,8 @@ class Classe extends Model
 
     /**
      * Relation: Topics de forum liés à cette classe
+     *
+     * @return HasMany<ForumTopic, $this>
      */
     public function forumTopics(): HasMany
     {

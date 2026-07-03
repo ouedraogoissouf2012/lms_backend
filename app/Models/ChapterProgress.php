@@ -34,6 +34,8 @@ class ChapterProgress extends Model
 
     /**
      * Relation avec l'utilisateur
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo<User, $this>
      */
     public function user()
     {
@@ -42,6 +44,8 @@ class ChapterProgress extends Model
 
     /**
      * Relation avec le chapitre
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo<Chapter, $this>
      */
     public function chapter()
     {

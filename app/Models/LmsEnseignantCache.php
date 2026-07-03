@@ -58,6 +58,8 @@ class LmsEnseignantCache extends Model
 
     /**
      * Stocke ou met à jour le cache pour un enseignant
+     *
+     * @param array<string, mixed> $data Payload enseignant KLASSCI (cast `array`).
      */
     public static function store(int $enseignantId, array $data, int $ttlMinutes = 10): self
     {

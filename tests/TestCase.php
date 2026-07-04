@@ -9,6 +9,25 @@ use Illuminate\Support\Facades\DB;
 abstract class TestCase extends BaseTestCase
 {
     /**
+     * Parité d'isolation entre les jambes CI database et redis (#374).
+     *
+     * En mode database, RefreshDatabase vide la table `cache` entre chaque
+     * test — les compteurs du rate-limiter repartent donc de zéro. En mode
+     * redis, rien ne vide le store : sans ce flush, les compteurs `throttle`
+     * s'accumulent sur toute la suite et les tests reçoivent des 429.
+     * No-op hors runtime redis (le poste dev en mode database n'est pas
+     * ralenti, et le store array est déjà réinitialisé par process).
+     */
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        if (config('cache.default') === 'redis') {
+            $this->app->make('cache')->store('redis')->flush();
+        }
+    }
+
+    /**
      * Skip the KLASSCI sync middleware for tests that don't need
      * a real connection to the KLASSCI external API.
      *

@@ -125,6 +125,10 @@ final class KlassciCacheKeyStrategy
     {
         $raw = $this->cache->get($this->invalidationKeyFor($tenant), 0);
 
-        return is_int($raw) ? $raw : 0;
+        // is_numeric et non is_int : RedisStore stocke les numériques bruts
+        // et les restitue en CHAÎNE ("1751...") — un is_int strict retombait
+        // silencieusement à 0 et cassait toute la soft-invalidation sous
+        // Redis (bug latent attrapé par la jambe CI redis, #374).
+        return is_numeric($raw) ? (int) $raw : 0;
     }
 }

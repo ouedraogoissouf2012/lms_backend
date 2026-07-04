@@ -172,6 +172,26 @@ final class KlassciCacheInvalidationTest extends TestCase
     }
 
     /**
+     * Spec redis-runtime (#374) — RedisStore restitue les numériques en
+     * CHAÎNE ("1751...") là où DatabaseStore ré-hydrate un int. Le lecteur
+     * du timestamp doit honorer les deux formes, sinon l'invalidation est
+     * silencieusement morte sous Redis (bug latent attrapé par la jambe CI
+     * redis : is_int strict → 0 permanent → clés jamais bumpées).
+     */
+    public function test_invalidation_timestamp_stored_as_numeric_string_is_honored(): void
+    {
+        Cache::forever('klassci_cache-test-inst_invalidated_at', '1751672859');
+
+        $key = $this->strategy->generateGlobalKey('endpoint', []);
+
+        self::assertStringEndsWith(
+            '_1751672859',
+            $key,
+            'Un timestamp restitué en chaîne numérique doit être interpolé tel quel, jamais écrasé à 0.'
+        );
+    }
+
+    /**
      * La normalisation ne doit RIEN changer pour les endpoints sans `/`
      * (non-régression du format de clé existant, Requirement 2.1).
      */

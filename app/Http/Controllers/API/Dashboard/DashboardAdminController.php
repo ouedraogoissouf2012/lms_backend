@@ -1,85 +1,48 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Controllers\API\Dashboard;
 
 use App\Http\Controllers\AuthenticatedController;
-use App\Models\Lesson;
-use App\Models\LessonProgress;
-use App\Models\Quiz;
-use App\Models\QuizAttempt;
-use App\Models\ForumPost;
-use App\Models\ForumTopic;
-use App\Models\Notification;
-use App\Models\User;
-use Illuminate\Http\Request;
+use App\Services\Dashboard\AdminDashboardService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 /**
- * DashboardAdminController — extrait verbatim de DashboardController.
- * Refactor du god-controller (455 lignes -> 3 fichiers SRP).
- * Aucun changement comportemental.
+ * DashboardAdminController — endpoint thin pour les stats globales.
+ *
+ * Issue #364 : la logique d'agrégation (users, cours, quiz, forum,
+ * notifications, activité récente) est extraite verbatim dans
+ * {@see AdminDashboardService}. Le controller se limite à :
+ *
+ *   1. Résoudre l'utilisateur authentifié de manière typée.
+ *   2. Déléguer la construction du payload au service injecté.
+ *   3. Sérialiser la réponse JSON dans le format `{success, data}`.
+ *
+ * ## DI strict (§1.6 D)
+ *
+ * `AdminDashboardService` est injecté par le constructeur ; le
+ * controller n'exécute plus aucune requête Eloquent.
+ *
+ * @see app/Services/Dashboard/AdminDashboardService.php
  */
-class DashboardAdminController extends AuthenticatedController
+final class DashboardAdminController extends AuthenticatedController
 {
+    public function __construct(
+        private readonly AdminDashboardService $service,
+    ) {
+    }
+
     /**
-     * Statistiques globales (Admin/Coordinateur)
+     * Statistiques globales (Admin/Coordinateur).
      *
      * GET /api/dashboard/stats
      */
     public function stats(Request $request): JsonResponse
     {
-        $tenantUrl = $this->authenticatedUser($request)->klassci_tenant_url;
+        $user = $this->authenticatedUser($request);
 
-        $totalUsers = User::when($tenantUrl, fn($q) => $q->where('klassci_tenant_url', $tenantUrl))->count();
-        $totalStudents = User::when($tenantUrl, fn($q) => $q->where('klassci_tenant_url', $tenantUrl))->where('role', 'etudiant')->count();
-        $totalTeachers = User::when($tenantUrl, fn($q) => $q->where('klassci_tenant_url', $tenantUrl))->where('role', 'enseignant')->count();
-
-        $totalLessons = Lesson::count();
-        $publishedLessons = Lesson::where('status', 'published')->count();
-
-        $totalQuizzes = Quiz::count();
-        $totalQuizAttempts = QuizAttempt::where('status', 'completed')->count();
-
-        $totalForumTopics = ForumTopic::count();
-        // TEST-03 : utilise le model pour respecter le scope global
-        // `BelongsToInstitution`. `DB::table()` court-circuitait Eloquent
-        // et fuitait les forum_posts cross-tenant dans le count.
-        $totalForumPosts = ForumPost::count();
-
-        $totalNotifications = Notification::count();
-        $unreadNotifications = Notification::whereNull('read_at')->count();
-
-        // Activité récente (7 derniers jours)
-        $recentActivity = [
-            'new_users' => User::when($tenantUrl, fn($q) => $q->where('klassci_tenant_url', $tenantUrl))->where('created_at', '>=', now()->subDays(7))->count(),
-            'new_lessons' => Lesson::where('created_at', '>=', now()->subDays(7))->count(),
-            'new_quiz_attempts' => QuizAttempt::where('created_at', '>=', now()->subDays(7))->count(),
-            'new_forum_topics' => ForumTopic::where('created_at', '>=', now()->subDays(7))->count(),
-        ];
-
-        return $this->successResponse([
-            'users' => [
-                'total' => $totalUsers,
-                'students' => $totalStudents,
-                'teachers' => $totalTeachers,
-            ],
-            'lessons' => [
-                'total' => $totalLessons,
-                'published' => $publishedLessons,
-            ],
-            'quizzes' => [
-                'total' => $totalQuizzes,
-                'total_attempts' => $totalQuizAttempts,
-            ],
-            'forum' => [
-                'total_topics' => $totalForumTopics,
-                'total_posts' => $totalForumPosts,
-            ],
-            'notifications' => [
-                'total' => $totalNotifications,
-                'unread' => $unreadNotifications,
-            ],
-            'recent_activity' => $recentActivity,
-        ]);
+        return $this->successResponse($this->service->buildStats($user));
     }
 }

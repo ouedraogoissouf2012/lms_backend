@@ -41,8 +41,7 @@ final class KlassciCacheKeyStrategy
         private readonly TenantManager $tenantManager,
         private readonly CacheRepository $cache,
         private readonly LoggerInterface $logger,
-    ) {
-    }
+    ) {}
 
     /**
      * Clé cache pour les méthodes globales (token système, partagé dans le tenant).
@@ -56,8 +55,11 @@ final class KlassciCacheKeyStrategy
         $tenant = $this->resolveTenantKey();
         $paramsHash = md5((string) json_encode($params));
         $invalidatedAt = $this->currentInvalidationTimestamp($tenant);
+        // Même normalisation que generateUserTokenKey() (:78) — format de clé
+        // homogène quel que soit le store (spec redis-runtime, Requirement 2.2).
+        $endpointSlug = str_replace('/', '-', $endpoint);
 
-        return "klassci_{$tenant}_{$endpoint}_{$paramsHash}_{$invalidatedAt}";
+        return "klassci_{$tenant}_{$endpointSlug}_{$paramsHash}_{$invalidatedAt}";
     }
 
     /**
@@ -99,7 +101,7 @@ final class KlassciCacheKeyStrategy
 
         $this->logger->info('KLASSCI cache invalidated', [
             'endpoint' => $contextEndpoint,
-            'tenant'   => $tenant,
+            'tenant' => $tenant,
         ]);
     }
 
@@ -123,6 +125,10 @@ final class KlassciCacheKeyStrategy
     {
         $raw = $this->cache->get($this->invalidationKeyFor($tenant), 0);
 
-        return is_int($raw) ? $raw : 0;
+        // is_numeric et non is_int : RedisStore stocke les numériques bruts
+        // et les restitue en CHAÎNE ("1751...") — un is_int strict retombait
+        // silencieusement à 0 et cassait toute la soft-invalidation sous
+        // Redis (bug latent attrapé par la jambe CI redis, #374).
+        return is_numeric($raw) ? (int) $raw : 0;
     }
 }

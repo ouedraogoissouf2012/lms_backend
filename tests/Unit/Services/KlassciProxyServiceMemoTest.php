@@ -44,6 +44,9 @@ final class KlassciProxyServiceMemoTest extends TestCase
         // Stub TenantManager pour avoir un slug stable dans les clés cache.
         $tenantManager = Mockery::mock(TenantManager::class);
         $tenantManager->shouldReceive('slug')->andReturn('school-test');
+        // id() est appelé par TenantScopedCache pour le tag `institution_{id}`
+        // (spec redis-runtime #374) — le store `array` du test supporte les tags.
+        $tenantManager->shouldReceive('id')->andReturn(1);
         $tenantManager->shouldReceive('klassciConfig')->andReturn([
             'url'   => 'https://klassci.test',
             'token' => 'system-token',

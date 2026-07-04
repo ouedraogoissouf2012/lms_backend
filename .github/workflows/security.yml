@@ -288,8 +288,33 @@ jobs:
     # Suite PHPUnit complète (#250) : filet de sécurité contre les régressions.
     # Avant ce job, seul OpenApiSyncTest tournait en CI → des tests cassés
     # passaient inaperçus (ex. régression #243 détectée seulement en local).
-    name: Tests (PHPUnit)
+    #
+    # Matrice à deux jambes (#374, spec redis-runtime) :
+    #   - redis    : runtime cible (CACHE_STORE/SESSION_DRIVER/QUEUE_CONNECTION=redis)
+    #   - database : mode dégradé documenté (Requirement 6.4) = défauts de phpunit.xml
+    # Les DEUX jambes doivent passer à 100 % — la jambe database EST la preuve
+    # que l'application reste fonctionnelle sans Redis.
+    name: Tests (PHPUnit — ${{ matrix.leg }})
     runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        leg: [redis, database]
+
+    # Service démarré inconditionnellement (coût négligeable) ; seule la
+    # jambe redis s'y connecte. Le health-check fait attendre GitHub Actions
+    # jusqu'à disponibilité avant de lancer les steps.
+    services:
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
 
     # Clé de test NON secrète (phpunit.xml ne hardcode pas APP_KEY).
     env:
@@ -313,7 +338,9 @@ jobs:
           # qu'un faux négatif, on aligne la CI sur l'environnement de dev :
           # le chemin imagick (qui nécessite gs + policy PDF autorisée) sera
           # couvert par une issue dédiée si besoin. Couverture inchangée.
-          extensions: ":imagick"
+          # `redis` : extension phpredis, requise par la jambe redis
+          # (REDIS_CLIENT par défaut = phpredis, config/database.php:132).
+          extensions: ":imagick, redis"
 
       # phpunit est en require-dev → installer les dev deps.
       - name: Install dependencies (including dev)
@@ -322,8 +349,35 @@ jobs:
       - name: Prepare sqlite test database
         run: mkdir -p database && touch database/database.testing.sqlite
 
+      # Ceinture + bretelles en plus du health-check du service : échec
+      # explicite (et non un timeout PHPUnit obscur) si Redis n'écoute pas.
+      - name: Wait for Redis (redis leg)
+        if: matrix.leg == 'redis'
+        run: |
+          for i in $(seq 1 30); do
+            if (exec 3<>/dev/tcp/127.0.0.1/6379) 2>/dev/null; then
+              echo "Redis disponible."
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "Redis indisponible après 30s" && exit 1
+
       # RefreshDatabase migre la base de test ; le job échoue si un test échoue.
-      - name: Run PHPUnit suite
+      # Jambe redis : les 3 variables prennent le dessus sur les défauts
+      # `database` de phpunit.xml (pas de force="true" — voulu, cf. phpunit.xml).
+      - name: Run PHPUnit suite (redis)
+        if: matrix.leg == 'redis'
+        env:
+          CACHE_STORE: redis
+          SESSION_DRIVER: redis
+          QUEUE_CONNECTION: redis
+          REDIS_HOST: 127.0.0.1
+          REDIS_PORT: 6379
+        run: vendor/bin/phpunit --no-coverage
+
+      - name: Run PHPUnit suite (database)
+        if: matrix.leg == 'database'
         run: vendor/bin/phpunit --no-coverage
 
   # Garde-fou taille de fichiers (issue #276) — applique PRODUCTION_STANDARDS.md

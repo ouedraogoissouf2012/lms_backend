@@ -41,8 +41,7 @@ final class KlassciCacheKeyStrategy
         private readonly TenantManager $tenantManager,
         private readonly CacheRepository $cache,
         private readonly LoggerInterface $logger,
-    ) {
-    }
+    ) {}
 
     /**
      * Clé cache pour les méthodes globales (token système, partagé dans le tenant).
@@ -56,8 +55,11 @@ final class KlassciCacheKeyStrategy
         $tenant = $this->resolveTenantKey();
         $paramsHash = md5((string) json_encode($params));
         $invalidatedAt = $this->currentInvalidationTimestamp($tenant);
+        // Même normalisation que generateUserTokenKey() (:78) — format de clé
+        // homogène quel que soit le store (spec redis-runtime, Requirement 2.2).
+        $endpointSlug = str_replace('/', '-', $endpoint);
 
-        return "klassci_{$tenant}_{$endpoint}_{$paramsHash}_{$invalidatedAt}";
+        return "klassci_{$tenant}_{$endpointSlug}_{$paramsHash}_{$invalidatedAt}";
     }
 
     /**
@@ -99,7 +101,7 @@ final class KlassciCacheKeyStrategy
 
         $this->logger->info('KLASSCI cache invalidated', [
             'endpoint' => $contextEndpoint,
-            'tenant'   => $tenant,
+            'tenant' => $tenant,
         ]);
     }
 

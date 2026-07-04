@@ -8,6 +8,7 @@ use App\Http\Controllers\API\Proxy\ProxyOrganisationController;
 use App\Http\Controllers\API\AuthController;
 use App\Http\Controllers\API\AdminController;
 use App\Http\Controllers\API\ConfigurationController;
+use App\Http\Controllers\API\InstitutionDirectoryController;
 use App\Http\Controllers\API\IntegrationController;
 
 // Route de test (publique)
@@ -21,41 +22,12 @@ Route::get('/ping', function () {
 });
 
 // Liste des institutions actives (public, pour sélecteur sur page login)
-Route::get('/institutions/active', function () {
-    $institutions = \App\Models\Institution::where('is_active', true)
-        ->orderBy('name')
-        ->get(['slug', 'name', 'logo_url', 'primary_color']);
-
-    return response()->json([
-        'success' => true,
-        'data' => $institutions,
-    ]);
-});
+Route::get('/institutions/active', [InstitutionDirectoryController::class, 'active']);
 
 // ============================================
 // INSTITUTION - Informations sur l'institution courante
 // ============================================
-Route::get('/institution/current', function () {
-    $tenantManager = app(\App\Services\TenantManager::class);
-    $institution = $tenantManager->get();
-
-    if (!$institution) {
-        return response()->json([
-            'success' => false,
-            'message' => 'Aucune institution résolue',
-        ], 400);
-    }
-
-    return response()->json([
-        'success' => true,
-        'data' => [
-            'slug' => $institution->slug,
-            'name' => $institution->name,
-            'logo_url' => $institution->logo_url,
-            'primary_color' => $institution->primary_color,
-        ],
-    ]);
-});
+Route::get('/institution/current', [InstitutionDirectoryController::class, 'current']);
 
 
 // ============================================

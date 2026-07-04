@@ -3,9 +3,12 @@
 namespace App\Providers;
 
 use App\Models\PersonalAccessToken;
+use App\Services\Cache\TenantScopedCache;
+use App\Services\Cache\TenantScopedCacheInterface;
 use App\Services\TenantManager;
 use App\Support\Shell\ShellExecutor;
 use App\Support\Shell\ShellExecutorInterface;
+use Illuminate\Cache\Repository;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\ServiceProvider;
@@ -27,6 +30,21 @@ class AppServiceProvider extends ServiceProvider
         // (§1.6 D — Dependency Inversion) and tests can swap a mock.
         $this->app->singleton(ShellExecutor::class);
         $this->app->bind(ShellExecutorInterface::class, ShellExecutor::class);
+
+        // TenantScopedCache (#374, spec redis-runtime). Le conteneur ne sait
+        // pas résoudre la classe concrète Illuminate\Cache\Repository par
+        // réflexion (son constructeur attend un Store non bindé) : on la
+        // fait pointer sur la même instance que le contrat — le store par
+        // défaut selon config('cache.default') — pour que TenantScopedCache
+        // puisse utiliser tags()/supportsTags(), absents du contrat.
+        $this->app->bind(
+            Repository::class,
+            fn ($app) => $app->make(\Illuminate\Contracts\Cache\Repository::class)
+        );
+        $this->app->bind(
+            TenantScopedCacheInterface::class,
+            TenantScopedCache::class
+        );
     }
 
     /**

@@ -4,12 +4,13 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Services\Cache\TenantScopedCacheInterface;
 use App\Services\Klassci\Concerns\HasKlassciEndpointShortcuts;
 use App\Services\Klassci\KlassciBatchFetcher;
 use App\Services\Klassci\KlassciCacheKeyStrategy;
+use App\Services\Klassci\KlassciConfigResolver;
 use App\Services\Klassci\KlassciHttpClient;
 use App\Services\Klassci\KlassciRequestMemo;
-use Illuminate\Contracts\Cache\Repository as CacheRepository;
 
 /**
  * Service Proxy pour l'API KLASSCI — orchestrateur fin.
@@ -20,19 +21,19 @@ use Illuminate\Contracts\Cache\Repository as CacheRepository;
  * monolithique initiale), ce service est devenu un **orchestrateur** mince qui
  * délègue à 4 collaborateurs spécialisés :
  *
- *   - {@see \App\Services\Klassci\KlassciConfigResolver} — résolution 3-tiers du
+ *   - {@see KlassciConfigResolver} — résolution 3-tiers du
  *     tenant URL + token système (priorité personal token → institution token →
  *     system token). Injecté indirectement via {@see KlassciHttpClient}.
  *
- *   - {@see \App\Services\Klassci\KlassciHttpClient} — couche HTTP unifiée avec
+ *   - {@see KlassciHttpClient} — couche HTTP unifiée avec
  *     `executeHttp()` (DRY fix HIGH-2). Gère SSL, headers, timeout, gestion
  *     d'erreur. Token système OU token utilisateur via param `$overrideToken`.
  *
- *   - {@see \App\Services\Klassci\KlassciRequestMemo} — memoization intra-request.
+ *   - {@see KlassciRequestMemo} — memoization intra-request.
  *     Tableau privé en mémoire indexé par `xxh3(method+endpoint+params+tokenHash)`.
  *     Vidé sur tout write. Préserve l'isolation cross-user via tokenHash.
  *
- *   - {@see \App\Services\Klassci\KlassciCacheKeyStrategy} — génération clés cache
+ *   - {@see KlassciCacheKeyStrategy} — génération clés cache
  *     distribué + soft-invalidation tenant-wide via `invalidatedAt` timestamp.
  *
  * Ce service expose les 15 méthodes endpoint métier (getStructure, getClasses, ...)
@@ -43,7 +44,8 @@ use Illuminate\Contracts\Cache\Repository as CacheRepository;
  *   1. Calcul `memoKey` via `KlassciRequestMemo::memoKey()`.
  *   2. Si memo hit → retour immédiat (pas d'I/O cache, pas de HTTP).
  *   3. Sinon, génération `cacheKey` via `KlassciCacheKeyStrategy` puis
- *      `Cache::remember()` (TTL configurable par appel).
+ *      `TenantScopedCache::remember()` (TTL configurable par appel, entrée
+ *      taguée `institution_{id}` quand le store supporte les tags).
  *   4. Sur cache miss : `KlassciHttpClient::executeHttp('GET', ...)`.
  *   5. Memo populate.
  *
@@ -68,7 +70,7 @@ class KlassciProxyService
         private readonly KlassciHttpClient $http,
         private readonly KlassciRequestMemo $memo,
         private readonly KlassciCacheKeyStrategy $cacheKeys,
-        private readonly CacheRepository $cache,
+        private readonly TenantScopedCacheInterface $tenantCache,
         private readonly KlassciBatchFetcher $batch,
     ) {
         $cacheTtlConfig = config('services.klassci.cache_ttl', 300);
@@ -96,7 +98,7 @@ class KlassciProxyService
         $ttl = $customTTL ?? $this->cacheTTL;
 
         /** @var array<string, mixed> $result */
-        $result = $this->cache->remember($cacheKey, $ttl, function () use ($endpoint, $params): array {
+        $result = $this->tenantCache->remember($cacheKey, $ttl, function () use ($endpoint, $params): array {
             return $this->http->executeHttp('GET', $endpoint, $params);
         });
 
@@ -179,7 +181,7 @@ class KlassciProxyService
             $ttl = $customTTL ?? $this->userTokenDefaultTTL;
 
             /** @var array<string, mixed> $result */
-            $result = $this->cache->remember($cacheKey, $ttl, function () use ($userToken, $endpoint, $method, $data): array {
+            $result = $this->tenantCache->remember($cacheKey, $ttl, function () use ($userToken, $endpoint, $method, $data): array {
                 return $this->http->executeHttp($method, $endpoint, $data, $userToken);
             });
 
@@ -197,10 +199,16 @@ class KlassciProxyService
 
     /**
      * Invalidation tenant-wide + reset memo intra-request.
+     *
+     * Deux mécanismes complémentaires (spec redis-runtime) :
+     * - soft-invalidation par timestamp (driver-agnostic, mécanique principale) ;
+     * - purge physique par tag institution quand le store la supporte
+     *   (libère la mémoire Redis immédiatement, no-op loggé sinon).
      */
     private function invalidateCache(string $endpoint): void
     {
         $this->cacheKeys->invalidateTenant($endpoint);
+        $this->tenantCache->flushTenant();
         $this->memo->clear();
     }
 
@@ -223,7 +231,7 @@ class KlassciProxyService
      * Batch fetch N ressources par ID — parallélisé en pools de `pool_size`.
      *
      * @param  array<int>  $ids
-     * @return array<int, array<string, mixed>>  Map [id => responseData] ; IDs échoués absents.
+     * @return array<int, array<string, mixed>> Map [id => responseData] ; IDs échoués absents.
      */
     public function fetchManyByEndpoint(
         array $ids,

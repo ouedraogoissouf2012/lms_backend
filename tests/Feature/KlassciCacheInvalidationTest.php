@@ -31,7 +31,7 @@ use Tests\TestCase;
  * comme méthodes **publiques** sur `KlassciCacheKeyStrategy` — la Reflection
  * est éliminée, le contract est testé directement.
  *
- * @see \App\Services\Klassci\KlassciCacheKeyStrategy
+ * @see KlassciCacheKeyStrategy
  */
 final class KlassciCacheInvalidationTest extends TestCase
 {
@@ -151,5 +151,55 @@ final class KlassciCacheInvalidationTest extends TestCase
             $kB,
             'Different tokenHash MUST produce distinct cache keys — sinon User A pourrait lire le cache de User B.'
         );
+    }
+
+    /**
+     * Spec redis-runtime (#374, Requirement 2.2) — `generateGlobalKey()` doit
+     * appliquer la MÊME normalisation d'endpoint que `generateUserTokenKey()`
+     * (`/` → `-`, cf. :78) : format de clé homogène et déterministe quel que
+     * soit le store. Régression de l'incohérence constatée en audit.
+     */
+    public function test_global_key_normalizes_endpoint_slashes_like_user_token_key(): void
+    {
+        $key = $this->strategy->generateGlobalKey('classes/12/etudiants', []);
+
+        self::assertStringNotContainsString(
+            '/',
+            $key,
+            'generateGlobalKey() ne doit plus interpoler l\'endpoint brut : les `/` doivent devenir des `-`.'
+        );
+        self::assertStringContainsString('classes-12-etudiants', $key);
+    }
+
+    /**
+     * Spec redis-runtime (#374) — RedisStore restitue les numériques en
+     * CHAÎNE ("1751...") là où DatabaseStore ré-hydrate un int. Le lecteur
+     * du timestamp doit honorer les deux formes, sinon l'invalidation est
+     * silencieusement morte sous Redis (bug latent attrapé par la jambe CI
+     * redis : is_int strict → 0 permanent → clés jamais bumpées).
+     */
+    public function test_invalidation_timestamp_stored_as_numeric_string_is_honored(): void
+    {
+        Cache::forever('klassci_cache-test-inst_invalidated_at', '1751672859');
+
+        $key = $this->strategy->generateGlobalKey('endpoint', []);
+
+        self::assertStringEndsWith(
+            '_1751672859',
+            $key,
+            'Un timestamp restitué en chaîne numérique doit être interpolé tel quel, jamais écrasé à 0.'
+        );
+    }
+
+    /**
+     * La normalisation ne doit RIEN changer pour les endpoints sans `/`
+     * (non-régression du format de clé existant, Requirement 2.1).
+     */
+    public function test_global_key_format_unchanged_for_endpoints_without_slash(): void
+    {
+        $key = $this->strategy->generateGlobalKey('structure', ['annee' => 2026]);
+
+        $paramsHash = md5((string) json_encode(['annee' => 2026]));
+        self::assertSame("klassci_cache-test-inst_structure_{$paramsHash}_0", $key);
     }
 }

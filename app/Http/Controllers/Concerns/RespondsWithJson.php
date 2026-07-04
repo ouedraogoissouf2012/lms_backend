@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Concerns;
 
+use App\Http\Controllers\Controller;
+use App\Http\Presenters\AuthResponsePresenter;
+use App\Services\Quiz\Concerns\BuildsAttemptResponses;
+use App\Support\Http\JsonPayloadGuard;
 use Illuminate\Http\JsonResponse;
 
 /**
@@ -17,10 +21,10 @@ use Illuminate\Http\JsonResponse;
  * endpoints plaçaient le payload à la racine, d'autres sous `data`). Le
  * `Controller` de base était vide : aucun point unique de construction.
  *
- * Ce trait, monté sur {@see \App\Http\Controllers\Controller}, donne à tout
+ * Ce trait, monté sur {@see Controller}, donne à tout
  * controller deux fabriques typées produisant le **contrat canonique** déjà
- * utilisé par {@see \App\Http\Presenters\AuthResponsePresenter} et
- * {@see \App\Services\Quiz\Concerns\BuildsAttemptResponses}. Il centralise la
+ * utilisé par {@see AuthResponsePresenter} et
+ * {@see BuildsAttemptResponses}. Il centralise la
  * forme sans la réinventer (PRODUCTION_STANDARDS §1.5 : format JSON identique
  * pour tous les endpoints).
  *
@@ -48,6 +52,11 @@ use Illuminate\Http\JsonResponse;
  * signature n'offre aucun vecteur pour exposer `$e->getMessage()` au client
  * (PRODUCTION_STANDARDS §1.2). C'est au caller de ne passer que du contenu sûr.
  *
+ * Les Closures sont rejetées AVANT construction ({@see JsonPayloadGuard}, #360) :
+ * `json_encode` les encoderait silencieusement en `{}` (200 avec payload vide,
+ * aucun signal d'échec). L'exception résultante est une erreur de programmation,
+ * rendue en 500 générique par le handler global.
+ *
  * @see .claude/specs/api-response-envelope/design.md §4 (golden contract)
  */
 trait RespondsWithJson
@@ -66,6 +75,9 @@ trait RespondsWithJson
         int $status = 200,
         array $meta = [],
     ): JsonResponse {
+        JsonPayloadGuard::rejectClosures($data, 'data');
+        JsonPayloadGuard::rejectClosures($meta, 'meta');
+
         $payload = ['success' => true];
 
         if ($message !== '') {
@@ -98,6 +110,8 @@ trait RespondsWithJson
         int $status = 400,
         array $errors = [],
     ): JsonResponse {
+        JsonPayloadGuard::rejectClosures($errors, 'errors');
+
         $payload = [
             'success' => false,
             'message' => $message,

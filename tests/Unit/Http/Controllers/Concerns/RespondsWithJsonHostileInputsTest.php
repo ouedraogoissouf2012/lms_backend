@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Http\Controllers\Concerns;
 
+use App\Exceptions\UnserializablePayloadException;
 use App\Http\Controllers\Concerns\RespondsWithJson;
 use DateTime;
 use DateTimeZone;
@@ -23,14 +24,17 @@ use Tests\TestCase;
  * d'une DB latin1, flottants non finis issus d'un calcul de moyenne, objets
  * non sérialisables, statuts HTTP hors bornes, récursion.
  *
- * Deux familles :
- * 1. **Fail-fast** — `response()->json()` jette `InvalidArgumentException`
+ * Trois familles :
+ * 1. **Fail-fast natif** — `response()->json()` jette `InvalidArgumentException`
  *    AVANT tout envoi au client : le handler global produit un 500 générique,
  *    aucun JSON corrompu ne part sur le réseau. C'est le comportement voulu.
- * 2. **Corruption silencieuse** — cas où AUCUNE exception n'est levée mais où
- *    le JSON émis trahit le contrat (Closure → `{}`, DateTime brut → structure
- *    interne PHP, enveloppes sémantiquement incohérentes). Ces tests figent le
- *    comportement actuel pour qu'un futur garde-fou soit un changement CONSCIENT.
+ * 2. **Fail-fast ajouté (#360)** — les Closures étaient encodées silencieusement
+ *    en `{}` (200 sans signal d'échec) ; `JsonPayloadGuard` les rejette désormais
+ *    avec le chemin fautif.
+ * 3. **Corruption silencieuse restante** — aucune exception mais le JSON trahit
+ *    le contrat (DateTime brut → structure interne PHP : #361, enveloppes
+ *    sémantiquement incohérentes : #365). Ces tests figent le comportement
+ *    actuel pour qu'un futur garde-fou soit un changement CONSCIENT.
  *
  * Chaque assertion reflète une sortie observée par sonde, pas une intuition.
  */
@@ -166,18 +170,54 @@ final class RespondsWithJsonHostileInputsTest extends TestCase
         $this->probe->success($bomb);
     }
 
-    // ----- Famille 2 : corruption silencieuse (aucune exception) -----
+    // ----- Closures : garde fail-fast (#360) -----
+    //
+    // AVANT #360 (comportement mesuré) : une Closure ne jetait pas — elle
+    // devenait {} dans le JSON, réponse 200 sans aucun signal d'échec.
+    // DEPUIS : JsonPayloadGuard la rejette AVANT construction, avec le chemin
+    // fautif dans le message (masqué en prod par le handler global, §1.2).
 
-    public function test_closure_dans_data_est_encodee_silencieusement_en_objet_vide(): void
+    public function test_closure_dans_data_jette_avant_emission(): void
     {
-        // PIÈGE MESURÉ : une Closure ne jette PAS — elle devient {} dans le JSON.
-        // Un controller qui oublie d'appeler ->toArray() ou passe un callable
-        // par erreur émet un 200 avec un payload vide, sans aucun signal d'échec.
-        $response = $this->probe->success(['callback' => fn (): int => 1]);
+        $this->expectException(UnserializablePayloadException::class);
+        $this->expectExceptionMessage('data.callback');
 
-        self::assertSame(200, $response->status());
-        self::assertSame(['success' => true, 'data' => ['callback' => []]], $response->getData(true));
+        $this->probe->success(['callback' => fn (): int => 1]);
     }
+
+    public function test_closure_racine_dans_data_jette(): void
+    {
+        $this->expectException(UnserializablePayloadException::class);
+        $this->expectExceptionMessage('`data`');
+
+        $this->probe->success(fn (): int => 1);
+    }
+
+    public function test_closure_imbriquee_profondement_dans_data_jette(): void
+    {
+        $this->expectException(UnserializablePayloadException::class);
+        $this->expectExceptionMessage('data.items.0.on_click');
+
+        $this->probe->success(['items' => [['on_click' => static fn (): bool => true]]]);
+    }
+
+    public function test_closure_dans_meta_jette(): void
+    {
+        $this->expectException(UnserializablePayloadException::class);
+        $this->expectExceptionMessage('meta.paginator');
+
+        $this->probe->success(['x' => 1], '', 200, ['paginator' => fn (): int => 2]);
+    }
+
+    public function test_closure_dans_errors_jette(): void
+    {
+        $this->expectException(UnserializablePayloadException::class);
+        $this->expectExceptionMessage('errors.rule');
+
+        $this->probe->error('Invalide', 422, ['rule' => fn (): string => 'x']);
+    }
+
+    // ----- Famille 2 : corruption silencieuse (aucune exception) -----
 
     public function test_datetime_brut_fuit_la_structure_interne_php(): void
     {

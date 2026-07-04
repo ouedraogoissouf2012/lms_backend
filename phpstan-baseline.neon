@@ -73,42 +73,6 @@ parameters:
 			path: app/Http/Controllers/API/ChapterProgressController.php
 
 		-
-			message: '#^Cannot access property \$name on App\\Models\\User\|null\.$#'
-			identifier: property.nonObject
-			count: 2
-			path: app/Http/Controllers/API/Dashboard/DashboardTeacherController.php
-
-		-
-			message: '#^Cannot access property \$title on App\\Models\\Quiz\|null\.$#'
-			identifier: property.nonObject
-			count: 1
-			path: app/Http/Controllers/API/Dashboard/DashboardTeacherController.php
-
-		-
-			message: '#^Parameter \#1 \$column of method Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\:\:where\(\) expects array\<int\|model property of Illuminate\\Database\\Eloquent\\Model, mixed\>\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\: Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\: void\)\|Illuminate\\Contracts\\Database\\Query\\Expression\|model property of Illuminate\\Database\\Eloquent\\Model, ''enseignant_id'' given\.$#'
-			identifier: argument.type
-			count: 7
-			path: app/Http/Controllers/API/Dashboard/DashboardTeacherController.php
-
-		-
-			message: '#^Parameter \#1 \$column of method Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\:\:where\(\) expects array\<int\|model property of Illuminate\\Database\\Eloquent\\Model, mixed\>\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\: Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\: void\)\|Illuminate\\Contracts\\Database\\Query\\Expression\|model property of Illuminate\\Database\\Eloquent\\Model, ''requires_manual…'' given\.$#'
-			identifier: argument.type
-			count: 2
-			path: app/Http/Controllers/API/Dashboard/DashboardTeacherController.php
-
-		-
-			message: '#^Parameter \#1 \$column of static method Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Quiz\>\:\:where\(\) expects array\<int\|model property of App\\Models\\Quiz, mixed\>\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Quiz\>\)\: Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Quiz\>\)\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Quiz\>\)\: void\)\|Illuminate\\Contracts\\Database\\Query\\Expression\|model property of App\\Models\\Quiz, ''enseignant_id'' given\.$#'
-			identifier: argument.type
-			count: 2
-			path: app/Http/Controllers/API/Dashboard/DashboardTeacherController.php
-
-		-
-			message: '#^Parameter \#1 \$num of function round expects float\|int, float\|int\|string given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Controllers/API/Dashboard/DashboardTeacherController.php
-
-		-
 			message: '#^Property App\\Http\\Controllers\\API\\Evaluation\\EvaluationKlassciSyncController\:\:\$enrichmentService is never read, only written\.$#'
 			identifier: property.onlyWritten
 			count: 1
@@ -251,36 +215,6 @@ parameters:
 			identifier: cast.int
 			count: 1
 			path: app/Http/Controllers/API/SearchController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\API\\TeacherStatsController\:\:getStats\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Http/Controllers/API/TeacherStatsController.php
-
-		-
-			message: '#^Parameter \#1 \$column of method Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Evaluation\>\:\:pluck\(\) expects Illuminate\\Contracts\\Database\\Query\\Expression\|model property of App\\Models\\Evaluation, string given\.$#'
-			identifier: argument.type
-			count: 2
-			path: app/Http/Controllers/API/TeacherStatsController.php
-
-		-
-			message: '#^Parameter \#1 \$column of static method Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Evaluation\>\:\:where\(\) expects array\<int\|model property of App\\Models\\Evaluation, mixed\>\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Evaluation\>\)\: Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Evaluation\>\)\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Evaluation\>\)\: void\)\|Illuminate\\Contracts\\Database\\Query\\Expression\|model property of App\\Models\\Evaluation, ''enseignant_id'' given\.$#'
-			identifier: argument.type
-			count: 3
-			path: app/Http/Controllers/API/TeacherStatsController.php
-
-		-
-			message: '#^Possibly invalid array key type mixed\.$#'
-			identifier: offsetAccess.invalidOffset
-			count: 4
-			path: app/Http/Controllers/API/TeacherStatsController.php
-
-		-
-			message: '#^Property App\\Http\\Controllers\\API\\TeacherStatsController\:\:\$klassciService has no type specified\.$#'
-			identifier: missingType.property
-			count: 1
-			path: app/Http/Controllers/API/TeacherStatsController.php
 
 		-
 			message: '#^Cannot access offset ''name'' on mixed\.$#'

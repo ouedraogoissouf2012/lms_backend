@@ -2,13 +2,14 @@
 
 namespace App\Models;
 
+use App\Models\Traits\BelongsToInstitution;
+use Database\Factories\LessonFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\SoftDeletes;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
-use App\Models\Traits\BelongsToInstitution;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
  * Model Lesson
@@ -21,8 +22,8 @@ use App\Models\Traits\BelongsToInstitution;
  */
 class Lesson extends Model
 {
-    /** @use HasFactory<\Database\Factories\LessonFactory> */
-    use HasFactory, SoftDeletes, BelongsToInstitution;
+    /** @use HasFactory<LessonFactory> */
+    use BelongsToInstitution, HasFactory, SoftDeletes;
 
     protected $fillable = [
         'matiere_id',
@@ -97,6 +98,12 @@ class Lesson extends Model
     public function resources(): HasMany
     {
         return $this->hasMany(LessonResource::class)->ordered();
+    }
+
+    /** @return HasMany<SeanceRecording, $this> Enregistrements rattachés au cours. */
+    public function seanceRecordings(): HasMany
+    {
+        return $this->hasMany(SeanceRecording::class);
     }
 
     /** Scope: Cours publiés uniquement */

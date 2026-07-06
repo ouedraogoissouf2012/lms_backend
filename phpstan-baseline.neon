@@ -1429,76 +1429,10 @@ parameters:
 			path: app/Jobs/SyncKlassciSeances.php
 
 		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$institution_id\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Models/Chapter.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$institution_id\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Models/ChapterProgress.php
-
-		-
 			message: '#^Class App\\Models\\ChapterProgress uses generic trait Illuminate\\Database\\Eloquent\\Factories\\HasFactory but does not specify its types\: TFactory$#'
 			identifier: missingType.generics
 			count: 1
 			path: app/Models/ChapterProgress.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$institution_id\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Models/Classe.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$institution_id\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Models/ESBTPAttendance.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$institution_id\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Models/Evaluation.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$institution_id\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Models/EvaluationQuestion.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$institution_id\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Models/EvaluationSubmission.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$institution_id\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Models/File.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$institution_id\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Models/ForumCategory.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$institution_id\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Models/ForumPost.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$institution_id\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Models/ForumTopic.php
 
 		-
 			message: '#^Method App\\Models\\ForumTopic\:\:scopeByActivity\(\) has no return type specified\.$#'
@@ -1585,34 +1519,16 @@ parameters:
 			path: app/Models/ForumTopic.php
 
 		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$institution_id\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Models/KnowledgeCheck.php
-
-		-
 			message: '#^Call to function is_array\(\) with array will always evaluate to true\.$#'
 			identifier: function.alreadyNarrowedType
 			count: 1
 			path: app/Models/KnowledgeCheck.php
 
 		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$institution_id\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Models/KnowledgeCheckAttempt.php
-
-		-
 			message: '#^Class App\\Models\\KnowledgeCheckAttempt uses generic trait Illuminate\\Database\\Eloquent\\Factories\\HasFactory but does not specify its types\: TFactory$#'
 			identifier: missingType.generics
 			count: 1
 			path: app/Models/KnowledgeCheckAttempt.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$institution_id\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Models/Lesson.php
 
 		-
 			message: '#^Method App\\Models\\Lesson\:\:scopeByTeacher\(\) has no return type specified\.$#'
@@ -1675,18 +1591,6 @@ parameters:
 			path: app/Models/Lesson.php
 
 		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$institution_id\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Models/LessonProgress.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$institution_id\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Models/LessonResource.php
-
-		-
 			message: '#^Class App\\Models\\LessonResource uses generic trait Illuminate\\Database\\Eloquent\\Factories\\HasFactory but does not specify its types\: TFactory$#'
 			identifier: missingType.generics
 			count: 1
@@ -1711,12 +1615,6 @@ parameters:
 			path: app/Models/LessonResource.php
 
 		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$institution_id\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Models/LmsEnseignantCache.php
-
-		-
 			message: '#^Left side of && is always true\.$#'
 			identifier: booleanAnd.leftAlwaysTrue
 			count: 1
@@ -1733,30 +1631,6 @@ parameters:
 			identifier: property.notFound
 			count: 1
 			path: app/Models/Matiere.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$institution_id\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Models/Matiere.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$institution_id\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Models/MatiereEnseignant.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$institution_id\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Models/Notification.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$institution_id\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Models/Quiz.php
 
 		-
 			message: '#^Method App\\Models\\Quiz\:\:scopeAvailable\(\) has no return type specified\.$#'
@@ -1819,28 +1693,10 @@ parameters:
 			path: app/Models/Quiz.php
 
 		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$institution_id\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Models/QuizAnswer.php
-
-		-
 			message: '#^Class App\\Models\\QuizAnswer uses generic trait Illuminate\\Database\\Eloquent\\Factories\\HasFactory but does not specify its types\: TFactory$#'
 			identifier: missingType.generics
 			count: 1
 			path: app/Models/QuizAnswer.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$institution_id\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Models/QuizAttempt.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$institution_id\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Models/QuizQuestion.php
 
 		-
 			message: '#^Match arm comparison between ''essay'' and ''essay'' is always true\.$#'
@@ -1849,34 +1705,10 @@ parameters:
 			path: app/Models/QuizQuestion.php
 
 		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$institution_id\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Models/Seance.php
-
-		-
 			message: '#^Cannot cast mixed to int\.$#'
 			identifier: cast.int
 			count: 1
 			path: app/Models/Seance.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$institution_id\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Models/SeanceUserHidden.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$institution_id\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Models/User.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$institution_id\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Models/UserClass.php
 
 		-
 			message: '#^Method App\\Notifications\\CustomNotification\:\:__construct\(\) has parameter \$actionUrl with no type specified\.$#'

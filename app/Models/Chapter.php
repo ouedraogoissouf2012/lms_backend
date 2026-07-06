@@ -2,12 +2,14 @@
 
 namespace App\Models;
 
+use App\Models\Traits\BelongsToInstitution;
+use Database\Factories\ChapterFactory;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\SoftDeletes;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use App\Models\Traits\BelongsToInstitution;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
  * Model Chapter
@@ -17,8 +19,8 @@ use App\Models\Traits\BelongsToInstitution;
  */
 class Chapter extends Model
 {
-    /** @use HasFactory<\Database\Factories\ChapterFactory> */
-    use HasFactory, SoftDeletes, BelongsToInstitution;
+    /** @use HasFactory<ChapterFactory> */
+    use BelongsToInstitution, HasFactory, SoftDeletes;
 
     protected $fillable = [
         'lesson_id',
@@ -81,11 +83,17 @@ class Chapter extends Model
         return $this->belongsTo(Lesson::class);
     }
 
+    /** @return HasMany<SeanceRecording, $this> Enregistrements rattachés à ce chapitre. */
+    public function seanceRecordings(): HasMany
+    {
+        return $this->hasMany(SeanceRecording::class);
+    }
+
     /**
      * Scope: Ordonné
      *
-     * @param  \Illuminate\Database\Eloquent\Builder<Chapter>  $query
-     * @return \Illuminate\Database\Eloquent\Builder<Chapter>
+     * @param  Builder<Chapter>  $query
+     * @return Builder<Chapter>
      */
     public function scopeOrdered($query)
     {
@@ -95,8 +103,8 @@ class Chapter extends Model
     /**
      * Scope: Par matière
      *
-     * @param  \Illuminate\Database\Eloquent\Builder<Chapter>  $query
-     * @return \Illuminate\Database\Eloquent\Builder<Chapter>
+     * @param  Builder<Chapter>  $query
+     * @return Builder<Chapter>
      */
     public function scopeForMatiere($query, int $matiereId)
     {
@@ -106,8 +114,8 @@ class Chapter extends Model
     /**
      * Scope: Par enseignant
      *
-     * @param  \Illuminate\Database\Eloquent\Builder<Chapter>  $query
-     * @return \Illuminate\Database\Eloquent\Builder<Chapter>
+     * @param  Builder<Chapter>  $query
+     * @return Builder<Chapter>
      */
     public function scopeByTeacher($query, int $enseignantId)
     {
@@ -117,8 +125,8 @@ class Chapter extends Model
     /**
      * Scope: Par leçon
      *
-     * @param  \Illuminate\Database\Eloquent\Builder<Chapter>  $query
-     * @return \Illuminate\Database\Eloquent\Builder<Chapter>
+     * @param  Builder<Chapter>  $query
+     * @return Builder<Chapter>
      */
     public function scopeForLesson($query, int $lessonId)
     {
@@ -128,8 +136,8 @@ class Chapter extends Model
     /**
      * Scope: Par type de contenu
      *
-     * @param  \Illuminate\Database\Eloquent\Builder<Chapter>  $query
-     * @return \Illuminate\Database\Eloquent\Builder<Chapter>
+     * @param  Builder<Chapter>  $query
+     * @return Builder<Chapter>
      */
     public function scopeByContentType($query, string $contentType)
     {

@@ -241,18 +241,6 @@ parameters:
 			path: app/Http/Middleware/ResolveInstitution.php
 
 		-
-			message: '#^Method App\\Http\\Requests\\ActivateVisioRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Http/Requests/ActivateVisioRequest.php
-
-		-
-			message: '#^Method App\\Http\\Requests\\AuthorizeServiceRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Http/Requests/AuthorizeServiceRequest.php
-
-		-
 			message: '#^Method App\\Http\\Requests\\BulkImportUsersRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
 			identifier: missingType.iterableValue
 			count: 1
@@ -275,12 +263,6 @@ parameters:
 			identifier: missingType.iterableValue
 			count: 1
 			path: app/Http/Requests/CloseTopicRequest.php
-
-		-
-			message: '#^Method App\\Http\\Requests\\ConnectServiceRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Http/Requests/ConnectServiceRequest.php
 
 		-
 			message: '#^Method App\\Http\\Requests\\CreateUserRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
@@ -433,22 +415,10 @@ parameters:
 			path: app/Http/Requests/DisableUserRequest.php
 
 		-
-			message: '#^Method App\\Http\\Requests\\DisconnectServiceRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Http/Requests/DisconnectServiceRequest.php
-
-		-
 			message: '#^Method App\\Http\\Requests\\EnableUserRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
 			identifier: missingType.iterableValue
 			count: 1
 			path: app/Http/Requests/EnableUserRequest.php
-
-		-
-			message: '#^Method App\\Http\\Requests\\EndVisioRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Http/Requests/EndVisioRequest.php
 
 		-
 			message: '#^Method App\\Http\\Requests\\ExportUsersRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'

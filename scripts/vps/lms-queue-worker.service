@@ -19,6 +19,11 @@
 #   sudo systemctl daemon-reload
 #   sudo systemctl enable --now lms-queue-worker
 #
+# Le VPS cible consomme Redis en priorite haute -> normale -> basse :
+# - high    : signaux proches temps reel (presence/fermeture visio)
+# - default : jobs applicatifs standards
+# - low     : syncs/archivages lourds et differables
+#
 # --max-time=3600 + Restart=always : le worker se relance tout seul toutes
 # les heures (recommandation Laravel officielle contre les fuites memoire
 # des processus PHP long-running), sans jamais laisser la queue sans
@@ -32,7 +37,7 @@ After=network.target mysql.service redis-server.service
 User=${DEPLOY_USER}
 Group=${DEPLOY_USER}
 WorkingDirectory=${APP_DIR}
-ExecStart=/usr/bin/php ${APP_DIR}/artisan queue:work --sleep=3 --tries=3 --max-time=3600 --timeout=120
+ExecStart=/usr/bin/php ${APP_DIR}/artisan queue:work redis --queue=high,default,low --sleep=3 --tries=3 --max-time=3600 --timeout=120
 Restart=always
 RestartSec=5
 

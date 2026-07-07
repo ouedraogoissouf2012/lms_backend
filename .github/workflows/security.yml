@@ -99,7 +99,7 @@ jobs:
         run: vendor/bin/phpstan analyse --memory-limit=2G --no-progress
 
       - name: Check PHPStan baseline ratchet
-        run: php scripts/check-phpstan-baseline.php --max=694
+        run: php scripts/check-phpstan-baseline.php --max=689
 
   semgrep-sast:
     name: Semgrep SAST (OWASP + default)

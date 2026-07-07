@@ -5,6 +5,7 @@ namespace App\Providers;
 use App\Models\PersonalAccessToken;
 use App\Services\Cache\TenantScopedCache;
 use App\Services\Cache\TenantScopedCacheInterface;
+use App\Services\Klassci\KlassciRequestMemo;
 use App\Services\TenantManager;
 use App\Support\Shell\ShellExecutor;
 use App\Support\Shell\ShellExecutorInterface;
@@ -21,7 +22,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        $this->app->singleton(TenantManager::class);
+        $this->app->scoped(TenantManager::class);
+        $this->app->scoped(KlassciRequestMemo::class);
 
         // ShellExecutor — sole entry point for external process execution
         // (issue #79 Phase A). Singleton because it is stateless and we want

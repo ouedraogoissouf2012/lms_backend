@@ -50,6 +50,7 @@ final class KlassciProxyUrlGuardTest extends TestCase
 
         $response->assertStatus(503)
             ->assertJsonPath('success', false);
+        $this->assertSame('30', $response->headers->get('Retry-After'));
 
         // Jamais le détail technique (« The scheme '' is not allowed », body brut…).
         self::assertStringNotContainsString('scheme', strtolower((string) $response->getContent()));
@@ -70,6 +71,7 @@ final class KlassciProxyUrlGuardTest extends TestCase
 
         $response->assertStatus(503)
             ->assertJsonPath('success', false);
+        $this->assertSame('30', $response->headers->get('Retry-After'));
     }
 
     public function test_generic_failure_still_returns_500_not_503(): void

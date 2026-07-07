@@ -44,4 +44,21 @@ final class KlassciUnavailableException extends RuntimeException
     {
         return new self('URL de base KLASSCI absente ou invalide (config services.klassci.url / KLASSCI_API_URL).');
     }
+
+    public static function upstreamFailure(int $status): self
+    {
+        return new self("API KLASSCI indisponible ou en erreur serveur ({$status}).", $status);
+    }
+
+    public static function circuitOpen(int $secondsUntilRetry): self
+    {
+        return new self("Circuit KLASSCI ouvert temporairement ({$secondsUntilRetry}s avant retry).", 503);
+    }
+
+    public static function retryAfterSeconds(): int
+    {
+        $value = config('services.klassci.retry_after', 30);
+
+        return is_numeric($value) ? max(1, (int) $value) : 30;
+    }
 }

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Klassci;
 
+use App\Exceptions\KlassciUnavailableException;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Factory as HttpFactory;
 use Illuminate\Http\Client\PendingRequest;
@@ -48,15 +49,18 @@ final class KlassciHttpClient
 
     private readonly int $timeout;
 
+    private readonly int $connectTimeout;
+
     private readonly bool $sslVerify;
 
     public function __construct(
         private readonly HttpFactory $http,
         private readonly KlassciConfigResolver $config,
         private readonly LoggerInterface $logger,
+        private readonly KlassciCircuitBreaker $circuitBreaker,
     ) {
-        $timeoutConfig = config('services.klassci.timeout', 30);
-        $this->timeout = is_int($timeoutConfig) ? $timeoutConfig : 30;
+        $this->connectTimeout = self::positiveIntConfig('services.klassci.connect_timeout', 2);
+        $this->timeout = self::positiveIntConfig('services.klassci.timeout', 5);
         $this->sslVerify = (bool) config('services.klassci.ssl_verify', true);
     }
 
@@ -82,6 +86,16 @@ final class KlassciHttpClient
         ?string $overrideToken = null,
     ): array {
         $token = $overrideToken ?? $this->config->token();
+        if ($this->circuitBreaker->isOpen()) {
+            $secondsUntilRetry = $this->circuitBreaker->secondsUntilRetry();
+            $this->logger->warning('KLASSCI circuit breaker open', [
+                'endpoint' => $endpoint,
+                'retry_after' => $secondsUntilRetry,
+            ]);
+
+            throw KlassciUnavailableException::circuitOpen($secondsUntilRetry);
+        }
+
         // #270 — valide l'URL de base AVANT de construire la requête : sans scheme
         // http(s), Guzzle lèverait « The scheme '' is not allowed » rendu en 500.
         // requireBaseUrl() lève KlassciUnavailableException (→ 503) à la place.
@@ -98,7 +112,9 @@ final class KlassciHttpClient
         ]);
 
         $request = self::decorateRequest(
-            $this->http->timeout($this->timeout),
+            $this->http
+                ->connectTimeout($this->connectTimeout)
+                ->timeout($this->timeout),
             $url,
             $this->sslVerify,
             $token,
@@ -117,6 +133,7 @@ final class KlassciHttpClient
                 default  => throw new \InvalidArgumentException("Méthode HTTP non supportée: {$method}"),
             };
         } catch (ConnectionException $e) {
+            $this->circuitBreaker->reportFailure();
             $this->logger->error("KLASSCI API Exception{$logSuffix}", [
                 'message'  => $e->getMessage(),
                 'endpoint' => $endpoint,
@@ -139,6 +156,11 @@ final class KlassciHttpClient
                 'endpoint' => $endpoint,
             ]);
 
+            if ($status >= self::SERVER_ERROR_THRESHOLD) {
+                $this->circuitBreaker->reportFailure();
+                throw KlassciUnavailableException::upstreamFailure($status);
+            }
+
             throw new \RuntimeException("Erreur API KLASSCI: {$status}", $status);
         }
 
@@ -150,6 +172,8 @@ final class KlassciHttpClient
         $this->logger->info("KLASSCI API Response{$logSuffix}", [
             'success' => $result['success'] ?? false,
         ]);
+
+        $this->circuitBreaker->reportSuccess();
 
         /** @var array<string, mixed> $result */
         return $result;
@@ -189,5 +213,12 @@ final class KlassciHttpClient
         }
 
         return $req;
+    }
+
+    private static function positiveIntConfig(string $key, int $default): int
+    {
+        $value = config($key, $default);
+
+        return is_numeric($value) && (int) $value > 0 ? (int) $value : $default;
     }
 }

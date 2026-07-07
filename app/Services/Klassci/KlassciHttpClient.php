@@ -57,6 +57,7 @@ final class KlassciHttpClient
         private readonly HttpFactory $http,
         private readonly KlassciConfigResolver $config,
         private readonly LoggerInterface $logger,
+        private readonly KlassciCircuitBreaker $circuitBreaker,
     ) {
         $this->connectTimeout = self::positiveIntConfig('services.klassci.connect_timeout', 2);
         $this->timeout = self::positiveIntConfig('services.klassci.timeout', 5);
@@ -85,6 +86,16 @@ final class KlassciHttpClient
         ?string $overrideToken = null,
     ): array {
         $token = $overrideToken ?? $this->config->token();
+        if ($this->circuitBreaker->isOpen()) {
+            $secondsUntilRetry = $this->circuitBreaker->secondsUntilRetry();
+            $this->logger->warning('KLASSCI circuit breaker open', [
+                'endpoint' => $endpoint,
+                'retry_after' => $secondsUntilRetry,
+            ]);
+
+            throw KlassciUnavailableException::circuitOpen($secondsUntilRetry);
+        }
+
         // #270 — valide l'URL de base AVANT de construire la requête : sans scheme
         // http(s), Guzzle lèverait « The scheme '' is not allowed » rendu en 500.
         // requireBaseUrl() lève KlassciUnavailableException (→ 503) à la place.
@@ -122,6 +133,7 @@ final class KlassciHttpClient
                 default  => throw new \InvalidArgumentException("Méthode HTTP non supportée: {$method}"),
             };
         } catch (ConnectionException $e) {
+            $this->circuitBreaker->reportFailure();
             $this->logger->error("KLASSCI API Exception{$logSuffix}", [
                 'message'  => $e->getMessage(),
                 'endpoint' => $endpoint,
@@ -145,6 +157,7 @@ final class KlassciHttpClient
             ]);
 
             if ($status >= self::SERVER_ERROR_THRESHOLD) {
+                $this->circuitBreaker->reportFailure();
                 throw KlassciUnavailableException::upstreamFailure($status);
             }
 
@@ -159,6 +172,8 @@ final class KlassciHttpClient
         $this->logger->info("KLASSCI API Response{$logSuffix}", [
             'success' => $result['success'] ?? false,
         ]);
+
+        $this->circuitBreaker->reportSuccess();
 
         /** @var array<string, mixed> $result */
         return $result;

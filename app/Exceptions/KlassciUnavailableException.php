@@ -50,6 +50,11 @@ final class KlassciUnavailableException extends RuntimeException
         return new self("API KLASSCI indisponible ou en erreur serveur ({$status}).", $status);
     }
 
+    public static function circuitOpen(int $secondsUntilRetry): self
+    {
+        return new self("Circuit KLASSCI ouvert temporairement ({$secondsUntilRetry}s avant retry).", 503);
+    }
+
     public static function retryAfterSeconds(): int
     {
         $value = config('services.klassci.retry_after', 30);

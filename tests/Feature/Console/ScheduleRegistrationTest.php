@@ -4,9 +4,18 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Console;
 
+use App\Jobs\ArchiveOldSeances;
+use App\Jobs\AutoCloseEmptySeances;
+use App\Jobs\CleanObsoleteSeances;
+use App\Jobs\CleanOldEvaluations;
+use App\Jobs\DetectDisconnectedParticipants;
+use App\Jobs\FinalizeSeanceAttendances;
+use App\Jobs\SyncKlassciSeances;
+use Illuminate\Console\Scheduling\CallbackEvent;
 use Illuminate\Console\Scheduling\Event;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Bus;
 use Tests\TestCase;
 
 /**
@@ -61,6 +70,7 @@ final class ScheduleRegistrationTest extends TestCase
         $this->assertNotNull($event, 'Sans worker planifié, les jobs s\'accumulent dans la table jobs (cPanel sans Supervisor).');
         $this->assertSame('* * * * *', $event->expression);
         $this->assertStringContainsString('queue:work', (string) $event->command);
+        $this->assertStringContainsString('--queue=high,default,low', (string) $event->command);
         $this->assertStringContainsString('--stop-when-empty', (string) $event->command);
         $this->assertStringContainsString('--max-time=', (string) $event->command);
         $this->assertTrue($event->withoutOverlapping);
@@ -68,5 +78,48 @@ final class ScheduleRegistrationTest extends TestCase
         // runInBackground : le drain de la queue ne doit pas bloquer le tick
         // du scheduler (les 11 autres tâches passent dans le même schedule:run).
         $this->assertTrue($event->runInBackground);
+    }
+
+    public function test_queue_healthcheck_runs_every_five_minutes(): void
+    {
+        $event = $this->scheduledEvents()->get('queue-healthcheck');
+
+        $this->assertNotNull($event, 'La queue database doit être surveillée sur cPanel sans Redis.');
+        $this->assertSame('*/5 * * * *', $event->expression);
+        $this->assertStringContainsString('queue:healthcheck', (string) $event->command);
+        $this->assertStringContainsString('--max-pending=1000', (string) $event->command);
+        $this->assertStringContainsString('--max-age-minutes=5', (string) $event->command);
+        $this->assertStringContainsString('--max-failed=0', (string) $event->command);
+        $this->assertTrue($event->withoutOverlapping);
+    }
+
+    public function test_scheduled_jobs_dispatch_to_priority_queues(): void
+    {
+        config(['cache.default' => 'array']);
+        Bus::fake();
+
+        $this->runScheduledJob('sync-klassci-seances');
+        $this->runScheduledJob('clean-obsolete-seances');
+        $this->runScheduledJob('archive-old-seances');
+        $this->runScheduledJob('clean-old-evaluations');
+        $this->runScheduledJob('detect-disconnected-participants');
+        $this->runScheduledJob('finalize-seance-attendances');
+        $this->runScheduledJob('auto-close-empty-seances');
+
+        Bus::assertDispatched(SyncKlassciSeances::class, fn ($job): bool => $job->queue === 'low');
+        Bus::assertDispatched(CleanObsoleteSeances::class, fn ($job): bool => $job->queue === 'low');
+        Bus::assertDispatched(ArchiveOldSeances::class, fn ($job): bool => $job->queue === 'low');
+        Bus::assertDispatched(CleanOldEvaluations::class, fn ($job): bool => $job->queue === 'low');
+        Bus::assertDispatched(DetectDisconnectedParticipants::class, fn ($job): bool => $job->queue === 'high');
+        Bus::assertDispatched(FinalizeSeanceAttendances::class, fn ($job): bool => $job->queue === 'low');
+        Bus::assertDispatched(AutoCloseEmptySeances::class, fn ($job): bool => $job->queue === 'high');
+    }
+
+    private function runScheduledJob(string $name): void
+    {
+        $event = $this->scheduledEvents()->get($name);
+
+        $this->assertInstanceOf(CallbackEvent::class, $event);
+        $event->run($this->app);
     }
 }

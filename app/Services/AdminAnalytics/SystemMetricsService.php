@@ -64,6 +64,8 @@ final class SystemMetricsService
         private readonly CacheRepository $cache,
         private readonly TenantManager $tenantManager,
         private readonly LoggerInterface $logger,
+        private readonly QueueBackpressureMetricsService $queueMetrics,
+        private readonly KlassciBackpressureMetricsService $klassciMetrics,
     ) {
     }
 
@@ -76,7 +78,8 @@ final class SystemMetricsService
      *     lessons: array{total: int, published: int, draft: int, created_this_week: int},
      *     evaluations: array{total: int, published: int, submissions_total: int, submissions_this_week: int, pending_grading: int},
      *     quizzes: array{total_attempts: int, attempts_this_week: int, completed: int, average_score: float|null},
-     *     performance: array{average_evaluation_score: float|null, average_quiz_score: float|null, completion_rate: float}
+     *     performance: array{average_evaluation_score: float|null, average_quiz_score: float|null, completion_rate: float},
+     *     backpressure: array<string, mixed>
      * }
      */
     public function getMetrics(): array
@@ -93,7 +96,8 @@ final class SystemMetricsService
          *     lessons: array{total: int, published: int, draft: int, created_this_week: int},
          *     evaluations: array{total: int, published: int, submissions_total: int, submissions_this_week: int, pending_grading: int},
          *     quizzes: array{total_attempts: int, attempts_this_week: int, completed: int, average_score: float|null},
-         *     performance: array{average_evaluation_score: float|null, average_quiz_score: float|null, completion_rate: float}
+         *     performance: array{average_evaluation_score: float|null, average_quiz_score: float|null, completion_rate: float},
+         *     backpressure: array<string, mixed>
          * } */
         return $this->cache->remember(
             $cacheKey,
@@ -110,7 +114,8 @@ final class SystemMetricsService
      *     lessons: array{total: int, published: int, draft: int, created_this_week: int},
      *     evaluations: array{total: int, published: int, submissions_total: int, submissions_this_week: int, pending_grading: int},
      *     quizzes: array{total_attempts: int, attempts_this_week: int, completed: int, average_score: float|null},
-     *     performance: array{average_evaluation_score: float|null, average_quiz_score: float|null, completion_rate: float}
+     *     performance: array{average_evaluation_score: float|null, average_quiz_score: float|null, completion_rate: float},
+     *     backpressure: array<string, mixed>
      * }
      */
     private function aggregate(): array
@@ -184,6 +189,11 @@ final class SystemMetricsService
                     QuizAttempt::whereNotNull('score')->avg('score'),
                 ),
                 'completion_rate' => $this->calculateCompletionRate(),
+            ],
+
+            'backpressure' => [
+                'queue' => $this->queueMetrics->snapshot(),
+                'klassci' => $this->klassciMetrics->snapshot(),
             ],
         ];
     }

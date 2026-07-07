@@ -7,6 +7,7 @@ use App\Http\Requests\CreateUserRequest;
 use App\Http\Requests\UpdateUserRequest;
 use App\Http\Requests\DeleteUserRequest;
 use App\Models\User;
+use InvalidArgumentException;
 use Illuminate\Http\JsonResponse;
 
 /**
@@ -25,7 +26,7 @@ class AdminController extends Controller
     public function createUser(CreateUserRequest $request): JsonResponse
     {
         $data = $request->validated();
-        $data['password'] = bcrypt($data['password']);
+        $data['password'] = bcrypt(self::validatedPassword($data));
 
         $user = User::create($data);
         $user->load('institution');
@@ -42,7 +43,7 @@ class AdminController extends Controller
         $data = $request->validated();
 
         if (isset($data['password'])) {
-            $data['password'] = bcrypt($data['password']);
+            $data['password'] = bcrypt(self::validatedPassword($data));
         }
 
         $user->update($data);
@@ -60,5 +61,17 @@ class AdminController extends Controller
         $user->delete();
 
         return $this->successResponse(null, 'Utilisateur supprimé');
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    private static function validatedPassword(array $data): string
+    {
+        if (! isset($data['password']) || ! is_string($data['password'])) {
+            throw new InvalidArgumentException('Validated password must be a string.');
+        }
+
+        return $data['password'];
     }
 }

@@ -1,58 +1,10 @@
 parameters:
 	ignoreErrors:
 		-
-			message: '#^Method App\\Casts\\KlassciData\:\:get\(\) should return array\<string, mixed\> but returns array\<mixed, mixed\>\.$#'
-			identifier: return.type
-			count: 1
-			path: app/Casts/KlassciData.php
-
-		-
-			message: '#^Method App\\Casts\\KlassciData\:\:get\(\) should return array\<string, mixed\> but returns mixed\.$#'
-			identifier: return.type
-			count: 1
-			path: app/Casts/KlassciData.php
-
-		-
-			message: '#^Method App\\Console\\Commands\\CleanObsoleteSeancesCommand\:\:handle\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Console/Commands/CleanObsoleteSeancesCommand.php
-
-		-
-			message: '#^Method App\\Console\\Commands\\CleanOldEvaluationsCommand\:\:handle\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Console/Commands/CleanOldEvaluationsCommand.php
-
-		-
-			message: '#^Method App\\Console\\Commands\\DetectInactiveParticipants\:\:handle\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Console/Commands/DetectInactiveParticipants.php
-
-		-
-			message: '#^Method App\\Console\\Commands\\NotifyUpcomingEvaluations\:\:handle\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Console/Commands/NotifyUpcomingEvaluations.php
-
-		-
 			message: '#^Parameter \#1 \$column of method Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Notification\>\:\:where\(\) expects array\<int\|model property of App\\Models\\Notification, mixed\>\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Notification\>\)\: Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Notification\>\)\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Notification\>\)\: void\)\|Illuminate\\Contracts\\Database\\Query\\Expression\|model property of App\\Models\\Notification, ''data\-\>evaluation_id'' given\.$#'
 			identifier: argument.type
 			count: 1
 			path: app/Console/Commands/NotifyUpcomingEvaluations.php
-
-		-
-			message: '#^Property App\\Console\\Commands\\NotifyUpcomingEvaluations\:\:\$klassciService has no type specified\.$#'
-			identifier: missingType.property
-			count: 1
-			path: app/Console/Commands/NotifyUpcomingEvaluations.php
-
-		-
-			message: '#^Parameter \#1 \$value of function bcrypt expects string, mixed given\.$#'
-			identifier: argument.type
-			count: 2
-			path: app/Http/Controllers/API/AdminController.php
 
 		-
 			message: '#^Cannot access offset ''user'' on mixed\.$#'

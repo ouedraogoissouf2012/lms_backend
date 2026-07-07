@@ -27,7 +27,7 @@ class DetectInactiveParticipants extends Command
     /**
      * Execute the console command.
      */
-    public function handle(AttendanceLifecycleService $lifecycle)
+    public function handle(AttendanceLifecycleService $lifecycle): int
     {
         $timeoutMinutes = (int) $this->option('timeout');
         $threshold = Carbon::now()->subMinutes($timeoutMinutes);
@@ -44,7 +44,7 @@ class DetectInactiveParticipants extends Command
 
         if ($inactiveParticipants->isEmpty()) {
             $this->info('✅ Aucun participant inactif détecté');
-            return 0;
+            return Command::SUCCESS;
         }
 
         $disconnectedCount = 0;
@@ -67,6 +67,6 @@ class DetectInactiveParticipants extends Command
 
         $this->info("✅ {$disconnectedCount} participant(s) déconnecté(s) automatiquement");
 
-        return 0;
+        return Command::SUCCESS;
     }
 }

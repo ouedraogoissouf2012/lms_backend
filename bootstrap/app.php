@@ -106,7 +106,9 @@ $app = Application::configure(basePath: dirname(__DIR__))
                 return response()->json([
                     'success' => false,
                     'message' => \App\Exceptions\KlassciUnavailableException::CLIENT_MESSAGE,
-                ], 503);
+                ], 503, [
+                    'Retry-After' => (string) \App\Exceptions\KlassciUnavailableException::retryAfterSeconds(),
+                ]);
             }
         });
 

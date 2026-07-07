@@ -12,6 +12,9 @@ final class AuthorizeServiceRequest extends FormRequest
         return auth()->user()?->asRoleEnum() === Role::Supradmin;
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     public function rules(): array
     {
         return [
@@ -20,6 +23,9 @@ final class AuthorizeServiceRequest extends FormRequest
         ];
     }
 
+    /**
+     * @return array<string, string>
+     */
     public function messages(): array
     {
         return [

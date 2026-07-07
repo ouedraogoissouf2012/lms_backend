@@ -19,6 +19,9 @@ final class ConnectServiceRequest extends FormRequest
         return auth()->user()?->asRoleEnum() === Role::Supradmin;
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     public function rules(): array
     {
         return [
@@ -29,6 +32,9 @@ final class ConnectServiceRequest extends FormRequest
         ];
     }
 
+    /**
+     * @return array<string, string>
+     */
     public function messages(): array
     {
         return [

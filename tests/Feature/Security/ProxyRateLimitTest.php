@@ -83,6 +83,7 @@ final class ProxyRateLimitTest extends TestCase
             $blocked->headers->get('Retry-After'),
             'Une réponse 429 doit indiquer Retry-After'
         );
+        $this->assertGreaterThan(0, (int) $blocked->headers->get('Retry-After'));
     }
 
     public function test_supradmin_is_exempt_from_rate_limit(): void

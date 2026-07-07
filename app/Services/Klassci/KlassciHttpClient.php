@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Klassci;
 
+use App\Exceptions\KlassciUnavailableException;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Factory as HttpFactory;
 use Illuminate\Http\Client\PendingRequest;
@@ -48,6 +49,8 @@ final class KlassciHttpClient
 
     private readonly int $timeout;
 
+    private readonly int $connectTimeout;
+
     private readonly bool $sslVerify;
 
     public function __construct(
@@ -55,8 +58,8 @@ final class KlassciHttpClient
         private readonly KlassciConfigResolver $config,
         private readonly LoggerInterface $logger,
     ) {
-        $timeoutConfig = config('services.klassci.timeout', 30);
-        $this->timeout = is_int($timeoutConfig) ? $timeoutConfig : 30;
+        $this->connectTimeout = self::positiveIntConfig('services.klassci.connect_timeout', 2);
+        $this->timeout = self::positiveIntConfig('services.klassci.timeout', 5);
         $this->sslVerify = (bool) config('services.klassci.ssl_verify', true);
     }
 
@@ -98,7 +101,9 @@ final class KlassciHttpClient
         ]);
 
         $request = self::decorateRequest(
-            $this->http->timeout($this->timeout),
+            $this->http
+                ->connectTimeout($this->connectTimeout)
+                ->timeout($this->timeout),
             $url,
             $this->sslVerify,
             $token,
@@ -138,6 +143,10 @@ final class KlassciHttpClient
                 'status'   => $status,
                 'endpoint' => $endpoint,
             ]);
+
+            if ($status >= self::SERVER_ERROR_THRESHOLD) {
+                throw KlassciUnavailableException::upstreamFailure($status);
+            }
 
             throw new \RuntimeException("Erreur API KLASSCI: {$status}", $status);
         }
@@ -189,5 +198,12 @@ final class KlassciHttpClient
         }
 
         return $req;
+    }
+
+    private static function positiveIntConfig(string $key, int $default): int
+    {
+        $value = config($key, $default);
+
+        return is_numeric($value) && (int) $value > 0 ? (int) $value : $default;
     }
 }

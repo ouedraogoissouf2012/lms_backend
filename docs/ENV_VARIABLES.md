@@ -44,10 +44,23 @@
 
 | Variable | Default | Production | Description |
 |---|---|---|---|
-| `CACHE_DRIVER` | `array` (test) | `redis` recommandé | — |
-| `SESSION_DRIVER` | `array` (test) | `redis` ou `database` | — |
-| `QUEUE_CONNECTION` | `sync` | `redis` ou `database` | `sync` = exécution synchrone |
-| `REDIS_HOST` | `127.0.0.1` | — | Si `redis` activé |
+| `CACHE_STORE` | `database` ou `array` en test | `redis` | Store cache Laravel 12 ; le rate limiter suit ce store |
+| `SESSION_DRIVER` | `array` en test | `redis` | Sessions hors MySQL en prod |
+| `SESSION_STORE` | — | vide ou `redis` | Store optionnel utilise par les sessions |
+| `QUEUE_CONNECTION` | `sync` ou `database` en test | `redis` | File cible des jobs en prod VPS |
+| `REDIS_CLIENT` | `phpredis` | `phpredis` | Extension C attendue sur VPS |
+| `REDIS_PERSISTENT` | `false` | `true` | Connexions Redis persistantes |
+| `REDIS_HOST` | `127.0.0.1` | host Redis | Si `redis` active |
+| `REDIS_PORT` | `6379` | `6379` | Port Redis |
+| `REDIS_PASSWORD` | — | obligatoire si configure | Mot de passe Redis genere au provisionnement VPS |
+| `REDIS_DB` | `0` | `0` | Connexion Redis default/queue |
+| `REDIS_CACHE_DB` | `1` | `1` | Connexion Redis cache/rate limiter |
+| `REDIS_PREFIX` | slug app | prefix app unique | Evite collisions entre environnements |
+
+Fallback temporaire si Redis tombe avant remediation infra :
+`CACHE_STORE=database`, `SESSION_DRIVER=database`, `QUEUE_CONNECTION=database`.
+Ce mode garde la compatibilite fonctionnelle mais ne valide pas les objectifs
+perf #374.
 
 ## 5. Mail
 

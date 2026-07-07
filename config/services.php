@@ -48,7 +48,9 @@ return [
         'url' => env('KLASSCI_API_URL'),
         'token' => env('KLASSCI_API_TOKEN'),
         'cache_ttl' => env('KLASSCI_CACHE_TTL', 300),
-        'timeout' => env('KLASSCI_TIMEOUT', 30),
+        'connect_timeout' => env('KLASSCI_CONNECT_TIMEOUT', 2),
+        'timeout' => env('KLASSCI_TIMEOUT', 5),
+        'retry_after' => env('KLASSCI_RETRY_AFTER', 30),
         'ssl_verify' => env('KLASSCI_SSL_VERIFY', true),
 
         // PERF-02 (issue #137) — Memoization intra-request + cache user-token-aware + Http::pool batch.

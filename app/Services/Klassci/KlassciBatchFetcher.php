@@ -47,6 +47,8 @@ final class KlassciBatchFetcher
 
     private readonly int $timeout;
 
+    private readonly int $connectTimeout;
+
     private readonly bool $sslVerify;
 
     private readonly int $defaultTTL;
@@ -67,8 +69,15 @@ final class KlassciBatchFetcher
             ? min($poolSizeConfig, 32)
             : 4;
 
-        $timeoutConfig = config('services.klassci.timeout', 30);
-        $this->timeout = is_int($timeoutConfig) ? $timeoutConfig : 30;
+        $connectTimeoutConfig = config('services.klassci.connect_timeout', 2);
+        $this->connectTimeout = is_numeric($connectTimeoutConfig) && (int) $connectTimeoutConfig > 0
+            ? (int) $connectTimeoutConfig
+            : 2;
+
+        $timeoutConfig = config('services.klassci.timeout', 5);
+        $this->timeout = is_numeric($timeoutConfig) && (int) $timeoutConfig > 0
+            ? (int) $timeoutConfig
+            : 5;
 
         $this->sslVerify = (bool) config('services.klassci.ssl_verify', true);
 
@@ -187,7 +196,9 @@ final class KlassciBatchFetcher
                 // PR 2 audit `spec-architect` MEDIUM-2 : factorisation HTTP-builder
                 // via helper statique pur sur KlassciHttpClient (headers + SSL + token).
                 $req = KlassciHttpClient::decorateRequest(
-                    $pool->as((string) $id)->timeout($this->timeout),
+                    $pool->as((string) $id)
+                        ->connectTimeout($this->connectTimeout)
+                        ->timeout($this->timeout),
                     $url,
                     $this->sslVerify,
                     $effectiveToken,

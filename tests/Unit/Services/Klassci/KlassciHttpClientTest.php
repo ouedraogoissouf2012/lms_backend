@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Services\Klassci;
 
+use App\Exceptions\KlassciUnavailableException;
 use App\Services\Klassci\KlassciConfigResolver;
 use App\Services\Klassci\KlassciHttpClient;
 use App\Services\TenantManager;
@@ -85,6 +86,15 @@ final class KlassciHttpClientTest extends TestCase
         self::assertSame(503, $logger->recordsForMessage('KLASSCI API Error')[0]['context']['status']);
     }
 
+    public function test_5xx_is_exposed_as_retryable_klassci_unavailable(): void
+    {
+        $client = $this->makeClient(new RecordingLogger(), status: 503);
+
+        $this->expectException(KlassciUnavailableException::class);
+
+        $client->executeHttp('GET', 'etudiants/me');
+    }
+
     public function test_failure_log_context_never_contains_response_body(): void
     {
         $logger = new RecordingLogger();
@@ -152,6 +162,17 @@ final class KlassciHttpClientTest extends TestCase
         self::assertSame(['success' => true, 'data' => [1, 2]], $result);
         self::assertCount(0, $logger->recordsAtLevel(LogLevel::ERROR));
         self::assertCount(0, $logger->recordsAtLevel(LogLevel::WARNING));
+    }
+
+    public function test_retry_after_config_is_sanitized(): void
+    {
+        config(['services.klassci.retry_after' => '0']);
+
+        self::assertSame(1, KlassciUnavailableException::retryAfterSeconds());
+
+        config(['services.klassci.retry_after' => '12']);
+
+        self::assertSame(12, KlassciUnavailableException::retryAfterSeconds());
     }
 
     private function makeClient(LoggerInterface $logger, int $status): KlassciHttpClient

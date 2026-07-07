@@ -17,7 +17,7 @@ Artisan::command('inspire', function () {
 
 // Planifier la synchronisation des séances Klassci toutes les 5 minutes
 // Détecte les nouvelles séances et les séances supprimées de Klassci
-Schedule::job(new SyncKlassciSeances)
+Schedule::job(new SyncKlassciSeances, 'low')
     ->everyFiveMinutes()
     ->name('sync-klassci-seances')
     ->withoutOverlapping()
@@ -25,7 +25,7 @@ Schedule::job(new SyncKlassciSeances)
 
 // Planifier le nettoyage des séances obsolètes (supprimées dans Klassci)
 // Vérifie toutes les 30 minutes si les séances locales existent encore dans Klassci
-Schedule::job(new CleanObsoleteSeances)
+Schedule::job(new CleanObsoleteSeances, 'low')
     ->everyThirtyMinutes()
     ->name('clean-obsolete-seances')
     ->withoutOverlapping()
@@ -33,7 +33,7 @@ Schedule::job(new CleanObsoleteSeances)
 
 // Planifier l'archivage des vieilles séances tous les jours à 2h du matin
 // Archive les séances > 2 semaines après leur date
-Schedule::job(new ArchiveOldSeances)
+Schedule::job(new ArchiveOldSeances, 'low')
     ->dailyAt('02:00')
     ->name('archive-old-seances')
     ->withoutOverlapping()
@@ -42,7 +42,7 @@ Schedule::job(new ArchiveOldSeances)
 // Planifier le nettoyage des évaluations passées non effectuées
 // Archive les évaluations terminées depuis 7+ jours sans aucune soumission
 // Les évaluations avec au moins 1 soumission sont toujours conservées
-Schedule::job(new CleanOldEvaluations)
+Schedule::job(new CleanOldEvaluations, 'low')
     ->dailyAt('03:00')
     ->name('clean-old-evaluations')
     ->withoutOverlapping()
@@ -68,7 +68,7 @@ Schedule::call(function () {
 // Planifier la détection des participants déconnectés (via heartbeat)
 // Marque comme 'disconnected' les participants inactifs depuis 5+ minutes
 // Permet de gérer les déconnexions involontaires (fermeture onglet, crash, etc.)
-Schedule::job(new DetectDisconnectedParticipants)
+Schedule::job(new DetectDisconnectedParticipants, 'high')
     ->everyTwoMinutes()
     ->name('detect-disconnected-participants')
     ->withoutOverlapping()
@@ -77,7 +77,7 @@ Schedule::job(new DetectDisconnectedParticipants)
 // Planifier la finalisation automatique des présences après fin des séances
 // Marque comme 'disconnected' les participants des séances terminées depuis 30+ minutes
 // Calcule automatiquement la durée de participation pour les oublieux
-Schedule::job(new FinalizeSeanceAttendances)
+Schedule::job(new FinalizeSeanceAttendances, 'low')
     ->everyTenMinutes()
     ->name('finalize-seance-attendances')
     ->withoutOverlapping()
@@ -89,7 +89,7 @@ Schedule::job(new FinalizeSeanceAttendances)
 // Fréquence 5 min = plus petit seuil des règles de fermeture (enseignant
 // déconnecté 5 min / tous déconnectés 10 min / aucun participant 30 min) :
 // latence de détection max = seuil + 5 min, proportionnée sans sur-scanner.
-Schedule::job(new AutoCloseEmptySeances)
+Schedule::job(new AutoCloseEmptySeances, 'high')
     ->everyFiveMinutes()
     ->name('auto-close-empty-seances')
     ->withoutOverlapping()
@@ -120,7 +120,7 @@ Schedule::command('scheduler:heartbeat')
 //   withoutOverlapping(10) : verrou à expiration COURTE — si le process est
 //                       tué net (kill -9 hébergeur), le verrou par défaut
 //                       (24 h) gèlerait la queue ; 10 min = auto-guérison.
-Schedule::command('queue:work --stop-when-empty --max-time=55')
+Schedule::command('queue:work --queue=high,default,low --stop-when-empty --max-time=55')
     ->everyMinute()
     ->name('queue-worker')
     ->withoutOverlapping(10)

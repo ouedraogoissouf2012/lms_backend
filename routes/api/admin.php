@@ -47,6 +47,14 @@ Route::middleware(['auth:sanctum', 'role:coordinateur,superAdmin'])->prefix('adm
     // Rapport d'activité système - Rate limited: 30/min (resource intensive)
     Route::post('/activity', [ReportController::class, 'generateActivityReport'])
         ->middleware('throttle:30,1');
+
+    Route::get('/async/{id}', [ReportController::class, 'asyncStatus'])
+        ->name('admin.reports.async.status')
+        ->middleware('throttle:60,1');
+
+    Route::get('/async/{id}/download', [ReportController::class, 'asyncDownload'])
+        ->name('admin.reports.async.download')
+        ->middleware('throttle:30,1');
 });
 
 // ============================================

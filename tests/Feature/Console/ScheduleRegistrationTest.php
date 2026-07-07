@@ -80,6 +80,19 @@ final class ScheduleRegistrationTest extends TestCase
         $this->assertTrue($event->runInBackground);
     }
 
+    public function test_queue_healthcheck_runs_every_five_minutes(): void
+    {
+        $event = $this->scheduledEvents()->get('queue-healthcheck');
+
+        $this->assertNotNull($event, 'La queue database doit être surveillée sur cPanel sans Redis.');
+        $this->assertSame('*/5 * * * *', $event->expression);
+        $this->assertStringContainsString('queue:healthcheck', (string) $event->command);
+        $this->assertStringContainsString('--max-pending=1000', (string) $event->command);
+        $this->assertStringContainsString('--max-age-minutes=5', (string) $event->command);
+        $this->assertStringContainsString('--max-failed=0', (string) $event->command);
+        $this->assertTrue($event->withoutOverlapping);
+    }
+
     public function test_scheduled_jobs_dispatch_to_priority_queues(): void
     {
         config(['cache.default' => 'array']);

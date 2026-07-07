@@ -24,7 +24,7 @@ class CleanObsoleteSeancesCommand extends Command
     /**
      * Execute the console command.
      */
-    public function handle()
+    public function handle(): int
     {
         $this->info('🧹 Nettoyage des séances obsolètes...');
         $this->newLine();

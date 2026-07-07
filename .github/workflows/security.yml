@@ -1,18 +1,6 @@
 name: Security Audit
 
-# CI security pipeline (issue #65). Status :
-#   Step 1 ✅ — composer-audit + dependency-review + Dependabot (defense-in-depth on deps)
-#   Step 2 ✅ — phpstan-analysis (Larastan level 9 + baseline)
-#   Step 3 ✅ — semgrep-sast (p/default + p/owasp-top-ten) + GitHub native secret scanning
-#   Step 4 ⏳ — OWASP ZAP DAST
-#
-# Defense-in-depth on dependencies :
-#   - composer-audit job        → reactive : blocks merge if a known CVE
-#                                  is in composer.lock at PR time
-#   - dependency-review job     → reactive : blocks merge if the PR
-#                                  ADDS a vulnerable dependency
-#   - .github/dependabot.yml    → proactive : opens fix PRs daily
-#                                  when an advisory is published
+# CI security pipeline: dependency checks, PHPStan, Semgrep, docs/tests and guards.
 
 on:
   pull_request:
@@ -49,34 +37,18 @@ jobs:
           key: composer-${{ hashFiles('composer.lock') }}
           restore-keys: composer-
 
-      # Production install: only `require` (not `require-dev`).
-      # Reflects exactly what ships to prod — auditing dev deps would
-      # produce noise (Tinker, Faker, etc. are never in prod).
       - name: Install production dependencies
         run: composer install --no-interaction --no-progress --prefer-dist --no-dev --no-scripts
 
-      # `composer audit` checks `composer.lock` against the public
-      # Packagist advisory database (https://packagist.org/security-advisories).
-      # --abandoned=ignore : do NOT fail on abandoned packages
-      #   (that's a maintenance signal, not a CVE — handle separately).
-      # --no-dev was already set at install time.
       - name: Run composer audit (fail on HIGH/CRITICAL CVE)
         run: composer audit --abandoned=ignore --no-interaction
 
-      # Visibility-only: list outdated packages without failing the build.
-      # Helps maintenance planning ; never blocks merges.
       - name: List outdated production packages (informational only)
         if: always()
         continue-on-error: true
         run: composer outdated --direct --no-interaction
 
   dependency-review:
-    # GitHub's native Dependency Review action analyses ONLY what the PR
-    # adds/removes vs. the base branch. Catches a vulnerable dependency
-    # introduced by the PR itself, even if it's not yet known to Packagist
-    # (e.g. malicious package via typosquatting).
-    #
-    # Only runs on pull_request — push events have no diff to review.
     name: Dependency Review (PR-level diff)
     runs-on: ubuntu-latest
     if: github.event_name == 'pull_request'
@@ -92,13 +64,6 @@ jobs:
           comment-summary-in-pr: on-failure
 
   phpstan-analysis:
-    # Step 2/4 of the CI security pipeline (issue #65).
-    # Larastan = official PHPStan extension for Laravel.
-    # Level 9 (maximum strictness) + baseline file to grandfather legacy
-    # violations. New code MUST pass level 9 ; legacy migrates per-touched-file.
-    #
-    # Strategy reference :
-    #   https://laravel.io/articles/how-to-get-your-laravel-app-from-0-to-9-with-larastan
     name: PHPStan / Larastan (level 9 + baseline)
     runs-on: ubuntu-latest
 
@@ -120,7 +85,6 @@ jobs:
           key: composer-phpstan-${{ hashFiles('composer.lock') }}
           restore-keys: composer-phpstan-
 
-      # Install dev deps too — Larastan is in require-dev.
       - name: Install dependencies (including dev)
         run: composer install --no-interaction --no-progress --prefer-dist --no-scripts
 
@@ -131,26 +95,13 @@ jobs:
           key: phpstan-${{ hashFiles('**/*.php', 'phpstan.neon.dist', 'phpstan-baseline.neon') }}
           restore-keys: phpstan-
 
-      # The baseline file is checked in. Any violation outside the baseline
-      # (= new code, or modified legacy file that now exceeds the grandfathered
-      # set) fails the build.
       - name: Run PHPStan / Larastan
         run: vendor/bin/phpstan analyse --memory-limit=2G --no-progress
 
+      - name: Check PHPStan baseline ratchet
+        run: php scripts/check-phpstan-baseline.php --max=694
+
   semgrep-sast:
-    # Step 3/4 of the CI security pipeline (issue #65).
-    # Static Application Security Testing via Semgrep Community Edition.
-    #
-    # Rulesets choisis :
-    #   - p/default          : ~600 règles haute confidence, faible FP (recommandé)
-    #   - p/owasp-top-ten    : mapping explicite OWASP A01-A10, valeur compliance ASVS
-    #
-    # Stratégie deux niveaux (analogue PHPStan baseline) :
-    #   - ERROR severity → bloque la PR (vraies vulnérabilités)
-    #   - WARNING/INFO   → informationnel, continue-on-error: true
-    #
-    # Diff-aware : ne tourne que sur les PR (pas les push direct).
-    # Référence : https://semgrep.dev/docs/getting-started/quickstart
     name: Semgrep SAST (OWASP + default)
     runs-on: ubuntu-latest
     if: github.event_name == 'pull_request'
@@ -162,30 +113,18 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # Bloque la PR si une vulnérabilité ERROR severity est détectée.
-      # Une fois la baseline initiale triée, on peut durcir en abaissant
-      # le seuil à WARNING (cf. docs/SECURITY_CI.md section Étape 3).
       - name: Semgrep scan (block on ERROR severity)
         run: semgrep scan --config p/default --config p/owasp-top-ten --severity ERROR --error
 
-      # Remontée informationnelle des WARNING / INFO. Ne bloque jamais.
-      # Permet aux contributeurs de voir les findings non-critiques sans
-      # impacter le merge. À traiter progressivement.
       - name: Semgrep scan (informational, WARNING/INFO)
         if: always()
         continue-on-error: true
         run: semgrep scan --config p/default --config p/owasp-top-ten --severity WARNING --severity INFO
 
   docs-sync:
-    # Docs-sync (#221) : empêche la documentation OpenAPI de diverger du code.
-    #   1. Test PHPUnit OpenApiSyncTest — tout endpoint documenté existe en route.
-    #   2. Validator OpenAPI (--json) — standards de la spec, fail si errors > 0.
-    # Dépend des outils #213 (tests) et #220 (validator JSON).
     name: Docs Sync (OpenAPI ↔ code)
     runs-on: ubuntu-latest
 
-    # Clé de test (NON secrète) : phpunit.xml ne hardcode pas APP_KEY et attend
-    # qu'elle vienne de l'environnement CI. Clé jetable, usage test uniquement.
     env:
       APP_ENV: testing
       APP_KEY: "base64:Cg9vQ0xtc1Rlc3RLZXkxMjM0NTY3ODkwYWJjZGVmZ2g="
@@ -212,23 +151,16 @@ jobs:
       - name: Install PHP dependencies
         run: composer install --no-interaction --no-progress --prefer-dist --no-scripts
 
-      # OpenApiSyncTest n'utilise pas la base, mais le bootstrap de test peut
-      # référencer la connexion sqlite de phpunit.xml — fichier vide par sécurité.
       - name: Prepare sqlite test database
         run: mkdir -p database && touch database/database.testing.sqlite
 
-      # 1. Tout endpoint documenté doit exister réellement en route (#213).
       - name: OpenAPI ↔ routes sync test
         run: vendor/bin/phpunit --filter OpenApiSyncTest
 
-      # 2. La spec respecte les standards internes (#220). Fail si errors > 0.
       - name: OpenAPI spec validation (JSON output)
         run: python scripts/openapi-validator.py docs/openapi.yaml --json
 
   commitlint:
-    # Conventional commits (#218) : valide le format des messages de commit de
-    # la PR contre .commitlintrc.json. commitlint est installé côté CI seulement
-    # — aucune dépendance Node imposée localement (projet PHP pur).
     name: Commit messages (conventional)
     runs-on: ubuntu-latest
     if: github.event_name == 'pull_request'
@@ -237,7 +169,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # historique complet requis pour valider la plage de commits
+          fetch-depth: 0
 
       - name: Validate commit messages
         uses: wagoid/commitlint-github-action@v6
@@ -245,11 +177,6 @@ jobs:
           configFile: .commitlintrc.json
 
   sdk-generation:
-    # SDK smoke test (#222) : garantit que la spec OpenAPI GÉNÈRE un SDK client
-    # sans erreur. C'est le prérequis réel — si la spec diverge ou se casse, la
-    # génération échoue et bloque la PR. Les tests contractuels du SDK contre
-    # l'API live seront ajoutés quand un SDK sera réellement publié
-    # (cf. docs/SDK_TESTING.md).
     name: SDK Generation (smoke test)
     runs-on: ubuntu-latest
     if: github.event_name == 'pull_request'
@@ -285,15 +212,6 @@ jobs:
           echo "✅ SDK TypeScript généré ($(find sdk-smoke-ts -name '*.ts' | wc -l) fichiers .ts)"
 
   tests:
-    # Suite PHPUnit complète (#250) : filet de sécurité contre les régressions.
-    # Avant ce job, seul OpenApiSyncTest tournait en CI → des tests cassés
-    # passaient inaperçus (ex. régression #243 détectée seulement en local).
-    #
-    # Matrice à deux jambes (#374, spec redis-runtime) :
-    #   - redis    : runtime cible (CACHE_STORE/SESSION_DRIVER/QUEUE_CONNECTION=redis)
-    #   - database : mode dégradé documenté (Requirement 6.4) = défauts de phpunit.xml
-    # Les DEUX jambes doivent passer à 100 % — la jambe database EST la preuve
-    # que l'application reste fonctionnelle sans Redis.
     name: Tests (PHPUnit — ${{ matrix.leg }})
     runs-on: ubuntu-latest
 
@@ -302,9 +220,6 @@ jobs:
       matrix:
         leg: [redis, database]
 
-    # Service démarré inconditionnellement (coût négligeable) ; seule la
-    # jambe redis s'y connecte. Le health-check fait attendre GitHub Actions
-    # jusqu'à disponibilité avant de lancer les steps.
     services:
       redis:
         image: redis:7-alpine
@@ -316,7 +231,6 @@ jobs:
           --health-timeout 3s
           --health-retries 10
 
-    # Clé de test NON secrète (phpunit.xml ne hardcode pas APP_KEY).
     env:
       APP_ENV: testing
       APP_KEY: "base64:Cg9vQ0xtc1Rlc3RLZXkxMjM0NTY3ODkwYWJjZGVmZ2g="
@@ -331,26 +245,14 @@ jobs:
           php-version: "8.3"
           coverage: none
           tools: composer:v2
-          # `:imagick` DÉSACTIVE imagick. Le test PdfToPngRendererTest se skip
-          # déjà partout où imagick est absent (dont le dev local). Sur le runner
-          # CI, imagick est présent mais la policy ImageMagick bloque la lecture
-          # des PDF (sécurité Ghostscript) → "Failed to read the file". Plutôt
-          # qu'un faux négatif, on aligne la CI sur l'environnement de dev :
-          # le chemin imagick (qui nécessite gs + policy PDF autorisée) sera
-          # couvert par une issue dédiée si besoin. Couverture inchangée.
-          # `redis` : extension phpredis, requise par la jambe redis
-          # (REDIS_CLIENT par défaut = phpredis, config/database.php:132).
           extensions: ":imagick, redis"
 
-      # phpunit est en require-dev → installer les dev deps.
       - name: Install dependencies (including dev)
         run: composer install --no-interaction --no-progress --prefer-dist --no-scripts
 
       - name: Prepare sqlite test database
         run: mkdir -p database && touch database/database.testing.sqlite
 
-      # Ceinture + bretelles en plus du health-check du service : échec
-      # explicite (et non un timeout PHPUnit obscur) si Redis n'écoute pas.
       - name: Wait for Redis (redis leg)
         if: matrix.leg == 'redis'
         run: |
@@ -363,9 +265,6 @@ jobs:
           done
           echo "Redis indisponible après 30s" && exit 1
 
-      # RefreshDatabase migre la base de test ; le job échoue si un test échoue.
-      # Jambe redis : les 3 variables prennent le dessus sur les défauts
-      # `database` de phpunit.xml (pas de force="true" — voulu, cf. phpunit.xml).
       - name: Run PHPUnit suite (redis)
         if: matrix.leg == 'redis'
         env:
@@ -380,10 +279,6 @@ jobs:
         if: matrix.leg == 'database'
         run: vendor/bin/phpunit --no-coverage
 
-  # Garde-fou taille de fichiers (issue #276) — applique PRODUCTION_STANDARDS.md
-  # §1.1 (app/** ≤300) et §5 (app/Models/** ≤150). Ne contrôle que les fichiers
-  # MODIFIÉS par la PR : le legacy non touché n'est jamais bloqué, seul le code
-  # qu'on ajoute/modifie doit respecter la limite. Cf. docs/MANIFESTE_REFACTORING.md.
   file-size-guard:
     name: File size guard (app ≤300 / models ≤150)
     runs-on: ubuntu-latest
@@ -401,9 +296,6 @@ jobs:
           php-version: "8.3"
           coverage: none
 
-      # Sécurité : `github.base_ref` passe par une variable d'env (jamais
-      # interpolé directement dans le script) — évite l'injection d'expression
-      # GitHub Actions (Semgrep github-actions/...-injection).
       - name: Check changed app/ files size
         env:
           BASE_REF: ${{ github.base_ref }}

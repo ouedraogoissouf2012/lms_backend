@@ -30,11 +30,13 @@ final class KlassciData implements CastsAttributes
     public function get(Model $model, string $key, mixed $value, array $attributes): array
     {
         if (is_array($value)) {
-            return $value;
+            return self::normalizeStringKeys($value);
         }
 
         if (is_string($value)) {
-            return json_decode($value, true) ?: [];
+            $decoded = json_decode($value, true);
+
+            return is_array($decoded) ? self::normalizeStringKeys($decoded) : [];
         }
 
         return [];
@@ -50,5 +52,20 @@ final class KlassciData implements CastsAttributes
         }
 
         return is_string($value) ? $value : null;
+    }
+
+    /**
+     * @param  array<mixed, mixed>  $value
+     * @return array<string, mixed>
+     */
+    private static function normalizeStringKeys(array $value): array
+    {
+        $normalized = [];
+
+        foreach ($value as $itemKey => $itemValue) {
+            $normalized[(string) $itemKey] = $itemValue;
+        }
+
+        return $normalized;
     }
 }

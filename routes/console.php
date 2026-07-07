@@ -110,6 +110,14 @@ Schedule::command('scheduler:heartbeat')
     ->everyMinute()
     ->name('scheduler-heartbeat');
 
+// Healthcheck cPanel-safe de la queue database (#379) — pas de Redis requis.
+// Échoue si failed_jobs > 0, si trop de jobs attendent, ou si le plus vieux
+// job pending dépasse le seuil. Succès silencieux ; incident loggé + exit 1.
+Schedule::command('queue:healthcheck --max-pending=1000 --max-age-minutes=5 --max-failed=0')
+    ->everyFiveMinutes()
+    ->name('queue-healthcheck')
+    ->withoutOverlapping();
+
 // Worker de queue pour mutualisé cPanel (#369) — pas de Supervisor disponible,
 // donc pas de démon `queue:work` permanent. Stratégie : drainer la table `jobs`
 // chaque minute puis rendre la main (--stop-when-empty).

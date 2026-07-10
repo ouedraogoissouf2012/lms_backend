@@ -36,6 +36,9 @@ final class DeleteKnowledgeCheckRequest extends FormRequest
         return $user->isAdmin() || $quiz->chapter->enseignant_id === $user->id;
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     public function rules(): array
     {
         return [];

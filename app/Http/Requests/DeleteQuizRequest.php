@@ -26,6 +26,9 @@ class DeleteQuizRequest extends FormRequest
         return $user->isAdmin() || $quiz->created_by === $user->id;
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     public function rules(): array
     {
         return [];

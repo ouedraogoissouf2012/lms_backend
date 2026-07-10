@@ -277,12 +277,6 @@ parameters:
 			path: app/Http/Requests/DeleteSeanceRequest.php
 
 		-
-			message: '#^Method App\\Http\\Requests\\DeleteUserRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Http/Requests/DeleteUserRequest.php
-
-		-
 			message: '#^Cannot cast mixed to int\.$#'
 			identifier: cast.int
 			count: 4
@@ -313,48 +307,6 @@ parameters:
 			path: app/Http/Requests/ListFilesRequest.php
 
 		-
-			message: '#^Access to an undefined property \(object\|string\)\:\:\$created_by\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Requests/PublishQuizRequest.php
-
-		-
-			message: '#^Cannot access property \$id on App\\Models\\User\|null\.$#'
-			identifier: property.nonObject
-			count: 1
-			path: app/Http/Requests/PublishQuizRequest.php
-
-		-
-			message: '#^Cannot call method isAdmin\(\) on App\\Models\\User\|null\.$#'
-			identifier: method.nonObject
-			count: 1
-			path: app/Http/Requests/PublishQuizRequest.php
-
-		-
-			message: '#^Method App\\Http\\Requests\\PublishQuizRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Http/Requests/PublishQuizRequest.php
-
-		-
-			message: '#^Method App\\Http\\Requests\\StoreEvaluationRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Http/Requests/StoreEvaluationRequest.php
-
-		-
-			message: '#^Negated boolean expression is always true\.$#'
-			identifier: booleanNot.alwaysTrue
-			count: 1
-			path: app/Http/Requests/StoreEvaluationRequest.php
-
-		-
-			message: '#^Parameter \#1 \$string of function trim expects string, mixed given\.$#'
-			identifier: argument.type
-			count: 2
-			path: app/Http/Requests/StoreEvaluationRequest.php
-
-		-
 			message: '#^Access to an undefined property \(object\|string\|null\)\:\:\$id\.$#'
 			identifier: property.notFound
 			count: 1
@@ -383,54 +335,6 @@ parameters:
 			identifier: missingType.iterableValue
 			count: 1
 			path: app/Http/Requests/StoreForumPostRequest.php
-
-		-
-			message: '#^Cannot cast mixed to string\.$#'
-			identifier: cast.string
-			count: 1
-			path: app/Http/Requests/StoreForumTopicRequest.php
-
-		-
-			message: '#^Method App\\Http\\Requests\\StoreForumTopicRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Http/Requests/StoreForumTopicRequest.php
-
-		-
-			message: '#^Parameter \#1 \$string of function trim expects string, mixed given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Requests/StoreForumTopicRequest.php
-
-		-
-			message: '#^Cannot cast mixed to string\.$#'
-			identifier: cast.string
-			count: 1
-			path: app/Http/Requests/StoreLessonRequest.php
-
-		-
-			message: '#^Method App\\Http\\Requests\\StoreLessonRequest\:\:messages\(\) return type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Http/Requests/StoreLessonRequest.php
-
-		-
-			message: '#^Method App\\Http\\Requests\\StoreLessonRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Http/Requests/StoreLessonRequest.php
-
-		-
-			message: '#^Parameter \#1 \$string of function trim expects string, mixed given\.$#'
-			identifier: argument.type
-			count: 2
-			path: app/Http/Requests/StoreLessonRequest.php
-
-		-
-			message: '#^Method App\\Http\\Requests\\StoreQuizRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Http/Requests/StoreQuizRequest.php
 
 		-
 			message: '#^Method App\\Http\\Requests\\StudentDashboardRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'

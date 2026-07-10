@@ -19,6 +19,9 @@ class StoreForumTopicRequest extends FormRequest
         return Auth::check();
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     public function rules(): array
     {
         return [
@@ -30,6 +33,9 @@ class StoreForumTopicRequest extends FormRequest
         ];
     }
 
+    /**
+     * @return array<string, string>
+     */
     public function messages(): array
     {
         return [
@@ -49,11 +55,13 @@ class StoreForumTopicRequest extends FormRequest
     {
         $merge = [];
         if ($this->has('title')) {
-            $merge['title'] = trim($this->title);
+            $title = $this->input('title');
+            $merge['title'] = is_string($title) ? trim($title) : $title;
         }
         if ($this->has('content')) {
             // Fix #212 : `$this->content` = corps HTTP brut, pas l'input.
-            $merge['content'] = trim((string) $this->input('content'));
+            $content = $this->input('content');
+            $merge['content'] = is_string($content) ? trim($content) : $content;
         }
         if (!empty($merge)) {
             $this->merge($merge);

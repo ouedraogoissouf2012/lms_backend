@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Models\Quiz;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Auth;
 
@@ -20,18 +21,24 @@ class PublishQuizRequest extends FormRequest
         $user = Auth::user();
         $quiz = $this->route('quiz');
 
-        if (!$quiz) {
+        if ($user === null || ! $quiz instanceof Quiz) {
             return false;
         }
 
         return $user->isAdmin() || $quiz->created_by === $user->id;
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     public function rules(): array
     {
         return [];
     }
 
+    /**
+     * @return array<string, string>
+     */
     public function messages(): array
     {
         return [];

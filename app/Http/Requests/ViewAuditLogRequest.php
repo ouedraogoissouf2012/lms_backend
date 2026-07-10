@@ -16,6 +16,9 @@ final class ViewAuditLogRequest extends FormRequest
         return auth()->user()?->role === 'supradmin';
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     public function rules(): array
     {
         return [
@@ -26,6 +29,9 @@ final class ViewAuditLogRequest extends FormRequest
         ];
     }
 
+    /**
+     * @return array<string, string>
+     */
     public function messages(): array
     {
         return [

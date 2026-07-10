@@ -37,6 +37,9 @@ final class StartEvaluationRequest extends FormRequest
         return auth()->user()?->isStudent() === true;
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     public function rules(): array
     {
         return [];

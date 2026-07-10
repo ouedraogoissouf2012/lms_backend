@@ -55,7 +55,7 @@ final class FilterLessonsRequest extends FormRequest
     /**
      * Get the validation rules for query parameters.
      *
-     * @return array
+     * @return array<string, mixed>
      */
     public function rules(): array
     {
@@ -97,7 +97,7 @@ final class FilterLessonsRequest extends FormRequest
     /**
      * Custom error messages for filter validation.
      *
-     * @return array
+     * @return array<string, string>
      */
     public function messages(): array
     {

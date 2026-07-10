@@ -283,39 +283,9 @@ parameters:
 			path: app/Http/Requests/DeleteUserRequest.php
 
 		-
-			message: '#^Method App\\Http\\Requests\\DisableUserRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Http/Requests/DisableUserRequest.php
-
-		-
-			message: '#^Method App\\Http\\Requests\\EnableUserRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Http/Requests/EnableUserRequest.php
-
-		-
-			message: '#^Method App\\Http\\Requests\\ExportUsersRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Http/Requests/ExportUsersRequest.php
-
-		-
 			message: '#^Cannot cast mixed to int\.$#'
 			identifier: cast.int
 			count: 4
-			path: app/Http/Requests/FilterLessonsRequest.php
-
-		-
-			message: '#^Method App\\Http\\Requests\\FilterLessonsRequest\:\:messages\(\) return type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Http/Requests/FilterLessonsRequest.php
-
-		-
-			message: '#^Method App\\Http\\Requests\\FilterLessonsRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
 			path: app/Http/Requests/FilterLessonsRequest.php
 
 		-
@@ -335,42 +305,6 @@ parameters:
 			identifier: method.nonObject
 			count: 1
 			path: app/Http/Requests/GetAttemptsRequest.php
-
-		-
-			message: '#^Method App\\Http\\Requests\\GetAttemptsRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Http/Requests/GetAttemptsRequest.php
-
-		-
-			message: '#^Method App\\Http\\Requests\\GetAttendanceHistoryRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Http/Requests/GetAttendanceHistoryRequest.php
-
-		-
-			message: '#^Method App\\Http\\Requests\\GetConfigurationRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Http/Requests/GetConfigurationRequest.php
-
-		-
-			message: '#^Method App\\Http\\Requests\\GetEnseignantsRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Http/Requests/GetEnseignantsRequest.php
-
-		-
-			message: '#^Method App\\Http\\Requests\\GetNotificationPreferencesRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Http/Requests/GetNotificationPreferencesRequest.php
-
-		-
-			message: '#^Method App\\Http\\Requests\\GetVisioParticipantsRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Http/Requests/GetVisioParticipantsRequest.php
 
 		-
 			message: '#^Method App\\Http\\Requests\\GradeAttemptRequest\:\:attempt\(\) has no return type specified\.$#'

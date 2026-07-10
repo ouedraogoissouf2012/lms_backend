@@ -28,6 +28,9 @@ final class SyncNotesToKlassciRequest extends FormRequest
         return $user !== null && ($user->isTeacher() || $user->isCoordinator() || $user->isAdmin());
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     public function rules(): array
     {
         return [];

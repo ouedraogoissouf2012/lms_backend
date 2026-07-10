@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Models\QuizAttempt;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Auth;
 
@@ -28,9 +29,14 @@ class GradeAttemptRequest extends FormRequest
             abort(404, 'Tentative non trouvée');
         }
 
-        return $user->isAdmin() || $attempt->quiz->created_by === $user->id;
+        $quiz = $attempt->quiz;
+
+        return $user->isAdmin() || ($quiz !== null && $quiz->created_by === $user->id);
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     public function rules(): array
     {
         $attempt = $this->attempt();
@@ -46,6 +52,9 @@ class GradeAttemptRequest extends FormRequest
         ];
     }
 
+    /**
+     * @return array<string, string>
+     */
     public function messages(): array
     {
         return [
@@ -58,8 +67,18 @@ class GradeAttemptRequest extends FormRequest
         ];
     }
 
-    private function attempt()
+    private function attempt(): ?QuizAttempt
     {
-        return \App\Models\QuizAttempt::find($this->route('id'));
+        $id = $this->route('id');
+
+        if ($id instanceof QuizAttempt) {
+            return $id;
+        }
+
+        if (!is_string($id)) {
+            return null;
+        }
+
+        return QuizAttempt::find($id);
     }
 }

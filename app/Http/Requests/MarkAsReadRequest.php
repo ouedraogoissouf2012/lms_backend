@@ -43,7 +43,7 @@ final class MarkAsReadRequest extends FormRequest
     /**
      * Get validation rules for notification mark-as-read.
      *
-     * @return array
+     * @return array<string, mixed>
      */
     public function rules(): array
     {
@@ -54,7 +54,7 @@ final class MarkAsReadRequest extends FormRequest
     /**
      * Custom error messages.
      *
-     * @return array
+     * @return array<string, string>
      */
     public function messages(): array
     {

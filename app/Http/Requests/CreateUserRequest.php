@@ -19,6 +19,9 @@ final class CreateUserRequest extends FormRequest
         return $user !== null && ($user->isCoordinator() || $user->isAdmin());
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     public function rules(): array
     {
         return [
@@ -30,6 +33,9 @@ final class CreateUserRequest extends FormRequest
         ];
     }
 
+    /**
+     * @return array<string, string>
+     */
     public function messages(): array
     {
         return [

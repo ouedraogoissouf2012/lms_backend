@@ -78,7 +78,7 @@ final class StoreChapterRequest extends FormRequest
     /**
      * Get the validation rules for chapter creation.
      *
-     * @return array
+     * @return array<string, mixed>
      */
     public function rules(): array
     {
@@ -135,7 +135,7 @@ final class StoreChapterRequest extends FormRequest
     /**
      * Custom error messages for chapter validation.
      *
-     * @return array
+     * @return array<string, string>
      */
     public function messages(): array
     {

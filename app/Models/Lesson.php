@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -18,6 +19,13 @@ use App\Models\Traits\BelongsToInstitution;
  * @property LessonProgress|null $user_progress Attribut posé par LessonListService (LessonProgressService::progressForUser).
  * @property array{students_started: int, students_completed: int, average_completion_rate: float} $statistics Attribut posé par LessonListService (staff uniquement).
  * @property-read int|null $students_started Alias `withCount(['progress as students_started'])` (DashboardTeacherController).
+ * @property int|null $matiere_id
+ * @property int|null $classe_id
+ * @property int|null $enseignant_id
+ * @property string $status
+ * @property int $order
+ * @property \Illuminate\Support\Carbon|null $published_at
+ * @property \Illuminate\Support\Carbon|null $created_at
  */
 class Lesson extends Model
 {
@@ -99,34 +107,35 @@ class Lesson extends Model
         return $this->hasMany(LessonResource::class)->ordered();
     }
 
-    /** Scope: Cours publiés uniquement */
-    public function scopePublished($query)
+    /** @param Builder<Lesson> $query
+     * @return Builder<Lesson> */
+    public function scopePublished(Builder $query)
     {
         return $query->where('status', 'published')
             ->whereNotNull('published_at')
             ->where('published_at', '<=', now());
     }
-
-    /** Scope: Par matière */
-    public function scopeForMatiere($query, int $matiereId)
+    /** @param Builder<Lesson> $query
+     * @return Builder<Lesson> */
+    public function scopeForMatiere(Builder $query, int $matiereId)
     {
         return $query->where('matiere_id', $matiereId);
     }
-
-    /** Scope: Par classe */
-    public function scopeForClasse($query, int $classeId)
+    /** @param Builder<Lesson> $query
+     * @return Builder<Lesson> */
+    public function scopeForClasse(Builder $query, int $classeId)
     {
         return $query->where('classe_id', $classeId);
     }
-
-    /** Scope: Par enseignant */
-    public function scopeByTeacher($query, int $enseignantId)
+    /** @param Builder<Lesson> $query
+     * @return Builder<Lesson> */
+    public function scopeByTeacher(Builder $query, int $enseignantId)
     {
         return $query->where('enseignant_id', $enseignantId);
     }
-
-    /** Scope: Ordonné */
-    public function scopeOrdered($query)
+    /** @param Builder<Lesson> $query
+     * @return Builder<Lesson> */
+    public function scopeOrdered(Builder $query)
     {
         return $query->orderBy('order')->orderBy('created_at');
     }

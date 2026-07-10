@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -17,6 +18,12 @@ use App\Models\Traits\BelongsToInstitution;
  *
  * @property int $id
  * @property int $user_id
+ * @property int|null $lesson_id
+ * @property int|null $matiere_id
+ * @property int|null $classe_id
+ * @property string $status
+ * @property bool $is_resolved
+ * @property \Illuminate\Support\Carbon|null $last_activity_at
  */
 class ForumTopic extends Model
 {
@@ -88,44 +95,45 @@ class ForumTopic extends Model
         return $this->morphMany(File::class, 'fileable');
     }
 
-    /** Scope: Topics ouverts */
-    public function scopeOpen($query)
+    /** @param Builder<ForumTopic> $query
+     * @return Builder<ForumTopic> */
+    public function scopeOpen(Builder $query)
     {
         return $query->where('status', 'open');
     }
-
-    /** Scope: Topics épinglés */
-    public function scopePinned($query)
+    /** @param Builder<ForumTopic> $query
+     * @return Builder<ForumTopic> */
+    public function scopePinned(Builder $query)
     {
         return $query->where('status', 'pinned');
     }
-
-    /** Scope: Topics résolus */
-    public function scopeResolved($query)
+    /** @param Builder<ForumTopic> $query
+     * @return Builder<ForumTopic> */
+    public function scopeResolved(Builder $query)
     {
         return $query->where('is_resolved', true);
     }
-
-    /** Scope: Topics par activité récente */
-    public function scopeByActivity($query)
+    /** @param Builder<ForumTopic> $query
+     * @return Builder<ForumTopic> */
+    public function scopeByActivity(Builder $query)
     {
         return $query->orderBy('last_activity_at', 'desc');
     }
-
-    /** Scope: Topics par matière */
-    public function scopeForMatiere($query, int $matiereId)
+    /** @param Builder<ForumTopic> $query
+     * @return Builder<ForumTopic> */
+    public function scopeForMatiere(Builder $query, int $matiereId)
     {
         return $query->where('matiere_id', $matiereId);
     }
-
-    /** Scope: Topics par classe */
-    public function scopeForClasse($query, int $classeId)
+    /** @param Builder<ForumTopic> $query
+     * @return Builder<ForumTopic> */
+    public function scopeForClasse(Builder $query, int $classeId)
     {
         return $query->where('classe_id', $classeId);
     }
-
-    /** Scope: Topics par cours */
-    public function scopeForLesson($query, int $lessonId)
+    /** @param Builder<ForumTopic> $query
+     * @return Builder<ForumTopic> */
+    public function scopeForLesson(Builder $query, int $lessonId)
     {
         return $query->where('lesson_id', $lessonId);
     }

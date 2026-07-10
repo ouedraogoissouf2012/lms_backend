@@ -247,58 +247,10 @@ parameters:
 			path: app/Http/Requests/DeactivateVisioRequest.php
 
 		-
-			message: '#^Method App\\Http\\Requests\\DeleteEvaluationRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Http/Requests/DeleteEvaluationRequest.php
-
-		-
-			message: '#^Method App\\Http\\Requests\\DeleteForumPostRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Http/Requests/DeleteForumPostRequest.php
-
-		-
-			message: '#^Method App\\Http\\Requests\\DeleteForumTopicRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Http/Requests/DeleteForumTopicRequest.php
-
-		-
-			message: '#^Method App\\Http\\Requests\\DeleteInstitutionRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Http/Requests/DeleteInstitutionRequest.php
-
-		-
 			message: '#^Access to an undefined property \(object\|string\)\:\:\$chapter\.$#'
 			identifier: property.notFound
 			count: 1
 			path: app/Http/Requests/DeleteKnowledgeCheckRequest.php
-
-		-
-			message: '#^Method App\\Http\\Requests\\DeleteKnowledgeCheckRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Http/Requests/DeleteKnowledgeCheckRequest.php
-
-		-
-			message: '#^Method App\\Http\\Requests\\DeleteLessonRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Http/Requests/DeleteLessonRequest.php
-
-		-
-			message: '#^Method App\\Http\\Requests\\DeleteNotificationRequest\:\:messages\(\) return type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Http/Requests/DeleteNotificationRequest.php
-
-		-
-			message: '#^Method App\\Http\\Requests\\DeleteNotificationRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Http/Requests/DeleteNotificationRequest.php
 
 		-
 			message: '#^Access to an undefined property \(object\|string\)\:\:\$created_by\.$#'
@@ -319,20 +271,8 @@ parameters:
 			path: app/Http/Requests/DeleteQuizRequest.php
 
 		-
-			message: '#^Method App\\Http\\Requests\\DeleteQuizRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Http/Requests/DeleteQuizRequest.php
-
-		-
 			message: '#^Access to an undefined property App\\Models\\Seance\|Illuminate\\Database\\Eloquent\\Collection\<int, App\\Models\\Seance\>\:\:\$klassci_enseignant_id\.$#'
 			identifier: property.notFound
-			count: 1
-			path: app/Http/Requests/DeleteSeanceRequest.php
-
-		-
-			message: '#^Method App\\Http\\Requests\\DeleteSeanceRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
 			count: 1
 			path: app/Http/Requests/DeleteSeanceRequest.php
 

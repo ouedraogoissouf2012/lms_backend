@@ -53,6 +53,9 @@ final class DeleteLessonRequest extends FormRequest
         return true;
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     public function rules(): array
     {
         // No input validation for DELETE

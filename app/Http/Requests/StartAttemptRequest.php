@@ -19,11 +19,17 @@ class StartAttemptRequest extends FormRequest
         return $this->user() !== null;
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     public function rules(): array
     {
         return [];
     }
 
+    /**
+     * @return array<string, string>
+     */
     public function messages(): array
     {
         return [];

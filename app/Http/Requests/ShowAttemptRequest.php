@@ -72,11 +72,17 @@ class ShowAttemptRequest extends FormRequest
         );
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     public function rules(): array
     {
         return [];
     }
 
+    /**
+     * @return array<string, string>
+     */
     public function messages(): array
     {
         return [];

@@ -46,7 +46,7 @@ final class DeleteNotificationRequest extends FormRequest
     /**
      * Get validation rules for notification deletion.
      *
-     * @return array
+     * @return array<string, mixed>
      */
     public function rules(): array
     {
@@ -57,7 +57,7 @@ final class DeleteNotificationRequest extends FormRequest
     /**
      * Custom error messages.
      *
-     * @return array
+     * @return array<string, string>
      */
     public function messages(): array
     {

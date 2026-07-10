@@ -24,6 +24,9 @@ final class MarkAsCompletedRequest extends FormRequest
         return auth()->check();
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     public function rules(): array
     {
         return [];

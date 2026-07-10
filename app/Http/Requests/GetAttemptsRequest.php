@@ -27,6 +27,9 @@ class GetAttemptsRequest extends FormRequest
         return $user->isAdmin() || $quiz->created_by === $user->id;
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     public function rules(): array
     {
         return [
@@ -35,6 +38,9 @@ class GetAttemptsRequest extends FormRequest
         ];
     }
 
+    /**
+     * @return array<string, string>
+     */
     public function messages(): array
     {
         return [

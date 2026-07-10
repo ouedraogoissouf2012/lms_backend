@@ -241,70 +241,10 @@ parameters:
 			path: app/Http/Middleware/ResolveInstitution.php
 
 		-
-			message: '#^Method App\\Http\\Requests\\BulkImportUsersRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Http/Requests/BulkImportUsersRequest.php
-
-		-
-			message: '#^Method App\\Http\\Requests\\ChangeRoleRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Http/Requests/ChangeRoleRequest.php
-
-		-
-			message: '#^Method App\\Http\\Requests\\CheckTimeRemainingRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Http/Requests/CheckTimeRemainingRequest.php
-
-		-
-			message: '#^Method App\\Http\\Requests\\CloseTopicRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Http/Requests/CloseTopicRequest.php
-
-		-
-			message: '#^Method App\\Http\\Requests\\CreateUserRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Http/Requests/CreateUserRequest.php
-
-		-
 			message: '#^Access to an undefined property App\\Models\\Seance\|Illuminate\\Database\\Eloquent\\Collection\<int, App\\Models\\Seance\>\:\:\$klassci_enseignant_id\.$#'
 			identifier: property.notFound
 			count: 1
 			path: app/Http/Requests/DeactivateVisioRequest.php
-
-		-
-			message: '#^Method App\\Http\\Requests\\DeactivateVisioRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Http/Requests/DeactivateVisioRequest.php
-
-		-
-			message: '#^Method App\\Http\\Requests\\DeleteAllReadNotificationsRequest\:\:messages\(\) return type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Http/Requests/DeleteAllReadNotificationsRequest.php
-
-		-
-			message: '#^Method App\\Http\\Requests\\DeleteAllReadNotificationsRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Http/Requests/DeleteAllReadNotificationsRequest.php
-
-		-
-			message: '#^Method App\\Http\\Requests\\DeleteChapterRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Http/Requests/DeleteChapterRequest.php
-
-		-
-			message: '#^Method App\\Http\\Requests\\DeleteConfigurationRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Http/Requests/DeleteConfigurationRequest.php
 
 		-
 			message: '#^Method App\\Http\\Requests\\DeleteEvaluationRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'

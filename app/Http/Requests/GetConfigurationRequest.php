@@ -19,6 +19,9 @@ final class GetConfigurationRequest extends FormRequest
         return auth()->user()?->asRoleEnum() === Role::Supradmin;
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     public function rules(): array
     {
         return [
@@ -26,6 +29,9 @@ final class GetConfigurationRequest extends FormRequest
         ];
     }
 
+    /**
+     * @return array<string, string>
+     */
     public function messages(): array
     {
         return [

@@ -34,6 +34,9 @@ final class GetTeacherStatsRequest extends FormRequest
         return $user->isTeacher() || $user->isCoordinator() || $user->isAdmin();
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     public function rules(): array
     {
         return [];

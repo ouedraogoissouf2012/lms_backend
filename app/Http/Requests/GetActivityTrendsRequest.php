@@ -34,6 +34,9 @@ final class GetActivityTrendsRequest extends FormRequest
         return $user->isCoordinator() || $user->isAdmin();
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     public function rules(): array
     {
         return [];

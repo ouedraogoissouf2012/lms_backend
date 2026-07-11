@@ -632,24 +632,6 @@ parameters:
 
 
 		-
-			message: '#^Parameter \#1 \$map of static method Illuminate\\Database\\Eloquent\\Relations\\Relation\<Illuminate\\Database\\Eloquent\\Model,Illuminate\\Database\\Eloquent\\Model,mixed\>\:\:morphMap\(\) expects array\<class\-string\<Illuminate\\Database\\Eloquent\\Model\>\>\|null, mixed given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Providers/AppServiceProvider.php
-
-		-
-			message: '#^Parameter \#1 \$app of static method App\\Validation\\SSLVerificationValidator\:\:validate\(\) expects Illuminate\\Foundation\\Application, Illuminate\\Contracts\\Foundation\\Application given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Providers/SSLVerificationProvider.php
-
-		-
-			message: '#^Cannot cast mixed to string\.$#'
-			identifier: cast.string
-			count: 1
-			path: app/Rules/PositiveInteger.php
-
-		-
 			message: '#^Binary operation "\." between mixed and '' 23\:59\:59'' results in an error\.$#'
 			identifier: binaryOp.invalid
 			count: 1

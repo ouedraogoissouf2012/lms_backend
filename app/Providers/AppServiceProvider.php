@@ -9,6 +9,7 @@ use App\Services\TenantManager;
 use App\Support\Shell\ShellExecutor;
 use App\Support\Shell\ShellExecutorInterface;
 use Illuminate\Cache\Repository;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\ServiceProvider;
@@ -70,6 +71,21 @@ class AppServiceProvider extends ServiceProvider
         // le FQCN (`App\Models\Lesson` etc.). La sécurité contre l'IDOR vient
         // de la whitelist dans UploadFileRequest et ListFilesRequest — qui
         // n'acceptent QUE les clés courtes listées dans config/fileables.php.
-        Relation::morphMap(config('fileables.morph_map'));
+        $morphMap = [];
+        $configuredMorphMap = config('fileables.morph_map', []);
+
+        if (is_array($configuredMorphMap)) {
+            foreach ($configuredMorphMap as $alias => $class) {
+                if (
+                    is_string($alias)
+                    && is_string($class)
+                    && is_subclass_of($class, Model::class)
+                ) {
+                    $morphMap[$alias] = $class;
+                }
+            }
+        }
+
+        Relation::morphMap($morphMap);
     }
 }

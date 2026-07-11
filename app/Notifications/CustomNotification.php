@@ -3,23 +3,24 @@
 namespace App\Notifications;
 
 use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
 class CustomNotification extends Notification
 {
     use Queueable;
 
-    protected $title;
-    protected $message;
-    protected $type;
-    protected $actionUrl;
+    protected string $title;
+
+    protected string $message;
+
+    protected string $type;
+
+    protected ?string $actionUrl;
 
     /**
      * Create a new notification instance.
      */
-    public function __construct($title, $message, $type = 'info', $actionUrl = null)
+    public function __construct(string $title, string $message, string $type = 'info', ?string $actionUrl = null)
     {
         $this->title = $title;
         $this->message = $message;
@@ -30,7 +31,10 @@ class CustomNotification extends Notification
     /**
      * Get the notification's delivery channels.
      */
-    public function via($notifiable)
+    /**
+     * @return array<int, string>
+     */
+    public function via(mixed $notifiable): array
     {
         return ['database'];
     }
@@ -38,7 +42,10 @@ class CustomNotification extends Notification
     /**
      * Get the array representation of the notification.
      */
-    public function toArray($notifiable)
+    /**
+     * @return array{title: string, message: string, type: string, action_url: string|null, icon: string}
+     */
+    public function toArray(mixed $notifiable): array
     {
         return [
             'title' => $this->title,
@@ -52,7 +59,7 @@ class CustomNotification extends Notification
     /**
      * Get icon based on type
      */
-    protected function getIcon($type)
+    protected function getIcon(string $type): string
     {
         $icons = [
             'info' => 'InformationCircleIcon',

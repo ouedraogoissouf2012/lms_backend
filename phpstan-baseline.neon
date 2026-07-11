@@ -547,12 +547,6 @@ parameters:
 			path: app/Jobs/SyncKlassciSeances.php
 
 		-
-			message: '#^Binary operation "\." between ''lms_seance_'' and mixed results in an error\.$#'
-			identifier: binaryOp.invalid
-			count: 1
-			path: app/Jobs/SyncKlassciSeances.php
-
-		-
 			message: '#^Cannot access offset ''classe'' on mixed\.$#'
 			identifier: offsetAccess.nonOffsetAccessible
 			count: 3
@@ -561,7 +555,7 @@ parameters:
 		-
 			message: '#^Cannot access offset ''id'' on mixed\.$#'
 			identifier: offsetAccess.nonOffsetAccessible
-			count: 13
+			count: 12
 			path: app/Jobs/SyncKlassciSeances.php
 
 		-

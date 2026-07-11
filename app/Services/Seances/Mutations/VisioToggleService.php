@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Services\ClasseSyncService;
 use App\Services\KlassciProxyService;
 use App\Services\NotificationService;
+use App\Services\Visio\SecureVisioRoomIdGenerator;
 use Psr\Log\LoggerInterface;
 use Throwable;
 
@@ -80,7 +81,7 @@ final class VisioToggleService
                     'visio_enabled' => $enabled,
                     'visio_type' => $enabled ? $visioType : null,
                     'visio_status' => $enabled ? 'programmee' : null,
-                    'visio_room_id' => $enabled ? 'lms_seance_' . $seanceId . '_' . time() : null,
+                    'visio_room_id' => $enabled ? SecureVisioRoomIdGenerator::make() : null,
                     'visio_active' => false,
                     'updated_by' => $user->id,
                 ]
@@ -137,7 +138,7 @@ final class VisioToggleService
         try {
             $seanceData = $this->getSeanceDataFromKlassci($seanceId, $klassciToken);
 
-            if (!$seanceData) {
+            if (! $seanceData) {
                 return 0;
             }
 
@@ -174,6 +175,7 @@ final class VisioToggleService
                 'seance_id' => $seanceId,
                 'error' => $e->getMessage(),
             ]);
+
             return 0;
         }
     }

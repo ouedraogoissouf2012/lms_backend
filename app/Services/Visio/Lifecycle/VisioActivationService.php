@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Services\ClasseSyncService;
 use App\Services\KlassciProxyService;
 use App\Services\NotificationService;
+use App\Services\Visio\SecureVisioRoomIdGenerator;
 use Psr\Log\LoggerInterface;
 use Throwable;
 
@@ -65,7 +66,7 @@ final class VisioActivationService
                     'visio_enabled' => true,
                     'visio_type' => 'jitsi',
                     'visio_status' => 'programmee',
-                    'visio_room_id' => 'lms_seance_' . $seanceId . '_' . time(),
+                    'visio_room_id' => SecureVisioRoomIdGenerator::make(),
                     'visio_active' => false,
                     'is_active' => true,  // S'assurer que la séance est active pour être visible aux étudiants
                     'updated_by' => $user->id,
@@ -182,7 +183,7 @@ final class VisioActivationService
      * Cherche la séance dans Klassci via le bon endpoint selon le rôle.
      * Conserve le comportement legacy verbatim.
      *
-     * @return array{0: array<string, mixed>|null, 1: array<string, mixed>|null}  [seanceFound, matiereInfo]
+     * @return array{0: array<string, mixed>|null, 1: array<string, mixed>|null} [seanceFound, matiereInfo]
      */
     private function locateKlassciSeance(int $seanceId, User $user, ?string $klassciToken): array
     {

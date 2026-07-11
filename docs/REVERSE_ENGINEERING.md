@@ -91,7 +91,7 @@ routes/api.php (174 routes, montées sur /api ET /api/v1 ; /api/v2 réservé, vi
 
 | Domaine | Entités | Logique clé |
 |---|---|---|
-| **Séances / Visio** | `Seance`, `ESBTPAttendance`, `SeanceUserHidden` | Cycle `programmee → active → terminee` ; salle Jitsi générée localement (`lms_seance_{id}_{ts}`), aucun appel serveur→Jitsi ; heartbeat 30 s → `last_seen_at` ; coordinateurs = observateurs fantômes (tracés, exclus des stats) |
+| **Séances / Visio** | `Seance`, `ESBTPAttendance`, `SeanceUserHidden` | Cycle `programmee → active → terminee` ; salle Jitsi générée localement avec un identifiant aléatoire non dérivé de la séance, aucun appel serveur→Jitsi ; heartbeat 30 s → `last_seen_at` ; coordinateurs = observateurs fantômes (tracés, exclus des stats) |
 | **Auto-close** | `AutoCloseEmptySeances` + 3 règles priorisées | Prof déconnecté ≥5 min > tous déconnectés ≥10 min > personne jamais venu ≥30 min ; gate `HeartbeatHealthChecker` (si TOUS les heartbeats sont morts >3 min, c'est le heartbeat qui est en panne → on ne ferme pas) ; fermeture transactionnelle avec recalcul des durées |
 | **Quiz (natif LMS)** | `Quiz`, `QuizQuestion/Answer/Attempt` | Grading auto (QCM/multi/vrai-faux), `short_answer`/`essay` → correction manuelle (statut `submitted` en attente) ; stats dénormalisées recalculées **explicitement** (`QuizStatisticsService::recompute`, boot hooks supprimés comme anti-pattern) |
 | **Évaluations (miroir KLASSCI)** | `Evaluation`, `EvaluationSubmission` | Notées sur barème /20 ; fenêtre temporelle interrogée **en live** chez KLASSCI au démarrage ; mode « entraînement » hors fenêtre (note non officielle) |

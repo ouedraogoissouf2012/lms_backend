@@ -4,10 +4,11 @@ namespace Database\Factories;
 
 use App\Models\Institution;
 use App\Models\Seance;
+use App\Services\Visio\SecureVisioRoomIdGenerator;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
- * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\Seance>
+ * @extends Factory<Seance>
  */
 class SeanceFactory extends Factory
 {
@@ -52,7 +53,7 @@ class SeanceFactory extends Factory
             'visio_enabled' => true,
             'visio_type' => 'jitsi',
             'visio_status' => 'programmee',
-            'visio_room_id' => 'lms_seance_' . $attributes['klassci_seance_id'] . '_' . time(),
+            'visio_room_id' => SecureVisioRoomIdGenerator::make(),
         ]);
     }
 

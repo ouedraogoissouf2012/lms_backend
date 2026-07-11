@@ -2,11 +2,12 @@
 
 namespace App\Jobs;
 
-use App\Models\User;
 use App\Models\Seance;
-use App\Services\KlassciProxyService;
+use App\Models\User;
 use App\Services\ClasseSyncService;
+use App\Services\KlassciProxyService;
 use App\Services\NotificationService;
+use App\Services\Visio\SecureVisioRoomIdGenerator;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -39,8 +40,7 @@ class SyncKlassciSeances implements ShouldQueue
         ClasseSyncService $classeSyncService,
         NotificationService $notificationService,
         LoggerInterface $logger
-    ): void
-    {
+    ): void {
         $logger->info('Job SyncKlassciSeances démarré');
 
         try {
@@ -91,7 +91,7 @@ class SyncKlassciSeances implements ShouldQueue
                                 // Vérifier si la séance existe déjà localement
                                 $seanceLocal = Seance::where('klassci_seance_id', $seanceKlassci['id'])->first();
 
-                                if (!$seanceLocal) {
+                                if (! $seanceLocal) {
                                     // Nouvelle séance découverte!
                                     $stats['seances_new']++;
 
@@ -112,7 +112,7 @@ class SyncKlassciSeances implements ShouldQueue
                                         'visio_enabled' => true,  // Toutes les séances = visio
                                         'visio_type' => 'jitsi',
                                         'visio_status' => 'programmee',
-                                        'visio_room_id' => 'lms_seance_' . $seanceKlassci['id'] . '_' . time(),
+                                        'visio_room_id' => SecureVisioRoomIdGenerator::make(),
                                         'visio_active' => false,
                                         'created_by' => $teacher->id,
                                     ]);
@@ -162,7 +162,7 @@ class SyncKlassciSeances implements ShouldQueue
 
             // Archiver les séances qui n'existent plus dans Klassci
             // (seulement si on a bien collecté des IDs pour éviter d'archiver tout par erreur)
-            if (!empty($activeKlassciSeanceIds)) {
+            if (! empty($activeKlassciSeanceIds)) {
                 $archivedSeances = Seance::where('is_active', true)
                     ->whereNotNull('klassci_seance_id')
                     ->whereNotIn('klassci_seance_id', $activeKlassciSeanceIds)
@@ -202,13 +202,13 @@ class SyncKlassciSeances implements ShouldQueue
      */
     public function failed(\Throwable $exception): void
     {
-                // Pattern AutoCloseEmptySeances (#209) : failed() est appelée hors
+        // Pattern AutoCloseEmptySeances (#209) : failed() est appelée hors
         // container (aucune injection possible) — résolution explicite.
         /** @var LoggerInterface $logger */
         $logger = app(LoggerInterface::class);
 
         $logger->error('[SyncKlassciSeances] Job failed after all retries', [
-            'tries'     => $this->tries,
+            'tries' => $this->tries,
             'exception' => $exception->getMessage(),
         ]);
     }

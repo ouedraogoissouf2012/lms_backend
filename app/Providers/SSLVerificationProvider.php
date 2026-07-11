@@ -2,8 +2,9 @@
 
 namespace App\Providers;
 
-use Illuminate\Support\ServiceProvider;
 use App\Validation\SSLVerificationValidator;
+use Illuminate\Foundation\Application;
+use Illuminate\Support\ServiceProvider;
 
 /**
  * CRITICAL-08: SSL Verification Service Provider
@@ -20,7 +21,9 @@ class SSLVerificationProvider extends ServiceProvider
     {
         // Validate SSL configuration during boot phase
         $this->app->booting(function () {
-            SSLVerificationValidator::validate($this->app);
+            if ($this->app instanceof Application) {
+                SSLVerificationValidator::validate($this->app);
+            }
         });
     }
 }

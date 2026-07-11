@@ -620,11 +620,6 @@ parameters:
 
 
 
-		-
-			message: '#^Class App\\Models\\ChapterProgress uses generic trait Illuminate\\Database\\Eloquent\\Factories\\HasFactory but does not specify its types\: TFactory$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/ChapterProgress.php
 
 
 
@@ -643,38 +638,13 @@ parameters:
 			path: app/Models/KnowledgeCheck.php
 
 
-		-
-			message: '#^Class App\\Models\\KnowledgeCheckAttempt uses generic trait Illuminate\\Database\\Eloquent\\Factories\\HasFactory but does not specify its types\: TFactory$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/KnowledgeCheckAttempt.php
 
 
 
 
-		-
-			message: '#^Class App\\Models\\LessonResource uses generic trait Illuminate\\Database\\Eloquent\\Factories\\HasFactory but does not specify its types\: TFactory$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/LessonResource.php
 
-		-
-			message: '#^Invalid array key type float\.$#'
-			identifier: offsetAccess.invalidOffset
-			count: 1
-			path: app/Models/LessonResource.php
 
-		-
-			message: '#^Method App\\Models\\LessonResource\:\:incrementDownloadCount\(\) should return bool but returns int\.$#'
-			identifier: return.type
-			count: 1
-			path: app/Models/LessonResource.php
 
-		-
-			message: '#^Parameter \#1 \$string of function strlen expects string, int\<min, \-1\>\|int\<1, max\> given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Models/LessonResource.php
 
 
 		-

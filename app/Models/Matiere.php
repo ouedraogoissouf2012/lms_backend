@@ -2,11 +2,13 @@
 
 namespace App\Models;
 
+use App\Models\Traits\BelongsToInstitution;
+use Database\Factories\MatiereFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use App\Models\Traits\BelongsToInstitution;
+use Illuminate\Database\Eloquent\Relations\Pivot;
 
 /**
  * Model Matiere
@@ -15,11 +17,13 @@ use App\Models\Traits\BelongsToInstitution;
  *
  * `institution_id` : hérité du trait {@see BelongsToInstitution} (#363,
  * remplace l'annotation locale posée par #258).
+ *
+ * @property Pivot|null $pivot
  */
 class Matiere extends Model
 {
-    /** @use HasFactory<\Database\Factories\MatiereFactory> */
-    use HasFactory, BelongsToInstitution;
+    /** @use HasFactory<MatiereFactory> */
+    use BelongsToInstitution, HasFactory;
 
     protected $fillable = [
         'klassci_id',
@@ -78,7 +82,7 @@ class Matiere extends Model
      */
     public function isKlassciDataFresh(): bool
     {
-        if (!$this->last_klassci_sync) {
+        if (! $this->last_klassci_sync) {
             return false;
         }
 
@@ -91,7 +95,7 @@ class Matiere extends Model
     public function getTotalHours(): int
     {
         $pivot = $this->pivot;
-        if (!$pivot) {
+        if (! $pivot) {
             return 0;
         }
 

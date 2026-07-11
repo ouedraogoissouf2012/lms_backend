@@ -2,16 +2,16 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 use App\Models\Traits\BelongsToInstitution;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
  * Progression d'un utilisateur sur un chapitre
  */
 class ChapterProgress extends Model
 {
-    use HasFactory, BelongsToInstitution;
+    use BelongsToInstitution;
 
     protected $table = 'chapter_progress';
 
@@ -35,7 +35,7 @@ class ChapterProgress extends Model
     /**
      * Relation avec l'utilisateur
      *
-     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo<User, $this>
+     * @return BelongsTo<User, $this>
      */
     public function user()
     {
@@ -45,7 +45,7 @@ class ChapterProgress extends Model
     /**
      * Relation avec le chapitre
      *
-     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo<Chapter, $this>
+     * @return BelongsTo<Chapter, $this>
      */
     public function chapter()
     {

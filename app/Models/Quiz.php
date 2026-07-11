@@ -17,6 +17,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  *
  * @property int $id
  * @property int $created_by
+ * @property int|null $institution_id
  * @property int $user_attempts_count Attribut posé par QuizCrudService (QuizAccessService::attemptsCountForUser).
  * @property bool $user_can_attempt Attribut posé par QuizCrudService (QuizAccessService::canUserAttempt).
  * @property QuizAttempt|null $user_best_attempt Attribut posé par QuizCrudService (QuizAccessService::bestAttemptForUser).
@@ -109,8 +110,9 @@ class Quiz extends Model
             ->where('published_at', '<=', now());
     }
 
-    /** Scope: Quiz disponibles (publiés + dans la période de disponibilité) */
-    public function scopeAvailable($query)
+    /** @param Builder<Quiz> $query
+     * @return Builder<Quiz> */
+    public function scopeAvailable(Builder $query)
     {
         return $query->published()
             ->where(function ($q) {

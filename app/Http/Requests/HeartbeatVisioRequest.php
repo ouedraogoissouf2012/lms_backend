@@ -15,13 +15,14 @@ use Illuminate\Foundation\Http\FormRequest;
  * ## Authorization Model
  * 1. User authenticated (via auth:sanctum middleware)
  * 2. Any authenticated user can send heartbeat (no role restriction)
- * 3. Rate limit applied: throttle:10000,1 (route middleware — very permissive for frequent pings)
+ * 3. Rate limit applied: throttle:visio-heartbeat (per user + seance)
  *
  * If ANY check fails → 401/404
  *
  * State check (active attendance record must exist) remains in controller.
  * Updates last_seen_at to track continuous participation.
- * Frequent calls (every few seconds) expected for real-time presence tracking.
+ * Regular calls are expected for real-time presence tracking, without allowing
+ * scripted floods to inflate presence signals.
  */
 final class HeartbeatVisioRequest extends FormRequest
 {

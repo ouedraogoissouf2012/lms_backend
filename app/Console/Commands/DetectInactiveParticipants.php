@@ -2,10 +2,10 @@
 
 namespace App\Console\Commands;
 
-use Illuminate\Console\Command;
 use App\Models\ESBTPAttendance;
 use App\Services\Visio\AttendanceLifecycleService;
 use Carbon\Carbon;
+use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
 
 class DetectInactiveParticipants extends Command
@@ -37,13 +37,17 @@ class DetectInactiveParticipants extends Command
         // Trouver tous les participants marqués comme "connectés" mais sans heartbeat récent
         $inactiveParticipants = ESBTPAttendance::where('status', 'connected')
             ->where(function ($query) use ($threshold) {
-                $query->whereNull('last_seen_at')
-                    ->orWhere('last_seen_at', '<', $threshold);
+                $query->where('last_seen_at', '<', $threshold)
+                    ->orWhere(function ($q) use ($threshold) {
+                        $q->whereNull('last_seen_at')
+                            ->where('joined_at', '<', $threshold);
+                    });
             })
             ->get();
 
         if ($inactiveParticipants->isEmpty()) {
             $this->info('✅ Aucun participant inactif détecté');
+
             return Command::SUCCESS;
         }
 
@@ -52,8 +56,8 @@ class DetectInactiveParticipants extends Command
         foreach ($inactiveParticipants as $attendance) {
             $this->warn("⚠️  Participant inactif détecté: {$attendance->nom} {$attendance->prenom} (Séance ID: {$attendance->seance_id})");
 
-            // Marquer comme déconnecté
-            $lifecycle->disconnect($attendance);
+            // Marquer comme déconnecté au dernier signal réel, pas à l'heure du batch.
+            $lifecycle->disconnect($attendance, $attendance->last_seen_at ?? $attendance->joined_at);
             $disconnectedCount++;
 
             Log::info('Participant auto-déconnecté pour inactivité', [
@@ -61,7 +65,7 @@ class DetectInactiveParticipants extends Command
                 'seance_id' => $attendance->seance_id,
                 'user_id' => $attendance->user_id,
                 'last_seen_at' => $attendance->last_seen_at?->toDateTimeString(),
-                'duration_minutes' => $attendance->duration_minutes
+                'duration_minutes' => $attendance->duration_minutes,
             ]);
         }
 

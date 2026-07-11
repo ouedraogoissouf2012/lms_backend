@@ -1,8 +1,7 @@
 <?php
 
-use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\API\TeacherStatsController;
-
+use App\Http\Controllers\API\Dashboard\DashboardAdminController;
+use App\Http\Controllers\API\Dashboard\DashboardStudentController;
 // ============================================
 // NOTIFICATIONS - Routes protégées
 // ============================================
@@ -12,9 +11,9 @@ use App\Http\Controllers\API\TeacherStatsController;
 // ============================================
 // DASHBOARD - Routes protégées
 // ============================================
-use App\Http\Controllers\API\Dashboard\DashboardAdminController;
-use App\Http\Controllers\API\Dashboard\DashboardStudentController;
 use App\Http\Controllers\API\Dashboard\DashboardTeacherController;
+use App\Http\Controllers\API\TeacherStatsController;
+use Illuminate\Support\Facades\Route;
 
 Route::middleware(['auth:sanctum', 'klassci.sync'])->prefix('dashboard')->group(function () {
     // Dashboard étudiant (tous les utilisateurs authentifiés)
@@ -49,9 +48,9 @@ use App\Http\Controllers\API\LMS\LMSMatieresQueryController;
 use App\Http\Controllers\API\LMS\LMSNotificationsPreferencesController;
 use App\Http\Controllers\API\LMS\LMSSeanceDetailsController;
 use App\Http\Controllers\API\LMS\LMSSeanceParticipantMutationController;
-use App\Http\Controllers\API\LMS\LMSSeanceVisibilityMutationController;
 use App\Http\Controllers\API\LMS\LMSSeancesHistoryController;
 use App\Http\Controllers\API\LMS\LMSSeancesListController;
+use App\Http\Controllers\API\LMS\LMSSeanceVisibilityMutationController;
 use App\Http\Controllers\API\LMS\LMSVisioLifecycleController;
 use App\Http\Controllers\API\LMS\LMSVisioParticipantController;
 
@@ -175,10 +174,10 @@ Route::middleware(['auth:sanctum', 'klassci.sync'])->prefix('lms')->group(functi
         ->name('lms.seances.leave')
         ->middleware('throttle:300,1');
 
-    // Heartbeat participant (ping d'activité) - Rate limited to 10000/min per user
+    // Heartbeat participant (ping d'activité) - limité par utilisateur et séance
     Route::post('/seances/{seanceId}/heartbeat', [LMSVisioParticipantController::class, 'heartbeatVisio'])
         ->name('lms.seances.heartbeat')
-        ->middleware('throttle:10000,1');
+        ->middleware('throttle:visio-heartbeat');
 
     // Liste des participants connectés à une visio.
     // REQ-4 du spec : route renommée `/visio-participants` pour résoudre le

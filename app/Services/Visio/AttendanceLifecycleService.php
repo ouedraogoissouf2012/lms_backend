@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Visio;
 
 use App\Models\ESBTPAttendance;
+use Carbon\Carbon;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -17,20 +18,21 @@ use Psr\Log\LoggerInterface;
  */
 final class AttendanceLifecycleService
 {
-    public function __construct(private readonly LoggerInterface $logger)
-    {
-    }
+    public function __construct(private readonly LoggerInterface $logger) {}
 
     /**
      * Marque le participant déconnecté + calcule `duration_minutes`.
+     * Pour les timeouts, `$leftAt` doit représenter le dernier signal réel.
      */
-    public function disconnect(ESBTPAttendance $attendance): void
+    public function disconnect(ESBTPAttendance $attendance, ?Carbon $leftAt = null): void
     {
+        $leftAt = $this->normalizeLeftAt($attendance, $leftAt ?? now());
+
         $attendance->status = 'disconnected';
-        $attendance->left_at = now();
+        $attendance->left_at = $leftAt;
 
         if ($attendance->joined_at) {
-            $attendance->duration_minutes = $attendance->joined_at->diffInMinutes($attendance->left_at);
+            $attendance->duration_minutes = $attendance->joined_at->diffInMinutes($leftAt);
         }
 
         $attendance->save();
@@ -58,10 +60,10 @@ final class AttendanceLifecycleService
         $inactiveParticipants = ESBTPAttendance::where('status', 'connected')
             ->where(function ($query) use ($timeoutThreshold) {
                 $query->where('last_seen_at', '<', $timeoutThreshold)
-                      ->orWhere(function ($q) use ($timeoutThreshold) {
-                          $q->whereNull('last_seen_at')
+                    ->orWhere(function ($q) use ($timeoutThreshold) {
+                        $q->whereNull('last_seen_at')
                             ->where('joined_at', '<', $timeoutThreshold);
-                      });
+                    });
             })
             ->get();
 
@@ -75,10 +77,24 @@ final class AttendanceLifecycleService
                 'joined_at' => $participant->joined_at?->toDateTimeString(),
             ]);
 
-            $this->disconnect($participant);
+            $this->disconnect($participant, $this->lastActivityAt($participant));
             $disconnectedCount++;
         }
 
         return $disconnectedCount;
+    }
+
+    private function normalizeLeftAt(ESBTPAttendance $attendance, Carbon $leftAt): Carbon
+    {
+        if ($attendance->joined_at !== null && $leftAt->getTimestamp() < $attendance->joined_at->getTimestamp()) {
+            return $attendance->joined_at;
+        }
+
+        return $leftAt;
+    }
+
+    private function lastActivityAt(ESBTPAttendance $attendance): ?Carbon
+    {
+        return $attendance->last_seen_at ?? $attendance->joined_at;
     }
 }

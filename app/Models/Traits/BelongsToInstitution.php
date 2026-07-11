@@ -71,14 +71,15 @@ trait BelongsToInstitution
                     'BelongsToInstitution: query executed without resolved tenant — scope skipped.',
                     [
                         'model' => $builder->getModel()::class,
-                        'note'  => 'Caller should either resolve a tenant or use withoutGlobalScope("institution") explicitly.',
+                        'note' => 'Caller should either resolve a tenant or use withoutGlobalScope("institution") explicitly.',
                     ]
                 );
+
                 return;
             }
 
             $builder->where(
-                $builder->getModel()->getTable() . '.institution_id',
+                $builder->getModel()->getTable().'.institution_id',
                 $institutionId
             );
         });
@@ -98,13 +99,14 @@ trait BelongsToInstitution
                     'BelongsToInstitution: creating model without resolved tenant — institution_id will not be auto-set.',
                     [
                         'model' => $model::class,
-                        'note'  => 'Caller should resolve a tenant before persistence, or set institution_id explicitly.',
+                        'note' => 'Caller should resolve a tenant before persistence, or set institution_id explicitly.',
                     ]
                 );
+
                 return;
             }
 
-            $model->institution_id = $institutionId;
+            $model->setAttribute('institution_id', $institutionId);
         });
     }
 

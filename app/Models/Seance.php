@@ -2,10 +2,13 @@
 
 namespace App\Models;
 
+use App\Models\Traits\BelongsToInstitution;
+use Database\Factories\SeanceFactory;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use App\Models\Traits\BelongsToInstitution;
 
 /**
  * `heure_debut`/`heure_fin` n'existent sur AUCUNE migration (vérifié) ; lues à tort par
@@ -13,8 +16,8 @@ use App\Models\Traits\BelongsToInstitution;
  */
 class Seance extends Model
 {
-    /** @use HasFactory<\Database\Factories\SeanceFactory> */
-    use HasFactory, SoftDeletes, BelongsToInstitution;
+    /** @use HasFactory<SeanceFactory> */
+    use BelongsToInstitution, HasFactory, SoftDeletes;
 
     protected $fillable = [
         'klassci_seance_id',
@@ -66,15 +69,12 @@ class Seance extends Model
      * `withConnectedParticipantsCount()` (scope ci-dessous), l'attribut
      * `connected_participants_count` est déjà présent → 0 requête. Sinon
      * (accès unitaire à une séance isolée), fallback en 1 COUNT.
-     *
-     * Le champ JSON `current_participants_count` (contrat frontend) et
-     * `$appends` sont conservés : aucune régression côté API.
      */
     public function getCurrentParticipantsCountAttribute(): int
     {
         $preloaded = $this->attributes['connected_participants_count'] ?? null;
         if ($preloaded !== null) {
-            return (int) $preloaded;
+            return is_numeric($preloaded) ? (int) $preloaded : 0;
         }
 
         return $this->attendances()->where('status', 'connected')->count();
@@ -84,8 +84,8 @@ class Seance extends Model
      * Scope: précharge le compteur de participants connectés en 1 sous-requête
      * (élimine le N+1 de l'accessor sur les listes — #224).
      *
-     * @param  \Illuminate\Database\Eloquent\Builder<Seance>  $query
-     * @return \Illuminate\Database\Eloquent\Builder<Seance>
+     * @param  Builder<Seance>  $query
+     * @return Builder<Seance>
      */
     public function scopeWithConnectedParticipantsCount($query)
     {
@@ -97,7 +97,7 @@ class Seance extends Model
     /**
      * Relation: toutes les participations à cette séance
      *
-     * @return \Illuminate\Database\Eloquent\Relations\HasMany<ESBTPAttendance, $this>
+     * @return HasMany<ESBTPAttendance, $this>
      */
     public function attendances()
     {
@@ -107,8 +107,8 @@ class Seance extends Model
     /**
      * Scope: Séances d'un enseignant
      *
-     * @param  \Illuminate\Database\Eloquent\Builder<Seance>  $query
-     * @return \Illuminate\Database\Eloquent\Builder<Seance>
+     * @param  Builder<Seance>  $query
+     * @return Builder<Seance>
      */
     public function scopeByTeacher($query, int $teacherId)
     {
@@ -118,8 +118,8 @@ class Seance extends Model
     /**
      * Scope: Séances d'une classe
      *
-     * @param  \Illuminate\Database\Eloquent\Builder<Seance>  $query
-     * @return \Illuminate\Database\Eloquent\Builder<Seance>
+     * @param  Builder<Seance>  $query
+     * @return Builder<Seance>
      */
     public function scopeByClasse($query, int $classeId)
     {
@@ -129,8 +129,8 @@ class Seance extends Model
     /**
      * Scope: Séances avec visio activée
      *
-     * @param  \Illuminate\Database\Eloquent\Builder<Seance>  $query
-     * @return \Illuminate\Database\Eloquent\Builder<Seance>
+     * @param  Builder<Seance>  $query
+     * @return Builder<Seance>
      */
     public function scopeWithVisio($query)
     {
@@ -140,8 +140,8 @@ class Seance extends Model
     /**
      * Scope: Par ID KLASSCI
      *
-     * @param  \Illuminate\Database\Eloquent\Builder<Seance>  $query
-     * @return \Illuminate\Database\Eloquent\Builder<Seance>
+     * @param  Builder<Seance>  $query
+     * @return Builder<Seance>
      */
     public function scopeByKlassciId($query, int $klassciSeanceId)
     {

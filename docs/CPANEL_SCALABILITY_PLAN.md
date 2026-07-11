@@ -28,6 +28,8 @@ Les sources de verite actuelles restent :
 
 - `docs/DEPLOIEMENT_CPANEL.md` pour le deploiement ;
 - `docs/DEPLOYMENT_OPS.md` pour cron, scheduler et drain de queue ;
+- `docs/VISIO_RECORDING_CPANEL_DECISION.md` pour l'architecture des
+  enregistrements visio sans VPS/Jibri ;
 - `routes/console.php` pour les taches planifiees.
 
 Le scheduler cPanel doit tourner chaque minute :

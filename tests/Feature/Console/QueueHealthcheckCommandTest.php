@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Console;
 
+use App\Console\Commands\Scheduler\QueueDrainCommand;
 use App\Console\Commands\Scheduler\QueueHealthcheckCommand;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use PHPUnit\Framework\Attributes\CoversClass;
@@ -16,6 +18,12 @@ use Tests\TestCase;
 final class QueueHealthcheckCommandTest extends TestCase
 {
     use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        Cache::forever(QueueDrainCommand::HEARTBEAT_KEY, now()->toIso8601String());
+    }
 
     public function test_queue_healthcheck_exits_zero_when_queue_is_healthy(): void
     {
@@ -63,6 +71,24 @@ final class QueueHealthcheckCommandTest extends TestCase
 
         $this->artisan('queue:healthcheck --max-age-minutes=5')
             ->expectsOutputToContain('oldest_pending_age=6min > 5min')
+            ->assertExitCode(1);
+    }
+
+    public function test_queue_healthcheck_fails_when_worker_heartbeat_is_missing(): void
+    {
+        Cache::forget(QueueDrainCommand::HEARTBEAT_KEY);
+
+        $this->artisan('queue:healthcheck')
+            ->expectsOutputToContain('worker_heartbeat=missing')
+            ->assertExitCode(1);
+    }
+
+    public function test_queue_healthcheck_fails_when_worker_heartbeat_is_stale(): void
+    {
+        Cache::forever(QueueDrainCommand::HEARTBEAT_KEY, now()->subMinutes(6)->toIso8601String());
+
+        $this->artisan('queue:healthcheck --max-worker-heartbeat-minutes=5')
+            ->expectsOutputToContain('worker_heartbeat_age=6min > 5min')
             ->assertExitCode(1);
     }
 

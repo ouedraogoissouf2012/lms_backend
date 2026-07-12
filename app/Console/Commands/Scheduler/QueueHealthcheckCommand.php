@@ -5,9 +5,11 @@ declare(strict_types=1);
 namespace App\Console\Commands\Scheduler;
 
 use Illuminate\Console\Command;
+use Illuminate\Contracts\Cache\Repository as CacheRepository;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Psr\Log\LoggerInterface;
+use Throwable;
 
 /**
  * Healthcheck cPanel-safe de la queue database.
@@ -20,15 +22,17 @@ final class QueueHealthcheckCommand extends Command
     protected $signature = 'queue:healthcheck
         {--max-pending=1000 : Nombre maximal de jobs pending accepte}
         {--max-age-minutes=5 : Age maximal du plus vieux job pending}
-        {--max-failed=0 : Nombre maximal de jobs echoues accepte}';
+        {--max-failed=0 : Nombre maximal de jobs echoues accepte}
+        {--max-worker-heartbeat-minutes=5 : Age maximal du heartbeat worker}';
 
     protected $description = 'Vérifie failed_jobs, profondeur et âge de la queue database';
 
-    public function handle(LoggerInterface $logger): int
+    public function handle(LoggerInterface $logger, CacheRepository $cache): int
     {
         $maxPending = $this->positiveIntOption('max-pending');
         $maxAgeMinutes = $this->positiveIntOption('max-age-minutes');
         $maxFailed = $this->nonNegativeIntOption('max-failed');
+        $maxWorkerHeartbeatMinutes = $this->positiveIntOption('max-worker-heartbeat-minutes');
 
         $pendingCount = DB::table('jobs')->whereNull('reserved_at')->count();
         $failedCount = DB::table('failed_jobs')->count();
@@ -36,6 +40,7 @@ final class QueueHealthcheckCommand extends Command
             ->whereNull('reserved_at')
             ->min('created_at');
         $oldestPendingAgeMinutes = $this->ageInMinutes($oldestPendingTimestamp);
+        $workerHeartbeatAgeMinutes = $this->heartbeatAgeInMinutes($cache->get(QueueDrainCommand::HEARTBEAT_KEY));
 
         $violations = [];
 
@@ -51,6 +56,12 @@ final class QueueHealthcheckCommand extends Command
             $violations[] = "oldest_pending_age={$oldestPendingAgeMinutes}min > {$maxAgeMinutes}min";
         }
 
+        if ($workerHeartbeatAgeMinutes === null) {
+            $violations[] = 'worker_heartbeat=missing';
+        } elseif ($workerHeartbeatAgeMinutes > $maxWorkerHeartbeatMinutes) {
+            $violations[] = "worker_heartbeat_age={$workerHeartbeatAgeMinutes}min > {$maxWorkerHeartbeatMinutes}min";
+        }
+
         if ($violations === []) {
             return self::SUCCESS;
         }
@@ -59,9 +70,11 @@ final class QueueHealthcheckCommand extends Command
             'pending_count' => $pendingCount,
             'failed_count' => $failedCount,
             'oldest_pending_age_minutes' => $oldestPendingAgeMinutes,
+            'worker_heartbeat_age_minutes' => $workerHeartbeatAgeMinutes,
             'max_pending' => $maxPending,
             'max_failed' => $maxFailed,
             'max_age_minutes' => $maxAgeMinutes,
+            'max_worker_heartbeat_minutes' => $maxWorkerHeartbeatMinutes,
             'violations' => $violations,
         ];
 
@@ -92,5 +105,18 @@ final class QueueHealthcheckCommand extends Command
         }
 
         return (int) Carbon::createFromTimestamp((int) $timestamp)->diffInMinutes(now());
+    }
+
+    private function heartbeatAgeInMinutes(mixed $heartbeat): ?int
+    {
+        if (! is_string($heartbeat) || $heartbeat === '') {
+            return null;
+        }
+
+        try {
+            return (int) Carbon::parse($heartbeat)->diffInMinutes(now());
+        } catch (Throwable) {
+            return null;
+        }
     }
 }

@@ -25,7 +25,7 @@ cron cPanel (1 ligne, chaque minute)
          ├── 11 tâches métier (tableau §5)
          ├── scheduler:heartbeat      → marqueur de vie en cache (§4)
          ├── queue:healthcheck      → surveille jobs/failed_jobs (§4)
-         └── queue:work --stop-when-empty --max-time=55   → draine la table jobs (§3)
+         └── queue:drain → worker court + heartbeat worker (§3)
 ```
 
 ## 2. Cron cPanel — installation
@@ -60,11 +60,16 @@ php artisan queue:healthcheck && echo OK       # OK si jobs/failed_jobs sont sai
 `php artisan queue:work` permanent (tout process long est tué par l'hébergeur).
 
 **Solution versionnée** (dans `routes/console.php`, rien à installer de plus) :
-le scheduler lance chaque minute
+le scheduler lance chaque minute le wrapper versionné
 
 ```
-queue:work --stop-when-empty --max-time=55
+queue:drain
 ```
+
+Le wrapper exécute `queue:work --queue=high,default,low --stop-when-empty
+--max-time=55`, puis écrit `queue:worker:last_heartbeat_at` dans le cache
+uniquement si le worker se termine avec succès. Ce marqueur distingue un
+scheduler vivant d'un worker qui ne démarre plus.
 
 | Choix | Pourquoi |
 |---|---|
@@ -85,7 +90,7 @@ Trois commandes dédiées (#369/#379) :
 |---|---|---|
 | `scheduler:heartbeat` | Planifiée **chaque minute** par le scheduler — pose un timestamp en cache (`scheduler:last_heartbeat_at`). | Toujours silencieuse. |
 | `scheduler:healthcheck` | À appeler par le monitoring — **exit 0** si dernier battement < 5 min, **exit 1** sinon (+ ligne d'erreur + log `[SchedulerHealthcheck]`). | Silencieuse en succès, parlante en échec. |
-| `queue:healthcheck` | Planifiée toutes les 5 min — **exit 1** si `failed_jobs` > 0, si plus de 1 000 jobs pending, ou si le plus vieux job pending > 5 min (+ log `[QueueHealthcheck]`). | Silencieuse en succès, parlante en échec. |
+| `queue:healthcheck` | Planifiée toutes les 5 min — **exit 1** si `failed_jobs` > 0, plus de 1 000 jobs pending, plus vieux job > 5 min, ou heartbeat worker absent/vieux de plus de 5 min (+ log `[QueueHealthcheck]`). | Silencieuse en succès, parlante en échec. |
 
 Un scheduler mort est donc détecté en **< 10 minutes** (critère d'acceptation
 de l'issue : battement chaque minute + seuil de péremption 5 min).
@@ -123,8 +128,8 @@ healthcheck n'écrit **que en cas d'échec**, chaque e-mail reçu = alerte réel
 | 9 | `notify-upcoming-evaluations` | Commande | `0 8 * * *` | Rappels étudiants 24 h avant évaluation. |
 | 10 | `cleanup-old-notifications` | Closure | `0 4 * * 0` | Supprime les notifications lues > 30 j. |
 | 11 | `scheduler-heartbeat` **(nouveau #369)** | Commande | `* * * * *` | Marqueur de vie lu par `scheduler:healthcheck`. |
-| 12 | `queue-healthcheck` **(nouveau #379)** | Commande | `*/5 * * * *` | Alerte cPanel-safe sur `failed_jobs`, profondeur et âge de la queue database. |
-| 13 | `queue-worker` **(nouveau #369)** | Commande | `* * * * *` | Draine la table `jobs` (§3). |
+| 12 | `queue-healthcheck` **(#379/#462)** | Commande | `*/5 * * * *` | Alerte sur `failed_jobs`, profondeur, âge et heartbeat worker. |
+| 13 | `queue-worker` **(#369/#462)** | Commande | `* * * * *` | Draine la table `jobs` et confirme le heartbeat worker (§3). |
 
 Le test [`tests/Feature/Console/ScheduleRegistrationTest.php`](../tests/Feature/Console/ScheduleRegistrationTest.php)
 fige le câblage des tâches critiques ajoutées par #369/#379.
@@ -141,6 +146,24 @@ utilisé en prod.
 |---|---|---|
 | `scheduler:healthcheck` exit 1 | Cron absent/cassé | Vérifier la ligne cron (§2), le chemin PHP, puis `php artisan schedule:run` manuel en SSH. |
 | `queue:healthcheck` exit 1 | Queue bloquée ou jobs échoués | Lire la sortie : `failed=...`, `pending=...` ou `oldest_pending_age=...`; puis inspecter `php artisan queue:failed` et relancer un drain manuel. |
-| Table `jobs` qui grossit | Worker ne draine plus | `php artisan queue:work --stop-when-empty` manuel ; si le verrou est bloqué : `php artisan cache:clear` restaure le mutex (verrou auto-expirant à 10 min sinon). |
-| Jobs en échec | Voir table `failed_jobs` | `php artisan queue:failed` puis `queue:retry <id>`. |
+| Table `jobs` qui grossit | Worker ne draine plus | `php artisan queue:drain` manuel ; si le verrou planifié est bloqué, attendre son expiration automatique (10 min) avant `schedule:clear-cache`. |
+| Jobs en échec | Voir table `failed_jobs` | `php artisan queue:failed`, puis `php artisan queue:retry <uuid>` pour un job vérifié. |
 | Visios non fermées malgré cron OK | Heartbeats frontend absents | Voir `DIAGNOSTIC_HEARTBEAT_PROBLEM.md` — le gate `HeartbeatHealthChecker` bloque volontairement la fermeture. |
+
+## 8. Replay et purge contrôlée
+
+Toujours sauvegarder la base, puis inspecter `php artisan queue:failed` avant
+toute action. Rejouer de préférence un UUID précis :
+
+```bash
+php artisan queue:retry <uuid>
+php artisan queue:drain
+php artisan queue:healthcheck
+```
+
+`php artisan queue:retry all` n'est acceptable qu'après avoir vérifié que tous
+les handlers sont idempotents. Pour retirer un échec définitivement, archiver
+d'abord sa sortie (`queue:failed` et logs), puis utiliser
+`php artisan queue:forget <uuid>`. `php artisan queue:flush` supprime tous les
+échecs : il est réservé à une fenêtre de maintenance approuvée avec sauvegarde,
+jamais à une résolution réflexe d'alerte.

@@ -9,27 +9,18 @@ use App\Models\Lesson;
 use App\Models\LessonProgress;
 use App\Models\Quiz;
 use App\Models\QuizAttempt;
+use App\Models\QuizQuestion;
 use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 
 /**
  * Agrégation du dashboard enseignant (issue #364).
  *
- * Extrait verbatim de `DashboardTeacherController::teacher` : mêmes
- * requêtes, mêmes limites, mêmes projections. Aucun changement
- * comportemental. Les filtres dupliqués liste/compteur (quiz à corriger,
- * topics non résolus) sont factorisés en méthodes privées retournant le
- * Builder de base — DRY sans changement de SQL émis.
- *
- * ## Dette héritée TRACÉE (préexistante, hors périmètre #364)
- *
- * Les requêtes du bloc quiz référencent des colonnes ABSENTES du schéma
- * (`quizzes.enseignant_id`, `quizzes.requires_manual_grading`,
- * `quiz_attempts.percentage`) et un statut hors contrainte CHECK
- * (`completed`). Sous SQLite (tests), la sémantique "double-quoted string
- * literal" les neutralise → compteurs toujours 0. Préservé verbatim ; la
- * caractérisation est verrouillée par TeacherDashboardServiceTest.
+ * Le bloc quiz utilise les colonnes réellement migrées (#401) :
+ * `quizzes.created_by`, `quiz_attempts.score`, statuts `submitted|graded`,
+ * et questions `short_answer|essay` pour détecter la correction manuelle.
  *
  * ## SRP / DI (§1.6)
  *
@@ -73,16 +64,14 @@ final class TeacherDashboardService
                 'active_last_7_days' => $this->activeStudentsCount($user),
             ],
             'quizzes' => [
-                // @phpstan-ignore argument.type (colonne fantôme héritée — quizzes.enseignant_id absent du schéma, préservé verbatim, cf. PR #364)
-                'total' => Quiz::where('enseignant_id', $user->id)->count(),
-                // @phpstan-ignore argument.type (colonne fantôme héritée — quizzes.enseignant_id absent du schéma, préservé verbatim, cf. PR #364)
-                'published' => Quiz::where('enseignant_id', $user->id)
+                'total' => Quiz::where('created_by', $user->id)->count(),
+                'published' => Quiz::where('created_by', $user->id)
                     ->where('status', 'published')
                     ->count(),
                 'to_grade' => $this->quizzesToGradeQuery($user)->count(),
                 'to_grade_list' => $this->quizzesToGradeList($user),
                 'total_attempts' => $this->completedAttemptsQuery($user)->count(),
-                'average_score' => round((float) ($this->completedAttemptsQuery($user)->avg('percentage') ?? 0), 1),
+                'average_score' => round((float) ($this->completedAttemptsQuery($user)->avg('score') ?? 0), 1),
             ],
             'forum' => [
                 'unresolved_topics' => $this->unresolvedTopicsQuery($user)->count(),
@@ -120,11 +109,11 @@ final class TeacherDashboardService
                 /** @return array<string, mixed> */
                 function (Lesson $lesson): array {
                     return [
-                        'lesson_id'          => $lesson->id,
-                        'title'              => $lesson->title,
-                        'students_started'   => $lesson->getAttribute('students_started'),
+                        'lesson_id' => $lesson->id,
+                        'title' => $lesson->title,
+                        'students_started' => $lesson->getAttribute('students_started'),
                         'students_completed' => $lesson->getAttribute('students_completed') ?? 0,
-                        'average_progress'   => $this->roundedProgress($lesson->getAttribute('average_progress')),
+                        'average_progress' => $this->roundedProgress($lesson->getAttribute('average_progress')),
                     ];
                 }
             );
@@ -165,28 +154,22 @@ final class TeacherDashboardService
     private function quizzesToGradeQuery(User $user): Builder
     {
         return QuizAttempt::query()
-            ->whereHas('quiz', function ($query) use ($user) {
-                // @phpstan-ignore argument.type (colonne fantôme héritée — quizzes.enseignant_id absent du schéma, préservé verbatim, cf. PR #364)
-                $query->where('enseignant_id', $user->id);
-            })
-            ->where('status', 'completed')
+            ->whereIn('quiz_id', $this->manualGradingQuizIds($user))
+            ->where('status', 'submitted')
             ->whereNull('graded_at')
-            ->whereHas('quiz', function ($query) {
-                // @phpstan-ignore argument.type (colonne fantôme héritée — quizzes.requires_manual_grading absent du schéma, préservé verbatim, cf. PR #364)
-                $query->where('requires_manual_grading', true);
-            });
+            ->whereNull('score');
     }
 
     /**
      * Les 10 dernières tentatives à corriger, projetées pour l'affichage.
      *
-     * @return Collection<int, array{attempt_id: int, quiz_title: string|null, student_name: mixed, completed_at: string|null, auto_score: numeric-string|null}>
+     * @return Collection<int, array{attempt_id: int, quiz_title: string|null, student_name: mixed, completed_at: Carbon|string|null, auto_score: numeric-string|null}>
      */
     private function quizzesToGradeList(User $user): Collection
     {
         return $this->quizzesToGradeQuery($user)
             ->with(['quiz', 'user'])
-            ->orderBy('completed_at', 'desc')
+            ->orderBy('submitted_at', 'desc')
             ->limit(self::LIST_LIMIT)
             ->get()
             // `?->` + getAttribute() : relations non génériquées dans les
@@ -199,7 +182,7 @@ final class TeacherDashboardService
                         'attempt_id' => $attempt->id,
                         'quiz_title' => $attempt->quiz?->title,
                         'student_name' => $attempt->user?->getAttribute('name'),
-                        'completed_at' => $attempt->completed_at,
+                        'completed_at' => $attempt->completed_at ?? $attempt->submitted_at,
                         'auto_score' => $attempt->score,
                     ];
                 }
@@ -215,11 +198,23 @@ final class TeacherDashboardService
     private function completedAttemptsQuery(User $user): Builder
     {
         return QuizAttempt::query()
-            ->whereHas('quiz', function ($query) use ($user) {
-                // @phpstan-ignore argument.type (colonne fantôme héritée — quizzes.enseignant_id absent du schéma, préservé verbatim, cf. PR #364)
-                $query->where('enseignant_id', $user->id);
-            })
-            ->where('status', 'completed');
+            ->whereIn('quiz_id', Quiz::query()->where('created_by', $user->id)->select('id'))
+            ->whereIn('status', ['submitted', 'graded']);
+    }
+
+    /**
+     * @return Builder<Quiz>
+     */
+    private function manualGradingQuizIds(User $user): Builder
+    {
+        $manualQuestionQuizIds = QuizQuestion::query()
+            ->whereIn('type', ['short_answer', 'essay'])
+            ->select('quiz_id');
+
+        return Quiz::query()
+            ->where('created_by', $user->id)
+            ->whereIn('id', $manualQuestionQuizIds)
+            ->select('id');
     }
 
     /**
@@ -242,7 +237,7 @@ final class TeacherDashboardService
     /**
      * Les 10 derniers topics non résolus, projetés pour l'affichage.
      *
-     * @return Collection<int, array{topic_id: int, title: string, lesson_title: mixed, author: mixed, posts_count: int, views_count: int, created_at: \Carbon\Carbon|null}>
+     * @return Collection<int, array{topic_id: int, title: string, lesson_title: mixed, author: mixed, posts_count: int, views_count: int, created_at: Carbon|null}>
      */
     private function unresolvedTopicsList(User $user): Collection
     {

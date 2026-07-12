@@ -10,6 +10,7 @@ use App\Models\Lesson;
 use App\Models\LessonProgress;
 use App\Models\Quiz;
 use App\Models\QuizAttempt;
+use App\Models\QuizQuestion;
 use App\Models\User;
 use App\Services\Dashboard\TeacherDashboardService;
 use App\Services\TenantManager;
@@ -22,33 +23,27 @@ use Tests\TestCase;
  * écrits AVANT l'extraction de la logique hors de
  * `DashboardTeacherController::teacher`).
  *
- * Le service doit reproduire VERBATIM le comportement du controller :
- * mêmes requêtes, mêmes limites, mêmes projections. Les tests couvrent :
- *   - happy path (compteurs leçons, top lessons, étudiants actifs, forum) ;
- *   - edge (enseignant sans contenu, contenu d'un autre enseignant) ;
- *   - multi-tenant (2 institutions, §1.3) ;
- *   - zéro N+1 (nombre de requêtes constant quand le volume croît, §1.4) ;
- *   - caractérisation du bloc quiz : les colonnes `quizzes.enseignant_id`,
- *     `quizzes.requires_manual_grading` et `quiz_attempts.percentage`
- *     n'existent PAS dans le schéma → sous SQLite, la mésaventure
- *     "double-quoted string literal" les évalue comme littéraux et les
- *     requêtes retournent toujours 0/vide. Comportement préservé tel quel
- *     (le fix des colonnes est hors périmètre #364 — voir PR).
+ * Le service produit le payload du dashboard enseignant : cours, étudiants
+ * actifs, quiz à corriger et topics forum. #401 couvre le bloc quiz avec les
+ * colonnes réellement migrées.
  */
 final class TeacherDashboardServiceTest extends TestCase
 {
     use RefreshDatabase;
 
     private TeacherDashboardService $service;
+
     private Institution $institutionA;
+
     private Institution $institutionB;
+
     private User $teacher;
 
     protected function setUp(): void
     {
         parent::setUp();
 
-        $this->service = new TeacherDashboardService();
+        $this->service = new TeacherDashboardService;
         $this->institutionA = Institution::factory()->create(['slug' => 'school-a']);
         $this->institutionB = Institution::factory()->create(['slug' => 'school-b']);
 
@@ -208,29 +203,45 @@ final class TeacherDashboardServiceTest extends TestCase
         $this->assertCount(0, $dashboard['forum']['unresolved_topics_list']);
     }
 
-    /**
-     * CARACTÉRISATION (pas une cible) : le bloc quiz est inerte car les
-     * requêtes du controller historique référencent des colonnes absentes
-     * du schéma (`quizzes.enseignant_id`, `quizzes.requires_manual_grading`,
-     * `quiz_attempts.percentage`). Ce test fige ce comportement pour que
-     * toute future correction des colonnes soit un choix EXPLICITE
-     * (le test cassera et devra être mis à jour en conscience).
-     */
-    public function test_quiz_block_stays_inert_because_schema_lacks_the_queried_columns(): void
+    public function test_quiz_block_uses_real_columns_and_attempt_statuses(): void
     {
-        $quiz = Quiz::factory()->forTeacher($this->teacher)->create([
+        $published = Quiz::factory()->forTeacher($this->teacher)->create([
+            'institution_id' => $this->institutionA->id,
+            'status' => 'published',
+            'title' => 'Quiz publié',
+        ]);
+        $draft = Quiz::factory()->forTeacher($this->teacher)->create([
+            'institution_id' => $this->institutionA->id,
+            'status' => 'draft',
+        ]);
+        $otherTeacher = User::factory()->teacher()->create([
             'institution_id' => $this->institutionA->id,
         ]);
-        QuizAttempt::factory()->graded()->forQuiz($quiz)->create();
+        $otherQuiz = Quiz::factory()->forTeacher($otherTeacher)->create([
+            'institution_id' => $this->institutionA->id,
+            'status' => 'published',
+        ]);
+
+        QuizQuestion::factory()->shortAnswer()->create(['quiz_id' => $published->id]);
+        QuizAttempt::factory()->forQuiz($published)->create([
+            'status' => 'submitted',
+            'submitted_at' => now()->subHour(),
+            'score' => null,
+            'graded_at' => null,
+        ]);
+        QuizAttempt::factory()->graded()->forQuiz($published)->create(['score' => 80]);
+        QuizAttempt::factory()->graded()->forQuiz($draft)->create(['score' => 60]);
+        QuizAttempt::factory()->graded()->forQuiz($otherQuiz)->create(['score' => 20]);
 
         $dashboard = $this->service->buildDashboard($this->teacher);
 
-        $this->assertSame(0, $dashboard['quizzes']['total']);
-        $this->assertSame(0, $dashboard['quizzes']['published']);
-        $this->assertSame(0, $dashboard['quizzes']['to_grade']);
-        $this->assertCount(0, $dashboard['quizzes']['to_grade_list']);
-        $this->assertSame(0, $dashboard['quizzes']['total_attempts']);
-        $this->assertSame(0.0, $dashboard['quizzes']['average_score']);
+        $this->assertSame(2, $dashboard['quizzes']['total']);
+        $this->assertSame(1, $dashboard['quizzes']['published']);
+        $this->assertSame(1, $dashboard['quizzes']['to_grade']);
+        $this->assertCount(1, $dashboard['quizzes']['to_grade_list']);
+        $this->assertSame('Quiz publié', $dashboard['quizzes']['to_grade_list'][0]['quiz_title']);
+        $this->assertSame(3, $dashboard['quizzes']['total_attempts']);
+        $this->assertSame(70.0, $dashboard['quizzes']['average_score']);
     }
 
     public function test_tenant_a_dashboard_ignores_identical_teacher_data_from_tenant_b(): void

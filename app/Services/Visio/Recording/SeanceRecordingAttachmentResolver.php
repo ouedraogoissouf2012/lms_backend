@@ -15,7 +15,10 @@ use Psr\Log\LoggerInterface;
 
 final class SeanceRecordingAttachmentResolver
 {
-    public function __construct(private readonly LoggerInterface $logger) {}
+    public function __construct(
+        private readonly LoggerInterface $logger,
+        private readonly SeanceRecordingAttachmentGuard $guard,
+    ) {}
 
     public function attachReadyRecording(
         Seance $seance,
@@ -51,7 +54,10 @@ final class SeanceRecordingAttachmentResolver
         }
 
         $lesson = $lessons->first();
-        $chapter = $this->upsertVideoChapter($seance, $lesson, $recordingUrl, $title, $provider);
+        $chapter = $this->guard->run(
+            $seance->id,
+            fn (): Chapter => $this->upsertVideoChapter($seance, $lesson, $recordingUrl, $title, $provider),
+        );
 
         return RecordingAttachmentResult::attached($lesson, $chapter);
     }

@@ -15,6 +15,7 @@ use App\Models\Seance;
 use App\Models\SeanceRecording;
 use App\Models\User;
 use App\Services\TenantManager;
+use App\Services\Visio\Recording\SeanceRecordingAttachmentGuard;
 use App\Services\Visio\Recording\SeanceRecordingAttachmentResolver;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Psr\Log\NullLogger;
@@ -127,6 +128,9 @@ final class ProcessSeanceRecordingReadyTest extends TestCase
 
     private function resolver(): SeanceRecordingAttachmentResolver
     {
-        return new SeanceRecordingAttachmentResolver(new NullLogger);
+        return new SeanceRecordingAttachmentResolver(
+            new NullLogger,
+            app(SeanceRecordingAttachmentGuard::class),
+        );
     }
 }

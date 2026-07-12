@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace Tests\Feature\LMS\Visio;
 
+use App\Enums\SeanceRecordingStatus;
 use App\Models\ESBTPAttendance;
 use App\Models\Institution;
 use App\Models\Seance;
+use App\Models\SeanceRecording;
 use App\Models\User;
 use App\Models\UserClass;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -89,6 +91,31 @@ final class VisioRecordingEndpointsTest extends TestCase
             'auditable_id' => (int) $recordingId,
             'user_id' => $this->teacher->id,
         ]);
+    }
+
+    public function test_concurrent_start_collision_returns_existing_recording(): void
+    {
+        $injected = false;
+        SeanceRecording::creating(function (SeanceRecording $candidate) use (&$injected): void {
+            if ($injected || (int) $candidate->seance_id !== $this->seance->id) {
+                return;
+            }
+
+            $injected = true;
+            SeanceRecording::withoutEvents(fn () => SeanceRecording::query()->create([
+                'seance_id' => $this->seance->id,
+                'status' => SeanceRecordingStatus::Recording,
+                'started_at' => now(),
+                'active_lock_key' => SeanceRecording::activeLockKeyForSeance($this->seance->id),
+            ]));
+        });
+        Sanctum::actingAs($this->teacher);
+
+        $this->postJson($this->recordingUrl('start'))
+            ->assertOk()
+            ->assertJsonPath('data.recording.status', 'recording');
+
+        self::assertSame(1, SeanceRecording::query()->where('seance_id', $this->seance->id)->count());
     }
 
     public function test_non_owner_teacher_cannot_control_recording(): void

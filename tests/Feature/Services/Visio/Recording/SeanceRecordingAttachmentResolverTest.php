@@ -12,7 +12,10 @@ use App\Models\Matiere;
 use App\Models\Seance;
 use App\Models\User;
 use App\Services\TenantManager;
+use App\Services\Visio\Recording\SeanceRecordingAttachmentGuard;
 use App\Services\Visio\Recording\SeanceRecordingAttachmentResolver;
+use Illuminate\Contracts\Cache\Factory as CacheFactory;
+use Illuminate\Contracts\Cache\LockProvider;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Psr\Log\NullLogger;
 use Tests\TestCase;
@@ -101,6 +104,25 @@ final class SeanceRecordingAttachmentResolverTest extends TestCase
         self::assertSame(1, Chapter::query()->where('content_type', 'video')->count());
     }
 
+    public function test_contended_attachment_lock_creates_no_duplicate_chapter(): void
+    {
+        [$seance] = $this->makeResolvableSeanceAndLesson();
+        $store = app(CacheFactory::class)->store()->getStore();
+        self::assertInstanceOf(LockProvider::class, $store);
+        $lock = $store->lock(SeanceRecordingAttachmentGuard::key($seance->id), 30);
+        self::assertTrue($lock->get());
+
+        try {
+            $this->resolver()->attachReadyRecording($seance, 'https://cdn.example.test/race.mp4');
+            self::fail('A concurrent attachment must be retried.');
+        } catch (\RuntimeException $exception) {
+            self::assertSame('Seance recording attachment is already locked.', $exception->getMessage());
+            self::assertSame(0, Chapter::query()->where('content_type', 'video')->count());
+        } finally {
+            $lock->release();
+        }
+    }
+
     /**
      * @return array{Seance, Lesson}
      */
@@ -137,6 +159,9 @@ final class SeanceRecordingAttachmentResolverTest extends TestCase
 
     private function resolver(): SeanceRecordingAttachmentResolver
     {
-        return new SeanceRecordingAttachmentResolver(new NullLogger);
+        return new SeanceRecordingAttachmentResolver(
+            new NullLogger,
+            app(SeanceRecordingAttachmentGuard::class),
+        );
     }
 }

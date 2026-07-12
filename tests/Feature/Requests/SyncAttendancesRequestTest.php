@@ -2,16 +2,21 @@
 
 namespace Tests\Feature\Requests;
 
+use App\Models\Classe;
 use App\Models\Institution;
+use App\Models\Seance;
 use App\Models\User;
+use App\Services\TenantManager;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
 class SyncAttendancesRequestTest extends TestCase
 {
-    use \Illuminate\Foundation\Testing\RefreshDatabase;
+    use RefreshDatabase;
 
     private Institution $institution;
+
     private User $teacher;
 
     protected function setUp(): void
@@ -20,8 +25,23 @@ class SyncAttendancesRequestTest extends TestCase
         $this->disableKlassciMiddleware();
 
         $this->institution = Institution::factory()->create();
+        app(TenantManager::class)->set($this->institution);
         $this->teacher = User::factory()->teacher()->for($this->institution)->create([
-            'klassci_token' => 'test_token_' . uniqid(),
+            'klassci_id' => 777,
+            'klassci_token' => 'test_token_'.uniqid(),
+        ]);
+
+        $classe = Classe::factory()->for($this->institution)->create(['klassci_id' => 55]);
+        foreach ([100, 101, 102] as $klassciId) {
+            $student = User::factory()->student()->for($this->institution)->create([
+                'klassci_id' => $klassciId,
+            ]);
+            $classe->etudiants()->attach($student->id, ['statut' => 'actif']);
+        }
+
+        Seance::factory()->for($this->institution)->create([
+            'klassci_enseignant_id' => 777,
+            'klassci_classe_id' => 55,
         ]);
     }
 

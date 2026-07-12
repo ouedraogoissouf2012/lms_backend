@@ -523,24 +523,6 @@ parameters:
 			path: app/Jobs/DetectDisconnectedParticipants.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\Seance\:\:\$heure_fin\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Jobs/FinalizeSeanceAttendances.php
-
-		-
-			message: '#^Anonymous function has an unused use \$now\.$#'
-			identifier: closure.unusedUse
-			count: 1
-			path: app/Jobs/FinalizeSeanceAttendances.php
-
-		-
-			message: '#^Property App\\Models\\ESBTPAttendance\:\:\$duration_minutes \(int\|null\) does not accept float\.$#'
-			identifier: assign.propertyType
-			count: 1
-			path: app/Jobs/FinalizeSeanceAttendances.php
-
-		-
 			message: '#^Argument of an invalid type mixed supplied for foreach, only iterables are supported\.$#'
 			identifier: foreach.nonIterable
 			count: 2
@@ -1767,18 +1749,12 @@ parameters:
 		-
 			message: '#^Cannot cast mixed to int\.$#'
 			identifier: cast.int
-			count: 2
+			count: 1
 			path: app/Services/Report/ReportGenerationService.php
 
 		-
 			message: '#^Cannot cast mixed to string\.$#'
 			identifier: cast.string
-			count: 1
-			path: app/Services/Report/ReportGenerationService.php
-
-		-
-			message: '#^Parameter \#1 \$column of method Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\:\:where\(\) expects array\<int\|model property of Illuminate\\Database\\Eloquent\\Model, mixed\>\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\: Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\: void\)\|Illuminate\\Contracts\\Database\\Query\\Expression\|model property of Illuminate\\Database\\Eloquent\\Model, ''klassci_classe_id'' given\.$#'
-			identifier: argument.type
 			count: 1
 			path: app/Services/Report/ReportGenerationService.php
 

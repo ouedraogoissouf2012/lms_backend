@@ -49,22 +49,17 @@ class FinalizeSeanceAttendances implements ShouldQueue
 
         $logger->info('[FinalizeSeanceAttendances] Démarrage du job');
 
-        // Récupérer toutes les séances actives qui sont terminées depuis > GRACE_PERIOD
-        $seancesTerminees = Seance::where('is_active', true)
-            ->whereNotNull('heure_fin')
-            ->whereNotNull('date_seance')
-            ->get()
-            ->filter(function ($seance) use ($now) {
-                // Construire le datetime de fin
-                $dateFin = Carbon::parse($seance->date_seance . ' ' . $seance->heure_fin);
-                $graceDeadline = $dateFin->copy()->addMinutes(self::GRACE_PERIOD_MINUTES);
+        $cutoff = $now->copy()->subMinutes(self::GRACE_PERIOD_MINUTES);
 
-                // Ne traiter que les séances dont le délai de grâce est dépassé
-                return $graceDeadline->isPast();
-            });
+        // visio_ended_at est la source persistée de fin de visio. Les anciennes
+        // colonnes heure_fin/date_seance n'ont jamais existe dans le schema.
+        $seancesTerminees = Seance::where('is_active', true)
+            ->whereNotNull('visio_ended_at')
+            ->where('visio_ended_at', '<=', $cutoff)
+            ->get();
 
         $logger->info('[FinalizeSeanceAttendances] Séances à traiter', [
-            'count' => $seancesTerminees->count()
+            'count' => $seancesTerminees->count(),
         ]);
 
         foreach ($seancesTerminees as $seance) {
@@ -81,12 +76,14 @@ class FinalizeSeanceAttendances implements ShouldQueue
                 'seance_id' => $seance->id,
                 'klassci_seance_id' => $seance->klassci_seance_id,
                 'titre' => $seance->titre,
-                'participants_actifs' => $participantsActifs->count()
+                'participants_actifs' => $participantsActifs->count(),
             ]);
 
             foreach ($participantsActifs as $attendance) {
-                // Calculer left_at: soit heure_fin de la séance, soit last_seen_at
-                $dateFin = Carbon::parse($seance->date_seance . ' ' . $seance->heure_fin);
+                $dateFin = $seance->visio_ended_at;
+                if ($dateFin === null) {
+                    continue;
+                }
 
                 // Si l'étudiant a un last_seen_at avant l'heure de fin, utiliser last_seen_at
                 if ($attendance->last_seen_at && $attendance->last_seen_at->lt($dateFin)) {
@@ -101,7 +98,7 @@ class FinalizeSeanceAttendances implements ShouldQueue
 
                 // Calculer la durée si joined_at existe
                 if ($attendance->joined_at) {
-                    $attendance->duration_minutes = $attendance->joined_at->diffInMinutes($leftAt);
+                    $attendance->duration_minutes = (int) $attendance->joined_at->diffInMinutes($leftAt);
                 }
 
                 $attendance->save();
@@ -112,14 +109,14 @@ class FinalizeSeanceAttendances implements ShouldQueue
                     'user_id' => $attendance->user_id,
                     'joined_at' => $attendance->joined_at?->format('Y-m-d H:i:s'),
                     'left_at' => $leftAt->format('Y-m-d H:i:s'),
-                    'duration_minutes' => $attendance->duration_minutes
+                    'duration_minutes' => $attendance->duration_minutes,
                 ]);
             }
         }
 
         $logger->info('[FinalizeSeanceAttendances] Job terminé', [
             'seances_traitees' => $seancesTerminees->count(),
-            'participants_finalises' => $finalizedCount
+            'participants_finalises' => $finalizedCount,
         ]);
     }
 
@@ -128,14 +125,14 @@ class FinalizeSeanceAttendances implements ShouldQueue
      */
     public function failed(\Throwable $exception): void
     {
-                // Pattern AutoCloseEmptySeances (#209) : failed() est appelée hors
+        // Pattern AutoCloseEmptySeances (#209) : failed() est appelée hors
         // container (aucune injection possible) — résolution explicite.
         /** @var LoggerInterface $logger */
         $logger = app(LoggerInterface::class);
 
         $logger->error('[FinalizeSeanceAttendances] Job échoué', [
             'error' => $exception->getMessage(),
-            'trace' => $exception->getTraceAsString()
+            'trace' => $exception->getTraceAsString(),
         ]);
     }
 }

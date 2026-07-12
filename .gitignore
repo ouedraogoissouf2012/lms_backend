@@ -66,34 +66,8 @@ postman_collection.json
 issue_*.md
 screenshot_*.png
 
-# Local development files - not for production
-# Ignore all tests except production-grade tests (marked CRITICAL-xx)
-/tests/
-!/tests/Unit/TokenEncryptionTest.php
-!/tests/Unit/ExceptionHandlerTest.php
-!/tests/Unit/Rules/**
-!/tests/Unit/Support/**
-!/tests/Unit/FileConversion/**
-!/tests/Unit/Http/**
-!/tests/Feature/Requests/**
-!/tests/Feature/ProxyRouteSecurityTest.php
-!/tests/Feature/ResolveInstitutionMiddlewareTest.php
-!/tests/Feature/SSLVerificationTest.php
-!/tests/Feature/BelongsToInstitutionTest.php
-!/tests/Feature/KlassciCacheInvalidationTest.php
-!/tests/Feature/EnsureRole403ResponseShapeTest.php
-!/tests/Feature/SanctumTokenExpirationTest.php
-!/tests/Feature/AdminAnalyticsCacheIsolationTest.php
-!/tests/Feature/KlassciProxyServiceInstitutionResolutionTest.php
-!/tests/Feature/SupradminSeederTest.php
-!/tests/Feature/FileConversion/**
-!/tests/Feature/Forum/**
-!/tests/Feature/Quiz/**
-!/tests/Feature/Notifications/**
-!/tests/Feature/Files/**
-!/tests/Feature/LMS/**
-!/tests/Feature/Security/**
-!/tests/Unit/Middleware/**
+# Tous les tests sont versionnes. Ne jamais reintroduire une exclusion globale
+# de /tests : elle rend les preuves locales invisibles pour la CI (#458).
 .env.example
 .env.production.example
 package.json

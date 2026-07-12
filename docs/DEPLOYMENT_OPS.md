@@ -16,13 +16,13 @@
 La prod est un **cPanel mutualisé Linux** (`/home/c2569688c/public_html/lms-backend`) :
 pas de Supervisor, pas de systemd, pas de démon possible. Tout repose donc sur
 **UN SEUL cron** qui exécute le scheduler Laravel chaque minute ; le scheduler
-orchestre lui-même les 13 tâches versionnées dans [`routes/console.php`](../routes/console.php),
+orchestre lui-même les 14 tâches versionnées dans [`routes/console.php`](../routes/console.php),
 **y compris le worker de queue** (voir §3).
 
 ```
 cron cPanel (1 ligne, chaque minute)
    └── php artisan schedule:run
-         ├── 10 tâches métier (tableau §5)
+         ├── 11 tâches métier (tableau §5)
          ├── scheduler:heartbeat      → marqueur de vie en cache (§4)
          ├── queue:healthcheck      → surveille jobs/failed_jobs (§4)
          └── queue:work --stop-when-empty --max-time=55   → draine la table jobs (§3)
@@ -48,7 +48,7 @@ cron cPanel (1 ligne, chaque minute)
 
 ```bash
 cd /home/c2569688c/public_html/lms-backend
-php artisan schedule:list        # les 13 tâches du §5 doivent apparaître
+php artisan schedule:list        # les 14 tâches du §5 doivent apparaître
 php artisan schedule:run         # exécution manuelle d'un tick
 php artisan scheduler:healthcheck && echo OK   # OK après 1-2 minutes de cron
 php artisan queue:healthcheck && echo OK       # OK si jobs/failed_jobs sont sains
@@ -107,7 +107,7 @@ healthcheck n'écrit **que en cas d'échec**, chaque e-mail reçu = alerte réel
 > dernier cas, brancher un monitoring **externe** (ex. UptimeRobot sur une
 > future route dédiée, ou un cron d'une autre machine en SSH).
 
-## 5. Tableau des tâches planifiées (13)
+## 5. Tableau des tâches planifiées (14)
 
 | # | Nom (`schedule:list`) | Type | Fréquence | Rôle |
 |---|---|---|---|---|
@@ -119,6 +119,7 @@ healthcheck n'écrit **que en cas d'échec**, chaque e-mail reçu = alerte réel
 | 6 | `archive-old-seances` | Job | `0 2 * * *` | Archive les séances de plus de 2 semaines. |
 | 7 | `clean-old-evaluations` | Job | `0 3 * * *` | Archive les évaluations terminées sans soumission (7+ j). |
 | 8 | `purge-audit-logs` | Commande | `30 3 * * *` | Purge du journal d'audit au-delà de la rétention (#215). |
+| 8a | `purge-visio-recordings` | Commande | `45 3 * * *` | Applique la rétention RGPD des enregistrements visio (#461). |
 | 9 | `notify-upcoming-evaluations` | Commande | `0 8 * * *` | Rappels étudiants 24 h avant évaluation. |
 | 10 | `cleanup-old-notifications` | Closure | `0 4 * * 0` | Supprime les notifications lues > 30 j. |
 | 11 | `scheduler-heartbeat` **(nouveau #369)** | Commande | `* * * * *` | Marqueur de vie lu par `scheduler:healthcheck`. |

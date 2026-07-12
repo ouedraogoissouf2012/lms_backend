@@ -76,7 +76,7 @@ final class ScheduleRegistrationTest extends TestCase
         $this->assertTrue($event->withoutOverlapping);
         $this->assertTrue($event->onOneServer);
         // runInBackground : le drain de la queue ne doit pas bloquer le tick
-        // du scheduler (les 11 autres tâches passent dans le même schedule:run).
+        // du scheduler (les 13 autres tâches passent dans le même schedule:run).
         $this->assertTrue($event->runInBackground);
     }
 
@@ -91,6 +91,17 @@ final class ScheduleRegistrationTest extends TestCase
         $this->assertStringContainsString('--max-age-minutes=5', (string) $event->command);
         $this->assertStringContainsString('--max-failed=0', (string) $event->command);
         $this->assertTrue($event->withoutOverlapping);
+    }
+
+    public function test_recording_retention_runs_daily_with_explicit_apply(): void
+    {
+        $event = $this->scheduledEvents()->get('purge-visio-recordings');
+
+        $this->assertNotNull($event);
+        $this->assertSame('45 3 * * *', $event->expression);
+        $this->assertStringContainsString('recordings:purge --apply', (string) $event->command);
+        $this->assertTrue($event->withoutOverlapping);
+        $this->assertTrue($event->onOneServer);
     }
 
     public function test_scheduled_jobs_dispatch_to_priority_queues(): void

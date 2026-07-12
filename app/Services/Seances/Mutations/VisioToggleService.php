@@ -9,7 +9,7 @@ use App\Models\Seance;
 use App\Models\User;
 use App\Services\ClasseSyncService;
 use App\Services\KlassciProxyService;
-use App\Services\NotificationService;
+use App\Services\Notification\AsyncVisioNotificationDispatcher;
 use App\Services\Visio\SecureVisioRoomIdGenerator;
 use Psr\Log\LoggerInterface;
 use Throwable;
@@ -36,7 +36,7 @@ final class VisioToggleService
     public function __construct(
         private readonly KlassciProxyService $klassciService,
         private readonly ClasseSyncService $classeSyncService,
-        private readonly NotificationService $notificationService,
+        private readonly AsyncVisioNotificationDispatcher $notifications,
         private readonly LoggerInterface $logger,
     ) {}
 
@@ -109,6 +109,7 @@ final class VisioToggleService
                         'visio_room_id' => $visio->visio_room_id,
                         'visio_active' => $visio->visio_active,
                         'notifications_sent' => $notificationsSent,
+                        'notifications_queued' => $enabled && $klassciToken !== null && $klassciToken !== '',
                     ],
                 ],
             ];
@@ -157,19 +158,18 @@ final class VisioToggleService
                 );
             }
 
-            $notificationsSent = $this->notificationService->notifyVisioScheduled($seanceId, [
+            $this->notifications->queueScheduled($seanceId, [
                 'klassci_classe_id' => $seanceData['classe_id'] ?? null,
                 'klassci_enseignant_id' => $seanceData['enseignant_id'] ?? null,
                 'matiere_nom' => $seanceData['matiere_nom'] ?? 'Matière',
                 'enseignant_nom' => $seanceData['enseignant_nom'] ?? 'Enseignant',
             ]);
 
-            $this->logger->info('Notifications visio envoyées via toggleVisio', [
+            $this->logger->info('Notifications visio planifiées via toggleVisio', [
                 'seance_id' => $seanceId,
-                'notifications_sent' => $notificationsSent,
             ]);
 
-            return $notificationsSent;
+            return 0;
         } catch (Throwable $e) {
             $this->logger->error('Erreur envoi notifications via toggleVisio', [
                 'seance_id' => $seanceId,

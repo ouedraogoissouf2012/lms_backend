@@ -612,72 +612,11 @@ parameters:
 			count: 1
 			path: app/Jobs/SyncKlassciSeances.php
 
-
-
-
-
-
-
-
-
-
-
-
-
-
 		-
 			message: '#^Parameter \#1 \$num of function round expects float\|int, float\|int\|null given\.$#'
 			identifier: argument.type
 			count: 1
 			path: app/Services/Attendances/SeanceAttendancesQueryService.php
-
-		-
-			message: '#^Parameter \#1 \$attributes of static method Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\ESBTPAttendance\>\:\:updateOrCreate\(\) expects array\<model property of App\\Models\\ESBTPAttendance, mixed\>, array\<string, mixed\> given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Services/Attendances/VideoSessionAttendancesSyncer.php
-
-		-
-			message: '#^Parameter \#1 \$column of method Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\ESBTPAttendance\>\:\:where\(\) expects array\<int\|model property of App\\Models\\ESBTPAttendance, mixed\>\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\ESBTPAttendance\>\)\: Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\ESBTPAttendance\>\)\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\ESBTPAttendance\>\)\: void\)\|Illuminate\\Contracts\\Database\\Query\\Expression\|model property of App\\Models\\ESBTPAttendance, ''date'' given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Services/Attendances/VideoSessionAttendancesSyncer.php
-
-		-
-			message: '#^Parameter \#1 \$column of method Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\ESBTPAttendance\>\:\:where\(\) expects array\<int\|model property of App\\Models\\ESBTPAttendance, mixed\>\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\ESBTPAttendance\>\)\: Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\ESBTPAttendance\>\)\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\ESBTPAttendance\>\)\: void\)\|Illuminate\\Contracts\\Database\\Query\\Expression\|model property of App\\Models\\ESBTPAttendance, ''etudiant_id'' given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Services/Attendances/VideoSessionAttendancesSyncer.php
-
-		-
-			message: '#^Parameter \#1 \$column of static method Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\ESBTPAttendance\>\:\:where\(\) expects array\<int\|model property of App\\Models\\ESBTPAttendance, mixed\>\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\ESBTPAttendance\>\)\: Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\ESBTPAttendance\>\)\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\ESBTPAttendance\>\)\: void\)\|Illuminate\\Contracts\\Database\\Query\\Expression\|model property of App\\Models\\ESBTPAttendance, ''seance_cours_id'' given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Services/Attendances/VideoSessionAttendancesSyncer.php
-
-		-
-			message: '#^Parameter \#2 \$values of static method Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\ESBTPAttendance\>\:\:updateOrCreate\(\) expects array\<model property of App\\Models\\ESBTPAttendance, mixed\>, array\<string, mixed\> given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Services/Attendances/VideoSessionAttendancesSyncer.php
-
-		-
-			message: '#^Part \$durationMinutes \(mixed\) of encapsed string cannot be cast to string\.$#'
-			identifier: encapsedStringPart.nonString
-			count: 1
-			path: app/Services/Attendances/VideoSessionAttendancesSyncer.php
-
-		-
-			message: '#^Part \$joinedAt \(mixed\) of encapsed string cannot be cast to string\.$#'
-			identifier: encapsedStringPart.nonString
-			count: 1
-			path: app/Services/Attendances/VideoSessionAttendancesSyncer.php
-
-		-
-			message: '#^Part \$leftAt \(mixed\) of encapsed string cannot be cast to string\.$#'
-			identifier: encapsedStringPart.nonString
-			count: 1
-			path: app/Services/Attendances/VideoSessionAttendancesSyncer.php
 
 		-
 			message: '#^Method App\\Services\\Chapter\\ChapterAccessGate\:\:blockingQuiz\(\) never returns array\{chapter_id\: int, chapter_title\: string, quiz_title\: string, passing_score\: int\} so it can be removed from the return type\.$#'

@@ -119,7 +119,8 @@ Route::middleware(['auth:sanctum', 'klassci.sync'])->prefix('lms')->group(functi
 
     // Valider l'accès d'un participant
     Route::post('/seances/{seanceId}/validate-participant', [LMSSeanceParticipantMutationController::class, 'validateParticipant'])
-        ->name('lms.seances.validate-participant');
+        ->name('lms.seances.validate-participant')
+        ->middleware('role:enseignant,coordinateur,admin,superAdmin');
 
     // Toggle visio pour séance (coordinateurs uniquement)
     Route::post('/seances/{seanceId}/toggle-visio', [LMSSeanceVisibilityMutationController::class, 'toggleVisioSeance'])
@@ -128,7 +129,8 @@ Route::middleware(['auth:sanctum', 'klassci.sync'])->prefix('lms')->group(functi
 
     // Synchroniser les attendances depuis une session vidéo
     Route::post('/attendances/from-video-session', [LMSAttendancesController::class, 'syncAttendancesFromVideoSession'])
-        ->name('lms.attendances.from-video-session');
+        ->name('lms.attendances.from-video-session')
+        ->middleware('role:enseignant,coordinateur,admin,superAdmin');
 
     // Historique des présences (accessible même si séances archivées)
     Route::get('/attendance/history', [LMSAttendancesController::class, 'getAttendanceHistory'])

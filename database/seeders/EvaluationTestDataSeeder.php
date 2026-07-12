@@ -2,11 +2,11 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Seeder;
 use App\Models\Evaluation;
 use App\Models\EvaluationQuestion;
 use App\Models\EvaluationSubmission;
-use App\Models\EvaluationAnswer;
+use App\Models\Institution;
+use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 
 class EvaluationTestDataSeeder extends Seeder
@@ -20,6 +20,16 @@ class EvaluationTestDataSeeder extends Seeder
 
         try {
             echo "🌱 Création des données de test pour Résultats Évaluations...\n\n";
+
+            $institution = Institution::firstOrCreate(
+                ['slug' => 'presentation'],
+                [
+                    'name' => 'KLASSCI Présentation',
+                    'klassci_api_url' => env('KLASSCI_PRESENTATION_URL', 'http://presentation.klassci.com/api/lms'),
+                    'klassci_api_token_encrypted' => env('KLASSCI_PRESENTATION_TOKEN', env('KLASSCI_API_TOKEN')),
+                    'is_active' => true,
+                ]
+            );
 
             // 1. Créer une évaluation de test
             echo "📝 Création de l'évaluation de test...\n";
@@ -39,6 +49,7 @@ class EvaluationTestDataSeeder extends Seeder
                     'is_published' => true,
                     'type' => 'qcm',
                     'status' => 'active',
+                    'institution_id' => $institution->id,
                 ]
             );
             echo "   ✅ Évaluation créée: ID {$evaluation->id}\n\n";
@@ -51,35 +62,35 @@ class EvaluationTestDataSeeder extends Seeder
                     'type' => 'qcm',
                     'points' => 5,
                     'options' => ['x = 5', 'x = 10', 'x = 15', 'x = 20'],
-                    'reponse_correcte' => 'x = 5'
+                    'reponse_correcte' => 'x = 5',
                 ],
                 [
                     'question' => 'Calculer: (3 + 5) × 2',
                     'type' => 'qcm',
                     'points' => 3,
                     'options' => ['8', '16', '10', '13'],
-                    'reponse_correcte' => '16'
+                    'reponse_correcte' => '16',
                 ],
                 [
                     'question' => 'Simplifier: 12/16',
                     'type' => 'qcm',
                     'points' => 4,
                     'options' => ['3/4', '6/8', '1/2', '2/3'],
-                    'reponse_correcte' => '3/4'
+                    'reponse_correcte' => '3/4',
                 ],
                 [
                     'question' => 'Résoudre: x² = 25',
                     'type' => 'qcm',
                     'points' => 5,
                     'options' => ['x = 5', 'x = -5', 'x = ±5', 'x = 12.5'],
-                    'reponse_correcte' => 'x = ±5'
+                    'reponse_correcte' => 'x = ±5',
                 ],
                 [
                     'question' => 'Calculer: 15% de 80',
                     'type' => 'qcm',
                     'points' => 3,
                     'options' => ['10', '12', '15', '20'],
-                    'reponse_correcte' => '12'
+                    'reponse_correcte' => '12',
                 ],
             ];
 
@@ -87,15 +98,16 @@ class EvaluationTestDataSeeder extends Seeder
                 $question = EvaluationQuestion::firstOrCreate(
                     [
                         'evaluation_id' => $evaluation->id,
-                        'question' => $questionData['question']
+                        'question' => $questionData['question'],
                     ],
                     [
                         'type' => $questionData['type'],
                         'points' => $questionData['points'],
                         'ordre' => $index + 1,
-                        'options' => json_encode($questionData['options']),
-                        'reponse_correcte' => $questionData['reponse_correcte'],
-                        'explication' => 'Explication de la réponse correcte'
+                        'options' => $questionData['options'],
+                        'correct_answers' => [$questionData['reponse_correcte']],
+                        'explanation' => 'Explication de la réponse correcte',
+                        'institution_id' => $institution->id,
                     ]
                 );
                 $num = $index + 1;
@@ -119,7 +131,7 @@ class EvaluationTestDataSeeder extends Seeder
                 // 2 étudiants n'ont pas encore soumis (pour tester le cas "non passée")
             ];
 
-            $totalPoints = collect($questions)->sum(function($q) {
+            $totalPoints = collect($questions)->sum(function ($q) {
                 return $q['points'];
             });
 
@@ -130,43 +142,22 @@ class EvaluationTestDataSeeder extends Seeder
                 $submission = EvaluationSubmission::firstOrCreate(
                     [
                         'evaluation_id' => $evaluation->id,
-                        'klassci_etudiant_id' => $etudiant['id']
+                        'klassci_etudiant_id' => $etudiant['id'],
                     ],
                     [
                         'score' => $score,
                         'note_sur_20' => round($noteSur20, 2),
-                        'duree_secondes' => rand(1800, 3600),
                         'status' => 'soumis',
                         'attempt' => 1,
                         'submitted_at' => now()->subDays(rand(1, 5)),
+                        'answers' => collect($questions)->mapWithKeys(function ($questionData, $index) {
+                            return ['q'.($index + 1) => $questionData['reponse_correcte']];
+                        })->all(),
+                        'institution_id' => $institution->id,
                     ]
                 );
 
                 echo "   ✅ Soumission créée: {$etudiant['prenom']} {$etudiant['nom']} - {$submission->note_sur_20}/20\n";
-
-                // Créer les réponses pour chaque question
-                foreach ($questions as $index => $questionData) {
-                    $question = EvaluationQuestion::where('evaluation_id', $evaluation->id)
-                        ->where('question', $questionData['question'])
-                        ->first();
-
-                    // Simuler des bonnes/mauvaises réponses selon le score
-                    $isCorrect = (rand(1, 100) <= $etudiant['score_pct']);
-                    $reponse = $isCorrect ? $questionData['reponse_correcte'] : $questionData['options'][0];
-                    $points = $isCorrect ? $questionData['points'] : 0;
-
-                    EvaluationAnswer::firstOrCreate(
-                        [
-                            'submission_id' => $submission->id,
-                            'question_id' => $question->id,
-                        ],
-                        [
-                            'reponse' => $reponse,
-                            'points_obtenus' => $points,
-                            'est_correcte' => $isCorrect,
-                        ]
-                    );
-                }
             }
 
             DB::commit();
@@ -177,14 +168,14 @@ class EvaluationTestDataSeeder extends Seeder
             echo "═══════════════════════════════════════════════════════════════\n";
             echo "📊 Résumé:\n";
             echo "   - 1 Évaluation (ID: {$evaluation->id})\n";
-            echo "   - " . count($questions) . " Questions\n";
-            echo "   - " . count($etudiants) . " Soumissions\n";
+            echo '   - '.count($questions)." Questions\n";
+            echo '   - '.count($etudiants)." Soumissions\n";
             echo "   - 2 Étudiants sans soumission (pour tester 'Non passée')\n";
             echo "═══════════════════════════════════════════════════════════════\n";
 
         } catch (\Exception $e) {
             DB::rollBack();
-            echo "\n❌ ERREUR: " . $e->getMessage() . "\n";
+            echo "\n❌ ERREUR: ".$e->getMessage()."\n";
             throw $e;
         }
     }

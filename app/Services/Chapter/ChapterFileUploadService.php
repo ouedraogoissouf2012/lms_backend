@@ -7,6 +7,7 @@ namespace App\Services\Chapter;
 use App\Models\Chapter;
 use App\Services\FileConversionService;
 use Illuminate\Http\UploadedFile;
+use LogicException;
 use Psr\Log\LoggerInterface;
 use Throwable;
 
@@ -38,6 +39,8 @@ final class ChapterFileUploadService
 
     public function __construct(
         private readonly FileConversionService $fileConversionService,
+        private readonly AsyncChapterConversionDispatcher $asyncDispatcher,
+        private readonly AsyncChapterConversionStore $asyncStore,
         private readonly LoggerInterface $logger,
     ) {}
 
@@ -50,23 +53,14 @@ final class ChapterFileUploadService
     {
         try {
             $chapter = Chapter::findOrFail($chapterId);
-            $extension = strtolower($file->getClientOriginalExtension());
 
             $this->logger->info('Upload fichier', [
                 'chapter_id' => $chapterId,
                 'filename' => $file->getClientOriginalName(),
-                'size' => round($file->getSize() / 1024 / 1024, 2) . ' MB',
+                'size' => round($file->getSize() / 1024 / 1024, 2).' MB',
             ]);
 
-            if (in_array($extension, ['pptx', 'ppt'], true)) {
-                $this->handlePowerPoint($chapter, $file, $chapterId);
-            } elseif (in_array($extension, ['docx', 'doc'], true)) {
-                $this->handleWord($chapter, $file, $chapterId);
-            } elseif ($extension === 'pdf') {
-                $this->handlePdf($chapter, $file, $chapterId);
-            } elseif (in_array($extension, self::VIDEO_EXTENSIONS, true)) {
-                $this->handleVideo($chapter, $file, $chapterId);
-            }
+            $this->processUploadedFile($chapter, $file);
 
             return [
                 'status' => 200,
@@ -92,9 +86,139 @@ final class ChapterFileUploadService
         }
     }
 
+    /** @return array{status:int, payload: array<string, mixed>} */
+    public function uploadAsync(int $chapterId, UploadedFile $file, ?int $userId): array
+    {
+        if ($userId === null || ! $this->isConvertible($file)) {
+            return $this->uploadAndProcess($chapterId, $file);
+        }
+
+        try {
+            Chapter::findOrFail($chapterId);
+            $tracking = $this->asyncDispatcher->dispatch($chapterId, $file, $userId);
+
+            return [
+                'status' => 202,
+                'payload' => [
+                    'success' => true,
+                    'data' => $tracking,
+                    'message' => 'Conversion fichier acceptée et planifiée',
+                ],
+            ];
+        } catch (Throwable $e) {
+            $this->logger->error('Erreur planification conversion fichier', [
+                'chapter_id' => $chapterId,
+                'error' => $e->getMessage(),
+            ]);
+
+            return [
+                'status' => 500,
+                'payload' => [
+                    'success' => false,
+                    'message' => 'Une erreur est survenue.',
+                ],
+            ];
+        }
+    }
+
+    /** @return array{status:int, payload: array<string, mixed>} */
+    public function asyncStatus(string $id, ?int $userId): array
+    {
+        $payload = $this->asyncStore->get($id);
+        if ($payload === null || $userId === null || $this->intPayload($payload, 'user_id') !== $userId) {
+            return [
+                'status' => 404,
+                'payload' => [
+                    'success' => false,
+                    'message' => 'Conversion introuvable.',
+                ],
+            ];
+        }
+
+        return [
+            'status' => 200,
+            'payload' => [
+                'success' => true,
+                'data' => $this->publicStatus($payload),
+            ],
+        ];
+    }
+
+    public function processUploadedFile(Chapter $chapter, UploadedFile $file): void
+    {
+        $chapterId = $this->chapterId($chapter);
+        $extension = strtolower($file->getClientOriginalExtension());
+
+        if (in_array($extension, ['pptx', 'ppt'], true)) {
+            $this->handlePowerPoint($chapter, $file, $chapterId);
+        } elseif (in_array($extension, ['docx', 'doc'], true)) {
+            $this->handleWord($chapter, $file, $chapterId);
+        } elseif ($extension === 'pdf') {
+            $this->handlePdf($chapter, $file, $chapterId);
+        } elseif (in_array($extension, self::VIDEO_EXTENSIONS, true)) {
+            $this->handleVideo($chapter, $file, $chapterId);
+        }
+    }
+
+    private function isConvertible(UploadedFile $file): bool
+    {
+        return in_array(strtolower($file->getClientOriginalExtension()), [
+            'pptx',
+            'ppt',
+            'docx',
+            'doc',
+            'pdf',
+        ], true);
+    }
+
     /**
-     * Conversion PowerPoint (pptx/ppt) → images de slides.
+     * @param  array<string, mixed>  $payload
+     * @return array<string, mixed>
      */
+    private function publicStatus(array $payload): array
+    {
+        return [
+            'id' => $payload['id'] ?? null,
+            'chapter_id' => $payload['chapter_id'] ?? null,
+            'status' => $payload['status'] ?? 'pending',
+            'message' => $payload['message'] ?? null,
+            'created_at' => $payload['created_at'] ?? null,
+            'updated_at' => $payload['updated_at'] ?? null,
+        ];
+    }
+
+    private function chapterId(Chapter $chapter): int
+    {
+        $id = $chapter->getKey();
+        if (is_int($id)) {
+            return $id;
+        }
+
+        if (is_string($id) && ctype_digit($id)) {
+            return (int) $id;
+        }
+
+        throw new LogicException('Chapter must have a numeric primary key.');
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     */
+    private function intPayload(array $payload, string $key): int
+    {
+        $value = $payload[$key] ?? null;
+        if (is_int($value)) {
+            return $value;
+        }
+
+        if (is_string($value) && ctype_digit($value)) {
+            return (int) $value;
+        }
+
+        throw new LogicException('Async conversion payload must contain numeric identifiers.');
+    }
+
+    /** Conversion PowerPoint (pptx/ppt) → images de slides. */
     private function handlePowerPoint(Chapter $chapter, UploadedFile $file, int $chapterId): void
     {
         $result = $this->fileConversionService->convertPowerPoint($file, $chapterId);

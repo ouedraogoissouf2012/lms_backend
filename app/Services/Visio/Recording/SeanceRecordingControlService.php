@@ -10,6 +10,7 @@ use App\Models\SeanceRecording;
 use App\Models\User;
 use App\Services\Audit\AuditLogger;
 use Illuminate\Contracts\Cache\Repository as CacheRepository;
+use Illuminate\Database\UniqueConstraintViolationException;
 
 final class SeanceRecordingControlService
 {
@@ -38,12 +39,19 @@ final class SeanceRecordingControlService
         $recording = $this->latestRecording($seance);
         $created = false;
         if ($recording === null || ! $recording->status->isActive()) {
-            $recording = SeanceRecording::query()->create([
-                'seance_id' => $seance->id,
-                'status' => SeanceRecordingStatus::Recording,
-                'started_at' => now(),
-            ]);
-            $created = true;
+            try {
+                $recording = SeanceRecording::query()->create([
+                    'seance_id' => $seance->id,
+                    'status' => SeanceRecordingStatus::Recording,
+                    'started_at' => now(),
+                ]);
+                $created = true;
+            } catch (UniqueConstraintViolationException $exception) {
+                $recording = $this->activeRecording($seance);
+                if ($recording === null) {
+                    throw $exception;
+                }
+            }
         }
 
         $this->cachePayload($seance, $recording);
@@ -119,6 +127,13 @@ final class SeanceRecordingControlService
         return SeanceRecording::query()
             ->where('seance_id', $seance->id)
             ->latest('id')
+            ->first();
+    }
+
+    private function activeRecording(Seance $seance): ?SeanceRecording
+    {
+        return SeanceRecording::query()
+            ->where('active_lock_key', SeanceRecording::activeLockKeyForSeance($seance->id))
             ->first();
     }
 

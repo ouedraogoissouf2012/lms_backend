@@ -27,8 +27,8 @@ final class VisioNotificationDispatcher
     public function __construct(
         private readonly NotificationDispatcher $dispatcher,
         private readonly LoggerInterface $logger,
-    ) {
-    }
+        private readonly VisioNotificationIdempotencyGuard $idempotency,
+    ) {}
 
     /**
      * Notifier les étudiants de la classe qu'une visio a été programmée.
@@ -40,20 +40,16 @@ final class VisioNotificationDispatcher
      */
     public function notifyVisioScheduled(int $seanceId, array $seanceData): int
     {
-        $existingNotifications = Notification::where('type', Notification::TYPE_VISIO_SCHEDULED)
-            ->where('data->seance_id', $seanceId)
-            ->where('created_at', '>', now()->subDay())
-            ->count();
+        return $this->idempotency->run(
+            Notification::TYPE_VISIO_SCHEDULED,
+            $seanceId,
+            fn (): int => $this->dispatchScheduled($seanceId, $seanceData),
+        );
+    }
 
-        if ($existingNotifications > 0) {
-            $this->logger->info('Notifications déjà envoyées pour cette séance', [
-                'seance_id' => $seanceId,
-                'existing_count' => $existingNotifications,
-            ]);
-
-            return 0;
-        }
-
+    /** @param array<string, mixed> $seanceData */
+    private function dispatchScheduled(int $seanceId, array $seanceData): int
+    {
         $students = $this->resolveStudentsForScheduled($seanceId, $seanceData);
 
         if ($students->isEmpty()) {
@@ -68,7 +64,7 @@ final class VisioNotificationDispatcher
         $matiere = $seanceData['matiere_nom'] ?? 'Matière inconnue';
         $enseignant = $seanceData['enseignant_nom'] ?? 'Enseignant';
 
-        $title = "Visioconférence programmée";
+        $title = 'Visioconférence programmée';
         $message = "Une visioconférence a été programmée en {$matiere} avec {$enseignant}.";
         $data = [
             'seance_id' => $seanceId,
@@ -86,6 +82,16 @@ final class VisioNotificationDispatcher
      */
     public function notifyVisioStarting(int $seanceId, array $seanceData): int
     {
+        return $this->idempotency->run(
+            Notification::TYPE_VISIO_STARTING,
+            $seanceId,
+            fn (): int => $this->dispatchStarting($seanceId, $seanceData),
+        );
+    }
+
+    /** @param array<string, mixed> $seanceData */
+    private function dispatchStarting(int $seanceId, array $seanceData): int
+    {
         $students = $this->resolveStudentsForStarting($seanceData);
         $teacher = $this->resolveTeacher($seanceData);
 
@@ -93,7 +99,7 @@ final class VisioNotificationDispatcher
         $matiere = $seanceData['matiere_nom'] ?? 'Matière inconnue';
 
         if ($students->isNotEmpty()) {
-            $title = "Visioconférence en cours";
+            $title = 'Visioconférence en cours';
             $message = "La visioconférence de {$matiere} a démarré. Rejoignez maintenant !";
             $data = [
                 'seance_id' => $seanceId,
@@ -104,7 +110,7 @@ final class VisioNotificationDispatcher
         }
 
         if ($teacher) {
-            $title = "Votre visioconférence a démarré";
+            $title = 'Votre visioconférence a démarré';
             $message = "Votre visioconférence de {$matiere} est maintenant active.";
             $data = [
                 'seance_id' => $seanceId,

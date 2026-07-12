@@ -1669,12 +1669,6 @@ parameters:
 			path: app/Services/Notification/QuizNotificationDispatcher.php
 
 		-
-			message: '#^Parameter \#1 \$column of method Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Notification\>\:\:where\(\) expects array\<int\|model property of App\\Models\\Notification, mixed\>\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Notification\>\)\: Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Notification\>\)\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Notification\>\)\: void\)\|Illuminate\\Contracts\\Database\\Query\\Expression\|model property of App\\Models\\Notification, ''data\-\>seance_id'' given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Services/Notification/VisioNotificationDispatcher.php
-
-		-
 			message: '#^Part \$enseignant \(mixed\) of encapsed string cannot be cast to string\.$#'
 			identifier: encapsedStringPart.nonString
 			count: 1

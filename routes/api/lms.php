@@ -53,6 +53,7 @@ use App\Http\Controllers\API\LMS\LMSSeancesListController;
 use App\Http\Controllers\API\LMS\LMSSeanceVisibilityMutationController;
 use App\Http\Controllers\API\LMS\LMSVisioLifecycleController;
 use App\Http\Controllers\API\LMS\LMSVisioParticipantController;
+use App\Http\Controllers\API\LMS\LMSVisioRecordingController;
 
 Route::middleware(['auth:sanctum', 'klassci.sync'])->prefix('lms')->group(function () {
     // Détails complets d'une classe
@@ -163,6 +164,17 @@ Route::middleware(['auth:sanctum', 'klassci.sync'])->prefix('lms')->group(functi
     Route::post('/seances/{seanceId}/end-visio', [LMSVisioLifecycleController::class, 'endVisio'])
         ->name('lms.seances.end-visio')
         ->middleware('role:enseignant,coordinateur');
+
+    Route::post('/seances/{seanceId}/recording/start', [LMSVisioRecordingController::class, 'start'])
+        ->name('lms.seances.recording.start')
+        ->middleware('role:enseignant');
+
+    Route::post('/seances/{seanceId}/recording/stop', [LMSVisioRecordingController::class, 'stop'])
+        ->name('lms.seances.recording.stop')
+        ->middleware('role:enseignant');
+
+    Route::get('/seances/{seanceId}/recording', [LMSVisioRecordingController::class, 'show'])
+        ->name('lms.seances.recording.show');
 
     // Étudiant rejoint visio
     Route::post('/seances/{seanceId}/join', [LMSVisioParticipantController::class, 'joinVisio'])

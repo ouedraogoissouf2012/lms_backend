@@ -69,10 +69,7 @@ final class ScheduleRegistrationTest extends TestCase
 
         $this->assertNotNull($event, 'Sans worker planifié, les jobs s\'accumulent dans la table jobs (cPanel sans Supervisor).');
         $this->assertSame('* * * * *', $event->expression);
-        $this->assertStringContainsString('queue:work', (string) $event->command);
-        $this->assertStringContainsString('--queue=high,default,low', (string) $event->command);
-        $this->assertStringContainsString('--stop-when-empty', (string) $event->command);
-        $this->assertStringContainsString('--max-time=', (string) $event->command);
+        $this->assertStringContainsString('queue:drain', (string) $event->command);
         $this->assertTrue($event->withoutOverlapping);
         $this->assertTrue($event->onOneServer);
         // runInBackground : le drain de la queue ne doit pas bloquer le tick
@@ -90,6 +87,7 @@ final class ScheduleRegistrationTest extends TestCase
         $this->assertStringContainsString('--max-pending=1000', (string) $event->command);
         $this->assertStringContainsString('--max-age-minutes=5', (string) $event->command);
         $this->assertStringContainsString('--max-failed=0', (string) $event->command);
+        $this->assertStringContainsString('--max-worker-heartbeat-minutes=5', (string) $event->command);
         $this->assertTrue($event->withoutOverlapping);
     }
 

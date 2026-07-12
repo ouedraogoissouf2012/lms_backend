@@ -122,7 +122,7 @@ Schedule::command('scheduler:heartbeat')
 // Healthcheck cPanel-safe de la queue database (#379) — pas de Redis requis.
 // Échoue si failed_jobs > 0, si trop de jobs attendent, ou si le plus vieux
 // job pending dépasse le seuil. Succès silencieux ; incident loggé + exit 1.
-Schedule::command('queue:healthcheck --max-pending=1000 --max-age-minutes=5 --max-failed=0')
+Schedule::command('queue:healthcheck --max-pending=1000 --max-age-minutes=5 --max-failed=0 --max-worker-heartbeat-minutes=5')
     ->everyFiveMinutes()
     ->name('queue-healthcheck')
     ->withoutOverlapping();
@@ -137,7 +137,7 @@ Schedule::command('queue:healthcheck --max-pending=1000 --max-age-minutes=5 --ma
 //   withoutOverlapping(10) : verrou à expiration COURTE — si le process est
 //                       tué net (kill -9 hébergeur), le verrou par défaut
 //                       (24 h) gèlerait la queue ; 10 min = auto-guérison.
-Schedule::command('queue:work --queue=high,default,low --stop-when-empty --max-time=55')
+Schedule::command('queue:drain')
     ->everyMinute()
     ->name('queue-worker')
     ->withoutOverlapping(10)

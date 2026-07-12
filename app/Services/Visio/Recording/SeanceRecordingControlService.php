@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace App\Services\Visio\Recording;
 
+use App\Enums\SeanceRecordingStatus;
 use App\Models\ESBTPAttendance;
 use App\Models\Seance;
+use App\Models\SeanceRecording;
 use App\Models\User;
 use App\Models\UserClass;
 use Illuminate\Contracts\Cache\Repository as CacheRepository;
@@ -30,21 +32,18 @@ final class SeanceRecordingControlService
             return $this->fail(403, 'Acces reserve a l enseignant proprietaire');
         }
 
-        $state = $this->state($seance);
-        if ($state['status'] === 'idle' || $state['status'] === 'failed') {
-            $state = [
-                'id' => $this->recordingId($seance),
-                'status' => 'recording',
-                'url' => null,
-                'started_at' => now()->toIso8601String(),
-                'stopped_at' => null,
-                'processed_at' => null,
-                'error_message' => null,
-            ];
-            $this->cache->put($this->cacheKey($seance), $state, self::CACHE_TTL_SECONDS);
+        $recording = $this->latestRecording($seance);
+        if ($recording === null || ! $recording->status->isActive()) {
+            $recording = SeanceRecording::query()->create([
+                'seance_id' => $seance->id,
+                'status' => SeanceRecordingStatus::Recording,
+                'started_at' => now(),
+            ]);
         }
 
-        return $this->ok($state);
+        $this->cachePayload($seance, $recording);
+
+        return $this->ok($recording->toRecordingPayload());
     }
 
     /**
@@ -61,14 +60,21 @@ final class SeanceRecordingControlService
             return $this->fail(403, 'Acces reserve a l enseignant proprietaire');
         }
 
-        $state = $this->state($seance);
-        if ($state['status'] === 'recording') {
-            $state['status'] = 'processing';
-            $state['stopped_at'] = now()->toIso8601String();
-            $this->cache->put($this->cacheKey($seance), $state, self::CACHE_TTL_SECONDS);
+        $recording = $this->latestRecording($seance);
+        if ($recording === null) {
+            return $this->ok($this->idleState($seance));
         }
 
-        return $this->ok($state);
+        if ($recording->status === SeanceRecordingStatus::Recording) {
+            $recording->update([
+                'status' => SeanceRecordingStatus::Processing,
+                'stopped_at' => now(),
+            ]);
+        }
+
+        $this->cachePayload($seance, $recording->refresh());
+
+        return $this->ok($recording->toRecordingPayload());
     }
 
     /**
@@ -97,6 +103,14 @@ final class SeanceRecordingControlService
     private function canControlRecording(Seance $seance, User $user): bool
     {
         return $user->isTeacher() && $this->teacherOwnsSeance($seance, $user);
+    }
+
+    private function latestRecording(Seance $seance): ?SeanceRecording
+    {
+        return SeanceRecording::query()
+            ->where('seance_id', $seance->id)
+            ->latest('id')
+            ->first();
     }
 
     private function canReadRecording(Seance $seance, User $user): bool
@@ -161,6 +175,14 @@ final class SeanceRecordingControlService
     private function state(Seance $seance): array
     {
         $state = $this->cache->get($this->cacheKey($seance));
+        $recording = $this->latestRecording($seance);
+        if ($recording !== null) {
+            $payload = $recording->toRecordingPayload();
+            $this->cachePayload($seance, $recording);
+
+            return $payload;
+        }
+
         if (is_array($state)) {
             return $this->normalizeState($seance, $state);
         }
@@ -206,6 +228,11 @@ final class SeanceRecordingControlService
     private function cacheKey(Seance $seance): string
     {
         return 'visio:recording:seance:'.$seance->id;
+    }
+
+    private function cachePayload(Seance $seance, SeanceRecording $recording): void
+    {
+        $this->cache->put($this->cacheKey($seance), $recording->toRecordingPayload(), self::CACHE_TTL_SECONDS);
     }
 
     private function recordingId(Seance $seance): string

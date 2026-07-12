@@ -1,15 +1,16 @@
 <?php
 
+use App\Jobs\ArchiveOldSeances;
+use App\Jobs\AutoCloseEmptySeances;
+use App\Jobs\CleanObsoleteSeances;
+use App\Jobs\CleanOldEvaluations;
+use App\Jobs\DetectDisconnectedParticipants;
+use App\Jobs\FinalizeSeanceAttendances;
+use App\Jobs\SyncKlassciSeances;
+use App\Services\NotificationService;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;
-use App\Jobs\SyncKlassciSeances;
-use App\Jobs\AutoCloseEmptySeances;
-use App\Jobs\ArchiveOldSeances;
-use App\Jobs\CleanObsoleteSeances;
-use App\Jobs\CleanOldEvaluations;
-use App\Jobs\FinalizeSeanceAttendances;
-use App\Jobs\DetectDisconnectedParticipants;
 
 Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
@@ -58,7 +59,7 @@ Schedule::command('evaluations:notify-upcoming --hours=24')
 // Planifier le nettoyage des anciennes notifications lues
 // Supprime les notifications lues de plus de 30 jours pour alléger la base
 Schedule::call(function () {
-    app(\App\Services\NotificationService::class)->cleanupOldNotifications(30);
+    app(NotificationService::class)->cleanupOldNotifications(30);
 })
     ->weekly()
     ->sundays()
@@ -100,6 +101,14 @@ Schedule::job(new AutoCloseEmptySeances, 'high')
 Schedule::command('audit:purge')
     ->dailyAt('03:30')
     ->name('purge-audit-logs')
+    ->withoutOverlapping()
+    ->onOneServer();
+
+// Rétention RGPD des enregistrements visio (#461). L'application est
+// explicite afin qu'une invocation manuelle sans --apply reste sans effet.
+Schedule::command('recordings:purge --apply')
+    ->dailyAt('03:45')
+    ->name('purge-visio-recordings')
     ->withoutOverlapping()
     ->onOneServer();
 

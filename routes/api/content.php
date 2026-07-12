@@ -35,6 +35,8 @@ Route::middleware(['auth:sanctum', 'klassci.sync', 'role:enseignant,coordinateur
     // Upload fichier PowerPoint/Word/PDF (max 30 MB) - Rate limited: 60/min
     Route::post('chapters/{chapterId}/upload', [ChapterController::class, 'uploadFile'])
         ->middleware('throttle:60,1');
+    Route::get('chapters/uploads/{id}/status', [ChapterController::class, 'uploadStatus'])
+        ->name('chapters.uploads.status');
 
     // Réorganisation (drag & drop) - Rate limited: 100/min (frequent user action)
     Route::post('lessons/{lessonId}/chapters/reorder', [ChapterController::class, 'reorder'])

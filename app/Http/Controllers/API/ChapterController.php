@@ -13,6 +13,8 @@ use App\Http\Requests\UploadFileRequest;
 use App\Services\Chapter\ChapterCrudService;
 use App\Services\Chapter\ChapterFileUploadService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
 
 /**
  * Controller pour la gestion des chapitres.
@@ -75,7 +77,25 @@ final class ChapterController extends Controller
      */
     public function uploadFile(UploadFileRequest $request, int $chapterId): JsonResponse
     {
-        $result = $this->chapterFileUpload->uploadAndProcess($chapterId, $request->file('file'));
+        $file = $request->file('file');
+        if (! $file instanceof UploadedFile) {
+            return response()->json(['success' => false, 'message' => 'Fichier requis.'], 422);
+        }
+
+        $result = $this->wantsAsync($request)
+            ? $this->chapterFileUpload->uploadAsync($chapterId, $file, $request->user()?->id)
+            : $this->chapterFileUpload->uploadAndProcess($chapterId, $file);
+
+        return response()->json($result['payload'], $result['status']);
+    }
+
+    /**
+     * GET /api/chapters/uploads/{id}/status
+     * Statut d'une conversion fichier async.
+     */
+    public function uploadStatus(Request $request, string $id): JsonResponse
+    {
+        $result = $this->chapterFileUpload->asyncStatus($id, $request->user()?->id);
 
         return response()->json($result['payload'], $result['status']);
     }
@@ -111,5 +131,11 @@ final class ChapterController extends Controller
         $result = $this->chapterCrud->reorder($request, $lessonId);
 
         return response()->json($result['payload'], $result['status']);
+    }
+
+    private function wantsAsync(UploadFileRequest $request): bool
+    {
+        return $request->boolean('async')
+            || str_contains(strtolower((string) $request->header('Prefer')), 'respond-async');
     }
 }

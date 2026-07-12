@@ -309,3 +309,11 @@ jobs:
           echo "Fichiers app/ modifiés :"
           echo "$files"
           php scripts/check-file-sizes.php $files
+
+      - name: Ensure tests are tracked by default
+        run: |
+          if git check-ignore -q tests/.tracking-probe.php; then
+            echo "tests/ est ignore : les nouveaux tests seraient invisibles en CI."
+            exit 1
+          fi
+          echo "Politique tests OK : un nouveau test PHP est versionnable par defaut."

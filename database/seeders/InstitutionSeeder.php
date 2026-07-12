@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Models\Institution;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -52,40 +53,34 @@ class InstitutionSeeder extends Seeder
                 'slug' => 'presentation',
                 'name' => 'KLASSCI Présentation',
                 'klassci_api_url' => env('KLASSCI_PRESENTATION_URL', 'http://presentation.klassci.com/api/lms'),
-                'klassci_api_token' => env('KLASSCI_PRESENTATION_TOKEN', env('KLASSCI_API_TOKEN')),
+                'klassci_api_token_encrypted' => env('KLASSCI_PRESENTATION_TOKEN', env('KLASSCI_API_TOKEN')),
                 'is_active' => true,
-                'created_at' => now(),
-                'updated_at' => now(),
             ],
             [
                 'slug' => 'esbtp-abidjan',
                 'name' => 'ESBTP Abidjan',
                 'klassci_api_url' => env('KLASSCI_ESBTP_ABIDJAN_URL', 'https://esbtp-abidjan.klassci.com/api/lms'),
-                'klassci_api_token' => env('KLASSCI_ESBTP_ABIDJAN_TOKEN'),
+                'klassci_api_token_encrypted' => env('KLASSCI_ESBTP_ABIDJAN_TOKEN'),
                 'is_active' => true,
-                'created_at' => now(),
-                'updated_at' => now(),
             ],
             [
                 'slug' => 'esbtp-yakro',
                 'name' => 'ESBTP Yakro',
                 'klassci_api_url' => env('KLASSCI_ESBTP_YAKRO_URL', 'https://esbtp-yakro.klassci.com/api/lms'),
-                'klassci_api_token' => env('KLASSCI_ESBTP_YAKRO_TOKEN'),
+                'klassci_api_token_encrypted' => env('KLASSCI_ESBTP_YAKRO_TOKEN'),
                 'is_active' => true,
-                'created_at' => now(),
-                'updated_at' => now(),
             ],
         ];
 
         foreach ($institutions as $institution) {
-            DB::table('institutions')->updateOrInsert(
+            Institution::updateOrCreate(
                 ['slug' => $institution['slug']],
                 $institution
             );
         }
 
         // 2. Backfill : assigner toutes les données existantes à "presentation"
-        $presentationId = DB::table('institutions')->where('slug', 'presentation')->value('id');
+        $presentationId = Institution::where('slug', 'presentation')->value('id');
 
         if ($presentationId) {
             foreach ($this->tables as $tableName) {

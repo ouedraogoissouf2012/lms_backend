@@ -48,7 +48,10 @@ final class VisioRecordingEndpointsTest extends TestCase
         $start = $this->postJson($this->recordingUrl('start'));
         $start->assertOk()
             ->assertJsonPath('data.recording.status', 'recording')
-            ->assertJsonPath('data.recording.url', null);
+            ->assertJsonPath('data.recording.url', null)
+            ->assertJsonPath('data.recording.is_recording', true)
+            ->assertJsonPath('data.recording.consent_required', true)
+            ->assertJsonPath('data.recording.can_download', false);
 
         $recordingId = $start->json('data.recording.id');
         $this->postJson($this->recordingUrl('start'))
@@ -58,7 +61,8 @@ final class VisioRecordingEndpointsTest extends TestCase
 
         $this->getJson($this->recordingUrl())
             ->assertOk()
-            ->assertJsonPath('data.recording.status', 'recording');
+            ->assertJsonPath('data.recording.status', 'recording')
+            ->assertJsonPath('data.recording.retention_days', 365);
 
         $stop = $this->postJson($this->recordingUrl('stop'));
         $stop->assertOk()
@@ -69,6 +73,22 @@ final class VisioRecordingEndpointsTest extends TestCase
         $this->postJson($this->recordingUrl('stop'))
             ->assertOk()
             ->assertJsonPath('data.recording.status', 'processing');
+
+        $this->assertDatabaseHas('audit_logs', [
+            'action' => 'visio_recording_start',
+            'auditable_id' => (int) $recordingId,
+            'user_id' => $this->teacher->id,
+        ]);
+        $this->assertDatabaseHas('audit_logs', [
+            'action' => 'visio_recording_read',
+            'auditable_id' => (int) $recordingId,
+            'user_id' => $this->teacher->id,
+        ]);
+        $this->assertDatabaseHas('audit_logs', [
+            'action' => 'visio_recording_stop',
+            'auditable_id' => (int) $recordingId,
+            'user_id' => $this->teacher->id,
+        ]);
     }
 
     public function test_non_owner_teacher_cannot_control_recording(): void
@@ -96,7 +116,9 @@ final class VisioRecordingEndpointsTest extends TestCase
 
         $this->getJson($this->recordingUrl())
             ->assertOk()
-            ->assertJsonPath('data.recording.status', 'idle');
+            ->assertJsonPath('data.recording.status', 'idle')
+            ->assertJsonPath('data.recording.consent_required', false)
+            ->assertJsonPath('data.recording.consent_message', fn ($message): bool => is_string($message) && $message !== '');
 
         $this->postJson($this->recordingUrl('start'))->assertStatus(403);
     }

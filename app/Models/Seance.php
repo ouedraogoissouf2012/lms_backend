@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
@@ -62,14 +63,6 @@ class Seance extends Model
 
     protected $appends = ['current_participants_count'];
 
-    /**
-     * Compte les participants actuellement connectés (#224).
-     *
-     * Optimisé : si une query parente a préchargé le compteur via
-     * `withConnectedParticipantsCount()` (scope ci-dessous), l'attribut
-     * `connected_participants_count` est déjà présent → 0 requête. Sinon
-     * (accès unitaire à une séance isolée), fallback en 1 COUNT.
-     */
     public function getCurrentParticipantsCountAttribute(): int
     {
         $preloaded = $this->attributes['connected_participants_count'] ?? null;
@@ -80,13 +73,8 @@ class Seance extends Model
         return $this->attendances()->where('status', 'connected')->count();
     }
 
-    /**
-     * Scope: précharge le compteur de participants connectés en 1 sous-requête
-     * (élimine le N+1 de l'accessor sur les listes — #224).
-     *
-     * @param  Builder<Seance>  $query
-     * @return Builder<Seance>
-     */
+    /** @param Builder<Seance> $query
+     * @return Builder<Seance> */
     public function scopeWithConnectedParticipantsCount($query)
     {
         return $query->withCount(['attendances as connected_participants_count' => function ($q): void {
@@ -94,55 +82,47 @@ class Seance extends Model
         }]);
     }
 
-    /**
-     * Relation: toutes les participations à cette séance
-     *
-     * @return HasMany<ESBTPAttendance, $this>
-     */
+    /** @return HasMany<ESBTPAttendance, $this> */
     public function attendances()
     {
         return $this->hasMany(ESBTPAttendance::class, 'seance_id');
     }
 
-    /**
-     * Scope: Séances d'un enseignant
-     *
-     * @param  Builder<Seance>  $query
-     * @return Builder<Seance>
-     */
+    /** @return HasMany<SeanceRecording, $this> */
+    public function recordings(): HasMany
+    {
+        return $this->hasMany(SeanceRecording::class);
+    }
+
+    /** @return HasOne<SeanceRecording, $this> */
+    public function latestRecording(): HasOne
+    {
+        return $this->hasOne(SeanceRecording::class)->latestOfMany();
+    }
+
+    /** @param Builder<Seance> $query
+     * @return Builder<Seance> */
     public function scopeByTeacher($query, int $teacherId)
     {
         return $query->where('klassci_enseignant_id', $teacherId);
     }
 
-    /**
-     * Scope: Séances d'une classe
-     *
-     * @param  Builder<Seance>  $query
-     * @return Builder<Seance>
-     */
+    /** @param Builder<Seance> $query
+     * @return Builder<Seance> */
     public function scopeByClasse($query, int $classeId)
     {
         return $query->where('klassci_classe_id', $classeId);
     }
 
-    /**
-     * Scope: Séances avec visio activée
-     *
-     * @param  Builder<Seance>  $query
-     * @return Builder<Seance>
-     */
+    /** @param Builder<Seance> $query
+     * @return Builder<Seance> */
     public function scopeWithVisio($query)
     {
         return $query->where('visio_enabled', true);
     }
 
-    /**
-     * Scope: Par ID KLASSCI
-     *
-     * @param  Builder<Seance>  $query
-     * @return Builder<Seance>
-     */
+    /** @param Builder<Seance> $query
+     * @return Builder<Seance> */
     public function scopeByKlassciId($query, int $klassciSeanceId)
     {
         return $query->where('klassci_seance_id', $klassciSeanceId);

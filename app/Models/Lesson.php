@@ -2,35 +2,27 @@
 
 namespace App\Models;
 
+use App\Models\Traits\BelongsToInstitution;
+use Database\Factories\LessonFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\SoftDeletes;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
-use App\Models\Traits\BelongsToInstitution;
+use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Carbon;
 
 /**
- * Model Lesson
- *
- * Représente un cours/leçon dans le LMS
- *
  * @property LessonProgress|null $user_progress Attribut posé par LessonListService (LessonProgressService::progressForUser).
  * @property array{students_started: int, students_completed: int, average_completion_rate: float} $statistics Attribut posé par LessonListService (staff uniquement).
- * @property-read int|null $students_started Alias `withCount(['progress as students_started'])` (DashboardTeacherController).
- * @property int|null $matiere_id
- * @property int|null $classe_id
- * @property int|null $enseignant_id
  * @property string $status
- * @property int $order
- * @property \Illuminate\Support\Carbon|null $published_at
- * @property \Illuminate\Support\Carbon|null $created_at
+ * @property Carbon|null $published_at
  */
 class Lesson extends Model
 {
-    /** @use HasFactory<\Database\Factories\LessonFactory> */
-    use HasFactory, SoftDeletes, BelongsToInstitution;
+    /** @use HasFactory<LessonFactory> */
+    use BelongsToInstitution, HasFactory, SoftDeletes;
 
     protected $fillable = [
         'matiere_id',
@@ -48,7 +40,6 @@ class Lesson extends Model
         'published_at',
         'archived_at',
         'attachments',
-        // Note: content fields moved to chapters
         'institution_id',
     ];
 
@@ -107,6 +98,12 @@ class Lesson extends Model
         return $this->hasMany(LessonResource::class)->ordered();
     }
 
+    /** @return HasMany<SeanceRecording, $this> Enregistrements visio rattachés. */
+    public function seanceRecordings(): HasMany
+    {
+        return $this->hasMany(SeanceRecording::class);
+    }
+
     /** @param Builder<Lesson> $query
      * @return Builder<Lesson> */
     public function scopePublished(Builder $query)
@@ -115,24 +112,28 @@ class Lesson extends Model
             ->whereNotNull('published_at')
             ->where('published_at', '<=', now());
     }
+
     /** @param Builder<Lesson> $query
      * @return Builder<Lesson> */
     public function scopeForMatiere(Builder $query, int $matiereId)
     {
         return $query->where('matiere_id', $matiereId);
     }
+
     /** @param Builder<Lesson> $query
      * @return Builder<Lesson> */
     public function scopeForClasse(Builder $query, int $classeId)
     {
         return $query->where('classe_id', $classeId);
     }
+
     /** @param Builder<Lesson> $query
      * @return Builder<Lesson> */
     public function scopeByTeacher(Builder $query, int $enseignantId)
     {
         return $query->where('enseignant_id', $enseignantId);
     }
+
     /** @param Builder<Lesson> $query
      * @return Builder<Lesson> */
     public function scopeOrdered(Builder $query)
@@ -140,7 +141,6 @@ class Lesson extends Model
         return $query->orderBy('order')->orderBy('created_at');
     }
 
-    /** Vérifie si le cours est publié (état pur, sans DB). */
     public function isPublished(): bool
     {
         return $this->status === 'published'

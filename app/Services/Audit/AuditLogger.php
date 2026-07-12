@@ -33,14 +33,13 @@ final class AuditLogger
         private readonly Request $request,
         private readonly ConfigRepository $config,
         private readonly LoggerInterface $logger,
-    ) {
-    }
+    ) {}
 
     /**
      * Enregistre une action sur un modèle auditable (CREATE/UPDATE/DELETE).
      *
-     * @param array<string, mixed>|null $before État avant (null pour create).
-     * @param array<string, mixed>|null $after  État après (null pour delete).
+     * @param  array<string, mixed>|null  $before  État avant (null pour create).
+     * @param  array<string, mixed>|null  $after  État après (null pour delete).
      */
     public function logModelEvent(string $action, Model $model, ?array $before, ?array $after): void
     {
@@ -55,9 +54,9 @@ final class AuditLogger
     /**
      * Enregistre un événement d'authentification (login/logout/login_failed).
      *
-     * @param int|null $userId Acteur explicite (un login échoué n'a pas de user
-     *                         authentifié ; on passe l'id résolu si connu).
-     * @param array<string, mixed>|null $context Métadonnées additionnelles.
+     * @param  int|null  $userId  Acteur explicite (un login échoué n'a pas de user
+     *                            authentifié ; on passe l'id résolu si connu).
+     * @param  array<string, mixed>|null  $context  Métadonnées additionnelles.
      */
     public function logAuthEvent(string $action, ?int $userId = null, ?array $context = null): void
     {
@@ -67,9 +66,23 @@ final class AuditLogger
     }
 
     /**
+     * Enregistre un événement métier sensible hors CRUD automatique.
+     *
+     * @param  array<string, mixed>|null  $context
+     */
+    public function logSecurityEvent(string $action, ?Model $target = null, ?array $context = null): void
+    {
+        $this->write($action, [
+            'auditable_type' => $target?->getMorphClass(),
+            'auditable_id' => $target?->getKey(),
+            'after' => $context,
+        ]);
+    }
+
+    /**
      * Écriture bas-niveau, append-only.
      *
-     * @param array<string, mixed> $attributes
+     * @param  array<string, mixed>  $attributes
      */
     private function write(string $action, array $attributes, ?int $explicitUserId = null): void
     {

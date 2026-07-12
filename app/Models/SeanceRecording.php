@@ -15,6 +15,8 @@ final class SeanceRecording extends Model
     /** @use HasFactory<SeanceRecordingFactory> */
     use HasFactory;
 
+    private const CONSENT_MESSAGE = 'Cette seance peut etre enregistree. En restant dans la visio, vous acceptez que votre participation soit captee selon les regles de votre etablissement.';
+
     protected $fillable = [
         'seance_id',
         'lesson_id',
@@ -81,18 +83,25 @@ final class SeanceRecording extends Model
     }
 
     /**
-     * @return array{id:string,status:string,url:?string,started_at:?string,stopped_at:?string,processed_at:?string,error_message:?string}
+     * @return array{id:string,status:string,url:?string,started_at:?string,stopped_at:?string,processed_at:?string,error_message:?string,is_recording:bool,consent_required:bool,consent_message:string,retention_days:int,can_download:bool}
      */
     public function toRecordingPayload(): array
     {
+        $status = $this->status;
+
         return [
             'id' => $this->payloadId(),
-            'status' => $this->status->value,
+            'status' => $status->value,
             'url' => $this->recording_url,
             'started_at' => $this->started_at?->toIso8601String(),
             'stopped_at' => $this->stopped_at?->toIso8601String(),
             'processed_at' => $this->processed_at?->toIso8601String(),
             'error_message' => $this->error_message,
+            'is_recording' => $status === SeanceRecordingStatus::Recording,
+            'consent_required' => $status->isActive(),
+            'consent_message' => self::CONSENT_MESSAGE,
+            'retention_days' => 365,
+            'can_download' => false,
         ];
     }
 

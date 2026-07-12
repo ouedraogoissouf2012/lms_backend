@@ -5,18 +5,21 @@ declare(strict_types=1);
 namespace App\Services\Visio\Recording;
 
 use App\Enums\SeanceRecordingStatus;
-use App\Models\ESBTPAttendance;
 use App\Models\Seance;
 use App\Models\SeanceRecording;
 use App\Models\User;
-use App\Models\UserClass;
+use App\Services\Audit\AuditLogger;
 use Illuminate\Contracts\Cache\Repository as CacheRepository;
 
 final class SeanceRecordingControlService
 {
     private const CACHE_TTL_SECONDS = 1_209_600; // 14 days
 
-    public function __construct(private readonly CacheRepository $cache) {}
+    public function __construct(
+        private readonly CacheRepository $cache,
+        private readonly SeanceRecordingAccessService $access,
+        private readonly AuditLogger $audit,
+    ) {}
 
     /**
      * @return array{status:int, payload: array<string, mixed>}
@@ -28,20 +31,25 @@ final class SeanceRecordingControlService
             return $this->fail(404, 'Seance non trouvee');
         }
 
-        if (! $this->canControlRecording($seance, $user)) {
+        if (! $this->access->canControl($seance, $user)) {
             return $this->fail(403, 'Acces reserve a l enseignant proprietaire');
         }
 
         $recording = $this->latestRecording($seance);
+        $created = false;
         if ($recording === null || ! $recording->status->isActive()) {
             $recording = SeanceRecording::query()->create([
                 'seance_id' => $seance->id,
                 'status' => SeanceRecordingStatus::Recording,
                 'started_at' => now(),
             ]);
+            $created = true;
         }
 
         $this->cachePayload($seance, $recording);
+        if ($created) {
+            $this->auditRecording('visio_recording_start', $seance, $recording);
+        }
 
         return $this->ok($recording->toRecordingPayload());
     }
@@ -56,7 +64,7 @@ final class SeanceRecordingControlService
             return $this->fail(404, 'Seance non trouvee');
         }
 
-        if (! $this->canControlRecording($seance, $user)) {
+        if (! $this->access->canControl($seance, $user)) {
             return $this->fail(403, 'Acces reserve a l enseignant proprietaire');
         }
 
@@ -70,6 +78,7 @@ final class SeanceRecordingControlService
                 'status' => SeanceRecordingStatus::Processing,
                 'stopped_at' => now(),
             ]);
+            $this->auditRecording('visio_recording_stop', $seance, $recording->refresh());
         }
 
         $this->cachePayload($seance, $recording->refresh());
@@ -87,8 +96,13 @@ final class SeanceRecordingControlService
             return $this->fail(404, 'Seance non trouvee');
         }
 
-        if (! $this->canReadRecording($seance, $user)) {
+        if (! $this->access->canRead($seance, $user)) {
             return $this->fail(403, 'Acces non autorise a cette seance');
+        }
+
+        $recording = $this->latestRecording($seance);
+        if ($recording !== null) {
+            $this->auditRecording('visio_recording_read', $seance, $recording);
         }
 
         return $this->ok($this->state($seance));
@@ -100,11 +114,6 @@ final class SeanceRecordingControlService
             ?? Seance::query()->where('klassci_seance_id', $seanceId)->first();
     }
 
-    private function canControlRecording(Seance $seance, User $user): bool
-    {
-        return $user->isTeacher() && $this->teacherOwnsSeance($seance, $user);
-    }
-
     private function latestRecording(Seance $seance): ?SeanceRecording
     {
         return SeanceRecording::query()
@@ -113,64 +122,8 @@ final class SeanceRecordingControlService
             ->first();
     }
 
-    private function canReadRecording(Seance $seance, User $user): bool
-    {
-        if ($user->isManager() || $this->teacherOwnsSeance($seance, $user)) {
-            return true;
-        }
-
-        if ($seance->klassci_classe_id !== null && $this->studentBelongsToSeanceClass($seance, $user)) {
-            return true;
-        }
-
-        return ESBTPAttendance::query()
-            ->where('seance_id', $seance->id)
-            ->where('user_id', $user->id)
-            ->exists();
-    }
-
-    private function teacherOwnsSeance(Seance $seance, User $user): bool
-    {
-        if ($seance->klassci_enseignant_id === null) {
-            return false;
-        }
-
-        $seanceTeacherId = (int) $seance->klassci_enseignant_id;
-
-        return in_array($seanceTeacherId, $this->userTeacherIds($user), true);
-    }
-
     /**
-     * @return list<int>
-     */
-    private function userTeacherIds(User $user): array
-    {
-        $ids = [];
-        foreach (['klassci_id', 'klassci_enseignant_id'] as $key) {
-            $value = $user->getAttribute($key);
-            if (is_numeric($value)) {
-                $ids[] = (int) $value;
-            }
-        }
-
-        return array_values(array_unique($ids));
-    }
-
-    private function studentBelongsToSeanceClass(Seance $seance, User $user): bool
-    {
-        if (! $user->isStudent()) {
-            return false;
-        }
-
-        return UserClass::query()
-            ->where('institution_id', $seance->institution_id)
-            ->where('user_id', $user->id)
-            ->where('klassci_classe_id', $seance->klassci_classe_id)
-            ->exists();
-    }
-
-    /**
-     * @return array{id:string,status:string,url:?string,started_at:?string,stopped_at:?string,processed_at:?string,error_message:?string}
+     * @return array<string, mixed>
      */
     private function state(Seance $seance): array
     {
@@ -192,25 +145,28 @@ final class SeanceRecordingControlService
 
     /**
      * @param  array<array-key, mixed>  $state
-     * @return array{id:string,status:string,url:?string,started_at:?string,stopped_at:?string,processed_at:?string,error_message:?string}
+     * @return array<string, mixed>
      */
     private function normalizeState(Seance $seance, array $state): array
     {
-        $idle = $this->idleState($seance);
-
         return [
-            'id' => $this->stringValue($state['id'] ?? null, $idle['id']),
-            'status' => $this->stringValue($state['status'] ?? null, $idle['status']),
+            'id' => $this->stringValue($state['id'] ?? null, $this->recordingId($seance)),
+            'status' => $this->stringValue($state['status'] ?? null, 'idle'),
             'url' => $this->stringOrNull($state['url'] ?? null),
             'started_at' => $this->stringOrNull($state['started_at'] ?? null),
             'stopped_at' => $this->stringOrNull($state['stopped_at'] ?? null),
             'processed_at' => $this->stringOrNull($state['processed_at'] ?? null),
             'error_message' => $this->stringOrNull($state['error_message'] ?? null),
+            'is_recording' => ($state['status'] ?? null) === 'recording',
+            'consent_required' => in_array($state['status'] ?? null, SeanceRecordingStatus::activeValues(), true),
+            'consent_message' => $this->consentMessage(),
+            'retention_days' => 365,
+            'can_download' => false,
         ];
     }
 
     /**
-     * @return array{id:string,status:string,url:?string,started_at:?string,stopped_at:?string,processed_at:?string,error_message:?string}
+     * @return array<string, mixed>
      */
     private function idleState(Seance $seance): array
     {
@@ -222,6 +178,11 @@ final class SeanceRecordingControlService
             'stopped_at' => null,
             'processed_at' => null,
             'error_message' => null,
+            'is_recording' => false,
+            'consent_required' => false,
+            'consent_message' => $this->consentMessage(),
+            'retention_days' => 365,
+            'can_download' => false,
         ];
     }
 
@@ -233,6 +194,15 @@ final class SeanceRecordingControlService
     private function cachePayload(Seance $seance, SeanceRecording $recording): void
     {
         $this->cache->put($this->cacheKey($seance), $recording->toRecordingPayload(), self::CACHE_TTL_SECONDS);
+    }
+
+    private function auditRecording(string $action, Seance $seance, SeanceRecording $recording): void
+    {
+        $this->audit->logSecurityEvent($action, $recording, [
+            'seance_id' => $seance->id,
+            'klassci_seance_id' => $seance->klassci_seance_id,
+            'status' => $recording->status->value,
+        ]);
     }
 
     private function recordingId(Seance $seance): string
@@ -248,6 +218,11 @@ final class SeanceRecordingControlService
     private function stringOrNull(mixed $value): ?string
     {
         return is_string($value) && $value !== '' ? $value : null;
+    }
+
+    private function consentMessage(): string
+    {
+        return 'Cette seance peut etre enregistree. En restant dans la visio, vous acceptez que votre participation soit captee selon les regles de votre etablissement.';
     }
 
     /**

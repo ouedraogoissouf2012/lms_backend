@@ -64,6 +64,5 @@ reste decoupee dans les issues specialisees:
 - `Lesson` relie matiere, classe et enseignant.
 - `config/filesystems.php` expose un disque `s3` configurable.
 - `UploadFileRequest` reste limite a 30 Mo, ce qui exclut les videos longues.
-- Aucun modele d'enregistrement n'est actif dans la branche `lms` au moment de
-  cette decision; les anciennes tentatives doivent etre reprises par sous-issue,
-  pas restaurees en bloc.
+- `SeanceRecording` est actif depuis #412 pour porter l'etat durable, les
+  erreurs de processing et le rattachement au cours.

@@ -178,11 +178,53 @@ class AuthController extends AuthenticatedController
             return null;
         }
 
+        $klassciResponse = $this->refreshLinkedKlassciLogin($user, $username, $password);
+        if ($klassciResponse !== null) {
+            return $klassciResponse;
+        }
+
         $token = $user->createToken('lms-backend-token', ['lms:access'])->plainTextToken;
 
         $this->auditLogger->logAuthEvent('login', $user->id, ['method' => 'local']);
 
         return $this->presenter->successfulLocal($user, $token);
+    }
+
+    /**
+     * Un compte déjà lié à KLASSCI peut encore avoir un mot de passe local
+     * valide. Avant le fallback local, renouveler son token KLASSCI auprès de
+     * son tenant connu afin de ne pas ouvrir une session avec un token expiré.
+     */
+    private function refreshLinkedKlassciLogin(User $user, string $username, string $password): ?JsonResponse
+    {
+        if ($user->klassci_id === null || $user->institution_id === null) {
+            return null;
+        }
+
+        $institution = Institution::find($user->institution_id);
+        if (!$institution instanceof Institution || !$institution->is_active) {
+            return null;
+        }
+
+        $tenantUrl = rtrim($institution->klassci_api_url, '/');
+        if ($tenantUrl === '') {
+            return null;
+        }
+
+        $payload = $this->klassciAuthClient->attemptLogin($tenantUrl, $username, $password);
+        if ($payload === null) {
+            $this->logger->warning('Renouvellement token KLASSCI impossible, fallback local', [
+                'user_id' => $user->id,
+                'institution_id' => $institution->id,
+            ]);
+
+            return null;
+        }
+
+        return $this->buildKlassciSuccessResponse($payload, [
+            'code' => (string) $institution->slug,
+            'api_base_url' => $tenantUrl,
+        ]);
     }
 
     /**

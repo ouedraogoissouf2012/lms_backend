@@ -115,8 +115,8 @@ final class EnsureKlassciSyncTest extends TestCase
     private function runMiddlewareWith(User $user, array $klassciUser): Response
     {
         $klassciService = Mockery::mock(KlassciProxyService::class);
-        $klassciService->shouldReceive('get')
-            ->with('auth/me')
+        $klassciService->shouldReceive('requestWithUserToken')
+            ->with($user->klassci_token, 'auth/me', 'GET')
             ->andReturn(['data' => ['user' => $klassciUser]]);
 
         $request = Request::create('/api/dummy', 'GET');
@@ -237,8 +237,8 @@ final class EnsureKlassciSyncTest extends TestCase
         $originalKlassciRole = $user->klassci_role;
 
         $klassciService = Mockery::mock(KlassciProxyService::class);
-        $klassciService->shouldReceive('get')
-            ->with('auth/me')
+        $klassciService->shouldReceive('requestWithUserToken')
+            ->with($user->klassci_token, 'auth/me', 'GET')
             ->andThrow(new \Exception('KLASSCI down'));
 
         $request = Request::create('/api/dummy', 'GET');
@@ -284,7 +284,7 @@ final class EnsureKlassciSyncTest extends TestCase
         ]);
 
         $klassciService = Mockery::mock(KlassciProxyService::class);
-        $klassciService->shouldNotReceive('get');
+        $klassciService->shouldNotReceive('requestWithUserToken');
 
         $request = Request::create('/api/dummy', 'GET');
         $request->setUserResolver(fn () => $user);

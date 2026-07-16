@@ -30,6 +30,14 @@ trait RendersKlassciProxyErrors
      */
     protected function proxyErrorResponse(Throwable $e): JsonResponse
     {
+        if ($e instanceof \RuntimeException && $e->getCode() === 401) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Session KLASSCI expirée. Veuillez vous reconnecter.',
+                'reason' => 'klassci_session_expired',
+            ], 401);
+        }
+
         if ($e instanceof KlassciUnavailableException || $e instanceof ConnectionException) {
             return response()->json([
                 'success' => false,

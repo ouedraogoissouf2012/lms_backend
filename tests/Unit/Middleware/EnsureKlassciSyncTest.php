@@ -5,16 +5,12 @@ declare(strict_types=1);
 namespace Tests\Unit\Middleware;
 
 use App\Http\Middleware\EnsureKlassciSync;
-use App\Models\Institution;
 use App\Models\User;
 use App\Services\KlassciProxyService;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
 use Mockery;
 use PHPUnit\Framework\Attributes\CoversClass;
 use Symfony\Component\HttpFoundation\Response;
-use Tests\TestCase;
 
 /**
  * CRITICAL-05 (issue #34) — tests that verify the 24h-resync middleware
@@ -27,106 +23,8 @@ use Tests\TestCase;
  * Spec: `.claude/specs/critical-05-klassci-role-separation/`
  */
 #[CoversClass(EnsureKlassciSync::class)]
-final class EnsureKlassciSyncTest extends TestCase
+final class EnsureKlassciSyncTest extends EnsureKlassciSyncTestCase
 {
-    use RefreshDatabase;
-
-    private Institution $institution;
-
-    protected function setUp(): void
-    {
-
-        parent::setUp();
-
-        $this->institution = Institution::factory()->create(['slug' => 'school-a']);
-    }
-
-    protected function tearDown(): void
-    {
-        Mockery::close();
-        parent::tearDown();
-    }
-
-    /**
-     * Build a stale user (last sync > 24h ago) so the middleware actually
-     * triggers a re-sync on the next request.
-     */
-    private function staleUser(string $role, string $email = 'lms@example.com'): User
-    {
-        return User::factory()->create([
-            'institution_id'    => $this->institution->id,
-            'role'              => $role,
-            'klassci_role'      => $role,
-            'email'             => $email,
-            'name'              => 'Original Name',
-            'klassci_data'      => json_encode(['original' => true]),
-            'last_klassci_sync' => now()->subHours(25),
-        ]);
-    }
-
-    /**
-     * Capture all `Log::warning(...)` calls into an ArrayObject so subsequent
-     * test assertions can inspect them.
-     *
-     * Pourquoi ce helper : `Log::shouldHaveReceived('warning')->withArgs(...)`
-     * ne fonctionne pas — `shouldHaveReceived` retourne null sans chain.
-     * ArrayObject permet la mutation par référence partagée entre la closure
-     * et le test.
-     *
-     * @return \ArrayObject<int, array{0: string, 1: array<string, mixed>}>
-     */
-    private function captureLogWarnings(): \ArrayObject
-    {
-        /** @var \ArrayObject<int, array{0: string, 1: array<string, mixed>}> $captured */
-        $captured = new \ArrayObject();
-        $spy = Mockery::mock();
-        $spy->shouldReceive('warning')
-            ->andReturnUsing(function (string $event, array $ctx = []) use ($captured): void {
-                $captured->append([$event, $ctx]);
-            });
-        $spy->shouldReceive('info', 'debug', 'notice', 'error', 'critical', 'alert', 'emergency')
-            ->andReturnNull();
-
-        Log::swap($spy);
-
-        return $captured;
-    }
-
-    /**
-     * Find the first captured warning whose event name (first argument) equals $event.
-     *
-     * @param  \ArrayObject<int, array{0: string, 1: array<string, mixed>}>  $captured
-     * @return array{0: string, 1: array<string, mixed>}|null
-     */
-    private function findWarningByEvent(\ArrayObject $captured, string $event): ?array
-    {
-        foreach ($captured as $call) {
-            if ($call[0] === $event) {
-                return $call;
-            }
-        }
-
-        return null;
-    }
-
-    /**
-     * Run the middleware with a KLASSCI service mocked to return $klassciUser.
-     */
-    private function runMiddlewareWith(User $user, array $klassciUser): Response
-    {
-        $klassciService = Mockery::mock(KlassciProxyService::class);
-        $klassciService->shouldReceive('requestWithUserToken')
-            ->with($user->klassci_token, 'auth/me', 'GET')
-            ->andReturn(['data' => ['user' => $klassciUser]]);
-
-        $request = Request::create('/api/dummy', 'GET');
-        $request->setUserResolver(fn () => $user);
-
-        $middleware = new EnsureKlassciSync($klassciService);
-
-        return $middleware->handle($request, fn ($req) => new Response('ok', 200));
-    }
-
     public function test_resync_does_not_overwrite_role(): void
     {
         $user = $this->staleUser('etudiant');

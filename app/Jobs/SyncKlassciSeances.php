@@ -8,9 +8,8 @@ use App\Services\ClasseSyncService;
 use App\Services\KlassciProxyService;
 use App\Services\NotificationService;
 use App\Services\Seances\KlassciPayload;
-use App\Services\Seances\SeanceProgrammationNormalizer;
+use App\Services\Seances\SeanceCacheDataBuilder;
 use App\Services\Visio\SecureVisioRoomIdGenerator;
-use Carbon\Carbon;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -42,7 +41,8 @@ class SyncKlassciSeances implements ShouldQueue
         KlassciProxyService $klassciService,
         ClasseSyncService $classeSyncService,
         NotificationService $notificationService,
-        LoggerInterface $logger
+        LoggerInterface $logger,
+        SeanceCacheDataBuilder $cacheBuilder,
     ): void {
         $logger->info('Job SyncKlassciSeances démarré');
 
@@ -72,9 +72,16 @@ class SyncKlassciSeances implements ShouldQueue
                 try {
                     $stats['teachers_checked']++;
 
+                    // La query filtre déjà whereNotNull('klassci_token') ; ce guard
+                    // narrower le type pour l'analyse statique et reste défensif.
+                    $teacherToken = $teacher->klassci_token;
+                    if (! is_string($teacherToken)) {
+                        continue;
+                    }
+
                     // Récupérer toutes les matières de l'enseignant
                     $matieres = $klassciService->requestWithUserToken(
-                        $teacher->klassci_token,
+                        $teacherToken,
                         'matieres',
                         'GET'
                     );
@@ -84,13 +91,13 @@ class SyncKlassciSeances implements ShouldQueue
                     );
                     foreach ($matieresList as $matiere) {
                         $matiereId = KlassciPayload::toInt($matiere['id'] ?? null);
-                        if ($matiereId === null || ! is_string($teacher->klassci_token)) {
+                        if ($matiereId === null) {
                             continue;
                         }
 
                         // Récupérer les séances de chaque matière
                         $details = $klassciService->requestWithUserToken(
-                            $teacher->klassci_token,
+                            $teacherToken,
                             "matieres/{$matiereId}",
                             'GET'
                         );
@@ -122,7 +129,7 @@ class SyncKlassciSeances implements ShouldQueue
                                     ->where('institution_id', $teacher->institution_id)
                                     ->where('klassci_seance_id', $klassciSeanceId)
                                     ->first();
-                                $cacheData = $this->localCacheData($seanceArr, $matiere, $teacher);
+                                $cacheData = $cacheBuilder->build($seanceArr, $matiere, $teacher);
 
                                 if (! $seanceLocal) {
                                     // Nouvelle séance découverte!
@@ -150,9 +157,8 @@ class SyncKlassciSeances implements ShouldQueue
                                     ]);
 
                                     // Synchroniser la classe pour avoir les étudiants.
-                                    // klassci_token est déjà garanti non-null (continue plus haut).
                                     if ($classeId !== null) {
-                                        $classeSyncService->syncClasseById($classeId, $teacher->klassci_token);
+                                        $classeSyncService->syncClasseById($classeId, $teacherToken);
                                     }
 
                                     // Envoyer les notifications
@@ -175,7 +181,7 @@ class SyncKlassciSeances implements ShouldQueue
                                         'notifications_count' => $count,
                                     ]);
                                 } else {
-                                    $this->updateLocalCacheData($seanceLocal, $cacheData);
+                                    $cacheBuilder->applyTo($seanceLocal, $cacheData);
                                 }
 
                             } catch (\Exception $e) {
@@ -239,73 +245,6 @@ class SyncKlassciSeances implements ShouldQueue
             // Re-throw pour permettre au retry mechanism de fonctionner.
             throw $e;
         }
-    }
-
-    /**
-     * @param array<string, mixed> $seanceKlassci
-     * @param array<string, mixed> $matiere
-     * @return array<string, mixed>
-     */
-    private function localCacheData(array $seanceKlassci, array $matiere, User $teacher): array
-    {
-        $prog = KlassciPayload::asArray($seanceKlassci['programmation'] ?? null);
-        $classe = KlassciPayload::asArray($seanceKlassci['classe'] ?? null);
-        $date = KlassciPayload::toStringOrNull($prog['date'] ?? null);
-        $heureDebut = SeanceProgrammationNormalizer::alignDate(
-            KlassciPayload::toStringOrNull($prog['heure_debut'] ?? null),
-            $date
-        );
-
-        return [
-            // #473 : institution_id écrit EXPLICITEMENT (scope global inerte en job).
-            // Garantit l'isolation tenant et rend le composite unique effectif.
-            'institution_id' => $teacher->institution_id,
-            'klassci_matiere_id' => KlassciPayload::toInt($matiere['id'] ?? null),
-            'klassci_classe_id' => KlassciPayload::toInt($classe['id'] ?? null),
-            'klassci_enseignant_id' => $teacher->klassci_id,
-            'enseignant_nom' => $teacher->name,
-            'matiere_nom' => $matiere['nom'] ?? $matiere['libelle'] ?? null,
-            'classe_nom' => KlassciPayload::toStringOrNull($classe['nom'] ?? null),
-            'titre' => $matiere['nom'] ?? $matiere['libelle'] ?? null,
-            'date_seance' => $this->parseSeanceStart($heureDebut, $date),
-        ];
-    }
-
-    /**
-     * @param array<string, mixed> $cacheData
-     */
-    private function updateLocalCacheData(Seance $seance, array $cacheData): void
-    {
-        $updates = array_filter($cacheData, static fn ($value): bool => $value !== null);
-        if ($updates === []) {
-            return;
-        }
-
-        $seance->fill($updates);
-        if ($seance->isDirty()) {
-            $seance->save();
-        }
-    }
-
-    private function parseSeanceStart(?string $heureDebut, ?string $date): ?Carbon
-    {
-        if ($heureDebut !== null) {
-            try {
-                return Carbon::parse($heureDebut);
-            } catch (\Throwable) {
-                // Fallback sur la date seule ci-dessous.
-            }
-        }
-
-        if ($date !== null) {
-            try {
-                return Carbon::parse($date)->startOfDay();
-            } catch (\Throwable) {
-                return null;
-            }
-        }
-
-        return null;
     }
 
     /**

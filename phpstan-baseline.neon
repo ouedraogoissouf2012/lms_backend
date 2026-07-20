@@ -2031,7 +2031,7 @@ parameters:
 		-
 			message: '#^Cannot access offset ''id'' on mixed\.$#'
 			identifier: offsetAccess.nonOffsetAccessible
-			count: 2
+			count: 1
 			path: app/Services/Seances/TeachingSeancesFetcher.php
 
 		-

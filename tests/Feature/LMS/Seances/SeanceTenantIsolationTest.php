@@ -236,6 +236,7 @@ final class SeanceTenantIsolationTest extends TestCase
             app(ClasseSyncService::class),
             app(NotificationService::class),
             app(LoggerInterface::class),
+            app(\App\Services\Seances\SeanceCacheDataBuilder::class),
         );
     }
 

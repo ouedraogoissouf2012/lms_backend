@@ -38,8 +38,20 @@ final class UpcomingSeancesFetcher
     /**
      * @return Collection<int, array<string, mixed>>
      */
-    public function fetch(User $user, string $klassciToken, string $dateDebut, string $dateFin, ?int $classeId): Collection
+    public function fetch(User $user, string $klassciToken, string $dateDebut, string $dateFin, ?int $teacherId, ?int $classeId): Collection
     {
+        if ($user->isManager()) {
+            $localSeances = $this->fetchFromLocalStore($dateDebut, $dateFin, $teacherId, $classeId);
+
+            $this->logger->info('Séances à venir servies depuis la BDD locale', [
+                'count' => $localSeances->count(),
+                'teacher_id' => $teacherId,
+                'classe_id' => $classeId,
+            ]);
+
+            return $localSeances;
+        }
+
         // WORKAROUND: endpoint emploi-temps bugué, on utilise matieres/{id}
         // qui retourne seances_programmees (fonctionne!)
         $this->logger->info('Récupération séances via endpoint /matieres (workaround)');
@@ -98,6 +110,108 @@ final class UpcomingSeancesFetcher
         }
 
         return $this->enrichWithVisio($seances);
+    }
+
+    /**
+     * Managers (coordinateurs/admins) doivent pouvoir ouvrir l'écran sans
+     * parcourir toutes les matières KLASSCI. La liste se base sur la sync locale
+     * des séances et garde la forme attendue par les vues calendrier/visio.
+     *
+     * @return Collection<int, array<string, mixed>>
+     */
+    private function fetchFromLocalStore(string $dateDebut, string $dateFin, ?int $teacherId, ?int $classeId): Collection
+    {
+        $start = Carbon::parse($dateDebut)->startOfDay();
+        $end = Carbon::parse($dateFin)->endOfDay();
+
+        $query = Seance::query()
+            ->withConnectedParticipantsCount()
+            ->where('is_active', true)
+            ->whereNotNull('klassci_seance_id')
+            ->whereNotNull('date_seance')
+            ->whereBetween('date_seance', [$start, $end]);
+
+        if ($teacherId !== null) {
+            $query->where(function ($query) use ($teacherId): void {
+                $query->where('klassci_enseignant_id', $teacherId)
+                    ->orWhere('created_by', $teacherId);
+            });
+        }
+
+        if ($classeId !== null) {
+            $query->where('klassci_classe_id', $classeId);
+        }
+
+        return $query
+            ->orderBy('date_seance')
+            ->get()
+            ->map(fn (Seance $seance): array => $this->mapLocalSeance($seance));
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function mapLocalSeance(Seance $seance): array
+    {
+        $start = $seance->date_seance ? Carbon::parse($seance->date_seance)->copy() : null;
+        $end = $start?->copy()->addHours(2);
+        $date = $start?->format('Y-m-d');
+        $startIso = $start?->toISOString();
+        $endIso = $end?->toISOString();
+        $participantsCount = $seance->current_participants_count ?? 0;
+
+        return [
+            'id' => $seance->klassci_seance_id ?? $seance->id,
+            'klassci_seance_id' => $seance->klassci_seance_id,
+            'date_seance' => $date,
+            'date_debut' => $startIso,
+            'date_fin' => $endIso,
+            'heure_debut' => $start?->format('H:i'),
+            'heure_fin' => $end?->format('H:i'),
+            'salle' => null,
+            'programmation' => [
+                'date' => $date,
+                'heure_debut' => $startIso,
+                'heure_fin' => $endIso,
+                'salle' => null,
+            ],
+            'matiere' => [
+                'id' => $seance->klassci_matiere_id,
+                'libelle' => $seance->matiere_nom ?? 'N/A',
+                'nom' => $seance->matiere_nom ?? 'N/A',
+                'code' => null,
+            ],
+            'classe' => [
+                'id' => $seance->klassci_classe_id,
+                'libelle' => $seance->classe_nom ?? 'N/A',
+                'nom' => $seance->classe_nom ?? 'N/A',
+                'name' => $seance->classe_nom ?? 'N/A',
+                'effectif' => $seance->classe_effectif ?? 0,
+            ],
+            'enseignant' => [
+                'id' => $seance->klassci_enseignant_id,
+                'nom' => $seance->enseignant_nom ?? 'Non assigné',
+                'prenom' => '',
+            ],
+            'visio_enabled' => $seance->visio_enabled,
+            'visio_type' => $seance->visio_type,
+            'visio_room_id' => $seance->visio_room_id,
+            'visio_active' => $seance->visio_active,
+            'visio_status' => $seance->visio_status,
+            'visio_started_at' => $seance->visio_started_at?->toISOString(),
+            'visio_ended_at' => $seance->visio_ended_at?->toISOString(),
+            'visio_participants_count' => $participantsCount,
+            'visio' => [
+                'enabled' => $seance->visio_enabled,
+                'active' => $seance->visio_active,
+                'status' => $seance->visio_status,
+                'room_id' => $seance->visio_room_id,
+                'started_at' => $seance->visio_started_at?->toISOString(),
+                'ended_at' => $seance->visio_ended_at?->toISOString(),
+                'participants_count' => $participantsCount,
+            ],
+            'statut' => $seance->visio_status ?? 'programme',
+        ];
     }
 
     /**

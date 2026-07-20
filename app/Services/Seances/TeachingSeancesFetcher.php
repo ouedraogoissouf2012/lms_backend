@@ -8,6 +8,7 @@ use App\Models\Seance;
 use App\Models\User;
 use App\Services\ClasseSyncService;
 use App\Services\KlassciProxyService;
+use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Psr\Log\LoggerInterface;
 
@@ -142,7 +143,10 @@ final class TeachingSeancesFetcher
     private function ensureLocalSeanceExists(array $seance, array $matiere, User $user, string $klassciToken): ?Seance
     {
         $visioData = Seance::where('klassci_seance_id', $seance['id'])->withConnectedParticipantsCount()->first();
+        $cacheData = $this->localCacheData($seance, $matiere, $user);
+
         if ($visioData) {
+            $this->updateLocalCacheData($visioData, $cacheData);
             return $visioData;
         }
 
@@ -157,13 +161,8 @@ final class TeachingSeancesFetcher
 
             // Créer l'entrée locale SANS activer la visio
             // L'enseignant devra cliquer sur "Activer la visio" pour la rendre visible
-            $visioData = Seance::create([
+            $visioData = Seance::create($cacheData + [
                 'klassci_seance_id' => $seance['id'],
-                'klassci_matiere_id' => $matiere['id'],
-                'klassci_classe_id' => $seance['classe']['id'] ?? null,
-                'klassci_enseignant_id' => $user->klassci_id,
-                'enseignant_nom' => $user->name,
-                'matiere_nom' => $matiere['nom'] ?? $matiere['libelle'] ?? null,
                 'visio_enabled' => false,  // Désactivé par défaut - l'enseignant doit activer
                 'visio_type' => 'jitsi',
                 'visio_status' => null,    // Pas de statut tant que non activé
@@ -184,6 +183,70 @@ final class TeachingSeancesFetcher
         }
 
         return $visioData;
+    }
+
+    /**
+     * @param array<string, mixed> $seance
+     * @param array<string, mixed> $matiere
+     * @return array<string, mixed>
+     */
+    private function localCacheData(array $seance, array $matiere, User $user): array
+    {
+        $prog = KlassciPayload::asArray($seance['programmation'] ?? null);
+        $classe = KlassciPayload::asArray($seance['classe'] ?? null);
+        $date = KlassciPayload::toStringOrNull($prog['date'] ?? null);
+        $heureDebut = SeanceProgrammationNormalizer::alignDate(
+            KlassciPayload::toStringOrNull($prog['heure_debut'] ?? null),
+            $date
+        );
+
+        return [
+            'klassci_matiere_id' => KlassciPayload::toInt($matiere['id'] ?? null),
+            'klassci_classe_id' => KlassciPayload::toInt($classe['id'] ?? null),
+            'klassci_enseignant_id' => $user->klassci_id,
+            'enseignant_nom' => $user->name,
+            'matiere_nom' => $matiere['nom'] ?? $matiere['libelle'] ?? null,
+            'classe_nom' => KlassciPayload::toStringOrNull($classe['nom'] ?? null),
+            'titre' => $matiere['nom'] ?? $matiere['libelle'] ?? null,
+            'date_seance' => $this->parseSeanceStart($heureDebut, $date),
+        ];
+    }
+
+    /**
+     * @param array<string, mixed> $cacheData
+     */
+    private function updateLocalCacheData(Seance $seance, array $cacheData): void
+    {
+        $updates = array_filter($cacheData, static fn ($value): bool => $value !== null);
+        if ($updates === []) {
+            return;
+        }
+
+        $seance->fill($updates);
+        if ($seance->isDirty()) {
+            $seance->save();
+        }
+    }
+
+    private function parseSeanceStart(?string $heureDebut, ?string $date): ?Carbon
+    {
+        if ($heureDebut !== null) {
+            try {
+                return Carbon::parse($heureDebut);
+            } catch (\Throwable) {
+                // Fallback sur la date seule ci-dessous.
+            }
+        }
+
+        if ($date !== null) {
+            try {
+                return Carbon::parse($date)->startOfDay();
+            } catch (\Throwable) {
+                return null;
+            }
+        }
+
+        return null;
     }
 
     /**

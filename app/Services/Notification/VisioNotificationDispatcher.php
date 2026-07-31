@@ -61,8 +61,8 @@ final class VisioNotificationDispatcher
             return 0;
         }
 
-        $matiere = $seanceData['matiere_nom'] ?? 'Matière inconnue';
-        $enseignant = $seanceData['enseignant_nom'] ?? 'Enseignant';
+        $matiere = is_string($seanceData['matiere_nom'] ?? null) ? $seanceData['matiere_nom'] : 'Matière inconnue';
+        $enseignant = is_string($seanceData['enseignant_nom'] ?? null) ? $seanceData['enseignant_nom'] : 'Enseignant';
 
         $title = 'Visioconférence programmée';
         $message = "Une visioconférence a été programmée en {$matiere} avec {$enseignant}.";
@@ -96,7 +96,7 @@ final class VisioNotificationDispatcher
         $teacher = $this->resolveTeacher($seanceData);
 
         $count = 0;
-        $matiere = $seanceData['matiere_nom'] ?? 'Matière inconnue';
+        $matiere = is_string($seanceData['matiere_nom'] ?? null) ? $seanceData['matiere_nom'] : 'Matière inconnue';
 
         if ($students->isNotEmpty()) {
             $title = 'Visioconférence en cours';

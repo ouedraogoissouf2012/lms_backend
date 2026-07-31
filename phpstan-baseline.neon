@@ -1596,17 +1596,7 @@ parameters:
 			count: 1
 			path: app/Services/Notification/QuizNotificationDispatcher.php
 
-		-
-			message: '#^Part \$enseignant \(mixed\) of encapsed string cannot be cast to string\.$#'
-			identifier: encapsedStringPart.nonString
-			count: 1
-			path: app/Services/Notification/VisioNotificationDispatcher.php
 
-		-
-			message: '#^Part \$matiere \(mixed\) of encapsed string cannot be cast to string\.$#'
-			identifier: encapsedStringPart.nonString
-			count: 3
-			path: app/Services/Notification/VisioNotificationDispatcher.php
 
 		-
 			message: '#^Cannot cast mixed to int\.$#'
@@ -2028,107 +2018,22 @@ parameters:
 			count: 1
 			path: app/Services/Seances/StudentClassesSeancesFetcher.php
 
-		-
-			message: '#^Cannot access offset ''id'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 1
-			path: app/Services/Seances/TeachingSeancesFetcher.php
 
-		-
-			message: '#^Cannot access offset ''matieres'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 1
-			path: app/Services/Seances/TeachingSeancesFetcher.php
 
-		-
-			message: '#^Parameter \#1 \$klassciClasseId of method App\\Services\\ClasseSyncService\:\:syncClasseById\(\) expects int, mixed given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Services/Seances/TeachingSeancesFetcher.php
 
-		-
-			message: '#^Parameter \#1 \$value of function collect expects Illuminate\\Contracts\\Support\\Arrayable\<\(int\|string\), mixed\>\|iterable\<\(int\|string\), mixed\>\|null, mixed given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Services/Seances/TeachingSeancesFetcher.php
 
-		-
-			message: '#^Unable to resolve the template type TKey in call to function collect$#'
-			identifier: argument.templateType
-			count: 1
-			path: app/Services/Seances/TeachingSeancesFetcher.php
 
-		-
-			message: '#^Unable to resolve the template type TValue in call to function collect$#'
-			identifier: argument.templateType
-			count: 1
-			path: app/Services/Seances/TeachingSeancesFetcher.php
 
-		-
-			message: '#^Binary operation "\." between mixed and '' '' results in an error\.$#'
-			identifier: binaryOp.invalid
-			count: 2
-			path: app/Services/Seances/UpcomingSeancesFetcher.php
 
-		-
-			message: '#^Binary operation "\." between non\-falsy\-string and mixed results in an error\.$#'
-			identifier: binaryOp.invalid
-			count: 2
-			path: app/Services/Seances/UpcomingSeancesFetcher.php
 
-		-
-			message: '#^Cannot access offset ''date'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 1
-			path: app/Services/Seances/UpcomingSeancesFetcher.php
 
-		-
-			message: '#^Cannot access offset ''id'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 1
-			path: app/Services/Seances/UpcomingSeancesFetcher.php
 
-		-
-			message: '#^Method App\\Services\\Seances\\UpcomingSeancesFetcher\:\:enrichWithVisio\(\) should return Illuminate\\Support\\Collection\<int, array\<string, mixed\>\> but returns Illuminate\\Support\\Collection\<int, non\-empty\-array\<string, mixed\>\>\.$#'
-			identifier: return.type
-			count: 1
-			path: app/Services/Seances/UpcomingSeancesFetcher.php
 
-		-
-			message: '#^Method App\\Services\\Seances\\UpcomingSeancesFetcher\:\:filterSeances\(\) should return Illuminate\\Support\\Collection\<int, array\<string, mixed\>\> but returns Illuminate\\Support\\Collection\<int, array\<string, mixed\>\>\.$#'
-			identifier: return.type
-			count: 1
-			path: app/Services/Seances/UpcomingSeancesFetcher.php
 
-		-
-			message: '#^Method App\\Services\\Seances\\UpcomingSeancesFetcher\:\:mapSeances\(\) should return Illuminate\\Support\\Collection\<int, array\<string, mixed\>\> but returns Illuminate\\Support\\Collection\<int, array\{id\: mixed, programmation\: array\{date\: string\|null, heure_debut\: string\|null, heure_fin\: string\|null, salle\: mixed\}, salle\: mixed, matiere\: array\{id\: mixed, libelle\: mixed, code\: mixed\}, classe\: array\{id\: mixed, libelle\: mixed\}, enseignant\: null\}\>\.$#'
-			identifier: return.type
-			count: 1
-			path: app/Services/Seances/UpcomingSeancesFetcher.php
 
-		-
-			message: '#^Parameter \#1 \$klassciSeanceId of static method Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Seance\>\:\:byKlassciId\(\) expects int, mixed given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Services/Seances/UpcomingSeancesFetcher.php
 
-		-
-			message: '#^Parameter \#1 \$value of function collect expects Illuminate\\Contracts\\Support\\Arrayable\<\(int\|string\), mixed\>\|iterable\<\(int\|string\), mixed\>\|null, mixed given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Services/Seances/UpcomingSeancesFetcher.php
 
-		-
-			message: '#^Unable to resolve the template type TKey in call to function collect$#'
-			identifier: argument.templateType
-			count: 1
-			path: app/Services/Seances/UpcomingSeancesFetcher.php
 
-		-
-			message: '#^Unable to resolve the template type TValue in call to function collect$#'
-			identifier: argument.templateType
-			count: 1
-			path: app/Services/Seances/UpcomingSeancesFetcher.php
 
 		-
 			message: '#^Method App\\Services\\SeancesHistoryQueryService\:\:enrichWithStats\(\) should return Illuminate\\Support\\Collection\<int, array\<string, mixed\>\> but returns Illuminate\\Support\\Collection\<int, array\{id\: int, klassci_seance_id\: int, titre\: string, matiere\: array\{nom\: string\}, classe\: array\{nom\: string\}, date\: string\|null, visio_started_at\: string\|null, visio_ended_at\: string\|null, \.\.\.\}\>\.$#'

@@ -232,11 +232,8 @@ final class SeanceTenantIsolationTest extends TestCase
     private function runSyncJob(): void
     {
         (new SyncKlassciSeances)->handle(
-            app(KlassciProxyService::class),
-            app(ClasseSyncService::class),
-            app(NotificationService::class),
+            app(\App\Services\Seances\Sync\KlassciSeancesSyncService::class),
             app(LoggerInterface::class),
-            app(\App\Services\Seances\SeanceCacheDataBuilder::class),
         );
     }
 

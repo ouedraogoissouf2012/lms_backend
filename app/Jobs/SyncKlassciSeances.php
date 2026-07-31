@@ -2,14 +2,7 @@
 
 namespace App\Jobs;
 
-use App\Models\Seance;
-use App\Models\User;
-use App\Services\ClasseSyncService;
-use App\Services\KlassciProxyService;
-use App\Services\NotificationService;
-use App\Services\Seances\KlassciPayload;
-use App\Services\Seances\SeanceCacheDataBuilder;
-use App\Services\Visio\SecureVisioRoomIdGenerator;
+use App\Services\Seances\Sync\KlassciSeancesSyncService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -37,206 +30,14 @@ class SyncKlassciSeances implements ShouldQueue
     /**
      * Execute the job.
      */
-    public function handle(
-        KlassciProxyService $klassciService,
-        ClasseSyncService $classeSyncService,
-        NotificationService $notificationService,
-        LoggerInterface $logger,
-        SeanceCacheDataBuilder $cacheBuilder,
-    ): void {
+    public function handle(KlassciSeancesSyncService $syncService, LoggerInterface $logger): void
+    {
         $logger->info('Job SyncKlassciSeances démarré');
 
         try {
-            // Récupérer tous les enseignants avec token Klassci
-            $teachers = User::where('role', 'enseignant')
-                ->whereNotNull('klassci_token')
-                ->get();
+            $stats = $syncService->sync();
 
-            $stats = [
-                'teachers_checked' => 0,
-                'seances_found' => 0,
-                'seances_new' => 0,
-                'notifications_sent' => 0,
-                'seances_archived' => 0,
-                'errors' => 0,
-            ];
-
-            // Collecter les IDs de séances actives dans KLASSCI, GROUPÉS PAR
-            // INSTITUTION (#473). L'archivage doit se faire tenant par tenant :
-            // un ID actif chez l'institution A ne doit pas empêcher — ni provoquer —
-            // l'archivage de la séance homonyme de l'institution B.
-            // @var array<int, array<int, int>> $activeIdsByInstitution
-            $activeIdsByInstitution = [];
-
-            foreach ($teachers as $teacher) {
-                try {
-                    $stats['teachers_checked']++;
-
-                    // La query filtre déjà whereNotNull('klassci_token') ; ce guard
-                    // narrower le type pour l'analyse statique et reste défensif.
-                    $teacherToken = $teacher->klassci_token;
-                    if (! is_string($teacherToken)) {
-                        continue;
-                    }
-
-                    // Récupérer toutes les matières de l'enseignant
-                    $matieres = $klassciService->requestWithUserToken(
-                        $teacherToken,
-                        'matieres',
-                        'GET'
-                    );
-
-                    $matieresList = KlassciPayload::listOfArrays(
-                        KlassciPayload::asArray($matieres)['data'] ?? null
-                    );
-                    foreach ($matieresList as $matiere) {
-                        $matiereId = KlassciPayload::toInt($matiere['id'] ?? null);
-                        if ($matiereId === null) {
-                            continue;
-                        }
-
-                        // Récupérer les séances de chaque matière
-                        $details = $klassciService->requestWithUserToken(
-                            $teacherToken,
-                            "matieres/{$matiereId}",
-                            'GET'
-                        );
-
-                        $seances = KlassciPayload::listOfArrays(
-                            KlassciPayload::asArray(
-                                KlassciPayload::asArray($details)['data'] ?? null
-                            )['seances_programmees'] ?? null
-                        );
-                        $stats['seances_found'] += count($seances);
-
-                        foreach ($seances as $seanceArr) {
-                            try {
-                                $klassciSeanceId = KlassciPayload::toInt($seanceArr['id'] ?? null);
-                                if ($klassciSeanceId === null) {
-                                    continue;
-                                }
-
-                                // Ajouter cet ID à la liste des séances actives de
-                                // l'institution de cet enseignant (#473).
-                                $activeIdsByInstitution[$teacher->institution_id][] = $klassciSeanceId;
-
-                                // Vérifier si la séance existe déjà localement.
-                                // #473 : ce job tourne hors requête HTTP, donc le scope
-                                // global `institution` est inerte. On scope EXPLICITEMENT
-                                // par l'institution de l'enseignant pour ne jamais matcher
-                                // (ni écraser) la séance homonyme d'un autre tenant.
-                                $seanceLocal = Seance::withoutGlobalScope('institution')
-                                    ->where('institution_id', $teacher->institution_id)
-                                    ->where('klassci_seance_id', $klassciSeanceId)
-                                    ->first();
-                                $cacheData = $cacheBuilder->build($seanceArr, $matiere, $teacher);
-
-                                if (! $seanceLocal) {
-                                    // Nouvelle séance découverte!
-                                    $stats['seances_new']++;
-                                    $classeId = KlassciPayload::toInt(
-                                        KlassciPayload::asArray($seanceArr['classe'] ?? null)['id'] ?? null
-                                    );
-                                    $matiereNom = $matiere['nom'] ?? $matiere['libelle'] ?? null;
-
-                                    $logger->info('Nouvelle séance Klassci détectée par le job', [
-                                        'seance_id' => $klassciSeanceId,
-                                        'matiere' => $matiereNom ?? 'N/A',
-                                        'teacher_id' => $teacher->id,
-                                    ]);
-
-                                    // Créer la séance locale
-                                    $seanceLocal = Seance::create($cacheData + [
-                                        'klassci_seance_id' => $klassciSeanceId,
-                                        'visio_enabled' => true,  // Toutes les séances = visio
-                                        'visio_type' => 'jitsi',
-                                        'visio_status' => 'programmee',
-                                        'visio_room_id' => SecureVisioRoomIdGenerator::make(),
-                                        'visio_active' => false,
-                                        'created_by' => $teacher->id,
-                                    ]);
-
-                                    // Synchroniser la classe pour avoir les étudiants.
-                                    if ($classeId !== null) {
-                                        $classeSyncService->syncClasseById($classeId, $teacherToken);
-                                    }
-
-                                    // Envoyer les notifications
-                                    // #473 : institution_id transmis pour que la
-                                    // résolution de l'audience (classe + étudiants +
-                                    // enseignant) soit scopée au bon tenant — le job
-                                    // tourne sans tenant résolu, le scope global est inerte.
-                                    $count = $notificationService->notifyVisioScheduled($klassciSeanceId, [
-                                        'institution_id' => $teacher->institution_id,
-                                        'klassci_classe_id' => $classeId,
-                                        'klassci_enseignant_id' => $teacher->klassci_id,
-                                        'matiere_nom' => $matiereNom,
-                                        'enseignant_nom' => $teacher->name,
-                                    ]);
-
-                                    $stats['notifications_sent'] += $count;
-
-                                    $logger->info('Notifications envoyées par le job', [
-                                        'seance_id' => $klassciSeanceId,
-                                        'notifications_count' => $count,
-                                    ]);
-                                } else {
-                                    $cacheBuilder->applyTo($seanceLocal, $cacheData);
-                                }
-
-                            } catch (\Exception $e) {
-                                $stats['errors']++;
-                                $logger->error('Erreur traitement séance dans job', [
-                                    'seance_id' => $seanceArr['id'] ?? 'unknown',
-                                    'error' => $e->getMessage(),
-                                ]);
-                            }
-                        }
-                    }
-
-                } catch (\Exception $e) {
-                    $stats['errors']++;
-                    $logger->error('Erreur traitement enseignant dans job', [
-                        'teacher_id' => $teacher->id,
-                        'error' => $e->getMessage(),
-                    ]);
-                }
-            }
-
-            // Archiver les séances qui n'existent plus dans Klassci, TENANT PAR
-            // TENANT (#473). On n'archive que dans les institutions réellement
-            // synchronisées (celles ayant au moins un ID actif collecté), pour ne
-            // jamais toucher aux séances d'une institution absente de ce run.
-            // Chaque entrée du map contient au moins un ID (la clé n'est créée
-            // qu'au moment d'un push), donc pas de garde « liste vide » nécessaire.
-            foreach ($activeIdsByInstitution as $institutionId => $activeIds) {
-                $archivedSeances = Seance::withoutGlobalScope('institution')
-                    ->where('institution_id', $institutionId)
-                    ->where('is_active', true)
-                    ->whereNotNull('klassci_seance_id')
-                    ->whereNotIn('klassci_seance_id', $activeIds)
-                    ->get();
-
-                foreach ($archivedSeances as $seance) {
-                    $seance->update([
-                        'is_active' => false,
-                        'archived_at' => now(),
-                        'archive_reason' => 'supprimee_klassci',
-                    ]);
-
-                    $stats['seances_archived']++;
-
-                    $logger->info('Séance archivée (supprimée de Klassci)', [
-                        'seance_id' => $seance->id,
-                        'klassci_seance_id' => $seance->klassci_seance_id,
-                        'institution_id' => $institutionId,
-                        'matiere' => $seance->matiere_nom,
-                    ]);
-                }
-            }
-
-            $logger->info('Job SyncKlassciSeances terminé', $stats);
-
+            $logger->info('Job SyncKlassciSeances terminé', $stats->toArray());
         } catch (\Exception $e) {
             $logger->error('Erreur fatale dans job SyncKlassciSeances', [
                 'error' => $e->getMessage(),

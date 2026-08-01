@@ -68,7 +68,21 @@ class EnsureKlassciSync
         ]);
 
         try {
-            $klassciMe = $this->klassciService->get('auth/me');
+            $klassciToken = $user->klassci_token;
+            if (!is_string($klassciToken) || $klassciToken === '') {
+                Log::warning("Re-synchronisation KLASSCI ignorée pour user {$user->id}", [
+                    'user_id' => $user->id,
+                    'reason' => 'missing_user_token',
+                ]);
+
+                return $next($request);
+            }
+
+            $klassciMe = $this->klassciService->requestWithUserToken(
+                $klassciToken,
+                'auth/me',
+                'GET',
+            );
 
             if (isset($klassciMe['data']['user'])) {
                 $klassciUser = $klassciMe['data']['user'];

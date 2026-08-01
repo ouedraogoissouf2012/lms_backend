@@ -41,16 +41,16 @@ final class KlassciRoleSeparationTest extends TestCase
     }
 
     /**
-     * Swap the global `KlassciProxyService` binding so that any call to
-     * `get('auth/me')` returns the provided payload.
+     * Swap the global `KlassciProxyService` binding so that the authenticated
+     * user-token call to `auth/me` returns the provided payload.
      */
     private function mockKlassciAuthMe(array $klassciUser): void
     {
         $mock = Mockery::mock(KlassciProxyService::class);
-        $mock->shouldReceive('get')
-            ->with('auth/me')
+        $mock->shouldReceive('requestWithUserToken')
+            ->with('fake-klassci-token', 'auth/me', 'GET')
             ->andReturn(['data' => ['user' => $klassciUser]]);
-        $mock->shouldReceive('get')->byDefault()->andReturn([]);
+        $mock->shouldReceive('requestWithUserToken')->byDefault()->andReturn([]);
 
         $this->app->instance(KlassciProxyService::class, $mock);
     }
@@ -131,6 +131,7 @@ final class KlassciRoleSeparationTest extends TestCase
             'role'              => 'etudiant',
             'klassci_role'      => 'etudiant',
             'email'             => 'real@school-a.fr',
+            'klassci_token'     => 'fake-klassci-token',
             'last_klassci_sync' => now()->subHours(25),
         ]);
 
@@ -172,6 +173,7 @@ final class KlassciRoleSeparationTest extends TestCase
             'role'              => 'etudiant',
             'klassci_role'      => 'etudiant',
             'email'             => 'a@school-a.fr',
+            'klassci_token'     => 'fake-klassci-token',
             'last_klassci_sync' => now()->subHours(25),
         ]);
         $userB = User::factory()->create([

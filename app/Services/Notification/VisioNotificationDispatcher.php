@@ -61,8 +61,8 @@ final class VisioNotificationDispatcher
             return 0;
         }
 
-        $matiere = $seanceData['matiere_nom'] ?? 'Matière inconnue';
-        $enseignant = $seanceData['enseignant_nom'] ?? 'Enseignant';
+        $matiere = is_string($seanceData['matiere_nom'] ?? null) ? $seanceData['matiere_nom'] : 'Matière inconnue';
+        $enseignant = is_string($seanceData['enseignant_nom'] ?? null) ? $seanceData['enseignant_nom'] : 'Enseignant';
 
         $title = 'Visioconférence programmée';
         $message = "Une visioconférence a été programmée en {$matiere} avec {$enseignant}.";
@@ -96,7 +96,7 @@ final class VisioNotificationDispatcher
         $teacher = $this->resolveTeacher($seanceData);
 
         $count = 0;
-        $matiere = $seanceData['matiere_nom'] ?? 'Matière inconnue';
+        $matiere = is_string($seanceData['matiere_nom'] ?? null) ? $seanceData['matiere_nom'] : 'Matière inconnue';
 
         if ($students->isNotEmpty()) {
             $title = 'Visioconférence en cours';
@@ -138,7 +138,7 @@ final class VisioNotificationDispatcher
             return $students;
         }
 
-        $classe = Classe::where('klassci_id', $seanceData['klassci_classe_id'])->first();
+        $classe = $this->resolveClasse($seanceData);
 
         if (! $classe) {
             $this->logger->warning('Classe non trouvée pour notification', [
@@ -176,7 +176,7 @@ final class VisioNotificationDispatcher
             return collect();
         }
 
-        $classe = Classe::where('klassci_id', $seanceData['klassci_classe_id'])->first();
+        $classe = $this->resolveClasse($seanceData);
 
         if (! $classe) {
             return collect();
@@ -202,8 +202,49 @@ final class VisioNotificationDispatcher
             return null;
         }
 
-        return User::where('klassci_id', $seanceData['klassci_enseignant_id'])
-            ->where('role', 'enseignant')
-            ->first();
+        $query = User::where('klassci_id', $seanceData['klassci_enseignant_id'])
+            ->where('role', 'enseignant');
+
+        $institutionId = $this->institutionId($seanceData);
+        if ($institutionId !== null) {
+            $query->withoutGlobalScope('institution')->where('institution_id', $institutionId);
+        }
+
+        return $query->first();
+    }
+
+    /**
+     * Résout la classe cible en la scopant à l'institution de la séance (#473).
+     *
+     * Appelée depuis le job SyncKlassciSeances, hors contexte HTTP : le scope
+     * global `institution` de {@see Classe} est alors inerte. Sans ce filtre
+     * explicite, `klassci_id` — non unique entre tenants — matcherait la classe
+     * d'une autre institution et notifierait les mauvais étudiants.
+     *
+     * @param  array<string, mixed>  $seanceData
+     */
+    private function resolveClasse(array $seanceData): ?Classe
+    {
+        $query = Classe::where('klassci_id', $seanceData['klassci_classe_id']);
+
+        $institutionId = $this->institutionId($seanceData);
+        if ($institutionId !== null) {
+            $query->withoutGlobalScope('institution')->where('institution_id', $institutionId);
+        }
+
+        return $query->first();
+    }
+
+    /**
+     * Institution de la séance si présente dans le payload (cas du job tenant-less).
+     * En contexte HTTP, absente — le scope global suffit alors et ce filtre est ignoré.
+     *
+     * @param  array<string, mixed>  $seanceData
+     */
+    private function institutionId(array $seanceData): ?int
+    {
+        $institutionId = $seanceData['institution_id'] ?? null;
+
+        return is_int($institutionId) ? $institutionId : null;
     }
 }

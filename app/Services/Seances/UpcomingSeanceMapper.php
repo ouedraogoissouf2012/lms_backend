@@ -28,43 +28,54 @@ final class UpcomingSeanceMapper
     {
         // IMPORTANT: Le frontend attend seance.programmation.date, pas seance.date_seance.
         /** @var Collection<int, array<string, mixed>> $mapped */
-        $mapped = $seances->map(function (array $seance) use ($matiere): array {
-            $prog = KlassciPayload::asArray($seance['programmation'] ?? null);
-            $classe = KlassciPayload::asArray($seance['classe'] ?? null);
-            $date = KlassciPayload::toStringOrNull($prog['date'] ?? null);
-
-            return [
-                'id' => $seance['id'] ?? null,
-                'programmation' => [
-                    'date' => $date,
-                    // KLASSCI date heure_debut/heure_fin au jour courant → réaligner
-                    // sur la date réelle de la séance.
-                    'heure_debut' => SeanceProgrammationNormalizer::alignDate(
-                        KlassciPayload::toStringOrNull($prog['heure_debut'] ?? null),
-                        $date
-                    ),
-                    'heure_fin' => SeanceProgrammationNormalizer::alignDate(
-                        KlassciPayload::toStringOrNull($prog['heure_fin'] ?? null),
-                        $date
-                    ),
-                    'salle' => $prog['salle'] ?? null,
-                ],
-                'salle' => $prog['salle'] ?? null, // Aussi en racine pour compatibilité
-                'matiere' => [
-                    'id' => $matiere['id'] ?? null,
-                    'libelle' => $matiere['nom'] ?? $matiere['libelle'] ?? 'N/A', // KLASSCI utilise 'nom'
-                    'code' => $matiere['code'] ?? null,
-                ],
-                'classe' => [
-                    'id' => $classe['id'] ?? null,
-                    'libelle' => $classe['nom'] ?? 'N/A',
-                ],
-                // `enseignant` intentionnellement null : KLASSCI ne le fournit pas à ce
-                // niveau ; résolu côté frontend via /enseignants/{matiere_id} si besoin.
-                'enseignant' => null,
-            ];
-        });
+        $mapped = $seances->map(fn (array $seance): array => $this->mapRow($seance, $matiere));
 
         return $mapped;
+    }
+
+    /**
+     * Construit la ligne de sortie d'une séance (structure `programmation` +
+     * `matiere` + `classe`), datetimes réalignés sur la date de séance.
+     *
+     * @param  array<string, mixed>  $seance
+     * @param  array<string, mixed>  $matiere
+     * @return array<string, mixed>
+     */
+    private function mapRow(array $seance, array $matiere): array
+    {
+        $prog = KlassciPayload::asArray($seance['programmation'] ?? null);
+        $classe = KlassciPayload::asArray($seance['classe'] ?? null);
+        $date = KlassciPayload::toStringOrNull($prog['date'] ?? null);
+
+        return [
+            'id' => $seance['id'] ?? null,
+            'programmation' => [
+                'date' => $date,
+                // KLASSCI date heure_debut/heure_fin au jour courant → réaligner
+                // sur la date réelle de la séance.
+                'heure_debut' => SeanceProgrammationNormalizer::alignDate(
+                    KlassciPayload::toStringOrNull($prog['heure_debut'] ?? null),
+                    $date
+                ),
+                'heure_fin' => SeanceProgrammationNormalizer::alignDate(
+                    KlassciPayload::toStringOrNull($prog['heure_fin'] ?? null),
+                    $date
+                ),
+                'salle' => $prog['salle'] ?? null,
+            ],
+            'salle' => $prog['salle'] ?? null, // Aussi en racine pour compatibilité
+            'matiere' => [
+                'id' => $matiere['id'] ?? null,
+                'libelle' => $matiere['nom'] ?? $matiere['libelle'] ?? 'N/A', // KLASSCI utilise 'nom'
+                'code' => $matiere['code'] ?? null,
+            ],
+            'classe' => [
+                'id' => $classe['id'] ?? null,
+                'libelle' => $classe['nom'] ?? 'N/A',
+            ],
+            // `enseignant` intentionnellement null : KLASSCI ne le fournit pas à ce
+            // niveau ; résolu côté frontend via /enseignants/{matiere_id} si besoin.
+            'enseignant' => null,
+        ];
     }
 }

@@ -6,6 +6,7 @@ namespace Tests\Unit\Middleware;
 
 use App\Http\Middleware\EnsureKlassciSync;
 use App\Models\User;
+use App\Services\Klassci\Data\KlassciDataWhitelist;
 use App\Services\KlassciProxyService;
 use Illuminate\Http\Request;
 use Mockery;
@@ -142,7 +143,7 @@ final class EnsureKlassciSyncTest extends EnsureKlassciSyncTestCase
         $request = Request::create('/api/dummy', 'GET');
         $request->setUserResolver(fn () => $user);
 
-        $middleware = new EnsureKlassciSync($klassciService);
+        $middleware = new EnsureKlassciSync($klassciService, new KlassciDataWhitelist());
         $middleware->handle($request, fn ($req) => new Response('ok', 200));
 
         $user->refresh();
@@ -187,7 +188,7 @@ final class EnsureKlassciSyncTest extends EnsureKlassciSyncTestCase
         $request = Request::create('/api/dummy', 'GET');
         $request->setUserResolver(fn () => $user);
 
-        $middleware = new EnsureKlassciSync($klassciService);
+        $middleware = new EnsureKlassciSync($klassciService, new KlassciDataWhitelist());
         $response = $middleware->handle($request, fn ($req) => new Response('ok', 200));
 
         self::assertSame(200, $response->getStatusCode());

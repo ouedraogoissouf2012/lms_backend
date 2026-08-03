@@ -7,6 +7,7 @@ namespace Tests\Unit\Middleware;
 use App\Http\Middleware\EnsureKlassciSync;
 use App\Models\Institution;
 use App\Models\User;
+use App\Services\Klassci\Data\KlassciDataWhitelist;
 use App\Services\KlassciProxyService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
@@ -93,7 +94,7 @@ abstract class EnsureKlassciSyncTestCase extends TestCase
         $request = Request::create('/api/dummy', 'GET');
         $request->setUserResolver(fn () => $user);
 
-        $middleware = new EnsureKlassciSync($klassciService);
+        $middleware = new EnsureKlassciSync($klassciService, new KlassciDataWhitelist());
 
         return $middleware->handle($request, fn ($nextRequest) => new Response('ok', 200));
     }

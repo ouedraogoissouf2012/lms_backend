@@ -21,6 +21,8 @@ use App\Models\Traits\BelongsToInstitution;
  *                                    autoriser (CRITICAL-05, `.claude/specs/critical-05-klassci-role-separation/`).
  * @property int|null $klassci_enseignant_id Write-once — autorité ownership enseignant (#119).
  *                                    Ne JAMAIS lire `klassci_data['enseignant_id']` pour autoriser.
+ * @property array<string, mixed> $klassci_data Cache display filtré par whitelist (#477) via le cast
+ *                                    {@see \App\Casts\KlassciData} — toujours lu comme array.
  * @property \Illuminate\Support\Carbon|null $last_klassci_sync Cast `datetime` (déclaré dans la méthode casts()).
  */
 class User extends Authenticatable

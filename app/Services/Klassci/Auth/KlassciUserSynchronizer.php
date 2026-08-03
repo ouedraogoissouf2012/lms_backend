@@ -6,6 +6,7 @@ namespace App\Services\Klassci\Auth;
 
 use App\Models\Institution;
 use App\Models\User;
+use App\Services\Klassci\Data\KlassciDataWhitelist;
 use App\Services\MatiereSyncService;
 use Illuminate\Contracts\Hashing\Hasher;
 use Illuminate\Database\ConnectionInterface;
@@ -49,6 +50,7 @@ class KlassciUserSynchronizer
         private readonly KlassciEnseignantIdResolver $enseignantIdResolver,
         private readonly KlassciEmailConflictGuard $emailGuard,
         private readonly LoggerInterface $logger,
+        private readonly KlassciDataWhitelist $whitelist,
     ) {
     }
 
@@ -175,7 +177,9 @@ class KlassciUserSynchronizer
             'klassci_role'       => $klassciUser['role'] ?? 'etudiant',
             'klassci_token'      => $klassciToken,
             'klassci_tenant_url' => $tenantUrl,
-            'klassci_data'       => json_encode(array_merge($klassciUser, ['_lms_tenant_url' => $tenantUrl])),
+            // #477 : filtré par whitelist ; _lms_tenant_url (interne LMS) passé en
+            // existant pour être préservé. Le cast KlassciData sérialise l'array.
+            'klassci_data'       => $this->whitelist->filter($klassciUser, ['_lms_tenant_url' => $tenantUrl]),
             'last_klassci_sync'  => now(),
             'institution_id'     => $institutionId,
         ];

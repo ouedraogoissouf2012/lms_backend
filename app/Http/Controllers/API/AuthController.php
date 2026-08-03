@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Services\Auth\LocalLmsAuthenticator;
 use App\Services\Klassci\Auth\KlassciAuthClient;
 use App\Services\Klassci\Auth\KlassciTenantDiscovery;
+use App\Services\Klassci\Data\KlassciDataWhitelist;
 use App\Services\Audit\AuditLogger;
 use App\Services\Klassci\Auth\KlassciUserSynchronizer;
 use App\Services\KlassciProxyService;
@@ -45,6 +46,7 @@ class AuthController extends AuthenticatedController
         private AuthResponsePresenter $presenter,
         private AuditLogger $auditLogger,
         private LoggerInterface $logger,
+        private KlassciDataWhitelist $klassciDataWhitelist,
     ) {}
 
     /**
@@ -110,6 +112,11 @@ class AuthController extends AuthenticatedController
             } catch (\Exception) {
                 $userData = [];
             }
+
+            // #477 (vecteur B) : /auth/me renvoie le payload KLASSCI LIVE au frontend
+            // sans passer par le stockage. On applique la MÊME whitelist qu'au stockage
+            // pour qu'un KLASSCI compromis ne puisse pas injecter de clés dans la réponse.
+            $userData = $this->klassciDataWhitelist->filter($userData);
 
             return $this->presenter->profile($user, $userData);
         } catch (\Exception) {

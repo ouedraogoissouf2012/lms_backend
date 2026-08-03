@@ -42,15 +42,7 @@ final class UpcomingSeancesFetcher
     public function fetch(User $user, string $klassciToken, string $dateDebut, string $dateFin, ?int $teacherId, ?int $classeId): Collection
     {
         if ($user->isManager()) {
-            $localSeances = $this->managerFetcher->fetch($dateDebut, $dateFin, $teacherId, $classeId);
-
-            $this->logger->info('Séances à venir servies depuis la BDD locale', [
-                'count' => $localSeances->count(),
-                'teacher_id' => $teacherId,
-                'classe_id' => $classeId,
-            ]);
-
-            return $localSeances;
+            return $this->fetchForManager($dateDebut, $dateFin, $teacherId, $classeId);
         }
 
         // WORKAROUND: endpoint emploi-temps bugué, on utilise matieres/{id}
@@ -61,55 +53,86 @@ final class UpcomingSeancesFetcher
         $seances = collect([]);
 
         try {
-            $matieresResponse = $this->klassciService->requestWithUserToken(
-                $klassciToken,
-                'matieres',
-                'GET'
-            );
-
-            $matieres = collect(KlassciPayload::listOfArrays($matieresResponse['data'] ?? null));
-
-            // PERF (#135) : paralléliser les détails matières — était N appels
-            // `matieres/{id}` séquentiels. ID échoué = absent du map (log émis par
-            // le batch fetcher) → matière omise, comme l'ancien try/catch.
-            $matiereIds = [];
-            foreach ($matieres as $matiere) {
-                $id = KlassciPayload::toInt(KlassciPayload::asArray($matiere)['id'] ?? null);
-                if ($id !== null) {
-                    $matiereIds[] = $id;
-                }
-            }
-            $matiereIds = array_values(array_unique($matiereIds));
-            $matieresDetails = $this->klassciService->fetchManyMatieresDetails($matiereIds, $klassciToken);
-
-            // PERF (#476) — Phase 1 : collecte des séances candidates (filtre date/classe,
-            // aucune requête locale) + de tous leurs klassci_seance_id, AVANT toute
-            // résolution locale.
+            [$matieres, $matieresDetails] = $this->loadMatieresWithDetails($klassciToken);
             $candidates = $this->collectCandidates($matieres, $matieresDetails, $dateDebut, $dateFin, $classeId);
-
-            // PERF (#476) — un seul pré-chargement local pour l'ensemble : alimente le
-            // filtre archivé/masqué (étudiants) ET l'enrichissement visio (tous rôles).
-            // Le `null` en non-étudiant évite la requête `seance_user_hidden`.
-            $this->localLookup->preload(
-                $this->collectKlassciSeanceIds($candidates),
-                $user->isStudent() ? $user : null,
-            );
-
-            // PERF (#476) — Phase 2 : filtre étudiant (résolu en mémoire) + mapping.
-            foreach ($candidates as [$seancesProgrammees, $matiereArr]) {
-                $seancesVisibles = $this->rejectHiddenOrArchived($seancesProgrammees, $user);
-                $seances = $seances->concat($this->mapper->map($seancesVisibles, $matiereArr));
-            }
+            $seances = $this->assembleVisibleSeances($candidates, $user);
 
             $this->logger->info('Séances récupérées via matieres', ['count' => $seances->count()]);
-
         } catch (\Exception $e) {
             $this->logger->error('Erreur récupération séances via matieres', [
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ]);
         }
 
         return $this->enrichWithVisio($seances);
+    }
+
+    /**
+     * Chemin manager : liste servie directement depuis le cache local.
+     *
+     * @return Collection<int, array<string, mixed>>
+     */
+    private function fetchForManager(string $dateDebut, string $dateFin, ?int $teacherId, ?int $classeId): Collection
+    {
+        $localSeances = $this->managerFetcher->fetch($dateDebut, $dateFin, $teacherId, $classeId);
+
+        $this->logger->info('Séances à venir servies depuis la BDD locale', [
+            'count' => $localSeances->count(),
+            'teacher_id' => $teacherId,
+            'classe_id' => $classeId,
+        ]);
+
+        return $localSeances;
+    }
+
+    /**
+     * Récupère les matières de l'utilisateur puis, en UN pool batch (#135),
+     * leurs détails (séances programmées). ID échoué = absent du map.
+     *
+     * @return array{0: Collection<int, array<string, mixed>>, 1: array<int, array<string, mixed>>}
+     */
+    private function loadMatieresWithDetails(string $klassciToken): array
+    {
+        $matieresResponse = $this->klassciService->requestWithUserToken($klassciToken, 'matieres', 'GET');
+        $matieres = collect(KlassciPayload::listOfArrays($matieresResponse['data'] ?? null));
+
+        $matiereIds = [];
+        foreach ($matieres as $matiere) {
+            $id = KlassciPayload::toInt(KlassciPayload::asArray($matiere)['id'] ?? null);
+            if ($id !== null) {
+                $matiereIds[] = $id;
+            }
+        }
+
+        $details = $this->klassciService->fetchManyMatieresDetails(array_values(array_unique($matiereIds)), $klassciToken);
+
+        return [$matieres, $details];
+    }
+
+    /**
+     * Phase 2 (#476) : pré-charge l'état local en UN whereIn mutualisé (filtre +
+     * visio), puis assemble les séances visibles mappées.
+     *
+     * @param  list<array{0: Collection<int, array<string, mixed>>, 1: array<string, mixed>}>  $candidates
+     * @return Collection<int, array<string, mixed>>
+     */
+    private function assembleVisibleSeances(array $candidates, User $user): Collection
+    {
+        // Un seul pré-chargement : alimente le filtre archivé/masqué (étudiants) ET
+        // l'enrichissement visio. `null` en non-étudiant évite la requête hidden.
+        $this->localLookup->preload(
+            $this->collectKlassciSeanceIds($candidates),
+            $user->isStudent() ? $user : null,
+        );
+
+        /** @var Collection<int, array<string, mixed>> $seances */
+        $seances = collect([]);
+        foreach ($candidates as [$seancesProgrammees, $matiereArr]) {
+            $seancesVisibles = $this->rejectHiddenOrArchived($seancesProgrammees, $user);
+            $seances = $seances->concat($this->mapper->map($seancesVisibles, $matiereArr));
+        }
+
+        return $seances;
     }
 
     /**

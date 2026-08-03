@@ -70,22 +70,21 @@ final class ManagerSeancesLocalFetcher
     {
         $start = $seance->date_seance ? Carbon::parse($seance->date_seance)->copy() : null;
         $end = $start?->copy()->addHours(self::DEFAULT_SEANCE_DURATION_HOURS);
-        $date = $start?->format('Y-m-d');
+        $participantsCount = $seance->current_participants_count ?? 0;
         $startIso = $start?->toISOString();
         $endIso = $end?->toISOString();
-        $participantsCount = $seance->current_participants_count ?? 0;
 
         return [
             'id' => $seance->klassci_seance_id ?? $seance->id,
             'klassci_seance_id' => $seance->klassci_seance_id,
-            'date_seance' => $date,
+            'date_seance' => $start?->format('Y-m-d'),
             'date_debut' => $startIso,
             'date_fin' => $endIso,
             'heure_debut' => $start?->format('H:i'),
             'heure_fin' => $end?->format('H:i'),
             'salle' => null,
             'programmation' => [
-                'date' => $date,
+                'date' => $start?->format('Y-m-d'),
                 'heure_debut' => $startIso,
                 'heure_fin' => $endIso,
                 'salle' => null,
@@ -96,18 +95,26 @@ final class ManagerSeancesLocalFetcher
                 'nom' => $seance->matiere_nom ?? 'N/A',
                 'code' => null,
             ],
-            'classe' => [
-                'id' => $seance->klassci_classe_id,
-                'libelle' => $seance->classe_nom ?? 'N/A',
-                'nom' => $seance->classe_nom ?? 'N/A',
-                'name' => $seance->classe_nom ?? 'N/A',
-                'effectif' => $seance->classe_effectif ?? 0,
-            ],
+            'classe' => $this->classeBlock($seance),
             'enseignant' => [
                 'id' => $seance->klassci_enseignant_id,
                 'nom' => $seance->enseignant_nom ?? 'Non assigné',
                 'prenom' => '',
             ],
+            'visio' => $this->visioBlock($seance, $participantsCount),
+            'statut' => $seance->visio_status ?? 'programme',
+        ] + $this->flatVisioFields($seance, $participantsCount);
+    }
+
+    /**
+     * Champs visio « plats » à la racine (compat frontend legacy) —
+     * doublonnent le sous-objet `visio` construit par visioBlock().
+     *
+     * @return array<string, mixed>
+     */
+    private function flatVisioFields(Seance $seance, int $participantsCount): array
+    {
+        return [
             'visio_enabled' => $seance->visio_enabled,
             'visio_type' => $seance->visio_type,
             'visio_room_id' => $seance->visio_room_id,
@@ -116,16 +123,34 @@ final class ManagerSeancesLocalFetcher
             'visio_started_at' => $seance->visio_started_at?->toISOString(),
             'visio_ended_at' => $seance->visio_ended_at?->toISOString(),
             'visio_participants_count' => $participantsCount,
-            'visio' => [
-                'enabled' => $seance->visio_enabled,
-                'active' => $seance->visio_active,
-                'status' => $seance->visio_status,
-                'room_id' => $seance->visio_room_id,
-                'started_at' => $seance->visio_started_at?->toISOString(),
-                'ended_at' => $seance->visio_ended_at?->toISOString(),
-                'participants_count' => $participantsCount,
-            ],
-            'statut' => $seance->visio_status ?? 'programme',
+        ];
+    }
+
+    /** @return array<string, mixed> */
+    private function classeBlock(Seance $seance): array
+    {
+        $nom = $seance->classe_nom ?? 'N/A';
+
+        return [
+            'id' => $seance->klassci_classe_id,
+            'libelle' => $nom,
+            'nom' => $nom,
+            'name' => $nom,
+            'effectif' => $seance->classe_effectif ?? 0,
+        ];
+    }
+
+    /** @return array<string, mixed> */
+    private function visioBlock(Seance $seance, int $participantsCount): array
+    {
+        return [
+            'enabled' => $seance->visio_enabled,
+            'active' => $seance->visio_active,
+            'status' => $seance->visio_status,
+            'room_id' => $seance->visio_room_id,
+            'started_at' => $seance->visio_started_at?->toISOString(),
+            'ended_at' => $seance->visio_ended_at?->toISOString(),
+            'participants_count' => $participantsCount,
         ];
     }
 }

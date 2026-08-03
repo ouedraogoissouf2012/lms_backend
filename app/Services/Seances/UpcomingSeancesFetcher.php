@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace App\Services\Seances;
 
-use App\Models\Seance;
-use App\Models\SeanceUserHidden;
 use App\Models\User;
 use App\Services\KlassciProxyService;
 use Carbon\Carbon;
@@ -34,6 +32,8 @@ final class UpcomingSeancesFetcher
         private readonly LoggerInterface $logger,
         private readonly KlassciProxyService $klassciService,
         private readonly ManagerSeancesLocalFetcher $managerFetcher,
+        private readonly LocalSeanceLookup $localLookup,
+        private readonly UpcomingSeanceMapper $mapper,
     ) {}
 
     /**
@@ -82,24 +82,23 @@ final class UpcomingSeancesFetcher
             $matiereIds = array_values(array_unique($matiereIds));
             $matieresDetails = $this->klassciService->fetchManyMatieresDetails($matiereIds, $klassciToken);
 
-            foreach ($matieres as $matiere) {
-                $matiereArr = KlassciPayload::asArray($matiere);
-                $matiereId = KlassciPayload::toInt($matiereArr['id'] ?? null);
-                if ($matiereId === null) {
-                    continue;
-                }
+            // PERF (#476) — Phase 1 : collecte des séances candidates (filtre date/classe,
+            // aucune requête locale) + de tous leurs klassci_seance_id, AVANT toute
+            // résolution locale.
+            $candidates = $this->collectCandidates($matieres, $matieresDetails, $dateDebut, $dateFin, $classeId);
 
-                $matiereDetails = $matieresDetails[$matiereId] ?? null;
-                if ($matiereDetails === null) {
-                    continue;
-                }
+            // PERF (#476) — un seul pré-chargement local pour l'ensemble : alimente le
+            // filtre archivé/masqué (étudiants) ET l'enrichissement visio (tous rôles).
+            // Le `null` en non-étudiant évite la requête `seance_user_hidden`.
+            $this->localLookup->preload(
+                $this->collectKlassciSeanceIds($candidates),
+                $user->isStudent() ? $user : null,
+            );
 
-                $seancesProgrammees = collect(
-                    KlassciPayload::listOfArrays(KlassciPayload::asArray($matiereDetails['data'] ?? null)['seances_programmees'] ?? null)
-                );
-                $seancesFiltrees = $this->filterSeances($seancesProgrammees, $user, $dateDebut, $dateFin, $classeId);
-                $seancesMapped = $this->mapSeances($seancesFiltrees, $matiereArr);
-                $seances = $seances->concat($seancesMapped);
+            // PERF (#476) — Phase 2 : filtre étudiant (résolu en mémoire) + mapping.
+            foreach ($candidates as [$seancesProgrammees, $matiereArr]) {
+                $seancesVisibles = $this->rejectHiddenOrArchived($seancesProgrammees, $user);
+                $seances = $seances->concat($this->mapper->map($seancesVisibles, $matiereArr));
             }
 
             $this->logger->info('Séances récupérées via matieres', ['count' => $seances->count()]);
@@ -114,44 +113,52 @@ final class UpcomingSeancesFetcher
     }
 
     /**
-     * @param Collection<int, array<string, mixed>> $seancesProgrammees
+     * Phase 1 (#476) — collecte les couples (séances filtrées date/classe, matière)
+     * SANS aucune requête locale. Le filtre archivé/masqué est reporté en phase 2
+     * (après pré-chargement), pour éliminer les N+1.
+     *
+     * @param  Collection<int, array<string, mixed>>  $matieres
+     * @param  array<int, array<string, mixed>>  $matieresDetails
+     * @return list<array{0: Collection<int, array<string, mixed>>, 1: array<string, mixed>}>
+     */
+    private function collectCandidates(Collection $matieres, array $matieresDetails, string $dateDebut, string $dateFin, ?int $classeId): array
+    {
+        $candidates = [];
+        foreach ($matieres as $matiere) {
+            $matiereArr = KlassciPayload::asArray($matiere);
+            $matiereId = KlassciPayload::toInt($matiereArr['id'] ?? null);
+            if ($matiereId === null || ! isset($matieresDetails[$matiereId])) {
+                continue;
+            }
+
+            $seancesProgrammees = collect(
+                KlassciPayload::listOfArrays(KlassciPayload::asArray($matieresDetails[$matiereId]['data'] ?? null)['seances_programmees'] ?? null)
+            );
+            $candidates[] = [$this->filterByDateAndClasse($seancesProgrammees, $dateDebut, $dateFin, $classeId), $matiereArr];
+        }
+
+        return $candidates;
+    }
+
+    /**
+     * Filtre par fenêtre de dates + classe optionnelle. Aucune requête locale.
+     *
+     * @param  Collection<int, array<string, mixed>>  $seances
      * @return Collection<int, array<string, mixed>>
      */
-    private function filterSeances(Collection $seancesProgrammees, User $user, string $dateDebut, string $dateFin, ?int $classeId): Collection
+    private function filterByDateAndClasse(Collection $seances, string $dateDebut, string $dateFin, ?int $classeId): Collection
     {
-        // Filtrer par date
-        $filtered = $seancesProgrammees->filter(function (array $seance) use ($dateDebut, $dateFin) {
+        $filtered = $seances->filter(function (array $seance) use ($dateDebut, $dateFin) {
             $dateSeance = KlassciPayload::toStringOrNull(
                 KlassciPayload::asArray($seance['programmation'] ?? null)['date'] ?? null
             );
+
             return $dateSeance !== null && $dateSeance >= $dateDebut && $dateSeance <= $dateFin;
         });
 
-        // Filtrer par classe si spécifié
         if ($classeId) {
             $filtered = $filtered->filter(function (array $seance) use ($classeId) {
-                $seanceClasseId = KlassciPayload::toInt(KlassciPayload::asArray($seance['classe'] ?? null)['id'] ?? null);
-                return $seanceClasseId === $classeId;
-            });
-        }
-
-        // IMPORTANT: Pour les étudiants, filtrer les séances archivées et masquées
-        // Enseignants/Coordinateurs/Admins voient tout
-        if ($user->isStudent()) {
-            $filtered = $filtered->filter(function (array $seance) use ($user) {
-                $localSeance = Seance::where('klassci_seance_id', KlassciPayload::toInt($seance['id'] ?? null))->first();
-
-                // Si la séance existe en local mais est archivée, ne pas la montrer aux étudiants
-                if ($localSeance && !$localSeance->is_active) {
-                    return false;
-                }
-
-                // Si la séance est masquée par l'étudiant, ne pas la montrer
-                if ($localSeance && SeanceUserHidden::isHidden($localSeance->id, $user->id)) {
-                    return false;
-                }
-
-                return true;
+                return KlassciPayload::toInt(KlassciPayload::asArray($seance['classe'] ?? null)['id'] ?? null) === $classeId;
             });
         }
 
@@ -159,54 +166,45 @@ final class UpcomingSeancesFetcher
     }
 
     /**
-     * @param Collection<int, array<string, mixed>> $seances
-     * @param array<string, mixed> $matiere
+     * Tous les klassci_seance_id non nuls des candidats, dédupliqués.
+     *
+     * @param  list<array{0: Collection<int, array<string, mixed>>, 1: array<string, mixed>}>  $candidates
+     * @return list<int>
+     */
+    private function collectKlassciSeanceIds(array $candidates): array
+    {
+        $ids = [];
+        foreach ($candidates as [$seances]) {
+            foreach ($seances as $seance) {
+                $id = KlassciPayload::toInt($seance['id'] ?? null);
+                if ($id !== null) {
+                    $ids[] = $id;
+                }
+            }
+        }
+
+        return array_values(array_unique($ids));
+    }
+
+    /**
+     * Phase 2 (#476) — pour les étudiants, écarte les séances archivées ou masquées,
+     * résolues EN MÉMOIRE depuis le pré-chargement (plus aucune requête par séance).
+     * Enseignants/coordinateurs/admins voient tout (comportement inchangé).
+     *
+     * @param  Collection<int, array<string, mixed>>  $seances
      * @return Collection<int, array<string, mixed>>
      */
-    private function mapSeances(Collection $seances, array $matiere): Collection
+    private function rejectHiddenOrArchived(Collection $seances, User $user): Collection
     {
-        // Enrichir avec info matière et formater
-        // IMPORTANT: Le frontend attend seance.programmation.date, pas seance.date_seance
-        /** @var Collection<int, array<string, mixed>> $mapped */
-        $mapped = $seances->map(function (array $seance) use ($matiere): array {
-            $prog = KlassciPayload::asArray($seance['programmation'] ?? null);
-            $classe = KlassciPayload::asArray($seance['classe'] ?? null);
-            $date = KlassciPayload::toStringOrNull($prog['date'] ?? null);
+        if (! $user->isStudent()) {
+            return $seances;
+        }
 
-            return [
-                'id' => $seance['id'] ?? null,
-                'programmation' => [
-                    'date' => $date,
-                    // Format ISO complet, mais KLASSCI date heure_debut/heure_fin au jour
-                    // courant → réaligner la date sur celle de la séance.
-                    'heure_debut' => SeanceProgrammationNormalizer::alignDate(
-                        KlassciPayload::toStringOrNull($prog['heure_debut'] ?? null),
-                        $date
-                    ),
-                    'heure_fin' => SeanceProgrammationNormalizer::alignDate(
-                        KlassciPayload::toStringOrNull($prog['heure_fin'] ?? null),
-                        $date
-                    ),
-                    'salle' => $prog['salle'] ?? null
-                ],
-                'salle' => $prog['salle'] ?? null, // Aussi en racine pour compatibilité
-                'matiere' => [
-                    'id' => $matiere['id'] ?? null,
-                    'libelle' => $matiere['nom'] ?? $matiere['libelle'] ?? 'N/A', // KLASSCI utilise 'nom' pas 'libelle'
-                    'code' => $matiere['code'] ?? null
-                ],
-                'classe' => [
-                    'id' => $classe['id'] ?? null,
-                    'libelle' => $classe['nom'] ?? 'N/A'
-                ],
-                // `enseignant` est intentionnellement null sur ce chemin :
-                // KLASSCI ne le fournit pas à ce niveau. Il est résolu côté frontend
-                // via un appel séparé /enseignants/{matiere_id} si l'UI en a besoin.
-                'enseignant' => null,
-            ];
+        return $seances->filter(function (array $seance): bool {
+            $kid = KlassciPayload::toInt($seance['id'] ?? null);
+
+            return ! $this->localLookup->isArchived($kid) && ! $this->localLookup->isHidden($kid);
         });
-
-        return $mapped;
     }
 
     /**
@@ -229,8 +227,9 @@ final class UpcomingSeancesFetcher
                 $seance['duree_minutes'] = $heureDebut->diffInMinutes($heureFin);
             }
 
-            // Chercher infos visio dans la table locale
-            $visioInfo = Seance::byKlassciId(KlassciPayload::toInt($seance['id'] ?? null) ?? 0)->first();
+            // Chercher infos visio dans la table locale — résolu EN MÉMOIRE depuis
+            // le même pré-chargement que le filtre (mutualisation #476, plus de N+1).
+            $visioInfo = $this->localLookup->seanceFor(KlassciPayload::toInt($seance['id'] ?? null));
 
             if ($visioInfo) {
                 $seance['visio_enabled'] = $visioInfo->visio_enabled;

@@ -240,15 +240,7 @@ final class UpcomingSeancesFetcher
     {
         /** @var Collection<int, array<string, mixed>> $enriched */
         $enriched = $seances->map(function (array $seance): array {
-            // Calculer durée
-            $dateSeance = KlassciPayload::toStringOrNull($seance['date_seance'] ?? null);
-            $heureDebutRaw = KlassciPayload::toStringOrNull($seance['heure_debut'] ?? null);
-            $heureFinRaw = KlassciPayload::toStringOrNull($seance['heure_fin'] ?? null);
-            if ($dateSeance !== null && $heureDebutRaw !== null && $heureFinRaw !== null) {
-                $heureDebut = Carbon::parse($dateSeance . ' ' . $heureDebutRaw);
-                $heureFin = Carbon::parse($dateSeance . ' ' . $heureFinRaw);
-                $seance['duree_minutes'] = $heureDebut->diffInMinutes($heureFin);
-            }
+            $seance = $this->withDureeMinutes($seance);
 
             // Chercher infos visio dans la table locale — résolu EN MÉMOIRE depuis
             // le même pré-chargement que le filtre (mutualisation #476, plus de N+1).
@@ -275,5 +267,30 @@ final class UpcomingSeancesFetcher
         });
 
         return $enriched;
+    }
+
+    /**
+     * Ajoute `duree_minutes` (entier, minutes) à partir des heures de
+     * `programmation`, qui sont des datetimes ISO déjà alignés sur la date de
+     * séance (UpcomingSeanceMapper + SeanceProgrammationNormalizer). On les parse
+     * tels quels, SANS reconcaténer la date — cohérent avec
+     * SeanceDetailQueryService (#487). Heure(s) manquante(s) → clé omise.
+     *
+     * @param  array<string, mixed>  $seance
+     * @return array<string, mixed>
+     */
+    private function withDureeMinutes(array $seance): array
+    {
+        $prog = KlassciPayload::asArray($seance['programmation'] ?? null);
+        $heureDebutRaw = KlassciPayload::toStringOrNull($prog['heure_debut'] ?? null);
+        $heureFinRaw = KlassciPayload::toStringOrNull($prog['heure_fin'] ?? null);
+
+        if ($heureDebutRaw !== null && $heureFinRaw !== null) {
+            $heureDebut = Carbon::parse($heureDebutRaw);
+            $heureFin = Carbon::parse($heureFinRaw);
+            $seance['duree_minutes'] = (int) $heureDebut->diffInMinutes($heureFin, absolute: true);
+        }
+
+        return $seance;
     }
 }

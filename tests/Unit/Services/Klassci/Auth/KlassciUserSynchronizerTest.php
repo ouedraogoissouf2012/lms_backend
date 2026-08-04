@@ -10,6 +10,7 @@ use App\Services\Klassci\Auth\KlassciEmailConflictGuard;
 use App\Services\Klassci\Auth\KlassciEnseignantIdResolver;
 use App\Services\Klassci\Auth\KlassciUserSynchronizer;
 use App\Services\Klassci\Auth\StudentClassSynchronizer;
+use App\Services\Klassci\Data\KlassciDataWhitelist;
 use App\Services\KlassciProxyService;
 use App\Services\MatiereSyncService;
 use Illuminate\Contracts\Hashing\Hasher;
@@ -73,6 +74,7 @@ final class KlassciUserSynchronizerTest extends TestCase
             new KlassciEnseignantIdResolver(),
             new KlassciEmailConflictGuard($this->logger),
             $this->logger,
+            new KlassciDataWhitelist(),
         );
     }
 

@@ -169,32 +169,8 @@ parameters:
 			path: app/Http/Controllers/API/SearchController.php
 
 		-
-			message: '#^Cannot access offset ''name'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 1
-			path: app/Http/Middleware/EnsureKlassciSync.php
-
-		-
-			message: '#^Cannot access offset ''nom'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 1
-			path: app/Http/Middleware/EnsureKlassciSync.php
-
-		-
-			message: '#^Cannot access offset ''role'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 1
-			path: app/Http/Middleware/EnsureKlassciSync.php
-
-		-
 			message: '#^Cannot access offset ''user'' on mixed\.$#'
 			identifier: offsetAccess.nonOffsetAccessible
-			count: 1
-			path: app/Http/Middleware/EnsureKlassciSync.php
-
-		-
-			message: '#^Parameter \#2 \$klassciUser of method App\\Http\\Middleware\\EnsureKlassciSync\:\:detectAndLogRoleDivergence\(\) expects array\<string, mixed\>, mixed given\.$#'
-			identifier: argument.type
 			count: 1
 			path: app/Http/Middleware/EnsureKlassciSync.php
 
@@ -1295,12 +1271,6 @@ parameters:
 			identifier: argument.type
 			count: 1
 			path: app/Services/Institution/InstitutionQueryService.php
-
-		-
-			message: '#^Offset ''_lms_tenant_url'' on non\-falsy\-string on left side of \?\? does not exist\.$#'
-			identifier: nullCoalesce.offset
-			count: 1
-			path: app/Services/Klassci/KlassciConfigResolver.php
 
 		-
 			message: '#^Method App\\Services\\KnowledgeCheck\\KnowledgeCheckAccessService\:\:bestScore\(\) should return int\|null but returns mixed\.$#'

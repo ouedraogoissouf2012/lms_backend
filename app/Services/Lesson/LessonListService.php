@@ -29,8 +29,10 @@ use Illuminate\Http\Request;
  */
 final class LessonListService
 {
-    public function __construct(private readonly LessonProgressService $progressService)
-    {
+    public function __construct(
+        private readonly LessonProgressService $progressService,
+        private readonly StudentClasseResolver $classeResolver,
+    ) {
     }
 
     /**
@@ -69,9 +71,11 @@ final class LessonListService
             $query->where('type', $request->type);
         }
 
-        // Seuls les cours publiés pour les étudiants
+        // Étudiants : uniquement les cours publiés ET de LEUR classe (#482 —
+        // isolation inter-classes, résolue via le pont KLASSCI→local).
         if ($user->isStudent()) {
-            $query->published();
+            $query->published()
+                ->whereIn('classe_id', $this->classeResolver->localClasseIdsFor($user));
         } elseif ($request->has('status')) {
             $query->where('status', $request->status);
         }
@@ -114,6 +118,12 @@ final class LessonListService
         // Defense en profondeur (fix E2E #211 flow 5) — cf. list().
         if ($user->institution_id !== null) {
             $query->where('institution_id', $user->institution_id);
+        }
+
+        // Étudiant : restreindre à SA classe (#482). Les leçons sans classe
+        // (classe_id NULL) et celles d'autres classes sont exclues.
+        if ($user->isStudent()) {
+            $query->whereIn('classe_id', $this->classeResolver->localClasseIdsFor($user));
         }
 
         // Filtres optionnels

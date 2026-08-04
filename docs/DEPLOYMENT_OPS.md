@@ -167,3 +167,51 @@ d'abord sa sortie (`queue:failed` et logs), puis utiliser
 `php artisan queue:forget <uuid>`. `php artisan queue:flush` supprime tous les
 échecs : il est réservé à une fenêtre de maintenance approuvée avec sauvegarde,
 jamais à une résolution réflexe d'alerte.
+
+## 9. Sécurité TLS — variables d'environnement critiques
+
+> **Issue #478** (épique #472, session KLASSCI) — durcissement TLS du replay
+> d'identifiants vers KLASSCI.
+
+Le rafraîchissement de session KLASSCI rejoue `username` + `password` vers
+`institution->klassci_api_url` (`AuthController::refreshLinkedKlassciLogin` →
+[`KlassciAuthClient`](../app/Services/Klassci/Auth/KlassciAuthClient.php)). Cette
+requête porte un mot de passe en clair dans le corps : **elle n'est protégée
+d'une interception (MITM) que par TLS**. Si un opérateur désactive la
+vérification du certificat, le secret devient exposé.
+
+### 9.1 Garantie applicative (fail-secure, déjà en place — CRITICAL-08)
+
+La désactivation de la vérification SSL **en production** est bloquée au boot :
+[`SSLVerificationValidator`](../app/Validation/SSLVerificationValidator.php)
+(enregistré par [`SSLVerificationProvider`](../app/Providers/SSLVerificationProvider.php))
+**empêche l'application de démarrer** si `KLASSCI_SSL_VERIFY=false` alors que
+`APP_ENV=production` — une `RuntimeException` est levée et l'incident est loggé
+en `critical`. Ce n'est donc **pas** un simple avertissement : une prod
+mal configurée ne sert aucune requête. Couvert par
+[`tests/Feature/SSLVerificationTest.php`](../tests/Feature/SSLVerificationTest.php)
+(prod+`false` → exception, prod+`true` → OK, dev → toléré).
+
+En développement, `KLASSCI_SSL_VERIFY=false` reste toléré (certificats
+auto-signés locaux) avec un simple `warning` au log.
+
+### 9.2 Check de déploiement (à exécuter à chaque mise en prod)
+
+| Variable | Valeur exigée en prod | Vérification (SSH cPanel) |
+|---|---|---|
+| `KLASSCI_SSL_VERIFY` | **absente** ou `true` (défaut `true`, `config/services.php:58`) | `grep KLASSCI_SSL_VERIFY .env` → ne doit **jamais** afficher `false`. |
+| `APP_ENV` | `production` | `php artisan tinker --execute="echo app()->environment();"` |
+
+Sanity au démarrage — doit rester silencieux (ni exception, ni ligne critique) :
+
+```bash
+cd /home/c2569688c/public_html/lms-backend
+php artisan about --only=environment    # APP_ENV = production attendu
+php artisan config:show services.klassci.ssl_verify   # doit valoir true (ou vide → true)
+```
+
+> ⚠️ Ne jamais poser `KLASSCI_SSL_VERIFY=false` en prod pour « contourner » un
+> certificat KLASSCI expiré ou auto-signé : cela ré-ouvre le MITM sur le mot de
+> passe. Le bon correctif est de réparer le certificat côté KLASSCI, pas de
+> désactiver la vérification. La garantie §9.1 refusera de toute façon de
+> démarrer l'application.

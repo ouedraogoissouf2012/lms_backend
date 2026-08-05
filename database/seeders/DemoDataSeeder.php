@@ -78,6 +78,7 @@ class DemoDataSeeder extends Seeder
                 'description' => 'Découvrez les bases de la programmation avec Python',
                 'content' => '<h2>Bienvenue dans le monde de la programmation !</h2><p>Dans ce cours, vous allez apprendre les concepts fondamentaux de la programmation en utilisant Python. Nous verrons les variables, les boucles, les conditions et bien plus encore.</p><h3>Objectifs</h3><ul><li>Comprendre les variables</li><li>Maîtriser les structures de contrôle</li><li>Créer vos premiers programmes</li></ul>',
                 'status' => 'published',
+                'published_at' => now()->subDay(), // #481 — sinon invisible via published()
                 'type' => 'cours',
                 'enseignant_id' => $enseignant1->id,
                 'institution_id' => $institution->id,
@@ -87,6 +88,7 @@ class DemoDataSeeder extends Seeder
                 'description' => 'Algèbre linéaire et calcul différentiel',
                 'content' => '<h2>Mathématiques pour l\'ingénierie</h2><p>Ce cours couvre les concepts avancés de mathématiques nécessaires pour les études d\'ingénierie.</p><h3>Programme</h3><ul><li>Matrices et vecteurs</li><li>Dérivées partielles</li><li>Intégrales multiples</li></ul>',
                 'status' => 'published',
+                'published_at' => now()->subDay(), // #481 — sinon invisible via published()
                 'type' => 'cours',
                 'enseignant_id' => $enseignant2->id,
                 'institution_id' => $institution->id,
@@ -96,6 +98,7 @@ class DemoDataSeeder extends Seeder
                 'description' => 'Maîtrisez MySQL et les requêtes SQL',
                 'content' => '<h2>Introduction aux bases de données</h2><p>Apprenez à créer, gérer et interroger des bases de données relationnelles.</p><h3>Contenu</h3><ul><li>Modèle relationnel</li><li>CREATE, SELECT, INSERT, UPDATE, DELETE</li><li>Jointures et sous-requêtes</li></ul>',
                 'status' => 'published',
+                'published_at' => now()->subDay(), // #481 — sinon invisible via published()
                 'type' => 'cours',
                 'enseignant_id' => $enseignant1->id,
                 'institution_id' => $institution->id,
@@ -105,6 +108,7 @@ class DemoDataSeeder extends Seeder
                 'description' => 'HTML, CSS, JavaScript et Vue.js',
                 'content' => '<h2>Créez des interfaces web modernes</h2><p>Maîtrisez les technologies frontend pour créer des applications web interactives.</p>',
                 'status' => 'published',
+                'published_at' => now()->subDay(), // #481 — sinon invisible via published()
                 'type' => 'cours',
                 'enseignant_id' => $enseignant1->id,
                 'institution_id' => $institution->id,

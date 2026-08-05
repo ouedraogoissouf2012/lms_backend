@@ -955,12 +955,6 @@ parameters:
 			path: app/Services/Evaluation/Student/EvaluationAttemptStateService.php
 
 		-
-			message: '#^Method App\\Services\\Evaluation\\Student\\EvaluationAttemptStateService\:\:fetchWindowSafe\(\) should return array\<string, mixed\>\|null but returns mixed\.$#'
-			identifier: return.type
-			count: 1
-			path: app/Services/Evaluation/Student/EvaluationAttemptStateService.php
-
-		-
 			message: '#^Parameter \#1 \$time of static method Carbon\\Carbon\:\:parse\(\) expects Carbon\\Month\|Carbon\\WeekDay\|DateTimeInterface\|float\|int\|string\|null, mixed given\.$#'
 			identifier: argument.type
 			count: 2

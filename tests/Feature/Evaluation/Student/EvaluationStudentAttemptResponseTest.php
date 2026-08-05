@@ -101,6 +101,18 @@ final class EvaluationStudentAttemptResponseTest extends TestCase
         });
     }
 
+    /**
+     * Simule une panne KLASSCI : l'appel `evaluations` lève une exception,
+     * exerçant le `catch` de `fetchWindow` (#499).
+     */
+    private function fakeKlassciFailure(): void
+    {
+        $this->mock(KlassciProxyService::class, function (MockInterface $mock): void {
+            $mock->shouldReceive('requestWithUserToken')
+                ->andThrow(new \RuntimeException('KLASSCI indisponible'));
+        });
+    }
+
     // ───────────────────────── startEvaluation ─────────────────────────
 
     public function test_start_unknown_evaluation_returns_404_error_envelope(): void
@@ -190,6 +202,53 @@ final class EvaluationStudentAttemptResponseTest extends TestCase
                 'message' => 'L\'évaluation est fermée depuis le 01/01/2020 à 10:00',
                 'window' => $window,
             ]);
+    }
+
+    /**
+     * #499 — fenêtre non vérifiable (KLASSCI en panne) hors entraînement :
+     * le démarrage doit échouer FERMÉ (503), aucune tentative créée.
+     */
+    public function test_start_returns_503_when_window_check_fails(): void
+    {
+        $evaluation = $this->publishedEvaluation();
+        $this->fakeKlassciFailure();
+        Sanctum::actingAs($this->student);
+
+        $response = $this->postJson("/api/evaluations/{$evaluation->id}/start");
+
+        $response->assertStatus(503);
+        $this->assertSame(
+            0,
+            EvaluationSubmission::where('evaluation_id', $evaluation->id)->count(),
+            'Aucune tentative ne doit être créée quand la fenêtre est invérifiable (#499).'
+        );
+    }
+
+    /**
+     * #499 — en mode entraînement (évaluation terminée), la fenêtre n'est pas
+     * appliquée : une panne KLASSCI ne doit PAS bloquer le démarrage.
+     */
+    public function test_start_allows_practice_mode_when_window_check_fails(): void
+    {
+        $evaluation = Evaluation::factory()->terminee()->create([
+            'institution_id' => $this->institution->id,
+            'klassci_evaluation_id' => 9002,
+            'is_published' => true,
+            'max_attempts' => 3,
+        ]);
+        EvaluationQuestion::factory()->create([
+            'evaluation_id' => $evaluation->id,
+            'institution_id' => $this->institution->id,
+            'type' => 'qcm',
+        ]);
+        $this->fakeKlassciFailure();
+        Sanctum::actingAs($this->student);
+
+        $response = $this->postJson("/api/evaluations/{$evaluation->id}/start");
+
+        $response->assertStatus(200)
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('is_practice', true);
     }
 
     /**

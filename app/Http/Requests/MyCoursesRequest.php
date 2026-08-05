@@ -34,7 +34,9 @@ final class MyCoursesRequest extends FormRequest
     {
         return [
             'page' => 'sometimes|integer|min:1',
-            'per_page' => 'sometimes|integer|min:1|max:100',
+            'per_page' => 'sometimes|integer|min:1|max:100', // anti-DOS (#483)
+            'matiere_id' => 'sometimes|integer|min:1',
+            'enseignant_id' => 'sometimes|integer|min:1',
         ];
     }
 }

@@ -9,8 +9,10 @@ use App\Models\EvaluationQuestion;
 use App\Models\EvaluationSubmission;
 use App\Models\Institution;
 use App\Models\User;
+use App\Services\KlassciProxyService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
+use Mockery\MockInterface;
 use Tests\TestCase;
 
 /**
@@ -84,11 +86,24 @@ final class KlassciEtudiantIdFromTokenTest extends TestCase
         return $evaluation;
     }
 
+    /**
+     * Simule un KLASSCI disponible (aucune fenêtre configurée → toujours ouverte)
+     * afin que le `start` traverse le gate fenêtre et exerce la logique anti-IDOR.
+     * Depuis #499, sans ce mock la vérification de fenêtre échoue (fail-closed 503).
+     */
+    private function fakeKlassciAvailable(): void
+    {
+        $this->mock(KlassciProxyService::class, function (MockInterface $mock): void {
+            $mock->shouldReceive('requestWithUserToken')->andReturn(['data' => []]);
+        });
+    }
+
     // REQ-6 #1 — Body ignored: A's klassci_id used even when body forges B's.
     public function test_start_evaluation_ignores_klassci_etudiant_id_from_body(): void
     {
         $studentA = $this->student(klassciId: 42);
         $evaluation = $this->publishedEvaluation();
+        $this->fakeKlassciAvailable();
 
         Sanctum::actingAs($studentA);
 
@@ -121,6 +136,7 @@ final class KlassciEtudiantIdFromTokenTest extends TestCase
             'status'              => 'en_cours',
             'started_at'          => now(),
         ]);
+        $this->fakeKlassciAvailable();
 
         Sanctum::actingAs($studentA);
 
@@ -176,6 +192,7 @@ final class KlassciEtudiantIdFromTokenTest extends TestCase
 
         // The "forged" target user B (id=999) has zero submissions — but the
         // attacker should be blocked by A's count, not B's.
+        $this->fakeKlassciAvailable();
         Sanctum::actingAs($studentA);
 
         // Sans middleware ResolveInstitution : ce test fait du fingerprinting

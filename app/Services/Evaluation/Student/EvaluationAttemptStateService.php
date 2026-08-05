@@ -8,6 +8,7 @@ use App\Models\Evaluation;
 use App\Models\EvaluationSubmission;
 use App\Models\User;
 use App\Services\KlassciProxyService;
+use App\Services\Seances\KlassciPayload;
 use Psr\Log\LoggerInterface;
 use RuntimeException;
 
@@ -36,6 +37,7 @@ final class EvaluationAttemptStateService
      *   - no_questions       → évaluation sans question (422)
      *   - no_token           → user sans klassci_token (401)
      *   - window_closed      → fenêtre temporelle fermée hors mode entraînement (403)
+     *   - window_check_failed → fenêtre non vérifiable (KLASSCI indisponible) hors entraînement (503)
      *   - max_attempts       → quota de tentatives atteint hors entraînement (403)
      *
      * @return array{status: string, submission?: EvaluationSubmission, window?: ?array<string, mixed>, message?: string, is_practice?: bool, resumed?: bool}
@@ -58,29 +60,41 @@ final class EvaluationAttemptStateService
 
         $klassciEtudiantId = $user->klassci_id;
         $isPracticeMode = $evaluation->isTerminee();
-        $window = $this->fetchWindowSafe($klassciToken, $evaluation->klassci_evaluation_id);
 
-        $windowError = $this->checkWindow($window, $isPracticeMode, $evaluationId, $klassciEtudiantId);
+        [$windowError, $window] = $this->resolveWindowGate(
+            $klassciToken,
+            $evaluation,
+            $isPracticeMode,
+            $evaluationId,
+            $klassciEtudiantId
+        );
         if ($windowError !== null) {
             return $windowError;
         }
 
-        $activeSubmission = EvaluationSubmission::where('evaluation_id', $evaluationId)
+        return $this->resolveOrCreateSubmission($evaluation, $klassciEtudiantId, $isPracticeMode, $window);
+    }
+
+    /**
+     * Reprend la tentative `en_cours` de l'étudiant si elle existe, sinon
+     * applique le quota `max_attempts` (hors entraînement) puis crée une nouvelle
+     * soumission. Extrait de `startAttempt` pour respecter §1.1 (≤40 lignes).
+     *
+     * @param  ?array<string, mixed>  $window
+     * @return array{status: string, submission?: EvaluationSubmission, window?: ?array<string, mixed>, message?: string, is_practice?: bool, resumed?: bool}
+     */
+    private function resolveOrCreateSubmission(Evaluation $evaluation, ?int $klassciEtudiantId, bool $isPracticeMode, ?array $window): array
+    {
+        $activeSubmission = EvaluationSubmission::where('evaluation_id', $evaluation->id)
             ->where('klassci_etudiant_id', $klassciEtudiantId)
             ->where('status', 'en_cours')
             ->first();
 
         if ($activeSubmission) {
-            return [
-                'status' => 'ok',
-                'submission' => $activeSubmission,
-                'window' => $window,
-                'resumed' => true,
-                'is_practice' => $isPracticeMode,
-            ];
+            return $this->okResponse($activeSubmission, $window, true, $isPracticeMode);
         }
 
-        $attemptsCount = EvaluationSubmission::where('evaluation_id', $evaluationId)
+        $attemptsCount = EvaluationSubmission::where('evaluation_id', $evaluation->id)
             ->where('klassci_etudiant_id', $klassciEtudiantId)
             ->whereIn('status', ['soumis', 'corrige'])
             ->count();
@@ -93,7 +107,7 @@ final class EvaluationAttemptStateService
         }
 
         $submission = EvaluationSubmission::create([
-            'evaluation_id' => $evaluationId,
+            'evaluation_id' => $evaluation->id,
             'klassci_etudiant_id' => $klassciEtudiantId,
             'attempt' => $attemptsCount + 1,
             'status' => 'en_cours',
@@ -103,11 +117,23 @@ final class EvaluationAttemptStateService
             'feedback' => $isPracticeMode ? '[PRACTICE] Entraînement - note non officielle' : null,
         ]);
 
+        return $this->okResponse($submission, $window, false, $isPracticeMode);
+    }
+
+    /**
+     * Réponse `ok` (tentative démarrée ou reprise) — construit le payload commun
+     * aux deux chemins (reprise / création) pour éviter la duplication.
+     *
+     * @param  ?array<string, mixed>  $window
+     * @return array{status: string, submission: EvaluationSubmission, window: ?array<string, mixed>, resumed: bool, is_practice: bool}
+     */
+    private function okResponse(EvaluationSubmission $submission, ?array $window, bool $resumed, bool $isPracticeMode): array
+    {
         return [
             'status' => 'ok',
             'submission' => $submission,
             'window' => $window,
-            'resumed' => false,
+            'resumed' => $resumed,
             'is_practice' => $isPracticeMode,
         ];
     }
@@ -128,7 +154,9 @@ final class EvaluationAttemptStateService
             throw new RuntimeException('Token KLASSCI non trouvé');
         }
 
-        $window = $this->fetchWindowSafe($klassciToken, $evaluation->klassci_evaluation_id);
+        // Endpoint informatif : on tolère `null` (pas de fenêtre OU KLASSCI
+        // indisponible) — ce n'est pas un gate (#499, getTimeStatus inchangé).
+        $window = $this->fetchWindow($klassciToken, $evaluation->klassci_evaluation_id)['window'];
         return [
             'window' => $window,
             'server_time' => now()->toIso8601String(),
@@ -136,18 +164,67 @@ final class EvaluationAttemptStateService
     }
 
     /**
-     * @return ?array<string, mixed>  null si pas de fenêtre ou erreur réseau
+     * Récupère la fenêtre temporelle KLASSCI d'une évaluation, en distinguant
+     * « appel échoué » de « pas de fenêtre configurée » (#499) :
+     *   - fetched=false            → l'appel KLASSCI a échoué (le caller doit
+     *                                fail-closed hors mode entraînement) ;
+     *   - fetched=true, window=null → appel réussi, aucune fenêtre (toujours ouverte) ;
+     *   - fetched=true, window=[…]  → fenêtre à évaluer par {@see checkWindow}.
+     *
+     * @return array{fetched: bool, window: ?array<string, mixed>}
      */
-    private function fetchWindowSafe(string $klassciToken, ?int $klassciEvaluationId): ?array
+    private function fetchWindow(string $klassciToken, ?int $klassciEvaluationId): array
     {
         try {
             $response = $this->klassciService->requestWithUserToken($klassciToken, 'evaluations', 'GET');
             $klassciEval = collect($response['data'] ?? [])->firstWhere('id', $klassciEvaluationId);
-            return $klassciEval['programmation']['window'] ?? null;
+            $rawWindow = $klassciEval['programmation']['window'] ?? null;
+
+            return [
+                'fetched' => true,
+                'window' => is_array($rawWindow) ? KlassciPayload::asArray($rawWindow) : null,
+            ];
         } catch (\Exception $e) {
             $this->logger->warning('Window check failed (KLASSCI)', ['error' => $e->getMessage()]);
-            return null;
+
+            return ['fetched' => false, 'window' => null];
         }
+    }
+
+    /**
+     * Résout le « gate » de fenêtre : renvoie `[erreur, null]` si le démarrage
+     * doit être bloqué (fenêtre invérifiable hors entraînement, ou fermée),
+     * sinon `[null, window]` pour poursuivre. Centralise la logique fenêtre pour
+     * garder `startAttempt` sous la limite §1.1.
+     *
+     * @return array{0: ?array{status: string, window?: ?array<string, mixed>, message?: string}, 1: ?array<string, mixed>}
+     */
+    private function resolveWindowGate(
+        string $klassciToken,
+        Evaluation $evaluation,
+        bool $isPracticeMode,
+        int $evaluationId,
+        ?int $klassciEtudiantId
+    ): array {
+        $windowResult = $this->fetchWindow($klassciToken, $evaluation->klassci_evaluation_id);
+
+        // Fail-closed : fenêtre non vérifiable (KLASSCI indisponible) hors
+        // entraînement → refus, aucune tentative créée (#499).
+        if (! $windowResult['fetched'] && ! $isPracticeMode) {
+            $this->logger->warning('Démarrage refusé : fenêtre non vérifiable (KLASSCI indisponible)', [
+                'evaluation_id' => $evaluationId,
+                'student_id' => $klassciEtudiantId,
+            ]);
+
+            return [[
+                'status' => 'window_check_failed',
+                'message' => "Impossible de vérifier la disponibilité de l'évaluation pour le moment. Veuillez réessayer dans un instant.",
+            ], null];
+        }
+
+        $window = $windowResult['window'];
+
+        return [$this->checkWindow($window, $isPracticeMode, $evaluationId, $klassciEtudiantId), $window];
     }
 
     /**

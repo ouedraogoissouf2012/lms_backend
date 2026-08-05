@@ -50,6 +50,13 @@ final class EvaluationStudentAttemptController extends AuthenticatedController
                 'window' => $result['window'] ?? null,
             ], 403),
             'max_attempts' => $this->errorResponse($result['message'], 403),
+            // #499 : fenêtre non vérifiable (KLASSCI indisponible) → 503 transitoire
+            // (fail-closed), pas 403 : ce n'est pas un refus d'accès mais une
+            // indisponibilité de dépendance ; le client doit réessayer.
+            'window_check_failed' => $this->errorResponse(
+                $result['message'] ?? "Service momentanément indisponible, veuillez réessayer.",
+                503
+            ),
             // Non migré vers successResponse() : cette réponse expose des clés
             // racine `window` + `is_practice` hors enveloppe que le trait ne
             // reproduit pas → conservé tel quel (axe #1 « DRY-only »).

@@ -102,6 +102,19 @@ final class FileStatsAuthorizationTest extends TestCase
             ->assertJsonPath('data.total_files', 5);
     }
 
+    public function test_superadmin_institution_is_scoped_to_their_institution(): void
+    {
+        // #497 : `superAdmin` = admin d'INSTITUTION (intra-tenant), à distinguer
+        // du gestionnaire plateforme `supradmin`. Il ne voit que les fichiers de
+        // SON institution (3 en A), pas les 5 cross-tenant.
+        $superAdminA = $this->createUser($this->instA, 'superAdmin');
+        Sanctum::actingAs($superAdminA);
+
+        $this->getJson('/api/files/stats')
+            ->assertStatus(200)
+            ->assertJsonPath('data.total_files', 3);
+    }
+
     public function test_admin_intra_A_does_not_see_intra_B_counts(): void
     {
         $adminA = $this->createUser($this->instA, 'admin');

@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Services\File;
 
-use App\Enums\Role;
 use App\Models\File;
 use App\Models\User;
 use Illuminate\Contracts\Cache\Repository as CacheRepository;
@@ -150,7 +149,10 @@ final class FileQueryService
      */
     public function stats(User $caller): array
     {
-        $isSupradmin = $caller->asRoleEnum() === Role::Supradmin;
+        // #497 : STRICTEMENT le gestionnaire plateforme (role === 'supradmin'),
+        // PAS asRoleEnum() qui inclurait aussi 'superAdmin' (admin d'institution)
+        // → fuite cross-tenant. cf. isPlatformSupradmin().
+        $isSupradmin = $caller->isPlatformSupradmin();
         $isStudent = $caller->isStudent();
 
         $cacheKey = $isSupradmin

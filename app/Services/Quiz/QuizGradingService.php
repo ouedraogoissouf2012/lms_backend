@@ -61,9 +61,16 @@ class QuizGradingService
 
         switch ($question->type) {
             case 'multiple_choice':
-                // Une seule réponse correcte
+                // Une seule réponse correcte. Comparaison STRICTE après
+                // normalisation : une valeur non-numérique (bool/array/string
+                // non num.) ne peut jamais matcher un id (#498).
+                $answerId = $this->normalizeAnswerId($userAnswer);
+                if ($answerId === null) {
+                    return false;
+                }
+
                 return $answers->contains(
-                    fn ($a): bool => $a->id == $userAnswer && $a->is_correct
+                    fn ($a): bool => (int) $a->id === $answerId && $a->is_correct
                 );
 
             case 'multiple_response':
@@ -76,8 +83,14 @@ class QuizGradingService
                 return $correctIds === $userIds;
 
             case 'true_false':
+                // Comparaison STRICTE après normalisation (#498).
+                $answerId = $this->normalizeAnswerId($userAnswer);
+                if ($answerId === null) {
+                    return false;
+                }
+
                 $correctAnswer = $answers->firstWhere('is_correct', true);
-                return $correctAnswer !== null && $correctAnswer->id == $userAnswer;
+                return $correctAnswer !== null && (int) $correctAnswer->id === $answerId;
 
             case 'short_answer':
             case 'essay':
@@ -87,6 +100,20 @@ class QuizGradingService
             default:
                 return false;
         }
+    }
+
+    /**
+     * Normalise une réponse « single id » en entier, ou `null` si la valeur
+     * n'est pas un identifiant numérique valide (bool, array, string non
+     * numérique, null). `is_numeric` exclut `true`/`false` et les tableaux,
+     * fermant le type-juggling PHP (`int == true`) tout en acceptant les ids
+     * envoyés en string JSON (`"5"`). #498.
+     *
+     * @param  mixed  $userAnswer
+     */
+    private function normalizeAnswerId($userAnswer): ?int
+    {
+        return is_numeric($userAnswer) ? (int) $userAnswer : null;
     }
 
     /**

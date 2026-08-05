@@ -76,6 +76,87 @@ final class QuizGradingServiceTest extends TestCase
         $this->assertFalse($this->service->checkAnswer($question, $wrong->id));
     }
 
+    /**
+     * #498 — la notation ne doit JAMAIS être trompée par du type juggling PHP.
+     * Vecteur d'origine : `$a->id == true` vaut TRUE pour tout id non nul, donc
+     * `{"answers":{"id":true}}` notait n'importe quelle question correcte.
+     *
+     * @test
+     * @dataProvider nonNumericAnswerProvider
+     * @param  mixed  $userAnswer
+     */
+    public function checkAnswer_multiple_choice_rejects_non_numeric_answers($userAnswer): void
+    {
+        $question = QuizQuestion::factory()->multipleChoice()->create();
+        QuizAnswer::create([
+            'question_id' => $question->id,
+            'answer_text' => 'A',
+            'is_correct' => true,
+            'order' => 1,
+        ]);
+        $question->load('answers');
+
+        // Une valeur non-numérique (bool/array/string non num./null) ne peut
+        // jamais matcher un id → incorrect, jamais correct par coercition.
+        $this->assertFalse($this->service->checkAnswer($question, $userAnswer));
+    }
+
+    /**
+     * #498 — idem pour true_false.
+     *
+     * @test
+     * @dataProvider nonNumericAnswerProvider
+     * @param  mixed  $userAnswer
+     */
+    public function checkAnswer_true_false_rejects_non_numeric_answers($userAnswer): void
+    {
+        $question = QuizQuestion::factory()->trueFalse()->create();
+        QuizAnswer::create([
+            'question_id' => $question->id,
+            'answer_text' => 'Vrai',
+            'is_correct' => true,
+            'order' => 1,
+        ]);
+        $question->load('answers');
+
+        $this->assertFalse($this->service->checkAnswer($question, $userAnswer));
+    }
+
+    /**
+     * @return array<string, array{0: mixed}>
+     */
+    public static function nonNumericAnswerProvider(): array
+    {
+        return [
+            'boolean true'      => [true],
+            'boolean false'     => [false],
+            'array'             => [[1, 2]],
+            'non-numeric string' => ['5abc'],
+            'null'              => [null],
+        ];
+    }
+
+    /**
+     * #498 — les ids numériques légitimes restent notés correctement, y compris
+     * en forme string JSON ("5"), pour ne pas régresser les vraies soumissions.
+     *
+     * @test
+     */
+    public function checkAnswer_accepts_numeric_string_id_for_multiple_choice(): void
+    {
+        $question = QuizQuestion::factory()->multipleChoice()->create();
+        $correct = QuizAnswer::create([
+            'question_id' => $question->id,
+            'answer_text' => 'A',
+            'is_correct' => true,
+            'order' => 1,
+        ]);
+        $question->load('answers');
+
+        // id envoyé en string JSON (ex. "12") → toujours correct.
+        $this->assertTrue($this->service->checkAnswer($question, (string) $correct->id));
+    }
+
     /** @test */
     public function checkAnswer_multiple_response_returns_true_only_on_exact_set_match(): void
     {

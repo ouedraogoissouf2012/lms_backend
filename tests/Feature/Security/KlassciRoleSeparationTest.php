@@ -89,6 +89,32 @@ final class KlassciRoleSeparationTest extends TestCase
     }
 
     /**
+     * Issue #510 — On CREATE, a KLASSCI payload claiming the PLATFORM role
+     * `supradmin` (cross-tenant) must NEVER initialize a platform supradmin.
+     * It is downgraded to the institution admin (`superAdmin`, intra-tenant),
+     * for every tenant. Exercised through the container (real DI wiring).
+     */
+    public function test_initial_sync_neutralizes_platform_supradmin_injection(): void
+    {
+        foreach (['school-a', 'school-b'] as $index => $slug) {
+            $institution = Institution::factory()->create(['slug' => $slug]);
+
+            $user = $this->callSyncUserFromKlassci([
+                'id'    => 5000 + $index,
+                'nom'   => 'Injected',
+                'email' => "injected@{$slug}.fr",
+                'role'  => 'supradmin',   // attacker-controlled KLASSCI payload
+            ], $institution);
+
+            self::assertSame('superAdmin', $user->role, "[$slug] platform role must be downgraded to institution admin");
+            self::assertNotSame('supradmin', $user->role, "[$slug] must never be platform supradmin");
+            self::assertFalse($user->isPlatformSupradmin(), "[$slug] no cross-tenant platform privilege");
+            self::assertSame('supradmin', $user->klassci_role, "[$slug] klassci_role captures the attempt");
+            self::assertSame($institution->id, $user->institution_id, "[$slug] stays scoped to its tenant");
+        }
+    }
+
+    /**
      * REQ-3 — On UPDATE (user already exists), LMS `role` is preserved while
      * `klassci_role` reflects whatever KLASSCI reports. This blocks login-time
      * escalation if a user's KLASSCI account was elevated by an attacker.

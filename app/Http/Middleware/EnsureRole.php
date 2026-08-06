@@ -101,19 +101,27 @@ class EnsureRole
      */
     private function userHasRole($user, array $allowedRoles): bool
     {
+        // Gestionnaire PLATEFORME (cross-tenant) : bypass total, mais comparaison
+        // STRICTE alignée sur isPlatformSupradmin() (#511) — une variante de casse
+        // ('Supradmin', 'SUPRADMIN') ne doit JAMAIS franchir cette barrière
+        // cross-tenant, cohérent avec les gardes de lecture (FileQueryService…).
+        if ($user->isPlatformSupradmin()) {
+            return true;
+        }
+
         $userRole = strtolower(trim($user->role));
 
-        // supradmin (gestionnaire plateforme) bypasse tous les contrôles de rôle
-        if ($userRole === 'supradmin') {
+        // superAdmin (admin institution) bypasse tous les contrôles SAUF les routes
+        // réservées au gestionnaire plateforme.
+        if ($userRole === 'superadmin' && !in_array('supradmin', $allowedRoles, true)) {
             return true;
         }
 
-        // superAdmin (admin institution) bypasse tous les contrôles sauf les routes supradmin exclusives
-        if ($userRole === 'superadmin' && !in_array('supradmin', $allowedRoles)) {
-            return true;
-        }
+        // Match nominal insensible à la casse. Le rôle plateforme `supradmin` est
+        // EXCLU de ce match : il n'est satisfait que par un vrai platform supradmin
+        // (traité ci-dessus), jamais par une variante de casse (#511).
+        $matchableRoles = array_diff($allowedRoles, ['supradmin']);
 
-        // Vérifier si le rôle user est dans la liste des rôles autorisés
-        return in_array($userRole, $allowedRoles);
+        return in_array($userRole, $matchableRoles, true);
     }
 }

@@ -40,6 +40,8 @@ $app = Application::configure(basePath: dirname(__DIR__))
             'klassci.sync' => \App\Http\Middleware\EnsureKlassciSync::class,
             'role' => \App\Http\Middleware\EnsureRole::class,
             'institution' => \App\Http\Middleware\ResolveInstitution::class,
+            // #511 : garde plateforme STRICTE (défense en profondeur cross-tenant).
+            'platform.supradmin' => \App\Http\Middleware\EnsurePlatformSupradmin::class,
         ]);
 
         // #244 : API stateless — ne JAMAIS rediriger un invité vers une page de

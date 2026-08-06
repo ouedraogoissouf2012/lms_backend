@@ -112,6 +112,15 @@ Schedule::command('recordings:purge --apply')
     ->withoutOverlapping()
     ->onOneServer();
 
+// #514 — Filet de sécurité : sans webhook fournisseur (cf. #204), un enregistrement
+// arrêté reste bloqué en `Processing`, ce qui conserve son verrou actif et empêche
+// tout nouvel enregistrement de la séance. On le passe à `Failed` au-delà du délai.
+Schedule::command('recordings:fail-stale-processing')
+    ->everyThirtyMinutes()
+    ->name('fail-stale-recordings')
+    ->withoutOverlapping()
+    ->onOneServer();
+
 // Battement de vie du scheduler (#369) — marqueur cache lu par
 // `scheduler:healthcheck` pour détecter un cron mort en < 10 min.
 // Chaque minute : c'est la granularité du cron `schedule:run` lui-même.

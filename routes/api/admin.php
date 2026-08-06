@@ -98,7 +98,9 @@ Route::middleware(['auth:sanctum', 'role:coordinateur,superAdmin,supradmin'])->p
 // ============================================
 // INSTITUTION MANAGEMENT - supradmin uniquement
 // ============================================
-Route::middleware(['auth:sanctum', 'role:supradmin'])
+// #511 : `platform.supradmin` = 2ᵉ garde STRICTE (défense en profondeur) sur le
+// CRUD cross-tenant le plus sensible, en plus de `role:supradmin`.
+Route::middleware(['auth:sanctum', 'role:supradmin', 'platform.supradmin'])
     ->prefix('admin/institutions')
     ->group(function () {
         Route::get('/', [InstitutionController::class, 'index']);

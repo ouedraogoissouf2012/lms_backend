@@ -4,6 +4,7 @@ namespace App\Http\Controllers\API\LMS;
 
 use App\Http\Controllers\AuthenticatedController;
 use App\Http\Requests\SendSessionReminderRequest;
+use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -27,11 +28,11 @@ use Illuminate\Support\Facades\Log;
  * Cette docblock est la trace officielle du stub status (cf. PR #151). À traiter
  * dans une issue follow-up dédiée.
  *
- * Security note inherited from the legacy: `getNotificationPreferences` checks
- * `$currentUser->id === $userId || role IN ('coordinateur', 'superAdmin')`. The
- * role-based bypass does NOT verify cross-tenant — a `superAdmin` of institution
- * A could currently read preferences of a user of institution B. Same bug pattern
- * as #87/#91/#98/#102/#103. Follow-up security ticket to file.
+ * Security (#512, corrige le pattern #87/#91/#98/#102/#103) : le bypass rôle de
+ * `getNotificationPreferences` est désormais scopé au TENANT — un manager
+ * (coordinateur/admin, incl. `superAdmin` d'institution) n'accède qu'aux users de
+ * SON institution ; seul le gestionnaire PLATEFORME (`isPlatformSupradmin`) accède
+ * en cross-tenant. Cf. {@see self::canAccessUserPreferences()}.
  */
 final class LMSNotificationsPreferencesController extends AuthenticatedController
 {
@@ -41,8 +42,9 @@ final class LMSNotificationsPreferencesController extends AuthenticatedControlle
      *
      * Authorization:
      *   - The user can read their own preferences.
-     *   - `coordinateur` and `superAdmin` can read any user's preferences
-     *     (intra-tenant currently, cross-tenant gap documented above).
+     *   - A manager (`coordinateur`/`superAdmin`) can read a user's preferences
+     *     ONLY within their own institution (#512).
+     *   - A platform `supradmin` can read cross-tenant.
      *
      * Body is currently a stub returning hardcoded defaults — pending the
      * `parent_notification_preferences` table integration.
@@ -52,7 +54,7 @@ final class LMSNotificationsPreferencesController extends AuthenticatedControlle
         try {
             $currentUser = $this->authenticatedUser($request);
 
-            if ($currentUser->id !== $userId && ! $currentUser->isManager()) {
+            if ($currentUser->id !== $userId && ! $this->canAccessUserPreferences($currentUser, $userId)) {
                 return $this->errorResponse('Accès refusé', 403);
             }
 
@@ -88,6 +90,39 @@ final class LMSNotificationsPreferencesController extends AuthenticatedControlle
                 'error' => 'Une erreur est survenue.'
             ], 500);
         }
+    }
+
+    /**
+     * Un manager (coordinateur/admin) n'accède qu'aux préférences d'un utilisateur
+     * de SON institution ; le cross-tenant est réservé au gestionnaire PLATEFORME
+     * (#512 — ferme l'IDOR : le bypass rôle ne vérifiait pas le tenant).
+     *
+     * DETTE TRACÉE : au dé-stub de l'endpoint (câblage `parent_notification_preferences`),
+     * déplacer cette règle dans `GetNotificationPreferencesRequest::authorize()` via un
+     * trait frère `ChecksUserAuthorization`, aligné sur `ChecksFileAuthorization` /
+     * `ChecksEvaluationOwnership`, pour factoriser l'idiome cross-tenant.
+     */
+    private function canAccessUserPreferences(User $currentUser, int $userId): bool
+    {
+        // Gestionnaire plateforme : accès cross-tenant assumé.
+        if ($currentUser->isPlatformSupradmin()) {
+            return true;
+        }
+
+        if (! $currentUser->isManager()) {
+            return false;
+        }
+
+        // Manager : uniquement un utilisateur de la MÊME institution. La cible est
+        // chargée hors global scope pour comparer explicitement le tenant (la route
+        // /lms/... ne résout pas nécessairement l'institution courante).
+        $target = User::withoutGlobalScope('institution')->find($userId);
+
+        // Invariant : un manager SANS institution n'a aucun accès délégué (évite
+        // qu'un null === null n'accorde l'accès entre comptes tenant-less).
+        return $currentUser->institution_id !== null
+            && $target !== null
+            && $target->institution_id === $currentUser->institution_id;
     }
 
     /**

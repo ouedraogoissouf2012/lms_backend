@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Dashboard;
 
+use App\Enums\LessonStatus;
 use App\Models\ForumTopic;
 use App\Models\Lesson;
 use App\Models\LessonProgress;
@@ -53,10 +54,10 @@ final class TeacherDashboardService
             'lessons' => [
                 'total' => Lesson::where('enseignant_id', $user->id)->count(),
                 'published' => Lesson::where('enseignant_id', $user->id)
-                    ->where('status', 'published')
+                    ->where('status', LessonStatus::Published->value)
                     ->count(),
                 'draft' => Lesson::where('enseignant_id', $user->id)
-                    ->where('status', 'draft')
+                    ->where('status', LessonStatus::Draft->value)
                     ->count(),
                 'top_lessons' => $this->topLessons($user),
             ],
@@ -92,7 +93,7 @@ final class TeacherDashboardService
     {
         return Lesson::query()
             ->where('enseignant_id', $user->id)
-            ->where('status', 'published')
+            ->where('status', LessonStatus::Published->value)
             ->withCount(['progress as students_started' => function ($query) {
                 $query->whereIn('status', ['in_progress', 'completed']);
             }])

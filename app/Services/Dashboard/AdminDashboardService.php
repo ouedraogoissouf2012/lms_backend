@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Dashboard;
 
+use App\Enums\LessonStatus;
 use App\Models\ForumPost;
 use App\Models\ForumTopic;
 use App\Models\Lesson;
@@ -56,7 +57,7 @@ final class AdminDashboardService
             'users' => $this->userCounts($tenantUrl),
             'lessons' => [
                 'total' => Lesson::count(),
-                'published' => Lesson::where('status', 'published')->count(),
+                'published' => Lesson::where('status', LessonStatus::Published->value)->count(),
             ],
             'quizzes' => [
                 'total' => Quiz::count(),

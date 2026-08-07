@@ -2,9 +2,7 @@
 
 namespace App\Providers;
 
-use App\Models\Lesson;
 use App\Models\PersonalAccessToken;
-use App\Observers\LessonObserver;
 use App\Services\Cache\TenantScopedCache;
 use App\Services\Cache\TenantScopedCacheInterface;
 use App\Services\Klassci\KlassciRequestMemo;
@@ -67,10 +65,9 @@ class AppServiceProvider extends ServiceProvider
         // quand le header X-Institution résout une institution spécifique.
         Sanctum::usePersonalAccessTokenModel(PersonalAccessToken::class);
 
-        // Invariant #481 : status=published ⇒ published_at != null (et réciproque).
-        // Enregistré ici (plutôt que via #[ObservedBy] sur le modèle) pour garder
-        // Lesson.php sous la limite de 150 lignes (§5).
-        Lesson::observe(LessonObserver::class);
+        // L'observer d'invariant #481 de Lesson est désormais auto-enregistré par
+        // le trait Publishable (convention `bootXxx`, cf. Auditable) — plus de
+        // Model::observe() dispersé ici. Voir app/Models/Concerns/Publishable.php.
 
         // Morph map des modèles attachables à un File (issue #10 IDOR).
         // Alias court ↔ classe pour la cohérence du stockage `fileable_type`.

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Search;
 
+use App\Enums\LessonStatus;
 use App\Models\Evaluation;
 use App\Models\Lesson;
 use App\Models\User;
@@ -156,7 +157,7 @@ final class GlobalSearchService
                     $q->where('teacher_id', $user->id);
                 }
                 if ($user->isStudent()) {
-                    $q->where('status', 'published');
+                    $q->where('status', LessonStatus::Published->value);
                 }
             })
             ->limit($limit)

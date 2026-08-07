@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Enums\LessonStatus;
+use App\Models\Concerns\Publishable;
 use App\Models\Traits\BelongsToInstitution;
 use Database\Factories\LessonFactory;
 use Illuminate\Database\Eloquent\Builder;
@@ -16,13 +18,13 @@ use Illuminate\Support\Carbon;
 /**
  * @property LessonProgress|null $user_progress Attribut posé par LessonListService (LessonProgressService::progressForUser).
  * @property array{students_started: int, students_completed: int, average_completion_rate: float} $statistics Attribut posé par LessonListService (staff uniquement).
- * @property string $status
+ * @property LessonStatus $status
  * @property Carbon|null $published_at
  */
 class Lesson extends Model
 {
     /** @use HasFactory<LessonFactory> */
-    use BelongsToInstitution, HasFactory, SoftDeletes;
+    use BelongsToInstitution, HasFactory, Publishable, SoftDeletes;
 
     protected $fillable = [
         'matiere_id',
@@ -44,13 +46,14 @@ class Lesson extends Model
     ];
 
     protected $casts = [
+        'status' => LessonStatus::class,
         'published_at' => 'datetime',
         'archived_at' => 'datetime',
         'attachments' => 'array',
     ];
 
     protected $attributes = [
-        'status' => 'draft',
+        'status' => LessonStatus::Draft->value,
         'type' => 'cours',
         'niveau_difficulte' => 'debutant',
         'order' => 0,
@@ -106,15 +109,6 @@ class Lesson extends Model
 
     /** @param Builder<Lesson> $query
      * @return Builder<Lesson> */
-    public function scopePublished(Builder $query)
-    {
-        return $query->where('status', 'published')
-            ->whereNotNull('published_at')
-            ->where('published_at', '<=', now());
-    }
-
-    /** @param Builder<Lesson> $query
-     * @return Builder<Lesson> */
     public function scopeForMatiere(Builder $query, int $matiereId)
     {
         return $query->where('matiere_id', $matiereId);
@@ -139,12 +133,5 @@ class Lesson extends Model
     public function scopeOrdered(Builder $query)
     {
         return $query->orderBy('order')->orderBy('created_at');
-    }
-
-    public function isPublished(): bool
-    {
-        return $this->status === 'published'
-            && $this->published_at !== null
-            && $this->published_at->isPast();
     }
 }

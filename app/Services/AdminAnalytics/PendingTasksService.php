@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\AdminAnalytics;
 
+use App\Enums\LessonStatus;
 use App\Models\Evaluation;
 use App\Models\EvaluationSubmission;
 use App\Models\Lesson;
@@ -167,7 +168,7 @@ final class PendingTasksService
 
             // Leçons en brouillon
             'draft_lessons' => [
-                'count' => Lesson::where('status', 'draft')->count(),
+                'count' => Lesson::where('status', LessonStatus::Draft->value)->count(),
             ],
         ];
     }

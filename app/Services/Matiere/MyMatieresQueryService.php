@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Matiere;
 
+use App\Enums\LessonStatus;
 use App\Models\Lesson;
 use App\Models\Seance;
 use App\Models\User;
@@ -91,7 +92,7 @@ final class MyMatieresQueryService
             ->count();
 
         $nombreLessonsBrouillons = Lesson::where('matiere_id', $matiereId)
-            ->where('status', 'draft')
+            ->where('status', LessonStatus::Draft->value)
             ->count();
 
         $nombreSeances = Seance::where('klassci_matiere_id', $matiereId)->count();

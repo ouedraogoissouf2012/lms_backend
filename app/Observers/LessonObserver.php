@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Observers;
 
+use App\Enums\LessonStatus;
 use App\Models\Lesson;
 
 /**
@@ -27,7 +28,7 @@ final class LessonObserver
 {
     public function saving(Lesson $lesson): void
     {
-        if ($lesson->status === 'published') {
+        if ($lesson->status === LessonStatus::Published) {
             // Ne jamais écraser une date de publication déjà posée (#481 REQ-3).
             if ($lesson->published_at === null) {
                 $lesson->published_at = now();

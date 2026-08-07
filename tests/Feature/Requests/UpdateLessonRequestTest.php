@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Requests;
 
+use App\Enums\LessonStatus;
 use App\Models\Lesson;
 use App\Models\User;
 use App\Models\Institution;
@@ -137,7 +138,7 @@ class UpdateLessonRequestTest extends TestCase
         $this->assertTrue(in_array($response->status(), [200, 201]));
         $lesson = Lesson::find($this->lesson->id);
         $this->assertNotNull($lesson->published_at);
-        $this->assertEquals('published', $lesson->status);
+        $this->assertEquals(LessonStatus::Published, $lesson->status);
     }
 
     /**
@@ -163,7 +164,7 @@ class UpdateLessonRequestTest extends TestCase
         $this->assertTrue(in_array($response->status(), [200, 201]));
         $lesson = Lesson::find($publishedLesson->id);
         $this->assertNull($lesson->published_at);
-        $this->assertEquals('draft', $lesson->status);
+        $this->assertEquals(LessonStatus::Draft, $lesson->status);
     }
 
     /**

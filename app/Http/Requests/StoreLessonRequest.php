@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Enums\LessonStatus;
 use App\Rules\PositiveInteger;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -135,7 +136,7 @@ final class StoreLessonRequest extends FormRequest
             'status' => [
                 'nullable',
                 'string',
-                'in:draft,published,archived',
+                'in:'.implode(',', LessonStatus::values()),
             ],
         ];
     }

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\AdminAnalytics;
 
+use App\Enums\LessonStatus;
 use App\Models\Evaluation;
 use App\Models\EvaluationSubmission;
 use App\Models\Lesson;
@@ -153,8 +154,8 @@ final class SystemMetricsService
             // Leçons
             'lessons' => [
                 'total' => Lesson::count(),
-                'published' => Lesson::where('status', 'published')->count(),
-                'draft' => Lesson::where('status', 'draft')->count(),
+                'published' => Lesson::where('status', LessonStatus::Published->value)->count(),
+                'draft' => Lesson::where('status', LessonStatus::Draft->value)->count(),
                 'created_this_week' => Lesson::where('created_at', '>=', $weekAgo)->count(),
             ],
 

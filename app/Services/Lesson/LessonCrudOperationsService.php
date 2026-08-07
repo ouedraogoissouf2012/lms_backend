@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Lesson;
 
+use App\Enums\LessonStatus;
 use App\Models\Classe;
 use App\Models\Lesson;
 use App\Models\Matiere;
@@ -87,7 +88,7 @@ final class LessonCrudOperationsService
         }
 
         // Si la leçon est créée avec status "published", définir published_at automatiquement
-        if (isset($data['status']) && $data['status'] === 'published' && !isset($data['published_at'])) {
+        if (isset($data['status']) && $data['status'] === LessonStatus::Published->value && !isset($data['published_at'])) {
             $data['published_at'] = now();
         }
 
@@ -104,9 +105,9 @@ final class LessonCrudOperationsService
     {
         // Handle status transitions and published_at timestamp
         if (isset($data['status'])) {
-            if ($data['status'] === 'published' && !$lesson->published_at) {
+            if ($data['status'] === LessonStatus::Published->value && !$lesson->published_at) {
                 $data['published_at'] = now();
-            } elseif (in_array($data['status'], ['draft', 'archived'])) {
+            } elseif (in_array($data['status'], [LessonStatus::Draft->value, LessonStatus::Archived->value], true)) {
                 $data['published_at'] = null;
             }
         }
@@ -133,9 +134,9 @@ final class LessonCrudOperationsService
      */
     public function publish(Lesson $lesson): Lesson
     {
-        $wasUnpublished = $lesson->status === 'draft';
+        $wasUnpublished = $lesson->status === LessonStatus::Draft;
         $lesson->update([
-            'status' => 'published',
+            'status' => LessonStatus::Published,
             'published_at' => now(),
         ]);
 
@@ -153,7 +154,7 @@ final class LessonCrudOperationsService
     public function unpublish(Lesson $lesson): Lesson
     {
         $lesson->update([
-            'status' => 'draft',
+            'status' => LessonStatus::Draft,
             'published_at' => null,
         ]);
 

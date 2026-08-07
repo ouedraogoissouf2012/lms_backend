@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Enums\LessonStatus;
 use App\Rules\PositiveInteger;
 use Illuminate\Foundation\Http\FormRequest;
 
@@ -89,7 +90,7 @@ final class FilterLessonsRequest extends FormRequest
             'status' => [
                 'sometimes',
                 'string',
-                'in:draft,published,archived',
+                'in:'.implode(',', LessonStatus::values()),
             ],
         ];
     }

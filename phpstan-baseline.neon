@@ -223,12 +223,6 @@ parameters:
 			path: app/Http/Requests/DeactivateVisioRequest.php
 
 		-
-			message: '#^Access to an undefined property \(object\|string\)\:\:\$chapter\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Requests/DeleteKnowledgeCheckRequest.php
-
-		-
 			message: '#^Access to an undefined property \(object\|string\)\:\:\$created_by\.$#'
 			identifier: property.notFound
 			count: 1
@@ -257,24 +251,6 @@ parameters:
 			identifier: cast.int
 			count: 4
 			path: app/Http/Requests/FilterLessonsRequest.php
-
-		-
-			message: '#^Access to an undefined property \(object\|string\)\:\:\$created_by\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Requests/GetAttemptsRequest.php
-
-		-
-			message: '#^Cannot access property \$id on App\\Models\\User\|null\.$#'
-			identifier: property.nonObject
-			count: 1
-			path: app/Http/Requests/GetAttemptsRequest.php
-
-		-
-			message: '#^Cannot call method isAdmin\(\) on App\\Models\\User\|null\.$#'
-			identifier: method.nonObject
-			count: 1
-			path: app/Http/Requests/GetAttemptsRequest.php
 
 		-
 			message: '#^Parameter \#1 \$array of function array_keys expects array, mixed given\.$#'

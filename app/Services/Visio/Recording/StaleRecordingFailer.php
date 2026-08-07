@@ -95,7 +95,7 @@ final class StaleRecordingFailer
             $this->logger->warning('Enregistrement bloqué en Processing marqué Failed (#514)', [
                 'recording_id' => $locked->id,
                 'seance_id' => $locked->seance_id,
-                'stopped_at' => $locked->stopped_at?->toIso8601String(),
+                'stopped_at' => $locked->stopped_at->toIso8601String(),
             ]);
 
             return true;

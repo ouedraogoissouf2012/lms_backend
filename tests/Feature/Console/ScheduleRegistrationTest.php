@@ -55,6 +55,16 @@ final class ScheduleRegistrationTest extends TestCase
         $this->assertTrue($event->onOneServer);
     }
 
+    public function test_expire_quiz_attempts_runs_every_five_minutes_with_locks(): void
+    {
+        $event = $this->scheduledEvents()->get('expire-quiz-attempts');
+
+        $this->assertNotNull($event, 'quiz:expire-attempts doit être planifié (#502) — filet de sécurité des tentatives de quiz abandonnées.');
+        $this->assertSame('*/5 * * * *', $event->expression);
+        $this->assertTrue($event->withoutOverlapping);
+        $this->assertTrue($event->onOneServer);
+    }
+
     public function test_scheduler_heartbeat_runs_every_minute(): void
     {
         $event = $this->scheduledEvents()->get('scheduler-heartbeat');

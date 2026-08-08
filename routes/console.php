@@ -121,6 +121,16 @@ Schedule::command('recordings:fail-stale-processing')
     ->withoutOverlapping()
     ->onOneServer();
 
+// #502 — Filet de sécurité serveur : une tentative de quiz chronométrée abandonnée
+// (l'étudiant ferme l'onglet sans re-poller checkTimeRemaining/saveProgress) resterait
+// `in_progress` indéfiniment (réponses partielles non gradées, lignes orphelines). Ce
+// janitor finalise et soumet automatiquement les tentatives expirées.
+Schedule::command('quiz:expire-attempts')
+    ->everyFiveMinutes()
+    ->name('expire-quiz-attempts')
+    ->withoutOverlapping()
+    ->onOneServer();
+
 // Battement de vie du scheduler (#369) — marqueur cache lu par
 // `scheduler:healthcheck` pour détecter un cron mort en < 10 min.
 // Chaque minute : c'est la granularité du cron `schedule:run` lui-même.

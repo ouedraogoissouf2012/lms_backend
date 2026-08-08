@@ -5,6 +5,11 @@ namespace App\Console\Commands;
 use App\Jobs\CleanOldEvaluations;
 use Illuminate\Console\Command;
 
+/**
+ * Déclencheur MANUEL du job {@see CleanOldEvaluations}, déjà planifié dans
+ * `routes/console.php` (dailyAt 03:00). Conservé volontairement (#502) comme
+ * commande d'exploitation ponctuelle — ce n'est PAS un doublon oublié.
+ */
 class CleanOldEvaluationsCommand extends Command
 {
     /**

@@ -17,8 +17,12 @@ class SyncKlassciSeances implements ShouldQueue
     /** Nombre max de tentatives — HTTP KLASSCI instable, mais sync = idempotent. */
     public int $tries = 3;
 
-    /** Timeout par tentative en secondes — sync potentiellement lourd. */
-    public int $timeout = 600;
+    /**
+     * #539 — timeout dur borné au budget de drain (55 s). La sync s'arrête
+     * elle-même avant (budget souple côté service) et reprend au drain suivant
+     * (idempotente), pour ne pas monopoliser le worker au détriment des jobs `high`.
+     */
+    public int $timeout = 55;
 
     /**
      * Backoff HTTP progressif : 1 min, 5 min, 15 min.

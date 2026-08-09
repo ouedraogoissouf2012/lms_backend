@@ -34,6 +34,9 @@ use Psr\Log\LoggerInterface;
  */
 final class KlassciSeancesSyncService
 {
+    /** #539 — budget-temps souple d'une passe de sync, sous le `$timeout` du job (55 s). */
+    private const SYNC_BUDGET_SECONDS = 45;
+
     public function __construct(
         private readonly KlassciProxyService $klassciService,
         private readonly ClasseSyncService $classeSyncService,
@@ -46,8 +49,11 @@ final class KlassciSeancesSyncService
      * Synchronise toutes les séances de tous les enseignants liés, puis archive
      * les séances disparues de KLASSCI (tenant par tenant).
      */
-    public function sync(): SeanceSyncStats
+    public function sync(?int $budgetSeconds = null): SeanceSyncStats
     {
+        $budgetSeconds ??= self::SYNC_BUDGET_SECONDS;
+        $startedAt = microtime(true);
+
         $stats = new SeanceSyncStats;
 
         /** @var array<int, array<int, int>> $activeIdsByInstitution */
@@ -57,11 +63,30 @@ final class KlassciSeancesSyncService
             ->whereNotNull('klassci_token')
             ->get();
 
+        $completePass = true;
         foreach ($teachers as $teacher) {
             $this->syncTeacher($teacher, $stats, $activeIdsByInstitution);
+
+            // #539 — arrêt souple au budget de drain : ne pas monopoliser le worker
+            // (jusqu'à 600 s avant) au détriment des jobs `high` (visio temps réel).
+            if ((microtime(true) - $startedAt) >= $budgetSeconds) {
+                $completePass = false;
+                break;
+            }
         }
 
-        $this->archiveStaleSeances($activeIdsByInstitution, $stats);
+        // #539 — l'archivage EXIGE une passe COMPLÈTE : sur une passe tronquée, les
+        // enseignants non atteints n'ont pas alimenté $activeIdsByInstitution, donc
+        // leurs séances (même institution) seraient archivées à tort. On reporte au
+        // drain suivant. (Reprise par curseur des enseignants = amélioration future
+        // tracée dans #539.)
+        if ($completePass) {
+            $this->archiveStaleSeances($activeIdsByInstitution, $stats);
+        } else {
+            $this->logger->info('[SyncKlassciSeances] Passe tronquée par le budget de drain — archivage reporté', [
+                'teachers_checked' => $stats->teachersChecked,
+            ]);
+        }
 
         return $stats;
     }

@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace App\Jobs;
 
+use App\Models\Institution;
 use App\Models\User;
 use App\Services\Report\AsyncReportStore;
 use App\Services\Report\ReportGenerationService;
+use App\Services\TenantManager;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -43,11 +45,31 @@ final class GenerateReportPdf implements ShouldQueue
         ReportGenerationService $reports,
         AsyncReportStore $store,
         LoggerInterface $logger,
+        TenantManager $tenantManager,
     ): void {
         $store->running($this->reportId);
 
+        // #536 — Le worker de queue n'exécute PAS le middleware ResolveInstitution :
+        // sans réapplication explicite, TenantManager::id() est null → le global scope
+        // BelongsToInstitution devient no-op → le rapport agrège TOUS les tenants
+        // (fuite cross-tenant). On repose donc le tenant du demandeur, comme le fait
+        // le middleware en synchrone. Un demandeur SANS institution (supradmin
+        // plateforme) reste volontairement non scopé (voit tout).
+        // reset() au début : sur un worker persistant, purge un tenant résiduel d'un
+        // job précédent (sinon un rapport supradmin serait scopé par erreur).
+        $tenantManager->reset();
+
         try {
-            $user = User::findOrFail($this->userId);
+            // Lookup hors scope : robuste même si un tenant résiduel traîne.
+            $user = User::withoutGlobalScope('institution')->findOrFail($this->userId);
+
+            if ($user->institution_id !== null) {
+                $institution = Institution::find($user->institution_id);
+                if ($institution !== null) {
+                    $tenantManager->set($institution);
+                }
+            }
+
             $result = $this->generate($reports, $user);
             $payload = $result['payload'];
 
@@ -69,6 +91,9 @@ final class GenerateReportPdf implements ShouldQueue
             ]);
 
             throw $e;
+        } finally {
+            // Ne pas fuiter le tenant vers le prochain job du worker.
+            $tenantManager->reset();
         }
     }
 

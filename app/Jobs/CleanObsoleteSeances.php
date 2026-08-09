@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\Jobs\Concerns\InteractsWithDrainBudget;
 use App\Models\Seance;
 use App\Models\User;
 use App\Services\KlassciProxyService;
@@ -20,12 +21,13 @@ use Psr\Log\LoggerInterface;
 class CleanObsoleteSeances implements ShouldQueue
 {
     use Queueable;
+    use InteractsWithDrainBudget;
 
     /** Nombre max de tentatives — HTTP KLASSCI peut être instable. */
     public int $tries = 3;
 
-    /** Timeout par tentative en secondes — appels KLASSCI peuvent être lents. */
-    public int $timeout = 300;
+    /** #539 — timeout dur borné au budget de drain (55 s) ; arrêt souple avant. */
+    public int $timeout = 55;
 
     /**
      * Backoff progressif HTTP : 1 min, 5 min, 15 min.
@@ -49,83 +51,96 @@ class CleanObsoleteSeances implements ShouldQueue
     {
         $logger->info('🧹 [CleanObsoleteSeances] Début du nettoyage des séances obsolètes');
 
-        // Récupérer toutes les séances actives avec un klassci_seance_id
-        $seancesLocales = Seance::where('is_active', true)
-            ->whereNotNull('klassci_seance_id')
-            ->get();
-
-        $logger->info('📊 [CleanObsoleteSeances] Séances actives à vérifier', [
-            'count' => $seancesLocales->count()
-        ]);
-
-        if ($seancesLocales->isEmpty()) {
-            $logger->info('✅ [CleanObsoleteSeances] Aucune séance à vérifier');
-            return;
-        }
-
-        // Trouver un token admin/coordinateur valide pour faire les vérifications
+        // Trouver un token admin/coordinateur valide pour faire les vérifications.
         $admin = User::whereNotNull('klassci_token')
             ->whereIn('role', ['coordinateur', 'admin'])
             ->first();
 
-        if (!$admin) {
+        if (! $admin || ! is_string($admin->klassci_token)) {
             $logger->warning('⚠️ [CleanObsoleteSeances] Aucun admin/coordinateur avec token Klassci trouvé');
+
             return;
         }
+        $adminToken = $admin->klassci_token;
 
         $archivedCount = 0;
         $checkedCount = 0;
         $errorCount = 0;
+        $startedAt = microtime(true);
+        $budgetReached = false;
 
-        foreach ($seancesLocales as $seance) {
-            $checkedCount++;
-            $klassciSeanceId = $seance->klassci_seance_id;
-
-            try {
-                // Essayer de récupérer la séance depuis Klassci
-                $response = $klassciService->requestWithUserToken(
-                    $admin->klassci_token,
-                    "seances/{$klassciSeanceId}",
-                    'GET'
-                );
-
-                // Si on arrive ici, la séance existe encore dans Klassci
-                $logger->debug("✅ Séance #{$klassciSeanceId} existe toujours dans Klassci");
-
-            } catch (\Exception $e) {
-                // Si 404 ou autre erreur, la séance n'existe plus
-                if (str_contains($e->getMessage(), '404') || str_contains($e->getMessage(), 'not be found')) {
-                    // Archiver la séance locale
-                    $seance->is_active = false;
-                    $seance->save();
-
-                    $archivedCount++;
-
-                    $logger->info('🗑️ [CleanObsoleteSeances] Séance archivée', [
-                        'seance_id' => $seance->id,
-                        'klassci_seance_id' => $klassciSeanceId,
-                        'matiere' => $seance->matiere_nom,
-                        'enseignant' => $seance->enseignant_nom,
-                        'raison' => 'N\'existe plus dans Klassci'
-                    ]);
-                } else {
-                    // Autre type d'erreur (réseau, etc.)
-                    $errorCount++;
-                    $logger->warning('⚠️ [CleanObsoleteSeances] Erreur lors de la vérification', [
-                        'seance_id' => $seance->id,
-                        'klassci_seance_id' => $klassciSeanceId,
-                        'error' => substr($e->getMessage(), 0, 200)
-                    ]);
+        // Vérification PAR LOTS + arrêt souple au budget de drain (#539) : chaque
+        // itération fait un appel HTTP KLASSCI, donc un run long tenait le worker.
+        // Job idempotent : les séances encore présentes restent is_active=true et
+        // seront re-vérifiées au run suivant, où le travail restant reprend.
+        Seance::where('is_active', true)
+            ->whereNotNull('klassci_seance_id')
+            ->chunkById($this->drainChunkSize, function ($seances) use ($adminToken, $klassciService, $logger, &$archivedCount, &$checkedCount, &$errorCount, &$budgetReached, $startedAt) {
+                foreach ($seances as $seance) {
+                    $checkedCount++;
+                    $result = $this->checkAndArchiveSeance($seance, $adminToken, $klassciService, $logger);
+                    if ($result === 'archived') {
+                        $archivedCount++;
+                    } elseif ($result === 'error') {
+                        $errorCount++;
+                    }
                 }
-            }
-        }
+
+                if ($this->drainBudgetExceeded($startedAt)) {
+                    $budgetReached = true;
+
+                    return false;
+                }
+
+                return true;
+            });
 
         $logger->info('✅ [CleanObsoleteSeances] Nettoyage terminé', [
             'checked' => $checkedCount,
             'archived' => $archivedCount,
             'errors' => $errorCount,
-            'still_active' => $seancesLocales->count() - $archivedCount
+            'budget_atteint' => $budgetReached,
         ]);
+    }
+
+    /**
+     * Vérifie une séance locale contre KLASSCI ; l'archive si elle a disparu (404).
+     * Retourne 'archived', 'exists' ou 'error'.
+     */
+    private function checkAndArchiveSeance(
+        Seance $seance,
+        string $adminToken,
+        KlassciProxyService $klassciService,
+        LoggerInterface $logger,
+    ): string {
+        $klassciSeanceId = $seance->klassci_seance_id;
+
+        try {
+            $klassciService->requestWithUserToken($adminToken, "seances/{$klassciSeanceId}", 'GET');
+
+            return 'exists';
+        } catch (\Exception $e) {
+            if (str_contains($e->getMessage(), '404') || str_contains($e->getMessage(), 'not be found')) {
+                $seance->is_active = false;
+                $seance->save();
+
+                $logger->info('🗑️ [CleanObsoleteSeances] Séance archivée', [
+                    'seance_id' => $seance->id,
+                    'klassci_seance_id' => $klassciSeanceId,
+                    'raison' => 'N\'existe plus dans Klassci',
+                ]);
+
+                return 'archived';
+            }
+
+            $logger->warning('⚠️ [CleanObsoleteSeances] Erreur lors de la vérification', [
+                'seance_id' => $seance->id,
+                'klassci_seance_id' => $klassciSeanceId,
+                'error' => substr($e->getMessage(), 0, 200),
+            ]);
+
+            return 'error';
+        }
     }
 
     /**

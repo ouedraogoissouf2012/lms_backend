@@ -5,13 +5,11 @@ declare(strict_types=1);
 namespace App\Services\Lesson;
 
 use App\Enums\LessonStatus;
+use App\Jobs\DispatchLessonPublishedNotifications;
 use App\Models\Classe;
 use App\Models\Lesson;
 use App\Models\Matiere;
-use App\Models\Notification;
 use App\Models\User;
-use App\Services\KlassciProxyService;
-use Psr\Log\LoggerInterface;
 
 /**
  * Write-side orchestration des leçons (split-15/lesson-crud).
@@ -21,27 +19,19 @@ use Psr\Log\LoggerInterface;
  * matière cross-source, transitions de statut, et fan-out notifications
  * lors d'une publication initiale.
  *
- * ## DI strict (§1.6 D)
+ * ## Fan-out asynchrone (#538)
  *
- * Dépendances injectées par constructeur (`KlassciProxyService` +
- * `LoggerInterface`). Aucun appel à `app()` ni à la Facade `Log`.
- *
- * ## Comportement
- *
- * Aucun changement runtime : logique déplacée verbatim depuis le
- * god-controller. La Facade `\Log::warning` est remplacée par
- * `LoggerInterface::warning` (PSR-3) — strictement équivalent.
+ * Le fan-out des notifications de publication (résolution matière → classes →
+ * étudiants via KLASSCI, puis création des notifications) est délégué au job
+ * {@see DispatchLessonPublishedNotifications} : il faisait auparavant 1+N GET
+ * HTTP KLASSCI + N INSERT **synchrones dans la requête**, bloquant le worker
+ * PHP-FPM sur une grosse promo. Le service ne fait plus que dispatcher le job ;
+ * il n'a donc plus besoin de `KlassciProxyService` ni de `LoggerInterface`.
  *
  * @see app/Http/Controllers/API/Lesson/LessonCrudController.php
  */
 final class LessonCrudOperationsService
 {
-    public function __construct(
-        private readonly KlassciProxyService $klassci,
-        private readonly LoggerInterface $logger,
-    ) {
-    }
-
     /**
      * Créer une nouvelle leçon — résolution `matiere_id` (id local OU
      * `klassci_id`) + auto-`published_at` si statut `published`.
@@ -162,49 +152,26 @@ final class LessonCrudOperationsService
     }
 
     /**
-     * Récupère via KLASSCI la liste des étudiants concernés par la matière
-     * de la leçon (matière → classes → étudiants) et crée une notification
-     * par étudiant local correspondant (`klassci_id` mappé).
+     * Dispatche le fan-out ASYNCHRONE des notifications de publication (#538).
      *
-     * Toute exception KLASSCI est isolée et logguée — la publication
-     * elle-même n'est pas annulée.
+     * Le travail lourd (résolution matière → classes → étudiants via KLASSCI +
+     * création des notifications) est effectué hors requête par
+     * {@see DispatchLessonPublishedNotifications}, qui repose le tenant du
+     * demandeur (le worker n'exécute pas le middleware ResolveInstitution).
      */
     private function dispatchPublicationNotifications(Lesson $lesson): void
     {
-        try {
-            $matiereData = $this->klassci->get("/matieres/{$lesson->matiere_id}");
-
-            if (isset($matiereData['data']['classe_ids']) && is_array($matiereData['data']['classe_ids'])) {
-                $studentIds = [];
-                foreach ($matiereData['data']['classe_ids'] as $classeId) {
-                    $classeData = $this->klassci->get("/classes/{$classeId}");
-                    if (isset($classeData['data']['etudiant_ids']) && is_array($classeData['data']['etudiant_ids'])) {
-                        $studentIds = array_merge($studentIds, $classeData['data']['etudiant_ids']);
-                    }
-                }
-
-                // Créer notification pour chaque étudiant
-                $studentIds = array_unique($studentIds);
-                foreach ($studentIds as $klassciId) {
-                    // Trouver l'utilisateur local correspondant
-                    $student = User::where('klassci_id', $klassciId)->first();
-                    if ($student) {
-                        Notification::create([
-                            'user_id' => $student->id,
-                            'type' => Notification::TYPE_LESSON_PUBLISHED,
-                            'title' => 'Nouveau cours disponible',
-                            'message' => 'Un nouveau cours "' . $lesson->titre . '" est maintenant disponible',
-                            'data' => [
-                                'lesson_id' => $lesson->id,
-                                'matiere_id' => $lesson->matiere_id,
-                            ],
-                        ]);
-                    }
-                }
-            }
-        } catch (\Exception $e) {
-            // Si erreur KLASSCI, on continue quand même
-            $this->logger->warning('Erreur lors de la création des notifications de cours: ' . $e->getMessage());
+        if ($lesson->matiere_id === null || $lesson->institution_id === null) {
+            return;
         }
+
+        // #538 — la colonne réelle est `title` : l'ancien code lisait `$lesson->titre`
+        // (attribut inexistant → null), d'où un titre VIDE dans la notification.
+        DispatchLessonPublishedNotifications::dispatch(
+            (int) $lesson->id,
+            (int) $lesson->matiere_id,
+            (string) $lesson->title,
+            (int) $lesson->institution_id,
+        );
     }
 }

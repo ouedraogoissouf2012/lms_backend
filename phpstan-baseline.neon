@@ -1266,36 +1266,6 @@ parameters:
 			count: 1
 			path: app/Services/KnowledgeCheck/KnowledgeCheckCrudService.php
 
-		-
-			message: '#^Access to an undefined property App\\Models\\Lesson\:\:\$titre\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/Lesson/LessonCrudOperationsService.php
-
-		-
-			message: '#^Cannot access offset ''classe_ids'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 1
-			path: app/Services/Lesson/LessonCrudOperationsService.php
-
-		-
-			message: '#^Cannot access offset ''etudiant_ids'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 1
-			path: app/Services/Lesson/LessonCrudOperationsService.php
-
-		-
-			message: '#^Parameter \#1 \$array of function array_unique expects an array of values castable to string, array\<mixed\> given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Services/Lesson/LessonCrudOperationsService.php
-
-		-
-			message: '#^Part \$classeId \(mixed\) of encapsed string cannot be cast to string\.$#'
-			identifier: encapsedStringPart.nonString
-			count: 1
-			path: app/Services/Lesson/LessonCrudOperationsService.php
-
 
 		-
 			message: '#^Cannot access offset ''classe'' on mixed\.$#'

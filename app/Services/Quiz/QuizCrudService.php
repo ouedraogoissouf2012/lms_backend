@@ -110,10 +110,19 @@ final class QuizCrudService
         $perPage = (int) ($filters['per_page'] ?? 15);
         $quizzes = $query->paginate($perPage);
 
-        $quizzes->getCollection()->transform(function (Quiz $quiz) use ($user): Quiz {
-            $quiz->user_attempts_count = $this->access->attemptsCountForUser($quiz, $user->id);
-            $quiz->user_can_attempt    = $this->access->canUserAttempt($quiz, $user->id);
-            $quiz->user_best_attempt   = $this->access->bestAttemptForUser($quiz, $user->id);
+        // #546 — 1 requête pour toute la page au lieu de jusqu'à 3 par quiz
+        // (attemptsCountForUser était rappelé en double via canUserAttempt).
+        // `map()` typé plutôt que `pluck('id')` (mixed non résolu par PHPStan
+        // sur une Collection déjà matérialisée, hors Builder Eloquent).
+        $quizIds = $quizzes->getCollection()->map(fn (Quiz $quiz): int => $quiz->id)->all();
+        $attemptsByQuiz = $this->access->finalizedAttemptsByQuiz($quizIds, $user->id);
+
+        $quizzes->getCollection()->transform(function (Quiz $quiz) use ($attemptsByQuiz): Quiz {
+            $attempts = $attemptsByQuiz->get($quiz->id, collect());
+
+            $quiz->user_attempts_count = $attempts->count();
+            $quiz->user_can_attempt    = $this->access->isAvailable($quiz) && $attempts->count() < $quiz->max_attempts;
+            $quiz->user_best_attempt   = $attempts->first();
 
             return $quiz;
         });

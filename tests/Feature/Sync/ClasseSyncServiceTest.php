@@ -27,19 +27,19 @@ final class ClasseSyncServiceTest extends TestCase
                 ->with('token-a', 'classes', 'GET')
                 ->once()
                 ->andReturn(['data' => [['id' => 5, 'libelle' => 'Classe A']]]);
-            $mock->shouldReceive('requestWithUserToken')
-                ->with('token-a', 'classes/5', 'GET')
+            $mock->shouldReceive('fetchManyClassesDetails')
+                ->with([5], 'token-a')
                 ->once()
-                ->andReturn(['data' => ['classe' => ['id' => 5, 'libelle' => 'Classe A']]]);
+                ->andReturn([5 => ['data' => ['classe' => ['id' => 5, 'libelle' => 'Classe A']]]]);
 
             $mock->shouldReceive('requestWithUserToken')
                 ->with('token-b', 'classes', 'GET')
                 ->once()
                 ->andReturn(['data' => [['id' => 5, 'libelle' => 'Classe B']]]);
-            $mock->shouldReceive('requestWithUserToken')
-                ->with('token-b', 'classes/5', 'GET')
+            $mock->shouldReceive('fetchManyClassesDetails')
+                ->with([5], 'token-b')
                 ->once()
-                ->andReturn(['data' => ['classe' => ['id' => 5, 'libelle' => 'Classe B']]]);
+                ->andReturn([5 => ['data' => ['classe' => ['id' => 5, 'libelle' => 'Classe B']]]]);
         });
 
         $tenant = app(TenantManager::class);
@@ -82,12 +82,12 @@ final class ClasseSyncServiceTest extends TestCase
                     ['data' => [['id' => 7, 'libelle' => 'Ancien nom']]],
                     ['data' => [['id' => 7, 'libelle' => 'Nouveau nom']]],
                 );
-            $mock->shouldReceive('requestWithUserToken')
-                ->with('token', 'classes/7', 'GET')
+            $mock->shouldReceive('fetchManyClassesDetails')
+                ->with([7], 'token')
                 ->twice()
                 ->andReturn(
-                    ['data' => ['classe' => ['id' => 7, 'libelle' => 'Ancien nom']]],
-                    ['data' => ['classe' => ['id' => 7, 'libelle' => 'Nouveau nom']]],
+                    [7 => ['data' => ['classe' => ['id' => 7, 'libelle' => 'Ancien nom']]]],
+                    [7 => ['data' => ['classe' => ['id' => 7, 'libelle' => 'Nouveau nom']]]],
                 );
         });
 

@@ -6,25 +6,25 @@ namespace App\Services\Seances;
 
 use App\Models\User;
 use App\Services\KlassciProxyService;
-use App\Services\SeanceDetailQueryService;
 use Psr\Log\LoggerInterface;
 
 /**
  * KlassciSeanceLookupService — resolves a single séance from the KLASSCI API
- * by iterating through the role-appropriate matières endpoint.
+ * by locating the matière that contains it.
  *
  * Extracted from `SeanceQueryService` (491 lines, §1.1 violation) during split-1.
+ * Refactored for issue #517 (N+1 HTTP) : the actual matching algorithm (fast
+ * local path + batched fallback) now lives in {@see KlassciSeanceMatiereScanner},
+ * replacing 3 duplicated sequential-HTTP loops. This class stays a thin
+ * orchestrator: build the role-specific candidate set, delegate, shape the
+ * response.
  *
  * ## Responsibility (SRP)
  *
  * ONE job: given a séance id + user role, return the séance + matière payload
- * from KLASSCI, or `[null, null]` if not found.
- *
- * The three branches (teacher / student / coordinator) share the same shape
- * but use distinct endpoints:
- *   - Teacher  → `me/teacher-dashboard` then `matieres/{id}` per matière.
- *   - Student  → `me/dashboard` (cours) then `matieres/{id}` per matière.
- *   - Other    → `matieres` (full list) then `matieres/{id}` per matière.
+ * from KLASSCI, or `[null, null]` if not found. The three branches (teacher /
+ * student / coordinator) differ only in which endpoint supplies the candidate
+ * matière set, and how the `enseignant` field is attached afterward.
  *
  * @see SeanceDetailQueryService (orchestrator)
  */
@@ -33,6 +33,7 @@ final class KlassciSeanceLookupService
     public function __construct(
         private readonly LoggerInterface $logger,
         private readonly KlassciProxyService $klassciService,
+        private readonly KlassciSeanceMatiereScanner $scanner,
     ) {}
 
     /**
@@ -65,33 +66,25 @@ final class KlassciSeanceLookupService
             'GET'
         );
 
-        foreach ($this->dataItems($dashboard, 'matieres') as $matiere) {
-            $matiereId = $this->stringId($matiere['id'] ?? null);
-            if ($matiereId === null) {
-                continue;
-            }
+        $matieres = KlassciPayload::listOfArrays(
+            KlassciPayload::asArray($dashboard['data'] ?? null)['matieres'] ?? null
+        );
+        $matieresById = $this->keyByMatiereId($matieres, fn (array $m): ?int => KlassciPayload::toInt($m['id'] ?? null));
 
-            $matiereDetails = $this->klassciService->requestWithUserToken(
-                $klassciToken,
-                "matieres/{$matiereId}",
-                'GET'
-            );
+        [$seanceTrouvee, $matiereDetails, $matiereFallback] = $this->scanner->scan($matieresById, $seanceId, $klassciToken);
 
-            $seanceTrouvee = $this->findSeance($matiereDetails, $seanceId);
-
-            if ($seanceTrouvee) {
-                $matiereInfo = $this->matiereInfo($matiereDetails, $matiere);
-                $seanceTrouvee['enseignant'] = [
-                    'id' => $user->klassci_id,
-                    'nom' => $user->name,
-                    'email' => $user->email,
-                ];
-
-                return [$seanceTrouvee, $matiereInfo];
-            }
+        if ($seanceTrouvee === null) {
+            return [null, null];
         }
 
-        return [null, null];
+        $matiereInfo = $this->matiereInfo($matiereDetails, $matiereFallback);
+        $seanceTrouvee['enseignant'] = [
+            'id' => $user->klassci_id,
+            'nom' => $user->name,
+            'email' => $user->email,
+        ];
+
+        return [$seanceTrouvee, $matiereInfo];
     }
 
     /**
@@ -106,38 +99,37 @@ final class KlassciSeanceLookupService
                 'GET'
             );
 
-            foreach ($this->dataItems($dashboard, 'cours') as $matiere) {
-                $matiereId = $this->studentMatiereId($matiere);
-                if ($matiereId === null) {
-                    continue;
-                }
+            $cours = KlassciPayload::listOfArrays(
+                KlassciPayload::asArray($dashboard['data'] ?? null)['cours'] ?? null
+            );
+            $matieresById = $this->keyByMatiereId($cours, fn (array $m): ?int => $this->studentMatiereId($m));
 
-                $matiereDetails = $this->klassciService->requestWithUserToken(
-                    $klassciToken,
-                    "matieres/{$matiereId}",
-                    'GET'
-                );
+            [$seanceTrouvee, $matiereDetails, $matiereFallback] = $this->scanner->scan($matieresById, $seanceId, $klassciToken);
 
-                $seanceTrouvee = $this->findSeance($matiereDetails, $seanceId);
-
-                if ($seanceTrouvee) {
-                    $matiereInfo = $this->matiereInfo($matiereDetails, $matiere);
-
-                    // L'API KLASSCI ne retourne pas l'enseignant dans seances_programmees;
-                    // le récupérer depuis matiereDetails ou matiereInfo.
-                    $enseignants = $this->dataItems($matiereDetails, 'enseignants');
-                    if ($enseignants === [] && array_key_exists('enseignant', $matiereInfo)) {
-                        $seanceTrouvee['enseignant'] = $matiereInfo['enseignant'];
-                    } elseif ($enseignants !== []) {
-                        $seanceTrouvee['enseignant'] = $enseignants[0];
-                    }
-
-                    return [$seanceTrouvee, $matiereInfo];
-                }
+            if ($seanceTrouvee === null) {
+                return [null, null];
             }
 
-            return [null, null];
+            $matiereInfo = $this->matiereInfo($matiereDetails, $matiereFallback);
 
+            // L'API KLASSCI ne retourne pas l'enseignant dans seances_programmees;
+            // le récupérer depuis matiereDetails ou matiereInfo.
+            // NB : filtre `is_array` (pas `KlassciPayload::listOfArrays`, qui
+            // COERCE une entrée non-array en `[]` au lieu de l'écarter) — ici
+            // le test `$enseignants === []` pilote directement la branche, une
+            // entrée malformée coercée compterait à tort comme "présente" et
+            // écraserait le fallback `matiereInfo['enseignant']` avec `[]`.
+            $enseignants = array_values(array_filter(
+                KlassciPayload::asList(KlassciPayload::asArray($matiereDetails['data'] ?? null)['enseignants'] ?? null),
+                static fn (mixed $item): bool => is_array($item),
+            ));
+            if ($enseignants === [] && array_key_exists('enseignant', $matiereInfo)) {
+                $seanceTrouvee['enseignant'] = $matiereInfo['enseignant'];
+            } elseif ($enseignants !== []) {
+                $seanceTrouvee['enseignant'] = $enseignants[0];
+            }
+
+            return [$seanceTrouvee, $matiereInfo];
         } catch (\Exception $e) {
             $this->logger->error('Erreur récupération séance étudiant via API KLASSCI', [
                 'seance_id' => $seanceId,
@@ -159,76 +151,37 @@ final class KlassciSeanceLookupService
             'GET'
         );
 
-        foreach ($this->arrayItems($matieresResponse['data'] ?? null) as $matiere) {
-            $matiereId = $this->stringId($matiere['id'] ?? null);
-            if ($matiereId === null) {
-                continue;
-            }
+        $matieres = KlassciPayload::listOfArrays($matieresResponse['data'] ?? null);
+        $matieresById = $this->keyByMatiereId($matieres, fn (array $m): ?int => KlassciPayload::toInt($m['id'] ?? null));
 
-            $matiereDetails = $this->klassciService->requestWithUserToken(
-                $klassciToken,
-                "matieres/{$matiereId}",
-                'GET'
-            );
+        [$seanceTrouvee, $matiereDetails, $matiereFallback] = $this->scanner->scan($matieresById, $seanceId, $klassciToken);
 
-            $seanceTrouvee = $this->findSeance($matiereDetails, $seanceId);
-
-            if ($seanceTrouvee) {
-                $matiereInfo = $this->matiereInfo($matiereDetails, $matiere);
-
-                return [$seanceTrouvee, $matiereInfo];
-            }
+        if ($seanceTrouvee === null) {
+            return [null, null];
         }
 
-        return [null, null];
+        return [$seanceTrouvee, $this->matiereInfo($matiereDetails, $matiereFallback)];
     }
 
     /**
-     * @param  array<string, mixed>  $response
+     * Indexe une liste de matières par id typé, en écartant les entrées sans
+     * id résoluble (id absent/non-numérique).
+     *
+     * @param  array<int, array<string, mixed>>  $matieres
+     * @param  \Closure(array<string, mixed>): (int|null)  $idResolver
      * @return array<int, array<string, mixed>>
      */
-    private function dataItems(array $response, string $key): array
+    private function keyByMatiereId(array $matieres, \Closure $idResolver): array
     {
-        $data = $response['data'] ?? null;
-        if (! is_array($data)) {
-            return [];
-        }
-
-        return $this->arrayItems($data[$key] ?? null);
-    }
-
-    /**
-     * @return array<int, array<string, mixed>>
-     */
-    private function arrayItems(mixed $items): array
-    {
-        if (! is_array($items)) {
-            return [];
-        }
-
-        $result = [];
-        foreach ($items as $item) {
-            if (is_array($item)) {
-                $result[] = $item;
+        $byId = [];
+        foreach ($matieres as $matiere) {
+            $id = $idResolver($matiere);
+            if ($id !== null) {
+                $byId[$id] = $matiere;
             }
         }
 
-        return $result;
-    }
-
-    /**
-     * @param  array<string, mixed>  $matiereDetails
-     * @return array<string, mixed>|null
-     */
-    private function findSeance(array $matiereDetails, int $seanceId): ?array
-    {
-        foreach ($this->dataItems($matiereDetails, 'seances_programmees') as $seance) {
-            if ($this->matchesId($seance['id'] ?? null, $seanceId)) {
-                return $seance;
-            }
-        }
-
-        return null;
+        return $byId;
     }
 
     /**
@@ -251,31 +204,11 @@ final class KlassciSeanceLookupService
     /**
      * @param  array<string, mixed>  $matiere
      */
-    private function studentMatiereId(array $matiere): ?string
+    private function studentMatiereId(array $matiere): ?int
     {
         $nestedMatiere = $matiere['matiere'] ?? null;
         $nestedId = is_array($nestedMatiere) ? ($nestedMatiere['id'] ?? null) : null;
 
-        return $this->stringId($matiere['id'] ?? $matiere['matiere_id'] ?? $nestedId);
-    }
-
-    private function matchesId(mixed $candidate, int $expected): bool
-    {
-        if (is_int($candidate)) {
-            return $candidate === $expected;
-        }
-
-        return is_string($candidate) && ctype_digit($candidate) && (int) $candidate === $expected;
-    }
-
-    private function stringId(mixed $id): ?string
-    {
-        if (is_int($id) || is_string($id)) {
-            $value = trim((string) $id);
-
-            return $value === '' ? null : $value;
-        }
-
-        return null;
+        return KlassciPayload::toInt($matiere['id'] ?? $matiere['matiere_id'] ?? $nestedId);
     }
 }

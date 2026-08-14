@@ -99,7 +99,7 @@ final class TeachingSeancesFetcher
 
             $seancesEnrichies = $seancesProgrammees->map(function (array $seance) use ($matiereArr, $user, $klassciToken, $classesDetails) {
                 $visioData = $this->ensureLocalSeanceExists($seance, $matiereArr, $user, $klassciToken);
-                $classeEffectif = $this->resolveClasseEffectif($seance, $classesDetails);
+                $classeEffectif = KlassciPayload::classeEffectif($seance, $classesDetails);
                 return $this->mapSeance($seance, $matiereArr, $user, $visioData, $classeEffectif);
             });
 
@@ -122,13 +122,8 @@ final class TeachingSeancesFetcher
         $ids = [];
         foreach ($matieresDetails as $details) {
             $data = KlassciPayload::asArray(KlassciPayload::asArray($details)['data'] ?? null);
-            foreach (KlassciPayload::asList($data['seances_programmees'] ?? null) as $seance) {
-                $classe = KlassciPayload::asArray(KlassciPayload::asArray($seance)['classe'] ?? null);
-                $id = KlassciPayload::toInt($classe['id'] ?? null);
-                if ($id !== null) {
-                    $ids[] = $id;
-                }
-            }
+            $seances = KlassciPayload::listOfArrays($data['seances_programmees'] ?? null);
+            $ids = array_merge($ids, KlassciPayload::uniqueIntIds($seances, KlassciPayload::classeIdFor(...)));
         }
 
         return array_values(array_unique($ids));
@@ -185,28 +180,6 @@ final class TeachingSeancesFetcher
         }
 
         return $visioData;
-    }
-
-    /**
-     * Résout l'effectif d'une classe depuis le map pré-chargé en pool, sans appel
-     * réseau supplémentaire. Classe absente (ID échoué dans le pool) → 0.
-     *
-     * @param array<string, mixed> $seance
-     * @param array<int, array<string, mixed>> $classesDetails
-     */
-    private function resolveClasseEffectif(array $seance, array $classesDetails): int
-    {
-        $classeId = KlassciPayload::toInt(KlassciPayload::asArray($seance['classe'] ?? null)['id'] ?? null);
-        if ($classeId === null) {
-            return 0;
-        }
-
-        $classe = KlassciPayload::asArray(
-            KlassciPayload::asArray($classesDetails[$classeId]['data'] ?? null)['classe'] ?? null
-        );
-        $occupees = $classe['places_occupees'] ?? 0;
-
-        return is_int($occupees) ? $occupees : (is_numeric($occupees) ? (int) $occupees : 0);
     }
 
     /**

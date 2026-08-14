@@ -44,7 +44,11 @@ final class EvaluationListService
      * batch query (clé `student_submission`).
      *
      * @param  array<string, mixed>  $filters  Clés acceptées : classe_id,
-     *                                          matiere_id, status, is_published.
+     *                                          matiere_id, status, is_published,
+     *                                          limit (borné 1-100, #548 — pas
+     *                                          de pagination réelle, plafond
+     *                                          simple pour préserver la forme
+     *                                          de réponse en tableau plat).
      *                                          Les clés absentes sont ignorées.
      * @return array<int, array<string, mixed>>
      */
@@ -68,7 +72,13 @@ final class EvaluationListService
             $query->where('is_published', (bool) $filters['is_published']);
         }
 
-        $evaluations = $query->orderBy('date_evaluation', 'desc')->get();
+        $limitInput = $filters['limit'] ?? 100;
+        $limit = is_numeric($limitInput) ? (int) $limitInput : 100;
+
+        $evaluations = $query
+            ->orderBy('date_evaluation', 'desc')
+            ->limit($limit)
+            ->get();
 
         $enrichedEvaluations = $this->enrichmentService->enrich($evaluations);
 

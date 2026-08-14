@@ -6,6 +6,7 @@ namespace App\Http\Controllers\API\Evaluation;
 
 use App\Http\Controllers\AuthenticatedController;
 use App\Http\Requests\DeleteEvaluationRequest;
+use App\Http\Requests\ListEvaluationsRequest;
 use App\Http\Requests\PublishEvaluationRequest;
 use App\Http\Requests\StoreEvaluationRequest;
 use App\Http\Requests\UpdateEvaluationRequest;
@@ -15,7 +16,6 @@ use App\Services\Evaluation\EvaluationListService;
 use App\Services\Evaluation\EvaluationStateService;
 use App\Services\Evaluation\EvaluationUpdateService;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 
 /**
  * Thin controller for evaluation CRUD endpoints.
@@ -48,11 +48,12 @@ final class EvaluationCrudController extends AuthenticatedController
         private readonly EvaluationStateService $stateService,
     ) {}
 
-    public function index(Request $request): JsonResponse
+    public function index(ListEvaluationsRequest $request): JsonResponse
     {
         $user = $this->authenticatedUser($request);
 
-        $filters = $request->only(['classe_id', 'matiere_id', 'status', 'is_published']);
+        $filters = $request->safe()->only(['classe_id', 'matiere_id', 'status', 'is_published']);
+        $filters['limit'] = $request->validated('limit', 100);
 
         $evaluations = $this->listService->listForTeacher($user, $filters);
 

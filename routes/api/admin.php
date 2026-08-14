@@ -115,7 +115,7 @@ Route::middleware(['auth:sanctum', 'role:supradmin', 'platform.supradmin'])
 // ============================================
 // SEARCH - Recherche globale
 // ============================================
-Route::middleware(['auth:sanctum'])->prefix('search')->group(function () {
+Route::middleware(['auth:sanctum', 'throttle:search'])->prefix('search')->group(function () {
     // Recherche globale
     Route::get('/', [SearchController::class, 'globalSearch']);
 

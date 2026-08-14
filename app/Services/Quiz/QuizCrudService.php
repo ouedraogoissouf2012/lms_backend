@@ -50,15 +50,13 @@ final class QuizCrudService
      *   - Enrichissement par item : `user_attempts_count`,
      *     `user_can_attempt`, `user_best_attempt`.
      *
-     * @param  array{
-     *     lesson_id?:int|string,
-     *     matiere_id?:int|string,
-     *     classe_id?:int|string,
-     *     status?:string,
-     *     type?:string,
-     *     sort?:string,
-     *     per_page?:int|string
-     * }  $filters
+     * @param  array<string, mixed>  $filters  Clés lues : lesson_id, matiere_id,
+     *                                          classe_id, status, type, sort,
+     *                                          per_page. Bornées en amont par
+     *                                          {@see \App\Http\Requests\ListQuizzesRequest}
+     *                                          (#548) — validated() n'expose
+     *                                          pas de shape précise côté
+     *                                          PHPStan, d'où ce type large.
      * @return LengthAwarePaginator<int,Quiz>
      */
     public function list(User $user, array $filters): LengthAwarePaginator
@@ -80,15 +78,15 @@ final class QuizCrudService
             $query->available();
         }
 
-        if (isset($filters['lesson_id'])) {
+        if (isset($filters['lesson_id']) && is_numeric($filters['lesson_id'])) {
             $query->forLesson((int) $filters['lesson_id']);
         }
 
-        if (isset($filters['matiere_id'])) {
+        if (isset($filters['matiere_id']) && is_numeric($filters['matiere_id'])) {
             $query->forMatiere((int) $filters['matiere_id']);
         }
 
-        if (isset($filters['classe_id'])) {
+        if (isset($filters['classe_id']) && is_numeric($filters['classe_id'])) {
             $query->forClasse((int) $filters['classe_id']);
         }
 
@@ -107,7 +105,8 @@ final class QuizCrudService
             default   => $query->orderBy('created_at', 'desc'),
         };
 
-        $perPage = (int) ($filters['per_page'] ?? 15);
+        $perPageInput = $filters['per_page'] ?? 15;
+        $perPage = is_numeric($perPageInput) ? (int) $perPageInput : 15;
         $quizzes = $query->paginate($perPage);
 
         // #546 — 1 requête pour toute la page au lieu de jusqu'à 3 par quiz

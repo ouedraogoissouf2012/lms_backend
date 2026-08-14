@@ -208,13 +208,13 @@ final class SeanceTenantIsolationTest extends TestCase
             $mock->shouldReceive('requestWithUserToken')
                 ->with('token-a', 'matieres', 'GET')
                 ->andReturn(['data' => [['id' => 10, 'nom' => 'Matiere A']]]);
-            $mock->shouldReceive('requestWithUserToken')
-                ->with('token-a', 'matieres/10', 'GET')
-                ->andReturn(['data' => ['seances_programmees' => [[
+            $mock->shouldReceive('fetchManyMatieresDetails')
+                ->with([10], 'token-a')
+                ->andReturn([10 => ['data' => ['seances_programmees' => [[
                     'id' => 42,
                     'programmation' => ['date' => '2026-08-01', 'heure_debut' => '2026-08-01T09:00:00Z'],
                     'classe' => ['id' => 700, 'nom' => 'Classe A'],
-                ]]]]);
+                ]]]]]);
             $this->stubQuietClasseSync($mock);
         });
 
@@ -279,13 +279,13 @@ final class SeanceTenantIsolationTest extends TestCase
             ->with($token, 'matieres', 'GET')
             ->andReturn(['data' => [['id' => 10, 'nom' => $matiereNom]]]);
 
-        $mock->shouldReceive('requestWithUserToken')
-            ->with($token, 'matieres/10', 'GET')
-            ->andReturn(['data' => ['seances_programmees' => [[
+        $mock->shouldReceive('fetchManyMatieresDetails')
+            ->with([10], $token)
+            ->andReturn([10 => ['data' => ['seances_programmees' => [[
                 'id' => $seanceId,
                 'programmation' => ['date' => '2026-08-01', 'heure_debut' => '2026-08-01T09:00:00Z'],
                 'classe' => ['id' => $classeId, 'nom' => $classeNom],
-            ]]]]);
+            ]]]]]);
     }
 
     /**

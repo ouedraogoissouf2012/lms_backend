@@ -39,6 +39,8 @@ final class KlassciSeancesSyncService
 
     public function __construct(
         private readonly KlassciProxyService $klassciService,
+        private readonly TeacherMatieresResolver $matieresResolver,
+        private readonly StaleSeanceArchiver $archiver,
         private readonly ClasseSyncService $classeSyncService,
         private readonly NotificationService $notificationService,
         private readonly SeanceCacheDataBuilder $cacheBuilder,
@@ -81,7 +83,7 @@ final class KlassciSeancesSyncService
         // drain suivant. (Reprise par curseur des enseignants = amélioration future
         // tracée dans #539.)
         if ($completePass) {
-            $this->archiveStaleSeances($activeIdsByInstitution, $stats);
+            $this->archiver->archive($activeIdsByInstitution, $stats);
         } else {
             $this->logger->info('[SyncKlassciSeances] Passe tronquée par le budget de drain — archivage reporté', [
                 'teachers_checked' => $stats->teachersChecked,
@@ -120,9 +122,7 @@ final class KlassciSeancesSyncService
             $matieres = $this->klassciService->requestWithUserToken($teacherToken, 'matieres', 'GET');
             $matieresList = KlassciPayload::listOfArrays(KlassciPayload::asArray($matieres)['data'] ?? null);
 
-            foreach ($matieresList as $matiere) {
-                $this->syncMatiereSeances($teacher, $teacherToken, $institutionId, $matiere, $stats, $activeIdsByInstitution);
-            }
+            $this->syncTeacherMatieres($teacher, $teacherToken, $institutionId, $matieresList, $stats, $activeIdsByInstitution);
         } catch (\Exception $e) {
             $stats->errors++;
             $this->logger->error('Erreur traitement enseignant dans job', [
@@ -133,9 +133,48 @@ final class KlassciSeancesSyncService
     }
 
     /**
-     * Récupère et synchronise les séances programmées d'une matière donnée.
+     * Résout les détails de toutes les matières de l'enseignant en UN SEUL
+     * appel batch (élimine le N+1 HTTP — #515, cf. {@see TeacherMatieresResolver}),
+     * puis synchronise les séances de chacune des matières résolues.
+     *
+     * @param  array<int, array<string, mixed>>  $matieresList
+     * @param  array<int, array<int, int>>  $activeIdsByInstitution
+     */
+    private function syncTeacherMatieres(
+        User $teacher,
+        string $teacherToken,
+        int $institutionId,
+        array $matieresList,
+        SeanceSyncStats $stats,
+        array &$activeIdsByInstitution,
+    ): void {
+        $resolution = $this->matieresResolver->resolve($matieresList, $teacherToken);
+
+        foreach ($resolution->failedMatiereIds as $matiereId) {
+            // Restaure le signal perdu par le passage au batch : l'ancien code
+            // séquentiel comptait chaque échec HTTP de matière via l'exception
+            // remontée au catch de syncTeacher(). Le batch fetcher, lui, omet
+            // silencieusement les échecs individuels (tolérance partielle) —
+            // sans ce comptage explicite, une matière en échec redeviendrait
+            // invisible pour la supervision (stats->errors resterait à 0).
+            $stats->errors++;
+            $this->logger->error('Erreur de récupération batch pour une matière — séances potentiellement non synchronisées', [
+                'teacher_id' => $teacher->id,
+                'matiere_id' => $matiereId,
+            ]);
+        }
+
+        foreach ($resolution->resolved as $resolvedMatiere) {
+            $this->syncMatiereSeances($teacher, $teacherToken, $institutionId, $resolvedMatiere->matiere, $resolvedMatiere->details, $stats, $activeIdsByInstitution);
+        }
+    }
+
+    /**
+     * Synchronise les séances d'une matière dont les détails ont déjà été
+     * récupérés en batch par `syncTeacherMatieres()` — aucun appel HTTP ici.
      *
      * @param  array<string, mixed>  $matiere
+     * @param  array<string, mixed>  $details
      * @param  array<int, array<int, int>>  $activeIdsByInstitution
      */
     private function syncMatiereSeances(
@@ -143,15 +182,10 @@ final class KlassciSeancesSyncService
         string $teacherToken,
         int $institutionId,
         array $matiere,
+        array $details,
         SeanceSyncStats $stats,
         array &$activeIdsByInstitution,
     ): void {
-        $matiereId = KlassciPayload::toInt($matiere['id'] ?? null);
-        if ($matiereId === null) {
-            return;
-        }
-
-        $details = $this->klassciService->requestWithUserToken($teacherToken, "matieres/{$matiereId}", 'GET');
         $seances = KlassciPayload::listOfArrays(
             KlassciPayload::asArray(KlassciPayload::asArray($details)['data'] ?? null)['seances_programmees'] ?? null
         );
@@ -253,39 +287,5 @@ final class KlassciSeancesSyncService
             'enseignant_nom' => $teacher->name,
         ]);
         $stats->notificationsSent += $count;
-    }
-
-    /**
-     * Archive, tenant par tenant, les séances actives absentes du run KLASSCI.
-     * N'archive que dans les institutions réellement synchronisées (#473).
-     *
-     * @param  array<int, array<int, int>>  $activeIdsByInstitution
-     */
-    private function archiveStaleSeances(array $activeIdsByInstitution, SeanceSyncStats $stats): void
-    {
-        foreach ($activeIdsByInstitution as $institutionId => $activeIds) {
-            $archivedSeances = Seance::withoutGlobalScope('institution')
-                ->where('institution_id', $institutionId)
-                ->where('is_active', true)
-                ->whereNotNull('klassci_seance_id')
-                ->whereNotIn('klassci_seance_id', $activeIds)
-                ->get();
-
-            foreach ($archivedSeances as $seance) {
-                $seance->update([
-                    'is_active' => false,
-                    'archived_at' => now(),
-                    'archive_reason' => 'supprimee_klassci',
-                ]);
-                $stats->seancesArchived++;
-
-                $this->logger->info('Séance archivée (supprimée de Klassci)', [
-                    'seance_id' => $seance->id,
-                    'klassci_seance_id' => $seance->klassci_seance_id,
-                    'institution_id' => $institutionId,
-                    'matiere' => $seance->matiere_nom,
-                ]);
-            }
-        }
     }
 }

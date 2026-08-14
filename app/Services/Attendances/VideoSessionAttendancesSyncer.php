@@ -9,6 +9,7 @@ use App\Models\ESBTPAttendance;
 use App\Models\Seance;
 use App\Models\User;
 use App\Models\UserClass;
+use App\Services\Seances\KlassciPayload;
 use App\Services\Visio\VisioActorAuthorization;
 use Psr\Log\LoggerInterface;
 use Throwable;
@@ -172,6 +173,12 @@ final class VideoSessionAttendancesSyncer
     }
 
     /**
+     * Résout les users des participants et valide leur inscription, SANS N+1 :
+     * un seul `whereIn` pour les users, un ensemble d'inscrits pré-calculé une
+     * fois (#503). Comportement tout-ou-rien préservé : si un participant échoue
+     * (introuvable / non-étudiant / non-inscrit), tout le batch est refusé.
+     * L'ordre de `$students` est aligné sur `$participants`.
+     *
      * @param  array<int, array<string, mixed>>  $participants
      * @return array<int, User>|null
      */
@@ -181,16 +188,15 @@ final class VideoSessionAttendancesSyncer
             return null;
         }
 
+        $usersByKlassciId = $this->preloadUsers($participants, $seance->institution_id);
+        $enrolledIds = $this->enrolledUserIds($seance);
+
         $students = [];
         foreach ($participants as $participant) {
-            $klassciId = $participant['etudiant_id'] ?? null;
-            $student = User::query()
-                ->where('institution_id', $seance->institution_id)
-                ->where('klassci_id', $klassciId)
-                ->first();
+            $student = $usersByKlassciId->get(KlassciPayload::toInt($participant['etudiant_id'] ?? null));
 
             if (! $student instanceof User || ! $student->isStudent()
-                || ! $this->isEnrolled($student, $seance)) {
+                || ! in_array($student->id, $enrolledIds, true)) {
                 return null;
             }
 
@@ -200,27 +206,57 @@ final class VideoSessionAttendancesSyncer
         return $students;
     }
 
-    private function isEnrolled(User $student, Seance $seance): bool
+    /**
+     * Users des participants, indexés par `klassci_id` (unique par tenant), en
+     * une seule requête. #503.
+     *
+     * @param  array<int, array<string, mixed>>  $participants
+     * @return \Illuminate\Support\Collection<int|string, User>
+     */
+    private function preloadUsers(array $participants, int $institutionId): \Illuminate\Support\Collection
+    {
+        $klassciIds = array_values(array_filter(
+            array_map(fn (array $p): mixed => $p['etudiant_id'] ?? null, $participants),
+            fn (mixed $id): bool => $id !== null
+        ));
+
+        /** @var \Illuminate\Support\Collection<int|string, User> $users */
+        $users = User::query()
+            ->where('institution_id', $institutionId)
+            ->whereIn('klassci_id', $klassciIds)
+            ->get()
+            ->keyBy('klassci_id');
+
+        return $users;
+    }
+
+    /**
+     * Ensemble des `user_id` inscrits à la classe de la séance (union des classes
+     * KLASSCI synchronisées `UserClass` et du pivot local `classe_etudiant`
+     * actif), pré-calculé en 2 requêtes fixes. #503.
+     *
+     * @return array<int, int>
+     */
+    private function enrolledUserIds(Seance $seance): array
     {
         $klassciClasseId = (int) $seance->klassci_classe_id;
-        $inSynchronizedClass = UserClass::query()
+
+        $fromUserClass = UserClass::query()
             ->where('institution_id', $seance->institution_id)
-            ->where('user_id', $student->id)
             ->where('klassci_classe_id', $klassciClasseId)
-            ->exists();
+            ->pluck('user_id');
 
-        if ($inSynchronizedClass) {
-            return true;
-        }
-
-        return Classe::query()
+        $fromPivot = Classe::query()
             ->where('institution_id', $seance->institution_id)
             ->where('klassci_id', $klassciClasseId)
-            ->whereHas('etudiants', function ($query) use ($student): void {
-                $query->where('users.id', $student->id)
-                    ->where('classe_etudiant.statut', 'actif');
-            })
-            ->exists();
+            ->with(['etudiants' => fn ($query) => $query->where('classe_etudiant.statut', 'actif')])
+            ->get()
+            ->flatMap(fn (Classe $classe): \Illuminate\Support\Collection => $classe->etudiants->pluck('id'));
+
+        /** @var array<int, int> $ids */
+        $ids = $fromUserClass->concat($fromPivot)->unique()->values()->all();
+
+        return $ids;
     }
 
     /** @return array{status:int, payload: array<string, mixed>} */

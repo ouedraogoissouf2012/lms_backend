@@ -5,9 +5,11 @@ declare(strict_types=1);
 namespace App\Services\Evaluation\Teacher;
 
 use App\Models\Evaluation;
+use App\Models\EvaluationSubmission;
 use App\Models\User;
 use App\Services\Evaluation\EvaluationEnrichmentService;
 use App\Services\KlassciProxyService;
+use App\Services\Seances\KlassciPayload;
 use Psr\Log\LoggerInterface;
 use Throwable;
 
@@ -136,35 +138,27 @@ final class TeacherEvaluationResultsService
      */
     private function buildResultats(Evaluation $evaluation, array $etudiants): array
     {
+        // #503 — préchargements en amont pour éliminer le N+1 :
+        // users locaux par email (1 requête), et submissions "live" groupées par
+        // klassci_etudiant_id depuis la collection DÉJÀ eager-loaded (0 requête,
+        // cf. `Evaluation::with('submissions')` dans getResultsByClass).
+        $usersByEmail = $this->preloadUsersByEmail($etudiants);
+        $submissionsByKlassci = $this->liveSubmissionsByKlassciId($evaluation);
+
         $resultats = [];
 
         foreach ($etudiants as $etudiant) {
-            $email     = $etudiant['email'] ?? '';
-            $userLocal = $email !== '' ? User::where('email', $email)->first() : null;
+            $email     = KlassciPayload::toStringOrNull($etudiant['email'] ?? null) ?? '';
+            $userLocal = $email !== '' ? $usersByEmail->get($email) : null;
 
-            // 1) Essayer via klassci_id du user local synchronisé.
+            // 1) Via klassci_id du user local synchronisé ; 2) fallback ID KLASSCI
+            // direct. La plus récente par groupe (collection déjà triée desc).
             $submission = null;
             if ($userLocal !== null && $userLocal->klassci_id !== null) {
-                $submission = $evaluation->submissions()
-                    ->where('klassci_etudiant_id', $userLocal->klassci_id)
-                    ->where(function ($q): void {
-                        $q->whereNull('feedback')
-                          ->orWhere('feedback', 'NOT LIKE', '[PRACTICE]%');
-                    })
-                    ->latest()
-                    ->first();
+                $submission = $submissionsByKlassci->get($userLocal->klassci_id)?->first();
             }
-
-            // 2) Fallback : ID KLASSCI direct (cas user non sync localement).
             if ($submission === null) {
-                $submission = $evaluation->submissions()
-                    ->where('klassci_etudiant_id', $etudiant['id'])
-                    ->where(function ($q): void {
-                        $q->whereNull('feedback')
-                          ->orWhere('feedback', 'NOT LIKE', '[PRACTICE]%');
-                    })
-                    ->latest()
-                    ->first();
+                $submission = $submissionsByKlassci->get(KlassciPayload::toInt($etudiant['id'] ?? null))?->first();
             }
 
             $resultats[] = [
@@ -182,6 +176,41 @@ final class TeacherEvaluationResultsService
         }
 
         return $resultats;
+    }
+
+    /**
+     * Users locaux indexés par email, en une seule requête (#503).
+     *
+     * @param  array<int, array<string, mixed>>  $etudiants
+     * @return \Illuminate\Support\Collection<string, User>
+     */
+    private function preloadUsersByEmail(array $etudiants): \Illuminate\Support\Collection
+    {
+        $emails = array_values(array_filter(
+            array_map(fn (array $e): string => KlassciPayload::toStringOrNull($e['email'] ?? null) ?? '', $etudiants),
+            fn (string $email): bool => $email !== ''
+        ));
+
+        /** @var \Illuminate\Support\Collection<string, User> $users */
+        $users = User::query()->whereIn('email', $emails)->get()->keyBy('email');
+
+        return $users;
+    }
+
+    /**
+     * Submissions "live" (hors `[PRACTICE]`) groupées par `klassci_etudiant_id`,
+     * la plus récente en tête de chaque groupe. Utilise la collection DÉJÀ
+     * eager-loaded sur l'évaluation → aucune requête supplémentaire (#503).
+     *
+     * @return \Illuminate\Support\Collection<int|string, \Illuminate\Database\Eloquent\Collection<int, EvaluationSubmission>>
+     */
+    private function liveSubmissionsByKlassciId(Evaluation $evaluation): \Illuminate\Support\Collection
+    {
+        return $evaluation->submissions
+            ->filter(fn (EvaluationSubmission $s): bool =>
+                $s->feedback === null || ! str_starts_with((string) $s->feedback, '[PRACTICE]'))
+            ->sortByDesc('created_at')
+            ->groupBy('klassci_etudiant_id');
     }
 
     /**

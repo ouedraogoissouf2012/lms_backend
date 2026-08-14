@@ -122,6 +122,26 @@ class SyncAttendancesRequestTest extends TestCase
         $this->assertNotEmpty($response->json('errors.seance_cours_id'));
     }
 
+    // #503 — le nombre de participants est borné (anti-DOS).
+    public function test_too_many_participants_returns_422(): void
+    {
+        Sanctum::actingAs($this->teacher);
+
+        $participants = array_map(
+            fn (int $i): array => ['etudiant_id' => $i, 'statut' => 'present'],
+            range(1, 101)
+        );
+
+        $response = $this->postJson('/api/lms/attendances/from-video-session', [
+            'seance_cours_id' => 1,
+            'date' => now()->format('Y-m-d'),
+            'participants' => $participants,
+        ]);
+
+        $response->assertStatus(422);
+        $this->assertNotEmpty($response->json('errors.participants'));
+    }
+
     public function test_missing_date_returns_422(): void
     {
         Sanctum::actingAs($this->teacher);

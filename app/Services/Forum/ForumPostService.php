@@ -41,6 +41,13 @@ use App\Models\User;
 final class ForumPostService
 {
     /**
+     * Colonnes publiques de l'auteur — `email` volontairement exclu (#544 —
+     * PII, jamais exposée au client). Source unique pour tous les
+     * `load()`/`fresh()` de ce service.
+     */
+    private const AUTHOR_COLUMNS = 'user:id,name,role';
+
+    /**
      * Crée un post dans un topic et fan-out les notifications :
      *  1. Auteur du topic si distinct de l'auteur du post.
      *  2. Auteur du post parent (si `parent_id` fourni) si distinct des
@@ -56,7 +63,7 @@ final class ForumPostService
         $data['institution_id'] = $author->institution_id;
 
         $post = ForumPost::create($data);
-        $post->load('user:id,name,email,role');
+        $post->load(self::AUTHOR_COLUMNS);
 
         // Compteur posts + activité du topic — appel explicite (remplace
         // l'ancien boot hook `ForumPost::created`, anti-pattern §5).
@@ -117,7 +124,7 @@ final class ForumPostService
         $post->update(['is_edited' => true, 'edited_at' => now()]);
 
         /** @var ForumPost $fresh */
-        $fresh = $post->fresh(['user']);
+        $fresh = $post->fresh([self::AUTHOR_COLUMNS]);
 
         return $fresh;
     }
@@ -167,7 +174,7 @@ final class ForumPostService
         }
 
         /** @var ForumPost $fresh */
-        $fresh = $post->fresh(['user']);
+        $fresh = $post->fresh([self::AUTHOR_COLUMNS]);
 
         return $fresh;
     }

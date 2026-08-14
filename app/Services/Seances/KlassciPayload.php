@@ -96,6 +96,32 @@ final class KlassciPayload
     }
 
     /**
+     * Indexe une liste de payloads par id entier résolu via `$idResolver`.
+     * Entrées non résolvables écartées ; en cas d'id dupliqué, la dernière
+     * occurrence gagne (sémantique `array` standard).
+     *
+     * Même idiome que {@see uniqueIntIds}, mais conserve le payload complet
+     * plutôt que la seule liste d'ids — utile pour un fetch batch ultérieur
+     * suivi d'une ré-association id → payload d'origine (issue #515).
+     *
+     * @param  iterable<array<string, mixed>>  $items
+     * @param  \Closure(array<string, mixed>): (int|null)  $idResolver
+     * @return array<int, array<string, mixed>>
+     */
+    public static function keyById(iterable $items, \Closure $idResolver): array
+    {
+        $byId = [];
+        foreach ($items as $item) {
+            $id = $idResolver($item);
+            if ($id !== null) {
+                $byId[$id] = $item;
+            }
+        }
+
+        return $byId;
+    }
+
+    /**
      * Id entier de la classe d'une séance (`seance.classe.id`), ou `null` si
      * absent/non-numérique.
      *

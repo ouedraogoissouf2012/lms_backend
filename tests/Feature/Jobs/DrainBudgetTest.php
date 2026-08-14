@@ -92,12 +92,12 @@ final class DrainBudgetTest extends TestCase
                     if ($endpoint === 'matieres') {
                         return ['data' => [['id' => 1]]];
                     }
-                    if ($endpoint === 'matieres/1') {
-                        return ['data' => ['seances_programmees' => [['id' => 999]]]];
-                    }
 
                     return ['data' => []];
                 });
+            $mock->shouldReceive('fetchManyMatieresDetails')
+                ->with([1], 'fake-token')
+                ->andReturn([1 => ['data' => ['seances_programmees' => [['id' => 999]]]]]);
         });
 
         $service = app(KlassciSeancesSyncService::class);

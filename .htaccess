@@ -1,0 +1,47 @@
+# Défense en profondeur — issue #537.
+#
+# Le DocumentRoot de production DOIT pointer sur public/ (voir
+# GUIDE_DEPLOIEMENT_PRODUCTION.md §4 et public/.htaccess, qui gère 100% du trafic
+# applicatif nominal). Apache lit néanmoins ce fichier même quand public/ est le
+# DocumentRoot correct — il remonte les .htaccess ancêtres du chemin filesystem
+# résolu, et lms-backend/ (ce répertoire) en est un ancêtre quel que soit le
+# DocumentRoot. Ces règles s'appliquent donc en permanence : elles protègent contre
+# un DocumentRoot mal configuré (ex. domaine additionnel cPanel non reconfiguré sur
+# public/) sans dépendre de cette configuration serveur pour être actives.
+#
+# Bloque tout segment de chemin commençant par un point : .env, .env.*, .git/*,
+# .claude/* (contient des specs de sécurité versionnées — décrivent des
+# vulnérabilités réelles du projet, cf. audit sécurité #537), .github/*, etc.
+# <FilesMatch> seul ne suffit PAS : il ne matche que le nom de fichier final, pas
+# les segments intermédiaires du chemin (/.git/HEAD a pour nom de fichier "HEAD",
+# sans point — non bloqué par FilesMatch). D'où la règle primaire ci-dessous,
+# basée sur REQUEST_URI (chemin complet, sans ambiguïté de contexte per-directory).
+# Exception explicite pour /.well-known/ (validation ACME/TLS — doit rester
+# accessible, cf. GUIDE_DEPLOIEMENT_PRODUCTION.md).
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteCond %{REQUEST_URI} !^/\.well-known/ [NC]
+    RewriteCond %{REQUEST_URI} (^|/)\.
+    RewriteRule ^ - [F,L]
+</IfModule>
+
+# Repli si mod_rewrite est indisponible : couverture partielle (nom de fichier
+# final uniquement, pas les segments intermédiaires) + blocage explicite des
+# chemins les plus sensibles connus.
+<IfModule !mod_rewrite.c>
+    <FilesMatch "^\.">
+        <IfModule mod_authz_core.c>
+            Require all denied
+        </IfModule>
+        <IfModule !mod_authz_core.c>
+            Order allow,deny
+            Deny from all
+        </IfModule>
+    </FilesMatch>
+    RedirectMatch 403 ^/\.git(/|$)
+    RedirectMatch 403 ^/\.claude(/|$)
+    RedirectMatch 403 ^/\.env
+</IfModule>
+
+Options -Indexes

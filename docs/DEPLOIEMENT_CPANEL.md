@@ -110,10 +110,18 @@ curl -s -X POST https://api.klassci.com/api/auth/login \
   -H "Accept: application/json" -H "Content-Type: application/json" \
   -d '{"username":"zzz_inexistant_test","password":"motdepassevalide"}' \
   -w "\nlogin inconnu: %{http_code}\n"
+
+# 6c. Le webroot ne doit exposer ni .env ni .git (issue #537)
+curl -s -o /dev/null -w "webroot .env: %{http_code}\n" https://api.klassci.com/.env
+curl -s -o /dev/null -w "webroot .git: %{http_code}\n" https://api.klassci.com/.git/HEAD
 ```
 ✅ Attendu :
 - health → `200`
 - login inconnu → `401` (preuve que l'auth tourne ; si `500`, voir étape 4 / logs ; si `503`, KLASSCI injoignable)
+- webroot `.env` et `.git` → `403` ou `404` dans les deux cas. **Si `200`** :
+  rotation immédiate de TOUS les secrets (`APP_KEY`, credentials DB,
+  `KLASSCI_API_TOKEN`, `SUPRADMIN_PASSWORD`) puis vérifier le DocumentRoot du vhost
+  côté WHM (doit pointer sur `.../lms-backend/public`, jamais sur `.../lms-backend`).
 
 - [ ] **Test réel** : connecte-toi avec ton **compte supradmin local** (indépendant de KLASSCI) → doit réussir.
 - [ ] **Test réel** : connecte-toi avec un compte KLASSCI (étudiant/enseignant) → doit réussir.

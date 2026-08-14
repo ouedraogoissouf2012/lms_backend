@@ -1260,27 +1260,8 @@ parameters:
 			count: 1
 			path: app/Services/KnowledgeCheck/KnowledgeCheckCrudService.php
 
-
-		-
-			message: '#^Cannot access offset ''classe'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 1
-			path: app/Services/Matiere/MatiereSeancesFetcher.php
-
-		-
-			message: '#^Cannot access offset ''id'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 1
-			path: app/Services/Matiere/MatiereSeancesFetcher.php
-
 		-
 			message: '#^Cannot access offset ''matieres'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 1
-			path: app/Services/Matiere/MatiereSeancesFetcher.php
-
-		-
-			message: '#^Cannot access offset ''places_occupees'' on mixed\.$#'
 			identifier: offsetAccess.nonOffsetAccessible
 			count: 1
 			path: app/Services/Matiere/MatiereSeancesFetcher.php
@@ -1294,12 +1275,6 @@ parameters:
 		-
 			message: '#^Method App\\Services\\Matiere\\MatiereSeancesFetcher\:\:filterHiddenAndArchivedForStudent\(\) should return array\<int, array\<string, mixed\>\> but returns array\<mixed\>\.$#'
 			identifier: return.type
-			count: 1
-			path: app/Services/Matiere/MatiereSeancesFetcher.php
-
-		-
-			message: '#^Part \$seance\[''classe''\]\[''id''\] \(mixed\) of encapsed string cannot be cast to string\.$#'
-			identifier: encapsedStringPart.nonString
 			count: 1
 			path: app/Services/Matiere/MatiereSeancesFetcher.php
 
@@ -1434,8 +1409,6 @@ parameters:
 			identifier: ternary.alwaysTrue
 			count: 1
 			path: app/Services/Notification/QuizNotificationDispatcher.php
-
-
 
 		-
 			message: '#^Cannot cast mixed to int\.$#'
@@ -1857,23 +1830,6 @@ parameters:
 			count: 1
 			path: app/Services/Seances/StudentClassesSeancesFetcher.php
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 		-
 			message: '#^Method App\\Services\\SeancesHistoryQueryService\:\:enrichWithStats\(\) should return Illuminate\\Support\\Collection\<int, array\<string, mixed\>\> but returns Illuminate\\Support\\Collection\<int, array\{id\: int, klassci_seance_id\: int, titre\: string, matiere\: array\{nom\: string\}, classe\: array\{nom\: string\}, date\: string\|null, visio_started_at\: string\|null, visio_ended_at\: string\|null, \.\.\.\}\>\.$#'
 			identifier: return.type
@@ -2019,44 +1975,14 @@ parameters:
 			path: app/Services/Sync/Classes/ClasseStudentsSynchronizer.php
 
 		-
-			message: '#^Argument of an invalid type mixed supplied for foreach, only iterables are supported\.$#'
-			identifier: foreach.nonIterable
-			count: 2
-			path: app/Services/Sync/Classes/KlassciClassesFetcher.php
-
-		-
-			message: '#^Cannot access offset ''classe'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 2
-			path: app/Services/Sync/Classes/KlassciClassesFetcher.php
-
-		-
 			message: '#^Cannot access offset ''classes'' on mixed\.$#'
 			identifier: offsetAccess.nonOffsetAccessible
 			count: 1
 			path: app/Services/Sync/Classes/KlassciClassesFetcher.php
 
 		-
-			message: '#^Cannot access offset ''etudiants'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 2
-			path: app/Services/Sync/Classes/KlassciClassesFetcher.php
-
-		-
-			message: '#^Cannot access offset ''id'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 4
-			path: app/Services/Sync/Classes/KlassciClassesFetcher.php
-
-		-
 			message: '#^Cannot access offset ''matieres'' on mixed\.$#'
 			identifier: offsetAccess.nonOffsetAccessible
-			count: 1
-			path: app/Services/Sync/Classes/KlassciClassesFetcher.php
-
-		-
-			message: '#^Method App\\Services\\Sync\\Classes\\KlassciClassesFetcher\:\:fetchAllClassesWithDetails\(\) should return array\<int, array\<string, mixed\>\> but returns list\<mixed\>\.$#'
-			identifier: return.type
 			count: 1
 			path: app/Services/Sync/Classes/KlassciClassesFetcher.php
 
@@ -2076,24 +2002,6 @@ parameters:
 			message: '#^Method App\\Services\\Sync\\Classes\\KlassciClassesFetcher\:\:fetchTeacherClasses\(\) should return array\<int, array\<string, mixed\>\> but returns list\<mixed\>\.$#'
 			identifier: return.type
 			count: 1
-			path: app/Services/Sync/Classes/KlassciClassesFetcher.php
-
-		-
-			message: '#^Part \$classe\[''id''\] \(mixed\) of encapsed string cannot be cast to string\.$#'
-			identifier: encapsedStringPart.nonString
-			count: 1
-			path: app/Services/Sync/Classes/KlassciClassesFetcher.php
-
-		-
-			message: '#^Part \$matiere\[''id''\] \(mixed\) of encapsed string cannot be cast to string\.$#'
-			identifier: encapsedStringPart.nonString
-			count: 1
-			path: app/Services/Sync/Classes/KlassciClassesFetcher.php
-
-		-
-			message: '#^Possibly invalid array key type mixed\.$#'
-			identifier: offsetAccess.invalidOffset
-			count: 2
 			path: app/Services/Sync/Classes/KlassciClassesFetcher.php
 
 		-

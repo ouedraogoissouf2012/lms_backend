@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace App\Http\Controllers\API\LMS;
 
 use App\Http\Controllers\AuthenticatedController;
+use App\Http\Requests\SeancesHistoryRequest;
 use App\Services\SeancesHistoryQueryService;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -38,7 +38,7 @@ final class LMSSeancesHistoryController extends AuthenticatedController
      * GET /api/lms/seances/history
      * Historique des présences (accessible même si séance archivée).
      */
-    public function getSeancesHistory(Request $request): JsonResponse
+    public function getSeancesHistory(SeancesHistoryRequest $request): JsonResponse
     {
         try {
             $user = $this->authenticatedUser($request);

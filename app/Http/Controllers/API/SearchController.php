@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\AuthenticatedController;
+use App\Http\Requests\GlobalSearchRequest;
 use App\Services\Search\GlobalSearchService;
 use App\Services\Search\SearchHistoryService;
 use App\Services\Search\SearchSuggestionsService;
@@ -47,16 +48,12 @@ final class SearchController extends AuthenticatedController
      * Sources couvertes : utilisateurs (admin/coordinateur seulement),
      * leçons, évaluations, classes & matières KLASSCI.
      */
-    public function globalSearch(Request $request): JsonResponse
+    public function globalSearch(GlobalSearchRequest $request): JsonResponse
     {
-        $request->validate([
-            'query' => 'required|string|min:2|max:100',
-        ]);
-
         /** @var string $query */
-        $query = $request->input('query');
+        $query = $request->validated('query');
         $user = $this->authenticatedUser($request);
-        $limit = (int) $request->input('limit', 5);
+        $limit = (int) $request->validated('limit', 5);
 
         $payload = $this->globalSearch->search($query, $user, $limit);
 

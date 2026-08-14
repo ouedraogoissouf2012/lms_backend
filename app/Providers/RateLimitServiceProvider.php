@@ -32,6 +32,9 @@ use Illuminate\Support\ServiceProvider;
  *
  *  - `proxy`        : 100 req/min/utilisateur (lecture organisationnelle).
  *  - `proxy-write`  : 30 req/min/utilisateur (écritures notes/présences/statut).
+ *  - `search`       : 30 req/min/utilisateur (#548 — /api/search/* n'avait
+ *                      aucun throttle, frappe KLASSCI potentiellement fan-out
+ *                      ×5 sous-requêtes par appel).
  *
  * Le `supradmin` (gestionnaire plateforme) est exempté (`Limit::none()`) —
  * cohérent avec son bypass tenant existant.
@@ -50,6 +53,8 @@ final class RateLimitServiceProvider extends ServiceProvider
 
     private const VISIO_HEARTBEAT_PER_MINUTE = 12;
 
+    private const SEARCH_PER_MINUTE = 30;
+
     public function boot(): void
     {
         RateLimiter::for('proxy', function (Request $request): Limit {
@@ -62,6 +67,10 @@ final class RateLimitServiceProvider extends ServiceProvider
 
         RateLimiter::for('visio-heartbeat', function (Request $request): Limit {
             return $this->limitForHeartbeat($request);
+        });
+
+        RateLimiter::for('search', function (Request $request): Limit {
+            return $this->limitForUser($request, self::SEARCH_PER_MINUTE);
         });
     }
 

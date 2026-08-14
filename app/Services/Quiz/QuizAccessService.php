@@ -6,6 +6,7 @@ namespace App\Services\Quiz;
 
 use App\Models\Quiz;
 use App\Models\QuizAttempt;
+use Illuminate\Support\Collection;
 
 /**
  * Règles d'accès et cycle de vie d'un Quiz — extrait du modèle `Quiz`
@@ -110,6 +111,33 @@ final class QuizAccessService
             ->where('user_id', $userId)
             ->orderBy('created_at', 'desc')
             ->first();
+    }
+
+    /**
+     * Tentatives finalisées (submitted|graded) de `$userId` pour un ensemble
+     * de quiz, groupées par `quiz_id`, triées `score DESC` — 1 requête au
+     * lieu de N (#546, `QuizCrudService::list` sur une page paginée).
+     *
+     * L'`orderBy('score','desc')` global AVANT le `groupBy` préserve, au sein
+     * de chaque groupe, exactement l'ordre que produirait la requête
+     * par-quiz d'origine (même comportement SQL pour les valeurs NULL — pas
+     * de tri PHP divergent).
+     *
+     * @param  array<int, int>  $quizIds
+     * @return Collection<array-key, \Illuminate\Database\Eloquent\Collection<int, QuizAttempt>>
+     */
+    public function finalizedAttemptsByQuiz(array $quizIds, int $userId): Collection
+    {
+        if ($quizIds === []) {
+            return collect();
+        }
+
+        return QuizAttempt::whereIn('quiz_id', $quizIds)
+            ->where('user_id', $userId)
+            ->whereIn('status', ['submitted', 'graded'])
+            ->orderBy('score', 'desc')
+            ->get()
+            ->groupBy('quiz_id');
     }
 
     /**

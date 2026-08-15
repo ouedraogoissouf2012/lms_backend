@@ -14,6 +14,7 @@ use App\Models\EvaluationQuestion;
 use App\Models\EvaluationSubmission;
 use App\Models\User;
 use App\Services\Evaluation\EvaluationEnrichmentService;
+use App\Services\Evaluation\EvaluationGradingService;
 use App\Services\KlassciProxyService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -32,14 +33,27 @@ class EvaluationKlassciSyncController extends AuthenticatedController
     public function __construct(
         private KlassciProxyService $klassciService,
         private EvaluationEnrichmentService $enrichmentService,
+        private EvaluationGradingService $gradingService,
     ) {}
 
     public function syncToKlassci(int $id): JsonResponse
     {
-        $evaluation = Evaluation::with('submissions')->find($id);
+        $evaluation = Evaluation::with(['submissions', 'questions'])->find($id);
 
         if (!$evaluation) {
             return $this->errorResponse('Évaluation non trouvée', 404);
+        }
+
+        // Fail-closed (#564) : tant qu'aucun chemin de notation manuelle n'existe
+        // pour les évaluations, une question à correction manuelle (dissertation)
+        // produit une note auto déflatée/0. On REFUSE de pousser ces notes non
+        // finalisées dans KLASSCI (SIS officiel). Suivi : endpoint de notation
+        // enseignant pour les dissertations (issue dédiée).
+        if ($this->hasManualGradingQuestion($evaluation)) {
+            return $this->errorResponse(
+                'Synchronisation bloquée : cette évaluation contient des questions à correction manuelle (dissertation) non encore notées.',
+                409
+            );
         }
 
         try {
@@ -94,7 +108,17 @@ class EvaluationKlassciSyncController extends AuthenticatedController
     public function syncNotesToKlassci(int $id): JsonResponse
     {
         try {
-            $evaluation = Evaluation::findOrFail($id);
+            $evaluation = Evaluation::with('questions')->findOrFail($id);
+
+            // Fail-closed (#564) : ne pas marquer « synchronisées » des soumissions
+            // dont la note n'est pas finalisée (question à correction manuelle) —
+            // sinon le futur push réel les sauterait (déjà « synced »).
+            if ($this->hasManualGradingQuestion($evaluation)) {
+                return $this->errorResponse(
+                    'Synchronisation bloquée : cette évaluation contient des questions à correction manuelle (dissertation) non encore notées.',
+                    409
+                );
+            }
 
             // Récupérer toutes les soumissions non synchronisées
             $submissions = EvaluationSubmission::where('evaluation_id', $id)
@@ -173,5 +197,18 @@ class EvaluationKlassciSyncController extends AuthenticatedController
                 'error' => 'Une erreur est survenue.'
             ], 500);
         }
+    }
+
+    /**
+     * Vrai si l'évaluation contient au moins une question à correction manuelle
+     * (dissertation) — donc dont la note automatique n'est pas finale (#564).
+     * La règle « quel type est manuel » reste centralisée dans le service de
+     * correction (DRY), le contrôleur ne fait qu'orchestrer le fail-closed.
+     */
+    private function hasManualGradingQuestion(Evaluation $evaluation): bool
+    {
+        return $evaluation->questions->contains(
+            fn (EvaluationQuestion $question): bool => $this->gradingService->requiresManualGrading($question)
+        );
     }
 }

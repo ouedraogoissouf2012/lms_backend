@@ -171,4 +171,62 @@ class ResolveInstitutionMiddlewareTest extends TestCase
         $this->assertSame(200, $response->getStatusCode());
         $this->assertNull($tenantManager->get());
     }
+
+    /**
+     * #565 (P0) — FAIL-SECURE : un porteur dont l'institution est désactivée
+     * doit être REFUSÉ (403), jamais laissé passer avec un tenant non résolu
+     * (ce qui laissait `BelongsToInstitution` tourner non scopé → fuite
+     * cross-tenant). Le `$next` ne doit même pas être invoqué.
+     */
+    public function test_disabled_institution_via_bearer_returns_403_and_no_tenant(): void
+    {
+        $this->institutionA->is_active = false;
+        $this->institutionA->save();
+
+        $plainToken = $this->userOfA->createToken('test')->plainTextToken;
+
+        $request = Request::create('/api/lessons', 'GET');
+        $request->headers->set('Authorization', 'Bearer ' . $plainToken);
+
+        $this->app->forgetInstance(TenantManager::class);
+        $tenantManager = app(TenantManager::class);
+
+        $nextCalled = false;
+        $middleware = new ResolveInstitution($tenantManager);
+        $response = $middleware->handle($request, function () use (&$nextCalled) {
+            $nextCalled = true;
+
+            return response('ok');
+        });
+
+        $this->assertSame(403, $response->getStatusCode());
+        $this->assertFalse($nextCalled, 'La requête ne doit jamais atteindre le contrôleur');
+        $this->assertNull($tenantManager->get(), 'Aucun tenant ne doit être posé');
+    }
+
+    /**
+     * #565 — un porteur rattaché à une institution INTROUVABLE (id sans ligne,
+     * ex. suppression physique) est également refusé (403) : jamais non scopé.
+     */
+    public function test_missing_institution_via_bearer_returns_403(): void
+    {
+        $orphan = User::factory()->create([
+            'institution_id' => 999_999, // aucune institution correspondante
+            'email'          => 'orphan@example.com',
+            'role'           => 'etudiant',
+        ]);
+        $plainToken = $orphan->createToken('test')->plainTextToken;
+
+        $request = Request::create('/api/lessons', 'GET');
+        $request->headers->set('Authorization', 'Bearer ' . $plainToken);
+
+        $this->app->forgetInstance(TenantManager::class);
+        $tenantManager = app(TenantManager::class);
+
+        $middleware = new ResolveInstitution($tenantManager);
+        $response = $middleware->handle($request, fn () => response('ok'));
+
+        $this->assertSame(403, $response->getStatusCode());
+        $this->assertNull($tenantManager->get());
+    }
 }

@@ -19,6 +19,11 @@ use Symfony\Component\HttpFoundation\Response;
  *    deliberately IGNORED in this case — trusting an arbitrary client header
  *    while a Sanctum token exists would let an authenticated user of school A
  *    impersonate the tenant context of school B by sending `X-Institution: B`.
+ *    **FAIL-SECURE (#565)** : if that institution is inactive or missing, the
+ *    request is REFUSED with a 403 — never allowed to proceed with an
+ *    unresolved tenant (which `BelongsToInstitution`, being fail-open, would
+ *    have run UNSCOPED → cross-tenant data leak). A supradmin (no
+ *    `institution_id`) still proceeds unscoped on purpose (sees all tenants).
  *
  * 2. **No bearer token but `X-Institution` header present** : fallback used for
  *    pre-authentication public routes (login, password reset, signup). The
@@ -51,7 +56,16 @@ class ResolveInstitution
 
         // Priority 1: authenticated request — trust ONLY the JWT-bound institution.
         if ($request->bearerToken()) {
-            $this->resolveFromBearerToken($request);
+            // FAIL-SECURE (#565) : un porteur rattaché à une institution
+            // désactivée/introuvable est refusé ici, jamais laissé passer non
+            // scopé. `null` = la requête peut continuer (tenant posé, supradmin,
+            // ou token invalide traité en 401 par auth:sanctum).
+            $refusal = $this->resolveFromBearerToken($request);
+
+            if ($refusal !== null) {
+                return $refusal;
+            }
+
             return $next($request);
         }
 
@@ -68,10 +82,7 @@ class ResolveInstitution
             ->first();
 
         if (!$institution) {
-            return response()->json([
-                'success' => false,
-                'message' => "Institution non trouvée ou inactive: {$slug}",
-            ], 400);
+            return $this->deny(Response::HTTP_BAD_REQUEST, "Institution non trouvée ou inactive: {$slug}");
         }
 
         $this->tenantManager->set($institution);
@@ -82,25 +93,58 @@ class ResolveInstitution
     /**
      * Resolve the tenant from the user behind the bearer token.
      *
-     * Silently leaves the tenant unset if:
-     * - the token cannot be found (will trigger 401 downstream via auth:sanctum),
-     * - the user has no institution_id (supradmin — sees all tenants),
-     * - the institution is inactive or deleted.
+     * Returns a refusal {@see Response} when the request MUST be blocked, or
+     * `null` when it may proceed :
      *
+     *   - token / tokenable absent          → null (auth:sanctum issues a 401),
+     *   - user has no institution_id        → null (supradmin — sees all tenants),
+     *   - institution active                → null (tenant set, nominal path),
+     *   - institution inactive OR missing   → 403 (FAIL-SECURE, #565).
+     *
+     * The inactive/missing case previously returned silently, leaving the tenant
+     * unresolved → `BelongsToInstitution` skipped its scope → cross-tenant leak.
      * Never trusts a request header at this stage.
      */
-    private function resolveFromBearerToken(Request $request): void
+    private function resolveFromBearerToken(Request $request): ?Response
     {
         $token = PersonalAccessToken::findToken($request->bearerToken());
 
-        if (!$token || !$token->tokenable || !$token->tokenable->institution_id) {
-            return;
+        if (!$token || !$token->tokenable) {
+            return null;
         }
 
-        $institution = Institution::find($token->tokenable->institution_id);
+        $institutionId = $token->tokenable->institution_id;
 
-        if ($institution && $institution->is_active) {
-            $this->tenantManager->set($institution);
+        // Supradmin / platform account (no institution) — intentionally
+        // cross-tenant, proceeds unscoped. MUST NOT be confused with a disabled
+        // institution below.
+        if (!$institutionId) {
+            return null;
         }
+
+        $institution = Institution::find($institutionId);
+
+        if (!$institution || !$institution->is_active) {
+            return $this->deny(
+                Response::HTTP_FORBIDDEN,
+                'Établissement désactivé. Accès suspendu, contactez votre administration.'
+            );
+        }
+
+        $this->tenantManager->set($institution);
+
+        return null;
+    }
+
+    /**
+     * Réponse de refus JSON normalisée — même enveloppe pour les deux voies
+     * (bearer 403 / header 400). N'expose aucun détail technique (§1.2).
+     */
+    private function deny(int $status, string $message): Response
+    {
+        return response()->json([
+            'success' => false,
+            'message' => $message,
+        ], $status);
     }
 }

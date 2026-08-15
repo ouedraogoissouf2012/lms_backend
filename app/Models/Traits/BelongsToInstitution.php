@@ -32,6 +32,19 @@ use Illuminate\Support\Facades\Log;
  * is still prevented upstream by `ResolveInstitution` middleware + per-controller
  * filters.
  *
+ * ## Décision #565 — le fail-secure est porté par le middleware, pas ici
+ *
+ * L'incident #565 (institution désactivée → lecture cross-tenant) est corrigé à
+ * la FRONTIÈRE (`ResolveInstitution`), qui refuse désormais (403) tout porteur
+ * rattaché à une institution inactive/introuvable. Ce trait CONSERVE
+ * volontairement son fail-open en lecture : au moment d'une requête, il ne peut
+ * pas distinguer les 3 absences de tenant LÉGITIMES ci-dessus d'un tenant qui
+ * aurait dû être posé — cette information n'existe qu'au middleware. Y basculer
+ * un `throw` casserait (a)/(b)/(c) sans rien attraper de plus une fois #565
+ * fermé en amont. La bascule fail-closed reste le durcissement futur ci-dessous,
+ * hors périmètre de #565 (toucherait ~57 services + la sémantique institution
+ * de #566/#567).
+ *
  * ## Insert hook : explicit institution_id always wins
  *
  *   - If `institution_id` is already assigned (even to null) → keep it.

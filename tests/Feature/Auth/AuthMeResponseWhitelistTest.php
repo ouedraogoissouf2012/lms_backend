@@ -14,10 +14,14 @@ use Tests\TestCase;
 
 /**
  * Issue #477 — Vecteur B : GET /api/auth/me fait un appel KLASSCI LIVE
- * (AuthController::me() → KlassciProxyService::get('auth/me')) et remet le payload
- * au frontend SANS passer par le stockage. La whitelist doit s'appliquer aussi à
- * ce chemin, sinon un KLASSCI compromis injecte des clés directement dans la
- * réponse frontend.
+ * (AuthController::me() → KlassciProxyService::requestWithUserToken('auth/me')) et
+ * remet le payload au frontend SANS passer par le stockage. La whitelist doit
+ * s'appliquer aussi à ce chemin, sinon un KLASSCI compromis injecte des clés
+ * directement dans la réponse frontend.
+ *
+ * #568 : le chemin est passé de `get()` (clé cache tenant-globale, fuite
+ * d'identité) à `requestWithUserToken()` (isolation par utilisateur) — la
+ * garantie de whitelist est inchangée, seule la méthode appelée évolue.
  */
 final class AuthMeResponseWhitelistTest extends TestCase
 {
@@ -35,9 +39,10 @@ final class AuthMeResponseWhitelistTest extends TestCase
         $user = User::factory()->for($institution)->create(['klassci_token' => 'fake-token']);
 
         // KLASSCI compromis renvoie is_admin/permissions en LIVE sur auth/me.
+        // #568 : /auth/me passe par requestWithUserToken (isolation par token perso).
         $mock = Mockery::mock(KlassciProxyService::class);
-        $mock->shouldReceive('get')
-            ->with('auth/me')
+        $mock->shouldReceive('requestWithUserToken')
+            ->with('fake-token', 'auth/me', 'GET')
             ->andReturn(['data' => ['user' => [
                 'id' => 123,
                 'nom' => 'Dupont',

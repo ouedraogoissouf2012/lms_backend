@@ -106,21 +106,36 @@ class AuthController extends AuthenticatedController
         try {
             $user = $this->authenticatedUser($request);
 
-            try {
-                $klassciMe = $this->klassciService->get('auth/me');
-                $userData  = is_array($klassciMe['data']['user'] ?? null) ? $klassciMe['data']['user'] : [];
-            } catch (\Exception) {
-                $userData = [];
-            }
-
-            // #477 (vecteur B) : /auth/me renvoie le payload KLASSCI LIVE au frontend
-            // sans passer par le stockage. On applique la MÊME whitelist qu'au stockage
-            // pour qu'un KLASSCI compromis ne puisse pas injecter de clés dans la réponse.
-            $userData = $this->klassciDataWhitelist->filter($userData);
+            // #477 (vecteur B) : whitelist du payload KLASSCI LIVE avant exposition
+            // frontend (un KLASSCI compromis ne peut injecter de clés dans la réponse).
+            $userData = $this->klassciDataWhitelist->filter($this->fetchLiveKlassciProfile($user));
 
             return $this->presenter->profile($user, $userData);
         } catch (\Exception) {
             return $this->presenter->profileError();
+        }
+    }
+
+    /**
+     * #568 — Profil KLASSCI LIVE isolé PAR utilisateur : variante user-token-aware
+     * (clé cache dérivée du hash du token). L'ancien `get('auth/me')` cachait sous
+     * une clé tenant-globale → le profil du 1er appelant fuitait à tout le tenant.
+     *
+     * @return array<string, mixed>  Payload `data.user`, ou [] si indisponible.
+     */
+    private function fetchLiveKlassciProfile(User $user): array
+    {
+        $klassciToken = $user->klassci_token;
+        if (!is_string($klassciToken) || $klassciToken === '') {
+            return []; // Pas de token perso (auth locale / institution) → pas de profil KLASSCI perso.
+        }
+
+        try {
+            $klassciMe = $this->klassciService->requestWithUserToken($klassciToken, 'auth/me', 'GET');
+
+            return is_array($klassciMe['data']['user'] ?? null) ? $klassciMe['data']['user'] : [];
+        } catch (\Exception) {
+            return [];
         }
     }
 

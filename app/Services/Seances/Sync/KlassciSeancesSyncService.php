@@ -11,6 +11,7 @@ use App\Services\KlassciProxyService;
 use App\Services\NotificationService;
 use App\Services\Seances\KlassciPayload;
 use App\Services\Seances\SeanceCacheDataBuilder;
+use App\Services\Seances\SeanceRestoreGuard;
 use App\Services\Visio\SecureVisioRoomIdGenerator;
 use Psr\Log\LoggerInterface;
 
@@ -221,13 +222,18 @@ final class KlassciSeancesSyncService
 
             $activeIdsByInstitution[$institutionId][] = $klassciSeanceId;
 
+            // #542 — withTrashed() : l'unique composite (klassci_seance_id,
+            // institution_id) n'est pas filtré sur deleted_at, sans quoi une
+            // resync d'une séance soft-deletée violerait l'unique en INSERT.
             $seanceLocal = Seance::withoutGlobalScope('institution')
+                ->withTrashed()
                 ->where('institution_id', $institutionId)
                 ->where('klassci_seance_id', $klassciSeanceId)
                 ->first();
             $cacheData = $this->cacheBuilder->build($seanceArr, $matiere, $teacher);
 
             if ($seanceLocal) {
+                SeanceRestoreGuard::restoreIfTrashed($seanceLocal);
                 $this->cacheBuilder->applyTo($seanceLocal, $cacheData);
 
                 return;

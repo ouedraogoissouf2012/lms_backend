@@ -245,4 +245,149 @@ final class KlassciSeancesSyncServiceTest extends TestCase
         self::assertSame(1, $stats->seancesNew, 'La matière 11 (résolue) doit quand même être synchronisée.');
         self::assertDatabaseHas('seances', ['klassci_seance_id' => 900]);
     }
+
+    /**
+     * Issue #542 — `Seance` porte un unique COMPOSITE `(klassci_seance_id,
+     * institution_id)` non filtré sur `deleted_at` : une ligne soft-deletée
+     * occupe toujours sa place dans l'index. Le lookup de `upsertSeance()`
+     * (avant fix) exclut implicitement les lignes trashed → `createSeance()`
+     * tente un INSERT qui viole l'unique → `QueryException` catchée,
+     * comptée en erreur, la séance n'est JAMAIS restaurée (sync en échec
+     * permanent, exactement le symptôme décrit par l'issue).
+     */
+    public function test_resync_of_a_soft_deleted_seance_restores_it_instead_of_erroring(): void
+    {
+        $institution = Institution::factory()->create();
+        User::factory()->for($institution)->create([
+            'role' => 'enseignant',
+            'name' => 'Prof',
+            'klassci_id' => 1001,
+            'klassci_token' => 'token-a',
+        ]);
+
+        // Archivée (StaleSeanceArchiver) AVANT sa suppression — le cas réaliste :
+        // une séance non touchée par un run de sync se fait d'abord archiver,
+        // puis un enseignant/admin la supprime localement.
+        $trashed = Seance::factory()->forInstitution($institution)->create([
+            'klassci_seance_id' => 42,
+            'is_active' => false,
+            'archived_at' => now()->subDay(),
+            'archive_reason' => 'supprimee_klassci',
+        ]);
+        $trashed->delete();
+        self::assertSoftDeleted('seances', ['id' => $trashed->id]);
+
+        $this->mock(KlassciProxyService::class, function (MockInterface $mock): void {
+            $mock->shouldReceive('requestWithUserToken')
+                ->with('token-a', 'matieres', 'GET')
+                ->andReturn(['data' => [['id' => 10, 'nom' => 'Maths']]]);
+            $mock->shouldReceive('fetchManyMatieresDetails')
+                ->with([10], 'token-a')
+                ->andReturn([10 => ['data' => ['seances_programmees' => [[
+                    'id' => 42,
+                    'programmation' => ['date' => '2026-08-10', 'heure_debut' => '2026-08-10T10:00:00Z'],
+                    'classe' => ['id' => 501, 'nom' => 'TA'],
+                ]]]]]);
+            $mock->shouldReceive('requestWithUserToken')->andReturn(['data' => ['classe' => ['id' => 501]]]);
+        });
+
+        app(TenantManager::class)->reset();
+        $stats = app(KlassciSeancesSyncService::class)->sync();
+
+        self::assertSame(0, $stats->errors, 'La resync d\'une séance soft-deletée ne doit JAMAIS produire une QueryException.');
+        self::assertNotSoftDeleted('seances', ['id' => $trashed->id]);
+        // Restauration, pas duplication — 1 seule ligne pour cette clé.
+        self::assertDatabaseCount('seances', 1);
+
+        $trashed->refresh();
+        self::assertTrue(
+            (bool) $trashed->is_active,
+            'Une séance archivée AVANT sa suppression doit être désarchivée : la resync confirme qu\'elle existe de nouveau côté KLASSCI (sinon invisible aux étudiants malgré une resync "réussie").',
+        );
+        self::assertNull($trashed->archived_at);
+        self::assertNull($trashed->archive_reason);
+    }
+
+    /**
+     * R3 (non-régression) — cas nominal : aucune ligne trashed pour cette
+     * clé, le comportement create/update doit rester identique à avant #542.
+     */
+    public function test_resync_without_any_trashed_seance_keeps_nominal_create_behavior(): void
+    {
+        $institution = Institution::factory()->create();
+        User::factory()->for($institution)->create([
+            'role' => 'enseignant',
+            'klassci_id' => 1001,
+            'klassci_token' => 'token-a',
+        ]);
+
+        $this->mock(KlassciProxyService::class, function (MockInterface $mock): void {
+            $mock->shouldReceive('requestWithUserToken')
+                ->with('token-a', 'matieres', 'GET')
+                ->andReturn(['data' => [['id' => 10, 'nom' => 'Maths']]]);
+            $mock->shouldReceive('fetchManyMatieresDetails')
+                ->with([10], 'token-a')
+                ->andReturn([10 => ['data' => ['seances_programmees' => [[
+                    'id' => 99,
+                    'programmation' => ['date' => '2026-08-10'],
+                    'classe' => ['id' => 501, 'nom' => 'TA'],
+                ]]]]]);
+            $mock->shouldReceive('requestWithUserToken')->andReturn(['data' => ['classe' => ['id' => 501]]]);
+        });
+
+        app(TenantManager::class)->reset();
+        $stats = app(KlassciSeancesSyncService::class)->sync();
+
+        self::assertSame(0, $stats->errors);
+        self::assertSame(1, $stats->seancesNew);
+        self::assertDatabaseHas('seances', ['klassci_seance_id' => 99, 'institution_id' => $institution->id]);
+    }
+
+    /**
+     * R4 (isolation tenant) — une ligne trashed d'une AUTRE institution
+     * portant le même `klassci_seance_id` ne doit JAMAIS être
+     * restaurée/affectée par la resync d'une institution différente.
+     */
+    public function test_resync_never_restores_a_trashed_seance_belonging_to_another_institution(): void
+    {
+        $institutionA = Institution::factory()->create();
+        $institutionB = Institution::factory()->create();
+
+        User::factory()->for($institutionA)->create([
+            'role' => 'enseignant',
+            'klassci_id' => 1001,
+            'klassci_token' => 'token-a',
+        ]);
+
+        $trashedInB = Seance::factory()->forInstitution($institutionB)->create([
+            'klassci_seance_id' => 42,
+            'is_active' => false,
+        ]);
+        $trashedInB->delete();
+
+        $this->mock(KlassciProxyService::class, function (MockInterface $mock): void {
+            $mock->shouldReceive('requestWithUserToken')
+                ->with('token-a', 'matieres', 'GET')
+                ->andReturn(['data' => [['id' => 10, 'nom' => 'Maths']]]);
+            $mock->shouldReceive('fetchManyMatieresDetails')
+                ->with([10], 'token-a')
+                ->andReturn([10 => ['data' => ['seances_programmees' => [[
+                    'id' => 42,
+                    'programmation' => ['date' => '2026-08-10'],
+                    'classe' => ['id' => 501, 'nom' => 'TA'],
+                ]]]]]);
+            $mock->shouldReceive('requestWithUserToken')->andReturn(['data' => ['classe' => ['id' => 501]]]);
+        });
+
+        app(TenantManager::class)->reset();
+        $stats = app(KlassciSeancesSyncService::class)->sync();
+
+        self::assertSame(0, $stats->errors);
+        self::assertSoftDeleted('seances', ['id' => $trashedInB->id], deletedAtColumn: 'deleted_at');
+        self::assertDatabaseHas('seances', [
+            'klassci_seance_id' => 42,
+            'institution_id' => $institutionA->id,
+            'deleted_at' => null,
+        ]);
+    }
 }

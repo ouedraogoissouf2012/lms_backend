@@ -108,7 +108,11 @@ return new class extends Migration
      */
     private function migrateInstitutionTokens(): void
     {
-        \App\Models\Institution::whereNotNull('klassci_api_token')
+        // #567 : `withoutGlobalScopes()` — cette migration de données PRÉCÈDE l'ajout
+        // du trait SoftDeletes sur Institution ; sans ça, le SoftDeletingScope
+        // injecterait `deleted_at is null` alors que la colonne n'existe pas encore à
+        // cette étape de `migrate:fresh`. Une migration opère sur les lignes brutes.
+        \App\Models\Institution::withoutGlobalScopes()->whereNotNull('klassci_api_token')
             ->chunk(100, function ($institutions) {
                 foreach ($institutions as $institution) {
                     if ($institution->klassci_api_token) {

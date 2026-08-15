@@ -146,6 +146,10 @@ final class InstitutionResponseTest extends TestCase
 
     public function test_destroy_returns_success_with_message_only(): void
     {
+        // #567 : une suppression exige une désactivation préalable (is_active = false).
+        // On fige ici UNIQUEMENT la forme de la réponse succès (chemin nominal).
+        $this->instB->update(['is_active' => false]);
+
         $response = $this->deleteJson("/api/admin/institutions/{$this->instB->id}");
 
         $response->assertStatus(200)

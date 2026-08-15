@@ -10,13 +10,15 @@ use App\Models\User;
 use App\Services\ClasseSyncService;
 use App\Services\KlassciProxyService;
 use App\Services\Notification\AsyncVisioNotificationDispatcher;
+use App\Services\Seances\SeanceRestoreGuard;
 use App\Services\Visio\SecureVisioRoomIdGenerator;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Psr\Log\LoggerInterface;
 use Throwable;
 
 /**
- * VisioToggleService — extrait verbatim de
- * `LMSSeancesMutationController::toggleVisioSeance()`.
+ * VisioToggleService — extrait initialement de
+ * `LMSSeancesMutationController::toggleVisioSeance()`, depuis étoffé (#542).
  *
  * Active ou désactive la visioconférence pour une séance, met à jour
  * l'entrée locale `seances` et — quand l'activation a lieu — envoie les
@@ -72,20 +74,19 @@ final class VisioToggleService
                 'note' => 'Workaround: endpoint GET /seances/{id} inexistant dans KLASSCI',
             ]);
 
-            $visio = Seance::updateOrCreate(
-                ['klassci_seance_id' => $seanceId],
-                [
-                    'klassci_matiere_id' => null,
-                    'klassci_classe_id' => null,
-                    'klassci_enseignant_id' => null,
-                    'visio_enabled' => $enabled,
-                    'visio_type' => $enabled ? $visioType : null,
-                    'visio_status' => $enabled ? 'programmee' : null,
-                    'visio_room_id' => $enabled ? SecureVisioRoomIdGenerator::make() : null,
-                    'visio_active' => false,
-                    'updated_by' => $user->id,
-                ]
-            );
+            $attributes = [
+                'klassci_matiere_id' => null,
+                'klassci_classe_id' => null,
+                'klassci_enseignant_id' => null,
+                'visio_enabled' => $enabled,
+                'visio_type' => $enabled ? $visioType : null,
+                'visio_status' => $enabled ? 'programmee' : null,
+                'visio_room_id' => $enabled ? SecureVisioRoomIdGenerator::make() : null,
+                'visio_active' => false,
+                'updated_by' => $user->id,
+            ];
+
+            $visio = $this->restoreOrCreateVisio($seanceId, $attributes);
 
             if ($visio->wasRecentlyCreated) {
                 $visio->created_by = $user->id;
@@ -129,6 +130,50 @@ final class VisioToggleService
                 ],
             ];
         }
+    }
+
+    /**
+     * #542 — `updateOrCreate()` exclut implicitement les lignes soft-deletées
+     * (SoftDeletingScope non retiré) : une resurrection de la même séance
+     * après suppression violerait l'unique composite (klassci_seance_id,
+     * institution_id) à la création. Lookup manuel `withTrashed()` + restore
+     * explicite. Scope global `BelongsToInstitution` toujours actif (contexte
+     * HTTP authentifié) — pas de `withoutGlobalScope('institution')` ici.
+     *
+     * Le `catch` reproduit le retry-sur-conflit natif de `updateOrCreate()`
+     * (`Builder::createOrFirst()`, vendor Laravel) perdu en remplaçant
+     * `updateOrCreate()` par ce lookup manuel : deux requêtes concurrentes
+     * peuvent toutes deux trouver `null` puis tenter un INSERT — la
+     * perdante violerait l'unique sans ce filet.
+     *
+     * @param  array<string, mixed>  $attributes
+     */
+    private function restoreOrCreateVisio(int $seanceId, array $attributes): Seance
+    {
+        $visio = Seance::withTrashed()->where('klassci_seance_id', $seanceId)->first();
+
+        if ($visio) {
+            return $this->restoreThenUpdate($visio, $attributes);
+        }
+
+        try {
+            return Seance::create(['klassci_seance_id' => $seanceId] + $attributes);
+        } catch (UniqueConstraintViolationException) {
+            $visio = Seance::withTrashed()->where('klassci_seance_id', $seanceId)->firstOrFail();
+
+            return $this->restoreThenUpdate($visio, $attributes);
+        }
+    }
+
+    /**
+     * @param  array<string, mixed>  $attributes
+     */
+    private function restoreThenUpdate(Seance $visio, array $attributes): Seance
+    {
+        SeanceRestoreGuard::restoreIfTrashed($visio);
+        $visio->update($attributes);
+
+        return $visio;
     }
 
     /**

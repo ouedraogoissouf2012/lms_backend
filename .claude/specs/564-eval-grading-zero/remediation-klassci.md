@@ -48,9 +48,16 @@ WHERE s.status IN ('soumis', 'corrige')
 ```
 → pour chaque ligne, recalculer (Étape 2) et ne garder que celles où la note change.
 
-### Étape 2 — Commande de recalcul (locale, idempotente, dry-run par défaut)
-Commande artisan dédiée (à créer si l'utilisateur le décide — cf. §4) :
+### Étape 2 — Commande de recalcul (LIVRÉE — locale, idempotente, dry-run par défaut)
+Commande artisan dédiée **livrée** (PR de suivi de #564) :
 `php artisan evaluations:recompute-scores [--apply] [--evaluation=ID] [--institution=ID]`
+
+> Implémentée par `EvaluationScoreRecomputationService` (logique, réutilise
+> `EvaluationGradingService`) + `RecomputeEvaluationScores` (commande fine).
+> **Dry-run par défaut** (aucune écriture sans `--apply`). Normalise liste→map,
+> recalcule, ne modifie une note que si elle diffère (jamais de mise à 20 aveugle),
+> **skippe** les évaluations à correction manuelle (dissertation, #588). Ne pousse
+> **rien** vers KLASSCI.
 
 Pseudo-algorithme :
 ```

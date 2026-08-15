@@ -72,6 +72,12 @@ class EvaluationGradingService
         }
 
         if ($question->type === 'reponse_courte') {
+            // Une réponse courte est scalaire. Un payload mal formé (tableau, null,
+            // objet) ne peut pas être correct — on le rejette SANS caster, ce qui
+            // évitait auparavant un « Array to string conversion » → 500 (#564).
+            if (!is_scalar($answer)) {
+                return false;
+            }
             $normalizedAnswer = strtolower(trim((string) $answer));
             foreach ($question->correct_answers as $correct) {
                 if (strtolower(trim((string) $correct)) === $normalizedAnswer) {
@@ -82,6 +88,23 @@ class EvaluationGradingService
         }
 
         return false;
+    }
+
+    /**
+     * Indique si une question nécessite une correction MANUELLE (pas d'auto-grading).
+     *
+     * Seule la `dissertation` n'a aucune règle de correction automatique
+     * (contrairement à qcm / qcm_multiple / vrai_faux / reponse_courte, tous
+     * auto-corrigeables). Miroir du concept quiz `QuizQuestion::requiresManualGrading`.
+     *
+     * Utilisé pour fail-closer la synchronisation KLASSCI (#564) : tant qu'aucun
+     * chemin de notation manuelle n'existe pour les évaluations, une soumission
+     * contenant une dissertation ne peut pas produire de note FINALE — on refuse
+     * donc de pousser une note non finalisée (0/déflatée) dans le SIS officiel.
+     */
+    public function requiresManualGrading(EvaluationQuestion $question): bool
+    {
+        return $question->type === 'dissertation';
     }
 
     /**

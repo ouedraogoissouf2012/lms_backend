@@ -281,7 +281,7 @@ final class EvaluationStudentAttemptResponseTest extends TestCase
         Sanctum::actingAs($this->student);
 
         $response = $this->postJson("/api/evaluations/{$evaluation->id}/submit", [
-            'answers' => [['question_id' => $question->id, 'answer' => 'A']],
+            'answers' => [$question->id => 'A'],
         ]);
 
         $response->assertStatus(201)
@@ -302,7 +302,7 @@ final class EvaluationStudentAttemptResponseTest extends TestCase
         Sanctum::actingAs($this->student);
 
         $response = $this->postJson("/api/evaluations/{$evaluation->id}/submit", [
-            'answers' => [['question_id' => $question->id, 'answer' => 'A']],
+            'answers' => [$question->id => 'A'],
         ]);
 
         $response->assertStatus(500)

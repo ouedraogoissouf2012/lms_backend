@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Evaluation;
 
 use App\Models\Evaluation;
+use App\Models\EvaluationQuestion;
 use App\Models\EvaluationSubmission;
 use App\Models\Institution;
 use App\Models\User;
@@ -115,5 +116,47 @@ final class EvaluationKlassciSyncResponseTest extends TestCase
         $this->assertTrue($body['success']);
         $this->assertSame('Notes synchronisées vers KLASSCI', $body['message']);
         $this->assertArrayHasKey('data', $body);
+    }
+
+    /**
+     * Fail-closed (#564) : une évaluation contenant une question à correction
+     * manuelle (dissertation) ne peut pas produire de note finale automatique.
+     * Sa synchronisation vers KLASSCI (SIS officiel) DOIT être bloquée tant
+     * qu'aucune notation manuelle n'existe — jamais de note fausse/0 poussée.
+     */
+    public function test_sync_blocked_when_evaluation_has_manual_grading_question(): void
+    {
+        config(['services.klassci.url' => 'https://klassci.test']);
+        Http::fake(['*' => Http::response(['success' => true, 'saved' => 1], 200)]);
+
+        $evaluation = Evaluation::factory()->create([
+            'institution_id'        => $this->institution->id,
+            'klassci_evaluation_id' => 8888,
+        ]);
+        EvaluationQuestion::factory()->create([
+            'evaluation_id'  => $evaluation->id,
+            'institution_id' => $this->institution->id,
+            'type'           => 'dissertation',
+        ]);
+        EvaluationSubmission::factory()->create([
+            'evaluation_id'     => $evaluation->id,
+            'institution_id'    => $this->institution->id,
+            'status'            => 'soumis',
+            'synced_to_klassci' => false,
+        ]);
+
+        Sanctum::actingAs($this->teacher);
+
+        $response = $this->postJson("/api/evaluations/{$evaluation->id}/sync-klassci");
+
+        $response->assertStatus(409)
+            ->assertJsonPath('success', false);
+        // Aucune note poussée vers KLASSCI (fail-closed).
+        Http::assertNothingSent();
+        // La soumission ne doit PAS être marquée synchronisée.
+        $this->assertDatabaseHas('evaluation_submissions', [
+            'evaluation_id'     => $evaluation->id,
+            'synced_to_klassci' => false,
+        ]);
     }
 }

@@ -59,10 +59,10 @@ class ForumTopic extends Model
         'posts_count' => 0,
     ];
 
-    /** @return BelongsTo<User, $this> Auteur du topic. */
+    /** @return BelongsTo<User, $this> Auteur (withTrashed #566 : reste affichable si soft-deleted). */
     public function user(): BelongsTo
     {
-        return $this->belongsTo(User::class);
+        return $this->belongsTo(User::class)->withTrashed();
     }
 
     /** @return BelongsTo<Lesson, $this> Cours lié (optionnel). */

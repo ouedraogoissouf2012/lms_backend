@@ -104,6 +104,8 @@ class KlassciUserSynchronizer
         $commonData = $this->buildCommonData($klassciUser, $klassciToken, $tenantUrl, $institutionId);
 
         if ($user !== null) {
+            $this->restoreIfTrashed($user, $klassciId, $institutionId);
+
             // SÉCURITÉ CRITICAL-05 : pour un user existant, `role` LMS reste figé.
             $user->update($commonData);
             $this->enseignantIdResolver->healIfNull($user, $klassciUser);
@@ -141,12 +143,37 @@ class KlassciUserSynchronizer
     }
 
     /**
+     * Restaure un compte soft-deleted qui se re-synchronise depuis KLASSCI (#566).
+     *
+     * Un compte supprimé puis re-loggé via KLASSCI est RESTAURÉ (deleted_at → null),
+     * jamais dupliqué — sinon `createNewUser` ferait un INSERT en violation de
+     * users_klassci_id_institution_id_unique.
+     */
+    private function restoreIfTrashed(User $user, mixed $klassciId, ?int $institutionId): void
+    {
+        if (!$user->trashed()) {
+            return;
+        }
+
+        $user->restore();
+        $this->logger->info('Utilisateur restauré via re-sync KLASSCI', [
+            'user_id'        => $user->id,
+            'klassci_id'     => $klassciId,
+            'institution_id' => $institutionId,
+        ]);
+    }
+
+    /**
      * Recherche un user existant par (klassci_id, institution_id), avec fallback
      * email scopé à l'institution (#75 préservé).
      */
     private function findExistingUser(mixed $klassciId, mixed $email, ?int $institutionId): ?User
     {
+        // #566 : `withTrashed()` — un compte soft-deleted doit être RETROUVÉ (puis
+        // restauré par le caller), pas ignoré : sinon l'INSERT de secours violerait
+        // l'index unique (klassci_id, institution_id) / (email, institution_id).
         $user = User::withoutGlobalScope('institution')
+            ->withTrashed()
             ->where('klassci_id', $klassciId)
             ->where('institution_id', $institutionId)
             ->first();
@@ -156,6 +183,7 @@ class KlassciUserSynchronizer
         }
 
         return User::withoutGlobalScope('institution')
+            ->withTrashed()
             ->where('email', $email)
             ->where('institution_id', $institutionId)
             ->first();

@@ -129,6 +129,10 @@ final class InstitutionController extends Controller
             return $this->successResponse(null, 'Institution supprimée avec succès');
         } catch (ModelNotFoundException) {
             return $this->notFound();
+        } catch (BusinessException $e) {
+            // #567 : refus de supprimer une institution encore active (422),
+            // message métier safe par contrat.
+            return $this->businessError($e->getMessage());
         } catch (Throwable $e) {
             return $this->internalError('destroy', $e, 'Erreur lors de la suppression', $id);
         }

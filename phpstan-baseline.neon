@@ -385,30 +385,6 @@ parameters:
 			path: app/Http/Requests/UpdateQuizRequest.php
 
 		-
-			message: '#^Method App\\Http\\Requests\\UploadFileRequest\:\:getAllowedExtensions\(\) return type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Http/Requests/UploadFileRequest.php
-
-		-
-			message: '#^Method App\\Http\\Requests\\UploadFileRequest\:\:messages\(\) return type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Http/Requests/UploadFileRequest.php
-
-		-
-			message: '#^Method App\\Http\\Requests\\UploadFileRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Http/Requests/UploadFileRequest.php
-
-		-
-			message: '#^Parameter \#1 \$array of function array_keys expects array, mixed given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Requests/UploadFileRequest.php
-
-		-
 			message: '#^Cannot call method format\(\) on Carbon\\Carbon\|null\.$#'
 			identifier: method.nonObject
 			count: 1

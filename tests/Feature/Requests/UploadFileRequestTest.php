@@ -17,9 +17,9 @@ use Tests\TestCase;
  * - File name (if provided) matches alphanumeric pattern
  *
  * ## DOS Prevention
- * per_page=1000000 → Server crashes trying to read unlimited records
- * file.size=1GB → Server crashes trying to store
- * Both prevented by max:31457280 (30 MB)
+ * file.size=1GB → Server disk saturated by a single upload.
+ * Prevented by the 30 MB cap. La règle `max` de Laravel s'exprime en
+ * kilo-octets pour un fichier → 30 MB = 30 * 1024 = 30 720 Ko (#576).
  *
  * ## Malicious File Prevention
  * Attacker tries: .exe, .sh, .bat, .zip, .rar
@@ -258,12 +258,13 @@ class UploadFileRequestTest extends TestCase
     }
 
     /**
-     * ❌ DOS PREVENTION: File exactly 30 MB passes (boundary)
+     * ✅ DOS PREVENTION: File exactly 30 MB passes (boundary).
+     * 30 MB = 30 * 1024 = 30 720 Ko (unité de la règle `max` d'un fichier).
      */
     public function test_file_exactly_30mb_passes(): void
     {
         Sanctum::actingAs($this->user);
-        $file = UploadedFile::fake()->create('large.pdf', 31457280, 'application/pdf');
+        $file = UploadedFile::fake()->create('large.pdf', 30 * 1024, 'application/pdf');
 
         $response = $this->postJson('/api/files/upload', [
             'file' => $file,
@@ -273,36 +274,70 @@ class UploadFileRequestTest extends TestCase
     }
 
     /**
-     * ❌ DOS PREVENTION: File > 30 MB fails
+     * ❌ DOS PREVENTION: File just over the boundary (30 MB + 1 Ko) fails,
+     * with the announced « 30 MB » message (critère #576 : « 422 avec le message attendu »).
      */
-    public function test_file_exceeding_30mb_fails(): void
+    public function test_file_just_over_30mb_fails(): void
     {
         Sanctum::actingAs($this->user);
-        $file = UploadedFile::fake()->create('huge.pdf', 31457281, 'application/pdf');
+        $file = UploadedFile::fake()->create('huge.pdf', 30 * 1024 + 1, 'application/pdf');
 
         $response = $this->postJson('/api/files/upload', [
             'file' => $file,
         ]);
 
         $response->assertStatus(422);
-        // Validation error message is present in errors.file
+        // Le message doit annoncer la limite réellement appliquée (30 MB).
+        $this->assertStringContainsString('30 MB', (string) $response->json('errors.file.0'));
+    }
+
+    /**
+     * ✅ ACCEPTED: 29 MB file is under the 30 MB cap (issue #576 criterion).
+     */
+    public function test_file_29mb_passes(): void
+    {
+        Sanctum::actingAs($this->user);
+        $file = UploadedFile::fake()->create('ok.pdf', 29 * 1024, 'application/pdf');
+
+        $response = $this->postJson('/api/files/upload', [
+            'file' => $file,
+        ]);
+
+        // Un upload valide renvoie 200 ou 201 (jamais 422 pour dépassement).
+        $this->assertContains($response->status(), [200, 201]);
+    }
+
+    /**
+     * ❌ DOS PREVENTION: 31 MB file fails (issue #576 criterion).
+     * RED avant #576 : la règle `max:31457280` (Ko) ≈ 30 Go laissait passer.
+     */
+    public function test_file_31mb_fails(): void
+    {
+        Sanctum::actingAs($this->user);
+        $file = UploadedFile::fake()->create('huge.pdf', 31 * 1024, 'application/pdf');
+
+        $response = $this->postJson('/api/files/upload', [
+            'file' => $file,
+        ]);
+
+        $response->assertStatus(422);
         $this->assertNotEmpty($response->json('errors.file'));
     }
 
     /**
-     * ❌ DOS PREVENTION: 100 MB file fails
+     * ❌ DOS PREVENTION: 40 MB file fails.
+     * Démontre le cœur de #576 : un envoi de 40 Mo passait avant le correctif.
      */
-    public function test_file_100mb_fails(): void
+    public function test_file_40mb_fails(): void
     {
         Sanctum::actingAs($this->user);
-        $file = UploadedFile::fake()->create('huge.pdf', 104857600, 'application/pdf');
+        $file = UploadedFile::fake()->create('huge.pdf', 40 * 1024, 'application/pdf');
 
         $response = $this->postJson('/api/files/upload', [
             'file' => $file,
         ]);
 
         $response->assertStatus(422);
-        // Validation error message is present in errors.file
         $this->assertNotEmpty($response->json('errors.file'));
     }
 

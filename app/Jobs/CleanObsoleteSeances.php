@@ -3,11 +3,14 @@
 namespace App\Jobs;
 
 use App\Jobs\Concerns\InteractsWithDrainBudget;
+use App\Models\Institution;
 use App\Models\Seance;
-use App\Models\User;
-use App\Services\KlassciProxyService;
+use App\Services\Seances\Sync\SeanceCheckResult;
+use App\Services\Seances\Sync\SeanceExistenceBatchChecker;
+use App\Services\TenantManager;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
+use Illuminate\Support\Collection;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -17,6 +20,26 @@ use Psr\Log\LoggerInterface;
  * Si une séance n'existe plus dans Klassci, elle est archivée (is_active = false).
  *
  * Ce job doit être exécuté périodiquement (ex: quotidiennement via cron)
+ *
+ * #516 — vérification PAR INSTITUTION (pas un seul admin arbitraire tous
+ * tenants) : chaque institution a son propre backend KLASSCI
+ * (`klassci_api_url` diffère réellement entre institutions en prod), donc le
+ * tenant courant est positionné via {@see TenantManager::set()} avant chaque
+ * lot pour que {@see SeanceExistenceBatchChecker} résolve la BONNE config.
+ *
+ * ## Isolation de panne PAR INSTITUTION (revue de code #516)
+ *
+ * L'ancien code isolait les pannes PAR SÉANCE (un `try/catch` par appel HTTP
+ * individuel) : une séance en échec ne bloquait jamais les autres. Le nouveau
+ * découpage par institution doit préserver la même garantie à SON niveau —
+ * une institution dont la config KLASSCI est invalide (URL mal formée que le
+ * garde faible `klassci_api_url`/`klassci_api_token` truthy ne filtre pas) ou
+ * dont le déchiffrement du token échoue (`DecryptException` sur rotation
+ * d'`APP_KEY`) ne doit JAMAIS interrompre le traitement des AUTRES
+ * institutions. D'où le `try/catch` PAR institution dans
+ * {@see self::processInstitution()}, en plus du `try/finally` garantissant
+ * `TenantManager::reset()` (pattern déjà établi dans
+ * `app/Jobs/GenerateReportPdf.php` #536).
  */
 class CleanObsoleteSeances implements ShouldQueue
 {
@@ -47,44 +70,118 @@ class CleanObsoleteSeances implements ShouldQueue
     /**
      * Execute the job.
      */
-    public function handle(KlassciProxyService $klassciService, LoggerInterface $logger): void
+    public function handle(SeanceExistenceBatchChecker $checker, TenantManager $tenantManager, LoggerInterface $logger): void
     {
         $logger->info('🧹 [CleanObsoleteSeances] Début du nettoyage des séances obsolètes');
 
-        // Trouver un token admin/coordinateur valide pour faire les vérifications.
-        $admin = User::whereNotNull('klassci_token')
-            ->whereIn('role', ['coordinateur', 'admin'])
-            ->first();
+        // reset() au début (pattern GenerateReportPdf #536) : sur un worker
+        // persistant, purge un tenant résiduel d'un job précédent AVANT la
+        // requête cross-tenant ci-dessous — sinon le scope global
+        // BelongsToInstitution la restreindrait silencieusement au tenant
+        // hérité au lieu de porter sur TOUTES les institutions.
+        $tenantManager->reset();
 
-        if (! $admin || ! is_string($admin->klassci_token)) {
-            $logger->warning('⚠️ [CleanObsoleteSeances] Aucun admin/coordinateur avec token Klassci trouvé');
-
-            return;
-        }
-        $adminToken = $admin->klassci_token;
-
-        $archivedCount = 0;
-        $checkedCount = 0;
-        $errorCount = 0;
         $startedAt = microtime(true);
-        $budgetReached = false;
+        $stats = ['checked' => 0, 'archived' => 0, 'errors' => 0, 'institutions_skipped' => 0, 'budget_atteint' => false];
 
-        // Vérification PAR LOTS + arrêt souple au budget de drain (#539) : chaque
-        // itération fait un appel HTTP KLASSCI, donc un run long tenait le worker.
-        // Job idempotent : les séances encore présentes restent is_active=true et
-        // seront re-vérifiées au run suivant, où le travail restant reprend.
+        /** @var Collection<int, int> $institutionIds `institution_id` : clé étrangère NOT NULL (filtrée par `whereNotNull` ci-dessus). */
+        $institutionIds = Seance::where('is_active', true)
+            ->whereNotNull('klassci_seance_id')
+            ->whereNotNull('institution_id')
+            ->distinct()
+            ->pluck('institution_id');
+
+        // Préchargement en 1 requête (au lieu d'un `Institution::find()` par
+        // institution dans la boucle) : le job qui élimine le N+1 HTTP ne doit
+        // pas réintroduire un N+1 SQL à la place.
+        $institutions = Institution::whereIn('id', $institutionIds)->get()->keyBy('id');
+
+        try {
+            foreach ($institutionIds as $institutionId) {
+                $budgetReached = $this->processInstitution($institutionId, $institutions, $checker, $tenantManager, $logger, $stats, $startedAt);
+
+                if ($budgetReached) {
+                    $stats['budget_atteint'] = true;
+                    $logger->info('[CleanObsoleteSeances] Budget de drain atteint — institutions restantes reportées au run suivant');
+
+                    break;
+                }
+            }
+        } finally {
+            // Ne pas fuiter le tenant vers le prochain job du worker (#539/CRITICAL-07).
+            $tenantManager->reset();
+        }
+
+        $logger->info('✅ [CleanObsoleteSeances] Nettoyage terminé', $stats);
+    }
+
+    /**
+     * Traite UNE institution : skip propre si config KLASSCI absente (R2),
+     * isolation de panne (une institution en échec n'interrompt pas les
+     * autres — cf. docblock de classe). Retourne true si le budget-temps a
+     * été atteint en cours de route.
+     *
+     * @param  Collection<int, Institution>  $institutions
+     * @param  array{checked: int, archived: int, errors: int, institutions_skipped: int, budget_atteint: bool}  $stats
+     */
+    private function processInstitution(
+        int $institutionId,
+        Collection $institutions,
+        SeanceExistenceBatchChecker $checker,
+        TenantManager $tenantManager,
+        LoggerInterface $logger,
+        array &$stats,
+        float $startedAt,
+    ): bool {
+        try {
+            $institution = $institutions->get($institutionId);
+
+            if (! $institution instanceof Institution || ! $institution->klassci_api_url || ! $institution->klassci_api_token) {
+                $stats['institutions_skipped']++;
+                $logger->warning('⚠️ [CleanObsoleteSeances] Institution sans configuration KLASSCI exploitable — ignorée', [
+                    'institution_id' => $institutionId,
+                ]);
+
+                return false;
+            }
+
+            return $this->cleanInstitution($institution, $checker, $tenantManager, $logger, $stats, $startedAt);
+        } catch (\Throwable $e) {
+            $stats['institutions_skipped']++;
+            $logger->warning('⚠️ [CleanObsoleteSeances] Institution ignorée suite à une erreur', [
+                'institution_id' => $institutionId,
+                'error' => substr($e->getMessage(), 0, 200),
+            ]);
+
+            return false;
+        }
+    }
+
+    /**
+     * Vérifie et archive les séances obsolètes d'UNE institution, sous SON
+     * tenant. Retourne true si le budget-temps a été atteint en cours de route.
+     *
+     * @param  array{checked: int, archived: int, errors: int, institutions_skipped: int, budget_atteint: bool}  $stats
+     */
+    private function cleanInstitution(
+        Institution $institution,
+        SeanceExistenceBatchChecker $checker,
+        TenantManager $tenantManager,
+        LoggerInterface $logger,
+        array &$stats,
+        float $startedAt,
+    ): bool {
+        $tenantManager->set($institution);
+        $budgetReached = false;
+        $baseUrl = $institution->klassci_api_url;
+        $token = $institution->klassci_api_token;
+
+        // Scope global `institution` (BelongsToInstitution) : borne automatiquement
+        // à l'institution courante dès que le tenant est positionné ci-dessus.
         Seance::where('is_active', true)
             ->whereNotNull('klassci_seance_id')
-            ->chunkById($this->drainChunkSize, function ($seances) use ($adminToken, $klassciService, $logger, &$archivedCount, &$checkedCount, &$errorCount, &$budgetReached, $startedAt) {
-                foreach ($seances as $seance) {
-                    $checkedCount++;
-                    $result = $this->checkAndArchiveSeance($seance, $adminToken, $klassciService, $logger);
-                    if ($result === 'archived') {
-                        $archivedCount++;
-                    } elseif ($result === 'error') {
-                        $errorCount++;
-                    }
-                }
+            ->chunkById($this->drainChunkSize, function (Collection $seances) use ($checker, $baseUrl, $token, $logger, &$stats, &$budgetReached, $startedAt) {
+                $this->checkAndArchiveBatch($seances, $checker, $baseUrl, $token, $logger, $stats);
 
                 if ($this->drainBudgetExceeded($startedAt)) {
                     $budgetReached = true;
@@ -95,51 +192,60 @@ class CleanObsoleteSeances implements ShouldQueue
                 return true;
             });
 
-        $logger->info('✅ [CleanObsoleteSeances] Nettoyage terminé', [
-            'checked' => $checkedCount,
-            'archived' => $archivedCount,
-            'errors' => $errorCount,
-            'budget_atteint' => $budgetReached,
-        ]);
+        return $budgetReached;
     }
 
     /**
-     * Vérifie une séance locale contre KLASSCI ; l'archive si elle a disparu (404).
-     * Retourne 'archived', 'exists' ou 'error'.
+     * Vérifie un lot de séances en un appel pool HTTP et archive EN UN SEUL
+     * `UPDATE` (pas un `save()` par séance — revue de code #516) celles
+     * confirmées supprimées côté KLASSCI (jamais sur une erreur — R4).
+     *
+     * @param  Collection<int, Seance>  $seances
+     * @param  array{checked: int, archived: int, errors: int, institutions_skipped: int, budget_atteint: bool}  $stats
      */
-    private function checkAndArchiveSeance(
-        Seance $seance,
-        string $adminToken,
-        KlassciProxyService $klassciService,
-        LoggerInterface $logger,
-    ): string {
-        $klassciSeanceId = $seance->klassci_seance_id;
+    private function checkAndArchiveBatch(Collection $seances, SeanceExistenceBatchChecker $checker, string $baseUrl, ?string $token, LoggerInterface $logger, array &$stats): void
+    {
+        $seancesById = $seances->keyBy(fn (Seance $seance) => (int) $seance->klassci_seance_id);
 
-        try {
-            $klassciService->requestWithUserToken($adminToken, "seances/{$klassciSeanceId}", 'GET');
+        $results = $checker->checkMany($seancesById->keys()->all(), $baseUrl, $token);
 
-            return 'exists';
-        } catch (\Exception $e) {
-            if (str_contains($e->getMessage(), '404') || str_contains($e->getMessage(), 'not be found')) {
-                $seance->is_active = false;
-                $seance->save();
+        $toArchive = [];
+        foreach ($results as $klassciSeanceId => $result) {
+            $stats['checked']++;
+            $seance = $seancesById->get($klassciSeanceId);
 
-                $logger->info('🗑️ [CleanObsoleteSeances] Séance archivée', [
-                    'seance_id' => $seance->id,
-                    'klassci_seance_id' => $klassciSeanceId,
-                    'raison' => 'N\'existe plus dans Klassci',
-                ]);
-
-                return 'archived';
+            if (! $seance instanceof Seance) {
+                continue;
             }
 
-            $logger->warning('⚠️ [CleanObsoleteSeances] Erreur lors de la vérification', [
-                'seance_id' => $seance->id,
-                'klassci_seance_id' => $klassciSeanceId,
-                'error' => substr($e->getMessage(), 0, 200),
-            ]);
+            match ($result) {
+                SeanceCheckResult::ConfirmedDeleted => $toArchive[] = $seance,
+                SeanceCheckResult::Error => $stats['errors']++,
+                SeanceCheckResult::Exists => null,
+            };
+        }
 
-            return 'error';
+        if ($toArchive !== []) {
+            $this->archiveMany($toArchive, $logger, $stats);
+        }
+    }
+
+    /**
+     * @param  array<int, Seance>  $seances
+     * @param  array{checked: int, archived: int, errors: int, institutions_skipped: int, budget_atteint: bool}  $stats
+     */
+    private function archiveMany(array $seances, LoggerInterface $logger, array &$stats): void
+    {
+        $ids = array_map(static fn (Seance $seance): int => $seance->id, $seances);
+        Seance::whereIn('id', $ids)->update(['is_active' => false]);
+        $stats['archived'] += count($seances);
+
+        foreach ($seances as $seance) {
+            $logger->info('🗑️ [CleanObsoleteSeances] Séance archivée', [
+                'seance_id' => $seance->id,
+                'klassci_seance_id' => $seance->klassci_seance_id,
+                'raison' => "N'existe plus dans Klassci",
+            ]);
         }
     }
 
@@ -148,13 +254,13 @@ class CleanObsoleteSeances implements ShouldQueue
      */
     public function failed(\Throwable $exception): void
     {
-                // Pattern AutoCloseEmptySeances (#209) : failed() est appelée hors
+        // Pattern AutoCloseEmptySeances (#209) : failed() est appelée hors
         // container (aucune injection possible) — résolution explicite.
         /** @var LoggerInterface $logger */
         $logger = app(LoggerInterface::class);
 
         $logger->error('[CleanObsoleteSeances] Job failed after all retries', [
-            'tries'     => $this->tries,
+            'tries' => $this->tries,
             'exception' => $exception->getMessage(),
         ]);
     }

@@ -30,11 +30,16 @@ dépassement de plafond de taille. Tous corrigés avant PR :
    Détecté par l'agent « removed-behavior », vérifié directement dans
    `vendor/laravel/framework`. Corrigé : `catch (UniqueConstraintViolationException)`
    autour du `create()`, retente via un re-lookup `withTrashed()` — reproduit
-   fidèlement le comportement natif perdu. Non testé par un test automatisé
-   (limite honnête, Q15) : simuler une VRAIE course dans une suite PHPUnit
-   synchrone nécessiterait un seam artificiel dans le code de prod
-   uniquement pour la testabilité — écarté. Vérifié par lecture directe du
-   code source du framework à la place.
+   fidèlement le comportement natif perdu.
+   **Mise à jour post-audit** : la limite honnête initiale (« non testable
+   sans seam artificiel ») s'est avérée fausse — `DB::listen()` intercepte
+   la requête SELECT du lookup (déjà exécutée, résultat `null`) pour insérer
+   en synchrone la ligne « concurrente » juste avant le `Seance::create()`
+   du test, reproduisant fidèlement la fenêtre de course TOCTOU sans
+   concurrence réelle ni seam de test dans le code de production. Test
+   `VisioToggleServiceTest::test_toggle_retries_after_concurrent_create_race`
+   ajouté, vérifié RED (500) en retirant temporairement le `catch` puis
+   GREEN (200) une fois restauré.
 3. **Simplification — extraction `SeanceRestoreGuard`** : le design initial
    (voir section précédente) avait délibérément REJETÉ un helper partagé,
    jugeant la logique (`if trashed → restore`) trop triviale pour être

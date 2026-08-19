@@ -5,7 +5,9 @@ namespace App\Providers;
 use App\Models\PersonalAccessToken;
 use App\Services\Cache\TenantScopedCache;
 use App\Services\Cache\TenantScopedCacheInterface;
+use App\Services\Klassci\KlassciConfigResolver;
 use App\Services\Klassci\KlassciRequestMemo;
+use App\Services\Klassci\KlassciTargetResolver;
 use App\Services\TenantManager;
 use App\Support\Shell\ShellExecutor;
 use App\Support\Shell\ShellExecutorInterface;
@@ -25,6 +27,19 @@ class AppServiceProvider extends ServiceProvider
     {
         $this->app->scoped(TenantManager::class);
         $this->app->scoped(KlassciRequestMemo::class);
+
+        // #578 — Circuit breaker KLASSCI cloisonné par cible réseau.
+        // Le résolveur de config est mémoïsé PAR INSTANCE (« singleton implicite
+        // par requête », cf. son docblock) : on le lie en `scoped` pour que le
+        // breaker et le KlassciHttpClient partagent LA MÊME instance dans une
+        // requête — donc la même cible résolue (partition cohérente) et une
+        // seule résolution 3-tiers (pas de double lookup guard/tenant).
+        $this->app->scoped(KlassciConfigResolver::class);
+
+        // Le breaker dépend de l'abstraction fine ; le concret est le résolveur.
+        // Sans ce binding, l'auto-résolution KlassciHttpClient → KlassciCircuitBreaker
+        // → KlassciTargetResolver échouerait (interface non instanciable).
+        $this->app->bind(KlassciTargetResolver::class, KlassciConfigResolver::class);
 
         // ShellExecutor — sole entry point for external process execution
         // (issue #79 Phase A). Singleton because it is stateless and we want

@@ -8,6 +8,7 @@ use App\Exceptions\KlassciUnavailableException;
 use App\Services\Klassci\KlassciCircuitBreaker;
 use App\Services\Klassci\KlassciConfigResolver;
 use App\Services\Klassci\KlassciHttpClient;
+use App\Services\Klassci\KlassciTargetResolver;
 use App\Services\TenantManager;
 use Illuminate\Contracts\Auth\Factory as AuthFactory;
 use Illuminate\Contracts\Auth\Guard;
@@ -264,7 +265,20 @@ final class KlassciHttpClientTest extends TestCase
     {
         config(['cache.default' => 'array']);
 
-        return new KlassciCircuitBreaker(Cache::store('array'));
+        // #578 — le breaker est désormais cloisonné par cible : on lui injecte un
+        // résolveur retournant la même base URL que le config resolver du client,
+        // pour que l'état porte sur la partition de cette cible.
+        $target = new class(self::BASE_URL) implements KlassciTargetResolver
+        {
+            public function __construct(private readonly ?string $url) {}
+
+            public function baseUrl(): ?string
+            {
+                return $this->url;
+            }
+        };
+
+        return new KlassciCircuitBreaker(Cache::store('array'), $target);
     }
 }
 

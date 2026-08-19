@@ -38,9 +38,16 @@ use Psr\Log\LoggerInterface;
  * l'instance (singleton implicite par requête HTTP). Pas de re-résolution même si
  * l'utilisateur authentifié change — comportement aligné avec l'ancien code.
  *
+ * ## #578 — source de partition du circuit breaker
+ *
+ * Implémente {@see KlassciTargetResolver} : `baseUrl()` est la cible réseau que
+ * {@see KlassciCircuitBreaker} utilise pour cloisonner son état par serveur. La
+ * signature est déjà celle du contrat — aucun autre changement requis ici.
+ *
  * @see .claude/specs/perf-02-klassci-batch-cache/design.md §2
+ * @see .claude/specs/578-circuit-breaker-per-tenant/design.md §2.1
  */
-final class KlassciConfigResolver
+final class KlassciConfigResolver implements KlassciTargetResolver
 {
     private ?string $baseUrl = null;
 

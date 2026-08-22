@@ -1,0 +1,31 @@
+# Exception au « Require all denied » de storage/.htaccess — issue #577.
+#
+# storage/app/public/ est la racine du disque « public » Laravel (storage:link,
+# config/filesystems.php) : TOUT ce qui y est déposé est servi en HTTP SANS
+# authentification Laravel, via le symlink public/storage (URLs « /storage/... »).
+# Cette exception ré-autorise ce sous-arbre pour préserver le service des assets
+# publics légitimes (diapositives PNG converties, vidéos de chapitre) — sans elle,
+# le deny de storage/.htaccess les casserait (régression d'affichage des cours).
+#
+# ⚠️ DETTE DE SÉCURITÉ TRACÉE (pré-existante à #577, hors de son périmètre .htaccess).
+# Le pipeline de conversion écrit AUSSI ici les documents ORIGINAUX bruts
+# (PdfConverter / WordConverter / PowerPointConverter → disque « public ») et le
+# HTML plein-texte (WordConverter), qui restent donc lisibles sans contrôle d'accès.
+# #577 (couche .htaccess) NE crée NI n'aggrave cette exposition, mais NE la corrige
+# PAS. Règle : NE PAS déposer ici un fichier devant être protégé. Remédiation (issue
+# de suivi) = stocker originaux + HTML sur le disque « local » (privé) et les servir
+# via FileController::download() + ChecksFileAuthorization.
+#
+# La directive de la sous-arborescence l'emporte sur celle héritée de storage/
+# (Apache mod_authz_core : le contexte per-directory le plus proche s'applique).
+
+# Apache 2.4+ : ré-autorise ce sous-arbre.
+<IfModule mod_authz_core.c>
+    Require all granted
+</IfModule>
+
+# Repli Apache 2.2.
+<IfModule !mod_authz_core.c>
+    Order allow,deny
+    Allow from all
+</IfModule>

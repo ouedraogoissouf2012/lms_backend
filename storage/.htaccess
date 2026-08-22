@@ -1,0 +1,26 @@
+# Défense en profondeur — issue #577 (suite de #537).
+#
+# storage/ contient les journaux applicatifs (storage/logs), le cache / les
+# sessions / les vues compilées (storage/framework) et les fichiers uploadés
+# PRIVÉS (storage/app/private). Aucun de ces chemins ne doit être accessible en
+# HTTP direct : ils court-circuiteraient FileController::download() et
+# ChecksFileAuthorization, ou exposeraient le journal complet.
+#
+# Ce fichier est situé DANS storage/, donc Apache le lit le long du chemin
+# filesystem résolu — que le DocumentRoot pointe sur public/ (nominal) ou soit
+# mal configuré (public_html, domaine additionnel oublié). La protection ne
+# dépend donc PAS d'un réglage serveur non versionné (c'est tout l'objet de #577).
+#
+# Exception : storage/app/public/ (racine du disque « public » Laravel, servie
+# via le symlink /storage) est ré-autorisée par storage/app/public/.htaccess.
+
+# Apache 2.4+ (mod_authz_core) : syntaxe nominale.
+<IfModule mod_authz_core.c>
+    Require all denied
+</IfModule>
+
+# Repli Apache 2.2 (mod_authz_core absent) : même effet.
+<IfModule !mod_authz_core.c>
+    Order allow,deny
+    Deny from all
+</IfModule>

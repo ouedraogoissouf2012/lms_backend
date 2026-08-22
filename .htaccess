@@ -24,6 +24,24 @@
     RewriteCond %{REQUEST_URI} !^/\.well-known/ [NC]
     RewriteCond %{REQUEST_URI} (^|/)\.
     RewriteRule ^ - [F,L]
+
+    # #577 : refuse les répertoires applicatifs qui n'ont AUCUNE URL publique
+    # légitime (code source, config, migrations, dépendances). Complète la règle
+    # fichiers-point ci-dessus, qui ne couvrait que les segments commençant par « . ».
+    #
+    # « storage » est VOLONTAIREMENT ABSENT de cette liste : /storage/ est une URL
+    # publique légitime (symlink public/storage → storage/app/public, sert les
+    # diapositives et vidéos de cours). Le bloquer ici casserait l'affichage des
+    # cours. storage/ est protégé par storage/.htaccess (deny) + l'exception
+    # storage/app/public/.htaccess (grant).
+    #
+    # Ancrage « 1er ou 2e segment » (^(/[^/]+)?/) : couvre à la fois /app/… (si le
+    # DocumentRoot pointe sur la racine appli) et /lms-backend/app/… (si le
+    # DocumentRoot pointe sur public_html — le scénario de fuite de l'issue). On
+    # n'utilise PAS (^|/) comme la règle fichiers-point : un nom comme « config »
+    # pourrait un jour apparaître en profondeur d'une route API légitime.
+    RewriteCond %{REQUEST_URI} ^(/[^/]+)?/(app|bootstrap|config|database|resources|routes|vendor|tests)/ [NC]
+    RewriteRule ^ - [F,L]
 </IfModule>
 
 # Repli si mod_rewrite est indisponible : couverture partielle (nom de fichier
@@ -42,6 +60,9 @@
     RedirectMatch 403 ^/\.git(/|$)
     RedirectMatch 403 ^/\.claude(/|$)
     RedirectMatch 403 ^/\.env
+    # #577 : répertoires applicatifs (voir la règle mod_rewrite ci-dessus).
+    # « storage » exclu volontairement (URL publique légitime — cf. supra).
+    RedirectMatch 403 ^(/[^/]+)?/(app|bootstrap|config|database|resources|routes|vendor|tests)(/|$)
 </IfModule>
 
 Options -Indexes

@@ -210,12 +210,17 @@ class ResolveInstitutionMiddlewareTest extends TestCase
      */
     public function test_missing_institution_via_bearer_returns_403(): void
     {
+        // #583 : la FK institution_id rend un id inexistant impossible en base.
+        // On simule « institution non résoluble » via un soft-delete (#567) : la
+        // ligne existe (FK satisfaite), masquée par Institution::find() → 403 attendu.
+        $ghost = Institution::factory()->create();
         $orphan = User::factory()->create([
-            'institution_id' => 999_999, // aucune institution correspondante
+            'institution_id' => $ghost->id,
             'email'          => 'orphan@example.com',
             'role'           => 'etudiant',
         ]);
         $plainToken = $orphan->createToken('test')->plainTextToken;
+        $ghost->delete();
 
         $request = Request::create('/api/lessons', 'GET');
         $request->headers->set('Authorization', 'Bearer ' . $plainToken);

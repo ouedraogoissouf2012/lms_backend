@@ -8,6 +8,8 @@ use App\Services\Cache\TenantScopedCacheInterface;
 use App\Services\Klassci\KlassciConfigResolver;
 use App\Services\Klassci\KlassciRequestMemo;
 use App\Services\Klassci\KlassciTargetResolver;
+use App\Services\Tenancy\InstitutionIntegrityInspector;
+use App\Services\Tenancy\InstitutionIntegrityInspectorInterface;
 use App\Services\TenantManager;
 use App\Support\Shell\ShellExecutor;
 use App\Support\Shell\ShellExecutorInterface;
@@ -62,6 +64,15 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(
             TenantScopedCacheInterface::class,
             TenantScopedCache::class
+        );
+
+        // Inspecteur d'intégrité institution_id (#583) — lecture seule, partagé
+        // par la commande d'audit et la migration FK. Bindé sur l'interface pour
+        // que la migration/commande dépendent de l'abstraction (§1.6-D) et que
+        // les tests substituent un double (garde pré-vol sans orphelins réels).
+        $this->app->bind(
+            InstitutionIntegrityInspectorInterface::class,
+            InstitutionIntegrityInspector::class
         );
     }
 

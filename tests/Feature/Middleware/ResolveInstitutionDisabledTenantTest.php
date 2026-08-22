@@ -138,10 +138,14 @@ final class ResolveInstitutionDisabledTenantTest extends TestCase
      */
     public function test_bearer_user_bound_to_missing_institution_is_refused_403(): void
     {
-        // institution_id sans FK → on rattache le user à un id inexistant :
-        // Institution::find() renverra null.
-        $orphan = User::factory()->create(['institution_id' => 999_999]);
+        // #583 : la FK institution_id rend un id inexistant impossible en base.
+        // On reproduit l'état « institution non résoluble » via un soft-delete
+        // (#567) : la ligne existe (FK satisfaite) mais Institution::find() la
+        // masque → le middleware doit toujours refuser (403), défense en profondeur.
+        $ghost = Institution::factory()->create();
+        $orphan = User::factory()->create(['institution_id' => $ghost->id]);
         $token = $orphan->createToken('test')->plainTextToken;
+        $ghost->delete();
 
         $this->registerTenantScopedProbeRoute();
 

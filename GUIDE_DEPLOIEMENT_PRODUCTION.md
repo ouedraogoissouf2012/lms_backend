@@ -170,6 +170,20 @@ jamais la copier en production.
   servis par le web : le DocumentRoot doit pointer sur `public/` uniquement.
   Le [`public/.htaccess`](public/.htaccess) versionné gère la réécriture Apache —
   ne pas le remplacer par une version simplifiée.
+- **Défense en profondeur indépendante du DocumentRoot** (issues #537, #577) : le
+  [`.htaccess`](.htaccess) racine bloque les fichiers cachés (`.env`, `.git`, `.claude`)
+  **et** les répertoires applicatifs (`app`, `bootstrap`, `config`, `database`, `resources`,
+  `routes`, `vendor`, `tests`) ; [`storage/.htaccess`](storage/.htaccess) et
+  [`bootstrap/cache/.htaccess`](bootstrap/cache/.htaccess) refusent tout accès HTTP direct
+  (journaux, uploads privés, config compilée avec secrets). Seul `storage/app/public/`
+  (diapositives/vidéos servies par le symlink `/storage`) reste public, via une exception
+  dédiée. Ces protections sont actives même si le DocumentRoot est mal configuré — mais **ne
+  remplacent pas** un DocumentRoot correct sur `public/`, qui reste la première ligne.
+- **Limite d'upload vs configuration PHP** (issue #576) : la validation applicative plafonne
+  les fichiers à **30 Mo** (`App\Support\Upload\UploadLimits`). Cette limite n'est effective
+  que si `upload_max_filesize` **et** `post_max_size` (php.ini / `.user.ini`) valent **≥ 30 Mo** ;
+  si PHP coupe en dessous, l'utilisateur reçoit une erreur serveur illisible avant la validation
+  Laravel. Aligner les deux directives PHP sur 30 Mo (ou légèrement au-dessus).
 - Équivalent Nginx :
 
   ```nginx
@@ -205,6 +219,28 @@ php artisan migrate:status    # aucune ligne « Pending »
 
 # 4. Connexion DB
 php artisan db:show
+
+# 5. Webroot : storage/ et répertoires applicatifs NON exposés (issues #537, #577)
+#    Remplacer <domaine> et le préfixe /lms-backend selon le vhost réel.
+curl -s -o /dev/null -w "storage/logs:   %{http_code}\n" https://<domaine>/lms-backend/storage/logs/laravel.log
+curl -s -o /dev/null -w "storage/private: %{http_code}\n" https://<domaine>/lms-backend/storage/app/private/
+curl -s -o /dev/null -w "bootstrap/cache: %{http_code}\n" https://<domaine>/lms-backend/bootstrap/cache/config.php
+curl -s -o /dev/null -w "config:          %{http_code}\n" https://<domaine>/lms-backend/config/app.php
+# Attendu : 403 (ou 404) pour les quatre. Un 200 → protection inactive : vérifier
+# AllowOverride du vhost, et corriger le DocumentRoot (doit pointer sur .../lms-backend/public).
+
+# 5b. Variantes de contournement de la règle racine (encodage %XX, majuscules).
+#     La règle racine (mod_rewrite) doit rester robuste ; les cibles à secrets
+#     (bootstrap/cache, uploads privés) sont de toute façon protégées par un
+#     .htaccess PHYSIQUE, insensible à l'encodage.
+curl -s -o /dev/null -w "config encode:   %{http_code}\n" https://<domaine>/lms-backend/%63onfig/app.php
+curl -s -o /dev/null -w "config MAJUSC:    %{http_code}\n" https://<domaine>/lms-backend/CONFIG/app.php
+# Attendu : 403/404. Un 200 → signaler (durcir la règle) ; le contournement n'exposerait
+# que du code source (aucun secret : ils sont en .env + bootstrap/cache, protégés à part).
+
+# 6. Non-régression : les assets PUBLICS restent servis (symlink /storage → storage/app/public)
+curl -s -o /dev/null -w "asset public:    %{http_code}\n" https://<domaine>/storage/<un-asset-public-existant>
+# Attendu : 200 (un 403 signalerait que l'exception storage/app/public/.htaccess est cassée).
 ```
 
 Compléter avec les tests réels du runbook (connexion supradmin + connexion d'un

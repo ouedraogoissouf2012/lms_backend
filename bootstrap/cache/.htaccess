@@ -1,0 +1,21 @@
+# Défense en profondeur — issue #577 (suite de #537).
+#
+# bootstrap/cache/ contient les fichiers compilés par Laravel : config.php,
+# routes.php, services.php, packages.php. config.php inclut les SECRETS résolus
+# de « php artisan config:cache » (credentials DB, tokens KLASSCI/Sanctum) — une
+# lecture HTTP directe fuiterait la configuration complète. Aucun de ces fichiers
+# ne doit être accessible en HTTP.
+#
+# Situé DANS bootstrap/cache/, ce fichier est lu par Apache le long du chemin
+# filesystem résolu, indépendamment du DocumentRoot (cf. #537 / #577).
+
+# Apache 2.4+ (mod_authz_core).
+<IfModule mod_authz_core.c>
+    Require all denied
+</IfModule>
+
+# Repli Apache 2.2.
+<IfModule !mod_authz_core.c>
+    Order allow,deny
+    Deny from all
+</IfModule>

@@ -29,12 +29,18 @@ use Throwable;
  *
  * ## Comportement
  *
- * Aucun changement runtime : la logique de filtrage par rôle et les
- * clauses SQL (`LIKE`, colonnes `teacher_id`, `content`, ...) sont
- * conservées verbatim depuis le god-controller, y compris les éventuels
- * bugs historiques. Toute correction sera traitée dans une PR dédiée.
+ * Le split-19 avait conservé les clauses SQL verbatim depuis le god-controller,
+ * bugs historiques compris. #575 en a corrigé deux, tous deux invisibles sous
+ * SQLite et fatals (erreur 1054) sous MySQL :
+ *
+ *   - le filtre enseignant portait sur `teacher_id`, colonne inexistante —
+ *     l'appartenance est désormais déléguée à {@see TeacherOwnershipScope} ;
+ *   - la recherche d'évaluations portait sur `title`, alors que la colonne
+ *     migrée s'appelle `titre` (la clé `title` de la réponse, elle, ne change
+ *     pas : c'est le contrat client).
  *
  * @see app/Http/Controllers/API/SearchController.php
+ * @see .claude/specs/575-search-teacher-id/design.md
  */
 final class GlobalSearchService
 {
@@ -47,6 +53,7 @@ final class GlobalSearchService
         private readonly CacheRepository $cache,
         private readonly KlassciProxyService $klassci,
         private readonly LoggerInterface $logger,
+        private readonly TeacherOwnershipScope $ownership,
     ) {
     }
 
@@ -154,7 +161,7 @@ final class GlobalSearchService
         })
             ->where(function (Builder $q) use ($user): void {
                 if ($user->isTeacher()) {
-                    $q->where('teacher_id', $user->id);
+                    $this->ownership->applyToLessons($q, $user);
                 }
                 if ($user->isStudent()) {
                     $q->where('status', LessonStatus::Published->value);
@@ -180,12 +187,12 @@ final class GlobalSearchService
     private function searchEvaluations(string $query, User $user, int $limit): array
     {
         return Evaluation::where(function (Builder $q) use ($query): void {
-            $q->where('title', 'LIKE', "%{$query}%")
+            $q->where('titre', 'LIKE', "%{$query}%")
                 ->orWhere('description', 'LIKE', "%{$query}%");
         })
             ->where(function (Builder $q) use ($user): void {
                 if ($user->isTeacher()) {
-                    $q->where('teacher_id', $user->id);
+                    $this->ownership->applyToEvaluations($q, $user);
                 }
                 if ($user->isStudent()) {
                     $q->where('status', 'published');
@@ -195,7 +202,9 @@ final class GlobalSearchService
             ->get()
             ->map(fn (Evaluation $evaluation): array => [
                 'id' => $evaluation->id,
-                'title' => $evaluation->title,
+                // Clé `title` conservée (contrat client), valeur lue sur la
+                // colonne réellement migrée `titre` — elle valait `null`.
+                'title' => $evaluation->titre,
                 'subtitle' => 'Évaluation',
                 'description' => Str::limit((string) $evaluation->description, 100),
                 'type' => 'evaluation',

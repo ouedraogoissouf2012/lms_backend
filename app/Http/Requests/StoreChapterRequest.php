@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use App\Rules\PositiveInteger;
+use App\Support\Upload\UploadLimits;
 use Illuminate\Foundation\Http\FormRequest;
 
 /**
@@ -101,7 +102,8 @@ final class StoreChapterRequest extends FormRequest
             'fichier' => [
                 'sometimes', // Optional: chapter may not have file
                 'file',
-                'max:31457280', // 30 MB max (standardized from 100MB)
+                // Kilo-octets (unité de la règle `max` d'un fichier) — source unique #576.
+                UploadLimits::maxRule(),
                 'mimes:pdf,doc,docx,ppt,pptx',
             ],
             'type_contenu' => [
@@ -145,7 +147,7 @@ final class StoreChapterRequest extends FormRequest
             'titre.max' => 'Le titre ne doit pas dépasser 255 caractères',
             'description.max' => 'La description ne doit pas dépasser 1000 caractères',
             'ordre.required' => 'L\'ordre doit être fourni',
-            'fichier.max' => 'Le fichier ne doit pas dépasser 30 MB',
+            'fichier.max' => 'Le fichier ne doit pas dépasser ' . UploadLimits::humanReadable(),
             'fichier.mimes' => 'Le fichier doit être: PDF, Word (doc/docx), ou PowerPoint (ppt/pptx)',
             'type_contenu.in' => 'Le type de contenu n\'est pas autorisé',
         ];

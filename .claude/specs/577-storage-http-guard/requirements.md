@@ -52,8 +52,8 @@ sont chargées **directement par le navigateur**, servies par Apache, pas par La
   versionnée `storage/app/public/.htaccess`. Ce sous-arbre est public **par conception**
   (symlink `/storage`) : l'exception préserve le comportement existant, elle ne le restreint pas.
   ⚠️ **Dette pré-existante tracée** (hors périmètre .htaccess de #577) : le pipeline de conversion
-  y dépose aussi des originaux bruts + HTML plein-texte, lisibles sans auth → issue de suivi
-  (déplacer vers le disque privé + download authentifié). Découverte par l'audit sécurité #577.
+  y dépose aussi des originaux bruts + HTML plein-texte, lisibles sans auth → **issue de suivi
+  #598** (déplacer vers le disque privé + download authentifié). Découverte par l'audit sécurité #577.
 - **R2.2** THE règle de durcissement du `.htaccess` racine SHALL **exclure** `storage`, car
   `/storage/…` est une URL publique légitime (symlink) : la bloquer au niveau racine casserait
   le service des assets publics.

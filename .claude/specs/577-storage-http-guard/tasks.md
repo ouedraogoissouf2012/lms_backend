@@ -32,6 +32,6 @@
   ne purge que la copie privée) → lisibles sans authentification via `/storage/chapters/{id}/original|html/…`.
 - #577 (couche `.htaccess`) **ne crée ni n'aggrave** cette exposition (le symlink `/storage` la
   servait déjà) et ne peut la corriger proprement sans casser un éventuel lien de download direct.
-- **Remédiation → issue de suivi** : stocker originaux + HTML sur le disque `local` (privé) et les
-  servir via `FileController::download()` + `ChecksFileAuthorization` ; garder slides/vidéos publics.
+- **Remédiation → issue de suivi #598** : stocker originaux + HTML sur le disque `local` (privé) et
+  les servir via `FileController::download()` + `ChecksFileAuthorization` ; garder slides/vidéos publics.
 - Docs #577 corrigées en conséquence (l'invariant faux « uniquement du public » a été retiré).

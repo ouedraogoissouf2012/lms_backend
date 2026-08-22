@@ -12,9 +12,9 @@
 # (PdfConverter / WordConverter / PowerPointConverter → disque « public ») et le
 # HTML plein-texte (WordConverter), qui restent donc lisibles sans contrôle d'accès.
 # #577 (couche .htaccess) NE crée NI n'aggrave cette exposition, mais NE la corrige
-# PAS. Règle : NE PAS déposer ici un fichier devant être protégé. Remédiation (issue
-# de suivi) = stocker originaux + HTML sur le disque « local » (privé) et les servir
-# via FileController::download() + ChecksFileAuthorization.
+# PAS. Règle : NE PAS déposer ici un fichier devant être protégé. Remédiation
+# (issue de suivi #598) = stocker originaux + HTML sur le disque « local » (privé)
+# et les servir via FileController::download() + ChecksFileAuthorization.
 #
 # La directive de la sous-arborescence l'emporte sur celle héritée de storage/
 # (Apache mod_authz_core : le contexte per-directory le plus proche s'applique).

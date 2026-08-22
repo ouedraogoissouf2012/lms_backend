@@ -87,9 +87,9 @@ L'énoncé de l'issue propose une règle racine unique
 > (`PdfConverter:58`, `WordConverter:67`/`:102`, `PowerPointConverter:75`) écrit les documents
 > **originaux bruts** et le **HTML plein-texte** sur le disque `public` → lisibles sans contrôle
 > d'accès via `/storage/chapters/{id}/original|html/…`. #577 (couche `.htaccess`) ne crée ni
-> n'aggrave cette exposition (le symlink la servait déjà), mais ne la corrige pas : c'est une
-> **issue de suivi** (déplacer originaux + HTML vers le disque `local` + download authentifié).
-> Découverte par l'audit `spec-security` de #577.
+> n'aggrave cette exposition (le symlink la servait déjà), mais ne la corrige pas : c'est l'objet
+> de l'**issue de suivi #598** (déplacer originaux + HTML vers le disque `local` + download
+> authentifié). Découverte par l'audit `spec-security` de #577.
 >
 > Source (Q14) : en Apache 2.4, l'autorisation d'un contexte per-directory plus spécifique
 > **remplace** celle héritée du parent (les directives `Require` du répertoire le plus proche de

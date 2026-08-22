@@ -48,7 +48,7 @@ final class ReportController extends AuthenticatedController
     public function generateAttendanceReport(GenerateAttendanceReportRequest $request): Response|JsonResponse
     {
         $user = $this->authenticatedUser($request);
-        if ($this->wantsAsync($request)) {
+        if (! $this->wantsSync($request)) {
             return $this->accepted($this->asyncReports->dispatch('attendance', $request->validated(), $user));
         }
 
@@ -63,7 +63,7 @@ final class ReportController extends AuthenticatedController
     public function generateGradesReport(GenerateGradesReportRequest $request): Response|JsonResponse
     {
         $user = $this->authenticatedUser($request);
-        if ($this->wantsAsync($request)) {
+        if (! $this->wantsSync($request)) {
             return $this->accepted($this->asyncReports->dispatch('grades', $request->validated(), $user));
         }
 
@@ -78,7 +78,7 @@ final class ReportController extends AuthenticatedController
     public function generateActivityReport(GenerateActivityReportRequest $request): Response|JsonResponse
     {
         $user = $this->authenticatedUser($request);
-        if ($this->wantsAsync($request)) {
+        if (! $this->wantsSync($request)) {
             return $this->accepted($this->asyncReports->dispatch('activity', $request->validated(), $user));
         }
 
@@ -146,9 +146,21 @@ final class ReportController extends AuthenticatedController
         return response()->json($jsonPayload, $result['status']);
     }
 
-    private function wantsAsync(Request $request): bool
+    /**
+     * #547 — La génération est ASYNCHRONE par défaut (le rendu DomPDF ne doit
+     * jamais bloquer un worker FPM). Le mode synchrone (PDF binaire inline) est
+     * un opt-out EXPLICITE réservé aux intégrations legacy : `?sync=1` ou
+     * `Prefer: respond-sync`. Un opt-in async explicite (`?async=1` /
+     * `Prefer: respond-async`) reste accepté pour rétro-compatibilité et force
+     * l'async — donc si les deux drapeaux coexistent, le défaut sûr l'emporte.
+     */
+    private function wantsSync(Request $request): bool
     {
-        return $request->boolean('async') || $request->header('Prefer') === 'respond-async';
+        if ($request->boolean('async') || $request->header('Prefer') === 'respond-async') {
+            return false;
+        }
+
+        return $request->boolean('sync') || $request->header('Prefer') === 'respond-sync';
     }
 
     /**

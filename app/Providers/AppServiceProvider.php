@@ -3,6 +3,8 @@
 namespace App\Providers;
 
 use App\Models\PersonalAccessToken;
+use App\Services\Cache\Purge\TenantCachePurgerFactory;
+use App\Services\Cache\Purge\TenantCachePurgerInterface;
 use App\Services\Cache\TenantScopedCache;
 use App\Services\Cache\TenantScopedCacheInterface;
 use App\Services\Klassci\KlassciRequestMemo;
@@ -43,6 +45,23 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(
             Repository::class,
             fn ($app) => $app->make(\Illuminate\Contracts\Cache\Repository::class)
+        );
+
+        // #547 — la stratégie de purge tenant est choisie par capacité du store
+        // ACTIF (tags/database/no-op), à partir du même Repository concret que
+        // TenantScopedCache consomme. Résolu paresseusement : la config cache
+        // peut différer entre requête HTTP et worker de queue.
+        $this->app->bind(
+            TenantCachePurgerInterface::class,
+            function ($app) {
+                $table = config('cache.stores.database.table', 'cache');
+                $factory = new TenantCachePurgerFactory(
+                    $app->make(\Psr\Log\LoggerInterface::class),
+                    is_string($table) ? $table : 'cache',
+                );
+
+                return $factory->make($app->make(Repository::class));
+            }
         );
         $this->app->bind(
             TenantScopedCacheInterface::class,

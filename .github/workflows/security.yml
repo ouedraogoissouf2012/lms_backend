@@ -212,13 +212,30 @@ jobs:
           echo "✅ SDK TypeScript généré ($(find sdk-smoke-ts -name '*.ts' | wc -l) fichiers .ts)"
 
   tests:
-    name: Tests (PHPUnit — ${{ matrix.leg }})
+    name: Tests (PHPUnit — ${{ matrix.db }} / ${{ matrix.cache }})
     runs-on: ubuntu-latest
 
     strategy:
       fail-fast: false
+      # Matrice volontairement NON cartésienne (`include:` seul → exactement 3 jambes).
+      # Les deux dimensions sont orthogonales : le moteur SQL ne change rien au store de
+      # cache, et réciproquement — une 4e jambe (mysql+redis) coûterait une exécution
+      # complète pour zéro signal supplémentaire.
+      #   sqlite / database → parité poste de dev (procédure locale documentée, inchangée)
+      #   sqlite / redis    → runtime Redis (#374), couverture conservée à l'identique
+      #   mysql  / database → parité PRODUCTION (#574) : moteur réel ET cache/session/queue
+      #                       en base, comme GUIDE_DEPLOIEMENT_PRODUCTION.md:95-96
       matrix:
-        leg: [redis, database]
+        include:
+          - db: sqlite
+            cache: database
+            db_database: database/database.testing.sqlite
+          - db: sqlite
+            cache: redis
+            db_database: database/database.testing.sqlite
+          - db: mysql
+            cache: database
+            db_database: lms_testing
 
     services:
       redis:
@@ -231,9 +248,67 @@ jobs:
           --health-timeout 3s
           --health-retries 10
 
+      # #574 — la prod tourne sur MySQL (GUIDE_DEPLOIEMENT_PRODUCTION.md:73) alors que la
+      # suite ne tournait que sur SQLite : toute la suite verte n'attestait rien du moteur
+      # qui sert les utilisateurs.
+      #
+      # Version ÉPINGLÉE, jamais le tag flottant `mysql:8` : le moteur de référence d'un
+      # projet à 10 ans ne doit pas changer sans commit. 8.4 est la branche LTS ; sur les
+      # divergences visées ici elle est identique à 8.0, car Laravel impose le même
+      # sql_mode dès 8.0.11 (MySqlConnector.php:147-149).
+      #
+      # GitHub Actions ne sait pas conditionner un service : ce conteneur démarre aussi
+      # sur les jambes SQLite qui n'en ont pas l'usage. C'est le compromis déjà en place
+      # pour `redis` sur la jambe `database` — les jambes tournant en parallèle, le chemin
+      # critique reste la jambe MySQL, donc le portail n'est pas rallongé pour autant.
+      mysql:
+        image: mysql:8.4
+        ports:
+          - 3306:3306
+        env:
+          # Aucun identifiant d'administration en clair (PRODUCTION_STANDARDS.md §1.2) :
+          # le mot de passe root est aléatoire et n'est jamais utilisé. L'application se
+          # connecte avec un utilisateur DÉDIÉ non-root, comme en production
+          # (GUIDE_DEPLOIEMENT_PRODUCTION.md:77 « jamais root ») — ce qui vérifie au
+          # passage que les migrations n'exigent aucun privilège d'administration.
+          MYSQL_RANDOM_ROOT_PASSWORD: "yes"
+          MYSQL_DATABASE: lms_testing
+          MYSQL_USER: lms_test
+          # Pas un secret : cette valeur doit être connue à la fois du service et de
+          # l'application, dans un conteneur éphémère joignable depuis ce seul job.
+          MYSQL_PASSWORD: lms_test
+        options: >-
+          --health-cmd "mysqladmin ping -h 127.0.0.1 --silent"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+          --health-start-period 30s
+
     env:
       APP_ENV: testing
       APP_KEY: "base64:Cg9vQ0xtc1Rlc3RLZXkxMjM0NTY3ODkwYWJjZGVmZ2g="
+
+      # Moteur et stores pilotés par la MATRICE, pas par phpunit.xml.
+      # phpunit.xml:48-53 déclare ses <env> sans force="true" ; PHPUnit ne surcharge alors
+      # jamais une variable déjà exportée (PhpHandler.php:112-119 : `if ($force ||
+      # getenv($name) === false)`). Les valeurs ci-dessous gagnent donc — c'est déjà le
+      # mécanisme dont vivait la jambe redis depuis #374.
+      # ⚠️ Ne PAS « corriger » phpunit.xml en y ajoutant force="true" : cela rendrait cette
+      # matrice inopérante. Idem pour un .env.testing versionné (Laravel charge
+      # .env.{APP_ENV} en priorité et écraserait ce bloc).
+      DB_CONNECTION: ${{ matrix.db }}
+      DB_DATABASE: ${{ matrix.db_database }}
+      # Inertes sur les jambes sqlite : le bloc `sqlite` de config/database.php:34-44 ne
+      # lit ni host, ni port, ni identifiants.
+      DB_HOST: 127.0.0.1
+      DB_PORT: "3306"
+      DB_USERNAME: lms_test
+      DB_PASSWORD: lms_test
+      CACHE_STORE: ${{ matrix.cache }}
+      SESSION_DRIVER: ${{ matrix.cache }}
+      QUEUE_CONNECTION: ${{ matrix.cache }}
+      REDIS_HOST: 127.0.0.1
+      REDIS_PORT: "6379"
 
     steps:
       - name: Checkout code
@@ -245,16 +320,19 @@ jobs:
           php-version: "8.3"
           coverage: none
           tools: composer:v2
-          extensions: ":imagick, redis"
+          # pdo_mysql n'est pas garanti par le jeu d'extensions par défaut de setup-php ;
+          # config/database.php:61 le teste d'ailleurs déjà via extension_loaded().
+          extensions: ":imagick, redis, pdo_mysql"
 
       - name: Install dependencies (including dev)
         run: composer install --no-interaction --no-progress --prefer-dist --no-scripts
 
       - name: Prepare sqlite test database
+        if: matrix.db == 'sqlite'
         run: mkdir -p database && touch database/database.testing.sqlite
 
-      - name: Wait for Redis (redis leg)
-        if: matrix.leg == 'redis'
+      - name: Wait for Redis (jambe redis)
+        if: matrix.cache == 'redis'
         run: |
           for i in $(seq 1 30); do
             if (exec 3<>/dev/tcp/127.0.0.1/6379) 2>/dev/null; then
@@ -265,18 +343,55 @@ jobs:
           done
           echo "Redis indisponible après 30s" && exit 1
 
-      - name: Run PHPUnit suite (redis)
-        if: matrix.leg == 'redis'
-        env:
-          CACHE_STORE: redis
-          SESSION_DRIVER: redis
-          QUEUE_CONNECTION: redis
-          REDIS_HOST: 127.0.0.1
-          REDIS_PORT: 6379
-        run: vendor/bin/phpunit --no-coverage
+      # Le healthcheck du conteneur ne prouve que « le serveur répond ». On exige ici une
+      # preuve APPLICATIVE : une connexion PDO avec les identifiants de l'application, sur
+      # la base attendue — l'utilisateur et le schéma sont créés APRÈS le démarrage du
+      # serveur, un port ouvert ne suffit donc pas.
+      # L'étape consigne aussi l'identité du moteur réellement testé : la preuve de ce qui
+      # a été validé doit être dans le log du run (critère de fermeture #574).
+      # NB : @@GLOBAL.sql_mode est le mode du SERVEUR. Le mode réellement appliqué est
+      # celui que Laravel impose par session via config/database.php:59 ('strict' => true)
+      # → ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,… (MySqlConnector.php:147-149), donc
+      # identique à la production quelle que soit la configuration du conteneur.
+      - name: Wait for MySQL and record engine identity (jambe mysql)
+        if: matrix.db == 'mysql'
+        run: |
+          php -r '
+          $dsn = sprintf("mysql:host=%s;port=%s;dbname=%s", getenv("DB_HOST"), getenv("DB_PORT"), getenv("DB_DATABASE"));
+          for ($attempt = 1; $attempt <= 60; $attempt++) {
+              try {
+                  $pdo = new PDO($dsn, getenv("DB_USERNAME"), getenv("DB_PASSWORD"));
+                  $row = $pdo->query("SELECT VERSION() AS version, @@GLOBAL.sql_mode AS sql_mode")->fetch(PDO::FETCH_ASSOC);
+                  echo "MySQL accessible avec les identifiants applicatifs (tentative {$attempt}).\n";
+                  echo "  version           = {$row["version"]}\n";
+                  echo "  sql_mode serveur  = {$row["sql_mode"]}\n";
+                  exit(0);
+              } catch (PDOException) {
+                  sleep(1);
+              }
+          }
+          fwrite(STDERR, "MySQL injoignable apres 60 tentatives.\n");
+          exit(1);
+          '
 
-      - name: Run PHPUnit suite (database)
-        if: matrix.leg == 'database'
+      # Garde-fou de schéma, volontairement redondant : RefreshDatabase relance de toute
+      # façon migrate:fresh une fois par process (RefreshDatabase.php:83-90 et :119).
+      # L'intérêt est durable, pas ponctuel : le jour où une migration écrite sous SQLite
+      # sera invalide sous MySQL (index sur TEXT sans longueur, types de FK dépareillés,
+      # ALTER ... MODIFY ENUM), l'échec apparaîtra comme UNE étape rouge nommée plutôt que
+      # comme toute la suite en erreur dans un log illisible.
+      # Honnêteté : au moment de #574, les 69 migrations ont été vérifiées vertes sur
+      # mysql:8.4 (migrate:fresh, utilisateur non-root) — cette étape n'est donc pas là
+      # pour rattraper une dette connue, mais pour protéger les migrations à venir.
+      # Coût assumé : une passe de migrations supplémentaire, sur la seule jambe MySQL.
+      - name: Run migrations on MySQL (garde-fou de schéma)
+        if: matrix.db == 'mysql'
+        run: php artisan migrate --force --no-interaction
+
+      # Une seule étape, sans `if:` : tout l'environnement vient du bloc `env:` du job,
+      # lui-même piloté par la matrice. Ajouter une jambe ne coûte désormais qu'une entrée
+      # dans `include:`.
+      - name: Run PHPUnit suite
         run: vendor/bin/phpunit --no-coverage
 
   file-size-guard:

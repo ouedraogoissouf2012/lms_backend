@@ -198,9 +198,12 @@ final class TeacherDashboardService
      */
     private function completedAttemptsQuery(User $user): Builder
     {
+        // #608 — la liste des statuts « terminés » vit désormais dans
+        // QuizAttempt::scopeCompleted() : une seule définition pour tous les
+        // dashboards (c'est sa duplication qui avait laissé dériver #608).
         return QuizAttempt::query()
             ->whereIn('quiz_id', Quiz::query()->where('created_by', $user->id)->select('id'))
-            ->whereIn('status', ['submitted', 'graded']);
+            ->completed();
     }
 
     /**

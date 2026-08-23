@@ -68,13 +68,27 @@ final class DrainBudgetTest extends TestCase
         );
     }
 
-    public function test_sync_skips_archiving_when_pass_truncated_by_budget(): void
+    /**
+     * #539 + #582 — le budget de drain interrompt toujours la passe, mais la
+     * conséquence sur l'archivage s'est AFFINÉE : ce n'est plus « aucune passe
+     * complète, donc aucun archivage » (règle qui, la famine aidant, gelait
+     * l'archivage pour toujours) mais « un tenant non entièrement parcouru
+     * n'est pas archivé ». Le tenant porte donc ici DEUX enseignants : la passe
+     * tronquée le laisse en cours, et rien ne doit être archivé tant qu'il
+     * n'est pas clos.
+     */
+    public function test_sync_does_not_archive_a_tenant_left_incomplete_by_the_budget(): void
     {
         $inst = Institution::factory()->create();
         User::factory()->create([
             'institution_id' => $inst->id,
             'role' => 'enseignant',
             'klassci_token' => 'fake-token',
+        ]);
+        User::factory()->create([
+            'institution_id' => $inst->id,
+            'role' => 'enseignant',
+            'klassci_token' => 'fake-token-2',
         ]);
 
         // Séance locale « stale » : active, avec un klassci_seance_id ABSENT des ids
@@ -96,27 +110,26 @@ final class DrainBudgetTest extends TestCase
                     return ['data' => []];
                 });
             $mock->shouldReceive('fetchManyMatieresDetails')
-                ->with([1], 'fake-token')
                 ->andReturn([1 => ['data' => ['seances_programmees' => [['id' => 999]]]]]);
         });
 
         $service = app(KlassciSeancesSyncService::class);
 
-        // Passe TRONQUÉE (budget 0) : l'archivage est reporté — les enseignants non
-        // atteints n'ont pas alimenté la liste des ids actifs, donc on ne doit PAS
-        // archiver (sinon on archiverait à tort leurs séances). La stale reste active.
+        // Passe TRONQUÉE (budget 0) : un seul des deux enseignants est traité, le
+        // tenant reste en cours. Archiver maintenant supprimerait les séances de
+        // l'enseignant non encore atteint. La stale reste donc active.
         $service->sync(0);
         $this->assertTrue(
             (bool) $stale->fresh()->is_active,
-            'Passe tronquée par le budget : archivage reporté, séance non touchée.',
+            'Tenant laissé incomplet par le budget : archivage reporté, séance non touchée.',
         );
 
-        // Passe COMPLÈTE (budget large) : l'archivage s'applique — la séance 888
-        // (disparue de KLASSCI) est archivée.
+        // Passe suivante : elle REPREND au 2e enseignant (curseur #582), termine
+        // le tenant, et archive alors la séance 888 disparue de KLASSCI.
         $service->sync(3600);
         $this->assertFalse(
             (bool) $stale->fresh()->is_active,
-            'Passe complète : la séance absente de KLASSCI est archivée.',
+            'Tenant clos : la séance absente de KLASSCI est archivée.',
         );
     }
 }

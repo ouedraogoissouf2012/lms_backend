@@ -30,6 +30,7 @@ class Seance extends Model
         'classe_nom',
         'titre',
         'date_seance',
+        'synced_at',
         'classe_effectif',
         'visio_enabled',
         'visio_type',
@@ -55,6 +56,9 @@ class Seance extends Model
         'is_active' => 'boolean',
         'archived_at' => 'datetime',
         'date_seance' => 'datetime',
+        // #582 — dernière confirmation de la séance par KLASSCI. Sert de critère
+        // d'archivage : non confirmée depuis le début du cycle courant = disparue.
+        'synced_at' => 'datetime',
     ];
 
     protected $attributes = [

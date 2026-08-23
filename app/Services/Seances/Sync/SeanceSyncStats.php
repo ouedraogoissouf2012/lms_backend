@@ -23,6 +23,19 @@ final class SeanceSyncStats
 
     public int $seancesArchived = 0;
 
+    /**
+     * #582 — Tenants intégralement parcourus dans le cycle et effectivement
+     * balayés durant cette passe.
+     */
+    public int $tenantsCompleted = 0;
+
+    /**
+     * #582 — Tenants complets dont l'archivage a été RENONCÉ parce qu'une erreur
+     * du cycle laissait leurs séances non confirmées. Un compteur durablement
+     * non nul signale une panne KLASSCI persistante, pas un bruit de fond.
+     */
+    public int $tenantsArchiveSkipped = 0;
+
     public int $errors = 0;
 
     /**
@@ -38,6 +51,8 @@ final class SeanceSyncStats
             'seances_new' => $this->seancesNew,
             'notifications_sent' => $this->notificationsSent,
             'seances_archived' => $this->seancesArchived,
+            'tenants_completed' => $this->tenantsCompleted,
+            'tenants_archive_skipped' => $this->tenantsArchiveSkipped,
             'errors' => $this->errors,
         ];
     }

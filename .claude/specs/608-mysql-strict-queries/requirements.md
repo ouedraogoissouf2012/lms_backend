@@ -165,10 +165,39 @@ sous `STRICT_TRANS_TABLES`. Aucune correction requise.
   d'une réponse consommée, ce qui mérite son propre arbitrage.
 - `SystemMetricsService.php:175,241` — `whereNotNull('completed_at')` sur une colonne qui
   existe mais n'est **jamais écrite** (aucun writer trouvé dans `app/`) → compteur inerte.
+- **`QueueDrainCommandTest` échoue en fin de suite COMPLÈTE, sur les deux moteurs — artefact
+  du runner local, pré-existant, sans lien avec #608.**
+
+  | Suite complète locale | Résultat | Mémoire finale |
+  |---|---|---|
+  | MySQL 8.4 | 1778 tests / 6001 assertions / **1 échec** / 4 skips | 196 Mo |
+  | SQLite | 1778 tests / 6006 assertions / **le même échec** / 3 skips | 196 Mo |
+
+  Cause établie : `Worker::EXIT_MEMORY_LIMIT = 12`, et `queue:work` a un défaut
+  `--memory=128` (`WorkCommand.php:46`). `Worker.php:349` évalue `memoryExceeded()`
+  **avant** `stopWhenEmpty && is_null($job)` (`:351`) : dès que le processus PHPUnit
+  dépasse 128 Mo, le worker sort en 12 même sur une file vide.
+
+  Preuves d'indépendance, dans l'ordre de force :
+  1. l'échec est **identique sur les deux moteurs** → aucun rapport avec le mode strict ;
+  2. le test **passe en isolation** (50 Mo) ;
+  3. la **CI de la PR est verte** sur les deux jambes SQLite → le runner Linux reste sous
+     128 Mo ; c'est le runner Windows local (PHP ZTS) qui atteint 196 Mo ;
+  4. le diff de #608 ne touche ni la queue, ni la mémoire (2 prédicats SQL, 2 fichiers de
+     test).
+
+  **Correction d'une affirmation antérieure** : j'avais annoncé que ceci rendrait la jambe
+  MySQL de #603 rouge. Ce n'est pas établi — la CI passe sous les 128 Mo sur SQLite, et
+  rien ne dit que la jambe MySQL les dépassera. Le seul fait avéré est la fragilité du test
+  au-delà de 128 Mo de processus.
+
+  Correctif hors périmètre (le bon geste est de borner `--memory` explicitement côté test
+  ou de le rendre configurable — pas de changer un défaut de commande de production).
 - **Duplication résiduelle du littéral `['submitted', 'graded']`** :
   `QuizAccessService.php:62,100,137` et `QuizStatisticsService.php:39,43`. Code **sain**,
   mais 5 redéclarations d'un concept qui a désormais une définition unique
   (`QuizAttempt::scopeCompleted()`). Refactor mécanique à faire dans une PR dédiée — c'est
   cette duplication qui a permis à #608 de dériver, la solder est une prévention réelle.
 
-Ces quatre points sont signalés à l'orchestrateur pour arbitrage (issue de suivi).
+Ces six points sont signalés à l'orchestrateur pour arbitrage (issue de suivi). Aucun n'est
+bloquant pour #608 : les 5 tests d'acceptation sont verts sur les deux moteurs.

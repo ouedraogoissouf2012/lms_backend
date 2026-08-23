@@ -40,8 +40,16 @@ Ordre TDD : le RED est établi **avant** toute modification de `app/`.
   - [x] 7.2 `tests/Unit/Services/Dashboard/` + `tests/Feature/Dashboard/` VERTS sous SQLite (36 / 128)
   - [x] 7.3 Suite impactée sous SQLite (`Requests`, `Performance`, `Unit/Services/Quiz`, `Quiz`, `E2E`) : 487 tests, 0 erreur, 1 skip d'environnement (Redis)
   - [x] 7.4 Sweep `grep -rn "QuizAttempt::" app/` — aucun autre appelant impacté
-  - [ ] 7.5 Suite **complète** sous MySQL (critère de fermeture de #608 / jambe #603)
-  - [ ] 7.6 Suite **complète** sous SQLite (non-régression du poste de dev)
+  - [x] 7.5 Suite **complète** sous MySQL : **1778 tests, 6001 assertions, 1 échec, 4 skips
+        d'environnement**. Les 5 échecs de #608 ont disparu. L'unique échec restant
+        (`QueueDrainCommandTest`) est **pré-existant et sans lien** — cause prouvée
+        (`EXIT_MEMORY_LIMIT = 12` vs `--memory=128` par défaut, suite à 196 Mo), consignée
+        en requirements §5
+  - [x] 7.6 Suite **complète** sous SQLite : **1778 tests, 6006 assertions, 1 échec, 3 skips**
+        — le **même** `QueueDrainCommandTest`, à la **même** mémoire (196 Mo). L'échec est
+        donc indépendant du moteur, ce qui clôt la question de son rattachement à #608
+  - [x] 7.8 CI de la PR : **10/10 verte** (dont PHPStan avec la baseline purgée et le
+        file-size guard). ⚠️ La jambe MySQL n'y figure pas : elle vit dans #603, non mergée
   - [x] 7.7 `vendor/bin/phpstan analyse --memory-limit=2G` → 0 erreur, **1 entrée de baseline morte purgée** (`argument.type` / `'status'` sur `StudentDashboardService`)
 
 - [ ] **8. Livraison**

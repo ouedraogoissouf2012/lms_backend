@@ -61,6 +61,13 @@ class QuizAttempt extends Model
     ];
 
     /**
+     * Statuts d'une tentative TERMINÉE par l'étudiant : soumise ou corrigée.
+     * SEULE définition du concept (#608) — `scopeCompleted()` en est le
+     * raccourci ; s'adresser à la constante là où le scope n'est pas résoluble.
+     */
+    public const COMPLETED_STATUSES = ['submitted', 'graded'];
+
+    /**
      * Relation: Quiz
      *
      * @return BelongsTo<Quiz, $this>
@@ -123,4 +130,19 @@ class QuizAttempt extends Model
         return $query->where('passed', true);
     }
 
+    /**
+     * Scope: Tentatives TERMINÉES — raccourci sur {@see self::COMPLETED_STATUSES}.
+     *
+     * ⚠️ `status = 'completed'` n'existe pas au schéma
+     * (`enum('in_progress','submitted','graded','abandoned')`) : filtrer
+     * dessus renvoie 0 ligne EN SILENCE sur les deux moteurs. Ne jamais
+     * redupliquer la liste — passer par ce scope ou par la constante.
+     *
+     * @param  \Illuminate\Database\Eloquent\Builder<QuizAttempt>  $query
+     * @return \Illuminate\Database\Eloquent\Builder<QuizAttempt>
+     */
+    public function scopeCompleted($query)
+    {
+        return $query->whereIn('status', self::COMPLETED_STATUSES);
+    }
 }

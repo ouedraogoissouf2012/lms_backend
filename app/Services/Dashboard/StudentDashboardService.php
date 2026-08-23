@@ -135,9 +135,13 @@ final class StudentDashboardService
                     $q->where('users.id', $user->id);
                 });
             })
+            // #608 — l'exclusion filtrait `status = 'completed'`, valeur absente
+            // de l'enum : la sous-requête ne remontait jamais rien, donc
+            // `whereDoesntHave` était toujours vrai et un quiz DÉJÀ passé restait
+            // annoncé comme « à venir ». Aucun crash SQL, d'où l'invisibilité.
             ->whereDoesntHave('attempts', function ($query) use ($user): void {
                 $query->where('user_id', $user->id)
-                    ->where('status', 'completed');
+                    ->whereIn('status', QuizAttempt::COMPLETED_STATUSES);
             })
             ->with(['matiere', 'classe'])
             ->orderBy('published_at', 'desc')
@@ -178,13 +182,18 @@ final class StudentDashboardService
         $totalTimeSpent = (int) (LessonProgress::where('user_id', $user->id)
             ->sum('time_spent_minutes') ?? 0);
 
+        // #608 — filtrait `status = 'completed'` (valeur absente de l'enum) et
+        // agrégeait une colonne `percentage` INEXISTANTE : 500 sous MySQL,
+        // compteurs muets à 0 sous SQLite. `score` EST le pourcentage 0-100
+        // (QuizGradingService.php:177 et :229). `AVG` ignorant les NULL, une
+        // tentative soumise non encore corrigée compte sans fausser la moyenne.
         $totalQuizAttempts = QuizAttempt::where('user_id', $user->id)
-            ->where('status', 'completed')
+            ->completed()
             ->count();
 
         $averageQuizScore = QuizAttempt::where('user_id', $user->id)
-            ->where('status', 'completed')
-            ->avg('percentage') ?? 0;
+            ->completed()
+            ->avg('score') ?? 0;
 
         return [
             'lessons' => [

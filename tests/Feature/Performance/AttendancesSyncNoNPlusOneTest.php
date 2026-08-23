@@ -32,6 +32,15 @@ final class AttendancesSyncNoNPlusOneTest extends TestCase
     private Institution $institution;
     private User $teacher;
 
+    /**
+     * #608 — l'id de la séance est lu, jamais supposé : InnoDB ne rollback pas
+     * son compteur `AUTO_INCREMENT` entre deux tests `RefreshDatabase` (MySQL
+     * 8.4 §17.6.1.6), contrairement au `rowid` SQLite qui repart à 1. Un
+     * `seance_cours_id => 1` en dur donnait donc 404 dès que ce test n'était
+     * plus le premier du processus.
+     */
+    private Seance $seance;
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -55,7 +64,7 @@ final class AttendancesSyncNoNPlusOneTest extends TestCase
             $classe->etudiants()->attach($student->id, ['statut' => 'actif']);
         }
 
-        Seance::factory()->for($this->institution)->create([
+        $this->seance = Seance::factory()->for($this->institution)->create([
             'klassci_enseignant_id' => 777,
             'klassci_classe_id' => 55,
         ]);
@@ -86,7 +95,7 @@ final class AttendancesSyncNoNPlusOneTest extends TestCase
         ], $klassciIds);
 
         $this->postJson('/api/lms/attendances/from-video-session', [
-            'seance_cours_id' => 1,
+            'seance_cours_id' => $this->seance->id,
             'date' => now()->format('Y-m-d'),
             'participants' => $participants,
         ])->assertStatus(200);

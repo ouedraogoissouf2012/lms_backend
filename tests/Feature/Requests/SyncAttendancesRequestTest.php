@@ -19,6 +19,19 @@ class SyncAttendancesRequestTest extends TestCase
 
     private User $teacher;
 
+    /**
+     * #608 — la séance visée par les requêtes est celle que CE test crée, et
+     * son id est lu, jamais supposé.
+     *
+     * Poster `seance_cours_id => 1` en dur ne fonctionnait que sous SQLite :
+     * `RefreshDatabase` annule la transaction de chaque test, or InnoDB ne
+     * rollback PAS son compteur `AUTO_INCREMENT` (MySQL 8.4 §17.6.1.6) alors
+     * que le `rowid` SQLite (sans `AUTOINCREMENT`) vaut `max(rowid)+1` et
+     * repart donc à 1. Dès le 2ᵉ test du processus, l'id réel n'était plus 1
+     * → `resolveSeance()` ne trouvait rien → 404.
+     */
+    private Seance $seance;
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -39,7 +52,7 @@ class SyncAttendancesRequestTest extends TestCase
             $classe->etudiants()->attach($student->id, ['statut' => 'actif']);
         }
 
-        Seance::factory()->for($this->institution)->create([
+        $this->seance = Seance::factory()->for($this->institution)->create([
             'klassci_enseignant_id' => 777,
             'klassci_classe_id' => 55,
         ]);
@@ -48,7 +61,7 @@ class SyncAttendancesRequestTest extends TestCase
     public function test_unauthenticated_cannot_sync_attendances(): void
     {
         $response = $this->postJson('/api/lms/attendances/from-video-session', [
-            'seance_cours_id' => 1,
+            'seance_cours_id' => $this->seance->id,
             'date' => now()->format('Y-m-d'),
             'participants' => [
                 [
@@ -69,7 +82,7 @@ class SyncAttendancesRequestTest extends TestCase
 
         Sanctum::actingAs($user);
         $response = $this->postJson('/api/lms/attendances/from-video-session', [
-            'seance_cours_id' => 1,
+            'seance_cours_id' => $this->seance->id,
             'date' => now()->format('Y-m-d'),
             'participants' => [['etudiant_id' => 100, 'statut' => 'present']],
         ]);
@@ -81,7 +94,7 @@ class SyncAttendancesRequestTest extends TestCase
     {
         Sanctum::actingAs($this->teacher);
         $response = $this->postJson('/api/lms/attendances/from-video-session', [
-            'seance_cours_id' => 1,
+            'seance_cours_id' => $this->seance->id,
             'date' => now()->format('Y-m-d'),
             'participants' => [
                 [
@@ -133,7 +146,7 @@ class SyncAttendancesRequestTest extends TestCase
         );
 
         $response = $this->postJson('/api/lms/attendances/from-video-session', [
-            'seance_cours_id' => 1,
+            'seance_cours_id' => $this->seance->id,
             'date' => now()->format('Y-m-d'),
             'participants' => $participants,
         ]);
@@ -146,7 +159,7 @@ class SyncAttendancesRequestTest extends TestCase
     {
         Sanctum::actingAs($this->teacher);
         $response = $this->postJson('/api/lms/attendances/from-video-session', [
-            'seance_cours_id' => 1,
+            'seance_cours_id' => $this->seance->id,
             'participants' => [['etudiant_id' => 100, 'statut' => 'present']],
         ]);
 
@@ -158,7 +171,7 @@ class SyncAttendancesRequestTest extends TestCase
     {
         Sanctum::actingAs($this->teacher);
         $response = $this->postJson('/api/lms/attendances/from-video-session', [
-            'seance_cours_id' => 1,
+            'seance_cours_id' => $this->seance->id,
             'date' => 'invalid_date',
             'participants' => [['etudiant_id' => 100, 'statut' => 'present']],
         ]);
@@ -171,7 +184,7 @@ class SyncAttendancesRequestTest extends TestCase
     {
         Sanctum::actingAs($this->teacher);
         $response = $this->postJson('/api/lms/attendances/from-video-session', [
-            'seance_cours_id' => 1,
+            'seance_cours_id' => $this->seance->id,
             'date' => now()->format('Y-m-d'),
         ]);
 
@@ -183,7 +196,7 @@ class SyncAttendancesRequestTest extends TestCase
     {
         Sanctum::actingAs($this->teacher);
         $response = $this->postJson('/api/lms/attendances/from-video-session', [
-            'seance_cours_id' => 1,
+            'seance_cours_id' => $this->seance->id,
             'date' => now()->format('Y-m-d'),
             'participants' => [],
         ]);
@@ -196,7 +209,7 @@ class SyncAttendancesRequestTest extends TestCase
     {
         Sanctum::actingAs($this->teacher);
         $response = $this->postJson('/api/lms/attendances/from-video-session', [
-            'seance_cours_id' => 1,
+            'seance_cours_id' => $this->seance->id,
             'date' => now()->format('Y-m-d'),
             'participants' => [
                 [
@@ -213,7 +226,7 @@ class SyncAttendancesRequestTest extends TestCase
     {
         Sanctum::actingAs($this->teacher);
         $response = $this->postJson('/api/lms/attendances/from-video-session', [
-            'seance_cours_id' => 1,
+            'seance_cours_id' => $this->seance->id,
             'date' => now()->format('Y-m-d'),
             'participants' => [
                 [
@@ -230,7 +243,7 @@ class SyncAttendancesRequestTest extends TestCase
     {
         Sanctum::actingAs($this->teacher);
         $response = $this->postJson('/api/lms/attendances/from-video-session', [
-            'seance_cours_id' => 1,
+            'seance_cours_id' => $this->seance->id,
             'date' => now()->format('Y-m-d'),
             'participants' => [
                 [
@@ -248,7 +261,7 @@ class SyncAttendancesRequestTest extends TestCase
     {
         Sanctum::actingAs($this->teacher);
         $response = $this->postJson('/api/lms/attendances/from-video-session', [
-            'seance_cours_id' => 1,
+            'seance_cours_id' => $this->seance->id,
             'date' => now()->format('Y-m-d'),
             'participants' => [
                 ['etudiant_id' => 100, 'statut' => 'present'],
@@ -264,7 +277,7 @@ class SyncAttendancesRequestTest extends TestCase
     {
         Sanctum::actingAs($this->teacher);
         $response = $this->postJson('/api/lms/attendances/from-video-session', [
-            'seance_cours_id' => 1,
+            'seance_cours_id' => $this->seance->id,
             'date' => now()->format('Y-m-d'),
             'participants' => [
                 [

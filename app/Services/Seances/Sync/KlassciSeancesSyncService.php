@@ -4,34 +4,42 @@ declare(strict_types=1);
 
 namespace App\Services\Seances\Sync;
 
-use App\Models\Seance;
 use App\Models\User;
-use App\Services\ClasseSyncService;
 use App\Services\KlassciProxyService;
-use App\Services\NotificationService;
 use App\Services\Seances\KlassciPayload;
-use App\Services\Seances\SeanceCacheDataBuilder;
-use App\Services\Seances\SeanceRestoreGuard;
-use App\Services\Visio\SecureVisioRoomIdGenerator;
+use App\Services\Seances\Sync\Cursor\SeanceSyncCursorStore;
+use App\Services\Seances\Sync\Cursor\TeacherCursorStream;
 use Psr\Log\LoggerInterface;
 
 /**
- * Synchronisation des séances KLASSCI vers le cache local.
+ * Synchronisation des séances KLASSCI vers le cache local — UNE passe budgétée,
+ * reprise là où la précédente s'était arrêtée.
  *
- * ## Issue #475 — extrait de `SyncKlassciSeances::handle()` (150 lignes → orchestrateur fin)
+ * ## Issue #475 — extrait de `SyncKlassciSeances::handle()` (150 lignes)
  *
- * `handle()` portait une triple boucle imbriquée (enseignants → matières →
- * séances) + l'archivage, bien au-delà de la limite §5 (≤40 lignes/méthode) et
- * non testable en isolation. Toute cette logique vit désormais ici, découpée en
- * méthodes à responsabilité unique, injectée dans le job (pattern
- * {@see \App\Jobs\AutoCloseEmptySeances} → services-règles).
+ * La triple boucle imbriquée (enseignants → matières → séances) vivait dans le
+ * job, non testable en isolation. Elle vit ici, découpée en méthodes à
+ * responsabilité unique injectées dans le job.
  *
- * Invariants préservés :
- *  - Isolation tenant (#473) : `institution_id` écrit/scopé explicitement — le
- *    scope global `BelongsToInstitution` est inerte hors requête HTTP.
- *  - Mapping unique (#474) via {@see SeanceCacheDataBuilder}.
+ * ## Issue #582 — famine et archivage jamais exécuté
  *
- * @see PRODUCTION_STANDARDS.md §1.1 (≤300 lignes) · §5 (méthodes ≤40) · §1.6 D (DI strict)
+ * La boucle repartait TOUJOURS du premier enseignant et s'interrompait au budget
+ * de drain (#539). Passé le volume tenant dans 45 s, les enseignants suivants
+ * n'étaient jamais atteints — et l'archivage, conditionné à une passe globale
+ * complète, ne s'exécutait donc plus jamais. Trois changements :
+ *
+ *  1. Le parcours est repris par curseur `(institution_id, id)` persisté
+ *     ({@see TeacherCursorStream}, {@see SeanceSyncCursorStore}).
+ *  2. L'archivage se déclenche à la frontière de tenant, pas à la fin d'une
+ *     passe globale ({@see TenantArchiveCoordinator}).
+ *  3. Chaque passe journalise sa position et ses compteurs : sans cette
+ *     métrique, la famine était indétectable — c'est pourquoi elle a duré.
+ *
+ * Invariants préservés : isolation tenant (#473), mapping unique (#474), batch
+ * matières sans N+1 HTTP (#515), restauration d'une séance soft-deletée (#542).
+ *
+ * @see PRODUCTION_STANDARDS.md §1.1 (≤300 lignes) · §5 (méthodes ≤40) · §1.6 D
+ * @see .claude/specs/582-seance-sync-cursor/design.md
  */
 final class KlassciSeancesSyncService
 {
@@ -41,16 +49,17 @@ final class KlassciSeancesSyncService
     public function __construct(
         private readonly KlassciProxyService $klassciService,
         private readonly TeacherMatieresResolver $matieresResolver,
-        private readonly StaleSeanceArchiver $archiver,
-        private readonly ClasseSyncService $classeSyncService,
-        private readonly NotificationService $notificationService,
-        private readonly SeanceCacheDataBuilder $cacheBuilder,
+        private readonly TeacherCursorStream $teacherStream,
+        private readonly SeanceSyncCursorStore $cursorStore,
+        private readonly TenantArchiveCoordinator $tenantCoordinator,
+        private readonly SeanceSyncStamper $stamper,
+        private readonly SeanceUpsertService $upserter,
         private readonly LoggerInterface $logger,
     ) {}
 
     /**
-     * Synchronise toutes les séances de tous les enseignants liés, puis archive
-     * les séances disparues de KLASSCI (tenant par tenant).
+     * Traite les enseignants à partir de la position persistée, dans la limite
+     * du budget, puis clôt la passe (curseur avancé, ou cycle bouclé).
      */
     public function sync(?int $budgetSeconds = null): SeanceSyncStats
     {
@@ -58,78 +67,105 @@ final class KlassciSeancesSyncService
         $startedAt = microtime(true);
 
         $stats = new SeanceSyncStats;
+        $state = SeanceSyncCycleState::resume($this->cursorStore->load());
 
-        /** @var array<int, array<int, int>> $activeIdsByInstitution */
-        $activeIdsByInstitution = [];
+        $budgetReached = false;
+        foreach ($this->teacherStream->after($state->toPosition()) as $teacher) {
+            $institutionId = (int) $teacher->institution_id;
 
-        $teachers = User::where('role', 'enseignant')
-            ->whereNotNull('klassci_token')
-            ->get();
-
-        $completePass = true;
-        foreach ($teachers as $teacher) {
-            $this->syncTeacher($teacher, $stats, $activeIdsByInstitution);
+            $this->tenantCoordinator->enterTenant($state, $institutionId, $stats);
+            $this->syncTeacher($teacher, $institutionId, $state, $stats);
+            $state->advance((int) $teacher->id);
 
             // #539 — arrêt souple au budget de drain : ne pas monopoliser le worker
             // (jusqu'à 600 s avant) au détriment des jobs `high` (visio temps réel).
             if ((microtime(true) - $startedAt) >= $budgetSeconds) {
-                $completePass = false;
+                $budgetReached = true;
                 break;
             }
         }
 
-        // #539 — l'archivage EXIGE une passe COMPLÈTE : sur une passe tronquée, les
-        // enseignants non atteints n'ont pas alimenté $activeIdsByInstitution, donc
-        // leurs séances (même institution) seraient archivées à tort. On reporte au
-        // drain suivant. (Reprise par curseur des enseignants = amélioration future
-        // tracée dans #539.)
-        if ($completePass) {
-            $this->archiver->archive($activeIdsByInstitution, $stats);
-        } else {
-            $this->logger->info('[SyncKlassciSeances] Passe tronquée par le budget de drain — archivage reporté', [
-                'teachers_checked' => $stats->teachersChecked,
-            ]);
-        }
+        $this->closePass($state, $stats, $budgetReached);
+        $this->logPassMetrics($state, $stats);
 
         return $stats;
     }
 
     /**
-     * Synchronise les séances d'un enseignant. Toute erreur au niveau enseignant
-     * est capturée et comptée sans interrompre le run global.
-     *
-     * @param  array<int, array<int, int>>  $activeIdsByInstitution
+     * Budget atteint ALORS QU'il reste des enseignants → la position est
+     * persistée pour que la passe suivante REPRENNE ici, au lieu de réaffamer
+     * la queue de population. Sinon (flux épuisé, ou budget tombé pile sur le
+     * dernier enseignant) → le dernier tenant est clos et le cycle repart.
      */
-    private function syncTeacher(User $teacher, SeanceSyncStats $stats, array &$activeIdsByInstitution): void
+    private function closePass(SeanceSyncCycleState $state, SeanceSyncStats $stats, bool $budgetReached): void
     {
+        $position = $state->toPosition();
+
+        if ($budgetReached && $this->teacherStream->hasMoreAfter($position)) {
+            $this->cursorStore->save($position);
+
+            return;
+        }
+
+        $this->tenantCoordinator->closeCycle($state, $stats);
+        $this->cursorStore->reset();
+    }
+
+    /**
+     * R6 — sans position ni compteurs journalisés, une famine reste invisible :
+     * les stats globales du job paraissent normales alors que le parcours
+     * piétine sur les mêmes enseignants.
+     */
+    private function logPassMetrics(SeanceSyncCycleState $state, SeanceSyncStats $stats): void
+    {
+        $this->logger->info('[SyncKlassciSeances] Passe terminée', [
+            'teachers_processed' => $stats->teachersChecked,
+            'cursor_institution_id' => $state->currentInstitutionId,
+            'cursor_user_id' => $state->lastUserId,
+            'tenants_completed' => $stats->tenantsCompleted,
+            'tenants_archive_skipped' => $stats->tenantsArchiveSkipped,
+            'cycle_completed' => $state->cycleCompleted,
+            'errors' => $stats->errors,
+        ]);
+    }
+
+    /**
+     * Synchronise les séances d'un enseignant, puis marque comme confirmées
+     * celles que KLASSCI a renvoyées. Toute erreur au niveau enseignant est
+     * capturée sans interrompre le run, et SOUILLE son tenant : ses séances
+     * n'ayant pas pu être confirmées, les archiver serait les perdre.
+     */
+    private function syncTeacher(User $teacher, int $institutionId, SeanceSyncCycleState $state, SeanceSyncStats $stats): void
+    {
+        /** @var array<int, int> $confirmedSeanceIds */
+        $confirmedSeanceIds = [];
+
         try {
             $stats->teachersChecked++;
 
-            // La query filtre déjà whereNotNull('klassci_token') ; ce guard
-            // narrower le type pour l'analyse statique et reste défensif.
+            // Le flux filtre déjà sur klassci_token_encrypted ; ce guard narrower
+            // le type pour l'analyse statique et reste défensif (déchiffrement).
             $teacherToken = $teacher->klassci_token;
             if (! is_string($teacherToken)) {
-                return;
-            }
-
-            // Un enseignant non rattaché à une institution ne peut pas être
-            // synchronisé de façon isolée (#473) : institution_id est la clé de
-            // tenant. On skip défensivement (données incohérentes).
-            $institutionId = $teacher->institution_id;
-            if ($institutionId === null) {
                 return;
             }
 
             $matieres = $this->klassciService->requestWithUserToken($teacherToken, 'matieres', 'GET');
             $matieresList = KlassciPayload::listOfArrays(KlassciPayload::asArray($matieres)['data'] ?? null);
 
-            $this->syncTeacherMatieres($teacher, $teacherToken, $institutionId, $matieresList, $stats, $activeIdsByInstitution);
+            $this->syncTeacherMatieres($teacher, $teacherToken, $institutionId, $matieresList, $state, $stats, $confirmedSeanceIds);
         } catch (\Exception $e) {
             $stats->errors++;
+            $state->taint($institutionId);
             $this->logger->error('Erreur traitement enseignant dans job', [
                 'teacher_id' => $teacher->id,
                 'error' => $e->getMessage(),
             ]);
+        } finally {
+            // Marquage même en cas d'erreur partielle : ce qui a été confirmé
+            // avant la panne l'a bien été, et le tenant est de toute façon
+            // souillé (donc non archivé) pour ce cycle.
+            $this->stamper->stamp($institutionId, $confirmedSeanceIds, now());
         }
     }
 
@@ -139,15 +175,16 @@ final class KlassciSeancesSyncService
      * puis synchronise les séances de chacune des matières résolues.
      *
      * @param  array<int, array<string, mixed>>  $matieresList
-     * @param  array<int, array<int, int>>  $activeIdsByInstitution
+     * @param  array<int, int>  $confirmedSeanceIds
      */
     private function syncTeacherMatieres(
         User $teacher,
         string $teacherToken,
         int $institutionId,
         array $matieresList,
+        SeanceSyncCycleState $state,
         SeanceSyncStats $stats,
-        array &$activeIdsByInstitution,
+        array &$confirmedSeanceIds,
     ): void {
         $resolution = $this->matieresResolver->resolve($matieresList, $teacherToken);
 
@@ -159,6 +196,9 @@ final class KlassciSeancesSyncService
             // sans ce comptage explicite, une matière en échec redeviendrait
             // invisible pour la supervision (stats->errors resterait à 0).
             $stats->errors++;
+            // #582 — et surtout : les séances de cette matière n'ont pas pu être
+            // confirmées. Sans souillure, la clôture du tenant les archiverait.
+            $state->taint($institutionId);
             $this->logger->error('Erreur de récupération batch pour une matière — séances potentiellement non synchronisées', [
                 'teacher_id' => $teacher->id,
                 'matiere_id' => $matiereId,
@@ -166,7 +206,16 @@ final class KlassciSeancesSyncService
         }
 
         foreach ($resolution->resolved as $resolvedMatiere) {
-            $this->syncMatiereSeances($teacher, $teacherToken, $institutionId, $resolvedMatiere->matiere, $resolvedMatiere->details, $stats, $activeIdsByInstitution);
+            $this->syncMatiereSeances(
+                $teacher,
+                $teacherToken,
+                $institutionId,
+                $resolvedMatiere->matiere,
+                $resolvedMatiere->details,
+                $state,
+                $stats,
+                $confirmedSeanceIds,
+            );
         }
     }
 
@@ -176,7 +225,7 @@ final class KlassciSeancesSyncService
      *
      * @param  array<string, mixed>  $matiere
      * @param  array<string, mixed>  $details
-     * @param  array<int, array<int, int>>  $activeIdsByInstitution
+     * @param  array<int, int>  $confirmedSeanceIds
      */
     private function syncMatiereSeances(
         User $teacher,
@@ -184,8 +233,9 @@ final class KlassciSeancesSyncService
         int $institutionId,
         array $matiere,
         array $details,
+        SeanceSyncCycleState $state,
         SeanceSyncStats $stats,
-        array &$activeIdsByInstitution,
+        array &$confirmedSeanceIds,
     ): void {
         $seances = KlassciPayload::listOfArrays(
             KlassciPayload::asArray(KlassciPayload::asArray($details)['data'] ?? null)['seances_programmees'] ?? null
@@ -193,105 +243,19 @@ final class KlassciSeancesSyncService
         $stats->seancesFound += count($seances);
 
         foreach ($seances as $seanceArr) {
-            $this->upsertSeance($teacher, $teacherToken, $institutionId, $matiere, $seanceArr, $stats, $activeIdsByInstitution);
-        }
-    }
-
-    /**
-     * Crée ou met à jour la séance locale. Isolation tenant (#473) : lookup et
-     * écriture scopés explicitement par institution (scope global inerte en job).
-     *
-     * @param  array<string, mixed>  $matiere
-     * @param  array<string, mixed>  $seanceArr
-     * @param  array<int, array<int, int>>  $activeIdsByInstitution
-     */
-    private function upsertSeance(
-        User $teacher,
-        string $teacherToken,
-        int $institutionId,
-        array $matiere,
-        array $seanceArr,
-        SeanceSyncStats $stats,
-        array &$activeIdsByInstitution,
-    ): void {
-        try {
-            $klassciSeanceId = KlassciPayload::toInt($seanceArr['id'] ?? null);
-            if ($klassciSeanceId === null) {
-                return;
+            try {
+                $confirmedId = $this->upserter->upsert($teacher, $teacherToken, $institutionId, $matiere, $seanceArr, $stats);
+                if ($confirmedId !== null) {
+                    $confirmedSeanceIds[] = $confirmedId;
+                }
+            } catch (\Exception $e) {
+                $stats->errors++;
+                $state->taint($institutionId);
+                $this->logger->error('Erreur traitement séance dans job', [
+                    'seance_id' => $seanceArr['id'] ?? 'unknown',
+                    'error' => $e->getMessage(),
+                ]);
             }
-
-            $activeIdsByInstitution[$institutionId][] = $klassciSeanceId;
-
-            // #542 — withTrashed() : l'unique composite (klassci_seance_id,
-            // institution_id) n'est pas filtré sur deleted_at, sans quoi une
-            // resync d'une séance soft-deletée violerait l'unique en INSERT.
-            $seanceLocal = Seance::withoutGlobalScope('institution')
-                ->withTrashed()
-                ->where('institution_id', $institutionId)
-                ->where('klassci_seance_id', $klassciSeanceId)
-                ->first();
-            $cacheData = $this->cacheBuilder->build($seanceArr, $matiere, $teacher);
-
-            if ($seanceLocal) {
-                SeanceRestoreGuard::restoreIfTrashed($seanceLocal);
-                $this->cacheBuilder->applyTo($seanceLocal, $cacheData);
-
-                return;
-            }
-
-            $this->createSeance($teacher, $teacherToken, $institutionId, $matiere, $seanceArr, $klassciSeanceId, $cacheData, $stats);
-        } catch (\Exception $e) {
-            $stats->errors++;
-            $this->logger->error('Erreur traitement séance dans job', [
-                'seance_id' => $seanceArr['id'] ?? 'unknown',
-                'error' => $e->getMessage(),
-            ]);
         }
-    }
-
-    /**
-     * Crée une nouvelle séance locale (visio activée), synchronise sa classe et
-     * notifie l'audience — le tout scopé au tenant de l'enseignant (#473).
-     *
-     * @param  array<string, mixed>  $matiere
-     * @param  array<string, mixed>  $seanceArr
-     * @param  array<string, mixed>  $cacheData
-     */
-    private function createSeance(
-        User $teacher,
-        string $teacherToken,
-        int $institutionId,
-        array $matiere,
-        array $seanceArr,
-        int $klassciSeanceId,
-        array $cacheData,
-        SeanceSyncStats $stats,
-    ): void {
-        $stats->seancesNew++;
-        $classeId = KlassciPayload::toInt(KlassciPayload::asArray($seanceArr['classe'] ?? null)['id'] ?? null);
-        $matiereNom = $matiere['nom'] ?? $matiere['libelle'] ?? null;
-
-        Seance::create($cacheData + [
-            'klassci_seance_id' => $klassciSeanceId,
-            'visio_enabled' => true,
-            'visio_type' => 'jitsi',
-            'visio_status' => 'programmee',
-            'visio_room_id' => SecureVisioRoomIdGenerator::make(),
-            'visio_active' => false,
-            'created_by' => $teacher->id,
-        ]);
-
-        if ($classeId !== null) {
-            $this->classeSyncService->syncClasseById($classeId, $teacherToken);
-        }
-
-        $count = $this->notificationService->notifyVisioScheduled($klassciSeanceId, [
-            'institution_id' => $institutionId,
-            'klassci_classe_id' => $classeId,
-            'klassci_enseignant_id' => $teacher->klassci_id,
-            'matiere_nom' => $matiereNom,
-            'enseignant_nom' => $teacher->name,
-        ]);
-        $stats->notificationsSent += $count;
     }
 }

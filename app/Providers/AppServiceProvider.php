@@ -10,6 +10,8 @@ use App\Services\Cache\TenantScopedCacheInterface;
 use App\Services\Klassci\KlassciConfigResolver;
 use App\Services\Klassci\KlassciRequestMemo;
 use App\Services\Klassci\KlassciTargetResolver;
+use App\Services\Seances\Sync\Cursor\EloquentSeanceSyncCursorStore;
+use App\Services\Seances\Sync\Cursor\SeanceSyncCursorStore;
 use App\Services\Tenancy\InstitutionIntegrityInspector;
 use App\Services\Tenancy\InstitutionIntegrityInspectorInterface;
 use App\Services\TenantManager;
@@ -83,6 +85,15 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(
             TenantScopedCacheInterface::class,
             TenantScopedCache::class
+        );
+
+        // Curseur de reprise de la sync des séances (#582). Bindé sur
+        // l'interface pour que le service de sync dépende du contrat et non
+        // d'Eloquent (§1.6-D), et que les tests substituent un double sans
+        // toucher à la base.
+        $this->app->bind(
+            SeanceSyncCursorStore::class,
+            EloquentSeanceSyncCursorStore::class
         );
 
         // Inspecteur d'intégrité institution_id (#583) — lecture seule, partagé

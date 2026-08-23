@@ -41,11 +41,13 @@ final class DatabaseCachePurger implements TenantCachePurgerInterface
         // driver, plutôt qu'un backtick codé en dur MySQL-only.
         $column = $builder->getGrammar()->wrap('key');
 
-        // ESCAPE explicite : sans lui, MySQL/SQLite n'interprètent pas notre `\`
-        // d'échappement et un namespace contenant `%`/`_` élargirait le motif
-        // (fuite cross-tenant théorique). Motif passé en binding paramétré.
+        // ESCAPE explicite avec `!` (et NON `\`) : sous MySQL le backslash est
+        // lui-même le caractère d'échappement des chaînes → `ESCAPE '\'` produit
+        // un 1064 (syntaxe). `!` n'est spécial sur aucun des deux moteurs. Sans
+        // ESCAPE, un namespace contenant `%`/`_` élargirait le motif (fuite
+        // cross-tenant théorique). Motif passé en binding paramétré.
         $deleted = $builder
-            ->whereRaw($column." LIKE ? ESCAPE '\\'", [$pattern])
+            ->whereRaw($column." LIKE ? ESCAPE '!'", [$pattern])
             ->delete();
 
         $this->logger->info('tenant_cache.database_purge', [
@@ -55,14 +57,15 @@ final class DatabaseCachePurger implements TenantCachePurgerInterface
     }
 
     /**
-     * Neutralise `\`, `%` et `_` pour que le namespace soit traité comme un
-     * littéral dans le LIKE (l'ordre importe : `\` d'abord).
+     * Neutralise `!`, `%` et `_` pour que le namespace soit traité comme un
+     * littéral dans le LIKE, avec `!` comme caractère d'échappement (portable
+     * MySQL/SQLite ; l'ordre importe : `!` d'abord). Cf. `ESCAPE '!'` ci-dessus.
      */
     private function escapeLike(string $value): string
     {
         return str_replace(
-            ['\\', '%', '_'],
-            ['\\\\', '\\%', '\\_'],
+            ['!', '%', '_'],
+            ['!!', '!%', '!_'],
             $value,
         );
     }

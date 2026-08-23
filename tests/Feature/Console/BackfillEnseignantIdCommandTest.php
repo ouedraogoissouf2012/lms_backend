@@ -142,6 +142,15 @@ final class BackfillEnseignantIdCommandTest extends TestCase
 
     public function test_handles_malformed_klassci_data_gracefully(): void
     {
+        // #574 (jambe MySQL) : `users.klassci_data` est une colonne JSON. Sous
+        // MySQL la BDD REFUSE toute valeur non-JSON (3140 Invalid JSON text),
+        // donc « données malformées » est impossible à reproduire — et le garde
+        // défensif de la commande y est inatteignable. Ce cas ne vaut que sous
+        // SQLite (TEXT), où klassci_data peut contenir n'importe quoi.
+        if (DB::connection()->getDriverName() !== 'sqlite') {
+            self::markTestSkipped('klassci_data JSON : données malformées impossibles hors SQLite.');
+        }
+
         // 3 cas malformés différents (non-enseignants → skip, pas de fallback).
         $u1 = $this->userWithBlob(klassciDataJson: 'invalid json{', klassciId: 100, role: 'etudiant');
         $u2 = $this->userWithBlob(klassciDataJson: null, klassciId: 200, role: 'etudiant');

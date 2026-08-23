@@ -61,12 +61,12 @@ class TenantCachePurgerTest extends MockeryTestCase
         $builder = Mockery::mock(Builder::class);
         $builder->shouldReceive('getGrammar')->once()->andReturn($grammar);
         // Motif = prefix + namespace + ':' + '%', passé en binding paramétré.
-        // Le `_` du namespace `institution_3` est échappé (`\_`) : il doit rester
-        // littéral, sinon `institution_3` matcherait `institutionX3` — fuite
-        // cross-tenant. C'est exactement le but de l'échappement.
+        // Le `_` du namespace `institution_3` est échappé (`!_`, escape `!`) : il
+        // doit rester littéral, sinon `institution_3` matcherait `institutionX3`
+        // — fuite cross-tenant. C'est exactement le but de l'échappement.
         $builder->shouldReceive('whereRaw')
             ->once()
-            ->with('"key" LIKE ? ESCAPE \'\\\'', ['lms-cache-institution\\_3:%'])
+            ->with('"key" LIKE ? ESCAPE \'!\'', ['lms-cache-institution!_3:%'])
             ->andReturnSelf();
         $builder->shouldReceive('delete')->once()->andReturn(4);
 
@@ -92,7 +92,7 @@ class TenantCachePurgerTest extends MockeryTestCase
         // pour ne PAS élargir le motif (défense cross-tenant).
         $builder->shouldReceive('whereRaw')
             ->once()
-            ->with('"key" LIKE ? ESCAPE \'\\\'', ['institution\\_\\%:%'])
+            ->with('"key" LIKE ? ESCAPE \'!\'', ['institution!_!%:%'])
             ->andReturnSelf();
         $builder->shouldReceive('delete')->andReturn(0);
 

@@ -6,6 +6,7 @@ namespace App\Services\Quiz;
 
 use App\Models\QuizAttempt;
 use App\Models\User;
+use App\Services\Notification\QuizNotificationDispatcher;
 
 /**
  * Correction manuelle d'une tentative par un enseignant.
@@ -27,8 +28,10 @@ use App\Models\User;
  */
 final class QuizAttemptTeacherGradeService
 {
-    public function __construct(private readonly QuizGradingService $grading)
-    {
+    public function __construct(
+        private readonly QuizGradingService $grading,
+        private readonly QuizNotificationDispatcher $notifications,
+    ) {
     }
 
     /**
@@ -43,6 +46,12 @@ final class QuizAttemptTeacherGradeService
         ?string $feedback,
     ): array {
         $this->grading->manualGradeAttempt($attempt, $pointsEarned, $grader->id, $feedback);
+
+        // #500 — la correction manuelle est le SEUL moment où l'étudiant apprend
+        // sa note de façon asynchrone (l'auto-correction la lui renvoie déjà dans
+        // la réponse HTTP de sa propre soumission). Sans cet appel, `grade_received`
+        // n'était jamais émis alors que le front sait le rendre.
+        $this->notifications->notifyGradeReceived($attempt);
 
         return [
             'status'  => 200,

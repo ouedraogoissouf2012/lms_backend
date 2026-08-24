@@ -6,6 +6,7 @@ namespace App\Services\Quiz;
 
 use App\Models\Quiz;
 use App\Models\User;
+use App\Services\Notification\QuizNotificationDispatcher;
 use Illuminate\Pagination\LengthAwarePaginator;
 
 /**
@@ -35,8 +36,10 @@ use Illuminate\Pagination\LengthAwarePaginator;
  */
 final class QuizCrudService
 {
-    public function __construct(private readonly QuizAccessService $access)
-    {
+    public function __construct(
+        private readonly QuizAccessService $access,
+        private readonly QuizNotificationDispatcher $notifications,
+    ) {
     }
 
     /**
@@ -245,7 +248,16 @@ final class QuizCrudService
             ];
         }
 
+        // #500 — la TRANSITION vers `published` est le déclencheur de
+        // `quiz_available`, pas l'appel : `publish()` est idempotent côté
+        // données mais republier renotifierait toute la classe.
+        $wasAlreadyPublished = $quiz->status === 'published';
+
         $this->access->publish($quiz);
+
+        if (! $wasAlreadyPublished) {
+            $this->notifications->notifyQuizAvailable($quiz);
+        }
 
         return [
             'status'  => 200,

@@ -37,6 +37,23 @@ final class NotificationDispatcher
             'title' => $title,
             'message' => $message,
             'data' => $data,
+            // #579 — l'institution vient du DESTINATAIRE, pas du tenant ambiant.
+            //
+            // Émise depuis un worker ou un cron, la notification n'avait aucun
+            // tenant résolu : le hook `creating` de `BelongsToInstitution`
+            // journalisait et laissait la colonne à NULL. À la lecture en
+            // revanche, une requête HTTP porteuse d'un token résout bien le
+            // tenant et le scope global ajoute `WHERE institution_id = X` : la
+            // ligne était écrite, et son destinataire ne la voyait jamais.
+            //
+            // Le poser ici rend la propriété STRUCTURELLE : il n'existe plus de
+            // chemin par lequel une notification puisse naître sans tenant, là
+            // où « restaurer le TenantManager dans chaque émetteur » impose de
+            // ne jamais oublier — et l'oubli est silencieux.
+            //
+            // Un destinataire sans institution (supradmin) garde NULL : le hook
+            // respecte toute valeur explicitement assignée, y compris `null`.
+            'institution_id' => $user->institution_id,
         ]);
     }
 

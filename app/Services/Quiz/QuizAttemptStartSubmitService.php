@@ -7,6 +7,7 @@ namespace App\Services\Quiz;
 use App\Models\Quiz;
 use App\Models\QuizAttempt;
 use App\Models\User;
+use App\Services\Attempts\AttemptConflictGuard;
 use App\Services\Quiz\Concerns\BuildsAttemptResponses;
 
 /**
@@ -33,11 +34,22 @@ final class QuizAttemptStartSubmitService
         private readonly QuizGradingService $grading,
         private readonly QuizAccessService $access,
         private readonly QuizAttemptTimerService $timer,
+        private readonly AttemptConflictGuard $conflictGuard,
     ) {
     }
 
     /**
-     * Démarre une nouvelle tentative.
+     * Démarre une tentative — ou rend celle qui est déjà ouverte.
+     *
+     * Avant #581, `attemptsCountForUser()` ignorait les tentatives
+     * `in_progress` et rien ne traitait la précédente : trois onglets ouvraient
+     * trois tentatives sur un quiz à `max_attempts = 1`, toutes soumissibles,
+     * et la meilleure des trois notes était retenue.
+     *
+     * La tentative en cours est désormais **reprise**, pas abandonnée : la
+     * réabandonner repartirait d'un `started_at` neuf et donnerait un temps
+     * illimité sur un quiz chronométré, ce qui viderait de son sens le quota
+     * qu'on cherche à faire respecter.
      *
      * @return array{status:int,success:bool,message:?string,data:?array<string,mixed>,errors:?array<string,mixed>}
      */
@@ -47,24 +59,68 @@ final class QuizAttemptStartSubmitService
             return $this->failure(403, 'Ce quiz n\'est pas disponible actuellement');
         }
 
+        $resumable = $this->access->activeAttemptForUser($quiz, $user->id);
+        if ($resumable !== null) {
+            return $this->attemptStarted($quiz, $resumable, resumed: true);
+        }
+
         if (! $this->access->canUserAttempt($quiz, $user->id)) {
             return $this->failure(403, 'Vous avez atteint le nombre maximum de tentatives');
         }
 
+        return $this->openNewAttempt($quiz, $user);
+    }
+
+    /**
+     * Insère la tentative sous le filet d'unicité de la base.
+     *
+     * Le perdant d'une course relit la tentative gagnante : si elle est encore
+     * ouverte il la reprend (double-clic → 200), sinon le conflit est signalé
+     * en 409 — jamais en 500 comme avant #581.
+     *
+     * @return array{status:int,success:bool,message:?string,data:?array<string,mixed>,errors:?array<string,mixed>}
+     */
+    private function openNewAttempt(Quiz $quiz, User $user): array
+    {
         $attemptNumber = $this->access->nextAttemptNumberForUser($quiz, $user->id);
 
-        $attempt = QuizAttempt::create([
-            'quiz_id'        => $quiz->id,
-            'user_id'        => $user->id,
-            'attempt_number' => $attemptNumber,
-            'status'         => 'in_progress',
-            'started_at'     => now(),
-            // Scope tenant explicite (défense en profondeur, fix E2E #211) :
-            // un tenant non résolu persistait la tentative avec institution_id
-            // NULL → owner verrouillé dehors par ShowAttemptRequest.
-            'institution_id' => $user->institution_id,
-        ]);
+        $outcome = $this->conflictGuard->insert(
+            fn (): QuizAttempt => QuizAttempt::create([
+                'quiz_id'        => $quiz->id,
+                'user_id'        => $user->id,
+                'attempt_number' => $attemptNumber,
+                'status'         => 'in_progress',
+                'started_at'     => now(),
+                // Scope tenant explicite (défense en profondeur, fix E2E #211) :
+                // un tenant non résolu persistait la tentative avec institution_id
+                // NULL → owner verrouillé dehors par ShowAttemptRequest.
+                'institution_id' => $user->institution_id,
+            ]),
+            fn (): ?QuizAttempt => $this->access->activeAttemptForUser($quiz, $user->id),
+        );
 
+        if ($outcome === null) {
+            return $this->failure(
+                409,
+                'Une autre tentative vient d\'être enregistrée pour ce quiz. Rechargez la page.'
+            );
+        }
+
+        return $this->attemptStarted($quiz, $outcome->attempt(), resumed: $outcome->isResolved());
+    }
+
+    /**
+     * Payload commun aux deux issues de succès : seuls le code HTTP et le
+     * message distinguent une création (201) d'une reprise (200).
+     *
+     * Le mélange s'applique aussi à une reprise — le contraire révélerait
+     * l'ordre d'origine à qui recharge la page. `time_remaining` est calculé
+     * depuis le `started_at` d'origine : c'est tout l'intérêt de reprendre.
+     *
+     * @return array{status:int,success:bool,message:?string,data:?array<string,mixed>,errors:?array<string,mixed>}
+     */
+    private function attemptStarted(Quiz $quiz, QuizAttempt $attempt, bool $resumed): array
+    {
         $questions = $quiz->questions()->with(['answers' => function ($query): void {
             $query->select('id', 'question_id', 'answer_text', 'order')->ordered();
         }])->ordered()->get();
@@ -80,9 +136,9 @@ final class QuizAttemptStartSubmitService
         }
 
         return [
-            'status'  => 201,
+            'status'  => $resumed ? 200 : 201,
             'success' => true,
-            'message' => 'Tentative démarrée',
+            'message' => $resumed ? 'Reprise de la tentative en cours' : 'Tentative démarrée',
             'data'    => [
                 'attempt'        => $attempt,
                 'quiz'           => $quiz,

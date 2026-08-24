@@ -50,7 +50,17 @@ final class QuizCrudServiceListBatchedAttemptsTest extends TestCase
         ]);
     }
 
-    public function test_attempts_count_only_includes_submitted_and_graded(): void
+    /**
+     * MISE À JOUR #581 — ce test verrouillait le défaut.
+     *
+     * Il asseyait qu'une tentative `in_progress` n'était PAS comptée (2 sur 3).
+     * C'est précisément ce qui rendait `max_attempts` contournable : trois
+     * onglets ouvraient trois tentatives notables sur un quiz à
+     * `max_attempts = 1`. Le comptage inclut désormais tout sauf `abandoned`.
+     * L'intention d'origine — ne compter que les tentatives de CET étudiant sur
+     * CE quiz — est préservée, y compris son assertion anti-fuite.
+     */
+    public function test_attempts_count_includes_every_non_abandoned_attempt(): void
     {
         $quiz = $this->publishedQuiz();
         QuizAttempt::factory()->forQuiz($quiz)->byUser($this->student)->create([
@@ -78,7 +88,11 @@ final class QuizCrudServiceListBatchedAttemptsTest extends TestCase
         $page = $this->service->list($this->student, []);
         $result = $page->getCollection()->firstWhere('id', $quiz->id);
 
-        self::assertSame(2, $result->user_attempts_count);
+        self::assertSame(3, $result->user_attempts_count);
+        self::assertTrue(
+            $result->user_can_attempt,
+            'Une tentative en cours reste reprenable — la liste ne doit pas annoncer le contraire.',
+        );
     }
 
     public function test_can_attempt_is_false_once_quota_reached(): void

@@ -6,6 +6,8 @@ namespace App\Services\Quiz;
 
 use App\Models\Quiz;
 use App\Models\QuizAttempt;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Support\Collection;
 
 /**
@@ -48,23 +50,68 @@ final class QuizAccessService
     }
 
     /**
-     * Nombre de tentatives FINALISÉES par un utilisateur.
+     * Nombre de tentatives ayant CONSOMMÉ un essai : tous les statuts sauf
+     * `abandoned`.
      *
-     * Fix E2E #211 : le grading auto passe la tentative en `graded` (pas
-     * `submitted`) — filtrer `submitted` seul faisait sauter le quota
-     * `max_attempts` ET provoquait un 500 (attempt_number dupliqué) au
-     * restart d'un quiz auto-gradé.
+     * Ne comptait auparavant que `submitted` / `graded` (#581) : une tentative
+     * `in_progress` ne consommait donc rien, et trois onglets ouverts donnaient
+     * trois tentatives notables sur un quiz à `max_attempts = 1` — c'est la
+     * meilleure des trois notes qui était retenue. Une tentative ouverte
+     * consomme un essai, comme dans un examen réel ; seul un abandon explicite
+     * (ou le janitor) la libère.
      */
     public function attemptsCountForUser(Quiz $quiz, int $userId): int
     {
-        return $quiz->attempts()
-            ->where('user_id', $userId)
-            ->whereIn('status', ['submitted', 'graded'])
+        return $this->attemptKeyspace($quiz, $userId)
+            ->where('status', '!=', 'abandoned')
             ->count();
     }
 
     /**
+     * Tentative encore ouverte de l'utilisateur, s'il en a une.
+     *
+     * C'est elle que `startAttempt` rend à l'étudiant plutôt que d'en créer une
+     * seconde : fermer son onglet ne doit ni bloquer, ni redonner du temps.
+     */
+    public function activeAttemptForUser(Quiz $quiz, int $userId): ?QuizAttempt
+    {
+        return $this->attemptKeyspace($quiz, $userId)
+            ->where('status', 'in_progress')
+            ->first();
+    }
+
+    /**
+     * Tentatives d'un couple (quiz, étudiant) telles que **la base** les voit —
+     * global scope `institution` retiré.
+     *
+     * L'unique `quiz_attempts_quiz_id_user_id_attempt_number_unique` ne connaît
+     * pas `institution_id`. Or la colonne a été ajoutée nullable et **sans
+     * backfill** (`2026_02_11_000002`), puis laissée nullable à dessein (#583) :
+     * toute tentative antérieure est invisible au scope dès qu'un tenant est
+     * résolu, alors que l'index continue de la faire respecter. `max + 1`
+     * re-proposait alors un numéro déjà pris → **409 définitif** (même défaut
+     * qu'en #540).
+     *
+     * Sans risque cross-tenant : le filtre est ancré sur `quiz_id`, déjà
+     * rattaché à une seule institution.
+     *
+     * @return Builder<QuizAttempt>
+     */
+    private function attemptKeyspace(Quiz $quiz, int $userId): Builder
+    {
+        return QuizAttempt::withoutGlobalScope('institution')
+            ->where('quiz_id', $quiz->id)
+            ->where('user_id', $userId);
+    }
+
+    /**
      * L'utilisateur peut-il encore tenter le quiz (dispo + quota) ?
+     *
+     * Une tentative REPRENABLE vaut « oui » même quand le quota nominal est
+     * atteint : sans ce terme, un étudiant ayant une tentative en cours sur un
+     * quiz à `max_attempts = 1` verrait `user_can_attempt = false` dans la
+     * liste — l'interface lui annoncerait « plus de tentative » alors qu'il peut
+     * légitimement continuer la sienne (#581).
      */
     public function canUserAttempt(Quiz $quiz, int $userId): bool
     {
@@ -72,21 +119,60 @@ final class QuizAccessService
             return false;
         }
 
-        return $this->attemptsCountForUser($quiz, $userId) < $quiz->max_attempts;
+        return $this->quotaAllows(
+            $quiz,
+            hasResumable: $this->activeAttemptForUser($quiz, $userId) !== null,
+            consumed: $this->attemptsCountForUser($quiz, $userId),
+        );
     }
 
     /**
-     * Prochain numéro de tentative pour un utilisateur — max+1 sur TOUTES
-     * les tentatives (in_progress/abandoned incluses). Fix E2E #211 :
-     * `attemptsCountForUser + 1` entrait en collision avec la contrainte
-     * unique (quiz_id, user_id, attempt_number) dès qu'une tentative
-     * non finalisée existait.
+     * Même règle que {@see self::canUserAttempt()}, mais à partir des
+     * tentatives DÉJÀ chargées — pour les listes paginées, qui doivent rester
+     * à zéro requête par ligne (#546).
+     *
+     * Elle existe pour que la règle de quota ne soit énoncée qu'à UN endroit :
+     * `QuizCrudService::list()` en portait auparavant sa propre copie, restée
+     * sur l'ancienne sémantique (seules les tentatives finalisées comptaient).
+     *
+     * @param  EloquentCollection<int, QuizAttempt>  $attempts  tentatives
+     *         consommantes de l'étudiant sur ce quiz (cf. {@see self::consumingAttemptsByQuiz()})
+     */
+    public function canAttemptFromLoaded(Quiz $quiz, EloquentCollection $attempts): bool
+    {
+        if (!$this->isAvailable($quiz)) {
+            return false;
+        }
+
+        return $this->quotaAllows(
+            $quiz,
+            hasResumable: $attempts->contains(
+                static fn (QuizAttempt $attempt): bool => $attempt->status === 'in_progress'
+            ),
+            consumed: $attempts->count(),
+        );
+    }
+
+    /**
+     * LA règle de quota, énoncée une seule fois : une tentative reprenable
+     * l'emporte sur le compteur, sinon le quota nominal s'applique.
+     */
+    private function quotaAllows(Quiz $quiz, bool $hasResumable, int $consumed): bool
+    {
+        return $hasResumable || $consumed < $quiz->max_attempts;
+    }
+
+    /**
+     * Prochain numéro de tentative — `max + 1` sur TOUTES les tentatives
+     * (`in_progress` / `abandoned` incluses), jamais `count + 1` : un trou dans
+     * la série ferait re-proposer un numéro déjà pris, en collision frontale
+     * avec l'unique (fix E2E #211, généralisé en #540).
      */
     public function nextAttemptNumberForUser(Quiz $quiz, int $userId): int
     {
-        return (int) $quiz->attempts()
-            ->where('user_id', $userId)
-            ->max('attempt_number') + 1;
+        $highest = $this->attemptKeyspace($quiz, $userId)->max('attempt_number');
+
+        return is_numeric($highest) ? ((int) $highest) + 1 : 1;
     }
 
     /**
@@ -114,27 +200,32 @@ final class QuizAccessService
     }
 
     /**
-     * Tentatives finalisées (submitted|graded) de `$userId` pour un ensemble
-     * de quiz, groupées par `quiz_id`, triées `score DESC` — 1 requête au
-     * lieu de N (#546, `QuizCrudService::list` sur une page paginée).
+     * Tentatives CONSOMMANTES (tous statuts sauf `abandoned`) de `$userId` pour
+     * un ensemble de quiz, groupées par `quiz_id`, triées `score DESC` — une
+     * requête au lieu de N (#546, `QuizCrudService::list` sur une page paginée).
      *
-     * L'`orderBy('score','desc')` global AVANT le `groupBy` préserve, au sein
-     * de chaque groupe, exactement l'ordre que produirait la requête
-     * par-quiz d'origine (même comportement SQL pour les valeurs NULL — pas
-     * de tri PHP divergent).
+     * Portait auparavant sur les seules tentatives finalisées : la liste
+     * ignorait donc les tentatives en cours, sous-comptait le quota et
+     * dupliquait la règle (#581). Le tri `score DESC` global AVANT le `groupBy`
+     * préserve, au sein de chaque groupe, l'ordre qu'aurait produit la requête
+     * par-quiz d'origine — les tentatives en cours (score `NULL`) se rangent
+     * comme le ferait le même SQL, sans tri PHP divergent.
+     *
+     * Global scope `institution` retiré : voir {@see self::attemptKeyspace()}.
      *
      * @param  array<int, int>  $quizIds
-     * @return Collection<array-key, \Illuminate\Database\Eloquent\Collection<int, QuizAttempt>>
+     * @return Collection<array-key, EloquentCollection<int, QuizAttempt>>
      */
-    public function finalizedAttemptsByQuiz(array $quizIds, int $userId): Collection
+    public function consumingAttemptsByQuiz(array $quizIds, int $userId): Collection
     {
         if ($quizIds === []) {
             return collect();
         }
 
-        return QuizAttempt::whereIn('quiz_id', $quizIds)
+        return QuizAttempt::withoutGlobalScope('institution')
+            ->whereIn('quiz_id', $quizIds)
             ->where('user_id', $userId)
-            ->whereIn('status', ['submitted', 'graded'])
+            ->where('status', '!=', 'abandoned')
             ->orderBy('score', 'desc')
             ->get()
             ->groupBy('quiz_id');

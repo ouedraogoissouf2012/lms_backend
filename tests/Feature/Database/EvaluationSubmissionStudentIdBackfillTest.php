@@ -83,6 +83,55 @@ final class EvaluationSubmissionStudentIdBackfillTest extends TestCase
         $this->assertNull(DB::table('evaluation_submissions')->where('id', $orphan)->value('student_id'));
     }
 
+    /**
+     * Garde anti-régression du saut d'offset.
+     *
+     * La première version de la migration paginait en `chunk()` sur un prédicat
+     * `whereNull('student_id')` que son propre callback modifiait : chaque
+     * ligne réparée quittait le jeu de résultats et l'offset sautait d'autant.
+     * Un test à un seul couple ne pouvait pas le voir. Ici, le nombre de
+     * couples dépasse la taille de lot de la migration : si le parcours saute
+     * ne serait-ce qu'une ligne, l'assertion « aucune orpheline » tombe.
+     *
+     * Volontairement piloté par le nombre de LIGNES et de COUPLES distincts,
+     * pas par un seul étudiant : c'est la combinaison des deux qui exposait le
+     * défaut.
+     */
+    public function test_toutes_les_orphelines_sont_reparees_au_dela_dun_lot(): void
+    {
+        $institution = Institution::factory()->create();
+        $evaluation = Evaluation::factory()->planifiee()->create(['institution_id' => $institution->id]);
+
+        $expected = [];
+        for ($i = 0; $i < 40; $i++) {
+            $klassciId = 10_000 + $i;
+            $student = User::factory()->student()->create([
+                'institution_id' => $institution->id,
+                'klassci_id' => $klassciId,
+            ]);
+            $expected[$this->insertOrphanSubmission(
+                $evaluation->id,
+                $institution->id,
+                $klassciId,
+                attempt: 1,
+            )] = $student->id;
+        }
+
+        $this->runMigrationUp();
+
+        $this->assertSame(
+            0,
+            DB::table('evaluation_submissions')->whereNull('student_id')->count(),
+            'Des soumissions orphelines subsistent : le parcours de la migration en a sauté.',
+        );
+        foreach ($expected as $submissionId => $studentId) {
+            $this->assertSame(
+                $studentId,
+                (int) DB::table('evaluation_submissions')->where('id', $submissionId)->value('student_id'),
+            );
+        }
+    }
+
     /** Une soumission déjà rattachée n'est pas ré-attribuée. */
     public function test_une_soumission_deja_rattachee_nest_pas_modifiee(): void
     {

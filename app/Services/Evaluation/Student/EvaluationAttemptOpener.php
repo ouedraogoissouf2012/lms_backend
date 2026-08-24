@@ -8,6 +8,7 @@ use App\Models\Evaluation;
 use App\Models\EvaluationSubmission;
 use App\Models\User;
 use App\Services\Attempts\AttemptConflictGuard;
+use Illuminate\Database\Eloquent\Builder;
 
 /**
  * Ouverture d'une soumission d'évaluation pour un étudiant : reprise de la
@@ -121,10 +122,33 @@ final class EvaluationAttemptOpener
     /** Tentative encore ouverte de l'étudiant sur cette évaluation, s'il y en a une. */
     private function activeSubmission(Evaluation $evaluation, int $klassciEtudiantId): ?EvaluationSubmission
     {
-        return EvaluationSubmission::where('evaluation_id', $evaluation->id)
-            ->where('klassci_etudiant_id', $klassciEtudiantId)
+        return $this->submissionKeyspace($evaluation, $klassciEtudiantId)
             ->where('status', 'en_cours')
             ->first();
+    }
+
+    /**
+     * Soumissions du couple (évaluation, étudiant) telles que **la base** les
+     * voit — global scope `institution` retiré.
+     *
+     * `eval_sub_unique` porte sur `(evaluation_id, klassci_etudiant_id, attempt)`
+     * et ignore `institution_id`. Or cette colonne a été ajoutée nullable et
+     * **sans backfill** (`2026_02_11_000002_add_institution_id_to_all_tables`),
+     * puis laissée nullable à dessein (#583) : toute soumission antérieure à
+     * février 2026 est invisible au scope dès qu'un tenant est résolu, alors
+     * que l'index continue de la faire respecter. Sans ce retrait, `max + 1`
+     * re-proposerait un numéro déjà pris et l'étudiant resterait bloqué en 409.
+     *
+     * Sans risque cross-tenant : le filtre est ancré sur `evaluation_id`, déjà
+     * rattaché à une seule institution.
+     *
+     * @return \Illuminate\Database\Eloquent\Builder<EvaluationSubmission>
+     */
+    private function submissionKeyspace(Evaluation $evaluation, int $klassciEtudiantId): Builder
+    {
+        return EvaluationSubmission::withoutGlobalScope('institution')
+            ->where('evaluation_id', $evaluation->id)
+            ->where('klassci_etudiant_id', $klassciEtudiantId);
     }
 
     /**
@@ -139,9 +163,7 @@ final class EvaluationAttemptOpener
             return false;
         }
 
-        $consumed = EvaluationSubmission::where('evaluation_id', $evaluation->id)
-            ->where('klassci_etudiant_id', $klassciEtudiantId)
-            ->count();
+        $consumed = $this->submissionKeyspace($evaluation, $klassciEtudiantId)->count();
 
         return $consumed >= $evaluation->max_attempts;
     }
@@ -153,9 +175,7 @@ final class EvaluationAttemptOpener
      */
     private function nextAttemptNumber(Evaluation $evaluation, int $klassciEtudiantId): int
     {
-        $highest = EvaluationSubmission::where('evaluation_id', $evaluation->id)
-            ->where('klassci_etudiant_id', $klassciEtudiantId)
-            ->max('attempt');
+        $highest = $this->submissionKeyspace($evaluation, $klassciEtudiantId)->max('attempt');
 
         return is_numeric($highest) ? ((int) $highest) + 1 : 1;
     }

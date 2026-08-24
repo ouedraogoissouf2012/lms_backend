@@ -97,24 +97,24 @@ final class SubmitEvaluationRequest extends FormRequest
             return false;
         }
 
-        // Check 5: Student must not have already FINALIZED a submission.
+        // Le quota de tentatives N'EST PLUS vérifié ici (#540).
         //
-        // La tentative encore ouverte (`en_cours`) de l'étudiant ne doit PAS
-        // bloquer : c'est précisément celle qu'il vient soumettre. Avant #540,
-        // `POST /start` laissait `student_id` à NULL, ce test ne voyait donc
-        // jamais la tentative en cours et la soumission repartait sur une
-        // création en doublon (→ 500). Maintenant que le démarrage renseigne
-        // `student_id`, restreindre aux statuts finalisés est indispensable —
-        // sinon le parcours nominal basculerait du 500 au 403.
-        $alreadyFinalized = \App\Models\EvaluationSubmission::where('evaluation_id', $evaluation->id)
-            ->where('student_id', $user->id)
-            ->whereIn('status', ['soumis', 'corrige'])
-            ->exists();
-
-        if ($alreadyFinalized) {
-            return false;
-        }
-
+        // L'ancien Check 5 refusait dès qu'UNE soumission existait pour cet
+        // étudiant, en ignorant `max_attempts`. Deux conséquences :
+        //
+        //   1. `POST /start` ouvrait volontiers la tentative 2 (200) et
+        //      `POST /submit` la refusait ensuite en 403 « This action is
+        //      unauthorized » — toute évaluation à `max_attempts > 1` était
+        //      inutilisable de bout en bout ;
+        //   2. le quota était exprimé à DEUX endroits avec deux règles
+        //      différentes (ici « une seule soumission », dans le service
+        //      « max_attempts »), ce qui est exactement la duplication qui
+        //      avait déjà produit le 500 du parcours nominal.
+        //
+        // La règle vit désormais dans `EvaluationAttemptOpener`, source unique,
+        // qui refuse en 403 avec le message métier « Nombre maximum de
+        // tentatives atteint (N) ». Une FormRequest valide et autorise ; elle
+        // ne porte pas de règle de gestion (§5).
         return true;
     }
 

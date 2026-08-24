@@ -143,6 +143,32 @@ backfill `student_id` ne met à jour que les lignes dont l'étudiant est identif
 **sans ambiguïté** (exactement un `users` portant ce `klassci_id` dans la même
 institution) ; les autres restent NULL plutôt que d'être rattachées au hasard.
 
+## 4bis. Accorder l'application avec l'index (correctif issu de la revue)
+
+Le premier jet posait le filet base **sans vérifier que l'application voyait le
+même jeu de lignes**. Elle ne le voyait pas :
+
+```
+index unique       : (knowledge_check_id, user_id, attempt_number)   ← ignore institution_id
+requête Eloquent   : ... AND institution_id = <tenant>               ← global scope BelongsToInstitution
+```
+
+`institution_id` a été ajoutée **nullable, sans backfill**, et laissée nullable à
+dessein. Toute ligne antérieure à février 2026 est donc invisible au scope — mais
+l'index continue de la faire respecter. `max + 1` re-proposait un numéro déjà
+pris : **409 définitif** pour l'étudiant concerné.
+
+Correctif : les requêtes qui adressent l'espace de clés de l'index
+(`attemptKeyspace()`, `submissionKeyspace()`) retirent explicitement le scope.
+C'est sans risque cross-tenant car leur filtre est ancré sur une clé déjà
+rattachée à une seule institution (`knowledge_check_id`, `evaluation_id`).
+
+**Piège de test à retenir** : `Sanctum::actingAs()` ne pose aucun jeton, or
+`ResolveInstitution` fait `TenantManager::reset()` puis résout depuis le jeton
+porteur. Un test écrit avec `actingAs` laisse donc le tenant **nul**, désactive le
+global scope et passe au vert sans rien prouver. La preuve exige
+`createToken()` + en-tête `Authorization`.
+
 ## 5. Dette signalée, non corrigée ici
 
 - `evaluation_submissions` porte un index `(evaluation_id, klassci_etudiant_id)`
@@ -154,3 +180,13 @@ institution) ; les autres restent NULL plutôt que d'être rattachées au hasard
 - `EvaluationStudentAttemptController::submitEvaluation` conserve son
   `catch (\Exception) → 500` générique : il ne couvre plus le conflit (traité en
   amont) mais reste un filet trop large.
+- **`POST /submit` ne passe pas par la porte temporelle KLASSCI**, qui vit dans
+  `startAttempt()`. Avec `deadline_at` à NULL et une fenêtre fermée, `/start`
+  refuse en 403 mais un `/submit` direct enregistre une note corrigée et
+  synchronisable. Défaut **antérieur** à #540 (l'ancien `/submit` créait déjà la
+  soumission sans contrôle de fenêtre) ; le corriger ajouterait un appel HTTP
+  KLASSCI sur le chemin de soumission → relève de #499, pas du quota.
+- `KnowledgeCheckAccessService::isPassedByUser()` / `bestScore()` restent scopés
+  au tenant : une tentative héritée à `institution_id = NULL` peut faire
+  apparaître comme non-réussi un étudiant qui a réussi. Défaut d'affichage,
+  antérieur, sans effet sur l'unicité — hors périmètre.

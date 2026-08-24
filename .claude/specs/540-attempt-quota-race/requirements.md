@@ -116,6 +116,24 @@ contourner, il suffit d'appeler `/submit` en boucle.
   font recalculer `count + 1 = 3`, en collision frontale avec `eval_sub_unique` →
   **500**. Bug latent confirmé par test avant correctif.
 
+### R6 — L'application doit voir le même jeu de lignes que l'index
+*(ajouté après revue de code — quatre défauts réels trouvés sur le premier jet, cf. §4)*
+
+- **R6.1** THE requêtes qui calculent un numéro de tentative ou un quota SHALL
+  interroger exactement l'espace de clés de l'index unique, **sans** le global scope
+  `institution`. Constaté : `institution_id` a été ajoutée **nullable et sans backfill**
+  (`2026_02_11_000002`) et laissée nullable à dessein (#583) ; toute ligne antérieure à
+  février 2026 est donc invisible au scope mais bien vue par l'index → `max + 1`
+  re-propose un numéro pris → **409 définitif**. Prouvé par test (409 au lieu de 200).
+- **R6.2** THE migration de réparation SHALL parcourir une table qu'elle **ne modifie
+  pas**. Constaté : `chunk()` pagine par OFFSET ; réparer dans le callback fait sortir
+  les lignes du jeu de résultats et l'offset saute d'autant — environ la moitié des
+  lignes n'était jamais traitée, la migration se déclarant pourtant réussie.
+- **R6.3** THE quota SHALL être exprimé à **un seul endroit**. Constaté : la FormRequest
+  refusait dès qu'une soumission finalisée existait, en ignorant `max_attempts` →
+  `/start` ouvrait la tentative 2 (200) puis `/submit` la refusait (403), rendant tout
+  `max_attempts > 1` inutilisable.
+
 ### R5 — Contrainte de non-régression
 - **R5.1** THE correctif SHALL PAS introduire de nouveau statut de soumission
   (piège connu #540/#564 : casse `max_attempts`).

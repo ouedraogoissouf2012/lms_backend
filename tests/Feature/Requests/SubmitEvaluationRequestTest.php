@@ -336,13 +336,26 @@ class SubmitEvaluationRequestTest extends TestCase
     /**
      * ❌ DUPLICATE: Already submitted cannot submit again
      */
+    /**
+     * Fixture rendue COHÉRENTE en #540. Elle prétendait « l'étudiant a déjà
+     * soumis » tout en créant la soumission avec un `klassci_etudiant_id`
+     * aléatoire (défaut de la factory), sans rapport avec l'étudiant, et sur
+     * une évaluation dont `max_attempts` était tiré au hasard entre 1 et 3.
+     * Elle ne passait que grâce à un Check `authorize()` qui ignorait le quota
+     * — celui-là même qui rendait `max_attempts > 1` inutilisable (#540).
+     *
+     * Le refus est désormais porté par le quota du service : la fixture pose
+     * donc `max_attempts = 1` et rattache la soumission au vrai identifiant
+     * KLASSCI de l'étudiant. Même intention, cette fois réellement exercée.
+     */
     public function test_already_submitted_cannot_resubmit(): void
     {
-        // Create prior submission
+        $this->evaluation->forceFill(['max_attempts' => 1])->save();
+
         EvaluationSubmission::factory()
             ->for($this->evaluation)
             ->for($this->student, 'student')
-            ->create();
+            ->create(['klassci_etudiant_id' => $this->student->klassci_id]);
 
         Sanctum::actingAs($this->student);
 

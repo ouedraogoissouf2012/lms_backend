@@ -125,9 +125,19 @@ final class EvaluationStudentAttemptController extends AuthenticatedController
     }
 
     /**
-     * Traduit un échec d'ouverture de soumission en réponse HTTP — mêmes codes
-     * et mêmes messages que `POST /start`, pour que les deux endpoints refusent
-     * de façon identique.
+     * Traduit un échec d'ouverture de soumission en réponse HTTP, avec les
+     * mêmes codes et messages que `POST /start` pour les trois refus que
+     * l'opener sait produire : `no_klassci_id`, `max_attempts`, `conflict`.
+     *
+     * ⚠️ DETTE TRACÉE (#540, non corrigée ici) : la parité s'arrête là.
+     * `POST /submit` ne passe PAS par la porte temporelle KLASSCI, qui vit dans
+     * `EvaluationAttemptStateService::startAttempt()`. Avec `deadline_at` à NULL
+     * et une fenêtre KLASSCI fermée, `/start` refuse en 403 mais un `/submit`
+     * direct enregistre une note corrigée et synchronisable. Le défaut est
+     * ANTÉRIEUR à #540 (l'ancien `/submit` créait déjà la soumission sans aucun
+     * contrôle de fenêtre) et le corriger ajouterait un appel HTTP KLASSCI sur
+     * le chemin de soumission — un changement de comportement et de coût qui
+     * relève du périmètre « fenêtre temporelle » (#499), pas du quota.
      *
      * @param  array{status: string, message?: string}  $opened
      */

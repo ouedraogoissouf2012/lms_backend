@@ -106,6 +106,58 @@ final class EvaluationAttemptQuotaRaceTest extends TestCase
         $this->assertSame('soumis', EvaluationSubmission::first()?->status);
     }
 
+    /**
+     * Une évaluation à plusieurs tentatives doit être utilisable de bout en
+     * bout. Le quota appartient au service (`max_attempts`) — la FormRequest ne
+     * doit PAS bloquer sur « une soumission finalisée existe », sinon `/start`
+     * ouvre la tentative 2 en 200 et `/submit` la refuse en 403, rendant tout
+     * `max_attempts > 1` inutilisable et le refus `max_attempts` inatteignable
+     * depuis `/submit`.
+     */
+    public function test_une_seconde_tentative_autorisee_est_soumissible(): void
+    {
+        $this->fakeOpenWindow();
+        $evaluation = $this->publishedEvaluation(maxAttempts: 2);
+        $question = $evaluation->questions()->first();
+        Sanctum::actingAs($this->student);
+
+        $this->postJson("/api/evaluations/{$evaluation->id}/start")->assertStatus(200);
+        $this->postJson("/api/evaluations/{$evaluation->id}/submit", [
+            'answers' => [$question->id => 'A'],
+        ])->assertStatus(201);
+
+        $this->postJson("/api/evaluations/{$evaluation->id}/start")->assertStatus(200);
+        $this->postJson("/api/evaluations/{$evaluation->id}/submit", [
+            'answers' => [$question->id => 'B'],
+        ])->assertStatus(201);
+
+        $this->assertSame(
+            [1, 2],
+            EvaluationSubmission::orderBy('attempt')->pluck('attempt')
+                ->map(static fn ($n): int => (int) $n)->all(),
+        );
+    }
+
+    /** Passé le quota, la soumission est refusée avec le message métier. */
+    public function test_la_soumission_au_dela_du_quota_est_refusee_en_403(): void
+    {
+        $this->fakeOpenWindow();
+        $evaluation = $this->publishedEvaluation(maxAttempts: 1);
+        $question = $evaluation->questions()->first();
+        Sanctum::actingAs($this->student);
+
+        $this->postJson("/api/evaluations/{$evaluation->id}/submit", [
+            'answers' => [$question->id => 'A'],
+        ])->assertStatus(201);
+
+        $refused = $this->postJson("/api/evaluations/{$evaluation->id}/submit", [
+            'answers' => [$question->id => 'B'],
+        ]);
+
+        $refused->assertStatus(403)->assertJsonPath('success', false);
+        $this->assertSame(1, EvaluationSubmission::count());
+    }
+
     public function test_le_demarrage_renseigne_les_deux_identites_de_letudiant(): void
     {
         $this->fakeOpenWindow();

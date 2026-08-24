@@ -169,6 +169,46 @@ porteur. Un test écrit avec `actingAs` laisse donc le tenant **nul**, désactiv
 global scope et passe au vert sans rien prouver. La preuve exige
 `createToken()` + en-tête `Authorization`.
 
+## 4ter. Seconde revue — la racine plutôt que les symptômes
+
+Une deuxième passe de revue a montré que **désactiver le global scope requête
+par requête ne suffit pas** : chaque site de lecture oublié réintroduit une
+incohérence (une tentative rendue par une lecture non scopée devient introuvable
+pour la lecture scopée suivante → **404** sur l'action d'après).
+
+La racine est ailleurs : `institution_id` est **NULL** sur toute ligne antérieure
+à février 2026. Une troisième migration la renseigne donc depuis le **parent** de
+la tentative (`quiz_id` → `quizzes`, `evaluation_id` → `evaluations`,
+`knowledge_check_id` → `knowledge_checks`) : l'institution d'une tentative n'est
+jamais ambiguë, aucune heuristique n'est nécessaire.
+
+Une fois l'invariant vrai dans la donnée, scope et index redeviennent d'accord
+**partout**, y compris dans le code qui n'existe pas encore. Les lectures
+d'espace de clés gardent malgré tout leur `withoutGlobalScope` : si un parent
+sans institution (contenu plateforme) produisait un jour une tentative à NULL,
+l'accord avec l'index resterait garanti.
+
+Deux autres défauts corrigés dans la même passe :
+
+- **Mauvaise attribution possible dans le backfill `student_id`.** Pour un compte
+  sans institution, la réparation réclamait les lignes à `institution_id` NULL
+  **avant** le test d'unicité globale que le commentaire annonçait pourtant comme
+  garde-fou — et `ambiguousKeys()` ne peut pas rattraper ce cas, puisqu'il groupe
+  par `(klassci_id, institution_id)` : le couple `(5, NULL)` et le couple `(5, 3)`
+  n'y sont jamais vus comme un conflit. Les soumissions notées d'un autre étudiant
+  pouvaient donc lui être **définitivement** réattribuées.
+- **Un double-clic sur `/submit` dépensait un essai.** La suppression du Check 5
+  laissait `/submit` rouvrir et noter une tentative : la première venant de passer
+  en `soumis`, elle n'était plus reprenable. `openForSubmission()` ne crée
+  désormais une tentative que si l'étudiant n'en a **aucune** ; ouvrir la suivante
+  exige un `/start` explicite (422 sinon). Effet de bord bienvenu : la croissance
+  non bornée des lignes d'entraînement disparaît, chaque cycle exigeant un
+  `/start`.
+
+Répartition des refus qui en découle : `/submit` répond **422** (« démarrez une
+nouvelle tentative »), `/start` — seul chemin d'ouverture — applique le quota et
+répond **403**.
+
 ## 5. Dette signalée, non corrigée ici
 
 - `evaluation_submissions` porte un index `(evaluation_id, klassci_etudiant_id)`

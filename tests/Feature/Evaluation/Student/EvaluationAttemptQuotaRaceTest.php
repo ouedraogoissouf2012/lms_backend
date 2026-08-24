@@ -138,8 +138,16 @@ final class EvaluationAttemptQuotaRaceTest extends TestCase
         );
     }
 
-    /** Passé le quota, la soumission est refusée avec le message métier. */
-    public function test_la_soumission_au_dela_du_quota_est_refusee_en_403(): void
+    /**
+     * Répartition des refus une fois le quota consommé :
+     *   - `/submit` répond 422 « démarrez une nouvelle tentative » — il ne
+     *     rouvre plus rien tout seul, sans quoi un double-clic dépenserait un
+     *     essai ;
+     *   - `/start`, seul chemin d'ouverture, applique le quota et répond 403.
+     *
+     * Dans les deux cas rien n'est persisté au-delà du quota.
+     */
+    public function test_au_dela_du_quota_submit_repond_422_et_start_repond_403(): void
     {
         $this->fakeOpenWindow();
         $evaluation = $this->publishedEvaluation(maxAttempts: 1);
@@ -150,12 +158,54 @@ final class EvaluationAttemptQuotaRaceTest extends TestCase
             'answers' => [$question->id => 'A'],
         ])->assertStatus(201);
 
-        $refused = $this->postJson("/api/evaluations/{$evaluation->id}/submit", [
+        $this->postJson("/api/evaluations/{$evaluation->id}/submit", [
             'answers' => [$question->id => 'B'],
-        ]);
+        ])->assertStatus(422)->assertJsonPath('success', false);
 
-        $refused->assertStatus(403)->assertJsonPath('success', false);
+        $this->postJson("/api/evaluations/{$evaluation->id}/start")
+            ->assertStatus(403)
+            ->assertJsonPath('success', false);
+
         $this->assertSame(1, EvaluationSubmission::count());
+    }
+
+    /**
+     * Un double-clic (ou un ré-essai client) sur `/submit` ne doit PAS dépenser
+     * une tentative supplémentaire : la première venant de passer en `soumis`,
+     * elle n'est plus reprenable, et rouvrir automatiquement consommait 2 essais
+     * sur 3 en silence.
+     */
+    public function test_un_double_clic_sur_submit_ne_consomme_pas_une_seconde_tentative(): void
+    {
+        $this->fakeOpenWindow();
+        $evaluation = $this->publishedEvaluation(maxAttempts: 3);
+        $question = $evaluation->questions()->first();
+        Sanctum::actingAs($this->student);
+
+        $payload = ['answers' => [$question->id => 'A']];
+
+        $this->postJson("/api/evaluations/{$evaluation->id}/submit", $payload)->assertStatus(201);
+        $this->postJson("/api/evaluations/{$evaluation->id}/submit", $payload)->assertStatus(422);
+
+        $this->assertSame(1, EvaluationSubmission::count());
+    }
+
+    /** Une seconde tentative reste possible — après un `/start` explicite. */
+    public function test_une_seconde_tentative_reste_possible_apres_un_start_explicite(): void
+    {
+        $this->fakeOpenWindow();
+        $evaluation = $this->publishedEvaluation(maxAttempts: 3);
+        $question = $evaluation->questions()->first();
+        Sanctum::actingAs($this->student);
+
+        $this->postJson("/api/evaluations/{$evaluation->id}/submit", ['answers' => [$question->id => 'A']])
+            ->assertStatus(201);
+
+        $this->postJson("/api/evaluations/{$evaluation->id}/start")->assertStatus(200);
+        $this->postJson("/api/evaluations/{$evaluation->id}/submit", ['answers' => [$question->id => 'B']])
+            ->assertStatus(201);
+
+        $this->assertSame(2, EvaluationSubmission::count());
     }
 
     public function test_le_demarrage_renseigne_les_deux_identites_de_letudiant(): void

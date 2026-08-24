@@ -108,17 +108,27 @@ return new class extends Migration
      */
     private function attachSubmissions(int $userId, int $klassciEtudiantId, ?int $institutionId): void
     {
-        DB::table('evaluation_submissions')
-            ->whereNull('student_id')
-            ->where('klassci_etudiant_id', $klassciEtudiantId)
-            ->when(
-                $institutionId === null,
-                static fn ($query) => $query->whereNull('institution_id'),
-                static fn ($query) => $query->where('institution_id', $institutionId),
-            )
-            ->update(['student_id' => $userId]);
+        // Lignes rattachées à une institution : le couple
+        // (klassci_id, institution_id) a déjà été vérifié non ambigu par
+        // l'appelant, la correspondance est donc sûre.
+        if ($institutionId !== null) {
+            DB::table('evaluation_submissions')
+                ->whereNull('student_id')
+                ->where('klassci_etudiant_id', $klassciEtudiantId)
+                ->where('institution_id', $institutionId)
+                ->update(['student_id' => $userId]);
+        }
 
-        if ($institutionId === null || $this->klassciIdIsGloballyUnique($klassciEtudiantId)) {
+        // Lignes dont l'`institution_id` est resté NULL : aucun tenant ne permet
+        // de trancher, on exige donc que le `klassci_id` soit unique dans TOUTE
+        // la base. Ce garde-fou s'applique **quelle que soit** l'institution du
+        // compte courant : une première écriture le contournait pour les comptes
+        // sans institution, et `ambiguousKeys()` ne peut pas les rattraper
+        // puisqu'il groupe par (klassci_id, institution_id) — le couple
+        // (5, NULL) et le couple (5, 3) n'y sont jamais vus comme un conflit.
+        // Sans cela, les soumissions notées d'un autre étudiant pouvaient lui
+        // être définitivement réattribuées.
+        if ($this->klassciIdIsGloballyUnique($klassciEtudiantId)) {
             DB::table('evaluation_submissions')
                 ->whereNull('student_id')
                 ->whereNull('institution_id')

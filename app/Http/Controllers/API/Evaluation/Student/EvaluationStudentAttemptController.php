@@ -104,7 +104,7 @@ final class EvaluationStudentAttemptController extends AuthenticatedController
                 return $this->errorResponse('Évaluation non disponible', 404);
             }
 
-            $opened = $this->attemptOpener->open($evaluation, $user, $evaluation->isTerminee());
+            $opened = $this->attemptOpener->openForSubmission($evaluation, $user, $evaluation->isTerminee());
             if ($opened['status'] !== 'ok') {
                 return $this->mapOpeningFailure($opened);
             }
@@ -152,6 +152,13 @@ final class EvaluationStudentAttemptController extends AuthenticatedController
             'conflict' => $this->errorResponse(
                 'Une autre tentative vient d\'être enregistrée pour cette évaluation. Rechargez la page.',
                 409,
+            ),
+            // L'étudiant a déjà soumis et n'a aucune tentative ouverte. Rouvrir
+            // ici consommerait un essai sur un simple double-clic ou un ré-essai
+            // client : ouvrir la suivante exige un `/start` explicite (#540).
+            'needs_start' => $this->errorResponse(
+                'Vous avez déjà soumis cette évaluation. Démarrez une nouvelle tentative avant de soumettre.',
+                422,
             ),
             default => $this->errorResponse('Erreur lors de la soumission', 500),
         };

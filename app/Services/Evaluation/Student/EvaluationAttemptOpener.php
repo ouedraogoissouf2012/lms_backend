@@ -50,6 +50,40 @@ final class EvaluationAttemptOpener
     }
 
     /**
+     * Ouverture depuis `POST /submit`, où l'étudiant n'a pas forcément appelé
+     * `/start` — un client historique peut soumettre directement.
+     *
+     * Différence avec {@see self::open()} : une nouvelle tentative n'est créée
+     * QUE si l'étudiant n'en a aucune. Sinon un double-clic (ou un ré-essai
+     * client) rouvrait et notait une tentative supplémentaire — la première
+     * venant de passer en `soumis`, elle n'était plus reprenable — dépensant
+     * silencieusement 2 essais sur 3. Reprendre une seconde tentative exige
+     * désormais un `/start` explicite.
+     *
+     * @return array{status: 'ok', submission: EvaluationSubmission, resumed: bool}|array{status: 'no_klassci_id'}|array{status: 'max_attempts', message: string}|array{status: 'conflict'}|array{status: 'needs_start'}
+     */
+    public function openForSubmission(Evaluation $evaluation, User $user, bool $isPracticeMode): array
+    {
+        $klassciEtudiantId = $user->klassci_id;
+        if ($klassciEtudiantId === null) {
+            return ['status' => 'no_klassci_id'];
+        }
+
+        $active = $this->activeSubmission($evaluation, $klassciEtudiantId);
+        if ($active !== null) {
+            return ['status' => 'ok', 'submission' => $active, 'resumed' => true];
+        }
+
+        if ($this->submissionKeyspace($evaluation, $klassciEtudiantId)->exists()) {
+            return ['status' => 'needs_start'];
+        }
+
+        return $this->open($evaluation, $user, $isPracticeMode);
+    }
+
+    /**
+     * Ouverture depuis `POST /start` : reprise, quota, puis insertion.
+     *
      * Union de formes plutôt qu'un tableau à clés optionnelles : l'appelant qui
      * teste `status === 'ok'` obtient ainsi la garantie statique que
      * `submission` existe (level 9), sans `??` défensif ni assertion.

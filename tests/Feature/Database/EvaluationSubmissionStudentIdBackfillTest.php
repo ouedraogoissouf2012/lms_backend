@@ -132,6 +132,34 @@ final class EvaluationSubmissionStudentIdBackfillTest extends TestCase
         }
     }
 
+    /**
+     * Garde anti-régression sur la mauvaise attribution.
+     *
+     * Un compte plateforme (`institution_id = NULL`) partageant son `klassci_id`
+     * avec un étudiant d'une institution réelle ne doit PAS s'approprier les
+     * soumissions restées sans institution. `ambiguousKeys()` ne peut pas
+     * détecter ce conflit — il groupe par (klassci_id, institution_id), donc
+     * (5, NULL) et (5, 3) n'y sont jamais vus comme un doublon : seul le test
+     * d'unicité GLOBALE protège ces lignes.
+     */
+    public function test_un_klassci_id_partage_avec_un_compte_sans_institution_ne_reattribue_rien(): void
+    {
+        $institution = Institution::factory()->create();
+        $evaluation = Evaluation::factory()->planifiee()->create(['institution_id' => $institution->id]);
+
+        User::factory()->student()->create(['institution_id' => $institution->id, 'klassci_id' => 321]);
+        User::factory()->create(['institution_id' => null, 'klassci_id' => 321, 'role' => 'admin']);
+
+        $orphan = $this->insertOrphanSubmissionWithoutInstitution($evaluation->id, 321);
+
+        $this->runMigrationUp();
+
+        $this->assertNull(
+            DB::table('evaluation_submissions')->where('id', $orphan)->value('student_id'),
+            'Un klassci_id porté par deux comptes ne permet pas de trancher : la ligne doit rester intacte.',
+        );
+    }
+
     /** Une soumission déjà rattachée n'est pas ré-attribuée. */
     public function test_une_soumission_deja_rattachee_nest_pas_modifiee(): void
     {
@@ -161,6 +189,24 @@ final class EvaluationSubmissionStudentIdBackfillTest extends TestCase
     {
         $migration = require database_path('migrations/' . self::MIGRATION);
         $migration->up();
+    }
+
+    /** Soumission « d'avant février 2026 » : institution_id resté à NULL. */
+    private function insertOrphanSubmissionWithoutInstitution(int $evaluationId, int $klassciEtudiantId): int
+    {
+        return (int) DB::table('evaluation_submissions')->insertGetId([
+            'evaluation_id' => $evaluationId,
+            'student_id' => null,
+            'klassci_etudiant_id' => $klassciEtudiantId,
+            'institution_id' => null,
+            'attempt' => 1,
+            'status' => 'soumis',
+            'started_at' => now()->subHour(),
+            'submitted_at' => now(),
+            'synced_to_klassci' => false,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
     }
 
     private function insertOrphanSubmission(

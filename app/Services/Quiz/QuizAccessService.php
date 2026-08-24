@@ -57,8 +57,16 @@ final class QuizAccessService
      * `in_progress` ne consommait donc rien, et trois onglets ouverts donnaient
      * trois tentatives notables sur un quiz à `max_attempts = 1` — c'est la
      * meilleure des trois notes qui était retenue. Une tentative ouverte
-     * consomme un essai, comme dans un examen réel ; seul un abandon explicite
-     * (ou le janitor) la libère.
+     * consomme un essai, comme dans un examen réel.
+     *
+     * Le statut `abandoned` reste exclu du comptage, mais AUCUN chemin ne le
+     * pose aujourd'hui : {@see QuizAttemptTimerService::abandon()} n'a plus
+     * d'appelant depuis que le démarrage reprend au lieu d'abandonner, et
+     * `quiz:expire-attempts` ne traite que les quiz à `duration_minutes`. Une
+     * tentative ouverte sur un quiz SANS durée reste donc reprenable
+     * indéfiniment — jamais bloquante (l'étudiant la reprend), mais jamais
+     * libérée non plus. Dette tracée : il manque une expiration des tentatives
+     * sans durée, hors périmètre de #581.
      */
     public function attemptsCountForUser(Quiz $quiz, int $userId): int
     {
@@ -119,11 +127,20 @@ final class QuizAccessService
             return false;
         }
 
-        return $this->quotaAllows(
-            $quiz,
-            hasResumable: $this->activeAttemptForUser($quiz, $userId) !== null,
-            consumed: $this->attemptsCountForUser($quiz, $userId),
-        );
+        return $this->activeAttemptForUser($quiz, $userId) !== null
+            || $this->canOpenNewAttempt($quiz, $userId);
+    }
+
+    /**
+     * Le quota autorise-t-il l'ouverture d'une tentative SUPPLÉMENTAIRE ?
+     *
+     * Existe pour `startAttempt`, qui a déjà résolu l'absence de tentative
+     * reprenable : réutiliser `canUserAttempt()` y relirait la tentative active
+     * une seconde fois pour rien (§1.4).
+     */
+    public function canOpenNewAttempt(Quiz $quiz, int $userId): bool
+    {
+        return $this->quotaAllows($quiz, hasResumable: false, consumed: $this->attemptsCountForUser($quiz, $userId));
     }
 
     /**
@@ -181,8 +198,7 @@ final class QuizAccessService
      */
     public function bestAttemptForUser(Quiz $quiz, int $userId): ?QuizAttempt
     {
-        return $quiz->attempts()
-            ->where('user_id', $userId)
+        return $this->attemptKeyspace($quiz, $userId)
             ->whereIn('status', ['submitted', 'graded'])
             ->orderBy('score', 'desc')
             ->first();
@@ -193,8 +209,7 @@ final class QuizAccessService
      */
     public function latestAttemptForUser(Quiz $quiz, int $userId): ?QuizAttempt
     {
-        return $quiz->attempts()
-            ->where('user_id', $userId)
+        return $this->attemptKeyspace($quiz, $userId)
             ->orderBy('created_at', 'desc')
             ->first();
     }

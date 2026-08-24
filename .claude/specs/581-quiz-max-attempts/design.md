@@ -68,6 +68,48 @@ c'est tout l'intérêt de reprendre plutôt qu'abandonner.
   Il reste le geste explicite d'abandon (et le janitor reste le filet).
 - Aucun nouveau statut de tentative (R5.1).
 
+## 4bis. Correctifs issus de la revue de code
+
+- **Cohérence quota ↔ ce que l'étudiant lit.** Retirer le global scope sur les
+  seules requêtes de quota créait une incohérence pire que le défaut d'origine :
+  un étudiant bloqué par une tentative héritée (`institution_id = NULL`) voyait
+  « quota atteint » devant un historique **vide**. Toutes les lectures de
+  tentatives d'un couple (quiz, étudiant) passent donc désormais par le même
+  espace de clés — `bestAttemptForUser`, `latestAttemptForUser`,
+  `KnowledgeCheckAccessService::isPassedByUser` / `bestScore`, et
+  `KnowledgeCheckAttemptService::getMyAttempts`. Testé.
+- **Une lecture au lieu de deux.** `startAttempt` a déjà établi l'absence de
+  tentative reprenable ; appeler `canUserAttempt()` la relisait. D'où
+  `canOpenNewAttempt()`, la branche « pas de reprise » de la même règle.
+- **Une promesse de docstring corrigée.** Le commentaire annonçait qu'un abandon
+  explicite ou le janitor libérait une tentative consommée. Faux :
+  `QuizAttemptTimerService::abandon()` n'a plus d'appelant et
+  `quiz:expire-attempts` ne traite que les quiz à `duration_minutes`. Sans
+  conséquence pratique — l'étudiant reprend toujours sa tentative — mais la
+  dette est nommée plutôt qu'affirmée résolue.
+
+## 4ter. Mode entraînement — comportement épinglé, pas corrigé
+
+La revue a signalé qu'après la suppression du Check 5 de `SubmitEvaluationRequest`
+(#540), `POST /evaluations/{id}/submit` n'est plus borné sur une évaluation
+**terminée** : `isTerminee()` fait court-circuiter le quota et chaque appel crée
+puis note une nouvelle soumission.
+
+Vérifié dans le code plutôt que supposé :
+
+- le bypass du quota en mode entraînement est un **choix explicite** du domaine,
+  antérieur à ces PR (`quotaReached()` retourne `false`, comme le faisait déjà
+  `resolveOrCreateSubmission`) ;
+- ces soumissions portent le marqueur `[PRACTICE]`, que
+  `EvaluationGradingService::submit()` ne réécrit pas et que
+  `EvaluationKlassciSyncController:64` exclut explicitement de la synchronisation
+  → **aucune note d'entraînement ne remonte à KLASSCI**.
+
+Le comportement est donc épinglé par un test dédié pour qu'il soit intentionnel et
+visible. **Dette restante** : le nombre de lignes d'entraînement n'est borné par
+rien — inhérent au « tentatives illimitées » voulu, mais mériterait une purge.
+Hors périmètre de #540/#581.
+
 ## 5. Dette signalée
 
 - `QuizAccessService::bestAttemptForUser()` / `latestAttemptForUser()` /

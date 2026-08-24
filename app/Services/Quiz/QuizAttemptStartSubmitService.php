@@ -64,7 +64,9 @@ final class QuizAttemptStartSubmitService
             return $this->attemptStarted($quiz, $resumable, resumed: true);
         }
 
-        if (! $this->access->canUserAttempt($quiz, $user->id)) {
+        // `canOpenNewAttempt` et non `canUserAttempt` : l'absence de tentative
+        // reprenable vient d'être établie, la relire serait une requête pour rien.
+        if (! $this->access->canOpenNewAttempt($quiz, $user->id)) {
             return $this->failure(403, 'Vous avez atteint le nombre maximum de tentatives');
         }
 

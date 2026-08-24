@@ -53,6 +53,7 @@ final class PowerPointConverter
         private readonly ConvertApiService $convertApi,
         private readonly PdfToPngRendererInterface $pdfRenderer,
         private readonly FileValidator $validator,
+        private readonly ChapterArtifactStorage $artifacts,
     ) {
     }
 
@@ -72,11 +73,10 @@ final class PowerPointConverter
 
         $this->validator->validate($file, ['pptx', 'ppt']);
 
-        $originalPath = $file->store("chapters/{$chapterId}/original", 'public');
-        if ($originalPath === false) {
-            throw new RuntimeException('Échec sauvegarde du fichier original');
-        }
-        $fullOriginalPath = storage_path("app/public/{$originalPath}");
+        // #598 — disque PRIVÉ : ni le document source ni le PDF intermédiaire
+        // (conversion fidèle du source) ne doivent être servables via /storage.
+        $originalPath = $this->artifacts->storeOriginal($file, $chapterId);
+        $fullOriginalPath = $this->artifacts->absolutePath($originalPath);
 
         $this->logger->info('✓ Fichier original sauvegardé', ['path' => $originalPath]);
 
@@ -126,7 +126,7 @@ final class PowerPointConverter
             'slides_images'       => $pngImages,
             'slides_count'        => count($pngImages),
             'file_original_path'  => $originalPath,
-            'file_converted_path' => str_replace(storage_path('app/public/'), '', $pdfPath),
+            'file_converted_path' => $this->artifacts->relativePathOf($pdfPath),
             'conversion_method'   => 'LibreOffice (fallback)',
         ];
     }
@@ -145,10 +145,8 @@ final class PowerPointConverter
             throw new RuntimeException('LibreOffice non installé sur le serveur');
         }
 
-        $outputDir = storage_path("app/public/chapters/{$chapterId}/pdf");
-        if (! is_dir($outputDir)) {
-            mkdir($outputDir, 0755, true);
-        }
+        // #598 — le PDF intermédiaire est une conversion fidèle du source : privé.
+        $outputDir = $this->artifacts->workDirectory($chapterId, 'pdf');
 
         try {
             $this->shell->run([

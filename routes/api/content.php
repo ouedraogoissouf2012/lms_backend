@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\Route;
 // NOUVELLE STRUCTURE: Chapter belongsTo Lesson
 // ============================================
 use App\Http\Controllers\API\ChapterController;
+use App\Http\Controllers\API\ChapterOriginalController;
 
 // Routes accessibles à tous les utilisateurs authentifiés
 Route::middleware(['auth:sanctum', 'klassci.sync'])->group(function () {
@@ -14,6 +15,10 @@ Route::middleware(['auth:sanctum', 'klassci.sync'])->group(function () {
     Route::get('lessons/{lessonId}/chapters', [ChapterController::class, 'index']);
     // Détails d'un chapitre
     Route::get('chapters/{id}', [ChapterController::class, 'show']);
+    // #598 — document source : SEUL chemin d'accès depuis qu'il vit sur le
+    // disque privé (avant, une URL /storage/... le servait sans authentification).
+    Route::get('chapters/{chapter}/original', [ChapterOriginalController::class, 'show'])
+        ->middleware('throttle:30,1');
 
     // Progression des chapitres
     Route::get('lessons/{lessonId}/chapter-progress', [\App\Http\Controllers\API\ChapterProgressController::class, 'getLessonProgress']);

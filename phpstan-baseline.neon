@@ -480,11 +480,6 @@ parameters:
 			count: 1
 			path: app/Services/Chapter/ChapterCrudService.php
 
-		-
-			message: '#^Offset ''slides_images'' on array\{success\: bool, content\: string, content_type\: string, file_original_path\: string\} in isset\(\) does not exist\.$#'
-			identifier: isset.offset
-			count: 1
-			path: app/Services/Chapter/ChapterFileUploadService.php
 
 		-
 			message: '#^Cannot cast mixed to int\.$#'

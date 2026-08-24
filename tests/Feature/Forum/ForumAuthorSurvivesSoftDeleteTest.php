@@ -17,7 +17,7 @@ use Tests\TestCase;
  * Un topic/post de forum est un dossier PRÉSERVÉ. Après l'ajout de `SoftDeletes`
  * sur User, une relation `belongsTo(User)` nue renverrait `null` pour un auteur
  * soft-deleted → `$topic->user->name` (ex. `StudentDashboardService::recentForumActivity`,
- * `ForumNotificationDispatcher`) lèverait une 500. Le correctif (`user()->withTrashed()`)
+ * `ForumPostService`) lèverait une 500. Le correctif (`user()->withTrashed()`)
  * garde l'auteur affichable.
  *
  * @see app/Models/ForumTopic.php

@@ -25,18 +25,16 @@ use App\Models\User;
  *
  * ## Comportement
  *
- * Aucun changement runtime : le fan-out notifications est conservé
- * **verbatim** (création directe via `Notification::create`) plutôt
- * que délégué à `ForumNotificationDispatcher::notifyForumReply` —
- * volontaire, car le dispatcher implémente une sémantique différente
- * (notifie tous les participants du topic, pas seulement l'auteur du
- * topic et l'auteur du post parent direct comme le faisait le
- * controller historique). Préserver la sémantique = ne pas casser
- * les attentes des callers et des tests existants.
+ * Le fan-out notifications se fait ici, en direct
+ * (`Notification::create`), avec `institution_id` renseigné depuis
+ * l'auteur. Il a existé un `ForumNotificationDispatcher` à la sémantique
+ * différente (il notifiait tous les participants du topic, pas seulement
+ * l'auteur du topic et celui du post parent) : jamais câblé, il a été
+ * **supprimé par #500**. La sémantique qui fait foi est celle de ce
+ * service.
  *
  * @see app/Http/Controllers/API/ForumController.php
  * @see app/Services/Forum/ForumTopicService.php
- * @see app/Services/Notification/ForumNotificationDispatcher.php (sémantique distincte)
  */
 final class ForumPostService
 {

@@ -97,12 +97,21 @@ final class SubmitEvaluationRequest extends FormRequest
             return false;
         }
 
-        // Check 5: Student must not have already submitted
-        $previousSubmission = \App\Models\EvaluationSubmission::where('evaluation_id', $evaluation->id)
+        // Check 5: Student must not have already FINALIZED a submission.
+        //
+        // La tentative encore ouverte (`en_cours`) de l'étudiant ne doit PAS
+        // bloquer : c'est précisément celle qu'il vient soumettre. Avant #540,
+        // `POST /start` laissait `student_id` à NULL, ce test ne voyait donc
+        // jamais la tentative en cours et la soumission repartait sur une
+        // création en doublon (→ 500). Maintenant que le démarrage renseigne
+        // `student_id`, restreindre aux statuts finalisés est indispensable —
+        // sinon le parcours nominal basculerait du 500 au 403.
+        $alreadyFinalized = \App\Models\EvaluationSubmission::where('evaluation_id', $evaluation->id)
             ->where('student_id', $user->id)
+            ->whereIn('status', ['soumis', 'corrige'])
             ->exists();
 
-        if ($previousSubmission) {
+        if ($alreadyFinalized) {
             return false;
         }
 

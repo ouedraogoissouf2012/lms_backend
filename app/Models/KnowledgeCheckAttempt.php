@@ -19,6 +19,7 @@ class KnowledgeCheckAttempt extends Model
     protected $fillable = [
         'knowledge_check_id',
         'user_id',
+        'attempt_number',
         'score',
         'correct_answers',
         'total_questions',

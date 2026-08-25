@@ -1,0 +1,30 @@
+# Tasks — #541
+
+- [ ] 1. Socle de non-destruction
+  - [ ] 1.1 Migration `create_orphan_row_archive_table` _(Requirements: R4)_
+  - [ ] 1.2 `ForeignKeyCandidate` + `ArchivedRowWriterInterface` + `ArchivedRowWriter` _(R4)_
+  - [ ] 1.3 Tests unitaires de l'écrivain d'archive (idempotence, payload complet) _(R4)_
+- [ ] 2. Réparateurs d'intégrité
+  - [ ] 2.1 `OrphanRowPurger` (archive puis supprime) + tests unitaires _(R3, R4)_
+  - [ ] 2.2 `DuplicateRowRetirer` (soft delete OU archive+suppression) + tests unitaires _(R1, R2, R4)_
+- [ ] 3. `esbtp_attendance` — clés étrangères
+  - [ ] 3.1 Test de comportement : insertion orpheline rejetée, cascade _(R3)_
+  - [ ] 3.2 Migration `add_foreign_keys_to_esbtp_attendance` _(R3)_
+- [ ] 4. `evaluations` — unique partiel du lien KLASSCI
+  - [ ] 4.1 Tests : doublon vivant rejeté, recréation post-soft-delete OK, NULL multiples OK, 2 tenants OK _(R1)_
+  - [ ] 4.2 Migration `fix_evaluations_klassci_link_unique` _(R1)_
+- [ ] 5. `classe_etudiant` — unique effective + écriture idempotente
+  - [ ] 5.1 Tests : doublon rejeté ; synchroniseur idempotent ; `annee_universitaire_id` alimentée _(R2)_
+  - [ ] 5.2 Migration `fix_classe_etudiant_unique` _(R2)_
+  - [ ] 5.3 `ClasseStudentsSynchronizer::upsertEnrollment` → `updateOrInsert` aligné sur l'index _(R2)_
+- [ ] 6. Validation
+  - [ ] 6.1 Suite impactée verte sous SQLite _(R5)_
+  - [ ] 6.2 `migrate:fresh` + suite ciblée verte sous **MySQL 8.4** _(R5)_
+  - [ ] 6.3 PHPStan 0 erreur, revue qualité, garde taille fichiers
+- [ ] 7. Corrections de la revue pre-merge
+  - [ ] 7.1 Politiques de survie explicites (evaluations / pivot) + tests _(R1, R2)_
+  - [ ] 7.2 Archivage AUSSI en mode soft delete _(R4)_
+  - [ ] 7.3 Verification de l'archive avant tout retrait _(R4)_
+  - [ ] 7.4 Migrations rejouables (gardes d'etat de schema) _(R5)_
+  - [ ] 7.5 Course perdue -> 409 au lieu de 500 _(R1)_
+  - [ ] 7.6 Tests a DONNEES SALES sur les vraies tables _(R1, R2)_

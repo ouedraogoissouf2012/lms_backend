@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Services\KlassciProxyService;
 use App\Services\TenantManager;
 use Illuminate\Database\DatabaseManager;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -43,12 +44,24 @@ use Psr\Log\LoggerInterface;
  * ## SECURITY (PR #173) — fail-secure tenant
  *
  * La table pivot `classe_etudiant` n'a pas de modèle Eloquent, donc pas de
- * scope `BelongsToInstitution`. Le filtre `institution_id` est obligatoire
- * et fail-secure : si le tenant n'est pas résolu, on laisse remonter la
- * RuntimeException de `TenantManager::getResolved()` plutôt que de risquer
- * un cross-tenant via un `->when()` silencieux. Ce code n'est appelé que
- * depuis le sync KLASSCI dans un contexte authentifié — le tenant DOIT
- * être résolu.
+ * scope `BelongsToInstitution`. Le tenant reste fail-secure : s'il n'est pas
+ * résolu, on laisse remonter la RuntimeException de
+ * `TenantManager::getResolved()` plutôt que d'écrire une ligne non rattachée.
+ * Ce code n'est appelé que depuis le sync KLASSCI dans un contexte authentifié —
+ * le tenant DOIT être résolu.
+ *
+ * ## Intégrité de l'inscription (#541)
+ *
+ * `classe_etudiant` porte désormais un unique EFFECTIF `(classe_id, user_id)` —
+ * l'ancien `(classe_id, user_id, annee_universitaire_id)` ne contraignait rien,
+ * la colonne d'année n'étant jamais écrite. La recherche d'existence doit donc
+ * coller EXACTEMENT à cet index : y ajouter `institution_id` ferait manquer une
+ * ligne héritée à `institution_id` NULL, et l'insertion suivante serait rejetée
+ * par la contrainte. La garde tenant de PR #173 n'est pas perdue pour autant —
+ * elle est déplacée sur la ligne LUE ({@see belongsToTenant()}) : un
+ * rattachement absent est réparé, celui d'une autre institution n'est JAMAIS
+ * réécrit. Une course perdue se solde par un rejet de la BASE, non plus par un
+ * doublon. `annee_universitaire_id` est enfin alimentée, depuis la classe.
  *
  * @see ClasseSyncService::syncUserClasses() — orchestrateur appelant
  */
@@ -169,34 +182,84 @@ final class ClasseStudentsSynchronizer
      */
     private function upsertEnrollment(Classe $classe, User $student, int $institutionId, array &$stats): void
     {
-        $exists = $this->db->table('classe_etudiant')
-            ->where('classe_id', $classe->id)
-            ->where('user_id', $student->id)
-            ->where('institution_id', $institutionId)
-            ->exists();
+        // Les colonnes de correspondance sont EXACTEMENT celles de l'index unique
+        // `classe_etudiant_classe_user_unique` (#541). C'est la condition pour que
+        // l'écriture ne puisse pas violer la contrainte : filtrer en plus sur
+        // `institution_id` ferait manquer une ligne existante rattachée à un
+        // `institution_id` NULL (héritage pré-multi-tenant), et l'insertion qui
+        // suivrait serait alors rejetée par l'unique.
+        $match = [
+            'classe_id' => $classe->id,
+            'user_id' => $student->id,
+        ];
 
-        if (!$exists) {
-            $this->db->table('classe_etudiant')->insert([
-                'classe_id' => $classe->id,
-                'user_id' => $student->id,
-                'institution_id' => $institutionId,
-                'statut' => 'actif',
-                'date_inscription' => now(),
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
+        $existing = $this->db->table('classe_etudiant')->where($match)->first();
 
-            $stats['enrollments_created']++;
-        } else {
-            // Mettre à jour le statut si nécessaire
-            $this->db->table('classe_etudiant')
-                ->where('classe_id', $classe->id)
-                ->where('user_id', $student->id)
-                ->where('institution_id', $institutionId)
-                ->update([
+        if ($existing === null) {
+            try {
+                $this->db->table('classe_etudiant')->insert($match + [
+                    'institution_id' => $institutionId,
+                    'annee_universitaire_id' => $classe->annee_universitaire_id,
                     'statut' => 'actif',
+                    'date_inscription' => now(),
+                    'created_at' => now(),
                     'updated_at' => now(),
                 ]);
+
+                $stats['enrollments_created']++;
+
+                return;
+            } catch (UniqueConstraintViolationException) {
+                // Course perdue face à un sync concurrent : depuis #541 c'est la
+                // BASE qui tranche, la ligne existe désormais — on bascule sur la
+                // mise à jour. SEULE cette exception est interceptée ; toute autre
+                // erreur (clé étrangère, colonne) doit continuer à remonter.
+                $existing = $this->db->table('classe_etudiant')->where($match)->first();
+            }
         }
+
+        if ($existing === null || ! $this->belongsToTenant($existing, $institutionId, $classe, $student)) {
+            return;
+        }
+
+        $this->db->table('classe_etudiant')->where($match)->update([
+            // Répare le rattachement d'une ligne héritée à `institution_id` NULL.
+            // Jamais une ré-affectation : le cas « autre institution » est écarté
+            // au-dessus.
+            'institution_id' => $institutionId,
+            'annee_universitaire_id' => $classe->annee_universitaire_id,
+            'statut' => 'actif',
+            'updated_at' => now(),
+        ]);
+    }
+
+    /**
+     * La ligne existante appartient-elle bien au tenant courant ?
+     *
+     * FAIL-SECURE (garde de PR #173, conservée sous une autre forme) : la
+     * correspondance ne peut plus inclure `institution_id` — elle doit coller à
+     * l'index unique `(classe_id, user_id)` (#541), sans quoi une ligne héritée à
+     * `institution_id` NULL serait manquée et l'insertion suivante rejetée. La
+     * vérification tenant est donc faite ICI, sur la ligne lue : on répare un
+     * rattachement ABSENT, on ne réécrit JAMAIS celui d'une autre institution.
+     * Une telle ligne est une anomalie (une classe n'appartient qu'à un tenant) :
+     * on la signale et on n'y touche pas.
+     */
+    private function belongsToTenant(object $enrollment, int $institutionId, Classe $classe, User $student): bool
+    {
+        $owner = $enrollment->institution_id ?? null;
+
+        if ($owner === null || (int) $owner === $institutionId) {
+            return true;
+        }
+
+        $this->logger->error('Inscription rattachée à une autre institution — laissée intacte', [
+            'classe_id' => $classe->id,
+            'user_id' => $student->id,
+            'institution_attendue' => $institutionId,
+            'institution_trouvee' => (int) $owner,
+        ]);
+
+        return false;
     }
 }

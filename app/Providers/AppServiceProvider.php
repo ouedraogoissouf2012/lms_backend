@@ -14,6 +14,8 @@ use App\Services\Seances\Sync\Cursor\EloquentSeanceSyncCursorStore;
 use App\Services\Seances\Sync\Cursor\SeanceSyncCursorStore;
 use App\Services\Tenancy\InstitutionIntegrityInspector;
 use App\Services\Tenancy\InstitutionIntegrityInspectorInterface;
+use App\Services\Integrity\ArchivedRowWriter;
+use App\Services\Integrity\ArchivedRowWriterInterface;
 use App\Services\TenantManager;
 use App\Support\Shell\ShellExecutor;
 use App\Support\Shell\ShellExecutorInterface;
@@ -103,6 +105,16 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(
             InstitutionIntegrityInspectorInterface::class,
             InstitutionIntegrityInspector::class
+        );
+
+        // Quarantaine des lignes retirées par les migrations d'intégrité (#541).
+        // `RowQuarantine` dépend de l'abstraction pour que le test puisse lui
+        // substituer un écrivain défaillant et prouver le point non négociable :
+        // si l'archive n'a pas été écrite, AUCUNE ligne n'est supprimée
+        // (RowQuarantineTest::test_nothing_is_deleted_when_the_archive_is_incomplete).
+        $this->app->bind(
+            ArchivedRowWriterInterface::class,
+            ArchivedRowWriter::class
         );
     }
 

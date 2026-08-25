@@ -56,14 +56,6 @@ Schedule::command('evaluations:notify-upcoming --hours=24')
     ->name('notify-upcoming-evaluations')
     ->withoutOverlapping();
 
-// Rappel d'échéance des quiz (#500) — dernier appelant de la chaîne quiz.
-// Même créneau logique que le rappel d'évaluations, décalé pour ne pas
-// empiler deux fan-outs de notifications sur le même tick.
-Schedule::command('quiz:notify-deadlines --days=1')
-    ->dailyAt('08:15')
-    ->name('notify-quiz-deadlines')
-    ->withoutOverlapping();
-
 // Planifier le nettoyage des anciennes notifications lues
 // Supprime les notifications lues de plus de 30 jours pour alléger la base
 Schedule::call(function () {

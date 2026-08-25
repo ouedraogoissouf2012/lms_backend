@@ -9,6 +9,7 @@ use App\Models\EvaluationQuestion;
 use App\Models\User;
 use App\Services\KlassciProxyService;
 use Illuminate\Database\DatabaseManager;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Psr\Log\LoggerInterface;
 use Throwable;
 
@@ -83,14 +84,7 @@ final class EvaluationCreationService
         if ($klassciEvaluationId) {
             $existing = Evaluation::where('klassci_evaluation_id', $klassciEvaluationId)->first();
             if ($existing) {
-                return [
-                    'status'  => 409,
-                    'payload' => [
-                        'success' => false,
-                        'message' => 'Une version en ligne existe déjà pour cette évaluation KLASSCI.',
-                        'data'    => $existing,
-                    ],
-                ];
+                return $this->conflict($existing);
             }
         }
 
@@ -129,6 +123,17 @@ final class EvaluationCreationService
                     'data'    => $evaluation,
                 ],
             ];
+        } catch (UniqueConstraintViolationException) {
+            // Course perdue : le garde ci-dessus (SELECT hors transaction) a été
+            // franchi par deux requêtes simultanées, et c'est désormais l'index
+            // `evaluations_klassci_link_unique` (#541) qui tranche. Le résultat
+            // métier est le MÊME conflit — on renvoie donc le 409 déjà défini par
+            // cet endpoint, pas un 500 opaque.
+            $this->db->rollBack();
+
+            return $this->conflict(
+                Evaluation::where('klassci_evaluation_id', $klassciEvaluationId)->first(),
+            );
         } catch (Throwable $e) {
             $this->db->rollBack();
             $this->logger->error('Erreur création évaluation', ['error' => $e->getMessage()]);
@@ -142,6 +147,24 @@ final class EvaluationCreationService
                 ],
             ];
         }
+    }
+
+    /**
+     * Réponse 409 « une version en ligne existe déjà », qu'elle vienne du garde
+     * applicatif ou du rejet de l'index unique sur course perdue.
+     *
+     * @return array{status: int, payload: array<string, mixed>}
+     */
+    private function conflict(?Evaluation $existing): array
+    {
+        return [
+            'status'  => 409,
+            'payload' => [
+                'success' => false,
+                'message' => 'Une version en ligne existe déjà pour cette évaluation KLASSCI.',
+                'data'    => $existing,
+            ],
+        ];
     }
 
     /**

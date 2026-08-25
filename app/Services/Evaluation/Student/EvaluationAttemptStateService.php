@@ -26,7 +26,6 @@ final class EvaluationAttemptStateService
     public function __construct(
         private readonly LoggerInterface $logger,
         private readonly KlassciProxyService $klassciService,
-        private readonly EvaluationAttemptOpener $opener,
     ) {}
 
     /**
@@ -37,11 +36,9 @@ final class EvaluationAttemptStateService
      *   - not_found          → évaluation absente ou non publiée (404)
      *   - no_questions       → évaluation sans question (422)
      *   - no_token           → user sans klassci_token (401)
-     *   - no_klassci_id      → user non synchronisé KLASSCI (401, aucune insertion)
      *   - window_closed      → fenêtre temporelle fermée hors mode entraînement (403)
      *   - window_check_failed → fenêtre non vérifiable (KLASSCI indisponible) hors entraînement (503)
      *   - max_attempts       → quota de tentatives atteint hors entraînement (403)
-     *   - conflict           → course concurrente perdue sur l'unique (409, jamais 500)
      *
      * @return array{status: string, submission?: EvaluationSubmission, window?: ?array<string, mixed>, message?: string, is_practice?: bool, resumed?: bool}
      */
@@ -62,12 +59,6 @@ final class EvaluationAttemptStateService
         }
 
         $klassciEtudiantId = $user->klassci_id;
-        if ($klassciEtudiantId === null) {
-            // Refus AVANT l'appel KLASSCI et avant toute insertion : la colonne
-            // `klassci_etudiant_id` est NOT NULL, l'insertion partait en 500 (#540).
-            return ['status' => 'no_klassci_id'];
-        }
-
         $isPracticeMode = $evaluation->isTerminee();
 
         [$windowError, $window] = $this->resolveWindowGate(
@@ -81,31 +72,52 @@ final class EvaluationAttemptStateService
             return $windowError;
         }
 
-        return $this->openSubmission($evaluation, $user, $isPracticeMode, $window);
+        return $this->resolveOrCreateSubmission($evaluation, $klassciEtudiantId, $isPracticeMode, $window);
     }
 
     /**
-     * Délègue l'ouverture de la soumission à {@see EvaluationAttemptOpener}
-     * (point d'entrée unique partagé avec `POST /submit`) et rhabille le
-     * résultat avec la fenêtre temporelle propre au démarrage.
+     * Reprend la tentative `en_cours` de l'étudiant si elle existe, sinon
+     * applique le quota `max_attempts` (hors entraînement) puis crée une nouvelle
+     * soumission. Extrait de `startAttempt` pour respecter §1.1 (≤40 lignes).
      *
      * @param  ?array<string, mixed>  $window
      * @return array{status: string, submission?: EvaluationSubmission, window?: ?array<string, mixed>, message?: string, is_practice?: bool, resumed?: bool}
      */
-    private function openSubmission(Evaluation $evaluation, User $user, bool $isPracticeMode, ?array $window): array
+    private function resolveOrCreateSubmission(Evaluation $evaluation, ?int $klassciEtudiantId, bool $isPracticeMode, ?array $window): array
     {
-        $opened = $this->opener->open($evaluation, $user, $isPracticeMode);
+        $activeSubmission = EvaluationSubmission::where('evaluation_id', $evaluation->id)
+            ->where('klassci_etudiant_id', $klassciEtudiantId)
+            ->where('status', 'en_cours')
+            ->first();
 
-        if ($opened['status'] !== 'ok') {
-            return $opened;
+        if ($activeSubmission) {
+            return $this->okResponse($activeSubmission, $window, true, $isPracticeMode);
         }
 
-        return $this->okResponse(
-            $opened['submission'],
-            $window,
-            $opened['resumed'],
-            $isPracticeMode,
-        );
+        $attemptsCount = EvaluationSubmission::where('evaluation_id', $evaluation->id)
+            ->where('klassci_etudiant_id', $klassciEtudiantId)
+            ->whereIn('status', ['soumis', 'corrige'])
+            ->count();
+
+        if (!$isPracticeMode && $evaluation->max_attempts && $attemptsCount >= $evaluation->max_attempts) {
+            return [
+                'status' => 'max_attempts',
+                'message' => 'Nombre maximum de tentatives atteint (' . $evaluation->max_attempts . ')',
+            ];
+        }
+
+        $submission = EvaluationSubmission::create([
+            'evaluation_id' => $evaluation->id,
+            'klassci_etudiant_id' => $klassciEtudiantId,
+            'attempt' => $attemptsCount + 1,
+            'status' => 'en_cours',
+            'started_at' => now(),
+            // Scope tenant explicite herite de l'evaluation (fix E2E #211).
+            'institution_id' => $evaluation->institution_id,
+            'feedback' => $isPracticeMode ? '[PRACTICE] Entraînement - note non officielle' : null,
+        ]);
+
+        return $this->okResponse($submission, $window, false, $isPracticeMode);
     }
 
     /**

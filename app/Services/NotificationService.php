@@ -4,10 +4,14 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Models\ForumPost;
+use App\Models\Lesson;
 use App\Models\Notification;
 use App\Models\Quiz;
 use App\Models\QuizAttempt;
 use App\Models\User;
+use App\Services\Notification\ForumNotificationDispatcher;
+use App\Services\Notification\LessonNotificationDispatcher;
 use App\Services\Notification\NotificationDispatcher;
 use App\Services\Notification\QuizNotificationDispatcher;
 use App\Services\Notification\VisioNotificationDispatcher;
@@ -18,22 +22,10 @@ use Illuminate\Support\Collection;
  *
  * ## Pourquoi cette facade
  *
- * Le code métier est éclaté en dispatchers SRP dans `App\Services\Notification\`
- * pour respecter §1.1 (≤300 lignes / service) ; cette classe en est le point
- * d'entrée unique pour les callers applicatifs (`SyncKlassciSeances`,
- * `LMSVisioLifecycleController`, `routes/console.php`).
- *
- * ## Périmètre réduit par #500
- *
- * Les 4 méthodes leçon/forum et leurs deux dispatchers ont été retirés : ils
- * n'avaient AUCUN appelant, et le travail est déjà fait ailleurs, mieux —
- * `DispatchLessonPublishedNotifications` (qui restaure le tenant) pour les
- * leçons, `ForumPostService` en inline (avec `institution_id`, sémantique
- * volontairement distincte, cf. son docblock) pour le forum. Les rebrancher
- * aurait produit des notifications en double.
- *
- * **Invariant à tenir** : chaque méthode restante a au moins un appelant.
- * Toute méthode ajoutée ici sans appelant est du code mort (§1.1 / YAGNI).
+ * L'API publique d'origine (12 méthodes) est préservée à 100 % pour ne pas
+ * casser les callers existants (`SyncKlassciSeances`, `LMSVisioLifecycleController`,
+ * `routes/console.php`, etc.). Le code métier a été éclaté en 5 dispatchers SRP
+ * dans `App\Services\Notification\` pour respecter §1.1 (≤300 lignes / service).
  *
  * ## DI strict (§1.6 D)
  *
@@ -41,14 +33,18 @@ use Illuminate\Support\Collection;
  * Aucun appel à `app()` ou Facades. Les méthodes sont des thin wrappers qui
  * délèguent au bon dispatcher selon le domaine métier.
  *
- * @see app/Services/Notification/NotificationDispatcher.php      Primitive bas niveau
- * @see app/Services/Notification/QuizNotificationDispatcher.php  Concerns quiz
- * @see app/Services/Notification/VisioNotificationDispatcher.php Concerns visio
+ * @see app/Services/Notification/NotificationDispatcher.php       Primitive bas niveau
+ * @see app/Services/Notification/LessonNotificationDispatcher.php Concerns leçons
+ * @see app/Services/Notification/ForumNotificationDispatcher.php  Concerns forum
+ * @see app/Services/Notification/QuizNotificationDispatcher.php   Concerns quiz
+ * @see app/Services/Notification/VisioNotificationDispatcher.php  Concerns visio
  */
 final class NotificationService
 {
     public function __construct(
         private readonly NotificationDispatcher $dispatcher,
+        private readonly LessonNotificationDispatcher $lessonDispatcher,
+        private readonly ForumNotificationDispatcher $forumDispatcher,
         private readonly QuizNotificationDispatcher $quizDispatcher,
         private readonly VisioNotificationDispatcher $visioDispatcher,
     ) {
@@ -73,6 +69,38 @@ final class NotificationService
     public function sendToMany(Collection $users, string $type, string $title, string $message, array $data = []): int
     {
         return $this->dispatcher->sendToMany($users, $type, $title, $message, $data);
+    }
+
+    /**
+     * Notifier la publication d'un nouveau cours.
+     */
+    public function notifyLessonPublished(Lesson $lesson): int
+    {
+        return $this->lessonDispatcher->notifyLessonPublished($lesson);
+    }
+
+    /**
+     * Notifier la mise à jour d'un cours.
+     */
+    public function notifyLessonUpdated(Lesson $lesson): int
+    {
+        return $this->lessonDispatcher->notifyLessonUpdated($lesson);
+    }
+
+    /**
+     * Notifier une réponse dans le forum.
+     */
+    public function notifyForumReply(ForumPost $post): int
+    {
+        return $this->forumDispatcher->notifyForumReply($post);
+    }
+
+    /**
+     * Notifier qu'un post a été marqué comme solution.
+     */
+    public function notifyForumSolution(ForumPost $post): int
+    {
+        return $this->forumDispatcher->notifyForumSolution($post);
     }
 
     /**

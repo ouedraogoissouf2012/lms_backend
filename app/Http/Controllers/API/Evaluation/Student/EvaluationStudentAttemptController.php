@@ -7,8 +7,9 @@ namespace App\Http\Controllers\API\Evaluation\Student;
 use App\Http\Controllers\AuthenticatedController;
 use App\Http\Requests\StartEvaluationRequest;
 use App\Http\Requests\SubmitEvaluationRequest;
-use App\Models\EvaluationSubmission;
+use App\Models\Evaluation;
 use App\Services\Evaluation\EvaluationGradingService;
+use App\Services\Evaluation\Student\EvaluationAttemptOpener;
 use App\Services\Evaluation\Student\EvaluationAttemptStateService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -29,6 +30,7 @@ final class EvaluationStudentAttemptController extends AuthenticatedController
     public function __construct(
         private readonly EvaluationAttemptStateService $attemptState,
         private readonly EvaluationGradingService $gradingService,
+        private readonly EvaluationAttemptOpener $attemptOpener,
     ) {}
 
     public function startEvaluation(int $id, StartEvaluationRequest $request): JsonResponse
@@ -40,6 +42,16 @@ final class EvaluationStudentAttemptController extends AuthenticatedController
             'not_found' => $this->errorResponse('Évaluation non disponible', 404),
             'no_questions' => $this->errorResponse('Cette évaluation n\'a pas encore de questions.', 422),
             'no_token' => $this->errorResponse('Token KLASSCI non trouvé. Veuillez vous reconnecter.', 401),
+            // Même message que `GET /my-submission` : un étudiant non synchronisé
+            // KLASSCI ne peut pas ouvrir de tentative (colonne NOT NULL) — refus
+            // explicite plutôt que violation de contrainte en 500 (#540).
+            'no_klassci_id' => $this->errorResponse('Utilisateur sans ID KLASSCI synchronisé', 401),
+            // Course concurrente perdue sur `eval_sub_unique` sans tentative
+            // reprenable : conflit métier, jamais 500 (#540).
+            'conflict' => $this->errorResponse(
+                'Une autre tentative vient d\'être enregistrée pour cette évaluation. Rechargez la page.',
+                409,
+            ),
             // Non migré vers errorResponse() : cette réponse expose une clé racine
             // `window` hors enveloppe que le trait ne reproduit pas. La déplacer
             // (sous `errors`) changerait le contrat client → conservé tel quel
@@ -73,27 +85,31 @@ final class EvaluationStudentAttemptController extends AuthenticatedController
         };
     }
 
+    /**
+     * Soumet les réponses de l'étudiant.
+     *
+     * La soumission est ouverte via {@see EvaluationAttemptOpener}, le MÊME
+     * point d'entrée que `POST /start`. Avant #540, ce controller cherchait la
+     * tentative par `student_id` — que le démarrage ne renseignait jamais — puis
+     * en recréait une avec `attempt = 1` : violation de `eval_sub_unique` et
+     * **500 systématique** dès que l'étudiant avait démarré son évaluation.
+     */
     public function submitEvaluation(int $id, SubmitEvaluationRequest $request): JsonResponse
     {
         try {
             $user = $this->authenticatedUser($request);
 
-            $submission = EvaluationSubmission::where('evaluation_id', $id)
-                ->where('student_id', $user->id)
-                ->where('status', 'en_cours')
-                ->first();
-
-            if (!$submission) {
-                $submission = EvaluationSubmission::create([
-                    'evaluation_id' => $id,
-                    'student_id' => $user->id,
-                    'klassci_etudiant_id' => $user->klassci_id,
-                    'attempt' => 1,
-                    'status' => 'en_cours',
-                    'started_at' => now(),
-                ]);
+            $evaluation = Evaluation::find($id);
+            if (!$evaluation) {
+                return $this->errorResponse('Évaluation non disponible', 404);
             }
 
+            $opened = $this->attemptOpener->openForSubmission($evaluation, $user, $evaluation->isTerminee());
+            if ($opened['status'] !== 'ok') {
+                return $this->mapOpeningFailure($opened);
+            }
+
+            $submission = $opened['submission'];
             $submission->answers = $request->validated('answers');
             $this->gradingService->submit($submission);
 
@@ -106,6 +122,46 @@ final class EvaluationStudentAttemptController extends AuthenticatedController
             Log::error('Erreur soumission évaluation', ['error' => $e->getMessage()]);
             return $this->errorResponse('Erreur lors de la soumission', 500);
         }
+    }
+
+    /**
+     * Traduit un échec d'ouverture de soumission en réponse HTTP, avec les
+     * mêmes codes et messages que `POST /start` pour les trois refus que
+     * l'opener sait produire : `no_klassci_id`, `max_attempts`, `conflict`.
+     *
+     * ⚠️ DETTE TRACÉE (#540, non corrigée ici) : la parité s'arrête là.
+     * `POST /submit` ne passe PAS par la porte temporelle KLASSCI, qui vit dans
+     * `EvaluationAttemptStateService::startAttempt()`. Avec `deadline_at` à NULL
+     * et une fenêtre KLASSCI fermée, `/start` refuse en 403 mais un `/submit`
+     * direct enregistre une note corrigée et synchronisable. Le défaut est
+     * ANTÉRIEUR à #540 (l'ancien `/submit` créait déjà la soumission sans aucun
+     * contrôle de fenêtre) et le corriger ajouterait un appel HTTP KLASSCI sur
+     * le chemin de soumission — un changement de comportement et de coût qui
+     * relève du périmètre « fenêtre temporelle » (#499), pas du quota.
+     *
+     * @param  array{status: string, message?: string}  $opened
+     */
+    private function mapOpeningFailure(array $opened): JsonResponse
+    {
+        return match ($opened['status']) {
+            'no_klassci_id' => $this->errorResponse('Utilisateur sans ID KLASSCI synchronisé', 401),
+            'max_attempts' => $this->errorResponse(
+                $opened['message'] ?? 'Nombre maximum de tentatives atteint',
+                403,
+            ),
+            'conflict' => $this->errorResponse(
+                'Une autre tentative vient d\'être enregistrée pour cette évaluation. Rechargez la page.',
+                409,
+            ),
+            // L'étudiant a déjà soumis et n'a aucune tentative ouverte. Rouvrir
+            // ici consommerait un essai sur un simple double-clic ou un ré-essai
+            // client : ouvrir la suivante exige un `/start` explicite (#540).
+            'needs_start' => $this->errorResponse(
+                'Vous avez déjà soumis cette évaluation. Démarrez une nouvelle tentative avant de soumettre.',
+                422,
+            ),
+            default => $this->errorResponse('Erreur lors de la soumission', 500),
+        };
     }
 
     public function getTimeStatus(int $id, Request $request): JsonResponse

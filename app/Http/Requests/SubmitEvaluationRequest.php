@@ -97,15 +97,24 @@ final class SubmitEvaluationRequest extends FormRequest
             return false;
         }
 
-        // Check 5: Student must not have already submitted
-        $previousSubmission = \App\Models\EvaluationSubmission::where('evaluation_id', $evaluation->id)
-            ->where('student_id', $user->id)
-            ->exists();
-
-        if ($previousSubmission) {
-            return false;
-        }
-
+        // Le quota de tentatives N'EST PLUS vérifié ici (#540).
+        //
+        // L'ancien Check 5 refusait dès qu'UNE soumission existait pour cet
+        // étudiant, en ignorant `max_attempts`. Deux conséquences :
+        //
+        //   1. `POST /start` ouvrait volontiers la tentative 2 (200) et
+        //      `POST /submit` la refusait ensuite en 403 « This action is
+        //      unauthorized » — toute évaluation à `max_attempts > 1` était
+        //      inutilisable de bout en bout ;
+        //   2. le quota était exprimé à DEUX endroits avec deux règles
+        //      différentes (ici « une seule soumission », dans le service
+        //      « max_attempts »), ce qui est exactement la duplication qui
+        //      avait déjà produit le 500 du parcours nominal.
+        //
+        // La règle vit désormais dans `EvaluationAttemptOpener`, source unique,
+        // qui refuse en 403 avec le message métier « Nombre maximum de
+        // tentatives atteint (N) ». Une FormRequest valide et autorise ; elle
+        // ne porte pas de règle de gestion (§5).
         return true;
     }
 

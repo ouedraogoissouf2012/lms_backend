@@ -47,21 +47,44 @@ final class KnowledgeCheckAttemptController extends AuthenticatedController
     /**
      * POST /api/knowledge-checks/{id}/submit
      * Soumettre une tentative + auto-grade.
+     *
+     * Le quota est appliqué au moment de la soumission (le démarrage ne
+     * persiste rien) : `max_attempts` → 400, course concurrente perdue sur
+     * l'unique de la table → 409, jamais 500 (#540).
      */
     public function submitAttempt(SubmitKnowledgeCheckAttemptRequest $request, string $id): JsonResponse
     {
         $user = $this->authenticatedUser($request);
-        $result = $this->service->submitAttempt(
+        $outcome = $this->service->submitAttempt(
             $id,
             $user,
             $request->input('answers', []),
             (int) $request->input('time_spent_seconds', 0),
         );
 
-        $message = $result['message'];
-        unset($result['message']);
+        return match ($outcome['status']) {
+            'max_attempts' => $this->errorResponse('Nombre maximum de tentatives atteint', 400),
+            'conflict' => $this->errorResponse(
+                'Une autre soumission de cette tentative vient d\'être enregistrée. Rechargez la page.',
+                409,
+            ),
+            default => $this->respondWithSubmission($outcome['data'] ?? []),
+        };
+    }
 
-        return $this->successResponse($result, $message);
+    /**
+     * Enveloppe le payload d'une soumission acceptée : le `message` métier est
+     * remonté hors des données, comme avant le passage aux statuts (#540) — le
+     * contrat JSON du succès reste identique.
+     *
+     * @param  array<string, mixed>  $data
+     */
+    private function respondWithSubmission(array $data): JsonResponse
+    {
+        $message = is_string($data['message'] ?? null) ? $data['message'] : '';
+        unset($data['message']);
+
+        return $this->successResponse($data, $message);
     }
 
     /**

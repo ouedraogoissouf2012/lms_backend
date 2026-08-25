@@ -76,7 +76,25 @@ class NotifyUpcomingEvaluations extends Command
                             'evaluation_titre' => $evaluation->titre,
                             'date_evaluation' => $evaluation->date_evaluation,
                         ],
-
+                        // #579 — `institution_id` VOLONTAIREMENT non renseigné ici,
+                        // contrairement à NotificationDispatcher::send().
+                        //
+                        // `$studentId` vient de `extractStudents()`, qui lit
+                        // `data[].id` du payload KLASSCI : c'est un id KLASSCI,
+                        // PAS un `users.id` local. La traduction que fait
+                        // `DispatchLessonPublishedNotifications:102`
+                        // (`User::whereIn('klassci_id', …)->pluck('id')`) manque
+                        // ici, et `TeacherEvaluationResultsService:161` confirme
+                        // la sémantique KLASSCI de ce champ.
+                        //
+                        // Ces notifications sont donc déjà mal adressées. Tant
+                        // que `institution_id` reste NULL, le scope global les
+                        // rend inertes. Y poser une institution les rendrait
+                        // VISIBLES à l'utilisateur local qui porte par hasard
+                        // cet identifiant — éventuellement d'une autre
+                        // institution. On ne répare pas la visibilité d'une
+                        // ligne mal adressée : il faut d'abord corriger
+                        // l'adressage (issue de suivi).
                     ]);
 
                     $notificationsCreated++;

@@ -8,7 +8,6 @@ use App\Enums\LessonStatus;
 use App\Models\Evaluation;
 use App\Models\Lesson;
 use App\Models\User;
-use App\Services\KlassciProxyService;
 use Illuminate\Contracts\Cache\Repository as CacheRepository;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Str;
@@ -25,7 +24,7 @@ use Throwable;
  * ## DI strict (§1.6 D)
  *
  * Aucune Facade (`Cache`, `Log`) ni `app()` : `CacheRepository`, PSR-3
- * `LoggerInterface` et `KlassciProxyService` sont injectés.
+ * `LoggerInterface` et {@see KlassciSearchSources} sont injectés.
  *
  * ## Comportement
  *
@@ -39,21 +38,36 @@ use Throwable;
  *     migrée s'appelle `titre` (la clé `title` de la réponse, elle, ne change
  *     pas : c'est le contrat client).
  *
+ * ## Dégradation par source (#505)
+ *
+ * Les 3 sources locales ne peuvent pas « tomber » indépendamment : si la base est
+ * indisponible, il n'y a plus de requête du tout. Les 2 sources KLASSCI, elles,
+ * dépendent d'un service tiers — et leur panne était jusqu'ici indiscernable d'un
+ * « aucun résultat », puis figée 5 minutes dans le cache. Désormais :
+ *
+ *   - la source en panne est NOMMÉE dans `sources_failed` ;
+ *   - un agrégat incomplet est mémorisé AVEC son drapeau et pour 30 s seulement,
+ *     jamais 5 minutes : il n'est donc jamais servi comme s'il était complet, et
+ *     la recherche redevient entière peu après le rétablissement de KLASSCI.
+ *
+ * Le TTL court plutôt qu'aucun cache : `TenantScopedCache::remember()` ne mémorise
+ * PAS une exception, donc le cache KLASSCI de 600 s ne protège rien tant que le
+ * service est en panne — seul `KlassciCircuitBreaker` borne le trafic sortant, et
+ * rien ne bornerait les trois `LIKE '%…%'` locaux rejoués à chaque frappe.
+ *
  * @see app/Http/Controllers/API/SearchController.php
  * @see .claude/specs/575-search-teacher-id/design.md
+ * @see .claude/specs/505-search-degradation/design.md
+ *
+ * @phpstan-import-type SearchResults from SearchAggregate
  */
 final class GlobalSearchService
 {
-    /**
-     * TTL du cache des résultats agrégés (5 minutes).
-     */
-    private const CACHE_TTL_SECONDS = 300;
-
     public function __construct(
-        private readonly CacheRepository $cache,
-        private readonly KlassciProxyService $klassci,
+        private readonly SearchResultCache $cache,
         private readonly LoggerInterface $logger,
         private readonly TeacherOwnershipScope $ownership,
+        private readonly KlassciSearchSources $klassciSources,
     ) {
     }
 
@@ -61,26 +75,16 @@ final class GlobalSearchService
      * Lancer une recherche globale agrégée.
      *
      * @return array{
-     *     results: array{
-     *         users: array<int, array<string, mixed>>,
-     *         lessons: array<int, array<string, mixed>>,
-     *         evaluations: array<int, array<string, mixed>>,
-     *         classes: array<int, array<string, mixed>>,
-     *         matieres: array<int, array<string, mixed>>
-     *     },
+     *     results: SearchResults,
      *     total: int,
-     *     categories: array<string, int>
+     *     categories: array<string, int>,
+     *     sources_failed: list<string>
      * }
      */
     public function search(string $query, User $user, int $limit = 5): array
     {
-        $cacheKey = 'global_search_' . md5($query . $user->id . $limit);
-
-        $results = $this->cache->remember(
-            $cacheKey,
-            self::CACHE_TTL_SECONDS,
-            fn (): array => $this->aggregate($query, $user, $limit),
-        );
+        $aggregate = $this->cachedOrFresh($query, $user, $limit);
+        $results = $aggregate->results;
 
         $total = 0;
         foreach ($results as $bucket) {
@@ -97,29 +101,96 @@ final class GlobalSearchService
                 'classes' => count($results['classes']),
                 'matieres' => count($results['matieres']),
             ],
+            'sources_failed' => $aggregate->failedSources,
         ];
     }
 
     /**
-     * Agréger les 5 sources sans cache.
+     * Sert l'agrégat depuis le cache, sinon recalcule et mémorise.
      *
-     * @return array{
-     *     users: array<int, array<string, mixed>>,
-     *     lessons: array<int, array<string, mixed>>,
-     *     evaluations: array<int, array<string, mixed>>,
-     *     classes: array<int, array<string, mixed>>,
-     *     matieres: array<int, array<string, mixed>>
-     * }
+     * `remember()` ne conviendrait pas : la DURÉE de mémorisation dépend de l'état
+     * de santé des sources, qu'on ne connaît qu'après le calcul.
      */
-    private function aggregate(string $query, User $user, int $limit): array
+    private function cachedOrFresh(string $query, User $user, int $limit): SearchAggregate
     {
-        return [
+        $cached = $this->cache->get($query, $user->id, $limit);
+
+        if ($cached !== null) {
+            return $cached;
+        }
+
+        $aggregate = $this->aggregate($query, $user, $limit);
+
+        $this->cache->put($query, $user->id, $limit, $aggregate);
+
+        return $aggregate;
+    }
+
+    /**
+     * Agréger les 5 sources sans cache.
+     */
+    private function aggregate(string $query, User $user, int $limit): SearchAggregate
+    {
+        /** @var list<string> $failedSources */
+        $failedSources = [];
+
+        // Le tableau est construit AVANT d'instancier l'agrégat : `$failedSources`
+        // est alimenté par référence pendant l'évaluation des sources, et le lire
+        // au même endroit ferait dépendre la justesse du drapeau de l'ordre
+        // d'évaluation des arguments — invisible et cassable au moindre refactor.
+        $results = [
             'users' => $this->searchUsers($query, $user, $limit),
             'lessons' => $this->searchLessons($query, $user, $limit),
             'evaluations' => $this->searchEvaluations($query, $user, $limit),
-            'classes' => $this->searchClasses($query, $user, $limit),
-            'matieres' => $this->searchMatieres($query, $user, $limit),
+            'classes' => $this->runDegradableSource(
+                'classes',
+                fn (): array => $this->klassciSources->searchClasses($query, $user, $limit),
+                $failedSources,
+            ),
+            'matieres' => $this->runDegradableSource(
+                'matieres',
+                fn (): array => $this->klassciSources->searchMatieres($query, $user, $limit),
+                $failedSources,
+            ),
         ];
+
+        return new SearchAggregate($results, $failedSources);
+    }
+
+    /**
+     * Exécute une source susceptible d'être indisponible.
+     *
+     * Le `catch` couvre la PRODUCTION ENTIÈRE de la source, pas seulement l'appel
+     * réseau : un payload KLASSCI mal formé dégrade donc cette seule source au
+     * lieu de faire échouer toute la recherche. Le détail technique reste
+     * journalisé côté serveur — le client ne reçoit que le nom de la source (§1.2).
+     *
+     * @param  callable(): array<int, array<string, mixed>>  $source
+     * @param  list<string>  $failedSources  Accumulateur des sources en échec.
+     * @return array<int, array<string, mixed>>
+     */
+    private function runDegradableSource(string $name, callable $source, array &$failedSources): array
+    {
+        try {
+            return $source();
+        } catch (Throwable $e) {
+            $failedSources[] = $name;
+
+            // La classe ET l'exception sont journalisées : le `catch` est large
+            // par nécessité (il couvre toute la production de la source), donc il
+            // attrape aussi bien une panne KLASSCI qu'un défaut de code ou une
+            // institution mal configurée. Sans le type ni la trace, ces cas
+            // seraient indiscernables dans les logs — le client, lui, ne reçoit
+            // toujours que le nom de la source (§1.2).
+            $this->logger->error('Source de recherche indisponible', [
+                'source' => $name,
+                'exception_class' => $e::class,
+                'error' => $e->getMessage(),
+                'exception' => $e,
+            ]);
+
+            return [];
+        }
     }
 
     /**
@@ -211,75 +282,6 @@ final class GlobalSearchService
                 'icon' => 'DocumentTextIcon',
                 'url' => '/teacher/evaluations/' . $evaluation->id,
             ])
-            ->all();
-    }
-
-    /**
-     * @return array<int, array<string, mixed>>
-     */
-    private function searchClasses(string $query, User $user, int $limit): array
-    {
-        if (! $user->isStaff()) {
-            return [];
-        }
-
-        try {
-            $allClasses = $this->klassci->getClasses();
-        } catch (Throwable $e) {
-            $this->logger->error('Erreur recherche classes KLASSCI:', ['error' => $e->getMessage()]);
-
-            return [];
-        }
-
-        return collect($allClasses)
-            ->filter(fn (array $classe): bool => stripos((string) ($classe['name'] ?? ''), $query) !== false
-                || stripos((string) ($classe['filiere']['name'] ?? ''), $query) !== false
-                || stripos((string) ($classe['niveau']['name'] ?? ''), $query) !== false)
-            ->take($limit)
-            ->map(fn (array $classe): array => [
-                'id' => $classe['id'],
-                'title' => $classe['name'],
-                'subtitle' => 'Classe',
-                'description' => ($classe['filiere']['name'] ?? '') . ' - ' . ($classe['niveau']['name'] ?? ''),
-                'type' => 'classe',
-                'icon' => 'BuildingLibraryIcon',
-                'url' => '/admin/classes/' . $classe['id'],
-            ])
-            ->values()
-            ->all();
-    }
-
-    /**
-     * @return array<int, array<string, mixed>>
-     */
-    private function searchMatieres(string $query, User $user, int $limit): array
-    {
-        if (! $user->isStaff()) {
-            return [];
-        }
-
-        try {
-            $allMatieres = $this->klassci->getMatieres();
-        } catch (Throwable $e) {
-            $this->logger->error('Erreur recherche matières KLASSCI:', ['error' => $e->getMessage()]);
-
-            return [];
-        }
-
-        return collect($allMatieres)
-            ->filter(fn (array $matiere): bool => stripos((string) ($matiere['nom'] ?? ''), $query) !== false
-                || stripos((string) ($matiere['code'] ?? ''), $query) !== false)
-            ->take($limit)
-            ->map(fn (array $matiere): array => [
-                'id' => $matiere['id'],
-                'title' => $matiere['nom'],
-                'subtitle' => 'Matière',
-                'description' => 'Code: ' . ($matiere['code'] ?? 'N/A'),
-                'type' => 'matiere',
-                'icon' => 'AcademicCapIcon',
-                'url' => '/admin/matieres/' . $matiere['id'],
-            ])
-            ->values()
             ->all();
     }
 }

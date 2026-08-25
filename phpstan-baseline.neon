@@ -480,7 +480,6 @@ parameters:
 			count: 1
 			path: app/Services/Chapter/ChapterCrudService.php
 
-
 		-
 			message: '#^Cannot cast mixed to int\.$#'
 			identifier: cast.int
@@ -1762,24 +1761,6 @@ parameters:
 		-
 			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\User\>\:\:map\(\) contains unresolvable type\.$#'
 			identifier: argument.unresolvableType
-			count: 1
-			path: app/Services/Search/GlobalSearchService.php
-
-		-
-			message: '#^Parameter \#1 \$callback of method Illuminate\\Support\\Collection\<string,mixed\>\:\:filter\(\) expects \(callable\(mixed, string\)\: bool\)\|null, Closure\(array\)\: bool given\.$#'
-			identifier: argument.type
-			count: 2
-			path: app/Services/Search/GlobalSearchService.php
-
-		-
-			message: '#^Parameter \#1 \$callback of method Illuminate\\Support\\Collection\<string,mixed\>\:\:map\(\) expects callable\(mixed, string\)\: array\{id\: mixed, title\: mixed, subtitle\: ''Classe'', description\: non\-falsy\-string, type\: ''classe'', icon\: ''BuildingLibraryIcon'', url\: non\-falsy\-string\}, Closure\(array\)\: array\{id\: mixed, title\: mixed, subtitle\: ''Classe'', description\: non\-falsy\-string, type\: ''classe'', icon\: ''BuildingLibraryIcon'', url\: non\-falsy\-string\} given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Services/Search/GlobalSearchService.php
-
-		-
-			message: '#^Parameter \#1 \$callback of method Illuminate\\Support\\Collection\<string,mixed\>\:\:map\(\) expects callable\(mixed, string\)\: array\{id\: mixed, title\: mixed, subtitle\: ''Matière'', description\: non\-falsy\-string, type\: ''matiere'', icon\: ''AcademicCapIcon'', url\: non\-falsy\-string\}, Closure\(array\)\: array\{id\: mixed, title\: mixed, subtitle\: ''Matière'', description\: non\-falsy\-string, type\: ''matiere'', icon\: ''AcademicCapIcon'', url\: non\-falsy\-string\} given\.$#'
-			identifier: argument.type
 			count: 1
 			path: app/Services/Search/GlobalSearchService.php
 

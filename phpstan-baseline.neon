@@ -1146,6 +1146,11 @@ parameters:
 			count: 1
 			path: app/Services/Institution/InstitutionQueryService.php
 
+		-
+			message: '#^Method App\\Services\\KnowledgeCheck\\KnowledgeCheckAccessService\:\:bestScore\(\) should return int\|null but returns mixed\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Services/KnowledgeCheck/KnowledgeCheckAccessService.php
 
 		-
 			message: '#^Method App\\Services\\KnowledgeCheck\\KnowledgeCheckAttemptService\:\:getMyAttempts\(\) should return array\{quiz_title\: string, passing_score\: int, attempts\: Illuminate\\Support\\Collection\<int, array\<string, mixed\>\>, best_score\: int\|null, has_passed\: bool\} but returns array\{quiz_title\: string, passing_score\: int, attempts\: Illuminate\\Support\\Collection\<int, array\{id\: int, score\: int, correct_answers\: int, total_questions\: int, passed\: bool, time_spent\: string, completed_at\: non\-falsy\-string\|null\}\>, best_score\: mixed, has_passed\: bool\}\.$#'

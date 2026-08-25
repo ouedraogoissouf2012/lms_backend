@@ -7,8 +7,8 @@ namespace App\Services\Quiz;
 use App\Models\Quiz;
 use App\Models\QuizAttempt;
 use App\Models\User;
-use App\Services\Attempts\AttemptConflictGuard;
 use App\Services\Quiz\Concerns\BuildsAttemptResponses;
+use Illuminate\Database\UniqueConstraintViolationException;
 
 /**
  * Flow étudiant : démarrer + soumettre une tentative de quiz.
@@ -34,7 +34,6 @@ final class QuizAttemptStartSubmitService
         private readonly QuizGradingService $grading,
         private readonly QuizAccessService $access,
         private readonly QuizAttemptTimerService $timer,
-        private readonly AttemptConflictGuard $conflictGuard,
     ) {
     }
 
@@ -86,8 +85,8 @@ final class QuizAttemptStartSubmitService
     {
         $attemptNumber = $this->access->nextAttemptNumberForUser($quiz, $user->id);
 
-        $outcome = $this->conflictGuard->insert(
-            fn (): QuizAttempt => QuizAttempt::create([
+        try {
+            $attempt = QuizAttempt::create([
                 'quiz_id'        => $quiz->id,
                 'user_id'        => $user->id,
                 'attempt_number' => $attemptNumber,
@@ -97,18 +96,22 @@ final class QuizAttemptStartSubmitService
                 // un tenant non résolu persistait la tentative avec institution_id
                 // NULL → owner verrouillé dehors par ShowAttemptRequest.
                 'institution_id' => $user->institution_id,
-            ]),
-            fn (): ?QuizAttempt => $this->access->activeAttemptForUser($quiz, $user->id),
-        );
+            ]);
+        } catch (UniqueConstraintViolationException) {
+            // #625 a retiré AttemptConflictGuard : même filet, en local.
+            // Seule l'unicité est rattrapée — toute autre QueryException traverse.
+            $winner = $this->access->activeAttemptForUser($quiz, $user->id);
+            if ($winner === null) {
+                return $this->failure(
+                    409,
+                    'Une autre tentative vient d\'être enregistrée pour ce quiz. Rechargez la page.'
+                );
+            }
 
-        if ($outcome === null) {
-            return $this->failure(
-                409,
-                'Une autre tentative vient d\'être enregistrée pour ce quiz. Rechargez la page.'
-            );
+            return $this->attemptStarted($quiz, $winner, resumed: true);
         }
 
-        return $this->attemptStarted($quiz, $outcome->attempt(), resumed: $outcome->isResolved());
+        return $this->attemptStarted($quiz, $attempt, resumed: false);
     }
 
     /**

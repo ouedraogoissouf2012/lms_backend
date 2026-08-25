@@ -187,11 +187,7 @@ final class KnowledgeCheckAttemptService
         $quiz = KnowledgeCheck::findOrFail($quizId);
 
         /** @var Collection<int, KnowledgeCheckAttempt> $rows */
-        // Hors global scope `institution`, comme le quota : sinon un étudiant
-        // bloqué par une tentative héritée (`institution_id = NULL`) verrait un
-        // historique vide en face du message « quota atteint » (#581).
-        $rows = KnowledgeCheckAttempt::withoutGlobalScope('institution')
-            ->where('knowledge_check_id', $quizId)
+        $rows = KnowledgeCheckAttempt::where('knowledge_check_id', $quizId)
             ->where('user_id', $user->id)
             ->orderBy('created_at', 'desc')
             ->get();

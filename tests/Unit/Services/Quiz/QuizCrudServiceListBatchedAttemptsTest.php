@@ -14,7 +14,7 @@ use Tests\TestCase;
 
 /**
  * #546 — Correctness du batching de `QuizCrudService::list()` : le nouveau
- * calcul en 1 requête (`QuizAccessService::finalizedAttemptsByQuiz`) doit
+ * calcul en 1 requête (`QuizAccessService::consumingAttemptsByQuiz`) doit
  * produire EXACTEMENT les mêmes valeurs que l'ancien calcul par-quiz
  * (`attemptsCountForUser`/`canUserAttempt`/`bestAttemptForUser`).
  *

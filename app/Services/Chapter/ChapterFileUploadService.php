@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Services\Chapter;
 
 use App\Models\Chapter;
-use App\Services\FileConversionService;
 use Illuminate\Http\UploadedFile;
 use LogicException;
 use Psr\Log\LoggerInterface;
@@ -15,30 +14,20 @@ use Throwable;
  * ChapterFileUploadService — upload + conversion fichier chapitre extrait
  * verbatim de `ChapterController::uploadFile()`.
  *
- * Branchements supportés (selon l'extension du fichier) :
- *   - pptx / ppt   → FileConversionService::convertPowerPoint → slides_images
- *   - docx / doc   → FileConversionService::convertWord (ConvertAPI: images,
- *                    LibreOffice: HTML)
- *   - pdf          → FileConversionService::convertPdf → slides_images
- *   - mp4/avi/...  → stockage direct du fichier vidéo
+ * Orchestre l'upload : synchrone, asynchrone (job) et suivi de statut. Le choix
+ * du convertisseur et l'écriture du résultat sur le chapitre appartiennent à
+ * {@see ChapterConversionDispatcher}, extrait en #598 (§1.1 : ce fichier vivait
+ * à 299 lignes sur 300, l'ajout d'une dépendance l'a fait déborder).
  *
- * Aucun changement comportemental — logique extraite verbatim. Les MIME types
- * sont validés en amont par `UploadFileRequest` (30 MB max).
+ * Les MIME types sont validés en amont par `UploadFileRequest` (30 MB max).
  *
  * @see PRODUCTION_STANDARDS.md §1.1 — Services ≤300 lignes
  * @see PRODUCTION_STANDARDS.md §1.6 D — DI strict
  */
 final class ChapterFileUploadService
 {
-    /**
-     * Extensions vidéo stockées telles quelles (sans conversion).
-     *
-     * @var array<int, string>
-     */
-    private const VIDEO_EXTENSIONS = ['mp4', 'avi', 'mov', 'wmv', 'flv', 'webm', 'mkv'];
-
     public function __construct(
-        private readonly FileConversionService $fileConversionService,
+        private readonly ChapterConversionDispatcher $dispatcher,
         private readonly AsyncChapterConversionDispatcher $asyncDispatcher,
         private readonly AsyncChapterConversionStore $asyncStore,
         private readonly LoggerInterface $logger,
@@ -146,18 +135,7 @@ final class ChapterFileUploadService
 
     public function processUploadedFile(Chapter $chapter, UploadedFile $file): void
     {
-        $chapterId = $this->chapterId($chapter);
-        $extension = strtolower($file->getClientOriginalExtension());
-
-        if (in_array($extension, ['pptx', 'ppt'], true)) {
-            $this->handlePowerPoint($chapter, $file, $chapterId);
-        } elseif (in_array($extension, ['docx', 'doc'], true)) {
-            $this->handleWord($chapter, $file, $chapterId);
-        } elseif ($extension === 'pdf') {
-            $this->handlePdf($chapter, $file, $chapterId);
-        } elseif (in_array($extension, self::VIDEO_EXTENSIONS, true)) {
-            $this->handleVideo($chapter, $file, $chapterId);
-        }
+        $this->dispatcher->dispatch($chapter, $file);
     }
 
     private function isConvertible(UploadedFile $file): bool
@@ -187,20 +165,6 @@ final class ChapterFileUploadService
         ];
     }
 
-    private function chapterId(Chapter $chapter): int
-    {
-        $id = $chapter->getKey();
-        if (is_int($id)) {
-            return $id;
-        }
-
-        if (is_string($id) && ctype_digit($id)) {
-            return (int) $id;
-        }
-
-        throw new LogicException('Chapter must have a numeric primary key.');
-    }
-
     /**
      * @param  array<string, mixed>  $payload
      */
@@ -218,82 +182,4 @@ final class ChapterFileUploadService
         throw new LogicException('Async conversion payload must contain numeric identifiers.');
     }
 
-    /** Conversion PowerPoint (pptx/ppt) → images de slides. */
-    private function handlePowerPoint(Chapter $chapter, UploadedFile $file, int $chapterId): void
-    {
-        $result = $this->fileConversionService->convertPowerPoint($file, $chapterId);
-
-        $chapter->update([
-            'content_type' => 'powerpoint',
-            'file_original_path' => $result['file_original_path'],
-            'file_converted_path' => $result['file_converted_path'],
-            'slides_images' => $result['slides_images'],
-            'slides_count' => $result['slides_count'],
-        ]);
-
-        $this->logger->info('PowerPoint converti', ['slides' => $result['slides_count']]);
-    }
-
-    /**
-     * Conversion Word (docx/doc) — deux modes selon le backend :
-     *   - ConvertAPI : Word → PDF → images de slides
-     *   - LibreOffice : Word → HTML
-     */
-    private function handleWord(Chapter $chapter, UploadedFile $file, int $chapterId): void
-    {
-        $result = $this->fileConversionService->convertWord($file, $chapterId);
-
-        if (isset($result['slides_images'])) {
-            $chapter->update([
-                'content_type' => 'word',
-                'file_original_path' => $result['file_original_path'],
-                'file_converted_path' => $result['file_converted_path'],
-                'slides_images' => $result['slides_images'],
-                'slides_count' => $result['slides_count'],
-            ]);
-            $this->logger->info('Word converti en images', ['slides' => $result['slides_count']]);
-        } else {
-            $chapter->update([
-                'content_type' => 'word',
-                'content' => $result['content'],
-                'file_original_path' => $result['file_original_path'],
-            ]);
-            $this->logger->info('Word converti en HTML');
-        }
-    }
-
-    /**
-     * Conversion PDF → images de slides (rendu page par page).
-     */
-    private function handlePdf(Chapter $chapter, UploadedFile $file, int $chapterId): void
-    {
-        $result = $this->fileConversionService->convertPdf($file, $chapterId);
-
-        $chapter->update([
-            'content_type' => 'pdf',
-            'file_original_path' => $result['file_original_path'],
-            'file_converted_path' => $result['file_converted_path'],
-            'slides_images' => $result['slides_images'],
-            'slides_count' => $result['slides_count'],
-            'pdf_url' => null, // Plus utilisé, on utilise slides_images
-        ]);
-
-        $this->logger->info('PDF converti en images', ['pages' => $result['slides_count']]);
-    }
-
-    /**
-     * Stocke directement le fichier vidéo sans conversion.
-     */
-    private function handleVideo(Chapter $chapter, UploadedFile $file, int $chapterId): void
-    {
-        $videoPath = $file->store("chapters/{$chapterId}/video", 'public');
-
-        $chapter->update([
-            'content_type' => 'video',
-            'file_original_path' => $videoPath,
-            'video_url' => "/storage/{$videoPath}",
-        ]);
-
-        $this->logger->info('Vidéo stockée', ['path' => $videoPath]);
-    }
 }

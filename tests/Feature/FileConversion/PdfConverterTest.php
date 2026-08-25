@@ -149,6 +149,7 @@ final class PdfConverterTest extends TestCase
             $this->convertApiMock,
             $this->pdfRendererMock,
             $this->validator,
+            app(\App\Services\FileConversion\ChapterArtifactStorage::class),
         );
     }
 }

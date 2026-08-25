@@ -4,12 +4,12 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Services\FileConversion\ChapterArtifactStorage;
 use App\Services\FileConversion\PdfConverter;
 use App\Services\FileConversion\PowerPointConverter;
 use App\Services\FileConversion\WordConverter;
 use Illuminate\Http\UploadedFile;
 use Psr\Log\LoggerInterface;
-use Illuminate\Contracts\Filesystem\Factory as FilesystemFactory;
 
 /**
  * Façade preserving the legacy public API consumed by `ChapterController`,
@@ -33,7 +33,7 @@ final class FileConversionService
 {
     public function __construct(
         private readonly LoggerInterface $logger,
-        private readonly FilesystemFactory $filesystem,
+        private readonly ChapterArtifactStorage $artifacts,
         private readonly PowerPointConverter $powerPoint,
         private readonly WordConverter $word,
         private readonly PdfConverter $pdf,
@@ -65,14 +65,18 @@ final class FileConversionService
     }
 
     /**
-     * Delete the public-disk directory holding every artefact tied to a chapter
-     * (original upload, intermediate PDFs/HTMLs, generated slides).
+     * Supprime TOUS les artefacts d'un chapitre — diapositives et vidéos sur le
+     * disque public, document source / HTML / PDF intermédiaire sur le disque
+     * privé.
      *
-     * Behaviour preserved verbatim from the legacy method.
+     * #598 : la version précédente ne purgeait que le disque public. Depuis que
+     * les documents sources vivent en privé, s'en tenir là laisserait le
+     * document de l'enseignant orphelin sur le serveur après suppression du
+     * chapitre.
      */
     public function deleteChapterFiles(int $chapterId): void
     {
-        $this->filesystem->disk('public')->deleteDirectory("chapters/{$chapterId}");
+        $this->artifacts->purgeChapter($chapterId);
 
         $this->logger->info('🗑️ Fichiers chapitre supprimés', ['chapter_id' => $chapterId]);
     }

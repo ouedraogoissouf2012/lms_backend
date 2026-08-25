@@ -49,6 +49,7 @@ final class WordConverter
         private readonly LoggerInterface $logger,
         private readonly ShellExecutorInterface $shell,
         private readonly FileValidator $validator,
+        private readonly ChapterArtifactStorage $artifacts,
     ) {
     }
 
@@ -64,11 +65,10 @@ final class WordConverter
     {
         $this->validator->validate($file, ['docx', 'doc']);
 
-        $originalPath = $file->store("chapters/{$chapterId}/original", 'public');
-        if ($originalPath === false) {
-            throw new RuntimeException('Échec sauvegarde du fichier original');
-        }
-        $fullOriginalPath = storage_path("app/public/{$originalPath}");
+        // #598 — disque PRIVÉ : ni le document source ni le HTML plein-texte
+        // ne doivent être servables via /storage.
+        $originalPath = $this->artifacts->storeOriginal($file, $chapterId);
+        $fullOriginalPath = $this->artifacts->absolutePath($originalPath);
 
         $htmlPath = $this->docxToHtml($fullOriginalPath, $chapterId);
 
@@ -99,10 +99,8 @@ final class WordConverter
             throw new RuntimeException('LibreOffice non installé sur le serveur');
         }
 
-        $outputDir = storage_path("app/public/chapters/{$chapterId}/html");
-        if (! is_dir($outputDir)) {
-            mkdir($outputDir, 0755, true);
-        }
+        // #598 — le HTML produit contient le texte intégral du cours : dossier privé.
+        $outputDir = $this->artifacts->workDirectory($chapterId, 'html');
 
         try {
             $this->shell->run([

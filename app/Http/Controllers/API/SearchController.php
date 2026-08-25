@@ -58,15 +58,19 @@ final class SearchController extends AuthenticatedController
         $payload = $this->globalSearch->search($query, $user, $limit);
 
         // Non migré vers successResponse() : expose des clés racine hors enveloppe
-        // (`query`, `results`, `total`, `categories`) que le trait ne reproduit pas.
-        // Les déplacer changerait le contrat client → conservé tel quel (axe #1
-        // « DRY-only », cf. LessonCrudController::myCourses).
+        // (`query`, `results`, `total`, `categories`, `sources_failed`) que le trait
+        // ne reproduit pas. Les déplacer changerait le contrat client → conservé tel
+        // quel (axe #1 « DRY-only », cf. LessonCrudController::myCourses).
+        //
+        // `sources_failed` (#505) est TOUJOURS présent, vide quand tout va bien : un
+        // client n'a ainsi pas à distinguer « clé absente » de « aucune panne ».
         return response()->json([
             'success' => true,
             'query' => $query,
             'results' => $payload['results'],
             'total' => $payload['total'],
             'categories' => $payload['categories'],
+            'sources_failed' => $payload['sources_failed'],
         ]);
     }
 

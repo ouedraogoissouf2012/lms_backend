@@ -1320,11 +1320,6 @@ parameters:
 			count: 1
 			path: app/Services/Notification/QuizNotificationDispatcher.php
 
-		-
-			message: '#^Cannot cast mixed to int\.$#'
-			identifier: cast.int
-			count: 1
-			path: app/Services/Quiz/QuizAccessService.php
 
 		-
 			message: '#^Method App\\Services\\Quiz\\QuizAttemptStartSubmitService\:\:buildQuestionsWithResults\(\) should return array\<int, array\{question\: mixed, user_answer\: mixed, is_correct\: bool\|null, points_earned\: float, correct_answers\: mixed\}\> but returns array\<mixed\>\.$#'

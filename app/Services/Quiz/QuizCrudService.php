@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace App\Services\Quiz;
 
 use App\Models\Quiz;
+use App\Models\QuizAttempt;
 use App\Models\User;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Pagination\LengthAwarePaginator;
 
 /**
@@ -114,14 +116,18 @@ final class QuizCrudService
         // `map()` typé plutôt que `pluck('id')` (mixed non résolu par PHPStan
         // sur une Collection déjà matérialisée, hors Builder Eloquent).
         $quizIds = $quizzes->getCollection()->map(fn (Quiz $quiz): int => $quiz->id)->all();
-        $attemptsByQuiz = $this->access->finalizedAttemptsByQuiz($quizIds, $user->id);
+        $attemptsByQuiz = $this->access->consumingAttemptsByQuiz($quizIds, $user->id);
 
         $quizzes->getCollection()->transform(function (Quiz $quiz) use ($attemptsByQuiz): Quiz {
-            $attempts = $attemptsByQuiz->get($quiz->id, collect());
+            $attempts = $attemptsByQuiz->get($quiz->id, new EloquentCollection());
 
             $quiz->user_attempts_count = $attempts->count();
-            $quiz->user_can_attempt    = $this->access->isAvailable($quiz) && $attempts->count() < $quiz->max_attempts;
-            $quiz->user_best_attempt   = $attempts->first();
+            // La règle de quota vit dans QuizAccessService, PAS ici : cette
+            // ligne en portait sa propre copie, restée sur l'ancienne
+            // sémantique « seules les tentatives finalisées comptent » (#581).
+            $quiz->user_can_attempt    = $this->access->canAttemptFromLoaded($quiz, $attempts);
+            $quiz->user_best_attempt   = $attempts
+                ->first(static fn (QuizAttempt $attempt): bool => in_array($attempt->status, ['submitted', 'graded'], true));
 
             return $quiz;
         });

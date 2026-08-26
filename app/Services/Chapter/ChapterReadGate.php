@@ -29,7 +29,7 @@ final class ChapterReadGate
             return false;
         }
 
-        if ($user->role === 'supradmin') {
+        if ($user->isPlatformSupradmin()) {
             return true;
         }
 
@@ -52,7 +52,7 @@ final class ChapterReadGate
             return false;
         }
 
-        if ($user->role === 'supradmin') {
+        if ($user->isPlatformSupradmin()) {
             return true;
         }
 

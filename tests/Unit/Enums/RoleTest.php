@@ -49,6 +49,13 @@ final class RoleTest extends TestCase
         self::assertSame(Role::Supradmin, Role::tryFromString('superAdmin'));
     }
 
+    public function test_aliases_do_not_include_institution_super_admin(): void
+    {
+        self::assertSame(['supradmin'], Role::Supradmin->aliases());
+        self::assertContains('teacher', Role::Enseignant->aliases());
+        self::assertNotContains('superAdmin', Role::Supradmin->aliases());
+    }
+
     /**
      * Issue #132 (REQ-1) — alias historique avec accent aigu. 2 sites pré-existants
      * (`SearchController`, `LMSSeancesController`) supportaient explicitement ce variant

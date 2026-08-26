@@ -20,7 +20,7 @@ trait AuthorizesTenantScopedResource
         // Role::tryFromString normaliserait aussi `'superAdmin'` (admin
         // INTRA-tenant) et ouvrirait un accès cross-tenant (#102).
         // NE PAS migrer vers asRoleEnum() (#132).
-        if ($user->role === 'supradmin') {
+        if ($user->isPlatformSupradmin()) {
             return true;
         }
 

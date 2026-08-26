@@ -87,7 +87,7 @@ final class RateLimitServiceProvider extends ServiceProvider
         // NE PAS utiliser asRoleEnum() : `tryFromString('superAdmin')` normalise
         // l'admin intra-tenant en Role::Supradmin, ce qui exempterait à tort un
         // admin d'institution. Même distinction que ChecksForumAuthorization.
-        if ($user instanceof User && $user->role === 'supradmin') {
+        if ($user instanceof User && $user->isPlatformSupradmin()) {
             return Limit::none();
         }
 

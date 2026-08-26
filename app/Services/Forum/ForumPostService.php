@@ -8,6 +8,7 @@ use App\Models\ForumPost;
 use App\Models\ForumTopic;
 use App\Models\Notification;
 use App\Models\User;
+use Illuminate\Database\ConnectionInterface;
 
 /**
  * Post-side orchestration du forum (split-18/forum).
@@ -19,9 +20,7 @@ use App\Models\User;
  *
  * ## DI strict (§1.6 D)
  *
- * Aucune Facade — pure logique métier Eloquent. Pas de dépendance
- * constructeur : les FormRequests + le scope global `BelongsToInstitution`
- * portent la sécurité, le model `ForumPost` porte les compteurs.
+ * Aucune Facade. Connection injectée pour les transactions (#543).
  *
  * ## Comportement
  *
@@ -47,6 +46,11 @@ final class ForumPostService
      */
     private const AUTHOR_COLUMNS = 'user:id,name,role';
 
+    public function __construct(
+        private readonly ConnectionInterface $db,
+    ) {
+    }
+
     /**
      * Crée un post dans un topic et fan-out les notifications :
      *  1. Auteur du topic si distinct de l'auteur du post.
@@ -62,55 +66,14 @@ final class ForumPostService
         $data['user_id'] = $author->id;
         $data['institution_id'] = $author->institution_id;
 
-        $post = ForumPost::create($data);
-        $post->load(self::AUTHOR_COLUMNS);
+        return $this->db->transaction(function () use ($data, $topic, $author): ForumPost {
+            $post = ForumPost::create($data);
+            $post->load(self::AUTHOR_COLUMNS);
+            $this->refreshTopicCounters($topic);
+            $this->notifyNewPost($post, $topic, $author, $data['parent_id'] ?? null);
 
-        // Compteur posts + activité du topic — appel explicite (remplace
-        // l'ancien boot hook `ForumPost::created`, anti-pattern §5).
-        $this->refreshTopicCounters($topic);
-
-        // Créer une notification pour l'auteur du topic (sauf si c'est lui qui répond)
-        if ($topic->user_id !== $author->id) {
-            Notification::create([
-                'user_id' => $topic->user_id,
-                'type' => Notification::TYPE_FORUM_REPLY,
-                'title' => 'Nouvelle réponse sur votre discussion',
-                'message' => $author->name . ' a répondu à votre discussion "' . $topic->title . '"',
-                'data' => [
-                    'topic_id' => $topic->id,
-                    'post_id' => $post->id,
-                    'author_name' => $author->name,
-                ],
-                'institution_id' => $author->institution_id,
-            ]);
-        }
-
-        // Si c'est une réponse à une réponse (parent_id existe)
-        $parentId = $data['parent_id'] ?? null;
-        if ($parentId) {
-            $parentPost = ForumPost::find($parentId);
-
-            if ($parentPost &&
-                $parentPost->user_id !== $author->id &&
-                $parentPost->user_id !== $topic->user_id) {
-
-                Notification::create([
-                    'user_id' => $parentPost->user_id,
-                    'type' => Notification::TYPE_FORUM_REPLY,
-                    'title' => 'Nouvelle réponse à votre message',
-                    'message' => $author->name . ' a répondu à votre message dans "' . $topic->title . '"',
-                    'data' => [
-                        'topic_id' => $topic->id,
-                        'post_id' => $post->id,
-                        'parent_post_id' => $parentPost->id,
-                        'author_name' => $author->name,
-                    ],
-                    'institution_id' => $author->institution_id,
-                ]);
-            }
-        }
-
-        return $post;
+            return $post;
+        });
     }
 
     /**
@@ -150,33 +113,75 @@ final class ForumPostService
      */
     public function markAsSolution(ForumPost $post, User $markedBy): ForumPost
     {
-        $topic = $post->topic;
+        return $this->db->transaction(function () use ($post, $markedBy): ForumPost {
+            $topic = $post->topic;
+            $topic->posts()->where('id', '!=', $post->id)->update(['is_solution' => false]);
+            $post->update(['is_solution' => true]);
+            $topic->update(['is_resolved' => true]);
 
-        // Un seul post solution par topic.
-        $topic->posts()->where('id', '!=', $post->id)->update(['is_solution' => false]);
-        $post->update(['is_solution' => true]);
-        $topic->update(['is_resolved' => true]);
+            if ($post->user_id !== $markedBy->id) {
+                Notification::create([
+                    'user_id' => $post->user_id,
+                    'type' => Notification::TYPE_FORUM_SOLUTION,
+                    'title' => 'Votre réponse a été acceptée',
+                    'message' => 'Votre réponse dans "' . $topic->title . '" a été marquée comme solution',
+                    'data' => [
+                        'topic_id' => $topic->id,
+                        'post_id' => $post->id,
+                        'marked_by_name' => $markedBy->name,
+                    ],
+                    'institution_id' => $markedBy->institution_id,
+                ]);
+            }
 
-        // Créer une notification pour l'auteur du post (sauf si c'est lui qui marque)
-        if ($post->user_id !== $markedBy->id) {
+            /** @var ForumPost $fresh */
+            $fresh = $post->fresh([self::AUTHOR_COLUMNS]);
+
+            return $fresh;
+        });
+    }
+
+    private function notifyNewPost(ForumPost $post, ForumTopic $topic, User $author, mixed $parentId): void
+    {
+        if ($topic->user_id !== $author->id) {
             Notification::create([
-                'user_id' => $post->user_id,
-                'type' => Notification::TYPE_FORUM_SOLUTION,
-                'title' => 'Votre réponse a été acceptée',
-                'message' => 'Votre réponse dans "' . $topic->title . '" a été marquée comme solution',
+                'user_id' => $topic->user_id,
+                'type' => Notification::TYPE_FORUM_REPLY,
+                'title' => 'Nouvelle réponse sur votre discussion',
+                'message' => $author->name . ' a répondu à votre discussion "' . $topic->title . '"',
                 'data' => [
                     'topic_id' => $topic->id,
                     'post_id' => $post->id,
-                    'marked_by_name' => $markedBy->name,
+                    'author_name' => $author->name,
                 ],
-                'institution_id' => $markedBy->institution_id,
+                'institution_id' => $author->institution_id,
             ]);
         }
 
-        /** @var ForumPost $fresh */
-        $fresh = $post->fresh([self::AUTHOR_COLUMNS]);
+        if (! $parentId) {
+            return;
+        }
 
-        return $fresh;
+        $parentPost = ForumPost::find($parentId);
+        if (! $parentPost
+            || $parentPost->user_id === $author->id
+            || $parentPost->user_id === $topic->user_id) {
+            return;
+        }
+
+        Notification::create([
+            'user_id' => $parentPost->user_id,
+            'type' => Notification::TYPE_FORUM_REPLY,
+            'title' => 'Nouvelle réponse à votre message',
+            'message' => $author->name . ' a répondu à votre message dans "' . $topic->title . '"',
+            'data' => [
+                'topic_id' => $topic->id,
+                'post_id' => $post->id,
+                'parent_post_id' => $parentPost->id,
+                'author_name' => $author->name,
+            ],
+            'institution_id' => $author->institution_id,
+        ]);
     }
 
     /**

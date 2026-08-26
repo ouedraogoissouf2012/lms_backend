@@ -74,6 +74,8 @@ final class EvaluationStudentAttemptResponseTest extends TestCase
             'institution_id' => $this->institution->id,
             'klassci_evaluation_id' => 9001,
             'max_attempts' => $maxAttempts,
+            'allow_retake' => true,
+            'is_online' => true,
         ]);
         EvaluationQuestion::factory()->create([
             'evaluation_id' => $evaluation->id,

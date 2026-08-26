@@ -44,6 +44,8 @@ final class UpdateEvaluationRequest extends FormRequest
             'duree_minutes' => 'sometimes|integer|min:1|max:1440',
             'is_published' => 'sometimes|boolean',
             'max_attempts' => 'sometimes|integer|min:1',
+            'allow_retake' => 'sometimes|boolean',
+            'is_online' => 'sometimes|boolean',
             'shuffle_questions' => 'sometimes|boolean',
             'show_results' => 'sometimes|boolean',
             'questions' => 'sometimes|array',

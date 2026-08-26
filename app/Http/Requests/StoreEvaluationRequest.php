@@ -70,6 +70,8 @@ final class StoreEvaluationRequest extends FormRequest
             'coefficient' => 'nullable|numeric|min:0',
             'bareme' => 'nullable|numeric|min:0',
             'max_attempts' => 'nullable|integer|min:1',
+            'allow_retake' => 'nullable|boolean',
+            'is_online' => 'nullable|boolean',
             'shuffle_questions' => 'nullable|boolean',
             'show_results' => 'nullable|boolean',
             'questions' => 'nullable|array',

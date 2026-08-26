@@ -43,6 +43,7 @@ Route::middleware(['auth:sanctum', 'klassci.sync', 'role:enseignant,coordinateur
 use App\Http\Controllers\API\LMS\LMSAttendancesController;
 use App\Http\Controllers\API\LMS\LMSClassesController;
 use App\Http\Controllers\API\LMS\LMSEnseignantsController;
+use App\Http\Controllers\API\Admin\AdminStatisticsController;
 use App\Http\Controllers\API\LMS\LMSMatieresAdminController;
 use App\Http\Controllers\API\LMS\LMSMatieresQueryController;
 use App\Http\Controllers\API\LMS\LMSNotificationsPreferencesController;
@@ -78,6 +79,8 @@ Route::middleware(['auth:sanctum', 'klassci.sync', 'role:admin,coordinateur'])->
     // Liste toutes les matières avec combinaisons complètes
     Route::get('/matieres', [LMSMatieresAdminController::class, 'adminMatieresList'])
         ->name('admin.matieres.list');
+    Route::get('/statistics', [AdminStatisticsController::class, 'show'])
+        ->name('admin.statistics');
 });
 
 // Retour au groupe /lms pour les autres routes

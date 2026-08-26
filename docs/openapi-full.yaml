@@ -699,6 +699,18 @@ paths:
         '200':
           description: "Stats"
 
+  /admin/statistics:
+    get:
+      tags: [Admin]
+      summary: "Statistiques admin fraîches (#553)"
+      security:
+        - sanctum: []
+      responses:
+        '200':
+          description: "Tenant-scoped admin statistics"
+        '403':
+          description: "Forbidden"
+
   # ====== CHAPTERS & LESSONS (13 endpoints) ======
   /chapters:
     get:

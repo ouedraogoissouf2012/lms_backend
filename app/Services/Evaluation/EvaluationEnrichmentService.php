@@ -52,12 +52,14 @@ class EvaluationEnrichmentService
      * @param  Collection<int, \App\Models\Evaluation>  $evaluations
      * @return array<int, array<string, mixed>>
      */
-    public function enrich(Collection $evaluations): array
+    public function enrich(Collection $evaluations, string $userToken): array
     {
         try {
             // Récupérer les classes et matières de KLASSCI (avec cache via KlassciProxyService)
             $klassciClasses = $this->klassciService->getClasses();
-            $klassciMatieres = $this->klassciService->getMatieres();
+            $klassciMatieres = $userToken === ''
+                ? ['data' => []]
+                : $this->klassciService->getMatieres($userToken);
 
             // Créer des maps pour accès O(1)
             $classesMap = [];

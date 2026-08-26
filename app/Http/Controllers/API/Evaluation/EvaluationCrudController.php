@@ -16,6 +16,7 @@ use App\Services\Evaluation\EvaluationListService;
 use App\Services\Evaluation\EvaluationStateService;
 use App\Services\Evaluation\EvaluationUpdateService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 /**
  * Thin controller for evaluation CRUD endpoints.
@@ -60,9 +61,9 @@ final class EvaluationCrudController extends AuthenticatedController
         return $this->successResponse($evaluations);
     }
 
-    public function show(int $id): JsonResponse
+    public function show(Request $request, int $id): JsonResponse
     {
-        $enriched = $this->listService->findOne($id);
+        $enriched = $this->listService->findOne($id, $this->authenticatedUser($request));
 
         if ($enriched === null) {
             return $this->errorResponse('Évaluation non trouvée', 404);

@@ -181,6 +181,7 @@ final class KlassciSearchSourcesTest extends TestCase
     {
         $user = new User();
         $user->role = $isStaff ? 'coordinateur' : 'etudiant';
+        $user->klassci_token = $isStaff ? 'search-token-616' : null;
 
         return $user;
     }

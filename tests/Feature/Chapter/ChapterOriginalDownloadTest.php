@@ -4,10 +4,13 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Chapter;
 
+use App\Enums\LessonStatus;
 use App\Models\Chapter;
+use App\Models\Classe;
 use App\Models\Institution;
 use App\Models\Lesson;
 use App\Models\User;
+use App\Models\UserClass;
 use App\Services\FileConversion\ChapterArtifactStorage;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
@@ -80,8 +83,8 @@ final class ChapterOriginalDownloadTest extends TestCase
     public function test_student_is_refused_when_download_is_disabled(): void
     {
         $institution = $this->institution();
-        $chapter = $this->chapterWithSource($institution, allowDownload: false);
         $student = $this->user($institution, 'etudiant');
+        $chapter = $this->chapterWithSource($institution, allowDownload: false, student: $student);
 
         $response = $this->actingWithToken($student)->getJson("/api/chapters/{$chapter->id}/original");
 
@@ -92,8 +95,8 @@ final class ChapterOriginalDownloadTest extends TestCase
     public function test_student_may_download_when_teacher_allows_it(): void
     {
         $institution = $this->institution();
-        $chapter = $this->chapterWithSource($institution, allowDownload: true);
         $student = $this->user($institution, 'etudiant');
+        $chapter = $this->chapterWithSource($institution, allowDownload: true, student: $student);
 
         $response = $this->actingWithToken($student)->get("/api/chapters/{$chapter->id}/original");
 
@@ -225,11 +228,12 @@ final class ChapterOriginalDownloadTest extends TestCase
         Institution $institution,
         ?User $teacher = null,
         bool $allowDownload = true,
+        ?User $student = null,
     ): Chapter {
         Storage::fake(ChapterArtifactStorage::PRIVATE_DISK);
 
         $teacher ??= $this->user($institution, 'enseignant');
-        $chapter = $this->chapter($institution, $teacher, filePath: null, allowDownload: $allowDownload);
+        $chapter = $this->chapter($institution, $teacher, filePath: null, allowDownload: $allowDownload, student: $student);
 
         $path = "chapters/{$chapter->id}/original/source.docx";
         Storage::disk(ChapterArtifactStorage::PRIVATE_DISK)->put($path, self::SOURCE_BYTES);
@@ -243,8 +247,30 @@ final class ChapterOriginalDownloadTest extends TestCase
         User $teacher,
         ?string $filePath,
         bool $allowDownload = true,
+        ?User $student = null,
     ): Chapter {
-        $lesson = Lesson::factory()->create(['institution_id' => $institution->id]);
+        $classeId = null;
+        if ($student !== null) {
+            $classe = Classe::factory()->create([
+                'institution_id' => $institution->id,
+                'klassci_id' => 6210,
+            ]);
+            UserClass::create([
+                'user_id' => $student->id,
+                'klassci_classe_id' => 6210,
+                'classe_nom' => $classe->libelle,
+                'institution_id' => $institution->id,
+                'synced_at' => now(),
+            ]);
+            $classeId = $classe->id;
+        }
+
+        $lesson = Lesson::factory()->create([
+            'institution_id' => $institution->id,
+            'classe_id' => $classeId,
+            'status' => LessonStatus::Published,
+            'published_at' => now()->subDay(),
+        ]);
 
         return Chapter::factory()->create([
             'lesson_id'          => $lesson->id,

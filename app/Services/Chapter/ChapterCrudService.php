@@ -9,34 +9,22 @@ use App\Http\Requests\StoreChapterRequest;
 use App\Http\Requests\UpdateChapterRequest;
 use App\Models\Chapter;
 use App\Models\Lesson;
+use App\Models\User;
 use App\Services\FileConversionService;
 use Psr\Log\LoggerInterface;
 use Throwable;
 
 /**
- * ChapterCrudService — CRUD des chapitres extrait verbatim de
- * `ChapterController` (split-17/chapter).
- *
- * Regroupe les opérations CRUD + reorder des chapitres :
- *   - list (par lesson)
- *   - show
- *   - create
- *   - update
- *   - delete (+ purge fichiers via FileConversionService)
- *   - reorder (drag & drop)
- *
- * Aucun changement comportemental — toute la logique vient du controller
- * original. La méthode `delete()` continue de purger les fichiers via
- * `FileConversionService::deleteChapterFiles()`.
+ * CRUD chapitres. Lectures étudiant filtrées par classe (#621 / #482).
  *
  * @see PRODUCTION_STANDARDS.md §1.1 — Services ≤300 lignes
- * @see PRODUCTION_STANDARDS.md §1.6 D — DI strict (LoggerInterface PSR-3)
  */
 final class ChapterCrudService
 {
     public function __construct(
         private readonly FileConversionService $fileConversionService,
         private readonly LoggerInterface $logger,
+        private readonly ChapterReadGate $reads,
     ) {}
 
     /**
@@ -44,10 +32,13 @@ final class ChapterCrudService
      *
      * @return array{status:int, payload: array<string, mixed>}
      */
-    public function listByLesson(int $lessonId): array
+    public function listByLesson(int $lessonId, User $user): array
     {
         try {
             $lesson = Lesson::findOrFail($lessonId);
+            if (! $this->reads->canReadLesson($lesson, $user)) {
+                return $this->notFound('Chapitres introuvables');
+            }
             $chapters = $lesson->chapters()->ordered()->get();
 
             return [
@@ -79,10 +70,13 @@ final class ChapterCrudService
      *
      * @return array{status:int, payload: array<string, mixed>}
      */
-    public function show(int $id): array
+    public function show(int $id, User $user): array
     {
         try {
             $chapter = Chapter::with('lesson')->findOrFail($id);
+            if (! $this->reads->canRead($chapter, $user)) {
+                return $this->notFound('Chapitre non trouvé');
+            }
 
             return [
                 'status' => 200,
@@ -92,14 +86,20 @@ final class ChapterCrudService
                 ],
             ];
         } catch (Throwable $e) {
-            return [
-                'status' => 404,
-                'payload' => [
-                    'success' => false,
-                    'message' => 'Chapitre non trouvé',
-                ],
-            ];
+            return $this->notFound('Chapitre non trouvé');
         }
+    }
+
+    /** @return array{status:int, payload: array<string, mixed>} */
+    private function notFound(string $message): array
+    {
+        return [
+            'status' => 404,
+            'payload' => [
+                'success' => false,
+                'message' => $message,
+            ],
+        ];
     }
 
     /**

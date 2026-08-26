@@ -8,6 +8,7 @@ use App\Http\Controllers\AuthenticatedController;
 use App\Http\Requests\Concerns\ChecksChapterDownloadAuthorization;
 use App\Models\Chapter;
 use App\Services\Chapter\ChapterOriginalDownloadService;
+use App\Services\Chapter\ChapterReadGate;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -33,6 +34,7 @@ final class ChapterOriginalController extends AuthenticatedController
 
     public function __construct(
         private readonly ChapterOriginalDownloadService $downloads,
+        private readonly ChapterReadGate $reads,
     ) {
     }
 
@@ -59,6 +61,10 @@ final class ChapterOriginalController extends AuthenticatedController
     public function show(Request $request, Chapter $chapter): StreamedResponse|JsonResponse
     {
         $user = $this->authenticatedUser($request);
+
+        if (! $this->reads->canRead($chapter, $user)) {
+            return $this->errorResponse('Chapitre non trouvé', 404);
+        }
 
         if (! $this->canDownloadChapterOriginal($chapter, $user)) {
             return $this->errorResponse('Accès refusé', 403);

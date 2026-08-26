@@ -54,13 +54,24 @@ final class EvaluationStudentSubmissionController extends AuthenticatedControlle
                 ? $submittedAt->copy()->addDays(self::CORRECTION_DELAY_DAYS)->toIso8601String()
                 : null;
 
-            $questionsData = $evaluation->questions()->get()->map(function ($question) use ($correctionAvailable) {
+            $questions = $evaluation->questions()->get();
+            if ($evaluation->shuffle_questions) {
+                $questions = $questions->shuffle()->values();
+            }
+            $questionsData = $questions->map(function ($question) use ($correctionAvailable) {
                 $q = $question->toArray();
                 if (!$correctionAvailable) {
                     unset($q['correct_answers'], $q['explanation']);
                 }
                 return $q;
             });
+
+            $score = $submission->score;
+            $note = $submission->note_sur_20;
+            if ($evaluation->show_results === false) {
+                $score = null;
+                $note = null;
+            }
 
             return $this->successResponse([
                 'id' => $submission->id,
@@ -69,8 +80,8 @@ final class EvaluationStudentSubmissionController extends AuthenticatedControlle
                 'status' => $submission->status,
                 'started_at' => $submission->started_at,
                 'submitted_at' => $submission->submitted_at,
-                'score' => $submission->score,
-                'note_sur_20' => $submission->note_sur_20,
+                'score' => $score,
+                'note_sur_20' => $note,
                 'feedback' => $submission->feedback,
                 'questions' => $questionsData,
                 'answers' => $submission->answers ?? [],

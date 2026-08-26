@@ -39,6 +39,8 @@ final class EvaluationAttemptStateService
      *   - window_closed      → fenêtre temporelle fermée hors mode entraînement (403)
      *   - window_check_failed → fenêtre non vérifiable (KLASSCI indisponible) hors entraînement (503)
      *   - max_attempts       → quota de tentatives atteint hors entraînement (403)
+     *   - retake_forbidden   → allow_retake=false et une tentative déjà consommée (403)
+     *   - offline_only       → is_online=false, pas de passage LMS (403)
      *
      * @return array{status: string, submission?: EvaluationSubmission, window?: ?array<string, mixed>, message?: string, is_practice?: bool, resumed?: bool}
      */
@@ -60,6 +62,13 @@ final class EvaluationAttemptStateService
 
         $klassciEtudiantId = $user->klassci_id;
         $isPracticeMode = $evaluation->isTerminee();
+
+        if (! $isPracticeMode && $evaluation->is_online === false) {
+            return [
+                'status' => 'offline_only',
+                'message' => 'Cette évaluation ne se passe pas en ligne.',
+            ];
+        }
 
         [$windowError, $window] = $this->resolveWindowGate(
             $klassciToken,
@@ -98,6 +107,13 @@ final class EvaluationAttemptStateService
             ->where('klassci_etudiant_id', $klassciEtudiantId)
             ->whereIn('status', ['soumis', 'corrige'])
             ->count();
+
+        if (! $isPracticeMode && $attemptsCount > 0 && $evaluation->allow_retake === false) {
+            return [
+                'status' => 'retake_forbidden',
+                'message' => 'Les reprises ne sont pas autorisées pour cette évaluation.',
+            ];
+        }
 
         if (!$isPracticeMode && $evaluation->max_attempts && $attemptsCount >= $evaluation->max_attempts) {
             return [

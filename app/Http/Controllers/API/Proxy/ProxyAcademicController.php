@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\API\Proxy;
 
 use App\Http\Controllers\API\Proxy\Concerns\RendersKlassciProxyErrors;
+use App\Http\Controllers\API\Proxy\Concerns\ResolvesPersonalKlassciToken;
 use App\Http\Controllers\Controller;
 use App\Services\KlassciProxyService;
 use Illuminate\Http\JsonResponse;
@@ -25,6 +26,7 @@ use Illuminate\Http\Request;
 final class ProxyAcademicController extends Controller
 {
     use RendersKlassciProxyErrors;
+    use ResolvesPersonalKlassciToken;
 
     public function __construct(
         private readonly KlassciProxyService $klassciService,
@@ -32,13 +34,18 @@ final class ProxyAcademicController extends Controller
     }
 
     /**
-     * GET /api/proxy/evaluations — Évaluations.
+     * GET /api/proxy/evaluations — Évaluations du porteur authentifié.
      */
     public function evaluations(Request $request): JsonResponse
     {
         try {
+            $klassciToken = $this->personalKlassciToken($request);
+            if ($klassciToken === null) {
+                return $this->missingKlassciTokenResponse();
+            }
+
             $filters = $request->only(['matiere_id', 'classe_id', 'statut']);
-            $data = $this->klassciService->getEvaluations($filters);
+            $data = $this->klassciService->getEvaluations($klassciToken, $filters);
             return response()->json($data);
         } catch (\Exception $e) {
             return $this->proxyErrorResponse($e);
@@ -46,13 +53,18 @@ final class ProxyAcademicController extends Controller
     }
 
     /**
-     * GET /api/proxy/emploi-temps — Emploi du temps.
+     * GET /api/proxy/emploi-temps — Emploi du temps du porteur authentifié.
      */
     public function emploiTemps(Request $request): JsonResponse
     {
         try {
+            $klassciToken = $this->personalKlassciToken($request);
+            if ($klassciToken === null) {
+                return $this->missingKlassciTokenResponse();
+            }
+
             $filters = $request->only(['classe_id', 'enseignant_id', 'date_debut', 'date_fin']);
-            $data = $this->klassciService->getEmploiTemps($filters);
+            $data = $this->klassciService->getEmploiTemps($klassciToken, $filters);
             return response()->json($data);
         } catch (\Exception $e) {
             return $this->proxyErrorResponse($e);
@@ -131,4 +143,5 @@ final class ProxyAcademicController extends Controller
             return $this->proxyErrorResponse($e);
         }
     }
+
 }

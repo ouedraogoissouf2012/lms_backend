@@ -57,8 +57,8 @@ final class EvaluationResultsNoNPlusOneTest extends TestCase
         $roster56 = $this->seedRoster(size: 5, offset: 100, evaluation: $this->evalLarge);
 
         $this->mock(KlassciProxyService::class, function (MockInterface $mock) use ($roster55, $roster56): void {
-            $mock->shouldReceive('getClasseEtudiants')->with(55)->andReturn(['data' => $roster55]);
-            $mock->shouldReceive('getClasseEtudiants')->with(56)->andReturn(['data' => $roster56]);
+            $mock->shouldReceive('getClasseEtudiants')->with('test-token', 55)->andReturn(['data' => $roster55]);
+            $mock->shouldReceive('getClasseEtudiants')->with('test-token', 56)->andReturn(['data' => $roster56]);
             $mock->shouldReceive('getClasses')->andReturn(['data' => []]);
             $mock->shouldReceive('getMatieres')->andReturn(['data' => []]);
         });

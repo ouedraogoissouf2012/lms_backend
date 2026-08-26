@@ -41,6 +41,7 @@ final class SearchDegradationTest extends TestCase
         $this->staff = User::factory()->create([
             'institution_id' => $institution->id,
             'role' => 'coordinateur',
+            'klassci_token' => 'search-token-616',
         ]);
     }
 

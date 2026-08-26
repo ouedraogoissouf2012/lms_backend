@@ -157,12 +157,6 @@ parameters:
 			path: app/Http/Controllers/API/Proxy/ProxyDashboardController.php
 
 		-
-			message: '#^Parameter \#2 \$anneeId of method App\\Services\\KlassciProxyService\:\:getClasseEtudiants\(\) expects int\|null, mixed given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Controllers/API/Proxy/ProxyOrganisationController.php
-
-		-
 			message: '#^Cannot cast mixed to int\.$#'
 			identifier: cast.int
 			count: 1
@@ -735,18 +729,6 @@ parameters:
 		-
 			message: '#^Method App\\Services\\Evaluation\\EvaluationCreationService\:\:resolveKlassciLabels\(\) should return array\{string\|null, string\|null\} but returns array\{mixed, mixed\}\.$#'
 			identifier: return.type
-			count: 1
-			path: app/Services/Evaluation/EvaluationCreationService.php
-
-		-
-			message: '#^Parameter \#1 \$matiereId of method App\\Services\\Evaluation\\EvaluationCreationService\:\:resolveKlassciLabels\(\) expects int\|null, mixed given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Services/Evaluation/EvaluationCreationService.php
-
-		-
-			message: '#^Parameter \#2 \$classeId of method App\\Services\\Evaluation\\EvaluationCreationService\:\:resolveKlassciLabels\(\) expects int\|null, mixed given\.$#'
-			identifier: argument.type
 			count: 1
 			path: app/Services/Evaluation/EvaluationCreationService.php
 

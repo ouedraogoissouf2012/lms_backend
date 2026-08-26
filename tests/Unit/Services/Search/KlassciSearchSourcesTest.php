@@ -175,12 +175,16 @@ final class KlassciSearchSourcesTest extends TestCase
     }
 
     /**
-     * Utilisateur NON persisté : seul le rôle compte pour ces deux gardes.
+     * Pas de modèle Eloquent réel : `klassci_token` est cast `encrypted`
+     * et exige l'encrypter Laravel, absent de ce TestCase PHPUnit pur.
      */
     private function user(bool $isStaff): User
     {
-        $user = new User();
-        $user->role = $isStaff ? 'coordinateur' : 'etudiant';
+        $user = Mockery::mock(User::class);
+        $user->shouldReceive('isStaff')->andReturn($isStaff);
+        $user->shouldReceive('getAttribute')
+            ->with('klassci_token')
+            ->andReturn($isStaff ? 'search-token-616' : null);
 
         return $user;
     }

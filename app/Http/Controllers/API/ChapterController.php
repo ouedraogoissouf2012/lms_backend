@@ -10,8 +10,10 @@ use App\Http\Requests\ReorderChaptersRequest;
 use App\Http\Requests\StoreChapterRequest;
 use App\Http\Requests\UpdateChapterRequest;
 use App\Http\Requests\UploadFileRequest;
+use App\Models\Chapter;
 use App\Services\Chapter\ChapterCrudService;
 use App\Services\Chapter\ChapterFileUploadService;
+use App\Services\Chapter\ChapterSlideService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
@@ -36,6 +38,7 @@ final class ChapterController extends Controller
     public function __construct(
         private readonly ChapterCrudService $chapterCrud,
         private readonly ChapterFileUploadService $chapterFileUpload,
+        private readonly ChapterSlideService $slides,
     ) {}
 
     /**
@@ -45,6 +48,7 @@ final class ChapterController extends Controller
     public function index(int $lessonId): JsonResponse
     {
         $result = $this->chapterCrud->listByLesson($lessonId);
+        $result['payload'] = $this->signSlideUrlsInList($result['payload']);
 
         return response()->json($result['payload'], $result['status']);
     }
@@ -56,6 +60,7 @@ final class ChapterController extends Controller
     public function show(int $id): JsonResponse
     {
         $result = $this->chapterCrud->show($id);
+        $result['payload'] = $this->signSlideUrlsInShow($result['payload']);
 
         return response()->json($result['payload'], $result['status']);
     }
@@ -137,5 +142,43 @@ final class ChapterController extends Controller
     {
         return $request->boolean('async')
             || str_contains(strtolower((string) $request->header('Prefer')), 'respond-async');
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     * @return array<string, mixed>
+     */
+    private function signSlideUrlsInShow(array $payload): array
+    {
+        $chapter = $payload['data'] ?? null;
+        if (! $chapter instanceof Chapter) {
+            return $payload;
+        }
+
+        $payload['data'] = $this->slides->replaceInPayload($chapter, $chapter->toArray());
+
+        return $payload;
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     * @return array<string, mixed>
+     */
+    private function signSlideUrlsInList(array $payload): array
+    {
+        $chapters = $payload['data'] ?? null;
+        if (! is_iterable($chapters)) {
+            return $payload;
+        }
+
+        $signed = [];
+        foreach ($chapters as $chapter) {
+            $signed[] = $chapter instanceof Chapter
+                ? $this->slides->replaceInPayload($chapter, $chapter->toArray())
+                : $chapter;
+        }
+        $payload['data'] = $signed;
+
+        return $payload;
     }
 }

@@ -55,6 +55,14 @@ class StorageHttpGuardTest extends TestCase
         $this->assertStringContainsString('Allow from all', $content);
     }
 
+    public function test_chapter_slides_htaccess_forbids_direct_png_access(): void
+    {
+        $content = $this->htaccess('storage/app/public/chapters/.htaccess');
+
+        $this->assertStringContainsString('slides/', $content);
+        $this->assertStringContainsString('[F,L]', $content);
+    }
+
     /**
      * Extrait le motif de la RewriteCond #577 (répertoires applicatifs) tel qu'il
      * est réellement versionné dans le .htaccess racine. mod_rewrite d'Apache

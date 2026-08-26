@@ -6,6 +6,7 @@ namespace App\Services\Evaluation;
 
 use App\Models\EvaluationQuestion;
 use App\Models\EvaluationSubmission;
+use App\Models\User;
 
 /**
  * Logique de correction automatique des évaluations extraite des modèles
@@ -97,10 +98,7 @@ class EvaluationGradingService
      * (contrairement à qcm / qcm_multiple / vrai_faux / reponse_courte, tous
      * auto-corrigeables). Miroir du concept quiz `QuizQuestion::requiresManualGrading`.
      *
-     * Utilisé pour fail-closer la synchronisation KLASSCI (#564) : tant qu'aucun
-     * chemin de notation manuelle n'existe pour les évaluations, une soumission
-     * contenant une dissertation ne peut pas produire de note FINALE — on refuse
-     * donc de pousser une note non finalisée (0/déflatée) dans le SIS officiel.
+     * #588 : la note n'est finale qu'après `manualGrade()` (statut `corrige`).
      */
     public function requiresManualGrading(EvaluationQuestion $question): bool
     {
@@ -121,10 +119,16 @@ class EvaluationGradingService
         $totalPoints = 0;
         $earnedPoints = 0;
 
+        $manualPoints = is_array($submission->manual_points) ? $submission->manual_points : [];
+
         foreach ($evaluation->questions as $question) {
             $totalPoints += $question->points;
 
-            // Vérifier si l'étudiant a répondu
+            if ($this->requiresManualGrading($question)) {
+                $earnedPoints += $this->manualPointsFor($question, $manualPoints);
+                continue;
+            }
+
             if (isset($submission->answers[$question->id])) {
                 $studentAnswer = $submission->answers[$question->id];
 
@@ -152,5 +156,43 @@ class EvaluationGradingService
         $submission->submitted_at = now();
         $this->calculateScore($submission);
         $submission->save();
+    }
+
+    /**
+     * #588 — note les dissertations, recalcule note_sur_20, passe en `corrige`.
+     *
+     * @param  array<int|string, float|int|string>  $manualPoints
+     */
+    public function manualGrade(
+        EvaluationSubmission $submission,
+        array $manualPoints,
+        User $grader,
+        ?string $feedback,
+    ): void {
+        $submission->manual_points = $manualPoints;
+        $this->calculateScore($submission);
+        $submission->status = 'corrige';
+        $submission->graded_by = $grader->id;
+        $submission->graded_at = now();
+        if ($feedback !== null) {
+            $submission->feedback = $feedback;
+        }
+        $submission->save();
+    }
+
+    /**
+     * @param  array<int|string, mixed>  $manualPoints
+     */
+    private function manualPointsFor(EvaluationQuestion $question, array $manualPoints): float
+    {
+        $raw = $manualPoints[$question->id] ?? $manualPoints[(string) $question->id] ?? null;
+        if (! is_numeric($raw)) {
+            return 0.0;
+        }
+
+        $points = (float) $raw;
+        $max = (float) $question->points;
+
+        return max(0.0, min($points, $max));
     }
 }

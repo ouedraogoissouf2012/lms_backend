@@ -44,12 +44,8 @@ class EvaluationKlassciSyncController extends AuthenticatedController
             return $this->errorResponse('Évaluation non trouvée', 404);
         }
 
-        // Fail-closed (#564) : tant qu'aucun chemin de notation manuelle n'existe
-        // pour les évaluations, une question à correction manuelle (dissertation)
-        // produit une note auto déflatée/0. On REFUSE de pousser ces notes non
-        // finalisées dans KLASSCI (SIS officiel). Suivi : endpoint de notation
-        // enseignant pour les dissertations (issue dédiée).
-        if ($this->hasManualGradingQuestion($evaluation)) {
+        // #588 : une dissertation n'est finale qu'en statut `corrige`.
+        if ($this->hasUngradedManualSubmission($evaluation)) {
             return $this->errorResponse(
                 'Synchronisation bloquée : cette évaluation contient des questions à correction manuelle (dissertation) non encore notées.',
                 409
@@ -110,10 +106,7 @@ class EvaluationKlassciSyncController extends AuthenticatedController
         try {
             $evaluation = Evaluation::with('questions')->findOrFail($id);
 
-            // Fail-closed (#564) : ne pas marquer « synchronisées » des soumissions
-            // dont la note n'est pas finalisée (question à correction manuelle) —
-            // sinon le futur push réel les sauterait (déjà « synced »).
-            if ($this->hasManualGradingQuestion($evaluation)) {
+            if ($this->hasUngradedManualSubmission($evaluation)) {
                 return $this->errorResponse(
                     'Synchronisation bloquée : cette évaluation contient des questions à correction manuelle (dissertation) non encore notées.',
                     409
@@ -209,6 +202,19 @@ class EvaluationKlassciSyncController extends AuthenticatedController
     {
         return $evaluation->questions->contains(
             fn (EvaluationQuestion $question): bool => $this->gradingService->requiresManualGrading($question)
+        );
+    }
+
+    private function hasUngradedManualSubmission(Evaluation $evaluation): bool
+    {
+        if (! $this->hasManualGradingQuestion($evaluation)) {
+            return false;
+        }
+
+        $evaluation->loadMissing('submissions');
+
+        return $evaluation->submissions->contains(
+            fn (EvaluationSubmission $submission): bool => $submission->status === 'soumis'
         );
     }
 }

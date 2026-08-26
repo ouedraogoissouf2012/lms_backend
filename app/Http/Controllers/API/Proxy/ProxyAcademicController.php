@@ -85,7 +85,12 @@ final class ProxyAcademicController extends Controller
                 'notes.*.commentaire' => 'nullable|string',
             ]);
 
-            $data = $this->klassciService->saveNotes($id, $validated['notes']);
+            $klassciToken = $this->personalKlassciToken($request);
+            if ($klassciToken === null) {
+                return $this->missingKlassciTokenResponse();
+            }
+
+            $data = $this->klassciService->saveNotes($klassciToken, $id, $validated['notes']);
             return response()->json($data);
         } catch (\Exception $e) {
             return $this->proxyErrorResponse($e);
@@ -114,7 +119,12 @@ final class ProxyAcademicController extends Controller
                 'commentaire' => $validated['commentaire'] ?? null,
             ];
 
-            $data = $this->klassciService->savePresences($id, $presences);
+            $klassciToken = $this->personalKlassciToken($request);
+            if ($klassciToken === null) {
+                return $this->missingKlassciTokenResponse();
+            }
+
+            $data = $this->klassciService->savePresences($klassciToken, $id, $presences);
             return response()->json($data);
         } catch (\Exception $e) {
             return $this->proxyErrorResponse($e);
@@ -132,7 +142,13 @@ final class ProxyAcademicController extends Controller
                 'commentaire' => 'nullable|string',
             ]);
 
+            $klassciToken = $this->personalKlassciToken($request);
+            if ($klassciToken === null) {
+                return $this->missingKlassciTokenResponse();
+            }
+
             $data = $this->klassciService->updateCoursStatut(
+                $klassciToken,
                 $id,
                 $validated['statut'],
                 $validated['commentaire'] ?? null,

@@ -34,6 +34,7 @@ final class EvaluationManualGradeTest extends TestCase
             'institution_id' => $this->institution->id,
             'role' => 'enseignant',
             'klassci_enseignant_id' => 42,
+            'klassci_token' => 'token-grade-619',
             'last_klassci_sync' => now(),
         ]);
     }

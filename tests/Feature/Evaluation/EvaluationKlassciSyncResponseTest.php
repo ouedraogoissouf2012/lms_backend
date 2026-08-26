@@ -56,6 +56,7 @@ final class EvaluationKlassciSyncResponseTest extends TestCase
             'role'                  => 'enseignant',
             'klassci_role'          => 'enseignant',
             'klassci_enseignant_id' => 42,
+            'klassci_token' => 'token-sync-619',
         ]);
     }
 

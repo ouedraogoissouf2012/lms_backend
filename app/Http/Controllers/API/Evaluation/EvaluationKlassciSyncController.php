@@ -36,7 +36,7 @@ class EvaluationKlassciSyncController extends AuthenticatedController
         private EvaluationGradingService $gradingService,
     ) {}
 
-    public function syncToKlassci(int $id): JsonResponse
+    public function syncToKlassci(Request $request, int $id): JsonResponse
     {
         $evaluation = Evaluation::with(['submissions', 'questions'])->find($id);
 
@@ -69,7 +69,13 @@ class EvaluationKlassciSyncController extends AuthenticatedController
 
             // Envoyer vers KLASSCI si une évaluation KLASSCI existe
             if ($evaluation->klassci_evaluation_id) {
+                $teacherToken = $this->authenticatedUser($request)->klassci_token;
+                if (! is_string($teacherToken) || $teacherToken === '') {
+                    return $this->errorResponse('Token KLASSCI non trouvé. Veuillez vous reconnecter.', 401);
+                }
+
                 $result = $this->klassciService->saveNotes(
+                    $teacherToken,
                     $evaluation->klassci_evaluation_id,
                     $notes
                 );

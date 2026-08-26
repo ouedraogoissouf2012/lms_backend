@@ -37,7 +37,7 @@ namespace App\Services\Klassci\Concerns;
  *   varier la réponse selon le porteur. La clé de cache dérive du hash du
  *   porteur ; le raccourci **exige** donc le jeton en premier paramètre — sans
  *   quoi la réponse du 1ᵉʳ appelant fuite à tout le tenant (#568, #591).
-     * Aujourd'hui : `evaluations`, `emploi-temps`, `matieres`, `matieres/{id}`.
+     * Aujourd'hui : lectures + écritures notes/présences/statut cours.
  * - **Tenant-partagé** → `get()` : charge utile prouvément identique pour tout
  *   le tenant. Clé de cache globale, taux de hit maximal.
  *   Aujourd'hui : `structure`, `filieres`, `niveaux-etudes`, `enseignants`.
@@ -179,23 +179,26 @@ trait HasKlassciEndpointShortcuts
     }
 
     /**
+     * #619 — écriture liée au porteur. Ne jamais utiliser le résolveur
+     * mémoïsé : sous Octane le contrôleur peut survivre à la requête.
+     *
      * @param  array<int, array<string, mixed>>  $notes
      * @return array<string, mixed>
      */
-    public function saveNotes(int $evaluationId, array $notes): array
+    public function saveNotes(string $userToken, int $evaluationId, array $notes): array
     {
-        return $this->post("evaluations/{$evaluationId}/notes", [
+        return $this->requestWithUserToken($userToken, "evaluations/{$evaluationId}/notes", 'POST', [
             'notes' => $notes,
         ]);
     }
 
     /**
-     * @param  array<int, array<string, mixed>>  $presences
+     * @param  array<string, mixed>  $presences
      * @return array<string, mixed>
      */
-    public function savePresences(int $coursId, array $presences): array
+    public function savePresences(string $userToken, int $coursId, array $presences): array
     {
-        return $this->post("cours/{$coursId}/presences", [
+        return $this->requestWithUserToken($userToken, "cours/{$coursId}/presences", 'POST', [
             'presences' => $presences,
         ]);
     }
@@ -203,10 +206,10 @@ trait HasKlassciEndpointShortcuts
     /**
      * @return array<string, mixed>
      */
-    public function updateCoursStatut(int $coursId, string $statut, ?string $commentaire = null): array
+    public function updateCoursStatut(string $userToken, int $coursId, string $statut, ?string $commentaire = null): array
     {
-        return $this->put("cours/{$coursId}/statut", [
-            'statut'      => $statut,
+        return $this->requestWithUserToken($userToken, "cours/{$coursId}/statut", 'PUT', [
+            'statut' => $statut,
             'commentaire' => $commentaire,
         ]);
     }

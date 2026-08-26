@@ -9,6 +9,7 @@ use App\Models\ForumTopic;
 use App\Models\Notification;
 use App\Models\User;
 use Illuminate\Database\ConnectionInterface;
+use RuntimeException;
 
 /**
  * Post-side orchestration du forum (split-18/forum).
@@ -66,7 +67,7 @@ final class ForumPostService
         $data['user_id'] = $author->id;
         $data['institution_id'] = $author->institution_id;
 
-        return $this->db->transaction(function () use ($data, $topic, $author): ForumPost {
+        $created = $this->db->transaction(function () use ($data, $topic, $author): ForumPost {
             $post = ForumPost::create($data);
             $post->load(self::AUTHOR_COLUMNS);
             $this->refreshTopicCounters($topic);
@@ -74,6 +75,12 @@ final class ForumPostService
 
             return $post;
         });
+
+        if (! $created instanceof ForumPost) {
+            throw new RuntimeException('Création du post forum interrompue.');
+        }
+
+        return $created;
     }
 
     /**
@@ -113,7 +120,7 @@ final class ForumPostService
      */
     public function markAsSolution(ForumPost $post, User $markedBy): ForumPost
     {
-        return $this->db->transaction(function () use ($post, $markedBy): ForumPost {
+        $solved = $this->db->transaction(function () use ($post, $markedBy): ForumPost {
             $topic = $post->topic;
             $topic->posts()->where('id', '!=', $post->id)->update(['is_solution' => false]);
             $post->update(['is_solution' => true]);
@@ -139,6 +146,12 @@ final class ForumPostService
 
             return $fresh;
         });
+
+        if (! $solved instanceof ForumPost) {
+            throw new RuntimeException('Marquage de la solution forum interrompu.');
+        }
+
+        return $solved;
     }
 
     private function notifyNewPost(ForumPost $post, ForumTopic $topic, User $author, mixed $parentId): void

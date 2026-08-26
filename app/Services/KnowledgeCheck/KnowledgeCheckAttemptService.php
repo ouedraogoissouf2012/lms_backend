@@ -10,6 +10,7 @@ use App\Models\KnowledgeCheckAttempt;
 use App\Models\User;
 use Illuminate\Database\ConnectionInterface;
 use Illuminate\Database\Eloquent\Collection;
+use RuntimeException;
 
 /**
  * Service de la « state machine » des tentatives étudiant pour les quiz
@@ -158,6 +159,10 @@ final class KnowledgeCheckAttemptService
 
             return $attempt;
         });
+
+        if (! $attempt instanceof KnowledgeCheckAttempt) {
+            throw new RuntimeException('Enregistrement de la tentative interrompu.');
+        }
 
         return [
             'attempt_id' => $attempt->id,

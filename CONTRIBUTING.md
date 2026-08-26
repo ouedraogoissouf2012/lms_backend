@@ -196,7 +196,7 @@ Détails (optionnel, expliquer le POURQUOI)
 Refs: #issue-number
 ```
 
-Types autorisés : `feat`, `fix`, `refactor`, `test`, `docs`, `chore`, `perf`, `security`
+Types autorisés : `feat`, `fix`, `refactor`, `test`, `docs`, `chore`, `perf`, `security`, `ci`, `revert`
 
 ### Workflow PR
 

@@ -26,15 +26,10 @@ use App\Models\User;
  * éditable de l'enseignant, susceptible de porter métadonnées, notes ou versions
  * non publiées.
  *
- * ⚠️ **Ce que cette règle NE fait PAS** (relevé par l'audit `spec-security`) :
- * `allow_download` vaut `true` par défaut (`Chapter::$attributes`) et aucune
- * vérification d'inscription n'existe. En pratique, tout compte authentifié de
- * l'institution peut donc télécharger la source de n'importe quel chapitre du
- * tenant — même famille que la fuite inter-classes #482. Ce n'est **pas une
- * régression** : `GET /api/chapters/{id}` ne vérifie rien de plus
- * (`ChapterCrudService::show()` = `findOrFail` + modèle brut). Mais il ne faut
- * pas lire ce trait comme une protection par classe ou par inscription : il
- * n'en est pas une. → dette tracée en issue de suivi.
+ * L'inscription (classe de l'étudiant) est hors de ce trait : elle est
+ * appliquée **avant** par {@see \App\Services\Chapter\ChapterReadGate}
+ * (`#621`, même règle que `#482`). Ici : seulement le droit de télécharger
+ * une source déjà lisible.
  *
  * Ordre de court-circuit :
  *

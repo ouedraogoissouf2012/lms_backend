@@ -11,6 +11,7 @@ use App\Http\Requests\StoreChapterRequest;
 use App\Http\Requests\UpdateChapterRequest;
 use App\Http\Requests\UploadFileRequest;
 use App\Models\Chapter;
+use App\Models\User;
 use App\Services\Chapter\ChapterCrudService;
 use App\Services\Chapter\ChapterFileUploadService;
 use App\Services\Chapter\ChapterSlideService;
@@ -45,9 +46,14 @@ final class ChapterController extends Controller
      * GET /api/lessons/{lessonId}/chapters
      * Liste des chapitres d'une leçon.
      */
-    public function index(int $lessonId): JsonResponse
+    public function index(Request $request, int $lessonId): JsonResponse
     {
-        $result = $this->chapterCrud->listByLesson($lessonId);
+        $user = $request->user();
+        if (! $user instanceof User) {
+            return $this->errorResponse('Unauthenticated.', 401);
+        }
+
+        $result = $this->chapterCrud->listByLesson($lessonId, $user);
         $result['payload'] = $this->signSlideUrlsInList($result['payload']);
 
         return response()->json($result['payload'], $result['status']);
@@ -57,9 +63,14 @@ final class ChapterController extends Controller
      * GET /api/chapters/{id}
      * Détails d'un chapitre avec sa leçon parente.
      */
-    public function show(int $id): JsonResponse
+    public function show(Request $request, int $id): JsonResponse
     {
-        $result = $this->chapterCrud->show($id);
+        $user = $request->user();
+        if (! $user instanceof User) {
+            return $this->errorResponse('Unauthenticated.', 401);
+        }
+
+        $result = $this->chapterCrud->show($id, $user);
         $result['payload'] = $this->signSlideUrlsInShow($result['payload']);
 
         return response()->json($result['payload'], $result['status']);

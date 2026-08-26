@@ -13,7 +13,7 @@ final class ViewAuditLogRequest extends FormRequest
         // normalise 'superAdmin' (admin intra-tenant) en Role::Supradmin et
         // laisserait un admin d'institution lire les logs des autres tenants.
         // Même distinction que ChecksForumAuthorization / RateLimitServiceProvider.
-        return auth()->user()?->role === 'supradmin';
+        return $this->user()?->isPlatformSupradmin() === true;
     }
 
     /**

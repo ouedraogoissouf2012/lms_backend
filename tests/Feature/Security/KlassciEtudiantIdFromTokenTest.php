@@ -69,6 +69,8 @@ final class KlassciEtudiantIdFromTokenTest extends TestCase
             'is_locked'       => false,
             'status'          => 'en_cours',
             'max_attempts'    => 3,
+            'allow_retake'    => true,
+            'is_online'       => true,
             'date_evaluation' => now()->addDay(),
             'duree_minutes'   => 60,
         ], $overrides));

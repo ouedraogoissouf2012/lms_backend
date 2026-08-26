@@ -1,0 +1,8 @@
+# #620 — les PNG `slides/` ne sont plus servies par Apache.
+# Accès unique : GET /api/chapters/{id}/slides/{n} (URL signée, TTL 60 min).
+# Les vidéos du même arbre restent publiques (`<video src="/storage/...">`).
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteRule (^|/)slides/ - [F,L]
+</IfModule>

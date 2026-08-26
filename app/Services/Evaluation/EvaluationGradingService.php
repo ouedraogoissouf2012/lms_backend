@@ -172,7 +172,7 @@ class EvaluationGradingService
         $submission->manual_points = $manualPoints;
         $this->calculateScore($submission);
         $submission->status = 'corrige';
-        $submission->graded_by = $grader->id;
+        $submission->graded_by = max(0, $grader->id);
         $submission->graded_at = now();
         if ($feedback !== null) {
             $submission->feedback = $feedback;

@@ -87,7 +87,12 @@ final class KlassciSearchSources
             return [];
         }
 
-        return collect(self::records($this->klassci->getMatieres(), 'matieres'))
+        $token = $user->klassci_token;
+        if (! is_string($token) || $token === '') {
+            return [];
+        }
+
+        return collect(self::records($this->klassci->getMatieres($token), 'matieres'))
             ->filter(fn (array $matiere): bool => self::matches($query, [
                 self::text($matiere, 'nom'),
                 self::text($matiere, 'code'),

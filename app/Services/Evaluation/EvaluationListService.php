@@ -80,7 +80,7 @@ final class EvaluationListService
             ->limit($limit)
             ->get();
 
-        $enrichedEvaluations = $this->enrichmentService->enrich($evaluations);
+        $enrichedEvaluations = $this->enrichmentService->enrich($evaluations, $this->personalToken($user));
 
         // PERF-03 batch 2 — pour un étudiant KLASSCI sync, attacher sa dernière
         // soumission par évaluation via une seule query batched.
@@ -112,7 +112,7 @@ final class EvaluationListService
      *
      * @return array<string, mixed>|null
      */
-    public function findOne(int $id): ?array
+    public function findOne(int $id, User $user): ?array
     {
         $evaluation = Evaluation::with('questions')->find($id);
 
@@ -120,6 +120,13 @@ final class EvaluationListService
             return null;
         }
 
-        return $this->enrichmentService->enrich(collect([$evaluation]))[0];
+        return $this->enrichmentService->enrich(collect([$evaluation]), $this->personalToken($user))[0];
+    }
+
+    private function personalToken(User $user): string
+    {
+        $token = $user->klassci_token;
+
+        return is_string($token) ? $token : '';
     }
 }

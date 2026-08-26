@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\API\Proxy;
 
 use App\Http\Controllers\API\Proxy\Concerns\RendersKlassciProxyErrors;
+use App\Http\Controllers\API\Proxy\Concerns\ResolvesPersonalKlassciToken;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Services\KlassciProxyService;
@@ -20,6 +21,7 @@ use Illuminate\Support\Facades\Log;
 final class ProxyOrganisationController extends Controller
 {
     use RendersKlassciProxyErrors;
+    use ResolvesPersonalKlassciToken;
 
     public function __construct(
         private readonly KlassciProxyService $klassciService,
@@ -73,8 +75,13 @@ final class ProxyOrganisationController extends Controller
     public function matieres(Request $request): JsonResponse
     {
         try {
+            $klassciToken = $this->personalKlassciToken($request);
+            if ($klassciToken === null) {
+                return $this->missingKlassciTokenResponse();
+            }
+
             $filters = $request->only(['filiere_id', 'niveau_id']);
-            $data = $this->klassciService->getMatieres($filters);
+            $data = $this->klassciService->getMatieres($klassciToken, $filters);
             return response()->json($data);
         } catch (\Exception $e) {
             return $this->proxyErrorResponse($e);
@@ -84,10 +91,15 @@ final class ProxyOrganisationController extends Controller
     /**
      * GET /api/proxy/matieres/{id} — Détails d'une matière.
      */
-    public function matiereDetails(int $id): JsonResponse
+    public function matiereDetails(int $id, Request $request): JsonResponse
     {
         try {
-            $data = $this->klassciService->getMatiereDetails($id);
+            $klassciToken = $this->personalKlassciToken($request);
+            if ($klassciToken === null) {
+                return $this->missingKlassciTokenResponse();
+            }
+
+            $data = $this->klassciService->getMatiereDetails($klassciToken, $id);
             return response()->json($data);
         } catch (\Exception $e) {
             return $this->proxyErrorResponse($e);

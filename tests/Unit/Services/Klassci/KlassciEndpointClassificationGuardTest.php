@@ -46,6 +46,8 @@ final class KlassciEndpointClassificationGuardTest extends TestCase
     private const IDENTITY_SCOPED_SHORTCUTS = [
         'getEvaluations',
         'getEmploiTemps',
+        'getMatieres',
+        'getMatiereDetails',
     ];
 
     public function test_identity_scoped_shortcuts_require_the_bearer_token_first(): void

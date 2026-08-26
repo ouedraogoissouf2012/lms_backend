@@ -92,6 +92,7 @@ final class EvaluationCreationService
             $this->db->beginTransaction();
 
             [$matiereNom, $classeNom] = $this->resolveKlassciLabels(
+                $teacher,
                 $data['klassci_matiere_id'] ?? null,
                 $data['klassci_classe_id'] ?? null,
             );
@@ -173,14 +174,16 @@ final class EvaluationCreationService
      *
      * @return array{0: ?string, 1: ?string}  [matiereNom, classeNom]
      */
-    private function resolveKlassciLabels(?int $matiereId, ?int $classeId): array
+    private function resolveKlassciLabels(User $teacher, ?int $matiereId, ?int $classeId): array
     {
         $matiereNom = null;
         $classeNom = null;
+        $teacherToken = $teacher->klassci_token;
+        $teacherToken = is_string($teacherToken) && $teacherToken !== '' ? $teacherToken : null;
 
         try {
-            if ($matiereId) {
-                $matieres = $this->klassciService->getMatieres();
+            if ($matiereId && $teacherToken !== null) {
+                $matieres = $this->klassciService->getMatieres($teacherToken);
                 if (isset($matieres['data']) && is_array($matieres['data'])) {
                     foreach ($matieres['data'] as $matiere) {
                         if ((int) ($matiere['id'] ?? 0) === $matiereId) {

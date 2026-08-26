@@ -30,7 +30,7 @@ final class StudentGradesAggregator
      */
     public function getGradesAggregatedByMatiere(User $user): array
     {
-        $matieresData = $this->fetchMatieresNames();
+        $matieresData = $this->fetchMatieresNames($user);
         $submissions = $this->fetchCorrectedSubmissions($user);
         $gradesByMatiere = $this->groupByMatiere($submissions, $matieresData);
         $this->computeMatiereAverages($gradesByMatiere);
@@ -51,11 +51,16 @@ final class StudentGradesAggregator
     /**
      * @return array<int, string>  Map matiere_id → nom KLASSCI
      */
-    private function fetchMatieresNames(): array
+    private function fetchMatieresNames(User $user): array
     {
+        $token = $user->klassci_token;
+        if (! is_string($token) || $token === '') {
+            return [];
+        }
+
         $matieresData = [];
         try {
-            $matieresResponse = $this->klassciService->getMatieres();
+            $matieresResponse = $this->klassciService->getMatieres($token);
             if (($matieresResponse['success'] ?? false) && isset($matieresResponse['data'])) {
                 foreach ($matieresResponse['data'] as $matiere) {
                     $matieresData[$matiere['id']] = $matiere['nom'];

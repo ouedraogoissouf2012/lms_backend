@@ -83,7 +83,9 @@ final class TeacherEvaluationResultsService
                 'total_etudiants' => count($etudiants),
             ]);
 
-            $evaluationEnrichie = $this->enrichmentService->enrich(collect([$evaluation]))[0];
+            $teacherToken = $teacher->klassci_token;
+            $teacherToken = is_string($teacherToken) ? $teacherToken : '';
+            $evaluationEnrichie = $this->enrichmentService->enrich(collect([$evaluation]), $teacherToken)[0];
 
             $resultats = $this->buildResultats($evaluation, $etudiants);
 

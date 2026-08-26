@@ -50,21 +50,17 @@ use App\Models\User;
  */
 trait ChecksChapterDownloadAuthorization
 {
+    use AuthorizesTenantScopedResource;
+
     protected function canDownloadChapterOriginal(?Chapter $chapter, ?User $user): bool
     {
         if ($chapter === null || $user === null) {
             return false;
         }
 
-        // Intentionnel : `'supradmin'` en minuscules strictes — l'enum `Role`
-        // normaliserait aussi `'superAdmin'` (admin INTRA-tenant) et briserait la
-        // distinction délibérée (cf. #102 et le trait frère).
-        if ($user->role === 'supradmin') {
-            return true;
-        }
-
-        if ($chapter->institution_id !== $user->institution_id) {
-            return false;
+        $guard = $this->passesTenantGuard($user, $chapter->institution_id);
+        if ($guard !== null) {
+            return $guard;
         }
 
         if ($chapter->enseignant_id === $user->id) {

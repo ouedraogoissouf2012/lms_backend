@@ -93,8 +93,8 @@ final class EvaluationCreationService
 
             [$matiereNom, $classeNom] = $this->resolveKlassciLabels(
                 $teacher,
-                $data['klassci_matiere_id'] ?? null,
-                $data['klassci_classe_id'] ?? null,
+                is_numeric($data['klassci_matiere_id'] ?? null) ? (int) $data['klassci_matiere_id'] : null,
+                is_numeric($data['klassci_classe_id'] ?? null) ? (int) $data['klassci_classe_id'] : null,
             );
 
             $evaluation = Evaluation::create(array_merge(

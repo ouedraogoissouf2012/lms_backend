@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\API\LMS;
 
+use App\Http\Controllers\API\Proxy\Concerns\ResolvesPersonalKlassciToken;
 use App\Http\Controllers\AuthenticatedController;
 use App\Services\KlassciProxyService;
 use Carbon\Carbon;
@@ -18,6 +19,8 @@ use Illuminate\Support\Facades\Log;
  */
 final class LMSMatieresAdminController extends AuthenticatedController
 {
+    use ResolvesPersonalKlassciToken;
+
     public function __construct(
         private readonly KlassciProxyService $klassciService,
     ) {}
@@ -34,10 +37,9 @@ final class LMSMatieresAdminController extends AuthenticatedController
     {
         try {
             $user = $this->authenticatedUser($request);
-            $klassciToken = $user->klassci_token;
-
-            if (!$klassciToken) {
-                return $this->errorResponse('Token KLASSCI non trouvé. Veuillez vous reconnecter.', 401);
+            $klassciToken = $this->personalKlassciToken($request);
+            if ($klassciToken === null) {
+                return $this->missingKlassciTokenResponse();
             }
 
             // Defense in depth: la route middleware `role:admin,coordinateur` filtre

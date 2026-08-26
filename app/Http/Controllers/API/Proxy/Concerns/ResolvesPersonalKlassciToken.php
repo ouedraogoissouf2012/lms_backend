@@ -17,6 +17,8 @@ use Illuminate\Http\Request;
  */
 trait ResolvesPersonalKlassciToken
 {
+    private const MISSING_KLASSCI_TOKEN = 'Token KLASSCI non trouvé. Veuillez vous reconnecter.';
+
     protected function personalKlassciToken(Request $request): ?string
     {
         $user = $request->user();
@@ -31,6 +33,6 @@ trait ResolvesPersonalKlassciToken
 
     protected function missingKlassciTokenResponse(): JsonResponse
     {
-        return $this->errorResponse('Token KLASSCI non trouvé. Veuillez vous reconnecter.', 401);
+        return $this->errorResponse(self::MISSING_KLASSCI_TOKEN, 401);
     }
 }

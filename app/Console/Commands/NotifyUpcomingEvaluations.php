@@ -28,7 +28,8 @@ class NotifyUpcomingEvaluations extends Command
         $now = Carbon::now();
         $targetTime = $now->copy()->addHours($hoursBeforeNotification);
 
-        $evaluations = Evaluation::where('is_published', true)
+        $evaluations = Evaluation::with('institution')
+            ->where('is_published', true)
             ->where('status', '!=', 'terminee')
             ->whereBetween('date_evaluation', [$now, $targetTime])
             ->get();
@@ -45,7 +46,16 @@ class NotifyUpcomingEvaluations extends Command
             $this->line("Traitement: {$evaluation->titre}");
 
             try {
-                $etudiants = $this->klassciService->getClasseEtudiants($evaluation->klassci_classe_id);
+                $institutionToken = $evaluation->institution?->klassci_api_token;
+                if (! is_string($institutionToken) || $institutionToken === '') {
+                    $this->warn('Aucun jeton institution — roster ignoré');
+                    continue;
+                }
+
+                $etudiants = $this->klassciService->getClasseEtudiants(
+                    $institutionToken,
+                    (int) $evaluation->klassci_classe_id,
+                );
 
                 $students = self::extractStudents($etudiants);
 

@@ -76,15 +76,24 @@ final class TeacherEvaluationResultsService
                 'teacher_id'    => $teacher->id,
             ]);
 
-            $classeEtudiants = $this->klassciService->getClasseEtudiants($evaluation->klassci_classe_id);
+            $teacherToken = $teacher->klassci_token;
+            if (! is_string($teacherToken) || $teacherToken === '') {
+                return [
+                    'status'  => 401,
+                    'payload' => [
+                        'success' => false,
+                        'message' => 'Token KLASSCI non trouvé. Veuillez vous reconnecter.',
+                    ],
+                ];
+            }
+
+            $classeEtudiants = $this->klassciService->getClasseEtudiants($teacherToken, (int) $evaluation->klassci_classe_id);
             $etudiants       = $classeEtudiants['data'] ?? [];
 
             $this->logger->info('👥 Étudiants de la classe', [
                 'total_etudiants' => count($etudiants),
             ]);
 
-            $teacherToken = $teacher->klassci_token;
-            $teacherToken = is_string($teacherToken) ? $teacherToken : '';
             $evaluationEnrichie = $this->enrichmentService->enrich(collect([$evaluation]), $teacherToken)[0];
 
             $resultats = $this->buildResultats($evaluation, $etudiants);

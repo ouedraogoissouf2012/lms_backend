@@ -61,8 +61,14 @@ final class ProxyOrganisationController extends Controller
     public function etudiants(int $id, Request $request): JsonResponse
     {
         try {
+            $klassciToken = $this->personalKlassciToken($request);
+            if ($klassciToken === null) {
+                return $this->missingKlassciTokenResponse();
+            }
+
             $anneeId = $request->input('annee_id');
-            $data = $this->klassciService->getClasseEtudiants($id, $anneeId);
+            $anneeId = is_numeric($anneeId) ? (int) $anneeId : null;
+            $data = $this->klassciService->getClasseEtudiants($klassciToken, $id, $anneeId);
             return response()->json($data);
         } catch (\Exception $e) {
             return $this->proxyErrorResponse($e);
@@ -106,13 +112,7 @@ final class ProxyOrganisationController extends Controller
         }
     }
 
-    /**
-     * GET /api/proxy/enseignants — Enseignants.
-     *
-     * WORKAROUND : KLASSCI retourne parfois 0 enseignants alors que la BDD
-     * locale en contient. Si KLASSCI répond vide, on fallback sur la BDD
-     * locale (rôles enseignant/teacher).
-     */
+    /** GET /api/proxy/enseignants — fallback BDD si KLASSCI renvoie 0. */
     public function enseignants(): JsonResponse
     {
         try {
@@ -120,20 +120,16 @@ final class ProxyOrganisationController extends Controller
 
             if (empty($data['data'])) {
                 Log::info('KLASSCI retourne 0 enseignants, utilisation BDD locale');
-
                 $localEnseignants = User::whereIn('role', ['enseignant', 'teacher'])
                     ->get()
-                    ->map(static function (User $user): array {
-                        return [
-                            'id' => $user->klassci_id ?? $user->id,
-                            'nom' => $user->name,
-                            'prenom' => '',
-                            'email' => $user->email,
-                            'role' => $user->role,
-                            'source' => 'lms_local',
-                        ];
-                    })
-                    ->toArray();
+                    ->map(static fn (User $user): array => [
+                        'id' => $user->klassci_id ?? $user->id,
+                        'nom' => $user->name,
+                        'prenom' => '',
+                        'email' => $user->email,
+                        'role' => $user->role,
+                        'source' => 'lms_local',
+                    ])->all();
 
                 return response()->json([
                     'success' => true,

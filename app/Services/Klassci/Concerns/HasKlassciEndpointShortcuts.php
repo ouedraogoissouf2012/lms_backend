@@ -42,9 +42,8 @@ namespace App\Services\Klassci\Concerns;
  *   le tenant. Clé de cache globale, taux de hit maximal.
  *   Aujourd'hui : `structure`, `filieres`, `niveaux-etudes`, `enseignants`.
  *
- * ⚠️ **Non tranché — ne pas citer en exemple de « tenant-partagé »** :
- * `classes/{id}/etudiants` passe encore par `get()` (autorisation KLASSCI
- * contournable par cache hit — #617).
+ * Tous les endpoints adressés par ID et soumis à autorisation KLASSCI
+ * passent par `requestWithUserToken()`.
  *
  * En cas de doute, choisir la variante par porteur : une clé par porteur sur une
  * donnée tenant-wide ne coûte que du taux de hit ; une clé globale sur une
@@ -76,22 +75,17 @@ trait HasKlassciEndpointShortcuts
     }
 
     /**
-     * ⚠️ #591 (audit `spec-security`) — **classification non tranchée**. Le roster
-     * d'une classe est mis en cache sous une clé tenant-globale alors que
-     * `/api/proxy/classes/{id}/etudiants` (`routes/api/core.php:83`) est ouverte à
-     * tous les rôles. Si KLASSCI est le seul garde d'autorisation, un appelant
-     * NON autorisé peut obtenir le roster par *cache hit* sans que son jeton
-     * n'atteigne jamais KLASSCI — le cache devient un contournement
-     * d'autorisation. Non corrigé ici (hors périmètre #591), issue de suivi à
-     * ouvrir. NE PAS citer cette méthode en exemple de « tenant-partagé ».
+     * #617 — roster adressé par ID et soumis à autorisation KLASSCI.
+     * Une clé tenant-globale faisait du cache un contournement : le 1er
+     * autorisé peuplait, le suivant non autorisé recevait le hit sans 403.
      *
      * @return array<string, mixed>
      */
-    public function getClasseEtudiants(int $classeId, ?int $anneeId = null): array
+    public function getClasseEtudiants(string $userToken, int $classeId, ?int $anneeId = null): array
     {
         $params = $anneeId ? ['annee_id' => $anneeId] : [];
 
-        return $this->get("classes/{$classeId}/etudiants", $params, 300);
+        return $this->requestWithUserToken($userToken, "classes/{$classeId}/etudiants", 'GET', $params, 300);
     }
 
     /**

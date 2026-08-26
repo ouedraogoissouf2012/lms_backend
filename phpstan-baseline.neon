@@ -145,12 +145,6 @@ parameters:
 			path: app/Http/Controllers/API/Lesson/LessonProgressController.php
 
 		-
-			message: '#^Parameter \#2 \$presences of method App\\Services\\KlassciProxyService\:\:savePresences\(\) expects array\<int, array\<string, mixed\>\>, array\<string, mixed\> given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Controllers/API/Proxy/ProxyAcademicController.php
-
-		-
 			message: '#^Cannot cast mixed to int\.$#'
 			identifier: cast.int
 			count: 1

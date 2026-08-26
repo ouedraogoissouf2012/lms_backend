@@ -49,6 +49,9 @@ final class KlassciEndpointClassificationGuardTest extends TestCase
         'getMatieres',
         'getMatiereDetails',
         'getClasseEtudiants',
+        'saveNotes',
+        'savePresences',
+        'updateCoursStatut',
     ];
 
     public function test_identity_scoped_shortcuts_require_the_bearer_token_first(): void

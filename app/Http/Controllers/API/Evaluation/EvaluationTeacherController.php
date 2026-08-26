@@ -84,14 +84,12 @@ final class EvaluationTeacherController extends AuthenticatedController
         }
 
         $feedback = $request->input('feedback');
-        $rawPoints = $request->input('points', []);
+        $rawPoints = $request->validated('points');
         $points = [];
         if (is_array($rawPoints)) {
             foreach ($rawPoints as $questionId => $value) {
-                if (is_int($questionId) || is_string($questionId)) {
-                    if (is_int($value) || is_float($value) || is_string($value)) {
-                        $points[$questionId] = $value;
-                    }
+                if (is_numeric($value)) {
+                    $points[$questionId] = $value;
                 }
             }
         }

@@ -20,7 +20,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  */
 class AuditLog extends Model
 {
-    /*     * @use HasFactory<\Database\Factories\AuditLogFactory> */
+    /** @use HasFactory<\Database\Factories\AuditLogFactory> */
     use HasFactory;
     use BelongsToInstitution;
 

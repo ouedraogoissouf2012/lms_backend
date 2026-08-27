@@ -42,6 +42,7 @@ final class SeanceRecordingControlService
             try {
                 $recording = SeanceRecording::query()->create([
                     'seance_id' => $seance->id,
+                    'institution_id' => $seance->institution_id,
                     'status' => SeanceRecordingStatus::Recording,
                     'started_at' => now(),
                 ]);

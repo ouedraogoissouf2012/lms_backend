@@ -32,7 +32,7 @@ final class SeanceRecordingRetentionService
     public function purge(SeanceRecording $recording, CarbonInterface $cutoff): ?bool
     {
         return $this->database->transaction(function () use ($recording, $cutoff): ?bool {
-            $locked = SeanceRecording::query()
+            $locked = SeanceRecording::withoutGlobalScope('institution')
                 ->with(['seance', 'chapter'])
                 ->whereKey($recording->getKey())
                 ->lockForUpdate()

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Models;
 
 use App\Enums\SeanceRecordingStatus;
+use App\Models\Traits\BelongsToInstitution;
 use Database\Factories\SeanceRecordingFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -14,10 +15,12 @@ final class SeanceRecording extends Model
 {
     /** @use HasFactory<SeanceRecordingFactory> */
     use HasFactory;
+    use BelongsToInstitution;
 
     private const CONSENT_MESSAGE = 'Cette seance peut etre enregistree. En restant dans la visio, vous acceptez que votre participation soit captee selon les regles de votre etablissement.';
 
     protected $fillable = [
+        'institution_id',
         'seance_id',
         'lesson_id',
         'chapter_id',

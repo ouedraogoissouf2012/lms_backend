@@ -54,7 +54,7 @@ final class StaleRecordingFailer
         // l'autre statut actif porteur de verrou, mais AUCUN code ne le pose
         // aujourd'hui (0 écriture) → aucun enregistrement ne peut y rester bloqué.
         // À élargir ici si #204 introduit une phase d'upload sans finaliseur.
-        SeanceRecording::query()
+        SeanceRecording::withoutGlobalScope('institution')
             ->where('status', SeanceRecordingStatus::Processing)
             ->where('stopped_at', '<', $cutoff)
             ->orderBy('id')
@@ -72,7 +72,7 @@ final class StaleRecordingFailer
     private function failOne(SeanceRecording $recording, CarbonInterface $cutoff): bool
     {
         return (bool) $this->database->transaction(function () use ($recording, $cutoff): bool {
-            $locked = SeanceRecording::query()
+            $locked = SeanceRecording::withoutGlobalScope('institution')
                 ->whereKey($recording->getKey())
                 ->lockForUpdate()
                 ->first();

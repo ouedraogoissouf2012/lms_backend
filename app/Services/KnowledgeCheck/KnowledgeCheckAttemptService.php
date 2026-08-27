@@ -254,7 +254,9 @@ final class KnowledgeCheckAttemptService
             }
         }
 
-        $progress->time_spent_seconds = ((int) $progress->time_spent_seconds) + $timeSpentSeconds;
         $progress->save();
+        if ($timeSpentSeconds > 0) {
+            $progress->increment('time_spent_seconds', $timeSpentSeconds);
+        }
     }
 }

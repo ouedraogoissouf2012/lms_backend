@@ -70,7 +70,7 @@ final class ForumPostService
         $created = $this->db->transaction(function () use ($data, $topic, $author): ForumPost {
             $post = ForumPost::create($data);
             $post->load(self::AUTHOR_COLUMNS);
-            $this->refreshTopicCounters($topic);
+            $this->bumpTopicCounters($topic, 1);
             $this->notifyNewPost($post, $topic, $author, $data['parent_id'] ?? null);
 
             return $post;
@@ -109,7 +109,7 @@ final class ForumPostService
         $post->delete();
 
         if ($topic !== null) {
-            $this->refreshTopicCounters($topic);
+            $this->bumpTopicCounters($topic, -1);
         }
     }
 
@@ -198,14 +198,17 @@ final class ForumPostService
     }
 
     /**
-     * Recompte `posts_count` + horodate `last_activity_at` du topic.
-     * Appel explicite à chaque create/delete de post — remplace les boot
-     * hooks `ForumPost::created/deleted` (anti-pattern §5, cf. fix C1/C2).
+     * Incrément atomique de `posts_count` (#549 lost-update) + last_activity_at.
      */
-    private function refreshTopicCounters(ForumTopic $topic): void
+    private function bumpTopicCounters(ForumTopic $topic, int $delta): void
     {
-        $topic->posts_count = $topic->posts()->count();
-        $topic->last_activity_at = now();
-        $topic->save();
+        if ($delta === 0) {
+            return;
+        }
+
+        $topic->newQuery()->whereKey($topic->id)->increment('posts_count', $delta, [
+            'last_activity_at' => now(),
+        ]);
+        $topic->refresh();
     }
 }

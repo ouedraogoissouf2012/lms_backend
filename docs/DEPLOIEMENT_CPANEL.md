@@ -4,7 +4,7 @@
 > Ne pas sauter l'étape 4 (migrations) : c'est elle qui, oubliée, a provoqué
 > l'incident login 500 du 2026-06-20.
 
-- **Serveur** : `/home/c2569688c/public_html/lms-backend/`
+- **Serveur** : `/var/www/lms-backend/`
 - **Branche de prod** : `lms`
 - **Base de données prod** : MySQL (PAS sqlite — sqlite est uniquement le dev local)
 - **URL backend** : `https://api.klassci.com/api`
@@ -17,7 +17,7 @@
 - [ ] Prévenir qu'une courte interruption est possible.
 - [ ] **Sauvegarde DB** (filet de sécurité avant migrations) :
   ```bash
-  cd /home/c2569688c/public_html/lms-backend
+  cd /var/www/lms-backend
   php artisan db:show   # vérifie la connexion DB
   # Export de secours (adapter les identifiants depuis .env) :
   mysqldump -u <DB_USERNAME> -p <DB_DATABASE> > ~/backup-lms-$(date +%F-%H%M).sql
@@ -29,7 +29,7 @@
 ## 1. Récupérer le code
 
 ```bash
-cd /home/c2569688c/public_html/lms-backend
+cd /var/www/lms-backend
 git status            # doit être propre ; sinon stasher/committer AVANT
 git pull origin lms
 ```

@@ -35,7 +35,7 @@ Les sources de verite actuelles restent :
 Le scheduler cPanel doit tourner chaque minute :
 
 ```cron
-* * * * * /usr/local/bin/php /home/c2569688c/public_html/lms-backend/artisan schedule:run >> /dev/null 2>&1
+* * * * * /usr/local/bin/php /var/www/lms-backend/artisan schedule:run >> /dev/null 2>&1
 ```
 
 Le traitement des queues reste borne et non resident :

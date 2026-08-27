@@ -1,0 +1,30 @@
+FROM php:8.3-apache-bookworm
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        git unzip libzip-dev libpng-dev libonig-dev libxml2-dev curl \
+    && docker-php-ext-install -j$(nproc) pdo_mysql mbstring zip gd bcmath opcache \
+    && a2enmod rewrite headers \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
+
+WORKDIR /var/www/html
+
+COPY docker/apache-vhost.conf /etc/apache2/sites-available/000-default.conf
+COPY docker/uploads.ini /usr/local/etc/php/conf.d/uploads.ini
+COPY docker/opcache.ini /usr/local/etc/php/conf.d/opcache.ini
+
+COPY . .
+RUN composer install --no-dev --no-interaction --prefer-dist --optimize-autoloader --no-scripts \
+    && chown -R www-data:www-data storage bootstrap/cache \
+    && chmod -R ug+rwx storage bootstrap/cache
+
+COPY docker/entrypoint.sh /usr/local/bin/entrypoint.sh
+RUN chmod +x /usr/local/bin/entrypoint.sh
+
+EXPOSE 80
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 \
+    CMD curl -fsS http://127.0.0.1/up || exit 1
+
+ENTRYPOINT ["entrypoint.sh"]

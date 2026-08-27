@@ -726,6 +726,18 @@ paths:
         '200':
           description: "File downloaded"
 
+  /webhooks/visio/recording-ready:
+    post:
+      tags:
+        - Visio
+      summary: "Webhook enregistrement visio prêt (#469)"
+      security: []
+      responses:
+        '202':
+          description: "Accepted for processing"
+        '401':
+          description: "Invalid signature"
+
 # Security (global)
 security:
   - sanctum: []

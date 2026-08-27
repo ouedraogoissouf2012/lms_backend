@@ -78,4 +78,9 @@ return [
         'secret' => env('CONVERTAPI_SECRET'),
     ],
 
+    'visio' => [
+        'webhook_secret' => env('VISIO_RECORDING_WEBHOOK_SECRET'),
+        'webhook_max_age' => (int) env('VISIO_RECORDING_WEBHOOK_MAX_AGE', 300),
+    ],
+
 ];

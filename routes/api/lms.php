@@ -55,6 +55,7 @@ use App\Http\Controllers\API\LMS\LMSSeanceVisibilityMutationController;
 use App\Http\Controllers\API\LMS\LMSVisioLifecycleController;
 use App\Http\Controllers\API\LMS\LMSVisioParticipantController;
 use App\Http\Controllers\API\LMS\LMSVisioRecordingController;
+use App\Http\Controllers\API\LMS\VisioRecordingWebhookController;
 
 Route::middleware(['auth:sanctum', 'klassci.sync'])->prefix('lms')->group(function () {
     // Détails complets d'une classe
@@ -225,3 +226,7 @@ Route::middleware(['auth:sanctum', 'klassci.sync'])->prefix('lms')->group(functi
     Route::post('/notifications/send-session-reminder', [LMSNotificationsPreferencesController::class, 'sendSessionReminder'])
         ->name('lms.notifications.send-session-reminder');
 });
+
+Route::post('/webhooks/visio/recording-ready', [VisioRecordingWebhookController::class, 'recordingReady'])
+    ->middleware('throttle:60,1')
+    ->name('webhooks.visio.recording-ready');

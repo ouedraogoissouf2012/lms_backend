@@ -127,11 +127,13 @@ jobs:
 
     env:
       APP_ENV: testing
-      APP_KEY: "base64:Cg9vQ0xtc1Rlc3RLZXkxMjM0NTY3ODkwYWJjZGVmZ2g="
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Generate ephemeral APP_KEY
+        run: echo "APP_KEY=base64:$(openssl rand -base64 32)" >> "$GITHUB_ENV"
 
       - name: Setup PHP 8.3
         uses: shivammathur/setup-php@v2
@@ -286,7 +288,6 @@ jobs:
 
     env:
       APP_ENV: testing
-      APP_KEY: "base64:Cg9vQ0xtc1Rlc3RLZXkxMjM0NTY3ODkwYWJjZGVmZ2g="
 
       # Moteur et stores pilotés par la MATRICE, pas par phpunit.xml.
       # phpunit.xml:48-53 déclare ses <env> sans force="true" ; PHPUnit ne surcharge alors
@@ -313,6 +314,9 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Generate ephemeral APP_KEY
+        run: echo "APP_KEY=base64:$(openssl rand -base64 32)" >> "$GITHUB_ENV"
 
       - name: Setup PHP 8.3
         uses: shivammathur/setup-php@v2

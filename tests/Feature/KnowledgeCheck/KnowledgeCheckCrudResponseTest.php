@@ -97,13 +97,13 @@ final class KnowledgeCheckCrudResponseTest extends TestCase
 
     // ───────────────────────── index ─────────────────────────
 
-    public function test_index_without_chapter_id_returns_400_error_envelope(): void
+    public function test_index_without_chapter_id_returns_422_error_envelope(): void
     {
         Sanctum::actingAs($this->owner);
 
         $response = $this->getJson('/api/knowledge-checks');
 
-        $response->assertStatus(400)
+        $response->assertStatus(422)
             ->assertExactJson(['success' => false, 'message' => 'chapter_id requis']);
     }
 

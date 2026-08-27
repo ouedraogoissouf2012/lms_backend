@@ -16,6 +16,7 @@ use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Psr\Log\LoggerInterface;
+use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 use Throwable;
 
 /**
@@ -182,6 +183,10 @@ final class InstitutionController extends Controller
 
     private function internalError(string $method, Throwable $e, string $message, ?int $id = null): JsonResponse
     {
+        if ($e instanceof HttpExceptionInterface && $e->getStatusCode() < 500) {
+            return $this->errorResponse('Requête invalide', $e->getStatusCode());
+        }
+
         $context = ['error' => $e->getMessage()];
         if ($id !== null) {
             $context['id'] = $id;

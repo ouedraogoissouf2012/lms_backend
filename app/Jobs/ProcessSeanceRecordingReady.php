@@ -42,7 +42,9 @@ final class ProcessSeanceRecordingReady implements ShouldQueue
         SeanceRecordingAttachmentResolver $resolver,
         LoggerInterface $logger,
     ): void {
-        $recording = SeanceRecording::query()->with('seance')->find($this->recordingId);
+        $recording = SeanceRecording::withoutGlobalScope('institution')
+            ->with('seance')
+            ->find($this->recordingId);
         if ($recording === null || $recording->status === SeanceRecordingStatus::Ready) {
             return;
         }
@@ -95,7 +97,7 @@ final class ProcessSeanceRecordingReady implements ShouldQueue
 
     public function failed(Throwable $exception): void
     {
-        $recording = SeanceRecording::query()->find($this->recordingId);
+        $recording = SeanceRecording::withoutGlobalScope('institution')->find($this->recordingId);
         if ($recording !== null) {
             $this->markFailed($recording, $exception->getMessage());
         }

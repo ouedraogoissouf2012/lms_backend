@@ -21,6 +21,23 @@ final class SeanceRecordingFactory extends Factory
     /**
      * @return array<string, mixed>
      */
+    public function configure(): static
+    {
+        return $this->afterMaking(function (SeanceRecording $recording): void {
+            if ($recording->institution_id !== null) {
+                return;
+            }
+            $seanceId = $recording->seance_id;
+            if (! is_numeric($seanceId)) {
+                return;
+            }
+            $institutionId = Seance::query()->whereKey($seanceId)->value('institution_id');
+            if ($institutionId !== null) {
+                $recording->institution_id = is_numeric($institutionId) ? (int) $institutionId : null;
+            }
+        });
+    }
+
     public function definition(): array
     {
         return [
@@ -45,6 +62,7 @@ final class SeanceRecordingFactory extends Factory
     {
         return $this->state(fn (array $attributes) => [
             'seance_id' => $seance->id,
+            'institution_id' => $seance->institution_id,
         ]);
     }
 

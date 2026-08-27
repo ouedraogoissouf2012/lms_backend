@@ -38,7 +38,7 @@ final class PurgeSeanceRecordings extends Command
         $cutoff = now()->subDays($days);
         $result = new RecordingRetentionResult;
 
-        SeanceRecording::query()
+        SeanceRecording::withoutGlobalScope('institution')
             ->with(['seance', 'chapter'])
             ->where('created_at', '<', $cutoff)
             ->orderBy('id')

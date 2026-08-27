@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use App\Models\Traits\BelongsToInstitution;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
@@ -19,8 +20,9 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  */
 class AuditLog extends Model
 {
-    /** @use HasFactory<\Database\Factories\AuditLogFactory> */
+    /*     * @use HasFactory<\Database\Factories\AuditLogFactory> */
     use HasFactory;
+    use BelongsToInstitution;
 
     // Append-only : pas d'updated_at (les logs ne sont jamais modifiés).
     public const UPDATED_AT = null;

@@ -29,7 +29,9 @@ final class AuditLogController extends Controller
     {
         // Helpers typés de la Request (string/integer) plutôt que des casts de
         // `mixed` issus de validated() — conforme PHPStan niveau 9.
-        $query = AuditLog::query()->with('user:id,name,email,role')->recent();
+        $query = AuditLog::withoutGlobalScope('institution')
+            ->with('user:id,name,email,role')
+            ->recent();
 
         if ($request->filled('action')) {
             $query->forAction($request->string('action')->value());

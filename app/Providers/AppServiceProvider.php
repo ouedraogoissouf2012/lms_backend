@@ -19,6 +19,7 @@ use App\Services\Integrity\ArchivedRowWriterInterface;
 use App\Services\TenantManager;
 use App\Support\Shell\ShellExecutor;
 use App\Support\Shell\ShellExecutorInterface;
+use Barryvdh\DomPDF\PDF as DomPdf;
 use Illuminate\Cache\Repository;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\Relation;
@@ -161,5 +162,11 @@ class AppServiceProvider extends ServiceProvider
         }
 
         Relation::morphMap($morphMap);
+
+        // #549 — SSRF : Dompdf ne doit jamais fetcher d'URL distante.
+        $this->app->afterResolving(DomPdf::class, function (DomPdf $pdf): void {
+            $pdf->setOption('enable_remote', false);
+            $pdf->setOption('isRemoteEnabled', false);
+        });
     }
 }

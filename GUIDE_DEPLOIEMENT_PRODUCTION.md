@@ -1,13 +1,10 @@
 # Guide de déploiement en production — LMS KLASSCI
 
 > **Rôle de ce document** : première installation du backend sur un environnement de
-> production **vierge**. Pour un déploiement de routine sur le cPanel existant
-> (`git pull` + migrations), suivre le runbook
-> [`docs/DEPLOIEMENT_CPANEL.md`](docs/DEPLOIEMENT_CPANEL.md) — c'est lui qui fait foi
-> pour la prod actuelle.
+> production **vierge**. La prod tourne sur un **VPS** (`/var/www/lms-backend`).
 >
 > Chaque commande de ce guide a été vérifiée contre le repo réel
-> (`composer.json`, `.cpanel.yml`, `routes/`, `config/`). Si une commande échoue,
+> (`composer.json`, `routes/`, `config/`). Si une commande échoue,
 > ouvrir une issue `documentation` plutôt que d'improviser.
 
 ---
@@ -31,16 +28,11 @@ documents), suivre [`docs/INSTALLATION_SERVEUR.md`](docs/INSTALLATION_SERVEUR.md
 
 ### 2.1 Récupérer le code
 
-En prod cPanel, le dépôt est déployé via **cPanel Git Version Control** branché sur la
-branche `lms`. Le pipeline [`.cpanel.yml`](.cpanel.yml) copie les fichiers vers
-`/home/c2569688c/public_html/lms-backend` puis vide les caches (`cache:clear`,
-`config:clear`).
+Le dépôt est déployé sur le VPS, racine applicative `/var/www/lms-backend`,
+branche `lms`. `composer install` et `php artisan migrate` restent des étapes
+manuelles — les oublier est la cause de l'incident login 500 du 2026-06-20.
 
-> ⚠️ `.cpanel.yml` ne fait **ni** `composer install` **ni** `php artisan migrate`.
-> Ces étapes restent manuelles (ci-dessous) — les oublier est la cause de
-> l'incident login 500 du 2026-06-20 (cf. runbook).
-
-Sur un serveur hors cPanel :
+Sur le VPS :
 
 ```bash
 git clone git@github.com:ouedraogoissouf2012/lms_backend.git

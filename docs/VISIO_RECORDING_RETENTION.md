@@ -22,7 +22,7 @@ Le scheduler lance la purge chaque jour à 03:45. Le cron cPanel reste l'unique
 ligne documentée dans `docs/DEPLOYMENT_OPS.md` :
 
 ```cron
-* * * * * /usr/local/bin/php /home/c2569688c/public_html/lms-backend/artisan schedule:run >> /dev/null 2>&1
+* * * * * /usr/local/bin/php /var/www/lms-backend/artisan schedule:run >> /dev/null 2>&1
 ```
 
 Avant une première activation en production :

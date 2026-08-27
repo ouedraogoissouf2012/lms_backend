@@ -13,7 +13,7 @@
 
 ## 1. Architecture opérationnelle
 
-La prod est un **cPanel mutualisé Linux** (`/home/c2569688c/public_html/lms-backend`) :
+La prod est un **VPS Linux** (`/var/www/lms-backend`) :
 pas de Supervisor, pas de systemd, pas de démon possible. Tout repose donc sur
 **UN SEUL cron** qui exécute le scheduler Laravel chaque minute ; le scheduler
 orchestre lui-même les 14 tâches versionnées dans [`routes/console.php`](../routes/console.php),
@@ -33,7 +33,7 @@ cron cPanel (1 ligne, chaque minute)
 **cPanel → Cron Jobs → Add New Cron Job** (fréquence : *Once Per Minute*) :
 
 ```cron
-* * * * * /usr/local/bin/php /home/c2569688c/public_html/lms-backend/artisan schedule:run >> /dev/null 2>&1
+* * * * * /usr/local/bin/php /var/www/lms-backend/artisan schedule:run >> /dev/null 2>&1
 ```
 
 - `/usr/local/bin/php` : binaire PHP CLI du serveur mutualisé (vérifier avec
@@ -47,7 +47,7 @@ cron cPanel (1 ligne, chaque minute)
 **Vérification immédiate (SSH)** :
 
 ```bash
-cd /home/c2569688c/public_html/lms-backend
+cd /var/www/lms-backend
 php artisan schedule:list        # les 14 tâches du §5 doivent apparaître
 php artisan schedule:run         # exécution manuelle d'un tick
 php artisan scheduler:healthcheck && echo OK   # OK après 1-2 minutes de cron
@@ -98,8 +98,8 @@ de l'issue : battement chaque minute + seuil de péremption 5 min).
 **Câblage monitoring minimal (second cron cPanel, toutes les 5 minutes)** :
 
 ```cron
-*/5 * * * * /usr/local/bin/php /home/c2569688c/public_html/lms-backend/artisan scheduler:healthcheck
-*/5 * * * * /usr/local/bin/php /home/c2569688c/public_html/lms-backend/artisan queue:healthcheck
+*/5 * * * * /usr/local/bin/php /var/www/lms-backend/artisan scheduler:healthcheck
+*/5 * * * * /usr/local/bin/php /var/www/lms-backend/artisan queue:healthcheck
 ```
 
 cPanel envoie un e-mail dès qu'un cron produit une sortie : comme le
@@ -205,7 +205,7 @@ auto-signés locaux) avec un simple `warning` au log.
 Sanity au démarrage — doit rester silencieux (ni exception, ni ligne critique) :
 
 ```bash
-cd /home/c2569688c/public_html/lms-backend
+cd /var/www/lms-backend
 php artisan about --only=environment    # APP_ENV = production attendu
 php artisan config:show services.klassci.ssl_verify   # doit valoir true (ou vide → true)
 ```

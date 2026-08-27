@@ -154,11 +154,9 @@ rappels d'évaluations 08:00, purge notifications lues le dimanche.
 
 ### 2.4 Déploiement réel
 
-Hébergement **cPanel mutualisé Linux** (`.cpanel.yml` → `/home/c2569688c/public_html/lms-backend`),
-**migration VPS en préparation** (épique scalabilité #381, issue #367).
-Le pipeline cPanel ne fait **ni `migrate` ni installation de cron** : migrations et
-cron `schedule:run` sont manuels — la procédure de référence est désormais
-`docs/DEPLOYMENT_OPS.md` (PR #386). Les scripts `scheduler.bat` /
+Hébergement **VPS Linux** (racine `/var/www/lms-backend`).
+Les migrations et le cron `schedule:run` restent manuels — la procédure de
+référence est `docs/DEPLOYMENT_OPS.md` (PR #386). Les scripts `scheduler.bat` /
 `laravel-scheduler-task.xml` / `setup-scheduler-windows.ps1` ne concernent que le poste
 de dev Windows (chemins codés en dur).
 

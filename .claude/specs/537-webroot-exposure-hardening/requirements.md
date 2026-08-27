@@ -2,7 +2,7 @@
 
 ## Contexte vérifié (code réel, pas supposé)
 
-- `.cpanel.yml:3-5` : `export DEPLOYPATH=/home/c2569688c/public_html/lms-backend` puis
+- `.cpanel.yml:3-5` : `export DEPLOYPATH=/var/www/lms-backend` puis
   `/bin/cp -R . $DEPLOYPATH` copie **tout** le contenu du répertoire de déploiement
   (y compris `.git/` s'il est présent à la source) vers `$DEPLOYPATH`, sans exclusion.
 - Aucun `.htaccess` n'existe à la racine du dépôt (`ls .htaccess` → absent). Seul
@@ -10,7 +10,7 @@
 - `docs/DEPLOIEMENT_CPANEL.md` (le runbook qui **"fait foi pour la prod actuelle"**
   selon `GUIDE_DEPLOIEMENT_PRODUCTION.md:6`) documente un **second mécanisme de
   déploiement**, différent de `.cpanel.yml` : `git pull origin lms` exécuté
-  **directement dans** `/home/c2569688c/public_html/lms-backend/`. Ce répertoire est
+  **directement dans** `/var/www/lms-backend/`. Ce répertoire est
   donc, dans le mécanisme réellement utilisé, une copie de travail Git complète
   (`.git/` inclus) doublée du `.env` de production — au même chemin que celui ciblé
   par `.cpanel.yml`.

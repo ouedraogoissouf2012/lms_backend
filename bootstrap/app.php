@@ -32,6 +32,7 @@ $app = Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         // Middleware global API : résolution de l'institution (multi-tenant)
         $middleware->api(prepend: [
+            \App\Http\Middleware\AssignRequestId::class,
             \App\Http\Middleware\ResolveInstitution::class,
         ]);
 
@@ -127,6 +128,7 @@ $app = Application::configure(basePath: dirname(__DIR__))
                     'message' => $e->getMessage(),
                     'url' => $request->fullUrl(),
                     'method' => $request->getMethod(),
+                    'request_id' => $request->headers->get('X-Request-Id'),
                     'trace' => $e->getTraceAsString(),
                 ]);
 

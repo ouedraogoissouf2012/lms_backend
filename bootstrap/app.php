@@ -30,6 +30,9 @@ $app = Application::configure(basePath: dirname(__DIR__))
         },
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        // Traefik / Dokploy : faire confiance à X-Forwarded-Proto (sinon 302).
+        $middleware->trustProxies(at: '*');
+
         // Middleware global API : résolution de l'institution (multi-tenant)
         $middleware->api(prepend: [
             \App\Http\Middleware\AssignRequestId::class,

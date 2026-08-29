@@ -8,7 +8,9 @@ use App\Models\ChapterProgress;
 use App\Models\KnowledgeCheck;
 use App\Models\KnowledgeCheckAttempt;
 use App\Models\User;
+use Illuminate\Database\ConnectionInterface;
 use Illuminate\Database\Eloquent\Collection;
+use RuntimeException;
 
 /**
  * Service de la « state machine » des tentatives étudiant pour les quiz
@@ -38,6 +40,7 @@ final class KnowledgeCheckAttemptService
     public function __construct(
         private readonly KnowledgeCheckGradingService $grader,
         private readonly KnowledgeCheckAccessService $access,
+        private readonly ConnectionInterface $db,
     ) {
     }
 
@@ -131,28 +134,35 @@ final class KnowledgeCheckAttemptService
 
         $result = $this->grader->gradeAttempt($quiz, $answers);
 
-        $attempt = KnowledgeCheckAttempt::create([
-            'knowledge_check_id' => $quiz->id,
-            'user_id' => $user->id,
-            'score' => $result['score'],
-            'correct_answers' => $result['correct_answers'],
-            'total_questions' => $result['total_questions'],
-            'answers' => $result['detailed_answers'],
-            'time_spent_seconds' => $timeSpentSeconds,
-            'passed' => $result['passed'],
-            'started_at' => now()->subSeconds($timeSpentSeconds),
-            'completed_at' => now(),
-            // Scope tenant explicite (fix E2E #211 flow 2).
-            'institution_id' => $user->institution_id,
-        ]);
+        $attempt = $this->db->transaction(function () use ($quiz, $user, $result, $timeSpentSeconds): KnowledgeCheckAttempt {
+            $attempt = KnowledgeCheckAttempt::create([
+                'knowledge_check_id' => $quiz->id,
+                'user_id' => $user->id,
+                'score' => $result['score'],
+                'correct_answers' => $result['correct_answers'],
+                'total_questions' => $result['total_questions'],
+                'answers' => $result['detailed_answers'],
+                'time_spent_seconds' => $timeSpentSeconds,
+                'passed' => $result['passed'],
+                'started_at' => now()->subSeconds($timeSpentSeconds),
+                'completed_at' => now(),
+                'institution_id' => $user->institution_id,
+            ]);
 
-        $this->updateChapterProgress(
-            $user->id,
-            (int) $quiz->chapter_id,
-            $result['score'],
-            $result['passed'],
-            $timeSpentSeconds,
-        );
+            $this->updateChapterProgress(
+                $user->id,
+                (int) $quiz->chapter_id,
+                $result['score'],
+                $result['passed'],
+                $timeSpentSeconds,
+            );
+
+            return $attempt;
+        });
+
+        if (! $attempt instanceof KnowledgeCheckAttempt) {
+            throw new RuntimeException('Enregistrement de la tentative interrompu.');
+        }
 
         return [
             'attempt_id' => $attempt->id,
@@ -244,7 +254,9 @@ final class KnowledgeCheckAttemptService
             }
         }
 
-        $progress->time_spent_seconds = ((int) $progress->time_spent_seconds) + $timeSpentSeconds;
         $progress->save();
+        if ($timeSpentSeconds > 0) {
+            $progress->increment('time_spent_seconds', $timeSpentSeconds);
+        }
     }
 }

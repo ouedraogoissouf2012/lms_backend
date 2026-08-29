@@ -1,0 +1,61 @@
+# Référence Dokploy — NE PAS lancer en `docker compose` sur le VPS.
+# Même modèle qu'ADR-0024 (Wourri) : services natifs Dokploy, Traefik, Swarm.
+#
+# Projet Dokploy : lms
+#   1) mysql:8.0          (base)
+#   2) application web    Dockerfile.prod  CONTAINER_ROLE=web
+#   3) worker             même image       CONTAINER_ROLE=worker
+#   4) scheduler          même image       CONTAINER_ROLE=scheduler
+
+services:
+  mysql:
+    image: mysql:8.0
+    environment:
+      MYSQL_DATABASE: lms
+      MYSQL_USER: lms
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+    volumes:
+      - lms_mysql:/var/lib/mysql
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile.prod
+    environment:
+      CONTAINER_ROLE: web
+      APP_ENV: production
+      APP_DEBUG: "false"
+      DB_CONNECTION: mysql
+      DB_HOST: mysql
+      DB_PORT: "3306"
+      DB_DATABASE: lms
+      DB_USERNAME: lms
+      QUEUE_CONNECTION: database
+      CACHE_STORE: database
+    depends_on:
+      - mysql
+    volumes:
+      - lms_storage:/var/www/html/storage/app
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.prod
+    environment:
+      CONTAINER_ROLE: worker
+    depends_on:
+      - mysql
+
+  scheduler:
+    build:
+      context: .
+      dockerfile: Dockerfile.prod
+    environment:
+      CONTAINER_ROLE: scheduler
+    depends_on:
+      - mysql
+
+volumes:
+  lms_mysql:
+  lms_storage:

@@ -66,7 +66,7 @@ final class CreateNotificationRequest extends FormRequest
         // ce qui briserait la distinction délibérée du contrôle cross-tenant
         // (cf. `EnsureRole::userHasRole` L107-108 et `.claude/specs/notifications-cross-tenant/`).
         // NE PAS migrer vers `asRoleEnum()` (#132 spec design.md §4.4).
-        if ($caller->role === 'supradmin') {
+        if ($caller->isPlatformSupradmin()) {
             return true;
         }
 

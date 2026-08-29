@@ -3,12 +3,25 @@
 namespace App\Providers;
 
 use App\Models\PersonalAccessToken;
+use App\Services\Cache\Purge\TenantCachePurgerFactory;
+use App\Services\Cache\Purge\TenantCachePurgerInterface;
 use App\Services\Cache\TenantScopedCache;
 use App\Services\Cache\TenantScopedCacheInterface;
+use App\Services\Klassci\KlassciConfigResolver;
+use App\Services\Klassci\KlassciRequestMemo;
+use App\Services\Klassci\KlassciTargetResolver;
+use App\Services\Seances\Sync\Cursor\EloquentSeanceSyncCursorStore;
+use App\Services\Seances\Sync\Cursor\SeanceSyncCursorStore;
+use App\Services\Tenancy\InstitutionIntegrityInspector;
+use App\Services\Tenancy\InstitutionIntegrityInspectorInterface;
+use App\Services\Integrity\ArchivedRowWriter;
+use App\Services\Integrity\ArchivedRowWriterInterface;
 use App\Services\TenantManager;
 use App\Support\Shell\ShellExecutor;
 use App\Support\Shell\ShellExecutorInterface;
+use Barryvdh\DomPDF\PDF as DomPdf;
 use Illuminate\Cache\Repository;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\ServiceProvider;
@@ -21,7 +34,21 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        $this->app->singleton(TenantManager::class);
+        $this->app->scoped(TenantManager::class);
+        $this->app->scoped(KlassciRequestMemo::class);
+
+        // #578 — Circuit breaker KLASSCI cloisonné par cible réseau.
+        // Le résolveur de config est mémoïsé PAR INSTANCE (« singleton implicite
+        // par requête », cf. son docblock) : on le lie en `scoped` pour que le
+        // breaker et le KlassciHttpClient partagent LA MÊME instance dans une
+        // requête — donc la même cible résolue (partition cohérente) et une
+        // seule résolution 3-tiers (pas de double lookup guard/tenant).
+        $this->app->scoped(KlassciConfigResolver::class);
+
+        // Le breaker dépend de l'abstraction fine ; le concret est le résolveur.
+        // Sans ce binding, l'auto-résolution KlassciHttpClient → KlassciCircuitBreaker
+        // → KlassciTargetResolver échouerait (interface non instanciable).
+        $this->app->bind(KlassciTargetResolver::class, KlassciConfigResolver::class);
 
         // ShellExecutor — sole entry point for external process execution
         // (issue #79 Phase A). Singleton because it is stateless and we want
@@ -41,9 +68,54 @@ class AppServiceProvider extends ServiceProvider
             Repository::class,
             fn ($app) => $app->make(\Illuminate\Contracts\Cache\Repository::class)
         );
+
+        // #547 — la stratégie de purge tenant est choisie par capacité du store
+        // ACTIF (tags/database/no-op), à partir du même Repository concret que
+        // TenantScopedCache consomme. Résolu paresseusement : la config cache
+        // peut différer entre requête HTTP et worker de queue.
+        $this->app->bind(
+            TenantCachePurgerInterface::class,
+            function ($app) {
+                $table = config('cache.stores.database.table', 'cache');
+                $factory = new TenantCachePurgerFactory(
+                    $app->make(\Psr\Log\LoggerInterface::class),
+                    is_string($table) ? $table : 'cache',
+                );
+
+                return $factory->make($app->make(Repository::class));
+            }
+        );
         $this->app->bind(
             TenantScopedCacheInterface::class,
             TenantScopedCache::class
+        );
+
+        // Curseur de reprise de la sync des séances (#582). Bindé sur
+        // l'interface pour que le service de sync dépende du contrat et non
+        // d'Eloquent (§1.6-D), et que les tests substituent un double sans
+        // toucher à la base.
+        $this->app->bind(
+            SeanceSyncCursorStore::class,
+            EloquentSeanceSyncCursorStore::class
+        );
+
+        // Inspecteur d'intégrité institution_id (#583) — lecture seule, partagé
+        // par la commande d'audit et la migration FK. Bindé sur l'interface pour
+        // que la migration/commande dépendent de l'abstraction (§1.6-D) et que
+        // les tests substituent un double (garde pré-vol sans orphelins réels).
+        $this->app->bind(
+            InstitutionIntegrityInspectorInterface::class,
+            InstitutionIntegrityInspector::class
+        );
+
+        // Quarantaine des lignes retirées par les migrations d'intégrité (#541).
+        // `RowQuarantine` dépend de l'abstraction pour que le test puisse lui
+        // substituer un écrivain défaillant et prouver le point non négociable :
+        // si l'archive n'a pas été écrite, AUCUNE ligne n'est supprimée
+        // (RowQuarantineTest::test_nothing_is_deleted_when_the_archive_is_incomplete).
+        $this->app->bind(
+            ArchivedRowWriterInterface::class,
+            ArchivedRowWriter::class
         );
     }
 
@@ -62,6 +134,10 @@ class AppServiceProvider extends ServiceProvider
         // quand le header X-Institution résout une institution spécifique.
         Sanctum::usePersonalAccessTokenModel(PersonalAccessToken::class);
 
+        // L'observer d'invariant #481 de Lesson est désormais auto-enregistré par
+        // le trait Publishable (convention `bootXxx`, cf. Auditable) — plus de
+        // Model::observe() dispersé ici. Voir app/Models/Concerns/Publishable.php.
+
         // Morph map des modèles attachables à un File (issue #10 IDOR).
         // Alias court ↔ classe pour la cohérence du stockage `fileable_type`.
         //
@@ -70,6 +146,27 @@ class AppServiceProvider extends ServiceProvider
         // le FQCN (`App\Models\Lesson` etc.). La sécurité contre l'IDOR vient
         // de la whitelist dans UploadFileRequest et ListFilesRequest — qui
         // n'acceptent QUE les clés courtes listées dans config/fileables.php.
-        Relation::morphMap(config('fileables.morph_map'));
+        $morphMap = [];
+        $configuredMorphMap = config('fileables.morph_map', []);
+
+        if (is_array($configuredMorphMap)) {
+            foreach ($configuredMorphMap as $alias => $class) {
+                if (
+                    is_string($alias)
+                    && is_string($class)
+                    && is_subclass_of($class, Model::class)
+                ) {
+                    $morphMap[$alias] = $class;
+                }
+            }
+        }
+
+        Relation::morphMap($morphMap);
+
+        // #549 — SSRF : Dompdf ne doit jamais fetcher d'URL distante.
+        $this->app->afterResolving(DomPdf::class, function (DomPdf $pdf): void {
+            $pdf->setOption('enable_remote', false);
+            $pdf->setOption('isRemoteEnabled', false);
+        });
     }
 }

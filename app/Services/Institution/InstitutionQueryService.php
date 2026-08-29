@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Institution;
 
+use App\Enums\LessonStatus;
 use App\Models\Classe;
 use App\Models\Evaluation;
 use App\Models\Institution;
@@ -149,7 +150,7 @@ final class InstitutionQueryService
             'lessons_count' => Lesson::withoutGlobalScope('institution')->where('institution_id', $id)->count(),
             'published_lessons' => Lesson::withoutGlobalScope('institution')
                 ->where('institution_id', $id)
-                ->where('status', 'published')->count(),
+                ->where('status', LessonStatus::Published->value)->count(),
             'evaluations_count' => Evaluation::withoutGlobalScope('institution')->where('institution_id', $id)->count(),
             'classes_count' => Classe::withoutGlobalScope('institution')->where('institution_id', $id)->count(),
         ];

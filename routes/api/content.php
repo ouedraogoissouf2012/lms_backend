@@ -7,6 +7,8 @@ use Illuminate\Support\Facades\Route;
 // NOUVELLE STRUCTURE: Chapter belongsTo Lesson
 // ============================================
 use App\Http\Controllers\API\ChapterController;
+use App\Http\Controllers\API\ChapterOriginalController;
+use App\Http\Controllers\API\ChapterSlideController;
 
 // Routes accessibles à tous les utilisateurs authentifiés
 Route::middleware(['auth:sanctum', 'klassci.sync'])->group(function () {
@@ -14,6 +16,10 @@ Route::middleware(['auth:sanctum', 'klassci.sync'])->group(function () {
     Route::get('lessons/{lessonId}/chapters', [ChapterController::class, 'index']);
     // Détails d'un chapitre
     Route::get('chapters/{id}', [ChapterController::class, 'show']);
+    // #598 — document source : SEUL chemin d'accès depuis qu'il vit sur le
+    // disque privé (avant, une URL /storage/... le servait sans authentification).
+    Route::get('chapters/{chapter}/original', [ChapterOriginalController::class, 'show'])
+        ->middleware('throttle:30,1');
 
     // Progression des chapitres
     Route::get('lessons/{lessonId}/chapter-progress', [\App\Http\Controllers\API\ChapterProgressController::class, 'getLessonProgress']);
@@ -21,6 +27,13 @@ Route::middleware(['auth:sanctum', 'klassci.sync'])->group(function () {
     Route::post('chapters/{chapterId}/complete', [\App\Http\Controllers\API\ChapterProgressController::class, 'markAsCompleted']);
     Route::post('chapters/{chapterId}/time', [\App\Http\Controllers\API\ChapterProgressController::class, 'updateTimeSpent']);
 });
+
+// #620 — PNG signées : pas de Bearer (balise <img>). La signature est le jeton.
+Route::get('chapters/{chapter}/slides/{slide}', [ChapterSlideController::class, 'show'])
+    ->middleware(['signed', 'throttle:120,1'])
+    ->whereNumber('chapter')
+    ->whereNumber('slide')
+    ->name('chapters.slides.show');
 
 // Routes enseignants/coordinateurs/admins
 Route::middleware(['auth:sanctum', 'klassci.sync', 'role:enseignant,coordinateur,admin'])->group(function () {
@@ -35,6 +48,8 @@ Route::middleware(['auth:sanctum', 'klassci.sync', 'role:enseignant,coordinateur
     // Upload fichier PowerPoint/Word/PDF (max 30 MB) - Rate limited: 60/min
     Route::post('chapters/{chapterId}/upload', [ChapterController::class, 'uploadFile'])
         ->middleware('throttle:60,1');
+    Route::get('chapters/uploads/{id}/status', [ChapterController::class, 'uploadStatus'])
+        ->name('chapters.uploads.status');
 
     // Réorganisation (drag & drop) - Rate limited: 100/min (frequent user action)
     Route::post('lessons/{lessonId}/chapters/reorder', [ChapterController::class, 'reorder'])

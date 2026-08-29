@@ -34,6 +34,7 @@ final class TeachingSeancesFetcher
         private readonly LoggerInterface $logger,
         private readonly KlassciProxyService $klassciService,
         private readonly ClasseSyncService $classeSyncService,
+        private readonly SeanceCacheDataBuilder $cacheBuilder,
     ) {}
 
     /**
@@ -53,7 +54,9 @@ final class TeachingSeancesFetcher
             'GET'
         );
 
-        $matieres = collect($dashboard['data']['matieres'] ?? []);
+        $matieres = collect(KlassciPayload::listOfArrays(
+            KlassciPayload::asArray($dashboard['data'] ?? null)['matieres'] ?? null
+        ));
         /** @var Collection<int, array<string, mixed>> $seances */
         $seances = collect([]);
 
@@ -96,7 +99,7 @@ final class TeachingSeancesFetcher
 
             $seancesEnrichies = $seancesProgrammees->map(function (array $seance) use ($matiereArr, $user, $klassciToken, $classesDetails) {
                 $visioData = $this->ensureLocalSeanceExists($seance, $matiereArr, $user, $klassciToken);
-                $classeEffectif = $this->resolveClasseEffectif($seance, $classesDetails);
+                $classeEffectif = KlassciPayload::classeEffectif($seance, $classesDetails);
                 return $this->mapSeance($seance, $matiereArr, $user, $visioData, $classeEffectif);
             });
 
@@ -119,13 +122,8 @@ final class TeachingSeancesFetcher
         $ids = [];
         foreach ($matieresDetails as $details) {
             $data = KlassciPayload::asArray(KlassciPayload::asArray($details)['data'] ?? null);
-            foreach (KlassciPayload::asList($data['seances_programmees'] ?? null) as $seance) {
-                $classe = KlassciPayload::asArray(KlassciPayload::asArray($seance)['classe'] ?? null);
-                $id = KlassciPayload::toInt($classe['id'] ?? null);
-                if ($id !== null) {
-                    $ids[] = $id;
-                }
-            }
+            $seances = KlassciPayload::listOfArrays($data['seances_programmees'] ?? null);
+            $ids = array_merge($ids, KlassciPayload::uniqueIntIds($seances, KlassciPayload::classeIdFor(...)));
         }
 
         return array_values(array_unique($ids));
@@ -141,29 +139,27 @@ final class TeachingSeancesFetcher
      */
     private function ensureLocalSeanceExists(array $seance, array $matiere, User $user, string $klassciToken): ?Seance
     {
-        $visioData = Seance::where('klassci_seance_id', $seance['id'])->withConnectedParticipantsCount()->first();
+        $klassciSeanceId = KlassciPayload::toInt($seance['id'] ?? null);
+        $classeId = KlassciPayload::toInt(KlassciPayload::asArray($seance['classe'] ?? null)['id'] ?? null);
+
+        $visioData = Seance::where('klassci_seance_id', $klassciSeanceId)->withConnectedParticipantsCount()->first();
+        $cacheData = $this->cacheBuilder->build($seance, $matiere, $user);
+
         if ($visioData) {
+            $this->cacheBuilder->applyTo($visioData, $cacheData);
             return $visioData;
         }
 
         try {
             // Synchroniser la classe pour les notifications futures
-            if (isset($seance['classe']['id'])) {
-                $this->classeSyncService->syncClasseById(
-                    $seance['classe']['id'],
-                    $klassciToken
-                );
+            if ($classeId !== null) {
+                $this->classeSyncService->syncClasseById($classeId, $klassciToken);
             }
 
             // Créer l'entrée locale SANS activer la visio
             // L'enseignant devra cliquer sur "Activer la visio" pour la rendre visible
-            $visioData = Seance::create([
-                'klassci_seance_id' => $seance['id'],
-                'klassci_matiere_id' => $matiere['id'],
-                'klassci_classe_id' => $seance['classe']['id'] ?? null,
-                'klassci_enseignant_id' => $user->klassci_id,
-                'enseignant_nom' => $user->name,
-                'matiere_nom' => $matiere['nom'] ?? $matiere['libelle'] ?? null,
+            $visioData = Seance::create($cacheData + [
+                'klassci_seance_id' => $klassciSeanceId,
                 'visio_enabled' => false,  // Désactivé par défaut - l'enseignant doit activer
                 'visio_type' => 'jitsi',
                 'visio_status' => null,    // Pas de statut tant que non activé
@@ -173,39 +169,17 @@ final class TeachingSeancesFetcher
             ]);
 
             $this->logger->info('Séance Klassci détectée - En attente d\'activation par l\'enseignant', [
-                'seance_id' => $seance['id'],
+                'seance_id' => $klassciSeanceId,
                 'klassci_enseignant_id' => $user->klassci_id
             ]);
         } catch (\Exception $e) {
             $this->logger->error('Erreur création entrée séance locale', [
-                'seance_id' => $seance['id'],
+                'seance_id' => $klassciSeanceId,
                 'error' => $e->getMessage()
             ]);
         }
 
         return $visioData;
-    }
-
-    /**
-     * Résout l'effectif d'une classe depuis le map pré-chargé en pool, sans appel
-     * réseau supplémentaire. Classe absente (ID échoué dans le pool) → 0.
-     *
-     * @param array<string, mixed> $seance
-     * @param array<int, array<string, mixed>> $classesDetails
-     */
-    private function resolveClasseEffectif(array $seance, array $classesDetails): int
-    {
-        $classeId = KlassciPayload::toInt(KlassciPayload::asArray($seance['classe'] ?? null)['id'] ?? null);
-        if ($classeId === null) {
-            return 0;
-        }
-
-        $classe = KlassciPayload::asArray(
-            KlassciPayload::asArray($classesDetails[$classeId]['data'] ?? null)['classe'] ?? null
-        );
-        $occupees = $classe['places_occupees'] ?? 0;
-
-        return is_int($occupees) ? $occupees : (is_numeric($occupees) ? (int) $occupees : 0);
     }
 
     /**

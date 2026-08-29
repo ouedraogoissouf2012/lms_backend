@@ -27,6 +27,9 @@ final class SaveQuizProgressRequest extends FormRequest
         return auth()->check();
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     public function rules(): array
     {
         return [
@@ -34,6 +37,9 @@ final class SaveQuizProgressRequest extends FormRequest
         ];
     }
 
+    /**
+     * @return array<string, string>
+     */
     public function messages(): array
     {
         return [

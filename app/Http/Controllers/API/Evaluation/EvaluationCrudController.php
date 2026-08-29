@@ -6,6 +6,7 @@ namespace App\Http\Controllers\API\Evaluation;
 
 use App\Http\Controllers\AuthenticatedController;
 use App\Http\Requests\DeleteEvaluationRequest;
+use App\Http\Requests\ListEvaluationsRequest;
 use App\Http\Requests\PublishEvaluationRequest;
 use App\Http\Requests\StoreEvaluationRequest;
 use App\Http\Requests\UpdateEvaluationRequest;
@@ -48,20 +49,21 @@ final class EvaluationCrudController extends AuthenticatedController
         private readonly EvaluationStateService $stateService,
     ) {}
 
-    public function index(Request $request): JsonResponse
+    public function index(ListEvaluationsRequest $request): JsonResponse
     {
         $user = $this->authenticatedUser($request);
 
-        $filters = $request->only(['classe_id', 'matiere_id', 'status', 'is_published']);
+        $filters = $request->safe()->only(['classe_id', 'matiere_id', 'status', 'is_published']);
+        $filters['limit'] = $request->validated('limit', 100);
 
         $evaluations = $this->listService->listForTeacher($user, $filters);
 
         return $this->successResponse($evaluations);
     }
 
-    public function show(int $id): JsonResponse
+    public function show(Request $request, int $id): JsonResponse
     {
-        $enriched = $this->listService->findOne($id);
+        $enriched = $this->listService->findOne($id, $this->authenticatedUser($request));
 
         if ($enriched === null) {
             return $this->errorResponse('Évaluation non trouvée', 404);

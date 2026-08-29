@@ -5,9 +5,10 @@ declare(strict_types=1);
 namespace App\Services\Matiere;
 
 use App\Models\Seance;
-use App\Models\SeanceUserHidden;
 use App\Models\User;
 use App\Services\KlassciProxyService;
+use App\Services\Seances\KlassciPayload;
+use App\Services\Seances\LocalSeanceLookup;
 use Psr\Log\LoggerInterface;
 use Throwable;
 
@@ -15,7 +16,11 @@ use Throwable;
  * MatiereSeancesFetcher — fetches and enriches séances for a matière.
  *
  * Extracted from {@see \App\Http\Controllers\API\LMS\LMSMatieresQueryController::matiereDetails}
- * (legacy lines 132-233 + 396-439).
+ * (legacy lines 132-233 + 396-439). Refactored for issue #517 (N+1 HTTP+SQL) :
+ * reuses {@see LocalSeanceLookup} (#476) for a single mutualized local
+ * preload (filter + visio) instead of a `Seance::where(...)->first()` per
+ * séance, and batches the classe-effectif lookups via
+ * `fetchManyClassesDetails` instead of 1 sequential HTTP call per séance.
  *
  * Responsibility:
  *   - Resolves the séances list according to the user role
@@ -23,17 +28,19 @@ use Throwable;
  *   - For students, filters out archived/hidden séances using local LMS state.
  *   - Enriches each séance with visio + classe effectif data.
  *
- * @see PRODUCTION_STANDARDS.md §1.1
+ * @see PRODUCTION_STANDARDS.md §1.1, §1.4
  */
 final class MatiereSeancesFetcher
 {
     public function __construct(
         private readonly KlassciProxyService $klassciService,
         private readonly LoggerInterface $logger,
+        private readonly LocalSeanceLookup $localLookup,
     ) {}
 
     /**
-     * Resolve séances according to user role, filter students, then enrich.
+     * Resolve séances according to user role, preload local state ONCE
+     * (mutualisé filtre + visio — #476/#517), filter students, then enrich.
      *
      * @param  array<string, mixed>  $matiereData  Original KLASSCI matiere payload.
      * @return array{seances: array<int, array<string, mixed>>, seances_enrichies: array<int, array<string, mixed>>}
@@ -46,8 +53,13 @@ final class MatiereSeancesFetcher
     ): array {
         $seances = $this->fetchRawSeances($user, $matiereId, $klassciToken, $matiereData);
 
+        $this->localLookup->preload(
+            $this->collectKlassciSeanceIds($seances),
+            $user->isStudent() ? $user : null,
+        );
+
         if ($user->isStudent()) {
-            $seances = $this->filterHiddenAndArchivedForStudent($seances, $user);
+            $seances = $this->filterHiddenAndArchivedForStudent($seances);
         }
 
         $seancesEnrichies = $this->enrichSeances($seances, $klassciToken);
@@ -148,38 +160,35 @@ final class MatiereSeancesFetcher
 
     /**
      * @param  array<int, array<string, mixed>>  $seances
+     * @return list<int>
+     */
+    private function collectKlassciSeanceIds(array $seances): array
+    {
+        return KlassciPayload::uniqueIntIds($seances, fn (array $seance): ?int => KlassciPayload::toInt($seance['id'] ?? null));
+    }
+
+    /**
+     * Filtre les séances archivées/masquées pour l'étudiant, résolues EN
+     * MÉMOIRE depuis le préchargement `LocalSeanceLookup` (klassci_seance_id
+     * uniquement — la colonne est NOT NULL et unique par institution depuis
+     * la migration `2026_07_20_000001_fix_seances_unique_per_institution`,
+     * donc toujours l'identifiant local autoritaire). L'ancien fallback
+     * `orWhere('id', $seanceId)` — qui matchait aussi sur le PK local — n'est
+     * pas reproduit ici : c'est le même choix déjà fait pour
+     * `UpcomingSeancesFetcher` (#476), `LocalSeanceLookup` ne l'a jamais eu.
+     *
+     * @param  array<int, array<string, mixed>>  $seances
      * @return array<int, array<string, mixed>>
      */
-    private function filterHiddenAndArchivedForStudent(array $seances, User $user): array
+    private function filterHiddenAndArchivedForStudent(array $seances): array
     {
-        $filtered = collect($seances)->filter(function (array $seance) use ($user): bool {
-            $seanceId = $seance['id'] ?? null;
+        $filtered = collect($seances)->filter(function (array $seance): bool {
+            $seanceId = KlassciPayload::toInt($seance['id'] ?? null);
 
-            if ($seanceId === null) {
-                return true; // Keep seances without ID.
-            }
-
-            $localSeance = Seance::where('klassci_seance_id', $seanceId)
-                ->orWhere('id', $seanceId)
-                ->first();
-
-            if ($localSeance === null) {
-                return true; // Pure KLASSCI séance, keep.
-            }
-
-            if (!$localSeance->is_active) {
-                return false;
-            }
-
-            if (SeanceUserHidden::isHidden($localSeance->id, $user->id)) {
-                return false;
-            }
-
-            return true;
+            return ! $this->localLookup->isArchived($seanceId) && ! $this->localLookup->isHidden($seanceId);
         })->values()->toArray();
 
         $this->logger->info('Séances filtrées pour étudiant', [
-            'user_id' => $user->id,
             'count_after_filter' => count($filtered),
         ]);
 
@@ -192,46 +201,71 @@ final class MatiereSeancesFetcher
      */
     private function enrichSeances(array $seances, string $klassciToken): array
     {
-        return collect($seances)->map(function (array $seance) use ($klassciToken): array {
-            $visioData = isset($seance['id'])
-                ? Seance::where('klassci_seance_id', $seance['id'])->withConnectedParticipantsCount()->first()
-                : null;
+        $classesDetails = $this->fetchClassesDetails($seances, $klassciToken);
 
+        return collect($seances)->map(function (array $seance) use ($classesDetails): array {
             $seanceEnrichie = $seance;
+            $seanceEnrichie['classe_effectif'] = KlassciPayload::classeEffectif($seance, $classesDetails);
 
-            // Effectif classe.
-            if (isset($seance['classe']['id'])) {
-                try {
-                    $classeDetails = $this->klassciService->requestWithUserToken(
-                        $klassciToken,
-                        "classes/{$seance['classe']['id']}",
-                        'GET'
-                    );
-                    $seanceEnrichie['classe_effectif'] = $classeDetails['data']['classe']['places_occupees'] ?? 0;
-                } catch (Throwable) {
-                    $seanceEnrichie['classe_effectif'] = 0;
-                }
-            } else {
-                $seanceEnrichie['classe_effectif'] = 0;
-            }
+            $visioData = $this->localLookup->seanceFor(KlassciPayload::toInt($seance['id'] ?? null));
 
-            if ($visioData !== null) {
-                $seanceEnrichie['visio_enabled'] = $visioData->visio_enabled;
-                $seanceEnrichie['visio_type'] = $visioData->visio_type;
-                $seanceEnrichie['visio_status'] = $visioData->visio_status;
-                $seanceEnrichie['visio_active'] = $visioData->visio_active;
-                $seanceEnrichie['visio_room_id'] = $visioData->visio_room_id;
-                $seanceEnrichie['visio_participants_count'] = $visioData->current_participants_count ?? 0;
-            } else {
-                $seanceEnrichie['visio_enabled'] = false;
-                $seanceEnrichie['visio_type'] = null;
-                $seanceEnrichie['visio_status'] = null;
-                $seanceEnrichie['visio_active'] = false;
-                $seanceEnrichie['visio_room_id'] = null;
-                $seanceEnrichie['visio_participants_count'] = 0;
-            }
-
-            return $seanceEnrichie;
+            return $this->withVisioFields($seanceEnrichie, $visioData);
         })->all();
+    }
+
+    /**
+     * Batch (#517) : 1 seul `fetchManyClassesDetails` pour TOUTES les classes
+     * distinctes des séances, au lieu d'un `classes/{id}` séquentiel par séance.
+     * Un échec du pool à l'échelle de l'appel (config/connectivité KLASSCI,
+     * pas un échec par id — déjà toléré par `KlassciBatchFetcher`) dégrade
+     * gracieusement vers `classe_effectif = 0` pour toutes les séances,
+     * plutôt que de faire échouer toute la réponse (parité avec l'ancien
+     * `try/catch` par séance).
+     *
+     * @param  array<int, array<string, mixed>>  $seances
+     * @return array<int, array<string, mixed>>
+     */
+    private function fetchClassesDetails(array $seances, string $klassciToken): array
+    {
+        $classeIds = KlassciPayload::uniqueIntIds($seances, KlassciPayload::classeIdFor(...));
+        if ($classeIds === []) {
+            return [];
+        }
+
+        try {
+            return $this->klassciService->fetchManyClassesDetails($classeIds, $klassciToken);
+        } catch (Throwable $e) {
+            $this->logger->warning('Erreur récupération effectifs de classe (batch)', [
+                'classe_ids' => $classeIds,
+                'error' => $e->getMessage(),
+            ]);
+
+            return [];
+        }
+    }
+
+    /**
+     * @param  array<string, mixed>  $seanceEnrichie
+     * @return array<string, mixed>
+     */
+    private function withVisioFields(array $seanceEnrichie, ?Seance $visioData): array
+    {
+        if ($visioData !== null) {
+            $seanceEnrichie['visio_enabled'] = $visioData->visio_enabled;
+            $seanceEnrichie['visio_type'] = $visioData->visio_type;
+            $seanceEnrichie['visio_status'] = $visioData->visio_status;
+            $seanceEnrichie['visio_active'] = $visioData->visio_active;
+            $seanceEnrichie['visio_room_id'] = $visioData->visio_room_id;
+            $seanceEnrichie['visio_participants_count'] = $visioData->current_participants_count ?? 0;
+        } else {
+            $seanceEnrichie['visio_enabled'] = false;
+            $seanceEnrichie['visio_type'] = null;
+            $seanceEnrichie['visio_status'] = null;
+            $seanceEnrichie['visio_active'] = false;
+            $seanceEnrichie['visio_room_id'] = null;
+            $seanceEnrichie['visio_participants_count'] = 0;
+        }
+
+        return $seanceEnrichie;
     }
 }

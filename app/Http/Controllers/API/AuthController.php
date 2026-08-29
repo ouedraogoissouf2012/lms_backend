@@ -5,13 +5,10 @@ namespace App\Http\Controllers\API;
 use App\Http\Controllers\AuthenticatedController;
 use App\Http\Presenters\AuthResponsePresenter;
 use App\Http\Requests\LoginRequest;
-use App\Models\Institution;
 use App\Models\User;
-use App\Services\Auth\LocalLmsAuthenticator;
-use App\Services\Klassci\Auth\KlassciAuthClient;
-use App\Services\Klassci\Auth\KlassciTenantDiscovery;
+use App\Services\Auth\LoginOrchestrator;
+use App\Services\Klassci\Data\KlassciDataWhitelist;
 use App\Services\Audit\AuditLogger;
-use App\Services\Klassci\Auth\KlassciUserSynchronizer;
 use App\Services\KlassciProxyService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -38,13 +35,11 @@ class AuthController extends AuthenticatedController
 {
     public function __construct(
         private KlassciProxyService $klassciService,
-        private LocalLmsAuthenticator $localAuth,
-        private KlassciTenantDiscovery $tenantDiscovery,
-        private KlassciAuthClient $klassciAuthClient,
-        private KlassciUserSynchronizer $userSync,
+        private LoginOrchestrator $login,
         private AuthResponsePresenter $presenter,
         private AuditLogger $auditLogger,
         private LoggerInterface $logger,
+        private KlassciDataWhitelist $klassciDataWhitelist,
     ) {}
 
     /**
@@ -56,12 +51,12 @@ class AuthController extends AuthenticatedController
             $username = $request->username();
             $password = $request->password();
 
-            $localResponse = $this->attemptLocalLogin($username, $password);
+            $localResponse = $this->login->attemptLocal($username, $password);
             if ($localResponse !== null) {
                 return $localResponse;
             }
 
-            return $this->attemptKlassciLogin($username, $password);
+            return $this->login->attemptKlassci($username, $password);
         } catch (\App\Exceptions\KlassciAccountConflictException $e) {
             // Anomalie de données (email déjà pris par un autre compte) → 409
             // propre. Déjà loggé en détail par le synchronizer ; ici on trace
@@ -104,16 +99,36 @@ class AuthController extends AuthenticatedController
         try {
             $user = $this->authenticatedUser($request);
 
-            try {
-                $klassciMe = $this->klassciService->get('auth/me');
-                $userData  = is_array($klassciMe['data']['user'] ?? null) ? $klassciMe['data']['user'] : [];
-            } catch (\Exception) {
-                $userData = [];
-            }
+            // #477 (vecteur B) : whitelist du payload KLASSCI LIVE avant exposition
+            // frontend (un KLASSCI compromis ne peut injecter de clés dans la réponse).
+            $userData = $this->klassciDataWhitelist->filter($this->fetchLiveKlassciProfile($user));
 
             return $this->presenter->profile($user, $userData);
         } catch (\Exception) {
             return $this->presenter->profileError();
+        }
+    }
+
+    /**
+     * #568 — Profil KLASSCI LIVE isolé PAR utilisateur : variante user-token-aware
+     * (clé cache dérivée du hash du token). L'ancien `get('auth/me')` cachait sous
+     * une clé tenant-globale → le profil du 1er appelant fuitait à tout le tenant.
+     *
+     * @return array<string, mixed>  Payload `data.user`, ou [] si indisponible.
+     */
+    private function fetchLiveKlassciProfile(User $user): array
+    {
+        $klassciToken = $user->klassci_token;
+        if (!is_string($klassciToken) || $klassciToken === '') {
+            return []; // Pas de token perso (auth locale / institution) → pas de profil KLASSCI perso.
+        }
+
+        try {
+            $klassciMe = $this->klassciService->requestWithUserToken($klassciToken, 'auth/me', 'GET');
+
+            return is_array($klassciMe['data']['user'] ?? null) ? $klassciMe['data']['user'] : [];
+        } catch (\Exception) {
+            return [];
         }
     }
 
@@ -165,71 +180,5 @@ class AuthController extends AuthenticatedController
         } catch (\Exception) {
             return $this->presenter->checkUnauthenticated();
         }
-    }
-
-    /**
-     * Étape 1 du flow login : auth locale (supradmin, users avec password local).
-     * Retourne la JsonResponse de succès si match, sinon null pour continuer.
-     */
-    private function attemptLocalLogin(string $username, string $password): ?JsonResponse
-    {
-        $user = $this->localAuth->attemptLocalAuth($username, $password);
-        if ($user === null) {
-            return null;
-        }
-
-        $token = $user->createToken('lms-backend-token', ['lms:access'])->plainTextToken;
-
-        $this->auditLogger->logAuthEvent('login', $user->id, ['method' => 'local']);
-
-        return $this->presenter->successfulLocal($user, $token);
-    }
-
-    /**
-     * Étapes 2+3 du flow login : discovery multi-tenant + auth KLASSCI + sync.
-     */
-    private function attemptKlassciLogin(string $username, string $password): JsonResponse
-    {
-        $matchingTenants = $this->tenantDiscovery->findMatchingTenants($username);
-        if ($matchingTenants === []) {
-            return $this->presenter->invalidCredentials();
-        }
-
-        foreach ($matchingTenants as $tenant) {
-            $payload = $this->klassciAuthClient->attemptLogin($tenant['api_base_url'], $username, $password);
-            if ($payload === null) {
-                continue;
-            }
-
-            return $this->buildKlassciSuccessResponse($payload, $tenant);
-        }
-
-        // Aucun tenant n'a validé les identifiants → échec d'authentification.
-        $this->auditLogger->logAuthEvent('login_failed', null, ['username' => $username]);
-
-        return $this->presenter->invalidCredentials();
-    }
-
-    /**
-     * Synchronise le user local + génère le token Sanctum + délègue la
-     * construction de la JsonResponse au presenter.
-     *
-     * @param  array<string, mixed>  $payload  Payload `/auth/login` KLASSCI
-     * @param  array{code: string, api_base_url: string}  $tenant
-     */
-    private function buildKlassciSuccessResponse(array $payload, array $tenant): JsonResponse
-    {
-        $data         = is_array($payload['data'] ?? null) ? $payload['data'] : [];
-        $klassciUser  = is_array($data['user'] ?? null) ? $data['user'] : [];
-        $klassciToken = is_string($data['token'] ?? null) ? $data['token'] : '';
-        $meta         = is_array($payload['meta'] ?? null) ? $payload['meta'] : [];
-
-        $institution  = Institution::where('slug', $tenant['code'])->first();
-        $localUser    = $this->userSync->sync($klassciUser, $klassciToken, $tenant['api_base_url'], $institution);
-        $sanctumToken = $localUser->createToken('lms-backend-token', ['lms:access'])->plainTextToken;
-
-        $this->auditLogger->logAuthEvent('login', $localUser->id, ['method' => 'klassci', 'tenant' => $tenant['code']]);
-
-        return $this->presenter->successfulKlassci($localUser, $sanctumToken, $klassciUser, $meta, $tenant);
     }
 }

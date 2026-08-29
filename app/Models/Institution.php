@@ -4,16 +4,19 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
  * Tenant du SaaS multi-institution.
  *
  * @property-read string|null $klassci_api_token Alias accessor de la colonne chiffrée `klassci_api_token_encrypted`.
+ * @property \Illuminate\Support\Carbon|null $deleted_at Soft delete (#567) — suppression LOGIQUE
+ *                                    et réversible ; config du tenant préservée, restaurable.
  */
 class Institution extends Model
 {
     /** @use HasFactory<\Database\Factories\InstitutionFactory> */
-    use HasFactory;
+    use HasFactory, SoftDeletes;
 
     protected $fillable = [
         'slug',

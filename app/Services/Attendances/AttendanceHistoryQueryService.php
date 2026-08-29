@@ -45,7 +45,8 @@ final class AttendanceHistoryQueryService
             $query = $this->buildBaseQuery($user);
             $this->applyOptionalFilters($query, $request);
 
-            $perPage = (int) $request->input('per_page', 50);
+            $perPageInput = $request->input('per_page', 50);
+            $perPage = is_numeric($perPageInput) ? (int) $perPageInput : 50;
             $attendances = $query->paginate($perPage);
 
             $enrichedData = $attendances->getCollection()->map(
@@ -94,7 +95,7 @@ final class AttendanceHistoryQueryService
         if ($user->isTeacher()) {
             // L'enseignant ne voit que les présences de ses propres séances
             $query->whereHas('seance', function ($q) use ($user) {
-                $q->where('enseignant_id', $user->id);
+                $q->whereRaw('enseignant_id = ?', [$user->id]);
             });
         } elseif ($user->isStudent()) {
             // L'étudiant ne voit que ses propres présences
@@ -114,19 +115,19 @@ final class AttendanceHistoryQueryService
         $dateFrom = $request->input('date_from');
         $dateTo = $request->input('date_to');
 
-        if ($seanceId) {
+        if (is_scalar($seanceId) && $seanceId !== '') {
             $seanceLocal = Seance::where('klassci_seance_id', $seanceId)->first();
             if ($seanceLocal) {
                 $query->where('seance_id', $seanceLocal->id);
             }
         }
 
-        if ($dateFrom) {
+        if (is_scalar($dateFrom) && $dateFrom !== '') {
             $query->where('joined_at', '>=', $dateFrom);
         }
 
-        if ($dateTo) {
-            $query->where('joined_at', '<=', $dateTo . ' 23:59:59');
+        if (is_scalar($dateTo) && $dateTo !== '') {
+            $query->where('joined_at', '<=', $dateTo.' 23:59:59');
         }
     }
 
@@ -135,17 +136,22 @@ final class AttendanceHistoryQueryService
      */
     private function formatAttendance(ESBTPAttendance $attendance, User $user): array
     {
+        $attendanceUser = $attendance->getRelationValue('user');
+        $attendanceSeance = $attendance->getRelationValue('seance');
+        $relatedUser = $attendanceUser instanceof User ? $attendanceUser : null;
+        $relatedSeance = $attendanceSeance instanceof Seance ? $attendanceSeance : null;
+
         $data = [
             'id' => $attendance->id,
             'user' => [
-                'id' => $attendance->user?->id ?? 0,
-                'name' => $attendance->user?->name ?? 'Utilisateur supprimé',
-                'email' => $attendance->user?->email ?? '',
+                'id' => $relatedUser instanceof User ? $relatedUser->id : 0,
+                'name' => $relatedUser instanceof User ? $relatedUser->name : 'Utilisateur supprimé',
+                'email' => $relatedUser instanceof User ? $relatedUser->email : '',
             ],
             'seance' => [
-                'id' => $attendance->seance?->id ?? 0,
-                'klassci_seance_id' => $attendance->seance?->klassci_seance_id ?? 'N/A',
-                'date' => $attendance->seance?->date_seance ?? null,
+                'id' => $relatedSeance instanceof Seance ? $relatedSeance->id : 0,
+                'klassci_seance_id' => $relatedSeance instanceof Seance ? $relatedSeance->klassci_seance_id : 'N/A',
+                'date' => $relatedSeance instanceof Seance ? $relatedSeance->date_seance : null,
                 'matiere' => null,
                 'classe' => null,
             ],
@@ -162,8 +168,8 @@ final class AttendanceHistoryQueryService
         }
 
         // Essayer de récupérer les infos KLASSCI de la séance
-        if ($attendance->seance && $attendance->seance->klassci_seance_id) {
-            $this->enrichWithKlassciDetails($data, $attendance, $user);
+        if ($relatedSeance !== null && $relatedSeance->klassci_seance_id) {
+            $this->enrichWithKlassciDetails($data, $relatedSeance, $user);
         }
 
         return $data;
@@ -172,26 +178,32 @@ final class AttendanceHistoryQueryService
     /**
      * @param  array<string, mixed>  $data
      */
-    private function enrichWithKlassciDetails(array &$data, ESBTPAttendance $attendance, User $user): void
+    private function enrichWithKlassciDetails(array &$data, Seance $seance, User $user): void
     {
         try {
             // Use SeanceDetailQueryService (split-1, ex-SeanceQueryService PR E) instead of legacy
             // `$this->seanceDetails($id, $request)` + json_decode anti-pattern.
             // Returns the seance array directly — no encode/decode round-trip.
             $seanceArray = $this->seanceQuery->getSeanceDetailsArray(
-                $attendance->seance->klassci_seance_id,
+                $seance->klassci_seance_id,
                 $user,
             );
 
-            if ($seanceArray !== null && isset($seanceArray['seance'])) {
-                $data['seance']['matiere'] = $seanceArray['seance']['matiere'] ?? null;
-                $data['seance']['classe'] = $seanceArray['seance']['classe'] ?? null;
-                $data['seance']['programmation'] = $seanceArray['seance']['programmation'] ?? null;
+            if ($seanceArray !== null) {
+                $klassciSeance = $seanceArray['seance'];
+                $localSeance = $data['seance'] ?? [];
+
+                if (is_array($localSeance)) {
+                    $localSeance['matiere'] = $klassciSeance['matiere'] ?? null;
+                    $localSeance['classe'] = $klassciSeance['classe'] ?? null;
+                    $localSeance['programmation'] = $klassciSeance['programmation'] ?? null;
+                    $data['seance'] = $localSeance;
+                }
             }
         } catch (Throwable $e) {
             // Ignorer les erreurs de récupération KLASSCI (séance peut être archivée)
             $this->logger->debug('Impossible de récupérer détails KLASSCI pour historique', [
-                'seance_id' => $attendance->seance->klassci_seance_id,
+                'seance_id' => $seance->klassci_seance_id,
                 'error' => $e->getMessage(),
             ]);
         }

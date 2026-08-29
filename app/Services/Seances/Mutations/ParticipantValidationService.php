@@ -6,6 +6,7 @@ namespace App\Services\Seances\Mutations;
 
 use App\Models\Seance;
 use App\Models\User;
+use App\Services\Visio\VisioActorAuthorization;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Http\Client\Factory as HttpFactory;
 use Illuminate\Http\Client\PendingRequest;
@@ -29,17 +30,25 @@ final class ParticipantValidationService
         private readonly HttpFactory $http,
         private readonly LoggerInterface $logger,
         private readonly Application $app,
+        private readonly VisioActorAuthorization $authorization,
     ) {}
 
     /**
      * @return array{status:int, payload: array<string, mixed>}
      */
-    public function validate(int $seanceId, int $userIdToValidate): array
+    public function validate(int $seanceId, int $userIdToValidate, User $actor): array
     {
         try {
-            $userToValidate = User::find($userIdToValidate);
+            $institutionId = $actor->institution_id;
+            if (! is_int($institutionId)) {
+                return $this->fail(403, 'tenant_not_resolved');
+            }
 
-            if (!$userToValidate instanceof User) {
+            $userToValidate = User::query()
+                ->where('institution_id', $institutionId)
+                ->find($userIdToValidate);
+
+            if (! $userToValidate instanceof User) {
                 return $this->fail(404, 'user_not_found');
             }
 
@@ -49,17 +58,31 @@ final class ParticipantValidationService
                 'user_role' => $userToValidate->role,
             ]);
 
-            $visioData = Seance::where('klassci_seance_id', $seanceId)->first();
+            $visioData = Seance::query()
+                ->where('institution_id', $institutionId)
+                ->where(function ($query) use ($seanceId): void {
+                    $query->whereKey($seanceId)
+                        ->orWhere('klassci_seance_id', $seanceId);
+                })
+                ->first();
 
-            if (!$visioData || !$visioData->visio_enabled) {
+            if (! $visioData || ! $visioData->visio_enabled) {
                 return $this->fail(403, 'visio_not_enabled', 'Visioconférence non activée pour cette séance');
             }
 
-            if (!in_array($visioData->visio_status, ['active', 'programmee'], true)) {
+            if (! in_array($visioData->visio_status, ['active', 'programmee'], true)) {
                 return $this->fail(403, 'visio_not_started', 'La visioconférence n\'a pas encore démarré');
             }
 
+            if (! $this->authorization->canValidate($visioData, $actor, $userToValidate)) {
+                return $this->fail(403, 'actor_not_authorized', 'Vous ne pouvez pas valider cette séance');
+            }
+
             if ($userToValidate->isStaff()) {
+                if ($userToValidate->isTeacher() && ! $this->authorization->teacherOwns($visioData, $userToValidate)) {
+                    return $this->fail(403, 'teacher_not_owner', 'Enseignant non propriétaire de la séance');
+                }
+
                 return [
                     'status' => 200,
                     'payload' => [
@@ -116,7 +139,7 @@ final class ParticipantValidationService
             $klassciUrl = $this->klassciBaseUrl();
             $classeId = $visioData->klassci_classe_id;
 
-            if (!$classeId && $visioData->klassci_matiere_id) {
+            if (! $classeId && $visioData->klassci_matiere_id) {
                 $classeId = $this->resolveClasseIdFromMatiere(
                     $klassciUrl,
                     (int) $visioData->klassci_matiere_id,
@@ -128,7 +151,7 @@ final class ParticipantValidationService
                 }
             }
 
-            if (!$classeId) {
+            if (! $classeId) {
                 $this->logger->error('Participant validation : no classe_id available', [
                     'seance_id' => $seanceId,
                     'has_matiere_id' => $visioData->klassci_matiere_id !== null,
@@ -141,7 +164,7 @@ final class ParticipantValidationService
             $classesResponse = $this->httpClient()
                 ->get("{$klassciUrl}/classes/{$classeId}/etudiants");
 
-            if (!$classesResponse->successful()) {
+            if (! $classesResponse->successful()) {
                 $this->logger->error('KLASSCI API error on /classes/etudiants', [
                     'seance_id' => $seanceId,
                     'classe_id' => $classeId,
@@ -197,7 +220,7 @@ final class ParticipantValidationService
         $matiereResponse = $this->httpClient()
             ->get("{$klassciUrl}/matieres/{$matiereId}");
 
-        if (!$matiereResponse->successful()) {
+        if (! $matiereResponse->successful()) {
             $this->logger->error('KLASSCI API error on /matieres', [
                 'matiere_id' => $matiereId,
                 'status' => $matiereResponse->status(),
@@ -209,7 +232,7 @@ final class ParticipantValidationService
         $seancesProgrammees = $matiereResponse->json('data.seances_programmees') ?? [];
         $seanceInfo = collect($seancesProgrammees)->firstWhere('id', $seanceId);
 
-        if (!$seanceInfo) {
+        if (! $seanceInfo) {
             $this->logger->warning('Seance not found in KLASSCI programmations', [
                 'matiere_id' => $matiereId,
                 'seance_id' => $seanceId,
@@ -245,7 +268,7 @@ final class ParticipantValidationService
     {
         $url = config('services.klassci.url');
 
-        if (!is_string($url) || $url === '') {
+        if (! is_string($url) || $url === '') {
             throw new RuntimeException(
                 'KLASSCI API URL non configurée. Définir KLASSCI_API_URL dans .env.'
             );

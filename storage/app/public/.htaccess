@@ -1,0 +1,45 @@
+# Exception au « Require all denied » de storage/.htaccess — issue #577.
+#
+# storage/app/public/ est la racine du disque « public » Laravel (storage:link,
+# config/filesystems.php) : TOUT ce qui y est déposé est servi en HTTP SANS
+# authentification Laravel, via le symlink public/storage (URLs « /storage/... »).
+# Cette exception ré-autorise ce sous-arbre pour préserver le service des assets
+# publics légitimes (diapositives PNG converties, vidéos de chapitre) — sans elle,
+# le deny de storage/.htaccess les casserait (régression d'affichage des cours).
+#
+# ▶️ DETTE PARTIELLEMENT PAYÉE PAR #598 — lire jusqu'au bout.
+# Le pipeline de conversion déposait AUSSI ici les documents ORIGINAUX bruts, le
+# HTML plein-texte (WordConverter) et le PDF intermédiaire (PowerPointConverter),
+# tous lisibles sans contrôle d'accès. #598 les a basculés sur le disque « local »
+# (privé) via App\Services\FileConversion\ChapterArtifactStorage, et expose le
+# téléchargement du source par une route authentifiée
+# (GET /api/chapters/{id}/original, ChapterOriginalController).
+#
+# ⚠️ RÈGLE PERMANENTE : NE PAS déposer ici un fichier devant être protégé. Tout ce
+# qui atterrit sous storage/app/public/ est servi en HTTP SANS authentification.
+# Le choix du disque est centralisé dans ChapterArtifactStorage : passer par lui,
+# jamais par un `store(..., 'public')` recopié d'un convertisseur voisin.
+# Reliquat historique : `php artisan chapters:purge-public-artifacts --apply`
+# (migre vers le disque privé, ne supprime pas).
+#
+# ❌ CE QUI RESTE OUVERT (pré-existant, hors périmètre #598, issue de suivi) :
+# les diapositives `chapters/{id}/slides/slide_001.png` sont servies ici SANS
+# authentification, à URL entièrement prédictible (`chapters.id` est un entier
+# séquentiel GLOBAL, le nom de fichier n'a aucune composante secrète). Le
+# contenu page à page de tous les cours de toutes les institutions reste donc
+# énumérable par un tiers non authentifié. #598 ferme le document SOURCE, pas
+# sa restitution en images.
+#
+# La directive de la sous-arborescence l'emporte sur celle héritée de storage/
+# (Apache mod_authz_core : le contexte per-directory le plus proche s'applique).
+
+# Apache 2.4+ : ré-autorise ce sous-arbre.
+<IfModule mod_authz_core.c>
+    Require all granted
+</IfModule>
+
+# Repli Apache 2.2.
+<IfModule !mod_authz_core.c>
+    Order allow,deny
+    Allow from all
+</IfModule>

@@ -89,9 +89,12 @@ class AuthResponsePresenter
                     'role'              => $localUser->role,
                     'role_display_name' => $klassciUser['role_display_name'] ?? '',
                     'avatar'            => $klassciUser['avatar'] ?? null,
-                    'permissions'       => $klassciUser['permissions'] ?? [],
-                    'is_admin'          => $klassciUser['is_admin'] ?? false,
-                    'admin_data'        => $adminData,
+                    // #504 : `is_admin` / `permissions` / `admin_data` BRUTS retirés de la
+                    // réponse de login (défense en profondeur §1.2). Un KLASSCI compromis
+                    // pouvait y pousser `is_admin=true`/`permissions=['*']` — y compris
+                    // imbriqués dans `admin_data`. Aligne login sur /auth/me + le stockage
+                    // (whitelist #477). L'autorité reste `role` ; `institution_name` (dérivé
+                    // d'`admin_data.etablissement`) reste exposé en `meta` ci-dessous.
                     'enseignant_data'   => $klassciUser['enseignant_data'] ?? null,
                     'etudiant_data'     => $klassciUser['etudiant_data'] ?? null,
                 ],

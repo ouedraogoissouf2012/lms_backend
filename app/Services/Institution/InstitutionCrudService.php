@@ -4,8 +4,13 @@ declare(strict_types=1);
 
 namespace App\Services\Institution;
 
+use App\Exceptions\BusinessException;
 use App\Models\Institution;
+use App\Models\PersonalAccessToken;
+use App\Models\User;
+use App\Services\Audit\AuditLogger;
 use Illuminate\Contracts\Cache\Repository as CacheRepository;
+use Illuminate\Database\ConnectionInterface;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -30,6 +35,8 @@ final class InstitutionCrudService
     public function __construct(
         private readonly CacheRepository $cache,
         private readonly LoggerInterface $logger,
+        private readonly AuditLogger $audit,
+        private readonly ConnectionInterface $db,
     ) {
     }
 
@@ -111,17 +118,74 @@ final class InstitutionCrudService
     }
 
     /**
+     * Suppression LOGIQUE d'une institution (#567).
+     *
+     * Une suppression n'est jamais un premier geste : l'institution doit être
+     * déjà désactivée (`is_active = false`). Refuser une institution active
+     * empêche a fortiori de supprimer la dernière active — mais UNIQUEMENT si
+     * toute désactivation transite par {@see toggleActive()}, qui tient le
+     * compteur « ≥ 1 active ». Un `update(['is_active' => false])` direct peut
+     * encore contourner ce compteur : limite PRÉ-EXISTANTE (invariant à
+     * centraliser), hors périmètre #567.
+     *
+     * Coupe l'accès des utilisateurs du tenant (révocation Sanctum) : sans #565,
+     * une institution soft-deletée résoudrait un tenant `null` (fail-open) —
+     * révoquer les sessions ferme cette fenêtre indépendamment de #565.
+     *
      * @throws \Illuminate\Database\Eloquent\ModelNotFoundException
+     * @throws BusinessException  Si l'institution est encore active.
      */
     public function softDelete(int $id): void
     {
         /** @var Institution $institution */
         $institution = Institution::findOrFail($id);
-        $institution->delete();
+
+        if ($institution->is_active) {
+            throw new BusinessException(
+                'Désactivez l\'institution avant de la supprimer.'
+            );
+        }
+
+        // Atomicité : révocation des sessions ↔ soft delete dans une transaction —
+        // jamais « sessions coupées mais institution encore là » (ou l'inverse).
+        $revokedSessions = $this->db->transaction(function () use ($institution, $id): int {
+            $revoked = $this->revokeTenantSessions($id);
+            $institution->delete();
+
+            $this->audit->logSecurityEvent('institution.soft_deleted', $institution, [
+                'revoked_sessions' => $revoked,
+            ]);
+
+            return $revoked;
+        });
 
         $this->invalidateCaches();
 
-        $this->logger->info('Institution deleted', ['id' => $id]);
+        $this->logger->info('Institution soft-deleted', [
+            'id' => $id,
+            'revoked_sessions' => $revokedSessions,
+        ]);
+    }
+
+    /**
+     * Révoque tous les jetons Sanctum des utilisateurs du tenant (sous-requête
+     * bornée — aucun chargement d'ids en mémoire). Retourne le nombre révoqué.
+     */
+    private function revokeTenantSessions(int $institutionId): int
+    {
+        // delete() est typé `mixed` par Larastan bien qu'il renvoie le nombre de
+        // lignes supprimées → narrowing is_int (pas de cast, niveau 9).
+        $deleted = PersonalAccessToken::query()
+            ->where('tokenable_type', (new User())->getMorphClass())
+            ->whereIn(
+                'tokenable_id',
+                User::withoutGlobalScope('institution')
+                    ->where('institution_id', $institutionId)
+                    ->select('id')
+            )
+            ->delete();
+
+        return is_int($deleted) ? $deleted : 0;
     }
 
     private function invalidateCaches(): void

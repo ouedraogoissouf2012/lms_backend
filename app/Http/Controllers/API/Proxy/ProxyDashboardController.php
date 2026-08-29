@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\API\Proxy;
 
 use App\Http\Controllers\API\Proxy\Concerns\RendersKlassciProxyErrors;
+use App\Http\Controllers\API\Proxy\Concerns\ResolvesPersonalKlassciToken;
 use App\Http\Controllers\Controller;
 use App\Services\KlassciProxyService;
 use Illuminate\Http\JsonResponse;
@@ -26,6 +27,7 @@ use Illuminate\Support\Facades\Log;
 final class ProxyDashboardController extends Controller
 {
     use RendersKlassciProxyErrors;
+    use ResolvesPersonalKlassciToken;
 
     public function __construct(
         private readonly KlassciProxyService $klassciService,
@@ -42,15 +44,13 @@ final class ProxyDashboardController extends Controller
     {
         try {
             $user = $request->user();
-
-            if (! $user) {
+            if ($user === null) {
                 return $this->errorResponse('Utilisateur non authentifié', 401);
             }
 
-            $klassciToken = $user->klassci_token;
-
-            if (! $klassciToken) {
-                return $this->errorResponse('Token KLASSCI non trouvé. Veuillez vous reconnecter.', 401);
+            $klassciToken = $this->personalKlassciToken($request);
+            if ($klassciToken === null) {
+                return $this->missingKlassciTokenResponse();
             }
 
             Log::info('Student Dashboard request', [
@@ -81,15 +81,13 @@ final class ProxyDashboardController extends Controller
     {
         try {
             $user = $request->user();
-
-            if (! $user) {
+            if ($user === null) {
                 return $this->errorResponse('Utilisateur non authentifié', 401);
             }
 
-            $klassciToken = $user->klassci_token;
-
-            if (! $klassciToken) {
-                return $this->errorResponse('Token KLASSCI non trouvé. Veuillez vous reconnecter.', 401);
+            $klassciToken = $this->personalKlassciToken($request);
+            if ($klassciToken === null) {
+                return $this->missingKlassciTokenResponse();
             }
 
             Log::info('Teacher Dashboard request', [

@@ -1,13 +1,10 @@
 # Guide de déploiement en production — LMS KLASSCI
 
 > **Rôle de ce document** : première installation du backend sur un environnement de
-> production **vierge**. Pour un déploiement de routine sur le cPanel existant
-> (`git pull` + migrations), suivre le runbook
-> [`docs/DEPLOIEMENT_CPANEL.md`](docs/DEPLOIEMENT_CPANEL.md) — c'est lui qui fait foi
-> pour la prod actuelle.
+> production **vierge**. La prod tourne sur un **VPS** (`/var/www/lms-backend`).
 >
 > Chaque commande de ce guide a été vérifiée contre le repo réel
-> (`composer.json`, `.cpanel.yml`, `routes/`, `config/`). Si une commande échoue,
+> (`composer.json`, `routes/`, `config/`). Si une commande échoue,
 > ouvrir une issue `documentation` plutôt que d'improviser.
 
 ---
@@ -31,16 +28,11 @@ documents), suivre [`docs/INSTALLATION_SERVEUR.md`](docs/INSTALLATION_SERVEUR.md
 
 ### 2.1 Récupérer le code
 
-En prod cPanel, le dépôt est déployé via **cPanel Git Version Control** branché sur la
-branche `lms`. Le pipeline [`.cpanel.yml`](.cpanel.yml) copie les fichiers vers
-`/home/c2569688c/public_html/lms-backend` puis vide les caches (`cache:clear`,
-`config:clear`).
+Le dépôt est déployé sur le VPS, racine applicative `/var/www/lms-backend`,
+branche `lms`. `composer install` et `php artisan migrate` restent des étapes
+manuelles — les oublier est la cause de l'incident login 500 du 2026-06-20.
 
-> ⚠️ `.cpanel.yml` ne fait **ni** `composer install` **ni** `php artisan migrate`.
-> Ces étapes restent manuelles (ci-dessous) — les oublier est la cause de
-> l'incident login 500 du 2026-06-20 (cf. runbook).
-
-Sur un serveur hors cPanel :
+Sur le VPS :
 
 ```bash
 git clone git@github.com:ouedraogoissouf2012/lms_backend.git
@@ -170,6 +162,20 @@ jamais la copier en production.
   servis par le web : le DocumentRoot doit pointer sur `public/` uniquement.
   Le [`public/.htaccess`](public/.htaccess) versionné gère la réécriture Apache —
   ne pas le remplacer par une version simplifiée.
+- **Défense en profondeur indépendante du DocumentRoot** (issues #537, #577) : le
+  [`.htaccess`](.htaccess) racine bloque les fichiers cachés (`.env`, `.git`, `.claude`)
+  **et** les répertoires applicatifs (`app`, `bootstrap`, `config`, `database`, `resources`,
+  `routes`, `vendor`, `tests`) ; [`storage/.htaccess`](storage/.htaccess) et
+  [`bootstrap/cache/.htaccess`](bootstrap/cache/.htaccess) refusent tout accès HTTP direct
+  (journaux, uploads privés, config compilée avec secrets). Seul `storage/app/public/`
+  (diapositives/vidéos servies par le symlink `/storage`) reste public, via une exception
+  dédiée. Ces protections sont actives même si le DocumentRoot est mal configuré — mais **ne
+  remplacent pas** un DocumentRoot correct sur `public/`, qui reste la première ligne.
+- **Limite d'upload vs configuration PHP** (issue #576) : la validation applicative plafonne
+  les fichiers à **30 Mo** (`App\Support\Upload\UploadLimits`). Cette limite n'est effective
+  que si `upload_max_filesize` **et** `post_max_size` (php.ini / `.user.ini`) valent **≥ 30 Mo** ;
+  si PHP coupe en dessous, l'utilisateur reçoit une erreur serveur illisible avant la validation
+  Laravel. Aligner les deux directives PHP sur 30 Mo (ou légèrement au-dessus).
 - Équivalent Nginx :
 
   ```nginx
@@ -205,6 +211,28 @@ php artisan migrate:status    # aucune ligne « Pending »
 
 # 4. Connexion DB
 php artisan db:show
+
+# 5. Webroot : storage/ et répertoires applicatifs NON exposés (issues #537, #577)
+#    Remplacer <domaine> et le préfixe /lms-backend selon le vhost réel.
+curl -s -o /dev/null -w "storage/logs:   %{http_code}\n" https://<domaine>/lms-backend/storage/logs/laravel.log
+curl -s -o /dev/null -w "storage/private: %{http_code}\n" https://<domaine>/lms-backend/storage/app/private/
+curl -s -o /dev/null -w "bootstrap/cache: %{http_code}\n" https://<domaine>/lms-backend/bootstrap/cache/config.php
+curl -s -o /dev/null -w "config:          %{http_code}\n" https://<domaine>/lms-backend/config/app.php
+# Attendu : 403 (ou 404) pour les quatre. Un 200 → protection inactive : vérifier
+# AllowOverride du vhost, et corriger le DocumentRoot (doit pointer sur .../lms-backend/public).
+
+# 5b. Variantes de contournement de la règle racine (encodage %XX, majuscules).
+#     La règle racine (mod_rewrite) doit rester robuste ; les cibles à secrets
+#     (bootstrap/cache, uploads privés) sont de toute façon protégées par un
+#     .htaccess PHYSIQUE, insensible à l'encodage.
+curl -s -o /dev/null -w "config encode:   %{http_code}\n" https://<domaine>/lms-backend/%63onfig/app.php
+curl -s -o /dev/null -w "config MAJUSC:    %{http_code}\n" https://<domaine>/lms-backend/CONFIG/app.php
+# Attendu : 403/404. Un 200 → signaler (durcir la règle) ; le contournement n'exposerait
+# que du code source (aucun secret : ils sont en .env + bootstrap/cache, protégés à part).
+
+# 6. Non-régression : les assets PUBLICS restent servis (symlink /storage → storage/app/public)
+curl -s -o /dev/null -w "asset public:    %{http_code}\n" https://<domaine>/storage/<un-asset-public-existant>
+# Attendu : 200 (un 403 signalerait que l'exception storage/app/public/.htaccess est cassée).
 ```
 
 Compléter avec les tests réels du runbook (connexion supradmin + connexion d'un

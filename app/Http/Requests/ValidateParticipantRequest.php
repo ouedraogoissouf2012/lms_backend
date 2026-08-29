@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 /**
  * Validates participant access to an active visio (POST /api/lms/seances/{seanceId}/validate-participant).
@@ -25,25 +26,37 @@ final class ValidateParticipantRequest extends FormRequest
     {
         // Check 1: User must be authenticated
         $user = auth()->user();
-        if (!$user) {
+        if (! $user) {
             return false;
         }
 
         // Check 2: User must have klassci token (needed for subsequent processing)
-        if (!$user->klassci_token) {
+        if (! $user->klassci_token) {
             return false;
         }
 
         return true;
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     public function rules(): array
     {
+        $institutionId = $this->user()?->institution_id;
+
         return [
-            'user_id' => 'required|integer|exists:users,id',
+            'user_id' => [
+                'required',
+                'integer',
+                Rule::exists('users', 'id')->where('institution_id', $institutionId),
+            ],
         ];
     }
 
+    /**
+     * @return array<string, string>
+     */
     public function messages(): array
     {
         return [

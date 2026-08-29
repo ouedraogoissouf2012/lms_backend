@@ -32,6 +32,9 @@ use Illuminate\Support\ServiceProvider;
  *
  *  - `proxy`        : 100 req/min/utilisateur (lecture organisationnelle).
  *  - `proxy-write`  : 30 req/min/utilisateur (écritures notes/présences/statut).
+ *  - `search`       : 30 req/min/utilisateur (#548 — /api/search/* n'avait
+ *                      aucun throttle, frappe KLASSCI potentiellement fan-out
+ *                      ×5 sous-requêtes par appel).
  *
  * Le `supradmin` (gestionnaire plateforme) est exempté (`Limit::none()`) —
  * cohérent avec son bypass tenant existant.
@@ -45,7 +48,12 @@ use Illuminate\Support\ServiceProvider;
 final class RateLimitServiceProvider extends ServiceProvider
 {
     private const PROXY_READ_PER_MINUTE = 100;
+
     private const PROXY_WRITE_PER_MINUTE = 30;
+
+    private const VISIO_HEARTBEAT_PER_MINUTE = 12;
+
+    private const SEARCH_PER_MINUTE = 30;
 
     public function boot(): void
     {
@@ -55,6 +63,14 @@ final class RateLimitServiceProvider extends ServiceProvider
 
         RateLimiter::for('proxy-write', function (Request $request): Limit {
             return $this->limitForUser($request, self::PROXY_WRITE_PER_MINUTE);
+        });
+
+        RateLimiter::for('visio-heartbeat', function (Request $request): Limit {
+            return $this->limitForHeartbeat($request);
+        });
+
+        RateLimiter::for('search', function (Request $request): Limit {
+            return $this->limitForUser($request, self::SEARCH_PER_MINUTE);
         });
     }
 
@@ -71,12 +87,22 @@ final class RateLimitServiceProvider extends ServiceProvider
         // NE PAS utiliser asRoleEnum() : `tryFromString('superAdmin')` normalise
         // l'admin intra-tenant en Role::Supradmin, ce qui exempterait à tort un
         // admin d'institution. Même distinction que ChecksForumAuthorization.
-        if ($user instanceof User && $user->role === 'supradmin') {
+        if ($user instanceof User && $user->isPlatformSupradmin()) {
             return Limit::none();
         }
 
         $key = $user instanceof User ? (string) $user->id : (string) $request->ip();
 
         return Limit::perMinute($perMinute)->by($key);
+    }
+
+    private function limitForHeartbeat(Request $request): Limit
+    {
+        $user = $request->user();
+        $actor = $user instanceof User ? (string) $user->id : (string) $request->ip();
+        $seanceId = (string) ($request->route('seanceId') ?? 'unknown');
+
+        return Limit::perMinute(self::VISIO_HEARTBEAT_PER_MINUTE)
+            ->by($actor.':seance:'.$seanceId);
     }
 }

@@ -309,13 +309,65 @@ class StoreChapterRequestTest extends TestCase
     }
 
     /**
-     * ❌ DOS PREVENTION: File > 30 MB fails (previously allowed 100MB!)
+     * ✅ DOS PREVENTION: chapter file of exactly 30 MB passes (boundary).
+     * 30 MB = 30 * 1024 = 30 720 Ko (unité de la règle `max` d'un fichier, #576).
      */
-    public function test_file_exceeding_30mb_fails(): void
+    public function test_chapter_file_exactly_30mb_passes(): void
     {
         Sanctum::actingAs($this->teacher);
-        // 30 MB + 1 byte
-        $file = UploadedFile::fake()->create('huge.pdf', 31457281, 'application/pdf');
+        $file = UploadedFile::fake()->create('slides.pdf', 30 * 1024, 'application/pdf');
+
+        $response = $this->postJson("/api/lessons/{$this->lesson->id}/chapters", [
+            'titre' => 'Valid Title',
+            'fichier' => $file,
+        ]);
+
+        $response->assertStatus(201);
+    }
+
+    /**
+     * ❌ DOS PREVENTION: File just over the boundary (30 MB + 1 Ko) fails,
+     * with the announced « 30 MB » message (critère #576 : « 422 avec le message attendu »).
+     */
+    public function test_file_just_over_30mb_fails(): void
+    {
+        Sanctum::actingAs($this->teacher);
+        $file = UploadedFile::fake()->create('huge.pdf', 30 * 1024 + 1, 'application/pdf');
+
+        $response = $this->postJson("/api/lessons/{$this->lesson->id}/chapters", [
+            'titre' => 'Valid Title',
+            'fichier' => $file,
+        ]);
+
+        $response->assertStatus(422);
+        // Le message doit annoncer la limite réellement appliquée (30 MB).
+        $this->assertStringContainsString('30 MB', (string) $response->json('errors.fichier.0'));
+    }
+
+    /**
+     * ✅ ACCEPTED: chapter file of 29 MB is under the cap (issue #576 criterion).
+     */
+    public function test_chapter_file_29mb_passes(): void
+    {
+        Sanctum::actingAs($this->teacher);
+        $file = UploadedFile::fake()->create('slides.pdf', 29 * 1024, 'application/pdf');
+
+        $response = $this->postJson("/api/lessons/{$this->lesson->id}/chapters", [
+            'titre' => 'Valid Title',
+            'fichier' => $file,
+        ]);
+
+        $response->assertStatus(201);
+    }
+
+    /**
+     * ❌ DOS PREVENTION: 31 MB chapter file fails (issue #576 criterion).
+     * RED avant #576 : `max:31457280` (Ko) ≈ 30 Go laissait passer.
+     */
+    public function test_chapter_file_31mb_fails(): void
+    {
+        Sanctum::actingAs($this->teacher);
+        $file = UploadedFile::fake()->create('huge.pdf', 31 * 1024, 'application/pdf');
 
         $response = $this->postJson("/api/lessons/{$this->lesson->id}/chapters", [
             'titre' => 'Valid Title',
@@ -327,12 +379,13 @@ class StoreChapterRequestTest extends TestCase
     }
 
     /**
-     * ❌ DOS PREVENTION: 100 MB file fails (previously allowed!)
+     * ❌ DOS PREVENTION: 100 MB chapter file fails (was allowed as 100MB before,
+     * then silently as ~30 Go until #576). 100 MB = 100 * 1024 = 102 400 Ko.
      */
-    public function test_100mb_file_now_fails(): void
+    public function test_chapter_file_100mb_fails(): void
     {
         Sanctum::actingAs($this->teacher);
-        $file = UploadedFile::fake()->create('huge.pdf', 104857600, 'application/pdf');
+        $file = UploadedFile::fake()->create('huge.pdf', 100 * 1024, 'application/pdf');
 
         $response = $this->postJson("/api/lessons/{$this->lesson->id}/chapters", [
             'titre' => 'Valid Title',
@@ -340,7 +393,7 @@ class StoreChapterRequestTest extends TestCase
         ]);
 
         $response->assertStatus(422);
-        // This is now prevented! Was allowed in old ChapterController
+        $this->assertNotEmpty($response->json('errors.fichier'));
     }
 
     /**

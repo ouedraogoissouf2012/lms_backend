@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\API\Proxy\Concerns;
 
 use App\Exceptions\KlassciUnavailableException;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\JsonResponse;
 use Throwable;
 
@@ -29,11 +30,21 @@ trait RendersKlassciProxyErrors
      */
     protected function proxyErrorResponse(Throwable $e): JsonResponse
     {
-        if ($e instanceof KlassciUnavailableException) {
+        if ($e instanceof \RuntimeException && $e->getCode() === 401) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Session KLASSCI expirée. Veuillez vous reconnecter.',
+                'reason' => 'klassci_session_expired',
+            ], 401);
+        }
+
+        if ($e instanceof KlassciUnavailableException || $e instanceof ConnectionException) {
             return response()->json([
                 'success' => false,
                 'message' => KlassciUnavailableException::CLIENT_MESSAGE,
-            ], 503);
+            ], 503, [
+                'Retry-After' => (string) KlassciUnavailableException::retryAfterSeconds(),
+            ]);
         }
 
         return response()->json([

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Sync\Classes;
 
 use App\Services\KlassciProxyService;
+use App\Services\Seances\KlassciPayload;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -13,6 +14,9 @@ use Psr\Log\LoggerInterface;
  * Récupère la liste des classes (avec étudiants détaillés quand possible) depuis
  * KLASSCI selon le rôle de l'utilisateur. Extrait verbatim de
  * `ClasseSyncService::fetchClassesFromKlassci()` lors du split SRP (§1.1).
+ * Batché pour issue #517 (H5, N+1 HTTP) : les boucles séquentielles
+ * `classes/{id}` / `matieres/{id}` sont remplacées par `fetchManyClassesDetails`
+ * / `fetchManyMatieresDetails` (pool `Http::pool`, issue #135).
  *
  * ## DI strict (§1.6 D du manifeste)
  *
@@ -22,15 +26,16 @@ use Psr\Log\LoggerInterface;
  * ## Comportement préservé
  *
  * 1. Essai prioritaire de `GET /classes` (coordinateurs / superAdmin).
- *    Pour chaque classe retournée, on tente `GET /classes/{id}` afin de
- *    récupérer les étudiants. En cas d'échec sur les détails, on conserve
- *    les infos basiques de la classe.
+ *    Pour chaque classe retournée, on récupère en UN pool batch les détails
+ *    (`GET /classes/{id}`) afin d'obtenir les étudiants. En cas d'échec sur
+ *    les détails (id absent du map batch), on conserve les infos basiques de
+ *    la classe.
  *
  * 2. Fallback selon `$userRole` :
  *    - `etudiant` -> `GET /me/student-dashboard` -> `data.classes`
- *    - `enseignant` / `teacher` -> `GET /me/teacher-dashboard` puis pour chaque
- *      matière, `GET /matieres/{id}` afin d'en déduire la classe (déduplique
- *      par id).
+ *    - `enseignant` / `teacher` -> `GET /me/teacher-dashboard` puis, en UN
+ *      pool batch, `GET /matieres/{id}` pour toutes les matières, afin d'en
+ *      déduire les classes (déduplique par id).
  *
  * Le fallback n'est déclenché QUE si `/classes` lève une exception (typiquement
  * 403). C'est le comportement historique attendu par
@@ -54,7 +59,7 @@ final class KlassciClassesFetcher
     public function fetch(string $klassciToken, string $userRole): array
     {
         // Essayer d'abord /classes (pour coordinateurs et superAdmin)
-        // Si ça échoue, essayer les endpoints spécifiques au rôle
+        // Si ça échoue, essayer les autres endpoints spécifiques au rôle
         try {
             return $this->fetchAllClassesWithDetails($klassciToken);
         } catch (\Exception $e) {
@@ -89,8 +94,14 @@ final class KlassciClassesFetcher
     }
 
     /**
-     * Tente `GET /classes` puis enrichit chaque classe via `GET /classes/{id}`
-     * pour récupérer les étudiants.
+     * Tente `GET /classes` puis enrichit en UN pool batch (#517) via
+     * `GET /classes/{id}` pour récupérer les étudiants. Un échec du batch
+     * lui-même (pas un échec par id — déjà toléré par `KlassciBatchFetcher`,
+     * mais une panne config/connectivité KLASSCI) est capturé ICI et dégradé
+     * vers les infos basiques déjà obtenues de `/classes` : il ne doit PAS
+     * remonter jusqu'au `try/catch` de `fetch()`, qui interprète toute
+     * exception comme "`/classes` inaccessible" et bascule à tort vers le
+     * fallback par rôle — perdant les classes déjà listées avec succès.
      *
      * @return array<int, array<string, mixed>>
      */
@@ -102,34 +113,48 @@ final class KlassciClassesFetcher
             'GET'
         );
 
+        /** @var array<int, array<string, mixed>> $classes */
         $classes = $response['data'] ?? [];
 
-        // Si on a des classes, récupérer les détails de chaque classe pour avoir les étudiants
+        try {
+            $detailsMap = $this->fetchManyClasseDetails($classes, $klassciToken);
+        } catch (\Exception $e) {
+            $this->logger->warning('Erreur récupération détails classes (batch) — infos basiques conservées', [
+                'error' => $e->getMessage(),
+            ]);
+
+            return $classes;
+        }
+
         $detailedClasses = [];
         foreach ($classes as $classe) {
-            try {
-                $details = $this->klassciService->requestWithUserToken(
-                    $klassciToken,
-                    "classes/{$classe['id']}",
-                    'GET'
-                );
+            $id = KlassciPayload::toInt($classe['id'] ?? null);
+            $details = $id !== null ? ($detailsMap[$id] ?? null) : null;
+            $data = $details !== null ? KlassciPayload::asArray($details['data'] ?? null) : [];
+            $classeDetails = $data['classe'] ?? null;
 
-                // L'API retourne { "data": { "classe": {...}, "etudiants": [...] }}
-                if (isset($details['data']['classe'])) {
-                    $classeDetails = $details['data']['classe'];
-                    // Ajouter les étudiants à l'objet classe
-                    $classeDetails['etudiants'] = $details['data']['etudiants'] ?? [];
-                    $detailedClasses[] = $classeDetails;
-                } else {
-                    $detailedClasses[] = $classe;
-                }
-            } catch (\Exception $e) {
-                // Si détails non disponibles, garder les infos basiques
+            // L'API retourne { "data": { "classe": {...}, "etudiants": [...] }}
+            if (is_array($classeDetails)) {
+                $classeDetails['etudiants'] = $data['etudiants'] ?? [];
+                $detailedClasses[] = $classeDetails;
+            } else {
+                // Détails absents du batch (id échoué / non résoluble) : garder les infos basiques
                 $detailedClasses[] = $classe;
             }
         }
 
         return $detailedClasses;
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $classes
+     * @return array<int, array<string, mixed>>
+     */
+    private function fetchManyClasseDetails(array $classes, string $klassciToken): array
+    {
+        $classeIds = KlassciPayload::uniqueIntIds($classes, fn (array $classe): ?int => KlassciPayload::toInt($classe['id'] ?? null));
+
+        return $classeIds === [] ? [] : $this->klassciService->fetchManyClassesDetails($classeIds, $klassciToken);
     }
 
     /**
@@ -167,8 +192,9 @@ final class KlassciClassesFetcher
     }
 
     /**
-     * Récupère les classes d'un enseignant via `/me/teacher-dashboard` puis
-     * les détails de chaque matière (déduplique les classes par id).
+     * Récupère les classes d'un enseignant via `/me/teacher-dashboard` puis,
+     * en UN pool batch (#517), les détails de chaque matière (déduplique les
+     * classes par id).
      *
      * @return array<int, array<string, mixed>>
      */
@@ -180,20 +206,20 @@ final class KlassciClassesFetcher
             'GET'
         );
 
+        /** @var array<int, array<string, mixed>> $matieres */
         $matieres = $dashboard['data']['matieres'] ?? [];
+        $matiereIds = KlassciPayload::uniqueIntIds($matieres, fn (array $matiere): ?int => KlassciPayload::toInt($matiere['id'] ?? null));
+
+        $detailsMap = $matiereIds === []
+            ? []
+            : $this->klassciService->fetchManyMatieresDetails($matiereIds, $klassciToken);
+
         $classesMap = [];
-
-        foreach ($matieres as $matiere) {
-            // Récupérer les détails de chaque matière pour avoir les classes
-            $matiereDetails = $this->klassciService->requestWithUserToken(
-                $klassciToken,
-                "matieres/{$matiere['id']}",
-                'GET'
-            );
-
-            $classe = $matiereDetails['data']['classe'] ?? null;
-            if ($classe && !isset($classesMap[$classe['id']])) {
-                $classesMap[$classe['id']] = $classe;
+        foreach ($detailsMap as $matiereDetails) {
+            $classe = KlassciPayload::asArray($matiereDetails['data'] ?? null)['classe'] ?? null;
+            $classeId = is_array($classe) ? KlassciPayload::toInt($classe['id'] ?? null) : null;
+            if ($classeId !== null && ! isset($classesMap[$classeId])) {
+                $classesMap[$classeId] = $classe;
             }
         }
 

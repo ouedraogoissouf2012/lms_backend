@@ -125,12 +125,15 @@ final class ChapterProgressService
 
         $progress = $this->getOrCreateProgress($userId, $chapterId);
 
-        if (array_key_exists('time_spent_seconds', $input)) {
-            $progress->time_spent_seconds += (int) ($input['time_spent_seconds'] ?? 0);
-        }
-
         $progress->completed_at = now();
         $progress->save();
+
+        if (array_key_exists('time_spent_seconds', $input)) {
+            $added = (int) ($input['time_spent_seconds'] ?? 0);
+            if ($added > 0) {
+                $progress->increment('time_spent_seconds', $added);
+            }
+        }
 
         $lessonProgress = $this->progressCalculator->calculate($userId, $chapter->lesson_id);
 
@@ -179,8 +182,9 @@ final class ChapterProgressService
         Chapter::findOrFail($chapterId);
 
         $progress = $this->getOrCreateProgress($user->id, $chapterId);
-        $progress->time_spent_seconds += $additionalSeconds;
-        $progress->save();
+        if ($additionalSeconds > 0) {
+            $progress->increment('time_spent_seconds', $additionalSeconds);
+        }
 
         return [
             'status' => 200,

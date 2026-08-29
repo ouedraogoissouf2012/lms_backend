@@ -5,6 +5,11 @@ namespace App\Console\Commands;
 use App\Jobs\CleanObsoleteSeances;
 use Illuminate\Console\Command;
 
+/**
+ * Déclencheur MANUEL du job {@see CleanObsoleteSeances}, déjà planifié dans
+ * `routes/console.php` (everyThirtyMinutes). Conservé volontairement (#502) comme
+ * commande d'exploitation ponctuelle — ce n'est PAS un doublon oublié.
+ */
 class CleanObsoleteSeancesCommand extends Command
 {
     /**
@@ -24,7 +29,7 @@ class CleanObsoleteSeancesCommand extends Command
     /**
      * Execute the console command.
      */
-    public function handle()
+    public function handle(): int
     {
         $this->info('🧹 Nettoyage des séances obsolètes...');
         $this->newLine();

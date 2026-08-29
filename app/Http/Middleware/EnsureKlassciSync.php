@@ -6,6 +6,7 @@ namespace App\Http\Middleware;
 
 use App\Enums\Role;
 use App\Models\User;
+use App\Services\Klassci\Data\KlassciDataWhitelist;
 use App\Services\KlassciProxyService;
 use Closure;
 use Illuminate\Http\Request;
@@ -42,6 +43,7 @@ class EnsureKlassciSync
 {
     public function __construct(
         private readonly KlassciProxyService $klassciService,
+        private readonly KlassciDataWhitelist $whitelist,
     ) {}
 
     /**
@@ -68,9 +70,24 @@ class EnsureKlassciSync
         ]);
 
         try {
-            $klassciMe = $this->klassciService->get('auth/me');
+            $klassciToken = $user->klassci_token;
+            if (!is_string($klassciToken) || $klassciToken === '') {
+                Log::warning("Re-synchronisation KLASSCI ignorée pour user {$user->id}", [
+                    'user_id' => $user->id,
+                    'reason' => 'missing_user_token',
+                ]);
 
-            if (isset($klassciMe['data']['user'])) {
+                return $next($request);
+            }
+
+            $klassciMe = $this->klassciService->requestWithUserToken(
+                $klassciToken,
+                'auth/me',
+                'GET',
+            );
+
+            if (is_array($klassciMe['data']['user'] ?? null)) {
+                /** @var array<string, mixed> $klassciUser */
                 $klassciUser = $klassciMe['data']['user'];
 
                 $this->detectAndLogRoleDivergence($user, $klassciUser);
@@ -81,14 +98,18 @@ class EnsureKlassciSync
                 //   • `klassci_enseignant_id` (#119 — ownership évaluations, write-once
                 //                              au sign-up via AuthController::syncUserFromKlassci)
                 //
-                // `klassci_data` continue à être écrasé en bloc — c'est un cache display
-                // informationnel, plus aucun consommateur d'autorisation ne le lit
-                // (vérifié grep post-#119). Le commentaire de garde dans User::klassci_data
-                // documente cette règle pour les futurs développeurs.
+                // `klassci_data` = cache display informationnel ; plus aucun consommateur
+                // d'autorisation ne le lit (vérifié grep post-#119). Le commentaire de garde
+                // dans User::klassci_data documente cette règle.
+                // #477 : depuis cette issue, klassci_data est FILTRÉ par whitelist
+                // (KlassciDataWhitelist) avant écrasement — un KLASSCI compromis ne peut plus
+                // injecter de structure arbitraire. Le blob courant est passé pour préserver
+                // les clés _lms_* (dont _lms_tenant_url, sinon perdu à la re-sync). Le cast
+                // KlassciData sérialise l'array retourné.
                 $user->update([
                     'name'              => $klassciUser['nom'] ?? $klassciUser['name'] ?? $user->name,
                     'klassci_role'      => $klassciUser['role'] ?? $user->klassci_role,
-                    'klassci_data'      => json_encode($klassciUser),
+                    'klassci_data'      => $this->whitelist->filter($klassciUser, $user->klassci_data),
                     'last_klassci_sync' => now(),
                 ]);
 

@@ -27,13 +27,34 @@ final class SubmitQuizAttemptRequest extends FormRequest
         return auth()->check();
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     public function rules(): array
     {
         return [
-            'answers' => 'required|array',
+            'answers' => ['required', 'array'],
+            // Chaque réponse est soit un id scalaire (int / string numérique),
+            // soit un tableau d'ids (multiple_response). On rejette explicitement
+            // les booléens (et autres non-scalaires) pour fermer le type juggling
+            // à la notation (#498) — la barrière autoritaire reste QuizGradingService.
+            'answers.*' => ['nullable', function (string $attribute, mixed $value, \Closure $fail): void {
+                if (is_bool($value)) {
+                    $fail('Une réponse ne peut pas être un booléen.');
+
+                    return;
+                }
+
+                if (! is_int($value) && ! is_string($value) && ! is_array($value)) {
+                    $fail('Format de réponse invalide.');
+                }
+            }],
         ];
     }
 
+    /**
+     * @return array<string, string>
+     */
     public function messages(): array
     {
         return [

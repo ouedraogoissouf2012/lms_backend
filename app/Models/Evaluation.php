@@ -43,6 +43,19 @@ class Evaluation extends Model
         'enseignant_nom',
     ];
 
+    /**
+     * `klassci_link_guard` est une colonne GÉNÉRÉE par la base (#541) : simple
+     * support technique de l'unicité partielle du lien KLASSCI, elle n'a aucun
+     * sens pour un client d'API et ne doit pas apparaître dans les payloads —
+     * l'évaluation étant sérialisée telle quelle (`EvaluationCreationService`
+     * retourne `'data' => $evaluation`).
+     *
+     * @var list<string>
+     */
+    protected $hidden = [
+        'klassci_link_guard',
+    ];
+
     protected $casts = [
         'date_evaluation' => 'datetime',
         'deadline_at' => 'datetime',

@@ -176,6 +176,45 @@ final class SubmitAttemptHappyPathTest extends TestCase
         $this->assertFalse((bool) $attempt->passed);
     }
 
+    /**
+     * #498 — un étudiant ne peut PAS obtenir le score plein en soumettant des
+     * valeurs booléennes qui exploitaient `$a->id == true` (type juggling PHP).
+     * Vecteur d'origine atteignable en 1 requête : `{"answers":{"<qid>": true}}`.
+     */
+    public function test_boolean_answers_cannot_forge_a_correct_score(): void
+    {
+        $teacher = User::factory()->create(['institution_id' => $this->institutionA->id, 'role' => 'enseignant']);
+        $student = User::factory()->create(['institution_id' => $this->institutionA->id, 'role' => 'etudiant']);
+
+        $built = $this->buildQuizWithQuestions($this->institutionA, $teacher);
+        $attempt = QuizAttempt::factory()->inProgress()->create([
+            'quiz_id' => $built['quiz']->id,
+            'user_id' => $student->id,
+            'institution_id' => $this->institutionA->id,
+        ]);
+
+        // Attaque : `true` pour chaque question au lieu de l'id de la réponse.
+        $forged = [];
+        foreach ($built['questions'] as $question) {
+            $forged[$question->id] = true;
+        }
+
+        Sanctum::actingAs($student);
+
+        $response = $this->postJson("/api/quiz-attempts/{$attempt->id}/submit", [
+            'answers' => $forged,
+        ]);
+
+        // Soit rejeté à la validation (422), soit noté 0 — jamais le score plein.
+        if ($response->status() === 200) {
+            $attempt->refresh();
+            $this->assertSame(0.0, (float) $attempt->points_earned, 'Un booléen ne doit jamais forger un score correct (#498).');
+            $this->assertFalse((bool) $attempt->passed);
+        } else {
+            $response->assertStatus(422);
+        }
+    }
+
     public function test_non_owner_cannot_submit_another_students_attempt(): void
     {
         $teacher = User::factory()->create(['institution_id' => $this->institutionA->id, 'role' => 'enseignant']);

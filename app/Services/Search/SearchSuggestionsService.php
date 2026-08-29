@@ -19,10 +19,18 @@ use Illuminate\Database\Eloquent\Builder;
  *
  * ## DI strict (§1.6 D)
  *
- * Aucune dépendance externe (pas de Facade, pas de `app()`). Service
- * pur Eloquent.
+ * Aucune Facade ni `app()` : la seule collaboration ({@see TeacherOwnershipScope})
+ * est injectée par le constructeur.
+ *
+ * ## Correctifs #575
+ *
+ * Le filtre enseignant portait sur `teacher_id` et la recherche d'évaluations
+ * sur `title` — deux colonnes inexistantes (les vraies : `enseignant_id`,
+ * `klassci_enseignant_id`, `titre`). Invisible sous SQLite, erreur 1054 sous
+ * MySQL.
  *
  * @see app/Http/Controllers/API/SearchController.php
+ * @see .claude/specs/575-search-teacher-id/design.md
  */
 final class SearchSuggestionsService
 {
@@ -30,6 +38,11 @@ final class SearchSuggestionsService
      * Nombre maximal de suggestions retournées.
      */
     private const DEFAULT_LIMIT = 10;
+
+    public function __construct(
+        private readonly TeacherOwnershipScope $ownership,
+    ) {
+    }
 
     /**
      * Retourner la liste des suggestions pour `$query` et `$user`.
@@ -54,7 +67,7 @@ final class SearchSuggestionsService
         $lessonSuggestions = Lesson::where('title', 'LIKE', "%{$query}%")
             ->where(function (Builder $q) use ($user): void {
                 if ($user->isTeacher()) {
-                    $q->where('teacher_id', $user->id);
+                    $this->ownership->applyToLessons($q, $user);
                 }
             })
             ->limit($limit)
@@ -63,14 +76,14 @@ final class SearchSuggestionsService
         $suggestions = array_merge($suggestions, $lessonSuggestions);
 
         /** @var array<int, string> $evaluationSuggestions */
-        $evaluationSuggestions = Evaluation::where('title', 'LIKE', "%{$query}%")
+        $evaluationSuggestions = Evaluation::where('titre', 'LIKE', "%{$query}%")
             ->where(function (Builder $q) use ($user): void {
                 if ($user->isTeacher()) {
-                    $q->where('teacher_id', $user->id);
+                    $this->ownership->applyToEvaluations($q, $user);
                 }
             })
             ->limit($limit)
-            ->pluck('title')
+            ->pluck('titre')
             ->all();
         $suggestions = array_merge($suggestions, $evaluationSuggestions);
 

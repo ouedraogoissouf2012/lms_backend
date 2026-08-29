@@ -43,6 +43,9 @@ final class ToggleVisioSeanceRequest extends FormRequest
         return true;
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     public function rules(): array
     {
         return [
@@ -56,6 +59,9 @@ final class ToggleVisioSeanceRequest extends FormRequest
         ];
     }
 
+    /**
+     * @return array<string, string>
+     */
     public function messages(): array
     {
         return [

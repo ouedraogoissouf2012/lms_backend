@@ -19,6 +19,15 @@ use Illuminate\Database\Eloquent\Model;
  * CRITICAL-05), `klassci_enseignant_id` (ownership évaluations, #119).
  * Lecture pour affichage / rapports : OK.
  *
+ * ## Whitelist (#477)
+ *
+ * Depuis #477, le blob est filtré par {@see \App\Services\Klassci\Data\KlassciDataWhitelist}
+ * avant écriture (sign-up, re-sync) ET avant exposition live (`/auth/me`) :
+ * seules les clés de `KlassciDataWhitelist::ALLOWED_DISPLAY_KEYS` et le namespace
+ * réservé `_lms_*` (préservé à travers les re-syncs) subsistent. Un KLASSCI
+ * compromis ne peut donc plus injecter de clés arbitraires. Point d'application
+ * UNIQUE : `KlassciDataWhitelist::filter()` — ne pas dupliquer le filtrage ailleurs.
+ *
  * @implements CastsAttributes<array<string, mixed>, array<string, mixed>|string|null>
  */
 final class KlassciData implements CastsAttributes
@@ -30,11 +39,13 @@ final class KlassciData implements CastsAttributes
     public function get(Model $model, string $key, mixed $value, array $attributes): array
     {
         if (is_array($value)) {
-            return $value;
+            return self::normalizeStringKeys($value);
         }
 
         if (is_string($value)) {
-            return json_decode($value, true) ?: [];
+            $decoded = json_decode($value, true);
+
+            return is_array($decoded) ? self::normalizeStringKeys($decoded) : [];
         }
 
         return [];
@@ -50,5 +61,20 @@ final class KlassciData implements CastsAttributes
         }
 
         return is_string($value) ? $value : null;
+    }
+
+    /**
+     * @param  array<mixed, mixed>  $value
+     * @return array<string, mixed>
+     */
+    private static function normalizeStringKeys(array $value): array
+    {
+        $normalized = [];
+
+        foreach ($value as $itemKey => $itemValue) {
+            $normalized[(string) $itemKey] = $itemValue;
+        }
+
+        return $normalized;
     }
 }

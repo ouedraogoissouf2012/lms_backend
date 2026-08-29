@@ -34,10 +34,9 @@ d'où son report en phase B coordonnée plutôt qu'une purge en urgence.
    Après la purge, un `git pull` depuis un vieux clone réintroduit les blobs.
    La consigne post-purge est : **re-cloner, jamais puller** (§6).
 3. **Fenêtre de gel convenue avec l'équipe** (aucun push pendant l'opération).
-4. **Coordination cPanel** : le serveur (`/home/c2569688c/public_html/lms-backend/`)
+4. **Coordination VPS** : le serveur (`/var/www/lms-backend/`)
    est un clone git. Il devra être resynchronisé selon §6.3 — planifier un créneau
-   hors heures de cours. Respecter la consigne en vigueur : pas d'action cPanel
-   sans ordre explicite du propriétaire du dépôt.
+   hors heures de cours.
 5. **Sauvegarde miroir** réalisée et vérifiée (§4, étape 1).
 6. **`git filter-repo` installé** : `pip install git-filter-repo` (ou
    `pipx install git-filter-repo`). Vérifier : `git filter-repo --version`.
@@ -128,7 +127,7 @@ supprimer (`git worktree remove`) avant de supprimer le clone, puis recréer.
 Le serveur ne peut pas puller après la réécriture. Procédure :
 
 ```bash
-cd /home/c2569688c/public_html
+cd /var/www
 mv lms-backend lms-backend.old                        # rollback possible
 git clone --branch lms <remote> lms-backend
 cd lms-backend

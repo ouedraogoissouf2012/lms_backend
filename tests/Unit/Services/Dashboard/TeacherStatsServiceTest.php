@@ -18,16 +18,8 @@ use Tests\TestCase;
  * écrits AVANT l'extraction de la logique hors de
  * `TeacherStatsController::getStats`).
  *
- * Particularité verbatim : l'agrégation est clé sur `$user->klassci_id`
- * (l'identifiant KLASSCI de l'enseignant), PAS sur `$user->id` — contraire
- * au dashboard enseignant. Préservé tel quel.
- *
- * Caractérisation : la table `evaluations` ne possède ni `enseignant_id`,
- * ni `matiere_id`, ni `classe_id` (uniquement les variantes préfixées
- * `klassci_*`). Sous SQLite, la mésaventure "double-quoted string literal"
- * transforme ces identifiants en littéraux → le `where('enseignant_id', …)`
- * ne matche jamais et les évaluations ne contribuent à AUCUN compteur.
- * Comportement préservé (fix de colonnes hors périmètre — voir PR #364).
+ * Les leçons restent comptées via `lessons.enseignant_id`; les évaluations
+ * passent par les colonnes `klassci_*` réelles (#401).
  */
 final class TeacherStatsServiceTest extends TestCase
 {
@@ -36,21 +28,25 @@ final class TeacherStatsServiceTest extends TestCase
     private const KLASSCI_TEACHER_ID = 4242;
 
     private TeacherStatsService $service;
+
     private Institution $institutionA;
+
     private Institution $institutionB;
+
     private User $teacher;
 
     protected function setUp(): void
     {
         parent::setUp();
 
-        $this->service = new TeacherStatsService();
+        $this->service = new TeacherStatsService;
         $this->institutionA = Institution::factory()->create(['slug' => 'school-a']);
         $this->institutionB = Institution::factory()->create(['slug' => 'school-b']);
 
         $this->teacher = User::factory()->teacher()->create([
             'institution_id' => $this->institutionA->id,
             'klassci_id' => self::KLASSCI_TEACHER_ID,
+            'klassci_enseignant_id' => self::KLASSCI_TEACHER_ID,
         ]);
 
         $this->app->make(TenantManager::class)->set($this->institutionA);
@@ -72,14 +68,26 @@ final class TeacherStatsServiceTest extends TestCase
             'matiere_id' => 99,
             'classe_id' => 99,
         ]);
+        Evaluation::factory()->count(2)->create([
+            'institution_id' => $this->institutionA->id,
+            'klassci_enseignant_id' => self::KLASSCI_TEACHER_ID,
+            'klassci_matiere_id' => 30,
+            'klassci_classe_id' => 8,
+        ]);
+        Evaluation::factory()->create([
+            'institution_id' => $this->institutionA->id,
+            'klassci_enseignant_id' => self::KLASSCI_TEACHER_ID + 1,
+            'klassci_matiere_id' => 99,
+            'klassci_classe_id' => 99,
+        ]);
 
         $stats = $this->service->buildStats($this->teacher);
 
         $this->assertSame(
             [
-                'matieres' => 2,
-                'classes' => 2,
-                'evaluations' => 0,
+                'matieres' => 3,
+                'classes' => 3,
+                'evaluations' => 2,
                 'lessons' => 4,
             ],
             $stats
@@ -101,14 +109,7 @@ final class TeacherStatsServiceTest extends TestCase
         );
     }
 
-    /**
-     * CARACTÉRISATION (pas une cible) : les évaluations ne contribuent à
-     * aucun compteur car `evaluations.enseignant_id` / `matiere_id` /
-     * `classe_id` n'existent pas dans le schéma (seules les colonnes
-     * `klassci_*` existent). Ce test fige ce comportement : corriger les
-     * noms de colonnes devra être un choix explicite qui met à jour ce test.
-     */
-    public function test_evaluations_contribute_nothing_under_current_schema(): void
+    public function test_evaluations_contribute_through_real_klassci_columns(): void
     {
         Evaluation::factory()->count(3)->create([
             'institution_id' => $this->institutionA->id,
@@ -120,10 +121,9 @@ final class TeacherStatsServiceTest extends TestCase
 
         $stats = $this->service->buildStats($this->teacher);
 
-        $this->assertSame(0, $stats['evaluations']);
-        // Les matières/classes des évaluations n'apparaissent pas non plus.
-        $this->assertSame(1, $stats['matieres']);
-        $this->assertSame(1, $stats['classes']);
+        $this->assertSame(3, $stats['evaluations']);
+        $this->assertSame(2, $stats['matieres']);
+        $this->assertSame(2, $stats['classes']);
         $this->assertSame(1, $stats['lessons']);
     }
 
@@ -150,6 +150,7 @@ final class TeacherStatsServiceTest extends TestCase
         $teacherB = User::factory()->teacher()->create([
             'institution_id' => $this->institutionB->id,
             'klassci_id' => self::KLASSCI_TEACHER_ID,
+            'klassci_enseignant_id' => self::KLASSCI_TEACHER_ID,
         ]);
         Lesson::factory()->count(2)->create([
             'institution_id' => $this->institutionB->id,
@@ -170,7 +171,7 @@ final class TeacherStatsServiceTest extends TestCase
     }
 
     /**
-     * @param array{matiere_id: int|null, classe_id: int|null} $attributes
+     * @param  array{matiere_id: int|null, classe_id: int|null}  $attributes
      */
     private function createLessonForTeacher(array $attributes): void
     {

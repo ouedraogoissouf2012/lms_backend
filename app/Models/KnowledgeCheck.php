@@ -2,12 +2,14 @@
 
 namespace App\Models;
 
+use App\Models\Traits\BelongsToInstitution;
+use Database\Factories\KnowledgeCheckFactory;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\SoftDeletes;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use App\Models\Traits\BelongsToInstitution;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
  * Model KnowledgeCheck
@@ -15,14 +17,14 @@ use App\Models\Traits\BelongsToInstitution;
  * Quiz "Testez vos connaissances" integre dans les chapitres
  * ATTENTION: Ceci est SEPARE des Evaluations KLASSCI
  *
- * @property bool $user_passed         Attribut posé par KnowledgeCheckCrudService (KnowledgeCheckAccessService::isPassedByUser).
+ * @property bool $user_passed Attribut posé par KnowledgeCheckCrudService (KnowledgeCheckAccessService::isPassedByUser).
  * @property int|null $user_best_score Attribut posé par KnowledgeCheckCrudService (KnowledgeCheckAccessService::bestScore).
- * @property bool $can_attempt         Attribut posé par KnowledgeCheckCrudService (KnowledgeCheckAccessService::canAttempt).
+ * @property bool $can_attempt Attribut posé par KnowledgeCheckCrudService (KnowledgeCheckAccessService::canAttempt).
  */
 class KnowledgeCheck extends Model
 {
-    /** @use HasFactory<\Database\Factories\KnowledgeCheckFactory> */
-    use HasFactory, SoftDeletes, BelongsToInstitution;
+    /** @use HasFactory<KnowledgeCheckFactory> */
+    use BelongsToInstitution, HasFactory, SoftDeletes;
 
     protected $fillable = [
         'chapter_id',
@@ -88,14 +90,14 @@ class KnowledgeCheck extends Model
      */
     public function getQuestionsCountAttribute(): int
     {
-        return is_array($this->questions) ? count($this->questions) : 0;
+        return count($this->questions);
     }
 
     /**
      * Scope: Quiz actifs
      *
-     * @param  \Illuminate\Database\Eloquent\Builder<KnowledgeCheck>  $query
-     * @return \Illuminate\Database\Eloquent\Builder<KnowledgeCheck>
+     * @param  Builder<KnowledgeCheck>  $query
+     * @return Builder<KnowledgeCheck>
      */
     public function scopeActive($query)
     {
@@ -105,8 +107,8 @@ class KnowledgeCheck extends Model
     /**
      * Scope: Par chapitre
      *
-     * @param  \Illuminate\Database\Eloquent\Builder<KnowledgeCheck>  $query
-     * @return \Illuminate\Database\Eloquent\Builder<KnowledgeCheck>
+     * @param  Builder<KnowledgeCheck>  $query
+     * @return Builder<KnowledgeCheck>
      */
     public function scopeForChapter($query, int $chapterId)
     {
@@ -116,8 +118,8 @@ class KnowledgeCheck extends Model
     /**
      * Scope: Ordonne par position
      *
-     * @param  \Illuminate\Database\Eloquent\Builder<KnowledgeCheck>  $query
-     * @return \Illuminate\Database\Eloquent\Builder<KnowledgeCheck>
+     * @param  Builder<KnowledgeCheck>  $query
+     * @return Builder<KnowledgeCheck>
      */
     public function scopeOrdered($query)
     {

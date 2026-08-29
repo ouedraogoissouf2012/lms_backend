@@ -8,6 +8,7 @@ use App\Models\Classe;
 use App\Models\Institution;
 use App\Models\Matiere;
 use App\Models\User;
+use App\Models\UserClass;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
@@ -58,6 +59,17 @@ final class TeacherLessonPublicationFlowTest extends TestCase
         ]);
         $this->matiere = Matiere::factory()->create([
             'institution_id' => $this->institution->id,
+        ]);
+
+        // #482 — l'étudiant doit être inscrit à la classe du cours pour le voir
+        // (isolation inter-classes). Rattachement via UserClass (source KLASSCI),
+        // le pont klassci_classe_id → classes.klassci_id → classes.id.
+        UserClass::create([
+            'user_id' => $this->student->id,
+            'klassci_classe_id' => $this->classe->klassci_id,
+            'classe_nom' => $this->classe->libelle,
+            'institution_id' => $this->institution->id,
+            'synced_at' => now(),
         ]);
     }
 

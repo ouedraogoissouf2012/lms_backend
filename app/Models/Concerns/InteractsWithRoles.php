@@ -54,6 +54,23 @@ trait InteractsWithRoles
     }
 
     /**
+     * Gestionnaire PLATEFORME (cross-tenant, `institution_id = NULL`).
+     *
+     * Comparaison STRICTE `role === 'supradmin'` — volontairement PAS
+     * {@see asRoleEnum()}, qui normaliserait aussi `'superAdmin'` (admin
+     * d'INSTITUTION, intra-tenant) vers `Role::Supradmin` (cf. `Role::tryFromString`)
+     * et briserait l'isolation tenant. cf. issue #102 / #497,
+     * `.claude/specs/file-idor-cross-tenant/design.md §2`.
+     *
+     * À utiliser pour tout privilège cross-tenant ; NE PAS confondre avec
+     * {@see isAdmin()}, qui est « admin au sens large » (intra-tenant).
+     */
+    public function isPlatformSupradmin(): bool
+    {
+        return $this->role === 'supradmin';
+    }
+
+    /**
      * Membre du staff (≠ étudiant) : enseignant, coordinateur ou admin
      * (admin inclut supradmin via {@see Role::isAdmin}). Remplace le motif
      * répété `isTeacher() || isCoordinator() || isAdmin()`.

@@ -49,7 +49,7 @@ final class DeleteAllReadNotificationsRequest extends FormRequest
     /**
      * Get validation rules for delete-all-read.
      *
-     * @return array
+     * @return array<string, mixed>
      */
     public function rules(): array
     {
@@ -60,7 +60,7 @@ final class DeleteAllReadNotificationsRequest extends FormRequest
     /**
      * Custom error messages.
      *
-     * @return array
+     * @return array<string, string>
      */
     public function messages(): array
     {

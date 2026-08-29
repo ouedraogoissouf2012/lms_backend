@@ -29,8 +29,11 @@ use Illuminate\Http\Request;
  */
 final class LessonListService
 {
-    public function __construct(private readonly LessonProgressService $progressService)
-    {
+    public function __construct(
+        private readonly LessonProgressService $progressService,
+        private readonly StudentClasseResolver $classeResolver,
+        private readonly MyCoursesPresenter $myCoursesPresenter,
+    ) {
     }
 
     /**
@@ -39,7 +42,7 @@ final class LessonListService
      *
      * Les filtres sont passés via la `Request` (déjà validée côté caller).
      *
-     * @return LengthAwarePaginator<Lesson>
+     * @return LengthAwarePaginator<int, Lesson>
      */
     public function list(Request $request, User $user): LengthAwarePaginator
     {
@@ -54,30 +57,32 @@ final class LessonListService
         }
 
         if ($request->has('matiere_id')) {
-            $query->forMatiere($request->matiere_id);
+            $query->forMatiere($request->integer('matiere_id'));
         }
 
         if ($request->has('classe_id')) {
-            $query->forClasse($request->classe_id);
+            $query->forClasse($request->integer('classe_id'));
         }
 
         if ($request->has('enseignant_id')) {
-            $query->byTeacher($request->enseignant_id);
+            $query->byTeacher($request->integer('enseignant_id'));
         }
 
         if ($request->has('type')) {
             $query->where('type', $request->type);
         }
 
-        // Seuls les cours publiés pour les étudiants
+        // Étudiants : uniquement les cours publiés ET de LEUR classe (#482 —
+        // isolation inter-classes, résolue via le pont KLASSCI→local).
         if ($user->isStudent()) {
-            $query->published();
+            $query->published()
+                ->whereIn('classe_id', $this->classeResolver->localClasseIdsFor($user));
         } elseif ($request->has('status')) {
             $query->where('status', $request->status);
         }
 
         // Pagination — DOS-protected by FilterLessonsRequest (per_page: 1-100)
-        $perPage = $request->get('per_page', 15);
+        $perPage = $request->integer('per_page', 15);
         $lessons = $query->ordered()->paginate($perPage);
 
         // Ajouter la progression pour chaque cours (si étudiant)
@@ -97,120 +102,85 @@ final class LessonListService
      * filtres (matières + enseignants distincts).
      *
      * Gère la résolution enseignant cross-source (id local OU `klassci_id`).
+     * Paginé (#483) : `data` reste un tableau plat, `meta` porte la pagination.
      *
      * @return array{
      *     courses: \Illuminate\Support\Collection<int, array<string, mixed>>,
-     *     filters: array{matieres: \Illuminate\Support\Collection<int, array<string, mixed>>, enseignants: \Illuminate\Support\Collection<int, array<string, mixed>>},
+     *     filters: array{matieres: \Illuminate\Support\Collection<int, array{id: int, name: string}>, enseignants: \Illuminate\Support\Collection<int, array{id: int|null, name: string}>},
      *     total: int,
+     *     meta: array{current_page: int, last_page: int, per_page: int, total: int},
      * }
      */
     public function myCourses(Request $request, User $user): array
     {
-        // Construire la requête - Tous les cours publiés
-        $query = Lesson::with(['matiere', 'classe'])
-            ->published()
-            ->ordered();
+        $query = $this->buildMyCoursesQuery($request, $user);
+
+        $perPage = $request->integer('per_page', 15);
+        $page = (clone $query)->paginate($perPage);
+
+        // Filtres exhaustifs (#483 REQ-5) : dérivés de TOUTE la sélection
+        // filtrée, pas de la seule page — sinon les menus déroulants seraient
+        // incomplets au-delà de la 1re page.
+        $allFiltered = (clone $query)->get();
+
+        return $this->myCoursesPresenter->present($page, $allFiltered, $user);
+    }
+
+    /**
+     * Construit la requête « Mes cours » : cours publiés + tenant + restriction
+     * classe étudiant (#482) + filtres optionnels matiere/enseignant. Aucune
+     * exécution (retourne un Builder), pour permettre pagination ET filtres.
+     *
+     * @return \Illuminate\Database\Eloquent\Builder<Lesson>
+     */
+    private function buildMyCoursesQuery(Request $request, User $user): \Illuminate\Database\Eloquent\Builder
+    {
+        $query = Lesson::with(['matiere', 'classe'])->published()->ordered();
 
         // Defense en profondeur (fix E2E #211 flow 5) — cf. list().
         if ($user->institution_id !== null) {
             $query->where('institution_id', $user->institution_id);
         }
 
-        // Filtres optionnels
+        // Étudiant : restreindre à SA classe (#482). classe_id NULL et autres
+        // classes exclues.
+        if ($user->isStudent()) {
+            $query->whereIn('classe_id', $this->classeResolver->localClasseIdsFor($user));
+        }
+
         if ($request->has('matiere_id')) {
-            $query->forMatiere($request->matiere_id);
+            $query->forMatiere($request->integer('matiere_id'));
         }
 
         if ($request->has('enseignant_id')) {
-            // Chercher l'user par klassci_id (car le frontend envoie klassci_id)
-            $enseignantUser = User::where('klassci_id', $request->enseignant_id)
-                ->where('role', 'enseignant')
-                ->first();
-            if ($enseignantUser) {
-                $query->where(function ($q) use ($enseignantUser, $request) {
-                    $q->where('enseignant_id', $enseignantUser->id)
-                      ->orWhere('enseignant_id', $request->enseignant_id);
-                });
-            } else {
-                $query->where('enseignant_id', $request->enseignant_id);
-            }
+            $this->applyEnseignantFilter($query, (int) $request->integer('enseignant_id'));
         }
 
-        // Récupérer les leçons
-        $lessons = $query->get();
+        return $query;
+    }
 
-        // Pré-charger les enseignants (par id ET par klassci_id pour gérer les deux cas)
-        $enseignantIds = $lessons->pluck('enseignant_id')->unique()->filter()->toArray();
-        $enseignants = User::where('role', 'enseignant')
-            ->where(function ($q) use ($enseignantIds) {
-                $q->whereIn('id', $enseignantIds)
-                  ->orWhereIn('klassci_id', $enseignantIds);
-            })
-            ->get()
-            ->keyBy(function ($u) {
-                return $u->id;
+    /**
+     * Filtre enseignant tolérant : le frontend envoie un klassci_id ; on
+     * accepte aussi l'id local correspondant.
+     *
+     * @param  \Illuminate\Database\Eloquent\Builder<Lesson>  $query
+     */
+    private function applyEnseignantFilter(\Illuminate\Database\Eloquent\Builder $query, int $enseignantId): void
+    {
+        $enseignantUser = User::where('klassci_id', $enseignantId)
+            ->where('role', 'enseignant')
+            ->first();
+
+        if ($enseignantUser) {
+            $query->where(function ($q) use ($enseignantUser, $enseignantId) {
+                $q->where('enseignant_id', $enseignantUser->id)
+                    ->orWhere('enseignant_id', $enseignantId);
             });
 
-        // Index par klassci_id aussi
-        $enseignantsByKlassci = $enseignants->keyBy('klassci_id');
-
-        // Transformer pour avoir un format cohérent
-        $coursesData = $lessons->map(function ($lesson) use ($user, $enseignants, $enseignantsByKlassci) {
-            $progress = $this->progressService->progressForUser($lesson, $user->id);
-
-            // Résoudre l'enseignant (essayer par id puis par klassci_id)
-            $enseignant = $enseignants->get($lesson->enseignant_id)
-                ?? $enseignantsByKlassci->get($lesson->enseignant_id);
-
-            return [
-                'id' => $lesson->id,
-                'title' => $lesson->title,
-                'description' => $lesson->description,
-                'type' => $lesson->type,
-                'duree_estimee' => $lesson->duree_estimee_minutes,
-                'niveau_difficulte' => $lesson->niveau_difficulte,
-                'enseignant' => $enseignant ? [
-                    'id' => $enseignant->id,
-                    'klassci_id' => $enseignant->klassci_id,
-                    'name' => $enseignant->name,
-                ] : null,
-                'matiere' => $lesson->matiere ? [
-                    'id' => $lesson->matiere->id,
-                    'name' => $lesson->matiere->name ?? $lesson->matiere->libelle ?? 'Matière',
-                ] : null,
-                'classe' => $lesson->classe ? [
-                    'id' => $lesson->classe->id,
-                    'name' => $lesson->classe->name ?? $lesson->classe->nom ?? 'Classe',
-                ] : null,
-                'progress' => $progress ? [
-                    'percentage' => $progress->progress_percentage,
-                    'status' => $progress->status,
-                    'completed_at' => $progress->completed_at,
-                ] : null,
-                'published_at' => $lesson->published_at,
-                'created_at' => $lesson->created_at,
-            ];
-        });
-
-        // Récupérer les filtres disponibles
-        $uniqueEnseignants = collect();
-        foreach ($lessons as $lesson) {
-            $ens = $enseignants->get($lesson->enseignant_id) ?? $enseignantsByKlassci->get($lesson->enseignant_id);
-            if ($ens && !$uniqueEnseignants->contains('id', $ens->id)) {
-                $uniqueEnseignants->push($ens);
-            }
+            return;
         }
 
-        $uniqueMatieres = $lessons->pluck('matiere')->filter()->unique('id')->values();
-
-        return [
-            'courses' => $coursesData,
-            'filters' => [
-                'matieres' => $uniqueMatieres->map(fn($m) => ['id' => $m->id, 'name' => $m->name ?? $m->libelle ?? 'Matière']),
-                'enseignants' => $uniqueEnseignants->map(fn($e) => ['id' => $e->klassci_id, 'name' => $e->name]),
-            ],
-            'total' => $coursesData->count(),
-        ];
+        $query->where('enseignant_id', $enseignantId);
     }
 
     /**

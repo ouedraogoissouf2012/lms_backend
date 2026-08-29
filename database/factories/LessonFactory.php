@@ -15,8 +15,6 @@ class LessonFactory extends Factory
 
     /**
      * Define the model's default state.
-     *
-     * @return array<string, mixed>
      */
     public function definition(): array
     {
@@ -25,7 +23,11 @@ class LessonFactory extends Factory
             'title' => $this->faker->sentence(),
             'description' => $this->faker->paragraph(),
             'content' => $this->faker->paragraphs(5, true),
-            'status' => $this->faker->randomElement(['draft', 'published', 'archived']),
+            // Défaut déterministe : draft (published_at null). Un status aléatoire
+            // rendait les tests non déterministes vis-à-vis du scope published()
+            // (#481). Les tests voulant une leçon publiée utilisent ->published().
+            'status' => 'draft',
+            'published_at' => null,
             'order' => $this->faker->numberBetween(1, 100),
             'type' => 'cours',
             // institution_id requis : la Lesson est tenant-scoped via BelongsToInstitution.
@@ -38,8 +40,11 @@ class LessonFactory extends Factory
      */
     public function published(): static
     {
+        // published_at cohérent ET dans le passé → visible via Lesson::published()
+        // (le scope exige published_at <= now()). Invariant #481.
         return $this->state(fn (array $attributes) => [
             'status' => 'published',
+            'published_at' => now()->subDay(),
         ]);
     }
 
@@ -50,6 +55,7 @@ class LessonFactory extends Factory
     {
         return $this->state(fn (array $attributes) => [
             'status' => 'draft',
+            'published_at' => null,
         ]);
     }
 
@@ -60,6 +66,7 @@ class LessonFactory extends Factory
     {
         return $this->state(fn (array $attributes) => [
             'status' => 'archived',
+            'published_at' => null,
         ]);
     }
 

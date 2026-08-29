@@ -5,6 +5,10 @@ declare(strict_types=1);
 namespace App\Http\Controllers\API\Evaluation;
 
 use App\Http\Controllers\AuthenticatedController;
+use App\Http\Requests\GradeEvaluationSubmissionRequest;
+use App\Models\Evaluation;
+use App\Models\EvaluationSubmission;
+use App\Services\Evaluation\Teacher\EvaluationTeacherGradeService;
 use App\Services\Evaluation\Teacher\TeacherEvaluationResultsService;
 use App\Services\Evaluation\Teacher\TeacherEvaluationViewService;
 use Illuminate\Http\JsonResponse;
@@ -38,6 +42,7 @@ final class EvaluationTeacherController extends AuthenticatedController
     public function __construct(
         private readonly TeacherEvaluationResultsService $resultsService,
         private readonly TeacherEvaluationViewService $viewService,
+        private readonly EvaluationTeacherGradeService $gradeService,
     ) {}
 
     public function getResultsByClass(Request $request, int $id): JsonResponse
@@ -63,6 +68,39 @@ final class EvaluationTeacherController extends AuthenticatedController
         $teacher = $this->authenticatedUser($request);
 
         $result = $this->viewService->preview($id, $teacher);
+
+        return response()->json($result['payload'], $result['status']);
+    }
+
+    public function gradeSubmission(
+        GradeEvaluationSubmissionRequest $request,
+        int $id,
+        int $submission,
+    ): JsonResponse {
+        $evaluation = Evaluation::with('questions')->find($id);
+        $model = EvaluationSubmission::find($submission);
+        if ($evaluation === null || $model === null) {
+            return $this->errorResponse('Soumission non trouvée', 404);
+        }
+
+        $feedback = $request->input('feedback');
+        $rawPoints = $request->validated('points');
+        $points = [];
+        if (is_array($rawPoints)) {
+            foreach ($rawPoints as $questionId => $value) {
+                if (is_numeric($value)) {
+                    $points[$questionId] = $value;
+                }
+            }
+        }
+
+        $result = $this->gradeService->grade(
+            $evaluation,
+            $model,
+            $this->authenticatedUser($request),
+            $points,
+            is_string($feedback) ? $feedback : null,
+        );
 
         return response()->json($result['payload'], $result['status']);
     }

@@ -79,7 +79,7 @@ final class SeancesListQueryService
             'classe_id' => $classeId
         ]);
 
-        $seancesEnrichies = $this->upcomingFetcher->fetch($user, $klassciToken, $dateDebut, $dateFin, $classeId);
+        $seancesEnrichies = $this->upcomingFetcher->fetch($user, $klassciToken, $dateDebut, $dateFin, $teacherId, $classeId);
 
         return [
             'data' => $seancesEnrichies->values()->all(),

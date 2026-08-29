@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Enums\LessonStatus;
 use Illuminate\Foundation\Http\FormRequest;
 
 /**
@@ -72,7 +73,7 @@ final class UpdateLessonRequest extends FormRequest
             'niveau_difficulte' => 'nullable|in:debutant,intermediaire,avance',
             'objectifs_pedagogiques' => 'nullable|string|max:1000',
             'duree_estimee_minutes' => 'nullable|integer|min:1|max:1440',
-            'status' => 'sometimes|in:draft,published,archived',
+            'status' => 'sometimes|in:'.implode(',', LessonStatus::values()),
             'order' => 'sometimes|integer|min:0',
         ];
     }

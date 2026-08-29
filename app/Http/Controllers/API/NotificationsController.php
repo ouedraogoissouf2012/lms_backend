@@ -8,8 +8,10 @@ use App\Http\Controllers\AuthenticatedController;
 use App\Http\Requests\CreateNotificationRequest;
 use App\Http\Requests\DeleteAllReadNotificationsRequest;
 use App\Http\Requests\DeleteNotificationRequest;
+use App\Http\Requests\ListNotificationsRequest;
 use App\Http\Requests\MarkAllAsReadRequest;
 use App\Http\Requests\MarkAsReadRequest;
+use App\Http\Requests\RecentNotificationsRequest;
 use App\Models\User;
 use App\Services\Notification\NotificationMutationService;
 use App\Services\Notification\NotificationQueryService;
@@ -48,7 +50,7 @@ final class NotificationsController extends AuthenticatedController
     /**
      * GET /notifications — Liste paginée des notifications de l'utilisateur.
      */
-    public function index(Request $request): JsonResponse
+    public function index(ListNotificationsRequest $request): JsonResponse
     {
         $user = $this->authenticatedUser($request);
         // Request::integer() / boolean() retournent un type strict — pas un
@@ -88,7 +90,7 @@ final class NotificationsController extends AuthenticatedController
     /**
      * GET /notifications/recent — 5 dernières non-lues pour le widget dashboard.
      */
-    public function recent(Request $request): JsonResponse
+    public function recent(RecentNotificationsRequest $request): JsonResponse
     {
         $user = $this->authenticatedUser($request);
         $limit = $request->integer('limit', 5);

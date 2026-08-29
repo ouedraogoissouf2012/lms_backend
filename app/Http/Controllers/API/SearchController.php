@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\AuthenticatedController;
+use App\Http\Requests\GlobalSearchRequest;
 use App\Services\Search\GlobalSearchService;
 use App\Services\Search\SearchHistoryService;
 use App\Services\Search\SearchSuggestionsService;
@@ -47,29 +48,29 @@ final class SearchController extends AuthenticatedController
      * Sources couvertes : utilisateurs (admin/coordinateur seulement),
      * leçons, évaluations, classes & matières KLASSCI.
      */
-    public function globalSearch(Request $request): JsonResponse
+    public function globalSearch(GlobalSearchRequest $request): JsonResponse
     {
-        $request->validate([
-            'query' => 'required|string|min:2|max:100',
-        ]);
-
         /** @var string $query */
-        $query = $request->input('query');
+        $query = $request->validated('query');
         $user = $this->authenticatedUser($request);
-        $limit = (int) $request->input('limit', 5);
+        $limit = (int) $request->validated('limit', 5);
 
         $payload = $this->globalSearch->search($query, $user, $limit);
 
         // Non migré vers successResponse() : expose des clés racine hors enveloppe
-        // (`query`, `results`, `total`, `categories`) que le trait ne reproduit pas.
-        // Les déplacer changerait le contrat client → conservé tel quel (axe #1
-        // « DRY-only », cf. LessonCrudController::myCourses).
+        // (`query`, `results`, `total`, `categories`, `sources_failed`) que le trait
+        // ne reproduit pas. Les déplacer changerait le contrat client → conservé tel
+        // quel (axe #1 « DRY-only », cf. LessonCrudController::myCourses).
+        //
+        // `sources_failed` (#505) est TOUJOURS présent, vide quand tout va bien : un
+        // client n'a ainsi pas à distinguer « clé absente » de « aucune panne ».
         return response()->json([
             'success' => true,
             'query' => $query,
             'results' => $payload['results'],
             'total' => $payload['total'],
             'categories' => $payload['categories'],
+            'sources_failed' => $payload['sources_failed'],
         ]);
     }
 

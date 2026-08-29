@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\LMS\Seances;
 
 use App\Models\Institution;
+use App\Models\Seance;
 use App\Models\User;
 use App\Services\KlassciProxyService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -91,6 +92,59 @@ final class LMSSeancesListResponseTest extends TestCase
         $this->getJson('/api/lms/seances/my-classes')
             ->assertStatus(401)
             ->assertExactJson(['success' => false, 'message' => 'Token KLASSCI non trouvé']);
+    }
+
+    public function test_upcoming_manager_uses_local_seances_without_walking_all_klassci_matieres(): void
+    {
+        $coordinator = $this->user('coordinateur');
+        Sanctum::actingAs($coordinator);
+
+        $start = now()->addDays(2)->setTime(8, 30);
+
+        Seance::factory()->forInstitution($this->institution)->create([
+            'klassci_seance_id' => 5001,
+            'klassci_matiere_id' => 11,
+            'klassci_classe_id' => 44,
+            'klassci_enseignant_id' => 777,
+            'enseignant_nom' => 'Dr. Local',
+            'matiere_nom' => 'Maths',
+            'classe_nom' => 'Classe 44',
+            'date_seance' => $start,
+            'visio_enabled' => true,
+            'visio_type' => 'jitsi',
+            'visio_status' => 'programmee',
+            'visio_room_id' => 'room-local',
+        ]);
+
+        Seance::factory()->forInstitution($this->institution)->create([
+            'klassci_seance_id' => 5002,
+            'klassci_classe_id' => 44,
+            'klassci_enseignant_id' => 999,
+            'date_seance' => $start,
+        ]);
+
+        $this->mock(KlassciProxyService::class, function (MockInterface $mock): void {
+            $mock->shouldNotReceive('requestWithUserToken');
+            $mock->shouldNotReceive('fetchManyMatieresDetails');
+        });
+
+        $response = $this->getJson('/api/lms/seances/upcoming?days=30&teacher_id=777&classe_id=44');
+
+        $response->assertStatus(200);
+        $response->assertJsonPath('success', true);
+        $response->assertJsonPath('meta.total_seances', 1);
+        $response->assertJsonPath('meta.filtres.teacher_id', 777);
+        $response->assertJsonPath('meta.filtres.classe_id', 44);
+
+        $data = $response->json('data');
+        $this->assertCount(1, $data);
+        $this->assertSame(5001, $data[0]['id']);
+        $this->assertSame('Maths', $data[0]['matiere']['nom']);
+        $this->assertSame('Classe 44', $data[0]['classe']['nom']);
+        $this->assertSame('Dr. Local', $data[0]['enseignant']['nom']);
+        $this->assertSame($start->toDateString(), $data[0]['programmation']['date']);
+        $this->assertTrue($data[0]['visio_enabled']);
+        $this->assertSame('room-local', $data[0]['visio']['room_id']);
     }
 
     // ───────────────────────── my-teaching : succès enveloppe {success, data} ─────────────────────────

@@ -7,6 +7,7 @@ namespace App\Services\Visio;
 use App\Models\ESBTPAttendance;
 use App\Models\Seance;
 use App\Models\User;
+use App\Services\Seances\Mutations\ParticipantValidationService;
 use Illuminate\Http\Request;
 use Psr\Log\LoggerInterface;
 use Throwable;
@@ -35,6 +36,7 @@ final class VisioParticipantSessionService
     public function __construct(
         private readonly LoggerInterface $logger,
         private readonly AttendanceLifecycleService $lifecycle,
+        private readonly ParticipantValidationService $participantValidation,
     ) {}
 
     /**
@@ -61,6 +63,12 @@ final class VisioParticipantSessionService
                 ];
             }
 
+            $authorization = $this->participantValidation->validate($visio->id, $user->id, $user);
+            if ($authorization['status'] !== 200
+                || ($authorization['payload']['authorized'] ?? false) !== true) {
+                return $authorization;
+            }
+
             // RÈGLE PARTICIPANT FANTÔME
             // Les coordinateurs sont marqués comme "observateurs" (is_observer=true)
             // Ils ne sont PAS affichés dans la liste des participants visible
@@ -73,6 +81,7 @@ final class VisioParticipantSessionService
                 [
                     'seance_id' => $visio->id,
                     'user_id' => $user->id,
+                    'institution_id' => $visio->institution_id,
                 ],
                 [
                     'klassci_etudiant_id' => $user->klassci_id,

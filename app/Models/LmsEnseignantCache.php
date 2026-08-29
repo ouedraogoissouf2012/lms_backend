@@ -2,10 +2,13 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
-use Carbon\Carbon;
 use App\Models\Traits\BelongsToInstitution;
+use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Model;
 
+/**
+ * @property Carbon|null $expires_at
+ */
 class LmsEnseignantCache extends Model
 {
     use BelongsToInstitution;
@@ -31,7 +34,7 @@ class LmsEnseignantCache extends Model
      */
     public function isValid(): bool
     {
-        return $this->expires_at && $this->expires_at->isFuture();
+        return $this->expires_at !== null && $this->expires_at->isFuture();
     }
 
     /**
@@ -39,7 +42,7 @@ class LmsEnseignantCache extends Model
      */
     public function isExpired(): bool
     {
-        return !$this->isValid();
+        return ! $this->isValid();
     }
 
     /**
@@ -49,7 +52,7 @@ class LmsEnseignantCache extends Model
     {
         $cache = self::where('enseignant_id', $enseignantId)->first();
 
-        if (!$cache || $cache->isExpired()) {
+        if (! $cache || $cache->isExpired()) {
             return null;
         }
 
@@ -59,7 +62,7 @@ class LmsEnseignantCache extends Model
     /**
      * Stocke ou met à jour le cache pour un enseignant
      *
-     * @param array<string, mixed> $data Payload enseignant KLASSCI (cast `array`).
+     * @param  array<string, mixed>  $data  Payload enseignant KLASSCI (cast `array`).
      */
     public static function store(int $enseignantId, array $data, int $ttlMinutes = 10): self
     {
@@ -78,6 +81,8 @@ class LmsEnseignantCache extends Model
      */
     public static function cleanExpired(): int
     {
-        return self::where('expires_at', '<', Carbon::now())->delete();
+        $deleted = self::where('expires_at', '<', Carbon::now())->delete();
+
+        return is_int($deleted) ? $deleted : 0;
     }
 }

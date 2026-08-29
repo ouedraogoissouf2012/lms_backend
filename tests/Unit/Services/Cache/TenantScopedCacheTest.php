@@ -3,20 +3,21 @@
 namespace Tests\Unit\Services\Cache;
 
 use App\Models\Institution;
+use App\Services\Cache\Purge\TenantCachePurgerInterface;
 use App\Services\Cache\TenantScopedCache;
 use App\Services\TenantManager;
 use Illuminate\Cache\Repository;
 use Illuminate\Cache\TaggedCache;
 use Mockery;
 use Mockery\Adapter\Phpunit\MockeryTestCase;
-use Psr\Log\LoggerInterface;
 
 /**
  * Tests unitaires purs (Mockery, aucun vrai store) de TenantScopedCache :
- * les deux branches supportsTags() true/false pour remember() et
- * flushTenant(), plus le cas « tenant non résolu » (tag institution_none).
+ * les deux branches supportsTags() true/false pour remember(), le namespacing
+ * de clé sur store sans tags (#547), la délégation de flushTenant() au purger
+ * injecté, et le cas « tenant non résolu » (namespace institution_none).
  *
- * Spec: .claude/specs/redis-runtime (Requirements 4.1, 4.2, 4.4, 4.5, 7.5)
+ * Spec: .claude/specs/redis-runtime (Req. 4.x) + .claude/specs/547-pdf-async-cache-purge (Req. 2.x).
  */
 class TenantScopedCacheTest extends MockeryTestCase
 {
@@ -24,7 +25,7 @@ class TenantScopedCacheTest extends MockeryTestCase
 
     private TenantManager $tenantManager;
 
-    private LoggerInterface&Mockery\MockInterface $logger;
+    private TenantCachePurgerInterface&Mockery\MockInterface $purger;
 
     protected function setUp(): void
     {
@@ -32,12 +33,12 @@ class TenantScopedCacheTest extends MockeryTestCase
 
         $this->repository = Mockery::mock(Repository::class);
         $this->tenantManager = new TenantManager;
-        $this->logger = Mockery::mock(LoggerInterface::class);
+        $this->purger = Mockery::mock(TenantCachePurgerInterface::class);
     }
 
     private function makeCache(): TenantScopedCache
     {
-        return new TenantScopedCache($this->repository, $this->tenantManager, $this->logger);
+        return new TenantScopedCache($this->repository, $this->tenantManager, $this->purger);
     }
 
     private function setTenant(int $id): void
@@ -67,66 +68,64 @@ class TenantScopedCacheTest extends MockeryTestCase
         self::assertSame('valeur', $this->makeCache()->remember('cle', 300, $callback));
     }
 
-    public function test_remember_skips_tags_when_store_does_not_support_them(): void
+    public function test_remember_namespaces_key_when_store_does_not_support_tags(): void
     {
         $this->setTenant(42);
         $callback = fn (): string => 'valeur';
 
         $this->repository->shouldReceive('supportsTags')->once()->andReturnFalse();
         $this->repository->shouldNotReceive('tags');
+        // #547 : la clé est préfixée du namespace tenant pour rester ciblable
+        // par la purge database (LIKE institution_42:%).
         $this->repository->shouldReceive('remember')
             ->once()
-            ->with('cle', 300, $callback)
+            ->with('institution_42:cle', 300, $callback)
             ->andReturn('valeur');
 
         self::assertSame('valeur', $this->makeCache()->remember('cle', 300, $callback));
     }
 
-    public function test_remember_tags_institution_none_when_tenant_unresolved(): void
+    public function test_remember_does_not_double_namespace_already_prefixed_key(): void
     {
-        // Aucun set() : TenantManager::id() === null (Requirement 4.4).
+        $this->setTenant(42);
         $callback = fn (): string => 'valeur';
 
-        $tagged = Mockery::mock(TaggedCache::class);
-        $tagged->shouldReceive('remember')->once()->andReturn('valeur');
-
-        $this->repository->shouldReceive('supportsTags')->once()->andReturnTrue();
-        $this->repository->shouldReceive('tags')
+        $this->repository->shouldReceive('supportsTags')->once()->andReturnFalse();
+        $this->repository->shouldReceive('remember')
             ->once()
-            ->with(['institution_none'])
-            ->andReturn($tagged);
+            ->with('institution_42:deja', 300, $callback)
+            ->andReturn('valeur');
+
+        self::assertSame('valeur', $this->makeCache()->remember('institution_42:deja', 300, $callback));
+    }
+
+    public function test_remember_namespaces_institution_none_when_tenant_unresolved(): void
+    {
+        // Aucun set() : TenantManager::id() === null.
+        $callback = fn (): string => 'valeur';
+
+        $this->repository->shouldReceive('supportsTags')->once()->andReturnFalse();
+        $this->repository->shouldReceive('remember')
+            ->once()
+            ->with('institution_none:cle', 300, $callback)
+            ->andReturn('valeur');
 
         self::assertSame('valeur', $this->makeCache()->remember('cle', 300, $callback));
     }
 
-    public function test_flush_tenant_flushes_only_the_institution_tag_when_supported(): void
+    public function test_flush_tenant_delegates_to_purger_with_current_namespace(): void
     {
         $this->setTenant(7);
 
-        $tagged = Mockery::mock(TaggedCache::class);
-        $tagged->shouldReceive('flush')->once()->andReturnTrue();
-
-        $this->repository->shouldReceive('supportsTags')->once()->andReturnTrue();
-        $this->repository->shouldReceive('tags')
-            ->once()
-            ->with(['institution_7'])
-            ->andReturn($tagged);
+        $this->purger->shouldReceive('purge')->once()->with('institution_7');
 
         $this->makeCache()->flushTenant();
     }
 
-    public function test_flush_tenant_is_a_logged_noop_when_tags_unsupported(): void
+    public function test_flush_tenant_uses_institution_none_when_tenant_unresolved(): void
     {
-        $this->setTenant(7);
-
-        $this->repository->shouldReceive('supportsTags')->once()->andReturnFalse();
-        $this->repository->shouldNotReceive('tags');
-
-        // Jamais de flush global de repli (CONTRIBUTING.md §E) : uniquement
-        // un warning explicite, puis retour sans effet (Requirement 4.5/6.2).
-        $this->logger->shouldReceive('warning')
-            ->once()
-            ->with('tenant_cache.flush_skipped_unsupported_store', ['tag' => 'institution_7']);
+        // Aucun set() (Requirement 3.2).
+        $this->purger->shouldReceive('purge')->once()->with('institution_none');
 
         $this->makeCache()->flushTenant();
     }

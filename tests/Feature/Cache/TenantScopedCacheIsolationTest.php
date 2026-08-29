@@ -10,7 +10,6 @@ use App\Services\Cache\TenantScopedCacheInterface;
 use App\Services\TenantManager;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Log;
 use Tests\TestCase;
 
 /**
@@ -81,37 +80,32 @@ final class TenantScopedCacheIsolationTest extends TestCase
         );
     }
 
-    public function test_flush_tenant_on_untaggable_store_does_not_throw_and_leaves_entries(): void
+    /**
+     * #547 — le store `database` (défaut prod) n'a PAS de tags mais supporte
+     * désormais une purge PHYSIQUE ciblée par namespace tenant. `flushTenant()`
+     * n'est donc plus un no-op : il supprime les entrées du tenant courant, sans
+     * exception, sans flush global de repli (le tenant B est couvert par
+     * TenantCacheDatabasePurgeTest).
+     */
+    public function test_flush_tenant_on_database_store_physically_purges_current_tenant(): void
     {
-        // Seul moyen d'exercer réellement supportsTags() === false :
-        // le store `database` (DatabaseStore n'étend pas TaggableStore).
         config()->set('cache.default', 'database');
 
         $tenantManager = app(TenantManager::class);
-
         $tenantManager->set($this->institutionA);
-        app(TenantScopedCacheInterface::class)
-            ->remember('cle-degradee', 300, fn (): string => 'valeur-persistee');
 
-        Log::shouldReceive('warning')
-            ->once()
-            ->with('tenant_cache.flush_skipped_unsupported_store', ['tag' => "institution_{$this->institutionA->id}"]);
-        // Les autres canaux de log restent permissifs (bruit d'autres composants).
-        Log::shouldReceive('info')->zeroOrMoreTimes();
-        Log::shouldReceive('debug')->zeroOrMoreTimes();
-
-        // Instance résolue APRÈS la pose du mock : le binding n'est pas un
-        // singleton, le constructeur capture donc bien le logger mocké.
         $cache = app(TenantScopedCacheInterface::class);
+        $cache->remember('cle-degradee', 300, fn (): string => 'valeur-persistee');
 
-        // Aucune exception attendue (Requirement 6.2) — un throw ferait échouer le test.
+        // Aucune exception attendue — la purge ciblée ne throw pas.
         $cache->flushTenant();
 
-        // Pas de corruption ni de flush global de repli : l'entrée reste lisible.
+        // L'entrée du tenant a été physiquement purgée : le callback est
+        // ré-exécuté (cache miss), preuve que la purge database n'est plus inerte.
         self::assertSame(
-            'valeur-persistee',
+            'valeur-recalculee',
             $cache->remember('cle-degradee', 300, fn (): string => 'valeur-recalculee'),
-            'Sur store non-taggable, flushTenant() doit être un no-op : l\'entrée existante reste servie.'
+            'Sur store database, flushTenant() doit purger physiquement : cache miss après flush.'
         );
     }
 

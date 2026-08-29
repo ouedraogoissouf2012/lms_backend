@@ -7,6 +7,7 @@ namespace App\Http\Controllers\API\Lesson;
 use App\Http\Controllers\AuthenticatedController;
 use App\Http\Requests\DeleteLessonRequest;
 use App\Http\Requests\FilterLessonsRequest;
+use App\Http\Requests\MyCoursesRequest;
 use App\Http\Requests\PublishLessonRequest;
 use App\Http\Requests\StoreLessonRequest;
 use App\Http\Requests\UnpublishLessonRequest;
@@ -53,20 +54,21 @@ final class LessonCrudController extends AuthenticatedController
      * Liste des cours de l'étudiant connecté avec enseignant et matière.
      * Filtrable par matiere_id et enseignant_id.
      */
-    public function myCourses(Request $request): JsonResponse
+    public function myCourses(MyCoursesRequest $request): JsonResponse
     {
         $user = $this->authenticatedUser($request);
         $result = $this->listService->myCourses($request, $user);
 
         // Non migré vers successResponse() : cette réponse expose des clés
-        // racine hors enveloppe (`filters`, `total`) que le trait ne reproduit
-        // pas. Les y déplacer (sous `meta`) changerait le contrat client →
-        // conservé tel quel (axe #1 « DRY-only », préservation de la sortie).
+        // racine hors enveloppe (`filters`, `total`, `meta`) que le trait ne
+        // reproduit pas. `data` reste un TABLEAU PLAT (contrat frontend
+        // `response.data`, #483) ; `meta` porte la pagination (additif).
         return response()->json([
             'success' => true,
             'data' => $result['courses'],
             'filters' => $result['filters'],
             'total' => $result['total'],
+            'meta' => $result['meta'],
         ]);
     }
 

@@ -27,10 +27,30 @@ namespace App\Services\Klassci\Concerns;
  *
  * ## Contrat
  *
- * Ce trait s'attend à être utilisé dans une classe qui expose les méthodes
- * publiques `get(string, array, ?int): array` et `post(string, array): array`
- * et `put(string, array): array` avec les mêmes signatures que
- * {@see \App\Services\KlassciProxyService::get()}.
+ * Le contrat exact attendu de la classe hôte est déclaré par les méthodes
+ * `abstract` en fin de trait — c'est là qu'il est vérifié par PHP, et non dans
+ * cette prose.
+ *
+ * ## Classification des endpoints (#591) — à respecter pour tout ajout
+ *
+ * - **Lié à l'identité** → `requestWithUserToken($userToken, …)` : KLASSCI fait
+ *   varier la réponse selon le porteur. La clé de cache dérive du hash du
+ *   porteur ; le raccourci **exige** donc le jeton en premier paramètre — sans
+ *   quoi la réponse du 1ᵉʳ appelant fuite à tout le tenant (#568, #591).
+     * Aujourd'hui : lectures + écritures notes/présences/statut cours.
+ * - **Tenant-partagé** → `get()` : charge utile prouvément identique pour tout
+ *   le tenant. Clé de cache globale, taux de hit maximal.
+ *   Aujourd'hui : `structure`, `filieres`, `niveaux-etudes`, `enseignants`.
+ *
+ * Tous les endpoints adressés par ID et soumis à autorisation KLASSCI
+ * passent par `requestWithUserToken()`.
+ *
+ * En cas de doute, choisir la variante par porteur : une clé par porteur sur une
+ * donnée tenant-wide ne coûte que du taux de hit ; une clé globale sur une
+ * donnée liée à l'identité **fuit**.
+ *
+ * Garde exécutable de cette règle :
+ * {@see \Tests\Unit\Services\Klassci\KlassciEndpointClassificationGuardTest}.
  *
  * @see \App\Services\KlassciProxyService
  * @see .claude/specs/perf-02-klassci-batch-cache/design.md §7 (table TTL)
@@ -55,30 +75,40 @@ trait HasKlassciEndpointShortcuts
     }
 
     /**
+     * #617 — roster adressé par ID et soumis à autorisation KLASSCI.
+     * Une clé tenant-globale faisait du cache un contournement : le 1er
+     * autorisé peuplait, le suivant non autorisé recevait le hit sans 403.
+     *
      * @return array<string, mixed>
      */
-    public function getClasseEtudiants(int $classeId, ?int $anneeId = null): array
+    public function getClasseEtudiants(string $userToken, int $classeId, ?int $anneeId = null): array
     {
         $params = $anneeId ? ['annee_id' => $anneeId] : [];
 
-        return $this->get("classes/{$classeId}/etudiants", $params, 300);
+        return $this->requestWithUserToken($userToken, "classes/{$classeId}/etudiants", 'GET', $params, 300);
     }
 
     /**
+     * #616 — même classe de fuite que {@see self::getEvaluations()}.
+     * KLASSCI scope les matières selon le porteur ; le reste du dépôt les
+     * consomme déjà avec le jeton perso. Clé de cache dérivée du porteur.
+     *
      * @param  array<string, mixed>  $filters
      * @return array<string, mixed>
      */
-    public function getMatieres(array $filters = []): array
+    public function getMatieres(string $userToken, array $filters = []): array
     {
-        return $this->get('matieres', $filters, 600);
+        return $this->requestWithUserToken($userToken, 'matieres', 'GET', $filters, 600);
     }
 
     /**
+     * #616 — même raisonnement que {@see self::getMatieres()}.
+     *
      * @return array<string, mixed>
      */
-    public function getMatiereDetails(int $id): array
+    public function getMatiereDetails(string $userToken, int $id): array
     {
-        return $this->get("matieres/{$id}", [], 600);
+        return $this->requestWithUserToken($userToken, "matieres/{$id}", 'GET', [], 600);
     }
 
     /**
@@ -116,41 +146,59 @@ trait HasKlassciEndpointShortcuts
     }
 
     /**
+     * #591 — ressource **liée à l'identité** : KLASSCI scope la liste selon le
+     * porteur (les évaluations d'un enseignant ne sont pas celles d'un étudiant)
+     * et `/api/proxy/evaluations` est ouverte à TOUS les rôles
+     * (`routes/api/core.php:94`). Passer par `get()` produisait une clé de cache
+     * tenant-globale : la réponse du 1ᵉʳ appelant était servie à tout le tenant
+     * — fuite d'identité, même classe que #568 (`/auth/me`).
+     *
+     * Le porteur est un paramètre **obligatoire** et non une valeur devinée :
+     * c'est ce qui rend l'isolation vérifiable par le typage plutôt que par la
+     * vigilance de l'appelant (cf. § Classification, et design.md §1.1).
+     *
      * @param  array<string, mixed>  $filters
      * @return array<string, mixed>
      */
-    public function getEvaluations(array $filters = []): array
+    public function getEvaluations(string $userToken, array $filters = []): array
     {
-        return $this->get('evaluations', $filters, 300);
+        return $this->requestWithUserToken($userToken, 'evaluations', 'GET', $filters, 300);
     }
 
     /**
+     * #591 — même raisonnement que {@see self::getEvaluations()} : l'emploi du
+     * temps renvoyé dépend du porteur (étudiant de sa classe, enseignant de ses
+     * cours). Clé de cache dérivée du porteur, jamais globale au tenant.
+     *
      * @param  array<string, mixed>  $filters
      * @return array<string, mixed>
      */
-    public function getEmploiTemps(array $filters = []): array
+    public function getEmploiTemps(string $userToken, array $filters = []): array
     {
-        return $this->get('emploi-temps', $filters, 600);
+        return $this->requestWithUserToken($userToken, 'emploi-temps', 'GET', $filters, 600);
     }
 
     /**
+     * #619 — écriture liée au porteur. Ne jamais utiliser le résolveur
+     * mémoïsé : sous Octane le contrôleur peut survivre à la requête.
+     *
      * @param  array<int, array<string, mixed>>  $notes
      * @return array<string, mixed>
      */
-    public function saveNotes(int $evaluationId, array $notes): array
+    public function saveNotes(string $userToken, int $evaluationId, array $notes): array
     {
-        return $this->post("evaluations/{$evaluationId}/notes", [
+        return $this->requestWithUserToken($userToken, "evaluations/{$evaluationId}/notes", 'POST', [
             'notes' => $notes,
         ]);
     }
 
     /**
-     * @param  array<int, array<string, mixed>>  $presences
+     * @param  array<string, mixed>  $presences
      * @return array<string, mixed>
      */
-    public function savePresences(int $coursId, array $presences): array
+    public function savePresences(string $userToken, int $coursId, array $presences): array
     {
-        return $this->post("cours/{$coursId}/presences", [
+        return $this->requestWithUserToken($userToken, "cours/{$coursId}/presences", 'POST', [
             'presences' => $presences,
         ]);
     }
@@ -158,10 +206,10 @@ trait HasKlassciEndpointShortcuts
     /**
      * @return array<string, mixed>
      */
-    public function updateCoursStatut(int $coursId, string $statut, ?string $commentaire = null): array
+    public function updateCoursStatut(string $userToken, int $coursId, string $statut, ?string $commentaire = null): array
     {
-        return $this->put("cours/{$coursId}/statut", [
-            'statut'      => $statut,
+        return $this->requestWithUserToken($userToken, "cours/{$coursId}/statut", 'PUT', [
+            'statut' => $statut,
             'commentaire' => $commentaire,
         ]);
     }
@@ -182,6 +230,24 @@ trait HasKlassciEndpointShortcuts
      * @return array<string, mixed>
      */
     abstract public function get(string $endpoint, array $params = [], ?int $customTTL = null): array;
+
+    /**
+     * Variante de {@see self::get()} dont la clé de cache dérive du hash du
+     * porteur — obligatoire pour toute ressource dont KLASSCI fait varier la
+     * réponse selon l'identité du porteur (#591).
+     *
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     *
+     * @throws \Exception
+     */
+    abstract public function requestWithUserToken(
+        string $userToken,
+        string $endpoint,
+        string $method = 'GET',
+        array $data = [],
+        ?int $customTTL = null,
+    ): array;
 
     /**
      * @param  array<string, mixed>  $data

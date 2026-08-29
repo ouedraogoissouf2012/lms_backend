@@ -35,9 +35,8 @@ final class PositiveInteger implements Rule
     /**
      * Determine if the validation rule passes.
      *
-     * @param string $attribute
-     * @param mixed $value
-     * @return bool
+     * @param  string  $attribute
+     * @param  mixed  $value
      */
     public function passes($attribute, $value): bool
     {
@@ -45,19 +44,19 @@ final class PositiveInteger implements Rule
             return false;
         }
 
-        if (!is_int($value) && !ctype_digit((string) $value)) {
-            return false;
+        if (is_int($value)) {
+            return $value > 0;
         }
 
-        $intValue = (int) $value;
+        if (is_string($value) && ctype_digit($value)) {
+            return (int) $value > 0;
+        }
 
-        return $intValue > 0;
+        return false;
     }
 
     /**
      * Get the validation error message.
-     *
-     * @return string
      */
     public function message(): string
     {

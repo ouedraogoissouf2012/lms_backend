@@ -44,7 +44,11 @@ final class EvaluationListService
      * batch query (clé `student_submission`).
      *
      * @param  array<string, mixed>  $filters  Clés acceptées : classe_id,
-     *                                          matiere_id, status, is_published.
+     *                                          matiere_id, status, is_published,
+     *                                          limit (borné 1-100, #548 — pas
+     *                                          de pagination réelle, plafond
+     *                                          simple pour préserver la forme
+     *                                          de réponse en tableau plat).
      *                                          Les clés absentes sont ignorées.
      * @return array<int, array<string, mixed>>
      */
@@ -68,9 +72,15 @@ final class EvaluationListService
             $query->where('is_published', (bool) $filters['is_published']);
         }
 
-        $evaluations = $query->orderBy('date_evaluation', 'desc')->get();
+        $limitInput = $filters['limit'] ?? 100;
+        $limit = is_numeric($limitInput) ? (int) $limitInput : 100;
 
-        $enrichedEvaluations = $this->enrichmentService->enrich($evaluations);
+        $evaluations = $query
+            ->orderBy('date_evaluation', 'desc')
+            ->limit($limit)
+            ->get();
+
+        $enrichedEvaluations = $this->enrichmentService->enrich($evaluations, $this->personalToken($user));
 
         // PERF-03 batch 2 — pour un étudiant KLASSCI sync, attacher sa dernière
         // soumission par évaluation via une seule query batched.
@@ -102,7 +112,7 @@ final class EvaluationListService
      *
      * @return array<string, mixed>|null
      */
-    public function findOne(int $id): ?array
+    public function findOne(int $id, User $user): ?array
     {
         $evaluation = Evaluation::with('questions')->find($id);
 
@@ -110,6 +120,13 @@ final class EvaluationListService
             return null;
         }
 
-        return $this->enrichmentService->enrich(collect([$evaluation]))[0];
+        return $this->enrichmentService->enrich(collect([$evaluation]), $this->personalToken($user))[0];
+    }
+
+    private function personalToken(User $user): string
+    {
+        $token = $user->klassci_token;
+
+        return is_string($token) ? $token : '';
     }
 }

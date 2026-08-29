@@ -7,6 +7,8 @@ use App\Http\Requests\CreateUserRequest;
 use App\Http\Requests\UpdateUserRequest;
 use App\Http\Requests\DeleteUserRequest;
 use App\Models\User;
+use App\Services\User\UserDeletionService;
+use InvalidArgumentException;
 use Illuminate\Http\JsonResponse;
 
 /**
@@ -25,7 +27,7 @@ class AdminController extends Controller
     public function createUser(CreateUserRequest $request): JsonResponse
     {
         $data = $request->validated();
-        $data['password'] = bcrypt($data['password']);
+        $data['password'] = bcrypt(self::validatedPassword($data));
 
         $user = User::create($data);
         $user->load('institution');
@@ -42,7 +44,7 @@ class AdminController extends Controller
         $data = $request->validated();
 
         if (isset($data['password'])) {
-            $data['password'] = bcrypt($data['password']);
+            $data['password'] = bcrypt(self::validatedPassword($data));
         }
 
         $user->update($data);
@@ -53,12 +55,26 @@ class AdminController extends Controller
 
     /**
      * DELETE /api/users/{user}
-     * Supprimer un utilisateur
+     * Supprimer un utilisateur — suppression LOGIQUE (#566) : le dossier
+     * académique est préservé et l'accès du compte immédiatement révoqué.
+     * La logique (atomicité, révocation, audit) vit dans le service (§5).
      */
-    public function deleteUser(DeleteUserRequest $request, User $user): JsonResponse
+    public function deleteUser(DeleteUserRequest $request, User $user, UserDeletionService $deletion): JsonResponse
     {
-        $user->delete();
+        $deletion->softDelete($user);
 
         return $this->successResponse(null, 'Utilisateur supprimé');
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    private static function validatedPassword(array $data): string
+    {
+        if (! isset($data['password']) || ! is_string($data['password'])) {
+            throw new InvalidArgumentException('Validated password must be a string.');
+        }
+
+        return $data['password'];
     }
 }

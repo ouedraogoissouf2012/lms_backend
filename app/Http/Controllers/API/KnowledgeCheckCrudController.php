@@ -29,7 +29,7 @@ final class KnowledgeCheckCrudController extends AuthenticatedController
         $chapterId = $request->query('chapter_id');
 
         if (! $chapterId) {
-            return $this->errorResponse('chapter_id requis', 400);
+            return $this->errorResponse('chapter_id requis', 422);
         }
 
         $userId = $this->authenticatedUser($request)->id;

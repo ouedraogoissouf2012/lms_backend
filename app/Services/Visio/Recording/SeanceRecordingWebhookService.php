@@ -15,6 +15,9 @@ use Psr\Log\LoggerInterface;
  */
 final class SeanceRecordingWebhookService
 {
+    /** Fenêtre d'acceptation de l'horodatage, en secondes, si la config est absente ou invalide. */
+    private const DEFAULT_MAX_AGE_SECONDS = 300;
+
     public function __construct(
         private readonly CacheRepository $cache,
         private readonly LoggerInterface $logger,
@@ -95,7 +98,14 @@ final class SeanceRecordingWebhookService
             return $this->fail(401, 'Horodatage webhook invalide.');
         }
 
-        $maxAge = (int) config('services.visio.webhook_max_age', 300);
+        // config() retourne mixed : on ne caste qu'une valeur réellement numérique,
+        // sinon on retombe sur la fenêtre par défaut plutôt que sur un maxAge à 0
+        // (qui rejetterait tout webhook, y compris légitime).
+        $configuredMaxAge = config('services.visio.webhook_max_age', self::DEFAULT_MAX_AGE_SECONDS);
+        $maxAge = is_numeric($configuredMaxAge)
+            ? (int) $configuredMaxAge
+            : self::DEFAULT_MAX_AGE_SECONDS;
+
         if (abs(time() - (int) $timestamp) > $maxAge) {
             return $this->fail(401, 'Horodatage webhook expiré.');
         }

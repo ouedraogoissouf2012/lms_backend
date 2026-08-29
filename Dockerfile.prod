@@ -1,10 +1,31 @@
 FROM php:8.3-apache-bookworm
 
+# --- Dependances systeme -----------------------------------------------------
+# libreoffice-{impress,writer} + ghostscript + imagick : la chaine de conversion
+# PPT/DOCX/PDF -> diapositives PNG. Le code tente ConvertAPI en premier puis
+# retombe sur LibreOffice ; sans ces binaires le fallback echoue et tout
+# televersement de presentation est perdu.
+# On installe les paquets LibreOffice *cibles* (pas le meta-paquet complet) :
+# ~700 Mo au lieu de ~1,5 Go.
 RUN apt-get update && apt-get install -y --no-install-recommends \
-        git unzip libzip-dev libpng-dev libonig-dev libxml2-dev curl \
+        git unzip curl \
+        libzip-dev libpng-dev libonig-dev libxml2-dev libmagickwand-dev \
+        libreoffice-impress libreoffice-writer libreoffice-core \
+        default-jre-headless fonts-liberation \
+        ghostscript \
     && docker-php-ext-install -j$(nproc) pdo_mysql mbstring zip gd bcmath opcache \
+    && pecl install imagick \
+    && docker-php-ext-enable imagick \
     && a2enmod rewrite headers \
+    && apt-get purge -y --auto-remove libmagickwand-dev \
     && rm -rf /var/lib/apt/lists/*
+
+# ImageMagick interdit la lecture des PDF par defaut depuis CVE-2016-3714.
+# PdfToPngRenderer en depend : sans cette autorisation, le rendu des diapositives
+# echoue avec « not authorized ». On n'ouvre QUE le PDF, pas les autres coders.
+RUN if [ -f /etc/ImageMagick-6/policy.xml ]; then \
+        sed -i 's|<policy domain="coder" rights="none" pattern="PDF" />|<policy domain="coder" rights="read" pattern="PDF" />|' /etc/ImageMagick-6/policy.xml; \
+    fi
 
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
@@ -14,8 +35,15 @@ COPY docker/apache-vhost.conf /etc/apache2/sites-available/000-default.conf
 COPY docker/uploads.ini /usr/local/etc/php/conf.d/uploads.ini
 COPY docker/opcache.ini /usr/local/etc/php/conf.d/opcache.ini
 
+# Couche de dependances separee du code : un changement applicatif ne reinstalle
+# pas tout Composer (build plus court, moins de RAM — le serveur heberge d'autres
+# projets et un build gourmand peut le faire tomber).
+COPY composer.json composer.lock ./
+RUN composer install --no-dev --no-interaction --prefer-dist \
+        --optimize-autoloader --no-scripts --no-autoloader
+
 COPY . .
-RUN composer install --no-dev --no-interaction --prefer-dist --optimize-autoloader --no-scripts \
+RUN composer dump-autoload --optimize --no-dev \
     && chown -R www-data:www-data storage bootstrap/cache \
     && chmod -R ug+rwx storage bootstrap/cache
 
@@ -24,7 +52,10 @@ RUN chmod +x /usr/local/bin/entrypoint.sh
 
 EXPOSE 80
 
-HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 \
-    CMD curl -fsS http://127.0.0.1/up || exit 1
+# Pas de HEALTHCHECK ici : cette image sert les trois roles (web, worker,
+# scheduler) et seul le role web ecoute en HTTP. Un healthcheck /up global
+# marquerait worker et scheduler « unhealthy » en permanence, avec redemarrage
+# en boucle sous Swarm. Le healthcheck est donc declare par service dans
+# docker-compose.prod.yml.
 
 ENTRYPOINT ["entrypoint.sh"]

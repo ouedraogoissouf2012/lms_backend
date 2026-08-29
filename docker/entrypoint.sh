@@ -18,7 +18,15 @@ role="${CONTAINER_ROLE:-web}"
 
 case "$role" in
   worker)
-    exec php artisan queue:work database --sleep=3 --tries=3 --timeout=120 --max-time=3600
+    # Les trois queues doivent etre nommees explicitement : le 1er argument
+    # positionnel de queue:work est la CONNEXION, pas la queue. Sans --queue,
+    # seule `default` serait drainee et tout ce qui vit sur `low` (conversion
+    # de diapositives, rapports PDF, enregistrements visio, sync seances) ou
+    # sur `high` (notifications visio urgentes) ne serait jamais traite.
+    # L'ordre porte la priorite : high avant default avant low.
+    exec php artisan queue:work database \
+        --queue=high,default,low \
+        --sleep=3 --tries=3 --timeout=120 --max-time=3600
     ;;
   scheduler)
     exec php artisan schedule:work

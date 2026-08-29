@@ -1,61 +1,93 @@
-# Référence Dokploy — NE PAS lancer en `docker compose` sur le VPS.
-# Même modèle qu'ADR-0024 (Wourri) : services natifs Dokploy, Traefik, Swarm.
+# Deploiement Dokploy — service de type « Compose » (composeType: Docker Compose).
 #
-# Projet Dokploy : lms
-#   1) mysql:8.0          (base)
-#   2) application web    Dockerfile.prod  CONTAINER_ROLE=web
-#   3) worker             même image       CONTAINER_ROLE=worker
-#   4) scheduler          même image       CONTAINER_ROLE=scheduler
+# Modele repris de klassci-college-prod, deja en production sur le meme serveur :
+# une SEULE image partagee par web / worker / scheduler, un volume commun pour
+# storage/app, et MySQL en service Dokploy separe.
+#
+# Regles Dokploy respectees ici :
+#   - un seul bloc `build:` (sur web) : les autres services reutilisent l'image.
+#     Deux `build:` identiques font construire deux fois et peuvent saturer la RAM
+#     du serveur, qui heberge deja wourri, klassci-college et orch-keys.
+#   - pas de `container_name:` : casse les logs et les metriques Dokploy.
+#   - pas de `ports:` : Traefik publie le service via l'onglet Domains de l'UI.
+#   - `env_file: [.env]` : les variables saisies dans l'UI ne sont PAS injectees
+#     automatiquement dans les conteneurs d'un compose, il faut les charger.
+#   - `dokploy-network` en `external: true` pour joindre la base et Traefik.
+#
+# La base MySQL n'est PAS ici : elle est creee comme service « Database » dans
+# Dokploy, ce qui donne les sauvegardes mysqldump planifiees vers S3 et decouple
+# son cycle de vie de celui du code (un redeploy applicatif n'y touche jamais).
 
 services:
-  mysql:
-    image: mysql:8.0
-    environment:
-      MYSQL_DATABASE: lms
-      MYSQL_USER: lms
-      MYSQL_PASSWORD: ${DB_PASSWORD}
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
-    volumes:
-      - lms_mysql:/var/lib/mysql
-
   web:
     build:
       context: .
       dockerfile: Dockerfile.prod
+    image: lms-backend:prod
+    env_file: [.env]
     environment:
       CONTAINER_ROLE: web
-      APP_ENV: production
-      APP_DEBUG: "false"
-      DB_CONNECTION: mysql
-      DB_HOST: mysql
-      DB_PORT: "3306"
-      DB_DATABASE: lms
-      DB_USERNAME: lms
-      QUEUE_CONNECTION: database
-      CACHE_STORE: database
-    depends_on:
-      - mysql
+    expose:
+      - "80"
     volumes:
+      # Uniquement storage/app : monter tout storage/ masquerait
+      # storage/framework/{cache,sessions,views} et storage/logs crees dans
+      # l'image, ce qui fait echouer Laravel au premier demarrage.
       - lms_storage:/var/www/html/storage/app
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1/up"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+    restart: unless-stopped
+    networks: [dokploy-network]
 
   worker:
-    build:
-      context: .
-      dockerfile: Dockerfile.prod
+    image: lms-backend:prod
+    depends_on: [web]
+    env_file: [.env]
     environment:
       CONTAINER_ROLE: worker
-    depends_on:
-      - mysql
+    volumes:
+      # MEME volume que le web : le worker convertit les presentations en
+      # diapositives et genere les PDF. Sans ce partage, il ecrit dans son
+      # propre conteneur et le web ne voit jamais les fichiers produits.
+      - lms_storage:/var/www/html/storage/app
+    # Pas de healthcheck HTTP : ce conteneur n'ecoute sur aucun port.
+    # `queue:work --max-time=3600` se termine periodiquement ; restart le
+    # relance avec du code frais et une memoire propre.
+    healthcheck:
+      test: ["CMD-SHELL", "pgrep -f 'artisan queue:work' > /dev/null || exit 1"]
+      interval: 60s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    restart: unless-stopped
+    networks: [dokploy-network]
 
   scheduler:
-    build:
-      context: .
-      dockerfile: Dockerfile.prod
+    image: lms-backend:prod
+    depends_on: [web]
+    env_file: [.env]
     environment:
       CONTAINER_ROLE: scheduler
-    depends_on:
-      - mysql
+    volumes:
+      - lms_storage:/var/www/html/storage/app
+    healthcheck:
+      test: ["CMD-SHELL", "pgrep -f 'artisan schedule:work' > /dev/null || exit 1"]
+      interval: 60s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    restart: unless-stopped
+    networks: [dokploy-network]
 
 volumes:
-  lms_mysql:
+  # Named volume (pas un bind mount) : seuls les named volumes sont
+  # sauvegardables par la fonction Volume Backups de Dokploy.
   lms_storage:
+
+networks:
+  dokploy-network:
+    external: true

@@ -17,6 +17,36 @@ Hors périmètre (non contrôlés) : `database/migrations/**`, `config/**`, spec
 
 Cette règle existait déjà dans PRODUCTION_STANDARDS.md — et a quand même été violée (`KlassciUserSynchronizer` est monté à 430 lignes sous la pression d'un correctif). **Un document non outillé se contourne.** Le job CI **`File size guard`** ([`scripts/check-file-sizes.php`](../scripts/check-file-sizes.php)) fait désormais **échouer toute PR** qui pousse un fichier modifié au-dessus de sa limite. Il ne contrôle que les fichiers **modifiés par la PR** : le legacy non touché n'est jamais bloqué, seul le code qu'on ajoute/modifie doit être propre.
 
+## La taille du fichier ne suffit pas : la longueur des méthodes aussi
+
+Un fichier de 280 lignes respecte la limite tout en concentrant 86 lignes dans une seule
+méthode. C'est cette forme-là qui fragilise le plus : une méthode aussi longue n'est pas
+testable unitairement, et chaque évolution s'y greffe au lieu de créer l'abstraction qui
+manque.
+
+PRODUCTION_STANDARDS.md §5 fixe **« Méthodes ≤ 40 lignes »** — règle qui n'était outillée
+par rien. Le job CI **`Method length guard`**
+([`scripts/check-method-sizes.php`](../scripts/check-method-sizes.php)) l'applique désormais,
+sur le même principe que la garde de fichiers : seuls les fichiers **modifiés par la PR**
+sont contrôlés.
+
+L'analyse se fait par `token_get_all()`, pas par expression régulière : accolades dans les
+chaînes, heredocs et closures imbriquées sont correctement traités. Le décompte porte sur
+les **lignes de code effectives** — documenter une méthode ne la pénalise jamais.
+
+### La baseline est un cliquet
+
+[`scripts/method-length-baseline.php`](../scripts/method-length-baseline.php) liste les
+**49 méthodes** déjà en dépassement au moment de l'introduction de la garde. Chacune est
+tolérée **à sa longueur actuelle, jamais au-delà** :
+
+- une méthode de la baseline qui **grossit** fait échouer la PR ;
+- une **nouvelle** méthode au-dessus de 40 lignes fait échouer la PR ;
+- une méthode qui **rétrécit** est signalée pour que la valeur soit mise à jour ;
+- une méthode repassée sous 40 lignes sort de la liste.
+
+La dette ne peut donc que diminuer. C'est la même logique que le ratchet PHPStan.
+
 ## Quand on atteint la limite : on découpe
 
 Le réflexe n'est jamais « tasser » mais **extraire une responsabilité** dans un collaborateur DIP, en suivant le pattern déjà présent :

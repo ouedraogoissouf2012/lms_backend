@@ -429,6 +429,18 @@ jobs:
           echo "$files"
           php scripts/check-file-sizes.php $files
 
+      - name: Check changed app/ method length
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          git fetch --no-tags origin "$BASE_REF"
+          files=$(git diff --name-only --diff-filter=ACMR "origin/$BASE_REF...HEAD" -- app)
+          if [ -z "$files" ]; then
+            echo "Aucun fichier app/ modifié — rien à contrôler."
+            exit 0
+          fi
+          php scripts/check-method-sizes.php $files
+
       - name: Ensure tests are tracked by default
         run: |
           if git check-ignore -q tests/.tracking-probe.php; then

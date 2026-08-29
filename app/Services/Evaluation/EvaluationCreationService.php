@@ -9,6 +9,7 @@ use App\Models\EvaluationQuestion;
 use App\Models\User;
 use App\Services\KlassciProxyService;
 use Illuminate\Database\DatabaseManager;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Psr\Log\LoggerInterface;
 use Throwable;
 
@@ -83,14 +84,7 @@ final class EvaluationCreationService
         if ($klassciEvaluationId) {
             $existing = Evaluation::where('klassci_evaluation_id', $klassciEvaluationId)->first();
             if ($existing) {
-                return [
-                    'status'  => 409,
-                    'payload' => [
-                        'success' => false,
-                        'message' => 'Une version en ligne existe déjà pour cette évaluation KLASSCI.',
-                        'data'    => $existing,
-                    ],
-                ];
+                return $this->conflict($existing);
             }
         }
 
@@ -98,8 +92,9 @@ final class EvaluationCreationService
             $this->db->beginTransaction();
 
             [$matiereNom, $classeNom] = $this->resolveKlassciLabels(
-                $data['klassci_matiere_id'] ?? null,
-                $data['klassci_classe_id'] ?? null,
+                $teacher,
+                is_numeric($data['klassci_matiere_id'] ?? null) ? (int) $data['klassci_matiere_id'] : null,
+                is_numeric($data['klassci_classe_id'] ?? null) ? (int) $data['klassci_classe_id'] : null,
             );
 
             $evaluation = Evaluation::create(array_merge(
@@ -129,6 +124,17 @@ final class EvaluationCreationService
                     'data'    => $evaluation,
                 ],
             ];
+        } catch (UniqueConstraintViolationException) {
+            // Course perdue : le garde ci-dessus (SELECT hors transaction) a été
+            // franchi par deux requêtes simultanées, et c'est désormais l'index
+            // `evaluations_klassci_link_unique` (#541) qui tranche. Le résultat
+            // métier est le MÊME conflit — on renvoie donc le 409 déjà défini par
+            // cet endpoint, pas un 500 opaque.
+            $this->db->rollBack();
+
+            return $this->conflict(
+                Evaluation::where('klassci_evaluation_id', $klassciEvaluationId)->first(),
+            );
         } catch (Throwable $e) {
             $this->db->rollBack();
             $this->logger->error('Erreur création évaluation', ['error' => $e->getMessage()]);
@@ -145,19 +151,39 @@ final class EvaluationCreationService
     }
 
     /**
+     * Réponse 409 « une version en ligne existe déjà », qu'elle vienne du garde
+     * applicatif ou du rejet de l'index unique sur course perdue.
+     *
+     * @return array{status: int, payload: array<string, mixed>}
+     */
+    private function conflict(?Evaluation $existing): array
+    {
+        return [
+            'status'  => 409,
+            'payload' => [
+                'success' => false,
+                'message' => 'Une version en ligne existe déjà pour cette évaluation KLASSCI.',
+                'data'    => $existing,
+            ],
+        ];
+    }
+
+    /**
      * Résout les libellés matière/classe via KLASSCI (fail-soft : warn-log
      * + valeurs nulles si l'API échoue).
      *
      * @return array{0: ?string, 1: ?string}  [matiereNom, classeNom]
      */
-    private function resolveKlassciLabels(?int $matiereId, ?int $classeId): array
+    private function resolveKlassciLabels(User $teacher, ?int $matiereId, ?int $classeId): array
     {
         $matiereNom = null;
         $classeNom = null;
+        $teacherToken = $teacher->klassci_token;
+        $teacherToken = is_string($teacherToken) && $teacherToken !== '' ? $teacherToken : null;
 
         try {
-            if ($matiereId) {
-                $matieres = $this->klassciService->getMatieres();
+            if ($matiereId && $teacherToken !== null) {
+                $matieres = $this->klassciService->getMatieres($teacherToken);
                 if (isset($matieres['data']) && is_array($matieres['data'])) {
                     foreach ($matieres['data'] as $matiere) {
                         if ((int) ($matiere['id'] ?? 0) === $matiereId) {

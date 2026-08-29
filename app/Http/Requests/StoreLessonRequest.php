@@ -2,8 +2,10 @@
 
 namespace App\Http\Requests;
 
+use App\Enums\LessonStatus;
 use App\Rules\PositiveInteger;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 /**
  * Validates lesson creation request.
@@ -82,10 +84,12 @@ final class StoreLessonRequest extends FormRequest
     /**
      * Get the validation rules that apply to the request.
      *
-     * @return array
+     * @return array<string, mixed>
      */
     public function rules(): array
     {
+        $user = auth()->user();
+
         return [
             'title' => [
                 'required',
@@ -115,6 +119,8 @@ final class StoreLessonRequest extends FormRequest
             'matiere_id' => [
                 'nullable',
                 new PositiveInteger(),
+                Rule::exists('matieres', 'id')
+                    ->where('institution_id', $user?->institution_id),
             ],
             'niveau_difficulte' => [
                 'nullable',
@@ -130,7 +136,7 @@ final class StoreLessonRequest extends FormRequest
             'status' => [
                 'nullable',
                 'string',
-                'in:draft,published,archived',
+                'in:'.implode(',', LessonStatus::values()),
             ],
         ];
     }
@@ -141,7 +147,7 @@ final class StoreLessonRequest extends FormRequest
      * Human-friendly messages (not default Laravel messages).
      * Helps users understand what went wrong.
      *
-     * @return array
+     * @return array<string, string>
      */
     public function messages(): array
     {
@@ -152,6 +158,7 @@ final class StoreLessonRequest extends FormRequest
             'type.required' => 'Le type de cours est requis',
             'type.in' => 'Le type de cours doit être: cours, tp, td, projet ou autre',
             'classe_id.required' => 'Une classe doit être sélectionnée',
+            'matiere_id.exists' => 'La matière n\'existe pas',
             'duree_estimee_minutes.max' => 'La durée estimée ne doit pas dépasser 480 minutes',
         ];
     }
@@ -171,11 +178,15 @@ final class StoreLessonRequest extends FormRequest
      */
     protected function prepareForValidation(): void
     {
+        $title = $this->input('title');
+        $description = $this->input('description');
+        $content = $this->input('content');
+
         $this->merge([
-            'title' => trim($this->title ?? ''),
-            'description' => strip_tags(trim($this->description ?? '')),
+            'title' => is_string($title) ? trim($title) : ($title ?? ''),
+            'description' => is_string($description) ? strip_tags(trim($description)) : ($description ?? ''),
             // Fix #212 : `$this->content` = corps HTTP brut, pas l'input nomme.
-            'content' => strip_tags(trim((string) $this->input('content', ''))),
+            'content' => is_string($content) ? strip_tags(trim($content)) : ($content ?? ''),
         ]);
     }
 }

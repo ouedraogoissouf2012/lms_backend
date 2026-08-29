@@ -43,14 +43,14 @@ final class ClasseSyncService
         private readonly KlassciClassesFetcher $classesFetcher,
         private readonly ClasseStudentsSynchronizer $studentsSynchronizer,
         private readonly LoggerInterface $logger,
-    ) {
-    }
+        private readonly TenantManager $tenantManager,
+    ) {}
 
     /**
      * Synchroniser toutes les classes d'un utilisateur.
      *
-     * @param string $klassciToken Token Klassci de l'utilisateur
-     * @param string $userRole Role de l'utilisateur (etudiant, enseignant, coordinateur)
+     * @param  string  $klassciToken  Token Klassci de l'utilisateur
+     * @param  string  $userRole  Role de l'utilisateur (etudiant, enseignant, coordinateur)
      * @return array{
      *     classes_created: int,
      *     classes_updated: int,
@@ -106,6 +106,7 @@ final class ClasseSyncService
             }
 
             $this->logger->info('Synchronisation classes terminée', $stats);
+
             return $stats;
         } catch (\Exception $e) {
             $this->logger->error('Erreur synchronisation classes', [
@@ -128,10 +129,11 @@ final class ClasseSyncService
             // d'appel direct à KlassciProxyService ici).
             $responseData = $this->classesFetcher->fetchClasseDetails($klassciToken, $klassciClasseId);
 
-            if (!$responseData) {
+            if (! $responseData) {
                 $this->logger->warning('Classe non trouvée dans Klassci', [
                     'klassci_classe_id' => $klassciClasseId,
                 ]);
+
                 return null;
             }
 
@@ -139,11 +141,12 @@ final class ClasseSyncService
             $klasseData = $responseData['classe'] ?? $responseData;
             $etudiantsData = $responseData['etudiants'] ?? [];
 
-            if (!isset($klasseData['id'])) {
+            if (! isset($klasseData['id'])) {
                 $this->logger->warning('Données de classe invalides', [
                     'klassci_classe_id' => $klassciClasseId,
                     'response' => $responseData,
                 ]);
+
                 return null;
             }
 
@@ -151,7 +154,7 @@ final class ClasseSyncService
             $result = $this->syncSingleClasse($klasseData);
 
             // Synchroniser les étudiants si disponibles
-            if (!empty($etudiantsData) && is_array($etudiantsData)) {
+            if (! empty($etudiantsData) && is_array($etudiantsData)) {
                 $this->studentsSynchronizer->sync(
                     $result['classe'],
                     $etudiantsData,
@@ -165,6 +168,7 @@ final class ClasseSyncService
                 'klassci_classe_id' => $klassciClasseId,
                 'error' => $e->getMessage(),
             ]);
+
             return null;
         }
     }
@@ -175,7 +179,7 @@ final class ClasseSyncService
      * Extrait de l'ancien `syncClasse()` (protected). Méthode privée car n'est
      * appelée que depuis l'orchestrateur lui-même.
      *
-     * @param array<string, mixed> $klasseData Données de la classe depuis Klassci
+     * @param  array<string, mixed>  $klasseData  Données de la classe depuis Klassci
      * @return array{classe: Classe, created: bool}
      */
     private function syncSingleClasse(array $klasseData): array
@@ -204,13 +208,14 @@ final class ClasseSyncService
                 : $klasseData['niveau'];
         }
 
+        $institutionId = $this->tenantManager->getResolved();
         $classe = Classe::updateOrCreate(
-            ['klassci_id' => $klassciId],
+            ['klassci_id' => $klassciId, 'institution_id' => $institutionId],
             [
                 'libelle' => $libelle,
                 'code' => $klasseData['code'] ?? null,
                 'description' => $klasseData['description'] ?? null,
-                'effectif' => $klasseData['places_totales'] ?? $klasseData['places'] ?? $klasseData['effectif'] ?? null,
+                'effectif' => $klasseData['places_totales'] ?? $klasseData['places'] ?? $klasseData['effectif'] ?? 0,
                 'filiere_id' => $filiereId,
                 'niveau_id' => $niveauId,
                 'annee_universitaire_id' => $klasseData['annee_universitaire_id'] ?? null,

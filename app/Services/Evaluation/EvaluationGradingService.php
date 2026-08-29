@@ -6,6 +6,7 @@ namespace App\Services\Evaluation;
 
 use App\Models\EvaluationQuestion;
 use App\Models\EvaluationSubmission;
+use App\Models\User;
 
 /**
  * Logique de correction automatique des évaluations extraite des modèles
@@ -72,6 +73,12 @@ class EvaluationGradingService
         }
 
         if ($question->type === 'reponse_courte') {
+            // Une réponse courte est scalaire. Un payload mal formé (tableau, null,
+            // objet) ne peut pas être correct — on le rejette SANS caster, ce qui
+            // évitait auparavant un « Array to string conversion » → 500 (#564).
+            if (!is_scalar($answer)) {
+                return false;
+            }
             $normalizedAnswer = strtolower(trim((string) $answer));
             foreach ($question->correct_answers as $correct) {
                 if (strtolower(trim((string) $correct)) === $normalizedAnswer) {
@@ -82,6 +89,20 @@ class EvaluationGradingService
         }
 
         return false;
+    }
+
+    /**
+     * Indique si une question nécessite une correction MANUELLE (pas d'auto-grading).
+     *
+     * Seule la `dissertation` n'a aucune règle de correction automatique
+     * (contrairement à qcm / qcm_multiple / vrai_faux / reponse_courte, tous
+     * auto-corrigeables). Miroir du concept quiz `QuizQuestion::requiresManualGrading`.
+     *
+     * #588 : la note n'est finale qu'après `manualGrade()` (statut `corrige`).
+     */
+    public function requiresManualGrading(EvaluationQuestion $question): bool
+    {
+        return $question->type === 'dissertation';
     }
 
     /**
@@ -98,10 +119,16 @@ class EvaluationGradingService
         $totalPoints = 0;
         $earnedPoints = 0;
 
+        $manualPoints = is_array($submission->manual_points) ? $submission->manual_points : [];
+
         foreach ($evaluation->questions as $question) {
             $totalPoints += $question->points;
 
-            // Vérifier si l'étudiant a répondu
+            if ($this->requiresManualGrading($question)) {
+                $earnedPoints += $this->manualPointsFor($question, $manualPoints);
+                continue;
+            }
+
             if (isset($submission->answers[$question->id])) {
                 $studentAnswer = $submission->answers[$question->id];
 
@@ -129,5 +156,43 @@ class EvaluationGradingService
         $submission->submitted_at = now();
         $this->calculateScore($submission);
         $submission->save();
+    }
+
+    /**
+     * #588 — note les dissertations, recalcule note_sur_20, passe en `corrige`.
+     *
+     * @param  array<int|string, float|int|string>  $manualPoints
+     */
+    public function manualGrade(
+        EvaluationSubmission $submission,
+        array $manualPoints,
+        User $grader,
+        ?string $feedback,
+    ): void {
+        $submission->manual_points = $manualPoints;
+        $this->calculateScore($submission);
+        $submission->status = 'corrige';
+        $submission->graded_by = max(0, $grader->id);
+        $submission->graded_at = now();
+        if ($feedback !== null) {
+            $submission->feedback = $feedback;
+        }
+        $submission->save();
+    }
+
+    /**
+     * @param  array<int|string, mixed>  $manualPoints
+     */
+    private function manualPointsFor(EvaluationQuestion $question, array $manualPoints): float
+    {
+        $raw = $manualPoints[$question->id] ?? $manualPoints[(string) $question->id] ?? null;
+        if (! is_numeric($raw)) {
+            return 0.0;
+        }
+
+        $points = (float) $raw;
+        $max = (float) $question->points;
+
+        return max(0.0, min($points, $max));
     }
 }

@@ -1,0 +1,38 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Http\Controllers\API\Proxy\Concerns;
+
+use App\Models\User;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+
+/**
+ * Jeton KLASSCI personnel de CETTE requête (#591, #616).
+ *
+ * Lu sur l'objet `Request`, jamais sur un collaborateur injecté : Laravel
+ * mémoïse le contrôleur sur la `Route` (seul Octane flush). L'argument de
+ * méthode est per-requête par construction.
+ */
+trait ResolvesPersonalKlassciToken
+{
+    private const MISSING_KLASSCI_TOKEN = 'Token KLASSCI non trouvé. Veuillez vous reconnecter.';
+
+    protected function personalKlassciToken(Request $request): ?string
+    {
+        $user = $request->user();
+        if (! $user instanceof User) {
+            return null;
+        }
+
+        $token = $user->klassci_token;
+
+        return is_string($token) && $token !== '' ? $token : null;
+    }
+
+    protected function missingKlassciTokenResponse(): JsonResponse
+    {
+        return $this->errorResponse(self::MISSING_KLASSCI_TOKEN, 401);
+    }
+}

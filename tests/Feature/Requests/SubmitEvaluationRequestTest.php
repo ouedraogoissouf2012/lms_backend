@@ -13,26 +13,20 @@ use Tests\TestCase;
 /**
  * Tests for SubmitEvaluationRequest (POST /api/evaluations/{id}/submit)
  *
- * Validates evaluation submission with:
- * - Student authenticated (must be student role)
- * - Evaluation published (not draft)
- * - Deadline not passed
- * - Not already submitted
- * - Answers present and valid
+ * ## Contrat des réponses (MAP)
+ * `answers` est une MAP indexée par question_id : `{ "<id>": <réponse> }`.
+ * La réponse est une chaîne (qcm / vrai_faux / reponse_courte / dissertation) ou
+ * un tableau de chaînes (qcm_multiple). Une valeur vide (`""` / `[]`) = question
+ * non répondue (tolérée). Ce contrat est aligné sur le frontend
+ * (`useTakeEvaluation.js`), le service de correction et le quiz (#564).
  *
  * ## Authorization Model
- * evaluate() checks complex state:
- * 1. User authenticated + is student
- * 2. Evaluation exists and published
- * 3. Deadline not passed
- * 4. Not previously submitted
- *
- * If ANY check fails → 403 Unauthorized
+ * authorize() vérifie : utilisateur authentifié + étudiant, évaluation publiée,
+ * échéance non dépassée, non déjà soumis. Sinon → 401/403.
  *
  * ## 10-year perspective
- * Tests document evaluation state machine.
- * New devs understand submission requirements by reading tests.
- * Regression in evaluation logic caught immediately by tests.
+ * Ces tests documentent la machine à états de soumission + le contrat MAP.
+ * Toute régression du format des réponses est attrapée immédiatement.
  */
 class SubmitEvaluationRequestTest extends TestCase
 {
@@ -74,17 +68,17 @@ class SubmitEvaluationRequestTest extends TestCase
 
         $this->question1 = EvaluationQuestion::factory()
             ->for($this->evaluation)
-            ->state(['question' => 'What is 2+2?'])
+            ->state(['question' => 'What is 2+2?', 'type' => 'qcm', 'correct_answers' => ['4'], 'points' => 10])
             ->create();
 
         $this->question2 = EvaluationQuestion::factory()
             ->for($this->evaluation)
-            ->state(['question' => 'What is the capital of France?'])
+            ->state(['question' => 'Capital of France?', 'type' => 'qcm', 'correct_answers' => ['Paris'], 'points' => 10])
             ->create();
     }
 
     /**
-     * ✅ HAPPY PATH: Valid evaluation submission
+     * ✅ HAPPY PATH: Valid evaluation submission (MAP)
      */
     public function test_valid_submission_passes(): void
     {
@@ -92,13 +86,12 @@ class SubmitEvaluationRequestTest extends TestCase
 
         $response = $this->postJson("/api/evaluations/{$this->evaluation->id}/submit", [
             'answers' => [
-                ['question_id' => $this->question1->id, 'answer' => '4'],
-                ['question_id' => $this->question2->id, 'answer' => 'Paris'],
+                $this->question1->id => '4',
+                $this->question2->id => 'Paris',
             ],
         ]);
 
         $response->assertStatus(201);
-        // Verify submission saved
         $this->assertDatabaseHas('evaluation_submissions', [
             'evaluation_id' => $this->evaluation->id,
             'student_id' => $this->student->id,
@@ -114,7 +107,7 @@ class SubmitEvaluationRequestTest extends TestCase
 
         $response = $this->postJson("/api/evaluations/{$this->evaluation->id}/submit", [
             'answers' => [
-                ['question_id' => $this->question1->id, 'answer' => '4'],
+                $this->question1->id => '4',
             ],
         ]);
 
@@ -131,7 +124,7 @@ class SubmitEvaluationRequestTest extends TestCase
 
         $response = $this->postJson("/api/evaluations/{$this->evaluation->id}/submit", [
             'answers' => [
-                ['question_id' => $this->question1->id, 'answer' => '4'],
+                $this->question1->id => '4',
             ],
             'submitted_at' => $timestamp,
         ]);
@@ -140,7 +133,7 @@ class SubmitEvaluationRequestTest extends TestCase
     }
 
     /**
-     * ✅ EDGE CASE: Answer with leading/trailing spaces is trimmed
+     * ✅ EDGE CASE: Answer with leading/trailing spaces is trimmed (map-safe)
      */
     public function test_answer_with_spaces_is_trimmed(): void
     {
@@ -148,11 +141,14 @@ class SubmitEvaluationRequestTest extends TestCase
 
         $response = $this->postJson("/api/evaluations/{$this->evaluation->id}/submit", [
             'answers' => [
-                ['question_id' => $this->question1->id, 'answer' => '   4   '],
+                $this->question1->id => '   4   ',
             ],
         ]);
 
         $response->assertStatus(201);
+        $submission = EvaluationSubmission::where('evaluation_id', $this->evaluation->id)->first();
+        // Le trim map-safe doit stocker la valeur nettoyée sous la bonne clé.
+        $this->assertSame('4', $submission->answers[$this->question1->id]);
     }
 
     /**
@@ -171,9 +167,9 @@ class SubmitEvaluationRequestTest extends TestCase
     }
 
     /**
-     * ❌ VALIDATION: Empty answers array fails
+     * ❌ VALIDATION: Empty answers map fails (min:1)
      */
-    public function test_empty_answers_array_fails(): void
+    public function test_empty_answers_map_fails(): void
     {
         Sanctum::actingAs($this->student);
 
@@ -186,57 +182,56 @@ class SubmitEvaluationRequestTest extends TestCase
     }
 
     /**
-     * ❌ VALIDATION: Missing question_id fails
+     * ❌ VALIDATION: Ancien format LISTE rejeté proprement (jamais 0 silencieux ni 500)
      */
-    public function test_missing_question_id_fails(): void
+    public function test_obsolete_list_payload_is_rejected(): void
     {
         Sanctum::actingAs($this->student);
 
         $response = $this->postJson("/api/evaluations/{$this->evaluation->id}/submit", [
             'answers' => [
-                ['answer' => '4'], // No question_id
+                ['question_id' => $this->question1->id, 'answer' => '4'],
             ],
         ]);
 
         $response->assertStatus(422);
-        $errors = $response->json('errors');
-        $this->assertNotEmpty($errors['answers.0.question_id'] ?? null);
+        $this->assertNull(
+            EvaluationSubmission::where('evaluation_id', $this->evaluation->id)->first(),
+            'Un payload liste ne doit créer aucune soumission.'
+        );
     }
 
     /**
-     * ❌ VALIDATION: Invalid question_id fails
+     * ❌ VALIDATION: Valeur booléenne rejetée (ferme le type-juggling, cf. #498)
      */
-    public function test_invalid_question_id_fails(): void
+    public function test_boolean_answer_value_is_rejected(): void
     {
         Sanctum::actingAs($this->student);
 
         $response = $this->postJson("/api/evaluations/{$this->evaluation->id}/submit", [
             'answers' => [
-                ['question_id' => 99999, 'answer' => '4'], // Question doesn't exist
+                $this->question1->id => true,
             ],
         ]);
 
         $response->assertStatus(422);
-        $errors = $response->json('errors');
-        $this->assertNotEmpty($errors['answers.0.question_id'] ?? null);
     }
 
     /**
-     * ❌ VALIDATION: Missing answer text fails
+     * ✅ VALIDATION: Valeurs vides (question non répondue) tolérées
      */
-    public function test_missing_answer_text_fails(): void
+    public function test_empty_answer_values_are_allowed(): void
     {
         Sanctum::actingAs($this->student);
 
         $response = $this->postJson("/api/evaluations/{$this->evaluation->id}/submit", [
             'answers' => [
-                ['question_id' => $this->question1->id], // No answer
+                $this->question1->id => '',
+                $this->question2->id => '',
             ],
         ]);
 
-        $response->assertStatus(422);
-        $errors = $response->json('errors');
-        $this->assertNotEmpty($errors['answers.0.answer'] ?? null);
+        $response->assertStatus(201);
     }
 
     /**
@@ -248,13 +243,11 @@ class SubmitEvaluationRequestTest extends TestCase
 
         $response = $this->postJson("/api/evaluations/{$this->evaluation->id}/submit", [
             'answers' => [
-                ['question_id' => $this->question1->id, 'answer' => str_repeat('a', 10001)],
+                $this->question1->id => str_repeat('a', 10001),
             ],
         ]);
 
         $response->assertStatus(422);
-        $errors = $response->json('errors');
-        $this->assertNotEmpty($errors['answers.0.answer'] ?? null);
     }
 
     /**
@@ -264,7 +257,7 @@ class SubmitEvaluationRequestTest extends TestCase
     {
         $response = $this->postJson("/api/evaluations/{$this->evaluation->id}/submit", [
             'answers' => [
-                ['question_id' => $this->question1->id, 'answer' => '4'],
+                $this->question1->id => '4',
             ],
         ]);
 
@@ -280,7 +273,7 @@ class SubmitEvaluationRequestTest extends TestCase
 
         $response = $this->postJson("/api/evaluations/{$this->evaluation->id}/submit", [
             'answers' => [
-                ['question_id' => $this->question1->id, 'answer' => '4'],
+                $this->question1->id => '4',
             ],
         ]);
 
@@ -305,7 +298,7 @@ class SubmitEvaluationRequestTest extends TestCase
 
         $response = $this->postJson("/api/evaluations/{$draft_evaluation->id}/submit", [
             'answers' => [
-                ['question_id' => $draft_question->id, 'answer' => '4'],
+                $draft_question->id => '4',
             ],
         ]);
 
@@ -333,7 +326,7 @@ class SubmitEvaluationRequestTest extends TestCase
 
         $response = $this->postJson("/api/evaluations/{$expired_evaluation->id}/submit", [
             'answers' => [
-                ['question_id' => $expired_question->id, 'answer' => '4'],
+                $expired_question->id => '4',
             ],
         ]);
 
@@ -355,7 +348,7 @@ class SubmitEvaluationRequestTest extends TestCase
 
         $response = $this->postJson("/api/evaluations/{$this->evaluation->id}/submit", [
             'answers' => [
-                ['question_id' => $this->question1->id, 'answer' => '4'],
+                $this->question1->id => '4',
             ],
         ]);
 
@@ -371,13 +364,12 @@ class SubmitEvaluationRequestTest extends TestCase
 
         $response = $this->postJson("/api/evaluations/{$this->evaluation->id}/submit", [
             'answers' => [
-                ['question_id' => $this->question1->id, 'answer' => '4'],
+                $this->question1->id => '4',
             ],
             // No submitted_at
         ]);
 
         $response->assertStatus(201);
-        // Verify submitted_at was set to now (approximate check)
         $submission = EvaluationSubmission::latest()->first();
         $this->assertNotNull($submission->submitted_at);
     }
@@ -391,7 +383,7 @@ class SubmitEvaluationRequestTest extends TestCase
 
         $response = $this->postJson("/api/evaluations/{$this->evaluation->id}/submit", [
             'answers' => [
-                ['question_id' => $this->question1->id, 'answer' => '4'],
+                $this->question1->id => '4',
             ],
             'submitted_at' => '2026-04-30 14:30:00', // Invalid format (should be ISO 8601)
         ]);
@@ -402,11 +394,10 @@ class SubmitEvaluationRequestTest extends TestCase
     }
 
     /**
-     * ✅ MULTIPLE: Multiple valid answers together
+     * ✅ MULTIPLE: Multiple valid answers together (map)
      */
     public function test_multiple_answers_all_valid(): void
     {
-        // Create more questions
         $question3 = EvaluationQuestion::factory()->for($this->evaluation)->create();
         $question4 = EvaluationQuestion::factory()->for($this->evaluation)->create();
 
@@ -414,10 +405,10 @@ class SubmitEvaluationRequestTest extends TestCase
 
         $response = $this->postJson("/api/evaluations/{$this->evaluation->id}/submit", [
             'answers' => [
-                ['question_id' => $this->question1->id, 'answer' => 'Answer 1'],
-                ['question_id' => $this->question2->id, 'answer' => 'Answer 2'],
-                ['question_id' => $question3->id, 'answer' => 'Answer 3'],
-                ['question_id' => $question4->id, 'answer' => 'Answer 4'],
+                $this->question1->id => 'Answer 1',
+                $this->question2->id => 'Answer 2',
+                $question3->id => 'Answer 3',
+                $question4->id => 'Answer 4',
             ],
         ]);
 

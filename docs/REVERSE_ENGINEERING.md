@@ -91,7 +91,7 @@ routes/api.php (174 routes, montées sur /api ET /api/v1 ; /api/v2 réservé, vi
 
 | Domaine | Entités | Logique clé |
 |---|---|---|
-| **Séances / Visio** | `Seance`, `ESBTPAttendance`, `SeanceUserHidden` | Cycle `programmee → active → terminee` ; salle Jitsi générée localement (`lms_seance_{id}_{ts}`), aucun appel serveur→Jitsi ; heartbeat 30 s → `last_seen_at` ; coordinateurs = observateurs fantômes (tracés, exclus des stats) |
+| **Séances / Visio** | `Seance`, `ESBTPAttendance`, `SeanceUserHidden` | Cycle `programmee → active → terminee` ; salle Jitsi générée localement avec un identifiant aléatoire non dérivé de la séance, aucun appel serveur→Jitsi ; heartbeat 30 s → `last_seen_at` ; coordinateurs = observateurs fantômes (tracés, exclus des stats) |
 | **Auto-close** | `AutoCloseEmptySeances` + 3 règles priorisées | Prof déconnecté ≥5 min > tous déconnectés ≥10 min > personne jamais venu ≥30 min ; gate `HeartbeatHealthChecker` (si TOUS les heartbeats sont morts >3 min, c'est le heartbeat qui est en panne → on ne ferme pas) ; fermeture transactionnelle avec recalcul des durées |
 | **Quiz (natif LMS)** | `Quiz`, `QuizQuestion/Answer/Attempt` | Grading auto (QCM/multi/vrai-faux), `short_answer`/`essay` → correction manuelle (statut `submitted` en attente) ; stats dénormalisées recalculées **explicitement** (`QuizStatisticsService::recompute`, boot hooks supprimés comme anti-pattern) |
 | **Évaluations (miroir KLASSCI)** | `Evaluation`, `EvaluationSubmission` | Notées sur barème /20 ; fenêtre temporelle interrogée **en live** chez KLASSCI au démarrage ; mode « entraînement » hors fenêtre (note non officielle) |
@@ -154,11 +154,9 @@ rappels d'évaluations 08:00, purge notifications lues le dimanche.
 
 ### 2.4 Déploiement réel
 
-Hébergement **cPanel mutualisé Linux** (`.cpanel.yml` → `/home/c2569688c/public_html/lms-backend`),
-**migration VPS en préparation** (épique scalabilité #381, issue #367).
-Le pipeline cPanel ne fait **ni `migrate` ni installation de cron** : migrations et
-cron `schedule:run` sont manuels — la procédure de référence est désormais
-`docs/DEPLOYMENT_OPS.md` (PR #386). Les scripts `scheduler.bat` /
+Hébergement **VPS Linux** (racine `/var/www/lms-backend`).
+Les migrations et le cron `schedule:run` restent manuels — la procédure de
+référence est `docs/DEPLOYMENT_OPS.md` (PR #386). Les scripts `scheduler.bat` /
 `laravel-scheduler-task.xml` / `setup-scheduler-windows.ps1` ne concernent que le poste
 de dev Windows (chemins codés en dur).
 

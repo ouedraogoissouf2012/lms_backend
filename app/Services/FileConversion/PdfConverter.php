@@ -15,7 +15,8 @@ use RuntimeException;
  *
  * Pipeline (mirroring the legacy `FileConversionService::convertPdf`) :
  *  1. Validate the upload (size + extension + MIME) via {@see FileValidator}.
- *  2. Persist the original under `chapters/{chapterId}/original/`.
+ *  2. Persist the original under `chapters/{chapterId}/original/` on the
+ *     **private** disk (#598) via {@see ChapterArtifactStorage}.
  *  3. Try ConvertAPI first (one round-trip, no local binaries needed).
  *  4. On ConvertAPI failure, delegate to {@see PdfToPngRenderer} which
  *     auto-selects Imagick (preferred) or Ghostscript locally.
@@ -36,6 +37,7 @@ final class PdfConverter
         private readonly ConvertApiService $convertApi,
         private readonly PdfToPngRendererInterface $pdfRenderer,
         private readonly FileValidator $validator,
+        private readonly ChapterArtifactStorage $artifacts,
     ) {
     }
 
@@ -55,11 +57,9 @@ final class PdfConverter
 
         $this->validator->validate($file, ['pdf']);
 
-        $originalPath = $file->store("chapters/{$chapterId}/original", 'public');
-        if ($originalPath === false) {
-            throw new RuntimeException('Échec sauvegarde du fichier original');
-        }
-        $fullOriginalPath = storage_path("app/public/{$originalPath}");
+        // #598 — disque PRIVÉ : le document source n'est plus servable via /storage.
+        $originalPath = $this->artifacts->storeOriginal($file, $chapterId);
+        $fullOriginalPath = $this->artifacts->absolutePath($originalPath);
 
         try {
             return $this->tryConvertApi($fullOriginalPath, $originalPath, $chapterId);

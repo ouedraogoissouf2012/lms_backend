@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Enums\Role;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -64,32 +65,32 @@ class EnsureRole
     {
         $normalized = [];
 
-        $roleMapping = [
-            'enseignant'   => ['enseignant', 'teacher'],
-            'etudiant'     => ['etudiant', 'student'],
-            'coordinateur' => ['coordinateur', 'coordinator'],
-            'admin'        => ['admin', 'administrateur', 'administrator'],
-            'superadmin'   => ['superadmin'],  // FIX #27 & #28: Unified lowercase
-            'supradmin'    => ['supradmin'],
-        ];
-
         foreach ($roles as $role) {
-            $roleLower = strtolower(trim($role));
+            $trimmed = trim((string) $role);
+            $lower = strtolower($trimmed);
 
-            // Trouver toutes les variantes du rôle
-            foreach ($roleMapping as $variants) {
-                if (in_array($roleLower, $variants)) {
-                    $normalized = array_merge($normalized, $variants);
-                }
+            // Admin intra-tenant : ne jamais passer par tryFromString
+            // (superAdmin y devient Role::Supradmin — #102).
+            if ($lower === 'superadmin') {
+                $normalized[] = 'superadmin';
+                continue;
             }
 
-            // Si rôle non mappé, l'ajouter quand même
-            if (!in_array($roleLower, $normalized)) {
-                $normalized[] = $roleLower;
+            $enum = Role::tryFromString($trimmed);
+            if ($enum === Role::Supradmin) {
+                $normalized[] = 'supradmin';
+                continue;
             }
+
+            if ($enum !== null) {
+                $normalized = array_merge($normalized, $enum->aliases());
+                continue;
+            }
+
+            $normalized[] = $lower;
         }
 
-        return array_unique($normalized);
+        return array_values(array_unique($normalized));
     }
 
     /**
@@ -101,19 +102,27 @@ class EnsureRole
      */
     private function userHasRole($user, array $allowedRoles): bool
     {
+        // Gestionnaire PLATEFORME (cross-tenant) : bypass total, mais comparaison
+        // STRICTE alignée sur isPlatformSupradmin() (#511) — une variante de casse
+        // ('Supradmin', 'SUPRADMIN') ne doit JAMAIS franchir cette barrière
+        // cross-tenant, cohérent avec les gardes de lecture (FileQueryService…).
+        if ($user->isPlatformSupradmin()) {
+            return true;
+        }
+
         $userRole = strtolower(trim($user->role));
 
-        // supradmin (gestionnaire plateforme) bypasse tous les contrôles de rôle
-        if ($userRole === 'supradmin') {
+        // superAdmin (admin institution) bypasse tous les contrôles SAUF les routes
+        // réservées au gestionnaire plateforme.
+        if ($userRole === 'superadmin' && !in_array('supradmin', $allowedRoles, true)) {
             return true;
         }
 
-        // superAdmin (admin institution) bypasse tous les contrôles sauf les routes supradmin exclusives
-        if ($userRole === 'superadmin' && !in_array('supradmin', $allowedRoles)) {
-            return true;
-        }
+        // Match nominal insensible à la casse. Le rôle plateforme `supradmin` est
+        // EXCLU de ce match : il n'est satisfait que par un vrai platform supradmin
+        // (traité ci-dessus), jamais par une variante de casse (#511).
+        $matchableRoles = array_diff($allowedRoles, ['supradmin']);
 
-        // Vérifier si le rôle user est dans la liste des rôles autorisés
-        return in_array($userRole, $allowedRoles);
+        return in_array($userRole, $matchableRoles, true);
     }
 }

@@ -2,27 +2,29 @@
 
 namespace App\Models;
 
+use App\Enums\LessonStatus;
+use App\Models\Concerns\Publishable;
+use App\Models\Traits\BelongsToInstitution;
+use Database\Factories\LessonFactory;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\SoftDeletes;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
-use App\Models\Traits\BelongsToInstitution;
+use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Carbon;
 
 /**
- * Model Lesson
- *
- * Représente un cours/leçon dans le LMS
- *
  * @property LessonProgress|null $user_progress Attribut posé par LessonListService (LessonProgressService::progressForUser).
  * @property array{students_started: int, students_completed: int, average_completion_rate: float} $statistics Attribut posé par LessonListService (staff uniquement).
- * @property-read int|null $students_started Alias `withCount(['progress as students_started'])` (DashboardTeacherController).
+ * @property LessonStatus $status
+ * @property Carbon|null $published_at
  */
 class Lesson extends Model
 {
-    /** @use HasFactory<\Database\Factories\LessonFactory> */
-    use HasFactory, SoftDeletes, BelongsToInstitution;
+    /** @use HasFactory<LessonFactory> */
+    use BelongsToInstitution, HasFactory, Publishable, SoftDeletes;
 
     protected $fillable = [
         'matiere_id',
@@ -40,18 +42,18 @@ class Lesson extends Model
         'published_at',
         'archived_at',
         'attachments',
-        // Note: content fields moved to chapters
         'institution_id',
     ];
 
     protected $casts = [
+        'status' => LessonStatus::class,
         'published_at' => 'datetime',
         'archived_at' => 'datetime',
         'attachments' => 'array',
     ];
 
     protected $attributes = [
-        'status' => 'draft',
+        'status' => LessonStatus::Draft->value,
         'type' => 'cours',
         'niveau_difficulte' => 'debutant',
         'order' => 0,
@@ -99,43 +101,37 @@ class Lesson extends Model
         return $this->hasMany(LessonResource::class)->ordered();
     }
 
-    /** Scope: Cours publiés uniquement */
-    public function scopePublished($query)
+    /** @return HasMany<SeanceRecording, $this> Enregistrements visio rattachés. */
+    public function seanceRecordings(): HasMany
     {
-        return $query->where('status', 'published')
-            ->whereNotNull('published_at')
-            ->where('published_at', '<=', now());
+        return $this->hasMany(SeanceRecording::class);
     }
 
-    /** Scope: Par matière */
-    public function scopeForMatiere($query, int $matiereId)
+    /** @param Builder<Lesson> $query
+     * @return Builder<Lesson> */
+    public function scopeForMatiere(Builder $query, int $matiereId)
     {
         return $query->where('matiere_id', $matiereId);
     }
 
-    /** Scope: Par classe */
-    public function scopeForClasse($query, int $classeId)
+    /** @param Builder<Lesson> $query
+     * @return Builder<Lesson> */
+    public function scopeForClasse(Builder $query, int $classeId)
     {
         return $query->where('classe_id', $classeId);
     }
 
-    /** Scope: Par enseignant */
-    public function scopeByTeacher($query, int $enseignantId)
+    /** @param Builder<Lesson> $query
+     * @return Builder<Lesson> */
+    public function scopeByTeacher(Builder $query, int $enseignantId)
     {
         return $query->where('enseignant_id', $enseignantId);
     }
 
-    /** Scope: Ordonné */
-    public function scopeOrdered($query)
+    /** @param Builder<Lesson> $query
+     * @return Builder<Lesson> */
+    public function scopeOrdered(Builder $query)
     {
         return $query->orderBy('order')->orderBy('created_at');
-    }
-
-    /** Vérifie si le cours est publié (état pur, sans DB). */
-    public function isPublished(): bool
-    {
-        return $this->status === 'published'
-            && $this->published_at !== null
-            && $this->published_at->isPast();
     }
 }

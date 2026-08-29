@@ -50,6 +50,15 @@ final class EvaluationStudentAttemptController extends AuthenticatedController
                 'window' => $result['window'] ?? null,
             ], 403),
             'max_attempts' => $this->errorResponse($result['message'], 403),
+            'retake_forbidden' => $this->errorResponse($result['message'] ?? 'Reprise non autorisée', 403),
+            'offline_only' => $this->errorResponse($result['message'] ?? 'Évaluation hors ligne', 403),
+            // #499 : fenêtre non vérifiable (KLASSCI indisponible) → 503 transitoire
+            // (fail-closed), pas 403 : ce n'est pas un refus d'accès mais une
+            // indisponibilité de dépendance ; le client doit réessayer.
+            'window_check_failed' => $this->errorResponse(
+                $result['message'] ?? "Service momentanément indisponible, veuillez réessayer.",
+                503
+            ),
             // Non migré vers successResponse() : cette réponse expose des clés
             // racine `window` + `is_practice` hors enveloppe que le trait ne
             // reproduit pas → conservé tel quel (axe #1 « DRY-only »).
@@ -90,11 +99,18 @@ final class EvaluationStudentAttemptController extends AuthenticatedController
             $submission->answers = $request->validated('answers');
             $this->gradingService->submit($submission);
 
-            return $this->successResponse([
+            $payload = [
                 'submission' => $submission,
                 'score' => $submission->score,
                 'note_sur_20' => $submission->note_sur_20,
-            ], 'Évaluation soumise avec succès', 201);
+            ];
+            $evaluation = $submission->evaluation;
+            if ($evaluation !== null && $evaluation->show_results === false) {
+                unset($payload['score'], $payload['note_sur_20']);
+                $payload['submission']->makeHidden(['score', 'note_sur_20']);
+            }
+
+            return $this->successResponse($payload, 'Évaluation soumise avec succès', 201);
         } catch (\Exception $e) {
             Log::error('Erreur soumission évaluation', ['error' => $e->getMessage()]);
             return $this->errorResponse('Erreur lors de la soumission', 500);

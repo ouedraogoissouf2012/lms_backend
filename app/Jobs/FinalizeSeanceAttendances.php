@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\Jobs\Concerns\InteractsWithDrainBudget;
 use App\Models\ESBTPAttendance;
 use App\Models\Seance;
 use Carbon\Carbon;
@@ -15,12 +16,13 @@ use Psr\Log\LoggerInterface;
 class FinalizeSeanceAttendances implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+    use InteractsWithDrainBudget;
 
     /** Nombre max de tentatives — DB-only, retry 3x sur transient. */
     public int $tries = 3;
 
-    /** Timeout par tentative en secondes — finalisation de N participants × M séances. */
-    public int $timeout = 300;
+    /** #539 — timeout dur borné au budget de drain (55 s) ; arrêt souple avant. */
+    public int $timeout = 55;
 
     /**
      * Backoff progressif.
@@ -46,81 +48,86 @@ class FinalizeSeanceAttendances implements ShouldQueue
     {
         $now = Carbon::now();
         $finalizedCount = 0;
+        $seancesProcessed = 0;
+        $startedAt = microtime(true);
+        $budgetReached = false;
 
         $logger->info('[FinalizeSeanceAttendances] Démarrage du job');
 
-        // Récupérer toutes les séances actives qui sont terminées depuis > GRACE_PERIOD
-        $seancesTerminees = Seance::where('is_active', true)
-            ->whereNotNull('heure_fin')
-            ->whereNotNull('date_seance')
-            ->get()
-            ->filter(function ($seance) use ($now) {
-                // Construire le datetime de fin
-                $dateFin = Carbon::parse($seance->date_seance . ' ' . $seance->heure_fin);
-                $graceDeadline = $dateFin->copy()->addMinutes(self::GRACE_PERIOD_MINUTES);
+        $cutoff = $now->copy()->subMinutes(self::GRACE_PERIOD_MINUTES);
 
-                // Ne traiter que les séances dont le délai de grâce est dépassé
-                return $graceDeadline->isPast();
+        // visio_ended_at est la source persistée de fin de visio. Traitement PAR
+        // LOTS + arrêt souple au budget de drain (#539) : job idempotent — une
+        // séance déjà finalisée (plus de participants 'connected') est re-balayée
+        // sans effet ; le travail restant reprend au run suivant.
+        Seance::where('is_active', true)
+            ->whereNotNull('visio_ended_at')
+            ->where('visio_ended_at', '<=', $cutoff)
+            ->chunkById($this->drainChunkSize, function ($seances) use (&$finalizedCount, &$seancesProcessed, &$budgetReached, $startedAt, $logger) {
+                foreach ($seances as $seance) {
+                    $seancesProcessed++;
+                    $finalizedCount += $this->finalizeSeance($seance, $logger);
+                }
+
+                if ($this->drainBudgetExceeded($startedAt)) {
+                    $budgetReached = true;
+
+                    return false;
+                }
+
+                return true;
             });
 
-        $logger->info('[FinalizeSeanceAttendances] Séances à traiter', [
-            'count' => $seancesTerminees->count()
+        $logger->info('[FinalizeSeanceAttendances] Job terminé', [
+            'seances_traitees' => $seancesProcessed,
+            'participants_finalises' => $finalizedCount,
+            'budget_atteint' => $budgetReached,
+        ]);
+    }
+
+    /**
+     * Finalise les participants encore 'connected' d'une séance terminée.
+     * Retourne le nombre de participants finalisés (0 si aucun — la séance
+     * a déjà été traitée à un run précédent).
+     */
+    private function finalizeSeance(Seance $seance, LoggerInterface $logger): int
+    {
+        $participantsActifs = ESBTPAttendance::where('seance_id', $seance->id)
+            ->where('status', 'connected')
+            ->get();
+
+        if ($participantsActifs->isEmpty()) {
+            return 0;
+        }
+
+        $logger->info('[FinalizeSeanceAttendances] Finalisation séance', [
+            'seance_id' => $seance->id,
+            'klassci_seance_id' => $seance->klassci_seance_id,
+            'participants_actifs' => $participantsActifs->count(),
         ]);
 
-        foreach ($seancesTerminees as $seance) {
-            // Récupérer tous les participants encore marqués 'connected'
-            $participantsActifs = ESBTPAttendance::where('seance_id', $seance->id)
-                ->where('status', 'connected')
-                ->get();
-
-            if ($participantsActifs->isEmpty()) {
+        $count = 0;
+        foreach ($participantsActifs as $attendance) {
+            $dateFin = $seance->visio_ended_at;
+            if ($dateFin === null) {
                 continue;
             }
 
-            $logger->info('[FinalizeSeanceAttendances] Finalisation séance', [
-                'seance_id' => $seance->id,
-                'klassci_seance_id' => $seance->klassci_seance_id,
-                'titre' => $seance->titre,
-                'participants_actifs' => $participantsActifs->count()
-            ]);
+            // Si l'étudiant a un last_seen_at avant l'heure de fin, l'utiliser.
+            $leftAt = ($attendance->last_seen_at && $attendance->last_seen_at->lt($dateFin))
+                ? $attendance->last_seen_at
+                : $dateFin;
 
-            foreach ($participantsActifs as $attendance) {
-                // Calculer left_at: soit heure_fin de la séance, soit last_seen_at
-                $dateFin = Carbon::parse($seance->date_seance . ' ' . $seance->heure_fin);
-
-                // Si l'étudiant a un last_seen_at avant l'heure de fin, utiliser last_seen_at
-                if ($attendance->last_seen_at && $attendance->last_seen_at->lt($dateFin)) {
-                    $leftAt = $attendance->last_seen_at;
-                } else {
-                    $leftAt = $dateFin;
-                }
-
-                // Marquer comme déconnecté
-                $attendance->status = 'disconnected';
-                $attendance->left_at = $leftAt;
-
-                // Calculer la durée si joined_at existe
-                if ($attendance->joined_at) {
-                    $attendance->duration_minutes = $attendance->joined_at->diffInMinutes($leftAt);
-                }
-
-                $attendance->save();
-
-                $finalizedCount++;
-
-                $logger->info('[FinalizeSeanceAttendances] Participant finalisé', [
-                    'user_id' => $attendance->user_id,
-                    'joined_at' => $attendance->joined_at?->format('Y-m-d H:i:s'),
-                    'left_at' => $leftAt->format('Y-m-d H:i:s'),
-                    'duration_minutes' => $attendance->duration_minutes
-                ]);
+            $attendance->status = 'disconnected';
+            $attendance->left_at = $leftAt;
+            if ($attendance->joined_at) {
+                $attendance->duration_minutes = (int) $attendance->joined_at->diffInMinutes($leftAt);
             }
+            $attendance->save();
+            $count++;
         }
 
-        $logger->info('[FinalizeSeanceAttendances] Job terminé', [
-            'seances_traitees' => $seancesTerminees->count(),
-            'participants_finalises' => $finalizedCount
-        ]);
+        return $count;
     }
 
     /**
@@ -128,14 +135,14 @@ class FinalizeSeanceAttendances implements ShouldQueue
      */
     public function failed(\Throwable $exception): void
     {
-                // Pattern AutoCloseEmptySeances (#209) : failed() est appelée hors
+        // Pattern AutoCloseEmptySeances (#209) : failed() est appelée hors
         // container (aucune injection possible) — résolution explicite.
         /** @var LoggerInterface $logger */
         $logger = app(LoggerInterface::class);
 
         $logger->error('[FinalizeSeanceAttendances] Job échoué', [
             'error' => $exception->getMessage(),
-            'trace' => $exception->getTraceAsString()
+            'trace' => $exception->getTraceAsString(),
         ]);
     }
 }

@@ -29,6 +29,9 @@ final class DeleteEvaluationRequest extends FormRequest
         return $this->checkEvaluationOwnership();
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     public function rules(): array
     {
         return [];

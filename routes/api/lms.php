@@ -1,8 +1,7 @@
 <?php
 
-use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\API\TeacherStatsController;
-
+use App\Http\Controllers\API\Dashboard\DashboardAdminController;
+use App\Http\Controllers\API\Dashboard\DashboardStudentController;
 // ============================================
 // NOTIFICATIONS - Routes protégées
 // ============================================
@@ -12,9 +11,9 @@ use App\Http\Controllers\API\TeacherStatsController;
 // ============================================
 // DASHBOARD - Routes protégées
 // ============================================
-use App\Http\Controllers\API\Dashboard\DashboardAdminController;
-use App\Http\Controllers\API\Dashboard\DashboardStudentController;
 use App\Http\Controllers\API\Dashboard\DashboardTeacherController;
+use App\Http\Controllers\API\TeacherStatsController;
+use Illuminate\Support\Facades\Route;
 
 Route::middleware(['auth:sanctum', 'klassci.sync'])->prefix('dashboard')->group(function () {
     // Dashboard étudiant (tous les utilisateurs authentifiés)
@@ -44,16 +43,19 @@ Route::middleware(['auth:sanctum', 'klassci.sync', 'role:enseignant,coordinateur
 use App\Http\Controllers\API\LMS\LMSAttendancesController;
 use App\Http\Controllers\API\LMS\LMSClassesController;
 use App\Http\Controllers\API\LMS\LMSEnseignantsController;
+use App\Http\Controllers\API\Admin\AdminStatisticsController;
 use App\Http\Controllers\API\LMS\LMSMatieresAdminController;
 use App\Http\Controllers\API\LMS\LMSMatieresQueryController;
 use App\Http\Controllers\API\LMS\LMSNotificationsPreferencesController;
 use App\Http\Controllers\API\LMS\LMSSeanceDetailsController;
 use App\Http\Controllers\API\LMS\LMSSeanceParticipantMutationController;
-use App\Http\Controllers\API\LMS\LMSSeanceVisibilityMutationController;
 use App\Http\Controllers\API\LMS\LMSSeancesHistoryController;
 use App\Http\Controllers\API\LMS\LMSSeancesListController;
+use App\Http\Controllers\API\LMS\LMSSeanceVisibilityMutationController;
 use App\Http\Controllers\API\LMS\LMSVisioLifecycleController;
 use App\Http\Controllers\API\LMS\LMSVisioParticipantController;
+use App\Http\Controllers\API\LMS\LMSVisioRecordingController;
+use App\Http\Controllers\API\LMS\VisioRecordingWebhookController;
 
 Route::middleware(['auth:sanctum', 'klassci.sync'])->prefix('lms')->group(function () {
     // Détails complets d'une classe
@@ -78,6 +80,8 @@ Route::middleware(['auth:sanctum', 'klassci.sync', 'role:admin,coordinateur'])->
     // Liste toutes les matières avec combinaisons complètes
     Route::get('/matieres', [LMSMatieresAdminController::class, 'adminMatieresList'])
         ->name('admin.matieres.list');
+    Route::get('/statistics', [AdminStatisticsController::class, 'show'])
+        ->name('admin.statistics');
 });
 
 // Retour au groupe /lms pour les autres routes
@@ -119,7 +123,8 @@ Route::middleware(['auth:sanctum', 'klassci.sync'])->prefix('lms')->group(functi
 
     // Valider l'accès d'un participant
     Route::post('/seances/{seanceId}/validate-participant', [LMSSeanceParticipantMutationController::class, 'validateParticipant'])
-        ->name('lms.seances.validate-participant');
+        ->name('lms.seances.validate-participant')
+        ->middleware('role:enseignant,coordinateur,admin,superAdmin');
 
     // Toggle visio pour séance (coordinateurs uniquement)
     Route::post('/seances/{seanceId}/toggle-visio', [LMSSeanceVisibilityMutationController::class, 'toggleVisioSeance'])
@@ -128,7 +133,8 @@ Route::middleware(['auth:sanctum', 'klassci.sync'])->prefix('lms')->group(functi
 
     // Synchroniser les attendances depuis une session vidéo
     Route::post('/attendances/from-video-session', [LMSAttendancesController::class, 'syncAttendancesFromVideoSession'])
-        ->name('lms.attendances.from-video-session');
+        ->name('lms.attendances.from-video-session')
+        ->middleware('role:enseignant,coordinateur,admin,superAdmin');
 
     // Historique des présences (accessible même si séances archivées)
     Route::get('/attendance/history', [LMSAttendancesController::class, 'getAttendanceHistory'])
@@ -165,6 +171,17 @@ Route::middleware(['auth:sanctum', 'klassci.sync'])->prefix('lms')->group(functi
         ->name('lms.seances.end-visio')
         ->middleware('role:enseignant,coordinateur');
 
+    Route::post('/seances/{seanceId}/recording/start', [LMSVisioRecordingController::class, 'start'])
+        ->name('lms.seances.recording.start')
+        ->middleware('role:enseignant');
+
+    Route::post('/seances/{seanceId}/recording/stop', [LMSVisioRecordingController::class, 'stop'])
+        ->name('lms.seances.recording.stop')
+        ->middleware('role:enseignant');
+
+    Route::get('/seances/{seanceId}/recording', [LMSVisioRecordingController::class, 'show'])
+        ->name('lms.seances.recording.show');
+
     // Étudiant rejoint visio
     Route::post('/seances/{seanceId}/join', [LMSVisioParticipantController::class, 'joinVisio'])
         ->name('lms.seances.join')
@@ -175,10 +192,10 @@ Route::middleware(['auth:sanctum', 'klassci.sync'])->prefix('lms')->group(functi
         ->name('lms.seances.leave')
         ->middleware('throttle:300,1');
 
-    // Heartbeat participant (ping d'activité) - Rate limited to 10000/min per user
+    // Heartbeat participant (ping d'activité) - limité par utilisateur et séance
     Route::post('/seances/{seanceId}/heartbeat', [LMSVisioParticipantController::class, 'heartbeatVisio'])
         ->name('lms.seances.heartbeat')
-        ->middleware('throttle:10000,1');
+        ->middleware('throttle:visio-heartbeat');
 
     // Liste des participants connectés à une visio.
     // REQ-4 du spec : route renommée `/visio-participants` pour résoudre le
@@ -209,3 +226,7 @@ Route::middleware(['auth:sanctum', 'klassci.sync'])->prefix('lms')->group(functi
     Route::post('/notifications/send-session-reminder', [LMSNotificationsPreferencesController::class, 'sendSessionReminder'])
         ->name('lms.notifications.send-session-reminder');
 });
+
+Route::post('/webhooks/visio/recording-ready', [VisioRecordingWebhookController::class, 'recordingReady'])
+    ->middleware('throttle:60,1')
+    ->name('webhooks.visio.recording-ready');

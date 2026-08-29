@@ -169,6 +169,7 @@ final class WordConverterTest extends TestCase
             new \Psr\Log\NullLogger(),
             $this->shellMock,
             $this->validator,
+            app(\App\Services\FileConversion\ChapterArtifactStorage::class),
         );
     }
 }

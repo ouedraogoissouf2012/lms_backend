@@ -15,12 +15,13 @@ use App\Models\User;
 use App\Services\Dashboard\AdminDashboardService;
 use App\Services\TenantManager;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Cache;
 use Tests\TestCase;
 
 /**
  * Tests unitaires de {@see AdminDashboardService} (issue #364 — TDD :
  * écrits AVANT l'extraction de la logique hors de
- * `DashboardAdminController::stats`).
+ * `DashboardAdminController::stats`. Étendu #546 — cache 300s scopé tenant).
  *
  * Deux mécanismes d'isolation se CUMULENT sur les users (verbatim du
  * controller) : le scope global `BelongsToInstitution` (User l'utilise
@@ -29,7 +30,9 @@ use Tests\TestCase;
  * Notification, QuizAttempt) ne sont isolés que par le scope global.
  *
  * Couverture : happy path, edge (tenantUrl null → filtre URL désactivé,
- * scope institution seul), multi-tenant A/B (§1.3), activité récente 7 jours.
+ * scope institution seul), multi-tenant A/B (§1.3), activité récente 7 jours,
+ * cache 300s (hit, isolation inter-institution, isolation intra-institution
+ * par `klassci_tenant_url` — #546).
  */
 final class AdminDashboardServiceTest extends TestCase
 {
@@ -47,7 +50,12 @@ final class AdminDashboardServiceTest extends TestCase
     {
         parent::setUp();
 
-        $this->service = new AdminDashboardService();
+        // Sanity : store `database` (phpunit.xml) partagé entre tests — clean
+        // state garanti même si RefreshDatabase ne couvre pas la table `cache`
+        // (cf. pattern AdminAnalyticsCacheIsolationTest).
+        Cache::flush();
+
+        $this->service = $this->app->make(AdminDashboardService::class);
         $this->institutionA = Institution::factory()->create(['slug' => 'school-a']);
         $this->institutionB = Institution::factory()->create(['slug' => 'school-b']);
 
@@ -305,6 +313,98 @@ final class AdminDashboardServiceTest extends TestCase
         $this->assertSame(
             ['new_users', 'new_lessons', 'new_quiz_attempts', 'new_forum_topics'],
             array_keys($stats['recent_activity'])
+        );
+    }
+
+    /**
+     * #546 REQ-1 — deuxième appel dans la fenêtre TTL(300s) servi depuis le
+     * cache : une leçon créée ENTRE les deux appels ne doit PAS apparaître
+     * dans le second (preuve comportementale, pas juste un count de requêtes).
+     */
+    public function test_second_call_within_ttl_is_served_from_cache(): void
+    {
+        $teacherA = User::factory()->teacher()->create(['institution_id' => $this->institutionA->id]);
+        Lesson::factory()->forTeacher($teacherA)->published()->create([
+            'institution_id' => $this->institutionA->id,
+        ]);
+
+        $first = $this->service->buildStats($this->coordinator);
+        $this->assertSame(1, $first['lessons']['total']);
+
+        // Écriture après le 1er appel : un buildStats() non caché la verrait.
+        Lesson::factory()->forTeacher($teacherA)->published()->create([
+            'institution_id' => $this->institutionA->id,
+        ]);
+
+        $second = $this->service->buildStats($this->coordinator);
+        $this->assertSame(
+            1,
+            $second['lessons']['total'],
+            'Le 2e appel doit être servi depuis le cache 300s, pas re-agrégé.'
+        );
+    }
+
+    /**
+     * #546 REQ-1 — la clé de cache est scopée par le slug d'institution
+     * résolu (jamais un identifiant dérivé de l'URL KLASSCI seule) :
+     * deux institutions n'écrasent jamais le cache l'une de l'autre.
+     */
+    public function test_cache_is_isolated_between_institutions(): void
+    {
+        $teacherA = User::factory()->teacher()->create(['institution_id' => $this->institutionA->id]);
+        Lesson::factory()->forTeacher($teacherA)->published()->count(3)->create([
+            'institution_id' => $this->institutionA->id,
+        ]);
+        $statsA = $this->service->buildStats($this->coordinator);
+
+        $teacherB = User::factory()->teacher()->create(['institution_id' => $this->institutionB->id]);
+        Lesson::factory()->forTeacher($teacherB)->published()->create([
+            'institution_id' => $this->institutionB->id,
+        ]);
+        $coordinatorB = User::factory()->coordinator()->create([
+            'institution_id' => $this->institutionB->id,
+            'klassci_tenant_url' => self::TENANT_URL_B,
+        ]);
+        $this->app->make(TenantManager::class)->set($this->institutionB);
+        $statsB = $this->service->buildStats($coordinatorB);
+
+        $this->assertSame(3, $statsA['lessons']['total']);
+        $this->assertSame(
+            1,
+            $statsB['lessons']['total'],
+            'Institution B ne doit jamais voir le cache agrégé de A (fuite cross-tenant).'
+        );
+    }
+
+    /**
+     * #546 REQ-2 — au sein d'une MÊME institution, deux coordinateurs de
+     * `klassci_tenant_url` différents ne doivent PAS partager le cache : la
+     * clé doit inclure ce sous-scope, sinon `test_url_filter_is_disabled_*`
+     * casserait silencieusement sous cache.
+     */
+    public function test_cache_is_isolated_between_coordinators_with_different_tenant_url(): void
+    {
+        User::factory()->student()->count(2)->create([
+            'institution_id' => $this->institutionA->id,
+            'klassci_tenant_url' => self::TENANT_URL_A,
+        ]);
+        $statsUrlA = $this->service->buildStats($this->coordinator);
+        // coordinateur (URL A) + 2 étudiants (URL A) = 3.
+        $this->assertSame(3, $statsUrlA['users']['total']);
+
+        $coordinatorWithoutUrl = User::factory()->coordinator()->create([
+            'institution_id' => $this->institutionA->id,
+            'klassci_tenant_url' => null,
+        ]);
+        $statsNoUrl = $this->service->buildStats($coordinatorWithoutUrl);
+
+        // Sans filtre URL (when(null,...) désactivé) : TOUS les users de
+        // l'institution A sont visibles — coordinateur(3) + coordinatorWithoutUrl(1) = 4.
+        // Si le cache fuitait entre les deux scopes, on retrouverait 3 (valeur de l'appel URL A).
+        $this->assertSame(
+            4,
+            $statsNoUrl['users']['total'],
+            'Le coordinateur sans tenant_url ne doit pas hériter du cache du coordinateur avec URL A.'
         );
     }
 }

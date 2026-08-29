@@ -37,6 +37,8 @@ use App\Models\User;
  */
 trait ChecksFileAuthorization
 {
+    use AuthorizesTenantScopedResource;
+
     /**
      * Authorize READ access to a file (show, download).
      *
@@ -55,17 +57,9 @@ trait ChecksFileAuthorization
             return false;
         }
 
-        // Intentional: strict lowercase `'supradmin'` only — l'enum `Role::Supradmin`
-        // normaliserait aussi `'superAdmin'` (intra-tenant admin) via `tryFromString`,
-        // ce qui briserait la distinction délibérée du trait (cf. PR #103 / issue #102
-        // et `.claude/specs/file-idor-cross-tenant/design.md` §2).
-        // NE PAS migrer vers `asRoleEnum()` (#132 spec design.md §4.4).
-        if ($user->role === 'supradmin') {
-            return true;
-        }
-
-        if ($file->institution_id !== $user->institution_id) {
-            return false;
+        $guard = $this->passesTenantGuard($user, $file->institution_id);
+        if ($guard !== null) {
+            return $guard;
         }
 
         if ($file->is_public === true) {
@@ -91,17 +85,9 @@ trait ChecksFileAuthorization
             return false;
         }
 
-        // Intentional: strict lowercase `'supradmin'` only — l'enum `Role::Supradmin`
-        // normaliserait aussi `'superAdmin'` (intra-tenant admin) via `tryFromString`,
-        // ce qui briserait la distinction délibérée du trait (cf. PR #103 / issue #102
-        // et `.claude/specs/file-idor-cross-tenant/design.md` §2).
-        // NE PAS migrer vers `asRoleEnum()` (#132 spec design.md §4.4).
-        if ($user->role === 'supradmin') {
-            return true;
-        }
-
-        if ($file->institution_id !== $user->institution_id) {
-            return false;
+        $guard = $this->passesTenantGuard($user, $file->institution_id);
+        if ($guard !== null) {
+            return $guard;
         }
 
         if ($file->user_id === $user->id) {

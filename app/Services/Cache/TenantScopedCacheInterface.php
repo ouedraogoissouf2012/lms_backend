@@ -23,11 +23,15 @@ interface TenantScopedCacheInterface
     public function remember(string $key, int $ttl, \Closure $callback): mixed;
 
     /**
-     * Purge physiquement les entrées taguées pour l'institution courante.
+     * Purge physiquement les entrées cache de l'institution courante.
      *
-     * Sur un store sans support des tags (mode dégradé `database`),
-     * l'appel est un no-op journalisé : jamais d'exception, jamais de
-     * flush global de repli (interdit par CONTRIBUTING.md §E).
+     * La stratégie dépend du store actif (#547) :
+     *   - Redis/Memcached → purge par tag `institution_{id}` ;
+     *   - `database`      → DELETE ciblé par motif de clé (namespace tenant) ;
+     *   - `file`/`array`  → no-op journalisé (pas de purge ciblée native).
+     *
+     * Dans tous les cas : jamais d'exception, jamais de flush global de repli
+     * cross-tenant (interdit par CONTRIBUTING.md §E).
      */
     public function flushTenant(): void;
 }

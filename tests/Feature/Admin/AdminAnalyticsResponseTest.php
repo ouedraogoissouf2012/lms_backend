@@ -7,6 +7,7 @@ namespace Tests\Feature\Admin;
 use App\Models\Institution;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Testing\TestResponse;
 use Tests\TestCase;
 
@@ -51,6 +52,47 @@ final class AdminAnalyticsResponseTest extends TestCase
     public function test_system_metrics_returns_success_data_envelope(): void
     {
         $this->assertSuccessDataShape($this->getAnalytics('system-metrics'));
+    }
+
+    public function test_system_metrics_exposes_cpanel_safe_backpressure_signals(): void
+    {
+        DB::table('jobs')->insert([
+            'queue' => 'reports',
+            'payload' => '{}',
+            'attempts' => 0,
+            'reserved_at' => null,
+            'available_at' => now()->subMinute()->timestamp,
+            'created_at' => now()->subMinutes(5)->timestamp,
+        ]);
+        DB::table('jobs')->insert([
+            'queue' => 'reports',
+            'payload' => '{}',
+            'attempts' => 0,
+            'reserved_at' => null,
+            'available_at' => now()->addMinute()->timestamp,
+            'created_at' => now()->timestamp,
+        ]);
+        DB::table('failed_jobs')->insert([
+            'uuid' => (string) str()->uuid(),
+            'connection' => 'database',
+            'queue' => 'reports',
+            'payload' => '{}',
+            'exception' => 'boom',
+            'failed_at' => now(),
+        ]);
+
+        $response = $this->getAnalytics('system-metrics');
+
+        $response->assertJsonPath('data.backpressure.queue.available', true);
+        $response->assertJsonPath('data.backpressure.queue.pending', 1);
+        $response->assertJsonPath('data.backpressure.queue.delayed', 1);
+        $response->assertJsonPath('data.backpressure.queue.failed', 1);
+        $response->assertJsonPath('data.backpressure.queue.queues.reports', 1);
+        $response->assertJsonPath('data.backpressure.klassci.timeout_seconds', 5);
+        $this->assertGreaterThanOrEqual(
+            240,
+            $response->json('data.backpressure.queue.oldest_pending_age_seconds')
+        );
     }
 
     public function test_pending_tasks_returns_success_data_envelope(): void

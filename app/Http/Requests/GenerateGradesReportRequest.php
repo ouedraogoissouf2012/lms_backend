@@ -20,6 +20,9 @@ class GenerateGradesReportRequest extends FormRequest
         return $user !== null && ($user->isCoordinator() || $user->isAdmin());
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     public function rules(): array
     {
         return [

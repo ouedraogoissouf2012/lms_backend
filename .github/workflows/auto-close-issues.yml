@@ -1,0 +1,99 @@
+name: Auto-close issues on PR merge (lms)
+
+# POURQUOI ce workflow existe
+# ---------------------------------------------------------------------------
+# GitHub ne ferme automatiquement une issue (via « Closes #N ») QUE lorsque la
+# PR est mergée dans la BRANCHE PAR DÉFAUT du dépôt. Or le vrai tronc
+# d'intégration de ce projet est `lms`, pas la branche par défaut → aucune
+# fermeture automatique ne se produisait, et les issues restaient ouvertes
+# après merge (fermeture manuelle à chaque fois).
+#
+# Ce workflow reproduit le comportement natif pour les PR mergées dans `lms` :
+# à chaque merge, il ferme les issues référencées par la PR.
+#
+# QUELLES issues il ferme (union) :
+#   1. Les mots-clés de clôture GitHub dans le corps/titre : Closes/Fixes/
+#      Resolves #N (+ variantes closed/fixes/resolved…).
+#   2. La convention projet : le numéro en fin de TITRE `... (#N)`.
+#
+# GARDE-FOU : une épique (titre commençant par `epic(` ou label `epic`) n'est
+# JAMAIS fermée automatiquement — sa clôture reste une décision manuelle.
+
+on:
+  pull_request:
+    types: [closed]
+    branches: [lms]
+
+permissions:
+  issues: write
+  contents: read
+
+jobs:
+  close-linked-issues:
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fermer les issues référencées par la PR mergée
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const pr = context.payload.pull_request;
+            const text = `${pr.title}\n\n${pr.body || ''}`;
+            const numbers = new Set();
+
+            // 1) Mots-clés de clôture GitHub (Closes/Fixes/Resolves #N)
+            const keyword = /\b(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?)\b\s*:?\s+#(\d+)/gi;
+            for (const m of text.matchAll(keyword)) numbers.add(Number(m[1]));
+
+            // 2) Convention projet : numéro de l'issue en fin de TITRE `(#N)`
+            const titleRef = pr.title.match(/\(#(\d+)\)\s*$/);
+            if (titleRef) numbers.add(Number(titleRef[1]));
+
+            if (numbers.size === 0) {
+              core.info('Aucune issue référencée dans la PR — rien à fermer.');
+              return;
+            }
+
+            for (const number of numbers) {
+              try {
+                const { data: issue } = await github.rest.issues.get({
+                  ...context.repo,
+                  issue_number: number,
+                });
+
+                // Ignorer : PR déguisée en numéro, ou issue déjà fermée
+                if (issue.pull_request) {
+                  core.info(`#${number} est une PR — ignorée.`);
+                  continue;
+                }
+                if (issue.state === 'closed') {
+                  core.info(`#${number} déjà fermée — ignorée.`);
+                  continue;
+                }
+
+                // Garde-fou : ne jamais fermer une épique automatiquement
+                const isEpic = /^epic\(/i.test(issue.title || '')
+                  || (issue.labels || []).some(
+                    (l) => (typeof l === 'string' ? l : l.name || '').toLowerCase() === 'epic'
+                  );
+                if (isEpic) {
+                  core.info(`#${number} est une épique — laissée ouverte (clôture manuelle).`);
+                  continue;
+                }
+
+                await github.rest.issues.createComment({
+                  ...context.repo,
+                  issue_number: number,
+                  body: `Fermée automatiquement — résolue par #${pr.number} (mergée dans \`${pr.base.ref}\`).`,
+                });
+                await github.rest.issues.update({
+                  ...context.repo,
+                  issue_number: number,
+                  state: 'closed',
+                  state_reason: 'completed',
+                });
+                core.info(`#${number} fermée.`);
+              } catch (error) {
+                core.warning(`#${number} : échec de fermeture — ${error.message}`);
+              }
+            }

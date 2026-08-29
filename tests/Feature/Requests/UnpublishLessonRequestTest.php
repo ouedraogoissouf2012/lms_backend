@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Requests;
 
+use App\Enums\LessonStatus;
 use App\Models\Lesson;
 use App\Models\User;
 use App\Models\Institution;
@@ -73,7 +74,7 @@ class UnpublishLessonRequestTest extends TestCase
 
         $this->assertTrue(in_array($response->status(), [200, 201]));
         $lesson = Lesson::find($this->lesson->id);
-        $this->assertEquals('draft', $lesson->status);
+        $this->assertEquals(LessonStatus::Draft, $lesson->status);
         $this->assertNull($lesson->published_at);
     }
 
@@ -105,7 +106,7 @@ class UnpublishLessonRequestTest extends TestCase
 
         $this->assertTrue(in_array($response->status(), [200, 201]));
         $lesson = Lesson::find($this->lesson->id);
-        $this->assertEquals('draft', $lesson->status);
+        $this->assertEquals(LessonStatus::Draft, $lesson->status);
     }
 
     /**
@@ -128,7 +129,7 @@ class UnpublishLessonRequestTest extends TestCase
 
         $this->assertTrue(in_array($response->status(), [200, 201]));
         $lesson = Lesson::find($draftLesson->id);
-        $this->assertEquals('draft', $lesson->status);
+        $this->assertEquals(LessonStatus::Draft, $lesson->status);
     }
 
     /**
@@ -142,7 +143,7 @@ class UnpublishLessonRequestTest extends TestCase
 
         $response->assertStatus(403);
         $lesson = Lesson::find($this->lesson->id);
-        $this->assertEquals('published', $lesson->status);
+        $this->assertEquals(LessonStatus::Published, $lesson->status);
     }
 
     /**
@@ -161,7 +162,7 @@ class UnpublishLessonRequestTest extends TestCase
 
         $response->assertStatus(403);
         $lesson = Lesson::find($this->lesson->id);
-        $this->assertEquals('published', $lesson->status);
+        $this->assertEquals(LessonStatus::Published, $lesson->status);
     }
 
     /**
@@ -181,7 +182,7 @@ class UnpublishLessonRequestTest extends TestCase
 
         $response->assertStatus(403);
         $lesson = Lesson::find($this->lesson->id);
-        $this->assertEquals('published', $lesson->status);
+        $this->assertEquals(LessonStatus::Published, $lesson->status);
     }
 
     /**
@@ -193,7 +194,7 @@ class UnpublishLessonRequestTest extends TestCase
 
         $response->assertStatus(401);
         $lesson = Lesson::find($this->lesson->id);
-        $this->assertEquals('published', $lesson->status);
+        $this->assertEquals(LessonStatus::Published, $lesson->status);
     }
 
     /**

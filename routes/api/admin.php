@@ -47,6 +47,14 @@ Route::middleware(['auth:sanctum', 'role:coordinateur,superAdmin'])->prefix('adm
     // Rapport d'activité système - Rate limited: 30/min (resource intensive)
     Route::post('/activity', [ReportController::class, 'generateActivityReport'])
         ->middleware('throttle:30,1');
+
+    Route::get('/async/{id}', [ReportController::class, 'asyncStatus'])
+        ->name('admin.reports.async.status')
+        ->middleware('throttle:60,1');
+
+    Route::get('/async/{id}/download', [ReportController::class, 'asyncDownload'])
+        ->name('admin.reports.async.download')
+        ->middleware('throttle:30,1');
 });
 
 // ============================================
@@ -90,7 +98,9 @@ Route::middleware(['auth:sanctum', 'role:coordinateur,superAdmin,supradmin'])->p
 // ============================================
 // INSTITUTION MANAGEMENT - supradmin uniquement
 // ============================================
-Route::middleware(['auth:sanctum', 'role:supradmin'])
+// #511 : `platform.supradmin` = 2ᵉ garde STRICTE (défense en profondeur) sur le
+// CRUD cross-tenant le plus sensible, en plus de `role:supradmin`.
+Route::middleware(['auth:sanctum', 'role:supradmin', 'platform.supradmin'])
     ->prefix('admin/institutions')
     ->group(function () {
         Route::get('/', [InstitutionController::class, 'index']);
@@ -105,7 +115,7 @@ Route::middleware(['auth:sanctum', 'role:supradmin'])
 // ============================================
 // SEARCH - Recherche globale
 // ============================================
-Route::middleware(['auth:sanctum'])->prefix('search')->group(function () {
+Route::middleware(['auth:sanctum', 'throttle:search'])->prefix('search')->group(function () {
     // Recherche globale
     Route::get('/', [SearchController::class, 'globalSearch']);
 

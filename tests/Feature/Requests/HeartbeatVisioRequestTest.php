@@ -5,16 +5,20 @@ namespace Tests\Feature\Requests;
 use App\Models\Institution;
 use App\Models\Seance;
 use App\Models\User;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
 class HeartbeatVisioRequestTest extends TestCase
 {
-    use \Illuminate\Foundation\Testing\RefreshDatabase;
+    use RefreshDatabase;
 
     private Institution $institution;
+
     private User $student;
+
     private User $teacher;
+
     private Seance $seance;
 
     protected function setUp(): void
@@ -95,5 +99,17 @@ class HeartbeatVisioRequestTest extends TestCase
         $this->assertNotEquals(403, $response1->status());
         $this->assertNotEquals(401, $response2->status());
         $this->assertNotEquals(403, $response2->status());
+    }
+
+    public function test_heartbeat_is_rate_limited_per_user_and_seance(): void
+    {
+        Sanctum::actingAs($this->student);
+        $url = "/api/lms/seances/{$this->seance->klassci_seance_id}/heartbeat";
+
+        for ($attempt = 1; $attempt <= 12; $attempt++) {
+            $this->postJson($url)->assertStatus(404);
+        }
+
+        $this->postJson($url)->assertStatus(429);
     }
 }

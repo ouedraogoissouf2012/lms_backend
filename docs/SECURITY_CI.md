@@ -341,3 +341,144 @@ Doit afficher `secret_scanning: enabled` et `secret_scanning_push_protection: en
 ### Coût CI ajouté
 
 Estimation : **+1 à 3 minutes** par PR (Semgrep scan). Secret scanning : 0 (server-side GitHub). Acceptable pour un projet 10+ ans / 20k+ users.
+
+---
+
+## Matrice de tests PHPUnit — moteur de base de données ([#574](../../../issues/574))
+
+> Ce document est la référence de [`.github/workflows/security.yml`](../.github/workflows/security.yml).
+> Le job `tests` y vit aussi : cette section décrit sa matrice.
+
+### Le problème corrigé
+
+Jusqu'à #574, les deux jambes du job `tests` faisaient varier le **store de cache**
+(`redis` / `database`) mais tournaient **toutes les deux sur SQLite** (`phpunit.xml:49-50`),
+alors que la production tourne sur **MySQL** (`GUIDE_DEPLOIEMENT_PRODUCTION.md:73`). Les tests
+verts attestaient donc le comportement du code sous un moteur que personne n'utilise en
+production : identifiants entre guillemets doubles tolérés, troncatures silencieuses,
+`SELECT … FOR UPDATE` sans effet, `ONLY_FULL_GROUP_BY` absent.
+
+### Les trois jambes
+
+| Jambe | `DB_CONNECTION` | `CACHE_STORE` / `SESSION_DRIVER` / `QUEUE_CONNECTION` | Ce qu'elle protège |
+|---|---|---|---|
+| `sqlite / database` | `sqlite` | `database` | Le poste de développement local (procédure inchangée) |
+| `sqlite / redis` | `sqlite` | `redis` | Le runtime Redis introduit par [#374](../../../issues/374) |
+| `mysql / database` | `mysql` (`mysql:8.4`) | `database` | **La production** : moteur réel + tables `cache`/`sessions`/`jobs` sur ce moteur |
+
+La matrice est **non cartésienne** (`include:` seul). La 4ᵉ combinaison `mysql + redis`
+n'apporterait aucun signal : le moteur SQL et le store de cache sont orthogonaux.
+
+`fail-fast: false` est conservé — une jambe rouge ne doit pas annuler les autres, sinon on perd
+la comparaison SQLite ↔ MySQL qui est tout l'intérêt de la manœuvre.
+
+### Comment le moteur est choisi (à lire avant de « corriger » `phpunit.xml`)
+
+Le job exporte `DB_CONNECTION`, `DB_DATABASE`, `CACHE_STORE`… dans son bloc `env:`, piloté par la
+matrice. Ces valeurs **gagnent** sur `phpunit.xml` :
+
+```php
+// vendor/phpunit/phpunit/src/TextUI/Configuration/PhpHandler.php:112-119
+if ($force || getenv($name) === false) {
+    putenv("{$name}={$value}");
+}
+```
+
+Une `<env>` déclarée **sans `force="true"`** ne surcharge jamais une variable déjà exportée.
+C'est déjà le mécanisme dont vivait la jambe `redis` depuis #374, et `phpunit.xml:46-47` le
+documente explicitement.
+
+**Deux façons de casser la matrice sans s'en apercevoir :**
+
+1. Ajouter `force="true"` à une `<env>` de `phpunit.xml` → la valeur du fichier reprend la main,
+   la jambe MySQL retombe silencieusement sur SQLite.
+2. Versionner un `.env.testing` → Laravel charge `.env.{APP_ENV}` en priorité et écrase le bloc
+   `env:` du job. **Ne pas créer ce fichier.**
+
+Corollaire à connaître : une expression ternaire GitHub Actions qui résout à la chaîne vide
+(`${{ … && 'x' || '' }}`) pose quand même la variable ; `getenv()` retourne `''`, pas `false`.
+C'est pourquoi chaque valeur est portée par une clé explicite de `include:`, jamais par un
+ternaire.
+
+### Mode strict : identique à la production, quelle que soit la configuration du conteneur
+
+Aucun `--sql-mode` n'est passé au service MySQL. `config/database.php:59` déclare
+`'strict' => true`, et Laravel émet un `SET SESSION sql_mode='…'` à chaque connexion
+(`MySqlConnector.php:117`, valeur en `:147-149`) :
+
+```
+ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION
+```
+
+Le mode testé est donc déterminé par le **code versionné**, pas par l'hébergeur — c'est ce qui
+rend la jambe reproductible en local.
+
+L'étape `Wait for MySQL and record engine identity` consigne dans le log du run la version réelle
+du serveur et son `sql_mode` : la preuve de ce qui a été testé est dans le run, pas dans une
+affirmation de PR.
+
+### Identifiants du service
+
+Le mot de passe `root` du conteneur est **aléatoire** (`MYSQL_RANDOM_ROOT_PASSWORD`) et n'est
+jamais utilisé : l'application se connecte avec l'utilisateur dédié `lms_test`, comme en
+production (`GUIDE_DEPLOIEMENT_PRODUCTION.md:77` — « jamais root »). Effet recherché : la CI
+**prouve** que les migrations n'exigent aucun privilège d'administration.
+
+`MYSQL_PASSWORD: lms_test` n'est pas un secret — il doit être connu à la fois du service et de
+l'application, dans un conteneur détruit à la fin du job et joignable depuis ce seul job. Le
+passer par `secrets` casserait les forks sans rien protéger.
+
+### Reproduire la jambe MySQL en local (optionnel)
+
+Le développement local reste sur SQLite : **rien ne change** pour le travail courant. Pour
+reproduire la jambe MySQL avant de pousser :
+
+```bash
+docker run -d --name lms-mysql-test \
+  -e MYSQL_RANDOM_ROOT_PASSWORD=yes \
+  -e MYSQL_DATABASE=lms_testing -e MYSQL_USER=lms_test -e MYSQL_PASSWORD=lms_test \
+  -p 3306:3306 mysql:8.4
+
+export APP_ENV=testing DB_CONNECTION=mysql DB_HOST=127.0.0.1 DB_PORT=3306 \
+       DB_DATABASE=lms_testing DB_USERNAME=lms_test DB_PASSWORD=lms_test \
+       CACHE_STORE=database SESSION_DRIVER=database QUEUE_CONNECTION=database
+
+php artisan migrate:fresh --force      # valide les migrations sur le moteur réel
+vendor/bin/phpunit --no-coverage
+
+docker rm -f lms-mysql-test
+```
+
+### Coût CI
+
+Durées **mesurées** sur `lms` avant #574 (runs `32573866871` et `32569485575`) :
+
+| | Avant #574 | Après #574 |
+|---|---|---|
+| `Initialize containers` | 9–10 s (redis seul) | + pull et init de `mysql:8.4` (228 Mo décompressés) |
+| Jambe la plus lente | 72 s (`redis`, bout en bout) | la jambe `mysql` devient le chemin critique |
+| Nombre de jambes | 2 | 3 |
+
+Ordre de grandeur mesuré **en local** (Docker Desktop/Windows, latence TCP bien supérieure à
+celle d'un runner Linux — **non transposable tel quel**) : suite complète en 5 min 52 sur SQLite
+contre 17 min 13 sur MySQL, et 109,7 s cumulées pour les 69 migrations. La valeur de référence
+sera celle du premier run CI.
+
+Les jambes tournant **en parallèle**, le conteneur MySQL démarré inutilement sur les deux jambes
+SQLite ne rallonge pas le portail — le chemin critique est la jambe MySQL de toute façon. Le
+surcoût réel se compte en **minutes-runner facturées**, pas en temps d'attente.
+
+GitHub Actions ne sait pas conditionner un *service container* : c'est le même compromis que
+celui déjà en place pour `redis`, démarré sur la jambe `database` qui ne l'utilise pas.
+
+### Version du moteur
+
+L'image est **épinglée** à `mysql:8.4` — jamais `mysql:8` ni `mysql:latest`, qui sont des tags
+flottants : le moteur de référence d'un projet à 10 ans ne doit pas changer sans commit. `8.4`
+est la branche LTS ; sur les divergences visées ici elle est identique à `8.0`, Laravel appliquant
+le même `sql_mode` dès `8.0.11`.
+
+⚠️ **Dette tracée** : la version exacte du moteur de production n'est documentée nulle part dans
+le dépôt (`GUIDE_DEPLOIEMENT_PRODUCTION.md:21` dit « MySQL » sans version). Si l'hébergeur sert en
+réalité **MariaDB**, la divergence MySQL ↔ MariaDB justifie une issue de suivi ; le changement se
+limiterait à la ligne `image:`.

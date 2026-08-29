@@ -6,6 +6,7 @@ namespace App\Services\Klassci\Auth;
 
 use App\Models\Institution;
 use App\Models\User;
+use App\Services\Klassci\Data\KlassciDataWhitelist;
 use App\Services\MatiereSyncService;
 use Illuminate\Contracts\Hashing\Hasher;
 use Illuminate\Database\ConnectionInterface;
@@ -27,7 +28,9 @@ use Psr\Log\LoggerInterface;
  *   - CRITICAL-05 (#118) : pour un user **existant**, `role` LMS reste **figé**
  *     (jamais écrasé par KLASSCI) ; seul `klassci_role` capture la valeur KLASSCI.
  *     Défense contre l'escalade via un KLASSCI compromis. Pour un user **nouveau**,
- *     `role` est initialisé à la valeur KLASSCI (seul chemin d'init de l'autorisation).
+ *     `role` est initialisé depuis KLASSCI mais **assaini** par
+ *     {@see KlassciRoleSanitizer} : le rôle PLATEFORME `supradmin` (cross-tenant)
+ *     ne peut jamais être injecté à la création (#510).
  *   - #75 : recherche par `(klassci_id, institution_id)`, fallback email scopé
  *     à l'institution (jamais cross-institution).
  *
@@ -49,6 +52,8 @@ class KlassciUserSynchronizer
         private readonly KlassciEnseignantIdResolver $enseignantIdResolver,
         private readonly KlassciEmailConflictGuard $emailGuard,
         private readonly LoggerInterface $logger,
+        private readonly KlassciDataWhitelist $whitelist,
+        private readonly KlassciRoleSanitizer $roleSanitizer,
     ) {
     }
 
@@ -99,6 +104,8 @@ class KlassciUserSynchronizer
         $commonData = $this->buildCommonData($klassciUser, $klassciToken, $tenantUrl, $institutionId);
 
         if ($user !== null) {
+            $this->restoreIfTrashed($user, $klassciId, $institutionId);
+
             // SÉCURITÉ CRITICAL-05 : pour un user existant, `role` LMS reste figé.
             $user->update($commonData);
             $this->enseignantIdResolver->healIfNull($user, $klassciUser);
@@ -136,12 +143,37 @@ class KlassciUserSynchronizer
     }
 
     /**
+     * Restaure un compte soft-deleted qui se re-synchronise depuis KLASSCI (#566).
+     *
+     * Un compte supprimé puis re-loggé via KLASSCI est RESTAURÉ (deleted_at → null),
+     * jamais dupliqué — sinon `createNewUser` ferait un INSERT en violation de
+     * users_klassci_id_institution_id_unique.
+     */
+    private function restoreIfTrashed(User $user, mixed $klassciId, ?int $institutionId): void
+    {
+        if (!$user->trashed()) {
+            return;
+        }
+
+        $user->restore();
+        $this->logger->info('Utilisateur restauré via re-sync KLASSCI', [
+            'user_id'        => $user->id,
+            'klassci_id'     => $klassciId,
+            'institution_id' => $institutionId,
+        ]);
+    }
+
+    /**
      * Recherche un user existant par (klassci_id, institution_id), avec fallback
      * email scopé à l'institution (#75 préservé).
      */
     private function findExistingUser(mixed $klassciId, mixed $email, ?int $institutionId): ?User
     {
+        // #566 : `withTrashed()` — un compte soft-deleted doit être RETROUVÉ (puis
+        // restauré par le caller), pas ignoré : sinon l'INSERT de secours violerait
+        // l'index unique (klassci_id, institution_id) / (email, institution_id).
         $user = User::withoutGlobalScope('institution')
+            ->withTrashed()
             ->where('klassci_id', $klassciId)
             ->where('institution_id', $institutionId)
             ->first();
@@ -151,6 +183,7 @@ class KlassciUserSynchronizer
         }
 
         return User::withoutGlobalScope('institution')
+            ->withTrashed()
             ->where('email', $email)
             ->where('institution_id', $institutionId)
             ->first();
@@ -175,7 +208,9 @@ class KlassciUserSynchronizer
             'klassci_role'       => $klassciUser['role'] ?? 'etudiant',
             'klassci_token'      => $klassciToken,
             'klassci_tenant_url' => $tenantUrl,
-            'klassci_data'       => json_encode(array_merge($klassciUser, ['_lms_tenant_url' => $tenantUrl])),
+            // #477 : filtré par whitelist ; _lms_tenant_url (interne LMS) passé en
+            // existant pour être préservé. Le cast KlassciData sérialise l'array.
+            'klassci_data'       => $this->whitelist->filter($klassciUser, ['_lms_tenant_url' => $tenantUrl]),
             'last_klassci_sync'  => now(),
             'institution_id'     => $institutionId,
         ];
@@ -186,7 +221,8 @@ class KlassciUserSynchronizer
      *
      * SÉCURITÉ :
      *   • `role` LMS — CRITICAL-05 : seul chemin où KLASSCI peut initialiser
-     *     l'autorisation LMS d'un user découvert.
+     *     l'autorisation LMS d'un user découvert. Assaini par {@see KlassciRoleSanitizer}
+     *     (#510) : jamais de `supradmin` plateforme depuis KLASSCI.
      *   • `klassci_enseignant_id` — résolu via {@see KlassciEnseignantIdResolver}
      *     (#119/#267), initialisé write-once à la création.
      *
@@ -195,7 +231,11 @@ class KlassciUserSynchronizer
      */
     private function createNewUser(array $klassciUser, array $commonData, ?int $institutionId, string $tenantUrl): User
     {
-        $klassciRole = $klassciUser['role'] ?? 'etudiant';
+        // #510 : le rôle plateforme `supradmin` (cross-tenant) ne peut JAMAIS être
+        // initialisé depuis KLASSCI — ramené à l'admin d'institution par le sanitizer.
+        $klassciRole = $this->roleSanitizer->forNewUser(
+            isset($klassciUser['role']) && is_string($klassciUser['role']) ? $klassciUser['role'] : null
+        );
 
         $user = User::withoutGlobalScope('institution')->create(array_merge($commonData, [
             'role'                  => $klassciRole,

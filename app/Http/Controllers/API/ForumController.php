@@ -8,6 +8,7 @@ use App\Http\Controllers\AuthenticatedController;
 use App\Http\Requests\CloseTopicRequest;
 use App\Http\Requests\DeleteForumPostRequest;
 use App\Http\Requests\DeleteForumTopicRequest;
+use App\Http\Requests\ListForumTopicsRequest;
 use App\Http\Requests\MarkPostAsSolutionRequest;
 use App\Http\Requests\PinTopicRequest;
 use App\Http\Requests\StoreForumPostRequest;
@@ -43,7 +44,7 @@ final class ForumController extends AuthenticatedController
     /**
      * GET /api/forum/topics — liste des topics (avec filtres).
      */
-    public function index(Request $request): JsonResponse
+    public function index(ListForumTopicsRequest $request): JsonResponse
     {
         $topics = $this->topicService->list($request);
 

@@ -44,6 +44,8 @@ use App\Models\User;
  */
 trait ChecksForumAuthorization
 {
+    use AuthorizesTenantScopedResource;
+
     /**
      * Authorize a Forum action with tenant isolation + ownership + moderator role check.
      *
@@ -75,21 +77,13 @@ trait ChecksForumAuthorization
         ?User $user,
         array $moderatorRoles = ['admin', 'administrateur', 'superAdmin'],
     ): bool {
-        if ($user === null || $ownerUserId === null || $tenantInstitutionId === null) {
+        if ($user === null || $ownerUserId === null) {
             return false;
         }
 
-        // Intentional: strict lowercase `'supradmin'` only — l'enum `Role::Supradmin`
-        // normaliserait aussi `'superAdmin'` (intra-tenant admin) via `tryFromString`,
-        // ce qui briserait la distinction délibérée du trait (cf. PR #95 / issue #91
-        // et `.claude/specs/forum-idor-cross-tenant/design.md` §50-51).
-        // NE PAS migrer vers `asRoleEnum()` (#132 spec design.md §4.4).
-        if ($user->role === 'supradmin') {
-            return true;
-        }
-
-        if ($tenantInstitutionId !== $user->institution_id) {
-            return false;
+        $guard = $this->passesTenantGuard($user, $tenantInstitutionId);
+        if ($guard !== null) {
+            return $guard;
         }
 
         if ($ownerUserId === $user->id) {

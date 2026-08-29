@@ -30,8 +30,12 @@ $app = Application::configure(basePath: dirname(__DIR__))
         },
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        // Traefik / Dokploy : faire confiance à X-Forwarded-Proto (sinon 302).
+        $middleware->trustProxies(at: '*');
+
         // Middleware global API : résolution de l'institution (multi-tenant)
         $middleware->api(prepend: [
+            \App\Http\Middleware\AssignRequestId::class,
             \App\Http\Middleware\ResolveInstitution::class,
         ]);
 
@@ -40,6 +44,8 @@ $app = Application::configure(basePath: dirname(__DIR__))
             'klassci.sync' => \App\Http\Middleware\EnsureKlassciSync::class,
             'role' => \App\Http\Middleware\EnsureRole::class,
             'institution' => \App\Http\Middleware\ResolveInstitution::class,
+            // #511 : garde plateforme STRICTE (défense en profondeur cross-tenant).
+            'platform.supradmin' => \App\Http\Middleware\EnsurePlatformSupradmin::class,
         ]);
 
         // #244 : API stateless — ne JAMAIS rediriger un invité vers une page de
@@ -106,7 +112,9 @@ $app = Application::configure(basePath: dirname(__DIR__))
                 return response()->json([
                     'success' => false,
                     'message' => \App\Exceptions\KlassciUnavailableException::CLIENT_MESSAGE,
-                ], 503);
+                ], 503, [
+                    'Retry-After' => (string) \App\Exceptions\KlassciUnavailableException::retryAfterSeconds(),
+                ]);
             }
         });
 
@@ -123,6 +131,7 @@ $app = Application::configure(basePath: dirname(__DIR__))
                     'message' => $e->getMessage(),
                     'url' => $request->fullUrl(),
                     'method' => $request->getMethod(),
+                    'request_id' => $request->headers->get('X-Request-Id'),
                     'trace' => $e->getTraceAsString(),
                 ]);
 

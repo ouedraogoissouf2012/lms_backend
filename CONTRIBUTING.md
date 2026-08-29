@@ -154,6 +154,17 @@ Si UNE réponse = non → ne pas merger.
 | **Migration** | — | FK avec cascade, index sur les FK, tokens chiffrés, dates immutables |
 | **Test** | — | Setup + Action + Assert. 2 institutions pour multi-tenant. Pas de `sleep()`, pas de DB mocks |
 
+### Conventions modèles (#522)
+
+- **Statut / état ⇒ `enum` backed string** (jamais de magic string). Un statut de domaine se déclare dans `app/Enums/` (ex. `LessonStatus`, `SeanceRecordingStatus`, `Role`), se caste dans `$casts`, et se compare via l'enum : `$model->status === LessonStatus::Published`. La valeur sérialisée (JSON client, colonne DB) reste la string — contrat inchangé. **Chaque domaine a SON enum** : ne pas réutiliser `LessonStatus` pour `Quiz`/`Evaluation` même si les chaînes coïncident. Pour les règles de validation : `Rule::enum(LessonStatus::class)`.
+- **Observer ⇒ convention trait `bootXxx()`**, jamais `Model::observe()` dispersé dans un ServiceProvider. On colocalise l'enregistrement dans un concern `app/Models/Concerns/` :
+  ```php
+  trait Publishable {
+      public static function bootPublishable(): void { static::observe(LessonObserver::class); }
+  }
+  ```
+  puis `use Publishable;` dans le modèle — Eloquent auto-appelle `boot{TraitName}()`. Modèle de référence : `Auditable`. Bonus : garde le modèle sous 150 lignes (§5). `#[ObservedBy]` est proscrit (grossit le modèle et disperse la logique).
+
 ### Règle "Une seule solution"
 
 **Jamais** proposer "on pourrait faire A ou B".
@@ -185,7 +196,7 @@ Détails (optionnel, expliquer le POURQUOI)
 Refs: #issue-number
 ```
 
-Types autorisés : `feat`, `fix`, `refactor`, `test`, `docs`, `chore`, `perf`, `security`
+Types autorisés : `feat`, `fix`, `refactor`, `test`, `docs`, `chore`, `perf`, `security`, `ci`, `revert`
 
 ### Workflow PR
 

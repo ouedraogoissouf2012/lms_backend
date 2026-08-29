@@ -8,8 +8,10 @@ use App\Models\Institution;
 use App\Models\User;
 use App\Services\Klassci\Auth\KlassciEmailConflictGuard;
 use App\Services\Klassci\Auth\KlassciEnseignantIdResolver;
+use App\Services\Klassci\Auth\KlassciRoleSanitizer;
 use App\Services\Klassci\Auth\KlassciUserSynchronizer;
 use App\Services\Klassci\Auth\StudentClassSynchronizer;
+use App\Services\Klassci\Data\KlassciDataWhitelist;
 use App\Services\KlassciProxyService;
 use App\Services\MatiereSyncService;
 use Illuminate\Contracts\Hashing\Hasher;
@@ -73,6 +75,8 @@ final class KlassciUserSynchronizerTest extends TestCase
             new KlassciEnseignantIdResolver(),
             new KlassciEmailConflictGuard($this->logger),
             $this->logger,
+            new KlassciDataWhitelist(),
+            new KlassciRoleSanitizer(),
         );
     }
 
@@ -99,6 +103,49 @@ final class KlassciUserSynchronizerTest extends TestCase
         self::assertSame('enseignant', $user->role);
         self::assertSame('enseignant', $user->klassci_role);
         self::assertSame($this->institution->id, $user->institution_id);
+    }
+
+    /**
+     * 🔑 GARDE #510.
+     *
+     * À la CRÉATION, un rôle `supradmin` PLATEFORME poussé par KLASSCI ne doit
+     * JAMAIS être écrit : il est ramené à l'admin d'INSTITUTION (`superAdmin`).
+     * `klassci_role` capture néanmoins la valeur brute (traçabilité).
+     */
+    public function test_neutralizes_platform_supradmin_role_on_creation(): void
+    {
+        $klassciUser = [
+            'id'    => 900,
+            'email' => 'injected@test.com',
+            'nom'   => 'Injected',
+            'role'  => 'supradmin',  // ← tentative d'injection du rôle plateforme
+        ];
+
+        $user = $this->synchronizer->sync($klassciUser, 'tok', 'https://t.test', $this->institution);
+
+        self::assertSame('superAdmin', $user->role, 'le rôle plateforme est ramené à admin institution');
+        self::assertNotSame('supradmin', $user->role);
+        self::assertFalse($user->isPlatformSupradmin(), 'pas de privilège plateforme cross-tenant');
+        self::assertSame('supradmin', $user->klassci_role, 'klassci_role capture la tentative');
+        self::assertSame($this->institution->id, $user->institution_id, 'reste scopé au tenant');
+    }
+
+    /**
+     * GARDE #510 — non-régression : l'admin d'INSTITUTION `superAdmin` (intra-tenant,
+     * légitime) est préservé tel quel, jamais dégradé.
+     */
+    public function test_preserves_institution_superadmin_role_on_creation(): void
+    {
+        $klassciUser = [
+            'id'    => 901,
+            'email' => 'inst-admin@test.com',
+            'role'  => 'superAdmin',  // admin d'institution légitime
+        ];
+
+        $user = $this->synchronizer->sync($klassciUser, 'tok', 'https://t.test', $this->institution);
+
+        self::assertSame('superAdmin', $user->role);
+        self::assertFalse($user->isPlatformSupradmin());
     }
 
     public function test_initializes_klassci_enseignant_id_write_once_on_creation(): void

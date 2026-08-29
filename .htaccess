@@ -1,0 +1,68 @@
+# Défense en profondeur — issue #537.
+#
+# Le DocumentRoot de production DOIT pointer sur public/ (voir
+# GUIDE_DEPLOIEMENT_PRODUCTION.md §4 et public/.htaccess, qui gère 100% du trafic
+# applicatif nominal). Apache lit néanmoins ce fichier même quand public/ est le
+# DocumentRoot correct — il remonte les .htaccess ancêtres du chemin filesystem
+# résolu, et lms-backend/ (ce répertoire) en est un ancêtre quel que soit le
+# DocumentRoot. Ces règles s'appliquent donc en permanence : elles protègent contre
+# un DocumentRoot mal configuré (ex. domaine additionnel cPanel non reconfiguré sur
+# public/) sans dépendre de cette configuration serveur pour être actives.
+#
+# Bloque tout segment de chemin commençant par un point : .env, .env.*, .git/*,
+# .claude/* (contient des specs de sécurité versionnées — décrivent des
+# vulnérabilités réelles du projet, cf. audit sécurité #537), .github/*, etc.
+# <FilesMatch> seul ne suffit PAS : il ne matche que le nom de fichier final, pas
+# les segments intermédiaires du chemin (/.git/HEAD a pour nom de fichier "HEAD",
+# sans point — non bloqué par FilesMatch). D'où la règle primaire ci-dessous,
+# basée sur REQUEST_URI (chemin complet, sans ambiguïté de contexte per-directory).
+# Exception explicite pour /.well-known/ (validation ACME/TLS — doit rester
+# accessible, cf. GUIDE_DEPLOIEMENT_PRODUCTION.md).
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteCond %{REQUEST_URI} !^/\.well-known/ [NC]
+    RewriteCond %{REQUEST_URI} (^|/)\.
+    RewriteRule ^ - [F,L]
+
+    # #577 : refuse les répertoires applicatifs qui n'ont AUCUNE URL publique
+    # légitime (code source, config, migrations, dépendances). Complète la règle
+    # fichiers-point ci-dessus, qui ne couvrait que les segments commençant par « . ».
+    #
+    # « storage » est VOLONTAIREMENT ABSENT de cette liste : /storage/ est une URL
+    # publique légitime (symlink public/storage → storage/app/public, sert les
+    # diapositives et vidéos de cours). Le bloquer ici casserait l'affichage des
+    # cours. storage/ est protégé par storage/.htaccess (deny) + l'exception
+    # storage/app/public/.htaccess (grant).
+    #
+    # Ancrage « 1er ou 2e segment » (^(/[^/]+)?/) : couvre à la fois /app/… (si le
+    # DocumentRoot pointe sur la racine appli) et /lms-backend/app/… (si le
+    # DocumentRoot pointe sur public_html — le scénario de fuite de l'issue). On
+    # n'utilise PAS (^|/) comme la règle fichiers-point : un nom comme « config »
+    # pourrait un jour apparaître en profondeur d'une route API légitime.
+    RewriteCond %{REQUEST_URI} ^(/[^/]+)?/(app|bootstrap|config|database|resources|routes|vendor|tests)/ [NC]
+    RewriteRule ^ - [F,L]
+</IfModule>
+
+# Repli si mod_rewrite est indisponible : couverture partielle (nom de fichier
+# final uniquement, pas les segments intermédiaires) + blocage explicite des
+# chemins les plus sensibles connus.
+<IfModule !mod_rewrite.c>
+    <FilesMatch "^\.">
+        <IfModule mod_authz_core.c>
+            Require all denied
+        </IfModule>
+        <IfModule !mod_authz_core.c>
+            Order allow,deny
+            Deny from all
+        </IfModule>
+    </FilesMatch>
+    RedirectMatch 403 ^/\.git(/|$)
+    RedirectMatch 403 ^/\.claude(/|$)
+    RedirectMatch 403 ^/\.env
+    # #577 : répertoires applicatifs (voir la règle mod_rewrite ci-dessus).
+    # « storage » exclu volontairement (URL publique légitime — cf. supra).
+    RedirectMatch 403 ^(/[^/]+)?/(app|bootstrap|config|database|resources|routes|vendor|tests)(/|$)
+</IfModule>
+
+Options -Indexes

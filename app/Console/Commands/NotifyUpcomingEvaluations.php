@@ -12,7 +12,7 @@ class NotifyUpcomingEvaluations extends Command
 {
     protected $signature = 'evaluations:notify-upcoming {--hours=24}';
     protected $description = 'Envoie des notifications aux étudiants pour les évaluations approchantes';
-    protected $klassciService;
+    protected KlassciProxyService $klassciService;
 
     public function __construct(KlassciProxyService $klassciService)
     {
@@ -20,7 +20,7 @@ class NotifyUpcomingEvaluations extends Command
         $this->klassciService = $klassciService;
     }
 
-    public function handle()
+    public function handle(): int
     {
         $hoursBeforeNotification = (int) $this->option('hours');
         $this->info("Recherche des évaluations dans les prochaines {$hoursBeforeNotification} heures...");
@@ -28,14 +28,15 @@ class NotifyUpcomingEvaluations extends Command
         $now = Carbon::now();
         $targetTime = $now->copy()->addHours($hoursBeforeNotification);
 
-        $evaluations = Evaluation::where('is_published', true)
+        $evaluations = Evaluation::with('institution')
+            ->where('is_published', true)
             ->where('status', '!=', 'terminee')
             ->whereBetween('date_evaluation', [$now, $targetTime])
             ->get();
 
         if ($evaluations->isEmpty()) {
             $this->info('Aucune évaluation approchante trouvée.');
-            return 0;
+            return Command::SUCCESS;
         }
 
         $this->info("{$evaluations->count()} évaluation(s) approchante(s) trouvée(s).");
@@ -45,15 +46,26 @@ class NotifyUpcomingEvaluations extends Command
             $this->line("Traitement: {$evaluation->titre}");
 
             try {
-                $etudiants = $this->klassciService->getClasseEtudiants($evaluation->klassci_classe_id);
+                $institutionToken = $evaluation->institution?->klassci_api_token;
+                if (! is_string($institutionToken) || $institutionToken === '') {
+                    $this->warn('Aucun jeton institution — roster ignoré');
+                    continue;
+                }
 
-                if (!isset($etudiants['data']) || empty($etudiants['data'])) {
+                $etudiants = $this->klassciService->getClasseEtudiants(
+                    $institutionToken,
+                    (int) $evaluation->klassci_classe_id,
+                );
+
+                $students = self::extractStudents($etudiants);
+
+                if ($students === []) {
                     $this->warn("Aucun étudiant trouvé");
                     continue;
                 }
 
-                foreach ($etudiants['data'] as $etudiant) {
-                    $existingNotification = Notification::where('user_id', $etudiant['id'])
+                foreach ($students as $studentId) {
+                    $existingNotification = Notification::where('user_id', $studentId)
                         ->where('type', 'evaluation_approaching')
                         ->where('data->evaluation_id', $evaluation->id)
                         ->whereDate('created_at', Carbon::today())
@@ -64,7 +76,7 @@ class NotifyUpcomingEvaluations extends Command
                     }
 
                     Notification::create([
-                        'user_id' => $etudiant['id'],
+                        'user_id' => $studentId,
                         'type' => 'evaluation_approaching',
                         'title' => 'Évaluation approchante',
                         'message' => "L'évaluation \"{$evaluation->titre}\" aura lieu le " .
@@ -87,6 +99,31 @@ class NotifyUpcomingEvaluations extends Command
         }
 
         $this->info("{$notificationsCreated} notification(s) créée(s)!");
-        return 0;
+        return Command::SUCCESS;
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     * @return list<int>
+     */
+    private static function extractStudents(array $payload): array
+    {
+        if (! isset($payload['data']) || ! is_array($payload['data'])) {
+            return [];
+        }
+
+        $studentIds = [];
+
+        foreach ($payload['data'] as $student) {
+            if (! is_array($student) || ! isset($student['id'])) {
+                continue;
+            }
+
+            if (is_int($student['id']) || is_string($student['id']) && ctype_digit($student['id'])) {
+                $studentIds[] = (int) $student['id'];
+            }
+        }
+
+        return $studentIds;
     }
 }

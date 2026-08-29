@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Support\Upload\UploadLimits;
 use Illuminate\Foundation\Http\FormRequest;
 
 /**
@@ -14,7 +15,8 @@ use Illuminate\Foundation\Http\FormRequest;
  * - Invalid file extensions (whitelist only)
  *
  * ## File Size
- * Maximum 30 MB (31457280 bytes).
+ * Maximum 30 MB = 30 720 Ko. La règle `max` de Laravel s'exprime en kilo-octets
+ * pour un fichier ; la valeur est centralisée dans {@see UploadLimits} (#576).
  * Rationale: Balances user needs (presentations, documents) with server resource protection.
  *
  * Before CRITICAL-05: Inconsistency found
@@ -65,7 +67,7 @@ final class UploadFileRequest extends FormRequest
     /**
      * Get the validation rules for file upload.
      *
-     * @return array
+     * @return array<string, mixed>
      */
     public function rules(): array
     {
@@ -73,7 +75,8 @@ final class UploadFileRequest extends FormRequest
             'file' => [
                 'required',
                 'file',
-                'max:31457280', // 30 MB max
+                // Kilo-octets (unité de la règle `max` d'un fichier) — source unique #576.
+                UploadLimits::maxRule(),
                 'mimes:pdf,doc,docx,xls,xlsx,ppt,pptx,jpg,jpeg,png,gif',
             ],
             'category' => [
@@ -88,7 +91,7 @@ final class UploadFileRequest extends FormRequest
             'fileable_type' => [
                 'sometimes',
                 'string',
-                'in:' . implode(',', array_keys(config('fileables.morph_map', []))),
+                'in:' . implode(',', array_keys((array) config('fileables.morph_map', []))),
             ],
             'fileable_id' => [
                 'sometimes',
@@ -110,14 +113,14 @@ final class UploadFileRequest extends FormRequest
     /**
      * Custom error messages for file validation.
      *
-     * @return array
+     * @return array<string, string>
      */
     public function messages(): array
     {
         return [
             'file.required' => 'Un fichier est requis',
             'file.file' => 'Le champ doit être un fichier valide',
-            'file.max' => 'Le fichier ne doit pas dépasser 30 MB',
+            'file.max' => 'Le fichier ne doit pas dépasser ' . UploadLimits::humanReadable(),
             'file.mimes' => 'Le type de fichier n\'est pas autorisé. Types acceptés: PDF, Word, Excel, PowerPoint, JPG, PNG, GIF',
             'category.in' => 'La catégorie sélectionnée est invalide',
             'fileable_type.in' => 'Le type de ressource est invalide',
@@ -137,7 +140,7 @@ final class UploadFileRequest extends FormRequest
      */
     public static function getMaxFileSize(): string
     {
-        return '30 MB';
+        return UploadLimits::humanReadable();
     }
 
     /**
@@ -146,7 +149,7 @@ final class UploadFileRequest extends FormRequest
      * Whitelist validation for extra security.
      * Even if MIME type is spoofed, extension must match.
      *
-     * @return array
+     * @return array<int, string>
      */
     public static function getAllowedExtensions(): array
     {

@@ -35,7 +35,8 @@ final class PurgeAuditLogs extends Command
         $retentionDays = is_numeric($rawRetention) ? (int) $rawRetention : 365;
         $cutoff = now()->subDays($retentionDays);
 
-        $query = AuditLog::where('created_at', '<', $cutoff);
+        $query = AuditLog::withoutGlobalScope('institution')
+            ->where('created_at', '<', $cutoff);
         $count = $query->count();
 
         if ($this->option('dry-run')) {

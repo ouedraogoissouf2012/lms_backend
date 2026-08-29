@@ -7,7 +7,6 @@ namespace Tests\Feature\Dashboard;
 use App\Models\Institution;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
 /**
@@ -24,6 +23,14 @@ use Tests\TestCase;
  * Complémentaire de {@see DashboardAdminStatsIsolationTest} qui couvre déjà
  * l'isolation multi-tenant des counts : ce test-ci se concentre sur l'ENVELOPPE,
  * la seule chose que la migration touche.
+ *
+ * ## Authentification (#546)
+ *
+ * Bearer token réel (pas `Sanctum::actingAs`) afin que `ResolveInstitution`
+ * résolve le tenant : `AdminDashboardService::buildStats` est caché depuis
+ * #546 avec une clé dérivée de `TenantManager::getResolvedSlug()`
+ * (fail-secure) — `Sanctum::actingAs` bypasse le middleware et laisse le
+ * tenant non résolu, cf. `DashboardAdminStatsIsolationTest::callDashboardStatsAs`.
  *
  * @see app/Http/Controllers/API/Dashboard/DashboardAdminController.php
  */
@@ -44,9 +51,10 @@ final class DashboardAdminResponseTest extends TestCase
             'institution_id' => $institution->id,
             'role' => 'coordinateur',
         ]);
-        Sanctum::actingAs($coordinator);
+        $token = $coordinator->createToken('dashboard-response-test')->plainTextToken;
 
-        $response = $this->getJson('/api/dashboard/stats');
+        $response = $this->withHeaders(['Authorization' => 'Bearer ' . $token])
+            ->getJson('/api/dashboard/stats');
 
         $response->assertStatus(200);
 

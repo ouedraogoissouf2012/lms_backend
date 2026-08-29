@@ -699,6 +699,18 @@ paths:
         '200':
           description: "Stats"
 
+  /admin/statistics:
+    get:
+      tags: [Admin]
+      summary: "Statistiques admin fraîches (#553)"
+      security:
+        - sanctum: []
+      responses:
+        '200':
+          description: "Tenant-scoped admin statistics"
+        '403':
+          description: "Forbidden"
+
   # ====== CHAPTERS & LESSONS (13 endpoints) ======
   /chapters:
     get:
@@ -1902,6 +1914,17 @@ paths:
       responses:
         '200':
           description: "Connection successful"
+
+  /webhooks/visio/recording-ready:
+    post:
+      tags: [Visio]
+      summary: "Webhook enregistrement visio prêt (#469)"
+      security: []
+      responses:
+        '202':
+          description: "Accepted for processing"
+        '401':
+          description: "Invalid signature"
 
 # ====== RESPONSE COMPONENTS ======
 security:

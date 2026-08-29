@@ -43,12 +43,15 @@ final class SyncAttendancesRequest extends FormRequest
         return true;
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     public function rules(): array
     {
         return [
             'seance_cours_id' => 'required|integer|min:1',
             'date' => 'required|date',
-            'participants' => 'required|array|min:1',
+            'participants' => 'required|array|min:1|max:100',
             'participants.*.etudiant_id' => 'required|integer',
             'participants.*.statut' => 'required|in:present,absent,retard',
             'participants.*.joined_at' => 'nullable|date',
@@ -57,6 +60,9 @@ final class SyncAttendancesRequest extends FormRequest
         ];
     }
 
+    /**
+     * @return array<string, string>
+     */
     public function messages(): array
     {
         return [

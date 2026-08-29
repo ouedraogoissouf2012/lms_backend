@@ -69,4 +69,87 @@ final class KlassciPayload
     {
         return array_map(self::asArray(...), self::asList($value));
     }
+
+    /**
+     * Ids entiers uniques extraits d'une liste de payloads, résolus via
+     * `$idResolver` (généralement `KlassciPayload::toInt()` sur un champ id
+     * direct ou imbriqué). Entrées non résolvables écartées.
+     *
+     * Centralise l'idiome "foreach + toInt + filtre null + unique" répété
+     * sur plusieurs fetchers de séances/classes (issue #517).
+     *
+     * @param  iterable<array<string, mixed>>  $items
+     * @param  \Closure(array<string, mixed>): (int|null)  $idResolver
+     * @return list<int>
+     */
+    public static function uniqueIntIds(iterable $items, \Closure $idResolver): array
+    {
+        $ids = [];
+        foreach ($items as $item) {
+            $id = $idResolver($item);
+            if ($id !== null) {
+                $ids[] = $id;
+            }
+        }
+
+        return array_values(array_unique($ids));
+    }
+
+    /**
+     * Indexe une liste de payloads par id entier résolu via `$idResolver`.
+     * Entrées non résolvables écartées ; en cas d'id dupliqué, la dernière
+     * occurrence gagne (sémantique `array` standard).
+     *
+     * Même idiome que {@see uniqueIntIds}, mais conserve le payload complet
+     * plutôt que la seule liste d'ids — utile pour un fetch batch ultérieur
+     * suivi d'une ré-association id → payload d'origine (issue #515).
+     *
+     * @param  iterable<array<string, mixed>>  $items
+     * @param  \Closure(array<string, mixed>): (int|null)  $idResolver
+     * @return array<int, array<string, mixed>>
+     */
+    public static function keyById(iterable $items, \Closure $idResolver): array
+    {
+        $byId = [];
+        foreach ($items as $item) {
+            $id = $idResolver($item);
+            if ($id !== null) {
+                $byId[$id] = $item;
+            }
+        }
+
+        return $byId;
+    }
+
+    /**
+     * Id entier de la classe d'une séance (`seance.classe.id`), ou `null` si
+     * absent/non-numérique.
+     *
+     * @param  array<string, mixed>  $seance
+     */
+    public static function classeIdFor(array $seance): ?int
+    {
+        return self::toInt(self::asArray($seance['classe'] ?? null)['id'] ?? null);
+    }
+
+    /**
+     * Effectif (`places_occupees`) de la classe d'une séance, depuis un map
+     * de détails classes pré-chargé en batch (issue #135/#517) — `0` si la
+     * classe est absente/non résolvable/échouée dans le pool.
+     *
+     * @param  array<string, mixed>  $seance
+     * @param  array<int, array<string, mixed>>  $classesDetails
+     */
+    public static function classeEffectif(array $seance, array $classesDetails): int
+    {
+        $classeId = self::classeIdFor($seance);
+        if ($classeId === null) {
+            return 0;
+        }
+
+        $classe = self::asArray(self::asArray($classesDetails[$classeId]['data'] ?? null)['classe'] ?? null);
+        $occupees = $classe['places_occupees'] ?? 0;
+
+        return is_int($occupees) ? $occupees : (is_numeric($occupees) ? (int) $occupees : 0);
+    }
 }

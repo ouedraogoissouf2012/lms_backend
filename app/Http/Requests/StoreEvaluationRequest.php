@@ -42,13 +42,16 @@ final class StoreEvaluationRequest extends FormRequest
         }
 
         // User must be admin or teacher
-        if (!$user->isAdmin() && !$user->isTeacher() && !$user->isCoordinator()) {
+        if (!$user->isAdmin() && !$user->isTeacher()) {
             return false;
         }
 
         return true;
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     public function rules(): array
     {
         // Issue #124 : `klassci_enseignant_id` retiré de la validation —
@@ -67,6 +70,8 @@ final class StoreEvaluationRequest extends FormRequest
             'coefficient' => 'nullable|numeric|min:0',
             'bareme' => 'nullable|numeric|min:0',
             'max_attempts' => 'nullable|integer|min:1',
+            'allow_retake' => 'nullable|boolean',
+            'is_online' => 'nullable|boolean',
             'shuffle_questions' => 'nullable|boolean',
             'show_results' => 'nullable|boolean',
             'questions' => 'nullable|array',
@@ -78,6 +83,9 @@ final class StoreEvaluationRequest extends FormRequest
         ];
     }
 
+    /**
+     * @return array<string, string>
+     */
     public function messages(): array
     {
         return [
@@ -98,11 +106,13 @@ final class StoreEvaluationRequest extends FormRequest
     protected function prepareForValidation(): void
     {
         if ($this->has('titre')) {
-            $this->merge(['titre' => trim($this->titre ?? '')]);
+            $titre = $this->input('titre');
+            $this->merge(['titre' => is_string($titre) ? trim($titre) : $titre]);
         }
 
         if ($this->has('description')) {
-            $this->merge(['description' => trim($this->description ?? '')]);
+            $description = $this->input('description');
+            $this->merge(['description' => is_string($description) ? trim($description) : $description]);
         }
     }
 }

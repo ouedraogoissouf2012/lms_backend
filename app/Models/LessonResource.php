@@ -2,20 +2,22 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\SoftDeletes;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use App\Models\Traits\BelongsToInstitution;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
  * Model LessonResource
  *
  * Représente une ressource complémentaire d'une leçon (PDF, liens, documents)
+ *
+ * @property int|null $file_size
  */
 class LessonResource extends Model
 {
-    use HasFactory, SoftDeletes, BelongsToInstitution;
+    use BelongsToInstitution, SoftDeletes;
 
     protected $fillable = [
         'lesson_id',
@@ -50,10 +52,10 @@ class LessonResource extends Model
     /**
      * Scope: Ordonné
      *
-     * @param  \Illuminate\Database\Eloquent\Builder<LessonResource>  $query
-     * @return \Illuminate\Database\Eloquent\Builder<LessonResource>
+     * @param  Builder<LessonResource>  $query
+     * @return Builder<LessonResource>
      */
-    public function scopeOrdered($query)
+    public function scopeOrdered(Builder $query)
     {
         return $query->orderBy('order')->orderBy('created_at');
     }
@@ -61,10 +63,10 @@ class LessonResource extends Model
     /**
      * Scope: Par type
      *
-     * @param  \Illuminate\Database\Eloquent\Builder<LessonResource>  $query
-     * @return \Illuminate\Database\Eloquent\Builder<LessonResource>
+     * @param  Builder<LessonResource>  $query
+     * @return Builder<LessonResource>
      */
-    public function scopeOfType($query, string $type)
+    public function scopeOfType(Builder $query, string $type)
     {
         return $query->where('type', $type);
     }
@@ -74,7 +76,7 @@ class LessonResource extends Model
      */
     public function incrementDownloadCount(): bool
     {
-        return $this->increment('download_count');
+        return $this->increment('download_count') > 0;
     }
 
     /**
@@ -82,15 +84,15 @@ class LessonResource extends Model
      */
     public function getFormattedFileSize(): string
     {
-        if (!$this->file_size) {
+        if (! $this->file_size) {
             return 'N/A';
         }
 
         $bytes = $this->file_size;
         $units = ['o', 'Ko', 'Mo', 'Go'];
-        $factor = floor((strlen($bytes) - 1) / 3);
+        $factor = (int) floor((strlen((string) $bytes) - 1) / 3);
 
-        return sprintf("%.2f", $bytes / pow(1024, $factor)) . ' ' . $units[$factor];
+        return sprintf('%.2f', $bytes / pow(1024, $factor)).' '.$units[$factor];
     }
 
     /**
@@ -98,7 +100,7 @@ class LessonResource extends Model
      */
     public function isLocalFile(): bool
     {
-        return !empty($this->file_path);
+        return ! empty($this->file_path);
     }
 
     /**
@@ -106,6 +108,6 @@ class LessonResource extends Model
      */
     public function isExternalLink(): bool
     {
-        return !empty($this->url);
+        return ! empty($this->url);
     }
 }

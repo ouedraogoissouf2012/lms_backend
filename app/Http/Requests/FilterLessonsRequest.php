@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Enums\LessonStatus;
 use App\Rules\PositiveInteger;
 use Illuminate\Foundation\Http\FormRequest;
 
@@ -55,7 +56,7 @@ final class FilterLessonsRequest extends FormRequest
     /**
      * Get the validation rules for query parameters.
      *
-     * @return array
+     * @return array<string, mixed>
      */
     public function rules(): array
     {
@@ -89,7 +90,7 @@ final class FilterLessonsRequest extends FormRequest
             'status' => [
                 'sometimes',
                 'string',
-                'in:draft,published,archived',
+                'in:'.implode(',', LessonStatus::values()),
             ],
         ];
     }
@@ -97,7 +98,7 @@ final class FilterLessonsRequest extends FormRequest
     /**
      * Custom error messages for filter validation.
      *
-     * @return array
+     * @return array<string, string>
      */
     public function messages(): array
     {

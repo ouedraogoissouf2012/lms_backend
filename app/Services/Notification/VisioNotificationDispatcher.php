@@ -27,8 +27,8 @@ final class VisioNotificationDispatcher
     public function __construct(
         private readonly NotificationDispatcher $dispatcher,
         private readonly LoggerInterface $logger,
-    ) {
-    }
+        private readonly VisioNotificationIdempotencyGuard $idempotency,
+    ) {}
 
     /**
      * Notifier les étudiants de la classe qu'une visio a été programmée.
@@ -40,20 +40,16 @@ final class VisioNotificationDispatcher
      */
     public function notifyVisioScheduled(int $seanceId, array $seanceData): int
     {
-        $existingNotifications = Notification::where('type', Notification::TYPE_VISIO_SCHEDULED)
-            ->where('data->seance_id', $seanceId)
-            ->where('created_at', '>', now()->subDay())
-            ->count();
+        return $this->idempotency->run(
+            Notification::TYPE_VISIO_SCHEDULED,
+            $seanceId,
+            fn (): int => $this->dispatchScheduled($seanceId, $seanceData),
+        );
+    }
 
-        if ($existingNotifications > 0) {
-            $this->logger->info('Notifications déjà envoyées pour cette séance', [
-                'seance_id' => $seanceId,
-                'existing_count' => $existingNotifications,
-            ]);
-
-            return 0;
-        }
-
+    /** @param array<string, mixed> $seanceData */
+    private function dispatchScheduled(int $seanceId, array $seanceData): int
+    {
         $students = $this->resolveStudentsForScheduled($seanceId, $seanceData);
 
         if ($students->isEmpty()) {
@@ -65,10 +61,10 @@ final class VisioNotificationDispatcher
             return 0;
         }
 
-        $matiere = $seanceData['matiere_nom'] ?? 'Matière inconnue';
-        $enseignant = $seanceData['enseignant_nom'] ?? 'Enseignant';
+        $matiere = is_string($seanceData['matiere_nom'] ?? null) ? $seanceData['matiere_nom'] : 'Matière inconnue';
+        $enseignant = is_string($seanceData['enseignant_nom'] ?? null) ? $seanceData['enseignant_nom'] : 'Enseignant';
 
-        $title = "Visioconférence programmée";
+        $title = 'Visioconférence programmée';
         $message = "Une visioconférence a été programmée en {$matiere} avec {$enseignant}.";
         $data = [
             'seance_id' => $seanceId,
@@ -86,14 +82,24 @@ final class VisioNotificationDispatcher
      */
     public function notifyVisioStarting(int $seanceId, array $seanceData): int
     {
+        return $this->idempotency->run(
+            Notification::TYPE_VISIO_STARTING,
+            $seanceId,
+            fn (): int => $this->dispatchStarting($seanceId, $seanceData),
+        );
+    }
+
+    /** @param array<string, mixed> $seanceData */
+    private function dispatchStarting(int $seanceId, array $seanceData): int
+    {
         $students = $this->resolveStudentsForStarting($seanceData);
         $teacher = $this->resolveTeacher($seanceData);
 
         $count = 0;
-        $matiere = $seanceData['matiere_nom'] ?? 'Matière inconnue';
+        $matiere = is_string($seanceData['matiere_nom'] ?? null) ? $seanceData['matiere_nom'] : 'Matière inconnue';
 
         if ($students->isNotEmpty()) {
-            $title = "Visioconférence en cours";
+            $title = 'Visioconférence en cours';
             $message = "La visioconférence de {$matiere} a démarré. Rejoignez maintenant !";
             $data = [
                 'seance_id' => $seanceId,
@@ -104,7 +110,7 @@ final class VisioNotificationDispatcher
         }
 
         if ($teacher) {
-            $title = "Votre visioconférence a démarré";
+            $title = 'Votre visioconférence a démarré';
             $message = "Votre visioconférence de {$matiere} est maintenant active.";
             $data = [
                 'seance_id' => $seanceId,
@@ -132,7 +138,7 @@ final class VisioNotificationDispatcher
             return $students;
         }
 
-        $classe = Classe::where('klassci_id', $seanceData['klassci_classe_id'])->first();
+        $classe = $this->resolveClasse($seanceData);
 
         if (! $classe) {
             $this->logger->warning('Classe non trouvée pour notification', [
@@ -170,7 +176,7 @@ final class VisioNotificationDispatcher
             return collect();
         }
 
-        $classe = Classe::where('klassci_id', $seanceData['klassci_classe_id'])->first();
+        $classe = $this->resolveClasse($seanceData);
 
         if (! $classe) {
             return collect();
@@ -196,8 +202,49 @@ final class VisioNotificationDispatcher
             return null;
         }
 
-        return User::where('klassci_id', $seanceData['klassci_enseignant_id'])
-            ->where('role', 'enseignant')
-            ->first();
+        $query = User::where('klassci_id', $seanceData['klassci_enseignant_id'])
+            ->where('role', 'enseignant');
+
+        $institutionId = $this->institutionId($seanceData);
+        if ($institutionId !== null) {
+            $query->withoutGlobalScope('institution')->where('institution_id', $institutionId);
+        }
+
+        return $query->first();
+    }
+
+    /**
+     * Résout la classe cible en la scopant à l'institution de la séance (#473).
+     *
+     * Appelée depuis le job SyncKlassciSeances, hors contexte HTTP : le scope
+     * global `institution` de {@see Classe} est alors inerte. Sans ce filtre
+     * explicite, `klassci_id` — non unique entre tenants — matcherait la classe
+     * d'une autre institution et notifierait les mauvais étudiants.
+     *
+     * @param  array<string, mixed>  $seanceData
+     */
+    private function resolveClasse(array $seanceData): ?Classe
+    {
+        $query = Classe::where('klassci_id', $seanceData['klassci_classe_id']);
+
+        $institutionId = $this->institutionId($seanceData);
+        if ($institutionId !== null) {
+            $query->withoutGlobalScope('institution')->where('institution_id', $institutionId);
+        }
+
+        return $query->first();
+    }
+
+    /**
+     * Institution de la séance si présente dans le payload (cas du job tenant-less).
+     * En contexte HTTP, absente — le scope global suffit alors et ce filtre est ignoré.
+     *
+     * @param  array<string, mixed>  $seanceData
+     */
+    private function institutionId(array $seanceData): ?int
+    {
+        $institutionId = $seanceData['institution_id'] ?? null;
+
+        return is_int($institutionId) ? $institutionId : null;
     }
 }

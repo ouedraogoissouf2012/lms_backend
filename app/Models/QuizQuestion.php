@@ -2,21 +2,26 @@
 
 namespace App\Models;
 
+use App\Models\Traits\BelongsToInstitution;
+use Database\Factories\QuizQuestionFactory;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use App\Models\Traits\BelongsToInstitution;
 
 /**
  * Model QuizQuestion
  *
  * Question d'un quiz
+ *
+ * @property string $type
  */
 class QuizQuestion extends Model
 {
-    /** @use HasFactory<\Database\Factories\QuizQuestionFactory> */
-    use HasFactory, BelongsToInstitution;
+    /** @use HasFactory<QuizQuestionFactory> */
+    use BelongsToInstitution, HasFactory;
 
     protected $fillable = [
         'quiz_id',
@@ -66,8 +71,8 @@ class QuizQuestion extends Model
     /**
      * Scope: Questions ordonnées
      *
-     * @param  \Illuminate\Database\Eloquent\Builder<QuizQuestion>  $query
-     * @return \Illuminate\Database\Eloquent\Builder<QuizQuestion>
+     * @param  Builder<QuizQuestion>  $query
+     * @return Builder<QuizQuestion>
      */
     public function scopeOrdered($query)
     {
@@ -77,8 +82,8 @@ class QuizQuestion extends Model
     /**
      * Scope: Questions obligatoires
      *
-     * @param  \Illuminate\Database\Eloquent\Builder<QuizQuestion>  $query
-     * @return \Illuminate\Database\Eloquent\Builder<QuizQuestion>
+     * @param  Builder<QuizQuestion>  $query
+     * @return Builder<QuizQuestion>
      */
     public function scopeRequired($query)
     {
@@ -92,7 +97,7 @@ class QuizQuestion extends Model
      * pour éviter le N+1 — sinon lazy-load une fois et retourne la sous-
      * collection filtrée.
      *
-     * @return \Illuminate\Database\Eloquent\Collection<int, QuizAnswer>
+     * @return Collection<int, QuizAnswer>
      */
     public function getCorrectAnswers()
     {
@@ -112,13 +117,12 @@ class QuizQuestion extends Model
      */
     public function getTypeLabel(): string
     {
-        return match($this->type) {
+        return [
             'multiple_choice' => 'QCM (Choix unique)',
             'multiple_response' => 'QCM (Choix multiples)',
             'true_false' => 'Vrai/Faux',
             'short_answer' => 'Réponse courte',
             'essay' => 'Rédaction',
-            default => 'Autre',
-        };
+        ][$this->type] ?? 'Autre';
     }
 }

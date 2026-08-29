@@ -2,10 +2,10 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
+use App\Models\Traits\BelongsToInstitution;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use App\Models\Traits\BelongsToInstitution;
 
 /**
  * Model KnowledgeCheckAttempt
@@ -14,7 +14,7 @@ use App\Models\Traits\BelongsToInstitution;
  */
 class KnowledgeCheckAttempt extends Model
 {
-    use HasFactory, BelongsToInstitution;
+    use BelongsToInstitution;
 
     protected $fillable = [
         'knowledge_check_id',
@@ -88,8 +88,8 @@ class KnowledgeCheckAttempt extends Model
     /**
      * Scope: Par utilisateur
      *
-     * @param  \Illuminate\Database\Eloquent\Builder<KnowledgeCheckAttempt>  $query
-     * @return \Illuminate\Database\Eloquent\Builder<KnowledgeCheckAttempt>
+     * @param  Builder<KnowledgeCheckAttempt>  $query
+     * @return Builder<KnowledgeCheckAttempt>
      */
     public function scopeForUser($query, int $userId)
     {
@@ -99,8 +99,8 @@ class KnowledgeCheckAttempt extends Model
     /**
      * Scope: Reussies
      *
-     * @param  \Illuminate\Database\Eloquent\Builder<KnowledgeCheckAttempt>  $query
-     * @return \Illuminate\Database\Eloquent\Builder<KnowledgeCheckAttempt>
+     * @param  Builder<KnowledgeCheckAttempt>  $query
+     * @return Builder<KnowledgeCheckAttempt>
      */
     public function scopePassed($query)
     {
@@ -110,8 +110,8 @@ class KnowledgeCheckAttempt extends Model
     /**
      * Scope: Recentes d'abord
      *
-     * @param  \Illuminate\Database\Eloquent\Builder<KnowledgeCheckAttempt>  $query
-     * @return \Illuminate\Database\Eloquent\Builder<KnowledgeCheckAttempt>
+     * @param  Builder<KnowledgeCheckAttempt>  $query
+     * @return Builder<KnowledgeCheckAttempt>
      */
     public function scopeLatest($query)
     {

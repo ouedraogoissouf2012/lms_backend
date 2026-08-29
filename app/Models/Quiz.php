@@ -2,12 +2,14 @@
 
 namespace App\Models;
 
+use App\Models\Traits\BelongsToInstitution;
+use Database\Factories\QuizFactory;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use App\Models\Traits\BelongsToInstitution;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
  * Quiz en ligne. Logique métier dans QuizAccessService, QuizGradingService,
@@ -15,15 +17,16 @@ use App\Models\Traits\BelongsToInstitution;
  *
  * @property int $id
  * @property int $created_by
- * @property int $user_attempts_count            Attribut posé par QuizCrudService (QuizAccessService::attemptsCountForUser).
- * @property bool $user_can_attempt              Attribut posé par QuizCrudService (QuizAccessService::canUserAttempt).
+ * @property int|null $institution_id
+ * @property int $user_attempts_count Attribut posé par QuizCrudService (QuizAccessService::attemptsCountForUser).
+ * @property bool $user_can_attempt Attribut posé par QuizCrudService (QuizAccessService::canUserAttempt).
  * @property QuizAttempt|null $user_best_attempt Attribut posé par QuizCrudService (QuizAccessService::bestAttemptForUser).
  * @property QuizAttempt|null $user_latest_attempt Attribut posé par QuizCrudService (QuizAccessService::latestAttemptForUser).
  */
 class Quiz extends Model
 {
-    /** @use HasFactory<\Database\Factories\QuizFactory> */
-    use HasFactory, SoftDeletes, BelongsToInstitution;
+    /** @use HasFactory<QuizFactory> */
+    use BelongsToInstitution, HasFactory, SoftDeletes;
 
     protected $fillable = [
         'lesson_id', 'matiere_id', 'classe_id', 'created_by',
@@ -98,42 +101,47 @@ class Quiz extends Model
         return $this->hasMany(QuizAttempt::class);
     }
 
-    /** Scope: Quiz publiés */
-    public function scopePublished($query)
+    /** @param Builder<Quiz> $query
+     * @return Builder<Quiz> */
+    public function scopePublished(Builder $query)
     {
         return $query->where('status', 'published')
             ->whereNotNull('published_at')
             ->where('published_at', '<=', now());
     }
 
-    /** Scope: Quiz disponibles (publiés + dans la période de disponibilité) */
-    public function scopeAvailable($query)
+    /** @param Builder<Quiz> $query
+     * @return Builder<Quiz> */
+    public function scopeAvailable(Builder $query)
     {
         return $query->published()
             ->where(function ($q) {
                 $q->whereNull('available_from')
-                  ->orWhere('available_from', '<=', now());
+                    ->orWhere('available_from', '<=', now());
             })
             ->where(function ($q) {
                 $q->whereNull('available_until')
-                  ->orWhere('available_until', '>=', now());
+                    ->orWhere('available_until', '>=', now());
             });
     }
 
-    /** Scope: Par matière */
-    public function scopeForMatiere($query, int $matiereId)
+    /** @param Builder<Quiz> $query
+     * @return Builder<Quiz> */
+    public function scopeForMatiere(Builder $query, int $matiereId)
     {
         return $query->where('matiere_id', $matiereId);
     }
 
-    /** Scope: Par classe */
-    public function scopeForClasse($query, int $classeId)
+    /** @param Builder<Quiz> $query
+     * @return Builder<Quiz> */
+    public function scopeForClasse(Builder $query, int $classeId)
     {
         return $query->where('classe_id', $classeId);
     }
 
-    /** Scope: Par cours */
-    public function scopeForLesson($query, int $lessonId)
+    /** @param Builder<Quiz> $query
+     * @return Builder<Quiz> */
+    public function scopeForLesson(Builder $query, int $lessonId)
     {
         return $query->where('lesson_id', $lessonId);
     }

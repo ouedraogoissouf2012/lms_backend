@@ -36,6 +36,15 @@ use Illuminate\Http\Request;
 final class ForumTopicService
 {
     /**
+     * Colonnes publiques de l'auteur — `email` volontairement exclu (#544 —
+     * PII, jamais exposée au client). Source unique pour tous les
+     * `with()`/`load()`/`fresh()` de ce service : un seul endroit à modifier
+     * pour changer le contrat, aucun risque qu'un futur ajout de relation
+     * oublie de reproduire l'exclusion.
+     */
+    private const AUTHOR_COLUMNS = 'user:id,name,role';
+
+    /**
      * GET /api/forum/topics — liste paginée filtrée et triée.
      *
      * Filtres : `lesson_id`, `matiere_id`, `classe_id`, `status`,
@@ -43,7 +52,7 @@ final class ForumTopicService
      */
     public function list(Request $request): LengthAwarePaginator
     {
-        $query = ForumTopic::with(['user:id,name,email,role']);
+        $query = ForumTopic::with([self::AUTHOR_COLUMNS]);
 
         // Defense en profondeur (fix E2E #211 flow 5) : filtre tenant explicite
         // (le global scope est no-op sans tenant resolu). null = supradmin.
@@ -104,7 +113,7 @@ final class ForumTopicService
         $data['last_activity_at'] = now();
 
         $topic = ForumTopic::create($data);
-        $topic->load('user:id,name,email,role');
+        $topic->load(self::AUTHOR_COLUMNS);
 
         return $topic;
     }
@@ -117,11 +126,11 @@ final class ForumTopicService
     public function showWithPosts(ForumTopic $topic): ForumTopic
     {
         $topic->load([
-            'user:id,name,email,role',
+            self::AUTHOR_COLUMNS,
             'lesson:id,title',
             'posts' => function ($query) {
                 $query->rootLevel()
-                    ->with(['user:id,name,email,role', 'replies.user:id,name,email,role'])
+                    ->with([self::AUTHOR_COLUMNS, 'replies.' . self::AUTHOR_COLUMNS])
                     ->orderBy('is_solution', 'desc')
                     ->orderBy('created_at', 'asc');
             }
@@ -143,7 +152,7 @@ final class ForumTopicService
         $topic->update($data);
 
         /** @var ForumTopic $fresh */
-        $fresh = $topic->fresh(['user']);
+        $fresh = $topic->fresh([self::AUTHOR_COLUMNS]);
 
         return $fresh;
     }

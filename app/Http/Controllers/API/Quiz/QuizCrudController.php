@@ -6,6 +6,7 @@ namespace App\Http\Controllers\API\Quiz;
 
 use App\Http\Controllers\AuthenticatedController;
 use App\Http\Requests\DeleteQuizRequest;
+use App\Http\Requests\ListQuizzesRequest;
 use App\Http\Requests\PublishQuizRequest;
 use App\Http\Requests\StoreQuizRequest;
 use App\Http\Requests\UpdateQuizRequest;
@@ -41,10 +42,10 @@ final class QuizCrudController extends AuthenticatedController
     /**
      * GET /api/quizzes — Liste des quiz (avec filtres).
      */
-    public function index(Request $request): JsonResponse
+    public function index(ListQuizzesRequest $request): JsonResponse
     {
         $user      = $this->authenticatedUser($request);
-        $paginator = $this->crud->list($user, $request->all());
+        $paginator = $this->crud->list($user, $request->validated());
 
         return $this->successResponse($paginator);
     }

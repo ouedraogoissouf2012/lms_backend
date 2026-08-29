@@ -60,6 +60,7 @@ Route::middleware(['auth:sanctum', 'klassci.sync', 'role:enseignant,coordinateur
 
     // Soumissions et résultats
     Route::get('evaluations/{id}/submissions', [EvaluationTeacherController::class, 'getSubmissions']);
+    Route::post('evaluations/{id}/submissions/{submission}/grade', [EvaluationTeacherController::class, 'gradeSubmission']);
     Route::post('evaluations/{id}/sync-notes', [EvaluationKlassciSyncController::class, 'syncNotesToKlassci']);
 
     // Synchronisation vers KLASSCI

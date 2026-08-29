@@ -4,7 +4,7 @@
 > Ne pas sauter l'étape 4 (migrations) : c'est elle qui, oubliée, a provoqué
 > l'incident login 500 du 2026-06-20.
 
-- **Serveur** : `/home/c2569688c/public_html/lms-backend/`
+- **Serveur** : `/var/www/lms-backend/`
 - **Branche de prod** : `lms`
 - **Base de données prod** : MySQL (PAS sqlite — sqlite est uniquement le dev local)
 - **URL backend** : `https://api.klassci.com/api`
@@ -17,7 +17,7 @@
 - [ ] Prévenir qu'une courte interruption est possible.
 - [ ] **Sauvegarde DB** (filet de sécurité avant migrations) :
   ```bash
-  cd /home/c2569688c/public_html/lms-backend
+  cd /var/www/lms-backend
   php artisan db:show   # vérifie la connexion DB
   # Export de secours (adapter les identifiants depuis .env) :
   mysqldump -u <DB_USERNAME> -p <DB_DATABASE> > ~/backup-lms-$(date +%F-%H%M).sql
@@ -29,7 +29,7 @@
 ## 1. Récupérer le code
 
 ```bash
-cd /home/c2569688c/public_html/lms-backend
+cd /var/www/lms-backend
 git status            # doit être propre ; sinon stasher/committer AVANT
 git pull origin lms
 ```
@@ -110,10 +110,18 @@ curl -s -X POST https://api.klassci.com/api/auth/login \
   -H "Accept: application/json" -H "Content-Type: application/json" \
   -d '{"username":"zzz_inexistant_test","password":"motdepassevalide"}' \
   -w "\nlogin inconnu: %{http_code}\n"
+
+# 6c. Le webroot ne doit exposer ni .env ni .git (issue #537)
+curl -s -o /dev/null -w "webroot .env: %{http_code}\n" https://api.klassci.com/.env
+curl -s -o /dev/null -w "webroot .git: %{http_code}\n" https://api.klassci.com/.git/HEAD
 ```
 ✅ Attendu :
 - health → `200`
 - login inconnu → `401` (preuve que l'auth tourne ; si `500`, voir étape 4 / logs ; si `503`, KLASSCI injoignable)
+- webroot `.env` et `.git` → `403` ou `404` dans les deux cas. **Si `200`** :
+  rotation immédiate de TOUS les secrets (`APP_KEY`, credentials DB,
+  `KLASSCI_API_TOKEN`, `SUPRADMIN_PASSWORD`) puis vérifier le DocumentRoot du vhost
+  côté WHM (doit pointer sur `.../lms-backend/public`, jamais sur `.../lms-backend`).
 
 - [ ] **Test réel** : connecte-toi avec ton **compte supradmin local** (indépendant de KLASSCI) → doit réussir.
 - [ ] **Test réel** : connecte-toi avec un compte KLASSCI (étudiant/enseignant) → doit réussir.

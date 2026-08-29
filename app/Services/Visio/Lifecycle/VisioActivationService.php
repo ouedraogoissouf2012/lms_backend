@@ -9,7 +9,8 @@ use App\Models\Seance;
 use App\Models\User;
 use App\Services\ClasseSyncService;
 use App\Services\KlassciProxyService;
-use App\Services\NotificationService;
+use App\Services\Notification\AsyncVisioNotificationDispatcher;
+use App\Services\Visio\SecureVisioRoomIdGenerator;
 use Psr\Log\LoggerInterface;
 use Throwable;
 
@@ -27,7 +28,7 @@ final class VisioActivationService
     public function __construct(
         private readonly KlassciProxyService $klassciService,
         private readonly ClasseSyncService $classeSyncService,
-        private readonly NotificationService $notificationService,
+        private readonly AsyncVisioNotificationDispatcher $notifications,
         private readonly LoggerInterface $logger,
     ) {}
 
@@ -65,7 +66,7 @@ final class VisioActivationService
                     'visio_enabled' => true,
                     'visio_type' => 'jitsi',
                     'visio_status' => 'programmee',
-                    'visio_room_id' => 'lms_seance_' . $seanceId . '_' . time(),
+                    'visio_room_id' => SecureVisioRoomIdGenerator::make(),
                     'visio_active' => false,
                     'is_active' => true,  // S'assurer que la séance est active pour être visible aux étudiants
                     'updated_by' => $user->id,
@@ -82,7 +83,7 @@ final class VisioActivationService
             // pour que les notifications puissent être envoyées
             $classe = $this->syncClasseForNotifications($visio, $klassciToken, $seanceId);
 
-            // Envoyer les notifications aux étudiants
+            // Planifier les notifications aux étudiants.
             $notificationsSent = $this->sendScheduledNotifications($visio, $seanceId, $classe);
 
             return [
@@ -95,6 +96,7 @@ final class VisioActivationService
                         'visio_status' => 'programmee',
                         'visio_room_id' => $visio->visio_room_id,
                         'notifications_sent' => $notificationsSent,
+                        'notifications_queued' => true,
                         'classe_synced' => $classe !== null,
                     ],
                 ],
@@ -182,7 +184,7 @@ final class VisioActivationService
      * Cherche la séance dans Klassci via le bon endpoint selon le rôle.
      * Conserve le comportement legacy verbatim.
      *
-     * @return array{0: array<string, mixed>|null, 1: array<string, mixed>|null}  [seanceFound, matiereInfo]
+     * @return array{0: array<string, mixed>|null, 1: array<string, mixed>|null} [seanceFound, matiereInfo]
      */
     private function locateKlassciSeance(int $seanceId, User $user, ?string $klassciToken): array
     {
@@ -270,15 +272,14 @@ final class VisioActivationService
     {
         $notificationsSent = 0;
         try {
-            $notificationsSent = $this->notificationService->notifyVisioScheduled($seanceId, [
+            $this->notifications->queueScheduled($seanceId, [
                 'klassci_classe_id' => $visio->klassci_classe_id,
                 'klassci_enseignant_id' => $visio->klassci_enseignant_id,
                 'matiere_nom' => $visio->matiere_nom,
                 'enseignant_nom' => $visio->enseignant_nom,
             ]);
-            $this->logger->info('Notifications visio programmée envoyées', [
+            $this->logger->info('Notifications visio programmée planifiées', [
                 'seance_id' => $seanceId,
-                'notifications_sent' => $notificationsSent,
                 'classe_local_id' => $classe?->id,
             ]);
         } catch (Throwable $e) {

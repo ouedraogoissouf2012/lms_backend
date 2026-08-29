@@ -37,7 +37,13 @@
 | Variable | Description |
 |---|---|
 | `KLASSCI_API_URL` | URL de base de l'API KLASSCI |
-| `KLASSCI_API_TIMEOUT` | Timeout en secondes pour les appels sortants |
+| `KLASSCI_CONNECT_TIMEOUT` | Timeout de connexion KLASSCI en secondes (défaut 2) |
+| `KLASSCI_TIMEOUT` | Timeout total KLASSCI en secondes (défaut 5) |
+| `KLASSCI_RETRY_AFTER` | Valeur du header `Retry-After` sur panne KLASSCI retryable |
+| `KLASSCI_CIRCUIT_BREAKER_ENABLED` | Active le circuit breaker KLASSCI sans service externe |
+| `KLASSCI_CIRCUIT_BREAKER_FAILURES` | Nombre d'échecs 5xx/transport avant ouverture du circuit |
+| `KLASSCI_CIRCUIT_BREAKER_COOLDOWN` | Durée d'ouverture du circuit en secondes |
+| `KLASSCI_CIRCUIT_BREAKER_WINDOW` | Fenêtre de comptage des échecs en secondes |
 | `KLASSCI_SSL_VERIFY` | `true` en prod (cf. `SSLVerificationProvider`) — `false` uniquement en local explicitement |
 
 ## 4. Cache / Queue / Session

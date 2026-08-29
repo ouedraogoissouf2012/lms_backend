@@ -1,15 +1,16 @@
 <?php
 
+use App\Jobs\ArchiveOldSeances;
+use App\Jobs\AutoCloseEmptySeances;
+use App\Jobs\CleanObsoleteSeances;
+use App\Jobs\CleanOldEvaluations;
+use App\Jobs\DetectDisconnectedParticipants;
+use App\Jobs\FinalizeSeanceAttendances;
+use App\Jobs\SyncKlassciSeances;
+use App\Services\NotificationService;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;
-use App\Jobs\SyncKlassciSeances;
-use App\Jobs\AutoCloseEmptySeances;
-use App\Jobs\ArchiveOldSeances;
-use App\Jobs\CleanObsoleteSeances;
-use App\Jobs\CleanOldEvaluations;
-use App\Jobs\FinalizeSeanceAttendances;
-use App\Jobs\DetectDisconnectedParticipants;
 
 Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
@@ -17,7 +18,7 @@ Artisan::command('inspire', function () {
 
 // Planifier la synchronisation des séances Klassci toutes les 5 minutes
 // Détecte les nouvelles séances et les séances supprimées de Klassci
-Schedule::job(new SyncKlassciSeances)
+Schedule::job(new SyncKlassciSeances, 'low')
     ->everyFiveMinutes()
     ->name('sync-klassci-seances')
     ->withoutOverlapping()
@@ -25,7 +26,7 @@ Schedule::job(new SyncKlassciSeances)
 
 // Planifier le nettoyage des séances obsolètes (supprimées dans Klassci)
 // Vérifie toutes les 30 minutes si les séances locales existent encore dans Klassci
-Schedule::job(new CleanObsoleteSeances)
+Schedule::job(new CleanObsoleteSeances, 'low')
     ->everyThirtyMinutes()
     ->name('clean-obsolete-seances')
     ->withoutOverlapping()
@@ -33,7 +34,7 @@ Schedule::job(new CleanObsoleteSeances)
 
 // Planifier l'archivage des vieilles séances tous les jours à 2h du matin
 // Archive les séances > 2 semaines après leur date
-Schedule::job(new ArchiveOldSeances)
+Schedule::job(new ArchiveOldSeances, 'low')
     ->dailyAt('02:00')
     ->name('archive-old-seances')
     ->withoutOverlapping()
@@ -42,7 +43,7 @@ Schedule::job(new ArchiveOldSeances)
 // Planifier le nettoyage des évaluations passées non effectuées
 // Archive les évaluations terminées depuis 7+ jours sans aucune soumission
 // Les évaluations avec au moins 1 soumission sont toujours conservées
-Schedule::job(new CleanOldEvaluations)
+Schedule::job(new CleanOldEvaluations, 'low')
     ->dailyAt('03:00')
     ->name('clean-old-evaluations')
     ->withoutOverlapping()
@@ -58,7 +59,7 @@ Schedule::command('evaluations:notify-upcoming --hours=24')
 // Planifier le nettoyage des anciennes notifications lues
 // Supprime les notifications lues de plus de 30 jours pour alléger la base
 Schedule::call(function () {
-    app(\App\Services\NotificationService::class)->cleanupOldNotifications(30);
+    app(NotificationService::class)->cleanupOldNotifications(30);
 })
     ->weekly()
     ->sundays()
@@ -68,7 +69,7 @@ Schedule::call(function () {
 // Planifier la détection des participants déconnectés (via heartbeat)
 // Marque comme 'disconnected' les participants inactifs depuis 5+ minutes
 // Permet de gérer les déconnexions involontaires (fermeture onglet, crash, etc.)
-Schedule::job(new DetectDisconnectedParticipants)
+Schedule::job(new DetectDisconnectedParticipants, 'high')
     ->everyTwoMinutes()
     ->name('detect-disconnected-participants')
     ->withoutOverlapping()
@@ -77,7 +78,7 @@ Schedule::job(new DetectDisconnectedParticipants)
 // Planifier la finalisation automatique des présences après fin des séances
 // Marque comme 'disconnected' les participants des séances terminées depuis 30+ minutes
 // Calcule automatiquement la durée de participation pour les oublieux
-Schedule::job(new FinalizeSeanceAttendances)
+Schedule::job(new FinalizeSeanceAttendances, 'low')
     ->everyTenMinutes()
     ->name('finalize-seance-attendances')
     ->withoutOverlapping()
@@ -89,7 +90,7 @@ Schedule::job(new FinalizeSeanceAttendances)
 // Fréquence 5 min = plus petit seuil des règles de fermeture (enseignant
 // déconnecté 5 min / tous déconnectés 10 min / aucun participant 30 min) :
 // latence de détection max = seuil + 5 min, proportionnée sans sur-scanner.
-Schedule::job(new AutoCloseEmptySeances)
+Schedule::job(new AutoCloseEmptySeances, 'high')
     ->everyFiveMinutes()
     ->name('auto-close-empty-seances')
     ->withoutOverlapping()
@@ -103,12 +104,47 @@ Schedule::command('audit:purge')
     ->withoutOverlapping()
     ->onOneServer();
 
+// Rétention RGPD des enregistrements visio (#461). L'application est
+// explicite afin qu'une invocation manuelle sans --apply reste sans effet.
+Schedule::command('recordings:purge --apply')
+    ->dailyAt('03:45')
+    ->name('purge-visio-recordings')
+    ->withoutOverlapping()
+    ->onOneServer();
+
+// #514 — Filet de sécurité : sans webhook fournisseur (cf. #204), un enregistrement
+// arrêté reste bloqué en `Processing`, ce qui conserve son verrou actif et empêche
+// tout nouvel enregistrement de la séance. On le passe à `Failed` au-delà du délai.
+Schedule::command('recordings:fail-stale-processing')
+    ->everyThirtyMinutes()
+    ->name('fail-stale-recordings')
+    ->withoutOverlapping()
+    ->onOneServer();
+
+// #502 — Filet de sécurité serveur : une tentative de quiz chronométrée abandonnée
+// (l'étudiant ferme l'onglet sans re-poller checkTimeRemaining/saveProgress) resterait
+// `in_progress` indéfiniment (réponses partielles non gradées, lignes orphelines). Ce
+// janitor finalise et soumet automatiquement les tentatives expirées.
+Schedule::command('quiz:expire-attempts')
+    ->everyFiveMinutes()
+    ->name('expire-quiz-attempts')
+    ->withoutOverlapping()
+    ->onOneServer();
+
 // Battement de vie du scheduler (#369) — marqueur cache lu par
 // `scheduler:healthcheck` pour détecter un cron mort en < 10 min.
 // Chaque minute : c'est la granularité du cron `schedule:run` lui-même.
 Schedule::command('scheduler:heartbeat')
     ->everyMinute()
     ->name('scheduler-heartbeat');
+
+// Healthcheck cPanel-safe de la queue database (#379) — pas de Redis requis.
+// Échoue si failed_jobs > 0, si trop de jobs attendent, ou si le plus vieux
+// job pending dépasse le seuil. Succès silencieux ; incident loggé + exit 1.
+Schedule::command('queue:healthcheck --max-pending=1000 --max-age-minutes=5 --max-failed=0 --max-worker-heartbeat-minutes=5')
+    ->everyFiveMinutes()
+    ->name('queue-healthcheck')
+    ->withoutOverlapping();
 
 // Worker de queue pour mutualisé cPanel (#369) — pas de Supervisor disponible,
 // donc pas de démon `queue:work` permanent. Stratégie : drainer la table `jobs`
@@ -120,7 +156,7 @@ Schedule::command('scheduler:heartbeat')
 //   withoutOverlapping(10) : verrou à expiration COURTE — si le process est
 //                       tué net (kill -9 hébergeur), le verrou par défaut
 //                       (24 h) gèlerait la queue ; 10 min = auto-guérison.
-Schedule::command('queue:work --stop-when-empty --max-time=55')
+Schedule::command('queue:drain')
     ->everyMinute()
     ->name('queue-worker')
     ->withoutOverlapping(10)

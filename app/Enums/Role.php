@@ -32,13 +32,10 @@ namespace App\Enums;
  * la 4ᵉ méthode du model). L'enum ne fournit que `isAdmin()` car le concept
  * « administratif » a une définition élargie (`Admin` + `Supradmin`).
  *
- * ## Migration progressive (issue #121)
+ * ## Migration (#121)
  *
- *  - **PR #121a** : 2 sites racine refactorés (User helpers + EnsureKlassciSync).
- *    77 sites disséminés inchangés — fonctionnent via les méthodes
- *    `User::isXxx()` qui sont désormais propulsées par l'enum.
- *  - **PR #121b (follow-up)** : migration des 77 sites disséminés vers
- *    `$user->isXxx()` ou `$user->asRoleEnum() === Role::X`.
+ * Les helpers `User::isXxx()` passent par cet enum. #521 : `EnsureRole`
+ * consomme `tryFromString()` / `aliases()` — plus de table FR/EN locale.
  *
  * @see \App\Models\User::asRoleEnum
  * @see \App\Http\Middleware\EnsureKlassciSync::isEscalationAttempt
@@ -65,6 +62,24 @@ enum Role: string
             'admin', 'administrateur'     => self::Admin,
             'supradmin', 'superAdmin'     => self::Supradmin,
             default                       => null,
+        };
+    }
+
+    /**
+     * Variantes FR/EN stockées en base pour ce rôle.
+     * `superAdmin` n'est PAS un alias de Supradmin ici : c'est l'admin
+     * intra-tenant, traité à part par EnsureRole (#102).
+     *
+     * @return list<string>
+     */
+    public function aliases(): array
+    {
+        return match ($this) {
+            self::Etudiant => ['etudiant', 'student', 'étudiant'],
+            self::Enseignant => ['enseignant', 'teacher'],
+            self::Coordinateur => ['coordinateur', 'coordinator'],
+            self::Admin => ['admin', 'administrateur', 'administrator'],
+            self::Supradmin => ['supradmin'],
         };
     }
 

@@ -2,19 +2,21 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
+use App\Models\Traits\BelongsToInstitution;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use App\Models\Traits\BelongsToInstitution;
 
 /**
  * Model QuizAnswer
  *
  * Réponse possible pour une question de quiz (QCM)
+ *
+ * @property int|null $institution_id
  */
 class QuizAnswer extends Model
 {
-    use HasFactory, BelongsToInstitution;
+    use BelongsToInstitution;
 
     protected $fillable = [
         'question_id',
@@ -47,10 +49,10 @@ class QuizAnswer extends Model
     /**
      * Scope: Réponses ordonnées
      *
-     * @param  \Illuminate\Database\Eloquent\Builder<QuizAnswer>  $query
-     * @return \Illuminate\Database\Eloquent\Builder<QuizAnswer>
+     * @param  Builder<QuizAnswer>  $query
+     * @return Builder<QuizAnswer>
      */
-    public function scopeOrdered($query)
+    public function scopeOrdered(Builder $query)
     {
         return $query->orderBy('order');
     }
@@ -58,10 +60,10 @@ class QuizAnswer extends Model
     /**
      * Scope: Réponses correctes
      *
-     * @param  \Illuminate\Database\Eloquent\Builder<QuizAnswer>  $query
-     * @return \Illuminate\Database\Eloquent\Builder<QuizAnswer>
+     * @param  Builder<QuizAnswer>  $query
+     * @return Builder<QuizAnswer>
      */
-    public function scopeCorrect($query)
+    public function scopeCorrect(Builder $query)
     {
         return $query->where('is_correct', true);
     }

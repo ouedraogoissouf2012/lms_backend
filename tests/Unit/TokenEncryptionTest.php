@@ -22,7 +22,7 @@ class TokenEncryptionTest extends TestCase
             'klassci_id' => 123,
             'role' => 'student',
             'klassci_token_encrypted' => $plainToken,
-            'institution_id' => 1,
+            'institution_id' => Institution::factory()->create()->id,
         ]);
 
         $rawData = \DB::table('users')->find($user->id);
@@ -43,7 +43,7 @@ class TokenEncryptionTest extends TestCase
             'klassci_id' => 123,
             'role' => 'student',
             'klassci_token_encrypted' => $plainToken,
-            'institution_id' => 1,
+            'institution_id' => Institution::factory()->create()->id,
         ]);
 
         $retrievedUser = User::find($user->id);

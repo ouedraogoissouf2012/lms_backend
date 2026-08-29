@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\API\LMS;
 
 use App\Http\Controllers\AuthenticatedController;
+use App\Http\Requests\AttendanceHistoryRequest;
 use App\Http\Requests\SyncAttendancesRequest;
 use App\Services\Attendances\AttendanceHistoryQueryService;
 use App\Services\Attendances\SeanceAttendancesQueryService;
@@ -62,7 +63,7 @@ final class LMSAttendancesController extends AuthenticatedController
      * Historique de présence (paginé) filtré par rôle (enseignant / étudiant /
      * coordinateur) et par paramètres optionnels (seance_id, date_from, date_to).
      */
-    public function getAttendanceHistory(Request $request): JsonResponse
+    public function getAttendanceHistory(AttendanceHistoryRequest $request): JsonResponse
     {
         $user = $this->authenticatedUser($request);
         $result = $this->historyQuery->getHistory($request, $user);

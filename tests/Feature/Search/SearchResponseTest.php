@@ -64,7 +64,15 @@ final class SearchResponseTest extends TestCase
 
         $response->assertStatus(200);
         $body = $response->json();
-        $this->assertSame(['success', 'query', 'results', 'total', 'categories'], array_keys($body));
+        // #505 : `sources_failed` est une extension ASSUMÉE de ce contrat — clé
+        // TOUJOURS présente (vide quand aucune source n'est tombée), afin qu'un
+        // bucket vide cesse d'être ambigu. Extension additive : les cinq clés
+        // historiques et leurs valeurs restent inchangées.
+        $this->assertSame(
+            ['success', 'query', 'results', 'total', 'categories', 'sources_failed'],
+            array_keys($body),
+        );
+        $this->assertSame([], $body['sources_failed']);
         $this->assertTrue($body['success']);
         $this->assertSame('ab', $body['query']);
         $this->assertSame(0, $body['total']);

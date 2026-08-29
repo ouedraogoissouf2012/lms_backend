@@ -7,7 +7,7 @@ namespace App\Services\Visio\Lifecycle;
 use App\Models\Seance;
 use App\Models\User;
 use App\Services\ClasseSyncService;
-use App\Services\NotificationService;
+use App\Services\Notification\AsyncVisioNotificationDispatcher;
 use Psr\Log\LoggerInterface;
 use Throwable;
 
@@ -34,7 +34,7 @@ final class VisioSessionService
 {
     public function __construct(
         private readonly ClasseSyncService $classeSyncService,
-        private readonly NotificationService $notificationService,
+        private readonly AsyncVisioNotificationDispatcher $notifications,
         private readonly LoggerInterface $logger,
     ) {}
 
@@ -86,7 +86,7 @@ final class VisioSessionService
             // Normalement déjà fait lors de activate(), mais on s'assure
             $this->ensureClasseSynced($visio, $user, $seanceId);
 
-            // Envoyer les notifications aux étudiants et à l'enseignant
+            // Planifier les notifications aux étudiants et à l'enseignant.
             $this->sendStartingNotifications($visio, $seanceId);
 
             return [
@@ -236,16 +236,15 @@ final class VisioSessionService
     private function sendStartingNotifications(Seance $visio, int $seanceId): void
     {
         try {
-            $notificationsSent = $this->notificationService->notifyVisioStarting($seanceId, [
+            $this->notifications->queueStarting($seanceId, [
                 'klassci_classe_id' => $visio->klassci_classe_id,
                 'klassci_enseignant_id' => $visio->klassci_enseignant_id,
                 'matiere_nom' => $visio->matiere_nom,
                 'enseignant_nom' => $visio->enseignant_nom,
             ]);
 
-            $this->logger->info('Notifications visio démarrée envoyées', [
+            $this->logger->info('Notifications visio démarrée planifiées', [
                 'seance_id' => $seanceId,
-                'notifications_sent' => $notificationsSent,
             ]);
         } catch (Throwable $e) {
             $this->logger->error('Erreur envoi notifications visio démarrée', [

@@ -14,6 +14,7 @@ use App\Models\EvaluationQuestion;
 use App\Models\EvaluationSubmission;
 use App\Models\User;
 use App\Services\Evaluation\EvaluationEnrichmentService;
+use App\Services\Evaluation\EvaluationGradingService;
 use App\Services\KlassciProxyService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -32,14 +33,23 @@ class EvaluationKlassciSyncController extends AuthenticatedController
     public function __construct(
         private KlassciProxyService $klassciService,
         private EvaluationEnrichmentService $enrichmentService,
+        private EvaluationGradingService $gradingService,
     ) {}
 
-    public function syncToKlassci(int $id): JsonResponse
+    public function syncToKlassci(Request $request, int $id): JsonResponse
     {
-        $evaluation = Evaluation::with('submissions')->find($id);
+        $evaluation = Evaluation::with(['submissions', 'questions'])->find($id);
 
         if (!$evaluation) {
             return $this->errorResponse('Évaluation non trouvée', 404);
+        }
+
+        // #588 : une dissertation n'est finale qu'en statut `corrige`.
+        if ($this->hasUngradedManualSubmission($evaluation)) {
+            return $this->errorResponse(
+                'Synchronisation bloquée : cette évaluation contient des questions à correction manuelle (dissertation) non encore notées.',
+                409
+            );
         }
 
         try {
@@ -59,7 +69,13 @@ class EvaluationKlassciSyncController extends AuthenticatedController
 
             // Envoyer vers KLASSCI si une évaluation KLASSCI existe
             if ($evaluation->klassci_evaluation_id) {
+                $teacherToken = $this->authenticatedUser($request)->klassci_token;
+                if (! is_string($teacherToken) || $teacherToken === '') {
+                    return $this->errorResponse('Token KLASSCI non trouvé. Veuillez vous reconnecter.', 401);
+                }
+
                 $result = $this->klassciService->saveNotes(
+                    $teacherToken,
                     $evaluation->klassci_evaluation_id,
                     $notes
                 );
@@ -94,7 +110,14 @@ class EvaluationKlassciSyncController extends AuthenticatedController
     public function syncNotesToKlassci(int $id): JsonResponse
     {
         try {
-            $evaluation = Evaluation::findOrFail($id);
+            $evaluation = Evaluation::with('questions')->findOrFail($id);
+
+            if ($this->hasUngradedManualSubmission($evaluation)) {
+                return $this->errorResponse(
+                    'Synchronisation bloquée : cette évaluation contient des questions à correction manuelle (dissertation) non encore notées.',
+                    409
+                );
+            }
 
             // Récupérer toutes les soumissions non synchronisées
             $submissions = EvaluationSubmission::where('evaluation_id', $id)
@@ -173,5 +196,31 @@ class EvaluationKlassciSyncController extends AuthenticatedController
                 'error' => 'Une erreur est survenue.'
             ], 500);
         }
+    }
+
+    /**
+     * Vrai si l'évaluation contient au moins une question à correction manuelle
+     * (dissertation) — donc dont la note automatique n'est pas finale (#564).
+     * La règle « quel type est manuel » reste centralisée dans le service de
+     * correction (DRY), le contrôleur ne fait qu'orchestrer le fail-closed.
+     */
+    private function hasManualGradingQuestion(Evaluation $evaluation): bool
+    {
+        return $evaluation->questions->contains(
+            fn (EvaluationQuestion $question): bool => $this->gradingService->requiresManualGrading($question)
+        );
+    }
+
+    private function hasUngradedManualSubmission(Evaluation $evaluation): bool
+    {
+        if (! $this->hasManualGradingQuestion($evaluation)) {
+            return false;
+        }
+
+        $evaluation->loadMissing('submissions');
+
+        return $evaluation->submissions->contains(
+            fn (EvaluationSubmission $submission): bool => $submission->status === 'soumis'
+        );
     }
 }

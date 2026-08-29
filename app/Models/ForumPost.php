@@ -62,11 +62,15 @@ class ForumPost extends Model
     /**
      * Relation: Auteur du post
      *
+     * `withTrashed()` (#566) : un post est un dossier PRÉSERVÉ ; son auteur reste
+     * affichable même soft-deleted (sinon `$post->user` serait null → 500 côté
+     * dashboard/notifications).
+     *
      * @return BelongsTo<User, $this>
      */
     public function user(): BelongsTo
     {
-        return $this->belongsTo(User::class);
+        return $this->belongsTo(User::class)->withTrashed();
     }
 
     /**

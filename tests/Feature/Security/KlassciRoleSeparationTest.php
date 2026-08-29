@@ -41,16 +41,16 @@ final class KlassciRoleSeparationTest extends TestCase
     }
 
     /**
-     * Swap the global `KlassciProxyService` binding so that any call to
-     * `get('auth/me')` returns the provided payload.
+     * Swap the global `KlassciProxyService` binding so that the authenticated
+     * user-token call to `auth/me` returns the provided payload.
      */
     private function mockKlassciAuthMe(array $klassciUser): void
     {
         $mock = Mockery::mock(KlassciProxyService::class);
-        $mock->shouldReceive('get')
-            ->with('auth/me')
+        $mock->shouldReceive('requestWithUserToken')
+            ->with('fake-klassci-token', 'auth/me', 'GET')
             ->andReturn(['data' => ['user' => $klassciUser]]);
-        $mock->shouldReceive('get')->byDefault()->andReturn([]);
+        $mock->shouldReceive('requestWithUserToken')->byDefault()->andReturn([]);
 
         $this->app->instance(KlassciProxyService::class, $mock);
     }
@@ -86,6 +86,32 @@ final class KlassciRoleSeparationTest extends TestCase
         self::assertSame('etudiant', $user->role, 'Initial role must be seeded from KLASSCI.');
         self::assertSame('etudiant', $user->klassci_role, 'klassci_role must mirror the seed.');
         self::assertSame('doe@school-a.fr', $user->email);
+    }
+
+    /**
+     * Issue #510 — On CREATE, a KLASSCI payload claiming the PLATFORM role
+     * `supradmin` (cross-tenant) must NEVER initialize a platform supradmin.
+     * It is downgraded to the institution admin (`superAdmin`, intra-tenant),
+     * for every tenant. Exercised through the container (real DI wiring).
+     */
+    public function test_initial_sync_neutralizes_platform_supradmin_injection(): void
+    {
+        foreach (['school-a', 'school-b'] as $index => $slug) {
+            $institution = Institution::factory()->create(['slug' => $slug]);
+
+            $user = $this->callSyncUserFromKlassci([
+                'id'    => 5000 + $index,
+                'nom'   => 'Injected',
+                'email' => "injected@{$slug}.fr",
+                'role'  => 'supradmin',   // attacker-controlled KLASSCI payload
+            ], $institution);
+
+            self::assertSame('superAdmin', $user->role, "[$slug] platform role must be downgraded to institution admin");
+            self::assertNotSame('supradmin', $user->role, "[$slug] must never be platform supradmin");
+            self::assertFalse($user->isPlatformSupradmin(), "[$slug] no cross-tenant platform privilege");
+            self::assertSame('supradmin', $user->klassci_role, "[$slug] klassci_role captures the attempt");
+            self::assertSame($institution->id, $user->institution_id, "[$slug] stays scoped to its tenant");
+        }
     }
 
     /**
@@ -131,6 +157,7 @@ final class KlassciRoleSeparationTest extends TestCase
             'role'              => 'etudiant',
             'klassci_role'      => 'etudiant',
             'email'             => 'real@school-a.fr',
+            'klassci_token'     => 'fake-klassci-token',
             'last_klassci_sync' => now()->subHours(25),
         ]);
 
@@ -172,6 +199,7 @@ final class KlassciRoleSeparationTest extends TestCase
             'role'              => 'etudiant',
             'klassci_role'      => 'etudiant',
             'email'             => 'a@school-a.fr',
+            'klassci_token'     => 'fake-klassci-token',
             'last_klassci_sync' => now()->subHours(25),
         ]);
         $userB = User::factory()->create([

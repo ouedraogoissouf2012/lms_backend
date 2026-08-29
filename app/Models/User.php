@@ -6,6 +6,7 @@ use App\Casts\KlassciData;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
@@ -21,12 +22,16 @@ use App\Models\Traits\BelongsToInstitution;
  *                                    autoriser (CRITICAL-05, `.claude/specs/critical-05-klassci-role-separation/`).
  * @property int|null $klassci_enseignant_id Write-once — autorité ownership enseignant (#119).
  *                                    Ne JAMAIS lire `klassci_data['enseignant_id']` pour autoriser.
+ * @property array<string, mixed> $klassci_data Cache display filtré par whitelist (#477) via le cast
+ *                                    {@see \App\Casts\KlassciData} — toujours lu comme array.
  * @property \Illuminate\Support\Carbon|null $last_klassci_sync Cast `datetime` (déclaré dans la méthode casts()).
+ * @property \Illuminate\Support\Carbon|null $deleted_at Soft delete (#566) — suppression LOGIQUE :
+ *                                    dossier académique préservé, restauré à la re-sync KLASSCI.
  */
 class User extends Authenticatable
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
-    use HasFactory, Notifiable, HasApiTokens, BelongsToInstitution, InteractsWithRoles;
+    use HasFactory, Notifiable, HasApiTokens, BelongsToInstitution, InteractsWithRoles, SoftDeletes;
 
     protected $fillable = [
         'klassci_id', 'name', 'email', 'password',
@@ -130,5 +135,15 @@ class User extends Authenticatable
     public function quizAttempts(): HasMany
     {
         return $this->hasMany(\App\Models\QuizAttempt::class);
+    }
+
+    /**
+     * Relation: Soumissions d'évaluation (FK `student_id`) — copies + notes (#566).
+     *
+     * @return HasMany<EvaluationSubmission, $this>
+     */
+    public function evaluationSubmissions(): HasMany
+    {
+        return $this->hasMany(\App\Models\EvaluationSubmission::class, 'student_id');
     }
 }

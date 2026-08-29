@@ -74,6 +74,9 @@ final class EvaluationStudentAttemptResponseTest extends TestCase
             'institution_id' => $this->institution->id,
             'klassci_evaluation_id' => 9001,
             'max_attempts' => $maxAttempts,
+            'allow_retake' => true,
+            'is_online' => true,
+            'show_results' => true,
         ]);
         EvaluationQuestion::factory()->create([
             'evaluation_id' => $evaluation->id,
@@ -98,6 +101,18 @@ final class EvaluationStudentAttemptResponseTest extends TestCase
 
         $this->mock(KlassciProxyService::class, function (MockInterface $mock) use ($payload): void {
             $mock->shouldReceive('requestWithUserToken')->andReturn($payload);
+        });
+    }
+
+    /**
+     * Simule une panne KLASSCI : l'appel `evaluations` lève une exception,
+     * exerçant le `catch` de `fetchWindow` (#499).
+     */
+    private function fakeKlassciFailure(): void
+    {
+        $this->mock(KlassciProxyService::class, function (MockInterface $mock): void {
+            $mock->shouldReceive('requestWithUserToken')
+                ->andThrow(new \RuntimeException('KLASSCI indisponible'));
         });
     }
 
@@ -193,6 +208,53 @@ final class EvaluationStudentAttemptResponseTest extends TestCase
     }
 
     /**
+     * #499 — fenêtre non vérifiable (KLASSCI en panne) hors entraînement :
+     * le démarrage doit échouer FERMÉ (503), aucune tentative créée.
+     */
+    public function test_start_returns_503_when_window_check_fails(): void
+    {
+        $evaluation = $this->publishedEvaluation();
+        $this->fakeKlassciFailure();
+        Sanctum::actingAs($this->student);
+
+        $response = $this->postJson("/api/evaluations/{$evaluation->id}/start");
+
+        $response->assertStatus(503);
+        $this->assertSame(
+            0,
+            EvaluationSubmission::where('evaluation_id', $evaluation->id)->count(),
+            'Aucune tentative ne doit être créée quand la fenêtre est invérifiable (#499).'
+        );
+    }
+
+    /**
+     * #499 — en mode entraînement (évaluation terminée), la fenêtre n'est pas
+     * appliquée : une panne KLASSCI ne doit PAS bloquer le démarrage.
+     */
+    public function test_start_allows_practice_mode_when_window_check_fails(): void
+    {
+        $evaluation = Evaluation::factory()->terminee()->create([
+            'institution_id' => $this->institution->id,
+            'klassci_evaluation_id' => 9002,
+            'is_published' => true,
+            'max_attempts' => 3,
+        ]);
+        EvaluationQuestion::factory()->create([
+            'evaluation_id' => $evaluation->id,
+            'institution_id' => $this->institution->id,
+            'type' => 'qcm',
+        ]);
+        $this->fakeKlassciFailure();
+        Sanctum::actingAs($this->student);
+
+        $response = $this->postJson("/api/evaluations/{$evaluation->id}/start");
+
+        $response->assertStatus(200)
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('is_practice', true);
+    }
+
+    /**
      * Arm `ok` (succès start) — NON migrable (clés racine `window` +
      * `is_practice`). On gèle la présence des clés d'enveloppe ET des clés hors
      * enveloppe pour prouver l'absence de régression après migration.
@@ -222,7 +284,7 @@ final class EvaluationStudentAttemptResponseTest extends TestCase
         Sanctum::actingAs($this->student);
 
         $response = $this->postJson("/api/evaluations/{$evaluation->id}/submit", [
-            'answers' => [['question_id' => $question->id, 'answer' => 'A']],
+            'answers' => [$question->id => 'A'],
         ]);
 
         $response->assertStatus(201)
@@ -243,7 +305,7 @@ final class EvaluationStudentAttemptResponseTest extends TestCase
         Sanctum::actingAs($this->student);
 
         $response = $this->postJson("/api/evaluations/{$evaluation->id}/submit", [
-            'answers' => [['question_id' => $question->id, 'answer' => 'A']],
+            'answers' => [$question->id => 'A'],
         ]);
 
         $response->assertStatus(500)

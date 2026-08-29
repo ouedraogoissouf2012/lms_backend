@@ -86,7 +86,12 @@ return new class extends Migration
      */
     private function migrateUserTokens(): void
     {
-        \App\Models\User::whereNotNull('klassci_token')
+        // #566 : `withoutGlobalScopes()` — cette migration de données PRÉCÈDE l'ajout
+        // du trait SoftDeletes sur User ; sans ça, le SoftDeletingScope injecterait
+        // `deleted_at is null` alors que la colonne n'existe pas encore à cette étape
+        // de `migrate:fresh`. Une migration opère sur les lignes brutes, pas sur les
+        // scopes du modèle courant (qui évolue indépendamment).
+        \App\Models\User::withoutGlobalScopes()->whereNotNull('klassci_token')
             ->chunk(100, function ($users) {
                 foreach ($users as $user) {
                     if ($user->klassci_token) {
@@ -103,7 +108,11 @@ return new class extends Migration
      */
     private function migrateInstitutionTokens(): void
     {
-        \App\Models\Institution::whereNotNull('klassci_api_token')
+        // #567 : `withoutGlobalScopes()` — cette migration de données PRÉCÈDE l'ajout
+        // du trait SoftDeletes sur Institution ; sans ça, le SoftDeletingScope
+        // injecterait `deleted_at is null` alors que la colonne n'existe pas encore à
+        // cette étape de `migrate:fresh`. Une migration opère sur les lignes brutes.
+        \App\Models\Institution::withoutGlobalScopes()->whereNotNull('klassci_api_token')
             ->chunk(100, function ($institutions) {
                 foreach ($institutions as $institution) {
                     if ($institution->klassci_api_token) {

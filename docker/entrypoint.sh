@@ -3,6 +3,10 @@ set -e
 
 php artisan package:discover --ansi >/dev/null 2>&1 || true
 php artisan storage:link >/dev/null 2>&1 || true
+mkdir -p storage/api-docs
+if [ -f docs/openapi.yaml ]; then
+    cp -f docs/openapi.yaml storage/api-docs/openapi.yaml
+fi
 
 if [ "${SKIP_CONFIG_CACHE:-0}" != "1" ]; then
     php artisan config:cache

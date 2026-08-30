@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\API\LMS;
 
+use App\Exceptions\KlassciUnavailableException;
 use App\Http\Controllers\API\Proxy\Concerns\ResolvesPersonalKlassciToken;
 use App\Http\Controllers\AuthenticatedController;
 use App\Services\KlassciProxyService;
@@ -151,6 +152,12 @@ final class LMSMatieresAdminController extends AuthenticatedController
                 'statistiques' => $stats,
             ], count($matieresEnrichies) . ' matière(s) récupérée(s)');
 
+        } catch (KlassciUnavailableException $e) {
+            // Panne KLASSCI : 503 retryable, jamais le 500 generique ci-dessous.
+            // Un 500 est definitif pour le client ; il transformerait une coupure
+            // de quelques minutes en echec permanent. Reponse canonique unique,
+            // partagee avec le handler global et le trait proxy.
+            return KlassciUnavailableException::jsonResponse();
         } catch (\Exception $e) {
             Log::error('Erreur liste matières admin', [
                 'error' => $e->getMessage(),

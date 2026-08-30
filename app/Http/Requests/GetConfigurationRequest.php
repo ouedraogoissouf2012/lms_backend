@@ -16,7 +16,12 @@ final class GetConfigurationRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return auth()->user()?->asRoleEnum() === Role::Supradmin;
+        // Routes declarees `role:superAdmin` : l'admin d'etablissement est la cible.
+        // Le gestionnaire de plateforme y accede aussi. Avant #102, un seul test
+        // suffisait car tryFromString('superAdmin') renvoyait Role::Supradmin.
+        $role = auth()->user()?->asRoleEnum();
+
+        return $role === Role::SuperAdmin || $role === Role::Supradmin;
     }
 
     /**

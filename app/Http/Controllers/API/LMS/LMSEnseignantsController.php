@@ -73,36 +73,11 @@ final class LMSEnseignantsController extends AuthenticatedController
             /** @var array<int, array<string, mixed>> $enseignants */
             $enseignants = $response['data'] ?? [];
 
-            // Stocker en cache si format enrichi
-            if ($withDetails && !empty($enseignants)) {
-                foreach ($enseignants as $enseignant) {
-                    if (isset($enseignant['id'])) {
-                        try {
-                            LmsEnseignantCache::store($enseignant['id'], $enseignant, 10);
-                        } catch (\Exception $cacheErr) {
-                            // Log silently — caching is opportunistic, don't fail the request
-                            Log::warning('[LMS Enseignants KLASSCI] Cache store failed', [
-                                'enseignant_id' => $enseignant['id'],
-                                'error' => $cacheErr->getMessage(),
-                            ]);
-                        }
-                    }
-                }
+            if ($withDetails) {
+                $this->warmEnseignantCache($enseignants);
             }
 
-            $duration = round((microtime(true) - $startTime) * 1000, 2);
-
-            $klassciMeta = $response['meta'] ?? [];
-            /** @var array<string, mixed> $meta */
-            $meta = array_merge(is_array($klassciMeta) ? $klassciMeta : [], [
-                'source' => 'klassci_externe',
-                'lms_cache_enabled' => true,
-                'lms_performance' => [
-                    'total_time_ms' => $duration,
-                ],
-            ]);
-
-            return $this->successResponse($enseignants, '', 200, $meta);
+            return $this->successResponse($enseignants, '', 200, $this->buildMeta($response, $startTime));
 
         } catch (KlassciUnavailableException $e) {
             // Panne KLASSCI : 503 retryable, jamais le 500 generique ci-dessous.
@@ -122,5 +97,53 @@ final class LMSEnseignantsController extends AuthenticatedController
                 'data'    => [],
             ], 500);
         }
+    }
+
+    /**
+     * Rechauffe le cache local des enseignants — opportuniste par nature : un
+     * echec d'ecriture ne doit jamais faire echouer la requete qui, elle, a
+     * deja obtenu sa donnee de KLASSCI.
+     *
+     * Extrait de {@see self::getEnseignantsFromKlassci()} : la mise en cache est
+     * une responsabilite distincte de la reponse HTTP, et une methode longue
+     * n'est pas testable unitairement (§5).
+     *
+     * @param  array<int, array<string, mixed>>  $enseignants
+     */
+    private function warmEnseignantCache(array $enseignants): void
+    {
+        foreach ($enseignants as $enseignant) {
+            if (! isset($enseignant['id'])) {
+                continue;
+            }
+
+            try {
+                LmsEnseignantCache::store($enseignant['id'], $enseignant, 10);
+            } catch (\Exception $cacheErr) {
+                Log::warning('[LMS Enseignants KLASSCI] Cache store failed', [
+                    'enseignant_id' => $enseignant['id'],
+                    'error' => $cacheErr->getMessage(),
+                ]);
+            }
+        }
+    }
+
+    /**
+     * Fusionne le `meta` renvoye par KLASSCI avec les indicateurs propres au LMS.
+     *
+     * @param  array<string, mixed>  $response
+     * @return array<string, mixed>
+     */
+    private function buildMeta(array $response, float $startTime): array
+    {
+        $klassciMeta = $response['meta'] ?? [];
+
+        return array_merge(is_array($klassciMeta) ? $klassciMeta : [], [
+            'source' => 'klassci_externe',
+            'lms_cache_enabled' => true,
+            'lms_performance' => [
+                'total_time_ms' => round((microtime(true) - $startTime) * 1000, 2),
+            ],
+        ]);
     }
 }

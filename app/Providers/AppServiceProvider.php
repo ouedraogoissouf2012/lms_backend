@@ -2,6 +2,8 @@
 
 namespace App\Providers;
 
+use App\Services\Seances\Sync\StaleSeanceArchiver;
+use App\Services\Seances\Sync\StaleSeanceArchiverInterface;
 use App\Models\PersonalAccessToken;
 use App\Services\Cache\Purge\TenantCachePurgerFactory;
 use App\Services\Cache\Purge\TenantCachePurgerInterface;
@@ -57,6 +59,12 @@ class AppServiceProvider extends ServiceProvider
         // (§1.6 D — Dependency Inversion) and tests can swap a mock.
         $this->app->singleton(ShellExecutor::class);
         $this->app->bind(ShellExecutorInterface::class, ShellExecutor::class);
+
+        // Archivage des seances : depuis le retrait de `CleanObsoleteSeances`
+        // (#516, qui sondait une route KLASSCI inexistante), c'est l'unique
+        // chemin d'archivage. Le binding a l'interface rend son garde de
+        // souillure verifiable (\App\Services\Seances\Sync\TenantArchiveCoordinator).
+        $this->app->bind(StaleSeanceArchiverInterface::class, StaleSeanceArchiver::class);
 
         // TenantScopedCache (#374, spec redis-runtime). Le conteneur ne sait
         // pas résoudre la classe concrète Illuminate\Cache\Repository par

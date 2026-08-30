@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Evaluation\Student;
 
+use App\Exceptions\MissingKlassciTokenException;
 use App\Models\Institution;
 use App\Models\User;
 use App\Services\KlassciProxyService;
@@ -92,7 +93,7 @@ final class EvaluationStudentListResponseTest extends TestCase
         $response->assertStatus(401)
             ->assertExactJson([
                 'success' => false,
-                'message' => 'Token KLASSCI non trouvé. Veuillez vous reconnecter.',
+                'message' => MissingKlassciTokenException::CLIENT_MESSAGE,
             ]);
     }
 

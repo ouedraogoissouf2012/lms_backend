@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\API\Proxy\Concerns;
 
+use App\Exceptions\MissingKlassciTokenException;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -17,8 +18,6 @@ use Illuminate\Http\Request;
  */
 trait ResolvesPersonalKlassciToken
 {
-    private const MISSING_KLASSCI_TOKEN = 'Token KLASSCI non trouvé. Veuillez vous reconnecter.';
-
     protected function personalKlassciToken(Request $request): ?string
     {
         $user = $request->user();
@@ -33,6 +32,6 @@ trait ResolvesPersonalKlassciToken
 
     protected function missingKlassciTokenResponse(): JsonResponse
     {
-        return $this->errorResponse(self::MISSING_KLASSCI_TOKEN, 401);
+        return $this->errorResponse(MissingKlassciTokenException::CLIENT_MESSAGE, 401);
     }
 }

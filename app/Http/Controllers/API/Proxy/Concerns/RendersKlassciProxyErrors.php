@@ -39,12 +39,7 @@ trait RendersKlassciProxyErrors
         }
 
         if ($e instanceof KlassciUnavailableException || $e instanceof ConnectionException) {
-            return response()->json([
-                'success' => false,
-                'message' => KlassciUnavailableException::CLIENT_MESSAGE,
-            ], 503, [
-                'Retry-After' => (string) KlassciUnavailableException::retryAfterSeconds(),
-            ]);
+            return KlassciUnavailableException::jsonResponse();
         }
 
         return response()->json([

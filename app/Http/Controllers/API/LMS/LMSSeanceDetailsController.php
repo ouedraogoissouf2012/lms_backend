@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\API\LMS;
 
+use App\Http\Controllers\API\Concerns\RendersKlassciBackedErrors;
 use App\Http\Controllers\AuthenticatedController;
 use App\Services\SeanceDetailQueryService;
 use Illuminate\Http\JsonResponse;
@@ -31,6 +32,8 @@ use RuntimeException;
  */
 final class LMSSeanceDetailsController extends AuthenticatedController
 {
+    use RendersKlassciBackedErrors;
+
     public function __construct(
         private readonly SeanceDetailQueryService $seanceDetailQuery,
     ) {}
@@ -52,10 +55,7 @@ final class LMSSeanceDetailsController extends AuthenticatedController
             return $this->successResponse($data);
 
         } catch (RuntimeException $e) {
-            // Thrown by SeanceDetailQueryService when user has no klassci_token.
-            // §1.2 — message fixé au site du catch, pas dérivé de l'exception
-            // (le thrower peut changer son message sans que le client soit reformaté).
-            return $this->errorResponse('Token KLASSCI non trouvé. Veuillez vous reconnecter.', 401);
+            return $this->renderKlassciFailure($e);
         } catch (\Exception $e) {
             Log::error('Erreur récupération détails séance', [
                 'seance_id' => $seanceId,
@@ -89,7 +89,7 @@ final class LMSSeanceDetailsController extends AuthenticatedController
             return $this->successResponse($data);
 
         } catch (RuntimeException $e) {
-            return $this->errorResponse('Token KLASSCI non trouvé. Veuillez vous reconnecter.', 401);
+            return $this->renderKlassciFailure($e);
         } catch (\Exception $e) {
             Log::error('Erreur récupération participants séance', [
                 'seance_id' => $seanceId,

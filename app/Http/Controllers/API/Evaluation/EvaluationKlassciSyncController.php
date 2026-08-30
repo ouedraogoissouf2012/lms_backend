@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\API\Evaluation;
 
+use App\Exceptions\MissingKlassciTokenException;
 use App\Http\Controllers\AuthenticatedController;
 use App\Http\Requests\DeleteEvaluationRequest;
 use App\Http\Requests\PublishEvaluationRequest;
@@ -71,7 +72,7 @@ class EvaluationKlassciSyncController extends AuthenticatedController
             if ($evaluation->klassci_evaluation_id) {
                 $teacherToken = $this->authenticatedUser($request)->klassci_token;
                 if (! is_string($teacherToken) || $teacherToken === '') {
-                    return $this->errorResponse('Token KLASSCI non trouvé. Veuillez vous reconnecter.', 401);
+                    return $this->errorResponse(MissingKlassciTokenException::CLIENT_MESSAGE, 401);
                 }
 
                 $result = $this->klassciService->saveNotes(

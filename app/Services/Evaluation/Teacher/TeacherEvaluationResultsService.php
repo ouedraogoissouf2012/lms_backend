@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Evaluation\Teacher;
 
+use App\Exceptions\MissingKlassciTokenException;
 use App\Models\Evaluation;
 use App\Models\EvaluationSubmission;
 use App\Models\User;
@@ -82,7 +83,7 @@ final class TeacherEvaluationResultsService
                     'status'  => 401,
                     'payload' => [
                         'success' => false,
-                        'message' => 'Token KLASSCI non trouvé. Veuillez vous reconnecter.',
+                        'message' => MissingKlassciTokenException::CLIENT_MESSAGE,
                     ],
                 ];
             }

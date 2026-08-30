@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\LMS\Seances;
 
+use App\Exceptions\MissingKlassciTokenException;
 use App\Models\Institution;
 use App\Models\Seance;
 use App\Models\User;
@@ -73,7 +74,7 @@ final class LMSSeancesListResponseTest extends TestCase
 
         $this->getJson('/api/lms/seances/upcoming')
             ->assertStatus(401)
-            ->assertExactJson(['success' => false, 'message' => 'Token KLASSCI non trouvé']);
+            ->assertExactJson(['success' => false, 'message' => MissingKlassciTokenException::CLIENT_MESSAGE]);
     }
 
     public function test_my_teaching_without_klassci_token_returns_401_envelope(): void
@@ -82,7 +83,7 @@ final class LMSSeancesListResponseTest extends TestCase
 
         $this->getJson('/api/lms/seances/my-teaching')
             ->assertStatus(401)
-            ->assertExactJson(['success' => false, 'message' => 'Token KLASSCI non trouvé']);
+            ->assertExactJson(['success' => false, 'message' => MissingKlassciTokenException::CLIENT_MESSAGE]);
     }
 
     public function test_my_classes_without_klassci_token_returns_401_envelope(): void
@@ -91,7 +92,7 @@ final class LMSSeancesListResponseTest extends TestCase
 
         $this->getJson('/api/lms/seances/my-classes')
             ->assertStatus(401)
-            ->assertExactJson(['success' => false, 'message' => 'Token KLASSCI non trouvé']);
+            ->assertExactJson(['success' => false, 'message' => MissingKlassciTokenException::CLIENT_MESSAGE]);
     }
 
     public function test_upcoming_manager_uses_local_seances_without_walking_all_klassci_matieres(): void

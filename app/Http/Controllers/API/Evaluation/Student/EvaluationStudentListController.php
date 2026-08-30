@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\API\Evaluation\Student;
 
+use App\Http\Controllers\API\Concerns\RendersKlassciBackedErrors;
 use App\Http\Controllers\AuthenticatedController;
 use App\Services\Evaluation\Student\StudentEvaluationsListService;
 use App\Services\Evaluation\Student\StudentGradesAggregator;
@@ -22,6 +23,8 @@ use RuntimeException;
  */
 final class EvaluationStudentListController extends AuthenticatedController
 {
+    use RendersKlassciBackedErrors;
+
     public function __construct(
         private readonly StudentEvaluationsListService $listService,
         private readonly StudentGradesAggregator $gradesAggregator,
@@ -41,7 +44,7 @@ final class EvaluationStudentListController extends AuthenticatedController
             }
             return $this->successResponse($data);
         } catch (RuntimeException $e) {
-            return $this->errorResponse('Token KLASSCI non trouvé. Veuillez vous reconnecter.', 401);
+            return $this->renderKlassciFailure($e);
         } catch (\Exception $e) {
             Log::error('Erreur récupération évaluations étudiant', [
                 'error' => $e->getMessage(),

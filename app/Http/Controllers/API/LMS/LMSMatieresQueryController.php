@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\API\LMS;
 
+use App\Http\Controllers\API\Concerns\RendersKlassciBackedErrors;
 use App\Http\Controllers\AuthenticatedController;
 use App\Services\Matiere\MatiereDetailsQueryService;
 use App\Services\Matiere\MyMatieresQueryService;
@@ -28,6 +29,8 @@ use Throwable;
  */
 final class LMSMatieresQueryController extends AuthenticatedController
 {
+    use RendersKlassciBackedErrors;
+
     public function __construct(
         private readonly MatiereDetailsQueryService $detailsService,
         private readonly MyMatieresQueryService $myMatieresService,
@@ -64,7 +67,7 @@ final class LMSMatieresQueryController extends AuthenticatedController
 
             return $this->successResponse($data);
         } catch (RuntimeException $e) {
-            return $this->errorResponse('Token KLASSCI non trouvé. Veuillez vous reconnecter.', 401);
+            return $this->renderKlassciFailure($e);
         } catch (Throwable $e) {
             $this->logger->error('Erreur récupération détails matière', [
                 'matiere_id' => $matiereId,
@@ -94,7 +97,7 @@ final class LMSMatieresQueryController extends AuthenticatedController
 
             return $this->successResponse($matieres);
         } catch (RuntimeException $e) {
-            return $this->errorResponse('Token KLASSCI non trouvé. Veuillez vous reconnecter.', 401);
+            return $this->renderKlassciFailure($e);
         } catch (Throwable $e) {
             // §1.2 — Detail logged server-side, generic message to client.
             $this->logger->error('Erreur myMatieres', [

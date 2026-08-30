@@ -109,12 +109,7 @@ $app = Application::configure(basePath: dirname(__DIR__))
         // la rendrait en 500. On n'expose JAMAIS le détail technique (§1.2).
         $exceptions->render(function (\App\Exceptions\KlassciUnavailableException $e, $request) {
             if ($request->expectsJson() || $request->is('api/*')) {
-                return response()->json([
-                    'success' => false,
-                    'message' => \App\Exceptions\KlassciUnavailableException::CLIENT_MESSAGE,
-                ], 503, [
-                    'Retry-After' => (string) \App\Exceptions\KlassciUnavailableException::retryAfterSeconds(),
-                ]);
+                return \App\Exceptions\KlassciUnavailableException::jsonResponse();
             }
         });
 

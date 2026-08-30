@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Services\Matiere;
 
+use App\Exceptions\MissingKlassciTokenException;
 use App\Models\User;
-use RuntimeException;
 
 /**
  * MatiereDetailsQueryService — orchestrates the matière details payload.
@@ -21,7 +21,8 @@ use RuntimeException;
  *   4. Fetch lessons + compute stats ({@see MatiereLessonsAndStatsBuilder}).
  *
  * Contract preserved from the original controller:
- *   - Missing `klassci_token` on user → throws `RuntimeException` (caller renders 401).
+ *   - Missing `klassci_token` → throws `MissingKlassciTokenException` (caller renders 401).
+ *   - KLASSCI answers an error → `RuntimeException` porting ITS status, relayed as-is.
  *   - Matière introuvable → returns `null` (caller renders 404).
  *   - Returns the final `data` array on success.
  *
@@ -45,7 +46,7 @@ final class MatiereDetailsQueryService
         $klassciToken = $user->klassci_token;
 
         if (!$klassciToken) {
-            throw new RuntimeException('Token KLASSCI non trouvé');
+            throw MissingKlassciTokenException::forUser($user->id);
         }
 
         // 1. Base matière info + combinaisons + enseignants.

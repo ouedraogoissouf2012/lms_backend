@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Evaluation\Student;
 
+use App\Exceptions\MissingKlassciTokenException;
 use App\Models\Evaluation;
 use App\Models\EvaluationSubmission;
 use App\Models\User;
@@ -167,7 +168,7 @@ final class EvaluationAttemptStateService
 
         $klassciToken = $user->klassci_token;
         if (!$klassciToken) {
-            throw new RuntimeException('Token KLASSCI non trouvé');
+            throw MissingKlassciTokenException::forUser($user->id);
         }
 
         // Endpoint informatif : on tolère `null` (pas de fenêtre OU KLASSCI

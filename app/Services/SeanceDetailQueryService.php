@@ -4,12 +4,12 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Exceptions\MissingKlassciTokenException;
 use App\Models\User;
 use App\Services\Seances\KlassciSeanceLookupService;
 use App\Services\Seances\SeanceVisioEnricher;
 use Carbon\Carbon;
 use Psr\Log\LoggerInterface;
-use RuntimeException;
 
 /**
  * SeanceDetailQueryService — single-séance query orchestrator.
@@ -62,14 +62,14 @@ final class SeanceDetailQueryService
      *
      * @return array{seance: array<string, mixed>, visio: array<string, mixed>, participants?: array<string, mixed>}|null
      *
-     * @throws RuntimeException If the user has no `klassci_token`.
+     * @throws MissingKlassciTokenException If the user has no `klassci_token`.
      */
     public function getSeanceDetailsArray(int $seanceId, User $user): ?array
     {
         $klassciToken = $user->klassci_token;
 
         if (!$klassciToken) {
-            throw new RuntimeException('Token KLASSCI non trouvé');
+            throw MissingKlassciTokenException::forUser($user->id);
         }
 
         $this->logger->info('Récupération détails séance', ['seance_id' => $seanceId]);
@@ -144,7 +144,7 @@ final class SeanceDetailQueryService
      *
      * @return array<string, mixed>|null
      *
-     * @throws RuntimeException If the user has no `klassci_token`.
+     * @throws MissingKlassciTokenException If the user has no `klassci_token`.
      */
     public function getProgrammation(int $seanceId, User $user): ?array
     {
@@ -169,14 +169,14 @@ final class SeanceDetailQueryService
      *
      * @return array{seance: array<string, mixed>, teacher: array<string, mixed>, students: array<int, array<string, mixed>>, total_participants: int}|null
      *
-     * @throws RuntimeException If the user has no `klassci_token`.
+     * @throws MissingKlassciTokenException If the user has no `klassci_token`.
      */
     public function getSeanceParticipantsArray(int $seanceId, User $user): ?array
     {
         $klassciToken = $user->klassci_token;
 
         if (!$klassciToken) {
-            throw new RuntimeException('Token KLASSCI non trouvé');
+            throw MissingKlassciTokenException::forUser($user->id);
         }
 
         $this->logger->info('Récupération participants séance', ['seance_id' => $seanceId]);

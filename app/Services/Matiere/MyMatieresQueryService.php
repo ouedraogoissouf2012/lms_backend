@@ -7,6 +7,7 @@ namespace App\Services\Matiere;
 use App\Enums\LessonStatus;
 use App\Models\Lesson;
 use App\Models\Seance;
+use App\Exceptions\MissingKlassciTokenException;
 use App\Models\User;
 use App\Services\KlassciProxyService;
 use App\Services\Seances\KlassciPayload;
@@ -14,7 +15,6 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use InvalidArgumentException;
 use Psr\Log\LoggerInterface;
-use RuntimeException;
 
 /**
  * MyMatieresQueryService — fetches the teacher dashboard matières + LMS stats.
@@ -28,7 +28,8 @@ use RuntimeException;
  *     (lessons published / draft, séances, evaluations programmées).
  *
  * Contract preserved:
- *   - Missing `klassci_token` → throws `RuntimeException` (caller renders 401).
+ *   - Missing `klassci_token` → throws `MissingKlassciTokenException` (caller renders 401).
+ *   - KLASSCI answers an error → `RuntimeException` porting ITS status, relayed as-is.
  *
  * ## Batching (#546)
  *
@@ -55,7 +56,7 @@ final class MyMatieresQueryService
         $klassciToken = $user->klassci_token;
 
         if (!$klassciToken) {
-            throw new RuntimeException('Token KLASSCI non trouvé');
+            throw MissingKlassciTokenException::forUser($user->id);
         }
 
         $this->logger->info('MyMatieres request', [

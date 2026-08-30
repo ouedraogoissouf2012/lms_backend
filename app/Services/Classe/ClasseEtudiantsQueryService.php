@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Classe;
 
+use App\Exceptions\MissingKlassciTokenException;
 use App\Models\User;
 use App\Services\KlassciProxyService;
 use Psr\Log\LoggerInterface;
@@ -61,7 +62,7 @@ final class ClasseEtudiantsQueryService
                 'status' => 401,
                 'payload' => [
                     'success' => false,
-                    'message' => 'Token KLASSCI non trouvé. Veuillez vous reconnecter.',
+                    'message' => MissingKlassciTokenException::CLIENT_MESSAGE,
                 ],
             ];
         }

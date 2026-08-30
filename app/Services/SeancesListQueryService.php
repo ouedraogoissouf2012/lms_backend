@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Exceptions\MissingKlassciTokenException;
 use App\Models\User;
 use App\Services\Seances\StudentClassesSeancesFetcher;
 use App\Services\Seances\TeachingSeancesFetcher;
@@ -11,7 +12,6 @@ use App\Services\Seances\UpcomingSeancesFetcher;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Psr\Log\LoggerInterface;
-use RuntimeException;
 
 /**
  * SeancesListQueryService — listings of séances scoped to the current user.
@@ -40,7 +40,8 @@ use RuntimeException;
  * ## Contract
  *
  * - Successful resolution → returns an associative array with `data` and `meta`.
- * - Missing KLASSCI token on user → throws `RuntimeException` (caller renders 401).
+ * - Missing KLASSCI token on user → throws `MissingKlassciTokenException` (401).
+ * - KLASSCI answers an error → `RuntimeException` porting ITS status, relayed as-is.
  * - Student without resolvable class (`getMyClassesForUser`) → returns
  *   `['classe_missing' => true]` (caller renders 404).
  * - Student without matières → returns `['empty_matieres' => true]`
@@ -63,7 +64,7 @@ final class SeancesListQueryService
      *
      * @return array{data: array<int, array<string, mixed>>, meta: array<string, mixed>}
      *
-     * @throws RuntimeException If the user has no `klassci_token`.
+     * @throws MissingKlassciTokenException If the user has no `klassci_token`.
      */
     public function getUpcomingForUser(User $user, int $days, ?int $teacherId, ?int $classeId): array
     {
@@ -100,7 +101,7 @@ final class SeancesListQueryService
      *
      * @return array<int, array<string, mixed>>
      *
-     * @throws RuntimeException If the user has no `klassci_token`.
+     * @throws MissingKlassciTokenException If the user has no `klassci_token`.
      */
     public function getMyTeachingForUser(User $user): array
     {
@@ -115,7 +116,7 @@ final class SeancesListQueryService
      *
      * @return array{classe_missing: true}|array{empty_matieres: true}|array<int, array<string, mixed>>
      *
-     * @throws RuntimeException If the user has no `klassci_token`.
+     * @throws MissingKlassciTokenException If the user has no `klassci_token`.
      */
     public function getMyClassesForUser(User $user): array
     {
@@ -136,14 +137,14 @@ final class SeancesListQueryService
     }
 
     /**
-     * @throws RuntimeException If the user has no `klassci_token`.
+     * @throws MissingKlassciTokenException If the user has no `klassci_token`.
      */
     private function requireToken(User $user): string
     {
         $klassciToken = $user->klassci_token;
 
         if (!$klassciToken) {
-            throw new RuntimeException('Token KLASSCI non trouvé');
+            throw MissingKlassciTokenException::forUser($user->id);
         }
 
         return $klassciToken;

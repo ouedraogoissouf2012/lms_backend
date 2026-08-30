@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\API\Evaluation\Student;
 
+use App\Http\Controllers\API\Concerns\RendersKlassciBackedErrors;
+use App\Exceptions\MissingKlassciTokenException;
 use App\Http\Controllers\AuthenticatedController;
 use App\Http\Requests\StartEvaluationRequest;
 use App\Http\Requests\SubmitEvaluationRequest;
@@ -26,6 +28,8 @@ use RuntimeException;
  */
 final class EvaluationStudentAttemptController extends AuthenticatedController
 {
+    use RendersKlassciBackedErrors;
+
     public function __construct(
         private readonly EvaluationAttemptStateService $attemptState,
         private readonly EvaluationGradingService $gradingService,
@@ -39,7 +43,7 @@ final class EvaluationStudentAttemptController extends AuthenticatedController
         return match ($result['status']) {
             'not_found' => $this->errorResponse('Évaluation non disponible', 404),
             'no_questions' => $this->errorResponse('Cette évaluation n\'a pas encore de questions.', 422),
-            'no_token' => $this->errorResponse('Token KLASSCI non trouvé. Veuillez vous reconnecter.', 401),
+            'no_token' => $this->errorResponse(MissingKlassciTokenException::CLIENT_MESSAGE, 401),
             // Non migré vers errorResponse() : cette réponse expose une clé racine
             // `window` hors enveloppe que le trait ne reproduit pas. La déplacer
             // (sous `errors`) changerait le contrat client → conservé tel quel
@@ -124,12 +128,14 @@ final class EvaluationStudentAttemptController extends AuthenticatedController
             $data = $this->attemptState->getTimeStatus($id, $user);
             return $this->successResponse($data);
         } catch (RuntimeException $e) {
-            // §1.2 — message fixé au site du catch, pas dérivé de getMessage()
-            $isMissingEval = $e->getMessage() === 'Évaluation non trouvée';
-            return $this->errorResponse(
-                $isMissingEval ? 'Évaluation non trouvée' : 'Token KLASSCI non trouvé',
-                $isMissingEval ? 404 : 401,
-            );
+            // Le service signale l'évaluation absente par son message ; tout le
+            // reste relève de la classification KLASSCI (jeton absent, panne, ou
+            // erreur renvoyée par KLASSCI — qui ne doit PAS devenir un 401).
+            if ($e->getMessage() === 'Évaluation non trouvée') {
+                return $this->errorResponse('Évaluation non trouvée', 404);
+            }
+
+            return $this->renderKlassciFailure($e);
         } catch (\Exception $e) {
             Log::error('Erreur récupération état temporel', [
                 'evaluation_id' => $id,

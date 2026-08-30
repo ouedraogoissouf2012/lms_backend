@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\LMS\Matieres;
 
+use App\Exceptions\MissingKlassciTokenException;
 use App\Models\Institution;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -52,7 +53,7 @@ final class LMSMatieresQueryResponseTest extends TestCase
             ->assertStatus(401)
             ->assertExactJson([
                 'success' => false,
-                'message' => 'Token KLASSCI non trouvé. Veuillez vous reconnecter.',
+                'message' => MissingKlassciTokenException::CLIENT_MESSAGE,
             ]);
     }
 
@@ -64,7 +65,7 @@ final class LMSMatieresQueryResponseTest extends TestCase
             ->assertStatus(401)
             ->assertExactJson([
                 'success' => false,
-                'message' => 'Token KLASSCI non trouvé. Veuillez vous reconnecter.',
+                'message' => MissingKlassciTokenException::CLIENT_MESSAGE,
             ]);
     }
 }

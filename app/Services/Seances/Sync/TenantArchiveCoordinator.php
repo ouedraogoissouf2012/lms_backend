@@ -30,7 +30,7 @@ use Psr\Log\LoggerInterface;
 final class TenantArchiveCoordinator
 {
     public function __construct(
-        private readonly StaleSeanceArchiver $archiver,
+        private readonly StaleSeanceArchiverInterface $archiver,
         private readonly LoggerInterface $logger,
     ) {}
 

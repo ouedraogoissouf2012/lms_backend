@@ -45,8 +45,19 @@ final class RoleTest extends TestCase
 
     public function test_try_from_string_normalizes_admin_aliases(): void
     {
-        self::assertSame(Role::Admin,     Role::tryFromString('administrateur'));
-        self::assertSame(Role::Supradmin, Role::tryFromString('superAdmin'));
+        self::assertSame(Role::Admin, Role::tryFromString('administrateur'));
+    }
+
+    /**
+     * #102 — `superAdmin` (admin d'etablissement) et `supradmin` (gestionnaire
+     * plateforme) sont deux roles distincts. Ce test protegeait auparavant le
+     * comportement inverse : la normalisation promouvait l'un vers l'autre.
+     */
+    public function test_institution_super_admin_is_not_platform_supradmin(): void
+    {
+        self::assertSame(Role::SuperAdmin, Role::tryFromString('superAdmin'));
+        self::assertSame(Role::Supradmin,  Role::tryFromString('supradmin'));
+        self::assertNotSame(Role::Supradmin, Role::tryFromString('superAdmin'));
     }
 
     public function test_aliases_do_not_include_institution_super_admin(): void
@@ -81,7 +92,9 @@ final class RoleTest extends TestCase
         self::assertSame(2, Role::Enseignant->permissivity());
         self::assertSame(3, Role::Coordinateur->permissivity());
         self::assertSame(4, Role::Admin->permissivity());
-        self::assertSame(5, Role::Supradmin->permissivity());
+        self::assertSame(5, Role::SuperAdmin->permissivity());
+        self::assertSame(6, Role::Supradmin->permissivity());
+        self::assertTrue(Role::Supradmin->isMorePermissiveThan(Role::SuperAdmin));
     }
 
     public function test_is_admin_returns_true_for_admin_and_supradmin_only(): void

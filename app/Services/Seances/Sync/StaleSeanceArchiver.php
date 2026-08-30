@@ -28,9 +28,20 @@ use Psr\Log\LoggerInterface;
  * L'appel reste conditionné en amont par {@see TenantArchiveCoordinator}, qui
  * refuse d'archiver un tenant ayant subi une erreur pendant le cycle.
  *
+ * ## Unique mécanisme d'archivage
+ *
+ * Le job `CleanObsoleteSeances` (#516) archivait en parallèle, sur un autre
+ * critère : un `GET seances/{id}` répondant 404. Cette route n'existe pas chez
+ * KLASSCI — elle répond 404 pour TOUT identifiant — si bien que toute séance
+ * vérifiée était classée supprimée. Ce job a été retiré : ce service porte
+ * désormais seul l'archivage, et il est le seul protégé par le garde de
+ * souillure. Un second archiveur réintroduirait un chemin non gardé.
+ *
+ * @see \Tests\Feature\Seances\NoPhantomKlassciSeanceProbeTest  garde structurel
+ *
  * @see PRODUCTION_STANDARDS.md §1.1 (≤300 lignes) · §1.6 D (DI strict)
  */
-final class StaleSeanceArchiver
+final class StaleSeanceArchiver implements StaleSeanceArchiverInterface
 {
     public function __construct(
         private readonly LoggerInterface $logger,

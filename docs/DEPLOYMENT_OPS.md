@@ -120,16 +120,24 @@ healthcheck n'écrit **que en cas d'échec**, chaque e-mail reçu = alerte réel
 | 2 | `detect-disconnected-participants` | Job | `*/2 * * * *` | Marque `disconnected` les participants sans heartbeat depuis 5 min. |
 | 3 | `auto-close-empty-seances` **(nouveau #369)** | Job | `*/5 * * * *` | Ferme les visios abandonnées (prof déconnecté 5 min / tous déconnectés 10 min / personne 30 min). |
 | 4 | `finalize-seance-attendances` | Job | `*/10 * * * *` | Finalise les présences des séances terminées depuis 30+ min. |
-| 5 | `clean-obsolete-seances` | Job | `*/30 * * * *` | Purge les séances supprimées côté KLASSCI. |
-| 6 | `archive-old-seances` | Job | `0 2 * * *` | Archive les séances de plus de 2 semaines. |
-| 7 | `clean-old-evaluations` | Job | `0 3 * * *` | Archive les évaluations terminées sans soumission (7+ j). |
-| 8 | `purge-audit-logs` | Commande | `30 3 * * *` | Purge du journal d'audit au-delà de la rétention (#215). |
-| 8a | `purge-visio-recordings` | Commande | `45 3 * * *` | Applique la rétention RGPD des enregistrements visio (#461). |
+| 5 | `archive-old-seances` | Job | `0 2 * * *` | Archive les séances de plus de 2 semaines. |
+| 6 | `clean-old-evaluations` | Job | `0 3 * * *` | Archive les évaluations terminées sans soumission (7+ j). |
+| 7 | `purge-audit-logs` | Commande | `30 3 * * *` | Purge du journal d'audit au-delà de la rétention (#215). |
+| 8 | `purge-visio-recordings` | Commande | `45 3 * * *` | Applique la rétention RGPD des enregistrements visio (#461). |
 | 9 | `notify-upcoming-evaluations` | Commande | `0 8 * * *` | Rappels étudiants 24 h avant évaluation. |
 | 10 | `cleanup-old-notifications` | Closure | `0 4 * * 0` | Supprime les notifications lues > 30 j. |
 | 11 | `scheduler-heartbeat` **(nouveau #369)** | Commande | `* * * * *` | Marqueur de vie lu par `scheduler:healthcheck`. |
 | 12 | `queue-healthcheck` **(#379/#462)** | Commande | `*/5 * * * *` | Alerte sur `failed_jobs`, profondeur, âge et heartbeat worker. |
 | 13 | `queue-worker` **(#369/#462)** | Commande | `* * * * *` | Draine la table `jobs` et confirme le heartbeat worker (§3). |
+
+> **Retiré — `clean-obsolete-seances` (`*/30 * * * *`).** Ce job décidait d'archiver
+> une séance sur un `GET seances/{id}` répondant 404. Cette route n'existe pas chez
+> KLASSCI : elle répond 404 pour **tout** identifiant, si bien que chaque séance
+> vérifiée était classée supprimée. Le job ne s'exécutait que si l'institution
+> portait un `klassci_api_token` — le renseigner aurait désactivé l'établissement
+> entier en un cycle de 30 minutes. L'archivage des séances disparues de KLASSCI
+> est porté par le cycle de `sync-klassci-seances` (critère `synced_at`, #582),
+> qui refuse d'archiver un tenant dont le cycle a subi une erreur.
 
 Le test [`tests/Feature/Console/ScheduleRegistrationTest.php`](../tests/Feature/Console/ScheduleRegistrationTest.php)
 fige le câblage des tâches critiques ajoutées par #369/#379.

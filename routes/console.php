@@ -2,7 +2,6 @@
 
 use App\Jobs\ArchiveOldSeances;
 use App\Jobs\AutoCloseEmptySeances;
-use App\Jobs\CleanObsoleteSeances;
 use App\Jobs\CleanOldEvaluations;
 use App\Jobs\DetectDisconnectedParticipants;
 use App\Jobs\FinalizeSeanceAttendances;
@@ -24,13 +23,12 @@ Schedule::job(new SyncKlassciSeances, 'low')
     ->withoutOverlapping()
     ->onOneServer();
 
-// Planifier le nettoyage des séances obsolètes (supprimées dans Klassci)
-// Vérifie toutes les 30 minutes si les séances locales existent encore dans Klassci
-Schedule::job(new CleanObsoleteSeances, 'low')
-    ->everyThirtyMinutes()
-    ->name('clean-obsolete-seances')
-    ->withoutOverlapping()
-    ->onOneServer();
+// L'archivage des séances disparues de KLASSCI n'a PAS de planification propre :
+// il est porté par le cycle de `SyncKlassciSeances` ci-dessus, via
+// `TenantArchiveCoordinator` → `StaleSeanceArchiver` (critère `synced_at`, #582).
+// Le job `CleanObsoleteSeances` (#516) qui occupait cette place a été retiré :
+// il sondait `GET seances/{id}`, une route inexistante chez KLASSCI dont le 404
+// systématique était lu comme une suppression confirmée.
 
 // Planifier l'archivage des vieilles séances tous les jours à 2h du matin
 // Archive les séances > 2 semaines après leur date

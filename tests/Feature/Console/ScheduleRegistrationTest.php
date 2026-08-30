@@ -6,7 +6,6 @@ namespace Tests\Feature\Console;
 
 use App\Jobs\ArchiveOldSeances;
 use App\Jobs\AutoCloseEmptySeances;
-use App\Jobs\CleanObsoleteSeances;
 use App\Jobs\CleanOldEvaluations;
 use App\Jobs\DetectDisconnectedParticipants;
 use App\Jobs\FinalizeSeanceAttendances;
@@ -118,7 +117,6 @@ final class ScheduleRegistrationTest extends TestCase
         Bus::fake();
 
         $this->runScheduledJob('sync-klassci-seances');
-        $this->runScheduledJob('clean-obsolete-seances');
         $this->runScheduledJob('archive-old-seances');
         $this->runScheduledJob('clean-old-evaluations');
         $this->runScheduledJob('detect-disconnected-participants');
@@ -126,7 +124,6 @@ final class ScheduleRegistrationTest extends TestCase
         $this->runScheduledJob('auto-close-empty-seances');
 
         Bus::assertDispatched(SyncKlassciSeances::class, fn ($job): bool => $job->queue === 'low');
-        Bus::assertDispatched(CleanObsoleteSeances::class, fn ($job): bool => $job->queue === 'low');
         Bus::assertDispatched(ArchiveOldSeances::class, fn ($job): bool => $job->queue === 'low');
         Bus::assertDispatched(CleanOldEvaluations::class, fn ($job): bool => $job->queue === 'low');
         Bus::assertDispatched(DetectDisconnectedParticipants::class, fn ($job): bool => $job->queue === 'high');

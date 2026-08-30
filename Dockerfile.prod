@@ -17,8 +17,21 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && pecl install imagick \
     && docker-php-ext-enable imagick \
     && a2enmod rewrite headers \
-    && apt-get purge -y --auto-remove libmagickwand-dev \
     && rm -rf /var/lib/apt/lists/*
+# Note : on ne purge PAS libmagickwand-dev. Un `apt-get purge --auto-remove`
+# emporte avec lui la bibliotheque d'execution libMagickWand-6.Q16.so.6, dont
+# l'extension imagick a besoin au runtime — l'extension compile mais refuse
+# ensuite de se charger, et PHP emet un avertissement a chaque invocation.
+# Le paquet -dev pese quelques dizaines de Mo sur une image de ~1,9 Go :
+# le gain ne justifie pas de casser le rendu PDF.
+
+# Garde de build : la chaine de conversion doit etre operationnelle DANS l'image.
+# Sans ce controle, une extension qui compile mais ne se charge pas (bibliotheque
+# d'execution absente) passe inapercue jusqu'a la production, ou elle se signale
+# par un avertissement PHP sur chaque commande. Mieux vaut casser le build.
+RUN php -m | grep -qx imagick || (echo "ECHEC: extension imagick non chargee" && php -m && exit 1) \
+    && command -v soffice >/dev/null || (echo "ECHEC: libreoffice absent" && exit 1) \
+    && command -v gs >/dev/null || (echo "ECHEC: ghostscript absent" && exit 1)
 
 # ImageMagick interdit la lecture des PDF par defaut depuis CVE-2016-3714.
 # PdfToPngRenderer en depend : sans cette autorisation, le rendu des diapositives

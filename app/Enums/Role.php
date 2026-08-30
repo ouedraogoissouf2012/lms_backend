@@ -21,7 +21,8 @@ namespace App\Enums;
  *  - `'enseignant'`   ou `'teacher'`        → `Role::Enseignant`
  *  - `'coordinateur'` ou `'coordinator'`    → `Role::Coordinateur`
  *  - `'admin'`        ou `'administrateur'` → `Role::Admin`
- *  - `'supradmin'`    ou `'superAdmin'`     → `Role::Supradmin`
+ *  - `'supradmin'`                          → `Role::Supradmin`  (plateforme)
+ *  - `'superAdmin'`                         → `Role::SuperAdmin` (etablissement)
  *
  * Tout autre input (`null`, `''`, `'hacker'`, ...) → `null` (fail-soft).
  *
@@ -46,6 +47,9 @@ enum Role: string
     case Enseignant   = 'enseignant';
     case Coordinateur = 'coordinateur';
     case Admin        = 'admin';
+    /** Administrateur d'UN etablissement — strictement intra-tenant. */
+    case SuperAdmin   = 'superAdmin';
+    /** Gestionnaire de la PLATEFORME — cross-tenant, institution_id NULL. */
     case Supradmin    = 'supradmin';
 
     /**
@@ -60,7 +64,8 @@ enum Role: string
             'enseignant', 'teacher'       => self::Enseignant,
             'coordinateur', 'coordinator' => self::Coordinateur,
             'admin', 'administrateur'     => self::Admin,
-            'supradmin', 'superAdmin'     => self::Supradmin,
+            'superAdmin'                  => self::SuperAdmin,
+            'supradmin'                   => self::Supradmin,
             default                       => null,
         };
     }
@@ -79,6 +84,7 @@ enum Role: string
             self::Enseignant => ['enseignant', 'teacher'],
             self::Coordinateur => ['coordinateur', 'coordinator'],
             self::Admin => ['admin', 'administrateur', 'administrator'],
+            self::SuperAdmin => ['superAdmin'],
             self::Supradmin => ['supradmin'],
         };
     }
@@ -95,16 +101,21 @@ enum Role: string
             self::Enseignant   => 2,
             self::Coordinateur => 3,
             self::Admin        => 4,
-            self::Supradmin    => 5,
+            self::SuperAdmin   => 5,
+            self::Supradmin    => 6,
         };
     }
 
     /**
-     * Retourne true pour `Admin` et `Supradmin`, false pour les 3 autres.
+     * Vrai pour `Admin`, `SuperAdmin` et `Supradmin` — « admin au sens large ».
+     * NE distingue PAS la portee : pour un privilege cross-tenant, utiliser
+     * `User::isPlatformSupradmin()`.
      */
     public function isAdmin(): bool
     {
-        return $this === self::Admin || $this === self::Supradmin;
+        return $this === self::Admin
+            || $this === self::SuperAdmin
+            || $this === self::Supradmin;
     }
 
     /**

@@ -21,7 +21,6 @@ return [
     'app/Http/Controllers/API/Evaluation/EvaluationKlassciSyncController.php::syncNotesToKlassci' => 50,
     'app/Http/Controllers/API/Evaluation/EvaluationKlassciSyncController.php::syncToKlassci'     => 42,
     'app/Http/Controllers/API/Evaluation/Student/EvaluationStudentSubmissionController.php::getMySubmission' => 60,
-    'app/Http/Controllers/API/LMS/LMSEnseignantsController.php::getEnseignantsFromKlassci'       => 44,
     'app/Http/Controllers/API/LMS/LMSMatieresAdminController.php::adminMatieresList'             => 86,
     'app/Http/Requests/StoreChapterRequest.php::rules'                                           => 45,
     'app/Http/Requests/StoreLessonRequest.php::rules'                                            => 50,

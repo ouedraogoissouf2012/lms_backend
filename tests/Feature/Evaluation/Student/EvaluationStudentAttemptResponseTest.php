@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Evaluation\Student;
 
+use App\Exceptions\MissingKlassciTokenException;
 use App\Models\Evaluation;
 use App\Models\EvaluationQuestion;
 use App\Models\EvaluationSubmission;
@@ -156,7 +157,7 @@ final class EvaluationStudentAttemptResponseTest extends TestCase
         $response->assertStatus(401)
             ->assertExactJson([
                 'success' => false,
-                'message' => 'Token KLASSCI non trouvé. Veuillez vous reconnecter.',
+                'message' => MissingKlassciTokenException::CLIENT_MESSAGE,
             ]);
     }
 
@@ -348,6 +349,6 @@ final class EvaluationStudentAttemptResponseTest extends TestCase
         $response = $this->getJson("/api/evaluations/{$evaluation->id}/time-status");
 
         $response->assertStatus(401)
-            ->assertExactJson(['success' => false, 'message' => 'Token KLASSCI non trouvé']);
+            ->assertExactJson(['success' => false, 'message' => MissingKlassciTokenException::CLIENT_MESSAGE]);
     }
 }

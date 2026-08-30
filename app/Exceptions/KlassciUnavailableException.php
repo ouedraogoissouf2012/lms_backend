@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Exceptions;
 
+use Illuminate\Http\JsonResponse;
 use RuntimeException;
 
 /**
@@ -53,6 +54,24 @@ final class KlassciUnavailableException extends RuntimeException
     public static function circuitOpen(int $secondsUntilRetry): self
     {
         return new self("Circuit KLASSCI ouvert temporairement ({$secondsUntilRetry}s avant retry).", 503);
+    }
+
+    /**
+     * Reponse HTTP canonique d'une indisponibilite KLASSCI.
+     *
+     * Source unique partagee par le handler global (bootstrap/app.php), le trait
+     * proxy et le trait LMS. L'enveloppe etait auparavant reconstruite a chaque
+     * appelant : un seul qui oubliait `Retry-After` transformait une panne
+     * temporaire en erreur definitive cote client.
+     */
+    public static function jsonResponse(): JsonResponse
+    {
+        return response()->json([
+            'success' => false,
+            'message' => self::CLIENT_MESSAGE,
+        ], 503, [
+            'Retry-After' => (string) self::retryAfterSeconds(),
+        ]);
     }
 
     public static function retryAfterSeconds(): int

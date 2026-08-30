@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace App\Services\Evaluation\Student;
 
+use App\Exceptions\MissingKlassciTokenException;
 use App\Models\Evaluation;
 use App\Models\User;
 use App\Services\KlassciProxyService;
 use Psr\Log\LoggerInterface;
-use RuntimeException;
 
 /**
  * Liste enrichie des évaluations d'un étudiant — extrait de
@@ -19,7 +19,7 @@ use RuntimeException;
  * de l'étudiant.
  *
  * Returns `null` quand aucune classe n'est résolue pour l'étudiant
- * (caller render 404). Throws `RuntimeException` si pas de klassci_token
+ * (caller render 404). Throws `MissingKlassciTokenException` si pas de klassci_token
  * (caller render 401).
  */
 final class StudentEvaluationsListService
@@ -31,13 +31,13 @@ final class StudentEvaluationsListService
 
     /**
      * @return array<int, array<string, mixed>>|null  null = classe non trouvée
-     * @throws RuntimeException  Si pas de klassci_token sur le user
+     * @throws MissingKlassciTokenException  Si pas de klassci_token sur le user
      */
     public function getEnrichedEvaluationsForStudent(User $user): ?array
     {
         $klassciToken = $user->klassci_token;
         if (!$klassciToken) {
-            throw new RuntimeException('Token KLASSCI non trouvé');
+            throw MissingKlassciTokenException::forUser($user->id);
         }
 
         $klassciEtudiantId = $user->klassci_id;

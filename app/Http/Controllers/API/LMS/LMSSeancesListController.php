@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\API\LMS;
 
+use App\Http\Controllers\API\Concerns\RendersKlassciBackedErrors;
 use App\Http\Controllers\AuthenticatedController;
 use App\Services\SeancesListQueryService;
 use Illuminate\Http\JsonResponse;
@@ -32,6 +33,8 @@ use RuntimeException;
  */
 final class LMSSeancesListController extends AuthenticatedController
 {
+    use RendersKlassciBackedErrors;
+
     public function __construct(
         private readonly SeancesListQueryService $seancesList,
     ) {}
@@ -64,8 +67,9 @@ final class LMSSeancesListController extends AuthenticatedController
             ]);
 
         } catch (RuntimeException $e) {
-            // §1.2 — message fixé au site du catch, jamais dérivé de l'exception.
-            return $this->errorResponse('Token KLASSCI non trouvé', 401);
+            // §1.2 — le STATUT de KLASSCI est relayé, jamais son corps de réponse :
+            // le message vient d'une table fixe côté LMS.
+            return $this->renderKlassciFailure($e);
         } catch (\Exception $e) {
             Log::error('Erreur récupération séances à venir', [
                 'error' => $e->getMessage(),
@@ -95,8 +99,9 @@ final class LMSSeancesListController extends AuthenticatedController
             return $this->successResponse($seances);
 
         } catch (RuntimeException $e) {
-            // §1.2 — message fixé au site du catch, jamais dérivé de l'exception.
-            return $this->errorResponse('Token KLASSCI non trouvé', 401);
+            // §1.2 — le STATUT de KLASSCI est relayé, jamais son corps de réponse :
+            // le message vient d'une table fixe côté LMS.
+            return $this->renderKlassciFailure($e);
         } catch (\Exception $e) {
             Log::error('Erreur récupération séances enseignant', [
                 'error' => $e->getMessage(),
@@ -136,8 +141,9 @@ final class LMSSeancesListController extends AuthenticatedController
             return $this->successResponse($result);
 
         } catch (RuntimeException $e) {
-            // §1.2 — message fixé au site du catch, jamais dérivé de l'exception.
-            return $this->errorResponse('Token KLASSCI non trouvé', 401);
+            // §1.2 — le STATUT de KLASSCI est relayé, jamais son corps de réponse :
+            // le message vient d'une table fixe côté LMS.
+            return $this->renderKlassciFailure($e);
         } catch (\Exception $e) {
             Log::error('Erreur récupération séances étudiant', [
                 'error' => $e->getMessage(),

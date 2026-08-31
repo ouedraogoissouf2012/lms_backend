@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\API\Concerns;
 
 use App\Exceptions\KlassciUnavailableException;
+use App\Support\Klassci\KlassciClientErrorCatalog;
 use App\Exceptions\MissingKlassciTokenException;
 use Illuminate\Http\JsonResponse;
 use RuntimeException;
@@ -67,25 +68,10 @@ trait RendersKlassciBackedErrors
 
         // Hors 4xx : l'exception n'est pas imputable à KLASSCI (les 5xx KLASSCI
         // sont déjà convertis en KlassciUnavailableException par le client HTTP).
-        if (! is_int($status) || $status < 400 || $status > 499) {
+        if (! KlassciClientErrorCatalog::isRelayableClientStatus($status)) {
             return $this->errorResponse('Une erreur est survenue.', 500);
         }
 
-        return $this->errorResponse($this->messageForKlassciStatus($status), $status);
-    }
-
-    /**
-     * Message orienté action, jamais le corps brut renvoyé par KLASSCI (§1.2).
-     */
-    private function messageForKlassciStatus(int $status): string
-    {
-        return match ($status) {
-            401, 403 => 'Accès refusé par KLASSCI pour ce compte.',
-            404 => 'Aucune donnée KLASSCI pour ce compte. '
-                .'Vérifiez que le profil correspondant (enseignant, étudiant) y existe bien.',
-            409 => 'Conflit signalé par KLASSCI sur cette ressource.',
-            422 => 'KLASSCI a refusé la requête : données invalides.',
-            default => 'KLASSCI a refusé la requête.',
-        };
+        return $this->errorResponse(KlassciClientErrorCatalog::messageFor($status), $status);
     }
 }

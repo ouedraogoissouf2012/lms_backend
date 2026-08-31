@@ -101,12 +101,8 @@ final class ClasseDetailsTest extends TestCase
             $mock->shouldReceive('requestWithUserToken')
                 ->with('fake-token-123', 'classes/42?with=filiere,niveau', 'GET')
                 ->once()
-                ->andReturn(['data' => $classeData]);
+                ->andReturn(['data' => ['classe' => $classeData, 'etudiants' => $etudiants]]);
 
-            $mock->shouldReceive('requestWithUserToken')
-                ->with('fake-token-123', 'classes/42/etudiants', 'GET')
-                ->once()
-                ->andReturn(['data' => $etudiants]);
 
             $mock->shouldReceive('requestWithUserToken')
                 ->withArgs(fn ($token, $url, $method) => str_starts_with((string) $url, 'emploi-temps?'))
@@ -129,7 +125,9 @@ final class ClasseDetailsTest extends TestCase
         $response->assertStatus(200)
             ->assertJsonPath('success', true)
             ->assertJsonPath('data.classe.id', 42)
-            ->assertJsonPath('data.statistiques.nombre_etudiants', 2); // strict: only `statut === 'actif'`
+            // Le roster provient de l'enveloppe `classes/{id}` ; le filtre ne retient
+            // que les statuts explicitement inactifs.
+            ->assertJsonPath('data.statistiques.nombre_etudiants', 2);
     }
 
     public function test_returns_401_when_unauthenticated(): void

@@ -75,6 +75,36 @@ perf #374.
 | `MAIL_MAILER` | `smtp`, `log`, `array` (test) |
 | `MAIL_HOST` / `MAIL_PORT` / `MAIL_USERNAME` / `MAIL_PASSWORD` | Config SMTP standard Laravel |
 
+## 6. Visio (Jitsi / Jibri)
+
+`config/services.php` déclare ces clés depuis #668 et #469 ; **aucune** n'était documentée ici.
+Un déploiement neuf part donc avec un secret vide, et le webhook d'enregistrement répond **503
+en permanence** sans le moindre indice — d'où cette section.
+
+### 6.1 Accès aux salles
+
+| Variable | Obligatoire | Description |
+|---|---|---|
+| `JITSI_DOMAIN` | oui | Domaine public du serveur Jitsi (ex. `visio.klassci.com`). Vide ⇒ aucun lien de salle n'est émis. |
+| `JITSI_APP_SECRET` | **oui** | Secret HS256 de signature des jetons d'accès. **Doit être identique à `JWT_APP_SECRET` côté prosody.** Une divergence rejette les jetons *sans message exploitable*. |
+| `JITSI_APP_ID` | non (`lms-klassci`) | Doit correspondre à `JWT_APP_ID` **et** à `JWT_ACCEPTED_ISSUERS` côté prosody. |
+| `JITSI_AUDIENCE` | non (`visio-klassci`) | Doit correspondre à `JWT_ACCEPTED_AUDIENCES` côté prosody. |
+| `JITSI_XMPP_DOMAIN` | non (`meet.jitsi`) | Domaine **interne** XMPP, jamais résolu par le navigateur. À laisser au défaut. |
+| `JITSI_TOKEN_LIFETIME` | non (`7200`) | Durée de vie d'un jeton d'accès, en secondes. |
+
+### 6.2 Finalisation des enregistrements
+
+| Variable | Obligatoire | Description |
+|---|---|---|
+| `VISIO_RECORDING_WEBHOOK_SECRET` | **oui** | Secret HMAC-SHA256 du webhook `recording-ready`. **Absent ⇒ 503 sur toute notification.** Doit être identique au secret porté par le script de finalisation côté Jibri. |
+| `VISIO_RECORDING_WEBHOOK_MAX_AGE` | non (`300`) | Fenêtre d'acceptation de l'horodatage, en secondes. Sert aussi de durée de rétention du nonce anti-rejeu (+ 60 s). |
+| `VISIO_RECORDINGS_ROOT` | non (aucun défaut) | Racine des enregistrements Jibri, montée en **lecture seule** depuis le serveur visio. **Sans défaut délibérément** : absente, la voie Jibri du webhook reste inactive, plutôt que de deviner un chemin serveur. |
+
+> **Pourquoi aucun défaut sur `VISIO_RECORDINGS_ROOT`** : cette racine est concaténée à un
+> identifiant de session pour localiser un fichier à importer. Un défaut deviné ferait lire un
+> répertoire arbitraire au job d'import. Une fonctionnalité éteinte est préférable à un chemin
+> supposé.
+
 ---
 
 ## Comment vérifier le `.env` prod sans le commiter

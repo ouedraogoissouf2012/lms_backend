@@ -82,6 +82,16 @@ return [
         'webhook_secret' => env('VISIO_RECORDING_WEBHOOK_SECRET'),
         'webhook_max_age' => (int) env('VISIO_RECORDING_WEBHOOK_MAX_AGE', 300),
 
+        // Racine des enregistrements produits par Jibri, montee en LECTURE
+        // SEULE depuis le serveur visio (#469). Le media ne transite jamais en
+        // HTTP : le webhook ne porte que des metadonnees, et c'est le LMS qui
+        // lit le fichier ici pour se l'approprier.
+        //
+        // AUCUN DEFAUT, volontairement. Absente, la voie Jibri du webhook reste
+        // inactive : mieux vaut une fonctionnalite eteinte qu'un chemin serveur
+        // devine, qui ferait lire n'importe quel repertoire au job d'import.
+        'recordings_root' => env('VISIO_RECORDINGS_ROOT'),
+
         // Acces aux salles Jitsi. Le serveur tourne avec ENABLE_AUTH=1 et
         // ENABLE_GUESTS=0 : sans jeton signe, aucune salle ne s'ouvre.
         // `app_id` et `audience` doivent correspondre EXACTEMENT a JWT_APP_ID

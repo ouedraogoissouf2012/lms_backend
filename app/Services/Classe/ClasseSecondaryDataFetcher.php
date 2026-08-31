@@ -49,12 +49,7 @@ final class ClasseSecondaryDataFetcher
             $evaluationsData = $response['data'] ?? [];
 
             return collect($evaluationsData)
-                ->filter(static function (array $eval) use ($classeId): bool {
-                    $classeData = $eval['classe'] ?? null;
-                    return is_array($classeData)
-                        && isset($classeData['id'])
-                        && $classeData['id'] === $classeId;
-                })
+                ->filter(fn (array $eval): bool => $this->referencesClasse($eval, $classeId))
                 ->values()
                 ->all();
         } catch (Throwable $e) {
@@ -65,5 +60,34 @@ final class ClasseSecondaryDataFetcher
 
             return [];
         }
+    }
+
+    /**
+     * L'évaluation référence-t-elle la classe demandée ?
+     *
+     * L'identifiant est comparé APRÈS normalisation numérique. KLASSCI renvoie
+     * aujourd'hui un entier, mais rien dans ses payloads JSON ne l'impose : en
+     * comparaison stricte, une seule livraison en chaîne (« 1 ») faisait tomber
+     * le filtre à zéro et l'écran affichait « aucune évaluation » — sans erreur
+     * ni trace. Une référence inexploitable (absente, scalaire, non numérique)
+     * n'apparie jamais : on ne devine pas une correspondance.
+     *
+     * @param  array<string, mixed>  $eval
+     */
+    private function referencesClasse(array $eval, int $classeId): bool
+    {
+        $classeData = $eval['classe'] ?? null;
+
+        if (!is_array($classeData)) {
+            return false;
+        }
+
+        $id = $classeData['id'] ?? null;
+
+        if (is_int($id)) {
+            return $id === $classeId;
+        }
+
+        return is_string($id) && ctype_digit($id) && (int) $id === $classeId;
     }
 }

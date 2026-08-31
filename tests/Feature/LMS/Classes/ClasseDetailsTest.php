@@ -97,27 +97,32 @@ final class ClasseDetailsTest extends TestCase
             ['id' => 3, 'nom' => 'Foo', 'prenom' => 'Bar', 'statut' => 'actif'],
         ];
 
-        $this->mock(KlassciProxyService::class, function (MockInterface $mock) use ($classeData, $etudiants) {
+        $matieres = [['id' => 101, 'nom' => 'Algorithmique'], ['id' => 102, 'nom' => 'Réseaux']];
+
+        $this->mock(KlassciProxyService::class, function (MockInterface $mock) use ($classeData, $etudiants, $matieres) {
             $mock->shouldReceive('requestWithUserToken')
                 ->with('fake-token-123', 'classes/42?with=filiere,niveau', 'GET')
                 ->once()
-                ->andReturn(['data' => ['classe' => $classeData, 'etudiants' => $etudiants]]);
-
-
-            $mock->shouldReceive('requestWithUserToken')
-                ->withArgs(fn ($token, $url, $method) => str_starts_with((string) $url, 'emploi-temps?'))
-                ->once()
-                ->andReturn(['data' => []]);
+                ->andReturn(['data' => [
+                    'classe' => $classeData,
+                    'etudiants' => $etudiants,
+                    'matieres' => $matieres,
+                    'emploi_temps_semaine' => [['id' => 501]],
+                ]]);
 
             $mock->shouldReceive('requestWithUserToken')
                 ->with('fake-token-123', 'evaluations', 'GET')
                 ->once()
                 ->andReturn(['data' => []]);
 
+            // Matières et emploi du temps sont livrés par l'enveloppe ci-dessus :
+            // aucun appel séparé ne doit plus partir. Le catalogue global
+            // `matieres?…` ignorait ses filtres et renvoyait les 452 matières de
+            // tout l'établissement en guise de « matières de la classe ».
             $mock->shouldReceive('requestWithUserToken')
-                ->withArgs(fn ($token, $url, $method) => str_starts_with((string) $url, 'matieres?'))
-                ->once()
-                ->andReturn(['data' => []]);
+                ->withArgs(fn ($token, $url, $method) => str_starts_with((string) $url, 'matieres?')
+                    || str_starts_with((string) $url, 'emploi-temps?'))
+                ->never();
         });
 
         $response = $this->getJson('/api/lms/classes/42');
@@ -127,7 +132,10 @@ final class ClasseDetailsTest extends TestCase
             ->assertJsonPath('data.classe.id', 42)
             // Le roster provient de l'enveloppe `classes/{id}` ; le filtre ne retient
             // que les statuts explicitement inactifs.
-            ->assertJsonPath('data.statistiques.nombre_etudiants', 2);
+            ->assertJsonPath('data.statistiques.nombre_etudiants', 2)
+            // Les matières sont celles de la CLASSE (2), pas le catalogue global.
+            ->assertJsonCount(2, 'data.matieres_disponibles')
+            ->assertJsonPath('data.statistiques.nombre_matieres', 2);
     }
 
     public function test_returns_401_when_unauthenticated(): void

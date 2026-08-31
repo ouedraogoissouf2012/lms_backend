@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Services\Visio;
 
+use App\Services\Visio\VisioActorAuthorization;
+use App\Services\Visio\VisioAccessTokenIssuer;
 use App\Models\ESBTPAttendance;
 use App\Models\Seance;
 use App\Models\User;
@@ -37,6 +39,8 @@ final class VisioParticipantSessionService
         private readonly LoggerInterface $logger,
         private readonly AttendanceLifecycleService $lifecycle,
         private readonly ParticipantValidationService $participantValidation,
+        private readonly VisioAccessTokenIssuer $tokenIssuer,
+        private readonly VisioActorAuthorization $actorAuthorization,
     ) {}
 
     /**
@@ -117,10 +121,10 @@ final class VisioParticipantSessionService
                 'payload' => [
                     'success' => true,
                     'message' => 'Accès à la visio autorisé',
-                    'data' => [
+                    'data' => array_merge([
                         'visio_room_id' => $visio->visio_room_id,
                         'participants_count' => $visio->current_participants_count,
-                    ],
+                    ], $this->accessToken($visio, $user)),
                 ],
             ];
         } catch (Throwable $e) {
@@ -229,6 +233,47 @@ final class VisioParticipantSessionService
                 'success' => false,
                 'message' => $message,
             ],
+        ];
+    }
+
+    /**
+     * Taille la cle d'entree de CETTE salle pour CET utilisateur.
+     *
+     * Appele uniquement apres que l'autorisation a ete etablie : un participant
+     * refuse n'atteint jamais ce point, et n'obtient donc aucun jeton.
+     *
+     * Le statut de moderateur est decide ICI, par le serveur. Le laisser au
+     * client permettrait a un eleve de se declarer professeur : il pourrait
+     * alors expulser sa classe, couper le micro de l'enseignant et arreter
+     * l'enregistrement.
+     *
+     * Une configuration absente ne fait pas echouer la participation : la
+     * presence est deja enregistree, et le client est informe explicitement
+     * plutot que renvoye vers une porte close sans motif.
+     *
+     * @return array{visio_token: string|null, visio_token_available: bool}
+     */
+    private function accessToken(Seance $visio, User $user): array
+    {
+        $room = $visio->visio_room_id;
+
+        if (! $this->tokenIssuer->isConfigured() || ! is_string($room) || $room === '') {
+            $this->logger->warning('Acces visio sans jeton : configuration Jitsi absente', [
+                'seance_id' => $visio->id,
+                'configure' => $this->tokenIssuer->isConfigured(),
+            ]);
+
+            return ['visio_token' => null, 'visio_token_available' => false];
+        }
+
+        return [
+            'visio_token' => $this->tokenIssuer->issue(
+                $room,
+                $user->name,
+                (string) $user->email,
+                $this->actorAuthorization->canManage($visio, $user),
+            ),
+            'visio_token_available' => true,
         ];
     }
 }

@@ -34,7 +34,21 @@ use PHPUnit\Framework\TestCase;
  */
 final class VisioAccessTokenIssuerTest extends TestCase
 {
-    private const SECRET = '7c6f975c477d82082dc00418276bc8b2e53db075c49eac1c98b3f06b1f2961ab';
+    /**
+     * Valeur FICTIVE, et son intitulé le dit.
+     *
+     * Ce test portait auparavant la valeur RÉELLE de `JWT_APP_SECRET` du serveur
+     * de production (commit `9f645fba`). Un secret de signature dans un fichier
+     * versionné, c'est la capacité de forger un jeton modérateur pour n'importe
+     * quelle salle de n'importe quel établissement.
+     *
+     * Le remplacer ici ne l'efface PAS de l'historique git : la valeur d'origine
+     * doit être considérée comme compromise et avoir été renouvelée côté
+     * prosody (`JWT_APP_SECRET`) et côté LMS (`JITSI_APP_SECRET`).
+     *
+     * Un test de signature n'a besoin que d'une clé stable — jamais d'une vraie.
+     */
+    private const SECRET = 'secret-de-test-jamais-utilise-en-production';
 
     private const APP_ID = 'lms-klassci';
 

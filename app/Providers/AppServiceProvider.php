@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Services\Visio\VisioAccessTokenIssuer;
 use App\Services\Seances\Sync\StaleSeanceArchiver;
 use App\Services\Seances\Sync\StaleSeanceArchiverInterface;
 use App\Models\PersonalAccessToken;
@@ -65,6 +66,8 @@ class AppServiceProvider extends ServiceProvider
         // chemin d'archivage. Le binding a l'interface rend son garde de
         // souillure verifiable (\App\Services\Seances\Sync\TenantArchiveCoordinator).
         $this->app->bind(StaleSeanceArchiverInterface::class, StaleSeanceArchiver::class);
+
+        $this->bindVisioAccessTokenIssuer();
 
         // TenantScopedCache (#374, spec redis-runtime). Le conteneur ne sait
         // pas résoudre la classe concrète Illuminate\Cache\Repository par
@@ -176,5 +179,28 @@ class AppServiceProvider extends ServiceProvider
             $pdf->setOption('enable_remote', false);
             $pdf->setOption('isRemoteEnabled', false);
         });
+    }
+
+    /**
+     * Le signeur d'acces visio prend des scalaires : le conteneur ne peut pas
+     * les deviner par reflexion, d'ou ce binding explicite.
+     *
+     * Extrait de register() : le garde-fou 5 refuse qu'une methode deja longue
+     * s'allonge encore a chaque nouveau binding.
+     */
+    private function bindVisioAccessTokenIssuer(): void
+    {
+            $this->app->singleton(VisioAccessTokenIssuer::class, static function (): VisioAccessTokenIssuer {
+                /** @var array<string, mixed> $c */
+                $c = (array) config('services.visio.jitsi', []);
+
+                return new VisioAccessTokenIssuer(
+                    appId: is_string($c['app_id'] ?? null) ? $c['app_id'] : 'lms-klassci',
+                    appSecret: is_string($c['app_secret'] ?? null) ? $c['app_secret'] : null,
+                    audience: is_string($c['audience'] ?? null) ? $c['audience'] : 'visio-klassci',
+                    xmppDomain: is_string($c['xmpp_domain'] ?? null) ? $c['xmpp_domain'] : 'meet.jitsi',
+                    lifetimeSeconds: is_numeric($c['token_lifetime'] ?? null) ? (int) $c['token_lifetime'] : 7200,
+                );
+            });
     }
 }

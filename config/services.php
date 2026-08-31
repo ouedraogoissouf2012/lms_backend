@@ -81,6 +81,22 @@ return [
     'visio' => [
         'webhook_secret' => env('VISIO_RECORDING_WEBHOOK_SECRET'),
         'webhook_max_age' => (int) env('VISIO_RECORDING_WEBHOOK_MAX_AGE', 300),
+
+        // Acces aux salles Jitsi. Le serveur tourne avec ENABLE_AUTH=1 et
+        // ENABLE_GUESTS=0 : sans jeton signe, aucune salle ne s'ouvre.
+        // `app_id` et `audience` doivent correspondre EXACTEMENT a JWT_APP_ID
+        // et JWT_ACCEPTED_AUDIENCES cote prosody, sinon les jetons sont rejetes
+        // sans le moindre message exploitable.
+        'jitsi' => [
+            'app_id' => env('JITSI_APP_ID', 'lms-klassci'),
+            'app_secret' => env('JITSI_APP_SECRET'),
+            'audience' => env('JITSI_AUDIENCE', 'visio-klassci'),
+            'domain' => env('JITSI_DOMAIN'),
+            // XMPP_DOMAIN cote serveur : domaine INTERNE, jamais resolu par
+            // le navigateur. A laisser au defaut.
+            'xmpp_domain' => env('JITSI_XMPP_DOMAIN', 'meet.jitsi'),
+            'token_lifetime' => (int) env('JITSI_TOKEN_LIFETIME', 7200),
+        ],
     ],
 
 ];

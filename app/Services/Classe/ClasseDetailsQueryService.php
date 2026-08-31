@@ -57,7 +57,7 @@ final class ClasseDetailsQueryService
             return $classeResult;
         }
         /** @var array<string, mixed> $classe */
-        $classe = $classeResult['classe'] ?? [];
+        $classe = $classeResult['classe'];
 
         // 2. Étudiants actifs — LUS DANS LA RÉPONSE DÉJÀ OBTENUE au point 1.
         //    KLASSCI livre le roster dans l'enveloppe de `classes/{id}`. Le
@@ -66,18 +66,21 @@ final class ClasseDetailsQueryService
         //    autorisé à cette classe »), et ce bloc était le seul des six sans
         //    dégradation gracieuse — son échec emportait tout l'écran.
         /** @var array<int, array<string, mixed>> $etudiantsActifs */
-        $etudiantsActifs = $this->filtrerEtudiantsActifs($classeResult['etudiants'] ?? [], $classeId);
+        $etudiantsActifs = $this->filtrerEtudiantsActifs($classeResult['etudiants'], $classeId);
 
-        // 3. Emploi du temps de la semaine courante (dégradation gracieuse).
-        $emploiTemps = $this->secondaryFetcher->fetchEmploiTempsSemaine($classeId, $klassciToken);
+        // 3. Emploi du temps et matières — LUS DANS LA RÉPONSE DÉJÀ OBTENUE au
+        //    point 1, comme le roster. Les redemander était superflu pour l'emploi
+        //    du temps, et FAUX pour les matières : le catalogue global
+        //    `matieres?filiere_id=…&niveau_id=…` ignore ses filtres et renvoyait
+        //    les 452 matières de l'établissement comme « matières de la classe ».
+        //    `null` = bloc ABSENT du payload amont, distinct d'une liste vide.
+        $emploiTemps = $classeResult['emploi_temps'];
+        $matieres = $classeResult['matieres'];
 
         // 4. Évaluations programmées pour la classe (dégradation gracieuse).
         $evaluations = $this->secondaryFetcher->fetchEvaluations($classeId, $klassciToken);
 
-        // 5. Matières disponibles pour la combinaison filière+niveau.
-        $matieres = $this->secondaryFetcher->fetchMatieres($classe, $classeId, $klassciToken);
-
-        // 6. Statistiques agrégées.
+        // 5. Statistiques agrégées.
         $stats = $this->computeStats($classe, $etudiantsActifs, $emploiTemps, $evaluations, $matieres);
 
         return [
@@ -87,8 +90,8 @@ final class ClasseDetailsQueryService
                 'data' => [
                     'classe' => $classe,
                     'etudiants' => $etudiantsActifs,
-                    'matieres_disponibles' => $matieres,
-                    'emploi_temps_semaine' => $emploiTemps,
+                    'matieres_disponibles' => $matieres ?? [],
+                    'emploi_temps_semaine' => $emploiTemps ?? [],
                     'evaluations_programmees' => $evaluations,
                     'statistiques' => $stats,
                 ],
@@ -99,12 +102,15 @@ final class ClasseDetailsQueryService
     /**
      * Récupère la classe + relations filière/niveau.
      *
-     * Retourne soit un succès `{status: 200, classe: array, etudiants: array}` —
-     * le roster est livré par KLASSCI dans la même enveloppe, inutile de le
-     * redemander — soit un tuple d'erreur prêt à être renvoyé tel quel
+     * Retourne soit un succès portant TOUS les blocs déjà livrés par KLASSCI
+     * dans la même enveloppe (roster, matières, emploi du temps) — inutile de
+     * les redemander — soit un tuple d'erreur prêt à être renvoyé tel quel
      * ({@see getDetailsForUser()}).
      *
-     * @return array{status: 200, classe: array<string, mixed>, etudiants: array<int, array<string, mixed>>}|array{status: int, payload: array<string, mixed>}
+     * `matieres` et `emploi_temps` valent `null` quand l'enveloppe ne porte PAS
+     * le bloc : une absence amont ne doit pas se présenter comme une mesure nulle.
+     *
+     * @return array{status: 200, classe: array<string, mixed>, etudiants: array<int, array<string, mixed>>, matieres: ?array<int, array<string, mixed>>, emploi_temps: ?array<int, array<string, mixed>>}|array{status: 404|500, payload: array<string, mixed>}
      */
     private function fetchClasse(int $classeId, string $klassciToken): array
     {
@@ -119,13 +125,10 @@ final class ClasseDetailsQueryService
             // emploi_temps_semaine, statistiques}. La prendre pour la classe
             // elle-même perdait `filiere` et `niveau`, et masquait le fait que les
             // étudiants s'y trouvaient déjà.
+            /** @var array<string, mixed>|null $payload */
             $payload = $classeResponse['data'] ?? null;
-            $classe = is_array($payload) ? ($payload['classe'] ?? null) : null;
-            /** @var array<int, array<string, mixed>> $etudiants */
-            $etudiants = array_values(array_filter(
-                is_array($payload) && is_array($payload['etudiants'] ?? null) ? $payload['etudiants'] : [],
-                static fn (mixed $etudiant): bool => is_array($etudiant),
-            ));
+            $classe = ClasseEnvelope::classe($payload);
+            $etudiants = ClasseEnvelope::etudiants($payload);
 
             $this->logger->info('Classe récupérée depuis KLASSCI', [
                 'classe_id' => $classeId,
@@ -147,7 +150,13 @@ final class ClasseDetailsQueryService
             }
 
             /** @var array<string, mixed> $classe */
-            return ['status' => 200, 'classe' => $classe, 'etudiants' => $etudiants];
+            return [
+                'status' => 200,
+                'classe' => $classe,
+                'etudiants' => $etudiants,
+                'matieres' => ClasseEnvelope::optionalList($payload, 'matieres'),
+                'emploi_temps' => ClasseEnvelope::optionalList($payload, 'emploi_temps_semaine'),
+            ];
         } catch (Throwable $e) {
             $this->logger->error('Erreur récupération classe', [
                 'classe_id' => $classeId,
@@ -231,17 +240,17 @@ final class ClasseDetailsQueryService
      *
      * @param  array<string, mixed>  $classe
      * @param  array<int, array<string, mixed>>  $etudiantsActifs
-     * @param  array<int, array<string, mixed>>  $emploiTemps
+     * @param  ?array<int, array<string, mixed>>  $emploiTemps  `null` = bloc absent.
      * @param  array<int, array<string, mixed>>  $evaluations
-     * @param  array<int, array<string, mixed>>  $matieres
+     * @param  ?array<int, array<string, mixed>>  $matieres  `null` = bloc absent.
      * @return array<string, mixed>
      */
     private function computeStats(
         array $classe,
         array $etudiantsActifs,
-        array $emploiTemps,
+        ?array $emploiTemps,
         array $evaluations,
-        array $matieres,
+        ?array $matieres,
     ): array {
         $capacite = $classe['nombre_places'] ?? null;
         $tauxRemplissage = null;
@@ -251,9 +260,11 @@ final class ClasseDetailsQueryService
 
         return [
             'nombre_etudiants' => count($etudiantsActifs),
-            'nombre_seances_semaine' => count($emploiTemps),
+            // Bloc non livré par l'amont => `null` (affiché « — »), jamais 0 : un
+            // zéro se lirait comme une mesure (« cette classe n'a aucune matière »).
+            'nombre_seances_semaine' => $emploiTemps === null ? null : count($emploiTemps),
             'nombre_evaluations_programmees' => count($evaluations),
-            'nombre_matieres' => count($matieres),
+            'nombre_matieres' => $matieres === null ? null : count($matieres),
             'capacite_classe' => $capacite,
             'taux_remplissage' => $tauxRemplissage,
         ];

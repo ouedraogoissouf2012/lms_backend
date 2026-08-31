@@ -505,40 +505,10 @@ parameters:
 			path: app/Services/Chapter/LessonChapterProgressCalculator.php
 
 		-
-			message: '#^Cannot access offset ''filiere'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 2
-			path: app/Services/Classe/ClasseDetailsQueryService.php
-
-		-
 			message: '#^Cannot access offset ''id'' on mixed\.$#'
 			identifier: offsetAccess.nonOffsetAccessible
 			count: 2
 			path: app/Services/Classe/ClasseDetailsQueryService.php
-
-		-
-			message: '#^Cannot access offset ''niveau'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 2
-			path: app/Services/Classe/ClasseDetailsQueryService.php
-
-		-
-			message: '#^Cannot access offset ''id'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 2
-			path: app/Services/Classe/ClasseSecondaryDataFetcher.php
-
-		-
-			message: '#^Part \$filiereId \(mixed\) of encapsed string cannot be cast to string\.$#'
-			identifier: encapsedStringPart.nonString
-			count: 1
-			path: app/Services/Classe/ClasseSecondaryDataFetcher.php
-
-		-
-			message: '#^Part \$niveauId \(mixed\) of encapsed string cannot be cast to string\.$#'
-			identifier: encapsedStringPart.nonString
-			count: 1
-			path: app/Services/Classe/ClasseSecondaryDataFetcher.php
 
 		-
 			message: '#^Cannot access offset ''id'' on mixed\.$#'

@@ -5,16 +5,22 @@ declare(strict_types=1);
 namespace App\Services\Classe;
 
 use App\Services\KlassciProxyService;
-use Carbon\Carbon;
 use Psr\Log\LoggerInterface;
 use Throwable;
 
 /**
- * Fetchers secondaires « détails classe » — emploi du temps, évaluations,
- * matières. Tous appliquent une dégradation gracieuse : un échec amont KLASSCI
- * est loggé en `warning` et le bloc est renvoyé vide.
+ * Fetcher secondaire « détails classe » — évaluations programmées. Dégradation
+ * gracieuse : un échec amont KLASSCI est loggé en `warning` et le bloc est
+ * renvoyé vide.
  *
  * Extrait de {@see ClasseDetailsQueryService} (split-20) pour respecter §1.1.
+ *
+ * Ne restent ici que les blocs qui exigent RÉELLEMENT un appel séparé. Les
+ * matières et l'emploi du temps ont quitté cette classe : KLASSCI les livre
+ * déjà dans l'enveloppe `classes/{id}` ({@see ClasseEnvelope}), et pour les
+ * matières l'appel séparé était en plus FAUX — le catalogue
+ * `matieres?filiere_id=…&niveau_id=…` ignore ses filtres et renvoyait les 452
+ * matières de tout l'établissement.
  */
 final class ClasseSecondaryDataFetcher
 {
@@ -22,36 +28,6 @@ final class ClasseSecondaryDataFetcher
         private readonly KlassciProxyService $klassciService,
         private readonly LoggerInterface $logger,
     ) {}
-
-    /**
-     * Emploi du temps lundi → dimanche de la semaine courante.
-     *
-     * @return array<int, array<string, mixed>>
-     */
-    public function fetchEmploiTempsSemaine(int $classeId, string $klassciToken): array
-    {
-        $startOfWeek = Carbon::now()->startOfWeek()->format('Y-m-d');
-        $endOfWeek = Carbon::now()->endOfWeek()->format('Y-m-d');
-
-        try {
-            $response = $this->klassciService->requestWithUserToken(
-                $klassciToken,
-                "emploi-temps?classe_id={$classeId}&date_debut={$startOfWeek}&date_fin={$endOfWeek}",
-                'GET'
-            );
-
-            /** @var array<int, array<string, mixed>> $emploi */
-            $emploi = $response['data'] ?? [];
-            return $emploi;
-        } catch (Throwable $e) {
-            $this->logger->warning('Erreur récupération emploi du temps', [
-                'classe_id' => $classeId,
-                'error' => $e->getMessage(),
-            ]);
-
-            return [];
-        }
-    }
 
     /**
      * Évaluations programmées filtrées sur l'identifiant de classe.
@@ -73,12 +49,7 @@ final class ClasseSecondaryDataFetcher
             $evaluationsData = $response['data'] ?? [];
 
             return collect($evaluationsData)
-                ->filter(static function (array $eval) use ($classeId): bool {
-                    $classeData = $eval['classe'] ?? null;
-                    return is_array($classeData)
-                        && isset($classeData['id'])
-                        && $classeData['id'] === $classeId;
-                })
+                ->filter(fn (array $eval): bool => $this->referencesClasse($eval, $classeId))
                 ->values()
                 ->all();
         } catch (Throwable $e) {
@@ -92,44 +63,31 @@ final class ClasseSecondaryDataFetcher
     }
 
     /**
-     * Matières disponibles pour la combinaison filière+niveau de la classe.
-     * Filière ou niveau manquant → warning + [].
+     * L'évaluation référence-t-elle la classe demandée ?
      *
-     * @param  array<string, mixed>  $classe
-     * @return array<int, array<string, mixed>>
+     * L'identifiant est comparé APRÈS normalisation numérique. KLASSCI renvoie
+     * aujourd'hui un entier, mais rien dans ses payloads JSON ne l'impose : en
+     * comparaison stricte, une seule livraison en chaîne (« 1 ») faisait tomber
+     * le filtre à zéro et l'écran affichait « aucune évaluation » — sans erreur
+     * ni trace. Une référence inexploitable (absente, scalaire, non numérique)
+     * n'apparie jamais : on ne devine pas une correspondance.
+     *
+     * @param  array<string, mixed>  $eval
      */
-    public function fetchMatieres(array $classe, int $classeId, string $klassciToken): array
+    private function referencesClasse(array $eval, int $classeId): bool
     {
-        if (!isset($classe['filiere']['id']) || !isset($classe['niveau']['id'])) {
-            $this->logger->warning('Impossible de récupérer les matières - filière ou niveau manquant', [
-                'classe_id' => $classeId,
-                'has_filiere' => isset($classe['filiere']),
-                'has_niveau' => isset($classe['niveau']),
-            ]);
+        $classeData = $eval['classe'] ?? null;
 
-            return [];
+        if (!is_array($classeData)) {
+            return false;
         }
 
-        try {
-            $filiereId = $classe['filiere']['id'];
-            $niveauId = $classe['niveau']['id'];
+        $id = $classeData['id'] ?? null;
 
-            $response = $this->klassciService->requestWithUserToken(
-                $klassciToken,
-                "matieres?filiere_id={$filiereId}&niveau_id={$niveauId}",
-                'GET'
-            );
-
-            /** @var array<int, array<string, mixed>> $matieres */
-            $matieres = $response['data'] ?? [];
-            return $matieres;
-        } catch (Throwable $e) {
-            $this->logger->warning('Erreur récupération matières', [
-                'classe_id' => $classeId,
-                'error' => $e->getMessage(),
-            ]);
-
-            return [];
+        if (is_int($id)) {
+            return $id === $classeId;
         }
+
+        return is_string($id) && ctype_digit($id) && (int) $id === $classeId;
     }
 }

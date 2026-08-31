@@ -78,10 +78,19 @@ final class RecordingMediaStorageTest extends TestCase
      */
     public function test_file_name_is_not_derived_from_the_recording_identifier(): void
     {
-        $relative = $this->storage()->store($this->sourceFile(), 42);
+        // Identifiant volontairement LONG. Le nom de fichier est un hash
+        // hexadécimal de 32 caractères : une suite de 2 chiffres (« 42 ») y
+        // réapparaît par pur hasard ~1 fois sur 9 (31 positions x 1/256), ce qui
+        // faisait échouer ce test au hasard sur des PR sans aucun rapport. Une
+        // suite de 9 chiffres rend la collision fortuite négligeable (~3e-10)
+        // sans rien changer à ce qui est vérifié : que le nom ne DÉRIVE pas de
+        // l'identifiant.
+        $recordingId = 987654321;
+
+        $relative = $this->storage()->store($this->sourceFile(), $recordingId);
         $fileName = basename($relative);
 
-        $this->assertStringNotContainsString('42', $fileName);
+        $this->assertStringNotContainsString((string) $recordingId, $fileName);
         $this->assertMatchesRegularExpression('/^[A-Za-z0-9]{16,}\.mp4$/', $fileName);
     }
 

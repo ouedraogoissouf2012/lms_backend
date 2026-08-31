@@ -20,10 +20,13 @@ use App\Services\Tenancy\InstitutionIntegrityInspectorInterface;
 use App\Services\Integrity\ArchivedRowWriter;
 use App\Services\Integrity\ArchivedRowWriterInterface;
 use App\Services\TenantManager;
+use App\Services\Visio\Recording\LocalDirectoryRecordingMediaSource;
+use App\Services\Visio\Recording\RecordingMediaSource;
 use App\Support\Shell\ShellExecutor;
 use App\Support\Shell\ShellExecutorInterface;
 use Barryvdh\DomPDF\PDF as DomPdf;
 use Illuminate\Cache\Repository;
+use Illuminate\Filesystem\Filesystem;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Support\Facades\Schema;
@@ -68,6 +71,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(StaleSeanceArchiverInterface::class, StaleSeanceArchiver::class);
 
         $this->bindVisioAccessTokenIssuer();
+        $this->bindRecordingMediaSource();
 
         // TenantScopedCache (#374, spec redis-runtime). Le conteneur ne sait
         // pas résoudre la classe concrète Illuminate\Cache\Repository par
@@ -202,5 +206,31 @@ class AppServiceProvider extends ServiceProvider
                     lifetimeSeconds: is_numeric($c['token_lifetime'] ?? null) ? (int) $c['token_lifetime'] : 7200,
                 );
             });
+    }
+
+    /**
+     * D'ou le LMS lit le media produit par Jibri (#469).
+     *
+     * La racine est un SCALAIRE issu de la configuration : le conteneur ne peut
+     * pas la deviner par reflexion, d'ou ce binding explicite — meme raison que
+     * pour le signeur de jetons ci-dessus.
+     *
+     * Volontairement `bind()` et non `singleton()` : la valeur de configuration
+     * doit pouvoir changer entre deux tests (`config([...])`) sans qu'une
+     * instance figee au premier appel continue de pointer sur l'ancienne racine.
+     *
+     * L'implementation locale suppose Jibri et le LMS sur la MEME machine. Le
+     * jour ou le noeud visio est separe, seul ce binding change.
+     */
+    private function bindRecordingMediaSource(): void
+    {
+        $this->app->bind(RecordingMediaSource::class, static function ($app): RecordingMediaSource {
+            $root = config('services.visio.recordings_root');
+
+            return new LocalDirectoryRecordingMediaSource(
+                $app->make(Filesystem::class),
+                is_string($root) ? $root : null,
+            );
+        });
     }
 }

@@ -54,6 +54,23 @@ services:
       # diapositives et genere les PDF. Sans ce partage, il ecrit dans son
       # propre conteneur et le web ne voit jamais les fichiers produits.
       - lms_storage:/var/www/html/storage/app
+      # Enregistrements produits par Jibri (#469), en LECTURE SEULE.
+      #
+      # Monte ICI et NULLE PART AILLEURS : c'est `ImportJibriRecordingMedia`
+      # qui lit le fichier, et ce job tourne sur la file `low`, donc dans ce
+      # conteneur. `web` ne fait que valider la signature du webhook et mettre
+      # en file — lui donner acces aux medias elargirait la surface exposee
+      # sans qu'aucun code ne s'en serve.
+      #
+      # Lecture seule : le LMS COPIE le media dans son propre stockage puis
+      # l'oublie. Le fournisseur reste maitre de ses fichiers, et un import
+      # rate doit rester rejouable — ce qui serait impossible si le LMS
+      # pouvait effacer la source.
+      #
+      # Chemin hote fige : ce montage suppose Jibri sur la MEME machine. Le
+      # jour ou le noeud visio est separe, c'est l'implementation de
+      # `RecordingMediaSource` qui change, pas ce fichier.
+      - /opt/visio/recordings:/mnt/visio-recordings:ro
     # Pas de healthcheck HTTP : ce conteneur n'ecoute sur aucun port.
     # `queue:work --max-time=3600` se termine periodiquement ; restart le
     # relance avec du code frais et une memoire propre.

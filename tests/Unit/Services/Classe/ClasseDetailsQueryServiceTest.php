@@ -79,12 +79,15 @@ final class ClasseDetailsQueryServiceTest extends TestCase
             ->andReturn(['data' => []])
             ->byDefault();
 
+        // Forme RÉELLE de KLASSCI (vérifiée par curl) : `data` est une ENVELOPPE
+        // {classe, etudiants, matieres, evaluations, ...}, et le roster y est DÉJÀ.
+        // L'ancien jeu d'essai livrait `data` = la classe à plat et simulait un
+        // second appel vers `classes/{id}/etudiants` — un endpoint que KLASSCI
+        // refuse en 403 (« Accès non autorisé à cette classe ») et que le service
+        // n'appelle plus.
         $klassci->shouldReceive('requestWithUserToken')
             ->with(self::TOKEN, 'classes/' . self::CLASSE_ID . '?with=filiere,niveau', 'GET')
-            ->andReturn(['data' => $classe]);
-        $klassci->shouldReceive('requestWithUserToken')
-            ->with(self::TOKEN, 'classes/' . self::CLASSE_ID . '/etudiants', 'GET')
-            ->andReturn(['data' => $etudiants]);
+            ->andReturn(['data' => ['classe' => $classe, 'etudiants' => $etudiants]]);
 
         return $klassci;
     }
@@ -112,7 +115,7 @@ final class ClasseDetailsQueryServiceTest extends TestCase
         return ['result' => $result, 'logger' => $logger];
     }
 
-    public function test_excludes_and_warns_when_statut_is_null(): void
+    public function test_keeps_student_when_statut_is_absent_from_this_payload(): void
     {
         ['result' => $result, 'logger' => $logger] = $this->invokeService([
             ['id' => 7, 'statut' => null],
@@ -120,31 +123,23 @@ final class ClasseDetailsQueryServiceTest extends TestCase
         ]);
 
         self::assertSame(200, $result['status']);
-        self::assertSame(1, $result['payload']['data']['statistiques']['nombre_etudiants']);
-
-        $logger->shouldHaveReceived('warning')
-            ->withArgs(static function (string $message, array $context): bool {
-                return $context['classe_id'] === self::CLASSE_ID
-                    && $context['etudiant_id'] === 7;
-            })
-            ->once();
+        // Les DEUX sont comptés : l'enveloppe `classes/{id}` n'expose pas de
+        // `statut` (id, matricule, nom_complet, email, telephone, photo_url), et
+        // KLASSCI y livre déjà le roster ACTIF. Exclure faute de statut vidait
+        // l'effectif de toutes les classes.
+        self::assertSame(2, $result['payload']['data']['statistiques']['nombre_etudiants']);
+        $logger->shouldNotHaveReceived('warning');
     }
 
-    public function test_excludes_and_warns_when_statut_key_is_missing(): void
+    public function test_keeps_student_when_statut_key_is_missing(): void
     {
         ['result' => $result, 'logger' => $logger] = $this->invokeService([
             ['id' => 9],
             ['id' => 8, 'statut' => 'actif'],
         ]);
 
-        self::assertSame(1, $result['payload']['data']['statistiques']['nombre_etudiants']);
-
-        $logger->shouldHaveReceived('warning')
-            ->withArgs(static function (string $message, array $context): bool {
-                return $context['classe_id'] === self::CLASSE_ID
-                    && $context['etudiant_id'] === 9;
-            })
-            ->once();
+        self::assertSame(2, $result['payload']['data']['statistiques']['nombre_etudiants']);
+        $logger->shouldNotHaveReceived('warning');
     }
 
     public function test_excludes_and_warns_when_statut_is_empty_string(): void

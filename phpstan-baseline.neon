@@ -523,12 +523,6 @@ parameters:
 			path: app/Services/Classe/ClasseDetailsQueryService.php
 
 		-
-			message: '#^Offset ''classe'' might not exist on array\{status\: 200, classe\?\: array\<string, mixed\>, payload\?\: array\<string, mixed\>\}\.$#'
-			identifier: offsetAccess.notFound
-			count: 1
-			path: app/Services/Classe/ClasseDetailsQueryService.php
-
-		-
 			message: '#^Cannot access offset ''id'' on mixed\.$#'
 			identifier: offsetAccess.nonOffsetAccessible
 			count: 2

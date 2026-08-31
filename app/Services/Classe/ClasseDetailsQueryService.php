@@ -57,10 +57,16 @@ final class ClasseDetailsQueryService
             return $classeResult;
         }
         /** @var array<string, mixed> $classe */
-        $classe = $classeResult['classe'];
+        $classe = $classeResult['classe'] ?? [];
 
-        // 2. Étudiants actifs (filtre strict).
-        $etudiantsActifs = $this->fetchEtudiantsActifs($classeId, $klassciToken);
+        // 2. Étudiants actifs — LUS DANS LA RÉPONSE DÉJÀ OBTENUE au point 1.
+        //    KLASSCI livre le roster dans l'enveloppe de `classes/{id}`. Le
+        //    redemander via `classes/{id}/etudiants` était superflu ET fatal : cet
+        //    endpoint est soumis à une autorisation PAR CLASSE (403 « Accès non
+        //    autorisé à cette classe »), et ce bloc était le seul des six sans
+        //    dégradation gracieuse — son échec emportait tout l'écran.
+        /** @var array<int, array<string, mixed>> $etudiantsActifs */
+        $etudiantsActifs = $this->filtrerEtudiantsActifs($classeResult['etudiants'] ?? [], $classeId);
 
         // 3. Emploi du temps de la semaine courante (dégradation gracieuse).
         $emploiTemps = $this->secondaryFetcher->fetchEmploiTempsSemaine($classeId, $klassciToken);
@@ -93,10 +99,12 @@ final class ClasseDetailsQueryService
     /**
      * Récupère la classe + relations filière/niveau.
      *
-     * Retourne soit un succès `{status: 200, classe: array}`, soit un tuple
-     * d'erreur déjà prêt à être renvoyé tel quel ({@see getDetailsForUser()}).
+     * Retourne soit un succès `{status: 200, classe: array, etudiants: array}` —
+     * le roster est livré par KLASSCI dans la même enveloppe, inutile de le
+     * redemander — soit un tuple d'erreur prêt à être renvoyé tel quel
+     * ({@see getDetailsForUser()}).
      *
-     * @return array{status: int, classe?: array<string, mixed>, payload?: array<string, mixed>}
+     * @return array{status: 200, classe: array<string, mixed>, etudiants: array<int, array<string, mixed>>}|array{status: int, payload: array<string, mixed>}
      */
     private function fetchClasse(int $classeId, string $klassciToken): array
     {
@@ -107,7 +115,17 @@ final class ClasseDetailsQueryService
                 'GET'
             );
 
-            $classe = $classeResponse['data'] ?? null;
+            // `data` est une ENVELOPPE : {classe, etudiants, matieres, evaluations,
+            // emploi_temps_semaine, statistiques}. La prendre pour la classe
+            // elle-même perdait `filiere` et `niveau`, et masquait le fait que les
+            // étudiants s'y trouvaient déjà.
+            $payload = $classeResponse['data'] ?? null;
+            $classe = is_array($payload) ? ($payload['classe'] ?? null) : null;
+            /** @var array<int, array<string, mixed>> $etudiants */
+            $etudiants = array_values(array_filter(
+                is_array($payload) && is_array($payload['etudiants'] ?? null) ? $payload['etudiants'] : [],
+                static fn (mixed $etudiant): bool => is_array($etudiant),
+            ));
 
             $this->logger->info('Classe récupérée depuis KLASSCI', [
                 'classe_id' => $classeId,
@@ -129,7 +147,7 @@ final class ClasseDetailsQueryService
             }
 
             /** @var array<string, mixed> $classe */
-            return ['status' => 200, 'classe' => $classe];
+            return ['status' => 200, 'classe' => $classe, 'etudiants' => $etudiants];
         } catch (Throwable $e) {
             $this->logger->error('Erreur récupération classe', [
                 'classe_id' => $classeId,
@@ -153,17 +171,12 @@ final class ClasseDetailsQueryService
      *
      * @return array<int, array<string, mixed>>
      */
-    private function fetchEtudiantsActifs(int $classeId, string $klassciToken): array
+    /**
+     * @param  array<int, array<string, mixed>>  $etudiants
+     * @return array<int, array<string, mixed>>
+     */
+    private function filtrerEtudiantsActifs(array $etudiants, int $classeId): array
     {
-        $etudiantsResponse = $this->klassciService->requestWithUserToken(
-            $klassciToken,
-            "classes/{$classeId}/etudiants",
-            'GET'
-        );
-
-        /** @var array<int, array<string, mixed>> $etudiants */
-        $etudiants = $etudiantsResponse['data'] ?? [];
-
         return collect($etudiants)
             ->filter(fn (array $etudiant): bool => $this->estEtudiantActif($etudiant, $classeId))
             ->values()
@@ -186,7 +199,19 @@ final class ClasseDetailsQueryService
      */
     private function estEtudiantActif(array $etudiant, int $classeId): bool
     {
-        $statut = $etudiant['statut'] ?? null;
+        $inscription = $etudiant['inscription'] ?? null;
+        $statut = $etudiant['statut']
+            ?? (is_array($inscription) ? ($inscription['status'] ?? null) : null);
+
+        // L'enveloppe de `classes/{id}` ne porte PAS de statut : elle expose
+        // id, matricule, nom_complet, email, telephone, photo_url — et KLASSCI y
+        // livre déjà le roster ACTIF (sa taille égale `places_occupees`, vérifié
+        // sur les 17 classes : 210 = 210). Exclure faute de statut viderait
+        // l'effectif de toutes les classes.
+        if ($statut === null) {
+            return true;
+        }
+
 
         if (!is_string($statut) || $statut === '') {
             $this->logger->warning('Étudiant exclu de l\'effectif : statut manquant ou malformé', [
@@ -198,7 +223,7 @@ final class ClasseDetailsQueryService
             return false;
         }
 
-        return $statut === 'actif';
+        return $statut === 'actif' || $statut === 'active';
     }
 
     /**

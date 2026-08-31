@@ -76,20 +76,24 @@ final class ProxyAcademicController extends Controller
      */
     public function saveNotes(int $id, Request $request): JsonResponse
     {
+        // Validation et resolution du jeton HORS du try : ni l'une ni l'autre n'est
+        // un appel KLASSCI. Dans le try, la ValidationException etait avalee par le
+        // catch(\Exception) et rendue 500 au lieu de 422 -- le client perdait les
+        // erreurs par champ, et une simple faute de saisie ressemblait a une panne.
+        $validated = $request->validate([
+            'notes' => 'required|array',
+            'notes.*.etudiant_id' => 'required|integer',
+            'notes.*.note' => 'nullable|numeric|min:0|max:20',
+            'notes.*.is_absent' => 'boolean',
+            'notes.*.commentaire' => 'nullable|string',
+        ]);
+
+        $klassciToken = $this->personalKlassciToken($request);
+        if ($klassciToken === null) {
+            return $this->missingKlassciTokenResponse();
+        }
+
         try {
-            $validated = $request->validate([
-                'notes' => 'required|array',
-                'notes.*.etudiant_id' => 'required|integer',
-                'notes.*.note' => 'nullable|numeric|min:0|max:20',
-                'notes.*.is_absent' => 'boolean',
-                'notes.*.commentaire' => 'nullable|string',
-            ]);
-
-            $klassciToken = $this->personalKlassciToken($request);
-            if ($klassciToken === null) {
-                return $this->missingKlassciTokenResponse();
-            }
-
             $data = $this->klassciService->saveNotes($klassciToken, $id, $validated['notes']);
             return response()->json($data);
         } catch (\Exception $e) {
@@ -102,28 +106,32 @@ final class ProxyAcademicController extends Controller
      */
     public function savePresences(int $id, Request $request): JsonResponse
     {
+        // Validation et resolution du jeton HORS du try : ni l'une ni l'autre n'est
+        // un appel KLASSCI. Dans le try, la ValidationException etait avalee par le
+        // catch(\Exception) et rendue 500 au lieu de 422 -- le client perdait les
+        // erreurs par champ, et une simple faute de saisie ressemblait a une panne.
+        $validated = $request->validate([
+            'date_cours' => 'required|date',
+            'etudiants_presents' => 'required|array',
+            'etudiants_absents' => 'nullable|array',
+            'duree_effective_minutes' => 'nullable|integer',
+            'commentaire' => 'nullable|string',
+        ]);
+
+        $presences = [
+            'date_cours' => $validated['date_cours'],
+            'etudiants_presents' => $validated['etudiants_presents'],
+            'etudiants_absents' => $validated['etudiants_absents'] ?? [],
+            'duree_effective_minutes' => $validated['duree_effective_minutes'] ?? null,
+            'commentaire' => $validated['commentaire'] ?? null,
+        ];
+
+        $klassciToken = $this->personalKlassciToken($request);
+        if ($klassciToken === null) {
+            return $this->missingKlassciTokenResponse();
+        }
+
         try {
-            $validated = $request->validate([
-                'date_cours' => 'required|date',
-                'etudiants_presents' => 'required|array',
-                'etudiants_absents' => 'nullable|array',
-                'duree_effective_minutes' => 'nullable|integer',
-                'commentaire' => 'nullable|string',
-            ]);
-
-            $presences = [
-                'date_cours' => $validated['date_cours'],
-                'etudiants_presents' => $validated['etudiants_presents'],
-                'etudiants_absents' => $validated['etudiants_absents'] ?? [],
-                'duree_effective_minutes' => $validated['duree_effective_minutes'] ?? null,
-                'commentaire' => $validated['commentaire'] ?? null,
-            ];
-
-            $klassciToken = $this->personalKlassciToken($request);
-            if ($klassciToken === null) {
-                return $this->missingKlassciTokenResponse();
-            }
-
             $data = $this->klassciService->savePresences($klassciToken, $id, $presences);
             return response()->json($data);
         } catch (\Exception $e) {
@@ -136,17 +144,21 @@ final class ProxyAcademicController extends Controller
      */
     public function updateCoursStatut(int $id, Request $request): JsonResponse
     {
+        // Validation et resolution du jeton HORS du try : ni l'une ni l'autre n'est
+        // un appel KLASSCI. Dans le try, la ValidationException etait avalee par le
+        // catch(\Exception) et rendue 500 au lieu de 422 -- le client perdait les
+        // erreurs par champ, et une simple faute de saisie ressemblait a une panne.
+        $validated = $request->validate([
+            'statut' => 'required|string|in:en_cours,realise,annule',
+            'commentaire' => 'nullable|string',
+        ]);
+
+        $klassciToken = $this->personalKlassciToken($request);
+        if ($klassciToken === null) {
+            return $this->missingKlassciTokenResponse();
+        }
+
         try {
-            $validated = $request->validate([
-                'statut' => 'required|string|in:en_cours,realise,annule',
-                'commentaire' => 'nullable|string',
-            ]);
-
-            $klassciToken = $this->personalKlassciToken($request);
-            if ($klassciToken === null) {
-                return $this->missingKlassciTokenResponse();
-            }
-
             $data = $this->klassciService->updateCoursStatut(
                 $klassciToken,
                 $id,

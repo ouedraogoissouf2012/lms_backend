@@ -70,7 +70,12 @@ final class LMSMatieresAdminResponseTest extends TestCase
                 'success' => true,
                 'data' => [
                     'matieres' => [],
-                    'statistiques' => ['total' => 0, 'total_heures' => 0, 'total_seances' => 0],
+                    // `total_seances` vaut `null` et non `0` : la liste KLASSCI ne
+                    // porte pas cette donnée, dans aucun cas. Un `0` se lirait comme
+                    // « aucune séance programmée », soit une mesure — alors que rien
+                    // n'a été mesuré. `total_heures` reste `0` : c'est bien la somme
+                    // d'un ensemble vide de matières.
+                    'statistiques' => ['total' => 0, 'total_heures' => 0, 'total_seances' => null],
                 ],
                 'message' => 'Aucune matière trouvée',
             ]);
@@ -80,12 +85,17 @@ final class LMSMatieresAdminResponseTest extends TestCase
     {
         $this->actingAsAdmin();
         $this->mock(KlassciProxyService::class, function (MockInterface $m): void {
+            // Forme réelle de KLASSCI : les heures sont un objet, et `combinaisons`
+            // est livrée avec la liste — plus aucun appel `matieres/{id}`.
             $m->shouldReceive('requestWithUserToken')
                 ->with('fake-token', 'matieres', 'GET')
-                ->andReturn(['data' => [['id' => 1, 'nom' => 'Maths', 'code' => 'MA', 'heures_total' => 3]]]);
-            $m->shouldReceive('requestWithUserToken')
-                ->with('fake-token', 'matieres/1', 'GET')
-                ->andReturn(['data' => ['combinaisons' => []]]);
+                ->andReturn(['data' => [[
+                    'id' => 1,
+                    'nom' => 'Maths',
+                    'code' => 'MA',
+                    'heures' => ['total' => 3],
+                    'combinaisons' => [],
+                ]]]);
         });
 
         $response = $this->getJson('/api/admin/matieres');

@@ -5,34 +5,31 @@ namespace App\Http\Controllers\API\LMS;
 use App\Exceptions\KlassciUnavailableException;
 use App\Http\Controllers\API\Proxy\Concerns\ResolvesPersonalKlassciToken;
 use App\Http\Controllers\AuthenticatedController;
-use App\Services\KlassciProxyService;
-use Carbon\Carbon;
+use App\Services\Matiere\AdminMatieresQueryService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
+use Psr\Log\LoggerInterface;
 
 /**
- * LMSMatieresAdminController — extrait verbatim de LMSMatieresController.
- * Refactor du god-controller (774 lignes -> 2 fichiers SRP).
- * Aucun changement comportemental.
+ * LMSMatieresAdminController — liste des matières pour l'administration.
+ *
+ * Orchestrateur fin (§5) : authentification, garde de rôle, délégation,
+ * sérialisation. La construction du payload vit dans
+ * {@see AdminMatieresQueryService}, qui porte aussi la raison du geste
+ * (suppression d'un N+1 de 453 appels KLASSCI).
  */
 final class LMSMatieresAdminController extends AuthenticatedController
 {
     use ResolvesPersonalKlassciToken;
 
     public function __construct(
-        private readonly KlassciProxyService $klassciService,
+        private readonly AdminMatieresQueryService $matieresQuery,
+        private readonly LoggerInterface $logger,
     ) {}
 
     /**
      * GET /api/admin/matieres
-     * Liste toutes les matières avec leurs combinaisons complètes (pour admin/coordinateur).
-     *
-     * Retourne:
-     * - Liste des matières enrichies avec combinaisons valides (filière + niveau)
-     * - Statistiques globales
+     * Liste toutes les matières avec leurs combinaisons (admin/coordinateur).
      */
     public function adminMatieresList(Request $request): JsonResponse
     {
@@ -50,124 +47,37 @@ final class LMSMatieresAdminController extends AuthenticatedController
                 return $this->errorResponse('Accès non autorisé. Réservé aux administrateurs et coordinateurs.', 403);
             }
 
-            Log::info('Récupération liste matières admin', [
+            $result = $this->matieresQuery->listForAdmin($klassciToken);
+            $count = count($result['matieres']);
+
+            // Une ligne par requête. Avant, l'enrichissement journalisait CHAQUE
+            // matière : 452 écritures par appel, qui pesaient sur la latence
+            // autant que sur la taille du fichier de log.
+            $this->logger->info('Liste matières admin', [
                 'user_id' => $user->id,
-                'role' => $user->role
+                'count' => $count,
             ]);
 
-            // 1. Récupérer la liste des matières depuis l'endpoint /matieres
-            $matieresResponse = $this->klassciService->requestWithUserToken(
-                $klassciToken,
-                'matieres',
-                'GET'
-            );
-
-            /** @var array<int, array<string, mixed>> $matieres */
-            $matieres = $matieresResponse['data'] ?? [];
-
-            if (count($matieres) === 0) {
-                return $this->successResponse([
-                    'matieres' => [],
-                    'statistiques' => [
-                        'total' => 0,
-                        'total_heures' => 0,
-                        'total_seances' => 0,
-                    ],
-                ], 'Aucune matière trouvée');
+            if ($count === 0) {
+                return $this->successResponse($result, 'Aucune matière trouvée');
             }
 
-            Log::info('Matières trouvées', ['count' => count($matieres)]);
-
-            // 2. Enrichir chaque matière avec ses combinaisons complètes
-            $matieresEnrichies = [];
-
-            foreach ($matieres as $matiere) {
-                $matiereId = (int) $matiere['id'];
-
-                try {
-                    $detailsResponse = $this->klassciService->requestWithUserToken(
-                        $klassciToken,
-                        "matieres/{$matiereId}",
-                        'GET'
-                    );
-
-                    $details = $detailsResponse['data'] ?? [];
-                    $combinaisons = $details['combinaisons'] ?? [];
-
-                    $matieresEnrichies[] = [
-                        'id' => $matiere['id'],
-                        'nom' => $matiere['nom'] ?? 'N/A',
-                        'code' => $matiere['code'] ?? 'N/A',
-                        'description' => $matiere['description'] ?? null,
-                        'coefficient' => $matiere['coefficient'] ?? null,
-                        'couleur' => $matiere['couleur'] ?? '#6366f1',
-                        'heures_total' => $matiere['heures_total'] ?? 0,
-                        'nb_seances_programmees' => $matiere['nb_seances_programmees'] ?? 0,
-                        'nb_lecons' => $matiere['nb_lecons'] ?? 0,
-                        'nb_evaluations' => $matiere['nb_evaluations'] ?? 0,
-                        'combinaisons' => $combinaisons
-                    ];
-
-                    Log::info('Matière enrichie', [
-                        'id' => $matiereId,
-                        'nom' => $matiere['nom'],
-                        'combinaisons_count' => count($combinaisons)
-                    ]);
-
-                } catch (\Exception $e) {
-                    Log::warning('Erreur enrichissement matière', [
-                        'matiere_id' => $matiereId,
-                        'error' => $e->getMessage()
-                    ]);
-
-                    // En cas d'erreur, garder la matière avec combinaisons vides
-                    $matieresEnrichies[] = [
-                        'id' => $matiere['id'],
-                        'nom' => $matiere['nom'] ?? 'N/A',
-                        'code' => $matiere['code'] ?? 'N/A',
-                        'description' => $matiere['description'] ?? null,
-                        'coefficient' => $matiere['coefficient'] ?? null,
-                        'couleur' => $matiere['couleur'] ?? '#6366f1',
-                        'heures_total' => $matiere['heures_total'] ?? 0,
-                        'nb_seances_programmees' => $matiere['nb_seances_programmees'] ?? 0,
-                        'nb_lecons' => $matiere['nb_lecons'] ?? 0,
-                        'nb_evaluations' => $matiere['nb_evaluations'] ?? 0,
-                        'combinaisons' => []
-                    ];
-                }
-            }
-
-            // 3. Calculer les statistiques globales
-            $totalHeures = array_sum(array_column($matieresEnrichies, 'heures_total'));
-            $totalSeances = array_sum(array_column($matieresEnrichies, 'nb_seances_programmees'));
-
-            $stats = [
-                'total' => count($matieresEnrichies),
-                'total_heures' => $totalHeures,
-                'total_seances' => $totalSeances
-            ];
-
-            return $this->successResponse([
-                'matieres' => $matieresEnrichies,
-                'statistiques' => $stats,
-            ], count($matieresEnrichies) . ' matière(s) récupérée(s)');
-
-        } catch (KlassciUnavailableException $e) {
+            return $this->successResponse($result, $count . ' matière(s) récupérée(s)');
+        } catch (KlassciUnavailableException) {
             // Panne KLASSCI : 503 retryable, jamais le 500 generique ci-dessous.
             // Un 500 est definitif pour le client ; il transformerait une coupure
-            // de quelques minutes en echec permanent. Reponse canonique unique,
-            // partagee avec le handler global et le trait proxy.
+            // de quelques minutes en echec permanent.
             return KlassciUnavailableException::jsonResponse();
         } catch (\Exception $e) {
-            Log::error('Erreur liste matières admin', [
+            $this->logger->error('Erreur liste matières admin', [
                 'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
+                'trace' => $e->getTraceAsString(),
             ]);
 
             return response()->json([
                 'success' => false,
                 'message' => 'Erreur lors de la récupération des matières',
-                'error' => 'Une erreur est survenue.'
+                'error' => 'Une erreur est survenue.',
             ], 500);
         }
     }

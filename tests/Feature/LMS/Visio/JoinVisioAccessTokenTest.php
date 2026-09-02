@@ -40,7 +40,16 @@ final class JoinVisioAccessTokenTest extends TestCase
 {
     use RefreshDatabase;
 
-    private const SECRET = 'a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f90';
+    /**
+     * Valeur FICTIVE, et son intitulé le dit — c'est le contrat posé par
+     * {@see \Tests\Feature\Security\NoHardcodedSecretsTest}.
+     *
+     * Elle était auparavant un motif hexadécimal fabriqué (`a1b2c3d4…`), donc
+     * indiscernable d'un vrai secret pour un lecteur comme pour un détecteur.
+     * Un test de signature n'a besoin que d'une clé **stable**, jamais d'une
+     * clé crédible.
+     */
+    private const SECRET = 'secret-de-test-jamais-utilise-en-production';
 
     private Institution $institution;
 

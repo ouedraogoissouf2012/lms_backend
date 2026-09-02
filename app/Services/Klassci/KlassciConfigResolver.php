@@ -63,6 +63,25 @@ final class KlassciConfigResolver implements KlassciTargetResolver
     }
 
     /**
+     * Oublie la résolution mémoïsée, pour que le prochain appel reparte à zéro.
+     *
+     * La resolution est lazy et mise en cache sur la duree de l'instance, qui est
+     * `scoped` : une par requete HTTP. En requete, le contexte ne change jamais,
+     * donc rien a oublier. Un JOB, lui, traverse plusieurs tenants dans la meme
+     * instance : sans cet oubli, l'URL et le token du premier tenant resteraient
+     * figes et le trafic destine au second partirait vers le premier.
+     *
+     * A appeler apres tout changement de tenant, jamais en cours de requete HTTP
+     * (ou un changement de contexte serait deja une faille, cf. TenantManager::reset).
+     */
+    public function forget(): void
+    {
+        $this->resolved = false;
+        $this->baseUrl = null;
+        $this->token = null;
+    }
+
+    /**
      * Retourne la baseUrl résolue (toutes priorités confondues).
      */
     public function baseUrl(): ?string

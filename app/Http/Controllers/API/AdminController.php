@@ -6,8 +6,11 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\CreateUserRequest;
 use App\Http\Requests\UpdateUserRequest;
 use App\Http\Requests\DeleteUserRequest;
+use App\Http\Requests\ListUsersRequest;
+use App\Http\Presenters\UserListPresenter;
 use App\Models\User;
 use App\Services\User\UserDeletionService;
+use App\Services\User\UserListService;
 use InvalidArgumentException;
 use Illuminate\Http\JsonResponse;
 
@@ -64,6 +67,32 @@ class AdminController extends Controller
         $deletion->softDelete($user);
 
         return $this->successResponse(null, 'Utilisateur supprimé');
+    }
+
+    /**
+     * GET /api/admin/users
+     * Liste paginee des COMPTES LMS du tenant (coordinateurs et admins inclus).
+     *
+     * L'ecran d'annuaire ne passait que par le proxy KLASSCI, qui ne connait ni
+     * les coordinateurs ni les admins : ces comptes etaient invisibles. Ici, on
+     * lit la base LMS, seule source des comptes qui peuvent se connecter.
+     *
+     * Le refus du supradmin plateforme est porte par ListUsersRequest::authorize().
+     */
+    public function listUsers(
+        ListUsersRequest $request,
+        UserListService $users,
+        UserListPresenter $presenter,
+    ): JsonResponse {
+        /** @var User $actor */
+        $actor = $request->user();
+
+        return $this->successResponse(
+            $presenter->paginated($users->paginate($actor, $request->validated())),
+            '',
+            200,
+            ['counts' => $users->counts($actor)],
+        );
     }
 
     /**

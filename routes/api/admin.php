@@ -16,6 +16,19 @@ Route::middleware(['auth:sanctum'])->prefix('admin')->group(function () {
 });
 
 // ============================================
+// ADMIN - Liste des comptes LMS du tenant.
+// Hors `klassci.sync` : cet ecran ne lit QUE la base LMS, aucun appel amont.
+// Meme allow-list de roles que le CRUD `users` (routes/api/core.php).
+// Le supradmin plateforme est refuse par ListUsersRequest::authorize() :
+// sans institution_id, le scope tenant serait fail-open.
+// ============================================
+Route::middleware(['auth:sanctum', 'role:coordinateur,superAdmin'])->prefix('admin')->group(function () {
+    Route::get('/users', [\App\Http\Controllers\API\AdminController::class, 'listUsers'])
+        ->middleware('throttle:60,1')
+        ->name('admin.users.index');
+});
+
+// ============================================
 // ADMIN ANALYTICS - Routes protégées (admin/coordinateur uniquement)
 // ============================================
 Route::middleware(['auth:sanctum', 'role:coordinateur,superAdmin'])->prefix('admin/analytics')->group(function () {

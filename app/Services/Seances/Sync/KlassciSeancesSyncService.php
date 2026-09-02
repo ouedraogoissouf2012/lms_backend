@@ -52,6 +52,7 @@ final class KlassciSeancesSyncService
         private readonly TeacherCursorStream $teacherStream,
         private readonly SeanceSyncCursorStore $cursorStore,
         private readonly TenantArchiveCoordinator $tenantCoordinator,
+        private readonly SyncTenantContext $tenantContext,
         private readonly SeanceSyncStamper $stamper,
         private readonly SeanceUpsertService $upserter,
         private readonly LoggerInterface $logger,
@@ -74,6 +75,7 @@ final class KlassciSeancesSyncService
             $institutionId = (int) $teacher->institution_id;
 
             $this->tenantCoordinator->enterTenant($state, $institutionId, $stats);
+            $this->tenantContext->enter($institutionId);
             $this->syncTeacher($teacher, $institutionId, $state, $stats);
             $state->advance((int) $teacher->id);
 

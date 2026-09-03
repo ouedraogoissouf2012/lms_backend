@@ -105,6 +105,22 @@ en permanence** sans le moindre indice — d'où cette section.
 > répertoire arbitraire au job d'import. Une fonctionnalité éteinte est préférable à un chemin
 > supposé.
 
+### 6.3 Filets de sécurité des enregistrements bloqués
+
+Commande `recordings:fail-stale`, planifiée toutes les 30 minutes. Un enregistrement figé dans un
+statut **actif** conserve `active_lock_key` et **empêche tout nouvel enregistrement de la séance**.
+
+| Variable | Obligatoire | Description |
+|---|---|---|
+| `RECORDINGS_STALE_PROCESSING_MINUTES` | non (`30`) | #514 — délai après `stopped_at` au-delà duquel un enregistrement resté en `Processing` (jamais finalisé faute de webhook) passe à `Failed`. |
+| `RECORDINGS_STALE_RECORDING_GRACE_MINUTES` | non (`15`) | #680 — grâce après `seances.visio_ended_at` avant de refermer un enregistrement resté en `Recording`. Laisse à Jibri le temps de finaliser son fichier. |
+| `RECORDINGS_MAX_RECORDING_HOURS` | non (`6`) | #680 — plafond absolu de durée d'un enregistrement, filet de dernier recours si la visio elle-même reste bloquée en `active`. |
+
+> **Pourquoi trois seuils et non un seul** : `Processing` se date sur `stopped_at`, alors que
+> `Recording` a `stopped_at = NULL` par construction. Surtout, appliquer les 30 minutes de
+> `Processing` à un enregistrement en cours **couperait tout cours de plus d'une demi-heure**.
+> `RECORDINGS_MAX_RECORDING_HOURS` doit donc rester nettement au-dessus de la durée d'un cours réel.
+
 ---
 
 ## Comment vérifier le `.env` prod sans le commiter

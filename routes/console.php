@@ -110,10 +110,15 @@ Schedule::command('recordings:purge --apply')
     ->withoutOverlapping()
     ->onOneServer();
 
-// #514 — Filet de sécurité : sans webhook fournisseur (cf. #204), un enregistrement
-// arrêté reste bloqué en `Processing`, ce qui conserve son verrou actif et empêche
-// tout nouvel enregistrement de la séance. On le passe à `Failed` au-delà du délai.
-Schedule::command('recordings:fail-stale-processing')
+// #514 + #680 — Filets de sécurité. Un enregistrement peut se figer de deux
+// façons, et les deux conservent `active_lock_key`, donc BLOQUENT tout nouvel
+// enregistrement de la séance :
+//   · `Processing` (#514) — arrêté, mais aucun webhook fournisseur ne l'a
+//     finalisé (cf. #204) ;
+//   · `Recording` (#680) — jamais arrêté, l'enseignant ayant fermé son onglet
+//     sans cliquer « Arrêter ». Constaté en production le 2026-09-02.
+// Les deux passent à `Failed`, ce qui reflète un état honnête et rend le verrou.
+Schedule::command('recordings:fail-stale')
     ->everyThirtyMinutes()
     ->name('fail-stale-recordings')
     ->withoutOverlapping()

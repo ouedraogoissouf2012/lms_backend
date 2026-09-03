@@ -5,7 +5,10 @@ declare(strict_types=1);
 namespace App\Services\Visio;
 
 use App\Models\ESBTPAttendance;
+use App\Models\Seance;
+use App\Models\User;
 use Carbon\Carbon;
+use Illuminate\Http\Request;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -24,6 +27,50 @@ final class AttendanceLifecycleService
      * Marque le participant déconnecté + calcule `duration_minutes`.
      * Pour les timeouts, `$leftAt` doit représenter le dernier signal réel.
      */
+    /**
+     * L'ARRIVÉE d'un participant — le pendant de {@see self::disconnect()}.
+     *
+     * ## `joined_at` est l'heure d'arrivée, pas celle du dernier clic (#683)
+     *
+     * Sur une participation encore `connected`, c'est la MÊME session : la
+     * déplacer **raccourcirait la présence mesurée**, silencieusement, dans les
+     * rapports remis aux établissements. Un double-clic, un retour arrière ou
+     * un second onglet suffisaient à perdre le temps écoulé.
+     *
+     * Après une sortie (`disconnected`), revenir est une NOUVELLE session :
+     * l'heure repart, sinon la présence serait au contraire surévaluée.
+     *
+     * `last_seen_at` avance dans les deux cas — c'est lui, et lui seul, qui
+     * porte le signal d'activité.
+     *
+     * @see \Tests\Feature\LMS\Visio\JoinVisioPreservesJoinedAtTest
+     */
+    public function record(Seance $visio, User $user, Request $request, bool $isObserver): ESBTPAttendance
+    {
+        $identity = [
+            'seance_id' => $visio->id,
+            'user_id' => $user->id,
+            'institution_id' => $visio->institution_id,
+        ];
+
+        $existing = ESBTPAttendance::query()->where($identity)->first();
+        $sameSession = $existing !== null && $existing->status === 'connected';
+
+        return ESBTPAttendance::updateOrCreate($identity, [
+            'klassci_etudiant_id' => $user->klassci_id,
+            'nom' => $user->name,
+            'prenom' => '',
+            'email' => $user->email,
+            'joined_at' => $sameSession ? ($existing->joined_at ?? now()) : now(),
+            'last_seen_at' => now(),
+            'status' => 'connected',
+            'ip_address' => $request->ip(),
+            'user_agent' => $request->userAgent(),
+            'is_validated' => true,
+            'is_observer' => $isObserver,
+        ]);
+    }
+
     public function disconnect(ESBTPAttendance $attendance, ?Carbon $leftAt = null): void
     {
         $leftAt = $this->normalizeLeftAt($attendance, $leftAt ?? now());

@@ -31,8 +31,19 @@ class DeleteSeanceRequestTest extends TestCase
         $this->otherTeacher = User::factory()->teacher()->for($this->institution)->create([
             'klassci_id' => 101,
         ]);
-        $this->coordinator = User::factory()->coordinator()->for($this->institution)->create();
-        $this->student = User::factory()->student()->for($this->institution)->create();
+        // `klassci_id` EXPLICITE, et ce n'est pas cosmétique. La factory tire
+        // `fake()->unique()->numberBetween(1, 10000)` : `unique()` garantit
+        // l'unicité entre valeurs qu'il génère, mais il IGNORE les 100 et 101
+        // écrits en dur ci-dessus. Deux chances sur 10 000 par exécution de
+        // violer l'index unique (klassci_id, institution_id) — tombé en CI le
+        // 2026-09-03, sur la seule jambe redis, la séquence déterministe de
+        // faker ayant été décalée par des tests ajoutés ailleurs.
+        $this->coordinator = User::factory()->coordinator()->for($this->institution)->create([
+            'klassci_id' => 102,
+        ]);
+        $this->student = User::factory()->student()->for($this->institution)->create([
+            'klassci_id' => 103,
+        ]);
         $this->seance = Seance::factory()
             ->forInstitution($this->institution)
             ->create([

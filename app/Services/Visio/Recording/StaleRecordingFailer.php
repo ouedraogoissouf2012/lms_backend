@@ -8,34 +8,53 @@ use App\Enums\SeanceRecordingStatus;
 use App\Models\SeanceRecording;
 use Carbon\CarbonInterface;
 use Illuminate\Database\DatabaseManager;
+use Illuminate\Database\Eloquent\Collection;
 use Psr\Log\LoggerInterface;
 
 /**
- * Filet de sécurité (#514) : passe à `Failed` les enregistrements bloqués en
- * `Processing` au-delà d'un délai de grâce.
+ * Filet de sécurité : referme les enregistrements restés dans un statut ACTIF.
  *
- * ## Pourquoi
+ * ## Les deux façons de rester bloqué
  *
- * {@see \App\Services\Visio\Recording\SeanceRecordingControlService::stop()} met
- * un enregistrement en `Processing`, mais le finaliseur
- * {@see \App\Jobs\ProcessSeanceRecordingReady} n'est dispatché que par un webhook
- * fournisseur (Jitsi/Jibri) — non encore construit (cf. #204). Sans lui, un
- * enregistrement arrêté reste `Processing` indéfiniment. Or `Processing` est un
- * statut ACTIF ({@see SeanceRecordingStatus::isActive}) : il conserve
- * `active_lock_key` et BLOQUE le démarrage d'un nouvel enregistrement.
+ * `SeanceRecordingStatus::activeValues()` compte trois statuts, et chacun
+ * conserve `active_lock_key`, donc **empêche tout nouvel enregistrement de la
+ * séance**. Deux d'entre eux peuvent réellement se figer :
  *
- * Marquer `Failed` reflète un état honnête ET libère le verrou (le hook `saving`
- * du modèle remet `active_lock_key = null` pour un statut non actif).
+ * - **`Processing`** (#514) — posé par {@see SeanceRecordingControlService::stop()}.
+ *   Le finaliseur {@see \App\Jobs\ProcessSeanceRecordingReady} n'est dispatché que
+ *   par un webhook fournisseur ; sans lui la ligne ne bouge plus.
+ * - **`Recording`** (#680) — posé par {@see SeanceRecordingControlService::start()}.
+ *   Rien ne le referme si l'enseignant ferme son onglet sans cliquer « Arrêter ».
+ *   Constaté en production le 2026-09-02 : ligne ouverte depuis 31 minutes,
+ *   verrou tenu, écran affirmant « enregistrement en cours » alors que Jibri
+ *   était `IDLE`.
  *
- * Concurrence : chaque ligne est traitée sous `lockForUpdate` avec re-vérification
- * du statut — si un finaliseur (futur webhook) passait entre-temps, on ne l'écrase
- * pas.
+ * `Uploading` est le troisième statut actif, mais **aucun code ne le pose**
+ * (0 écriture) : aucun enregistrement ne peut y rester bloqué. À couvrir ici si
+ * #204 introduit une phase d'upload sans finaliseur.
+ *
+ * ## Pourquoi deux seuils distincts, et non un seul
+ *
+ * `Processing` se date sur `stopped_at` : la capture est finie, seul le
+ * traitement traîne, 30 minutes suffisent.
+ *
+ * `Recording` ne peut PAS utiliser ce seuil : **il couperait tout cours de plus
+ * d'une demi-heure**. Et il ne peut pas non plus se dater sur `stopped_at`, qui
+ * vaut `NULL` par construction tant qu'on enregistre. Il se date donc sur
+ * `seances.visio_ended_at` — un fait métier observable — avec un plafond de
+ * durée absolu en dernier recours si la visio elle-même est restée bloquée.
+ *
+ * Concurrence : chaque ligne est traitée sous `lockForUpdate` avec
+ * re-vérification du prédicat — si un finaliseur passait entre-temps, on ne
+ * l'écrase pas.
  *
  * @see app/Console/Commands/FailStaleRecordings.php
  */
 final class StaleRecordingFailer
 {
-    private const FAILURE_MESSAGE = 'Aucun fichier reçu du fournisseur d\'enregistrement dans le délai imparti.';
+    private const PROCESSING_FAILURE_MESSAGE = 'Aucun fichier reçu du fournisseur d\'enregistrement dans le délai imparti.';
+
+    private const RECORDING_FAILURE_MESSAGE = 'Enregistrement jamais arrêté : la visioconférence est terminée ou la durée maximale est dépassée.';
 
     public function __construct(
         private readonly DatabaseManager $database,
@@ -43,24 +62,25 @@ final class StaleRecordingFailer
     ) {}
 
     /**
+     * #514 — `Processing` arrêté avant `$cutoff` et jamais finalisé.
+     *
      * @return int nombre d'enregistrements passés à Failed
      */
     public function failStaleProcessing(CarbonInterface $cutoff, int $chunkSize): int
     {
         $failed = 0;
 
-        // Périmètre : `Processing` uniquement. C'est le seul statut actif produit
-        // après un `stop()` (cf. SeanceRecordingControlService). `Uploading` est
-        // l'autre statut actif porteur de verrou, mais AUCUN code ne le pose
-        // aujourd'hui (0 écriture) → aucun enregistrement ne peut y rester bloqué.
-        // À élargir ici si #204 introduit une phase d'upload sans finaliseur.
         SeanceRecording::withoutGlobalScope('institution')
             ->where('status', SeanceRecordingStatus::Processing)
             ->where('stopped_at', '<', $cutoff)
             ->orderBy('id')
-            ->chunkById($chunkSize, function ($recordings) use ($cutoff, &$failed): void {
+            ->chunkById($chunkSize, function (Collection $recordings) use ($cutoff, &$failed): void {
                 foreach ($recordings as $recording) {
-                    if ($this->failOne($recording, $cutoff)) {
+                    $stillStale = static fn (SeanceRecording $locked): bool => $locked->status === SeanceRecordingStatus::Processing
+                        && $locked->stopped_at !== null
+                        && $locked->stopped_at->lt($cutoff);
+
+                    if ($this->failWhenStillStale($recording, self::PROCESSING_FAILURE_MESSAGE, $stillStale)) {
                         $failed++;
                     }
                 }
@@ -69,33 +89,107 @@ final class StaleRecordingFailer
         return $failed;
     }
 
-    private function failOne(SeanceRecording $recording, CarbonInterface $cutoff): bool
+    /**
+     * #680 — `Recording` jamais arrêté, parce que la visio est terminée depuis
+     * plus que la grâce, ou parce que la durée maximale est dépassée.
+     *
+     * La jointure remplace un `whereHas` : elle interroge la table `seances`
+     * directement, donc sans que le scope global d'institution s'applique à la
+     * sous-requête — cette commande s'exécute sans tenant résolu. Même
+     * raisonnement que {@see RoomRecordingResolver}.
+     *
+     * Une `visio_ended_at` à `NULL` ne satisfait jamais une comparaison SQL :
+     * ces lignes ne sont donc atteintes que par le plafond de durée, ce qui est
+     * exactement l'intention.
+     *
+     * @return int nombre d'enregistrements passés à Failed
+     */
+    public function failStaleRecording(
+        CarbonInterface $visioEndedBefore,
+        CarbonInterface $startedBefore,
+        int $chunkSize,
+    ): int {
+        $failed = 0;
+
+        SeanceRecording::withoutGlobalScope('institution')
+            ->select('seance_recordings.*')
+            ->join('seances', 'seances.id', '=', 'seance_recordings.seance_id')
+            ->where('seance_recordings.status', SeanceRecordingStatus::Recording)
+            ->where(function ($query) use ($visioEndedBefore, $startedBefore): void {
+                $query->where('seances.visio_ended_at', '<', $visioEndedBefore)
+                    ->orWhere('seance_recordings.started_at', '<', $startedBefore);
+            })
+            ->orderBy('seance_recordings.id')
+            ->chunkById(
+                $chunkSize,
+                function (Collection $recordings) use ($visioEndedBefore, $startedBefore, &$failed): void {
+                    foreach ($recordings as $recording) {
+                        if ($this->failStaleRecordingRow($recording, $visioEndedBefore, $startedBefore)) {
+                            $failed++;
+                        }
+                    }
+                },
+                'seance_recordings.id',
+                'id',
+            );
+
+        return $failed;
+    }
+
+    /**
+     * Re-vérifie le prédicat **sous verrou**, en relisant la séance : entre la
+     * sélection et ici, la visio a pu redémarrer.
+     */
+    private function failStaleRecordingRow(
+        SeanceRecording $recording,
+        CarbonInterface $visioEndedBefore,
+        CarbonInterface $startedBefore,
+    ): bool {
+        $stillStale = static function (SeanceRecording $locked) use ($visioEndedBefore, $startedBefore): bool {
+            if ($locked->status !== SeanceRecordingStatus::Recording) {
+                return false;
+            }
+
+            $seance = $locked->seance()->withoutGlobalScope('institution')->first();
+            $visioEndedAt = $seance?->visio_ended_at;
+
+            return ($visioEndedAt !== null && $visioEndedAt->lt($visioEndedBefore))
+                || ($locked->started_at !== null && $locked->started_at->lt($startedBefore));
+        };
+
+        return $this->failWhenStillStale($recording, self::RECORDING_FAILURE_MESSAGE, $stillStale);
+    }
+
+    /**
+     * Verrouille, re-vérifie, marque `Failed`. Le hook `saving` du modèle remet
+     * `active_lock_key` à `null` pour un statut non actif : le verrou est donc
+     * rendu sans que ce service ait à le toucher.
+     *
+     * @param  callable(SeanceRecording): bool  $stillStale
+     */
+    private function failWhenStillStale(SeanceRecording $recording, string $message, callable $stillStale): bool
     {
-        return (bool) $this->database->transaction(function () use ($recording, $cutoff): bool {
+        return (bool) $this->database->transaction(function () use ($recording, $message, $stillStale): bool {
             $locked = SeanceRecording::withoutGlobalScope('institution')
                 ->whereKey($recording->getKey())
                 ->lockForUpdate()
                 ->first();
 
-            // Re-vérifie sous verrou : un finaliseur a pu passer entre le chunk et ici.
-            if ($locked === null
-                || $locked->status !== SeanceRecordingStatus::Processing
-                || $locked->stopped_at === null
-                || ! $locked->stopped_at->lt($cutoff)
-            ) {
+            if ($locked === null || ! $stillStale($locked)) {
                 return false;
             }
 
             $locked->update([
                 'status' => SeanceRecordingStatus::Failed,
-                'error_message' => self::FAILURE_MESSAGE,
+                'error_message' => $message,
+                'stopped_at' => $locked->stopped_at ?? now(),
                 'processed_at' => now(),
             ]);
 
-            $this->logger->warning('Enregistrement bloqué en Processing marqué Failed (#514)', [
+            $this->logger->warning('Enregistrement bloqué dans un statut actif marqué Failed', [
                 'recording_id' => $locked->id,
                 'seance_id' => $locked->seance_id,
-                'stopped_at' => $locked->stopped_at->toIso8601String(),
+                'previous_status' => $recording->status->value,
             ]);
 
             return true;

@@ -111,6 +111,26 @@ final class ScheduleRegistrationTest extends TestCase
         $this->assertTrue($event->onOneServer);
     }
 
+    /**
+     * Le filet de sécurité #514 / #680 était planifié sans être verrouillé par
+     * un test : renommer la commande cassait le planificateur en silence, la
+     * suite restant verte. Ce test ferme ce trou.
+     *
+     * Sa valeur réelle : sans lui, plus rien ne referme les enregistrements
+     * bloqués, donc `active_lock_key` n'est jamais rendu et aucune séance
+     * concernée ne peut être ré-enregistrée.
+     */
+    public function test_stale_recordings_sweeper_is_scheduled(): void
+    {
+        $event = $this->scheduledEvents()->get('fail-stale-recordings');
+
+        $this->assertNotNull($event, 'le balayage des enregistrements bloqués n\'est plus planifié');
+        $this->assertSame('*/30 * * * *', $event->expression);
+        $this->assertStringContainsString('recordings:fail-stale', (string) $event->command);
+        $this->assertTrue($event->withoutOverlapping);
+        $this->assertTrue($event->onOneServer);
+    }
+
     public function test_scheduled_jobs_dispatch_to_priority_queues(): void
     {
         config(['cache.default' => 'array']);

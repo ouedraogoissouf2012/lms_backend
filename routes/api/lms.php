@@ -192,6 +192,12 @@ Route::middleware(['auth:sanctum', 'klassci.sync'])->prefix('lms')->group(functi
         ->name('lms.seances.leave')
         ->middleware('throttle:300,1');
 
+    // Participation visio en cours de l'appelant (#673) : remonte la salle
+    // embarquee apres un rechargement de page. Ne delivre AUCUN jeton.
+    Route::get('/visio/active', [LMSVisioParticipantController::class, 'activeParticipation'])
+        ->name('lms.visio.active')
+        ->middleware('throttle:300,1');
+
     // Heartbeat participant (ping d'activité) - limité par utilisateur et séance
     Route::post('/seances/{seanceId}/heartbeat', [LMSVisioParticipantController::class, 'heartbeatVisio'])
         ->name('lms.seances.heartbeat')

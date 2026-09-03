@@ -8,6 +8,7 @@ use App\Http\Controllers\AuthenticatedController;
 use App\Http\Requests\HeartbeatVisioRequest;
 use App\Http\Requests\JoinVisioRequest;
 use App\Http\Requests\LeaveVisioRequest;
+use App\Services\Visio\ActiveVisioParticipationResolver;
 use App\Services\Visio\VisioHeartbeatService;
 use App\Services\Visio\VisioParticipantSessionService;
 use App\Services\Visio\VisioParticipantsListService;
@@ -36,7 +37,25 @@ final class LMSVisioParticipantController extends AuthenticatedController
         private readonly VisioParticipantSessionService $sessionService,
         private readonly VisioHeartbeatService $heartbeatService,
         private readonly VisioParticipantsListService $listService,
+        private readonly ActiveVisioParticipationResolver $participationResolver,
     ) {}
+
+    /**
+     * GET /api/lms/visio/active
+     *
+     * La participation en cours de l'appelant, ou `null`. Sert à remonter la
+     * salle embarquée après un rechargement de page (#673).
+     *
+     * Aucun jeton n'est délivré ici : le front rappelle `join`, qui revérifie
+     * l'autorisation et taille la clé. Émettre une clé depuis deux endroits
+     * créerait un second endroit où se tromper.
+     */
+    public function activeParticipation(Request $request): JsonResponse
+    {
+        $participation = $this->participationResolver->forUser($this->authenticatedUser($request));
+
+        return response()->json(['success' => true, 'data' => $participation], 200);
+    }
 
     /**
      * POST /api/lms/seances/{seanceId}/join

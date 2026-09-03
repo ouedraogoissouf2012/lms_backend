@@ -81,26 +81,7 @@ final class VisioParticipantSessionService
 
             // Enregistrer la participation pour tous les rôles
             // Étudiants, enseignants et coordinateurs peuvent rejoindre la visio
-            $attendance = ESBTPAttendance::updateOrCreate(
-                [
-                    'seance_id' => $visio->id,
-                    'user_id' => $user->id,
-                    'institution_id' => $visio->institution_id,
-                ],
-                [
-                    'klassci_etudiant_id' => $user->klassci_id,
-                    'nom' => $user->name,
-                    'prenom' => '',
-                    'email' => $user->email,
-                    'joined_at' => now(),
-                    'last_seen_at' => now(),
-                    'status' => 'connected',
-                    'ip_address' => $request->ip(),
-                    'user_agent' => $request->userAgent(),
-                    'is_validated' => true,
-                    'is_observer' => $isObserver,
-                ]
-            );
+            $attendance = $this->lifecycle->record($visio, $user, $request, $isObserver);
 
             $roleLabel = match ($user->role) {
                 'coordinateur' => 'Coordinateur (observateur)',

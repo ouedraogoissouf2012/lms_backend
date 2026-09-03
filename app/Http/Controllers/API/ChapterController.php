@@ -7,14 +7,15 @@ namespace App\Http\Controllers\API;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\DeleteChapterRequest;
 use App\Http\Requests\ReorderChaptersRequest;
+use App\Http\Requests\RestoreChapterRequest;
 use App\Http\Requests\StoreChapterRequest;
 use App\Http\Requests\UpdateChapterRequest;
 use App\Http\Requests\UploadFileRequest;
-use App\Models\Chapter;
 use App\Models\User;
 use App\Services\Chapter\ChapterCrudService;
 use App\Services\Chapter\ChapterFileUploadService;
 use App\Services\Chapter\ChapterSlideService;
+use App\Services\Chapter\ChapterTrashService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
@@ -40,6 +41,7 @@ final class ChapterController extends Controller
         private readonly ChapterCrudService $chapterCrud,
         private readonly ChapterFileUploadService $chapterFileUpload,
         private readonly ChapterSlideService $slides,
+        private readonly ChapterTrashService $trash,
     ) {}
 
     /**
@@ -54,7 +56,7 @@ final class ChapterController extends Controller
         }
 
         $result = $this->chapterCrud->listByLesson($lessonId, $user);
-        $result['payload'] = $this->signSlideUrlsInList($result['payload']);
+        $result['payload'] = $this->slides->signListResponse($result['payload']);
 
         return response()->json($result['payload'], $result['status']);
     }
@@ -71,7 +73,7 @@ final class ChapterController extends Controller
         }
 
         $result = $this->chapterCrud->show($id, $user);
-        $result['payload'] = $this->signSlideUrlsInShow($result['payload']);
+        $result['payload'] = $this->slides->signSingleResponse($result['payload']);
 
         return response()->json($result['payload'], $result['status']);
     }
@@ -133,7 +135,18 @@ final class ChapterController extends Controller
      */
     public function destroy(DeleteChapterRequest $request, int $id): JsonResponse
     {
-        $result = $this->chapterCrud->delete($id);
+        $result = $this->trash->trash($id);
+
+        return response()->json($result['payload'], $result['status']);
+    }
+
+    /**
+     * POST /api/chapters/{id}/restore
+     * Sortir un chapitre de la corbeille (#689).
+     */
+    public function restore(RestoreChapterRequest $request, int $id): JsonResponse
+    {
+        $result = $this->trash->restore($id);
 
         return response()->json($result['payload'], $result['status']);
     }
@@ -153,43 +166,5 @@ final class ChapterController extends Controller
     {
         return $request->boolean('async')
             || str_contains(strtolower((string) $request->header('Prefer')), 'respond-async');
-    }
-
-    /**
-     * @param  array<string, mixed>  $payload
-     * @return array<string, mixed>
-     */
-    private function signSlideUrlsInShow(array $payload): array
-    {
-        $chapter = $payload['data'] ?? null;
-        if (! $chapter instanceof Chapter) {
-            return $payload;
-        }
-
-        $payload['data'] = $this->slides->replaceInPayload($chapter, $chapter->toArray());
-
-        return $payload;
-    }
-
-    /**
-     * @param  array<string, mixed>  $payload
-     * @return array<string, mixed>
-     */
-    private function signSlideUrlsInList(array $payload): array
-    {
-        $chapters = $payload['data'] ?? null;
-        if (! is_iterable($chapters)) {
-            return $payload;
-        }
-
-        $signed = [];
-        foreach ($chapters as $chapter) {
-            $signed[] = $chapter instanceof Chapter
-                ? $this->slides->replaceInPayload($chapter, $chapter->toArray())
-                : $chapter;
-        }
-        $payload['data'] = $signed;
-
-        return $payload;
     }
 }

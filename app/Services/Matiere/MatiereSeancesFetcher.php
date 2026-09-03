@@ -85,7 +85,8 @@ final class MatiereSeancesFetcher
                 return $this->fetchSeancesFromDashboard(
                     $klassciToken,
                     $matiereId,
-                    'me/teacher-dashboard'
+                    'me/teacher-dashboard',
+                    $matiereData,
                 );
             }
 
@@ -93,7 +94,8 @@ final class MatiereSeancesFetcher
                 $seances = $this->fetchSeancesFromDashboard(
                     $klassciToken,
                     $matiereId,
-                    'me/dashboard'
+                    'me/dashboard',
+                    $matiereData,
                 );
 
                 if ($seances !== []) {
@@ -128,9 +130,11 @@ final class MatiereSeancesFetcher
     }
 
     /**
+     * @param  array<string, mixed>  $matiereData  Payload `matieres/{id}` deja
+     *   recupere par {@see MatiereInfoFetcher} pour CETTE meme requete.
      * @return array<int, array<string, mixed>>
      */
-    private function fetchSeancesFromDashboard(string $klassciToken, int $matiereId, string $dashboardEndpoint): array
+    private function fetchSeancesFromDashboard(string $klassciToken, int $matiereId, string $dashboardEndpoint, array $matiereData): array
     {
         $dashboard = $this->klassciService->requestWithUserToken(
             $klassciToken,
@@ -146,14 +150,26 @@ final class MatiereSeancesFetcher
             return [];
         }
 
-        $matiereDetails = $this->klassciService->requestWithUserToken(
-            $klassciToken,
-            "matieres/{$matiereId}",
-            'GET'
-        );
+        // `matieres/{id}` a DEJA ete appele par MatiereInfoFetcher pour
+        // cette meme requete (meme endpoint, memes parametres) : le rappeler
+        // ici est un N+1 HTTP garanti (§1.4 PRODUCTION_STANDARDS.md), mesure
+        // sur l'ecran matiere-details (timeout client 30s systematiquement
+        // depasse quand KLASSCI est lent). On reutilise le payload deja
+        // recu ; le fetch ne reste qu'en repli pour un appelant qui n'a pas
+        // encore de matiereData (garde ce service testable independamment).
+        /** @var array<int, array<string, mixed>>|null $seances */
+        $seances = $matiereData['seances_programmees'] ?? null;
 
-        /** @var array<int, array<string, mixed>> $seances */
-        $seances = $matiereDetails['data']['seances_programmees'] ?? [];
+        if (!is_array($seances)) {
+            $matiereDetails = $this->klassciService->requestWithUserToken(
+                $klassciToken,
+                "matieres/{$matiereId}",
+                'GET'
+            );
+
+            /** @var array<int, array<string, mixed>> $seances */
+            $seances = $matiereDetails['data']['seances_programmees'] ?? [];
+        }
 
         return $seances;
     }

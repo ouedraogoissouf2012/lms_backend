@@ -10,19 +10,20 @@ use App\Http\Requests\UpdateChapterRequest;
 use App\Models\Chapter;
 use App\Models\Lesson;
 use App\Models\User;
-use App\Services\FileConversionService;
 use Psr\Log\LoggerInterface;
 use Throwable;
 
 /**
  * CRUD chapitres. Lectures étudiant filtrées par classe (#621 / #482).
  *
+ * La mise à la corbeille et la restauration N'habitent PAS ici : elles forment
+ * un cycle de vie propre, porté par {@see ChapterTrashService} (#689).
+ *
  * @see PRODUCTION_STANDARDS.md §1.1 — Services ≤300 lignes
  */
 final class ChapterCrudService
 {
     public function __construct(
-        private readonly FileConversionService $fileConversionService,
         private readonly LoggerInterface $logger,
         private readonly ChapterReadGate $reads,
     ) {}
@@ -203,43 +204,6 @@ final class ChapterCrudService
             ];
         } catch (Throwable $e) {
             $this->logger->error('Erreur mise à jour chapitre', [
-                'chapter_id' => $id,
-                'error' => $e->getMessage(),
-            ]);
-
-            return [
-                'status' => 500,
-                'payload' => [
-                    'success' => false,
-                    'message' => 'Une erreur est survenue.',
-                ],
-            ];
-        }
-    }
-
-    /**
-     * Supprime un chapitre (purge fichiers + delete row).
-     *
-     * @return array{status:int, payload: array<string, mixed>}
-     */
-    public function delete(int $id): array
-    {
-        try {
-            $chapter = Chapter::findOrFail($id);
-            $this->fileConversionService->deleteChapterFiles($id);
-            $chapter->delete();
-
-            $this->logger->info('Chapitre supprimé', ['chapter_id' => $id]);
-
-            return [
-                'status' => 200,
-                'payload' => [
-                    'success' => true,
-                    'message' => 'Chapitre supprimé',
-                ],
-            ];
-        } catch (Throwable $e) {
-            $this->logger->error('Erreur suppression chapitre', [
                 'chapter_id' => $id,
                 'error' => $e->getMessage(),
             ]);

@@ -45,6 +45,11 @@ Route::middleware(['auth:sanctum', 'klassci.sync', 'role:enseignant,coordinateur
     Route::delete('chapters/{id}', [ChapterController::class, 'destroy'])
         ->middleware('throttle:30,1');
 
+    // Sortie de corbeille (#689) : meme garde que la suppression, la cible
+    // etant simplement cherchee withTrashed().
+    Route::post('chapters/{id}/restore', [ChapterController::class, 'restore'])
+        ->middleware('throttle:30,1');
+
     // Upload fichier PowerPoint/Word/PDF (max 30 MB) - Rate limited: 60/min
     Route::post('chapters/{chapterId}/upload', [ChapterController::class, 'uploadFile'])
         ->middleware('throttle:60,1');

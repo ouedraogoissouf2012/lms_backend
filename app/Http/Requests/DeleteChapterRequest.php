@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Http\Requests\Concerns\ChecksChapterOwnership;
 use Illuminate\Foundation\Http\FormRequest;
 
 /**
@@ -21,36 +22,11 @@ use Illuminate\Foundation\Http\FormRequest;
  */
 final class DeleteChapterRequest extends FormRequest
 {
+    use ChecksChapterOwnership;
+
     public function authorize(): bool
     {
-        $user = auth()->user();
-
-        if (!$user) {
-            return false;
-        }
-
-        if (!$user->isTeacher() && !$user->isCoordinator() && !$user->isAdmin()) {
-            return false;
-        }
-
-        $chapter = \App\Models\Chapter::where('id', $this->route('id'))
-            ->where('institution_id', $user->institution_id)
-            ->first();
-
-        if (!$chapter) {
-            return false;
-        }
-
-        $lesson = \App\Models\Lesson::find($chapter->lesson_id);
-        if (!$lesson || $lesson->institution_id !== $user->institution_id) {
-            return false;
-        }
-
-        if (!$user->isAdmin() && $lesson->enseignant_id !== $user->id) {
-            return false;
-        }
-
-        return true;
+        return $this->chapterOwnershipPasses();
     }
 
     /**

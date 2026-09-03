@@ -131,6 +131,113 @@ final class MatiereSeancesFetcherTest extends TestCase
         self::assertSame(900_001, $result['seances'][0]['id']);
     }
 
+    public function test_student_path_reuses_already_fetched_matiere_data_instead_of_refetching(): void
+    {
+        // MatiereInfoFetcher appelle DEJA `matieres/{id}` avant que
+        // l'orchestrateur ne transmette son resultat ici via `$matiereData`.
+        // Le reappeler est un N+1 HTTP garanti (meme endpoint, memes params,
+        // dans la MEME requete) — §1.4 PRODUCTION_STANDARDS.md. Ce test
+        // verrouille l'ELIMINATION : quand `$matiereData` porte deja
+        // `seances_programmees`, aucun second appel `matieres/{id}` n'a lieu.
+        $student = $this->userWithRole('etudiant');
+
+        Seance::factory()->forInstitution($this->institution)->create([
+            'klassci_seance_id' => 900_003,
+            'is_active' => true,
+        ]);
+
+        $payloads = [$this->seancePayload(900_003, 700)];
+
+        $this->mock(KlassciProxyService::class, function (MockInterface $mock) use ($payloads): void {
+            $mock->shouldReceive('requestWithUserToken')
+                ->once()
+                ->with(self::TOKEN, 'me/dashboard', 'GET')
+                ->andReturn(['data' => ['matieres' => [['id' => self::MATIERE_ID]]]]);
+            // AUCUNE attente sur 'matieres/'.self::MATIERE_ID : Mockery echoue
+            // le test si ce second appel a lieu (mock non configure pour lui).
+            $mock->shouldReceive('fetchManyClassesDetails')
+                ->once()
+                ->with([700], self::TOKEN)
+                ->andReturn([]);
+        });
+
+        $result = app(MatiereSeancesFetcher::class)->fetchSeancesForUser(
+            $student,
+            self::MATIERE_ID,
+            self::TOKEN,
+            ['seances_programmees' => $payloads],
+        );
+
+        self::assertCount(1, $result['seances']);
+        self::assertSame(900_003, $result['seances'][0]['id']);
+    }
+
+    public function test_teacher_path_also_reuses_already_fetched_matiere_data(): void
+    {
+        // Meme elimination que le test etudiant ci-dessus, sur le chemin
+        // enseignant (`me/teacher-dashboard`) — meme methode privee partagee,
+        // mais sans couverture dediee avant ce test : les deux appelants de
+        // `fetchSeancesFromDashboard` doivent beneficier de la reutilisation,
+        // pas seulement celui qui avait deja un test.
+        $teacher = $this->userWithRole('enseignant');
+
+        Seance::factory()->forInstitution($this->institution)->create([
+            'klassci_seance_id' => 900_004,
+            'is_active' => true,
+        ]);
+
+        $payloads = [$this->seancePayload(900_004, 700)];
+
+        $this->mock(KlassciProxyService::class, function (MockInterface $mock) use ($payloads): void {
+            $mock->shouldReceive('requestWithUserToken')
+                ->once()
+                ->with(self::TOKEN, 'me/teacher-dashboard', 'GET')
+                ->andReturn(['data' => ['matieres' => [['id' => self::MATIERE_ID]]]]);
+            // AUCUNE attente sur 'matieres/'.self::MATIERE_ID ici non plus.
+            $mock->shouldReceive('fetchManyClassesDetails')
+                ->once()
+                ->with([700], self::TOKEN)
+                ->andReturn([]);
+        });
+
+        $result = app(MatiereSeancesFetcher::class)->fetchSeancesForUser(
+            $teacher,
+            self::MATIERE_ID,
+            self::TOKEN,
+            ['seances_programmees' => $payloads],
+        );
+
+        self::assertCount(1, $result['seances']);
+        self::assertSame(900_004, $result['seances'][0]['id']);
+    }
+
+    public function test_reuse_does_not_refetch_when_matiere_genuinely_has_zero_seances(): void
+    {
+        // Cas limite qui piege une implementation naive (`!empty($seances)`
+        // au lieu de `!is_array($seances)`) : `seances_programmees` PRESENT
+        // mais VIDE est une mesure valide (0 seance programmee), pas une
+        // absence — ne doit PAS declencher le repli vers un second appel.
+        $student = $this->userWithRole('etudiant');
+
+        $this->mock(KlassciProxyService::class, function (MockInterface $mock): void {
+            $mock->shouldReceive('requestWithUserToken')
+                ->once()
+                ->with(self::TOKEN, 'me/dashboard', 'GET')
+                ->andReturn(['data' => ['matieres' => [['id' => self::MATIERE_ID]]]]);
+            // AUCUNE attente sur fetchManyClassesDetails : sans classe a
+            // resoudre, fetchClassesDetails() court-circuite avant l'appel.
+        });
+
+        $result = app(MatiereSeancesFetcher::class)->fetchSeancesForUser(
+            $student,
+            self::MATIERE_ID,
+            self::TOKEN,
+            ['seances_programmees' => []],
+        );
+
+        self::assertSame([], $result['seances']);
+    }
+
     private function userWithRole(string $role): User
     {
         return User::factory()->for($this->institution)->create([

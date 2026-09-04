@@ -19,7 +19,8 @@ use Psr\Log\LoggerInterface;
  * ## Responsibility (SRP)
  *
  * Builds the upcoming-séances listing for any role:
- *   1. Walk all matières (`/matieres`) for the user.
+ *   1. Resolve the user's OWN matières ({@see UserOwnMatieresResolver}) —
+ *      never the tenant catalogue, cf. §1.4.
  *   2. For each matière, walk `seances_programmees`.
  *   3. Filter by date window, optional classe id, hidden flag (students only).
  *   4. Map to the legacy output shape (programmation + matiere + classe + visio).
@@ -34,6 +35,7 @@ final class UpcomingSeancesFetcher
         private readonly ManagerSeancesLocalFetcher $managerFetcher,
         private readonly LocalSeanceLookup $localLookup,
         private readonly UpcomingSeanceMapper $mapper,
+        private readonly UserOwnMatieresResolver $ownMatieres,
     ) {}
 
     /**
@@ -53,7 +55,7 @@ final class UpcomingSeancesFetcher
         $seances = collect([]);
 
         try {
-            [$matieres, $matieresDetails] = $this->loadMatieresWithDetails($klassciToken);
+            [$matieres, $matieresDetails] = $this->loadMatieresWithDetails($user, $klassciToken);
             $candidates = $this->collectCandidates($matieres, $matieresDetails, $dateDebut, $dateFin, $classeId);
             $seances = $this->assembleVisibleSeances($candidates, $user);
 
@@ -91,22 +93,21 @@ final class UpcomingSeancesFetcher
      *
      * @return array{0: Collection<int, array<string, mixed>>, 1: array<int, array<string, mixed>>}
      */
-    private function loadMatieresWithDetails(string $klassciToken): array
+    private function loadMatieresWithDetails(User $user, string $klassciToken): array
     {
-        $matieresResponse = $this->klassciService->requestWithUserToken($klassciToken, 'matieres', 'GET');
-        $matieres = collect(KlassciPayload::listOfArrays($matieresResponse['data'] ?? null));
+        $matieres = $this->ownMatieres->resolve($user, $klassciToken);
 
-        $matiereIds = [];
-        foreach ($matieres as $matiere) {
-            $id = KlassciPayload::toInt(KlassciPayload::asArray($matiere)['id'] ?? null);
-            if ($id !== null) {
-                $matiereIds[] = $id;
-            }
+        $matiereIds = KlassciPayload::uniqueIntIds(
+            $matieres,
+            fn (array $matiere): ?int => KlassciPayload::toInt($matiere['id'] ?? null),
+        );
+
+        // Sans matière, pas de séance : on ne retombe JAMAIS sur le catalogue.
+        if ($matiereIds === []) {
+            return [$matieres, []];
         }
 
-        $details = $this->klassciService->fetchManyMatieresDetails(array_values(array_unique($matiereIds)), $klassciToken);
-
-        return [$matieres, $details];
+        return [$matieres, $this->klassciService->fetchManyMatieresDetails($matiereIds, $klassciToken)];
     }
 
     /**

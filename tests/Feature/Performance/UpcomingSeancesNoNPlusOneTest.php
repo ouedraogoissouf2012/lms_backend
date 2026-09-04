@@ -130,9 +130,14 @@ final class UpcomingSeancesNoNPlusOneTest extends TestCase
     private function fetchOnly(User $user, array $payloads): void
     {
         $this->mock(KlassciProxyService::class, function (MockInterface $mock) use ($payloads): void {
+            // Source = dashboard de l'utilisateur, plus le catalogue global (§1.4).
+            // Les deux roles sont montes : ce helper sert enseignant ET etudiant.
             $mock->shouldReceive('requestWithUserToken')
-                ->with('fake-token', 'matieres', 'GET')
-                ->andReturn(['data' => [['id' => 42, 'nom' => 'Maths']]]);
+                ->with('fake-token', 'me/teacher-dashboard', 'GET')
+                ->andReturn(['data' => ['matieres' => [['id' => 42, 'nom' => 'Maths']]]]);
+            $mock->shouldReceive('requestWithUserToken')
+                ->with('fake-token', 'me/dashboard', 'GET')
+                ->andReturn(['data' => ['cours' => [['id' => 42, 'nom' => 'Maths']]]]);
             $mock->shouldReceive('fetchManyMatieresDetails')
                 ->with([42], 'fake-token')
                 ->andReturn([42 => ['data' => ['seances_programmees' => $payloads]]]);

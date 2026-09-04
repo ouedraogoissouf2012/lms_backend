@@ -1,0 +1,15 @@
+# Proprietaires de code — revue obligatoire sur les fichiers listes ici.
+#
+# Ce fichier n'a d'effet que si la protection de branche active
+# « Require review from Code Owners » (require_code_owner_reviews) ET
+# « Required approving reviews » >= 1. Sans ces deux reglages, il est purement
+# indicatif : la garde OCP reste contournable en modifiant sa liste d'exemption.
+
+# La garde Open/Closed et sa liste d'exemption (#697).
+# Article 7 : une derogation exige trois demandes explicites et distinctes.
+# Ce fichier est le seul endroit ou la contrainte peut etre relachee : il ne doit
+# jamais changer sans revue du mainteneur.
+/.ocp-allowlist.json        @ouedraogoissouf2012
+/scripts/check-ocp.php      @ouedraogoissouf2012
+/tests/Feature/Security/OcpGuardTest.php  @ouedraogoissouf2012
+/.github/CODEOWNERS         @ouedraogoissouf2012

@@ -55,7 +55,7 @@ final class KlassciHttpClientTest extends TestCase
 
     public function test_403_is_logged_as_warning_not_error(): void
     {
-        $logger = new RecordingLogger();
+        $logger = new RecordingLogger;
         $client = $this->makeClient($logger, status: 403);
 
         $this->callAndExpectFailure($client);
@@ -71,7 +71,7 @@ final class KlassciHttpClientTest extends TestCase
 
     public function test_429_is_logged_as_warning_not_error(): void
     {
-        $logger = new RecordingLogger();
+        $logger = new RecordingLogger;
         $client = $this->makeClient($logger, status: 429);
 
         $this->callAndExpectFailure($client);
@@ -82,7 +82,7 @@ final class KlassciHttpClientTest extends TestCase
 
     public function test_5xx_stays_logged_as_error(): void
     {
-        $logger = new RecordingLogger();
+        $logger = new RecordingLogger;
         $client = $this->makeClient($logger, status: 503);
 
         $this->callAndExpectFailure($client);
@@ -93,7 +93,7 @@ final class KlassciHttpClientTest extends TestCase
 
     public function test_5xx_is_exposed_as_retryable_klassci_unavailable(): void
     {
-        $client = $this->makeClient(new RecordingLogger(), status: 503);
+        $client = $this->makeClient(new RecordingLogger, status: 503);
 
         $this->expectException(KlassciUnavailableException::class);
 
@@ -102,7 +102,7 @@ final class KlassciHttpClientTest extends TestCase
 
     public function test_failure_log_context_never_contains_response_body(): void
     {
-        $logger = new RecordingLogger();
+        $logger = new RecordingLogger;
         $client = $this->makeClient($logger, status: 403);
 
         $this->callAndExpectFailure($client);
@@ -119,7 +119,7 @@ final class KlassciHttpClientTest extends TestCase
 
     public function test_exception_message_never_contains_response_body(): void
     {
-        $logger = new RecordingLogger();
+        $logger = new RecordingLogger;
         $client = $this->makeClient($logger, status: 403);
 
         try {
@@ -135,12 +135,24 @@ final class KlassciHttpClientTest extends TestCase
         }
     }
 
-    public function test_transport_failure_is_logged_as_error(): void
+    /**
+     * Une panne de transport est journalisée en `error` ET traduite (#685).
+     *
+     * ## Le saut est désormais conditionnel
+     *
+     * Il était inconditionnel, donc ce test ne s'exécutait **nulle part** — CI
+     * comprise. La traduction vérifiée ici n'était donc couverte par rien. Le
+     * plantage est propre au runner Windows (`Http::fake` + `ConnectionException`
+     * y termine le processus) : la CI, elle, doit l'exécuter.
+     */
+    public function test_transport_failure_is_logged_and_translated(): void
     {
-        self::markTestSkipped('Laravel Http::fake + ConnectionException termine ce runner Windows.');
+        if (PHP_OS_FAMILY === 'Windows') {
+            self::markTestSkipped('Laravel Http::fake + ConnectionException termine ce runner Windows — exécuté par la CI.');
+        }
 
-        $logger = new RecordingLogger();
-        $factory = new HttpFactory();
+        $logger = new RecordingLogger;
+        $factory = new HttpFactory;
         $factory->fake(function () {
             throw new ConnectionException('cURL error 28: timeout');
         });
@@ -149,9 +161,18 @@ final class KlassciHttpClientTest extends TestCase
 
         try {
             $client->executeHttp('GET', 'etudiants/me');
-            self::fail('Une panne transport doit se propager.');
-        } catch (ConnectionException) {
-            // attendu
+            self::fail('Une panne transport doit interrompre l\'appel.');
+        } catch (KlassciUnavailableException $e) {
+            // #685 — `ConnectionException` descend d'`Exception`, pas de
+            // `RuntimeException` : relancée telle quelle, elle échappait au
+            // `catch (RuntimeException)` des contrôleurs LMS et produisait un
+            // 500 muet là où KLASSCI répondant 500 produisait un 503 annoncé.
+            self::assertSame(503, $e->getCode(), 'La panne de transport doit porter le statut d\'indisponibilité.');
+            self::assertInstanceOf(
+                ConnectionException::class,
+                $e->getPrevious(),
+                'La cause réseau doit rester chaînée pour le diagnostic.',
+            );
         }
 
         self::assertCount(1, $logger->recordsAtLevel(LogLevel::ERROR), 'Une panne transport (KLASSCI injoignable) reste un error.');
@@ -159,8 +180,8 @@ final class KlassciHttpClientTest extends TestCase
 
     public function test_successful_response_returns_decoded_array(): void
     {
-        $logger = new RecordingLogger();
-        $factory = new HttpFactory();
+        $logger = new RecordingLogger;
+        $factory = new HttpFactory;
         $factory->fake(fn () => HttpFactory::response(['success' => true, 'data' => [1, 2]], 200));
 
         $client = new KlassciHttpClient($factory, $this->configResolver(), $logger, $this->circuitBreaker());
@@ -192,14 +213,14 @@ final class KlassciHttpClientTest extends TestCase
         ]);
 
         $transportCalls = 0;
-        $factory = new HttpFactory();
+        $factory = new HttpFactory;
         $factory->fake(function () use (&$transportCalls) {
             $transportCalls++;
 
             return HttpFactory::response(['message' => 'down'], 503);
         });
 
-        $client = new KlassciHttpClient($factory, $this->configResolver(), new RecordingLogger(), $this->circuitBreaker());
+        $client = new KlassciHttpClient($factory, $this->configResolver(), new RecordingLogger, $this->circuitBreaker());
 
         for ($i = 0; $i < 2; $i++) {
             try {
@@ -220,7 +241,7 @@ final class KlassciHttpClientTest extends TestCase
 
     private function makeClient(LoggerInterface $logger, int $status): KlassciHttpClient
     {
-        $factory = new HttpFactory();
+        $factory = new HttpFactory;
         $factory->fake(fn () => HttpFactory::response(
             ['message' => 'rejected', 'secret' => self::SECRET_BODY_MARKER],
             $status,
@@ -244,11 +265,11 @@ final class KlassciHttpClientTest extends TestCase
 
         $tenant = Mockery::mock(TenantManager::class);
         $tenant->shouldReceive('klassciConfig')->andReturn([
-            'url'   => self::BASE_URL,
+            'url' => self::BASE_URL,
             'token' => 'system-token',
         ]);
 
-        return new KlassciConfigResolver($auth, $tenant, new NullLogger());
+        return new KlassciConfigResolver($auth, $tenant, new NullLogger);
     }
 
     private function callAndExpectFailure(KlassciHttpClient $client): void
@@ -297,7 +318,7 @@ final class RecordingLogger extends AbstractLogger
     public function log($level, string|\Stringable $message, array $context = []): void
     {
         $this->records[] = [
-            'level'   => $level,
+            'level' => $level,
             'message' => (string) $message,
             'context' => $context,
         ];

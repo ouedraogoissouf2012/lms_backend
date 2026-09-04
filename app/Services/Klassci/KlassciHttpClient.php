@@ -75,7 +75,7 @@ final class KlassciHttpClient
      * @return array<string, mixed>
      *
      * @throws \App\Exceptions\KlassciUnavailableException si l'URL de base KLASSCI est absente/invalide (#270)
-     * @throws ConnectionException si KLASSCI est injoignable (panne réseau/transport)
+     * @throws \App\Exceptions\KlassciUnavailableException si KLASSCI est injoignable (transport, #685)
      * @throws \RuntimeException sur réponse HTTP 4xx/5xx
      * @throws \InvalidArgumentException si la méthode HTTP n'est pas supportée
      */
@@ -139,7 +139,13 @@ final class KlassciHttpClient
                 'endpoint' => $endpoint,
             ]);
 
-            throw $e;
+            // #685 — Traduite ICI, à la source, et non chez chaque appelant.
+            // `ConnectionException` descend d'`Exception` et non de
+            // `RuntimeException` : relancée telle quelle, elle échappait au
+            // `catch (RuntimeException)` des contrôleurs LMS — seul chemin menant
+            // à la réponse canonique 503 + `Retry-After` — et finissait en 500
+            // muet. L'enseignant voyait une liste vide, donc aucun bouton visio.
+            throw KlassciUnavailableException::transportFailure($e);
         }
 
         if ($response->failed()) {

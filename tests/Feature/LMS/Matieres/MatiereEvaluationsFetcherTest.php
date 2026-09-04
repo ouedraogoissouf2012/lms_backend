@@ -82,15 +82,25 @@ final class MatiereEvaluationsFetcherTest extends TestCase
     }
 
     /**
+     * Forme RÉELLE d'une évaluation embarquée sous `matieres/{id}`, mesurée en
+     * direct sur l'API KLASSCI (matière 3, 9 évaluations) :
+     *   id, titre, description, type, status, classe, programmation, publication
+     *
+     * PAS de clé `matiere` — elle serait redondante puisque ces évaluations sont
+     * déjà servies SOUS la matière. C'est la différence avec le catalogue global
+     * `GET evaluations`, qui la portait (et où le filtre était indispensable).
+     *
      * @param  array<string, mixed>  $overrides
      * @return array<string, mixed>
      */
     private function klassciEvaluation(int $id, array $overrides = []): array
     {
         return array_merge([
-            'id'      => $id,
-            'titre'   => 'Devoir KLASSCI',
-            'matiere' => ['id' => self::MATIERE_ID, 'nom' => 'Mathématiques'],
+            'id'     => $id,
+            'titre'  => 'Devoir KLASSCI',
+            'type'   => 'devoir',
+            'status' => 'completed',
+            'classe' => ['id' => 1, 'nom' => 'B2 COM'],
         ], $overrides);
     }
 
@@ -170,11 +180,31 @@ final class MatiereEvaluationsFetcherTest extends TestCase
         self::assertSame(1, $result['evaluations_raw_count']);
     }
 
-    public function test_filters_by_matiere_id_when_matiere_data_carries_other_matieres(): void
+    public function test_keeps_every_evaluation_that_has_no_matiere_key_the_real_embedded_shape(): void
     {
-        // Défense conservée : matiereData['evaluations'] devrait déjà être
-        // scopé à la matière demandée (endpoint matieres/{id}), mais un
-        // mélange côté KLASSCI ne doit pas fuiter vers une autre matière.
+        // NON-REGRESSION du defaut trouve a l'ecran : les evaluations embarquees
+        // n'ont PAS de cle `matiere` (deja scopees par l'endpoint). Le filtre
+        // `matiere.id === $matiereId`, herite du catalogue global, les rejetait
+        // TOUTES — « 0 Evaluations » affiche sur une matiere qui en a 9.
+        // Mesure reelle KLASSCI matiere 3 : 9 evaluations, aucune avec `matiere`.
+        $matiereData = $this->matiereDataWith([
+            $this->klassciEvaluation(21),
+            $this->klassciEvaluation(22),
+            $this->klassciEvaluation(23),
+        ]);
+
+        $result = app(MatiereEvaluationsFetcher::class)
+            ->fetchEvaluationsForMatiere($matiereData, self::MATIERE_ID, $this->user);
+
+        self::assertSame(3, $result['evaluations_raw_count'], 'Aucune evaluation ne doit etre rejetee faute de cle `matiere`.');
+        $ids = array_column($result['evaluations_enrichies'], 'id');
+        self::assertSame([21, 22, 23], $ids);
+    }
+
+    public function test_still_excludes_a_foreign_matiere_when_the_key_is_present(): void
+    {
+        // Defense conservee : SI KLASSCI venait a porter la cle (changement de
+        // contrat), une evaluation d'une autre matiere ne doit pas fuiter.
         $matiereData = $this->matiereDataWith([
             $this->klassciEvaluation(100),
             $this->klassciEvaluation(101, ['matiere' => ['id' => 999, 'nom' => 'Autre matière']]),

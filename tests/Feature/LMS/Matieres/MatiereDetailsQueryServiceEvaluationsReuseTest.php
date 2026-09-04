@@ -55,9 +55,14 @@ final class MatiereDetailsQueryServiceEvaluationsReuseTest extends TestCase
     }
 
     /**
-     * Forme RÉELLE mesurée en direct sur `matieres/{id}` : `data` porte déjà
-     * `matiere`, `combinaisons`, `enseignants` et `evaluations` — cette dernière
-     * clé est celle que ce correctif réutilise au lieu de la re-demander.
+     * Forme RÉELLE mesurée en direct sur `matieres/{id}` (matière 3, 9
+     * évaluations) : `data` porte `matiere`, `combinaisons`, `enseignants`,
+     * `seances_programmees`, `evaluations`, `statistiques`.
+     *
+     * Point critique verrouillé ici : les évaluations embarquées n'ont **pas**
+     * de clé `matiere` — elles sont déjà servies sous la matière. Un jeu d'essai
+     * qui en fabriquerait une masquerait le défaut réel (filtre hérité du
+     * catalogue global rejetant 9 évaluations sur 9).
      *
      * @return array<string, mixed>
      */
@@ -70,9 +75,9 @@ final class MatiereDetailsQueryServiceEvaluationsReuseTest extends TestCase
                 'enseignants' => [['id' => 700, 'nom' => 'Prof Test']],
                 'seances_programmees' => [],
                 'evaluations' => [
-                    ['id' => 321, 'titre' => 'Devoir Anglais', 'matiere' => ['id' => self::MATIERE_ID, 'nom' => 'Anglais']],
-                    // Une evaluation d'une AUTRE matiere ne doit pas fuiter (defense conservee).
-                    ['id' => 322, 'titre' => 'Devoir Maths', 'matiere' => ['id' => 999, 'nom' => 'Maths']],
+                    // Forme reelle : ni `matiere`, ni `lms_integration`.
+                    ['id' => 321, 'titre' => 'Devoir Anglais', 'type' => 'devoir', 'status' => 'completed', 'classe' => ['id' => 1, 'nom' => 'B2 COM']],
+                    ['id' => 322, 'titre' => 'Interro Anglais', 'type' => 'devoir', 'status' => 'draft', 'classe' => ['id' => 1, 'nom' => 'B2 COM']],
                 ],
             ],
         ];
@@ -99,8 +104,8 @@ final class MatiereDetailsQueryServiceEvaluationsReuseTest extends TestCase
         $result = app(MatiereDetailsQueryService::class)->getDetailsForUser(self::MATIERE_ID, $coordinateur);
 
         self::assertNotNull($result);
-        self::assertCount(1, $result['evaluations_programmees'], 'Une seule des 2 evaluations du payload appartient a cette matiere.');
-        self::assertSame(321, $result['evaluations_programmees'][0]['id']);
+        self::assertCount(2, $result['evaluations_programmees'], 'Les 2 evaluations embarquees remontent, aucune rejetee faute de cle `matiere`.');
+        self::assertSame([321, 322], array_column($result['evaluations_programmees'], 'id'));
     }
 
     public function test_enseignant_evaluations_still_come_from_matiere_call_dashboard_never_asked_for_evaluations(): void
@@ -132,7 +137,7 @@ final class MatiereDetailsQueryServiceEvaluationsReuseTest extends TestCase
         $result = app(MatiereDetailsQueryService::class)->getDetailsForUser(self::MATIERE_ID, $enseignant);
 
         self::assertNotNull($result);
-        self::assertCount(1, $result['evaluations_programmees']);
-        self::assertSame(321, $result['evaluations_programmees'][0]['id']);
+        self::assertCount(2, $result['evaluations_programmees']);
+        self::assertSame([321, 322], array_column($result['evaluations_programmees'], 'id'));
     }
 }

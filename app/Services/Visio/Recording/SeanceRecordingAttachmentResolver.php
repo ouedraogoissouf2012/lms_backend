@@ -85,7 +85,16 @@ final class SeanceRecordingAttachmentResolver
         }
 
         $teacherIds = $this->teacherCandidateIds($seance);
-        if ($teacherIds !== []) {
+
+        if ($teacherIds !== null) {
+            // Enseignant DÉCLARÉ mais introuvable localement : aucun candidat.
+            // Ne surtout pas retomber sur une recherche sans filtre — la vidéo
+            // atterrirait dans le cours de n'importe quel enseignant de la même
+            // matière et de la même classe (#707).
+            if ($teacherIds === []) {
+                return new Collection;
+            }
+
             $query->whereIn('enseignant_id', $teacherIds);
         }
 
@@ -105,22 +114,46 @@ final class SeanceRecordingAttachmentResolver
     }
 
     /**
-     * @return list<int>
+     * Les `users.id` LOCAUX de l'enseignant de la séance.
+     *
+     * ## Le défaut corrigé (#707)
+     *
+     * Cette méthode renvoyait `[$klassciTeacherId]` — l'identifiant **KLASSCI
+     * brut** — puis y ajoutait les `users.id` **locaux**, et le tout était
+     * confronté à `lessons.enseignant_id`. **Deux espaces d'identifiants dans la
+     * même comparaison.**
+     *
+     * Or `lessons.enseignant_id` est un `users.id` local : six FormRequests le
+     * comparent à `$user->id`, et `Lesson` déclare
+     * `belongsTo(User::class, 'enseignant_id')`. Seul le commentaire de la
+     * migration disait le contraire — c'était la source de la confusion.
+     *
+     * Conséquence : si un collègue portait un `users.id` égal au
+     * `klassci_enseignant_id` de la séance, et enseignait la même matière à la
+     * même classe, l'enregistrement était publié **dans son cours**, visible par
+     * ses étudiants.
+     *
+     * ## Les trois états, distingués
+     *
+     * - `null` — aucun enseignant déclaré sur la séance : pas de contrainte.
+     * - `[]` — enseignant déclaré mais **introuvable** localement. L'appelant
+     *   doit conclure `lesson_not_found`, jamais lever la contrainte.
+     * - liste non vide — les `users.id` locaux correspondants.
+     *
+     * @return list<int>|null
      */
-    private function teacherCandidateIds(Seance $seance): array
+    private function teacherCandidateIds(Seance $seance): ?array
     {
         if ($seance->klassci_enseignant_id === null) {
-            return [];
+            return null;
         }
-
-        $klassciTeacherId = (int) $seance->klassci_enseignant_id;
-        $ids = [$klassciTeacherId];
 
         $localIds = User::query()
             ->where('institution_id', $seance->institution_id)
-            ->where('klassci_enseignant_id', $klassciTeacherId)
+            ->where('klassci_enseignant_id', (int) $seance->klassci_enseignant_id)
             ->pluck('id');
 
+        $ids = [];
         foreach ($localIds as $id) {
             if (is_numeric($id)) {
                 $ids[] = (int) $id;

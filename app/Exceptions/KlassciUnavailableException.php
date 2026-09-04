@@ -57,6 +57,26 @@ final class KlassciUnavailableException extends RuntimeException
     }
 
     /**
+     * Panne de TRANSPORT : KLASSCI n'a pas répondu du tout (#685).
+     *
+     * `ConnectionException` descend de `HttpClientException`, donc d'`Exception`
+     * — et non de `RuntimeException`. Relancée telle quelle, elle échappait au
+     * `catch (RuntimeException)` des contrôleurs LMS, seul chemin menant à cette
+     * réponse canonique, et finissait en 500 muet.
+     *
+     * Le traitement était donc inversé par rapport à la gravité : KLASSCI
+     * répondant 500 produisait un 503 annoncé, KLASSCI ne répondant PAS du tout
+     * produisait un écran vide.
+     *
+     * Le détail réseau reste dans la cause chaînée, pour le journal ; il ne sort
+     * jamais vers le client (§1.2).
+     */
+    public static function transportFailure(\Throwable $cause): self
+    {
+        return new self("API KLASSCI injoignable (panne de transport) : {$cause->getMessage()}", 503, $cause);
+    }
+
+    /**
      * Reponse HTTP canonique d'une indisponibilite KLASSCI.
      *
      * Source unique partagee par le handler global (bootstrap/app.php), le trait

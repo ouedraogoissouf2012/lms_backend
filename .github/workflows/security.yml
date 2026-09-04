@@ -448,3 +448,27 @@ jobs:
             exit 1
           fi
           echo "Politique tests OK : un nouveau test PHP est versionnable par defaut."
+
+  ocp-guard:
+    name: OCP guard (mode résolu au point de liaison)
+    runs-on: ubuntu-latest
+    # Volontairement PAS `if: pull_request`. Cinq jobs de ce workflow sont
+    # pull_request-only : un push direct les saute (interdit 24, issue #702).
+    # Une garde qui ne tourne pas sur push n'est pas une garde.
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup PHP 8.3
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.3"
+          coverage: none
+
+      # Scan complet, pas seulement le diff : la garde s'appuie sur un cliquet
+      # (.ocp-allowlist.json) qui gèle la dette existante. Elle est donc verte
+      # aujourd'hui et ne rougit que sur une violation NEUVE ou une dette
+      # aggravée. Contrat : issue #697.
+      - name: Contrôle Open/Closed
+        run: php scripts/check-ocp.php .

@@ -1,0 +1,42 @@
+{
+    "version": 1,
+    "_lisez_moi": [
+        "Liste d'exemption de la garde Open/Closed (scripts/check-ocp.php).",
+        "Contrat complet : issue #697, articles 1 a 7.",
+        "",
+        "TROIS TYPES, ET AUCUN N'EST LIBRE :",
+        "  point-de-liaison  L'endroit ou le mode se resout PAR CONCEPTION. Ajouter une entree ici",
+        "                    revient a deplacer la frontiere d'architecture : cela exige une revue.",
+        "  dette             Violation CONNUE, gelee a son compte actuel. Cliquet : le compte ne peut",
+        "                    que baisser. Toute occurrence supplementaire fait rougir la CI.",
+        "  derogation        Exception ponctuelle. La garde la REFUSE tant qu'elle ne porte pas trois",
+        "                    dates DISTINCTES, un ADR present sur le disque et un accord nomme.",
+        "                    Article 7 : trois demandes dans le meme message ne comptent que pour une.",
+        "",
+        "Ce fichier est couvert par .github/CODEOWNERS : il ne se modifie pas sans revue du mainteneur."
+    ],
+    "entries": [
+        {
+            "path": "app/Services/Klassci/KlassciConfigResolver.php",
+            "type": "point-de-liaison",
+            "reason": "C'est LE resolveur de cible KLASSCI : il implemente KlassciTargetResolver (bind() AppServiceProvider.php:57), dont le contrat baseUrl(): ?string rend deja null quand aucune cible n'existe. Son null EST le mode autonome. Lire la configuration ici est sa raison d'etre."
+        },
+        {
+            "path": "app/Services/TenantManager.php",
+            "type": "point-de-liaison",
+            "reason": "Porteur de l'etat tenant, lie en scoped (AppServiceProvider.php:43). klassciConfig() est le seul endroit qui retombe deliberement sur la configuration globale quand aucune institution n'est resolue — c'est l'accroche prevue du mode, pas un contournement."
+        },
+        {
+            "path": "app/Services/Seances/Mutations/ParticipantValidationService.php",
+            "type": "dette",
+            "count": 1,
+            "reason": "Construit son propre PendingRequest (:250) et lit services.klassci.url en direct (:269), hors de la couche client : il echappe donc au disjoncteur par tenant (#578). Sur le chemin critique de la visio, avec un timeout de 30 s en dur (:27). Correctif trace en #712 (coupe-circuit en quatre points)."
+        },
+        {
+            "path": "app/Http/Controllers/API/Proxy/ProxyOrganisationController.php",
+            "type": "dette",
+            "count": 1,
+            "reason": "Expose config('services.klassci.url') dans une reponse de diagnostic (:190). A faire passer par KlassciTargetResolver plutot que par la configuration globale, qui ignore le tenant resolu."
+        }
+    ]
+}

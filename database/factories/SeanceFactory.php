@@ -5,6 +5,7 @@ namespace Database\Factories;
 use App\Models\Institution;
 use App\Models\Seance;
 use App\Services\Visio\SecureVisioRoomIdGenerator;
+use Database\Factories\Concerns\MintsKlassciIdentifiers;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -12,6 +13,8 @@ use Illuminate\Database\Eloquent\Factories\Factory;
  */
 class SeanceFactory extends Factory
 {
+    use MintsKlassciIdentifiers;
+
     protected $model = Seance::class;
 
     /**
@@ -22,10 +25,10 @@ class SeanceFactory extends Factory
     public function definition(): array
     {
         return [
-            'klassci_seance_id' => $this->faker->unique()->numberBetween(1000, 9999),
-            'klassci_matiere_id' => $this->faker->numberBetween(1, 100),
-            'klassci_classe_id' => $this->faker->numberBetween(1, 100),
-            'klassci_enseignant_id' => $this->faker->numberBetween(1, 100),
+            'klassci_seance_id' => $this->mintKlassciId('seance'),
+            'klassci_matiere_id' => $this->mintKlassciId('matiere'),
+            'klassci_classe_id' => $this->mintKlassciId('classe'),
+            'klassci_enseignant_id' => $this->mintKlassciId('enseignant'),
             'enseignant_nom' => $this->faker->name(),
             'matiere_nom' => $this->faker->word(),
             'classe_nom' => $this->faker->randomElement(['1A', '2B', '3C', 'M1', 'M2']),

@@ -3,21 +3,25 @@
 namespace Database\Factories;
 
 use App\Models\Evaluation;
+use App\Models\Institution;
+use Database\Factories\Concerns\MintsKlassciIdentifiers;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 class EvaluationFactory extends Factory
 {
+    use MintsKlassciIdentifiers;
+
     protected $model = Evaluation::class;
 
     public function definition(): array
     {
         return [
-            'klassci_evaluation_id' => $this->faker->unique()->numberBetween(1, 10000),
-            'klassci_matiere_id' => $this->faker->numberBetween(1, 50),
+            'klassci_evaluation_id' => $this->mintKlassciId('evaluation'),
+            'klassci_matiere_id' => $this->mintKlassciId('matiere'),
             'matiere_nom' => $this->faker->randomElement(['Mathématiques', 'Physique', 'Français', 'Anglais', 'Histoire']),
-            'klassci_classe_id' => $this->faker->numberBetween(1, 20),
+            'klassci_classe_id' => $this->mintKlassciId('classe'),
             'classe_nom' => $this->faker->randomElement(['Terminale A', 'Terminale D', 'Première S', 'Seconde C']),
-            'klassci_enseignant_id' => $this->faker->numberBetween(1, 100),
+            'klassci_enseignant_id' => $this->mintKlassciId('enseignant'),
             'enseignant_nom' => $this->faker->name(),
             'titre' => $this->faker->sentence(3),
             'description' => $this->faker->optional()->paragraph(),
@@ -42,7 +46,7 @@ class EvaluationFactory extends Factory
             'notes_published' => $this->faker->boolean(30),
             'is_locked' => false,
             'locked_at' => null,
-            'institution_id' => \App\Models\Institution::factory(),
+            'institution_id' => Institution::factory(),
         ];
     }
 

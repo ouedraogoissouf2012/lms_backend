@@ -2,15 +2,19 @@
 
 namespace Database\Factories;
 
+use App\Models\User;
+use Database\Factories\Concerns\MintsKlassciIdentifiers;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 
 /**
- * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\User>
+ * @extends Factory<User>
  */
 class UserFactory extends Factory
 {
+    use MintsKlassciIdentifiers;
+
     /**
      * The current password being used by the factory.
      */
@@ -23,10 +27,11 @@ class UserFactory extends Factory
      */
     public function definition(): array
     {
-        $enseignantId = fake()->unique()->numberBetween(1, 10000);
+        $klassciId = $this->mintKlassciId('user');
+        $enseignantId = $this->mintKlassciId('enseignant');
 
         return [
-            'klassci_id' => fake()->unique()->numberBetween(1, 10000),
+            'klassci_id' => $klassciId,
             'name' => fake()->name(),
             'email' => fake()->unique()->safeEmail(),
             'email_verified_at' => now(),
@@ -38,7 +43,10 @@ class UserFactory extends Factory
             'klassci_enseignant_id' => $enseignantId,
             'klassci_token' => Str::random(64),
             'klassci_data' => json_encode([
-                'id' => fake()->numberBetween(1, 10000),
+                // Le miroir KLASSCI de CET utilisateur : tirer un 3e nombre au
+                // hasard en faisait un identifiant sans rapport avec la ligne
+                // qui le porte, et un tirage de plus dans la plage en collision.
+                'id' => $klassciId,
                 'nom' => fake()->lastName(),
                 'prenom' => fake()->firstName(),
                 'enseignant_id' => $enseignantId,

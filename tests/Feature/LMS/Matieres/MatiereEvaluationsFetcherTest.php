@@ -27,8 +27,13 @@ use Tests\TestCase;
  * modèle. Le verrou est porté par {@see \App\Services\Evaluation\EvaluationStateService},
  * déjà injecté et utilisé correctement pour les évaluations LMS pures.
  *
- * Ces tests exercent le fetcher en isolation (KLASSCI mocké) et auraient
- * échoué avec une `Error` avant le correctif.
+ * §1.4 PRODUCTION_STANDARDS.md — le fetcher ne rappelle plus KLASSCI (`evaluations`
+ * global, filtré côté PHP) : il lit `matiereData['evaluations']`, déjà rapatrié par
+ * `MatiereInfoFetcher` (`matieres/{id}`) pour la même requête. Vérifié en direct sur
+ * 3 matières réelles avant ce changement : mêmes ids, même compte, dans les deux
+ * sources. `KlassciProxyService` n'est donc plus une dépendance de cette classe —
+ * la preuve tient par construction : ce fichier ne le mocke plus nulle part, sauf
+ * pour affirmer explicitement qu'il n'est jamais appelé.
  *
  * @see app/Services/Matiere/MatiereEvaluationsFetcher.php
  * @see app/Services/Evaluation/EvaluationStateService.php
@@ -67,21 +72,13 @@ final class MatiereEvaluationsFetcherTest extends TestCase
     }
 
     /**
-     * Construit le fetcher avec un KlassciProxyService mocké renvoyant
-     * `$klassciEvaluations` pour l'endpoint `evaluations`.
-     *
-     * @param  array<int, array<string, mixed>>  $klassciEvaluations
+     * @param  array<int, array<string, mixed>>  $embeddedEvaluations  Deja present
+     *   dans matiereData['evaluations'], comme le rapatrie MatiereInfoFetcher.
+     * @return array<string, mixed>
      */
-    private function fetcherReturning(array $klassciEvaluations): MatiereEvaluationsFetcher
+    private function matiereDataWith(array $embeddedEvaluations): array
     {
-        $this->mock(KlassciProxyService::class, function (MockInterface $mock) use ($klassciEvaluations): void {
-            $mock->shouldReceive('requestWithUserToken')
-                ->once()
-                ->with('fake-token', 'evaluations', 'GET')
-                ->andReturn(['data' => $klassciEvaluations]);
-        });
-
-        return app(MatiereEvaluationsFetcher::class);
+        return ['evaluations' => $embeddedEvaluations];
     }
 
     /**
@@ -106,9 +103,9 @@ final class MatiereEvaluationsFetcherTest extends TestCase
             'is_locked'             => false,
         ]);
 
-        $fetcher = $this->fetcherReturning([$this->klassciEvaluation(100)]);
-
-        $result = $fetcher->fetchEvaluationsForMatiere('fake-token', self::MATIERE_ID, $this->user);
+        $matiereData = $this->matiereDataWith([$this->klassciEvaluation(100)]);
+        $result = app(MatiereEvaluationsFetcher::class)
+            ->fetchEvaluationsForMatiere($matiereData, self::MATIERE_ID, $this->user);
 
         $online = $this->onlineVersionFor($result, 100);
         self::assertSame($quiz->id, $online['id']);
@@ -129,9 +126,9 @@ final class MatiereEvaluationsFetcherTest extends TestCase
             'institution_id' => $this->institution->id,
         ]);
 
-        $fetcher = $this->fetcherReturning([$this->klassciEvaluation(200)]);
-
-        $result = $fetcher->fetchEvaluationsForMatiere('fake-token', self::MATIERE_ID, $this->user);
+        $matiereData = $this->matiereDataWith([$this->klassciEvaluation(200)]);
+        $result = app(MatiereEvaluationsFetcher::class)
+            ->fetchEvaluationsForMatiere($matiereData, self::MATIERE_ID, $this->user);
 
         $online = $this->onlineVersionFor($result, 200);
         self::assertTrue($online['is_locked'], 'Une soumission existe → verrouillée (même flag false).');
@@ -146,14 +143,61 @@ final class MatiereEvaluationsFetcherTest extends TestCase
             'klassci_matiere_id'    => self::MATIERE_ID,
         ]);
 
-        $fetcher = $this->fetcherReturning([$this->klassciEvaluation(300)]);
-
-        $result = $fetcher->fetchEvaluationsForMatiere('fake-token', self::MATIERE_ID, $this->user);
+        $matiereData = $this->matiereDataWith([$this->klassciEvaluation(300)]);
+        $result = app(MatiereEvaluationsFetcher::class)
+            ->fetchEvaluationsForMatiere($matiereData, self::MATIERE_ID, $this->user);
 
         $online = $this->onlineVersionFor($result, 300);
         self::assertTrue($online['is_locked'], 'Flag is_locked → verrouillée sans soumission.');
         self::assertFalse($online['can_be_edited']);
         self::assertSame($quiz->id, $online['id']);
+    }
+
+    public function test_never_calls_klassci_the_evaluations_key_is_already_in_matiere_data(): void
+    {
+        // §1.4 — le point de ce correctif. Mock STRICT (aucune attente
+        // configurée) : si le fetcher appelait encore requestWithUserToken,
+        // Mockery ferait échouer le test au lieu de laisser passer un appel
+        // silencieux non vérifié.
+        $this->mock(KlassciProxyService::class, function (MockInterface $mock): void {
+            $mock->shouldNotReceive('requestWithUserToken');
+        });
+
+        $matiereData = $this->matiereDataWith([$this->klassciEvaluation(100)]);
+        $result = app(MatiereEvaluationsFetcher::class)
+            ->fetchEvaluationsForMatiere($matiereData, self::MATIERE_ID, $this->user);
+
+        self::assertSame(1, $result['evaluations_raw_count']);
+    }
+
+    public function test_filters_by_matiere_id_when_matiere_data_carries_other_matieres(): void
+    {
+        // Défense conservée : matiereData['evaluations'] devrait déjà être
+        // scopé à la matière demandée (endpoint matieres/{id}), mais un
+        // mélange côté KLASSCI ne doit pas fuiter vers une autre matière.
+        $matiereData = $this->matiereDataWith([
+            $this->klassciEvaluation(100),
+            $this->klassciEvaluation(101, ['matiere' => ['id' => 999, 'nom' => 'Autre matière']]),
+        ]);
+
+        $result = app(MatiereEvaluationsFetcher::class)
+            ->fetchEvaluationsForMatiere($matiereData, self::MATIERE_ID, $this->user);
+
+        self::assertSame(1, $result['evaluations_raw_count']);
+        $ids = array_column($result['evaluations_enrichies'], 'id');
+        self::assertContains(100, $ids);
+        self::assertNotContains(101, $ids);
+    }
+
+    public function test_absent_evaluations_key_yields_empty_list_not_an_error(): void
+    {
+        // matiereData sans clé 'evaluations' (forme dégradée, ou KLASSCI
+        // omettant la clé) → liste vide, jamais une erreur.
+        $result = app(MatiereEvaluationsFetcher::class)
+            ->fetchEvaluationsForMatiere([], self::MATIERE_ID, $this->user);
+
+        self::assertSame(0, $result['evaluations_raw_count']);
+        self::assertSame([], $result['evaluations_enrichies']);
     }
 
     /**

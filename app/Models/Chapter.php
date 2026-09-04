@@ -16,6 +16,8 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  *
  * Représente un chapitre/section d'une leçon
  * NOUVELLE STRUCTURE: Chapter appartient à Lesson (inversé)
+ *
+ * @property-read int $id clé auto-incrémentée — `getKey()` rend `mixed` (#674)
  */
 class Chapter extends Model
 {

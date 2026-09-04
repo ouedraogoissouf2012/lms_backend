@@ -112,6 +112,42 @@ final class ScheduleRegistrationTest extends TestCase
     }
 
     /**
+     * #674 — Une commande de purge qui existe sans être planifiée ne purge rien,
+     * et c'est exactement l'incident historique que ce fichier fige.
+     *
+     * L'heure n'est pas décorative : `chapters:purge` doit passer APRÈS
+     * `recordings:purge`. Un chapitre engendré par un enregistrement appartient
+     * à la rétention visio tant qu'une ligne `seance_recordings` le référence ;
+     * l'inverser ferait attendre un cycle entier aux chapitres dont
+     * l'enregistrement vient d'expirer.
+     */
+    public function test_chapter_retention_runs_daily_after_recording_retention(): void
+    {
+        $event = $this->scheduledEvents()->get('purge-trashed-chapters');
+
+        $this->assertNotNull($event, 'chapters:purge doit être planifié (#674) — sinon la corbeille ne se vide jamais.');
+        $this->assertSame('50 3 * * *', $event->expression);
+        $this->assertStringContainsString('chapters:purge --apply', (string) $event->command);
+        $this->assertTrue($event->withoutOverlapping);
+        $this->assertTrue($event->onOneServer);
+
+        $recordings = $this->scheduledEvents()->get('purge-visio-recordings');
+        $this->assertNotNull($recordings);
+        $this->assertTrue(
+            $this->minuteOfDay($recordings->expression) < $this->minuteOfDay($event->expression),
+            'La rétention visio doit passer AVANT la purge des chapitres.',
+        );
+    }
+
+    /** Convertit la partie horaire d'une expression cron en minutes depuis minuit. */
+    private function minuteOfDay(string $expression): int
+    {
+        [$minute, $hour] = explode(' ', $expression);
+
+        return ((int) $hour * 60) + (int) $minute;
+    }
+
+    /**
      * Le filet de sécurité #514 / #680 était planifié sans être verrouillé par
      * un test : renommer la commande cassait le planificateur en silence, la
      * suite restant verte. Ce test ferme ce trou.

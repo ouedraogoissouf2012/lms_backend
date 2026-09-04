@@ -6,6 +6,7 @@ namespace App\Services\Visio\Recording;
 
 use App\Models\Chapter;
 use App\Models\SeanceRecording;
+use App\Services\FileConversion\ChapterArtifactStorage;
 use Carbon\CarbonInterface;
 use Illuminate\Database\DatabaseManager;
 use Psr\Log\LoggerInterface;
@@ -17,6 +18,7 @@ final class SeanceRecordingRetentionService
         private readonly DatabaseManager $database,
         private readonly LoggerInterface $logger,
         private readonly RecordingMediaStorage $media,
+        private readonly ChapterArtifactStorage $artifacts,
     ) {}
 
     public function eligible(SeanceRecording $recording, CarbonInterface $cutoff): bool
@@ -71,6 +73,13 @@ final class SeanceRecordingRetentionService
             $chapter = $locked->chapter;
             $chapterPurged = $chapter !== null && $this->ownsGeneratedChapter($locked, $chapter);
             if ($chapterPurged) {
+                // Défensif (#674) : un chapitre engendré par un enregistrement
+                // n'a en principe ni document source ni diapositives — son média
+                // vient d'être purgé juste au-dessus. Mais rien n'empêche un
+                // enseignant d'y téléverser un fichier après coup, et celui-ci
+                // survivrait alors à la ligne, hors de portée de toute purge
+                // ultérieure puisque plus rien ne le référencerait.
+                $this->artifacts->purgeChapter($chapter->id);
                 $chapter->forceDelete();
             }
 

@@ -110,6 +110,21 @@ Schedule::command('recordings:purge --apply')
     ->withoutOverlapping()
     ->onOneServer();
 
+// Rétention des chapitres mis à la corbeille (#674). Même contrat que
+// ci-dessus : `--apply` explicite, pour qu'une invocation manuelle nue reste
+// une simulation.
+//
+// APRÈS la rétention visio, délibérément. Un chapitre engendré par un
+// enregistrement appartient à cette dernière tant qu'une ligne
+// `seance_recordings` le référence ; la laisser passer en premier libère au
+// même cycle les chapitres dont l'enregistrement vient d'expirer, au lieu
+// d'attendre le lendemain.
+Schedule::command('chapters:purge --apply')
+    ->dailyAt('03:50')
+    ->name('purge-trashed-chapters')
+    ->withoutOverlapping()
+    ->onOneServer();
+
 // #514 + #680 — Filets de sécurité. Un enregistrement peut se figer de deux
 // façons, et les deux conservent `active_lock_key`, donc BLOQUENT tout nouvel
 // enregistrement de la séance :

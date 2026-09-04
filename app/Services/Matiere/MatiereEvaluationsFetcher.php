@@ -7,21 +7,29 @@ namespace App\Services\Matiere;
 use App\Models\Evaluation;
 use App\Models\EvaluationSubmission;
 use App\Models\User;
-use App\Services\KlassciProxyService;
 use Illuminate\Support\Collection;
-use Psr\Log\LoggerInterface;
-use Throwable;
 
 /**
- * MatiereEvaluationsFetcher — fetches evaluations for a matière and enriches them.
+ * MatiereEvaluationsFetcher — filters and enriches the evaluations of a matière.
  *
  * Extracted from {@see \App\Http\Controllers\API\LMS\LMSMatieresQueryController::matiereDetails}
  * (legacy lines 235-349).
  *
  * Responsibility:
- *   - Fetches all KLASSCI evaluations and filters by matière id.
+ *   - Filters the matière's own evaluations out of the KLASSCI payload already
+ *     fetched by `MatiereInfoFetcher` (`matieres/{id}`).
  *   - Enriches each KLASSCI evaluation with the matching LMS quiz (if any).
  *   - Appends LMS-only evaluations (`klassci_evaluation_id IS NULL`) for that matière.
+ *
+ * §1.4 PRODUCTION_STANDARDS.md (Zero N+1 HTTP) — this class used to make its OWN
+ * `GET evaluations` call (the entire catalogue, filtered here in PHP) on every
+ * matière-details request, duplicating data `MatiereInfoFetcher` had ALREADY
+ * fetched via `matieres/{id}` in the very same request. Verified live on 3 real
+ * matières before this change: identical ids, identical count, in both sources —
+ * `matieres/{id}`'s embedded `evaluations` carries the richer shape (window,
+ * lms_integration), matching the precedent already used elsewhere in this codebase
+ * (`MyMatieresQueryService::fetchEvaluationsFor()`). No KLASSCI dependency remains
+ * in this class as a result.
  *
  * Performance contract preserved (PERF-03 batch 2):
  *   - One main query + `withCount` for questions/submissions + a single batched
@@ -29,27 +37,27 @@ use Throwable;
  *
  * Returns:
  *   - `evaluations_enrichies`: merged KLASSCI + LMS-only list (front-facing).
- *   - `evaluations_raw`: KLASSCI raw collection (kept for stats count).
+ *   - `evaluations_raw_count`: KLASSCI raw collection count (kept for stats).
  *
- * @see PRODUCTION_STANDARDS.md §1.1
+ * @see PRODUCTION_STANDARDS.md §1.1, §1.4
  */
 final class MatiereEvaluationsFetcher
 {
     public function __construct(
-        private readonly KlassciProxyService $klassciService,
-        private readonly LoggerInterface $logger,
         private readonly \App\Services\Evaluation\EvaluationStateService $evaluationState,
     ) {}
 
     /**
+     * @param  array<string, mixed>  $matiereData  Payload `matieres/{id}` deja
+     *   recupere par {@see MatiereInfoFetcher} pour CETTE meme requete.
      * @return array{evaluations_enrichies: array<int, array<string, mixed>>, evaluations_raw_count: int}
      */
     public function fetchEvaluationsForMatiere(
-        string $klassciToken,
+        array $matiereData,
         int $matiereId,
         User $user,
     ): array {
-        $klassciEvaluations = $this->fetchKlassciEvaluationsForMatiere($klassciToken, $matiereId);
+        $klassciEvaluations = $this->filterEmbeddedEvaluations($matiereData, $matiereId);
 
         $klassciEnriched = $klassciEvaluations
             ->map(fn (array $eval): array => $this->enrichKlassciEvaluation($eval, $user))
@@ -64,38 +72,21 @@ final class MatiereEvaluationsFetcher
     }
 
     /**
+     * @param  array<string, mixed>  $matiereData
      * @return Collection<int, array<string, mixed>>
      */
-    private function fetchKlassciEvaluationsForMatiere(string $klassciToken, int $matiereId): Collection
+    private function filterEmbeddedEvaluations(array $matiereData, int $matiereId): Collection
     {
-        try {
-            $evaluationsResponse = $this->klassciService->requestWithUserToken(
-                $klassciToken,
-                'evaluations',
-                'GET'
-            );
+        /** @var array<int, array<string, mixed>> $evaluationsData */
+        $evaluationsData = is_array($matiereData['evaluations'] ?? null) ? $matiereData['evaluations'] : [];
 
-            /** @var array<int, array<string, mixed>> $evaluationsData */
-            $evaluationsData = $evaluationsResponse['data'] ?? [];
+        return collect($evaluationsData)->filter(function (array $eval) use ($matiereId): bool {
+            $matiere = $eval['matiere'] ?? null;
 
-            return collect($evaluationsData)->filter(function (array $eval) use ($matiereId): bool {
-                $matiereData = $eval['matiere'] ?? null;
-
-                return is_array($matiereData)
-                    && isset($matiereData['id'])
-                    && $matiereData['id'] === $matiereId;
-            })->values();
-        } catch (Throwable $e) {
-            $this->logger->warning('Erreur récupération évaluations', [
-                'matiere_id' => $matiereId,
-                'error' => $e->getMessage(),
-            ]);
-
-            /** @var Collection<int, array<string, mixed>> $empty */
-            $empty = collect();
-
-            return $empty;
-        }
+            return is_array($matiere)
+                && isset($matiere['id'])
+                && $matiere['id'] === $matiereId;
+        })->values();
     }
 
     /**

@@ -64,9 +64,10 @@ final class MatiereDetailsQueryService
             $info['matiereData'],
         );
 
-        // 3. Evaluations (KLASSCI + LMS-only).
+        // 3. Evaluations (KLASSCI + LMS-only). Reutilise le payload de l'etape 1 —
+        // §1.4 : matieres/{id} porte deja les evaluations, aucun second appel.
         $evaluationsPayload = $this->evaluationsFetcher->fetchEvaluationsForMatiere(
-            $klassciToken,
+            $info['matiereData'],
             $matiereId,
             $user,
         );

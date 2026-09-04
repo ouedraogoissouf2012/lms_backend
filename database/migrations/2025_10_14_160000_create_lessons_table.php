@@ -14,10 +14,25 @@ return new class extends Migration
         Schema::create('lessons', function (Blueprint $table) {
             $table->id();
 
-            // Relation avec KLASSCI
-            $table->unsignedBigInteger('matiere_id')->nullable()->comment('ID matière KLASSCI');
-            $table->unsignedBigInteger('classe_id')->nullable()->comment('ID classe KLASSCI');
-            $table->unsignedBigInteger('enseignant_id')->nullable()->comment('ID enseignant KLASSCI');
+            // Clés LOCALES, jamais des identifiants KLASSCI (#707).
+            //
+            // Les trois commentaires disaient « ID KLASSCI ». C'était faux, et
+            // c'est ce qui a produit le défaut #707 : le résolveur d'enregistrement
+            // comparait `enseignant_id` à un identifiant KLASSCI, si bien qu'une
+            // vidéo pouvait être publiée dans le cours d'un autre enseignant.
+            //
+            // Ce que le code dit réellement :
+            //   · `Lesson::matiere()`     → belongsTo(Matiere::class)  → matieres.id
+            //   · `Lesson::classe()`      → belongsTo(Classe::class)   → classes.id
+            //   · `Lesson::enseignant()`  → belongsTo(User::class, 'enseignant_id') → users.id
+            //   · six FormRequests comparent `$lesson->enseignant_id !== $user->id`
+            //
+            // Le passage d'un identifiant KLASSCI à sa clé locale se fait AVANT
+            // toute comparaison (`Matiere::where('klassci_id', …)->id`), jamais
+            // en mélangeant les deux espaces dans un même `whereIn`.
+            $table->unsignedBigInteger('matiere_id')->nullable()->comment('matieres.id (LOCAL)');
+            $table->unsignedBigInteger('classe_id')->nullable()->comment('classes.id (LOCAL)');
+            $table->unsignedBigInteger('enseignant_id')->nullable()->comment('users.id (LOCAL)');
 
             // Informations du cours
             $table->string('title');

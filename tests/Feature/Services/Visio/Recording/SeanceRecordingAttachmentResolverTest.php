@@ -157,6 +157,118 @@ final class SeanceRecordingAttachmentResolverTest extends TestCase
         return [$seance, $lesson];
     }
 
+    // ───────── #707 : deux espaces d'identifiants dans la même comparaison ─────────
+
+    /**
+     * LE test du défaut : l'enregistrement atterrit chez un COLLÈGUE.
+     *
+     * `teacherCandidateIds()` construisait `[$klassciTeacherId]` — un identifiant
+     * KLASSCI — puis y ajoutait des `users.id` **locaux**, et confrontait le tout
+     * à `lessons.enseignant_id`, qui est un `users.id` local partout ailleurs
+     * (six FormRequests et `Lesson::belongsTo(User::class, 'enseignant_id')` le
+     * lisent ainsi).
+     *
+     * Il suffit donc qu'un collègue porte un `users.id` égal au
+     * `klassci_enseignant_id` de la séance, et enseigne la même matière à la même
+     * classe, pour que la vidéo soit publiée dans SON cours — visible par ses
+     * étudiants. Le résultat attendu est `lesson_not_found`.
+     *
+     * La fuite est intra-établissement : chaque requête porte bien son
+     * `institution_id`. C'est grave, ce n'est pas une fuite entre écoles.
+     */
+    public function test_a_recording_never_lands_in_a_colleague_lesson_by_id_collision(): void
+    {
+        $matiere = Matiere::factory()->create([
+            'institution_id' => $this->institution->id,
+            'klassci_id' => 701,
+        ]);
+        $classe = Classe::factory()->create([
+            'institution_id' => $this->institution->id,
+            'klassci_id' => 31,
+        ]);
+
+        // Le collègue : c'est son `users.id` LOCAL qui va entrer en collision.
+        $collegue = User::factory()->teacher()->create(['institution_id' => $this->institution->id]);
+        $coursDuCollegue = Lesson::factory()->create([
+            'institution_id' => $this->institution->id,
+            'matiere_id' => $matiere->id,
+            'classe_id' => $classe->id,
+            'enseignant_id' => $collegue->id,
+        ]);
+
+        // La séance appartient à un enseignant dont l'identifiant KLASSCI vaut,
+        // par malchance, le `users.id` du collègue. Le vrai enseignant n'a pas
+        // de cours pour cette matière — condition du scénario.
+        $seance = Seance::factory()->forInstitution($this->institution)->create([
+            'klassci_matiere_id' => 701,
+            'klassci_classe_id' => 31,
+            'klassci_enseignant_id' => $collegue->id,
+            'titre' => 'Physique live',
+        ]);
+
+        $result = $this->resolver()->attachReadyRecording($seance, 'https://cdn.example.test/collision.mp4');
+
+        self::assertFalse(
+            $result->success,
+            'La vidéo a été publiée dans le cours d un collègue par collision d identifiants.',
+        );
+        self::assertSame('lesson_not_found', $result->reason);
+        self::assertSame(
+            0,
+            Chapter::query()->where('lesson_id', $coursDuCollegue->id)->count(),
+            'Aucun chapitre ne doit être créé dans le cours du collègue.',
+        );
+    }
+
+    /**
+     * Le corollaire, et le piège de la correction.
+     *
+     * Retirer simplement l'identifiant KLASSCI du tableau le rendrait **vide** —
+     * et `candidateLessons()` sautait alors le filtre enseignant entièrement,
+     * renvoyant tous les cours de la matière et de la classe. La vidéo aurait
+     * atterri chez n'importe qui, ou en `ambiguous_lesson`.
+     *
+     * Un enseignant DÉCLARÉ mais introuvable localement doit donc produire
+     * `lesson_not_found`, jamais une absence de contrainte.
+     */
+    public function test_an_unresolvable_teacher_yields_lesson_not_found_not_an_open_search(): void
+    {
+        $matiere = Matiere::factory()->create([
+            'institution_id' => $this->institution->id,
+            'klassci_id' => 701,
+        ]);
+        $classe = Classe::factory()->create([
+            'institution_id' => $this->institution->id,
+            'klassci_id' => 31,
+        ]);
+        $autreEnseignant = User::factory()->teacher()->create(['institution_id' => $this->institution->id]);
+        Lesson::factory()->create([
+            'institution_id' => $this->institution->id,
+            'matiere_id' => $matiere->id,
+            'classe_id' => $classe->id,
+            'enseignant_id' => $autreEnseignant->id,
+        ]);
+
+        // Aucun utilisateur ne porte ce `klassci_enseignant_id`, et la valeur ne
+        // correspond à aucun `users.id` : la résolution échoue proprement.
+        $seance = Seance::factory()->forInstitution($this->institution)->create([
+            'klassci_matiere_id' => 701,
+            'klassci_classe_id' => 31,
+            'klassci_enseignant_id' => 888_777_666,
+            'titre' => 'Physique live',
+        ]);
+
+        $result = $this->resolver()->attachReadyRecording($seance, 'https://cdn.example.test/orphelin.mp4');
+
+        self::assertFalse($result->success);
+        self::assertSame(
+            'lesson_not_found',
+            $result->reason,
+            'Un enseignant introuvable ne doit pas ouvrir la recherche à tous les cours.',
+        );
+        self::assertSame(0, Chapter::query()->where('content_type', 'video')->count());
+    }
+
     private function resolver(): SeanceRecordingAttachmentResolver
     {
         return new SeanceRecordingAttachmentResolver(

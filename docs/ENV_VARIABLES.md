@@ -121,6 +121,30 @@ statut **actif** conserve `active_lock_key` et **empêche tout nouvel enregistre
 > `Processing` à un enregistrement en cours **couperait tout cours de plus d'une demi-heure**.
 > `RECORDINGS_MAX_RECORDING_HOURS` doit donc rester nettement au-dessus de la durée d'un cours réel.
 
+### 6.4 Rétention des chapitres mis à la corbeille
+
+Commande `chapters:purge`, planifiée quotidiennement à 03:50 — **après** `recordings:purge` (03:45).
+Détruit définitivement la ligne **et** ses fichiers, sur les deux disques.
+
+| Variable | Obligatoire | Description |
+|---|---|---|
+| `CHAPTERS_RETENTION_DAYS` | non (`30`) | #674 — durée pendant laquelle un chapitre supprimé reste récupérable (#689). Au-delà, il est détruit définitivement. |
+| `CHAPTERS_PURGE_CHUNK_SIZE` | non (`100`) | Taille des lots parcourus. Chaque chapitre coûte une transaction et deux suppressions de dossier. |
+
+> **Cette durée est une déclaration, pas un réglage de confort.** Conserver au-delà de la durée
+> déclarée est une infraction en soi (loi burkinabè 001-2021, qui la sanctionne explicitement).
+> Ne renseignez ici que ce que `chapters:purge` sait réellement appliquer — et vérifiez-le par
+> `php artisan chapters:purge --dry-run`, qui rend un inventaire sans rien détruire.
+
+> **Pourquoi 30 jours et pas davantage.** La corbeille sert à rattraper une erreur, pas à archiver.
+> Et la durée doit rester courte pour une raison qui n'est pas ergonomique : tant qu'un chapitre
+> supprimé existe, ses diapositives restent énumérables sans authentification, leurs URL étant
+> prédictibles (#598). Allonger cette durée allonge d'autant cette exposition.
+
+> **Pourquoi après `recordings:purge`.** Un chapitre engendré par un enregistrement appartient à la
+> rétention visio tant qu'une ligne `seance_recordings` le référence. La laisser passer en premier
+> libère au même cycle les chapitres dont l'enregistrement vient d'expirer.
+
 ---
 
 ## Comment vérifier le `.env` prod sans le commiter

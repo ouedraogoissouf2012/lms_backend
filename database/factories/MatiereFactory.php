@@ -3,15 +3,18 @@
 namespace Database\Factories;
 
 use App\Models\Institution;
+use Database\Factories\Concerns\MintsKlassciIdentifiers;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 class MatiereFactory extends Factory
 {
+    use MintsKlassciIdentifiers;
+
     public function definition(): array
     {
         return [
             'institution_id' => Institution::factory(),
-            'klassci_id' => fake()->unique()->numberBetween(1, 10000),
+            'klassci_id' => $this->mintKlassciId('matiere'),
             'code' => fake()->unique()->bothify('MAT-???-###'),
             'libelle' => fake()->unique()->word(),
             'description' => fake()->sentence(),

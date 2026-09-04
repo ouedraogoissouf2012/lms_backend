@@ -72,6 +72,20 @@ final class MatiereEvaluationsFetcher
     }
 
     /**
+     * Les evaluations embarquees sont DEJA scopees par KLASSCI a la matiere
+     * demandee : elles sont servies sous `matieres/{id}`, et n'ont donc PAS de
+     * cle `matiere` (redondante a cet endroit — verifie sur la reponse reelle :
+     * `id, titre, description, type, status, classe, programmation, publication`).
+     *
+     * Le catalogue global `GET evaluations`, lui, portait bien cette cle, et le
+     * filtre `matiere.id === $matiereId` y etait indispensable. Le transposer tel
+     * quel ici rejetait les 9 evaluations sur 9 (`matiere` toujours absente) —
+     * l'ecran affichait « 0 Evaluations » sur une matiere qui en a 9.
+     *
+     * On ne re-filtre donc QUE si la cle est presente (defense contre un futur
+     * changement de contrat cote KLASSCI qui melangerait plusieurs matieres),
+     * sans jamais exclure une evaluation qui ne la porte pas.
+     *
      * @param  array<string, mixed>  $matiereData
      * @return Collection<int, array<string, mixed>>
      */
@@ -83,9 +97,20 @@ final class MatiereEvaluationsFetcher
         return collect($evaluationsData)->filter(function (array $eval) use ($matiereId): bool {
             $matiere = $eval['matiere'] ?? null;
 
-            return is_array($matiere)
-                && isset($matiere['id'])
-                && $matiere['id'] === $matiereId;
+            if (!is_array($matiere)) {
+                return true;
+            }
+
+            $id = $matiere['id'] ?? null;
+
+            // KLASSCI livre les ids tantot en entier, tantot en chaine selon
+            // l'endpoint : on normalise, sans elargir le type pour faire taire
+            // PHPStan (une valeur d'un autre type reste non filtrable → conservee).
+            if (!is_int($id) && !is_string($id)) {
+                return true;
+            }
+
+            return (int) $id === $matiereId;
         })->values();
     }
 

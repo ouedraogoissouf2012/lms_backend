@@ -62,9 +62,11 @@ final class UpcomingSeancesDureeMinutesTest extends TestCase
     private function mockKlassciWithSeance(array $programmation): void
     {
         $this->mock(KlassciProxyService::class, function (MockInterface $mock) use ($programmation): void {
+            // Source = dashboard de l'enseignant, plus le catalogue global
+            // (§1.4 : `GET matieres` renvoyait les 452 matieres du tenant).
             $mock->shouldReceive('requestWithUserToken')
-                ->with('fake-token', 'matieres', 'GET')
-                ->andReturn(['data' => [['id' => 11, 'nom' => 'Maths', 'code' => 'MAT']]]);
+                ->with('fake-token', 'me/teacher-dashboard', 'GET')
+                ->andReturn(['data' => ['matieres' => [['id' => 11, 'nom' => 'Maths', 'code' => 'MAT']]]]);
 
             $mock->shouldReceive('fetchManyMatieresDetails')
                 ->andReturn([

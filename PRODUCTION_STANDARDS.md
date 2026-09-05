@@ -33,6 +33,23 @@ Conséquences concrètes :
 - **Contrôle** : Chaque commit inclut une vérification de taille. Si dépassement, refactoring obligatoire.
 - **Exceptions** : Aucune.
 
+### 1.1-bis Tout garde-fou publie son dénominateur
+
+- **Règle** : un garde-fou affiche **combien d'éléments il a inspectés**, pas seulement « aucune violation ».
+- **Règle** : il distingue trois sorties — `0` conforme, `1` violation, **`2` il n'a pas pu travailler**.
+- **Contrôle** : pour chaque garde-fou, écrire **d'abord** le test qui prouve qu'il **rougit**.
+
+**Pourquoi cette règle existe** (#701) : `check-file-sizes.php` et `check-method-sizes.php`
+affichaient tous deux « ✓ … respectent la limite » lorsqu'on les appelait sans argument — en
+n'ayant rien contrôlé. Un garde-fou incapable de dire *N* ne peut pas distinguer « rien à redire »
+de « je n'ai rien regardé », et son vert ne vaut rien.
+
+Aggravant, et c'est la partie qu'il faut retenir : un **test** exigeait ce comportement
+(`FileSizeGuardTest::test_ignores_non_app_files`). Un test peut entériner un défaut, et devient
+alors l'obstacle à sa correction.
+
+Modèle de référence : `scripts/check-phpstan-baseline.php`.
+
 ### 1.2 Sécurité Absolue
 - **Règle** : Aucun secret en plaintext en base.
 - **Règle** : Aucun `$e->getMessage()` exposé au client.

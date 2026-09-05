@@ -3,9 +3,9 @@ name: Security Audit
 # CI security pipeline: dependency checks, PHPStan, Semgrep, docs/tests and guards.
 
 on:
+  # #702 : une PR vers une branche autre que `lms` doit quand même exécuter
+  # les contrôles. Restreindre `pull_request.branches` à `lms` les sautait.
   pull_request:
-    branches:
-      - lms
   push:
     branches:
       - lms
@@ -51,6 +51,10 @@ jobs:
   dependency-review:
     name: Dependency Review (PR-level diff)
     runs-on: ubuntu-latest
+    # #702 — actions/dependency-review-action n'accepte que `pull_request`
+    # (diff de manifeste). Un push n'a pas ce payload : le job resterait
+    # sans objet. Semgrep / commitlint / SDK / file-size-guard, eux, tournent
+    # aussi sur push (voir plus bas).
     if: github.event_name == 'pull_request'
 
     steps:
@@ -104,7 +108,6 @@ jobs:
   semgrep-sast:
     name: Semgrep SAST (OWASP + default)
     runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request'
 
     container:
       image: semgrep/semgrep
@@ -157,7 +160,7 @@ jobs:
         run: mkdir -p database && touch database/database.testing.sqlite
 
       - name: OpenAPI ↔ routes sync test
-        run: vendor/bin/phpunit --filter OpenApiSyncTest
+        run: vendor/bin/phpunit --filter OpenApiSyncTest --fail-on-empty-test-suite
 
       - name: OpenAPI spec validation (JSON output)
         run: python scripts/openapi-validator.py docs/openapi.yaml --json
@@ -165,7 +168,6 @@ jobs:
   commitlint:
     name: Commit messages (conventional)
     runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request'
 
     steps:
       - name: Checkout code
@@ -181,7 +183,6 @@ jobs:
   sdk-generation:
     name: SDK Generation (smoke test)
     runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request'
 
     steps:
       - name: Checkout code
@@ -401,7 +402,6 @@ jobs:
   file-size-guard:
     name: File size guard (app ≤300 / models ≤150)
     runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request'
 
     steps:
       - name: Checkout code
@@ -417,10 +417,18 @@ jobs:
 
       - name: Check changed app/ files size
         env:
+          EVENT_NAME: ${{ github.event_name }}
           BASE_REF: ${{ github.base_ref }}
+          BEFORE: ${{ github.event.before }}
         run: |
-          git fetch --no-tags origin "$BASE_REF"
-          files=$(git diff --name-only --diff-filter=ACMR "origin/$BASE_REF...HEAD" -- app)
+          if [ "$EVENT_NAME" = "pull_request" ]; then
+            git fetch --no-tags origin "$BASE_REF"
+            files=$(git diff --name-only --diff-filter=ACMR "origin/$BASE_REF...HEAD" -- app)
+          elif [ "$BEFORE" = "0000000000000000000000000000000000000000" ]; then
+            files=$(git diff --name-only --diff-filter=ACMR HEAD -- app)
+          else
+            files=$(git diff --name-only --diff-filter=ACMR "$BEFORE...HEAD" -- app)
+          fi
           if [ -z "$files" ]; then
             echo "Aucun fichier app/ modifié — rien à contrôler."
             exit 0
@@ -431,10 +439,18 @@ jobs:
 
       - name: Check changed app/ method length
         env:
+          EVENT_NAME: ${{ github.event_name }}
           BASE_REF: ${{ github.base_ref }}
+          BEFORE: ${{ github.event.before }}
         run: |
-          git fetch --no-tags origin "$BASE_REF"
-          files=$(git diff --name-only --diff-filter=ACMR "origin/$BASE_REF...HEAD" -- app)
+          if [ "$EVENT_NAME" = "pull_request" ]; then
+            git fetch --no-tags origin "$BASE_REF"
+            files=$(git diff --name-only --diff-filter=ACMR "origin/$BASE_REF...HEAD" -- app)
+          elif [ "$BEFORE" = "0000000000000000000000000000000000000000" ]; then
+            files=$(git diff --name-only --diff-filter=ACMR HEAD -- app)
+          else
+            files=$(git diff --name-only --diff-filter=ACMR "$BEFORE...HEAD" -- app)
+          fi
           if [ -z "$files" ]; then
             echo "Aucun fichier app/ modifié — rien à contrôler."
             exit 0
@@ -452,9 +468,8 @@ jobs:
   ocp-guard:
     name: OCP guard (mode résolu au point de liaison)
     runs-on: ubuntu-latest
-    # Volontairement PAS `if: pull_request`. Cinq jobs de ce workflow sont
-    # pull_request-only : un push direct les saute (interdit 24, issue #702).
-    # Une garde qui ne tourne pas sur push n'est pas une garde.
+    # #702 : tourne aussi sur push. Seul dependency-review reste
+    # pull_request-only (l'action GitHub n'accepte pas d'autre événement).
 
     steps:
       - name: Checkout code

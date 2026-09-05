@@ -124,6 +124,16 @@ Les agents `spec-security`, `spec-architect`, `spec-reviewer` sont **read-only**
 ☑ Migration créée si la DB change
 ```
 
+### Hook git versionné (#702)
+
+Le dépôt ne protège pas le poste tant que Git n'utilise pas les hooks versionnés :
+
+```
+git config core.hooksPath .githooks
+```
+
+`.githooks/pre-commit` exécute **uniquement** les gardes rapides (taille de fichier, longueur de méthode, motif de secret). La suite PHPUnit / PHPStan reste en CI. Un hook trop lent sera désactivé ; celui-ci ne doit pas l'être.
+
 ### Les 15 questions self-critique avant CHAQUE PR
 
 Si UNE réponse = non → ne pas merger.

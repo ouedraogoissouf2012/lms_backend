@@ -7,6 +7,11 @@ includes:
     - phpstan-baseline.neon
 
 parameters:
+    # #702 — périmètre volontairement limité à `app/`.
+    # La baseline fait ~1958 lignes / 326 entrées au niveau 9. Étendre d'un
+    # coup à tests/, database/, routes/, config/ produirait un mur et la
+    # règle sauterait. Élargissement uniquement répertoire par répertoire,
+    # chacun avec sa propre baseline (interdit 24, issue #702).
     paths:
         - app
 

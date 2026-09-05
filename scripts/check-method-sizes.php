@@ -21,6 +21,17 @@ declare(strict_types=1);
  * `scripts/method-length-baseline.php` : dette tracée, tolérée, mais qui ne peut plus
  * grossir ni se multiplier.
  *
+ * ## Codes de sortie (#701)
+ *
+ *   0  conforme — le DÉNOMINATEUR est imprimé (« N fichiers inspectés »)
+ *   1  au moins un dépassement, ou une dette qui grossit
+ *   2  la garde N'A PAS PU TRAVAILLER : aucun chemin de son périmètre fourni
+ *
+ * Ce script portait le MÊME défaut que son jumeau `check-file-sizes.php` : sans
+ * argument, il affichait un coché en n'ayant rien contrôlé. Un garde-fou qui ne
+ * sait pas dire combien d'éléments il a inspectés ne peut pas distinguer « rien
+ * à redire » de « je n'ai rien regardé », et son vert ne vaut rien.
+ *
  * Usage : php scripts/check-method-sizes.php <fichier1> <fichier2> ...
  *
  * @see docs/MANIFESTE_REFACTORING.md
@@ -40,6 +51,11 @@ $violations = [];
 /** @var array<int, string> $shrunk */
 $shrunk = [];
 
+/** Chemins relevant du périmètre (app/**.php), qu'ils existent encore ou non. */
+$inScope = 0;
+/** Chemins réellement lus (un fichier supprimé par la PR ne l'est pas). */
+$inspected = 0;
+
 foreach ($files as $file) {
     $normalized = str_replace('\\', '/', $file);
 
@@ -48,14 +64,18 @@ foreach ($files as $file) {
         continue;
     }
 
+    $inScope++;
+
     if (! is_file($file)) {
-        continue; // fichier supprimé dans la PR
+        continue; // fichier supprimé dans la PR : dans le périmètre, rien à lire
     }
 
     $source = file_get_contents($file);
     if ($source === false) {
         continue;
     }
+
+    $inspected++;
 
     foreach (methodLengths($source) as $method => $length) {
         $key = $normalized . '::' . $method;
@@ -83,6 +103,19 @@ foreach ($files as $file) {
     }
 }
 
+// Aucun chemin du périmètre : la garde n'a pas pu travailler (#701).
+if ($inScope === 0) {
+    fwrite(STDERR, "
+❌ Garde-fou méthodes : aucun fichier app/**.php dans les arguments — rien n'a été contrôlé.
+");
+    fwrite(STDERR, "   Arguments reçus : " . count($files) . "
+");
+    fwrite(STDERR, "   Un vert ici ne prouverait rien. Fournir les fichiers à contrôler.
+
+");
+    exit(2);
+}
+
 if ($shrunk !== []) {
     fwrite(STDOUT, "\n✅ Méthodes réduites — pense à mettre à jour la baseline :\n");
     foreach ($shrunk as $item) {
@@ -102,7 +135,13 @@ if ($violations !== []) {
     exit(1);
 }
 
-fwrite(STDOUT, "✅ Longueur des méthodes conforme (≤ " . MAX_METHOD_LINES . " lignes).\n");
+fwrite(STDOUT, sprintf(
+    "✅ Longueur des méthodes : %d fichier(s) inspecté(s) sur %d dans le périmètre, 0 violation (≤ %d lignes).
+",
+    $inspected,
+    $inScope,
+    MAX_METHOD_LINES
+));
 exit(0);
 
 /**

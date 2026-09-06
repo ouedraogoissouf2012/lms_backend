@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\LMS\Visio;
 
+use App\Enums\ConsentPurpose;
 use App\Enums\SeanceRecordingStatus;
 use App\Models\ESBTPAttendance;
 use App\Models\Institution;
@@ -11,6 +12,7 @@ use App\Models\Seance;
 use App\Models\SeanceRecording;
 use App\Models\User;
 use App\Models\UserClass;
+use App\Services\Visio\Recording\RecordingConsentGuard;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Laravel\Sanctum\Sanctum;
@@ -41,6 +43,13 @@ final class VisioRecordingEndpointsTest extends TestCase
             'klassci_enseignant_id' => 9001,
             'klassci_classe_id' => 44,
         ]);
+        app(RecordingConsentGuard::class)->record(
+            $this->teacher,
+            $this->teacher,
+            ConsentPurpose::Capture,
+            true,
+            $this->seance,
+        );
     }
 
     public function test_owner_teacher_can_start_stop_and_poll_recording_idempotently(): void

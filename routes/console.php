@@ -38,9 +38,8 @@ Schedule::job(new ArchiveOldSeances, 'low')
     ->withoutOverlapping()
     ->onOneServer();
 
-// Planifier le nettoyage des évaluations passées non effectuées
-// Archive les évaluations terminées depuis 7+ jours sans aucune soumission
-// Les évaluations avec au moins 1 soumission sont toujours conservées
+// #705 — évaluations dont date_evaluation a 7+ jours, sans copie
+// en_cours/soumis/corrige. Une terminee du jour n'est pas touchée.
 Schedule::job(new CleanOldEvaluations, 'low')
     ->dailyAt('03:00')
     ->name('clean-old-evaluations')

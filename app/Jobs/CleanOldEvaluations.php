@@ -2,6 +2,8 @@
 
 namespace App\Jobs;
 
+use App\Enums\EvaluationStatus;
+use App\Enums\EvaluationSubmissionStatus;
 use App\Models\Evaluation;
 use App\Models\EvaluationSubmission;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -12,11 +14,8 @@ use Carbon\Carbon;
 /**
  * Job pour archiver les évaluations passées non effectuées
  *
- * Pour alléger la vue des étudiants, on archive (soft delete) les évaluations:
- * - Terminées depuis plus de X jours
- * - Que l'étudiant n'a jamais commencées
- *
- * Les évaluations avec soumissions sont TOUJOURS conservées (pour l'historique)
+ * Soft-delete les évaluations dont date_evaluation a plus de 7 jours
+ * (planifiee, en_cours ou terminee) ET sans aucune copie en_cours/soumis/corrige.
  *
  * Ce job s'exécute quotidiennement
  */
@@ -60,18 +59,14 @@ class CleanOldEvaluations implements ShouldQueue
         // Date limite: évaluations terminées depuis plus de X jours
         $cutoffDate = Carbon::now()->subDays(self::DAYS_AFTER_EVALUATION);
 
-        // Récupérer les évaluations candidates à l'archivage
-        $oldEvaluations = Evaluation::where('is_published', true)
-            ->where(function ($query) use ($cutoffDate) {
-                // Status terminée
-                $query->where('status', 'terminee')
-                    // OU date passée + durée écoulée
-                    ->orWhere(function ($q) use ($cutoffDate) {
-                        $q->where('date_evaluation', '<', $cutoffDate)
-                          ->whereIn('status', ['en_cours', 'planifiee']);
-                    });
-            })
-            ->whereNull('deleted_at') // Pas déjà archivées
+        $oldEvaluations = Evaluation::query()
+            ->where('is_published', true)
+            ->where('date_evaluation', '<', $cutoffDate)
+            ->whereIn('status', [
+                EvaluationStatus::Terminee->value,
+                EvaluationStatus::EnCours->value,
+                EvaluationStatus::Planifiee->value,
+            ])
             ->get();
 
         $logger->info('📊 [CleanOldEvaluations] Évaluations candidates', [
@@ -89,8 +84,13 @@ class CleanOldEvaluations implements ShouldQueue
 
         foreach ($oldEvaluations as $evaluation) {
             // Compter combien d'étudiants ont soumis
-            $submissionsCount = EvaluationSubmission::where('evaluation_id', $evaluation->id)
-                ->whereIn('status', ['soumis', 'corrige'])
+            $submissionsCount = EvaluationSubmission::query()
+                ->where('evaluation_id', $evaluation->id)
+                ->whereIn('status', [
+                    EvaluationSubmissionStatus::EnCours->value,
+                    EvaluationSubmissionStatus::Soumis->value,
+                    EvaluationSubmissionStatus::Corrige->value,
+                ])
                 ->count();
 
             // Si PERSONNE n'a fait l'évaluation, on peut l'archiver

@@ -5,8 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Seances;
 
 use App\Models\User;
-use App\Services\KlassciProxyService;
-use Carbon\Carbon;
+use App\Services\SeancesListQueryService;
 use Illuminate\Support\Collection;
 use Psr\Log\LoggerInterface;
 
@@ -21,21 +20,30 @@ use Psr\Log\LoggerInterface;
  * Builds the upcoming-séances listing for any role:
  *   1. Resolve the user's OWN matières ({@see UserOwnMatieresResolver}) —
  *      never the tenant catalogue, cf. §1.4.
- *   2. For each matière, walk `seances_programmees`.
+ *   2. Source the séances of the window from KLASSCI's emploi du temps.
  *   3. Filter by date window, optional classe id, hidden flag (students only).
  *   4. Map to the legacy output shape (programmation + matiere + classe + visio).
  *
- * @see \App\Services\SeancesListQueryService (orchestrator)
+ * ## La source a changé — et c'était LE défaut
+ *
+ * L'étape 2 lisait `matieres/{id}.data.seances_programmees`, sous un commentaire
+ * affirmant « endpoint emploi-temps bugué, [...] seances_programmees
+ * (fonctionne!) ». Les deux moitiés étaient fausses : le calendrier affichait
+ * « Aucune séance programmée » sur un emploi du temps rempli. Mesures et
+ * contraintes dans {@see KlassciEmploiTempsSeances}.
+ *
+ * @see SeancesListQueryService (orchestrator)
  */
 final class UpcomingSeancesFetcher
 {
     public function __construct(
         private readonly LoggerInterface $logger,
-        private readonly KlassciProxyService $klassciService,
         private readonly ManagerSeancesLocalFetcher $managerFetcher,
         private readonly LocalSeanceLookup $localLookup,
         private readonly UpcomingSeanceMapper $mapper,
         private readonly UserOwnMatieresResolver $ownMatieres,
+        private readonly KlassciEmploiTempsSeances $emploiTemps,
+        private readonly UpcomingSeanceLocalOverlay $overlay,
     ) {}
 
     /**
@@ -47,26 +55,29 @@ final class UpcomingSeancesFetcher
             return $this->fetchForManager($dateDebut, $dateFin, $teacherId, $classeId);
         }
 
-        // WORKAROUND: endpoint emploi-temps bugué, on utilise matieres/{id}
-        // qui retourne seances_programmees (fonctionne!)
-        $this->logger->info('Récupération séances via endpoint /matieres (workaround)');
-
         /** @var Collection<int, array<string, mixed>> $seances */
         $seances = collect([]);
 
         try {
-            [$matieres, $matieresDetails] = $this->loadMatieresWithDetails($user, $klassciToken);
-            $candidates = $this->collectCandidates($matieres, $matieresDetails, $dateDebut, $dateFin, $classeId);
+            [$matieres, $seancesParMatiere] = $this->loadMatieresWithSeances($user, $klassciToken, $dateDebut, $dateFin);
+            $candidates = $this->collectCandidates($matieres, $seancesParMatiere, $dateDebut, $dateFin, $classeId);
             $seances = $this->assembleVisibleSeances($candidates, $user);
 
-            $this->logger->info('Séances récupérées via matieres', ['count' => $seances->count()]);
+            $this->logger->info('Séances récupérées via emploi-temps', ['count' => $seances->count()]);
         } catch (\Exception $e) {
-            $this->logger->error('Erreur récupération séances via matieres', [
+            // DETTE TRACÉE : cette capture rend une liste VIDE en HTTP 200 quand
+            // KLASSCI est injoignable — le calendrier affirme alors « aucune
+            // séance » au lieu de signaler la panne. Comportement CONSERVÉ ici :
+            // le corriger est un changement de contrat HTTP, qui n'a pas sa
+            // place dans un changement de source. Suivi à part.
+            $this->logger->error('Erreur récupération séances via emploi-temps', [
                 'error' => $e->getMessage(),
             ]);
         }
 
-        return $this->enrichWithVisio($seances);
+        // Le lookup est passe EN ARGUMENT : il porte l'etat du prechargement
+        // et n'est pas un singleton (cf. UpcomingSeanceLocalOverlay).
+        return $this->overlay->apply($seances, $this->localLookup);
     }
 
     /**
@@ -88,12 +99,15 @@ final class UpcomingSeancesFetcher
     }
 
     /**
-     * Récupère les matières de l'utilisateur puis, en UN pool batch (#135),
-     * leurs détails (séances programmées). ID échoué = absent du map.
+     * Les matières de l'utilisateur, puis les séances de la fenêtre en UN appel
+     * `emploi-temps` — quel que soit le nombre de matières.
      *
-     * @return array{0: Collection<int, array<string, mixed>>, 1: array<int, array<string, mixed>>}
+     * Sans matière, pas de séance : `fetchByMatiere` rend un tableau vide sans
+     * interroger KLASSCI, et on ne retombe JAMAIS sur le catalogue du tenant.
+     *
+     * @return array{0: Collection<int, array<string, mixed>>, 1: array<int, list<array<string, mixed>>>}
      */
-    private function loadMatieresWithDetails(User $user, string $klassciToken): array
+    private function loadMatieresWithSeances(User $user, string $klassciToken, string $dateDebut, string $dateFin): array
     {
         $matieres = $this->ownMatieres->resolve($user, $klassciToken);
 
@@ -102,12 +116,7 @@ final class UpcomingSeancesFetcher
             fn (array $matiere): ?int => KlassciPayload::toInt($matiere['id'] ?? null),
         );
 
-        // Sans matière, pas de séance : on ne retombe JAMAIS sur le catalogue.
-        if ($matiereIds === []) {
-            return [$matieres, []];
-        }
-
-        return [$matieres, $this->klassciService->fetchManyMatieresDetails($matiereIds, $klassciToken)];
+        return [$matieres, $this->emploiTemps->fetchByMatiere($klassciToken, $matiereIds, $dateDebut, $dateFin)];
     }
 
     /**
@@ -142,23 +151,24 @@ final class UpcomingSeancesFetcher
      * (après pré-chargement), pour éliminer les N+1.
      *
      * @param  Collection<int, array<string, mixed>>  $matieres
-     * @param  array<int, array<string, mixed>>  $matieresDetails
+     * @param  array<int, list<array<string, mixed>>>  $seancesParMatiere
      * @return list<array{0: Collection<int, array<string, mixed>>, 1: array<string, mixed>}>
      */
-    private function collectCandidates(Collection $matieres, array $matieresDetails, string $dateDebut, string $dateFin, ?int $classeId): array
+    private function collectCandidates(Collection $matieres, array $seancesParMatiere, string $dateDebut, string $dateFin, ?int $classeId): array
     {
         $candidates = [];
         foreach ($matieres as $matiere) {
             $matiereArr = KlassciPayload::asArray($matiere);
             $matiereId = KlassciPayload::toInt($matiereArr['id'] ?? null);
-            if ($matiereId === null || ! isset($matieresDetails[$matiereId])) {
+            if ($matiereId === null || ! isset($seancesParMatiere[$matiereId])) {
                 continue;
             }
 
-            $seancesProgrammees = collect(
-                KlassciPayload::listOfArrays(KlassciPayload::asArray($matieresDetails[$matiereId]['data'] ?? null)['seances_programmees'] ?? null)
-            );
-            $candidates[] = [$this->filterByDateAndClasse($seancesProgrammees, $dateDebut, $dateFin, $classeId), $matiereArr];
+            // Le filtre de dates est CONSERVÉ bien qu'`emploi-temps` soit déjà
+            // interrogé avec la fenêtre : rien ne garantit que KLASSCI l'honore
+            // au jour près, et le filtre `classe_id` reste, lui, purement local.
+            $seances = collect($seancesParMatiere[$matiereId]);
+            $candidates[] = [$this->filterByDateAndClasse($seances, $dateDebut, $dateFin, $classeId), $matiereArr];
         }
 
         return $candidates;
@@ -229,69 +239,5 @@ final class UpcomingSeancesFetcher
 
             return ! $this->localLookup->isArchived($kid) && ! $this->localLookup->isHidden($kid);
         });
-    }
-
-    /**
-     * Enrichir avec les infos visio du LMS.
-     *
-     * @param Collection<int, array<string, mixed>> $seances
-     * @return Collection<int, array<string, mixed>>
-     */
-    private function enrichWithVisio(Collection $seances): Collection
-    {
-        /** @var Collection<int, array<string, mixed>> $enriched */
-        $enriched = $seances->map(function (array $seance): array {
-            $seance = $this->withDureeMinutes($seance);
-
-            // Chercher infos visio dans la table locale — résolu EN MÉMOIRE depuis
-            // le même pré-chargement que le filtre (mutualisation #476, plus de N+1).
-            $visioInfo = $this->localLookup->seanceFor(KlassciPayload::toInt($seance['id'] ?? null));
-
-            if ($visioInfo) {
-                $seance['visio_enabled'] = $visioInfo->visio_enabled;
-                $seance['visio_type'] = $visioInfo->visio_type;
-                $seance['visio_room_id'] = $visioInfo->visio_room_id;
-                $seance['visio_active'] = $visioInfo->visio_active;
-                $seance['visio_started_at'] = $visioInfo->visio_started_at?->toISOString();
-                $seance['visio_ended_at'] = $visioInfo->visio_ended_at?->toISOString();
-            } else {
-                // Pas de visio configurée pour cette séance
-                $seance['visio_enabled'] = false;
-                $seance['visio_type'] = null;
-                $seance['visio_room_id'] = null;
-                $seance['visio_active'] = false;
-                $seance['visio_started_at'] = null;
-                $seance['visio_ended_at'] = null;
-            }
-
-            return $seance;
-        });
-
-        return $enriched;
-    }
-
-    /**
-     * Ajoute `duree_minutes` (entier, minutes) à partir des heures de
-     * `programmation`, qui sont des datetimes ISO déjà alignés sur la date de
-     * séance (UpcomingSeanceMapper + SeanceProgrammationNormalizer). On les parse
-     * tels quels, SANS reconcaténer la date — cohérent avec
-     * SeanceDetailQueryService (#487). Heure(s) manquante(s) → clé omise.
-     *
-     * @param  array<string, mixed>  $seance
-     * @return array<string, mixed>
-     */
-    private function withDureeMinutes(array $seance): array
-    {
-        $prog = KlassciPayload::asArray($seance['programmation'] ?? null);
-        $heureDebutRaw = KlassciPayload::toStringOrNull($prog['heure_debut'] ?? null);
-        $heureFinRaw = KlassciPayload::toStringOrNull($prog['heure_fin'] ?? null);
-
-        if ($heureDebutRaw !== null && $heureFinRaw !== null) {
-            $heureDebut = Carbon::parse($heureDebutRaw);
-            $heureFin = Carbon::parse($heureFinRaw);
-            $seance['duree_minutes'] = (int) $heureDebut->diffInMinutes($heureFin, absolute: true);
-        }
-
-        return $seance;
     }
 }

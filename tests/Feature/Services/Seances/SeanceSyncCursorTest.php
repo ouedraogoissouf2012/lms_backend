@@ -156,8 +156,8 @@ final class SeanceSyncCursorTest extends TestCase
                         ? ['data' => [['id' => 10, 'nom' => 'Maths']]]
                         : ['data' => []];
                 });
-            $mock->shouldReceive('fetchManyMatieresDetails')
-                ->andReturn([10 => ['data' => ['seances_programmees' => []]]]);
+            $mock->shouldReceive('getEmploiTemps')
+                ->andReturn(['data' => []]);
         });
 
         app(TenantManager::class)->reset();
@@ -211,8 +211,8 @@ final class SeanceSyncCursorTest extends TestCase
 
                     return ['data' => [['id' => 10, 'nom' => 'Maths']]];
                 });
-            $mock->shouldReceive('fetchManyMatieresDetails')
-                ->andReturn([10 => ['data' => ['seances_programmees' => []]]]);
+            $mock->shouldReceive('getEmploiTemps')
+                ->andReturn(['data' => []]);
         });
         app(TenantManager::class)->reset();
 
@@ -249,12 +249,13 @@ final class SeanceSyncCursorTest extends TestCase
                 ->andReturnUsing(fn (string $token, string $endpoint): array => $endpoint === 'matieres'
                     ? ['data' => [['id' => 10, 'nom' => 'Maths']]]
                     : ['data' => []]);
-            $mock->shouldReceive('fetchManyMatieresDetails')
-                ->andReturn([10 => ['data' => ['seances_programmees' => [[
+            $mock->shouldReceive('getEmploiTemps')
+                ->andReturn(['data' => [[
                     'id' => 42,
-                    'programmation' => ['date' => '2026-09-01'],
+                    'matiere' => ['id' => 10],
+                    'programmation' => ['date_seance' => '2026-09-01'],
                     'classe' => ['id' => 501, 'nom' => 'TA'],
-                ]]]]]);
+                ]]]);
         });
         app(TenantManager::class)->reset();
 
@@ -381,8 +382,8 @@ final class SeanceSyncCursorTest extends TestCase
 
                     return ['data' => []];
                 });
-            $mock->shouldReceive('fetchManyMatieresDetails')
-                ->andReturn([10 => ['data' => ['seances_programmees' => []]]]);
+            $mock->shouldReceive('getEmploiTemps')
+                ->andReturn(['data' => []]);
         });
 
         app(TenantManager::class)->reset();

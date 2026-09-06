@@ -8,6 +8,7 @@ use App\Models\Seance;
 use App\Models\SeanceUserHidden;
 use App\Models\User;
 use App\Services\KlassciProxyService;
+use App\Services\SeancesListQueryService;
 use Illuminate\Support\Collection;
 use Psr\Log\LoggerInterface;
 
@@ -21,7 +22,9 @@ use Psr\Log\LoggerInterface;
  *
  * Builds the student's class séances listing:
  *   1. Read student dashboard → cours[] + classe.id.
- *   2. For each cours, walk `seances_programmees`.
+ *   2. Source the séances of the window from KLASSCI's emploi du temps —
+ *      `seances_programmees` est TOUJOURS vide côté KLASSCI, cf.
+ *      {@see KlassciEmploiTempsSeances}.
  *   3. Keep only séances of the student's class.
  *   4. Drop archived + user-hidden séances.
  *   5. Resolve enseignant name (local DB lookup with fallback).
@@ -33,13 +36,14 @@ use Psr\Log\LoggerInterface;
  *   - `null` if no class can be resolved for the student (caller renders 404).
  *   - A collection of mapped séances (possibly empty) otherwise.
  *
- * @see \App\Services\SeancesListQueryService (orchestrator)
+ * @see SeancesListQueryService (orchestrator)
  */
 final class StudentClassesSeancesFetcher
 {
     public function __construct(
         private readonly LoggerInterface $logger,
         private readonly KlassciProxyService $klassciService,
+        private readonly KlassciEmploiTempsSeances $emploiTemps,
     ) {}
 
     /**
@@ -49,15 +53,15 @@ final class StudentClassesSeancesFetcher
 
     /**
      * @return Collection<int, array<string, mixed>>|self::RESULT_NO_MATIERES|null
-     *         - `null` : student has no resolvable class (caller renders 404).
-     *         - `self::RESULT_NO_MATIERES` : student has a class but no matières.
-     *         - Collection : normal happy path (possibly empty).
+     *                                                                             - `null` : student has no resolvable class (caller renders 404).
+     *                                                                             - `self::RESULT_NO_MATIERES` : student has a class but no matières.
+     *                                                                             - Collection : normal happy path (possibly empty).
      */
-    public function fetch(User $user, string $klassciToken): Collection|string|null
+    public function fetch(User $user, string $klassciToken, string $dateDebut, string $dateFin): Collection|string|null
     {
         $this->logger->info('Récupération séances étudiant', [
             'user_id' => $user->id,
-            'klassci_id' => $user->klassci_id
+            'klassci_id' => $user->klassci_id,
         ]);
 
         // Récupérer le dashboard étudiant pour avoir sa classe
@@ -69,7 +73,7 @@ final class StudentClassesSeancesFetcher
 
         $classeId = $dashboard['data']['classe']['id'] ?? null;
 
-        if (!$classeId) {
+        if (! $classeId) {
             return null;
         }
 
@@ -96,14 +100,17 @@ final class StudentClassesSeancesFetcher
             );
             if ($matiereId === null) {
                 $this->logger->warning('[LMS] Matière sans ID valide', ['matiere' => $matiere]);
+
                 continue;
             }
             $matiereIdByIndex[$index] = $matiereId;
         }
 
-        $matieresDetails = $this->klassciService->fetchManyMatieresDetails(
+        $seancesParMatiere = $this->emploiTemps->fetchByMatiere(
+            $klassciToken,
             array_values(array_unique($matiereIdByIndex)),
-            $klassciToken
+            $dateDebut,
+            $dateFin,
         );
 
         foreach ($coursFromDashboard as $index => $matiere) {
@@ -112,15 +119,8 @@ final class StudentClassesSeancesFetcher
                 continue;
             }
 
-            $matiereDetails = $matieresDetails[$matiereId] ?? null;
-            if ($matiereDetails === null) {
-                continue; // matière échouée dans le pool — log déjà émis par le batch fetcher
-            }
-
             $matiereArr = KlassciPayload::asArray($matiere);
-            $seancesProgrammees = collect(
-                KlassciPayload::listOfArrays(KlassciPayload::asArray($matiereDetails['data'] ?? null)['seances_programmees'] ?? null)
-            );
+            $seancesProgrammees = collect($seancesParMatiere[$matiereId] ?? []);
             $seancesClasse = $this->filterForStudent($seancesProgrammees, $classeId, $user);
             $seancesEnrichies = $this->mapStudentSeances($seancesClasse, $matiereArr, $matiereId);
 
@@ -135,7 +135,7 @@ final class StudentClassesSeancesFetcher
      * Garde uniquement les séances de la classe de l'étudiant, en excluant
      * les séances archivées et celles que l'étudiant a masquées.
      *
-     * @param Collection<int, array<string, mixed>> $seances
+     * @param  Collection<int, array<string, mixed>>  $seances
      * @return Collection<int, array<string, mixed>>
      */
     private function filterForStudent(Collection $seances, int $classeId, User $user): Collection
@@ -153,7 +153,7 @@ final class StudentClassesSeancesFetcher
             $localSeance = Seance::where('klassci_seance_id', $seance['id'])->first();
 
             // Si la séance existe en local et est archivée, ne pas la montrer
-            if ($localSeance && !$localSeance->is_active) {
+            if ($localSeance && ! $localSeance->is_active) {
                 return false;
             }
 
@@ -168,8 +168,8 @@ final class StudentClassesSeancesFetcher
     }
 
     /**
-     * @param Collection<int, array<string, mixed>> $seancesClasse
-     * @param array<string, mixed> $matiere
+     * @param  Collection<int, array<string, mixed>>  $seancesClasse
+     * @param  array<string, mixed>  $matiere
      * @return Collection<int, array<string, mixed>>
      */
     private function mapStudentSeances(Collection $seancesClasse, array $matiere, int $matiereId): Collection
@@ -202,20 +202,20 @@ final class StudentClassesSeancesFetcher
                         KlassciPayload::toStringOrNull($prog['heure_fin'] ?? null),
                         $date
                     ),
-                    'salle' => $prog['salle'] ?? null
+                    'salle' => $prog['salle'] ?? null,
                 ],
                 'salle' => $prog['salle'] ?? null, // Aussi en racine pour compatibilité
                 'matiere' => [
                     'id' => $matiereId,
                     'nom' => $matiere['nom'] ?? $matiere['name'] ?? $matiere['libelle'] ?? 'N/A',
-                    'code' => $matiere['code'] ?? null
+                    'code' => $matiere['code'] ?? null,
                 ],
                 'classe' => [
                     'id' => $classe['id'] ?? null,
-                    'nom' => $classe['nom'] ?? 'N/A'
+                    'nom' => $classe['nom'] ?? 'N/A',
                 ],
                 'enseignant' => [
-                    'nom' => $enseignantNom
+                    'nom' => $enseignantNom,
                 ],
                 'visio' => $visioData ? [
                     // Une séance est considérée "avec visio" si:
@@ -226,15 +226,15 @@ final class StudentClassesSeancesFetcher
                     'status' => $visioData->visio_status,
                     'room_id' => $visioData->visio_room_id,
                     'started_at' => $visioData->visio_started_at,
-                    'participants_count' => $visioData->current_participants_count ?? 0
-                ] : null
+                    'participants_count' => $visioData->current_participants_count ?? 0,
+                ] : null,
             ];
         });
     }
 
     /**
-     * @param array<string, mixed> $seance
-     * @param array<string, mixed> $matiere
+     * @param  array<string, mixed>  $seance
+     * @param  array<string, mixed>  $matiere
      */
     private function resolveEnseignantNom(array $seance, array $matiere, ?Seance $visioData): string
     {
@@ -244,7 +244,7 @@ final class StudentClassesSeancesFetcher
 
         // Fallback: chercher une autre séance de la même matière pour récupérer l'enseignant
         $matiereNom = $matiere['nom'] ?? $matiere['name'] ?? $matiere['libelle'] ?? null;
-        if (!$matiereNom) {
+        if (! $matiereNom) {
             return 'Non assigné';
         }
 
@@ -252,14 +252,14 @@ final class StudentClassesSeancesFetcher
             ->whereNotNull('enseignant_nom')
             ->first();
 
-        if (!$autreSeance) {
+        if (! $autreSeance) {
             return 'Non assigné';
         }
 
         $this->logger->info('Enseignant récupéré depuis autre séance même matière', [
             'seance_id' => $seance['id'],
             'matiere' => $matiereNom,
-            'enseignant' => $autreSeance->enseignant_nom
+            'enseignant' => $autreSeance->enseignant_nom,
         ]);
 
         return $autreSeance->enseignant_nom;

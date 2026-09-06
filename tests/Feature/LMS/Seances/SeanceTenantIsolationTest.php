@@ -5,12 +5,16 @@ declare(strict_types=1);
 namespace Tests\Feature\LMS\Seances;
 
 use App\Jobs\SyncKlassciSeances;
+use App\Models\Classe;
 use App\Models\Institution;
+use App\Models\Notification;
 use App\Models\Seance;
 use App\Models\User;
 use App\Services\ClasseSyncService;
 use App\Services\KlassciProxyService;
 use App\Services\NotificationService;
+use App\Services\Seances\Sync\KlassciSeancesSyncService;
+use App\Services\Seances\TeachingSeancesFetcher;
 use App\Services\TenantManager;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Mockery\MockInterface;
@@ -34,6 +38,14 @@ use Tests\TestCase;
 final class SeanceTenantIsolationTest extends TestCase
 {
     use RefreshDatabase;
+
+    /**
+     * `emploi-temps` sans fenêtre ne rend que la semaine courante : la fenêtre
+     * est un paramètre obligatoire de `fetch()`, jamais un défaut implicite.
+     */
+    private const FENETRE_DEBUT = '2026-01-01';
+
+    private const FENETRE_FIN = '2026-12-31';
 
     protected function tearDown(): void
     {
@@ -157,13 +169,13 @@ final class SeanceTenantIsolationTest extends TestCase
         });
 
         $tenant = app(TenantManager::class);
-        $fetcher = app(\App\Services\Seances\TeachingSeancesFetcher::class);
+        $fetcher = app(TeachingSeancesFetcher::class);
 
         $tenant->set($schoolA);
-        $fetcher->fetch($teacherA, 'token-a');
+        $fetcher->fetch($teacherA, 'token-a', self::FENETRE_DEBUT, self::FENETRE_FIN);
 
         $tenant->set($schoolB);
-        $fetcher->fetch($teacherB, 'token-b');
+        $fetcher->fetch($teacherB, 'token-b', self::FENETRE_DEBUT, self::FENETRE_FIN);
 
         self::assertSame(
             2,
@@ -191,11 +203,11 @@ final class SeanceTenantIsolationTest extends TestCase
         $schoolB = Institution::factory()->create(['slug' => 'school-b']);
 
         // Même klassci_id de classe des deux côtés, chacune avec son étudiant.
-        $classeA = \App\Models\Classe::factory()->for($schoolA)->create(['klassci_id' => 700]);
+        $classeA = Classe::factory()->for($schoolA)->create(['klassci_id' => 700]);
         $studentA = User::factory()->for($schoolA)->create(['role' => 'etudiant']);
         $classeA->etudiants()->attach($studentA->id, ['statut' => 'actif']);
 
-        $classeB = \App\Models\Classe::factory()->for($schoolB)->create(['klassci_id' => 700]);
+        $classeB = Classe::factory()->for($schoolB)->create(['klassci_id' => 700]);
         $studentB = User::factory()->for($schoolB)->create(['role' => 'etudiant']);
         $classeB->etudiants()->attach($studentB->id, ['statut' => 'actif']);
 
@@ -208,20 +220,20 @@ final class SeanceTenantIsolationTest extends TestCase
             $mock->shouldReceive('requestWithUserToken')
                 ->with('token-a', 'matieres', 'GET')
                 ->andReturn(['data' => [['id' => 10, 'nom' => 'Matiere A']]]);
-            $mock->shouldReceive('fetchManyMatieresDetails')
-                ->with([10], 'token-a')
-                ->andReturn([10 => ['data' => ['seances_programmees' => [[
+            $mock->shouldReceive('getEmploiTemps')
+                ->andReturn(['data' => [[
                     'id' => 42,
-                    'programmation' => ['date' => '2026-08-01', 'heure_debut' => '2026-08-01T09:00:00Z'],
+                    'matiere' => ['id' => 10],
+                    'programmation' => ['date_seance' => '2026-08-01', 'heure_debut' => '2026-08-01T09:00:00Z'],
                     'classe' => ['id' => 700, 'nom' => 'Classe A'],
-                ]]]]]);
+                ]]]);
             $this->stubQuietClasseSync($mock);
         });
 
         app(TenantManager::class)->reset();
         $this->runSyncJob();
 
-        $notifiedUserIds = \App\Models\Notification::withoutGlobalScope('institution')
+        $notifiedUserIds = Notification::withoutGlobalScope('institution')
             ->pluck('user_id')
             ->all();
 
@@ -232,7 +244,7 @@ final class SeanceTenantIsolationTest extends TestCase
     private function runSyncJob(): void
     {
         (new SyncKlassciSeances)->handle(
-            app(\App\Services\Seances\Sync\KlassciSeancesSyncService::class),
+            app(KlassciSeancesSyncService::class),
             app(LoggerInterface::class),
         );
     }
@@ -279,18 +291,23 @@ final class SeanceTenantIsolationTest extends TestCase
             ->with($token, 'matieres', 'GET')
             ->andReturn(['data' => [['id' => 10, 'nom' => $matiereNom]]]);
 
-        $mock->shouldReceive('fetchManyMatieresDetails')
-            ->with([10], $token)
-            ->andReturn([10 => ['data' => ['seances_programmees' => [[
+        // La synchronisation planifiée lit désormais l'emploi du temps, comme
+        // les listes affichées — `seances_programmees` étant toujours vide chez
+        // KLASSCI, elle ne confirmait sinon aucune séance et l'archivage
+        // désactivait tout le tenant à chaque cycle.
+        $mock->shouldReceive('getEmploiTemps')
+            ->with($token, \Mockery::any())
+            ->andReturn(['data' => [[
                 'id' => $seanceId,
-                'programmation' => ['date' => '2026-08-01', 'heure_debut' => '2026-08-01T09:00:00Z'],
+                'matiere' => ['id' => 10],
+                'programmation' => ['date_seance' => '2026-08-01', 'heure_debut' => '2026-08-01T09:00:00Z'],
                 'classe' => ['id' => $classeId, 'nom' => $classeNom],
-            ]]]]]);
+            ]]]);
     }
 
     /**
      * Stub le flux de TeachingSeancesFetcher pour un token : teacher-dashboard
-     * (matières) + batch séances + batch effectifs de classe.
+     * (matières) + emploi du temps + batch effectifs de classe.
      */
     private function stubTeacherDashboard(
         MockInterface $mock,
@@ -304,13 +321,16 @@ final class SeanceTenantIsolationTest extends TestCase
             ->with($token, 'me/teacher-dashboard', 'GET')
             ->andReturn(['data' => ['matieres' => [['id' => 10, 'nom' => $matiereNom]]]]);
 
-        $mock->shouldReceive('fetchManyMatieresDetails')
-            ->with([10], $token)
-            ->andReturn([10 => ['data' => ['seances_programmees' => [[
+        // Forme RÉELLE d'`emploi-temps` : `date_seance`, `salle` à la racine, et
+        // la matière portée par la séance (le tri par matière est LOCAL).
+        $mock->shouldReceive('getEmploiTemps')
+            ->with($token, ['date_debut' => self::FENETRE_DEBUT, 'date_fin' => self::FENETRE_FIN])
+            ->andReturn(['data' => [[
                 'id' => $seanceId,
-                'programmation' => ['date' => '2026-08-01', 'heure_debut' => '2026-08-01T09:00:00Z'],
+                'matiere' => ['id' => 10],
+                'programmation' => ['date_seance' => '2026-08-01', 'heure_debut' => '2026-08-01T09:00:00Z'],
                 'classe' => ['id' => $classeId, 'nom' => $classeNom],
-            ]]]]]);
+            ]]]);
 
         $mock->shouldReceive('fetchManyClassesDetails')
             ->with([$classeId], $token)

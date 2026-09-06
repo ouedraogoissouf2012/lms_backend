@@ -22,12 +22,26 @@ use Psr\Log\LoggerInterface;
  *
  * Builds the teacher's séances listing:
  *   1. Walk teacher-dashboard matières.
- *   2. For each matière, walk `seances_programmees`.
+ *   2. Source the séances of the window from KLASSCI's emploi du temps.
  *   3. Auto-create local Seance row when missing (visio disabled by default).
  *   4. Look up class effectif via KLASSCI.
  *   5. Map to the flat + nested legacy shape.
  *
- * @see SeancesListQueryService (orchestrator)
+ * ## La source a changé — et c'était LE défaut
+ *
+ * Les étapes 2 à 4 partaient jusqu'ici d'un pool `matieres/{id}`, dont on lisait
+ * `data.seances_programmees`. Cette clé est **toujours vide** chez KLASSCI :
+ * `matieres/3` renvoyait `seances_programmees: []` en annonçant, dans le même
+ * corps, `statistiques.seances.total_programmees: 28` (mesuré le 2026-09-05).
+ * L'enseignant voyait « Séances 0 ».
+ *
+ * {@see KlassciEmploiTempsSeances} interroge l'emploi du temps, qui répond
+ * vraiment. Le pool `matieres/{id}` disparaît par la même occasion : il ne
+ * servait QU'À lire cette clé morte. Autant d'appels HTTP en moins par
+ * affichage — la rafale même qui arme le filtre anti-abus de l'hébergement de
+ * KLASSCI.
+ *
+ * @see SeancesListQueryService (orchestrator — décide la fenêtre de dates)
  */
 final class TeachingSeancesFetcher
 {
@@ -35,76 +49,56 @@ final class TeachingSeancesFetcher
         private readonly LoggerInterface $logger,
         private readonly KlassciProxyService $klassciService,
         private readonly SeanceCacheDataBuilder $cacheBuilder,
+        private readonly KlassciEmploiTempsSeances $emploiTemps,
     ) {}
 
     /**
+     * La fenêtre est imposée par l'appelant : `emploi-temps` interrogé sans
+     * `date_debut`/`date_fin` ne rend que la semaine courante (mesuré).
+     *
      * @return Collection<int, array<string, mixed>>
      */
-    public function fetch(User $user, string $klassciToken): Collection
+    public function fetch(User $user, string $klassciToken, string $dateDebut, string $dateFin): Collection
     {
         $this->logger->info('Récupération séances enseignant', [
             'user_id' => $user->id,
             'klassci_id' => $user->klassci_id,
         ]);
 
-        // Utiliser le teacher-dashboard qui contient les matières de l'enseignant
-        $dashboard = $this->klassciService->requestWithUserToken(
+        $matieres = $this->teacherMatieres($klassciToken);
+
+        // Le filtre par matière est LOCAL : KLASSCI accepte `matiere_id` et
+        // l'ignore (mesuré — il renvoyait les séances d'autres matières).
+        $seancesParMatiere = $this->emploiTemps->fetchByMatiere(
             $klassciToken,
-            'me/teacher-dashboard',
-            'GET'
+            KlassciPayload::uniqueIntIds($matieres, fn (array $m): ?int => KlassciPayload::toInt($m['id'] ?? null)),
+            $dateDebut,
+            $dateFin,
         );
-
-        $matieres = collect(KlassciPayload::listOfArrays(
-            KlassciPayload::asArray($dashboard['data'] ?? null)['matieres'] ?? null
-        ));
-        /** @var Collection<int, array<string, mixed>> $seances */
-        $seances = collect([]);
-
-        // PERF (#135) : paralléliser les détails matières — était N appels
-        // `matieres/{id}` séquentiels (N+1). Le pool gère memo + cache + erreurs
-        // partielles (ID échoué = absent du map → matière silencieusement omise,
-        // log émis par le batch fetcher : même sémantique que l'ancien try/catch).
-        $matiereIds = [];
-        foreach ($matieres as $matiere) {
-            $id = KlassciPayload::toInt(KlassciPayload::asArray($matiere)['id'] ?? null);
-            if ($id !== null) {
-                $matiereIds[] = $id;
-            }
-        }
-        $matiereIds = array_values(array_unique($matiereIds));
-        $matieresDetails = $this->klassciService->fetchManyMatieresDetails($matiereIds, $klassciToken);
 
         // PERF (#135) : pré-charger en UN pool dédupliqué tous les effectifs de
         // classe — était 1 appel `classes/{id}` séquentiel PAR séance.
         $classesDetails = $this->klassciService->fetchManyClassesDetails(
-            $this->collectClasseIds($matieresDetails),
+            $this->collectClasseIds($seancesParMatiere),
             $klassciToken
         );
 
+        /** @var Collection<int, array<string, mixed>> $seances */
+        $seances = collect([]);
+
         foreach ($matieres as $matiere) {
-            $matiereArr = KlassciPayload::asArray($matiere);
-            $matiereId = KlassciPayload::toInt($matiereArr['id'] ?? null);
+            $matiereId = KlassciPayload::toInt($matiere['id'] ?? null);
             if ($matiereId === null) {
                 continue;
             }
 
-            $matiereDetails = $matieresDetails[$matiereId] ?? null;
-            if ($matiereDetails === null) {
-                continue; // matière échouée dans le pool — log déjà émis par le batch fetcher
-            }
-
-            $seancesProgrammees = collect(
-                KlassciPayload::listOfArrays(KlassciPayload::asArray($matiereDetails['data'] ?? null)['seances_programmees'] ?? null)
-            );
-
-            $seancesEnrichies = $seancesProgrammees->map(function (array $seance) use ($matiereArr, $user, $klassciToken, $classesDetails) {
-                $visioData = $this->ensureLocalSeanceExists($seance, $matiereArr, $user, $klassciToken);
-                $classeEffectif = KlassciPayload::classeEffectif($seance, $classesDetails);
-
-                return $this->mapSeance($seance, $matiereArr, $user, $visioData, $classeEffectif);
-            });
-
-            $seances = $seances->concat($seancesEnrichies);
+            $seances = $seances->concat($this->enrich(
+                $seancesParMatiere[$matiereId] ?? [],
+                $matiere,
+                $user,
+                $klassciToken,
+                $classesDetails,
+            ));
         }
 
         // Trier par date/heure
@@ -112,18 +106,55 @@ final class TeachingSeancesFetcher
     }
 
     /**
-     * Collecte les IDs de classe (dédupliqués) de toutes les séances programmées
-     * pour les pré-charger en un seul pool.
+     * Les matières de l'enseignant, via le teacher-dashboard — la seule source
+     * qui les rende réellement scopées à lui (le catalogue `/matieres` en
+     * renvoyait 452, toutes institutions confondues).
      *
-     * @param  array<int, array<string, mixed>>  $matieresDetails
+     * @return array<int, array<string, mixed>>
+     */
+    private function teacherMatieres(string $klassciToken): array
+    {
+        $dashboard = $this->klassciService->requestWithUserToken(
+            $klassciToken,
+            'me/teacher-dashboard',
+            'GET'
+        );
+
+        return KlassciPayload::listOfArrays(
+            KlassciPayload::asArray($dashboard['data'] ?? null)['matieres'] ?? null
+        );
+    }
+
+    /**
+     * Assemble les séances d'UNE matière : miroir local, effectif, mise en forme.
+     *
+     * @param  list<array<string, mixed>>  $seances
+     * @param  array<string, mixed>  $matiere
+     * @param  array<int, array<string, mixed>>  $classesDetails
+     * @return Collection<int, array<string, mixed>>
+     */
+    private function enrich(array $seances, array $matiere, User $user, string $klassciToken, array $classesDetails): Collection
+    {
+        return collect($seances)->map(fn (array $seance): array => $this->mapSeance(
+            $seance,
+            $matiere,
+            $user,
+            $this->ensureLocalSeanceExists($seance, $matiere, $user, $klassciToken),
+            KlassciPayload::classeEffectif($seance, $classesDetails),
+        ));
+    }
+
+    /**
+     * Les IDs de classe (dédupliqués) de toutes les séances de la fenêtre, pour
+     * les pré-charger en un seul pool.
+     *
+     * @param  array<int, list<array<string, mixed>>>  $seancesParMatiere
      * @return array<int>
      */
-    private function collectClasseIds(array $matieresDetails): array
+    private function collectClasseIds(array $seancesParMatiere): array
     {
         $ids = [];
-        foreach ($matieresDetails as $details) {
-            $data = KlassciPayload::asArray(KlassciPayload::asArray($details)['data'] ?? null);
-            $seances = KlassciPayload::listOfArrays($data['seances_programmees'] ?? null);
+        foreach ($seancesParMatiere as $seances) {
             $ids = array_merge($ids, KlassciPayload::uniqueIntIds($seances, KlassciPayload::classeIdFor(...)));
         }
 

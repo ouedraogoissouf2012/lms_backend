@@ -110,8 +110,13 @@ final class DrainBudgetTest extends TestCase
 
                     return ['data' => []];
                 });
-            $mock->shouldReceive('fetchManyMatieresDetails')
-                ->andReturn([1 => ['data' => ['seances_programmees' => [['id' => 999]]]]]);
+            // Source réelle de la synchronisation : l'emploi du temps.
+            $mock->shouldReceive('getEmploiTemps')
+                ->andReturn(['data' => [[
+                    'id' => 999,
+                    'matiere' => ['id' => 1],
+                    'programmation' => ['date_seance' => '2026-08-01'],
+                ]]]);
         });
 
         $service = app(KlassciSeancesSyncService::class);

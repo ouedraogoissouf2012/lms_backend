@@ -44,13 +44,13 @@ final class KlassciSeancesSyncServiceTest extends TestCase
             $mock->shouldReceive('requestWithUserToken')
                 ->with('token-a', 'matieres', 'GET')
                 ->andReturn(['data' => [['id' => 10, 'nom' => 'Maths']]]);
-            $mock->shouldReceive('fetchManyMatieresDetails')
-                ->with([10], 'token-a')
-                ->andReturn([10 => ['data' => ['seances_programmees' => [[
+            $mock->shouldReceive('getEmploiTemps')
+                ->andReturn(['data' => [[
                     'id' => 42,
-                    'programmation' => ['date' => '2026-08-01', 'heure_debut' => '2026-08-01T09:00:00Z'],
+                    'matiere' => ['id' => 10],
+                    'programmation' => ['date_seance' => '2026-08-01', 'heure_debut' => '2026-08-01T09:00:00Z'],
                     'classe' => ['id' => 501, 'nom' => 'TA'],
-                ]]]]]);
+                ]]]);
             $mock->shouldReceive('requestWithUserToken')->andReturn(['data' => ['classe' => ['id' => 501]]]);
         });
 
@@ -87,13 +87,13 @@ final class KlassciSeancesSyncServiceTest extends TestCase
             $mock->shouldReceive('requestWithUserToken')
                 ->with('token-a', 'matieres', 'GET')
                 ->andReturn(['data' => [['id' => 10, 'nom' => 'Maths']]]);
-            $mock->shouldReceive('fetchManyMatieresDetails')
-                ->with([10], 'token-a')
-                ->andReturn([10 => ['data' => ['seances_programmees' => [[
+            $mock->shouldReceive('getEmploiTemps')
+                ->andReturn(['data' => [[
                     'id' => 42,
-                    'programmation' => ['date' => '2026-08-01'],
+                    'matiere' => ['id' => 10],
+                    'programmation' => ['date_seance' => '2026-08-01'],
                     'classe' => ['id' => 501, 'nom' => 'TA'],
-                ]]]]]);
+                ]]]);
             $mock->shouldReceive('requestWithUserToken')->andReturn(['data' => ['classe' => ['id' => 501]]]);
         });
 
@@ -108,9 +108,9 @@ final class KlassciSeancesSyncServiceTest extends TestCase
 
     /**
      * Issue #515 — verrouille l'élimination du N+1 HTTP : les détails des
-     * matières d'un enseignant doivent être récupérés en UN SEUL appel batch
-     * (`fetchManyMatieresDetails`), jamais via des appels `matieres/{id}`
-     * séquentiels un par un.
+     * séances d'un enseignant doivent être récupérées en UN SEUL appel
+     * (`getEmploiTemps`), jamais via des appels `matieres/{id}` séquentiels
+     * un par un.
      */
     public function test_matiere_details_are_batch_fetched_once_per_teacher_not_sequentially(): void
     {
@@ -132,14 +132,9 @@ final class KlassciSeancesSyncServiceTest extends TestCase
 
             // Le N+1 est éliminé : un seul appel batch pour les 3 matières,
             // jamais requestWithUserToken('matieres/{id}', ...).
-            $mock->shouldReceive('fetchManyMatieresDetails')
+            $mock->shouldReceive('getEmploiTemps')
                 ->once()
-                ->with([10, 11, 12], 'token-a')
-                ->andReturn([
-                    10 => ['data' => ['seances_programmees' => []]],
-                    11 => ['data' => ['seances_programmees' => []]],
-                    12 => ['data' => ['seances_programmees' => []]],
-                ]);
+                ->andReturn(['data' => []]);
 
             $mock->shouldNotReceive('requestWithUserToken')
                 ->with('token-a', 'matieres/10', 'GET');
@@ -172,41 +167,50 @@ final class KlassciSeancesSyncServiceTest extends TestCase
         $manyMatieres = collect(range(1, 30))
             ->map(fn (int $i): array => ['id' => $i, 'nom' => "Matiere {$i}"])
             ->all();
-        $manyDetails = collect(range(1, 30))
-            ->mapWithKeys(fn (int $i): array => [$i => ['data' => ['seances_programmees' => []]]])
-            ->all();
-
         $callCount = 0;
-        $this->mock(KlassciProxyService::class, function (MockInterface $mock) use ($manyMatieres, $manyDetails, &$callCount): void {
+        $this->mock(KlassciProxyService::class, function (MockInterface $mock) use ($manyMatieres, &$callCount): void {
             $mock->shouldReceive('requestWithUserToken')
                 ->with('token-a', 'matieres', 'GET')
                 ->andReturn(['data' => $manyMatieres]);
-            $mock->shouldReceive('fetchManyMatieresDetails')
+            // La fenetre doit toujours etre bornee : sans elle, KLASSCI ne rend
+            // que la semaine courante, et la synchro conclurait a tort que le
+            // reste de l'annee a disparu.
+            $mock->shouldReceive('getEmploiTemps')
                 ->once()
-                ->withArgs(function (array $ids) use (&$callCount): bool {
+                ->withArgs(function (string $token, array $filtres) use (&$callCount): bool {
                     $callCount++;
 
-                    return count($ids) === 30;
+                    return isset($filtres['date_debut'], $filtres['date_fin']);
                 })
-                ->andReturn($manyDetails);
+                ->andReturn(['data' => []]);
         });
 
         app(TenantManager::class)->reset();
         app(KlassciSeancesSyncService::class)->sync();
 
-        self::assertSame(1, $callCount, 'fetchManyMatieresDetails doit être appelée exactement 1 fois, même à 30 matières.');
+        self::assertSame(1, $callCount, 'getEmploiTemps doit être appelée exactement 1 fois, même à 30 matières.');
     }
 
     /**
-     * R3/design.md — une matière omise du résultat batch (échec HTTP
-     * individuel simulé) n'empêche pas la synchronisation des autres matières
-     * du même enseignant (meilleur isolement de panne que l'ancien code
-     * séquentiel — documenté et assumé dans design.md). L'échec reste compté
-     * dans `stats->errors` : signal restauré après un finding de revue de
-     * code (voir `TeacherMatieresResolver::resolve()` / `failedMatiereIds`),
-     * sans quoi une matière en échec deviendrait invisible côté supervision.
+     * Une matière SANS séance dans la fenêtre n'empêche pas la synchronisation
+     * de ses sœurs, et n'est PAS une erreur.
+     *
+     * ## Ce que ce test verrouillait avant, et pourquoi il a changé
+     *
+     * Il simulait l'échec HTTP d'UNE matière dans un pool de N — sémantique de
+     * `KlassciBatchFetcher`, qui omettait silencieusement les échecs
+     * individuels — et exigeait que cet échec reste compté dans `stats->errors`.
+     *
+     * Cette situation ne peut plus se produire : la source est un appel UNIQUE à
+     * `emploi-temps`, qui aboutit pour toutes les matières ou lève pour toutes.
+     * L'échec partiel silencieux a disparu, et c'est un gain :
+     * `TeacherMatieresResolverTest` verrouille désormais que la panne se
+     * PROPAGE, ce qui souille le cycle et suspend l'archivage (#582).
+     *
+     * Reste ce qui garde du sens : une matière vide est une information, pas
+     * une panne.
      */
-    public function test_matiere_omitted_from_batch_result_does_not_block_sibling_matieres(): void
+    public function test_a_matiere_without_seance_does_not_block_sibling_matieres(): void
     {
         $institution = Institution::factory()->create();
         User::factory()->for($institution)->create([
@@ -223,26 +227,23 @@ final class KlassciSeancesSyncServiceTest extends TestCase
                     ['id' => 11, 'nom' => 'Physique'],
                 ]]);
 
-            // Matière 10 en échec (omise du résultat, sémantique KlassciBatchFetcher) ;
-            // matière 11 réussit et doit quand même être synchronisée.
-            $mock->shouldReceive('fetchManyMatieresDetails')
+            // La matière 10 n'a aucune séance dans la fenêtre ; la 11 en a une.
+            $mock->shouldReceive('getEmploiTemps')
                 ->once()
-                ->with([10, 11], 'token-a')
-                ->andReturn([
-                    11 => ['data' => ['seances_programmees' => [[
-                        'id' => 900,
-                        'programmation' => ['date' => '2026-08-01'],
-                        'classe' => ['id' => 501, 'nom' => 'TB'],
-                    ]]]],
-                ]);
+                ->andReturn(['data' => [[
+                    'id' => 900,
+                    'matiere' => ['id' => 11],
+                    'programmation' => ['date_seance' => '2026-08-01'],
+                    'classe' => ['id' => 501, 'nom' => 'TB'],
+                ]]]);
             $mock->shouldReceive('requestWithUserToken')->andReturn(['data' => ['classe' => ['id' => 501]]]);
         });
 
         app(TenantManager::class)->reset();
         $stats = app(KlassciSeancesSyncService::class)->sync();
 
-        self::assertSame(1, $stats->errors, 'La matière 10 (omise du batch) doit rester comptée comme erreur — signal de supervision.');
-        self::assertSame(1, $stats->seancesNew, 'La matière 11 (résolue) doit quand même être synchronisée.');
+        self::assertSame(0, $stats->errors, 'Une matière sans séance dans la fenêtre n est pas une erreur.');
+        self::assertSame(1, $stats->seancesNew, 'La matière 11 doit être synchronisée normalement.');
         self::assertDatabaseHas('seances', ['klassci_seance_id' => 900]);
     }
 
@@ -281,13 +282,13 @@ final class KlassciSeancesSyncServiceTest extends TestCase
             $mock->shouldReceive('requestWithUserToken')
                 ->with('token-a', 'matieres', 'GET')
                 ->andReturn(['data' => [['id' => 10, 'nom' => 'Maths']]]);
-            $mock->shouldReceive('fetchManyMatieresDetails')
-                ->with([10], 'token-a')
-                ->andReturn([10 => ['data' => ['seances_programmees' => [[
+            $mock->shouldReceive('getEmploiTemps')
+                ->andReturn(['data' => [[
                     'id' => 42,
-                    'programmation' => ['date' => '2026-08-10', 'heure_debut' => '2026-08-10T10:00:00Z'],
+                    'matiere' => ['id' => 10],
+                    'programmation' => ['date_seance' => '2026-08-10', 'heure_debut' => '2026-08-10T10:00:00Z'],
                     'classe' => ['id' => 501, 'nom' => 'TA'],
-                ]]]]]);
+                ]]]);
             $mock->shouldReceive('requestWithUserToken')->andReturn(['data' => ['classe' => ['id' => 501]]]);
         });
 
@@ -325,13 +326,13 @@ final class KlassciSeancesSyncServiceTest extends TestCase
             $mock->shouldReceive('requestWithUserToken')
                 ->with('token-a', 'matieres', 'GET')
                 ->andReturn(['data' => [['id' => 10, 'nom' => 'Maths']]]);
-            $mock->shouldReceive('fetchManyMatieresDetails')
-                ->with([10], 'token-a')
-                ->andReturn([10 => ['data' => ['seances_programmees' => [[
+            $mock->shouldReceive('getEmploiTemps')
+                ->andReturn(['data' => [[
                     'id' => 99,
-                    'programmation' => ['date' => '2026-08-10'],
+                    'matiere' => ['id' => 10],
+                    'programmation' => ['date_seance' => '2026-08-10'],
                     'classe' => ['id' => 501, 'nom' => 'TA'],
-                ]]]]]);
+                ]]]);
             $mock->shouldReceive('requestWithUserToken')->andReturn(['data' => ['classe' => ['id' => 501]]]);
         });
 
@@ -369,13 +370,13 @@ final class KlassciSeancesSyncServiceTest extends TestCase
             $mock->shouldReceive('requestWithUserToken')
                 ->with('token-a', 'matieres', 'GET')
                 ->andReturn(['data' => [['id' => 10, 'nom' => 'Maths']]]);
-            $mock->shouldReceive('fetchManyMatieresDetails')
-                ->with([10], 'token-a')
-                ->andReturn([10 => ['data' => ['seances_programmees' => [[
+            $mock->shouldReceive('getEmploiTemps')
+                ->andReturn(['data' => [[
                     'id' => 42,
-                    'programmation' => ['date' => '2026-08-10'],
+                    'matiere' => ['id' => 10],
+                    'programmation' => ['date_seance' => '2026-08-10'],
                     'classe' => ['id' => 501, 'nom' => 'TA'],
-                ]]]]]);
+                ]]]);
             $mock->shouldReceive('requestWithUserToken')->andReturn(['data' => ['classe' => ['id' => 501]]]);
         });
 

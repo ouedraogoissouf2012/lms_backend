@@ -72,7 +72,7 @@ final class SyncTenantContextTest extends TestCase
 
                     return ['data' => []];
                 });
-            $mock->shouldReceive('fetchManyMatieresDetails')->andReturn([]);
+            $mock->shouldReceive('getEmploiTemps')->andReturn(['data' => []]);
             $mock->shouldReceive('fetchManyClassesDetails')->andReturn([]);
         });
     }

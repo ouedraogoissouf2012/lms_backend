@@ -14,17 +14,27 @@ use Mockery;
 use Tests\TestCase;
 
 /**
- * PERF (#135) — Garantit que `TeachingSeancesFetcher` charge les détails matières
- * et les effectifs de classe en POOLS PARALLÈLES (un appel batch chacun), et plus
- * en boucle séquentielle `matieres/{id}` + `classes/{id}` par séance (N+1).
+ * PERF (#135) — Garantit que `TeachingSeancesFetcher` n'émet pas d'appel KLASSCI
+ * par séance ni par matière : les séances arrivent en UN appel `emploi-temps`,
+ * les effectifs de classe en UN pool dédupliqué.
  *
  * Le test verrouille DEUX choses :
  *   1. Correction : sortie identique (séances mappées + effectif + date réalignée).
- *   2. Anti-régression N+1 : `fetchManyMatieresDetails` / `fetchManyClassesDetails`
- *      appelés EXACTEMENT une fois, avec TOUS les IDs en une passe.
+ *   2. Anti-régression N+1 : `getEmploiTemps` / `fetchManyClassesDetails` appelés
+ *      EXACTEMENT une fois, avec TOUS les IDs de classe en une passe.
+ *
+ * ## Ce qui a changé, et pourquoi c'est plus fort qu'avant
+ *
+ * Ce test exigeait auparavant UN appel `fetchManyMatieresDetails` pour N matières
+ * — un pool, mais un pool de N requêtes HTTP. Ce pool servait uniquement à lire
+ * `data.seances_programmees`, une clé que KLASSCI laisse **toujours vide**
+ * (mesuré le 2026-09-05). Il a disparu avec la source qu'il alimentait : les
+ * séances viennent maintenant d'un unique `emploi-temps`, quel que soit le
+ * nombre de matières. Le budget réseau passe donc de « N + |classes| » à
+ * « 1 + |classes| ».
  *
  * @see app/Services/Seances/TeachingSeancesFetcher.php
- * @see app/Services/Klassci/KlassciBatchFetcher.php
+ * @see app/Services/Seances/KlassciEmploiTempsSeances.php
  */
 final class TeachingSeancesParallelFetchTest extends TestCase
 {
@@ -36,7 +46,7 @@ final class TeachingSeancesParallelFetchTest extends TestCase
         parent::tearDown();
     }
 
-    public function test_charge_matieres_et_classes_en_pool_sans_n_plus_1(): void
+    public function test_charge_les_seances_et_classes_sans_appel_par_matiere(): void
     {
         $institution = Institution::factory()->create();
         $teacher = User::factory()->create([
@@ -60,8 +70,8 @@ final class TeachingSeancesParallelFetchTest extends TestCase
         ]);
 
         // KLASSCI date heure_debut au JOUR COURANT (bug source) → doit être réaligné.
-        $seanceA = $this->seancePayload(5001, 101, '2026-06-26', '2026-06-25T08:00:00.000000Z');
-        $seanceB = $this->seancePayload(5002, 102, '2026-06-27', '2026-06-25T10:00:00.000000Z');
+        $seanceA = $this->seancePayload(5001, 101, 11, '2026-06-26', '2026-06-25T08:00:00.000000Z');
+        $seanceB = $this->seancePayload(5002, 102, 12, '2026-06-27', '2026-06-25T10:00:00.000000Z');
 
         $proxy = Mockery::mock(KlassciProxyService::class);
 
@@ -73,14 +83,12 @@ final class TeachingSeancesParallelFetchTest extends TestCase
                 ['id' => 12, 'nom' => 'Physique'],
             ]]]);
 
-        // UN seul appel batch pour les 2 matières (était 2 appels séquentiels).
-        $proxy->shouldReceive('fetchManyMatieresDetails')
+        // UN seul appel emploi-temps pour les 2 matières — et pour 200 aussi :
+        // le coût ne dépend plus du nombre de matières.
+        $proxy->shouldReceive('getEmploiTemps')
             ->once()
-            ->with([11, 12], $token)
-            ->andReturn([
-                11 => ['data' => ['seances_programmees' => [$seanceA]]],
-                12 => ['data' => ['seances_programmees' => [$seanceB]]],
-            ]);
+            ->with($token, ['date_debut' => '2026-01-01', 'date_fin' => '2026-12-31'])
+            ->andReturn(['data' => [$seanceA, $seanceB]]);
 
         // UN seul appel batch dédupliqué pour les 2 classes (était 1 appel/séance).
         $proxy->shouldReceive('fetchManyClassesDetails')
@@ -95,7 +103,7 @@ final class TeachingSeancesParallelFetchTest extends TestCase
 
         /** @var TeachingSeancesFetcher $fetcher */
         $fetcher = $this->app->make(TeachingSeancesFetcher::class);
-        $result = $fetcher->fetch($teacher, $token);
+        $result = $fetcher->fetch($teacher, $token, '2026-01-01', '2026-12-31');
 
         $this->assertCount(2, $result);
 
@@ -109,18 +117,22 @@ final class TeachingSeancesParallelFetchTest extends TestCase
     }
 
     /**
+     * Forme RÉELLE d'une entrée `emploi-temps` : `date_seance` dans
+     * `programmation`, `salle` objet à la racine, matière portée par la séance.
+     *
      * @return array<string, mixed>
      */
-    private function seancePayload(int $id, int $classeId, string $date, string $heureDebut): array
+    private function seancePayload(int $id, int $classeId, int $matiereId, string $date, string $heureDebut): array
     {
         return [
             'id' => $id,
             'classe' => ['id' => $classeId, 'nom' => 'Classe '.$classeId],
+            'matiere' => ['id' => $matiereId],
+            'salle' => ['id' => 1, 'nom' => 'Salle 1'],
             'programmation' => [
-                'date' => $date,
+                'date_seance' => $date,
                 'heure_debut' => $heureDebut,
                 'heure_fin' => $heureDebut,
-                'salle' => 'Salle 1',
             ],
         ];
     }

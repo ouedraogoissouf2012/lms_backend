@@ -42,6 +42,26 @@ final class ScheduleRegistrationTest extends TestCase
             ->keyBy(fn (Event $event): string => (string) $event->description);
     }
 
+    /**
+     * #744 — sans ce relevé de fond, « KLASSCI est parfois injoignable » reste
+     * une impression. L'hébergeur réclame des horodatages précis pour instruire
+     * une mise en liste blanche ; le disjoncteur, lui, ne trace que les
+     * incidents déjà graves.
+     *
+     * Dix minutes : assez dense pour caractériser des salves de quelques
+     * minutes, assez espacé pour que la sonde ne devienne pas elle-même une
+     * source de connexions — ce serait alimenter la cause qu'elle mesure.
+     */
+    public function test_klassci_reachability_probe_runs_every_ten_minutes_with_locks(): void
+    {
+        $event = $this->scheduledEvents()->get('klassci-reachability-probe');
+
+        $this->assertNotNull($event, 'Sans sonde planifiée, aucun horodatage opposable (#744).');
+        $this->assertSame('*/10 * * * *', $event->expression);
+        $this->assertTrue($event->withoutOverlapping);
+        $this->assertTrue($event->onOneServer);
+    }
+
     public function test_auto_close_empty_seances_runs_every_five_minutes_with_locks(): void
     {
         $event = $this->scheduledEvents()->get('auto-close-empty-seances');

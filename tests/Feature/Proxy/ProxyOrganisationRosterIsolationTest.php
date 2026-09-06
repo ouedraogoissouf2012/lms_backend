@@ -11,7 +11,7 @@ use Illuminate\Http\Client\Factory as HttpFactory;
 use Illuminate\Http\Client\Request as ClientRequest;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Testing\TestResponse;
-use Laravel\Sanctum\Sanctum;
+use Tests\Concerns\ActsAsTenantUser;
 use Tests\TestCase;
 
 /**
@@ -21,6 +21,7 @@ use Tests\TestCase;
  */
 final class ProxyOrganisationRosterIsolationTest extends TestCase
 {
+    use ActsAsTenantUser;
     use RefreshDatabase;
 
     private const TENANT_URL = 'https://klassci.tenant-617.test';
@@ -87,9 +88,7 @@ final class ProxyOrganisationRosterIsolationTest extends TestCase
 
     private function callAs(User $user, string $uri): TestResponse
     {
-        Sanctum::actingAs($user);
-
-        return $this->getJson($uri);
+        return $this->asTenant($user)->getJson($uri);
     }
 
     private function fakeKlassci(): void

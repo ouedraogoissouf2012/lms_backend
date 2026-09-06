@@ -210,4 +210,13 @@ final class DispatchLessonPublishedNotifications implements ShouldQueue
 
         return $ids;
     }
+
+    public function failed(Throwable $exception): void
+    {
+        /** @var LoggerInterface $logger */
+        $logger = app(LoggerInterface::class);
+        $logger->error('Job DispatchLessonPublishedNotifications failed after all retries', [
+            'exception' => $exception->getMessage(),
+        ]);
+    }
 }

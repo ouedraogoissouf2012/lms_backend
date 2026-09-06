@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\E2E;
 
 use App\Models\Chapter;
+use App\Models\Classe;
 use App\Models\Institution;
 use App\Models\Lesson;
 use App\Models\Notification;
@@ -13,7 +14,7 @@ use App\Models\QuizAttempt;
 use App\Models\User;
 use App\Models\ForumTopic;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Laravel\Sanctum\Sanctum;
+use Tests\Concerns\ActsAsTenantUser;
 use Tests\TestCase;
 
 /**
@@ -34,6 +35,7 @@ use Tests\TestCase;
  */
 final class MultiTenantIsolationFlowTest extends TestCase
 {
+    use ActsAsTenantUser;
     use RefreshDatabase;
 
     private Institution $instA;
@@ -48,6 +50,7 @@ final class MultiTenantIsolationFlowTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        $this->disableKlassciMiddleware();
 
         $this->instA = Institution::factory()->create(['slug' => 'school-a']);
         $this->instB = Institution::factory()->create(['slug' => 'school-b']);
@@ -55,14 +58,17 @@ final class MultiTenantIsolationFlowTest extends TestCase
         $this->teacherA = User::factory()->create([
             'institution_id' => $this->instA->id,
             'role' => 'enseignant',
+            'last_klassci_sync' => now(),
         ]);
         $this->studentA = User::factory()->create([
             'institution_id' => $this->instA->id,
             'role' => 'etudiant',
+            'last_klassci_sync' => now(),
         ]);
         $this->studentB = User::factory()->create([
             'institution_id' => $this->instB->id,
             'role' => 'etudiant',
+            'last_klassci_sync' => now(),
         ]);
 
         // Contenu de l'institution A — publié et actif.
@@ -89,6 +95,9 @@ final class MultiTenantIsolationFlowTest extends TestCase
             'institution_id' => $this->instA->id,
             'user_id' => $this->studentA->id,
         ]);
+        Classe::factory()->create(['institution_id' => $this->instA->id]);
+        Classe::factory()->create(['institution_id' => $this->instB->id]);
+
         Notification::create([
             'user_id' => $this->studentA->id,
             'type' => Notification::TYPE_FORUM_REPLY,
@@ -105,7 +114,23 @@ final class MultiTenantIsolationFlowTest extends TestCase
      */
     public function test_tenant_b_student_cannot_see_or_touch_tenant_a_resources(): void
     {
-        Sanctum::actingAs($this->studentB);
+        $scopeSkipped = false;
+        \Illuminate\Support\Facades\Event::listen(
+            \Illuminate\Log\Events\MessageLogged::class,
+            function (\Illuminate\Log\Events\MessageLogged $event) use (&$scopeSkipped): void {
+                if ($event->level === 'warning'
+                    && str_contains($event->message, 'query executed without resolved tenant')
+                    && ($event->context['model'] ?? '') !== \App\Models\User::class) {
+                    $scopeSkipped = true;
+                }
+            }
+        );
+        $this->asTenant($this->studentB);
+
+        $probe = $this->getJson('/api/__test/tenant-scope-probe');
+        $probe->assertOk();
+        self::assertSame(1, $probe->json('count'));
+        self::assertFalse($scopeSkipped, 'BelongsToInstitution a sauté le scope (pas de tenant).');
 
         // ── Lecture catalogue : les listes de B ne contiennent rien de A ───
         $lessons = $this->getJson('/api/lessons');
@@ -181,14 +206,15 @@ final class MultiTenantIsolationFlowTest extends TestCase
         $teacherB = User::factory()->create([
             'institution_id' => $this->instB->id,
             'role' => 'enseignant',
+            'last_klassci_sync' => now(),
         ]);
-        Sanctum::actingAs($teacherB);
+        $this->asTenant($teacherB);
 
         // Modération forum cross-tenant : refusée.
         $this->postJson("/api/forum/topics/{$this->topicA->id}/close")
-            ->assertStatus(403);
+            ->assertStatus(404);
         $this->postJson("/api/forum/topics/{$this->topicA->id}/pin")
-            ->assertStatus(403);
+            ->assertStatus(404);
 
         // Publication du cours de A : refusée.
         $publish = $this->postJson("/api/lessons/{$this->lessonA->id}/publish");
@@ -208,6 +234,7 @@ final class MultiTenantIsolationFlowTest extends TestCase
         $studentA2 = User::factory()->create([
             'institution_id' => $this->instA->id,
             'role' => 'etudiant',
+            'last_klassci_sync' => now(),
         ]);
 
         $attempt = QuizAttempt::factory()->create([
@@ -217,7 +244,7 @@ final class MultiTenantIsolationFlowTest extends TestCase
             'status' => 'graded',
         ]);
 
-        Sanctum::actingAs($studentA2);
+        $this->asTenant($studentA2);
 
         $this->getJson("/api/quiz-attempts/{$attempt->id}")
             ->assertStatus(403);

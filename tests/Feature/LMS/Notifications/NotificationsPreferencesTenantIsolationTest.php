@@ -7,7 +7,7 @@ namespace Tests\Feature\LMS\Notifications;
 use App\Models\Institution;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Laravel\Sanctum\Sanctum;
+use Tests\Concerns\ActsAsTenantUser;
 use Tests\TestCase;
 
 /**
@@ -24,13 +24,21 @@ use Tests\TestCase;
  */
 final class NotificationsPreferencesTenantIsolationTest extends TestCase
 {
+    use ActsAsTenantUser;
     use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->disableKlassciMiddleware();
+    }
 
     private function userIn(?int $institutionId, string $role): User
     {
         return User::factory()->create([
             'institution_id' => $institutionId,
             'role' => $role,
+            'last_klassci_sync' => now(),
         ]);
     }
 
@@ -40,7 +48,7 @@ final class NotificationsPreferencesTenantIsolationTest extends TestCase
         $instB = Institution::factory()->create(['slug' => 'iso-b']);
         $coordA = $this->userIn($instA->id, 'coordinateur');
         $targetB = $this->userIn($instB->id, 'etudiant');
-        Sanctum::actingAs($coordA);
+        $this->asTenant($coordA);
 
         $this->getJson("/api/lms/notifications/preferences/{$targetB->id}")
             ->assertStatus(403);
@@ -52,7 +60,7 @@ final class NotificationsPreferencesTenantIsolationTest extends TestCase
         $instB = Institution::factory()->create(['slug' => 'iso-b2']);
         $adminA = $this->userIn($instA->id, 'admin');
         $targetB = $this->userIn($instB->id, 'etudiant');
-        Sanctum::actingAs($adminA);
+        $this->asTenant($adminA);
 
         $this->getJson("/api/lms/notifications/preferences/{$targetB->id}")
             ->assertStatus(403);
@@ -63,7 +71,7 @@ final class NotificationsPreferencesTenantIsolationTest extends TestCase
         $inst = Institution::factory()->create(['slug' => 'iso-same']);
         $coord = $this->userIn($inst->id, 'coordinateur');
         $target = $this->userIn($inst->id, 'etudiant');
-        Sanctum::actingAs($coord);
+        $this->asTenant($coord);
 
         $this->getJson("/api/lms/notifications/preferences/{$target->id}")
             ->assertStatus(200)
@@ -75,7 +83,7 @@ final class NotificationsPreferencesTenantIsolationTest extends TestCase
         $instB = Institution::factory()->create(['slug' => 'iso-plat']);
         $supradmin = $this->userIn(null, 'supradmin');
         $targetB = $this->userIn($instB->id, 'etudiant');
-        Sanctum::actingAs($supradmin);
+        $this->asTenant($supradmin);
 
         $this->getJson("/api/lms/notifications/preferences/{$targetB->id}")
             ->assertStatus(200);

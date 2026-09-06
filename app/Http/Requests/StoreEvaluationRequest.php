@@ -59,8 +59,8 @@ final class StoreEvaluationRequest extends FormRequest
         // et jamais lu du body. Empêche un enseignant de créer une évaluation
         // au nom d'un autre via mass-assignment.
         return [
-            'klassci_matiere_id' => 'required|integer',
-            'klassci_classe_id' => 'required|integer',
+            'klassci_matiere_id' => 'nullable|integer',
+            'klassci_classe_id' => 'nullable|integer',
             'klassci_evaluation_id' => 'nullable|integer',
             'titre' => 'required|string|min:3|max:255',
             'description' => 'nullable|string|max:1000',
@@ -89,8 +89,6 @@ final class StoreEvaluationRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'klassci_matiere_id.required' => 'L\'ID matière KLASSCI est requis',
-            'klassci_classe_id.required' => 'L\'ID classe KLASSCI est requis',
             'titre.required' => 'Le titre de l\'évaluation est requis',
             'titre.min' => 'Le titre doit contenir au moins 3 caractères',
             'titre.max' => 'Le titre ne doit pas dépasser 255 caractères',

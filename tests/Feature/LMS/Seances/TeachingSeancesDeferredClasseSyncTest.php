@@ -54,6 +54,14 @@ final class TeachingSeancesDeferredClasseSyncTest extends TestCase
 
     private const TOKEN = 'klassci-user-token';
 
+    /**
+     * `emploi-temps` sans fenêtre ne rend que la semaine courante : la fenêtre
+     * est un paramètre obligatoire de `fetch()`, jamais un défaut implicite.
+     */
+    private const FENETRE_DEBUT = '2026-01-01';
+
+    private const FENETRE_FIN = '2026-12-31';
+
     private Institution $institution;
 
     private User $teacher;
@@ -92,7 +100,7 @@ final class TeachingSeancesDeferredClasseSyncTest extends TestCase
         $this->fetcherWithKlassci(function (Mockery\MockInterface $proxy): void {
             $proxy->shouldNotReceive('requestWithUserToken')
                 ->with(self::TOKEN, 'classes/101', 'GET');
-        })->fetch($this->teacher, self::TOKEN);
+        })->fetch($this->teacher, self::TOKEN, self::FENETRE_DEBUT, self::FENETRE_FIN);
 
         Queue::assertPushed(SyncKlassciClasse::class);
     }
@@ -105,7 +113,7 @@ final class TeachingSeancesDeferredClasseSyncTest extends TestCase
     {
         Queue::fake();
 
-        $this->fetcherWithKlassci()->fetch($this->teacher, self::TOKEN);
+        $this->fetcherWithKlassci()->fetch($this->teacher, self::TOKEN, self::FENETRE_DEBUT, self::FENETRE_FIN);
 
         Queue::assertPushed(
             SyncKlassciClasse::class,
@@ -123,7 +131,7 @@ final class TeachingSeancesDeferredClasseSyncTest extends TestCase
     {
         Queue::fake();
 
-        $this->fetcherWithKlassci()->fetch($this->teacher, self::TOKEN);
+        $this->fetcherWithKlassci()->fetch($this->teacher, self::TOKEN, self::FENETRE_DEBUT, self::FENETRE_FIN);
 
         Queue::assertPushed(SyncKlassciClasse::class, function (SyncKlassciClasse $job): bool {
             self::assertStringNotContainsString(
@@ -144,7 +152,7 @@ final class TeachingSeancesDeferredClasseSyncTest extends TestCase
     {
         Queue::fake();
 
-        $this->fetcherWithKlassci()->fetch($this->teacher, self::TOKEN);
+        $this->fetcherWithKlassci()->fetch($this->teacher, self::TOKEN, self::FENETRE_DEBUT, self::FENETRE_FIN);
 
         $this->assertDatabaseHas('seances', [
             'klassci_seance_id' => 5001,
@@ -160,7 +168,7 @@ final class TeachingSeancesDeferredClasseSyncTest extends TestCase
     {
         Queue::fake();
 
-        $this->fetcherWithKlassci()->fetch($this->teacher, self::TOKEN);
+        $this->fetcherWithKlassci()->fetch($this->teacher, self::TOKEN, self::FENETRE_DEBUT, self::FENETRE_FIN);
 
         Queue::assertPushedOn('low', SyncKlassciClasse::class);
     }
@@ -178,7 +186,7 @@ final class TeachingSeancesDeferredClasseSyncTest extends TestCase
             'klassci_classe_id' => 101,
         ]);
 
-        $this->fetcherWithKlassci()->fetch($this->teacher, self::TOKEN);
+        $this->fetcherWithKlassci()->fetch($this->teacher, self::TOKEN, self::FENETRE_DEBUT, self::FENETRE_FIN);
 
         Queue::assertNotPushed(SyncKlassciClasse::class);
     }
@@ -200,19 +208,20 @@ final class TeachingSeancesDeferredClasseSyncTest extends TestCase
             ->with(self::TOKEN, 'me/teacher-dashboard', 'GET')
             ->andReturn(['data' => ['matieres' => [['id' => 11, 'nom' => 'Maths']]]]);
 
-        $proxy->shouldReceive('fetchManyMatieresDetails')
-            ->andReturn([
-                11 => ['data' => ['seances_programmees' => [[
-                    'id' => 5001,
-                    'classe' => ['id' => 101, 'nom' => 'Classe 101'],
-                    'programmation' => [
-                        'date' => '2026-06-26',
-                        'heure_debut' => '2026-06-25T08:00:00.000000Z',
-                        'heure_fin' => '2026-06-25T10:00:00.000000Z',
-                        'salle' => 'Salle 1',
-                    ],
-                ]]]],
-            ]);
+        // Forme RÉELLE d'une entrée `emploi-temps` : `date_seance` dans
+        // `programmation`, `salle` objet à la racine, matière portée par la séance.
+        $proxy->shouldReceive('getEmploiTemps')
+            ->andReturn(['data' => [[
+                'id' => 5001,
+                'classe' => ['id' => 101, 'nom' => 'Classe 101'],
+                'matiere' => ['id' => 11],
+                'salle' => ['id' => 1, 'nom' => 'Salle 1'],
+                'programmation' => [
+                    'date_seance' => '2026-06-26',
+                    'heure_debut' => '2026-06-25T08:00:00.000000Z',
+                    'heure_fin' => '2026-06-25T10:00:00.000000Z',
+                ],
+            ]]]);
 
         $proxy->shouldReceive('fetchManyClassesDetails')
             ->andReturn([101 => ['data' => ['classe' => ['places_occupees' => 30]]]]);

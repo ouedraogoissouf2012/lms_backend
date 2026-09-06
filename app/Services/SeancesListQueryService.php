@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Exceptions\MissingKlassciTokenException;
+use App\Http\Controllers\API\LMS\LMSSeancesListController;
 use App\Models\User;
+use App\Services\Seances\SeancesWindow;
 use App\Services\Seances\StudentClassesSeancesFetcher;
 use App\Services\Seances\TeachingSeancesFetcher;
 use App\Services\Seances\UpcomingSeancesFetcher;
@@ -48,7 +50,7 @@ use Psr\Log\LoggerInterface;
  *   (caller renders 200 with empty data + informational message).
  * - Unexpected errors propagate up (caller logs and renders 500).
  *
- * @see \App\Http\Controllers\API\LMS\LMSSeancesListController (route handler)
+ * @see LMSSeancesListController (route handler)
  */
 final class SeancesListQueryService
 {
@@ -77,7 +79,7 @@ final class SeancesListQueryService
             'date_debut' => $dateDebut,
             'date_fin' => $dateFin,
             'teacher_id' => $teacherId,
-            'classe_id' => $classeId
+            'classe_id' => $classeId,
         ]);
 
         $seancesEnrichies = $this->upcomingFetcher->fetch($user, $klassciToken, $dateDebut, $dateFin, $teacherId, $classeId);
@@ -90,9 +92,9 @@ final class SeancesListQueryService
                 'date_fin' => $dateFin,
                 'filtres' => [
                     'teacher_id' => $teacherId,
-                    'classe_id' => $classeId
-                ]
-            ]
+                    'classe_id' => $classeId,
+                ],
+            ],
         ];
     }
 
@@ -106,7 +108,10 @@ final class SeancesListQueryService
     public function getMyTeachingForUser(User $user): array
     {
         $klassciToken = $this->requireToken($user);
-        $seances = $this->teachingFetcher->fetch($user, $klassciToken);
+
+        [$dateDebut, $dateFin] = SeancesWindow::rolling();
+
+        $seances = $this->teachingFetcher->fetch($user, $klassciToken, $dateDebut, $dateFin);
 
         return $seances->all();
     }
@@ -122,7 +127,9 @@ final class SeancesListQueryService
     {
         $klassciToken = $this->requireToken($user);
 
-        $seances = $this->studentFetcher->fetch($user, $klassciToken);
+        [$dateDebut, $dateFin] = SeancesWindow::rolling();
+
+        $seances = $this->studentFetcher->fetch($user, $klassciToken, $dateDebut, $dateFin);
 
         if ($seances === null) {
             return ['classe_missing' => true];
@@ -143,7 +150,7 @@ final class SeancesListQueryService
     {
         $klassciToken = $user->klassci_token;
 
-        if (!$klassciToken) {
+        if (! $klassciToken) {
             throw MissingKlassciTokenException::forUser($user->id);
         }
 

@@ -138,9 +138,9 @@ final class UpcomingSeancesNoNPlusOneTest extends TestCase
             $mock->shouldReceive('requestWithUserToken')
                 ->with('fake-token', 'me/dashboard', 'GET')
                 ->andReturn(['data' => ['cours' => [['id' => 42, 'nom' => 'Maths']]]]);
-            $mock->shouldReceive('fetchManyMatieresDetails')
-                ->with([42], 'fake-token')
-                ->andReturn([42 => ['data' => ['seances_programmees' => $payloads]]]);
+            $mock->shouldReceive('getEmploiTemps')
+                ->with('fake-token', ['date_debut' => '2026-08-01', 'date_fin' => '2026-08-31'])
+                ->andReturn(['data' => $payloads]);
         });
 
         app(UpcomingSeancesFetcher::class)
@@ -159,8 +159,7 @@ final class UpcomingSeancesNoNPlusOneTest extends TestCase
         DB::disableQueryLog();
         DB::flushQueryLog();
 
-        return $queries->filter(fn (string $q): bool =>
-            str_contains($q, 'seances') || str_contains($q, 'seance_user_hidden')
+        return $queries->filter(fn (string $q): bool => str_contains($q, 'seances') || str_contains($q, 'seance_user_hidden')
         )->count();
     }
 
@@ -171,6 +170,7 @@ final class UpcomingSeancesNoNPlusOneTest extends TestCase
     {
         return [
             'id' => $id,
+            'matiere' => ['id' => 42],
             'classe' => ['id' => $classeId, 'nom' => 'Classe '.$classeId],
             'programmation' => [
                 'date' => $date,

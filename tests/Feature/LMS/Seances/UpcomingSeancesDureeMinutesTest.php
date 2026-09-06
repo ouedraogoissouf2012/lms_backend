@@ -68,14 +68,13 @@ final class UpcomingSeancesDureeMinutesTest extends TestCase
                 ->with('fake-token', 'me/teacher-dashboard', 'GET')
                 ->andReturn(['data' => ['matieres' => [['id' => 11, 'nom' => 'Maths', 'code' => 'MAT']]]]);
 
-            $mock->shouldReceive('fetchManyMatieresDetails')
-                ->andReturn([
-                    11 => ['data' => ['seances_programmees' => [[
-                        'id' => 900,
-                        'programmation' => $programmation,
-                        'classe' => ['id' => 44, 'nom' => 'Classe 44'],
-                    ]]]],
-                ]);
+            $mock->shouldReceive('getEmploiTemps')
+                ->andReturn(['data' => [[
+                    'id' => 900,
+                    'matiere' => ['id' => 11],
+                    'programmation' => $programmation,
+                    'classe' => ['id' => 44, 'nom' => 'Classe 44'],
+                ]]]);
         });
     }
 
@@ -86,8 +85,8 @@ final class UpcomingSeancesDureeMinutesTest extends TestCase
         $date = now()->addDays(2)->toDateString();
         $this->mockKlassciWithSeance([
             'date' => $date,
-            'heure_debut' => $date . 'T08:00:00',
-            'heure_fin' => $date . 'T09:30:00',
+            'heure_debut' => $date.'T08:00:00',
+            'heure_fin' => $date.'T09:30:00',
         ]);
 
         $response = $this->getJson('/api/lms/seances/upcoming?days=30');
@@ -110,7 +109,7 @@ final class UpcomingSeancesDureeMinutesTest extends TestCase
         // heure_fin absente → durée non calculable → clé absente, pas d'exception.
         $this->mockKlassciWithSeance([
             'date' => $date,
-            'heure_debut' => $date . 'T08:00:00',
+            'heure_debut' => $date.'T08:00:00',
         ]);
 
         $response = $this->getJson('/api/lms/seances/upcoming?days=30');
@@ -128,8 +127,8 @@ final class UpcomingSeancesDureeMinutesTest extends TestCase
         $date = now()->addDays(2)->toDateString();
         $this->mockKlassciWithSeance([
             'date' => $date,
-            'heure_debut' => $date . 'T08:00:00',
-            'heure_fin' => $date . 'T09:30:00',
+            'heure_debut' => $date.'T08:00:00',
+            'heure_fin' => $date.'T09:30:00',
         ]);
 
         $data = $this->getJson('/api/lms/seances/upcoming?days=30')->json('data');

@@ -52,6 +52,7 @@ return [
         'lesson_resources',
         'lms_enseignants_cache',
         'seance_user_hidden',
+        'consents',
         'classe_etudiant',
         'classe_matiere',
     ],

@@ -20,6 +20,7 @@ final class SeanceRecordingControlService
         private readonly CacheRepository $cache,
         private readonly SeanceRecordingAccessService $access,
         private readonly AuditLogger $audit,
+        private readonly RecordingConsentGuard $consents,
     ) {}
 
     /**
@@ -34,6 +35,10 @@ final class SeanceRecordingControlService
 
         if (! $this->access->canControl($seance, $user)) {
             return $this->fail(403, 'Acces reserve a l enseignant proprietaire');
+        }
+
+        if (! $this->consents->allowsStart($seance, $user)) {
+            return $this->fail(422, 'Le consentement a la captation doit etre recueilli avant tout enregistrement.');
         }
 
         $recording = $this->latestRecording($seance);

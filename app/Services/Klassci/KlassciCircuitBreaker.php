@@ -6,6 +6,7 @@ namespace App\Services\Klassci;
 
 use Illuminate\Contracts\Cache\Repository as CacheRepository;
 use Illuminate\Support\Carbon;
+use Psr\Log\LoggerInterface;
 
 /**
  * Disjoncteur des appels sortants KLASSCI, cloisonné par cible réseau (#578).
@@ -34,8 +35,8 @@ final class KlassciCircuitBreaker
     public function __construct(
         private readonly CacheRepository $cache,
         private readonly KlassciTargetResolver $target,
-    ) {
-    }
+        private readonly LoggerInterface $logger,
+    ) {}
 
     public function isOpen(): bool
     {
@@ -60,8 +61,18 @@ final class KlassciCircuitBreaker
         // #578 — ne réinitialise QUE la partition de la cible courante : un succès
         // sur le serveur B ne doit pas effacer les échecs accumulés du serveur A.
         $partition = $this->partition();
+        $etaitOuvert = $this->intFromCache($this->openUntilKey($partition)) !== null;
+
         $this->cache->forget($this->failuresKey($partition));
         $this->cache->forget($this->openUntilKey($partition));
+
+        // #744 — on ne journalise QUE la transition. Tracer chaque succès
+        // noierait le signal, exactement le défaut corrigé par l'issue #256.
+        if ($etaitOuvert) {
+            $this->logger->info('KLASSCI circuit breaker CLOSED — service rétabli', [
+                'partition' => $partition,
+            ]);
+        }
     }
 
     public function reportFailure(): void
@@ -76,13 +87,25 @@ final class KlassciCircuitBreaker
         $failures = ($this->intFromCache($failuresKey) ?? 0) + 1;
         $this->cache->put($failuresKey, $failures, $this->failureWindowSeconds());
 
-        if ($failures >= $this->failureThreshold()) {
-            $this->cache->put(
-                $this->openUntilKey($partition),
-                Carbon::now()->addSeconds($this->cooldownSeconds())->timestamp,
-                $this->cooldownSeconds()
-            );
+        if ($failures < $this->failureThreshold()) {
+            return;
         }
+
+        $this->cache->put(
+            $this->openUntilKey($partition),
+            Carbon::now()->addSeconds($this->cooldownSeconds())->timestamp,
+            $this->cooldownSeconds()
+        );
+
+        // #744 — l'ouverture coupe le service pour TOUS les utilisateurs le temps
+        // du cooldown. Elle n'écrivait rien : un incident de 30 s ne laissait
+        // aucune trace, et l'on ne pouvait pas le dater face à l'hébergeur.
+        $this->logger->error('KLASSCI circuit breaker OPEN — toutes les requêtes seront refusées', [
+            'partition' => $partition,
+            'failures' => $failures,
+            'cooldown_seconds' => $this->cooldownSeconds(),
+            'window_seconds' => $this->failureWindowSeconds(),
+        ]);
     }
 
     /**
@@ -108,12 +131,12 @@ final class KlassciCircuitBreaker
 
     private function failuresKey(?string $partition = null): string
     {
-        return self::KEY_PREFIX . ($partition ?? $this->partition()) . ':failures';
+        return self::KEY_PREFIX.($partition ?? $this->partition()).':failures';
     }
 
     private function openUntilKey(?string $partition = null): string
     {
-        return self::KEY_PREFIX . ($partition ?? $this->partition()) . ':open_until';
+        return self::KEY_PREFIX.($partition ?? $this->partition()).':open_until';
     }
 
     private function enabled(): bool

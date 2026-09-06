@@ -228,6 +228,14 @@ final class JoinVisioAccessTokenTest extends TestCase
 
     private function user(string $role, string $email): User
     {
+        $existing = User::query()
+            ->where('institution_id', $this->institution->id)
+            ->where('email', $email)
+            ->first();
+        if ($existing instanceof User) {
+            return $existing;
+        }
+
         return User::factory()->create([
             'institution_id' => $this->institution->id,
             'role' => $role,
@@ -264,12 +272,10 @@ final class JoinVisioAccessTokenTest extends TestCase
         );
 
         foreach ($emails as $email) {
-            $user = User::query()->where('email', $email)->first();
-            if ($user instanceof User) {
-                $classe->etudiants()->syncWithoutDetaching([
-                    $user->id => ['statut' => 'actif'],
-                ]);
-            }
+            $user = $this->user('etudiant', $email);
+            $classe->etudiants()->syncWithoutDetaching([
+                $user->id => ['statut' => 'actif'],
+            ]);
         }
     }
 }

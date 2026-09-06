@@ -148,6 +148,23 @@ Schedule::command('quiz:expire-attempts')
     ->withoutOverlapping()
     ->onOneServer();
 
+// Sonde de joignabilité KLASSCI (#744) — relève le temps de CONNEXION vers
+// chaque API KLASSCI active.
+//
+// L'hébergeur de KLASSCI avale les SYN par salves puis relâche. Pour instruire
+// une mise en liste blanche, il réclame des horodatages précis : sans ce relevé
+// de fond, « ça marche parfois » reste invérifiable. Le disjoncteur, lui, ne
+// trace que les incidents déjà graves.
+//
+// Toutes les 10 minutes : assez dense pour caractériser des salves de quelques
+// minutes, assez espacé pour ne pas devenir soi-même une source de connexions
+// — ce serait alimenter la cause qu'on mesure.
+Schedule::command('klassci:probe')
+    ->everyTenMinutes()
+    ->name('klassci-reachability-probe')
+    ->withoutOverlapping()
+    ->onOneServer();
+
 // Battement de vie du scheduler (#369) — marqueur cache lu par
 // `scheduler:healthcheck` pour détecter un cron mort en < 10 min.
 // Chaque minute : c'est la granularité du cron `schedule:run` lui-même.

@@ -2,39 +2,42 @@
 
 namespace App\Providers;
 
-use App\Services\Visio\VisioAccessTokenIssuer;
-use App\Services\Seances\Sync\StaleSeanceArchiver;
-use App\Services\Seances\Sync\StaleSeanceArchiverInterface;
 use App\Models\PersonalAccessToken;
+use App\Services\Audience\ClasseAudienceSource;
+use App\Services\Audience\LocalClasseAudienceSource;
 use App\Services\Cache\Purge\TenantCachePurgerFactory;
 use App\Services\Cache\Purge\TenantCachePurgerInterface;
 use App\Services\Cache\TenantScopedCache;
 use App\Services\Cache\TenantScopedCacheInterface;
+use App\Services\Integrity\ArchivedRowWriter;
+use App\Services\Integrity\ArchivedRowWriterInterface;
+use App\Services\Klassci\Health\HttpKlassciReachability;
+use App\Services\Klassci\Health\KlassciReachability;
 use App\Services\Klassci\KlassciConfigResolver;
 use App\Services\Klassci\KlassciRequestMemo;
 use App\Services\Klassci\KlassciTargetResolver;
 use App\Services\Seances\Sync\Cursor\EloquentSeanceSyncCursorStore;
 use App\Services\Seances\Sync\Cursor\SeanceSyncCursorStore;
+use App\Services\Seances\Sync\StaleSeanceArchiver;
+use App\Services\Seances\Sync\StaleSeanceArchiverInterface;
 use App\Services\Tenancy\InstitutionIntegrityInspector;
 use App\Services\Tenancy\InstitutionIntegrityInspectorInterface;
-use App\Services\Integrity\ArchivedRowWriter;
-use App\Services\Integrity\ArchivedRowWriterInterface;
 use App\Services\TenantManager;
-use App\Services\Audience\ClasseAudienceSource;
-use App\Services\Audience\LocalClasseAudienceSource;
 use App\Services\Visio\Recording\LocalDirectoryRecordingMediaSource;
 use App\Services\Visio\Recording\RecordingMediaSource;
+use App\Services\Visio\VisioAccessTokenIssuer;
 use App\Support\Shell\ShellExecutor;
 use App\Support\Shell\ShellExecutorInterface;
 use Barryvdh\DomPDF\PDF as DomPdf;
 use Illuminate\Cache\Repository;
-use Illuminate\Filesystem\Filesystem;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\Relation;
+use Illuminate\Filesystem\Filesystem;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\ServiceProvider;
 use Laravel\Sanctum\Sanctum;
+use Psr\Log\LoggerInterface;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -44,20 +47,7 @@ class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->scoped(TenantManager::class);
-        $this->app->scoped(KlassciRequestMemo::class);
-
-        // #578 — Circuit breaker KLASSCI cloisonné par cible réseau.
-        // Le résolveur de config est mémoïsé PAR INSTANCE (« singleton implicite
-        // par requête », cf. son docblock) : on le lie en `scoped` pour que le
-        // breaker et le KlassciHttpClient partagent LA MÊME instance dans une
-        // requête — donc la même cible résolue (partition cohérente) et une
-        // seule résolution 3-tiers (pas de double lookup guard/tenant).
-        $this->app->scoped(KlassciConfigResolver::class);
-
-        // Le breaker dépend de l'abstraction fine ; le concret est le résolveur.
-        // Sans ce binding, l'auto-résolution KlassciHttpClient → KlassciCircuitBreaker
-        // → KlassciTargetResolver échouerait (interface non instanciable).
-        $this->app->bind(KlassciTargetResolver::class, KlassciConfigResolver::class);
+        $this->bindKlassciServices();
 
         // ShellExecutor — sole entry point for external process execution
         // (issue #79 Phase A). Singleton because it is stateless and we want
@@ -97,7 +87,7 @@ class AppServiceProvider extends ServiceProvider
             function ($app) {
                 $table = config('cache.stores.database.table', 'cache');
                 $factory = new TenantCachePurgerFactory(
-                    $app->make(\Psr\Log\LoggerInterface::class),
+                    $app->make(LoggerInterface::class),
                     is_string($table) ? $table : 'cache',
                 );
 
@@ -213,18 +203,18 @@ class AppServiceProvider extends ServiceProvider
      */
     private function bindVisioAccessTokenIssuer(): void
     {
-            $this->app->singleton(VisioAccessTokenIssuer::class, static function (): VisioAccessTokenIssuer {
-                /** @var array<string, mixed> $c */
-                $c = (array) config('services.visio.jitsi', []);
+        $this->app->singleton(VisioAccessTokenIssuer::class, static function (): VisioAccessTokenIssuer {
+            /** @var array<string, mixed> $c */
+            $c = (array) config('services.visio.jitsi', []);
 
-                return new VisioAccessTokenIssuer(
-                    appId: is_string($c['app_id'] ?? null) ? $c['app_id'] : 'lms-klassci',
-                    appSecret: is_string($c['app_secret'] ?? null) ? $c['app_secret'] : null,
-                    audience: is_string($c['audience'] ?? null) ? $c['audience'] : 'visio-klassci',
-                    xmppDomain: is_string($c['xmpp_domain'] ?? null) ? $c['xmpp_domain'] : 'meet.jitsi',
-                    lifetimeSeconds: is_numeric($c['token_lifetime'] ?? null) ? (int) $c['token_lifetime'] : 7200,
-                );
-            });
+            return new VisioAccessTokenIssuer(
+                appId: is_string($c['app_id'] ?? null) ? $c['app_id'] : 'lms-klassci',
+                appSecret: is_string($c['app_secret'] ?? null) ? $c['app_secret'] : null,
+                audience: is_string($c['audience'] ?? null) ? $c['audience'] : 'visio-klassci',
+                xmppDomain: is_string($c['xmpp_domain'] ?? null) ? $c['xmpp_domain'] : 'meet.jitsi',
+                lifetimeSeconds: is_numeric($c['token_lifetime'] ?? null) ? (int) $c['token_lifetime'] : 7200,
+            );
+        });
     }
 
     /**
@@ -257,6 +247,37 @@ class AppServiceProvider extends ServiceProvider
      * Audience visio (#712) : pivot local, bind() pas singleton().
      * L'implémentation HTTP KLASSCI reste disponible pour un bind ultérieur.
      */
+    /**
+     * Câblage du conteneur pour tout ce qui parle à KLASSCI.
+     *
+     * Regroupé ici — et non éparpillé dans `register()` — parce que ces liaisons
+     * forment un tout : elles décident quelle instance de résolveur, donc quelle
+     * cible réseau, sont partagées dans une même requête.
+     */
+    private function bindKlassciServices(): void
+    {
+        $this->app->scoped(KlassciRequestMemo::class);
+
+        // #578 — Circuit breaker KLASSCI cloisonné par cible réseau.
+        // Le résolveur de config est mémoïsé PAR INSTANCE (« singleton implicite
+        // par requête », cf. son docblock) : on le lie en `scoped` pour que le
+        // breaker et le KlassciHttpClient partagent LA MÊME instance dans une
+        // requête — donc la même cible résolue (partition cohérente) et une
+        // seule résolution 3-tiers (pas de double lookup guard/tenant).
+        $this->app->scoped(KlassciConfigResolver::class);
+
+        // Le breaker dépend de l'abstraction fine ; le concret est le résolveur.
+        // Sans ce binding, l'auto-résolution KlassciHttpClient → KlassciCircuitBreaker
+        // → KlassciTargetResolver échouerait (interface non instanciable).
+        $this->app->bind(KlassciTargetResolver::class, KlassciConfigResolver::class);
+
+        // #744 — la sonde de joignabilité passe par un contrat pour rester
+        // substituable : le seul test du dépôt qui traverse réellement le
+        // transport se saute sous Windows, donc une mesure appelant le réseau en
+        // dur ne serait vérifiable qu'en CI.
+        $this->app->bind(KlassciReachability::class, HttpKlassciReachability::class);
+    }
+
     private function bindClasseAudienceSource(): void
     {
         $this->app->bind(ClasseAudienceSource::class, LocalClasseAudienceSource::class);

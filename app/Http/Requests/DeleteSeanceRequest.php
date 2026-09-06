@@ -2,6 +2,9 @@
 
 namespace App\Http\Requests;
 
+use App\Models\Seance;
+use App\Models\User;
+use App\Services\Visio\VisioActorAuthorization;
 use Illuminate\Foundation\Http\FormRequest;
 
 /**
@@ -26,37 +29,38 @@ final class DeleteSeanceRequest extends FormRequest
     public function authorize(): bool
     {
         // Check 1: User must be authenticated
-        $user = auth()->user();
-        if (!$user) {
+        $user = $this->user();
+        if (! $user instanceof User) {
             return false;
         }
 
-        // Check 2: User must be enseignant/coordinateur/superAdmin
-        // (route middleware also enforces this, defense in depth)
-        if (!($user->isTeacher() || $user->isCoordinator() || $user->isAdmin())) {
+        if (! ($user->isTeacher() || $user->isCoordinator() || $user->isAdmin())) {
             return false;
         }
 
-        // Check 3: Seance must exist (try both local id and klassci_seance_id)
-        $seanceId = $this->route('seanceId');
-        $seance = \App\Models\Seance::find($seanceId);
-        if (!$seance) {
-            $seance = \App\Models\Seance::where('klassci_seance_id', $seanceId)->first();
-        }
-
-        if (!$seance) {
+        $seance = $this->resolveSeance();
+        if (! $seance instanceof Seance) {
             return false;
         }
 
-        // Check 4: For enseignants only - verify ownership (klassci_enseignant_id match)
-        // Coordinateurs and admins can delete any seance
-        if ($user->isTeacher()) {
-            if ($seance->klassci_enseignant_id && $seance->klassci_enseignant_id !== $user->klassci_id) {
-                return false;
-            }
+        if ($user->isTeacher() && ! app(VisioActorAuthorization::class)->teacherOwns($seance, $user)) {
+            return false;
         }
 
         return true;
+    }
+
+    private function resolveSeance(): ?Seance
+    {
+        $seanceId = $this->route('seanceId');
+        $byId = Seance::query()->find($seanceId);
+        if ($byId instanceof Seance) {
+            return $byId;
+        }
+
+        $byKlassci = Seance::query()->where('klassci_seance_id', $seanceId)->first();
+
+        return $byKlassci instanceof Seance ? $byKlassci : null;
     }
 
     /**

@@ -26,14 +26,19 @@ final class VisioActorAuthorization
 
     public function teacherOwns(Seance $seance, User $teacher): bool
     {
-        if (! $teacher->isTeacher() || $seance->klassci_enseignant_id === null) {
+        if (! $teacher->isTeacher()) {
             return false;
         }
 
-        $ownerId = (int) $seance->klassci_enseignant_id;
+        if ($seance->klassci_enseignant_id !== null) {
+            $ownerId = (int) $seance->klassci_enseignant_id;
 
-        return (is_numeric($teacher->klassci_enseignant_id)
-                && (int) $teacher->klassci_enseignant_id === $ownerId)
-            || (is_numeric($teacher->klassci_id) && (int) $teacher->klassci_id === $ownerId);
+            return (is_numeric($teacher->klassci_enseignant_id)
+                    && (int) $teacher->klassci_enseignant_id === $ownerId)
+                || (is_numeric($teacher->klassci_id) && (int) $teacher->klassci_id === $ownerId);
+        }
+
+        return $seance->created_by !== null
+            && (int) $seance->created_by === (int) $teacher->id;
     }
 }

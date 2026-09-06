@@ -101,6 +101,21 @@ class DeactivateVisioRequestTest extends TestCase
         $response->assertStatus(200);
     }
 
+    public function test_other_teacher_cannot_deactivate_local_seance_without_klassci_owner(): void
+    {
+        $seance = Seance::factory()
+            ->forInstitution($this->institution)
+            ->create([
+                'klassci_enseignant_id' => null,
+                'created_by' => $this->teacher->id,
+                'visio_enabled' => true,
+            ]);
+
+        $this->withToken($this->otherTeacher->createToken('698')->plainTextToken)
+            ->postJson("/api/lms/seances/{$seance->id}/deactivate-visio")
+            ->assertStatus(403);
+    }
+
     public function test_teacher_without_ownership_returns_403(): void
     {
         $seanceWithoutOwner = Seance::factory()

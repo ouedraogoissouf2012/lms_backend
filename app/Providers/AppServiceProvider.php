@@ -29,6 +29,7 @@ use Illuminate\Cache\Repository;
 use Illuminate\Filesystem\Filesystem;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\Relation;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\ServiceProvider;
 use Laravel\Sanctum\Sanctum;
@@ -139,6 +140,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        $this->prohibitDestructiveDatabaseCommands();
+
         // Fix pour MySQL < 5.7.7 et MariaDB < 10.2.2
         // Limite la longueur par défaut des chaînes indexées
         Schema::defaultStringLength(191);
@@ -183,6 +186,19 @@ class AppServiceProvider extends ServiceProvider
             $pdf->setOption('enable_remote', false);
             $pdf->setOption('isRemoteEnabled', false);
         });
+    }
+
+    /**
+     * #703 — `migrate:fresh` ne demande confirmation qu'en production.
+     * Hors tests, destruction seulement si config opt-in (jamais env() ici :
+     * sous config:cache, env() est null).
+     */
+    private function prohibitDestructiveDatabaseCommands(): void
+    {
+        DB::prohibitDestructiveCommands(
+            ! $this->app->runningUnitTests()
+            && ! (bool) config('database.allow_destructive', false)
+        );
     }
 
     /**

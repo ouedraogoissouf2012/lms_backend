@@ -19,6 +19,12 @@ return [
     'default' => env('DB_CONNECTION', 'sqlite'),
 
     /*
+    | #703 — opt-in pour migrate:fresh / db:wipe hors tests.
+    | Lu via config() dans AppServiceProvider, jamais via env() au runtime.
+    */
+    'allow_destructive' => (bool) env('DB_ALLOW_DESTRUCTIVE', false),
+
+    /*
     |--------------------------------------------------------------------------
     | Database Connections
     |--------------------------------------------------------------------------
@@ -61,6 +67,21 @@ return [
             'options' => extension_loaded('pdo_mysql') ? array_filter([
                 PDO::MYSQL_ATTR_SSL_CA => env('MYSQL_ATTR_SSL_CA'),
             ]) : [],
+        ],
+
+        'mysql_testing' => [
+            'driver' => 'mysql',
+            'host' => env('MYSQL_TESTING_HOST', '127.0.0.1'),
+            'port' => env('MYSQL_TESTING_PORT', '3306'),
+            'database' => env('MYSQL_TESTING_DATABASE', 'lms_testing'),
+            'username' => env('MYSQL_TESTING_USERNAME', 'lms_test'),
+            'password' => env('MYSQL_TESTING_PASSWORD', 'lms_test'),
+            'charset' => env('DB_CHARSET', 'utf8mb4'),
+            'collation' => env('DB_COLLATION', 'utf8mb4_unicode_ci'),
+            'prefix' => '',
+            'prefix_indexes' => true,
+            'strict' => true,
+            'engine' => null,
         ],
 
         'mariadb' => [

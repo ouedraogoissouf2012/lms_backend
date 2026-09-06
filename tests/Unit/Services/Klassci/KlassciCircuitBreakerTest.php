@@ -5,17 +5,19 @@ declare(strict_types=1);
 namespace Tests\Unit\Services\Klassci;
 
 use App\Services\Klassci\KlassciCircuitBreaker;
+use App\Services\Klassci\KlassciConfigResolver;
 use App\Services\Klassci\KlassciTargetResolver;
 use Illuminate\Contracts\Cache\Repository as CacheRepository;
 use Illuminate\Support\Facades\Cache;
 use PHPUnit\Framework\Attributes\CoversClass;
+use Psr\Log\NullLogger;
 use Tests\TestCase;
 
 /**
  * Issue #578 — Cloisonnement du circuit breaker KLASSCI par cible réseau.
  *
  * En multi-tenant, chaque institution résout sa propre `klassci_api_url`
- * ({@see \App\Services\Klassci\KlassciConfigResolver::baseUrl()}). Un état de
+ * ({@see KlassciConfigResolver::baseUrl()}). Un état de
  * disjoncteur GLOBAL (constantes littérales) provoquait deux pannes symétriques :
  *
  *  - faux positif : 3 échecs sur A ouvraient le disjoncteur de TOUTES les écoles ;
@@ -59,7 +61,7 @@ final class KlassciCircuitBreakerTest extends TestCase
      * R1 — Faux positif éliminé : 3 échecs sur la cible A ouvrent A seulement ;
      * une cible B distincte reste fermée.
      */
-    public function test_failures_on_A_do_not_open_B(): void
+    public function test_failures_on_a_do_not_open_b(): void
     {
         $cache = $this->cache();
         $breakerA = $this->breaker($cache, self::URL_A);
@@ -77,7 +79,7 @@ final class KlassciCircuitBreakerTest extends TestCase
      * 1 échec sur A : si le compteur de A avait été effacé par B, A ne serait pas
      * ouvert (1 < 3). Il l'est donc le compteur a survécu.
      */
-    public function test_success_on_B_preserves_A_failure_counter(): void
+    public function test_success_on_b_preserves_a_failure_counter(): void
     {
         $cache = $this->cache();
         $breakerA = $this->breaker($cache, self::URL_A);
@@ -173,7 +175,7 @@ final class KlassciCircuitBreakerTest extends TestCase
 
     private function breaker(CacheRepository $cache, ?string $baseUrl): KlassciCircuitBreaker
     {
-        return new KlassciCircuitBreaker($cache, new FakeTargetResolver($baseUrl));
+        return new KlassciCircuitBreaker($cache, new FakeTargetResolver($baseUrl), new NullLogger);
     }
 
     /** Fait franchir le seuil d'ouverture (3 échecs par défaut). */

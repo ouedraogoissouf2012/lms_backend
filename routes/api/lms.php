@@ -50,6 +50,7 @@ use App\Http\Controllers\API\LMS\LMSNotificationsPreferencesController;
 use App\Http\Controllers\API\LMS\LMSSeanceDetailsController;
 use App\Http\Controllers\API\LMS\LMSSeanceParticipantMutationController;
 use App\Http\Controllers\API\LMS\LMSSeancesHistoryController;
+use App\Http\Controllers\API\LMS\LMSSeanceCrudController;
 use App\Http\Controllers\API\LMS\LMSSeancesListController;
 use App\Http\Controllers\API\LMS\LMSSeanceVisibilityMutationController;
 use App\Http\Controllers\API\LMS\LMSVisioLifecycleController;
@@ -90,6 +91,10 @@ Route::middleware(['auth:sanctum', 'klassci.sync'])->prefix('lms')->group(functi
     // ============================================
     // VISIOCONFÉRENCE
     // ============================================
+
+    Route::post('/seances', [LMSSeanceCrudController::class, 'store'])
+        ->name('lms.seances.store')
+        ->middleware('role:enseignant,coordinateur,superAdmin');
 
     // Séances à venir (pré-création rooms)
     Route::get('/seances/upcoming', [LMSSeancesListController::class, 'upcomingSeances'])

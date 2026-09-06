@@ -64,7 +64,7 @@ final class InstitutionController extends Controller
             $institution = $this->crud->create($request->validate([
                 'slug' => ['required', 'string', 'max:50', 'regex:/^[a-z0-9\-]+$/', 'unique:institutions,slug'],
                 'name' => 'required|string|max:191',
-                'klassci_api_url' => 'required|url|max:500',
+                'klassci_api_url' => 'nullable|url|max:500',
                 'klassci_api_token' => 'nullable|string',
                 'logo_url' => 'nullable|string|max:500',
                 'primary_color' => ['nullable', 'string', 'max:7', 'regex:/^#[0-9A-Fa-f]{6}$/'],

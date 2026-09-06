@@ -27,12 +27,6 @@
             "reason": "Porteur de l'etat tenant, lie en scoped (AppServiceProvider.php:43). klassciConfig() est le seul endroit qui retombe deliberement sur la configuration globale quand aucune institution n'est resolue — c'est l'accroche prevue du mode, pas un contournement."
         },
         {
-            "path": "app/Services/Seances/Mutations/ParticipantValidationService.php",
-            "type": "dette",
-            "count": 1,
-            "reason": "Construit son propre PendingRequest (:250) et lit services.klassci.url en direct (:269), hors de la couche client : il echappe donc au disjoncteur par tenant (#578). Sur le chemin critique de la visio, avec un timeout de 30 s en dur (:27). Correctif trace en #712 (coupe-circuit en quatre points)."
-        },
-        {
             "path": "app/Http/Controllers/API/Proxy/ProxyOrganisationController.php",
             "type": "dette",
             "count": 1,

@@ -47,7 +47,6 @@ return [
     'app/Services/Report/AttendanceReportContextBuilder.php::build'                              => 44,
     'app/Services/Report/ReportGenerationService.php::generateGrades'                            => 49,
     'app/Services/SeanceDetailQueryService.php::getSeanceDetailsArray'                           => 41,
-    'app/Services/Seances/Mutations/ParticipantValidationService.php::validate'                  => 65,
     'app/Services/Seances/Mutations/SeanceDeleteService.php::delete'                             => 48,
     'app/Services/Seances/Mutations/SeanceHideService.php::unhide'                               => 46,
     'app/Services/Seances/Mutations/VisioToggleService.php::toggle'                              => 61,

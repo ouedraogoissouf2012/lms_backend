@@ -14,6 +14,7 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Psr\Log\LoggerInterface;
+use Throwable;
 
 /**
  * #469 — le LMS s'approprie le média produit par Jibri, puis délègue.
@@ -125,5 +126,24 @@ final class ImportJibriRecordingMedia implements ShouldQueue
         $size = @filesize($absolutePath);
 
         return is_int($size) ? $size : null;
+    }
+
+    public function failed(Throwable $exception): void
+    {
+        /** @var LoggerInterface $logger */
+        $logger = app(LoggerInterface::class);
+        $recording = SeanceRecording::withoutGlobalScope('institution')->find($this->recordingId);
+        if ($recording instanceof SeanceRecording
+            && $recording->status !== SeanceRecordingStatus::Ready) {
+            $recording->update([
+                'status' => SeanceRecordingStatus::Failed,
+                'error_message' => 'storage_exception',
+            ]);
+        }
+
+        $logger->error('Job ImportJibriRecordingMedia failed after all retries', [
+            'recording_id' => $this->recordingId,
+            'exception' => $exception->getMessage(),
+        ]);
     }
 }

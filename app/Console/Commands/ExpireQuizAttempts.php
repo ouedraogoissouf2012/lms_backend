@@ -32,6 +32,10 @@ class ExpireQuizAttempts extends Command
      */
     protected $description = 'Expire les tentatives de quiz dont le temps est écoulé et les soumet automatiquement';
 
+    public int $drainBudgetSeconds = 45;
+
+    public int $drainChunkSize = 200;
+
     /**
      * Execute the console command.
      */
@@ -39,32 +43,36 @@ class ExpireQuizAttempts extends Command
     {
         $this->info('Recherche des tentatives de quiz expirées...');
 
-        // Récupérer toutes les tentatives en cours
-        $attempts = QuizAttempt::with('quiz')
+        $startedAt = microtime(true);
+        $expiredCount = 0;
+        $budgetReached = false;
+
+        QuizAttempt::query()
+            ->with('quiz')
             ->inProgress()
-            ->whereHas('quiz', function ($query) {
+            ->whereHas('quiz', function ($query): void {
                 $query->whereNotNull('duration_minutes');
             })
-            ->get();
+            ->chunkById($this->drainChunkSize, function ($attempts) use ($timer, $grading, $startedAt, &$expiredCount, &$budgetReached): bool {
+                foreach ($attempts as $attempt) {
+                    if ($timer->hasExpired($attempt)) {
+                        $grading->submitAttempt($attempt, $attempt->answers ?? []);
+                        $expiredCount++;
+                    }
+                }
 
-        $expiredCount = 0;
+                if ((microtime(true) - $startedAt) >= $this->drainBudgetSeconds) {
+                    $budgetReached = true;
 
-        foreach ($attempts as $attempt) {
-            if ($timer->hasExpired($attempt)) {
-                $this->warn("Tentative #{$attempt->id} expirée pour l'utilisateur #{$attempt->user_id}");
+                    return false;
+                }
 
-                // Soumettre automatiquement avec les réponses sauvegardées
-                $grading->submitAttempt($attempt, $attempt->answers ?? []);
+                return true;
+            });
 
-                $expiredCount++;
-            }
-        }
-
-        if ($expiredCount > 0) {
-            $this->info("✓ {$expiredCount} tentative(s) expirée(s) et soumise(s) automatiquement.");
-        } else {
-            $this->info('✓ Aucune tentative expirée trouvée.');
-        }
+        $this->info($expiredCount > 0
+            ? "✓ {$expiredCount} tentative(s) expirée(s) et soumise(s) automatiquement."
+            : '✓ Aucune tentative expirée trouvée.');
 
         return Command::SUCCESS;
     }

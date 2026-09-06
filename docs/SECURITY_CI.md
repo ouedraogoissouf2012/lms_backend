@@ -439,11 +439,7 @@ docker run -d --name lms-mysql-test \
   -e MYSQL_DATABASE=lms_testing -e MYSQL_USER=lms_test -e MYSQL_PASSWORD=lms_test \
   -p 3306:3306 mysql:8.4
 
-export APP_ENV=testing DB_CONNECTION=mysql DB_HOST=127.0.0.1 DB_PORT=3306 \
-       DB_DATABASE=lms_testing DB_USERNAME=lms_test DB_PASSWORD=lms_test \
-       CACHE_STORE=database SESSION_DRIVER=database QUEUE_CONNECTION=database
-
-php artisan migrate:fresh --force      # valide les migrations sur le moteur réel
+php artisan migrate:fresh --force --database=mysql_testing
 vendor/bin/phpunit --no-coverage
 
 docker rm -f lms-mysql-test

@@ -246,7 +246,7 @@ For production, update in `config/l5-swagger.php`:
 | Generate SDKs | `./scripts/generate-sdks.sh` |
 | Run tests | `php artisan test` |
 | Run specific test | `php artisan test tests/Feature/ExceptionHandlerTest.php` |
-| Create new database | `php artisan migrate:fresh` |
+| Create new database | `php artisan migrate:fresh` — **détruit toutes les données locales** (refusé hors tests sans `DB_ALLOW_DESTRUCTIVE=true`) |
 
 ## Tips & Tricks
 

@@ -20,6 +20,8 @@ use App\Services\Tenancy\InstitutionIntegrityInspectorInterface;
 use App\Services\Integrity\ArchivedRowWriter;
 use App\Services\Integrity\ArchivedRowWriterInterface;
 use App\Services\TenantManager;
+use App\Services\Audience\ClasseAudienceSource;
+use App\Services\Audience\LocalClasseAudienceSource;
 use App\Services\Visio\Recording\LocalDirectoryRecordingMediaSource;
 use App\Services\Visio\Recording\RecordingMediaSource;
 use App\Support\Shell\ShellExecutor;
@@ -73,6 +75,7 @@ class AppServiceProvider extends ServiceProvider
 
         $this->bindVisioAccessTokenIssuer();
         $this->bindRecordingMediaSource();
+        $this->bindClasseAudienceSource();
 
         // TenantScopedCache (#374, spec redis-runtime). Le conteneur ne sait
         // pas résoudre la classe concrète Illuminate\Cache\Repository par
@@ -248,5 +251,14 @@ class AppServiceProvider extends ServiceProvider
                 is_string($root) ? $root : null,
             );
         });
+    }
+
+    /**
+     * Audience visio (#712) : pivot local, bind() pas singleton().
+     * L'implémentation HTTP KLASSCI reste disponible pour un bind ultérieur.
+     */
+    private function bindClasseAudienceSource(): void
+    {
+        $this->app->bind(ClasseAudienceSource::class, LocalClasseAudienceSource::class);
     }
 }

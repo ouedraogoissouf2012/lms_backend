@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\LMS\Visio;
 
+use App\Models\Classe;
 use App\Models\ESBTPAttendance;
 use App\Models\Institution;
 use App\Models\Seance;
@@ -9,7 +10,6 @@ use App\Models\User;
 use App\Services\TenantManager;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Config;
-use Illuminate\Support\Facades\Http;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
@@ -120,13 +120,25 @@ class JoinVisioAuthorizationTest extends TestCase
      */
     private function fakeEnrolledStudents(array $emails): void
     {
-        Http::fake([
-            'https://klassci.test/classes/55/etudiants' => Http::response([
-                'data' => array_map(
-                    static fn (string $email): array => ['email' => $email],
-                    $emails,
-                ),
-            ], 200),
-        ]);
+        $classe = Classe::query()->firstOrCreate(
+            [
+                'institution_id' => $this->institution->id,
+                'klassci_id' => 55,
+            ],
+            [
+                'code' => 'CLS-55',
+                'libelle' => 'Classe 55',
+                'effectif' => 30,
+            ],
+        );
+
+        foreach ($emails as $email) {
+            $user = User::query()->where('email', $email)->first();
+            if ($user instanceof User) {
+                $classe->etudiants()->syncWithoutDetaching([
+                    $user->id => ['statut' => 'actif'],
+                ]);
+            }
+        }
     }
 }

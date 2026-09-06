@@ -2,6 +2,8 @@
 
 namespace App\Http\Requests;
 
+use App\Models\Seance;
+use App\Models\User;
 use App\Services\Visio\VisioActorAuthorization;
 use Illuminate\Foundation\Http\FormRequest;
 
@@ -28,33 +30,30 @@ final class DeactivateVisioRequest extends FormRequest
     public function authorize(): bool
     {
         // Check 1: User must be authenticated
-        $user = auth()->user();
-        if (!$user) {
+        $user = $this->user();
+        if (! $user instanceof User || ! $user->isTeacher()) {
             return false;
         }
 
-        // Check 2: Only enseignants can deactivate
-        // (route middleware also enforces this, defense in depth)
-        if (!$user->isTeacher()) {
+        $seance = $this->resolveSeance();
+        if (! $seance instanceof Seance) {
             return false;
         }
 
-        // Check 3: Seance must exist (try both local id and klassci_seance_id)
+        return app(VisioActorAuthorization::class)->teacherOwns($seance, $user);
+    }
+
+    private function resolveSeance(): ?Seance
+    {
         $seanceId = $this->route('seanceId');
-        $seance = \App\Models\Seance::find($seanceId);
-        if (!$seance) {
-            $seance = \App\Models\Seance::where('klassci_seance_id', $seanceId)->first();
+        $byId = Seance::query()->find($seanceId);
+        if ($byId instanceof Seance) {
+            return $byId;
         }
 
-        if (!$seance) {
-            return false;
-        }
+        $byKlassci = Seance::query()->where('klassci_seance_id', $seanceId)->first();
 
-        if ($user->isTeacher() && ! app(VisioActorAuthorization::class)->teacherOwns($seance, $user)) {
-            return false;
-        }
-
-        return true;
+        return $byKlassci instanceof Seance ? $byKlassci : null;
     }
 
     /**

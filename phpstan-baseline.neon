@@ -181,12 +181,6 @@ parameters:
 			path: app/Http/Middleware/ResolveInstitution.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\Seance\|Illuminate\\Database\\Eloquent\\Collection\<int, App\\Models\\Seance\>\:\:\$klassci_enseignant_id\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Requests/DeactivateVisioRequest.php
-
-		-
 			message: '#^Access to an undefined property \(object\|string\)\:\:\$created_by\.$#'
 			identifier: property.notFound
 			count: 1
@@ -203,12 +197,6 @@ parameters:
 			identifier: method.nonObject
 			count: 1
 			path: app/Http/Requests/DeleteQuizRequest.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\Seance\|Illuminate\\Database\\Eloquent\\Collection\<int, App\\Models\\Seance\>\:\:\$klassci_enseignant_id\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Requests/DeleteSeanceRequest.php
 
 		-
 			message: '#^Cannot cast mixed to int\.$#'

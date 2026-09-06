@@ -4,10 +4,11 @@ declare(strict_types=1);
 
 namespace App\Services\Seances;
 
+use App\Jobs\SyncKlassciClasse;
 use App\Models\Seance;
 use App\Models\User;
-use App\Services\ClasseSyncService;
 use App\Services\KlassciProxyService;
+use App\Services\SeancesListQueryService;
 use Illuminate\Support\Collection;
 use Psr\Log\LoggerInterface;
 
@@ -26,14 +27,13 @@ use Psr\Log\LoggerInterface;
  *   4. Look up class effectif via KLASSCI.
  *   5. Map to the flat + nested legacy shape.
  *
- * @see \App\Services\SeancesListQueryService (orchestrator)
+ * @see SeancesListQueryService (orchestrator)
  */
 final class TeachingSeancesFetcher
 {
     public function __construct(
         private readonly LoggerInterface $logger,
         private readonly KlassciProxyService $klassciService,
-        private readonly ClasseSyncService $classeSyncService,
         private readonly SeanceCacheDataBuilder $cacheBuilder,
     ) {}
 
@@ -44,7 +44,7 @@ final class TeachingSeancesFetcher
     {
         $this->logger->info('Récupération séances enseignant', [
             'user_id' => $user->id,
-            'klassci_id' => $user->klassci_id
+            'klassci_id' => $user->klassci_id,
         ]);
 
         // Utiliser le teacher-dashboard qui contient les matières de l'enseignant
@@ -100,6 +100,7 @@ final class TeachingSeancesFetcher
             $seancesEnrichies = $seancesProgrammees->map(function (array $seance) use ($matiereArr, $user, $klassciToken, $classesDetails) {
                 $visioData = $this->ensureLocalSeanceExists($seance, $matiereArr, $user, $klassciToken);
                 $classeEffectif = KlassciPayload::classeEffectif($seance, $classesDetails);
+
                 return $this->mapSeance($seance, $matiereArr, $user, $visioData, $classeEffectif);
             });
 
@@ -134,8 +135,8 @@ final class TeachingSeancesFetcher
      * IMPORTANT: La visio n'est PAS activée automatiquement —
      * l'enseignant doit explicitement activer la visio pour qu'elle soit visible aux étudiants.
      *
-     * @param array<string, mixed> $seance
-     * @param array<string, mixed> $matiere
+     * @param  array<string, mixed>  $seance
+     * @param  array<string, mixed>  $matiere
      */
     private function ensureLocalSeanceExists(array $seance, array $matiere, User $user, string $klassciToken): ?Seance
     {
@@ -147,13 +148,20 @@ final class TeachingSeancesFetcher
 
         if ($visioData) {
             $this->cacheBuilder->applyTo($visioData, $cacheData);
+
             return $visioData;
         }
 
         try {
-            // Synchroniser la classe pour les notifications futures
-            if ($classeId !== null) {
-                $this->classeSyncService->syncClasseById($classeId, $klassciToken);
+            // La classe est synchronisée « pour les notifications futures » — un
+            // besoin FUTUR, exécuté jusqu'ici sur le chemin critique d'un
+            // enseignant qui attend sa liste. L'appel était synchrone, son retour
+            // jeté, et il rejouait un `classes/{id}` par séance alors que
+            // `fetchManyClassesDetails` venait de récupérer ces mêmes classes en
+            // un pool. On le reporte : un job peut attendre et réessayer, pas un
+            // humain.
+            if ($classeId !== null && $user->institution_id !== null) {
+                SyncKlassciClasse::dispatch($classeId, $user->id, (int) $user->institution_id);
             }
 
             // Créer l'entrée locale SANS activer la visio
@@ -170,12 +178,12 @@ final class TeachingSeancesFetcher
 
             $this->logger->info('Séance Klassci détectée - En attente d\'activation par l\'enseignant', [
                 'seance_id' => $klassciSeanceId,
-                'klassci_enseignant_id' => $user->klassci_id
+                'klassci_enseignant_id' => $user->klassci_id,
             ]);
         } catch (\Exception $e) {
             $this->logger->error('Erreur création entrée séance locale', [
                 'seance_id' => $klassciSeanceId,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ]);
         }
 
@@ -183,8 +191,8 @@ final class TeachingSeancesFetcher
     }
 
     /**
-     * @param array<string, mixed> $seance
-     * @param array<string, mixed> $matiere
+     * @param  array<string, mixed>  $seance
+     * @param  array<string, mixed>  $matiere
      * @return array<string, mixed>
      */
     private function mapSeance(array $seance, array $matiere, User $user, ?Seance $visioData, int $classeEffectif): array
@@ -208,21 +216,21 @@ final class TeachingSeancesFetcher
                 // KLASSCI date heure_debut/heure_fin au jour courant → on réaligne sur la date de la séance.
                 'heure_debut' => SeanceProgrammationNormalizer::alignDate($heureDebut, $date),
                 'heure_fin' => SeanceProgrammationNormalizer::alignDate($heureFin, $date),
-                'salle' => $prog['salle'] ?? null
+                'salle' => $prog['salle'] ?? null,
             ],
             'matiere' => [
                 'id' => $matiere['id'] ?? null,
                 'nom' => $matiere['nom'] ?? $matiere['libelle'] ?? 'N/A',
-                'code' => $matiere['code'] ?? null
+                'code' => $matiere['code'] ?? null,
             ],
             'classe' => [
                 'id' => $classe['id'] ?? null,
                 'nom' => $classe['nom'] ?? 'N/A',
-                'effectif' => $classeEffectif
+                'effectif' => $classeEffectif,
             ],
             'enseignant' => [
                 'id' => $user->klassci_id,
-                'nom' => $user->name
+                'nom' => $user->name,
             ],
             // Infos visio (structure plate pour compatibilité frontend)
             'visio_enabled' => $visioData ? $visioData->visio_enabled : false,
@@ -237,8 +245,8 @@ final class TeachingSeancesFetcher
                 'room_id' => $visioData->visio_room_id,
                 'started_at' => $visioData->visio_started_at,
                 'ended_at' => $visioData->visio_ended_at,
-                'participants_count' => $visioData->current_participants_count ?? 0
-            ] : null
+                'participants_count' => $visioData->current_participants_count ?? 0,
+            ] : null,
         ];
     }
 }

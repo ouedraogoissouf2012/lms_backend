@@ -66,4 +66,15 @@ final class DispatchVisioNotification implements ShouldQueue
             default => throw new InvalidArgumentException('Unsupported visio notification kind.'),
         };
     }
+
+    public function failed(Throwable $exception): void
+    {
+        /** @var LoggerInterface $logger */
+        $logger = app(LoggerInterface::class);
+        $logger->error('Job DispatchVisioNotification failed after all retries', [
+            'kind' => $this->kind,
+            'seance_id' => $this->seanceId,
+            'exception' => $exception->getMessage(),
+        ]);
+    }
 }

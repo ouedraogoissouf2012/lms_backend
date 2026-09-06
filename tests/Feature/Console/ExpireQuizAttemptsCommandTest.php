@@ -4,9 +4,12 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Console;
 
+use App\Console\Commands\ExpireQuizAttempts;
 use App\Models\Quiz;
 use App\Models\QuizAttempt;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Symfony\Component\Console\Input\ArrayInput;
+use Symfony\Component\Console\Output\NullOutput;
 use Tests\TestCase;
 
 /**
@@ -61,5 +64,30 @@ final class ExpireQuizAttemptsCommandTest extends TestCase
         $this->artisan('quiz:expire-attempts')->assertSuccessful();
 
         $this->assertSame('in_progress', $attempt->fresh()->status);
+    }
+
+    public function test_drain_budget_stops_and_next_run_resumes(): void
+    {
+        $quiz = Quiz::factory()->create(['duration_minutes' => 10]);
+        $attempts = QuizAttempt::factory()->count(3)->create([
+            'quiz_id' => $quiz->id,
+            'status' => 'in_progress',
+            'started_at' => now()->subMinutes(40),
+            'submitted_at' => null,
+            'answers' => [],
+        ]);
+
+        $command = $this->app->make(ExpireQuizAttempts::class);
+        $command->drainBudgetSeconds = 0;
+        $command->drainChunkSize = 1;
+        $command->setLaravel($this->app);
+        $command->run(new ArrayInput([]), new NullOutput());
+
+        $stillOpen = QuizAttempt::query()->where('status', 'in_progress')->count();
+        self::assertSame(2, $stillOpen);
+
+        $this->artisan('quiz:expire-attempts')->assertSuccessful();
+        self::assertSame(0, QuizAttempt::query()->where('status', 'in_progress')->count());
+        self::assertCount(3, $attempts);
     }
 }

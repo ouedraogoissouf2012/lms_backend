@@ -10,7 +10,7 @@ use Illuminate\Http\Client\Factory as HttpFactory;
 use Illuminate\Http\Client\Request as ClientRequest;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
-use Laravel\Sanctum\Sanctum;
+use Tests\Concerns\ActsAsTenantUser;
 use Tests\TestCase;
 
 /**
@@ -34,6 +34,7 @@ use Tests\TestCase;
  */
 final class AuthMePerUserIsolationTest extends TestCase
 {
+    use ActsAsTenantUser;
     use RefreshDatabase;
 
     /** @var array<string, array<string, mixed>> Profil KLASSCI par token porteur. */
@@ -50,16 +51,18 @@ final class AuthMePerUserIsolationTest extends TestCase
         $alice = User::factory()->for($institution)->create([
             'klassci_token'      => 'token-alice',
             'klassci_tenant_url' => $tenantUrl,
+            'last_klassci_sync' => now(),
         ]);
         $bob = User::factory()->for($institution)->create([
             'klassci_token'      => 'token-bob',
             'klassci_tenant_url' => $tenantUrl,
+            'last_klassci_sync' => now(),
         ]);
 
         $this->fakeKlassciTransportReturningTokenOwnerProfile();
 
         // Alice appelle en premier → peuple le cache.
-        Sanctum::actingAs($alice);
+        $this->asTenant($alice);
         $aliceResponse = $this->getJson('/api/auth/me');
         $aliceResponse->assertOk();
         self::assertSame('Alice', $aliceResponse->json('data.klassci_data.nom'));
@@ -69,7 +72,7 @@ final class AuthMePerUserIsolationTest extends TestCase
         $this->simulateFreshRequestBoundary();
 
         // Bob appelle ensuite → DOIT recevoir SON profil, jamais celui d'Alice.
-        Sanctum::actingAs($bob);
+        $this->asTenant($bob);
         $bobResponse = $this->getJson('/api/auth/me');
         $bobResponse->assertOk();
         self::assertSame(
@@ -88,22 +91,24 @@ final class AuthMePerUserIsolationTest extends TestCase
         $withToken = User::factory()->for($institution)->create([
             'klassci_token'      => 'token-alice',
             'klassci_tenant_url' => $tenantUrl,
+            'last_klassci_sync' => now(),
         ]);
         $withoutToken = User::factory()->for($institution)->create([
             'klassci_token'      => null,
             'klassci_tenant_url' => $tenantUrl,
+            'last_klassci_sync' => now(),
         ]);
 
         $this->fakeKlassciTransportReturningTokenOwnerProfile();
 
         // Un utilisateur avec token peuple d'abord le cache global (ancien vecteur).
-        Sanctum::actingAs($withToken);
+        $this->asTenant($withToken);
         $this->getJson('/api/auth/me')->assertOk();
 
         $this->simulateFreshRequestBoundary();
 
         // Le compte sans token personnel ne doit hériter d'AUCUN profil d'autrui.
-        Sanctum::actingAs($withoutToken);
+        $this->asTenant($withoutToken);
         $response = $this->getJson('/api/auth/me');
         $response->assertOk();
         self::assertSame([], $response->json('data.klassci_data'));
@@ -121,13 +126,14 @@ final class AuthMePerUserIsolationTest extends TestCase
         $user = User::factory()->for($institution)->create([
             'klassci_token'      => 'token-alice',
             'klassci_tenant_url' => $tenantUrl,
+            'last_klassci_sync' => now(),
         ]);
 
         $factory = new HttpFactory();
         $factory->fake(fn () => Http::response(['message' => 'upstream boom'], 500));
         $this->app->instance(HttpFactory::class, $factory);
 
-        Sanctum::actingAs($user);
+        $this->asTenant($user);
         $response = $this->getJson('/api/auth/me');
 
         $response->assertOk();

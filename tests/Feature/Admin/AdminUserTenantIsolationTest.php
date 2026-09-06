@@ -7,6 +7,7 @@ namespace Tests\Feature\Admin;
 use App\Models\Institution;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\Concerns\ActsAsTenantUser;
 use Tests\TestCase;
 
 /**
@@ -24,6 +25,7 @@ use Tests\TestCase;
  */
 final class AdminUserTenantIsolationTest extends TestCase
 {
+    use ActsAsTenantUser;
     use RefreshDatabase;
 
     private Institution $instA;
@@ -43,14 +45,6 @@ final class AdminUserTenantIsolationTest extends TestCase
         ]);
     }
 
-    /**
-     * @return array<string, string>
-     */
-    private function bearer(User $user): array
-    {
-        return ['Authorization' => 'Bearer '.$user->createToken('admin-iso-524')->plainTextToken];
-    }
-
     public function test_coordinateur_cannot_update_user_of_another_institution(): void
     {
         $targetB = User::factory()->create([
@@ -59,7 +53,7 @@ final class AdminUserTenantIsolationTest extends TestCase
             'name' => 'Original B',
         ]);
 
-        $this->withHeaders($this->bearer($this->coordA))
+        $this->asTenant($this->coordA)
             ->putJson("/api/users/{$targetB->id}", ['name' => 'Hijacked'])
             ->assertStatus(404);
 
@@ -73,7 +67,7 @@ final class AdminUserTenantIsolationTest extends TestCase
             'role' => 'etudiant',
         ]);
 
-        $this->withHeaders($this->bearer($this->coordA))
+        $this->asTenant($this->coordA)
             ->deleteJson("/api/users/{$targetB->id}")
             ->assertStatus(404);
 
@@ -88,7 +82,7 @@ final class AdminUserTenantIsolationTest extends TestCase
             'name' => 'Original A',
         ]);
 
-        $this->withHeaders($this->bearer($this->coordA))
+        $this->asTenant($this->coordA)
             ->putJson("/api/users/{$targetA->id}", ['name' => 'Renamed A'])
             ->assertStatus(200);
 

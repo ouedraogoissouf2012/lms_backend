@@ -8,6 +8,7 @@ use App\Exceptions\KlassciUnavailableException;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Factory as HttpFactory;
 use Illuminate\Http\Client\PendingRequest;
+use Illuminate\Http\Client\Response;
 use Psr\Log\LoggerInterface;
 use Psr\Log\LogLevel;
 
@@ -58,6 +59,7 @@ final class KlassciHttpClient
         private readonly KlassciConfigResolver $config,
         private readonly LoggerInterface $logger,
         private readonly KlassciCircuitBreaker $circuitBreaker,
+        private readonly KlassciTransportRetry $retry,
     ) {
         $this->connectTimeout = self::positiveIntConfig('services.klassci.connect_timeout', 2);
         $this->timeout = self::positiveIntConfig('services.klassci.timeout', 5);
@@ -74,8 +76,8 @@ final class KlassciHttpClient
      * @param  array<string, mixed>  $data  Body pour POST/PUT, query string pour GET
      * @return array<string, mixed>
      *
-     * @throws \App\Exceptions\KlassciUnavailableException si l'URL de base KLASSCI est absente/invalide (#270)
-     * @throws \App\Exceptions\KlassciUnavailableException si KLASSCI est injoignable (transport, #685)
+     * @throws KlassciUnavailableException si l'URL de base KLASSCI est absente/invalide (#270)
+     * @throws KlassciUnavailableException si KLASSCI est injoignable (transport, #685)
      * @throws \RuntimeException sur réponse HTTP 4xx/5xx
      * @throws \InvalidArgumentException si la méthode HTTP n'est pas supportée
      */
@@ -100,15 +102,15 @@ final class KlassciHttpClient
         // http(s), Guzzle lèverait « The scheme '' is not allowed » rendu en 500.
         // requireBaseUrl() lève KlassciUnavailableException (→ 503) à la place.
         $baseUrl = $this->config->requireBaseUrl();
-        $url = $baseUrl . '/' . ltrim($endpoint, '/');
+        $url = $baseUrl.'/'.ltrim($endpoint, '/');
 
         $logSuffix = $overrideToken !== null ? ' (User Token)' : '';
 
         $this->logger->info("KLASSCI API Request{$logSuffix}", [
-            'method'         => $method,
-            'url'            => $url,
-            'params'         => $method === 'GET' ? $data : [],
-            'has_user_token' => $overrideToken !== null && !empty($overrideToken),
+            'method' => $method,
+            'url' => $url,
+            'params' => $method === 'GET' ? $data : [],
+            'has_user_token' => $overrideToken !== null && ! empty($overrideToken),
         ]);
 
         $request = self::decorateRequest(
@@ -124,29 +126,7 @@ final class KlassciHttpClient
         // timeout, connexion refusée) est une panne serveur réelle → error. Les
         // codes HTTP d'échec (4xx/5xx) ne lèvent pas ici ; ils sont gérés via
         // failed() ci-dessous, à leur niveau de log propre (issue #256).
-        try {
-            $response = match ($method) {
-                'GET'    => $request->get($url, $data),
-                'POST'   => $request->post($url, $data),
-                'PUT'    => $request->put($url, $data),
-                'DELETE' => $request->delete($url),
-                default  => throw new \InvalidArgumentException("Méthode HTTP non supportée: {$method}"),
-            };
-        } catch (ConnectionException $e) {
-            $this->circuitBreaker->reportFailure();
-            $this->logger->error("KLASSCI API Exception{$logSuffix}", [
-                'message'  => $e->getMessage(),
-                'endpoint' => $endpoint,
-            ]);
-
-            // #685 — Traduite ICI, à la source, et non chez chaque appelant.
-            // `ConnectionException` descend d'`Exception` et non de
-            // `RuntimeException` : relancée telle quelle, elle échappait au
-            // `catch (RuntimeException)` des contrôleurs LMS — seul chemin menant
-            // à la réponse canonique 503 + `Retry-After` — et finissait en 500
-            // muet. L'enseignant voyait une liste vide, donc aucun bouton visio.
-            throw KlassciUnavailableException::transportFailure($e);
-        }
+        $response = $this->sendWithRetries($request, $method, $url, $data, $endpoint, $logSuffix);
 
         if ($response->failed()) {
             $status = $response->status();
@@ -158,7 +138,7 @@ final class KlassciHttpClient
             // (issue #256 : 239 Mo de logs sur des 403/429 répétés avec body complet).
             $level = $status >= self::SERVER_ERROR_THRESHOLD ? LogLevel::ERROR : LogLevel::WARNING;
             $this->logger->log($level, "KLASSCI API Error{$logSuffix}", [
-                'status'   => $status,
+                'status' => $status,
                 'endpoint' => $endpoint,
             ]);
 
@@ -171,7 +151,7 @@ final class KlassciHttpClient
         }
 
         $result = $response->json();
-        if (!is_array($result)) {
+        if (! is_array($result)) {
             $result = [];
         }
 
@@ -195,9 +175,9 @@ final class KlassciHttpClient
      * Locator, juste une fonction pure sur un type d'entrée injecté).
      *
      * @param  PendingRequest  $request  Builder déjà initialisé (timeout appliqué en amont)
-     * @param  string  $url               URL cible (utilisée pour le check SSL https-only)
-     * @param  bool  $sslVerify           Doit-on vérifier SSL ? (false → withoutVerifying si https)
-     * @param  string|null  $token        Bearer token ou null/'' pour ne pas en attacher
+     * @param  string  $url  URL cible (utilisée pour le check SSL https-only)
+     * @param  bool  $sslVerify  Doit-on vérifier SSL ? (false → withoutVerifying si https)
+     * @param  string|null  $token  Bearer token ou null/'' pour ne pas en attacher
      */
     public static function decorateRequest(
         PendingRequest $request,
@@ -206,11 +186,11 @@ final class KlassciHttpClient
         ?string $token,
     ): PendingRequest {
         $req = $request->withHeaders([
-            'Accept'       => 'application/json',
+            'Accept' => 'application/json',
             'Content-Type' => 'application/json',
         ]);
 
-        if (str_starts_with($url, 'https://') && !$sslVerify) {
+        if (str_starts_with($url, 'https://') && ! $sslVerify) {
             $req = $req->withoutVerifying();
         }
 
@@ -219,6 +199,80 @@ final class KlassciHttpClient
         }
 
         return $req;
+    }
+
+    /**
+     * Exécute l'appel, en rejouant les interruptions de transport que la
+     * politique {@see KlassciTransportRetry} juge rejouables.
+     *
+     * ## Ce que la boucle protège
+     *
+     * L'hôte de KLASSCI avale les SYN par salves (#744) : un essai échoue, le
+     * suivant aboutit en 17 ms. Sans réessai, chacun de ces trous condamnait un
+     * appel — et trois d'entre eux dans la minute ouvraient le disjoncteur, donc
+     * **30 s de 503 pour tout le monde** alors que KLASSCI répondait.
+     *
+     * D'où le point crucial : `reportFailure()` n'est appelé qu'une fois, APRÈS
+     * épuisement des tentatives. Le compter à chaque essai ferait ouvrir le
+     * disjoncteur sur un seul appel malchanceux — l'inverse du but recherché.
+     *
+     * @param  array<string, mixed>  $data
+     *
+     * @throws KlassciUnavailableException
+     */
+    private function sendWithRetries(
+        PendingRequest $request,
+        string $method,
+        string $url,
+        array $data,
+        string $endpoint,
+        string $logSuffix,
+    ): Response {
+        $maxAttempts = $this->retry->attemptsFor($method);
+
+        for ($attempt = 1; ; $attempt++) {
+            try {
+                return self::dispatch($request, $method, $url, $data);
+            } catch (ConnectionException $e) {
+                if ($attempt >= $maxAttempts) {
+                    $this->circuitBreaker->reportFailure();
+                    $this->logger->error("KLASSCI API Exception{$logSuffix}", [
+                        'message' => $e->getMessage(),
+                        'endpoint' => $endpoint,
+                        'attempts' => $attempt,
+                    ]);
+
+                    // #685 — Traduite ICI, à la source, et non chez chaque
+                    // appelant. `ConnectionException` descend d'`Exception` et
+                    // non de `RuntimeException` : relancée telle quelle, elle
+                    // échappait au `catch (RuntimeException)` des contrôleurs
+                    // LMS — seul chemin menant à la réponse canonique 503 +
+                    // `Retry-After` — et finissait en 500 muet.
+                    throw KlassciUnavailableException::transportFailure($e);
+                }
+
+                $this->logger->warning("KLASSCI API transport retry{$logSuffix}", [
+                    'endpoint' => $endpoint,
+                    'attempt' => $attempt,
+                ]);
+
+                usleep($this->retry->backoffMicroseconds($attempt));
+            }
+        }
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    private static function dispatch(PendingRequest $request, string $method, string $url, array $data): Response
+    {
+        return match ($method) {
+            'GET' => $request->get($url, $data),
+            'POST' => $request->post($url, $data),
+            'PUT' => $request->put($url, $data),
+            'DELETE' => $request->delete($url),
+            default => throw new \InvalidArgumentException("Méthode HTTP non supportée: {$method}"),
+        };
     }
 
     private static function positiveIntConfig(string $key, int $default): int

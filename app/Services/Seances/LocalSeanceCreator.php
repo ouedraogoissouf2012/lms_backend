@@ -13,15 +13,18 @@ use App\Models\User;
 final class LocalSeanceCreator
 {
     /**
-     * @param  array{titre: string, date_seance: string, matiere_nom?: string, classe_nom?: string}  $payload
+     * @param  array<string, mixed>  $payload
      */
     public function create(User $author, array $payload): Seance
     {
+        $titre = is_string($payload['titre'] ?? null) ? $payload['titre'] : '';
+        $dateSeance = is_string($payload['date_seance'] ?? null) ? $payload['date_seance'] : '';
+
         return Seance::query()->create([
-            'titre' => $payload['titre'],
-            'date_seance' => $payload['date_seance'],
-            'matiere_nom' => $payload['matiere_nom'] ?? null,
-            'classe_nom' => $payload['classe_nom'] ?? null,
+            'titre' => $titre,
+            'date_seance' => $dateSeance,
+            'matiere_nom' => is_string($payload['matiere_nom'] ?? null) ? $payload['matiere_nom'] : null,
+            'classe_nom' => is_string($payload['classe_nom'] ?? null) ? $payload['classe_nom'] : null,
             'created_by' => $author->id,
             'klassci_seance_id' => null,
             'klassci_enseignant_id' => null,

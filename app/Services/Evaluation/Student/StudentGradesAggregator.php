@@ -103,7 +103,7 @@ final class StudentGradesAggregator
                 continue;
             }
 
-            $matiereId = $evaluation->klassci_matiere_id;
+            $matiereId = $evaluation->klassci_matiere_id ?? 0;
             $matiereNom = $matieresData[$matiereId] ?? $evaluation->matiere_nom ?? 'Matière inconnue';
 
             if (!isset($gradesByMatiere[$matiereId])) {

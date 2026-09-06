@@ -77,10 +77,11 @@ final class UpcomingSeancesScopedToUserMatieresTest extends TestCase
     /**
      * @return array<string, mixed>
      */
-    private function seancePayload(int $id): array
+    private function seancePayload(int $id, int $matiereId): array
     {
         return [
             'id' => $id,
+            'matiere' => ['id' => $matiereId],
             'classe' => ['id' => 700, 'nom' => 'B2 COM'],
             'programmation' => [
                 'date' => '2026-08-15',
@@ -107,13 +108,11 @@ final class UpcomingSeancesScopedToUserMatieresTest extends TestCase
                 ]]]);
 
             // Le batch ne doit porter QUE les 2 matieres de l'enseignant.
-            $mock->shouldReceive('fetchManyMatieresDetails')
+            // UN seul appel emploi-temps pour les 2 matieres de l'enseignant.
+            $mock->shouldReceive('getEmploiTemps')
                 ->once()
-                ->with([1, 3], self::TOKEN)
-                ->andReturn([
-                    1 => ['data' => ['seances_programmees' => [$this->seancePayload(900_101)]]],
-                    3 => ['data' => ['seances_programmees' => []]],
-                ]);
+                ->with(self::TOKEN, ['date_debut' => '2026-08-01', 'date_fin' => '2026-08-31'])
+                ->andReturn(['data' => [$this->seancePayload(900_101, 1)]]);
         });
 
         $seances = app(UpcomingSeancesFetcher::class)
@@ -135,12 +134,10 @@ final class UpcomingSeancesScopedToUserMatieresTest extends TestCase
                     ['id' => 2, 'nom' => 'Algorithme', 'code' => 'ID456789'],
                 ]]]);
 
-            $mock->shouldReceive('fetchManyMatieresDetails')
+            $mock->shouldReceive('getEmploiTemps')
                 ->once()
-                ->with([2], self::TOKEN)
-                ->andReturn([
-                    2 => ['data' => ['seances_programmees' => [$this->seancePayload(900_202)]]],
-                ]);
+                ->with(self::TOKEN, ['date_debut' => '2026-08-01', 'date_fin' => '2026-08-31'])
+                ->andReturn(['data' => [$this->seancePayload(900_202, 2)]]);
         });
 
         $seances = app(UpcomingSeancesFetcher::class)
@@ -163,7 +160,9 @@ final class UpcomingSeancesScopedToUserMatieresTest extends TestCase
                 ->with(self::TOKEN, 'me/teacher-dashboard', 'GET')
                 ->andReturn(['data' => ['matieres' => []]]);
 
-            $mock->shouldNotReceive('fetchManyMatieresDetails');
+            // Sans matiere, on n'interroge meme pas l'emploi du temps, et on ne
+            // retombe JAMAIS sur le catalogue du tenant (§1.4).
+            $mock->shouldNotReceive('getEmploiTemps');
         });
 
         $seances = app(UpcomingSeancesFetcher::class)

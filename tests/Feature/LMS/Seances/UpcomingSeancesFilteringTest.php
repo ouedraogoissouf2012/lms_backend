@@ -12,6 +12,7 @@ use App\Services\KlassciProxyService;
 use App\Services\Seances\UpcomingSeancesFetcher;
 use App\Services\TenantManager;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Collection;
 use Mockery\MockInterface;
 use Tests\TestCase;
 
@@ -136,21 +137,22 @@ final class UpcomingSeancesFilteringTest extends TestCase
 
     /**
      * @param  list<int>  $klassciSeanceIds
-     * @return \Illuminate\Support\Collection<int, array<string, mixed>>
+     * @return Collection<int, array<string, mixed>>
      */
-    private function fetchFor(string $role, array $klassciSeanceIds): \Illuminate\Support\Collection
+    private function fetchFor(string $role, array $klassciSeanceIds): Collection
     {
         return $this->runFetch($this->userWithRole($role), $klassciSeanceIds);
     }
 
     /**
      * @param  list<int>  $klassciSeanceIds
-     * @return \Illuminate\Support\Collection<int, array<string, mixed>>
+     * @return Collection<int, array<string, mixed>>
      */
-    private function runFetch(User $user, array $klassciSeanceIds): \Illuminate\Support\Collection
+    private function runFetch(User $user, array $klassciSeanceIds): Collection
     {
         $payloads = array_map(fn (int $id): array => [
             'id' => $id,
+            'matiere' => ['id' => 42],
             'classe' => ['id' => 200, 'nom' => 'Classe 200'],
             'programmation' => [
                 'date' => '2026-08-15',
@@ -169,9 +171,9 @@ final class UpcomingSeancesFilteringTest extends TestCase
             $mock->shouldReceive('requestWithUserToken')
                 ->with('fake-token', 'me/dashboard', 'GET')
                 ->andReturn(['data' => ['cours' => [['id' => 42, 'nom' => 'Maths']]]]);
-            $mock->shouldReceive('fetchManyMatieresDetails')
-                ->with([42], 'fake-token')
-                ->andReturn([42 => ['data' => ['seances_programmees' => $payloads]]]);
+            $mock->shouldReceive('getEmploiTemps')
+                ->with('fake-token', ['date_debut' => '2026-08-01', 'date_fin' => '2026-08-31'])
+                ->andReturn(['data' => $payloads]);
         });
 
         return app(UpcomingSeancesFetcher::class)
@@ -179,10 +181,10 @@ final class UpcomingSeancesFilteringTest extends TestCase
     }
 
     /**
-     * @param  \Illuminate\Support\Collection<int, array<string, mixed>>  $result
+     * @param  Collection<int, array<string, mixed>>  $result
      * @return list<int>
      */
-    private function ids(\Illuminate\Support\Collection $result): array
+    private function ids(Collection $result): array
     {
         return $result->pluck('id')->all();
     }

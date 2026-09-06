@@ -126,7 +126,7 @@ final class LMSSeancesListResponseTest extends TestCase
 
         $this->mock(KlassciProxyService::class, function (MockInterface $mock): void {
             $mock->shouldNotReceive('requestWithUserToken');
-            $mock->shouldNotReceive('fetchManyMatieresDetails');
+            $mock->shouldNotReceive('getEmploiTemps');
         });
 
         $response = $this->getJson('/api/lms/seances/upcoming?days=30&teacher_id=777&classe_id=44');
@@ -159,7 +159,8 @@ final class LMSSeancesListResponseTest extends TestCase
             $mock->shouldReceive('requestWithUserToken')
                 ->with('fake-token', 'me/teacher-dashboard', 'GET')
                 ->andReturn(['data' => ['matieres' => []]]);
-            $mock->shouldReceive('fetchManyMatieresDetails')->andReturn([]);
+            // Sans matiere, on n'interroge meme pas l'emploi du temps.
+            $mock->shouldNotReceive('getEmploiTemps');
             $mock->shouldReceive('fetchManyClassesDetails')->andReturn([]);
         });
 

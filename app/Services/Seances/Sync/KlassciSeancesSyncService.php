@@ -213,7 +213,7 @@ final class KlassciSeancesSyncService
                 $teacherToken,
                 $institutionId,
                 $resolvedMatiere->matiere,
-                $resolvedMatiere->details,
+                $resolvedMatiere->seances,
                 $state,
                 $stats,
                 $confirmedSeanceIds,
@@ -222,11 +222,11 @@ final class KlassciSeancesSyncService
     }
 
     /**
-     * Synchronise les séances d'une matière dont les détails ont déjà été
-     * récupérés en batch par `syncTeacherMatieres()` — aucun appel HTTP ici.
+     * Synchronise les séances d'une matière, déjà récupérées et adaptées par
+     * `syncTeacherMatieres()` — aucun appel HTTP ici.
      *
      * @param  array<string, mixed>  $matiere
-     * @param  array<string, mixed>  $details
+     * @param  list<array<string, mixed>>  $seances
      * @param  array<int, int>  $confirmedSeanceIds
      */
     private function syncMatiereSeances(
@@ -234,14 +234,11 @@ final class KlassciSeancesSyncService
         string $teacherToken,
         int $institutionId,
         array $matiere,
-        array $details,
+        array $seances,
         SeanceSyncCycleState $state,
         SeanceSyncStats $stats,
         array &$confirmedSeanceIds,
     ): void {
-        $seances = KlassciPayload::listOfArrays(
-            KlassciPayload::asArray(KlassciPayload::asArray($details)['data'] ?? null)['seances_programmees'] ?? null
-        );
         $stats->seancesFound += count($seances);
 
         foreach ($seances as $seanceArr) {

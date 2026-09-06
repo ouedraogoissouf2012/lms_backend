@@ -47,6 +47,7 @@ database/*.backup-*.sqlite
 !CRITICAL-05_TIER1_COMPLETION.md
 !OPENAPI_FIX_LOG.md
 !docs/*.md
+!docs/adr/*.md
 !docs/openapi*.yaml
 !.claude/agents/**/*.md
 !.claude/system-prompts/**/*.md

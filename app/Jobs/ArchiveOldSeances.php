@@ -4,7 +4,9 @@ namespace App\Jobs;
 
 use App\Jobs\Concerns\InteractsWithDrainBudget;
 use App\Models\Seance;
+use DateTimeInterface;
 use Illuminate\Bus\Queueable;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
@@ -49,14 +51,11 @@ class ArchiveOldSeances implements ShouldQueue
         $budgetReached = false;
 
         try {
-            // Archiver PAR LOTS les séances créées il y a > 2 semaines (created_at
-            // comme proxy, la programmation n'étant pas stockée localement).
-            // chunkById utilise un curseur id (pas offset) : rester correct malgré
-            // la mutation de is_active. Arrêt souple au budget de drain (#539) —
-            // reprise au run suivant (idempotent : les séances archivées sortent
-            // du filtre is_active).
-            Seance::where('is_active', true)
-                ->where('created_at', '<', $twoWeeksAgo)
+            // #704 — seulement les séances KLASSCI (klassci_seance_id non nul).
+            // Âge = date_seance, repli created_at si la date est nulle.
+            // chunkById : curseur id malgré la mutation de is_active. Arrêt
+            // souple au budget de drain (#539).
+            $this->staleKlassciSeances($twoWeeksAgo)
                 ->chunkById($this->drainChunkSize, function ($seances) use (&$archivedCount, &$budgetReached, $startedAt) {
                     foreach ($seances as $seance) {
                         $seance->update([
@@ -90,6 +89,25 @@ class ArchiveOldSeances implements ShouldQueue
 
             throw $e;
         }
+    }
+
+    /**
+     * @return Builder<Seance>
+     */
+    private function staleKlassciSeances(DateTimeInterface $cutoff): Builder
+    {
+        return Seance::query()
+            ->where('is_active', true)
+            ->whereNotNull('klassci_seance_id')
+            ->where(function (Builder $query) use ($cutoff): void {
+                $query->where(function (Builder $dated) use ($cutoff): void {
+                    $dated->whereNotNull('date_seance')
+                        ->where('date_seance', '<', $cutoff);
+                })->orWhere(function (Builder $undated) use ($cutoff): void {
+                    $undated->whereNull('date_seance')
+                        ->where('created_at', '<', $cutoff);
+                });
+            });
     }
 
     /**

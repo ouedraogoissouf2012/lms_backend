@@ -43,6 +43,7 @@ final class DrainBudgetTest extends TestCase
         Seance::factory()->count(3)->create([
             'institution_id' => $inst->id,
             'is_active' => true,
+            'date_seance' => now()->subWeeks(3),
             'created_at' => now()->subWeeks(3),
         ]);
 

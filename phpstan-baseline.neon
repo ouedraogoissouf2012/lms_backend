@@ -1652,7 +1652,7 @@ parameters:
 			path: app/Services/Seances/StudentClassesSeancesFetcher.php
 
 		-
-			message: '#^Method App\\Services\\SeancesHistoryQueryService\:\:enrichWithStats\(\) should return Illuminate\\Support\\Collection\<int, array\<string, mixed\>\> but returns Illuminate\\Support\\Collection\<int, array\{id\: int, klassci_seance_id\: int, titre\: string, matiere\: array\{nom\: string\}, classe\: array\{nom\: string\}, date\: string\|null, visio_started_at\: string\|null, visio_ended_at\: string\|null, \.\.\.\}\>\.$#'
+			message: '#^Method App\\Services\\SeancesHistoryQueryService\:\:enrichWithStats\(\) should return Illuminate\\Support\\Collection\<int, array\<string, mixed\>\> but returns Illuminate\\Support\\Collection\<int, array\{id\: int, klassci_seance_id\: int\|null, titre\: string, matiere\: array\{nom\: string\}, classe\: array\{nom\: string\}, date\: string\|null, visio_started_at\: string\|null, visio_ended_at\: string\|null, \.\.\.\}\>\.$#'
 			identifier: return.type
 			count: 1
 			path: app/Services/SeancesHistoryQueryService.php

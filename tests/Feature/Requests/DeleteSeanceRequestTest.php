@@ -106,20 +106,32 @@ class DeleteSeanceRequestTest extends TestCase
         $this->assertTrue(in_array($response->status(), [200, 201, 204]));
     }
 
-    public function test_seance_without_klassci_enseignant_id_can_be_deleted_by_any_teacher(): void
+    public function test_other_teacher_cannot_delete_local_seance_without_klassci_owner(): void
     {
-        // Create seance without klassci_enseignant_id
         $seanceNoOwner = Seance::factory()
             ->forInstitution($this->institution)
             ->create([
                 'klassci_enseignant_id' => null,
+                'created_by' => $this->teacher->id,
             ]);
 
-        Sanctum::actingAs($this->otherTeacher);
-        $response = $this->deleteJson("/api/lms/seances/{$seanceNoOwner->klassci_seance_id}");
+        $this->withToken($this->otherTeacher->createToken('698')->plainTextToken)
+            ->deleteJson("/api/lms/seances/{$seanceNoOwner->id}")
+            ->assertStatus(403);
+    }
 
-        // Should allow deletion since no owner is set
-        $this->assertTrue(in_array($response->status(), [200, 201, 204]));
+    public function test_creator_can_delete_local_seance(): void
+    {
+        $seanceNoOwner = Seance::factory()
+            ->forInstitution($this->institution)
+            ->create([
+                'klassci_enseignant_id' => null,
+                'created_by' => $this->teacher->id,
+            ]);
+
+        $this->withToken($this->teacher->createToken('698')->plainTextToken)
+            ->deleteJson("/api/lms/seances/{$seanceNoOwner->id}")
+            ->assertSuccessful();
     }
 
     public function test_multiple_teachers_cannot_delete_same_seance(): void

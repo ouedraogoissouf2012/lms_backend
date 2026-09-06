@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Services\Visio\VisioActorAuthorization;
 use Illuminate\Foundation\Http\FormRequest;
 
 /**
@@ -48,12 +49,8 @@ final class DeleteSeanceRequest extends FormRequest
             return false;
         }
 
-        // Check 4: For enseignants only - verify ownership (klassci_enseignant_id match)
-        // Coordinateurs and admins can delete any seance
-        if ($user->isTeacher()) {
-            if ($seance->klassci_enseignant_id && $seance->klassci_enseignant_id !== $user->klassci_id) {
-                return false;
-            }
+        if ($user->isTeacher() && ! app(VisioActorAuthorization::class)->teacherOwns($seance, $user)) {
+            return false;
         }
 
         return true;

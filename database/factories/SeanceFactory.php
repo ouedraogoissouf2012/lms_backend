@@ -95,7 +95,7 @@ class SeanceFactory extends Factory
     }
 
     /**
-     * Set the klassci_enseignant_id to match a specific user's klassci_id.
+     * Pose `klassci_enseignant_id` (fiche ou compte, selon ce que la sync a écrit).
      */
     public function forTeacher($klassciBelongingToTeacher): static
     {

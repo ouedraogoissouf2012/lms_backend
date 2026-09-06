@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Services\Visio\VisioActorAuthorization;
 use Illuminate\Foundation\Http\FormRequest;
 
 /**
@@ -49,8 +50,7 @@ final class DeactivateVisioRequest extends FormRequest
             return false;
         }
 
-        // Check 4: Teacher must own the seance (klassci_enseignant_id match)
-        if ($seance->klassci_enseignant_id && $seance->klassci_enseignant_id !== $user->klassci_id) {
+        if ($user->isTeacher() && ! app(VisioActorAuthorization::class)->teacherOwns($seance, $user)) {
             return false;
         }
 

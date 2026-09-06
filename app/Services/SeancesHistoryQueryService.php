@@ -78,7 +78,18 @@ final class SeancesHistoryQueryService
 
         // Filtre par rôle
         if ($user->isTeacher()) {
-            $query->where('klassci_enseignant_id', $user->klassci_id);
+            $query->where(function (Builder $owned) use ($user): void {
+                $owned->where(function (Builder $klassci) use ($user): void {
+                    $klassci->whereNotNull('klassci_enseignant_id')
+                        ->where(function (Builder $ids) use ($user): void {
+                            $ids->where('klassci_enseignant_id', $user->klassci_enseignant_id)
+                                ->orWhere('klassci_enseignant_id', $user->klassci_id);
+                        });
+                })->orWhere(function (Builder $local) use ($user): void {
+                    $local->whereNull('klassci_enseignant_id')
+                        ->where('created_by', $user->id);
+                });
+            });
         }
         // coordinateur / superAdmin : pas de filtre, voit tout
 

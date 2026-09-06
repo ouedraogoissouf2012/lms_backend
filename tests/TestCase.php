@@ -3,8 +3,10 @@
 namespace Tests;
 
 use App\Http\Middleware\EnsureKlassciSync;
+use App\Models\Classe;
 use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Route;
 
 abstract class TestCase extends BaseTestCase
 {
@@ -25,6 +27,27 @@ abstract class TestCase extends BaseTestCase
         if (config('cache.default') === 'redis') {
             $this->app->make('cache')->store('redis')->flush();
         }
+
+        $this->registerTenantScopeProbe();
+    }
+
+    private function registerTenantScopeProbe(): void
+    {
+        if (Route::has('__test.tenant-scope-probe')) {
+            return;
+        }
+
+        Route::middleware([
+            \App\Http\Middleware\AssignRequestId::class,
+            \App\Http\Middleware\ResolveInstitution::class,
+            'auth:sanctum',
+        ])
+            ->get('/api/__test/tenant-scope-probe', function () {
+                return response()->json([
+                    'count' => Classe::query()->count(),
+                ]);
+            })
+            ->name('__test.tenant-scope-probe');
     }
 
     /**

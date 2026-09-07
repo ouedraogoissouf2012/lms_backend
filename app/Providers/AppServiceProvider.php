@@ -5,6 +5,8 @@ namespace App\Providers;
 use App\Models\PersonalAccessToken;
 use App\Services\Audience\ClasseAudienceSource;
 use App\Services\Audience\LocalClasseAudienceSource;
+use App\Services\Enrollment\EnrollmentSource;
+use App\Services\Enrollment\LocalEnrollmentSource;
 use App\Services\Cache\Purge\TenantCachePurgerFactory;
 use App\Services\Cache\Purge\TenantCachePurgerInterface;
 use App\Services\Cache\TenantScopedCache;
@@ -66,6 +68,7 @@ class AppServiceProvider extends ServiceProvider
         $this->bindVisioAccessTokenIssuer();
         $this->bindRecordingMediaSource();
         $this->bindClasseAudienceSource();
+        $this->bindEnrollmentSource();
 
         // TenantScopedCache (#374, spec redis-runtime). Le conteneur ne sait
         // pas résoudre la classe concrète Illuminate\Cache\Repository par
@@ -281,5 +284,10 @@ class AppServiceProvider extends ServiceProvider
     private function bindClasseAudienceSource(): void
     {
         $this->app->bind(ClasseAudienceSource::class, LocalClasseAudienceSource::class);
+    }
+
+    private function bindEnrollmentSource(): void
+    {
+        $this->app->bind(EnrollmentSource::class, LocalEnrollmentSource::class);
     }
 }

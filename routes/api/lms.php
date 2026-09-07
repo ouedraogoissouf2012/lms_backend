@@ -42,6 +42,7 @@ Route::middleware(['auth:sanctum', 'klassci.sync', 'role:enseignant,coordinateur
 // ============================================
 use App\Http\Controllers\API\LMS\LMSAttendancesController;
 use App\Http\Controllers\API\LMS\LMSClassesController;
+use App\Http\Controllers\API\LMS\LMSTeacherClassesController;
 use App\Http\Controllers\API\LMS\LMSEnseignantsController;
 use App\Http\Controllers\API\Admin\AdminStatisticsController;
 use App\Http\Controllers\API\LMS\LMSMatieresAdminController;
@@ -66,6 +67,10 @@ Route::middleware(['auth:sanctum', 'klassci.sync'])->prefix('lms')->group(functi
     // Étudiants d'une classe
     Route::get('/classes/{classeId}/etudiants', [LMSClassesController::class, 'classeEtudiants'])
         ->name('lms.classes.etudiants');
+
+    Route::get('/teacher/classes', [LMSTeacherClassesController::class, 'index'])
+        ->middleware('role:enseignant,coordinateur')
+        ->name('lms.teacher.classes');
 
     // Détails complets d'une matière
     Route::get('/matieres/{matiereId}', [LMSMatieresQueryController::class, 'matiereDetails'])

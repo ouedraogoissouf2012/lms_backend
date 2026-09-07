@@ -7,6 +7,7 @@ namespace App\Services\Lesson;
 use App\Models\Lesson;
 use App\Models\Matiere;
 use App\Models\User;
+use App\Services\Enrollment\EnrollmentSource;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
@@ -34,7 +35,7 @@ final class LessonListService
 {
     public function __construct(
         private readonly LessonProgressService $progressService,
-        private readonly StudentClasseResolver $classeResolver,
+        private readonly EnrollmentSource $classeResolver,
         private readonly MyCoursesPresenter $myCoursesPresenter,
     ) {}
 

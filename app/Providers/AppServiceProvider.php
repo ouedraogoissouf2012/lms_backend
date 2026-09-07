@@ -5,8 +5,8 @@ namespace App\Providers;
 use App\Models\PersonalAccessToken;
 use App\Services\Audience\ClasseAudienceSource;
 use App\Services\Audience\LocalClasseAudienceSource;
+use App\Services\Enrollment\CompositeEnrollmentSource;
 use App\Services\Enrollment\EnrollmentSource;
-use App\Services\Enrollment\LocalEnrollmentSource;
 use App\Services\Cache\Purge\TenantCachePurgerFactory;
 use App\Services\Cache\Purge\TenantCachePurgerInterface;
 use App\Services\Cache\TenantScopedCache;
@@ -288,6 +288,6 @@ class AppServiceProvider extends ServiceProvider
 
     private function bindEnrollmentSource(): void
     {
-        $this->app->bind(EnrollmentSource::class, LocalEnrollmentSource::class);
+        $this->app->bind(EnrollmentSource::class, CompositeEnrollmentSource::class);
     }
 }

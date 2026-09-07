@@ -1075,24 +1075,6 @@ parameters:
 			path: app/Services/KnowledgeCheck/KnowledgeCheckCrudService.php
 
 		-
-			message: '#^Cannot access offset ''matieres'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 1
-			path: app/Services/Matiere/MatiereSeancesFetcher.php
-
-		-
-			message: '#^Cannot access offset ''seances_programmees'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 1
-			path: app/Services/Matiere/MatiereSeancesFetcher.php
-
-		-
-			message: '#^Method App\\Services\\Matiere\\MatiereSeancesFetcher\:\:filterHiddenAndArchivedForStudent\(\) should return array\<int, array\<string, mixed\>\> but returns array\<mixed\>\.$#'
-			identifier: return.type
-			count: 1
-			path: app/Services/Matiere/MatiereSeancesFetcher.php
-
-		-
 			message: '#^Cannot access offset ''evaluations'' on mixed\.$#'
 			identifier: offsetAccess.nonOffsetAccessible
 			count: 1

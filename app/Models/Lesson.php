@@ -18,6 +18,7 @@ use Illuminate\Support\Carbon;
 /**
  * @property LessonProgress|null $user_progress Attribut posé par LessonListService (LessonProgressService::progressForUser).
  * @property array{students_started: int, students_completed: int, average_completion_rate: float} $statistics Attribut posé par LessonListService (staff uniquement).
+ * @property int|null $matiere_klassci_id Attribut posé par LessonListService : le `klassci_id` de la matière, pour naviguer vers une route proxifiée vers KLASSCI. `matiere_id` est LOCAL et n'y a pas sa place.
  * @property LessonStatus $status
  * @property Carbon|null $published_at
  */

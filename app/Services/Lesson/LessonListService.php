@@ -5,9 +5,12 @@ declare(strict_types=1);
 namespace App\Services\Lesson;
 
 use App\Models\Lesson;
+use App\Models\Matiere;
 use App\Models\User;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 
 /**
  * Read-side orchestration des leçons (split-15/lesson-crud).
@@ -33,8 +36,7 @@ final class LessonListService
         private readonly LessonProgressService $progressService,
         private readonly StudentClasseResolver $classeResolver,
         private readonly MyCoursesPresenter $myCoursesPresenter,
-    ) {
-    }
+    ) {}
 
     /**
      * Liste paginée des cours (filtres optionnels + restriction étudiant
@@ -89,6 +91,7 @@ final class LessonListService
         if ($user->isStudent()) {
             $lessons->getCollection()->transform(function ($lesson) use ($user) {
                 $lesson->user_progress = $this->progressService->progressForUser($lesson, $user->id);
+
                 return $lesson;
             });
         }
@@ -105,8 +108,8 @@ final class LessonListService
      * Paginé (#483) : `data` reste un tableau plat, `meta` porte la pagination.
      *
      * @return array{
-     *     courses: \Illuminate\Support\Collection<int, array<string, mixed>>,
-     *     filters: array{matieres: \Illuminate\Support\Collection<int, array{id: int, name: string}>, enseignants: \Illuminate\Support\Collection<int, array{id: int|null, name: string}>},
+     *     courses: Collection<int, array<string, mixed>>,
+     *     filters: array{matieres: Collection<int, array{id: int, name: string}>, enseignants: Collection<int, array{id: int|null, name: string}>},
      *     total: int,
      *     meta: array{current_page: int, last_page: int, per_page: int, total: int},
      * }
@@ -131,9 +134,9 @@ final class LessonListService
      * classe étudiant (#482) + filtres optionnels matiere/enseignant. Aucune
      * exécution (retourne un Builder), pour permettre pagination ET filtres.
      *
-     * @return \Illuminate\Database\Eloquent\Builder<Lesson>
+     * @return Builder<Lesson>
      */
-    private function buildMyCoursesQuery(Request $request, User $user): \Illuminate\Database\Eloquent\Builder
+    private function buildMyCoursesQuery(Request $request, User $user): Builder
     {
         $query = Lesson::with(['matiere', 'classe'])->published()->ordered();
 
@@ -163,9 +166,9 @@ final class LessonListService
      * Filtre enseignant tolérant : le frontend envoie un klassci_id ; on
      * accepte aussi l'id local correspondant.
      *
-     * @param  \Illuminate\Database\Eloquent\Builder<Lesson>  $query
+     * @param  Builder<Lesson>  $query
      */
-    private function applyEnseignantFilter(\Illuminate\Database\Eloquent\Builder $query, int $enseignantId): void
+    private function applyEnseignantFilter(Builder $query, int $enseignantId): void
     {
         $enseignantUser = User::where('klassci_id', $enseignantId)
             ->where('role', 'enseignant')
@@ -193,7 +196,7 @@ final class LessonListService
     {
         $lesson = Lesson::find($id);
 
-        if (!$lesson) {
+        if (! $lesson) {
             return ['error' => 'Cours non trouvé', 'status' => 404];
         }
 
@@ -204,9 +207,23 @@ final class LessonListService
         }
 
         // Vérifier les permissions
-        if ($user->isStudent() && !$lesson->isPublished()) {
+        if ($user->isStudent() && ! $lesson->isPublished()) {
             return ['error' => 'Ce cours n\'est pas encore disponible', 'status' => 403];
         }
+
+        // L'identifiant KLASSCI de la matière, pendant exact de
+        // `matiere_id_local` côté réponse matière.
+        //
+        // `lessons.matiere_id` est LOCAL, mais la route `/lms/matieres/{id}`
+        // est proxifiée vers KLASSCI et attend le sien. Le frontend réinjectait
+        // le local dans cette route depuis l'écran chapitres : KLASSCI
+        // répondait pour SA matière du même numéro, pendant que la liste de
+        // leçons — résolue localement — restait celle de la bonne matière.
+        // L'en-tête annonçait une matière, la liste en montrait une autre, et
+        // une leçon a été supprimée par erreur depuis cet écran le 2026-09-07.
+        //
+        // Chaque espace est nommé ; aucun n'est deviné.
+        $lesson->matiere_klassci_id = $this->matiereKlassciId($lesson);
 
         // Charger la progression de l'utilisateur
         $lesson->user_progress = $this->progressService->progressForUser($lesson, $user->id);
@@ -221,5 +238,27 @@ final class LessonListService
         }
 
         return ['lesson' => $lesson];
+    }
+
+    /**
+     * Le `klassci_id` de la matière de la leçon, borné à l'institution de la
+     * LEÇON — pas à celle du demandeur.
+     *
+     * La nuance compte : une leçon ne doit rien révéler d'une matière d'un
+     * autre établissement, même par accident de données. Le `klassci_id` n'est
+     * unique que par institution (#707).
+     */
+    private function matiereKlassciId(Lesson $lesson): ?int
+    {
+        if ($lesson->matiere_id === null) {
+            return null;
+        }
+
+        $klassciId = Matiere::query()
+            ->where('id', $lesson->matiere_id)
+            ->where('institution_id', $lesson->institution_id)
+            ->value('klassci_id');
+
+        return is_numeric($klassciId) ? (int) $klassciId : null;
     }
 }

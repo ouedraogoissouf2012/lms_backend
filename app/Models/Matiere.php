@@ -2,7 +2,9 @@
 
 namespace App\Models;
 
+use App\Models\Contracts\MirroredFromKlassci;
 use App\Models\Traits\BelongsToInstitution;
+use App\Models\Traits\ResolvesMirroredIdentifier;
 use Database\Factories\MatiereFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -20,10 +22,10 @@ use Illuminate\Database\Eloquent\Relations\Pivot;
  *
  * @property Pivot|null $pivot
  */
-class Matiere extends Model
+class Matiere extends Model implements MirroredFromKlassci
 {
     /** @use HasFactory<MatiereFactory> */
-    use BelongsToInstitution, HasFactory;
+    use BelongsToInstitution, HasFactory, ResolvesMirroredIdentifier;
 
     protected $fillable = [
         'klassci_id',

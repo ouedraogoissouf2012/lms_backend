@@ -48,8 +48,7 @@ final class KlassciClassesFetcher
     public function __construct(
         private readonly KlassciProxyService $klassciService,
         private readonly LoggerInterface $logger,
-    ) {
-    }
+    ) {}
 
     /**
      * Récupérer les classes depuis Klassci selon le rôle.
@@ -133,9 +132,27 @@ final class KlassciClassesFetcher
             $data = $details !== null ? KlassciPayload::asArray($details['data'] ?? null) : [];
             $classeDetails = $data['classe'] ?? null;
 
-            // L'API retourne { "data": { "classe": {...}, "etudiants": [...] }}
+            // L'API retourne { "data": { "classe": {...}, "etudiants": [...], "matieres": [...] }}
+            //
+            // `matieres` était jeté ici — le défaut exact de `syncClasseById`,
+            // une couche plus haut. Le porter coûte ZÉRO appel réseau (la
+            // réponse est déjà en main) et permet d'amorcer le miroir
+            // `classe_matiere` dès la connexion, donc indépendamment des
+            // séances et de la disponibilité de KLASSCI au moment où
+            // l'enseignant ouvre sa page.
             if (is_array($classeDetails)) {
                 $classeDetails['etudiants'] = $data['etudiants'] ?? [];
+
+                // Portée SEULEMENT si le payload la contient — jamais défautée
+                // à `[]`. Un tableau vide affirmerait « cette classe n'a aucune
+                // matière » là où la vérité est « KLASSCI ne l'a pas dit ».
+                // Confondre les deux est la faute qui transforme un
+                // réconciliateur en effaceur : c'est ainsi qu'un archiveur
+                // détruit ce qu'il ne voit pas.
+                if (isset($data['matieres']) && is_array($data['matieres'])) {
+                    $classeDetails['matieres'] = $data['matieres'];
+                }
+
                 $detailedClasses[] = $classeDetails;
             } else {
                 // Détails absents du batch (id échoué / non résoluble) : garder les infos basiques

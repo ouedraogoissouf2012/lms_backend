@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Models\Classe;
+use App\Services\Sync\Classes\ClasseMatieresSynchronizer;
 use App\Services\Sync\Classes\ClasseStudentsSynchronizer;
 use App\Services\Sync\Classes\KlassciClassesFetcher;
 use Psr\Log\LoggerInterface;
@@ -42,6 +43,7 @@ final class ClasseSyncService
     public function __construct(
         private readonly KlassciClassesFetcher $classesFetcher,
         private readonly ClasseStudentsSynchronizer $studentsSynchronizer,
+        private readonly ClasseMatieresSynchronizer $matieresSynchronizer,
         private readonly LoggerInterface $logger,
         private readonly TenantManager $tenantManager,
     ) {}
@@ -82,6 +84,17 @@ final class ClasseSyncService
                         $stats['classes_created']++;
                     } else {
                         $stats['classes_updated']++;
+                    }
+
+                    // Amorcer le miroir classe ↔ matière DÈS LA CONNEXION, et
+                    // pas seulement quand une séance ou une visio passe par
+                    // `syncClasseById()`. Sans cela la table reste vide au
+                    // déploiement, et une panne KLASSCI ressuscite le 403 de
+                    // #740 : plus de séances → plus de classes → `classe_id`
+                    // null. Traité conditionnellement, comme `etudiants` :
+                    // tous les établissements n'exposent pas ce bloc.
+                    if (isset($klasseData['matieres']) && is_array($klasseData['matieres'])) {
+                        $this->matieresSynchronizer->sync($result['classe'], array_values($klasseData['matieres']));
                     }
 
                     // Synchroniser les étudiants de cette classe
@@ -141,6 +154,14 @@ final class ClasseSyncService
             $klasseData = $responseData['classe'] ?? $responseData;
             $etudiantsData = $responseData['etudiants'] ?? [];
 
+            // #740 — les matières du payload étaient JETÉES ici. On les garde
+            // pour le LIEN classe ↔ matière, que rien d'autre n'écrit : sans
+            // lui, une matière sans séance n'a aucune classe à proposer à
+            // l'enseignant. La table `matieres` elle-même est alimentée par
+            // MatiereSyncService depuis #258 — ce service ne fait que garantir
+            // la ligne, jamais remplacer son contenu.
+            $matieresData = $responseData['matieres'] ?? [];
+
             if (! isset($klasseData['id'])) {
                 $this->logger->warning('Données de classe invalides', [
                     'klassci_classe_id' => $klassciClasseId,
@@ -152,6 +173,11 @@ final class ClasseSyncService
 
             // Synchroniser la classe
             $result = $this->syncSingleClasse($klasseData);
+
+            if (is_array($matieresData) && $matieresData !== []) {
+                /** @var array<int, mixed> $matieresData */
+                $this->matieresSynchronizer->sync($result['classe'], array_values($matieresData));
+            }
 
             // Synchroniser les étudiants si disponibles
             if (! empty($etudiantsData) && is_array($etudiantsData)) {

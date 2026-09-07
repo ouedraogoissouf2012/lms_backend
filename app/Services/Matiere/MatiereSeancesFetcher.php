@@ -7,15 +7,17 @@ namespace App\Services\Matiere;
 use App\Models\Seance;
 use App\Models\User;
 use App\Services\KlassciProxyService;
+use App\Services\Seances\KlassciEmploiTempsSeances;
 use App\Services\Seances\KlassciPayload;
 use App\Services\Seances\LocalSeanceLookup;
+use App\Services\Seances\SeancesWindow;
 use Psr\Log\LoggerInterface;
 use Throwable;
 
 /**
  * MatiereSeancesFetcher — fetches and enriches séances for a matière.
  *
- * Extracted from {@see \App\Http\Controllers\API\LMS\LMSMatieresQueryController::matiereDetails}
+ * Extracted from {@see app/Http/Controllers/API/LMS/LMSMatieresQueryController.php::matiereDetails}
  * (legacy lines 132-233 + 396-439). Refactored for issue #517 (N+1 HTTP+SQL) :
  * reuses {@see LocalSeanceLookup} (#476) for a single mutualized local
  * preload (filter + visio) instead of a `Seance::where(...)->first()` per
@@ -36,6 +38,7 @@ final class MatiereSeancesFetcher
         private readonly KlassciProxyService $klassciService,
         private readonly LoggerInterface $logger,
         private readonly LocalSeanceLookup $localLookup,
+        private readonly KlassciEmploiTempsSeances $emploiTemps,
     ) {}
 
     /**
@@ -91,33 +94,28 @@ final class MatiereSeancesFetcher
             }
 
             if ($user->isStudent()) {
-                $seances = $this->fetchSeancesFromDashboard(
+                // Un `[DEBUG DATES]` en `info` vivait ici et déversait
+                // `'toutes_seances' => $seances`, le payload INTÉGRAL. Il était
+                // inoffensif tant que la source était morte : `$seances !== []`
+                // ne pouvait jamais être vrai. Brancher `emploi-temps` l'aurait
+                // allumé à CHAQUE consultation d'une page matière par un
+                // étudiant, avec la fenêtre glissante de ±6 mois — horaires,
+                // salles, classes, enseignants — plus le `user_id`.
+                //
+                // Un correctif ne doit pas réveiller ce qu'il ignore : ce qui
+                // dort dans une branche morte doit être relu quand on ranime la
+                // branche.
+                return $this->fetchSeancesFromDashboard(
                     $klassciToken,
                     $matiereId,
                     'me/dashboard',
                     $matiereData,
                 );
-
-                if ($seances !== []) {
-                    $this->logger->info('[DEBUG DATES] Séances récupérées de Klassci pour étudiant', [
-                        'matiere_id' => $matiereId,
-                        'user_id' => $user->id,
-                        'count' => count($seances),
-                        'premiere_seance' => $seances[0] ?? null,
-                        'toutes_seances' => $seances,
-                    ]);
-                }
-
-                return $seances;
             }
 
-            // Coordinator: use seances_programmees from base matiere payload.
-            /** @var array<int, array<string, mixed>> $seances */
-            $seances = is_array($matiereData['seances_programmees'] ?? null)
-                ? $matiereData['seances_programmees']
-                : [];
-
-            return $seances;
+            // Coordinateur : meme source que les autres roles. Lire
+            // `seances_programmees` du payload matiere ne rendait jamais rien.
+            return $this->seancesFromTimetable($klassciToken, $matiereId);
         } catch (Throwable $e) {
             $this->logger->warning('Erreur récupération séances', [
                 'matiere_id' => $matiereId,
@@ -131,7 +129,7 @@ final class MatiereSeancesFetcher
 
     /**
      * @param  array<string, mixed>  $matiereData  Payload `matieres/{id}` deja
-     *   recupere par {@see MatiereInfoFetcher} pour CETTE meme requete.
+     *                                             recupere par {@see MatiereInfoFetcher} pour CETTE meme requete.
      * @return array<int, array<string, mixed>>
      */
     private function fetchSeancesFromDashboard(string $klassciToken, int $matiereId, string $dashboardEndpoint, array $matiereData): array
@@ -142,36 +140,44 @@ final class MatiereSeancesFetcher
             'GET'
         );
 
-        /** @var array<int, array<string, mixed>> $matieresDashboard */
-        $matieresDashboard = $dashboard['data']['matieres'] ?? [];
+        $matieresDashboard = KlassciPayload::listOfArrays(
+            KlassciPayload::asArray($dashboard['data'] ?? null)['matieres'] ?? null
+        );
         $matiereInDashboard = collect($matieresDashboard)->firstWhere('id', $matiereId);
 
         if ($matiereInDashboard === null) {
             return [];
         }
 
-        // `matieres/{id}` a DEJA ete appele par MatiereInfoFetcher pour
-        // cette meme requete (meme endpoint, memes parametres) : le rappeler
-        // ici est un N+1 HTTP garanti (§1.4 PRODUCTION_STANDARDS.md), mesure
-        // sur l'ecran matiere-details (timeout client 30s systematiquement
-        // depasse quand KLASSCI est lent). On reutilise le payload deja
-        // recu ; le fetch ne reste qu'en repli pour un appelant qui n'a pas
-        // encore de matiereData (garde ce service testable independamment).
-        /** @var array<int, array<string, mixed>>|null $seances */
-        $seances = $matiereData['seances_programmees'] ?? null;
+        return $this->seancesFromTimetable($klassciToken, $matiereId);
+    }
 
-        if (!is_array($seances)) {
-            $matiereDetails = $this->klassciService->requestWithUserToken(
-                $klassciToken,
-                "matieres/{$matiereId}",
-                'GET'
-            );
+    /**
+     * Les séances de CETTE matière, depuis l'emploi du temps KLASSCI (#740).
+     *
+     * ## Pourquoi ce changement débloque la création de leçon
+     *
+     * On lisait `matieres/{id}.data.seances_programmees`, une clé que KLASSCI
+     * laisse **toujours vide** (mesuré le 2026-09-05 : `[]` annoncé à côté d'un
+     * `statistiques.seances.total_programmees: 28`).
+     *
+     * Or {@see MatiereClassesExtractor::fromSeances()} dérive les CLASSES d'une
+     * matière à partir de ses séances. Zéro séance → zéro classe → le frontend
+     * envoie `classe_id: null` → `StoreLessonRequest::authorize()` refuse, et
+     * Laravel exécutant `authorize()` AVANT la validation, l'utilisateur voit
+     * « This action is unauthorized » là où le vrai problème est une donnée
+     * absente.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    private function seancesFromTimetable(string $klassciToken, int $matiereId): array
+    {
+        [$dateDebut, $dateFin] = SeancesWindow::rolling();
 
-            /** @var array<int, array<string, mixed>> $seances */
-            $seances = $matiereDetails['data']['seances_programmees'] ?? [];
-        }
+        // Le tri par matière est LOCAL : KLASSCI accepte `matiere_id` et l'ignore.
+        $parMatiere = $this->emploiTemps->fetchByMatiere($klassciToken, [$matiereId], $dateDebut, $dateFin);
 
-        return $seances;
+        return $parMatiere[$matiereId] ?? [];
     }
 
     /**
@@ -202,7 +208,7 @@ final class MatiereSeancesFetcher
             $seanceId = KlassciPayload::toInt($seance['id'] ?? null);
 
             return ! $this->localLookup->isArchived($seanceId) && ! $this->localLookup->isHidden($seanceId);
-        })->values()->toArray();
+        })->values()->all();
 
         $this->logger->info('Séances filtrées pour étudiant', [
             'count_after_filter' => count($filtered),

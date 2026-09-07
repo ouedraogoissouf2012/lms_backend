@@ -9,6 +9,7 @@ use App\Jobs\DispatchLessonPublishedNotifications;
 use App\Models\Classe;
 use App\Models\Lesson;
 use App\Models\Matiere;
+use App\Models\Traits\ResolvesMirroredIdentifier;
 use App\Models\User;
 
 /**
@@ -44,45 +45,54 @@ final class LessonCrudOperationsService
         // Scope tenant explicite (defense en profondeur, fix E2E #211 flow 2).
         $data['institution_id'] = $author->institution_id;
 
-        // Résoudre matiere_id : le frontend peut envoyer un KLASSCI ID
-        if (isset($data['matiere_id'])) {
-            $matiere = Matiere::find($data['matiere_id']);
-            if (!$matiere) {
-                // Chercher par klassci_id
-                $matiere = Matiere::where('klassci_id', $data['matiere_id'])->first();
-                if ($matiere) {
-                    $data['matiere_id'] = $matiere->id;
-                }
-            }
-        }
-
-        // #265 — Résoudre classe_id : le frontend envoie un id KLASSCI de classe
-        // (comme matiere_id). On préfère l'id local, sinon on traduit le
-        // klassci_id → id local pour conserver la relation Lesson->Classe (FK
-        // local). Scopé à l'institution de l'auteur (isolation multi-tenant :
-        // le klassci_id n'est unique que par institution).
-        if (isset($data['classe_id'])) {
-            $classe = Classe::where('institution_id', $author->institution_id)
-                ->where('id', $data['classe_id'])
-                ->first();
-
-            if (!$classe) {
-                $classe = Classe::where('institution_id', $author->institution_id)
-                    ->where('klassci_id', $data['classe_id'])
-                    ->first();
-            }
-
-            if ($classe) {
-                $data['classe_id'] = $classe->id;
-            }
-        }
+        $data = $this->resolveMirroredIdentifiers($data, $author);
 
         // Si la leçon est créée avec status "published", définir published_at automatiquement
-        if (isset($data['status']) && $data['status'] === LessonStatus::Published->value && !isset($data['published_at'])) {
+        if (isset($data['status']) && $data['status'] === LessonStatus::Published->value && ! isset($data['published_at'])) {
             $data['published_at'] = now();
         }
 
         return Lesson::create($data);
+    }
+
+    /**
+     * Traduit vers l'espace LOCAL les identifiants d'entités miroitées que le
+     * frontend exprime, lui, dans l'espace KLASSCI (#265, #740).
+     *
+     * `lessons.classe_id` et `lessons.matiere_id` sont des clés étrangères
+     * LOCALES : y ranger un `klassci_id` mélangerait deux espaces de
+     * numérotation dans une même colonne — la faute exacte qui a produit la
+     * fuite entre enseignants de #707.
+     *
+     * La résolution est déléguée à {@see ResolvesMirroredIdentifier}, le même code
+     * qu'interroge `StoreLessonRequest` pour ACCEPTER la requête. Les deux ne
+     * peuvent donc plus diverger, et un champ dual supplémentaire s'ajoute en
+     * étendant la table ci-dessous, sans toucher à la mécanique.
+     *
+     * Un identifiant non résolu est laissé INTACT : c'est le comportement
+     * d'origine, et il est sans danger ici parce que `StoreLessonRequest` a
+     * déjà refusé la requête en amont. Dette tracée : ce service, appelé un
+     * jour hors de ce FormRequest, n'aurait plus ce garde-fou.
+     *
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    private function resolveMirroredIdentifiers(array $data, User $author): array
+    {
+        $miroitees = [
+            'matiere_id' => Matiere::class,
+            'classe_id' => Classe::class,
+        ];
+
+        foreach ($miroitees as $champ => $modele) {
+            if (! isset($data[$champ])) {
+                continue;
+            }
+
+            $data[$champ] = $modele::localIdFor($data[$champ], $author->institution_id) ?? $data[$champ];
+        }
+
+        return $data;
     }
 
     /**
@@ -95,7 +105,7 @@ final class LessonCrudOperationsService
     {
         // Handle status transitions and published_at timestamp
         if (isset($data['status'])) {
-            if ($data['status'] === LessonStatus::Published->value && !$lesson->published_at) {
+            if ($data['status'] === LessonStatus::Published->value && ! $lesson->published_at) {
                 $data['published_at'] = now();
             } elseif (in_array($data['status'], [LessonStatus::Draft->value, LessonStatus::Archived->value], true)) {
                 $data['published_at'] = null;

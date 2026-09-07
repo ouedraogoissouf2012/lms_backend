@@ -3,9 +3,11 @@
 namespace App\Http\Requests;
 
 use App\Enums\LessonStatus;
+use App\Models\Classe;
+use App\Models\Matiere;
+use App\Rules\MirroredIdentifierExists;
 use App\Rules\PositiveInteger;
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Validation\Rule;
 
 /**
  * Validates lesson creation request.
@@ -46,39 +48,29 @@ final class StoreLessonRequest extends FormRequest
 {
     /**
      * Determine if the user is authorized to make this request.
-     *
-     * @return bool
      */
     public function authorize(): bool
     {
         $user = auth()->user();
 
         // Check 1: User must be authenticated (middleware ensures, but explicit)
-        if (!$user) {
+        if (! $user) {
             return false;
         }
 
         // Check 2: User must be teacher or coordinator (not student)
-        if (!$user->isTeacher() && !$user->isCoordinator()) {
+        if (! $user->isTeacher() && ! $user->isCoordinator()) {
             return false;
         }
 
         // Check 3: Multi-tenant safety — la classe doit appartenir à l'institution
         // du user. #265 : le frontend envoie un id KLASSCI de classe (comme pour
-        // les évaluations), pas l'id local — on accepte donc l'id local OU le
-        // klassci_id (le service traduit ensuite en id local). Scopé institution.
-        $classeExists = \App\Models\Classe::where('institution_id', $user->institution_id)
-            ->where(function ($query): void {
-                $query->where('id', $this->classe_id)
-                    ->orWhere('klassci_id', $this->classe_id);
-            })
-            ->exists();
-
-        if (!$classeExists) {
-            return false;
-        }
-
-        return true;
+        // les évaluations), pas l'id local ; les deux espaces sont acceptés.
+        //
+        // La décision appartient au modèle lui-même (contrat MirroredFromKlassci),
+        // ici comme dans `rules()` et comme dans le service qui TRADUIT ensuite vers
+        // l'id local (#740) : c'est la même question, elle n'a qu'une seule réponse.
+        return Classe::existsFor($this->input('classe_id'), $user->institution_id);
     }
 
     /**
@@ -114,13 +106,23 @@ final class StoreLessonRequest extends FormRequest
             ],
             'classe_id' => [
                 'required',
-                new PositiveInteger(),
+                new PositiveInteger,
             ],
+            // #740 — SYMÉTRIE avec `classe_id` : le frontend envoie un id
+            // KLASSCI de matière, pas l'id local. La règle n'acceptait que
+            // l'espace LOCAL : toute leçon portant une matière échouait en 422
+            // « La matière n'existe pas », sur une matière pourtant présente en
+            // base — MatiereSyncService l'y écrit à chaque connexion (#258).
+            // La cause n'était donc pas une table vide, mais une divergence
+            // d'espace d'identifiants.
+            //
+            // La traduction vers l'id LOCAL reste faite par
+            // LessonCrudOperationsService, car `lessons.matiere_id` est un
+            // identifiant local et ne doit jamais recevoir un id KLASSCI (#707).
             'matiere_id' => [
                 'nullable',
-                new PositiveInteger(),
-                Rule::exists('matieres', 'id')
-                    ->where('institution_id', $user?->institution_id),
+                new PositiveInteger,
+                new MirroredIdentifierExists(Matiere::class, $user?->institution_id, 'La matière n\'existe pas'),
             ],
             'niveau_difficulte' => [
                 'nullable',
@@ -173,8 +175,6 @@ final class StoreLessonRequest extends FormRequest
      * - Prevents " " (only spaces) being valid input
      * - Removes accidental leading/trailing whitespace
      * - Consistent data format in database
-     *
-     * @return void
      */
     protected function prepareForValidation(): void
     {

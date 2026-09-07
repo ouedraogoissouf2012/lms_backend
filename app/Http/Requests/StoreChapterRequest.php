@@ -2,7 +2,7 @@
 
 namespace App\Http\Requests;
 
-use App\Rules\PositiveInteger;
+use App\Models\Lesson;
 use App\Support\Upload\UploadLimits;
 use Illuminate\Foundation\Http\FormRequest;
 
@@ -42,34 +42,32 @@ final class StoreChapterRequest extends FormRequest
 {
     /**
      * Determine if the user is authorized to make this request.
-     *
-     * @return bool
      */
     public function authorize(): bool
     {
         $user = auth()->user();
 
         // Check 1: User must be authenticated
-        if (!$user) {
+        if (! $user) {
             return false;
         }
 
         // Check 2: User must be teacher or coordinator (not student)
-        if (!$user->isTeacher() && !$user->isCoordinator()) {
+        if (! $user->isTeacher() && ! $user->isCoordinator()) {
             return false;
         }
 
         // Check 3: Multi-tenant safety - lesson must belong to user's institution
         // Lesson ID comes from route: /api/lessons/{lessonId}/chapters
-        if (!$this->route('lessonId')) {
+        if (! $this->route('lessonId')) {
             return false;
         }
 
-        $lesson = \App\Models\Lesson::where('id', $this->route('lessonId'))
+        $lesson = Lesson::where('id', $this->route('lessonId'))
             ->where('institution_id', $user->institution_id)
             ->exists();
 
-        if (!$lesson) {
+        if (! $lesson) {
             return false;
         }
 
@@ -95,9 +93,17 @@ final class StoreChapterRequest extends FormRequest
                 'string',
                 'max:1000',
             ],
+            // L'ordre part de ZÉRO — c'est la valeur par défaut de la colonne
+            // (`chapters.order` → `->default(0)`, migration 2025_10_25_202933) et
+            // c'est déjà ce qu'accepte `ReorderChaptersRequest` (`min:0`).
+            //
+            // L'ancienne règle exigeait > 0 : on pouvait DÉPLACER un chapitre en
+            // position 0 mais pas en CRÉER un. Le frontend numérotant à partir de
+            // zéro, la création du PREMIER chapitre échouait systématiquement.
             'ordre' => [
                 'nullable',
-                new PositiveInteger(),
+                'integer',
+                'min:0',
             ],
             'fichier' => [
                 'sometimes', // Optional: chapter may not have file
@@ -111,26 +117,27 @@ final class StoreChapterRequest extends FormRequest
                 'string',
                 'in:text,video,pdf,powerpoint,word,image,link,quiz',
             ],
-            // Corps du chapitre selon son type (texte/markdown, lien vidéo,
-            // lien externe). Sans ces champs, un chapitre créé via l'API n'avait
-            // jamais de contenu (seul l'upload de fichier était géré).
-            'content' => [
-                'nullable',
-                'string',
-                'max:10000',
-            ],
-            'video_url' => [
-                'nullable',
-                'url',
-            ],
-            'external_link' => [
-                'nullable',
-                'url',
-            ],
-            'autoplay_video' => [
-                'nullable',
-                'boolean',
-            ],
+        ] + $this->contentBodyRules();
+    }
+
+    /**
+     * Corps du chapitre selon son type : texte/markdown, lien vidéo, lien
+     * externe. Sans ces champs, un chapitre créé via l'API n'avait jamais de
+     * contenu — seul l'upload de fichier était géré.
+     *
+     * Extrait de `rules()`, qui dépassait la garde des 40 lignes. « Le corps
+     * du chapitre » est un groupe cohérent : c'est une décomposition par sens,
+     * pas une découpe pour tenir dans un compteur.
+     *
+     * @return array<string, mixed>
+     */
+    private function contentBodyRules(): array
+    {
+        return [
+            'content' => ['nullable', 'string', 'max:10000'],
+            'video_url' => ['nullable', 'url'],
+            'external_link' => ['nullable', 'url'],
+            'autoplay_video' => ['nullable', 'boolean'],
         ];
     }
 
@@ -147,7 +154,11 @@ final class StoreChapterRequest extends FormRequest
             'titre.max' => 'Le titre ne doit pas dépasser 255 caractères',
             'description.max' => 'La description ne doit pas dépasser 1000 caractères',
             'ordre.required' => 'L\'ordre doit être fourni',
-            'fichier.max' => 'Le fichier ne doit pas dépasser ' . UploadLimits::humanReadable(),
+            'ordre.integer' => 'L\'ordre doit être un nombre entier',
+            // Même formulation que ReorderChaptersRequest : une seule colonne,
+            // un seul message.
+            'ordre.min' => 'L\'ordre ne peut pas être négatif',
+            'fichier.max' => 'Le fichier ne doit pas dépasser '.UploadLimits::humanReadable(),
             'fichier.mimes' => 'Le fichier doit être: PDF, Word (doc/docx), ou PowerPoint (ppt/pptx)',
             'type_contenu.in' => 'Le type de contenu n\'est pas autorisé',
         ];
@@ -159,8 +170,6 @@ final class StoreChapterRequest extends FormRequest
      * Normalize inputs:
      * - Trim title and description
      * - Convert ordre to integer
-     *
-     * @return void
      */
     protected function prepareForValidation(): void
     {

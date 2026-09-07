@@ -62,13 +62,13 @@ trait ResolvesMirroredIdentifier
         $recherche = (int) $identifiant;
 
         // Espace local d'abord : voir l'invariant 1 du docblock du trait.
-        $local = static::mirroredScope($institutionId)->where('id', $recherche)->value('id');
+        $local = self::mirroredScope($institutionId)->where('id', $recherche)->value('id');
 
         if (is_numeric($local)) {
             return (int) $local;
         }
 
-        $miroir = static::mirroredScope($institutionId)->where('klassci_id', $recherche)->value('id');
+        $miroir = self::mirroredScope($institutionId)->where('klassci_id', $recherche)->value('id');
 
         return is_numeric($miroir) ? (int) $miroir : null;
     }
@@ -104,7 +104,7 @@ trait ResolvesMirroredIdentifier
             return null;
         }
 
-        $local = static::mirroredScope($institutionId)->where('klassci_id', (int) $klassciId)->value('id');
+        $local = self::mirroredScope($institutionId)->where('klassci_id', (int) $klassciId)->value('id');
 
         return is_numeric($local) ? (int) $local : null;
     }
@@ -115,6 +115,13 @@ trait ResolvesMirroredIdentifier
      * ICI, une fois, plutôt que recopiée par chaque appelant — soit exactement
      * la duplication que ce trait supprime. `null` ne résout que les lignes
      * sans institution, le cas d'un compte hors établissement.
+     *
+     * Elle est appelée en `self::`, jamais `static::` : invoquer une méthode
+     * PRIVÉE par liaison statique tardive n'est pas sûr — une classe fille n'y
+     * aurait pas accès. PHPStan le signale, mais seulement en CI, plus stricte
+     * que l'analyse locale. La liaison tardive reste là où elle a un sens :
+     * `static::query()`, juste en dessous, qui DOIT résoudre le modèle utilisant
+     * le trait.
      *
      * @return Builder<static>
      */

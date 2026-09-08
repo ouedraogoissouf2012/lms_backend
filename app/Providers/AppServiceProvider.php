@@ -15,6 +15,8 @@ use App\Services\Integrity\ArchivedRowWriter;
 use App\Services\Integrity\ArchivedRowWriterInterface;
 use App\Services\Klassci\Health\HttpKlassciReachability;
 use App\Services\Klassci\Health\KlassciReachability;
+use App\Services\Klassci\Sync\KlassciSyncGate;
+use App\Services\Klassci\Sync\TokenPresentSyncGate;
 use App\Services\Klassci\KlassciConfigResolver;
 use App\Services\Klassci\KlassciRequestMemo;
 use App\Services\Klassci\KlassciTargetResolver;
@@ -69,6 +71,7 @@ class AppServiceProvider extends ServiceProvider
         $this->bindRecordingMediaSource();
         $this->bindClasseAudienceSource();
         $this->bindEnrollmentSource();
+        $this->app->bind(KlassciSyncGate::class, TokenPresentSyncGate::class);
 
         // TenantScopedCache (#374, spec redis-runtime). Le conteneur ne sait
         // pas résoudre la classe concrète Illuminate\Cache\Repository par

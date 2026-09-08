@@ -7,6 +7,7 @@ namespace App\Http\Middleware;
 use App\Enums\Role;
 use App\Models\User;
 use App\Services\Klassci\Data\KlassciDataWhitelist;
+use App\Services\Klassci\Sync\KlassciSyncGate;
 use App\Services\KlassciProxyService;
 use Closure;
 use Illuminate\Http\Request;
@@ -44,6 +45,7 @@ class EnsureKlassciSync
     public function __construct(
         private readonly KlassciProxyService $klassciService,
         private readonly KlassciDataWhitelist $whitelist,
+        private readonly KlassciSyncGate $syncGate,
     ) {}
 
     /**
@@ -60,7 +62,7 @@ class EnsureKlassciSync
             return $next($request);
         }
 
-        if ($user->isKlassciDataFresh()) {
+        if (! $this->syncGate->shouldRefresh($user)) {
             return $next($request);
         }
 
@@ -71,12 +73,7 @@ class EnsureKlassciSync
 
         try {
             $klassciToken = $user->klassci_token;
-            if (!is_string($klassciToken) || $klassciToken === '') {
-                Log::warning("Re-synchronisation KLASSCI ignorée pour user {$user->id}", [
-                    'user_id' => $user->id,
-                    'reason' => 'missing_user_token',
-                ]);
-
+            if (! is_string($klassciToken) || $klassciToken === '') {
                 return $next($request);
             }
 

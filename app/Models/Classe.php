@@ -2,11 +2,14 @@
 
 namespace App\Models;
 
+use App\Models\Contracts\MirroredFromKlassci;
+use App\Models\Traits\BelongsToInstitution;
+use App\Models\Traits\ResolvesMirroredIdentifier;
+use Database\Factories\ClasseFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use App\Models\Traits\BelongsToInstitution;
 
 /**
  * Model Classe
@@ -16,10 +19,10 @@ use App\Models\Traits\BelongsToInstitution;
  * `institution_id` : hérité du trait {@see BelongsToInstitution} (#363,
  * remplace l'annotation locale posée par #265).
  */
-class Classe extends Model
+class Classe extends Model implements MirroredFromKlassci
 {
-    /** @use HasFactory<\Database\Factories\ClasseFactory> */
-    use HasFactory, BelongsToInstitution;
+    /** @use HasFactory<ClasseFactory> */
+    use BelongsToInstitution, HasFactory, ResolvesMirroredIdentifier;
 
     protected $fillable = [
         'klassci_id',
@@ -99,7 +102,7 @@ class Classe extends Model
      */
     public function isKlassciDataFresh(): bool
     {
-        if (!$this->last_klassci_sync) {
+        if (! $this->last_klassci_sync) {
             return false;
         }
 

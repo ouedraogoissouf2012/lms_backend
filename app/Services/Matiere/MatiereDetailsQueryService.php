@@ -5,13 +5,14 @@ declare(strict_types=1);
 namespace App\Services\Matiere;
 
 use App\Exceptions\MissingKlassciTokenException;
+use App\Models\Matiere;
 use App\Models\User;
 
 /**
  * MatiereDetailsQueryService — orchestrates the matière details payload.
  *
  * Replaces the inline pipeline that used to live in
- * {@see \App\Http\Controllers\API\LMS\LMSMatieresQueryController::matiereDetails}
+ * {@see app/Http/Controllers/API/LMS/LMSMatieresQueryController.php::matiereDetails}
  * (legacy 472-line method).
  *
  * Pipeline:
@@ -36,16 +37,17 @@ final class MatiereDetailsQueryService
         private readonly MatiereSeancesFetcher $seancesFetcher,
         private readonly MatiereEvaluationsFetcher $evaluationsFetcher,
         private readonly MatiereLessonsAndStatsBuilder $lessonsAndStatsBuilder,
+        private readonly MatiereClassesResolver $classesResolver,
     ) {}
 
     /**
-     * @return array{matiere: array<string, mixed>, combinaisons: array<int, array<string, mixed>>, enseignants: array<int, array<string, mixed>>, lessons: array<int, array<string, mixed>>, seances_programmees: array<int, array<string, mixed>>, evaluations_programmees: array<int, array<string, mixed>>, classes_concernees: array<int, array{id: int, nom: string}>, statistiques: array<string, mixed>}|null
+     * @return array{matiere: array<string, mixed>, matiere_id_local: int|null, combinaisons: array<int, array<string, mixed>>, enseignants: array<int, array<string, mixed>>, lessons: array<int, array<string, mixed>>, seances_programmees: array<int, array<string, mixed>>, evaluations_programmees: array<int, array<string, mixed>>, classes_concernees: array<int, array{id: int, nom: string}>, statistiques: array<string, mixed>}|null
      */
     public function getDetailsForUser(int $matiereId, User $user): ?array
     {
         $klassciToken = $user->klassci_token;
 
-        if (!$klassciToken) {
+        if (! $klassciToken) {
             throw MissingKlassciTokenException::forUser($user->id);
         }
 
@@ -90,8 +92,47 @@ final class MatiereDetailsQueryService
             'lessons' => $lessonsAndStats['lessons'],
             'seances_programmees' => $seancesPayload['seances_enrichies'],
             'evaluations_programmees' => $evaluationsPayload['evaluations_enrichies'],
-            'classes_concernees' => MatiereClassesExtractor::fromSeances($seancesPayload['seances_enrichies']),
             'statistiques' => $lessonsAndStats['stats'],
+        ] + $this->localContext($matiereId, $user, $seancesPayload['seances_enrichies']);
+    }
+
+    /**
+     * Ce que le LMS sait LOCALEMENT de cette matière : son identité dans notre
+     * espace, et les classes qui lui sont rattachées.
+     *
+     * Les deux champs répondent à la même question — « de quoi le frontend
+     * a-t-il besoin pour AGIR sur cette matière chez nous ? » — et tous deux
+     * sont exprimés dans l'espace LOCAL, celui que nos colonnes stockent. Le
+     * reste de la réponse est du passthrough KLASSCI ; ce bloc-ci est notre
+     * part.
+     *
+     * **`matiere_id_local`** — `matiere` porte l'identifiant KLASSCI, celui de
+     * la route, et le frontend le renvoyait tel quel à la création de leçon.
+     * Or `lessons.matiere_id` est une clé LOCALE : sur une collision entre les
+     * deux numérotations, la leçon partait sur une AUTRE matière, en 201 et
+     * sans erreur. Mesuré le 2026-09-07 — une leçon créée depuis « Anglais »
+     * (KLASSCI 3) s'est retrouvée sur « Algorithme » (local 3), invisible sur
+     * la page d'origine. `null` quand la matière n'est pas miroitée : le
+     * frontend omet alors le champ. Une leçon sans matière est réparable, une
+     * leçon sur la mauvaise matière est une corruption silencieuse.
+     *
+     * **`classes_concernees`** — #740, deux sources : les séances (immédiat) ET
+     * le miroir local `classe_matiere`. Sans la seconde, une matière SANS
+     * séance n'avait aucune classe, donc `classe_id: null` côté frontend, donc
+     * 403 à la création de leçon — sur une matière parfaitement légitime.
+     *
+     * @param  array<int, array<string, mixed>>  $seancesEnrichies
+     * @return array{matiere_id_local: int|null, classes_concernees: array<int, array{id: int, nom: string}>}
+     */
+    private function localContext(int $matiereId, User $user, array $seancesEnrichies): array
+    {
+        return [
+            'matiere_id_local' => Matiere::localIdForKlassciId($matiereId, $user->institution_id),
+            'classes_concernees' => $this->classesResolver->resolve(
+                $seancesEnrichies,
+                $matiereId,
+                $user->institution_id,
+            ),
         ];
     }
 }

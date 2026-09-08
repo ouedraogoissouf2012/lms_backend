@@ -7,8 +7,10 @@ use App\Models\Institution;
 use App\Models\Lesson;
 use App\Models\Matiere;
 use App\Models\User;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Laravel\Sanctum\Sanctum;
+use Tests\Feature\Chapter\ChapterOrderZeroTest;
 use Tests\TestCase;
 
 /**
@@ -31,11 +33,14 @@ use Tests\TestCase;
  */
 class StoreChapterRequestTest extends TestCase
 {
-    use \Illuminate\Foundation\Testing\RefreshDatabase;
+    use RefreshDatabase;
 
     private Institution $institution;
+
     private Lesson $lesson;
+
     private User $teacher;
+
     private User $student;
 
     protected function setUp(): void
@@ -242,9 +247,29 @@ class StoreChapterRequestTest extends TestCase
     }
 
     /**
-     * ❌ VALIDATION: ordre must be positive
+     * ✅ VALIDATION: ordre starts at ZERO
+     *
+     * Ce test affirmait l'inverse — `ordre = 0` devait échouer en 422 — et
+     * cette attente ENCODAIT le défaut. Trois sources s'opposaient sur la même
+     * colonne :
+     *
+     * | Source | Borne |
+     * |---|---|
+     * | `chapters.order` (migration `2025_10_25_202933`) | `->default(0)` |
+     * | `ReorderChaptersRequest` | `min:0` |
+     * | `StoreChapterRequest` | `PositiveInteger` — strictement > 0 |
+     *
+     * On pouvait DÉPLACER un chapitre en position 0, jamais en CRÉER un. Le
+     * frontend numérotant à partir de zéro, la création du premier chapitre
+     * échouait systématiquement sur un formulaire pourtant correct — observé
+     * en local sur l'écran « Gestion des chapitres ».
+     *
+     * Le renversement est délibéré et tracé, pas un test rendu vert : la borne
+     * basse RESTE une borne, `test_ordre_negative_fails` ci-dessous en fait foi.
+     *
+     * @see ChapterOrderZeroTest couverture complète du cas
      */
-    public function test_ordre_zero_fails(): void
+    public function test_ordre_zero_is_accepted(): void
     {
         Sanctum::actingAs($this->teacher);
 
@@ -253,8 +278,7 @@ class StoreChapterRequestTest extends TestCase
             'ordre' => 0,
         ]);
 
-        $response->assertStatus(422);
-        $this->assertNotEmpty($response->json('errors.ordre'));
+        $response->assertStatus(201);
     }
 
     /**

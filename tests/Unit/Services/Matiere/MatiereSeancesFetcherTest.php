@@ -67,18 +67,21 @@ final class MatiereSeancesFetcherTest extends TestCase
         $coordinator = $this->userWithRole('coordinateur');
         $payloads = $this->seedSeances(5, 30_000, 700);
 
-        $this->mock(KlassciProxyService::class, function (MockInterface $mock): void {
+        $this->mock(KlassciProxyService::class, function (MockInterface $mock) use ($payloads): void {
             $mock->shouldReceive('fetchManyClassesDetails')
                 ->once()
                 ->with([700], self::TOKEN)
                 ->andReturn([700 => ['data' => ['classe' => ['places_occupees' => 27]]]]);
+
+            // Source réelle des séances depuis #740 : l'emploi du temps.
+            $mock->shouldReceive('getEmploiTemps')->andReturn(['data' => $payloads]);
         });
 
         $result = app(MatiereSeancesFetcher::class)->fetchSeancesForUser(
             $coordinator,
             self::MATIERE_ID,
             self::TOKEN,
-            ['seances_programmees' => $payloads],
+            [],
         );
 
         self::assertCount(5, $result['seances_enrichies']);
@@ -110,10 +113,9 @@ final class MatiereSeancesFetcherTest extends TestCase
                 ->once()
                 ->with(self::TOKEN, 'me/dashboard', 'GET')
                 ->andReturn(['data' => ['matieres' => [['id' => self::MATIERE_ID]]]]);
-            $mock->shouldReceive('requestWithUserToken')
+            $mock->shouldReceive('getEmploiTemps')
                 ->once()
-                ->with(self::TOKEN, 'matieres/'.self::MATIERE_ID, 'GET')
-                ->andReturn(['data' => ['seances_programmees' => $payloads]]);
+                ->andReturn(['data' => $payloads]);
             $mock->shouldReceive('fetchManyClassesDetails')
                 ->once()
                 ->with([700], self::TOKEN)
@@ -131,111 +133,46 @@ final class MatiereSeancesFetcherTest extends TestCase
         self::assertSame(900_001, $result['seances'][0]['id']);
     }
 
-    public function test_student_path_reuses_already_fetched_matiere_data_instead_of_refetching(): void
+    /**
+     * La garantie qui remplace les trois tests de « réutilisation ».
+     *
+     * Ils verrouillaient une optimisation devenue sans objet : réutiliser
+     * `matiereData['seances_programmees']` pour éviter un second appel
+     * `matieres/{id}`. Cette clé est TOUJOURS vide chez KLASSCI (#740) —
+     * l'appel économisé ne rapportait donc rien.
+     *
+     * Ce qui la remplace est plus fort : les séances viennent d'UN SEUL appel
+     * `emploi-temps`, et `matieres/{id}` n'est plus jamais sollicité.
+     */
+    public function test_seances_come_from_a_single_timetable_call(): void
     {
-        // MatiereInfoFetcher appelle DEJA `matieres/{id}` avant que
-        // l'orchestrateur ne transmette son resultat ici via `$matiereData`.
-        // Le reappeler est un N+1 HTTP garanti (meme endpoint, memes params,
-        // dans la MEME requete) — §1.4 PRODUCTION_STANDARDS.md. Ce test
-        // verrouille l'ELIMINATION : quand `$matiereData` porte deja
-        // `seances_programmees`, aucun second appel `matieres/{id}` n'a lieu.
-        $student = $this->userWithRole('etudiant');
-
-        Seance::factory()->forInstitution($this->institution)->create([
-            'klassci_seance_id' => 900_003,
-            'is_active' => true,
-        ]);
-
-        $payloads = [$this->seancePayload(900_003, 700)];
-
-        $this->mock(KlassciProxyService::class, function (MockInterface $mock) use ($payloads): void {
-            $mock->shouldReceive('requestWithUserToken')
-                ->once()
-                ->with(self::TOKEN, 'me/dashboard', 'GET')
-                ->andReturn(['data' => ['matieres' => [['id' => self::MATIERE_ID]]]]);
-            // AUCUNE attente sur 'matieres/'.self::MATIERE_ID : Mockery echoue
-            // le test si ce second appel a lieu (mock non configure pour lui).
-            $mock->shouldReceive('fetchManyClassesDetails')
-                ->once()
-                ->with([700], self::TOKEN)
-                ->andReturn([]);
-        });
-
-        $result = app(MatiereSeancesFetcher::class)->fetchSeancesForUser(
-            $student,
-            self::MATIERE_ID,
-            self::TOKEN,
-            ['seances_programmees' => $payloads],
-        );
-
-        self::assertCount(1, $result['seances']);
-        self::assertSame(900_003, $result['seances'][0]['id']);
-    }
-
-    public function test_teacher_path_also_reuses_already_fetched_matiere_data(): void
-    {
-        // Meme elimination que le test etudiant ci-dessus, sur le chemin
-        // enseignant (`me/teacher-dashboard`) — meme methode privee partagee,
-        // mais sans couverture dediee avant ce test : les deux appelants de
-        // `fetchSeancesFromDashboard` doivent beneficier de la reutilisation,
-        // pas seulement celui qui avait deja un test.
         $teacher = $this->userWithRole('enseignant');
 
-        Seance::factory()->forInstitution($this->institution)->create([
-            'klassci_seance_id' => 900_004,
-            'is_active' => true,
-        ]);
-
-        $payloads = [$this->seancePayload(900_004, 700)];
-
-        $this->mock(KlassciProxyService::class, function (MockInterface $mock) use ($payloads): void {
+        $this->mock(KlassciProxyService::class, function (MockInterface $mock): void {
             $mock->shouldReceive('requestWithUserToken')
-                ->once()
                 ->with(self::TOKEN, 'me/teacher-dashboard', 'GET')
                 ->andReturn(['data' => ['matieres' => [['id' => self::MATIERE_ID]]]]);
-            // AUCUNE attente sur 'matieres/'.self::MATIERE_ID ici non plus.
-            $mock->shouldReceive('fetchManyClassesDetails')
+
+            $mock->shouldReceive('getEmploiTemps')
                 ->once()
-                ->with([700], self::TOKEN)
-                ->andReturn([]);
+                ->andReturn(['data' => [$this->seancePayload(900_010, 700)]]);
+
+            // La cle morte n'est plus jamais consultee.
+            $mock->shouldNotReceive('requestWithUserToken')
+                ->with(self::TOKEN, 'matieres/'.self::MATIERE_ID, 'GET');
+
+            $mock->shouldReceive('fetchManyClassesDetails')->andReturn([]);
         });
 
         $result = app(MatiereSeancesFetcher::class)->fetchSeancesForUser(
             $teacher,
             self::MATIERE_ID,
             self::TOKEN,
-            ['seances_programmees' => $payloads],
+            [],
         );
 
         self::assertCount(1, $result['seances']);
-        self::assertSame(900_004, $result['seances'][0]['id']);
-    }
-
-    public function test_reuse_does_not_refetch_when_matiere_genuinely_has_zero_seances(): void
-    {
-        // Cas limite qui piege une implementation naive (`!empty($seances)`
-        // au lieu de `!is_array($seances)`) : `seances_programmees` PRESENT
-        // mais VIDE est une mesure valide (0 seance programmee), pas une
-        // absence — ne doit PAS declencher le repli vers un second appel.
-        $student = $this->userWithRole('etudiant');
-
-        $this->mock(KlassciProxyService::class, function (MockInterface $mock): void {
-            $mock->shouldReceive('requestWithUserToken')
-                ->once()
-                ->with(self::TOKEN, 'me/dashboard', 'GET')
-                ->andReturn(['data' => ['matieres' => [['id' => self::MATIERE_ID]]]]);
-            // AUCUNE attente sur fetchManyClassesDetails : sans classe a
-            // resoudre, fetchClassesDetails() court-circuite avant l'appel.
-        });
-
-        $result = app(MatiereSeancesFetcher::class)->fetchSeancesForUser(
-            $student,
-            self::MATIERE_ID,
-            self::TOKEN,
-            ['seances_programmees' => []],
-        );
-
-        self::assertSame([], $result['seances']);
+        self::assertSame(900_010, $result['seances'][0]['id']);
     }
 
     private function userWithRole(string $role): User
@@ -281,13 +218,18 @@ final class MatiereSeancesFetcherTest extends TestCase
                 ->once()
                 ->with($classeIds, self::TOKEN)
                 ->andReturn([]);
+
+            // Source réelle des séances depuis #740 : l'emploi du temps.
+            $mock->shouldReceive('getEmploiTemps')->andReturn(['data' => $payloads]);
+            $mock->shouldReceive('requestWithUserToken')
+                ->andReturn(['data' => ['matieres' => [['id' => self::MATIERE_ID]]]]);
         });
 
         app(MatiereSeancesFetcher::class)->fetchSeancesForUser(
             $user,
             self::MATIERE_ID,
             self::TOKEN,
-            ['seances_programmees' => $payloads],
+            [],
         );
     }
 
@@ -309,9 +251,12 @@ final class MatiereSeancesFetcherTest extends TestCase
     {
         return [
             'id' => $id,
+            // La matiere est portee par la seance : le tri par matiere est LOCAL,
+            // KLassci acceptant `matiere_id` et l'ignorant (#740).
+            'matiere' => ['id' => self::MATIERE_ID],
             'classe' => ['id' => $classeId, 'nom' => 'Classe '.$classeId],
             'programmation' => [
-                'date' => '2026-08-15',
+                'date_seance' => '2026-08-15',
                 'heure_debut' => '2026-08-15T09:00:00.000000Z',
                 'heure_fin' => '2026-08-15T10:00:00.000000Z',
                 'salle' => 'Salle 1',

@@ -7,7 +7,7 @@ namespace App\Services\Chapter;
 use App\Models\Chapter;
 use App\Models\Lesson;
 use App\Models\User;
-use App\Services\Lesson\StudentClasseResolver;
+use App\Services\Enrollment\EnrollmentSource;
 
 /**
  * #621 — lecture d'un chapitre : même frontière que #482 (classe de l'étudiant).
@@ -19,7 +19,7 @@ use App\Services\Lesson\StudentClasseResolver;
 final class ChapterReadGate
 {
     public function __construct(
-        private readonly StudentClasseResolver $classes,
+        private readonly EnrollmentSource $classes,
     ) {
     }
 

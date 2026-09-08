@@ -65,6 +65,7 @@ final class MyCoursesClasseScopingTest extends TestCase
             'institution_id' => $this->institution->id,
             'synced_at' => now(),
         ]);
+        $classe->etudiants()->attach($student->id, ['statut' => 'actif']);
 
         return $classe;
     }

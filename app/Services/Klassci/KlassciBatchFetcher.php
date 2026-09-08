@@ -5,9 +5,6 @@ declare(strict_types=1);
 namespace App\Services\Klassci;
 
 use Illuminate\Contracts\Cache\Repository as CacheRepository;
-use Illuminate\Http\Client\Factory as HttpFactory;
-use Illuminate\Http\Client\Response;
-use Psr\Log\LoggerInterface;
 
 /**
  * PERF-02 (issue #135) — Couche 3 : batch fetcher parallélisé via `Http::pool`.
@@ -54,12 +51,11 @@ final class KlassciBatchFetcher
     private readonly int $defaultTTL;
 
     public function __construct(
-        private readonly HttpFactory $http,
         private readonly KlassciRequestMemo $memo,
         private readonly KlassciCacheKeyStrategy $cacheKeys,
         private readonly KlassciConfigResolver $config,
         private readonly CacheRepository $cache,
-        private readonly LoggerInterface $logger,
+        private readonly KlassciResilientPool $pool,
     ) {
         // Cap dur à 32 : sanity check défense-en-profondeur contre une mauvaise
         // config ops (`KLASSCI_POOL_SIZE=10000` → DoS sortant + épuisement
@@ -96,11 +92,11 @@ final class KlassciBatchFetcher
      *           sans filtrage tenant/ownership préalable côté caller — vecteur
      *           IDOR garanti si KLASSCI ne tient pas son côté du contrat.
      *
-     * @param  array<int>  $ids               Liste d'IDs à résoudre
-     * @param  string  $endpointPattern   Pattern avec `{id}` (ex: `"matieres/{id}"`)
-     * @param  string|null  $userToken     Token utilisateur ou null pour le token système
-     * @param  int|null  $customTTL        Override TTL cache (secondes)
-     * @return array<int, array<string, mixed>>  Map [id => responseData]. IDs échoués absents.
+     * @param  array<int>  $ids  Liste d'IDs à résoudre
+     * @param  string  $endpointPattern  Pattern avec `{id}` (ex: `"matieres/{id}"`)
+     * @param  string|null  $userToken  Token utilisateur ou null pour le token système
+     * @param  int|null  $customTTL  Override TTL cache (secondes)
+     * @return array<int, array<string, mixed>> Map [id => responseData]. IDs échoués absents.
      */
     public function fetchManyByEndpoint(
         array $ids,
@@ -130,10 +126,12 @@ final class KlassciBatchFetcher
         $effectiveToken = $userToken ?? $this->config->token();
         $baseUrl = $this->config->requireBaseUrl();
 
-        foreach (array_chunk($needsFetch, $this->poolSize, true) as $batch) {
-            $responses = $this->http->pool($this->buildPoolRequests($batch, $baseUrl, $effectiveToken));
-            $this->persistBatchResponses($batch, $responses, $ttl, $resolved);
-        }
+        $this->pool->run(
+            array_chunk($needsFetch, $this->poolSize, true),
+            new PoolTarget($baseUrl, $effectiveToken, $this->connectTimeout, $this->timeout, $this->sslVerify),
+            $ttl,
+            $resolved,
+        );
 
         return $resolved;
     }
@@ -156,6 +154,7 @@ final class KlassciBatchFetcher
             $memoized = $this->memo->get($memoKey);
             if ($memoized !== null) {
                 $resolved[$id] = $memoized;
+
                 continue;
             }
 
@@ -168,81 +167,18 @@ final class KlassciBatchFetcher
                 /** @var array<string, mixed> $cached */
                 $this->memo->put($memoKey, $cached);
                 $resolved[$id] = $cached;
+
                 continue;
             }
 
             $needsFetch[$id] = [
                 'endpoint' => $endpoint,
-                'memoKey'  => $memoKey,
+                'memoKey' => $memoKey,
                 'cacheKey' => $cacheKey,
             ];
         }
 
         return [$resolved, $needsFetch];
-    }
-
-    /**
-     * Étape 2a — Construit le callback `Http::pool` pour un batch d'IDs.
-     *
-     * @param  array<int, array{endpoint: string, memoKey: string, cacheKey: string}>  $batch
-     */
-    private function buildPoolRequests(array $batch, string $baseUrl, ?string $effectiveToken): \Closure
-    {
-        return function ($pool) use ($batch, $baseUrl, $effectiveToken) {
-            $requests = [];
-            foreach ($batch as $id => $meta) {
-                $url = $baseUrl . '/' . ltrim($meta['endpoint'], '/');
-
-                // PR 2 audit `spec-architect` MEDIUM-2 : factorisation HTTP-builder
-                // via helper statique pur sur KlassciHttpClient (headers + SSL + token).
-                $req = KlassciHttpClient::decorateRequest(
-                    $pool->as((string) $id)
-                        ->connectTimeout($this->connectTimeout)
-                        ->timeout($this->timeout),
-                    $url,
-                    $this->sslVerify,
-                    $effectiveToken,
-                );
-
-                $requests[] = $req->get($url);
-            }
-
-            return $requests;
-        };
-    }
-
-    /**
-     * Étape 2b — Persiste les réponses d'un batch : OK → cache+memo+résultat,
-     * failed → log + omission de l'ID du map (pas de throw, sémantique préservée).
-     *
-     * @param  array<int, array{endpoint: string, memoKey: string, cacheKey: string}>  $batch
-     * @param  array<string, mixed>  $responses
-     * @param  array<int, array<string, mixed>>  $resolved
-     */
-    private function persistBatchResponses(array $batch, array $responses, int $ttl, array &$resolved): void
-    {
-        foreach ($batch as $id => $meta) {
-            $response = $responses[(string) $id] ?? null;
-            if (!$response instanceof Response || !$response->ok()) {
-                $status = $response instanceof Response ? $response->status() : 'no-response';
-                $this->logger->error('KLASSCI batch fetch failed', [
-                    'id'       => $id,
-                    'endpoint' => $meta['endpoint'],
-                    'status'   => $status,
-                ]);
-                continue;
-            }
-
-            $payload = $response->json();
-            if (!is_array($payload)) {
-                $payload = [];
-            }
-
-            /** @var array<string, mixed> $payload */
-            $this->cache->put($meta['cacheKey'], $payload, $ttl);
-            $this->memo->put($meta['memoKey'], $payload);
-            $resolved[$id] = $payload;
-        }
     }
 
     /**

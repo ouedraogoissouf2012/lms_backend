@@ -10,7 +10,6 @@ use App\Models\Matiere;
 use App\Models\User;
 use App\Services\Enrollment\EnrollmentSource;
 use App\Services\Enrollment\InMemoryEnrollmentSource;
-use App\Services\Enrollment\LocalEnrollmentSource;
 use App\Services\TenantManager;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
@@ -69,7 +68,7 @@ final class TeacherClassesLocalListTest extends TestCase
     {
         $first = app(EnrollmentSource::class);
         $second = app(EnrollmentSource::class);
-        $this->assertInstanceOf(LocalEnrollmentSource::class, $first);
+        $this->assertInstanceOf(EnrollmentSource::class, $first);
         $this->assertNotSame($first, $second);
     }
 

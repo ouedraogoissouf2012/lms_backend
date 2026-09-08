@@ -14,13 +14,12 @@ final class LocalEnrollmentSource implements EnrollmentSource
 {
     public function localClasseIdsFor(User $user): array
     {
-        /** @var list<int> $ids */
-        $ids = $user->classes()
-            ->wherePivot('statut', 'actif')
-            ->pluck('classes.id')
-            ->map(static fn ($id): int => (int) $id)
-            ->values()
-            ->all();
+        $ids = [];
+        foreach ($user->classes()->wherePivot('statut', 'actif')->pluck('classes.id') as $id) {
+            if (is_numeric($id)) {
+                $ids[] = (int) $id;
+            }
+        }
 
         return $ids;
     }

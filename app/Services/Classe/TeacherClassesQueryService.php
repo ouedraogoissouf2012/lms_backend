@@ -27,18 +27,24 @@ final class TeacherClassesQueryService
             return [];
         }
 
-        return Classe::query()
-            ->whereIn('id', $ids)
-            ->withCount(['etudiantsActifs as effectif_actuel'])
-            ->orderBy('libelle')
-            ->get()
-            ->map(static fn (Classe $classe): array => [
+        $rows = [];
+        foreach (
+            Classe::query()
+                ->whereIn('id', $ids)
+                ->withCount(['etudiantsActifs as effectif_actuel'])
+                ->orderBy('libelle')
+                ->get() as $classe
+        ) {
+            $actuel = $classe->getAttributes()['effectif_actuel'] ?? 0;
+            $rows[] = [
                 'id' => $classe->id,
                 'libelle' => $classe->libelle,
                 'code' => $classe->code,
                 'effectif' => $classe->effectif,
-                'effectif_actuel' => (int) $classe->getAttribute('effectif_actuel'),
-            ])
-            ->all();
+                'effectif_actuel' => is_numeric($actuel) ? (int) $actuel : 0,
+            ];
+        }
+
+        return $rows;
     }
 }

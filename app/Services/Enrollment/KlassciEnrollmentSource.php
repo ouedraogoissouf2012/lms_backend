@@ -48,7 +48,10 @@ final class KlassciEnrollmentSource implements EnrollmentSource
                 $teacher->institution_id !== null,
                 fn ($query) => $query->where('institution_id', $teacher->institution_id)
             )
-            ->where('enseignant_id', $teacher->id)
+            ->whereHas(
+                'matieres',
+                static fn ($query) => $query->where('classe_matiere.enseignant_id', $teacher->id),
+            )
             ->pluck('id')
             ->all();
 

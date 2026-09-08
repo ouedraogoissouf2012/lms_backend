@@ -28,7 +28,7 @@ use Psr\Log\LoggerInterface;
  * - `klassci_data` stocke la réponse brute ; `last_klassci_sync` horodate.
  * - DI strict (§1.6) : `KlassciProxyService` + `LoggerInterface`, aucune Facade.
  *
- * Non-`final` : collaborateur injecté dans {@see \App\Services\Klassci\Auth\KlassciUserSynchronizer}
+ * Non-`final` : collaborateur injecté dans `App\Services\Klassci\Auth\KlassciUserSynchronizer`
  * et doublé dans ses tests unitaires (même convention que {@see KlassciProxyService}).
  *
  * @see app/Models/Matiere.php
@@ -39,18 +39,21 @@ class MatiereSyncService
     public function __construct(
         private readonly KlassciProxyService $klassciService,
         private readonly LoggerInterface $logger,
-    ) {
-    }
+    ) {}
 
     /**
      * Synchronise les matières accessibles à l'utilisateur (via son token KLASSCI)
      * dans l'institution donnée.
      *
-     * @return array{created: int, updated: int, errors: array<int, string>}
+     * @return array{created: int, updated: int, errors: array<int, string>, klassci_ids: list<int>}
      */
     public function syncUserMatieres(string $klassciToken, int $institutionId): array
     {
-        $stats = ['created' => 0, 'updated' => 0, 'errors' => []];
+        // `klassci_ids` : les matières que KLASSCI reconnaît à l'utilisateur
+        // CONNECTÉ. C'est la seule trace de « QUI enseigne quoi » que cet appel
+        // produise, et elle était jetée — d'où une table `matiere_enseignant`
+        // restée vide et un écran « Mes Classes » sans rien à afficher (#712).
+        $stats = ['created' => 0, 'updated' => 0, 'errors' => [], 'klassci_ids' => []];
 
         $response = $this->klassciService->requestWithUserToken($klassciToken, 'matieres', 'GET');
         $matieres = is_array($response['data'] ?? null) ? $response['data'] : [];
@@ -66,11 +69,15 @@ class MatiereSyncService
             try {
                 $created = $this->syncSingleMatiere($data, $institutionId);
                 $created ? $stats['created']++ : $stats['updated']++;
+
+                if (is_numeric($id)) {
+                    $stats['klassci_ids'][] = (int) $id;
+                }
             } catch (\Throwable $e) {
                 $this->logger->error('Erreur sync matière KLASSCI', [
-                    'klassci_id'     => is_scalar($id) ? $id : null,
+                    'klassci_id' => is_scalar($id) ? $id : null,
                     'institution_id' => $institutionId,
-                    'error'          => $e->getMessage(),
+                    'error' => $e->getMessage(),
                 ]);
                 $stats['errors'][] = is_scalar($id) ? (string) $id : 'inconnue';
             }
@@ -97,20 +104,20 @@ class MatiereSyncService
             ->first();
 
         $isNew = $matiere === null;
-        $matiere ??= new Matiere();
+        $matiere ??= new Matiere;
 
         $matiere->fill([
-            'klassci_id'        => $data['id'],
-            'institution_id'    => $institutionId,
-            'code'              => $data['code'] ?? null,
-            'libelle'           => $data['libelle'] ?? $data['name'] ?? $data['nom'] ?? 'Matière sans nom',
-            'description'       => $data['description'] ?? null,
-            'coefficient'       => $data['coefficient'] ?? 1,
-            'credit'            => $data['credit'] ?? 1,
-            'filiere_id'        => $this->extractId($data['filiere'] ?? null) ?? $this->scalarId($data['filiere_id'] ?? null),
-            'niveau_id'         => $this->extractId($data['niveau'] ?? null) ?? $this->scalarId($data['niveau_id'] ?? null),
-            'semestre_id'       => $this->extractId($data['semestre'] ?? null) ?? $this->scalarId($data['semestre_id'] ?? null),
-            'klassci_data'      => $data,
+            'klassci_id' => $data['id'],
+            'institution_id' => $institutionId,
+            'code' => $data['code'] ?? null,
+            'libelle' => $data['libelle'] ?? $data['name'] ?? $data['nom'] ?? 'Matière sans nom',
+            'description' => $data['description'] ?? null,
+            'coefficient' => $data['coefficient'] ?? 1,
+            'credit' => $data['credit'] ?? 1,
+            'filiere_id' => $this->extractId($data['filiere'] ?? null) ?? $this->scalarId($data['filiere_id'] ?? null),
+            'niveau_id' => $this->extractId($data['niveau'] ?? null) ?? $this->scalarId($data['niveau_id'] ?? null),
+            'semestre_id' => $this->extractId($data['semestre'] ?? null) ?? $this->scalarId($data['semestre_id'] ?? null),
+            'klassci_data' => $data,
             'last_klassci_sync' => now(),
         ]);
         $matiere->save();

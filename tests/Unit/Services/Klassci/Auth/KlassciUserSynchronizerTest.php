@@ -6,6 +6,7 @@ namespace Tests\Unit\Services\Klassci\Auth;
 
 use App\Models\Institution;
 use App\Models\User;
+use App\Services\Enrollment\TeacherMatieresLinker;
 use App\Services\Klassci\Auth\KlassciEmailConflictGuard;
 use App\Services\Klassci\Auth\KlassciEnseignantIdResolver;
 use App\Services\Klassci\Auth\KlassciRoleSanitizer;
@@ -14,8 +15,6 @@ use App\Services\Klassci\Auth\StudentClassSynchronizer;
 use App\Services\Klassci\Data\KlassciDataWhitelist;
 use App\Services\KlassciProxyService;
 use App\Services\MatiereSyncService;
-use Illuminate\Contracts\Hashing\Hasher;
-use Illuminate\Database\ConnectionInterface;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -71,12 +70,13 @@ final class KlassciUserSynchronizerTest extends TestCase
             DB::connection(),
             Hash::driver(),
             $this->matiereSync,
+            new TeacherMatieresLinker,
             new StudentClassSynchronizer($this->klassciService, $this->logger),
-            new KlassciEnseignantIdResolver(),
+            new KlassciEnseignantIdResolver,
             new KlassciEmailConflictGuard($this->logger),
             $this->logger,
-            new KlassciDataWhitelist(),
-            new KlassciRoleSanitizer(),
+            new KlassciDataWhitelist,
+            new KlassciRoleSanitizer,
         );
     }
 
@@ -89,10 +89,10 @@ final class KlassciUserSynchronizerTest extends TestCase
     public function test_creates_new_user_when_klassci_id_unknown(): void
     {
         $klassciUser = [
-            'id'    => 99,
+            'id' => 99,
             'email' => 'newuser@test.com',
-            'nom'   => 'Nouveau',
-            'role'  => 'enseignant',
+            'nom' => 'Nouveau',
+            'role' => 'enseignant',
         ];
 
         $user = $this->synchronizer->sync($klassciUser, 'tok', 'https://t.test', $this->institution);
@@ -115,10 +115,10 @@ final class KlassciUserSynchronizerTest extends TestCase
     public function test_neutralizes_platform_supradmin_role_on_creation(): void
     {
         $klassciUser = [
-            'id'    => 900,
+            'id' => 900,
             'email' => 'injected@test.com',
-            'nom'   => 'Injected',
-            'role'  => 'supradmin',  // ← tentative d'injection du rôle plateforme
+            'nom' => 'Injected',
+            'role' => 'supradmin',  // ← tentative d'injection du rôle plateforme
         ];
 
         $user = $this->synchronizer->sync($klassciUser, 'tok', 'https://t.test', $this->institution);
@@ -137,9 +137,9 @@ final class KlassciUserSynchronizerTest extends TestCase
     public function test_preserves_institution_superadmin_role_on_creation(): void
     {
         $klassciUser = [
-            'id'    => 901,
+            'id' => 901,
             'email' => 'inst-admin@test.com',
-            'role'  => 'superAdmin',  // admin d'institution légitime
+            'role' => 'superAdmin',  // admin d'institution légitime
         ];
 
         $user = $this->synchronizer->sync($klassciUser, 'tok', 'https://t.test', $this->institution);
@@ -151,10 +151,10 @@ final class KlassciUserSynchronizerTest extends TestCase
     public function test_initializes_klassci_enseignant_id_write_once_on_creation(): void
     {
         $klassciUser = [
-            'id'             => 100,
-            'email'          => 'enseignant@test.com',
-            'role'           => 'enseignant',
-            'enseignant_id'  => 42,
+            'id' => 100,
+            'email' => 'enseignant@test.com',
+            'role' => 'enseignant',
+            'enseignant_id' => 42,
         ];
 
         $user = $this->synchronizer->sync($klassciUser, 'tok', 'https://t.test', $this->institution);
@@ -177,16 +177,16 @@ final class KlassciUserSynchronizerTest extends TestCase
     {
         $existing = User::factory()->for($this->institution)->create([
             'klassci_id' => 200,
-            'email'      => 'old@test.com',
-            'name'       => 'Old Name',
-            'role'       => 'enseignant',
+            'email' => 'old@test.com',
+            'name' => 'Old Name',
+            'role' => 'enseignant',
         ]);
 
         $klassciUser = [
-            'id'    => 200,
+            'id' => 200,
             'email' => 'newemail@test.com',
-            'nom'   => 'New Name',
-            'role'  => 'enseignant',
+            'nom' => 'New Name',
+            'role' => 'enseignant',
         ];
 
         $user = $this->synchronizer->sync($klassciUser, 'tok', 'https://t.test', $this->institution);
@@ -201,15 +201,15 @@ final class KlassciUserSynchronizerTest extends TestCase
         // User existant avec ancien klassci_id
         $existing = User::factory()->for($this->institution)->create([
             'klassci_id' => 300,
-            'email'      => 'stable@test.com',
-            'role'       => 'enseignant',
+            'email' => 'stable@test.com',
+            'role' => 'enseignant',
         ]);
 
         // KLASSCI envoie nouveau klassci_id mais même email
         $klassciUser = [
-            'id'    => 301,
+            'id' => 301,
             'email' => 'stable@test.com',
-            'role'  => 'enseignant',
+            'role' => 'enseignant',
         ];
 
         $user = $this->synchronizer->sync($klassciUser, 'tok', 'https://t.test', $this->institution);
@@ -227,17 +227,17 @@ final class KlassciUserSynchronizerTest extends TestCase
     public function test_does_not_overwrite_role_lms_on_update(): void
     {
         $existing = User::factory()->for($this->institution)->create([
-            'klassci_id'   => 400,
-            'email'        => 'admin@test.com',
-            'role'         => 'admin',          // ← Role LMS sensible
+            'klassci_id' => 400,
+            'email' => 'admin@test.com',
+            'role' => 'admin',          // ← Role LMS sensible
             'klassci_role' => 'admin',
         ]);
 
         // KLASSCI essaie de pousser role=supradmin (compromis)
         $klassciUser = [
-            'id'    => 400,
+            'id' => 400,
             'email' => 'admin@test.com',
-            'role'  => 'supradmin',  // ← Escalade tentée
+            'role' => 'supradmin',  // ← Escalade tentée
         ];
 
         $user = $this->synchronizer->sync($klassciUser, 'tok', 'https://t.test', $this->institution);
@@ -255,18 +255,18 @@ final class KlassciUserSynchronizerTest extends TestCase
     public function test_does_not_overwrite_klassci_enseignant_id_on_update(): void
     {
         $existing = User::factory()->for($this->institution)->create([
-            'klassci_id'            => 500,
-            'email'                 => 'teacher@test.com',
-            'role'                  => 'enseignant',
+            'klassci_id' => 500,
+            'email' => 'teacher@test.com',
+            'role' => 'enseignant',
             'klassci_enseignant_id' => 42,  // ← Source d'autorité figée
         ]);
 
         // KLASSCI essaie de pousser enseignant_id=666
         $klassciUser = [
-            'id'             => 500,
-            'email'          => 'teacher@test.com',
-            'role'           => 'enseignant',
-            'enseignant_id'  => 666,
+            'id' => 500,
+            'email' => 'teacher@test.com',
+            'role' => 'enseignant',
+            'enseignant_id' => 666,
         ];
 
         $user = $this->synchronizer->sync($klassciUser, 'tok', 'https://t.test', $this->institution);
@@ -277,9 +277,9 @@ final class KlassciUserSynchronizerTest extends TestCase
     public function test_updates_klassci_role_on_update(): void
     {
         $existing = User::factory()->for($this->institution)->create([
-            'klassci_id'   => 600,
-            'email'        => 'changing@test.com',
-            'role'         => 'etudiant',
+            'klassci_id' => 600,
+            'email' => 'changing@test.com',
+            'role' => 'etudiant',
             'klassci_role' => 'etudiant',
         ]);
 
@@ -305,7 +305,7 @@ final class KlassciUserSynchronizerTest extends TestCase
         // Vérifie qu'une UserClass a été créée
         self::assertDatabaseHas('user_classes', [
             'klassci_classe_id' => 1,
-            'classe_nom'        => 'B2',
+            'classe_nom' => 'B2',
         ]);
     }
 

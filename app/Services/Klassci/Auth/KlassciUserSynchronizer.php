@@ -6,6 +6,7 @@ namespace App\Services\Klassci\Auth;
 
 use App\Models\Institution;
 use App\Models\User;
+use App\Services\Enrollment\TeacherMatieresLinker;
 use App\Services\Klassci\Data\KlassciDataWhitelist;
 use App\Services\MatiereSyncService;
 use Illuminate\Contracts\Hashing\Hasher;
@@ -21,7 +22,7 @@ use Psr\Log\LoggerInterface;
  *   - {@see KlassciEmailConflictGuard}        — garde email avant écriture (#253)
  *   - {@see KlassciEnseignantIdResolver}      — `klassci_enseignant_id` (#119/#267)
  *   - {@see StudentClassSynchronizer}         — classe étudiant via `me/dashboard`
- *   - {@see \App\Services\MatiereSyncService} — matières enseignant/coordinateur (#258)
+ *   - {@see MatiereSyncService} — matières enseignant/coordinateur (#258)
  *
  * ## Invariants sécurité préservés
  *
@@ -48,22 +49,22 @@ class KlassciUserSynchronizer
         private readonly ConnectionInterface $db,
         private readonly Hasher $hasher,
         private readonly MatiereSyncService $matiereSync,
+        private readonly TeacherMatieresLinker $teacherMatieres,
         private readonly StudentClassSynchronizer $studentClassSync,
         private readonly KlassciEnseignantIdResolver $enseignantIdResolver,
         private readonly KlassciEmailConflictGuard $emailGuard,
         private readonly LoggerInterface $logger,
         private readonly KlassciDataWhitelist $whitelist,
         private readonly KlassciRoleSanitizer $roleSanitizer,
-    ) {
-    }
+    ) {}
 
     /**
      * Crée ou met à jour le user LMS local depuis les données KLASSCI.
      *
      * @param  array<string, mixed>  $klassciUser  Payload `data.user` de `/auth/login`
-     * @param  string  $klassciToken               Token Bearer KLASSCI à stocker
-     * @param  string  $tenantUrl                  URL du tenant KLASSCI
-     * @param  Institution|null  $institution      Institution résolue depuis le slug du tenant
+     * @param  string  $klassciToken  Token Bearer KLASSCI à stocker
+     * @param  string  $tenantUrl  URL du tenant KLASSCI
+     * @param  Institution|null  $institution  Institution résolue depuis le slug du tenant
      */
     public function sync(
         array $klassciUser,
@@ -89,7 +90,7 @@ class KlassciUserSynchronizer
     private function doSync(array $klassciUser, string $klassciToken, string $tenantUrl, ?int $institutionId): User
     {
         $klassciId = $klassciUser['id'];
-        $email     = $klassciUser['email'];
+        $email = $klassciUser['email'];
 
         $user = $this->findExistingUser($klassciId, $email, $institutionId);
 
@@ -118,7 +119,7 @@ class KlassciUserSynchronizer
         } elseif ($institutionId !== null && ($user->isTeacher() || $user->isCoordinator())) {
             // #258 — peupler les matières locales (validations exists:matieres,id +
             // affichage du libellé). Tenant non résolu au login → institution_id explicite.
-            $this->syncTeacherMatieres($klassciToken, $institutionId);
+            $this->syncTeacherMatieres($user, $klassciToken, $institutionId);
         }
 
         return $user;
@@ -130,14 +131,20 @@ class KlassciUserSynchronizer
      * Un échec de la sync matières ne doit JAMAIS interrompre le login
      * (try/catch, log, pas de rethrow).
      */
-    private function syncTeacherMatieres(string $klassciToken, int $institutionId): void
+    private function syncTeacherMatieres(User $teacher, string $klassciToken, int $institutionId): void
     {
         try {
-            $this->matiereSync->syncUserMatieres($klassciToken, $institutionId);
+            $stats = $this->matiereSync->syncUserMatieres($klassciToken, $institutionId);
+
+            // #712 — enregistrer QUI enseigne ces matières. Sans ce lien,
+            // `matiere_enseignant` reste vide, `KlassciEnrollmentSource` ne
+            // résout aucune classe, et « Mes Classes » affiche « Aucune classe
+            // assignée » alors que le tableau de bord en annonce quatre.
+            $this->teacherMatieres->link($teacher, $stats['klassci_ids']);
         } catch (\Throwable $e) {
             $this->logger->error('Erreur sync matières au login', [
                 'institution_id' => $institutionId,
-                'error'          => $e->getMessage(),
+                'error' => $e->getMessage(),
             ]);
         }
     }
@@ -151,14 +158,14 @@ class KlassciUserSynchronizer
      */
     private function restoreIfTrashed(User $user, mixed $klassciId, ?int $institutionId): void
     {
-        if (!$user->trashed()) {
+        if (! $user->trashed()) {
             return;
         }
 
         $user->restore();
         $this->logger->info('Utilisateur restauré via re-sync KLASSCI', [
-            'user_id'        => $user->id,
-            'klassci_id'     => $klassciId,
+            'user_id' => $user->id,
+            'klassci_id' => $klassciId,
             'institution_id' => $institutionId,
         ]);
     }
@@ -202,17 +209,17 @@ class KlassciUserSynchronizer
     private function buildCommonData(array $klassciUser, string $klassciToken, string $tenantUrl, ?int $institutionId): array
     {
         return [
-            'klassci_id'         => $klassciUser['id'],
-            'name'               => $klassciUser['nom'] ?? $klassciUser['name'] ?? 'User',
-            'email'              => $klassciUser['email'],
-            'klassci_role'       => $klassciUser['role'] ?? 'etudiant',
-            'klassci_token'      => $klassciToken,
+            'klassci_id' => $klassciUser['id'],
+            'name' => $klassciUser['nom'] ?? $klassciUser['name'] ?? 'User',
+            'email' => $klassciUser['email'],
+            'klassci_role' => $klassciUser['role'] ?? 'etudiant',
+            'klassci_token' => $klassciToken,
             'klassci_tenant_url' => $tenantUrl,
             // #477 : filtré par whitelist ; _lms_tenant_url (interne LMS) passé en
             // existant pour être préservé. Le cast KlassciData sérialise l'array.
-            'klassci_data'       => $this->whitelist->filter($klassciUser, ['_lms_tenant_url' => $tenantUrl]),
-            'last_klassci_sync'  => now(),
-            'institution_id'     => $institutionId,
+            'klassci_data' => $this->whitelist->filter($klassciUser, ['_lms_tenant_url' => $tenantUrl]),
+            'last_klassci_sync' => now(),
+            'institution_id' => $institutionId,
         ];
     }
 
@@ -238,17 +245,17 @@ class KlassciUserSynchronizer
         );
 
         $user = User::withoutGlobalScope('institution')->create(array_merge($commonData, [
-            'role'                  => $klassciRole,
+            'role' => $klassciRole,
             'klassci_enseignant_id' => $this->enseignantIdResolver->resolve($klassciUser),
-            'password'              => $this->hasher->make(uniqid()),
+            'password' => $this->hasher->make(uniqid()),
         ]));
 
         $this->logger->info('Nouvel utilisateur créé depuis KLASSCI', [
-            'user_id'        => $user->id,
-            'email'          => $klassciUser['email'],
-            'klassci_id'     => $klassciUser['id'],
+            'user_id' => $user->id,
+            'email' => $klassciUser['email'],
+            'klassci_id' => $klassciUser['id'],
             'institution_id' => $institutionId,
-            'tenant'         => $tenantUrl,
+            'tenant' => $tenantUrl,
         ]);
 
         return $user;

@@ -6,6 +6,7 @@ namespace App\Services\Matiere;
 
 use App\Models\Classe;
 use App\Models\Matiere;
+use App\Models\User;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -24,12 +25,22 @@ use Illuminate\Support\Facades\DB;
  * `matieres`. Ce lien est désormais miroité dans `classe_matiere` par
  * `App\Services\Sync\Classes\ClasseMatieresSynchronizer`.
  *
- * ## Deux sources, complémentaires
+ * ## Trois sources, dans un ordre qui est une décision
  *
- * - **Les séances** : immédiates, déjà en mémoire. Leurs `classe.id` viennent
- *   du payload KLASSCI et sont donc TRADUITS ici.
- * - **Le miroir local** : couvre les matières sans séance. Une seule requête,
- *   jamais un appel réseau.
+ * 1. **Les séances** : immédiates, déjà en mémoire. Leurs `classe.id` viennent
+ *    du payload KLASSCI et sont donc TRADUITS ici.
+ * 2. **Le miroir local** : couvre les matières sans séance. Une seule requête,
+ *    jamais un appel réseau.
+ * 3. **KLASSCI**, en DERNIER recours — `App\Services\Matiere\KlassciMatiereClassesSource`.
+ *
+ * Les deux premières sont locales et peuvent être muettes ENSEMBLE : une
+ * matière sans séance dont le miroir n'a jamais été alimenté. C'était le cas
+ * mesuré en production le 2026-09-09 — « Anglais » rendait une liste vide, le
+ * frontend envoyait `classe_id: null`, et la création de leçon échouait en 403.
+ *
+ * La troisième coûte 1 + N appels réseau : tant que le local sait, on ne
+ * dérange pas KLASSCI. Elle alimente le miroir au passage, ce qui rend la
+ * deuxième source progressivement capable de répondre seule.
  *
  * ## Les identifiants rendus sont LOCAUX
  *
@@ -57,15 +68,20 @@ use Illuminate\Support\Facades\DB;
  * GLISSANTE de ±6 mois : il changeait avec la date. Le tri alphabétique est
  * arbitraire, mais stable et explicable — l'ordre précédent était imprévisible.
  *
- * Vérifié par tests/Feature/Matiere/MatiereClassesFromMirrorTest.php.
+ * Vérifié par tests/Feature/Matiere/MatiereClassesFromMirrorTest.php et
+ * tests/Feature/Matiere/MatiereClassesFromKlassciTest.php.
  */
 final class MatiereClassesResolver
 {
+    public function __construct(
+        private readonly KlassciMatiereClassesSource $klassciSource,
+    ) {}
+
     /**
      * @param  array<int, array<string, mixed>>  $seances  Séances déjà enrichies.
      * @return array<int, array{id: int, nom: string}>
      */
-    public function resolve(array $seances, int $klassciMatiereId, ?int $institutionId): array
+    public function resolve(array $seances, int $klassciMatiereId, ?int $institutionId, User $teacher): array
     {
         $classes = [];
 
@@ -75,6 +91,28 @@ final class MatiereClassesResolver
 
         foreach ($this->fromMirror($klassciMatiereId, $institutionId) as $classe) {
             $classes[$classe['id']] ??= $classe;
+        }
+
+        // Troisième jambe, en DERNIER recours : demander à KLASSCI.
+        //
+        // Les deux premières sont locales et peuvent être muettes ensemble —
+        // c'est le cas d'une matière SANS séance dont le miroir n'a jamais été
+        // alimenté. Mesure du 2026-09-09 en production : « Anglais » rendait
+        // `classes_concernees = []`, le frontend envoyait `classe_id: null`, et
+        // la création de leçon échouait en 403.
+        //
+        // Reléguée au dernier rang parce qu'elle coûte 1 + N appels : tant que
+        // le local sait, on ne dérange pas KLASSCI.
+        //
+        // `$teacher` est OBLIGATOIRE et non-nullable, délibérément. En optionnel,
+        // l'oublier chez l'appelant rendait la jambe muette sans qu'aucun test
+        // ne rougisse — donc rétablissait le 403 de #755 en silence. Mesuré :
+        // 138 tests restaient verts. Une erreur fatale vaut mieux qu'un
+        // correctif qu'on peut débrancher sans le savoir.
+        if ($classes === [] && $institutionId !== null) {
+            foreach ($this->klassciSource->classesFor($teacher, $klassciMatiereId, $institutionId) as $classe) {
+                $classes[$classe['id']] ??= $classe;
+            }
         }
 
         // Le frontend pré-sélectionne `[0]` : l'ordre doit être stable.

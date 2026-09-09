@@ -36,6 +36,7 @@ final class MatiereDetailsQueryServiceEvaluationsReuseTest extends TestCase
     use RefreshDatabase;
 
     private const MATIERE_ID = 5;
+
     private const TOKEN = 'fake-token-e2e';
 
     private Institution $institution;
@@ -97,7 +98,7 @@ final class MatiereDetailsQueryServiceEvaluationsReuseTest extends TestCase
             // evaluations viennent tous deux de ce seul payload).
             $mock->shouldReceive('requestWithUserToken')
                 ->once()
-                ->with(self::TOKEN, 'matieres/' . self::MATIERE_ID, 'GET')
+                ->with(self::TOKEN, 'matieres/'.self::MATIERE_ID, 'GET')
                 ->andReturn($this->realKlassciMatiereShape());
         });
 
@@ -119,13 +120,26 @@ final class MatiereDetailsQueryServiceEvaluationsReuseTest extends TestCase
         $this->mock(KlassciProxyService::class, function (MockInterface $mock): void {
             $mock->shouldReceive('requestWithUserToken')
                 ->once()
-                ->with(self::TOKEN, 'matieres/' . self::MATIERE_ID, 'GET')
+                ->with(self::TOKEN, 'matieres/'.self::MATIERE_ID, 'GET')
                 ->andReturn($this->realKlassciMatiereShape());
 
             // Chemin enseignant : le dashboard reste appele (garde de pertinence,
             // cf. MatiereSeancesFetcher), mais UNIQUEMENT lui — jamais `evaluations`.
+            //
+            // Le COMPTE est volontairement libre depuis 2026-09-09. Deux
+            // collaborateurs lisent ce payload dans la meme requete :
+            // MatiereSeancesFetcher, et KlassciMatiereClassesSource quand la
+            // matiere n'a ni seance ni miroir. La seconde lecture ne part JAMAIS
+            // sur le reseau — KlassciProxyService::requestWithUserToken memoise
+            // les GET, propriete prouvee par
+            // tests/Unit/Services/KlassciProxyServiceMemoTest.php (assertSentCount(1)
+            // sur un GET repete).
+            //
+            // Ce que ce test protege reste intact : le simulacre n'a AUCUN
+            // catch-all, donc tout endpoint non declare — `evaluations` au
+            // premier chef — fait toujours echouer le test.
             $mock->shouldReceive('requestWithUserToken')
-                ->once()
+                ->atLeast()->once()
                 ->with(self::TOKEN, 'me/teacher-dashboard', 'GET')
                 ->andReturn(['data' => ['matieres' => [['id' => self::MATIERE_ID]]]]);
 

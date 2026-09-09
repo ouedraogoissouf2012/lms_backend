@@ -7,7 +7,7 @@ namespace App\Services\Classe;
 use App\Models\Classe;
 use App\Models\User;
 use App\Services\Enrollment\EnrollmentSource;
-use App\Services\KlassciProxyService;
+use App\Services\Klassci\TeacherDashboardClasses;
 use App\Services\Seances\KlassciPayload;
 use Illuminate\Database\Eloquent\Builder;
 use Psr\Log\LoggerInterface;
@@ -58,7 +58,7 @@ final class TeacherClassesQueryService
 {
     public function __construct(
         private readonly EnrollmentSource $enrollment,
-        private readonly KlassciProxyService $klassciService,
+        private readonly TeacherDashboardClasses $dashboardClasses,
         private readonly LoggerInterface $logger,
     ) {}
 
@@ -91,7 +91,7 @@ final class TeacherClassesQueryService
         }
 
         try {
-            $payload = $this->klassciService->requestWithUserToken($klassciToken, 'me/teacher-dashboard', 'GET');
+            $classes = $this->dashboardClasses->forToken($klassciToken);
         } catch (Throwable $e) {
             // Dégrader, pas vider : le miroir prend le relais.
             $this->logger->warning('Classes enseignant — KLASSCI injoignable, repli sur le miroir local', [
@@ -101,10 +101,6 @@ final class TeacherClassesQueryService
 
             return [];
         }
-
-        $classes = KlassciPayload::listOfArrays(
-            KlassciPayload::asArray($payload['data'] ?? null)['classes'] ?? null
-        );
 
         $locales = $this->localesParKlassciId($teacher, $classes);
         $rows = [];

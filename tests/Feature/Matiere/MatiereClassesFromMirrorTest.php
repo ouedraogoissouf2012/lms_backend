@@ -7,6 +7,7 @@ namespace Tests\Feature\Matiere;
 use App\Models\Classe;
 use App\Models\Institution;
 use App\Models\Matiere;
+use App\Models\User;
 use App\Services\Matiere\MatiereClassesResolver;
 use App\Services\TenantManager;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -274,11 +275,30 @@ final class MatiereClassesFromMirrorTest extends TestCase
     }
 
     /**
+     * Un enseignant SANS jeton KLASSCI : la troisieme jambe se retire d'elle-meme
+     * (KlassciMatiereClassesSource::classesFor), donc ces tests mesurent bien les
+     * deux sources LOCALES et rien d'autre.
+     */
+    private function enseignantSansJeton(): User
+    {
+        return User::factory()->create([
+            'institution_id' => $this->institution->id,
+            'role' => 'enseignant',
+            'klassci_token' => null,
+        ]);
+    }
+
+    /**
      * @param  array<int, array<string, mixed>>  $seances
      * @return array<int, array{id: int, nom: string}>
      */
     private function resolve(array $seances, int $klassciMatiereId): array
     {
-        return app(MatiereClassesResolver::class)->resolve($seances, $klassciMatiereId, $this->institution->id);
+        return app(MatiereClassesResolver::class)->resolve(
+            $seances,
+            $klassciMatiereId,
+            $this->institution->id,
+            $this->enseignantSansJeton(),
+        );
     }
 }

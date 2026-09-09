@@ -17,7 +17,25 @@ use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
 /**
- * #712 — liste des classes enseignant sans HTTP KLASSCI.
+ * #712 — liste des classes enseignant depuis le miroir local, sans HTTP.
+ *
+ * ## Ce qui a changé, et pourquoi
+ *
+ * Ces tests assertaient l'identifiant LOCAL. Le frontend, lui, fusionne cette
+ * réponse avec le référentiel `/proxy/classes` — du KLASSCI — **par `id`** :
+ *
+ *     parId.set(String(classe.id), classe)            // référentiel KLASSCI
+ *     const reference = parId.get(String(classe?.id)) // notre réponse
+ *
+ * Émettre du local ne pouvait donc jamais apparier, et les effectifs seraient
+ * restés à « — ». L'endpoint rend désormais l'espace KLASSCI, ici comme sur la
+ * source vivante.
+ *
+ * Ce que ces tests continuent de garantir, et qui compte : un enseignant SANS
+ * jeton KLASSCI obtient quand même ses classes depuis le miroir, **sans le
+ * moindre appel réseau**. Le miroir garde son rôle de repli.
+ *
+ * @see tests/Feature/Classe/TeacherClassesLiveSourceTest.php — la source vivante
  */
 final class TeacherClassesLocalListTest extends TestCase
 {
@@ -60,7 +78,7 @@ final class TeacherClassesLocalListTest extends TestCase
 
         $response->assertOk()->assertJsonPath('success', true);
         $ids = collect($response->json('data'))->pluck('id')->all();
-        $this->assertEqualsCanonicalizing([$mine->id], $ids);
+        $this->assertEqualsCanonicalizing([$mine->klassci_id], $ids);
         Http::assertNothingSent();
     }
 
@@ -86,7 +104,7 @@ final class TeacherClassesLocalListTest extends TestCase
 
         Sanctum::actingAs($teacher);
         $ids = collect($this->getJson('/api/lms/teacher/classes')->json('data'))->pluck('id')->all();
-        $this->assertEqualsCanonicalizing([$classe->id], $ids);
+        $this->assertEqualsCanonicalizing([$classe->klassci_id], $ids);
         Http::assertNothingSent();
     }
 }

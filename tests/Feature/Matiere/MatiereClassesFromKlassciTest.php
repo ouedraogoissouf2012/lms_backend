@@ -10,10 +10,12 @@ use App\Models\Matiere;
 use App\Models\User;
 use App\Services\KlassciProxyService;
 use App\Services\Matiere\MatiereClassesResolver;
+use App\Services\Matiere\MatiereDetailsQueryService;
 use App\Services\TenantManager;
 use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Mockery;
 use Mockery\MockInterface;
 use Tests\TestCase;
@@ -240,6 +242,85 @@ final class MatiereClassesFromKlassciTest extends TestCase
         self::assertSame(1, $requetes, 'la table `classes` doit etre lue UNE seule fois, pas une fois par classe');
     }
 
+    /**
+     * LE test qui manquait : que le CABLAGE tienne.
+     *
+     * Les autres tests appellent `resolve()` en lui passant l'enseignant a la
+     * main. Tant que le 4e parametre etait optionnel, l'oublier chez l'appelant
+     * retablissait le 403 de #755 **en silence** : mesure du 2026-09-09, 138
+     * tests restaient verts sans le cablage. Le parametre est desormais
+     * obligatoire, et ce test traverse le vrai service.
+     */
+    public function test_the_details_service_wires_the_teacher_into_the_resolver(): void
+    {
+        $b2 = $this->classeLocale(klassciId: 1, libelle: 'B2 COM');
+        $this->matiereLocale(klassciId: 3);
+
+        $this->fakeKlassci(classesEnseignant: [1], matieresParClasse: [1 => [3]]);
+
+        $details = app(MatiereDetailsQueryService::class)->getDetailsForUser(3, $this->teacher);
+
+        self::assertNotNull($details);
+        self::assertCount(1, $details['classes_concernees'], 'la troisieme jambe doit etre cablee');
+        self::assertSame($b2->id, $details['classes_concernees'][0]['id'], 'espace LOCAL');
+    }
+
+    /**
+     * Un etudiant n'atteint JAMAIS la jambe KLASSCI.
+     *
+     * Elle lit `me/teacher-dashboard` : la demander pour un autre role coute un
+     * aller-retour perdu qui n'est meme pas mis en cache — le 4xx est leve
+     * depuis l'interieur de `tenantCache->remember()`, donc l'appel repartirait
+     * a chaque affichage.
+     */
+    public function test_a_student_never_reaches_the_klassci_leg(): void
+    {
+        $this->classeLocale(klassciId: 1, libelle: 'B2 COM');
+        $this->matiereLocale(klassciId: 3);
+
+        $etudiant = User::factory()->create([
+            'institution_id' => $this->institution->id,
+            'role' => 'etudiant',
+            'klassci_token' => 'jeton-etudiant',
+        ]);
+
+        $this->mock(KlassciProxyService::class, function (MockInterface $mock): void {
+            $mock->shouldNotReceive('requestWithUserToken');
+            $mock->shouldNotReceive('fetchManyClassesDetails');
+        });
+
+        self::assertSame([], app(MatiereClassesResolver::class)
+            ->resolve([], 3, $this->institution->id, $etudiant));
+    }
+
+    /**
+     * Un miroir qui refuse de s ecrire ne doit JAMAIS couter la page.
+     *
+     * `ClasseMatieresSynchronizer::link()` fait `exists()` puis `insert()` sans
+     * atomicite, sous un unique (classe_id, matiere_id) : deux requetes
+     * concurrentes levent 1062 ou 1213. Sans garde, la QueryException remontait
+     * jusqu au controleur, qui la classait en panne KLASSCI et rendait 500 —
+     * sur une page deja entierement calculee, et sans meme un log d erreur.
+     *
+     * L echec est provoque par une VRAIE panne de base et non par un simulacre :
+     * le synchroniseur est `final`, et surtout un vrai echec exerce le chemin
+     * reel. La table du pivot est retiree ; la matiere locale est volontairement
+     * ABSENTE, ce qui fait sortir la deuxieme jambe avant qu elle ne lise le
+     * pivot (MatiereClassesResolver::fromMirror sort sur une matiere inconnue).
+     */
+    public function test_a_mirror_write_failure_does_not_cost_the_page(): void
+    {
+        $b2 = $this->classeLocale(klassciId: 1, libelle: 'B2 COM');
+
+        Schema::drop('classe_matiere');
+
+        $this->fakeKlassci(classesEnseignant: [1], matieresParClasse: [1 => [3]]);
+
+        $classes = $this->resolve(klassciMatiereId: 3);
+
+        self::assertSame([$b2->id], array_column($classes, 'id'), 'les classes sont rendues malgre la panne du miroir');
+    }
+
     // ───────────────────── Fixtures ─────────────────────
 
     private function classeLocale(int $klassciId, string $libelle): Classe
@@ -281,10 +362,15 @@ final class MatiereClassesFromKlassciTest extends TestCase
             ]];
         }
 
-        $this->mock(KlassciProxyService::class, function (MockInterface $mock) use ($dashboard, $details): void {
+        $matiere = ['data' => ['matiere' => ['id' => 3, 'nom' => 'Anglais']]];
+
+        $this->mock(KlassciProxyService::class, function (MockInterface $mock) use ($dashboard, $details, $matiere): void {
             $mock->shouldReceive('requestWithUserToken')
                 ->with('jeton-enseignant', 'me/teacher-dashboard', 'GET')
                 ->andReturn($dashboard);
+            $mock->shouldReceive('requestWithUserToken')
+                ->with('jeton-enseignant', 'matieres/3', 'GET')
+                ->andReturn($matiere);
             $mock->shouldReceive('requestWithUserToken')->andReturn(['data' => []]);
             $mock->shouldReceive('fetchManyClassesDetails')->andReturn($details);
         });

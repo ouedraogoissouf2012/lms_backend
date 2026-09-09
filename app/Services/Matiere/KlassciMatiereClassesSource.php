@@ -71,6 +71,20 @@ final class KlassciMatiereClassesSource
      */
     public function classesFor(User $teacher, int $klassciMatiereId, int $institutionId): array
     {
+        // Cette source lit le tableau de bord ENSEIGNANT. La demander pour un
+        // autre role n'a pas de sens, et coute cher pour rien : le 4xx que
+        // KLASSCI renverrait est leve DEPUIS l'interieur de
+        // `tenantCache->remember()` (KlassciProxyService), donc rien n'est mis
+        // en cache et l'appel repartirait a CHAQUE affichage.
+        //
+        // Le coordinateur est deliberement exclu : il a droit de creer des
+        // lecons (StoreLessonRequest), mais ses classes ne se lisent pas sur
+        // `me/teacher-dashboard`. Sa source lui est propre — dette tracee, hors
+        // perimetre de #755.
+        if (! $teacher->isTeacher()) {
+            return [];
+        }
+
         $klassciToken = $teacher->klassci_token;
 
         if (! is_string($klassciToken) || $klassciToken === '') {
@@ -144,7 +158,27 @@ final class KlassciMatiereClassesSource
         // traduction vers l'espace local est un `whereIn`, pas un N+1.
         foreach ($this->localesParKlassciId(array_keys($porteuses), $institutionId) as $klassciId => $locale) {
             $classes[] = ['id' => (int) $locale->id, 'nom' => (string) ($locale->libelle ?? 'N/A')];
-            $this->matieresSynchronizer->sync($locale, $porteuses[$klassciId]);
+
+            // Le miroir est un effet de bord OPPORTUNISTE sur un chemin de
+            // LECTURE, et il est le seul endroit du diff qui ecrit.
+            //
+            // `ClasseMatieresSynchronizer::link()` fait `exists()` puis
+            // `insert()` sans atomicite, sous un unique (classe_id, matiere_id) :
+            // deux requetes concurrentes levent 1062 ou 1213. Sans ce garde, la
+            // QueryException traverse le service jusqu'au controleur, qui la
+            // classe en panne KLASSCI et rend 500 — sur une page deja
+            // entierement calculee, et sans meme un log d'erreur.
+            //
+            // Les deux appelants historiques de `sync()` sont, eux, deja
+            // enveloppes (ClasseSyncService). Celui-ci est le premier sur un GET.
+            try {
+                $this->matieresSynchronizer->sync($locale, $porteuses[$klassciId]);
+            } catch (Throwable $e) {
+                $this->logger->warning('Miroir classe_matiere non alimente — les classes sont rendues quand meme', [
+                    'classe_id' => $locale->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
         }
 
         return $classes;

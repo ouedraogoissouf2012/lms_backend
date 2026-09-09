@@ -184,10 +184,17 @@ final class AttendanceHistoryQueryService
             // Use SeanceDetailQueryService (split-1, ex-SeanceQueryService PR E) instead of legacy
             // `$this->seanceDetails($id, $request)` + json_decode anti-pattern.
             // Returns the seance array directly — no encode/decode round-trip.
-            $seanceArray = $this->seanceQuery->getSeanceDetailsArray(
-                $seance->klassci_seance_id,
-                $user,
-            );
+            // La garde de l'appelant (`&& $seance->klassci_seance_id`) ne se
+            // propage pas jusqu'ici : la propriete est relue, et son type reste
+            // `int<0, max>|null`. On la restreint donc explicitement — c'est
+            // aussi ce qui rend l'invariant lisible sur place.
+            $klassciSeanceId = $seance->klassci_seance_id;
+
+            if ($klassciSeanceId === null) {
+                return;
+            }
+
+            $seanceArray = $this->seanceQuery->getSeanceDetailsArray($klassciSeanceId, $user);
 
             if ($seanceArray !== null) {
                 $klassciSeance = $seanceArray['seance'];

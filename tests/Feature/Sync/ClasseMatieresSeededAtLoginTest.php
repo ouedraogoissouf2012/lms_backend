@@ -7,6 +7,7 @@ namespace Tests\Feature\Sync;
 use App\Models\Classe;
 use App\Models\Institution;
 use App\Models\Matiere;
+use App\Models\User;
 use App\Services\ClasseSyncService;
 use App\Services\KlassciProxyService;
 use App\Services\Matiere\MatiereClassesResolver;
@@ -102,7 +103,11 @@ final class ClasseMatieresSeededAtLoginTest extends TestCase
         app(ClasseSyncService::class)->syncUserClasses('jeton', 'coordinateur');
 
         $classes = app(MatiereClassesResolver::class)
-            ->resolve([], 3, $this->institution->id);
+            ->resolve([], 3, $this->institution->id, User::factory()->create([
+                'institution_id' => $this->institution->id,
+                'role' => 'enseignant',
+                'klassci_token' => null,
+            ]));
 
         $classe = Classe::query()->where('klassci_id', 5)->firstOrFail();
         self::assertSame([['id' => $classe->id, 'nom' => 'Terminale S']], $classes);

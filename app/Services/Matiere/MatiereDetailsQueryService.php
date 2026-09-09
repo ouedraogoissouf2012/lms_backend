@@ -132,6 +132,7 @@ final class MatiereDetailsQueryService
                 $seancesEnrichies,
                 $matiereId,
                 $user->institution_id,
+                $user,
             ),
         ];
     }

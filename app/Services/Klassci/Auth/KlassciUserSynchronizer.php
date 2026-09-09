@@ -4,11 +4,10 @@ declare(strict_types=1);
 
 namespace App\Services\Klassci\Auth;
 
-use App\Jobs\SyncUserClasses;
 use App\Models\Institution;
 use App\Models\User;
-use App\Services\Enrollment\TeacherMatieresLinker;
 use App\Services\Klassci\Data\KlassciDataWhitelist;
+use App\Services\Matiere\MyMatieresQueryService;
 use App\Services\MatiereSyncService;
 use Illuminate\Contracts\Hashing\Hasher;
 use Illuminate\Database\ConnectionInterface;
@@ -50,7 +49,6 @@ class KlassciUserSynchronizer
         private readonly ConnectionInterface $db,
         private readonly Hasher $hasher,
         private readonly MatiereSyncService $matiereSync,
-        private readonly TeacherMatieresLinker $teacherMatieres,
         private readonly StudentClassSynchronizer $studentClassSync,
         private readonly KlassciEnseignantIdResolver $enseignantIdResolver,
         private readonly KlassciEmailConflictGuard $emailGuard,
@@ -120,7 +118,7 @@ class KlassciUserSynchronizer
         } elseif ($institutionId !== null && ($user->isTeacher() || $user->isCoordinator())) {
             // #258 — peupler les matières locales (validations exists:matieres,id +
             // affichage du libellé). Tenant non résolu au login → institution_id explicite.
-            $this->syncTeacherMatieres($user, $klassciToken, $institutionId);
+            $this->syncTeacherMatieres($klassciToken, $institutionId);
         }
 
         return $user;
@@ -131,30 +129,29 @@ class KlassciUserSynchronizer
      *
      * Un échec de la sync matières ne doit JAMAIS interrompre le login
      * (try/catch, log, pas de rethrow).
+     *
+     * ## #712 — ce que ce point NE fait PAS, et pourquoi
+     *
+     * Le lien enseignant ↔ matière et la synchro des classes ont été branchés
+     * ici, puis RETIRÉS. `KlassciConfigResolver` résout l'URL amont par le jeton
+     * de l'utilisateur AUTHENTIFIÉ, son institution, puis la config globale.
+     * Pendant le login aucun utilisateur Sanctum n'existe encore : les deux
+     * premières priorités sont hors d'atteinte, et la troisième lit une
+     * configuration globale qui n'a pas de sens en multi-tenant.
+     *
+     * Mesure en production le 2026-09-09, à chaque reconnexion : « URL de base
+     * KLASSCI absente ou invalide ». Le login est donc structurellement
+     * incapable de porter une synchronisation KLASSCI, et l'appel ci-dessous
+     * échoue lui aussi — c'est une dette antérieure (#258), tracée, hors de ce
+     * lot.
+     *
+     * Le déclencheur vit désormais sur un chemin AUTHENTIFIÉ :
+     * {@see MyMatieresQueryService::getMatieresForUser()}.
      */
-    private function syncTeacherMatieres(User $teacher, string $klassciToken, int $institutionId): void
+    private function syncTeacherMatieres(string $klassciToken, int $institutionId): void
     {
         try {
-            $stats = $this->matiereSync->syncUserMatieres($klassciToken, $institutionId);
-
-            // #712 — enregistrer QUI enseigne ces matières. Sans ce lien,
-            // `matiere_enseignant` reste vide, `KlassciEnrollmentSource` ne
-            // résout aucune classe, et « Mes Classes » affiche « Aucune classe
-            // assignée » alors que le tableau de bord en annonce quatre.
-            $this->teacherMatieres->link($teacher, $stats['klassci_ids']);
-
-            // #712 — et le SECOND maillon : `KlassciEnrollmentSource` traverse
-            // `classe_matiere` pour aller des matières aux classes. Ce miroir
-            // était amorcé par `ClasseSyncService::syncUserClasses()`… que
-            // PERSONNE n'appelait. Le correctif précédent était donc inerte en
-            // production, avec des tests verts qui appelaient la méthode
-            // directement.
-            //
-            // En file, jamais en synchrone : `syncUserClasses()` fait
-            // `GET /classes` puis un pool `GET classes/{id}` par classe. C'est
-            // exactement ce que `SyncKlassciClasse` a été créé pour sortir du
-            // chemin critique.
-            SyncUserClasses::dispatch($teacher->id, $institutionId);
+            $this->matiereSync->syncUserMatieres($klassciToken, $institutionId);
         } catch (\Throwable $e) {
             $this->logger->error('Erreur sync matières au login', [
                 'institution_id' => $institutionId,

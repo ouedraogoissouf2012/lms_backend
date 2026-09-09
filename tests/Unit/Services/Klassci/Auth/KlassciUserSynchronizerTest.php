@@ -6,7 +6,6 @@ namespace Tests\Unit\Services\Klassci\Auth;
 
 use App\Models\Institution;
 use App\Models\User;
-use App\Services\Enrollment\TeacherMatieresLinker;
 use App\Services\Klassci\Auth\KlassciEmailConflictGuard;
 use App\Services\Klassci\Auth\KlassciEnseignantIdResolver;
 use App\Services\Klassci\Auth\KlassciRoleSanitizer;
@@ -70,7 +69,6 @@ final class KlassciUserSynchronizerTest extends TestCase
             DB::connection(),
             Hash::driver(),
             $this->matiereSync,
-            new TeacherMatieresLinker,
             new StudentClassSynchronizer($this->klassciService, $this->logger),
             new KlassciEnseignantIdResolver,
             new KlassciEmailConflictGuard($this->logger),

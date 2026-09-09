@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Klassci\Auth;
 
+use App\Jobs\SyncUserClasses;
 use App\Models\Institution;
 use App\Models\User;
 use App\Services\Enrollment\TeacherMatieresLinker;
@@ -141,6 +142,19 @@ class KlassciUserSynchronizer
             // résout aucune classe, et « Mes Classes » affiche « Aucune classe
             // assignée » alors que le tableau de bord en annonce quatre.
             $this->teacherMatieres->link($teacher, $stats['klassci_ids']);
+
+            // #712 — et le SECOND maillon : `KlassciEnrollmentSource` traverse
+            // `classe_matiere` pour aller des matières aux classes. Ce miroir
+            // était amorcé par `ClasseSyncService::syncUserClasses()`… que
+            // PERSONNE n'appelait. Le correctif précédent était donc inerte en
+            // production, avec des tests verts qui appelaient la méthode
+            // directement.
+            //
+            // En file, jamais en synchrone : `syncUserClasses()` fait
+            // `GET /classes` puis un pool `GET classes/{id}` par classe. C'est
+            // exactement ce que `SyncKlassciClasse` a été créé pour sortir du
+            // chemin critique.
+            SyncUserClasses::dispatch($teacher->id, $institutionId);
         } catch (\Throwable $e) {
             $this->logger->error('Erreur sync matières au login', [
                 'institution_id' => $institutionId,

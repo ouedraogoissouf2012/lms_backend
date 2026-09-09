@@ -5,10 +5,13 @@ declare(strict_types=1);
 namespace App\Services\Matiere;
 
 use App\Enums\LessonStatus;
+use App\Exceptions\MissingKlassciTokenException;
+use App\Http\Controllers\API\LMS\LMSMatieresQueryController;
+use App\Jobs\SyncUserClasses;
 use App\Models\Lesson;
 use App\Models\Seance;
-use App\Exceptions\MissingKlassciTokenException;
 use App\Models\User;
+use App\Services\Enrollment\TeacherMatieresLinker;
 use App\Services\KlassciProxyService;
 use App\Services\Seances\KlassciPayload;
 use Illuminate\Database\Eloquent\Builder;
@@ -19,7 +22,7 @@ use Psr\Log\LoggerInterface;
 /**
  * MyMatieresQueryService — fetches the teacher dashboard matières + LMS stats.
  *
- * Extracted from {@see \App\Http\Controllers\API\LMS\LMSMatieresQueryController::myMatieres}
+ * Extracted from {@see LMSMatieresQueryController::myMatieres}
  * (legacy lines 510-602).
  *
  * Responsibility:
@@ -46,6 +49,7 @@ final class MyMatieresQueryService
     public function __construct(
         private readonly KlassciProxyService $klassciService,
         private readonly LoggerInterface $logger,
+        private readonly TeacherMatieresLinker $teacherMatieres,
     ) {}
 
     /**
@@ -55,7 +59,7 @@ final class MyMatieresQueryService
     {
         $klassciToken = $user->klassci_token;
 
-        if (!$klassciToken) {
+        if (! $klassciToken) {
             throw MissingKlassciTokenException::forUser($user->id);
         }
 
@@ -79,6 +83,30 @@ final class MyMatieresQueryService
             fn (array $m): ?int => KlassciPayload::toInt($m['id'] ?? $m['matiere_id'] ?? null),
             $matieres,
         )));
+        // #712 — enregistrer ICI le lien enseignant ↔ matière, parce que c'est
+        // ICI que la vérité est disponible.
+        //
+        // Le déclencheur était au login. `KlassciConfigResolver` y résout l'URL
+        // amont en trois priorités : le jeton personnel de l'utilisateur
+        // AUTHENTIFIÉ, son institution, puis la config globale. Pendant le login
+        // aucun utilisateur Sanctum n'existe encore : les deux premières sont
+        // hors d'atteinte, et la troisième lit une configuration globale qui n'a
+        // pas de sens en multi-tenant. Mesure en production le 2026-09-09, à
+        // chaque reconnexion : « URL de base KLASSCI absente ou invalide ».
+        //
+        // Ce chemin-ci est authentifié : la priorité 1 s'applique, l'appel
+        // aboutit, et `$matiereIds` porte exactement les matières de cet
+        // enseignant.
+        $this->teacherMatieres->link($user, $matiereIds);
+
+        // Le second maillon : `KlassciEnrollmentSource` traverse
+        // `classe_matiere` pour aller des matières aux classes. En file — le
+        // job pose son propre tenant et n'a donc pas besoin d'un utilisateur
+        // authentifié pour résoudre l'URL.
+        if ($user->institution_id !== null) {
+            SyncUserClasses::dispatch($user->id, $user->institution_id);
+        }
+
         $stats = $this->preloadStats($matiereIds);
 
         $matieresEnrichies = array_map(
@@ -138,7 +166,7 @@ final class MyMatieresQueryService
     private function groupedCounts(Builder $query, string $groupColumn): Collection
     {
         $allowedColumns = ['matiere_id', 'klassci_matiere_id'];
-        if (!in_array($groupColumn, $allowedColumns, true)) {
+        if (! in_array($groupColumn, $allowedColumns, true)) {
             throw new InvalidArgumentException("Colonne de regroupement non autorisée : {$groupColumn}");
         }
 

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Matiere;
 
 use App\Models\Lesson;
+use App\Models\Matiere;
 use App\Models\User;
 use Psr\Log\LoggerInterface;
 use Throwable;
@@ -64,8 +65,27 @@ final class MatiereLessonsAndStatsBuilder
     /**
      * @return array<int, array<string, mixed>>
      */
-    private function fetchLessons(int $matiereId, User $user): array
+    private function fetchLessons(int $klassciMatiereId, User $user): array
     {
+        // L'identifiant vient de la ROUTE `/lms/matieres/{id}` : son espace est
+        // KLASSCI, connu. `lessons.matiere_id` est une clé LOCALE. Traduire —
+        // jamais recopier — est ce qui empêche les deux numérotations de se
+        // mélanger dans une même colonne. Même geste que le voisin
+        // MatiereClassesResolver::fromMirror(), et même raison.
+        //
+        // Sans cette traduction, une matière dont le `klassci_id` égale l'id
+        // LOCAL d'une autre affichait les leçons de l'autre, et masquait les
+        // siennes — en 200, sans erreur. Mesuré le 2026-09-09 : la leçon
+        // d'« Anglais » apparaissait sous « Marketing digital ».
+        $matiereId = Matiere::localIdForKlassciId($klassciMatiereId, $user->institution_id);
+
+        // Matière non miroitée : aucune leçon locale ne peut lui appartenir.
+        // Retomber sur `$klassciMatiereId` « pour dépanner » réintroduirait
+        // exactement la collision que cette traduction supprime.
+        if ($matiereId === null) {
+            return [];
+        }
+
         try {
             $query = Lesson::where('matiere_id', $matiereId);
 
@@ -91,15 +111,19 @@ final class MatiereLessonsAndStatsBuilder
                     return $lessonArray;
                 })->all();
 
+            // Les deux espaces sont nommés : un journal qui écrit « matiere_id »
+            // sans dire lequel est précisément l'ambiguïté qu'on vient de lever.
             $this->logger->info('Lessons LMS récupérés', [
-                'matiere_id' => $matiereId,
+                'matiere_id_local' => $matiereId,
+                'klassci_matiere_id' => $klassciMatiereId,
                 'count' => count($lessons),
             ]);
 
             return $lessons;
         } catch (Throwable $e) {
             $this->logger->warning('Erreur récupération lessons LMS', [
-                'matiere_id' => $matiereId,
+                'matiere_id_local' => $matiereId,
+                'klassci_matiere_id' => $klassciMatiereId,
                 'error' => $e->getMessage(),
             ]);
 

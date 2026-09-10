@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Requests;
 
+use App\Http\Requests\Concerns\NormalizesQueryBooleans;
 use Illuminate\Foundation\Http\FormRequest;
 
 /**
@@ -15,6 +16,8 @@ use Illuminate\Foundation\Http\FormRequest;
  */
 final class ListEvaluationsRequest extends FormRequest
 {
+    use NormalizesQueryBooleans;
+
     public function authorize(): bool
     {
         return true;
@@ -44,5 +47,17 @@ final class ListEvaluationsRequest extends FormRequest
         return [
             'limit.max' => 'limit ne peut pas dépasser 100.',
         ];
+    }
+
+    /**
+     * `is_published` arrive par la chaîne de requête, donc en TEXTE. Le défaut
+     * était ici LATENT — aucun écran ne pose encore ce filtre — mais il est
+     * strictement le même que celui mesuré sur `unread_only`, et le premier
+     * client qui l'utiliserait (SDK généré, mobile) recevrait un 422.
+     * Voir {@see NormalizesQueryBooleans}.
+     */
+    protected function prepareForValidation(): void
+    {
+        $this->normalizeQueryBooleans(['is_published']);
     }
 }

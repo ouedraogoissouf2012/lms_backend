@@ -8,6 +8,7 @@ use App\Http\Middleware\EnsureKlassciSync;
 use App\Models\Institution;
 use App\Models\User;
 use App\Services\Klassci\Data\KlassciDataWhitelist;
+use App\Services\Klassci\Sync\TokenPresentSyncGate;
 use App\Services\KlassciProxyService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
@@ -94,7 +95,7 @@ abstract class EnsureKlassciSyncTestCase extends TestCase
         $request = Request::create('/api/dummy', 'GET');
         $request->setUserResolver(fn () => $user);
 
-        $middleware = new EnsureKlassciSync($klassciService, new KlassciDataWhitelist());
+        $middleware = new EnsureKlassciSync($klassciService, new KlassciDataWhitelist(), new TokenPresentSyncGate());
 
         return $middleware->handle($request, fn ($nextRequest) => new Response('ok', 200));
     }

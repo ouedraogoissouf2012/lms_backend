@@ -63,6 +63,10 @@ database/*.backup-*.sqlite
 /guides/
 /diagnostics/
 # .claude/ : keep workflow files, ignore local/specs
+# `settings.json` est jumeau de `settings.local.json` : une liste d'autorisations
+# accumulee poste par poste, avec des chemins Windows absolus. Machine-locale,
+# donc ignoree au meme titre — sinon elle reste indefiniment en « untracked ».
+/.claude/settings.json
 /.claude/settings.local.json
 /.claude/specs/
 /.claude/steering/

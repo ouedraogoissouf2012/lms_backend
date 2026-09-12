@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:noNamespaceSchemaLocation="vendor/phpunit/phpunit/phpunit.xsd"
-         bootstrap="vendor/autoload.php"
+         bootstrap="tests/bootstrap.php"
          beStrictAboutOutputDuringTests="true"
          beStrictAboutTestsThatDoNotTestAnything="true"
          colors="true"
@@ -47,7 +47,10 @@
              doit pouvoir prendre le dessus sans dupliquer ce fichier. -->
         <env name="CACHE_STORE" value="database"/>
         <env name="DB_CONNECTION" value="sqlite"/>
-        <env name="DB_DATABASE" value="database/database.testing.sqlite"/>
+        <!-- #692 : DB_DATABASE n'est PLUS pose ici. Un fichier unique partage
+             entre worktrees se corrompt des que deux suites tournent en meme
+             temps. tests/bootstrap.php en derive un PAR CHECKOUT, et verifie son
+             integrite avant de lancer quoi que ce soit. -->
         <env name="MAIL_DRIVER" value="array"/>
         <env name="QUEUE_CONNECTION" value="database"/>
         <env name="SESSION_DRIVER" value="database"/>

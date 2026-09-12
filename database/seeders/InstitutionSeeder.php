@@ -52,7 +52,14 @@ class InstitutionSeeder extends Seeder
             [
                 'slug' => 'presentation',
                 'name' => 'KLASSCI Présentation',
-                'klassci_api_url' => env('KLASSCI_PRESENTATION_URL', 'http://presentation.klassci.com/api/lms'),
+                // #685 : ce defaut etait en `http://`. KLASSCI ne repond plus sur
+                // le port 80 — mesure du 2026-09-03 : code 000 apres 10 s en
+                // clair, 404 en 1,74 s en TLS. Un `db:seed` reintroduisait donc
+                // la panne que #768 venait de corriger, et la regle
+                // `App\Rules\KlassciApiUrl` refuse desormais cette forme a
+                // l'enregistrement : le seeder ecrivait une valeur que l'API
+                // elle-meme rejetterait.
+                'klassci_api_url' => env('KLASSCI_PRESENTATION_URL', 'https://presentation.klassci.com/api/lms'),
                 'klassci_api_token_encrypted' => env('KLASSCI_PRESENTATION_TOKEN', env('KLASSCI_API_TOKEN')),
                 'is_active' => true,
             ],
@@ -72,7 +79,35 @@ class InstitutionSeeder extends Seeder
             ],
         ];
 
+        // #688 — un jeton absent ne doit pas passer en silence.
+        //
+        // `env('KLASSCI_ESBTP_YAKRO_TOKEN')` sans defaut rend `null` quand la
+        // variable manque. L'institution etait alors creee, `is_active = true`,
+        // et le seeder annoncait un succes — mais ce tenant ne pouvait plus
+        // parler a KLASSCI. Meme famille que le symptome rapporte : un seeder
+        // qui n'a pas fait ce qu'il annonce, sans le dire.
+        //
+        // On nomme la variable manquante, comme le fait SupradminSeeder pour les
+        // siennes. On n'echoue pas : un poste de developpement sans jeton reste
+        // legitime, et faire echouer `db:seed` y serait plus nuisible qu'utile.
+        $variablesDeJeton = [
+            'presentation' => 'KLASSCI_PRESENTATION_TOKEN (ou KLASSCI_API_TOKEN)',
+            'esbtp-abidjan' => 'KLASSCI_ESBTP_ABIDJAN_TOKEN',
+            'esbtp-yakro' => 'KLASSCI_ESBTP_YAKRO_TOKEN',
+        ];
+
         foreach ($institutions as $institution) {
+            $jeton = $institution['klassci_api_token_encrypted'] ?? null;
+
+            if (! is_string($jeton) || $jeton === '') {
+                $this->say(
+                    'warn',
+                    "  ⚠ {$institution['slug']} : jeton KLASSCI ABSENT — variable "
+                    ."{$variablesDeJeton[$institution['slug']]} non definie. "
+                    .'Le tenant est cree mais ne pourra pas joindre KLASSCI.'
+                );
+            }
+
             Institution::updateOrCreate(
                 ['slug' => $institution['slug']],
                 $institution
@@ -90,10 +125,23 @@ class InstitutionSeeder extends Seeder
                         ->update(['institution_id' => $presentationId]);
 
                     if ($updated > 0) {
-                        $this->command->info("  → {$tableName}: {$updated} lignes assignées à 'presentation'");
+                        $this->say('info', "  → {$tableName}: {$updated} lignes assignées à 'presentation'");
                     }
                 }
             }
         }
+    }
+
+    /**
+     * Ecrit sur la console quand il y en a une.
+     *
+     * `$this->command` est `null` des que le seeder tourne hors d'une commande
+     * Artisan — le cas d'un appel direct depuis un test. Sans cette garde, un
+     * seeder qui a parfaitement fait son travail se termine sur un
+     * « Call to a member function info() on null ».
+     */
+    private function say(string $niveau, string $message): void
+    {
+        $this->command?->{$niveau}($message);
     }
 }

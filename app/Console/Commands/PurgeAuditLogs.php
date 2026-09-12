@@ -4,22 +4,34 @@ declare(strict_types=1);
 
 namespace App\Console\Commands;
 
-use App\Models\AuditLog;
 use Illuminate\Console\Command;
-use Illuminate\Contracts\Config\Repository as ConfigRepository;
 
 /**
- * Élague les entrées d'audit au-delà du seuil de rétention (#215).
+ * Alias historique de `purge:run audit-logs` (#690, #215).
  *
- * Le journal est append-only ; cette commande est le SEUL mécanisme de
- * suppression, planifié quotidiennement. Le seuil vient de
- * `config('audit.retention_days')` (≥ 90 j pour SOC2/GDPR).
+ * ## Le piège évité ici, et pourquoi il méritait d'être écrit
  *
- *   php artisan audit:purge            # purge réelle
- *   php artisan audit:purge --dry-run  # compte sans supprimer
+ * Cette commande n'a **aucun drapeau destructeur** : invoquée, elle purge. Et
+ * elle est **planifiée quotidiennement** (`routes/console.php:98`).
  *
+ * La transformer en alias naïf de `purge:run audit-logs` l'aurait fait hériter
+ * du défaut du moteur — la simulation. Le planificateur aurait continué à
+ * l'exécuter, à rapporter un succès, et **plus rien n'aurait été purgé** : le
+ * journal d'audit aurait grossi sans limite, sans qu'aucune alerte ne se
+ * déclenche. Très exactement la classe de défaut que ce dépôt passe son temps à
+ * débusquer — un vert qui ne prouve rien.
+ *
+ * L'alias transmet donc `--force` : le comportement observable est identique à
+ * ce qu'il était. Le `--dry-run` historique reste offert, et l'inverse alors.
+ *
+ * ## L'asymétrie est assumée
+ *
+ * `purge:run` simule par défaut ; cet alias détruit par défaut. Ce n'est pas une
+ * incohérence oubliée, c'est la préservation d'un contrat que le planificateur
+ * consomme depuis #215. La forme directe, elle, obéit à la règle commune.
+ *
+ * @see app/Services/Retention/Policies/AuditLogsPolicy.php
  * @see config/audit.php
- * @see routes/console.php (planification quotidienne)
  */
 final class PurgeAuditLogs extends Command
 {
@@ -27,29 +39,14 @@ final class PurgeAuditLogs extends Command
 
     protected $description = 'Supprime les entrées du journal d\'audit au-delà du seuil de rétention (#215)';
 
-    public function handle(ConfigRepository $config): int
+    public function handle(): int
     {
-        // config() retourne mixed → garde is_numeric avant cast (niveau 9
-        // interdit `(int) mixed` et `intval(mixed)`).
-        $rawRetention = $config->get('audit.retention_days', 365);
-        $retentionDays = is_numeric($rawRetention) ? (int) $rawRetention : 365;
-        $cutoff = now()->subDays($retentionDays);
-
-        $query = AuditLog::withoutGlobalScope('institution')
-            ->where('created_at', '<', $cutoff);
-        $count = $query->count();
-
-        if ($this->option('dry-run')) {
-            $this->info("[DRY-RUN] {$count} entrée(s) antérieure(s) à {$cutoff->toDateString()} seraient supprimées.");
-            return self::SUCCESS;
-        }
-
-        // On supprime exactement les rows comptées juste avant (aucune nouvelle
-        // entrée ne peut avoir created_at < cutoff) → on réutilise `$count`
-        // (int typé) plutôt que le retour `mixed` de delete().
-        $query->delete();
-        $this->info("✓ {$count} entrée(s) d'audit supprimée(s) (antérieures à {$cutoff->toDateString()}, rétention {$retentionDays} j).");
-
-        return self::SUCCESS;
+        return $this->call('purge:run', [
+            'domaine' => 'audit-logs',
+            // Sans drapeau, cette commande purgeait. Elle est planifiée : lui
+            // faire hériter de la simulation par défaut arrêterait la rétention
+            // en silence.
+            '--force' => ! $this->option('dry-run'),
+        ]);
     }
 }

@@ -69,12 +69,12 @@ final class SoftDeletedUsersPolicy implements RetentionPolicy
      * Aucun refus : un compte en corbeille au-delà du délai de grâce est purgeable
      * sans condition. C'est la promesse RGPD de #566, pas une heuristique.
      */
-    public function refuses(Model $item): ?string
+    public function refuses(Model $item, CarbonInterface $cutoff): ?string
     {
         return null;
     }
 
-    public function purge(Model $item): void
+    public function purge(Model $item, CarbonInterface $cutoff): void
     {
         if ($item instanceof User) {
             $item->forceDelete();

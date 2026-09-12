@@ -75,8 +75,14 @@ interface RetentionPolicy
     /**
      * Le nom de l'événement d'audit, écrit AVANT destruction : après, la cible
      * n'existe plus et la trace n'aurait plus de sujet.
+     *
+     * Rend `null` quand une trace PAR ÉLÉMENT n'a pas de sens. Le cas existe et
+     * n'est pas théorique : purger le journal d'audit lui-même y écrirait une
+     * ligne pour chaque ligne supprimée — un net nul, qui croît indéfiniment et
+     * ne dit rien. Le moteur écrit alors UNE entrée de synthèse, qui est
+     * l'information qu'un auditeur vient chercher.
      */
-    public function auditAction(): string;
+    public function auditAction(): ?string;
 
     /**
      * Cette ligne doit-elle être ÉPARGNÉE malgré son éligibilité ?
@@ -85,17 +91,23 @@ interface RetentionPolicy
      * institution qui a encore des lignes filles, par exemple : la purger
      * orphelinerait leurs données.
      *
+     * Le seuil est transmis parce que la REQUÊTE ne suffit pas toujours. Un
+     * enregistrement de visio encore actif n'est jamais éligible quel que soit
+     * son âge, et un chapitre restauré entre la lecture du lot et son traitement
+     * ne doit pas être détruit. La requête ne voit qu'un instantané ; ce second
+     * filtre voit l'état au moment d'agir.
+     *
      * Séparé de {@see purge()} pour une raison précise. La trace d'audit doit
      * être écrite AVANT la destruction — après, la cible n'existe plus. Mais si
      * le moteur traçait puis découvrait un refus, le journal affirmerait une
      * destruction qui n'a pas eu lieu. Interroger d'abord, tracer ensuite,
      * détruire enfin : chaque entrée d'audit correspond alors à un fait.
      */
-    public function refuses(Model $item): ?string;
+    public function refuses(Model $item, CarbonInterface $cutoff): ?string;
 
     /**
      * Détruit une ligne dont {@see refuses()} a déjà dit qu'elle pouvait l'être.
      * La trace d'audit est déjà écrite quand cette méthode est appelée.
      */
-    public function purge(Model $item): void;
+    public function purge(Model $item, CarbonInterface $cutoff): void;
 }

@@ -74,7 +74,7 @@ final class SoftDeletedInstitutionsPolicy implements RetentionPolicy
      * On vérifie donc les principales relations déclarées du tenant, hors portée
      * globale : le scope multi-tenant masquerait précisément ce qu'on cherche.
      */
-    public function refuses(Model $item): ?string
+    public function refuses(Model $item, CarbonInterface $cutoff): ?string
     {
         if (! $item instanceof Institution) {
             return 'ligne inattendue';
@@ -90,7 +90,7 @@ final class SoftDeletedInstitutionsPolicy implements RetentionPolicy
             : null;
     }
 
-    public function purge(Model $item): void
+    public function purge(Model $item, CarbonInterface $cutoff): void
     {
         if ($item instanceof Institution) {
             $item->forceDelete();

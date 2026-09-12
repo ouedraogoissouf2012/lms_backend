@@ -4,10 +4,15 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
+use App\Services\Chapter\ChapterRetentionService;
+use App\Services\Retention\Policies\AuditLogsPolicy;
+use App\Services\Retention\Policies\SeanceRecordingsPolicy;
 use App\Services\Retention\Policies\SoftDeletedInstitutionsPolicy;
 use App\Services\Retention\Policies\SoftDeletedUsersPolicy;
+use App\Services\Retention\Policies\TrashedChaptersPolicy;
 use App\Services\Retention\RetentionPolicy;
 use App\Services\Retention\RetentionRegistry;
+use App\Services\Visio\Recording\SeanceRecordingRetentionService;
 use Illuminate\Support\ServiceProvider;
 
 /**
@@ -39,9 +44,16 @@ final class RetentionServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
-        $this->app->bind(RetentionRegistry::class, fn (): RetentionRegistry => new RetentionRegistry([
+        $this->app->bind(RetentionRegistry::class, fn ($app): RetentionRegistry => new RetentionRegistry([
             new SoftDeletedUsersPolicy,
             new SoftDeletedInstitutionsPolicy,
+            new AuditLogsPolicy,
+            // Ces deux-là enveloppent un service métier existant : la logique de
+            // destruction reste chez lui, la politique ne fait que la présenter
+            // au moteur. Résolus par le conteneur, donc leurs propres
+            // dépendances (stockage des médias, artefacts) le sont aussi.
+            new SeanceRecordingsPolicy($app->make(SeanceRecordingRetentionService::class)),
+            new TrashedChaptersPolicy($app->make(ChapterRetentionService::class)),
         ]));
     }
 }

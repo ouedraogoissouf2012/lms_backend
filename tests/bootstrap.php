@@ -46,6 +46,19 @@ declare(strict_types=1);
 require __DIR__.'/../vendor/autoload.php';
 
 (static function (): void {
+    // La jambe MySQL de la CI pose `DB_CONNECTION=mysql` et `DB_DATABASE=lms_testing` :
+    // y écrire un chemin de FICHIER n'a aucun sens et casse la connexion.
+    //
+    // À cet instant, Laravel n'a pas encore chargé `.env` — `getenv()` ne rend
+    // donc que ce que le shell ou la CI ont réellement posé, jamais la valeur du
+    // fichier. C'est précisément le discriminant qu'il faut : absent en local,
+    // explicite en CI. Premier jet sans cette garde : jambe MySQL rouge.
+    $connexion = getenv('DB_CONNECTION');
+
+    if (is_string($connexion) && $connexion !== '' && $connexion !== 'sqlite') {
+        return;
+    }
+
     $racine = dirname(__DIR__);
 
     // L'empreinte du chemin racine : stable pour un checkout donné, différente

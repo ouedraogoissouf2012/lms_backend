@@ -6,18 +6,23 @@ namespace App\Services\Institution;
 
 use App\Exceptions\BusinessException;
 use App\Models\Institution;
+use App\Services\Klassci\Health\ApplicationProofResult;
+use App\Services\Klassci\Health\KlassciApplicationProof;
 use App\Services\Klassci\Health\KlassciReachability;
-use Illuminate\Http\Client\ConnectionException;
 use Psr\Log\LoggerInterface;
 
 /**
- * Test de connexion KLASSCI (#712) — passe par {@see KlassciReachability},
- * plus d'HTTP brut hors couche client.
+ * Test de connexion pour le bouton d'administration (#713).
+ *
+ * La sonde transport ({@see KlassciReachability}) peut juger un 404 « joignable ».
+ * Ici on exige en plus une preuve applicative ({@see KlassciApplicationProof}) :
+ * JSON `/auth/check-user` avec clé `data`. Une page parquée n'est pas KLASSCI.
  */
 final class InstitutionConnectionTester
 {
     public function __construct(
         private readonly KlassciReachability $reachability,
+        private readonly KlassciApplicationProof $proof,
         private readonly LoggerInterface $logger,
     ) {
     }
@@ -36,27 +41,62 @@ final class InstitutionConnectionTester
         }
 
         $measure = $this->reachability->probe($url);
+        if (! $measure->reachable) {
+            return $this->fail('injoignable', 'Serveur injoignable', $url, 0, $measure->connectMs ?? 0);
+        }
 
-        if ($measure->reachable) {
+        return $this->fromProof($url, $this->proof->verify($url));
+    }
+
+    /**
+     * @return array{status: int, payload: array<string, mixed>}
+     */
+    private function fromProof(string $url, ApplicationProofResult $proof): array
+    {
+        if ($proof->isOk()) {
             return [
                 'status' => 200,
                 'payload' => [
                     'success' => true,
                     'message' => 'Connexion KLASSCI réussie',
                     'data' => [
-                        'status_code' => $measure->status,
-                        'response_time_ms' => $measure->connectMs,
+                        'status_code' => $proof->statusCode,
+                        'response_time_ms' => $proof->elapsedMs,
                         'api_url' => $url,
                     ],
                 ],
             ];
         }
 
-        $this->logger->warning('KLASSCI connection test unreachable', [
-            'institution_id' => $institutionId,
-            'error' => $measure->error,
+        $this->logger->warning('KLASSCI connection test applicative proof failed', [
+            'kind' => $proof->kind,
+            'status_code' => $proof->statusCode,
         ]);
 
-        throw new ConnectionException($measure->error ?? 'KLASSCI injoignable');
+        $message = $proof->kind === 'klassci_erreur'
+            ? 'KLASSCI a répondu en erreur'
+            : 'Joignable mais ce n\'est pas KLASSCI';
+
+        return $this->fail($proof->kind, $message, $url, $proof->statusCode, $proof->elapsedMs);
+    }
+
+    /**
+     * @return array{status: int, payload: array<string, mixed>}
+     */
+    private function fail(string $reason, string $message, string $url, int $statusCode, int $elapsedMs): array
+    {
+        return [
+            'status' => 502,
+            'payload' => [
+                'success' => false,
+                'message' => $message,
+                'reason' => $reason,
+                'data' => [
+                    'status_code' => $statusCode,
+                    'response_time_ms' => $elapsedMs,
+                    'api_url' => $url,
+                ],
+            ],
+        ];
     }
 }

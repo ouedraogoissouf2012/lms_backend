@@ -10,19 +10,24 @@ use App\Models\User;
 use App\Services\TenantManager;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
+use Tests\Concerns\ActsAsTenantUser;
 use Tests\TestCase;
 
 final class AsyncReportControllerTest extends TestCase
 {
+    use ActsAsTenantUser;
     use RefreshDatabase;
 
     public function test_report_can_be_enqueued_without_blocking_http_response(): void
     {
         Queue::fake();
         $coordinator = $this->coordinator();
-        $token = $coordinator->createToken('async-report-test')->plainTextToken;
 
-        $response = $this->withToken($token)->postJson('/api/admin/reports/attendance?async=1', [
+        // Les deux appels sont faits par le MEME coordinateur : la memoisation du
+        // garde serait ici inoffensive. On passe quand meme par `asTenant()`
+        // (#691) — il purge le garde avant de poser le jeton, et lever
+        // l'ambiguite coute moins cher que de la reexpliquer a chaque relecture.
+        $response = $this->asTenant($coordinator)->postJson('/api/admin/reports/attendance?async=1', [
             'date_start' => '2026-07-01',
             'date_end' => '2026-07-07',
         ]);
@@ -39,7 +44,7 @@ final class AsyncReportControllerTest extends TestCase
         $statusUrl = $response->json('data.status_url');
         $this->assertIsString($statusUrl);
 
-        $this->withToken($token)->getJson($statusUrl)
+        $this->asTenant($coordinator)->getJson($statusUrl)
             ->assertOk()
             ->assertJsonPath('success', true)
             ->assertJsonPath('data.status', 'pending')

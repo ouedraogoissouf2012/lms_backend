@@ -6,7 +6,10 @@ namespace Tests\Feature\Klassci;
 
 use App\Models\Institution;
 use App\Models\User;
+use App\Services\Klassci\Health\ApplicationProofResult;
+use App\Services\Klassci\Health\InMemoryKlassciApplicationProof;
 use App\Services\Klassci\Health\InMemoryKlassciReachability;
+use App\Services\Klassci\Health\KlassciApplicationProof;
 use App\Services\Klassci\Health\KlassciReachability;
 use App\Services\Klassci\Sync\KlassciSyncGate;
 use App\Services\Klassci\Sync\NeverSyncGate;
@@ -63,6 +66,13 @@ final class KlassciSyncGateTest extends TestCase
         $fake = new InMemoryKlassciReachability;
         $fake->reachable('https://klassci.example/api', 15, 404);
         $this->app->instance(KlassciReachability::class, $fake);
+        $this->app->instance(
+            KlassciApplicationProof::class,
+            (new InMemoryKlassciApplicationProof)->willReturn(
+                'https://klassci.example/api',
+                ApplicationProofResult::ok(200, 15),
+            ),
+        );
 
         $result = app(InstitutionConnectionTester::class)->test($institution->id);
 

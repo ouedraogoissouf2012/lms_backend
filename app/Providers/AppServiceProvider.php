@@ -13,7 +13,9 @@ use App\Services\Enrollment\CompositeEnrollmentSource;
 use App\Services\Enrollment\EnrollmentSource;
 use App\Services\Integrity\ArchivedRowWriter;
 use App\Services\Integrity\ArchivedRowWriterInterface;
+use App\Services\Klassci\Health\HttpKlassciCheckUserProof;
 use App\Services\Klassci\Health\HttpKlassciReachability;
+use App\Services\Klassci\Health\KlassciApplicationProof;
 use App\Services\Klassci\Health\KlassciReachability;
 use App\Services\Klassci\KlassciConfigResolver;
 use App\Services\Klassci\KlassciRequestMemo;
@@ -282,6 +284,7 @@ class AppServiceProvider extends ServiceProvider
         // transport se saute sous Windows, donc une mesure appelant le réseau en
         // dur ne serait vérifiable qu'en CI.
         $this->app->bind(KlassciReachability::class, HttpKlassciReachability::class);
+        $this->app->bind(KlassciApplicationProof::class, HttpKlassciCheckUserProof::class);
     }
 
     private function bindClasseAudienceSource(): void

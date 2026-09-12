@@ -53,8 +53,26 @@ final class BaseDeTestParCheckoutTest extends TestCase
         @unlink($chemin);
     }
 
+    /**
+     * La garantie porte sur la base SQLite. La jambe MySQL de la CI pointe une
+     * base nommée (`lms_testing`), où un chemin de fichier n'a pas de sens — et
+     * où la corruption par concurrence ne se pose pas : le serveur arbitre les
+     * écritures.
+     *
+     * Sauter est ici la bonne réponse, pas un contournement. Les deux premiers
+     * jets de cette PR l'ont appris à leurs dépens : le premier cassait la
+     * connexion MySQL, le second y faisait échouer ces deux assertions.
+     */
+    private function exigeSqlite(): void
+    {
+        if (config('database.default') !== 'sqlite') {
+            $this->markTestSkipped('Garantie propre au moteur SQLite.');
+        }
+    }
+
     public function test_la_base_de_test_est_propre_a_ce_checkout(): void
     {
+        $this->exigeSqlite();
         $chemin = (string) config('database.connections.sqlite.database');
 
         // L'empreinte du chemin racine : deux worktrees ne peuvent pas tomber
@@ -71,6 +89,7 @@ final class BaseDeTestParCheckoutTest extends TestCase
 
     public function test_elle_n_est_jamais_la_base_de_developpement(): void
     {
+        $this->exigeSqlite();
         $chemin = $this->enBarresObliques((string) config('database.connections.sqlite.database'));
 
         // Le fichier de dev a déjà été vidé une fois par erreur (2026-09-03).

@@ -49,14 +49,41 @@ final class RetentionRunner
         $policy->eligible($cutoff)->chunkById(
             self::TAILLE_DE_LOT,
             /** @param Collection<int, Model> $lignes */
-            function ($lignes) use ($policy, $destroy, $onItem, $resultat): void {
+            function ($lignes) use ($policy, $cutoff, $destroy, $onItem, $resultat): void {
                 foreach ($lignes as $ligne) {
-                    $this->traiter($policy, $ligne, $destroy, $onItem, $resultat);
+                    $this->traiter($policy, $ligne, $cutoff, $destroy, $onItem, $resultat);
                 }
             }
         );
 
+        $this->tracerLaSynthese($policy, $cutoff, $destroy, $resultat);
+
         return $resultat;
+    }
+
+    /**
+     * Une seule entrée pour toute l'exécution, quand la politique refuse une
+     * trace par élément — {@see RetentionPolicy::auditAction()}.
+     *
+     * Sans elle, purger le journal d'audit ne laisserait AUCUNE trace : on
+     * saurait que des lignes ont disparu, jamais qu'une purge les a effacées ni
+     * jusqu'à quelle date. C'est précisément ce qu'un auditeur vient chercher,
+     * et son absence rendrait une purge indiscernable d'une altération.
+     */
+    private function tracerLaSynthese(
+        RetentionPolicy $policy,
+        CarbonInterface $cutoff,
+        bool $destroy,
+        RetentionOutcome $resultat,
+    ): void {
+        if (! $destroy || $policy->auditAction() !== null || $resultat->purged === 0) {
+            return;
+        }
+
+        $this->audit->logSecurityEvent($policy->key().'.purged.bulk', null, [
+            'purged' => $resultat->purged,
+            'cutoff' => $cutoff->toIso8601String(),
+        ]);
     }
 
     /**
@@ -65,13 +92,14 @@ final class RetentionRunner
     private function traiter(
         RetentionPolicy $policy,
         Model $ligne,
+        CarbonInterface $cutoff,
         bool $destroy,
         ?callable $onItem,
         RetentionOutcome $resultat,
     ): void {
         $resultat->eligible++;
         $description = $policy->describe($ligne);
-        $refus = $policy->refuses($ligne);
+        $refus = $policy->refuses($ligne, $cutoff);
 
         if ($onItem !== null) {
             $onItem($description, $refus);
@@ -88,11 +116,12 @@ final class RetentionRunner
         }
 
         // Tracer PUIS détruire : `forceDelete()` efface aussi la cible d'audit.
-        $this->audit->logSecurityEvent($policy->auditAction(), $ligne, [
-            'description' => $description,
-        ]);
+        $action = $policy->auditAction();
+        if ($action !== null) {
+            $this->audit->logSecurityEvent($action, $ligne, ['description' => $description]);
+        }
 
-        $policy->purge($ligne);
+        $policy->purge($ligne, $cutoff);
         $resultat->purged++;
     }
 }

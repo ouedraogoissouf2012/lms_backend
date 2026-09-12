@@ -167,17 +167,17 @@ final class PurgeRetentionTest extends TestCase
                     return 'chose de test #'.$item->getKey();
                 }
 
-                public function auditAction(): string
+                public function auditAction(): ?string
                 {
                     return 'test.purged';
                 }
 
-                public function refuses(Model $item): ?string
+                public function refuses(Model $item, CarbonInterface $cutoff): ?string
                 {
                     return null;
                 }
 
-                public function purge(Model $item): void
+                public function purge(Model $item, CarbonInterface $cutoff): void
                 {
                     $item->forceDelete();
                 }

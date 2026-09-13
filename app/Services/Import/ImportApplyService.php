@@ -27,21 +27,31 @@ final class ImportApplyService
 
     private function upsertStudent(Import $import, ImportRow $row): void
     {
-        $payload = is_array($row->payload) ? $row->payload : [];
-        $email = is_string($payload['email'] ?? null) ? $payload['email'] : '';
-        $phone = is_string($payload['telephone'] ?? null) ? $payload['telephone'] : '';
-        $nom = is_string($payload['nom'] ?? null) ? $payload['nom'] : '';
-        $prenom = is_string($payload['prenom'] ?? null) ? $payload['prenom'] : '';
-        $code = is_string($payload['code_classe'] ?? null) ? $payload['code_classe'] : '';
+        $payload = $row->payload ?? [];
+        $email = $this->stringField($payload, 'email');
+        $phone = $this->stringField($payload, 'telephone');
+        $nom = $this->stringField($payload, 'nom');
+        $prenom = $this->stringField($payload, 'prenom');
+        $code = $this->stringField($payload, 'code_classe');
 
-        $user = $this->findOrCreate($import, $email, $phone, $prenom, $nom);
-        if ($user === null) {
-            return;
-        }
-        $this->enroll($import, $user, $code);
+        $this->enroll(
+            $import,
+            $this->findOrCreate($import, $email, $phone, $prenom, $nom),
+            $code,
+        );
     }
 
-    private function findOrCreate(Import $import, string $email, string $phone, string $prenom, string $nom): ?User
+    /**
+     * @param  array<string, mixed>  $payload
+     */
+    private function stringField(array $payload, string $key): string
+    {
+        $value = $payload[$key] ?? null;
+
+        return is_string($value) ? $value : '';
+    }
+
+    private function findOrCreate(Import $import, string $email, string $phone, string $prenom, string $nom): User
     {
         $query = User::query()->where('institution_id', $import->institution_id);
         $existing = $email !== ''

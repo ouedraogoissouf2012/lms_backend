@@ -42,6 +42,14 @@ final class ProcessImportJob implements ShouldQueue
         }
     }
 
+    public function failed(Throwable $exception): void
+    {
+        $import = Import::withoutGlobalScope('institution')->find($this->importId);
+        if ($import instanceof Import) {
+            $import->update(['status' => Import::STATUS_FAILED]);
+        }
+    }
+
     protected function institutionId(): int
     {
         return $this->tenantId;

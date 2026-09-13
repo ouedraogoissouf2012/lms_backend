@@ -69,6 +69,29 @@ final class ImportJobTest extends TestCase
             ->assertJsonPath('data.status', Import::STATUS_DONE);
     }
 
+    public function test_failed_marks_import_without_tenant(): void
+    {
+        $teacher = $this->teacher();
+        $import = Import::query()->create([
+            'institution_id' => $teacher->institution_id,
+            'user_id' => $teacher->id,
+            'path' => 'imports/x.csv',
+            'original_name' => 'x.csv',
+            'status' => Import::STATUS_RUNNING,
+            'ok_count' => 0,
+            'error_count' => 0,
+        ]);
+        app(TenantManager::class)->reset();
+
+        $job = new ProcessImportJob((int) $import->id, (int) $teacher->institution_id);
+        $job->failed(new \RuntimeException('queue exhausted'));
+
+        $this->assertSame(
+            Import::STATUS_FAILED,
+            $import->fresh()?->status,
+        );
+    }
+
     private function teacher(): User
     {
         $school = Institution::factory()->create();

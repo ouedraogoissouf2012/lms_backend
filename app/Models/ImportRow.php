@@ -7,6 +7,9 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+/**
+ * @property array<string, mixed>|null $payload
+ */
 final class ImportRow extends Model
 {
     protected $fillable = [

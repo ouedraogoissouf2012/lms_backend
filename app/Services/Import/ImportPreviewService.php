@@ -27,9 +27,10 @@ final class ImportPreviewService
             return $this->emptyReport();
         }
 
-        $utf8 = mb_check_encoding($raw, 'UTF-8')
+        $converted = mb_check_encoding($raw, 'UTF-8')
             ? $raw
             : mb_convert_encoding($raw, 'UTF-8', 'Windows-1252');
+        $utf8 = is_string($converted) ? $converted : $raw;
 
         try {
             $reader = Reader::fromString($utf8);
@@ -51,10 +52,10 @@ final class ImportPreviewService
      */
     private function scan(Reader $reader): array
     {
-        $headers = array_map(
-            static fn (string $h): string => strtolower(trim($h)),
-            $reader->getHeader(),
-        );
+        $headers = [];
+        foreach ($reader->getHeader() as $header) {
+            $headers[] = strtolower(trim((string) $header));
+        }
         $rows = [];
         $ok = 0;
         $error = 0;
@@ -63,12 +64,16 @@ final class ImportPreviewService
 
         foreach ($reader->getRecords($headers) as $line => $record) {
             $n++;
+            $lineNo = is_numeric($line) ? (int) $line + 1 : $n;
             if ($n > self::MAX_ROWS) {
-                $rows[] = $this->row((int) $line + 1, ImportRowStatus::Error, 'too_many_rows', 'Plus de 5000 lignes.');
+                $rows[] = $this->row($lineNo, ImportRowStatus::Error, 'too_many_rows', 'Plus de 5000 lignes.');
                 $error++;
                 break;
             }
-            $classified = $this->classify($record, $seen, (int) $line + 1);
+            if (! is_array($record)) {
+                continue;
+            }
+            $classified = $this->classify($record, $seen, $lineNo);
             $rows[] = $classified;
             if ($classified['status'] === ImportRowStatus::Ok->value) {
                 $ok++;

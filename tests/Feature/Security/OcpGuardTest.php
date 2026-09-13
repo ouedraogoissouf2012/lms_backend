@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Security;
 
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
@@ -75,6 +76,132 @@ final class OcpGuardTest extends TestCase
 
         $this->assertSame(1, $code, "Une conditionnelle de mode neuve doit faire échouer la garde.\n" . $sortie);
         $this->assertStringContainsString('OcpGuardProbe.php', $sortie);
+    }
+
+    /**
+     * Une écriture par motif — et délibérément la forme ATTRIBUT, pas la forme
+     * variable.
+     *
+     * ## Ce que ce fournisseur verrouille
+     *
+     * Le motif `match/switch` exigeait une VARIABLE LOCALE nommée `mode`
+     * (`\$?\w*[mM]ode`). Or `$institution->` contient `->`, qui n'est pas un
+     * caractère de mot : il ne pouvait donc JAMAIS matcher un attribut. Et
+     * l'attribut est la seule écriture possible, le mode étant une colonne du
+     * modèle. Le motif était lettre morte.
+     *
+     * Mesuré avant correction : **sept** de ces neuf formes passaient. Un fichier
+     * n'en contenant que celles-là faisait monter le dénominateur — donc la garde
+     * l'avait bien lu — et sortait en `exit 0`. La CI restait verte et certifiait
+     * le fichier fautif.
+     *
+     * Un test écrit sur `match ($mode)` serait passé au vert en manquant
+     * exactement le trou. D'où la forme attribut, partout où elle est possible.
+     *
+     * @return array<string, array{string}>
+     */
+    public static function ecrituresInterdites(): array
+    {
+        return [
+            'comparaison sur attribut' => ['return $i->mode === \'standalone\';'],
+            'comparaison en Yoda' => ['return \'standalone\' === $i->mode;'],
+            'match sur attribut' => ['return match ($i->mode) { default => 1 };'],
+            'switch sur attribut' => ['switch ($i->mode) { default: return 1; }'],
+            'match sur enum d attribut' => ['return match ($i->mode->value) { default => 1 };'],
+            'appartenance a un ensemble' => ['return in_array($i->mode, [\'standalone\'], true);'],
+            'predicat de mode' => ['return $i->isStandalone();'],
+            'colonne interrogee' => ['return $i->query()->where(\'mode\', \'standalone\')->first();'],
+            'attribut lu par son nom' => ['return $i->getAttribute(\'mode\');'],
+            'config klassci en helper' => ['return config(\'services.klassci.url\');'],
+            'config klassci en facade' => ['return \Config::get(\'services.klassci.token\');'],
+            'variable d environnement brute' => ['return env(\'KLASSCI_API_URL\');'],
+        ];
+    }
+
+    #[Test]
+    #[DataProvider('ecrituresInterdites')]
+    public function elle_rougit_sur_chaque_ecriture_interdite(string $corps): void
+    {
+        $sonde = $this->racine . '/app/Services/OcpGuardProbe.php';
+
+        file_put_contents($sonde, "<?php\nnamespace App\\Services;\nfinal class OcpGuardProbe {\n    public function r(object \$i) {\n        {$corps}\n    }\n}\n");
+
+        try {
+            [$code, $sortie] = $this->lancer($this->racine);
+        } finally {
+            @unlink($sonde);
+        }
+
+        $this->assertSame(
+            1,
+            $code,
+            "Cette écriture doit faire rougir la garde :\n  {$corps}\n" . $sortie
+        );
+    }
+
+    #[Test]
+    public function elle_reste_silencieuse_sur_ce_qui_n_est_pas_du_mode(): void
+    {
+        // Le versant qui compte autant : une garde qui crie à tort est désactivée
+        // dans la semaine. `ssl_verify` et compagnie sont des réglages
+        // d'INFRASTRUCTURE, et `mode` seul nomme bien d'autres choses.
+        $sonde = $this->racine . '/app/Services/OcpGuardProbe.php';
+
+        file_put_contents($sonde, <<<'PHP'
+            <?php
+            namespace App\Services;
+            final class OcpGuardProbe {
+                public function r(object $i): array {
+                    $ssl = config('services.klassci.ssl_verify');
+                    $practice = $i->isPracticeMode();
+                    $perms = $i->chmodMode;
+                    return [$ssl, $practice, $perms];
+                }
+            }
+            PHP);
+
+        try {
+            [$code, $sortie] = $this->lancer($this->racine);
+        } finally {
+            @unlink($sonde);
+        }
+
+        $this->assertSame(0, $code, "Aucune de ces lignes ne résout un mode d'établissement.\n" . $sortie);
+    }
+
+    #[Test]
+    public function elle_rougit_quand_la_dette_gelee_augmente(): void
+    {
+        // Le cliquet ne doit pas se contenter d'interdire les fichiers NEUFS :
+        // une occurrence de plus dans un fichier déjà gelé est une aggravation.
+        // Ce chemin n'était traversé par aucun test.
+        $cas = $this->racineJetable();
+        mkdir($cas . '/app', 0o777, true);
+        file_put_contents(
+            $cas . '/app/Dette.php',
+            "<?php\nnamespace App;\nfinal class Dette {\n"
+            ."    public function a(object \$i) { return \$i->mode === 'standalone'; }\n"
+            ."    public function b(object \$i) { return \$i->mode === 'klassci'; }\n"
+            ."}\n"
+        );
+
+        file_put_contents($cas . '/.ocp-allowlist.json', json_encode([
+            'version' => 1,
+            'entries' => [[
+                'path' => 'app/Dette.php',
+                'type' => 'dette',
+                'reason' => 'gelee a une occurrence',
+                'count' => 1,
+            ]],
+        ]));
+
+        try {
+            [$code, $sortie] = $this->lancer($cas);
+        } finally {
+            $this->supprimer($cas);
+        }
+
+        $this->assertSame(1, $code, "Dette 1 → 2 : la garde doit rougir.\n" . $sortie);
     }
 
     #[Test]

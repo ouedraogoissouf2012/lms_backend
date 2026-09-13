@@ -35,7 +35,7 @@ class User extends Authenticatable implements CanResetPasswordContract
     use HasFactory, Notifiable, HasApiTokens, BelongsToInstitution, InteractsWithRoles, SoftDeletes, CanResetPassword;
 
     protected $fillable = [
-        'klassci_id', 'name', 'email', 'password',
+        'klassci_id', 'name', 'email', 'phone', 'password',
         'role', 'klassci_role', 'klassci_enseignant_id',
         // 'klassci_token' = alias mass-assignable du mutateur setKlassciTokenAttribute
         // (→ colonne chiffrée klassci_token_encrypted). Sans lui, le sync droppait

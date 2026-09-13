@@ -18,9 +18,15 @@ final class ImportPreviewService
     private const MAX_ROWS = 5000;
 
     /**
+     * @param  ColumnMap  $map  déclaration « quelle colonne porte quel champ »
+     * @param  string|null  $delimiter  séparateur avec lequel le client a montré
+     *                                  les colonnes à l'utilisateur ; laisser
+     *                                  null pour le détecter.
      * @return array{rows: list<array<string, mixed>>, counts: array{ok: int, error: int, total: int}}
+     *
+     * @throws ImportPreviewFailed si aucune ligne n'est lisible
      */
-    public function preview(UploadedFile $file): array
+    public function preview(UploadedFile $file, ColumnMap $map, ?string $delimiter = null): array
     {
         $raw = $file->get();
         if (! is_string($raw) || $raw === '') {
@@ -38,25 +44,43 @@ final class ImportPreviewService
             return $this->emptyReport();
         }
 
-        $stats = Info::getDelimiterStats($reader, [';', ',', "\t"], 2);
-        arsort($stats);
-        $delimiter = array_key_first($stats);
-        $reader->setDelimiter(is_string($delimiter) && $delimiter !== '' ? $delimiter : ';');
+        $reader->setDelimiter($delimiter ?? $this->detectDelimiter($reader));
         $reader->setHeaderOffset(0);
 
-        return $this->scan($reader);
+        return $this->scan($reader, $map);
+    }
+
+    /**
+     * @param  Reader<array<string, mixed>>  $reader
+     */
+    private function detectDelimiter(Reader $reader): string
+    {
+        $stats = Info::getDelimiterStats($reader, [';', ',', "\t"], 2);
+        arsort($stats);
+        $best = array_key_first($stats);
+
+        return is_string($best) && $best !== '' ? $best : ';';
     }
 
     /**
      * @param  Reader<array<string, mixed>>  $reader
      * @return array{rows: list<array<string, mixed>>, counts: array{ok: int, error: int, total: int}}
      */
-    private function scan(Reader $reader): array
+    private function scan(Reader $reader, ColumnMap $map): array
     {
         $headers = [];
         foreach ($reader->getHeader() as $header) {
-            $headers[] = strtolower(trim((string) $header));
+            $headers[] = ColumnMap::normalizeHeader((string) $header);
         }
+
+        // `Reader::computeHeader()` lèverait une SyntaxError sur des en-têtes
+        // dupliqués. Le cas était inatteignable tant que le client réécrivait
+        // le fichier ; il ne l'est plus, et une 500 n'apprend rien à qui doit
+        // corriger son tableur.
+        if (count($headers) !== count(array_unique($headers))) {
+            throw ImportPreviewFailed::duplicateHeader();
+        }
+
         $rows = [];
         $ok = 0;
         $error = 0;
@@ -71,7 +95,7 @@ final class ImportPreviewService
                 $error++;
                 break;
             }
-            $classified = $this->classify($record, $seen, $lineNo);
+            $classified = $this->classify($record, $map, $seen, $lineNo);
             $rows[] = $classified;
             if ($classified['status'] === ImportRowStatus::Ok->value) {
                 $ok++;
@@ -89,14 +113,14 @@ final class ImportPreviewService
     /**
      * @param  array<string, mixed>  $record
      * @param  array<string, true>  $seen
-     * @return array{line: int, status: string, code: string|null, message: string|null}
+     * @return array{line: int, status: string, code: string|null, message: string|null, payload: array<string, string>|null}
      */
-    private function classify(array $record, array &$seen, int $line): array
+    private function classify(array $record, ColumnMap $map, array &$seen, int $line): array
     {
-        $nom = trim($this->cell($record, 'nom'));
-        $prenom = trim($this->cell($record, 'prenom'));
-        $email = strtolower(trim($this->cell($record, 'email')));
-        $phone = $this->normalizePhone($this->cell($record, 'telephone'));
+        $nom = trim($map->value($record, 'nom'));
+        $prenom = trim($map->value($record, 'prenom'));
+        $email = mb_strtolower(trim($map->value($record, 'email')));
+        $phone = $this->normalizePhone($map->value($record, 'telephone'));
 
         if ($nom === '' || $prenom === '') {
             return $this->row($line, ImportRowStatus::Error, 'missing_name', 'Nom et prénom requis.');
@@ -111,17 +135,13 @@ final class ImportPreviewService
         }
         $seen[$key] = true;
 
-        return $this->row($line, ImportRowStatus::Ok, null, null);
-    }
-
-    /**
-     * @param  array<string, mixed>  $record
-     */
-    private function cell(array $record, string $key): string
-    {
-        $value = $record[$key] ?? '';
-
-        return is_scalar($value) ? (string) $value : '';
+        return $this->row($line, ImportRowStatus::Ok, null, null, [
+            'nom' => $nom,
+            'prenom' => $prenom,
+            'email' => $email,
+            'telephone' => $phone,
+            'code_classe' => trim($map->value($record, 'code_classe')),
+        ]);
     }
 
     private function normalizePhone(string $raw): string
@@ -130,15 +150,17 @@ final class ImportPreviewService
     }
 
     /**
-     * @return array{line: int, status: string, code: string|null, message: string|null}
+     * @param  array<string, string>|null  $payload
+     * @return array{line: int, status: string, code: string|null, message: string|null, payload: array<string, string>|null}
      */
-    private function row(int $line, ImportRowStatus $status, ?string $code, ?string $message): array
+    private function row(int $line, ImportRowStatus $status, ?string $code, ?string $message, ?array $payload = null): array
     {
         return [
             'line' => $line,
             'status' => $status->value,
             'code' => $code,
             'message' => $message,
+            'payload' => $payload,
         ];
     }
 

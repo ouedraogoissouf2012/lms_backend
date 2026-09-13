@@ -42,6 +42,7 @@ Route::middleware(['auth:sanctum', 'klassci.sync', 'role:enseignant,coordinateur
 // ============================================
 use App\Http\Controllers\API\LMS\LMSAttendancesController;
 use App\Http\Controllers\API\LMS\LMSClassesController;
+use App\Http\Controllers\API\LMS\ImportPreviewController;
 use App\Http\Controllers\API\LMS\LMSTeacherClassesController;
 use App\Http\Controllers\API\LMS\LMSEnseignantsController;
 use App\Http\Controllers\API\Admin\AdminStatisticsController;
@@ -71,6 +72,10 @@ Route::middleware(['auth:sanctum', 'klassci.sync'])->prefix('lms')->group(functi
     Route::get('/teacher/classes', [LMSTeacherClassesController::class, 'index'])
         ->middleware('role:enseignant,coordinateur')
         ->name('lms.teacher.classes');
+
+    Route::post('/imports/preview', [ImportPreviewController::class, 'store'])
+        ->middleware(['role:enseignant,coordinateur,superAdmin', 'throttle:10,1'])
+        ->name('lms.imports.preview');
 
     // Détails complets d'une matière
     Route::get('/matieres/{matiereId}', [LMSMatieresQueryController::class, 'matiereDetails'])

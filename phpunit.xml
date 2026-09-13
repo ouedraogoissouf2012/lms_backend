@@ -47,10 +47,20 @@
              doit pouvoir prendre le dessus sans dupliquer ce fichier. -->
         <env name="CACHE_STORE" value="database"/>
         <env name="DB_CONNECTION" value="sqlite"/>
-        <!-- #692 : DB_DATABASE n'est PLUS pose ici. Un fichier unique partage
-             entre worktrees se corrompt des que deux suites tournent en meme
-             temps. tests/bootstrap.php en derive un PAR CHECKOUT, et verifie son
-             integrite avant de lancer quoi que ce soit. -->
+        <!-- #692 : FILET, pas source de verite.
+             tests/bootstrap.php derive une base PAR CHECKOUT et ecrase cette
+             valeur par putenv() — PHPUnit applique les <env> AVANT l'amorcage,
+             donc le bootstrap gagne toujours. Mesure : bootstrap du lot ->
+             database/testing/<empreinte>.sqlite ; bootstrap etranger -> cette
+             valeur-ci.
+             Cette ligne avait ete RETIREE au premier jet. Consequence mesuree :
+             une execution avec un autre bootstrap (une configuration d'IDE
+             creee avant ce commit porte `vendor/autoload.php`, la valeur que ce
+             fichier portait) resolvait `database/database.sqlite` — la base de
+             DEVELOPPEMENT, videe par erreur le 2026-09-03. Ne pas la retirer.
+             Le rempart qui ne depend d'aucune configuration est dans
+             Tests\TestCase::refuseDEcrireDansLaBaseDeDeveloppement(). -->
+        <env name="DB_DATABASE" value="database/database.testing.sqlite"/>
         <env name="MAIL_DRIVER" value="array"/>
         <env name="QUEUE_CONNECTION" value="database"/>
         <env name="SESSION_DRIVER" value="database"/>

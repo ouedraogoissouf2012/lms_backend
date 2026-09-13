@@ -33,7 +33,7 @@ final class ImportPreviewService
         $utf8 = is_string($converted) ? $converted : $raw;
 
         try {
-            $reader = Reader::fromString($utf8);
+            $reader = Reader::createFromString($utf8);
         } catch (UnavailableStream) {
             return $this->emptyReport();
         }
@@ -48,6 +48,7 @@ final class ImportPreviewService
     }
 
     /**
+     * @param  Reader<array<string, mixed>>  $reader
      * @return array{rows: list<array<string, mixed>>, counts: array{ok: int, error: int, total: int}}
      */
     private function scan(Reader $reader): array
@@ -73,7 +74,9 @@ final class ImportPreviewService
             if (! is_array($record)) {
                 continue;
             }
-            $classified = $this->classify($record, $seen, $lineNo);
+            /** @var array<string, mixed> $typed */
+            $typed = $record;
+            $classified = $this->classify($typed, $seen, $lineNo);
             $rows[] = $classified;
             if ($classified['status'] === ImportRowStatus::Ok->value) {
                 $ok++;
@@ -95,10 +98,10 @@ final class ImportPreviewService
      */
     private function classify(array $record, array &$seen, int $line): array
     {
-        $nom = trim((string) ($record['nom'] ?? ''));
-        $prenom = trim((string) ($record['prenom'] ?? ''));
-        $email = strtolower(trim((string) ($record['email'] ?? '')));
-        $phone = $this->normalizePhone((string) ($record['telephone'] ?? ''));
+        $nom = trim($this->cell($record, 'nom'));
+        $prenom = trim($this->cell($record, 'prenom'));
+        $email = strtolower(trim($this->cell($record, 'email')));
+        $phone = $this->normalizePhone($this->cell($record, 'telephone'));
 
         if ($nom === '' || $prenom === '') {
             return $this->row($line, ImportRowStatus::Error, 'missing_name', 'Nom et prénom requis.');
@@ -114,6 +117,16 @@ final class ImportPreviewService
         $seen[$key] = true;
 
         return $this->row($line, ImportRowStatus::Ok, null, null);
+    }
+
+    /**
+     * @param  array<string, mixed>  $record
+     */
+    private function cell(array $record, string $key): string
+    {
+        $value = $record[$key] ?? '';
+
+        return is_scalar($value) ? (string) $value : '';
     }
 
     private function normalizePhone(string $raw): string

@@ -27,10 +27,10 @@ final class ImportPreviewService
             return $this->emptyReport();
         }
 
-        $converted = mb_check_encoding($raw, 'UTF-8')
-            ? $raw
-            : mb_convert_encoding($raw, 'UTF-8', 'Windows-1252');
-        $utf8 = is_string($converted) ? $converted : $raw;
+        $utf8 = $raw;
+        if (! mb_check_encoding($raw, 'UTF-8')) {
+            $utf8 = iconv('Windows-1252', 'UTF-8//IGNORE', $raw) ?: $raw;
+        }
 
         try {
             $reader = Reader::createFromString($utf8);
@@ -71,12 +71,7 @@ final class ImportPreviewService
                 $error++;
                 break;
             }
-            if (! is_array($record)) {
-                continue;
-            }
-            /** @var array<string, mixed> $typed */
-            $typed = $record;
-            $classified = $this->classify($typed, $seen, $lineNo);
+            $classified = $this->classify($record, $seen, $lineNo);
             $rows[] = $classified;
             if ($classified['status'] === ImportRowStatus::Ok->value) {
                 $ok++;

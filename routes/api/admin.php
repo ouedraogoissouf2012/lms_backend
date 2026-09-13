@@ -48,12 +48,12 @@ Route::middleware(['auth:sanctum', 'role:coordinateur,superAdmin'])->prefix('adm
 // ============================================
 // REPORTS - Génération PDF (admin/coordinateur uniquement)
 // ============================================
-Route::middleware(['auth:sanctum', 'role:coordinateur,superAdmin'])->prefix('admin/reports')->group(function () {
-    // Rapport de présences - Rate limited: 30/min (resource intensive)
+Route::middleware(['auth:sanctum', 'role:coordinateur,superAdmin,enseignant'])->prefix('admin/reports')->group(function () {
     Route::post('/attendance', [ReportController::class, 'generateAttendanceReport'])
         ->middleware('throttle:30,1');
+});
 
-    // Rapport de notes - Rate limited: 30/min (resource intensive)
+Route::middleware(['auth:sanctum', 'role:coordinateur,superAdmin'])->prefix('admin/reports')->group(function () {
     Route::post('/grades', [ReportController::class, 'generateGradesReport'])
         ->middleware('throttle:30,1');
 

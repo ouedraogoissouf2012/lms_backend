@@ -1,23 +1,31 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Requests;
 
+use App\Models\Seance;
+use App\Models\User;
+use App\Services\Visio\VisioActorAuthorization;
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Support\Facades\Auth;
 
 /**
- * GenerateAttendanceReportRequest - Generate attendance PDF report
- *
- * Purpose: Validate & authorize attendance report generation with date filtering
- * Authorization: Coordinateurs and superAdmins only (enforced by middleware + FormRequest)
- * 10-year perspective: Date range validation prevents abuse, classe_id enables institutional scoping
+ * Rapport période (coordo/admin) ou export d'une séance (#726) par seances.id.
  */
 class GenerateAttendanceReportRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        $user = Auth::user();
-        return $user !== null && ($user->isCoordinator() || $user->isAdmin());
+        $user = $this->user();
+        if (! $user instanceof User) {
+            return false;
+        }
+
+        if ($this->filled('seance_id')) {
+            return $this->canExportSeance($user);
+        }
+
+        return $user->isCoordinator() || $user->isAdmin();
     }
 
     /**
@@ -29,29 +37,36 @@ class GenerateAttendanceReportRequest extends FormRequest
             'date_start' => 'nullable|date|date_format:Y-m-d',
             'date_end' => 'nullable|date|date_format:Y-m-d|after_or_equal:date_start',
             'classe_id' => 'nullable|integer|exists:classes,id',
-        ];
-    }
-
-    public function messages(): array
-    {
-        return [
-            'date_start.date' => 'La date de début doit être une date valide.',
-            'date_start.date_format' => 'La date de début doit être au format YYYY-MM-DD.',
-            'date_end.date' => 'La date de fin doit être une date valide.',
-            'date_end.date_format' => 'La date de fin doit être au format YYYY-MM-DD.',
-            'date_end.after_or_equal' => 'La date de fin doit être égale ou supérieure à la date de début.',
-            'classe_id.exists' => 'La classe sélectionnée n\'existe pas.',
+            'seance_id' => 'nullable|integer|exists:seances,id',
+            'format' => 'nullable|string|in:pdf,excel,xlsx',
         ];
     }
 
     protected function prepareForValidation(): void
     {
-        // Set defaults if not provided
-        if (!$this->has('date_start') && !$this->has('date_end')) {
+        if ($this->filled('seance_id')) {
+            return;
+        }
+
+        if (! $this->has('date_start') && ! $this->has('date_end')) {
             $this->merge([
                 'date_start' => now()->subMonth()->format('Y-m-d'),
                 'date_end' => now()->format('Y-m-d'),
             ]);
         }
+    }
+
+    private function canExportSeance(User $user): bool
+    {
+        $seance = Seance::query()->find($this->integer('seance_id'));
+        if ($seance === null || $seance->institution_id !== $user->institution_id) {
+            return false;
+        }
+
+        if ($user->isCoordinator() || $user->isAdmin()) {
+            return true;
+        }
+
+        return $this->container->make(VisioActorAuthorization::class)->teacherOwns($seance, $user);
     }
 }

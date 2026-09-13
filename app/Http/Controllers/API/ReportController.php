@@ -11,6 +11,7 @@ use App\Http\Requests\GenerateGradesReportRequest;
 use App\Services\Report\AsyncReportDispatcher;
 use App\Services\Report\AsyncReportStore;
 use App\Services\Report\ReportGenerationService;
+use App\Services\Report\SeanceAttendanceExportService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -37,6 +38,7 @@ final class ReportController extends AuthenticatedController
 {
     public function __construct(
         private readonly ReportGenerationService $reports,
+        private readonly SeanceAttendanceExportService $seanceAttendance,
         private readonly AsyncReportDispatcher $asyncReports,
         private readonly AsyncReportStore $asyncReportStore,
     ) {
@@ -48,13 +50,15 @@ final class ReportController extends AuthenticatedController
     public function generateAttendanceReport(GenerateAttendanceReportRequest $request): Response|JsonResponse
     {
         $user = $this->authenticatedUser($request);
+        $payload = $request->validated();
+        if (isset($payload['seance_id'])) {
+            return $this->toHttpResponse($this->seanceAttendance->export($payload, $user));
+        }
         if (! $this->wantsSync($request)) {
-            return $this->accepted($this->asyncReports->dispatch('attendance', $request->validated(), $user));
+            return $this->accepted($this->asyncReports->dispatch('attendance', $payload, $user));
         }
 
-        $result = $this->reports->generateAttendance($request->validated(), $user);
-
-        return $this->toHttpResponse($result);
+        return $this->toHttpResponse($this->reports->generateAttendance($payload, $user));
     }
 
     /**
@@ -138,11 +142,6 @@ final class ReportController extends AuthenticatedController
         /** @var array<string, mixed> $jsonPayload */
         $jsonPayload = is_array($payload) ? $payload : ['success' => false];
 
-        // Non migré vers successResponse()/errorResponse() : `$jsonPayload` est le
-        // payload BRUT du service (clés racine décidées par ReportGenerationService),
-        // et le repli `['success' => false]` n'a pas de `message`. Aucune enveloppe
-        // `{...success...}` standardisable ici — RACINE laissée inline (axe #1,
-        // règle MIXTE).
         return response()->json($jsonPayload, $result['status']);
     }
 

@@ -45,7 +45,7 @@ final class BaseDeTestParCheckoutTest extends TestCase
      * Efface un fichier temporaire sans faire échouer le test s'il résiste.
      *
      * Sous Windows, la poignée ouverte par PDO peut survivre brièvement à la fin
-     * de `estIntegre()` : `unlink` rend alors « Resource temporarily
+     * de `verdictIntegrite()` : `unlink` rend alors « Resource temporarily
      * unavailable ». Le ménage n'est pas ce que ce test prouve.
      */
     private function effacer(string $chemin): void
@@ -99,13 +99,32 @@ final class BaseDeTestParCheckoutTest extends TestCase
         $this->assertStringContainsString('/database/testing/', $chemin);
     }
 
-    public function test_l_ancien_fichier_partage_n_est_plus_reference(): void
+    /**
+     * Ce test affirmait l'INVERSE, et c'était dangereux.
+     *
+     * Il exigeait que `database.testing.sqlite` disparaisse de `phpunit.xml`.
+     * Mesuré depuis : sans cette ligne, une exécution lancée avec un autre
+     * bootstrap — `vendor/autoload.php`, la valeur que ce fichier portait avant
+     * #692, donc celle que reprend toute configuration d'IDE créée avant —
+     * résout `database/database.sqlite`, la base de DÉVELOPPEMENT.
+     *
+     *     avec le filet ......... database/database.testing.sqlite
+     *     sans le filet ......... database/database.sqlite          ← la base de DEV
+     *
+     * L'invariant correct n'est pas « l'ancien chemin doit disparaître » mais
+     * « une exécution égarée doit atterrir sur une base de TEST ». Le filet ne
+     * gagne jamais contre `tests/bootstrap.php`, qui s'exécute après lui.
+     */
+    public function test_phpunit_garde_un_filet_vers_une_base_de_test(): void
     {
         $phpunit = (string) file_get_contents(base_path('phpunit.xml'));
 
-        // S'il revenait, deux worktrees repartageraient un fichier et la
-        // corruption reviendrait avec.
-        $this->assertStringNotContainsString('database.testing.sqlite', $phpunit);
+        $this->assertStringContainsString(
+            '<env name="DB_DATABASE" value="database/database.testing.sqlite"/>',
+            $phpunit,
+            'Le filet a été retiré : une exécution avec un bootstrap étranger '
+            .'pointerait la base de développement.'
+        );
     }
 
     public function test_un_fichier_vide_est_considere_comme_integre(): void
@@ -116,7 +135,7 @@ final class BaseDeTestParCheckoutTest extends TestCase
         $vide = tempnam(sys_get_temp_dir(), 'base692');
         $this->assertIsString($vide);
 
-        $this->assertTrue(estIntegre($vide));
+        $this->assertSame('saine', verdictIntegrite($vide));
 
         $this->effacer($vide);
     }
@@ -129,9 +148,47 @@ final class BaseDeTestParCheckoutTest extends TestCase
         // forme qu'a un fichier écrit par deux processus à la fois.
         file_put_contents($malforme, "SQLite format 3\0".random_bytes(512));
 
-        $this->assertFalse(estIntegre($malforme));
+        $this->assertSame('corrompue', verdictIntegrite($malforme));
 
         $this->effacer($malforme);
+    }
+
+    /**
+     * La branche pour laquelle le verdict à trois valeurs existe — et la seule
+     * qui n'était pas couverte au premier jet.
+     *
+     * Un verrou n'est PAS une corruption. Une base saine tenue par un pair en
+     * transaction faisait expirer le délai d'attente, tombait dans le `catch`,
+     * et se faisait mettre en quarantaine. Sous Linux le renommage réussit : la
+     * base de l'exécution en cours était déplacée sous ses pieds.
+     */
+    public function test_un_verrou_n_est_pas_une_corruption(): void
+    {
+        $this->assertSame('indeterminable', verdictDepuisCode('database is locked'));
+        $this->assertSame('indeterminable', verdictDepuisCode('unable to open database file'));
+        $this->assertSame('indeterminable', verdictDepuisCode('disk I/O error'));
+    }
+
+    /**
+     * Régression fermée : `unsupported file format` n'était PAS dans la liste.
+     *
+     * Le code remplacé attrapait tout `Throwable` et écartait donc ce cas ; mon
+     * premier jet le rendait `indeterminable`, laissait le fichier en place, et
+     * la suite repartait dessus — sans une ligne de l'amorçage. Le symptôme même
+     * que #692 supprime.
+     *
+     * Mesuré : un seul octet modifié à l'offset 47 produit ce message.
+     */
+    public function test_toutes_les_formes_de_corruption_connues_sont_attrapees(): void
+    {
+        foreach ([
+            'database disk image is malformed',
+            'file is not a database',
+            'file is encrypted or is not a database',
+            'unsupported file format',
+        ] as $message) {
+            $this->assertSame('corrompue', verdictDepuisCode($message), $message);
+        }
     }
 
     public function test_une_base_saine_est_reconnue(): void
@@ -144,7 +201,7 @@ final class BaseDeTestParCheckoutTest extends TestCase
         $pdo->exec('CREATE TABLE t (id INTEGER PRIMARY KEY)');
         unset($pdo);
 
-        $this->assertTrue(estIntegre($saine));
+        $this->assertSame('saine', verdictIntegrite($saine));
 
         $this->effacer($saine);
     }

@@ -156,6 +156,10 @@ jobs:
       - name: Install PHP dependencies
         run: composer install --no-interaction --no-progress --prefer-dist --no-scripts
 
+      # #692 — cree le fichier du FILET, pas celui que la suite utilise :
+      # tests/bootstrap.php derive une base par checkout sous database/testing/
+      # et la cree lui-meme. Cette etape ne sert donc qu'au cas ou l'amorcage
+      # serait contourne. Conservee a ce titre, et pour rien d'autre.
       - name: Prepare sqlite test database
         run: mkdir -p database && touch database/database.testing.sqlite
 
@@ -298,6 +302,16 @@ jobs:
       # ⚠️ Ne PAS « corriger » phpunit.xml en y ajoutant force="true" : cela rendrait cette
       # matrice inopérante. Idem pour un .env.testing versionné (Laravel charge
       # .env.{APP_ENV} en priorité et écraserait ce bloc).
+      #
+      # #692 — DB_DATABASE : ce qui suit vaut pour la jambe MYSQL uniquement.
+      # Sur les jambes sqlite, `tests/bootstrap.php` s'exécute APRÈS ce bloc et
+      # remplace la valeur par une base dérivée du chemin du checkout — la
+      # valeur ci-dessous n'y sert plus que de FILET si l'amorçage est contourné
+      # (un `--bootstrap` étranger, par exemple). La modifier pour une jambe
+      # sqlite est donc un no-op silencieux : c'est écrit ici pour que personne
+      # n'y perde une heure.
+      # La jambe mysql, elle, la consomme vraiment : `tests/bootstrap.php` rend
+      # la main sans rien toucher dès que DB_CONNECTION n'est pas `sqlite`.
       DB_CONNECTION: ${{ matrix.db }}
       DB_DATABASE: ${{ matrix.db_database }}
       # Inertes sur les jambes sqlite : le bloc `sqlite` de config/database.php:34-44 ne
@@ -332,6 +346,8 @@ jobs:
       - name: Install dependencies (including dev)
         run: composer install --no-interaction --no-progress --prefer-dist --no-scripts
 
+      # #692 — meme remarque qu'a l'etape homonyme plus haut : fichier du filet,
+      # pas celui que la suite ouvre reellement.
       - name: Prepare sqlite test database
         if: matrix.db == 'sqlite'
         run: mkdir -p database && touch database/database.testing.sqlite

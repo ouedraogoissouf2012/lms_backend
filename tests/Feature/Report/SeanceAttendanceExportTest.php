@@ -10,6 +10,7 @@ use App\Models\Seance;
 use App\Models\User;
 use App\Services\TenantManager;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\Concerns\ActsAsTenantUser;
 use Tests\TestCase;
 
 /**
@@ -18,6 +19,7 @@ use Tests\TestCase;
 final class SeanceAttendanceExportTest extends TestCase
 {
     use RefreshDatabase;
+    use ActsAsTenantUser;
 
     protected function setUp(): void
     {
@@ -36,14 +38,14 @@ final class SeanceAttendanceExportTest extends TestCase
             ])->id,
         ]);
 
-        $this->withToken($teacher->createToken('726')->plainTextToken)
+        $this->asTenant($teacher)
             ->postJson('/api/admin/reports/attendance', [
                 'seance_id' => $seance->id,
                 'format' => 'pdf',
             ])
             ->assertOk();
 
-        $this->withToken($teacher->createToken('726')->plainTextToken)
+        $this->asTenant($teacher)
             ->postJson('/api/admin/reports/attendance', [
                 'seance_id' => $seance->id,
                 'format' => 'excel',
@@ -58,7 +60,7 @@ final class SeanceAttendanceExportTest extends TestCase
             'institution_id' => $seance->institution_id,
         ]);
 
-        $this->withToken($other->createToken('726')->plainTextToken)
+        $this->asTenant($other)
             ->postJson('/api/admin/reports/attendance', [
                 'seance_id' => $seance->id,
                 'format' => 'pdf',
@@ -75,7 +77,7 @@ final class SeanceAttendanceExportTest extends TestCase
         $teacherB = User::factory()->teacher()->create(['institution_id' => $schoolB->id]);
         app(TenantManager::class)->set($schoolB);
 
-        $this->withToken($teacherB->createToken('726')->plainTextToken)
+        $this->asTenant($teacherB)
             ->postJson('/api/admin/reports/attendance', [
                 'seance_id' => $seanceA->id,
                 'format' => 'pdf',

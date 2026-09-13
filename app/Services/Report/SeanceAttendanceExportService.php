@@ -26,7 +26,8 @@ final class SeanceAttendanceExportService
      */
     public function export(array $data, User $user): array
     {
-        $seanceId = isset($data['seance_id']) ? (int) $data['seance_id'] : 0;
+        $rawId = $data['seance_id'] ?? 0;
+        $seanceId = is_numeric($rawId) ? (int) $rawId : 0;
         $seance = Seance::query()->find($seanceId);
         if ($seance === null || $seance->institution_id !== $user->institution_id) {
             return [

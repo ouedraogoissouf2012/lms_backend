@@ -4,17 +4,13 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use App\Enums\AttendanceMark;
+use App\Enums\AttendanceOrigin;
 use App\Models\Traits\BelongsToInstitution;
 
 /**
- * Convention `status` — participation à une visio en direct (`connected`/`disconnected`/
- * `kicked`, contrainte CHECK réelle, cf. migration `add_tracking_fields_to_esbtp_attendance_table`).
- * Ne représente PAS une présence pédagogique au sens `present`/`absent`/`late` utilisée par
- * {@see \App\Services\Report\ReportGenerationService::generateAttendance()} — cette dernière
- * convention n'est actuellement alimentée par AUCUNE donnée réelle de cette table (voir #391 :
- * le rapport PDF affiche 0% pour tout le monde car aucune conversion `connected`/`disconnected`
- * → `present`/`absent`/`late` n'existe). Ne pas supposer que ces deux jeux de valeurs sont
- * interchangeables ni qu'une conversion a déjà lieu quelque part.
+ * `status` = visio (`connected`/`disconnected`/`kicked`). `mark`/`origin` = pédagogie (#717).
+ * Pas interchangeables (#391 : le PDF reste à 0 % sans conversion).
  */
 class ESBTPAttendance extends Model
 {
@@ -40,6 +36,10 @@ class ESBTPAttendance extends Model
         'is_validated',
         'is_observer',
         'institution_id',
+        'mark',
+        'origin',
+        'delegated_by_id',
+        'delegated_at',
     ];
 
     protected $casts = [
@@ -49,26 +49,29 @@ class ESBTPAttendance extends Model
         'duration_minutes' => 'integer',
         'is_validated' => 'boolean',
         'is_observer' => 'boolean',
+        'mark' => AttendanceMark::class,
+        'origin' => AttendanceOrigin::class,
+        'delegated_at' => 'datetime',
     ];
 
-    /**
-     * Relation avec la séance
-     *
-     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo<Seance, $this>
-     */
+    /** @return \Illuminate\Database\Eloquent\Relations\BelongsTo<Seance, $this> */
     public function seance()
     {
         return $this->belongsTo(\App\Models\Seance::class, 'seance_id');
     }
 
-    /**
-     * Relation avec l'utilisateur
-     *
-     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo<User, $this>
-     */
+    /** @return \Illuminate\Database\Eloquent\Relations\BelongsTo<User, $this> */
     public function user()
     {
         return $this->belongsTo(\App\Models\User::class, 'user_id');
+    }
+
+    /**
+     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo<User, $this>
+     */
+    public function delegatedBy()
+    {
+        return $this->belongsTo(\App\Models\User::class, 'delegated_by_id');
     }
 
     /**

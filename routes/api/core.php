@@ -6,6 +6,7 @@ use App\Http\Controllers\API\Proxy\ProxyAcademicController;
 use App\Http\Controllers\API\Proxy\ProxyDashboardController;
 use App\Http\Controllers\API\Proxy\ProxyOrganisationController;
 use App\Http\Controllers\API\AuthController;
+use App\Http\Controllers\API\PasswordResetController;
 use App\Http\Controllers\API\AdminController;
 use App\Http\Controllers\API\ConfigurationController;
 use App\Http\Controllers\API\InstitutionDirectoryController;
@@ -44,6 +45,10 @@ Route::prefix('auth')->group(function () {
     // RateLimiter::for('login') with composite key (IP + username) + exponential
     // backoff to defeat credential stuffing distributed across IPs.
     Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:10,1');
+    Route::post('/forgot-password', [PasswordResetController::class, 'forgot'])
+        ->middleware(['institution.header', 'throttle:5,1']);
+    Route::post('/reset-password', [PasswordResetController::class, 'reset'])
+        ->middleware(['institution.header', 'throttle:5,1']);
 });
 
 // ============================================

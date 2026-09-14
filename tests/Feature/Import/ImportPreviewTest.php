@@ -128,7 +128,7 @@ final class ImportPreviewTest extends TestCase
         $this->asTenant($teacher)
             ->post('/api/lms/imports/preview', [
                 'file' => UploadedFile::fake()->createWithContent('virgule.csv', $csv),
-                'delimiter' => ',',
+                'delimiter' => 'comma',
             ])
             ->assertOk()
             ->assertJsonPath('data.counts.ok', 1);
@@ -136,11 +136,28 @@ final class ImportPreviewTest extends TestCase
         $this->asTenant($teacher)
             ->post('/api/lms/imports/preview', [
                 'file' => UploadedFile::fake()->createWithContent('virgule.csv', $csv),
-                'delimiter' => ';',
+                'delimiter' => 'semicolon',
             ])
             ->assertOk()
             ->assertJsonPath('data.counts.ok', 0)
             ->assertJsonPath('data.rows.0.code', 'missing_name');
+    }
+
+    public function test_tab_delimiter_survives_the_multipart_transport(): void
+    {
+        // Une tabulation brute était élaguée par `TrimStrings` et arrivait vide,
+        // donc refusée par Rule::in : tout fichier tabulé était rejeté (mesuré,
+        // 302 au lieu de 200). D'où le nom « tab » plutôt que le caractère.
+        $teacher = $this->teacher();
+        $csv = "nom\tprenom\ttelephone\nDoe\tJane\t70000000\n";
+
+        $this->asTenant($teacher)
+            ->post('/api/lms/imports/preview', [
+                'file' => UploadedFile::fake()->createWithContent('tab.csv', $csv),
+                'delimiter' => 'tab',
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.counts.ok', 1);
     }
 
     public function test_rejected_delimiter_does_not_reach_the_parser(): void
@@ -150,7 +167,7 @@ final class ImportPreviewTest extends TestCase
         $this->asTenant($teacher)
             ->post('/api/lms/imports/preview', [
                 'file' => UploadedFile::fake()->createWithContent('x.csv', "nom;prenom\nDoe;Jane\n"),
-                'delimiter' => '|',
+                'delimiter' => 'pipe',
             ], ['Accept' => 'application/json'])
             ->assertStatus(422);
     }

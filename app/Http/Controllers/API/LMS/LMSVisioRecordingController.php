@@ -17,20 +17,20 @@ final class LMSVisioRecordingController extends AuthenticatedController
     {
         $result = $this->recordings->start($seanceId, $this->authenticatedUser($request));
 
-        return response()->json($result['payload'], $result['status']);
+        return $this->relayResponse($result);
     }
 
     public function stop(int $seanceId, Request $request): JsonResponse
     {
         $result = $this->recordings->stop($seanceId, $this->authenticatedUser($request));
 
-        return response()->json($result['payload'], $result['status']);
+        return $this->relayResponse($result);
     }
 
     public function show(int $seanceId, Request $request): JsonResponse
     {
         $result = $this->recordings->status($seanceId, $this->authenticatedUser($request));
 
-        return response()->json($result['payload'], $result['status']);
+        return $this->relayResponse($result);
     }
 }

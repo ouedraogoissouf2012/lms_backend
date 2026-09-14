@@ -54,7 +54,7 @@ final class LMSAttendancesController extends AuthenticatedController
 
         $result = $this->videoSessionSyncer->sync($seanceCoursId, $date, $participants, $user);
 
-        return response()->json($result['payload'], $result['status']);
+        return $this->relayResponse($result);
     }
 
     /**
@@ -68,7 +68,7 @@ final class LMSAttendancesController extends AuthenticatedController
         $user = $this->authenticatedUser($request);
         $result = $this->historyQuery->getHistory($request, $user);
 
-        return response()->json($result['payload'], $result['status']);
+        return $this->relayResponse($result);
     }
 
     /**
@@ -82,6 +82,6 @@ final class LMSAttendancesController extends AuthenticatedController
         $user = $this->authenticatedUser($request);
         $result = $this->seanceAttendancesQuery->getAttendances($seanceId, $user);
 
-        return response()->json($result['payload'], $result['status']);
+        return $this->relayResponse($result);
     }
 }

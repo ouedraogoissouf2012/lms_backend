@@ -13,3 +13,16 @@
 /scripts/check-ocp.php      @ouedraogoissouf2012
 /tests/Feature/Security/OcpGuardTest.php  @ouedraogoissouf2012
 /.github/CODEOWNERS         @ouedraogoissouf2012
+
+# AJOUTE APRES COUP, et c'etait le trou le plus large.
+#
+# `check-ocp.php` n'est que l'enveloppe : elle lit le disque et rend les codes
+# de sortie. TOUS les motifs de detection et la validation des derogations
+# vivent dans le fichier ci-dessous. Il n'etait pas protege.
+#
+# Autrement dit : on pouvait vider la garde de sa substance — supprimer un
+# motif, elargir une exemption — sans toucher un seul fichier sous revue, et la
+# CI serait restee verte. Mesure du 2026-09-13 : trois motifs sur cinq
+# n'etaient couverts par aucun test, donc leur suppression ne faisait rougir
+# rien du tout.
+/scripts/lib/ocp-ratchet.php  @ouedraogoissouf2012

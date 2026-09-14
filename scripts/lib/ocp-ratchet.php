@@ -21,13 +21,61 @@ declare(strict_types=1);
  * `memoize_enabled` et `circuit_breaker_enabled` sont des réglages
  * d'INFRASTRUCTURE, pas du mode. Les inclure produirait des faux positifs — et
  * un faux positif dans une garde neuve la fait supprimer avant qu'elle ne serve.
+ *
+ * ## Ce que la première version ne voyait pas — mesuré, pas supposé
+ *
+ * Le motif `match/switch` exigeait une VARIABLE LOCALE nommée `mode` :
+ * `\$?\w*[mM]ode`. Or `$institution->` contient `->`, qui n'est pas un caractère
+ * de mot — le motif ne pouvait donc JAMAIS matcher un attribut.
+ *
+ * Et l'attribut est la seule écriture possible, puisque le mode est une colonne
+ * du modèle. Ce motif était donc lettre morte : il n'existe aucune variable
+ * `$mode` dans `app/`, et il n'en existera pas. Mesure du 2026-09-13 :
+ *
+ *     if ($institution->mode === 'standalone')    attrapé
+ *     match ($mode)                               attrapé
+ *     match ($institution->mode)                  *** PASSAIT ***
+ *     switch ($institution->mode)                 *** PASSAIT ***
+ *     match ($institution->mode->value)           *** PASSAIT ***
+ *     in_array($i->mode, ['standalone'], true)    *** PASSAIT ***
+ *     'standalone' === $i->mode                   *** PASSAIT ***
+ *     Config::get('services.klassci.url')         *** PASSAIT ***
+ *     env('KLASSCI_API_URL')                      *** PASSAIT ***
+ *
+ * Sept sur neuf. Un fichier n'en contenant que ces formes faisait monter le
+ * dénominateur — donc la garde l'avait bien lu — et sortait en `exit 0`, « 0
+ * violation neuve ». La CI restait verte et certifiait le fichier fautif.
+ *
+ * ## Limite assumée : l'analyse reste ligne à ligne
+ *
+ * Un appel coupé sur plusieurs lignes échappe encore. Passer aux jetons PHP le
+ * fermerait — `ocpCodeSeul()` appelle déjà `token_get_all` — mais ferait de ce
+ * fichier un analyseur syntaxique, alors que §1.1 le plafonne à 300 lignes.
+ * C'est une DETTE, écrite ici plutôt que découverte par le prochain.
  */
 const OCP_MOTIFS = [
+    // `[^)]*` couvre l'attribut, la chaîne d'attributs, l'appel de méthode —
+    // tout ce qui précède `mode` entre les parenthèses.
+    'match/switch sur le mode' => '/\b(match|switch)\s*\([^)]*\bmode\b/',
+
+    // Les deux sens de la comparaison. La forme Yoda passait, et elle n'a rien
+    // d'exotique : plusieurs guides de style la recommandent.
     'comparaison de mode' => '/->\s*mode\s*(===|==|!==|!=)/',
-    'match/switch sur le mode' => '/\b(match|switch)\s*\(\s*\$?\w*[mM]ode\b/',
+    'littéral de mode comparé' => '/((===|==|!==|!=)\s*[\'"](standalone|klassci)[\'"]|[\'"](standalone|klassci)[\'"]\s*(===|==|!==|!=))/',
+
     'prédicat de mode' => '/\b(isStandalone|isKlassci|hasKlassci|estAutonome)\s*\(/',
-    'littéral de mode comparé' => '/(===|==|!==|!=)\s*[\'"](standalone|klassci)[\'"]/',
-    'URL/jeton KLASSCI lu en direct' => '/config\s*\(\s*[\'"]services\.klassci\.(url|token)[\'"]/',
+
+    // Tester l'appartenance à un ensemble de modes est une résolution de mode,
+    // même sans opérateur de comparaison.
+    'appartenance de mode' => '/\bin_array\s*\([^,]*->\s*mode\b/',
+
+    // Interroger la colonne, ou la lire par son nom, contourne l'attribut.
+    'colonne mode interrogée' => '/->\s*where\s*\(\s*[\'"]mode[\'"]|getAttribute\s*\(\s*[\'"]mode[\'"]/',
+
+    // `config(...)` en helper, `Config::get(...)` en façade, et la variable
+    // d'environnement brute : trois portes pour la même fuite.
+    'URL/jeton KLASSCI lu en direct' => '/(config\s*\(|Config::\s*get\s*\()\s*[\'"]services\.klassci\.(url|token)[\'"]/',
+    'variable KLASSCI lue en direct' => '/\benv\s*\(\s*[\'"]KLASSCI_/i',
 ];
 
 /**

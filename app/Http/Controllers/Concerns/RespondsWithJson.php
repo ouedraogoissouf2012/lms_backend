@@ -96,6 +96,82 @@ trait RespondsWithJson
     }
 
     /**
+     * Relaie une enveloppe DÉJÀ construite par un service (#693).
+     *
+     * ## Pourquoi une troisième méthode, et pas `successResponse()`
+     *
+     * Les services rendent `array{status:int, payload:array}` et placent eux-mêmes
+     * `success` / `data` / `message` dans `payload`. Les faire transiter par
+     * {@see successResponse()} REFORMERAIT le JSON — clés réordonnées, clés
+     * absentes ajoutées — et casserait le front. Cette méthode ne construit rien :
+     * elle passe la charge telle quelle.
+     *
+     * La distinction est donc sémantique, pas cosmétique. `successResponse()`
+     * fabrique une enveloppe ; `relayResponse()` en transmet une.
+     *
+     * ## Ce que ce relais apporte, et ce qu'il n'apporte pas
+     *
+     * Il ne fait PAS gagner de lignes : il remplace une ligne par une ligne.
+     * Mesuré le 2026-09-14 : 47 occurrences dans 14 fichiers de
+     * `app/Http/Controllers/`, toutes de forme strictement identique —
+     *
+     *     return response()->json($result['payload'], $result['status']);
+     *
+     * Ce qu'il apporte est ailleurs : ces 47 sites **échappaient à
+     * {@see JsonPayloadGuard}**. Le dépôt a décidé en #360 qu'une `Closure` dans
+     * un payload méritait une garde — `json_encode` l'encode silencieusement en
+     * `{}`, donc 200 avec la donnée disparue et aucun signal — puis a laissé la
+     * moitié de ses réponses passer à côté.
+     *
+     * ## Coût, mesuré — et une première version de ce paragraphe était FAUSSE
+     *
+     * La garde ne descend que dans les TABLEAUX : sur un payload dont `data` est
+     * un objet (Collection Eloquent), le parcours s'arrête à la première couche.
+     *
+     * J'avais écrit que c'était le cas courant, chiffré à 18 µs, et conclu
+     * qu'« aucun service ne met un gros tableau brut dans payload ». Les trois
+     * affirmations étaient fausses, et la revue les a démontées :
+     *
+     *   - le cas objet coûte 1 µs, pas 18 ;
+     *   - au moins cinq services rendent un tableau BRUT — notamment
+     *     `ClasseEtudiantsQueryService:92` (`->values()->all()`) et
+     *     `ChapterController:59,76`, qui réécrit `$result['payload']` en tableau
+     *     ENTRE le service et le relais ;
+     *   - la preuve invoquée ne pouvait pas conclure : le grep cherchait
+     *     `toArray()` là où le code écrit `->all()`, et ne regardait que les
+     *     services alors que la mutation a lieu dans le contrôleur.
+     *
+     * Chiffres réels (PHP 8.3, xdebug off, médiane de 7 × 200 itérations) :
+     *
+     *     data = objet ......................    1 µs
+     *     roster brut, 10 étudiants .........   83 µs   (7,2 × json_encode)
+     *     roster brut, 50 étudiants .........  401 µs   (9,3 ×)
+     *     roster brut, 200 étudiants ........ 1743 µs   (9,3 ×)
+     *
+     * Le coût est donc RÉEL sur les listes, et proportionnel au nombre de nœuds.
+     * Il reste sous la milliseconde en deçà de 100 lignes, et la protection vaut
+     * ce prix — mais il fallait l'écrire juste.
+     *
+     * ## Trois sites où la garde ne protège pas
+     *
+     * `LMSClassesController:54,82` et `InstitutionController:150` appellent ce
+     * relais DANS un `try`. `UnserializablePayloadException` étend
+     * `LogicException`, donc `Throwable` : elle y était avalée et journalisée
+     * sous une cause fausse. Un `catch` de relance a été posé sur les trois.
+     *
+     * @param  array{status: int, payload: array<string, mixed>}  $result
+     *                                                                     La forme rendue par les services. Le typage vaut
+     *                                                                     garde : PHPStan niveau 9 refuse l'appel malformé à
+     *                                                                     l'analyse, ce qui vaut mieux qu'une exception en production.
+     */
+    protected function relayResponse(array $result): JsonResponse
+    {
+        JsonPayloadGuard::rejectClosures($result['payload'], 'payload');
+
+        return response()->json($result['payload'], $result['status']);
+    }
+
+    /**
      * Construit une réponse d'erreur au contrat canonique.
      *
      * N'expose JAMAIS de détail d'exception : `$message` doit être un libellé

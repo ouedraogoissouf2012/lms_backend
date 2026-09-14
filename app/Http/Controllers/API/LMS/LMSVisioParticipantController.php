@@ -66,7 +66,7 @@ final class LMSVisioParticipantController extends AuthenticatedController
         $user = $this->authenticatedUser($request);
         $result = $this->sessionService->join($seanceId, $user, $request);
 
-        return response()->json($result['payload'], $result['status']);
+        return $this->relayResponse($result);
     }
 
     /**
@@ -78,7 +78,7 @@ final class LMSVisioParticipantController extends AuthenticatedController
         $user = $this->authenticatedUser($request);
         $result = $this->sessionService->leave($seanceId, $user);
 
-        return response()->json($result['payload'], $result['status']);
+        return $this->relayResponse($result);
     }
 
     /**
@@ -90,7 +90,7 @@ final class LMSVisioParticipantController extends AuthenticatedController
         $user = $this->authenticatedUser($request);
         $result = $this->heartbeatService->heartbeat($seanceId, $user);
 
-        return response()->json($result['payload'], $result['status']);
+        return $this->relayResponse($result);
     }
 
     /**
@@ -102,6 +102,6 @@ final class LMSVisioParticipantController extends AuthenticatedController
         $user = $this->authenticatedUser($request);
         $result = $this->listService->list($seanceId, $user);
 
-        return response()->json($result['payload'], $result['status']);
+        return $this->relayResponse($result);
     }
 }

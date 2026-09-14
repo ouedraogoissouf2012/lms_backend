@@ -51,7 +51,7 @@ final class LMSSeanceVisibilityMutationController extends AuthenticatedControlle
             $user,
         );
 
-        return response()->json($result['payload'], $result['status']);
+        return $this->relayResponse($result);
     }
 
     /**
@@ -62,7 +62,7 @@ final class LMSSeanceVisibilityMutationController extends AuthenticatedControlle
         $user = $this->authenticatedUser($request);
         $result = $this->seanceHide->hide($seanceId, $user);
 
-        return response()->json($result['payload'], $result['status']);
+        return $this->relayResponse($result);
     }
 
     /**
@@ -73,7 +73,7 @@ final class LMSSeanceVisibilityMutationController extends AuthenticatedControlle
         $user = $this->authenticatedUser($request);
         $result = $this->seanceHide->unhide($seanceId, $user);
 
-        return response()->json($result['payload'], $result['status']);
+        return $this->relayResponse($result);
     }
 
     /**
@@ -84,6 +84,6 @@ final class LMSSeanceVisibilityMutationController extends AuthenticatedControlle
         $user = $this->authenticatedUser($request);
         $result = $this->seanceDelete->delete($seanceId, $user);
 
-        return response()->json($result['payload'], $result['status']);
+        return $this->relayResponse($result);
     }
 }

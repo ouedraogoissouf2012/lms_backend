@@ -54,7 +54,7 @@ final class LMSVisioLifecycleController extends AuthenticatedController
             $request->validated(),
         );
 
-        return response()->json($result['payload'], $result['status']);
+        return $this->relayResponse($result);
     }
 
     /**
@@ -66,7 +66,7 @@ final class LMSVisioLifecycleController extends AuthenticatedController
         $user = $this->authenticatedUser($request);
         $result = $this->activationService->deactivate($seanceId, $user);
 
-        return response()->json($result['payload'], $result['status']);
+        return $this->relayResponse($result);
     }
 
     /**
@@ -82,7 +82,7 @@ final class LMSVisioLifecycleController extends AuthenticatedController
             $request->validated(),
         );
 
-        return response()->json($result['payload'], $result['status']);
+        return $this->relayResponse($result);
     }
 
     /**
@@ -94,6 +94,6 @@ final class LMSVisioLifecycleController extends AuthenticatedController
         $user = $this->authenticatedUser($request);
         $result = $this->sessionService->end($seanceId, $user);
 
-        return response()->json($result['payload'], $result['status']);
+        return $this->relayResponse($result);
     }
 }

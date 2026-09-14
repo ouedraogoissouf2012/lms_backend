@@ -24,7 +24,7 @@ final class PasswordResetController extends Controller
         $email = $request->validated('email');
         $result = $this->resets->requestLink(is_string($email) ? $email : '');
 
-        return response()->json($result['payload'], $result['status']);
+        return $this->relayResponse($result);
     }
 
     public function reset(ResetPasswordRequest $request): JsonResponse
@@ -33,6 +33,6 @@ final class PasswordResetController extends Controller
         $credentials = $request->validated();
         $result = $this->resets->reset($credentials);
 
-        return response()->json($result['payload'], $result['status']);
+        return $this->relayResponse($result);
     }
 }

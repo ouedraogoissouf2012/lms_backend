@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\API;
 
 use App\Exceptions\BusinessException;
+use App\Exceptions\UnserializablePayloadException;
 use App\Http\Controllers\Controller;
 use App\Rules\KlassciApiUrl;
 use App\Services\Institution\InstitutionConnectionTester;
@@ -144,10 +145,21 @@ final class InstitutionController extends Controller
         try {
             $result = $this->connectionTester->test($id);
 
-            // Non migré : payload BRUT du service (clés racine variables selon le
-            // résultat du test KLASSCI), sans enveloppe contrôlée — RACINE laissée
-            // inline (axe #1, règle MIXTE).
-            return response()->json($result['payload'], $result['status']);
+            // Payload BRUT du service (clés racine variables selon le résultat du
+            // test KLASSCI) : relayé verbatim, sans enveloppe contrôlée
+            // (axe #1, règle MIXTE).
+            //
+            // Le commentaire disait « RACINE laissée inline » — c'était vrai tant
+            // que la ligne était un `response()->json()` en dur. #693 l'a rendu
+            // faux sans le corriger : relevé par la revue, corrigé ici.
+            return $this->relayResponse($result);
+        } catch (UnserializablePayloadException $e) {
+            // #693 — la garde de sérialisabilité ne doit PAS être avalée.
+            // Elle étend `LogicException`, donc `Throwable` : sans ce catch, elle
+            // tombait dans le fourre-tout plus bas, était journalisée sous une
+            // cause fausse et rendue en 500 générique. C'est une erreur de
+            // programmation, pas une panne métier.
+            throw $e;
         } catch (ModelNotFoundException) {
             return $this->notFound();
         } catch (BusinessException $e) {

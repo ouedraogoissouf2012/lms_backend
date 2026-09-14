@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\API\LMS;
 
+use App\Exceptions\UnserializablePayloadException;
 use App\Http\Controllers\AuthenticatedController;
 use App\Services\Classe\ClasseDetailsQueryService;
 use App\Services\Classe\ClasseEtudiantsQueryService;
@@ -51,7 +52,16 @@ final class LMSClassesController extends AuthenticatedController
             $user = $this->authenticatedUser($request);
             $result = $this->detailsService->getDetailsForUser($classeId, $user);
 
-            return response()->json($result['payload'], $result['status']);
+            return $this->relayResponse($result);
+        } catch (UnserializablePayloadException $e) {
+            // #693 — la garde de serialisabilite ne doit PAS etre avalee ici.
+            // `UnserializablePayloadException` etend `LogicException`, donc
+            // `Throwable` : sans ce catch, elle tombait dans le fourre-tout
+            // ci-dessous, etait journalisee sous une cause FAUSSE, et rendue en
+            // 500 generique. Son propre docblock dit « elle ne doit pas etre
+            // attrapee » — c'est une erreur de programmation, pas une panne
+            // metier. On la relance pour le handler global.
+            throw $e;
         } catch (Throwable $e) {
             // §1.2 — message générique au client, détail loggué côté serveur.
             $this->logger->error('Erreur récupération détails classe', [
@@ -79,7 +89,16 @@ final class LMSClassesController extends AuthenticatedController
             $user = $this->authenticatedUser($request);
             $result = $this->etudiantsService->getEtudiants($classeId, $user);
 
-            return response()->json($result['payload'], $result['status']);
+            return $this->relayResponse($result);
+        } catch (UnserializablePayloadException $e) {
+            // #693 — la garde de serialisabilite ne doit PAS etre avalee ici.
+            // `UnserializablePayloadException` etend `LogicException`, donc
+            // `Throwable` : sans ce catch, elle tombait dans le fourre-tout
+            // ci-dessous, etait journalisee sous une cause FAUSSE, et rendue en
+            // 500 generique. Son propre docblock dit « elle ne doit pas etre
+            // attrapee » — c'est une erreur de programmation, pas une panne
+            // metier. On la relance pour le handler global.
+            throw $e;
         } catch (Throwable $e) {
             $this->logger->error('Erreur récupération étudiants classe', [
                 'classe_id' => $classeId,

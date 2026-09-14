@@ -58,7 +58,7 @@ final class ChapterController extends Controller
         $result = $this->chapterCrud->listByLesson($lessonId, $user);
         $result['payload'] = $this->slides->signListResponse($result['payload']);
 
-        return response()->json($result['payload'], $result['status']);
+        return $this->relayResponse($result);
     }
 
     /**
@@ -75,7 +75,7 @@ final class ChapterController extends Controller
         $result = $this->chapterCrud->show($id, $user);
         $result['payload'] = $this->slides->signSingleResponse($result['payload']);
 
-        return response()->json($result['payload'], $result['status']);
+        return $this->relayResponse($result);
     }
 
     /**
@@ -86,7 +86,7 @@ final class ChapterController extends Controller
     {
         $result = $this->chapterCrud->create($request, $lessonId, auth()->id());
 
-        return response()->json($result['payload'], $result['status']);
+        return $this->relayResponse($result);
     }
 
     /**
@@ -104,7 +104,7 @@ final class ChapterController extends Controller
             ? $this->chapterFileUpload->uploadAsync($chapterId, $file, $request->user()?->id)
             : $this->chapterFileUpload->uploadAndProcess($chapterId, $file);
 
-        return response()->json($result['payload'], $result['status']);
+        return $this->relayResponse($result);
     }
 
     /**
@@ -115,7 +115,7 @@ final class ChapterController extends Controller
     {
         $result = $this->chapterFileUpload->asyncStatus($id, $request->user()?->id);
 
-        return response()->json($result['payload'], $result['status']);
+        return $this->relayResponse($result);
     }
 
     /**
@@ -126,7 +126,7 @@ final class ChapterController extends Controller
     {
         $result = $this->chapterCrud->update($request, $id);
 
-        return response()->json($result['payload'], $result['status']);
+        return $this->relayResponse($result);
     }
 
     /**
@@ -137,7 +137,7 @@ final class ChapterController extends Controller
     {
         $result = $this->trash->trash($id);
 
-        return response()->json($result['payload'], $result['status']);
+        return $this->relayResponse($result);
     }
 
     /**
@@ -148,7 +148,7 @@ final class ChapterController extends Controller
     {
         $result = $this->trash->restore($id);
 
-        return response()->json($result['payload'], $result['status']);
+        return $this->relayResponse($result);
     }
 
     /**
@@ -159,7 +159,7 @@ final class ChapterController extends Controller
     {
         $result = $this->chapterCrud->reorder($request, $lessonId);
 
-        return response()->json($result['payload'], $result['status']);
+        return $this->relayResponse($result);
     }
 
     private function wantsAsync(UploadFileRequest $request): bool

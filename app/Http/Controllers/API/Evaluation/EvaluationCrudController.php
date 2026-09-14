@@ -101,7 +101,7 @@ final class EvaluationCrudController extends AuthenticatedController
         // pas sur le service ; la re-router via le trait imposerait de dépaqueter
         // puis brancher sur le contenu du résultat. Forwardé verbatim pour
         // préserver le JSON exact (axe #1 « DRY-only »). Idem update/destroy/publish.
-        return response()->json($result['payload'], $result['status']);
+        return $this->relayResponse($result);
     }
 
     public function update(UpdateEvaluationRequest $request, int $id): JsonResponse
@@ -112,7 +112,7 @@ final class EvaluationCrudController extends AuthenticatedController
         $result = $this->updateService->update($evaluation, $request->all(), $user);
 
         // Enveloppe construite par le service (cf. store) — forwardée verbatim.
-        return response()->json($result['payload'], $result['status']);
+        return $this->relayResponse($result);
     }
 
     public function destroy(DeleteEvaluationRequest $request, int $id): JsonResponse
@@ -123,7 +123,7 @@ final class EvaluationCrudController extends AuthenticatedController
         $result = $this->stateService->softDelete($evaluation, $user);
 
         // Enveloppe construite par le service (cf. store) — forwardée verbatim.
-        return response()->json($result['payload'], $result['status']);
+        return $this->relayResponse($result);
     }
 
     public function publish(PublishEvaluationRequest $request, int $id): JsonResponse
@@ -134,6 +134,6 @@ final class EvaluationCrudController extends AuthenticatedController
         $result = $this->stateService->publish($evaluation, $user);
 
         // Enveloppe construite par le service (cf. store) — forwardée verbatim.
-        return response()->json($result['payload'], $result['status']);
+        return $this->relayResponse($result);
     }
 }

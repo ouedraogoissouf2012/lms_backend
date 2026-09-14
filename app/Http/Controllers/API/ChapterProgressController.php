@@ -37,7 +37,7 @@ final class ChapterProgressController extends AuthenticatedController
         $user = $this->authenticatedUser($request);
         $result = $this->progressService->getLessonProgress($lessonId, $user);
 
-        return response()->json($result['payload'], $result['status']);
+        return $this->relayResponse($result);
     }
 
     /**
@@ -48,7 +48,7 @@ final class ChapterProgressController extends AuthenticatedController
         $user = $this->authenticatedUser($request);
         $result = $this->progressService->getChapterProgress($chapterId, $user);
 
-        return response()->json($result['payload'], $result['status']);
+        return $this->relayResponse($result);
     }
 
     /**
@@ -63,7 +63,7 @@ final class ChapterProgressController extends AuthenticatedController
             $request->only(['time_spent_seconds']),
         );
 
-        return response()->json($result['payload'], $result['status']);
+        return $this->relayResponse($result);
     }
 
     /**
@@ -95,7 +95,7 @@ final class ChapterProgressController extends AuthenticatedController
             $user,
         );
 
-        return response()->json($result['payload'], $result['status']);
+        return $this->relayResponse($result);
     }
 
     /**
@@ -112,6 +112,6 @@ final class ChapterProgressController extends AuthenticatedController
 
         $result = $this->progressService->resetLessonProgress($lessonId, $user, $targetUserId);
 
-        return response()->json($result['payload'], $result['status']);
+        return $this->relayResponse($result);
     }
 }

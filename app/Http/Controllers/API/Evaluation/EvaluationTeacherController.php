@@ -51,7 +51,7 @@ final class EvaluationTeacherController extends AuthenticatedController
 
         $result = $this->resultsService->getResultsByClass($id, $teacher);
 
-        return response()->json($result['payload'], $result['status']);
+        return $this->relayResponse($result);
     }
 
     public function getSubmissions(Request $request, int $id): JsonResponse
@@ -60,7 +60,7 @@ final class EvaluationTeacherController extends AuthenticatedController
 
         $result = $this->viewService->getSubmissions($id, $teacher);
 
-        return response()->json($result['payload'], $result['status']);
+        return $this->relayResponse($result);
     }
 
     public function preview(Request $request, int $id): JsonResponse
@@ -69,7 +69,7 @@ final class EvaluationTeacherController extends AuthenticatedController
 
         $result = $this->viewService->preview($id, $teacher);
 
-        return response()->json($result['payload'], $result['status']);
+        return $this->relayResponse($result);
     }
 
     public function gradeSubmission(
@@ -102,6 +102,6 @@ final class EvaluationTeacherController extends AuthenticatedController
             is_string($feedback) ? $feedback : null,
         );
 
-        return response()->json($result['payload'], $result['status']);
+        return $this->relayResponse($result);
     }
 }

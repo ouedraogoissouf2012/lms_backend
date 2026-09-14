@@ -34,6 +34,6 @@ final class VisioRecordingWebhookController extends Controller
             $payload,
         );
 
-        return response()->json($result['payload'], $result['status']);
+        return $this->relayResponse($result);
     }
 }

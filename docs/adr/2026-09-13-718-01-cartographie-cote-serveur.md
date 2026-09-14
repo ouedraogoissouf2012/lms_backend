@@ -9,7 +9,7 @@
 `POST /api/lms/imports/preview` accepte deux champs supplémentaires, tous deux facultatifs :
 
 - `mapping` — tableau `champ canonique => en-tête du fichier` (`mapping[nom]=Nom`, `mapping[prenom]=Prénom`…) ;
-- `delimiter` — le séparateur avec lequel le client a présenté les colonnes à l'utilisateur, contraint à `;`, `,` ou tabulation.
+- `delimiter` — le séparateur avec lequel le client a présenté les colonnes à l'utilisateur, désigné par un nom : `semicolon`, `comma` ou `tab`.
 
 Le client envoie le fichier **tel quel**, octet pour octet. Il ne le réécrit plus. En l'absence de `mapping`, le comportement reste celui d'aujourd'hui : le champ canonique est cherché sous son propre nom.
 
@@ -24,6 +24,8 @@ Le client réécrivait le CSV pour renommer les colonnes avant l'envoi, avec un 
 Le serveur possède déjà tout ce qu'il faut : League\Csv analyse les guillemets, `Info::getDelimiterStats` détecte le séparateur, et la conversion Windows-1252 est écrite. Réparer le réécriture côté client aurait dupliqué ces trois compétences dans un second parseur à maintenir. Déplacer la cartographie ici **supprime** le parseur client au lieu de le corriger.
 
 `delimiter` est transmis parce que l'utilisateur a cartographié des colonnes qu'il a vues découpées d'une certaine façon : laisser les deux côtés détecter le séparateur indépendamment rendrait la cartographie ambiguë dès qu'ils divergent. Ce n'est pas une valeur de confiance — au pire elle fait rejeter des lignes, jamais écrire de données — et elle est validée contre une liste fermée.
+
+Elle voyage sous forme de NOM et non de caractère : `TrimStrings` élague les blancs de toute valeur d'entrée, si bien qu'une tabulation arrivait vide et faisait échouer la validation. Mesuré avant correction : 302 au lieu de 200, donc tout fichier tabulé refusé.
 
 ## Conséquences
 

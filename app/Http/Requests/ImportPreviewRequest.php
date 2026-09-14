@@ -11,13 +11,20 @@ use Illuminate\Validation\Rule;
 final class ImportPreviewRequest extends FormRequest
 {
     /**
-     * Séparateurs acceptés. Liste fermée : le client dit avec quel séparateur il
-     * a montré les colonnes à l'utilisateur, il ne choisit pas un comportement
-     * d'analyse arbitraire.
+     * Séparateurs acceptés, désignés par un NOM.
      *
-     * @var list<string>
+     * Le client envoie « tab » et non une tabulation : `TrimStrings` élague les
+     * blancs de toute valeur d'entrée, si bien qu'une tabulation arrivait vide
+     * et faisait échouer la validation — donc tout fichier tabulé. Mesuré : 302
+     * au lieu de 200. Un nom traverse le transport sans être altéré.
+     *
+     * @var array<string, string>
      */
-    private const DELIMITERS = [';', ',', "\t"];
+    private const DELIMITERS = [
+        'semicolon' => ';',
+        'comma' => ',',
+        'tab' => "\t",
+    ];
 
     public function authorize(): bool
     {
@@ -36,7 +43,7 @@ final class ImportPreviewRequest extends FormRequest
             'file' => ['required', 'file', 'max:5120', 'mimes:csv,txt'],
             'mapping' => ['sometimes', 'array'],
             'mapping.*' => ['nullable', 'string', 'max:255'],
-            'delimiter' => ['sometimes', 'string', Rule::in(self::DELIMITERS)],
+            'delimiter' => ['sometimes', 'string', Rule::in(array_keys(self::DELIMITERS))],
         ];
     }
 
@@ -59,10 +66,8 @@ final class ImportPreviewRequest extends FormRequest
      */
     public function delimiterInput(): ?string
     {
-        $delimiter = $this->input('delimiter');
+        $name = $this->input('delimiter');
 
-        return is_string($delimiter) && in_array($delimiter, self::DELIMITERS, true)
-            ? $delimiter
-            : null;
+        return is_string($name) ? (self::DELIMITERS[$name] ?? null) : null;
     }
 }

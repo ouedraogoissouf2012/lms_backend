@@ -113,22 +113,16 @@ final class KlassciApiUrlSchemeTest extends TestCase
 
     public function test_la_regle_ne_se_declenche_pas_sur_une_valeur_absente(): void
     {
-        // `nullable` court-circuite les règles suivantes : la porte ne doit pas
-        // EXIGER une URL, seulement contraindre son schéma quand il y en a une.
-        //
-        // On l'observe sur la mise à jour, et non sur la création : créer une
-        // institution sans `klassci_api_url` rend aujourd'hui un **500** — la
-        // colonne est `NOT NULL` en base alors que le contrôleur la valide
-        // `nullable`. C'est un défaut RÉEL mais DISTINCT de #685 — ouvert en #767,
-        // découvert en écrivant ce fichier. Le corriger ici mélangerait deux
-        // préoccupations ; #767 porte aussi le retrait de ce contournement.
         $this->actAsPlatformSupradmin();
-        $institution = Institution::factory()->create([
-            'klassci_api_url' => 'https://presentation.klassci.com/api/lms',
-        ]);
 
-        $this->putJson("/api/admin/institutions/{$institution->id}", [
-            'name' => 'Nom seul, sans toucher a l URL',
-        ])->assertStatus(200);
+        $this->postJson('/api/admin/institutions', [
+            'slug' => 'tenant-sans-url',
+            'name' => 'Tenant sans URL',
+        ])->assertStatus(201);
+
+        $this->assertDatabaseHas('institutions', [
+            'slug' => 'tenant-sans-url',
+            'klassci_api_url' => null,
+        ]);
     }
 }

@@ -55,7 +55,14 @@ final class ColumnMap
      */
     public static function normalizeHeader(string $header): string
     {
-        return mb_strtolower(trim($header));
+        // `trim()` ne retire que les blancs ASCII. Le client, lui, utilise le
+        // `trim()` de JavaScript, qui retire AUSSI l'espace insécable — que les
+        // tableurs sèment volontiers en bord de cellule. Sans cette égalisation,
+        // le client enverrait « Nom » pour une colonne indexée ici « nom⍽ » :
+        // introuvable, et toutes les lignes refusées sans explication.
+        $sansBlancs = preg_replace('/^[\p{Z}\s]+|[\p{Z}\s]+$/u', '', $header);
+
+        return mb_strtolower($sansBlancs ?? trim($header));
     }
 
     /**

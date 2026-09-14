@@ -39,6 +39,17 @@ final class ColumnMapTest extends TestCase
         self::assertSame('Awa', $map->value(['prénom' => 'Awa'], 'prenom'));
     }
 
+    public function test_l_espace_insecable_est_retiree_comme_le_fait_le_client(): void
+    {
+        // `trim()` de PHP ne connaît que les blancs ASCII, `trim()` de
+        // JavaScript retire aussi l'espace insécable — que les tableurs
+        // sèment volontiers en bord de cellule. Sans cette égalisation, le
+        // client enverrait « Nom » pour une colonne que le serveur a indexée
+        // sous « nom⍽ » : introuvable, donc toutes les lignes refusées.
+        self::assertSame('nom', ColumnMap::normalizeHeader("Nom\u{00A0}"));
+        self::assertSame('prenom', ColumnMap::normalizeHeader("\u{00A0}Prenom "));
+    }
+
     public function test_une_colonne_absente_de_l_enregistrement_vaut_la_chaine_vide(): void
     {
         $map = ColumnMap::fromRequest(['email' => 'Courriel']);

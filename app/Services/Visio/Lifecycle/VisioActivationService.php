@@ -8,8 +8,9 @@ use App\Models\Classe;
 use App\Models\Seance;
 use App\Models\User;
 use App\Services\ClasseSyncService;
-use App\Services\KlassciProxyService;
 use App\Services\Notification\AsyncVisioNotificationDispatcher;
+use App\Services\Seances\EmploiTempsSeanceLocator;
+use App\Services\Seances\KlassciPayload;
 use App\Services\Visio\SecureVisioRoomIdGenerator;
 use Psr\Log\LoggerInterface;
 use Throwable;
@@ -26,7 +27,7 @@ use Throwable;
 final class VisioActivationService
 {
     public function __construct(
-        private readonly KlassciProxyService $klassciService,
+        private readonly EmploiTempsSeanceLocator $seanceLocator,
         private readonly ClasseSyncService $classeSyncService,
         private readonly AsyncVisioNotificationDispatcher $notifications,
         private readonly LoggerInterface $logger,
@@ -42,7 +43,7 @@ final class VisioActivationService
     {
         try {
             $klassciToken = $user->klassci_token;
-            [$seanceFound, $matiereInfo] = $this->locateKlassciSeance($seanceId, $user, $klassciToken);
+            [$seanceFound, $matiereInfo] = $this->seanceLocator->locate($seanceId, $user, $klassciToken);
 
             if (! $seanceFound) {
                 return [
@@ -54,24 +55,7 @@ final class VisioActivationService
                 ];
             }
 
-            // Créer ou mettre à jour l'entrée visio
-            $visio = Seance::updateOrCreate(
-                ['klassci_seance_id' => $seanceId],
-                [
-                    'klassci_matiere_id' => $matiereInfo['id'] ?? null,
-                    'klassci_classe_id' => $seanceFound['classe']['id'] ?? null,
-                    'klassci_enseignant_id' => $user->klassci_id,
-                    'enseignant_nom' => $user->name,
-                    'matiere_nom' => $matiereInfo['nom'] ?? $matiereInfo['libelle'] ?? null,
-                    'visio_enabled' => true,
-                    'visio_type' => 'jitsi',
-                    'visio_status' => 'programmee',
-                    'visio_room_id' => SecureVisioRoomIdGenerator::make(),
-                    'visio_active' => false,
-                    'is_active' => true,  // S'assurer que la séance est active pour être visible aux étudiants
-                    'updated_by' => $user->id,
-                ]
-            );
+            $visio = $this->upsertVisio($seanceId, $seanceFound, $matiereInfo, $user);
 
             $this->logger->info('Visio activée', [
                 'seance_id' => $seanceId,
@@ -181,46 +165,49 @@ final class VisioActivationService
     }
 
     /**
-     * Cherche la séance dans Klassci via le bon endpoint selon le rôle.
-     * Conserve le comportement legacy verbatim.
+     * Pose l'entrée visio de la séance, SANS jamais réattribuer un salon.
      *
-     * @return array{0: array<string, mixed>|null, 1: array<string, mixed>|null} [seanceFound, matiereInfo]
+     * ## Un salon se frappe une fois
+     *
+     * La version précédente passait `visio_room_id => make()` en valeur
+     * inconditionnelle d'un `updateOrCreate`. Tant que la résolution KLASSCI
+     * échouait (#739), ce chemin était inatteignable et le défaut dormait.
+     *
+     * Il ne dort plus. `SeanceUpsertService::create()` — la SYNCHRONISATION —
+     * crée déjà chaque séance avec un salon ET notifie les étudiants. Activer
+     * une séance déjà synchronisée aurait donc changé l'adresse sous les pieds
+     * de ceux qui l'avaient reçue : liens morts, et cours en train de se tenir
+     * coupé net.
+     *
+     * D'où `??=` : la valeur n'est frappée que si la place est libre.
+     *
+     * @param  array<string, mixed>  $seanceFound
+     * @param  array<string, mixed>|null  $matiereInfo
      */
-    private function locateKlassciSeance(int $seanceId, User $user, ?string $klassciToken): array
+    private function upsertVisio(int $seanceId, array $seanceFound, ?array $matiereInfo, User $user): Seance
     {
-        // Pour enseignants: teacher-dashboard ; pour coordinateurs: /matieres
-        if ($user->isTeacher()) {
-            $dashboard = $this->klassciService->requestWithUserToken(
-                $klassciToken,
-                'me/teacher-dashboard',
-                'GET'
-            );
-            $matieres = collect($dashboard['data']['matieres'] ?? []);
-        } else {
-            $matieresResponse = $this->klassciService->requestWithUserToken(
-                $klassciToken,
-                'matieres',
-                'GET'
-            );
-            $matieres = collect($matieresResponse['data'] ?? []);
-        }
+        $visio = Seance::firstOrNew(['klassci_seance_id' => $seanceId]);
 
-        foreach ($matieres as $matiere) {
-            $matiereDetails = $this->klassciService->requestWithUserToken(
-                $klassciToken,
-                "matieres/{$matiere['id']}",
-                'GET'
-            );
+        $visio->visio_room_id ??= SecureVisioRoomIdGenerator::make();
 
-            $seances = collect($matiereDetails['data']['seances_programmees'] ?? []);
-            $seanceFound = $seances->firstWhere('id', $seanceId);
+        $visio->fill([
+            'klassci_matiere_id' => $matiereInfo['id'] ?? null,
+            'klassci_classe_id' => KlassciPayload::toInt(
+                KlassciPayload::asArray($seanceFound['classe'] ?? null)['id'] ?? null
+            ),
+            'klassci_enseignant_id' => $user->klassci_id,
+            'enseignant_nom' => $user->name,
+            'matiere_nom' => $matiereInfo['nom'] ?? $matiereInfo['libelle'] ?? null,
+            'visio_enabled' => true,
+            'visio_type' => 'jitsi',
+            'visio_status' => 'programmee',
+            'visio_active' => false,
+            // Rendre la séance visible aux étudiants.
+            'is_active' => true,
+            'updated_by' => $user->id,
+        ])->save();
 
-            if ($seanceFound) {
-                return [$seanceFound, $matiere];
-            }
-        }
-
-        return [null, null];
+        return $visio;
     }
 
     /** Résolution dual-ID : ID local d'abord, puis klassci_seance_id. */

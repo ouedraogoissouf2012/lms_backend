@@ -4,6 +4,19 @@ return [
     'retention_days' => 365,
     'purge_chunk_size' => 100,
 
+    // #706 — Capacité d'enregistrement SIMULTANÉ de la plateforme entière.
+    //
+    // Le README officiel de Jibri est sans ambiguïté : « Only one recording at a
+    // time is supported on a single jibri ». La capacité réelle est donc le
+    // nombre d'instances Jibri déployées — nombre qui n'est pas encore relevé
+    // (#700). Tant qu'il ne l'est pas, la seule valeur défendable est 1.
+    //
+    // C'est une propriété d'INFRASTRUCTURE, jamais du mode d'établissement
+    // (article 2 de l'épique #697) : une école KLASSCI et un organisme autonome
+    // peuvent partager le même nœud visio. Le comptage ignore donc délibérément
+    // le scope tenant — voir RecordingCapacityGuard.
+    'max_concurrent' => (int) env('RECORDINGS_MAX_CONCURRENT', 1),
+
     // #514 — Délai de grâce (minutes) au-delà duquel un enregistrement arrêté
     // et resté en `Processing` (aucun webhook fournisseur pour le finaliser,
     // cf. #204) est marqué `Failed` par `recordings:fail-stale`.

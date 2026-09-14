@@ -70,8 +70,9 @@ final class DeadKlassciKeyRatchetTest extends TestCase
      * @var list<string>
      */
     private const TOLERES = [
-        // #739 — l'activation visio résout la séance par cette clé, donc jamais.
-        'app/Services/Visio/Lifecycle/VisioActivationService.php',
+        // #739 RÉSOLU le 2026-09-14 : l'activation visio passe désormais par
+        // `App\Services\Seances\EmploiTempsSeanceLocator`. Le cliquet est
+        // descendu de 4 à 3 — c'est bien ce qu'on attend de lui.
 
         // #740 — les lecteurs restants du chemin détail / page matière.
         'app/Http/Controllers/API/LMS/Concerns/FetchesSeanceDataFromKlassci.php',

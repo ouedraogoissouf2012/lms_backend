@@ -31,6 +31,11 @@
             "type": "dette",
             "count": 1,
             "reason": "Expose config('services.klassci.url') dans une reponse de diagnostic (:190). A faire passer par KlassciTargetResolver plutot que par la configuration globale, qui ignore le tenant resolu."
+        },
+        {
+            "path": "app/Services/Roster/RosterAuthorityFactory.php",
+            "type": "point-de-liaison",
+            "reason": "C'est LE point ou le mode d'etablissement se resout, et sa seule raison d'etre. Classe de vingt lignes, sans autre responsabilite : exempter AppServiceProvider aurait ouvert un fichier de plusieurs centaines de lignes ou une comparaison de mode pourrait se glisser sans etre vue. Le resultat n'est jamais le mode mais une CAPACITE (RosterAuthority), que les appelants consomment sans savoir qu'un mode existe - article 1 de #697."
         }
     ]
 }

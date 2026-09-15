@@ -2,24 +2,29 @@
 
 namespace App\Models;
 
+use App\Enums\InstitutionMode;
+use Database\Factories\InstitutionFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Carbon;
 
 /**
  * Tenant du SaaS multi-institution.
  *
  * @property-read string|null $klassci_api_token Alias accessor de la colonne chiffrée `klassci_api_token_encrypted`.
- * @property \Illuminate\Support\Carbon|null $deleted_at Soft delete (#567) — suppression LOGIQUE
- *                                    et réversible ; config du tenant préservée, restaurable.
+ * @property Carbon|null $deleted_at Soft delete (#567) — suppression LOGIQUE
+ *                                   et réversible ; config du tenant préservée, restaurable.
  */
 class Institution extends Model
 {
-    /** @use HasFactory<\Database\Factories\InstitutionFactory> */
+    /** @use HasFactory<InstitutionFactory> */
     use HasFactory, SoftDeletes;
 
     protected $fillable = [
         'slug',
+        'mode',
         'name',
         'klassci_api_url',
         'klassci_api_token_encrypted',
@@ -29,7 +34,18 @@ class Institution extends Model
         'settings',
     ];
 
+    /**
+     * Le defaut SQL ne remonte pas dans l'objet en memoire : sans cela,
+     * `$institution->mode` vaut `null` juste apres la creation, alors que la
+     * base porte bien `klassci`. Le declarer ici rend l'intention vraie des
+     * l'instanciation, avant meme l'insertion.
+     */
+    protected $attributes = [
+        'mode' => 'klassci',
+    ];
+
     protected $casts = [
+        'mode' => InstitutionMode::class,
         'is_active' => 'boolean',
         'settings' => 'array',
         'klassci_api_token_encrypted' => 'encrypted',
@@ -86,7 +102,7 @@ class Institution extends Model
     /**
      * Relation : tous les users de cette institution
      *
-     * @return \Illuminate\Database\Eloquent\Relations\HasMany<User, $this>
+     * @return HasMany<User, $this>
      */
     public function users()
     {
@@ -94,7 +110,7 @@ class Institution extends Model
     }
 
     /**
-     * @return \Illuminate\Database\Eloquent\Relations\HasMany<Classe, $this>
+     * @return HasMany<Classe, $this>
      */
     public function classes()
     {
@@ -102,7 +118,7 @@ class Institution extends Model
     }
 
     /**
-     * @return \Illuminate\Database\Eloquent\Relations\HasMany<Lesson, $this>
+     * @return HasMany<Lesson, $this>
      */
     public function lessons()
     {
@@ -110,7 +126,7 @@ class Institution extends Model
     }
 
     /**
-     * @return \Illuminate\Database\Eloquent\Relations\HasMany<Evaluation, $this>
+     * @return HasMany<Evaluation, $this>
      */
     public function evaluations()
     {

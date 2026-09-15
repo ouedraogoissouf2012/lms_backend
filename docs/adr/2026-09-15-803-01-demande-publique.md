@@ -71,4 +71,24 @@ Le jour où un canal de courriel existera, la vérification d'adresse s'ajoute c
 - Nouvelle table `school_registration_requests`, **à ne pas inscrire** dans `config/tenancy.php`.
 - Nouvelle route publique — la seule écriture non authentifiée du système. Elle doit rester étroite : un `FormRequest`, un service, une table.
 - La validation fait l'objet d'un ADR distinct : [ADR-803-02](2026-09-15-803-02-validation-atomique.md).
-- Aucune colonne `mode` n'est introduite : le discriminant reste `klassci_api_url IS NULL` (garde OCP `scripts/check-ocp.php`, CI `.github/workflows/security.yml:505`).
+- La demande ne porte aucun mode : elle n'est pas encore un établissement. Le mode est posé à la **validation** (ADR-803-02).
+
+> **Correction du 2026-09-15.** Cet ADR affirmait ici : « Aucune colonne `mode`
+> n'est introduite : le discriminant reste `klassci_api_url IS NULL` (garde OCP) ».
+> **C'était faux, sur les trois points.**
+>
+> La garde OCP n'a jamais interdit la colonne — son propre docblock dit
+> « l'attribut est la seule écriture possible, PUISQUE le mode est une colonne du
+> modèle » (`scripts/lib/ocp-ratchet.php:31`). Elle interdit de **résoudre** le
+> mode ailleurs qu'au point de liaison, et le discriminant retenu ici la
+> contournait : aucun de ses huit motifs ne vise `->klassci_api_url`.
+>
+> Le discriminant lui-même était cassé. Une colonne nullable ne distingue pas
+> « pas encore configuré » de « délibérément autonome » : un oubli de saisie
+> serait devenu un changement de mode en production. Et `KlassciConfigResolver`
+> retombe sur la configuration globale, si bien qu'un tenant autonome reçoit une
+> URL non nulle dès que `KLASSCI_API_URL` est définie — c'est le défaut tracé en
+> #792.
+>
+> `institutions.mode` existe depuis #814 : NOT NULL, défaut `klassci`, aucune
+> reprise de données, lu au seul `RosterAuthorityFactory`. Il fait foi.

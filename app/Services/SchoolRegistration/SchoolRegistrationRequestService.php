@@ -134,7 +134,11 @@ final class SchoolRegistrationRequestService
             }
 
             // Une requête jumelle a écrit entre notre lecture et notre écriture.
-            // Sa ligne fait désormais foi : on la met à jour au lieu d'échouer.
+            // Sa ligne fait foi — et « faire foi » veut dire qu'on n'y touche
+            // pas. L'ancien code la mettait à jour juste après l'avoir déclarée
+            // prioritaire, ce qui rouvrait par la course la primitive
+            // d'écrasement fermée sur le chemin nominal : il suffisait de
+            // déposer en même temps que sa victime.
             $concurrente = $this->enAttentePour($email);
 
             if (! $concurrente instanceof SchoolRegistrationRequest) {
@@ -143,7 +147,7 @@ final class SchoolRegistrationRequestService
                 throw $e;
             }
 
-            $concurrente->fill($valide)->save();
+            $this->journaliserDivergence($concurrente, $valide);
 
             return $concurrente;
         }

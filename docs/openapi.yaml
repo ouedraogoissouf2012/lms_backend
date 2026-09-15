@@ -68,6 +68,39 @@ components:
                 example: "Trop de requêtes. Veuillez réessayer plus tard."
 
   schemas:
+    VisioConsentInput:
+      type: object
+      required:
+        - captation
+        - diffusion
+        - reutilisation
+      properties:
+        captation:
+          type: boolean
+          description: "Etre filme pendant la seance."
+        diffusion:
+          type: boolean
+          description: "Rediffusion de l'enregistrement au groupe de la seance."
+        reutilisation:
+          type: boolean
+          description: "Reutilisation sur une autre session que celle d'origine."
+
+    VisioConsentState:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          type: object
+          properties:
+            captation:
+              type: boolean
+            diffusion:
+              type: boolean
+            reutilisation:
+              type: boolean
+
     SchoolRegistrationRequestInput:
       type: object
       required:
@@ -232,6 +265,76 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
         '429':
           description: "Trop de demandes depuis cette adresse IP"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /lms/visio/consent:
+    post:
+      tags:
+        - Visio
+      summary: "Deposer son consentement de captation visio"
+      description: |
+        Les trois finalites sont obligatoires et independantes : accepter
+        d'etre filme pour le groupe n'est pas accepter la rediffusion, ni la
+        reutilisation sur une autre session.
+
+        Le sujet est TOUJOURS le porteur du jeton : aucun `user_id` n'est
+        accepte dans la charge utile.
+
+        La table de consentements est append-only — chaque depot y ajoute trois
+        lignes et n'en retire aucune. D'ou la limite de 10 requetes par minute.
+      security:
+        - sanctum: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VisioConsentInput'
+      responses:
+        '200':
+          description: "Consentement enregistre ; l'etat courant des trois finalites est renvoye."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VisioConsentState'
+        '401':
+          description: "Non authentifie"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: |
+            Charge invalide, ou compte sans etablissement — un consentement se
+            rattache a un etablissement.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          description: "Trop de depots successifs"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    get:
+      tags:
+        - Visio
+      summary: "Lire son consentement de captation visio"
+      security:
+        - sanctum: []
+      responses:
+        '200':
+          description: "Etat courant des trois finalites pour le porteur du jeton."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VisioConsentState'
+        '401':
+          description: "Non authentifie"
           content:
             application/json:
               schema:

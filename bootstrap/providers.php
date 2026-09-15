@@ -1,10 +1,19 @@
 <?php
 
+use App\Providers\AppServiceProvider;
+use App\Providers\AuthPasswordServiceProvider;
+use App\Providers\FileConversionServiceProvider;
+use App\Providers\RateLimitServiceProvider;
+use App\Providers\RetentionServiceProvider;
+use App\Providers\RosterServiceProvider;
+use App\Providers\SSLVerificationProvider;
+
 return [
-    App\Providers\AppServiceProvider::class,
-    App\Providers\AuthPasswordServiceProvider::class,
-    App\Providers\FileConversionServiceProvider::class,
-    App\Providers\RateLimitServiceProvider::class,
-    App\Providers\RetentionServiceProvider::class,
-    App\Providers\SSLVerificationProvider::class,
+    AppServiceProvider::class,
+    AuthPasswordServiceProvider::class,
+    FileConversionServiceProvider::class,
+    RateLimitServiceProvider::class,
+    RosterServiceProvider::class,
+    RetentionServiceProvider::class,
+    SSLVerificationProvider::class,
 ];

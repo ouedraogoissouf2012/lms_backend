@@ -5,10 +5,10 @@ declare(strict_types=1);
 namespace App\Services\Seances\Sync;
 
 use App\Models\User;
-use App\Services\KlassciProxyService;
 use App\Services\Seances\KlassciPayload;
 use App\Services\Seances\Sync\Cursor\SeanceSyncCursorStore;
 use App\Services\Seances\Sync\Cursor\TeacherCursorStream;
+use App\Services\Seances\UserOwnMatieresResolver;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -47,8 +47,8 @@ final class KlassciSeancesSyncService
     private const SYNC_BUDGET_SECONDS = 45;
 
     public function __construct(
-        private readonly KlassciProxyService $klassciService,
         private readonly TeacherMatieresResolver $matieresResolver,
+        private readonly UserOwnMatieresResolver $ownMatieres,
         private readonly TeacherCursorStream $teacherStream,
         private readonly SeanceSyncCursorStore $cursorStore,
         private readonly TenantArchiveCoordinator $tenantCoordinator,
@@ -152,8 +152,13 @@ final class KlassciSeancesSyncService
                 return;
             }
 
-            $matieres = $this->klassciService->requestWithUserToken($teacherToken, 'matieres', 'GET');
-            $matieresList = KlassciPayload::listOfArrays(KlassciPayload::asArray($matieres)['data'] ?? null);
+            // #725 (suite) - les matieres de CET enseignant, jamais le catalogue
+            // du tenant. `GET matieres` renvoyait les 452 matieres de
+            // l'etablissement : 5 enseignants x 452 = 2260 requetes sortantes
+            // par cycle, toutes les 5 minutes (routes/console.php:20-21), pour
+            // une poignee de matieres reellement enseignees. Meme defaut et
+            // meme resolveur que UpcomingSeancesFetcher (#725).
+            $matieresList = $this->ownMatieres->resolve($teacher, $teacherToken)->all();
 
             $this->syncTeacherMatieres($teacher, $teacherToken, $institutionId, $matieresList, $state, $stats, $confirmedSeanceIds);
         } catch (\Exception $e) {

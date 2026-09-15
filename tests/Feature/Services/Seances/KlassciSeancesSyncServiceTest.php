@@ -42,8 +42,8 @@ final class KlassciSeancesSyncServiceTest extends TestCase
 
         $this->mock(KlassciProxyService::class, function (MockInterface $mock): void {
             $mock->shouldReceive('requestWithUserToken')
-                ->with('token-a', 'matieres', 'GET')
-                ->andReturn(['data' => [['id' => 10, 'nom' => 'Maths']]]);
+                ->with('token-a', 'me/teacher-dashboard', 'GET')
+                ->andReturn(['data' => ['matieres' => [['id' => 10, 'nom' => 'Maths']]]]);
             $mock->shouldReceive('getEmploiTemps')
                 ->andReturn(['data' => [[
                     'id' => 42,
@@ -85,8 +85,8 @@ final class KlassciSeancesSyncServiceTest extends TestCase
 
         $this->mock(KlassciProxyService::class, function (MockInterface $mock): void {
             $mock->shouldReceive('requestWithUserToken')
-                ->with('token-a', 'matieres', 'GET')
-                ->andReturn(['data' => [['id' => 10, 'nom' => 'Maths']]]);
+                ->with('token-a', 'me/teacher-dashboard', 'GET')
+                ->andReturn(['data' => ['matieres' => [['id' => 10, 'nom' => 'Maths']]]]);
             $mock->shouldReceive('getEmploiTemps')
                 ->andReturn(['data' => [[
                     'id' => 42,
@@ -123,12 +123,12 @@ final class KlassciSeancesSyncServiceTest extends TestCase
 
         $this->mock(KlassciProxyService::class, function (MockInterface $mock): void {
             $mock->shouldReceive('requestWithUserToken')
-                ->with('token-a', 'matieres', 'GET')
-                ->andReturn(['data' => [
+                ->with('token-a', 'me/teacher-dashboard', 'GET')
+                ->andReturn(['data' => ['matieres' => [
                     ['id' => 10, 'nom' => 'Maths'],
                     ['id' => 11, 'nom' => 'Physique'],
                     ['id' => 12, 'nom' => 'Chimie'],
-                ]]);
+                ]]]);
 
             // Le N+1 est éliminé : un seul appel batch pour les 3 matières,
             // jamais requestWithUserToken('matieres/{id}', ...).
@@ -170,8 +170,8 @@ final class KlassciSeancesSyncServiceTest extends TestCase
         $callCount = 0;
         $this->mock(KlassciProxyService::class, function (MockInterface $mock) use ($manyMatieres, &$callCount): void {
             $mock->shouldReceive('requestWithUserToken')
-                ->with('token-a', 'matieres', 'GET')
-                ->andReturn(['data' => $manyMatieres]);
+                ->with('token-a', 'me/teacher-dashboard', 'GET')
+                ->andReturn(['data' => ['matieres' => $manyMatieres]]);
             // La fenetre doit toujours etre bornee : sans elle, KLASSCI ne rend
             // que la semaine courante, et la synchro conclurait a tort que le
             // reste de l'annee a disparu.
@@ -221,11 +221,11 @@ final class KlassciSeancesSyncServiceTest extends TestCase
 
         $this->mock(KlassciProxyService::class, function (MockInterface $mock): void {
             $mock->shouldReceive('requestWithUserToken')
-                ->with('token-a', 'matieres', 'GET')
-                ->andReturn(['data' => [
+                ->with('token-a', 'me/teacher-dashboard', 'GET')
+                ->andReturn(['data' => ['matieres' => [
                     ['id' => 10, 'nom' => 'Maths'],
                     ['id' => 11, 'nom' => 'Physique'],
-                ]]);
+                ]]]);
 
             // La matière 10 n'a aucune séance dans la fenêtre ; la 11 en a une.
             $mock->shouldReceive('getEmploiTemps')
@@ -280,8 +280,8 @@ final class KlassciSeancesSyncServiceTest extends TestCase
 
         $this->mock(KlassciProxyService::class, function (MockInterface $mock): void {
             $mock->shouldReceive('requestWithUserToken')
-                ->with('token-a', 'matieres', 'GET')
-                ->andReturn(['data' => [['id' => 10, 'nom' => 'Maths']]]);
+                ->with('token-a', 'me/teacher-dashboard', 'GET')
+                ->andReturn(['data' => ['matieres' => [['id' => 10, 'nom' => 'Maths']]]]);
             $mock->shouldReceive('getEmploiTemps')
                 ->andReturn(['data' => [[
                     'id' => 42,
@@ -324,8 +324,8 @@ final class KlassciSeancesSyncServiceTest extends TestCase
 
         $this->mock(KlassciProxyService::class, function (MockInterface $mock): void {
             $mock->shouldReceive('requestWithUserToken')
-                ->with('token-a', 'matieres', 'GET')
-                ->andReturn(['data' => [['id' => 10, 'nom' => 'Maths']]]);
+                ->with('token-a', 'me/teacher-dashboard', 'GET')
+                ->andReturn(['data' => ['matieres' => [['id' => 10, 'nom' => 'Maths']]]]);
             $mock->shouldReceive('getEmploiTemps')
                 ->andReturn(['data' => [[
                     'id' => 99,
@@ -368,8 +368,8 @@ final class KlassciSeancesSyncServiceTest extends TestCase
 
         $this->mock(KlassciProxyService::class, function (MockInterface $mock): void {
             $mock->shouldReceive('requestWithUserToken')
-                ->with('token-a', 'matieres', 'GET')
-                ->andReturn(['data' => [['id' => 10, 'nom' => 'Maths']]]);
+                ->with('token-a', 'me/teacher-dashboard', 'GET')
+                ->andReturn(['data' => ['matieres' => [['id' => 10, 'nom' => 'Maths']]]]);
             $mock->shouldReceive('getEmploiTemps')
                 ->andReturn(['data' => [[
                     'id' => 42,

@@ -9,6 +9,7 @@ use Database\Factories\SchoolRegistrationRequestFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Carbon;
 
 /**
  * Demande d'ouverture d'une école indépendante de KLASSCI (#803).
@@ -18,6 +19,18 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * délibérément absente de `config/tenancy.php`. Le champ `institution_id` n'est
  * pas une appartenance mais un RÉSULTAT, rempli à la validation.
  *
+ * @property int $id
+ * @property string $nom_demandeur
+ * @property string $email_demandeur
+ * @property string|null $telephone_demandeur
+ * @property string $nom_ecole
+ * @property string|null $slug_souhaite
+ * @property string $usage_prevu
+ * @property SchoolRequestStatus $statut Cast d'enum : jamais une chaîne nue côté PHP.
+ * @property int|null $decide_par_user_id
+ * @property Carbon|null $decide_le
+ * @property string|null $motif_refus
+ * @property int|null $institution_id Résultat de la validation, pas une appartenance.
  * @property-read Institution|null $institution Créée lors de la validation (ADR-803-02).
  * @property-read User|null $decideur Supradmin plateforme ayant tranché.
  *

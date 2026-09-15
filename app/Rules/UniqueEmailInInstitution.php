@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Rules;
 
+use App\Models\Institution;
 use App\Models\User;
 use Closure;
 use Illuminate\Contracts\Validation\ValidationRule;
@@ -76,6 +77,25 @@ final class UniqueEmailInInstitution implements ValidationRule
     public static function forCreationBy(?User $actor): self
     {
         return new self($actor?->institution_id, null);
+    }
+
+    /**
+     * Création dans une institution DÉSIGNÉE, et non déduite de l'acteur.
+     *
+     * Le cas qui l'impose (#793) : le supradmin plateforme a `institution_id`
+     * NULL, et `ResolveInstitution:121-123` ne lui pose jamais de tenant. Passer
+     * par {@see self::forCreationBy()} le ferait donc échouer en 422 — refus
+     * correct pour une règle qui ne sait pas contre quoi valider, mais qui
+     * rendait impossible la création du premier compte d'une institution neuve.
+     *
+     * La cible est ici NOMMÉE. Le fail-closed n'est pas assoupli pour autant :
+     * une institution absente ou sans clé échoue exactement comme avant.
+     */
+    public static function forCreationIn(?Institution $institution): self
+    {
+        $id = $institution?->getKey();
+
+        return new self(is_int($id) ? $id : null, null);
     }
 
     /** Mise à jour : l'email doit être libre dans l'institution de la cible, sa propre ligne exclue. */

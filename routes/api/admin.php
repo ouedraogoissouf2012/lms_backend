@@ -1,18 +1,21 @@
 <?php
 
-use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\API\Admin\AuditLogController;
 use App\Http\Controllers\API\AdminAnalyticsController;
-use App\Http\Controllers\API\ReportController;
-use App\Http\Controllers\API\NotificationsController;
-use App\Http\Controllers\API\SearchController;
+use App\Http\Controllers\API\AdminController;
 use App\Http\Controllers\API\InstitutionController;
+use App\Http\Controllers\API\NotificationsController;
+use App\Http\Controllers\API\ReportController;
+use App\Http\Controllers\API\SchoolRequestDecisionController;
+use App\Http\Controllers\API\SearchController;
+use Illuminate\Support\Facades\Route;
 
 // ============================================
 // ADMIN - Journal d'audit (#215) — supradmin uniquement (lecture seule)
 // L'autorisation stricte supradmin est portée par ViewAuditLogRequest.
 // ============================================
 Route::middleware(['auth:sanctum'])->prefix('admin')->group(function () {
-    Route::get('/audit-log', [\App\Http\Controllers\API\Admin\AuditLogController::class, 'index']);
+    Route::get('/audit-log', [AuditLogController::class, 'index']);
 });
 
 // ============================================
@@ -23,7 +26,7 @@ Route::middleware(['auth:sanctum'])->prefix('admin')->group(function () {
 // sans institution_id, le scope tenant serait fail-open.
 // ============================================
 Route::middleware(['auth:sanctum', 'role:coordinateur,superAdmin'])->prefix('admin')->group(function () {
-    Route::get('/users', [\App\Http\Controllers\API\AdminController::class, 'listUsers'])
+    Route::get('/users', [AdminController::class, 'listUsers'])
         ->middleware('throttle:60,1')
         ->name('admin.users.index');
 });
@@ -126,6 +129,20 @@ Route::middleware(['auth:sanctum', 'role:supradmin', 'platform.supradmin'])
     });
 
 // ============================================
+// DEMANDES D'OUVERTURE D'ECOLE - supradmin uniquement (#803)
+// ============================================
+// Meme double garde que le CRUD institutions (#511) : valider une demande CREE
+// un tenant et son premier compte. C'est l'ecriture cross-tenant la plus
+// sensible du systeme.
+Route::middleware(['auth:sanctum', 'role:supradmin', 'platform.supradmin'])
+    ->prefix('admin/school-requests')
+    ->group(function () {
+        Route::get('/', [SchoolRequestDecisionController::class, 'index']);
+        Route::post('/{schoolRequest}/validate', [SchoolRequestDecisionController::class, 'validate']);
+        Route::post('/{schoolRequest}/refuse', [SchoolRequestDecisionController::class, 'refuse']);
+    });
+
+// ============================================
 // SEARCH - Recherche globale
 // ============================================
 Route::middleware(['auth:sanctum', 'throttle:search'])->prefix('search')->group(function () {
@@ -150,6 +167,6 @@ Route::middleware(['auth:sanctum', 'throttle:search'])->prefix('search')->group(
 // (cf. `tests/Unit/ExceptionHandlerTest`). N'est pas exposée en prod.
 if (app()->environment('testing')) {
     Route::get('/test-throw-exception', function () {
-        throw new \RuntimeException('Diagnostic exception (testing env only).');
+        throw new RuntimeException('Diagnostic exception (testing env only).');
     });
 }

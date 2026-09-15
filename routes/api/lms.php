@@ -40,23 +40,24 @@ Route::middleware(['auth:sanctum', 'klassci.sync', 'role:enseignant,coordinateur
 // LMS — Routes protégées (god-object LMSDataController split en 7 controllers
 // + 2 services partagés. Spec : .claude/specs/lms-data-controller-split/).
 // ============================================
-use App\Http\Controllers\API\LMS\LMSAttendancesController;
-use App\Http\Controllers\API\LMS\LMSClassesController;
+use App\Http\Controllers\API\Admin\AdminStatisticsController;
 use App\Http\Controllers\API\LMS\ImportConfirmController;
 use App\Http\Controllers\API\LMS\ImportPreviewController;
 use App\Http\Controllers\API\LMS\ImportShowController;
-use App\Http\Controllers\API\LMS\LMSTeacherClassesController;
+use App\Http\Controllers\API\LMS\LMSAttendancesController;
+use App\Http\Controllers\API\LMS\LMSClassesController;
 use App\Http\Controllers\API\LMS\LMSEnseignantsController;
-use App\Http\Controllers\API\Admin\AdminStatisticsController;
 use App\Http\Controllers\API\LMS\LMSMatieresAdminController;
 use App\Http\Controllers\API\LMS\LMSMatieresQueryController;
 use App\Http\Controllers\API\LMS\LMSNotificationsPreferencesController;
+use App\Http\Controllers\API\LMS\LMSSeanceCrudController;
 use App\Http\Controllers\API\LMS\LMSSeanceDetailsController;
 use App\Http\Controllers\API\LMS\LMSSeanceParticipantMutationController;
 use App\Http\Controllers\API\LMS\LMSSeancesHistoryController;
-use App\Http\Controllers\API\LMS\LMSSeanceCrudController;
 use App\Http\Controllers\API\LMS\LMSSeancesListController;
 use App\Http\Controllers\API\LMS\LMSSeanceVisibilityMutationController;
+use App\Http\Controllers\API\LMS\LMSTeacherClassesController;
+use App\Http\Controllers\API\LMS\LMSVisioConsentController;
 use App\Http\Controllers\API\LMS\LMSVisioLifecycleController;
 use App\Http\Controllers\API\LMS\LMSVisioParticipantController;
 use App\Http\Controllers\API\LMS\LMSVisioRecordingController;
@@ -206,6 +207,22 @@ Route::middleware(['auth:sanctum', 'klassci.sync'])->prefix('lms')->group(functi
 
     Route::get('/seances/{seanceId}/recording', [LMSVisioRecordingController::class, 'show'])
         ->name('lms.seances.recording.show');
+
+    // Consentement visio du porteur — le raccord entre le recueil (front #333)
+    // et le garde d'enregistrement (#716). Sans lui, `recording/start` refusait
+    // TOUT enregistrement en 422, faute de ligne `consents` que rien n'ecrivait.
+    //
+    // Aucune garde de role : consentir a etre filme concerne tout participant,
+    // enseignant comme etudiant. Le sujet est toujours le porteur du jeton.
+    // Throttle : la table `consents` est APPEND-ONLY. Chaque depot y ajoute
+    // trois lignes et n'en retire jamais. Sans borne, un client boucle et fait
+    // grossir indefiniment une table dont on ne peut rien effacer.
+    Route::post('/visio/consent', [LMSVisioConsentController::class, 'store'])
+        ->name('lms.visio.consent.store')
+        ->middleware('throttle:10,1');
+
+    Route::get('/visio/consent', [LMSVisioConsentController::class, 'show'])
+        ->name('lms.visio.consent.show');
 
     // Étudiant rejoint visio
     Route::post('/seances/{seanceId}/join', [LMSVisioParticipantController::class, 'joinVisio'])

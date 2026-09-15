@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Requests;
 
 use App\Models\User;
+use App\Services\Roster\RosterAuthority;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -26,12 +27,25 @@ final class ImportPreviewRequest extends FormRequest
         'tab' => "\t",
     ];
 
+    /**
+     * Deux conditions, et la seconde manquait.
+     *
+     * Le rôle dit QUI peut importer. La capacité dit SI l'établissement est
+     * maître de sa liste : une école branchée à KLASSCI reçoit ses élèves de
+     * la synchronisation, et un import local y créerait une seconde liste à
+     * côté de celle qui fait foi.
+     *
+     * Le refus vit ici, dans `authorize()`, donc AVANT la validation et avant
+     * toute lecture du CSV : un fichier hors règles rend 403 et non 422, parce
+     * que la question du droit se tranche en premier.
+     */
     public function authorize(): bool
     {
         $user = $this->user();
 
         return $user instanceof User
-            && ($user->isTeacher() || $user->isCoordinator() || $user->isAdmin());
+            && ($user->isTeacher() || $user->isCoordinator() || $user->isAdmin())
+            && app(RosterAuthority::class)->allowsLocalEnrolment();
     }
 
     /**

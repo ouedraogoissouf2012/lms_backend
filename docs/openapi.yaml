@@ -68,6 +68,101 @@ components:
                 example: "Trop de requêtes. Veuillez réessayer plus tard."
 
   schemas:
+    MessageOnly:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+
+    ActivationInput:
+      type: object
+      required:
+        - token
+        - password
+        - password_confirmation
+      properties:
+        token:
+          type: string
+          maxLength: 128
+          description: "Le jeton extrait du lien d'activation."
+        password:
+          type: string
+          minLength: 8
+          description: "Le secret que le titulaire choisit ; personne d'autre ne l'a connu."
+        password_confirmation:
+          type: string
+          description: "Sur un ecran sans renvoi possible du lien, une faute de frappe enfermerait le titulaire dehors."
+
+    SchoolRequestQueue:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: integer
+              nom_demandeur:
+                type: string
+              email_demandeur:
+                type: string
+              telephone_demandeur:
+                type: string
+                nullable: true
+              nom_ecole:
+                type: string
+              slug_souhaite:
+                type: string
+                nullable: true
+              usage_prevu:
+                type: string
+              created_at:
+                type: string
+                format: date-time
+        meta:
+          type: object
+          properties:
+            current_page:
+              type: integer
+            last_page:
+              type: integer
+            per_page:
+              type: integer
+            total:
+              type: integer
+
+    SchoolRequestValidated:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          type: object
+          properties:
+            institution:
+              type: object
+              properties:
+                id:
+                  type: integer
+                slug:
+                  type: string
+                name:
+                  type: string
+            activation_url:
+              type: string
+              format: uri
+              description: |
+                Lien vers l'application WEB, jamais vers l'API. Affiche UNE
+                SEULE FOIS : le jeton n'est stocke qu'en empreinte SHA-256.
+
     VisioConsentInput:
       type: object
       required:
@@ -335,6 +430,232 @@ paths:
                 $ref: '#/components/schemas/VisioConsentState'
         '401':
           description: "Non authentifie"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /activation:
+    post:
+      tags:
+        - School registration
+      summary: "Poser son mot de passe depuis un lien d'activation"
+      description: |
+        Route ANONYME par nature : celui qui active n'a pas encore de quoi
+        s'authentifier. Le jeton EST l'autorisation.
+
+        Le produit n'ayant aucun canal de courriel, le lien circule hors bande
+        (WhatsApp, SMS, de vive voix). Il est a usage unique et expirant.
+
+        Debit limite a 5 requetes par minute et par IP.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ActivationInput'
+      responses:
+        '200':
+          description: "Mot de passe enregistre ; le titulaire peut se connecter."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageOnly'
+        '410':
+          description: |
+            Jeton inconnu, deja consomme, ou perime. Les trois cas rendent le
+            MEME code : les distinguer dirait a un inconnu qu'un lien a existe
+            pour cette valeur, donc qu'un compte l'attend.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: "Mot de passe absent, trop court, ou confirmation differente"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          description: "Trop de tentatives"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /admin/school-requests:
+    get:
+      tags:
+        - School registration
+      summary: "La file des demandes d'ouverture en attente"
+      description: |
+        Reserve au supradmin PLATEFORME (`role:supradmin` + `platform.supradmin`).
+
+        Seules les demandes en attente sont listees : une demande tranchee
+        n'appelle plus de decision. Paginee — cette file est alimentee par un
+        endpoint anonyme, et un throttle borne le debit d'entree, pas le volume
+        accumule.
+      security:
+        - sanctum: []
+      parameters:
+        - name: per_page
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 25
+      responses:
+        '200':
+          description: "Page de demandes en attente"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SchoolRequestQueue'
+        '401':
+          description: "Non authentifie"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: "Reserve au supradmin plateforme"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /admin/school-requests/{schoolRequest}/validate:
+    post:
+      tags:
+        - School registration
+      summary: "Valider une demande : ouvrir l'ecole et son premier compte"
+      description: |
+        UNE transaction : l'institution (autonome, `klassci_api_url` a null), son
+        premier compte en `superAdmin`, et le passage de la demande en validee.
+        Si l'une echoue, aucune n'est ecrite.
+
+        Aucun mot de passe n'est choisi ni transmis. La reponse contient un LIEN
+        D'ACTIVATION a usage unique, affiche UNE SEULE FOIS : il n'est stocke
+        nulle part en clair et ne sera pas reaffiche.
+
+        Le `slug` du corps est facultatif : le demandeur n'a exprime qu'un
+        souhait, jamais une reservation, et c'est ici que le supradmin arbitre
+        une collision avec un etablissement existant.
+      security:
+        - sanctum: []
+      parameters:
+        - name: schoolRequest
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                slug:
+                  type: string
+                  maxLength: 50
+                  pattern: '^[a-z0-9\-]+$'
+                  nullable: true
+      responses:
+        '200':
+          description: "Ecole ouverte ; le lien d'activation est renvoye une seule fois."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SchoolRequestValidated'
+        '401':
+          description: "Non authentifie"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: "Reserve au supradmin plateforme"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: "Demande deja tranchee"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          description: |
+            `ACTIVATION_URL_FRONT` n'est pas configuree : le lien serait mort
+            chez son destinataire. Refus fail-closed, rien n'est ecrit.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /admin/school-requests/{schoolRequest}/refuse:
+    post:
+      tags:
+        - School registration
+      summary: "Refuser une demande d'ouverture"
+      description: |
+        Le motif est OBLIGATOIRE : le demandeur peut redeposer un dossier —
+        l'unicite partielle ne borne que les demandes en attente — et
+        l'exploitant doit pouvoir savoir pourquoi il avait tranche.
+
+        Ne cree ni institution ni compte.
+      security:
+        - sanctum: []
+      parameters:
+        - name: schoolRequest
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - motif_refus
+              properties:
+                motif_refus:
+                  type: string
+                  minLength: 10
+                  maxLength: 2000
+      responses:
+        '200':
+          description: "Demande refusee"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageOnly'
+        '401':
+          description: "Non authentifie"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: "Reserve au supradmin plateforme"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: "Demande deja tranchee"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: "Motif absent ou trop court"
           content:
             application/json:
               schema:

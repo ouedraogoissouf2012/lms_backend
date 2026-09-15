@@ -40,6 +40,8 @@
              le .env local du dev. CI doit fournir APP_KEY via env var GitHub Actions
              si PHPUnit est ajouté au workflow. -->
         <env name="BCRYPT_ROUNDS" value="4"/>
+        <!-- #803 : sans adresse du front, ActivationLinkBuilder refuse (fail-closed). -->
+        <env name="ACTIVATION_URL_FRONT" value="https://lms.test"/>
         <!-- CACHE_STORE (Laravel 12) et non CACHE_DRIVER (nom mort pré-11) :
              l'ancien <env name="CACHE_DRIVER" value="array"/> n'était jamais lu
              par config/cache.php:18 — la suite tournait déjà en database.

@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\API\ActivationController;
 use App\Http\Controllers\API\AdminController;
 use App\Http\Controllers\API\AuthController;
 use App\Http\Controllers\API\ConfigurationController;
@@ -44,6 +45,18 @@ Route::get('/institution/current', [InstitutionDirectoryController::class, 'curr
 // supradmin) reste le filtre principal faute de canal de courriel pour
 // verifier une adresse.
 Route::post('/school-requests', [SchoolRegistrationRequestController::class, 'store'])
+    ->middleware('throttle:5,1');
+
+// ============================================
+// ACTIVATION DE COMPTE - anonyme par nature (#803, ADR-803-02)
+// ============================================
+// Celui qui active n'a precisement pas encore de quoi s'authentifier : le jeton
+// EST l'autorisation. Il est a usage unique et expirant, et le produit n'ayant
+// aucun canal de courriel, il circule hors bande.
+//
+// 5/min/IP : le jeton fait 64 caracteres aleatoires, le forcer n'a aucun sens,
+// mais un endpoint anonyme sans borne reste une porte ouverte.
+Route::post('/activation', [ActivationController::class, 'store'])
     ->middleware('throttle:5,1');
 
 // ============================================

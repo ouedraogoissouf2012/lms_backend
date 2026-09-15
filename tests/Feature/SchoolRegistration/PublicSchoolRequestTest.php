@@ -99,9 +99,16 @@ final class PublicSchoolRequestTest extends TestCase
         $this->assertDatabaseHas('institutions', ['id' => $institution->id, 'slug' => 'esbtp']);
     }
 
-    public function test_une_seconde_demande_du_meme_email_ne_duplique_pas(): void
+    public function test_une_seconde_demande_du_meme_email_ne_duplique_ni_n_ecrase(): void
     {
-        $this->postJson(self::ROUTE, $this->demandeValide())->assertStatus(201);
+        // Ce test affirmait l'inverse : que la SECONDE valeur l'emportait. Il
+        // documentait donc au vert une primitive d'écrasement — l'endpoint est
+        // anonyme et l'adresse n'est jamais vérifiée, si bien que n'importe qui
+        // pouvait réécrire la demande d'une école dont l'adresse est publiée.
+        // Le premier dépôt fait foi (#812).
+        $premier = $this->demandeValide();
+
+        $this->postJson(self::ROUTE, $premier)->assertStatus(201);
         $this->postJson(self::ROUTE, $this->demandeValide([
             'nom_ecole' => 'Cabinet Kouassi Formation SARL',
         ]))->assertStatus(201);
@@ -109,7 +116,7 @@ final class PublicSchoolRequestTest extends TestCase
         $this->assertDatabaseCount('school_registration_requests', 1);
         $this->assertDatabaseHas('school_registration_requests', [
             'email_demandeur' => 'awa.kouassi@cabinet-kf.ci',
-            'nom_ecole' => 'Cabinet Kouassi Formation SARL',
+            'nom_ecole' => $premier['nom_ecole'],
         ]);
     }
 

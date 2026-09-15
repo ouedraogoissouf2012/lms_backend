@@ -52,10 +52,22 @@ final class SchoolRegistrationRequestService
         $demande = $this->enAttentePour($email);
 
         if ($demande instanceof SchoolRegistrationRequest) {
-            $demande->fill($valide)->save();
-        } else {
-            $demande = $this->creerOuRattraper($valide, $email);
+            // LE PREMIER DÉPÔT FAIT FOI. Cet endpoint est anonyme et l'adresse
+            // n'est jamais vérifiée — le projet n'a même pas de canal d'envoi.
+            // La traiter comme une preuve de propriété permettait à n'importe
+            // qui de réécrire la demande d'une école dont l'adresse est
+            // publiée, sans laisser de trace. Depuis #815, ce sont ces champs
+            // qui deviennent l'Institution et son premier compte `superAdmin`.
+            //
+            // Conséquence assumée : corriger une faute de frappe ne se fait
+            // plus en redéposant. C'est au supradmin d'arbitrer, jusqu'à ce
+            // qu'un canal vérifié existe.
+            $this->journaliserDivergence($demande, $valide);
+
+            return $demande;
         }
+
+        $demande = $this->creerOuRattraper($valide, $email);
 
         // Journalisé sans l'adresse : la file du supradmin est la source de
         // vérité, le journal n'a pas à dupliquer une donnée personnelle.
@@ -65,6 +77,38 @@ final class SchoolRegistrationRequestService
         ]);
 
         return $demande;
+    }
+
+    /**
+     * Un second dépôt pour une adresse déjà en attente n'écrit rien, mais ne
+     * disparaît pas non plus : le supradmin doit pouvoir voir qu'une demande a
+     * été contestée avant de l'approuver.
+     *
+     * @param  array<string, mixed>  $valide
+     */
+    private function journaliserDivergence(SchoolRegistrationRequest $demande, array $valide): void
+    {
+        $diverge = [];
+
+        foreach (['nom_demandeur', 'telephone_demandeur', 'nom_ecole', 'slug_souhaite'] as $champ) {
+            $propose = $valide[$champ] ?? null;
+
+            if (is_string($propose) && $propose !== (string) $demande->{$champ}) {
+                $diverge[] = $champ;
+            }
+        }
+
+        if ($diverge === []) {
+            return;
+        }
+
+        // Les VALEURS proposées ne sont pas journalisées : elles viennent d'un
+        // inconnu, et le journal n'a pas à devenir le canal par lequel il écrit
+        // quelque chose. Seuls les champs concernés sont nommés.
+        $this->logger->warning('Second dépôt divergent sur une demande en attente — ignoré', [
+            'demande_id' => $demande->getKey(),
+            'champs' => $diverge,
+        ]);
     }
 
     private function enAttentePour(string $email): ?SchoolRegistrationRequest

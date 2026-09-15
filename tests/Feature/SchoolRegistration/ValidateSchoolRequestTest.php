@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\SchoolRegistration;
 
+use App\Enums\InstitutionMode;
 use App\Models\ActivationToken;
 use App\Models\Institution;
 use App\Models\SchoolRegistrationRequest;
@@ -159,6 +160,41 @@ final class ValidateSchoolRequestTest extends TestCase
 
         $reponse->assertJsonPath('data.institution.slug', 'cabinet-kouassi');
         $this->assertIsString($reponse->json('data.activation_url'));
+    }
+
+    /**
+     * L ecole ouverte doit se DECLARER autonome, pas seulement le paraitre.
+     *
+     * `institutions.mode` est NOT NULL avec le defaut `klassci` (#814/#805) :
+     * omettre la colonne ne produit donc pas une erreur, mais une ecole
+     * etiquetee connectee a KLASSCI alors qu elle n en depend pas. Le mode est
+     * DECLARE et jamais deduit — une URL nulle ne distingue pas
+     * « pas encore configure » de « deliberement autonome », et
+     * `KlassciConfigResolver` retombe de toute facon sur la configuration
+     * globale (cf. #792).
+     *
+     * `RosterAuthorityFactory` lit ce mode pour accorder ou refuser
+     * l inscription locale : mal declare, l ecole autonome se verrait refuser
+     * ce qui fait sa raison d etre.
+     */
+    public function test_l_ecole_ouverte_se_declare_autonome(): void
+    {
+        $entete = $this->enteteSupradmin();
+        $demande = $this->demandeEnAttente();
+
+        $this->withHeaders($entete)
+            ->postJson($this->routeValidation($demande))
+            ->assertStatus(200);
+
+        $this->assertDatabaseHas('institutions', [
+            'slug' => 'cabinet-kouassi',
+            'mode' => 'standalone',
+        ]);
+
+        $institution = Institution::query()->withoutGlobalScopes()
+            ->where('slug', 'cabinet-kouassi')->firstOrFail();
+
+        $this->assertSame(InstitutionMode::Standalone, $institution->mode);
     }
 
     public function test_le_supradmin_peut_arbitrer_le_slug_en_cas_de_collision(): void

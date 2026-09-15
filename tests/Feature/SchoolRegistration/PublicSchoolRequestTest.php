@@ -221,11 +221,17 @@ final class PublicSchoolRequestTest extends TestCase
 
         SchoolRegistrationRequest::flushEventListeners();
 
-        // Une seule ligne : la jumelle, mise a jour par notre charge utile.
+        // Une seule ligne, et c'est CELLE DE LA JUMELLE, intacte.
+        //
+        // Ce test attendait l'inverse : que notre charge utile la mette a jour.
+        // Or la regle posee en #812 est que le premier depot fait foi, et une
+        // regle qui cede des que deux requetes se croisent n'en est pas une :
+        // il suffisait de deposer en meme temps que sa victime pour reecrire sa
+        // demande. Les deux chemins disent desormais la meme chose.
         $this->assertDatabaseCount('school_registration_requests', 1);
         $this->assertDatabaseHas('school_registration_requests', [
             'email_demandeur' => 'awa.kouassi@cabinet-kf.ci',
-            'nom_ecole' => 'Cabinet Kouassi Formation',
+            'nom_ecole' => 'Depot concurrent',
             'statut' => 'en_attente',
         ]);
     }

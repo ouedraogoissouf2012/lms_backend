@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\SchoolRegistration;
 
+use App\Enums\InstitutionMode;
 use App\Enums\Role;
 use App\Enums\SchoolRequestStatus;
 use App\Exceptions\BusinessException;
@@ -34,11 +35,30 @@ use Psr\Log\LoggerInterface;
  * reproduirait donc exactement le défaut #793 : une école où personne ne peut
  * entrer. L'atomicité EST le correctif.
  *
- * ## L'institution naît autonome
+ * ## L'institution naît autonome, et le DÉCLARE
  *
- * `klassci_api_url` reste NULL : c'est le discriminant du monde local, celui
- * que `LoginOrchestrator:83-86` lit déjà. Aucune colonne `mode` n'est
- * introduite — la garde OCP la refuse.
+ * `mode` vaut `standalone`. La colonne est NOT NULL avec le défaut `klassci`
+ * (#814) : l'omettre ne produirait pas d'erreur, mais une école étiquetée
+ * connectée à KLASSCI alors qu'elle n'en dépend pas — et
+ * `RosterAuthorityFactory`, qui lit ce mode pour accorder l'inscription
+ * locale, la lui refuserait.
+ *
+ * Le mode est DÉCLARÉ, jamais déduit de `klassci_api_url IS NULL`. Trois
+ * raisons, toutes vérifiées :
+ *
+ *   - une colonne nullable ne distingue pas « pas encore configuré » de
+ *     « délibérément autonome » : un oubli de saisie deviendrait un changement
+ *     de mode en production, en silence ;
+ *   - `KlassciConfigResolver` retombe sur la configuration GLOBALE quand
+ *     l'institution n'a pas d'URL, si bien qu'un tenant autonome en reçoit une
+ *     dès que `KLASSCI_API_URL` est définie (c'est #792) ;
+ *   - la garde OCP n'a jamais interdit cette colonne. Elle interdit de
+ *     résoudre le mode ailleurs qu'au point de liaison — et son propre
+ *     docblock dit « l'attribut est la seule écriture possible, PUISQUE le
+ *     mode est une colonne du modèle » (`scripts/lib/ocp-ratchet.php:31`).
+ *
+ * Ce service DÉCLARE le mode ; il ne le lit jamais. Le seul lecteur autorisé
+ * reste `RosterAuthorityFactory`.
  *
  * ## Aucun mot de passe n'est choisi ici
  *
@@ -74,8 +94,8 @@ final class SchoolRequestDecisionService
         $ouverte = $this->db->transaction(function () use ($demande, $slug, $decideur): EcoleOuverte {
             $institution = Institution::create([
                 'slug' => $slug,
+                'mode' => InstitutionMode::Standalone,
                 'name' => $demande->nom_ecole,
-                // Autonome par construction : aucune liaison KLASSCI.
                 'klassci_api_url' => null,
                 'is_active' => true,
             ]);

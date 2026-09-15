@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Import;
 
+use App\Enums\InstitutionMode;
 use App\Jobs\ProcessImportJob;
 use App\Models\Classe;
 use App\Models\Import;
@@ -22,8 +23,8 @@ use Tests\TestCase;
  */
 final class ImportJobTest extends TestCase
 {
-    use RefreshDatabase;
     use ActsAsTenantUser;
+    use RefreshDatabase;
 
     protected function setUp(): void
     {
@@ -94,7 +95,9 @@ final class ImportJobTest extends TestCase
 
     private function teacher(): User
     {
-        $school = Institution::factory()->create();
+        // Importer suppose que l'ecole tient sa propre liste (#805) : le mode
+        // est desormais une premisse explicite de ces tests, et non un implicite.
+        $school = Institution::factory()->create(['mode' => InstitutionMode::Standalone]);
         app(TenantManager::class)->set($school);
 
         return User::factory()->teacher()->create(['institution_id' => $school->id]);

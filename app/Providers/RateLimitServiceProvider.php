@@ -55,6 +55,24 @@ final class RateLimitServiceProvider extends ServiceProvider
 
     private const SEARCH_PER_MINUTE = 30;
 
+    /**
+     * Seule écriture NON authentifiée du système (#812). Deux bornes, parce
+     * qu'une seule ne tient pas :
+     *
+     * - par IP, pour l'usage normal ;
+     * - globale par jour, parce que `bootstrap/app.php` déclare
+     *   `trustProxies(at: '*')`. Symfony rend alors l'en-tête
+     *   `X-Forwarded-For` FOURNI PAR L'APPELANT, et une boucle qui le fait
+     *   tourner tombe à chaque fois dans un compteur neuf. Aucun en-tête ne
+     *   déplace la seconde borne.
+     *
+     * Le plafond journalier est généreux pour l'usage réel — une poignée de
+     * demandes — et ruineux pour un déversement.
+     */
+    private const SCHOOL_REQUESTS_PER_MINUTE = 5;
+
+    private const SCHOOL_REQUESTS_PER_DAY = 200;
+
     public function boot(): void
     {
         RateLimiter::for('proxy', function (Request $request): Limit {
@@ -71,6 +89,17 @@ final class RateLimitServiceProvider extends ServiceProvider
 
         RateLimiter::for('search', function (Request $request): Limit {
             return $this->limitForUser($request, self::SEARCH_PER_MINUTE);
+        });
+
+        // Un limiteur NOMMÉ, et non un `throttle:5,1` en ligne : la clé anonyme
+        // de `ThrottleRequests` est `domaine|ip`, sans chemin ni nom de route.
+        // Le seau était donc partagé avec `/auth/login` — cinq dépôts depuis
+        // une école derrière une seule IP refusaient la connexion suivante.
+        RateLimiter::for('school-requests', function (Request $request): array {
+            return [
+                Limit::perMinute(self::SCHOOL_REQUESTS_PER_MINUTE)->by((string) $request->ip()),
+                Limit::perDay(self::SCHOOL_REQUESTS_PER_DAY)->by('school-requests-global'),
+            ];
         });
     }
 

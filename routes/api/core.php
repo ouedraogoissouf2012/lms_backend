@@ -45,7 +45,7 @@ Route::get('/institution/current', [InstitutionDirectoryController::class, 'curr
 // supradmin) reste le filtre principal faute de canal de courriel pour
 // verifier une adresse.
 Route::post('/school-requests', [SchoolRegistrationRequestController::class, 'store'])
-    ->middleware('throttle:5,1');
+    ->middleware('throttle:school-requests');
 
 // ============================================
 // ACTIVATION DE COMPTE - anonyme par nature (#803, ADR-803-02)

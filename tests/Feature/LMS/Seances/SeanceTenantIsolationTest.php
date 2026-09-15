@@ -218,8 +218,8 @@ final class SeanceTenantIsolationTest extends TestCase
         // A synchronise une séance sur la classe klassci_id=700.
         $this->mock(KlassciProxyService::class, function (MockInterface $mock): void {
             $mock->shouldReceive('requestWithUserToken')
-                ->with('token-a', 'matieres', 'GET')
-                ->andReturn(['data' => [['id' => 10, 'nom' => 'Matiere A']]]);
+                ->with('token-a', 'me/teacher-dashboard', 'GET')
+                ->andReturn(['data' => ['matieres' => [['id' => 10, 'nom' => 'Matiere A']]]]);
             $mock->shouldReceive('getEmploiTemps')
                 ->andReturn(['data' => [[
                     'id' => 42,
@@ -288,8 +288,8 @@ final class SeanceTenantIsolationTest extends TestCase
         int $classeId,
     ): void {
         $mock->shouldReceive('requestWithUserToken')
-            ->with($token, 'matieres', 'GET')
-            ->andReturn(['data' => [['id' => 10, 'nom' => $matiereNom]]]);
+            ->with($token, 'me/teacher-dashboard', 'GET')
+            ->andReturn(['data' => ['matieres' => [['id' => 10, 'nom' => $matiereNom]]]]);
 
         // La synchronisation planifiée lit désormais l'emploi du temps, comme
         // les listes affichées — `seances_programmees` étant toujours vide chez

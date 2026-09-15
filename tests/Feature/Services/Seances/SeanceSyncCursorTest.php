@@ -148,12 +148,12 @@ final class SeanceSyncCursorTest extends TestCase
         $this->mock(KlassciProxyService::class, function (MockInterface $mock) use (&$failing): void {
             $mock->shouldReceive('requestWithUserToken')
                 ->andReturnUsing(function (string $token, string $endpoint) use (&$failing): array {
-                    if ($endpoint === 'matieres' && $failing) {
+                    if ($endpoint === 'me/teacher-dashboard' && $failing) {
                         throw new \RuntimeException('KLASSCI indisponible');
                     }
 
-                    return $endpoint === 'matieres'
-                        ? ['data' => [['id' => 10, 'nom' => 'Maths']]]
+                    return $endpoint === 'me/teacher-dashboard'
+                        ? ['data' => ['matieres' => [['id' => 10, 'nom' => 'Maths']]]]
                         : ['data' => []];
                 });
             $mock->shouldReceive('getEmploiTemps')
@@ -201,7 +201,7 @@ final class SeanceSyncCursorTest extends TestCase
         $this->mock(KlassciProxyService::class, function (MockInterface $mock) use (&$seen): void {
             $mock->shouldReceive('requestWithUserToken')
                 ->andReturnUsing(function (string $token, string $endpoint) use (&$seen): array {
-                    if ($endpoint !== 'matieres') {
+                    if ($endpoint !== 'me/teacher-dashboard') {
                         return ['data' => []];
                     }
                     $seen[] = $token;
@@ -209,7 +209,7 @@ final class SeanceSyncCursorTest extends TestCase
                         throw new \RuntimeException('Jeton KLASSCI rejeté');
                     }
 
-                    return ['data' => [['id' => 10, 'nom' => 'Maths']]];
+                    return ['data' => ['matieres' => [['id' => 10, 'nom' => 'Maths']]]];
                 });
             $mock->shouldReceive('getEmploiTemps')
                 ->andReturn(['data' => []]);
@@ -246,8 +246,8 @@ final class SeanceSyncCursorTest extends TestCase
 
         $this->mock(KlassciProxyService::class, function (MockInterface $mock): void {
             $mock->shouldReceive('requestWithUserToken')
-                ->andReturnUsing(fn (string $token, string $endpoint): array => $endpoint === 'matieres'
-                    ? ['data' => [['id' => 10, 'nom' => 'Maths']]]
+                ->andReturnUsing(fn (string $token, string $endpoint): array => $endpoint === 'me/teacher-dashboard'
+                    ? ['data' => ['matieres' => [['id' => 10, 'nom' => 'Maths']]]]
                     : ['data' => []]);
             $mock->shouldReceive('getEmploiTemps')
                 ->andReturn(['data' => [[
@@ -374,10 +374,10 @@ final class SeanceSyncCursorTest extends TestCase
         $this->mock(KlassciProxyService::class, function (MockInterface $mock) use ($recorder): void {
             $mock->shouldReceive('requestWithUserToken')
                 ->andReturnUsing(function (string $token, string $endpoint) use ($recorder): array {
-                    if ($endpoint === 'matieres') {
+                    if ($endpoint === 'me/teacher-dashboard') {
                         $recorder->seen[] = $token;
 
-                        return ['data' => [['id' => 10, 'nom' => 'Maths']]];
+                        return ['data' => ['matieres' => [['id' => 10, 'nom' => 'Maths']]]];
                     }
 
                     return ['data' => []];

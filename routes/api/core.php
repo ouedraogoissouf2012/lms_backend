@@ -1,16 +1,17 @@
 <?php
 
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\API\Proxy\ProxyAcademicController;
-use App\Http\Controllers\API\Proxy\ProxyDashboardController;
-use App\Http\Controllers\API\Proxy\ProxyOrganisationController;
-use App\Http\Controllers\API\AuthController;
-use App\Http\Controllers\API\PasswordResetController;
 use App\Http\Controllers\API\AdminController;
+use App\Http\Controllers\API\AuthController;
 use App\Http\Controllers\API\ConfigurationController;
 use App\Http\Controllers\API\InstitutionDirectoryController;
 use App\Http\Controllers\API\IntegrationController;
+use App\Http\Controllers\API\PasswordResetController;
+use App\Http\Controllers\API\Proxy\ProxyAcademicController;
+use App\Http\Controllers\API\Proxy\ProxyDashboardController;
+use App\Http\Controllers\API\Proxy\ProxyOrganisationController;
+use App\Http\Controllers\API\SchoolRegistrationRequestController;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Route;
 
 // Route de test (publique)
 Route::get('/ping', function () {
@@ -30,6 +31,20 @@ Route::get('/institutions/active', [InstitutionDirectoryController::class, 'acti
 // ============================================
 Route::get('/institution/current', [InstitutionDirectoryController::class, 'current']);
 
+// ============================================
+// OUVERTURE D'ECOLE - Demande publique (#803, ADR-803-01)
+// ============================================
+// SEULE ecriture non authentifiee du systeme. Elle n'ecrit qu'une ligne inerte
+// hors multi-tenant : ni compte, ni tenant, ni slug reserve. Pas d'en-tete
+// `institution.header` — il n'y a pas encore d'etablissement a resoudre, et
+// l'exiger rendrait la route inatteignable pour celui a qui elle est destinee.
+//
+// 5 requetes/minute/IP, aligne sur /forgot-password : un formulaire rempli a la
+// main n'en demande pas davantage, et le verrou humain (validation par le
+// supradmin) reste le filtre principal faute de canal de courriel pour
+// verifier une adresse.
+Route::post('/school-requests', [SchoolRegistrationRequestController::class, 'store'])
+    ->middleware('throttle:5,1');
 
 // ============================================
 // AUTHENTIFICATION - Routes publiques
@@ -106,15 +121,15 @@ Route::prefix('proxy')
     ->middleware(['auth:sanctum', 'klassci.sync', 'role:enseignant,coordinateur', 'throttle:proxy-write'])
     ->group(function () {
 
-    // Sauvegarder les notes (Enseignants/Coordinateurs uniquement)
-    Route::post('/evaluations/{id}/notes', [ProxyAcademicController::class, 'saveNotes']);
+        // Sauvegarder les notes (Enseignants/Coordinateurs uniquement)
+        Route::post('/evaluations/{id}/notes', [ProxyAcademicController::class, 'saveNotes']);
 
-    // Sauvegarder les présences (Enseignants/Coordinateurs uniquement)
-    Route::post('/cours/{id}/presences', [ProxyAcademicController::class, 'savePresences']);
+        // Sauvegarder les présences (Enseignants/Coordinateurs uniquement)
+        Route::post('/cours/{id}/presences', [ProxyAcademicController::class, 'savePresences']);
 
-    // Mettre à jour statut cours (Enseignants/Coordinateurs uniquement)
-    Route::put('/cours/{id}/statut', [ProxyAcademicController::class, 'updateCoursStatut']);
-});
+        // Mettre à jour statut cours (Enseignants/Coordinateurs uniquement)
+        Route::put('/cours/{id}/statut', [ProxyAcademicController::class, 'updateCoursStatut']);
+    });
 
 // ============================================
 // ADMIN - Gestion des utilisateurs et configuration

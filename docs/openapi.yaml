@@ -68,6 +68,49 @@ components:
                 example: "Trop de requêtes. Veuillez réessayer plus tard."
 
   schemas:
+    SchoolRegistrationRequestInput:
+      type: object
+      required:
+        - nom_demandeur
+        - email_demandeur
+        - nom_ecole
+        - usage_prevu
+      properties:
+        nom_demandeur:
+          type: string
+          maxLength: 191
+          description: "Futur superAdmin de l'etablissement, si la demande est validee."
+          example: "Awa Kouassi"
+        email_demandeur:
+          type: string
+          format: email
+          maxLength: 191
+          example: "awa.kouassi@cabinet-kf.ci"
+        telephone_demandeur:
+          type: string
+          maxLength: 40
+          nullable: true
+          example: "+225 07 00 00 00 00"
+        nom_ecole:
+          type: string
+          maxLength: 191
+          example: "Cabinet Kouassi Formation"
+        slug_souhaite:
+          type: string
+          maxLength: 50
+          nullable: true
+          pattern: '^[a-z0-9\-]+$'
+          description: |
+            Souhait, JAMAIS une reservation. Le supradmin l'arbitre a la
+            validation, collision avec un etablissement existant comprise.
+          example: "cabinet-kouassi"
+        usage_prevu:
+          type: string
+          minLength: 10
+          maxLength: 2000
+          description: "Texte libre. Obligatoire : il augmente le cout d'un depot automatise."
+          example: "Formations comptabilite OHADA, promotions de 25 stagiaires."
+
     # Error Response
     ErrorResponse:
       type: object
@@ -136,6 +179,64 @@ components:
 # Paths
 paths:
   # ============ AUTHENTICATION ============
+  /school-requests:
+    post:
+      tags:
+        - School registration
+      summary: "Deposer une demande d'ouverture d'ecole"
+      description: |
+        Porte d'entree du monde autonome (ADR-803-01). SEULE ecriture non
+        authentifiee du systeme.
+
+        N'ecrit qu'une ligne inerte, hors perimetre multi-tenant : ni compte,
+        ni etablissement, ni reservation du `slug_souhaite`. La demande ne
+        devient rien tant qu'un supradmin plateforme n'a pas tranche.
+
+        Ne requiert PAS l'en-tete `X-Institution` : il n'y a pas encore
+        d'etablissement a resoudre.
+
+        Une seule demande en attente par adresse : un second depot met a jour
+        la premiere au lieu d'en creer une seconde.
+
+        Debit limite a 5 requetes par minute et par IP.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SchoolRegistrationRequestInput'
+      responses:
+        '201':
+          description: |
+            Demande enregistree. La reponse ne rend NI l'identifiant NI le
+            statut : l'endpoint est anonyme, et les exposer offrirait de quoi
+            enumerer les dossiers ou confirmer qu'une adresse a deja depose.
+
+            Elle ne promet aucun courriel : le produit n'a aucun canal d'envoi.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Votre demande est enregistree. Elle sera examinee par notre equipe."
+        '422':
+          description: "Validation error"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          description: "Trop de demandes depuis cette adresse IP"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
   /auth/login:
     post:
       tags:

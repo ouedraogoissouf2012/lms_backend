@@ -68,6 +68,168 @@ components:
                 example: "Trop de requêtes. Veuillez réessayer plus tard."
 
   schemas:
+    ProgramInput:
+      type: object
+      required:
+        - titre
+      properties:
+        titre:
+          type: string
+          maxLength: 191
+        description:
+          type: string
+          maxLength: 5000
+          nullable: true
+
+    ProgramCreated:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          type: object
+          properties:
+            id:
+              type: integer
+            titre:
+              type: string
+            version:
+              type: integer
+
+    TrainingSessionInput:
+      type: object
+      required:
+        - program_id
+        - libelle
+      properties:
+        program_id:
+          type: integer
+          description: "Doit appartenir a l etablissement de l appelant."
+        libelle:
+          type: string
+          maxLength: 191
+        enrollment_opens_at:
+          type: string
+          format: date
+          nullable: true
+        enrollment_closes_at:
+          type: string
+          format: date
+          nullable: true
+        starts_on:
+          type: string
+          format: date
+          nullable: true
+        ends_on:
+          type: string
+          format: date
+          nullable: true
+        certificate_available_at:
+          type: string
+          format: date
+          nullable: true
+        min_enrollments:
+          type: integer
+          minimum: 1
+          nullable: true
+          description: "Alerte de sous-inscription, pas un verrou."
+        tarif:
+          type: integer
+          minimum: 0
+          nullable: true
+          description: "Plus petite unite monetaire. Jamais un flottant."
+        devise:
+          type: string
+          minLength: 3
+          maxLength: 3
+          nullable: true
+        heures_stagiaires:
+          type: integer
+          minimum: 0
+          nullable: true
+
+    TrainingSessionView:
+      type: object
+      properties:
+        id:
+          type: integer
+        libelle:
+          type: string
+        status:
+          type: string
+          enum: [brouillon, publiee, annulee, cloturee, archivee, purgee]
+          description: "Decision humaine, STOCKEE."
+        phase:
+          type: string
+          enum: [a_venir, inscriptions_ouvertes, en_cours, terminee]
+          description: |
+            DERIVEE des dates, jamais stockee. Aucune colonne ne la porte : une
+            colonne exigerait un job nocturne qui finirait par diverger.
+        program_id:
+          type: integer
+        enrollment_opens_at:
+          type: string
+          format: date
+          nullable: true
+        enrollment_closes_at:
+          type: string
+          format: date
+          nullable: true
+        starts_on:
+          type: string
+          format: date
+          nullable: true
+        ends_on:
+          type: string
+          format: date
+          nullable: true
+        certificate_available_at:
+          type: string
+          format: date
+          nullable: true
+        min_enrollments:
+          type: integer
+          nullable: true
+        tarif:
+          type: integer
+          nullable: true
+        devise:
+          type: string
+          nullable: true
+
+    TrainingSessionCreated:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          $ref: '#/components/schemas/TrainingSessionView'
+
+    TrainingSessionPage:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/TrainingSessionView'
+        meta:
+          type: object
+          properties:
+            current_page:
+              type: integer
+            last_page:
+              type: integer
+            per_page:
+              type: integer
+            total:
+              type: integer
+
     MessageOnly:
       type: object
       properties:
@@ -656,6 +818,151 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
         '422':
           description: "Motif absent ou trop court"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /programs:
+    post:
+      tags:
+        - Session de formation
+      summary: "Creer un Programme"
+      description: |
+        Le Programme est le contenu pedagogique VERSIONNABLE : il ne porte ni
+        dates ni tarif. Ceux-la vivent sur la Periode — poser le tarif ici
+        obligerait a dupliquer le contenu pour chaque variante tarifaire.
+
+        `institution_id` n est jamais accepte : il vient du tenant resolu.
+        `version` non plus — un Programme nait en version 1.
+
+        Reserve aux roles coordinateur, admin et superAdmin : organiser une
+        formation est un acte de gestion.
+      security:
+        - sanctum: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProgramInput'
+      responses:
+        '201':
+          description: "Programme cree"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProgramCreated'
+        '401':
+          description: "Non authentifie"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: "Role insuffisant"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: "Charge invalide"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /training-sessions:
+    get:
+      tags:
+        - Session de formation
+      summary: "Lister les Periodes de son etablissement"
+      description: |
+        Bornee a l etablissement de l appelant, explicitement et pas seulement
+        par le scope global : ce dernier est fail-open quand aucun tenant n est
+        resolu. Paginee.
+      security:
+        - sanctum: []
+      parameters:
+        - name: per_page
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 25
+      responses:
+        '200':
+          description: "Page de Periodes"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrainingSessionPage'
+        '401':
+          description: "Non authentifie"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: "Role insuffisant"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    post:
+      tags:
+        - Session de formation
+      summary: "Creer une Periode — la session de formation datee"
+      description: |
+        L entite racine du monde autonome : elle porte les dates, le tarif et
+        les inscriptions.
+
+        Les cinq dates sont FACULTATIVES — un brouillon se cree avant qu elles
+        soient arretees — mais celles qui sont fournies doivent rester
+        ordonnees : `enrollment_opens_at` <= `enrollment_closes_at` <=
+        `starts_on` <= `ends_on` <= `certificate_available_at`. Chaque date est
+        comparee a la PRECEDENTE RENSEIGNEE, de sorte que l ordre tienne meme
+        quand une date intermediaire manque. La base porte la meme contrainte
+        en dernier recours.
+
+        `status` et `institution_id` ne sont JAMAIS acceptes : une Periode nait
+        `brouillon` — publier est une decision distincte — et l etablissement
+        vient du tenant resolu.
+
+        Le `program_id` doit appartenir a l etablissement de l appelant : sinon
+        le message d erreur revelerait quels identifiants existent ailleurs.
+      security:
+        - sanctum: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TrainingSessionInput'
+      responses:
+        '201':
+          description: "Periode creee, en statut brouillon"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrainingSessionCreated'
+        '401':
+          description: "Non authentifie"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: "Role insuffisant"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: |
+            Dates desordonnees, ou Programme inconnu dans cet etablissement.
           content:
             application/json:
               schema:

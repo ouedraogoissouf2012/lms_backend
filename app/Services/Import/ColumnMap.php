@@ -18,9 +18,27 @@ final class ColumnMap
      * Les seuls champs que l'analyse lit réellement. Une clé envoyée hors de
      * cette liste est ignorée : un client ne peut pas détourner la lecture.
      *
+     * Cette liste est le CONTRAT affiché à l'utilisateur : c'est elle que le
+     * modèle CSV téléchargeable et l'écran de cartographie proposent. Les trois
+     * dernières y manquaient alors que le produit les offrait — une colonne
+     * `role` remplie était appariée à l'écran, comptée « acceptée », puis jetée
+     * sans un mot, et tout compte naissait `etudiant` (#718).
+     *
+     * L'ordre suit celui du modèle téléchargeable, pour qu'une divergence entre
+     * les deux se voie à la lecture.
+     *
      * @var list<string>
      */
-    public const CANONICAL_FIELDS = ['nom', 'prenom', 'email', 'telephone', 'code_classe'];
+    public const CANONICAL_FIELDS = [
+        'nom',
+        'prenom',
+        'email',
+        'telephone',
+        'role',
+        'code_classe',
+        'date_inscription',
+        'statut',
+    ];
 
     /**
      * @param  array<string, string>  $byField  champ canonique => en-tête normalisé

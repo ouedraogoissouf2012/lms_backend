@@ -6,6 +6,7 @@ namespace App\Models;
 
 use App\Models\Traits\BelongsToInstitution;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 final class Import extends Model
@@ -38,5 +39,17 @@ final class Import extends Model
     public function rows(): HasMany
     {
         return $this->hasMany(ImportRow::class);
+    }
+
+    /**
+     * Celui qui a déposé le fichier. L'exécution est asynchrone et différée :
+     * c'est son rôle DU MOMENT qui plafonne les comptes créés, pas celui qu'il
+     * avait au dépôt (#718).
+     *
+     * @return BelongsTo<User, $this>
+     */
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
     }
 }

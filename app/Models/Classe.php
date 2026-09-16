@@ -8,6 +8,7 @@ use App\Models\Traits\ResolvesMirroredIdentifier;
 use Database\Factories\ClasseFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
@@ -36,12 +37,26 @@ class Classe extends Model implements MirroredFromKlassci
         'klassci_data',
         'last_klassci_sync',
         'institution_id',
+        'training_session_id',
     ];
 
     protected $casts = [
         'klassci_data' => 'array',
         'last_klassci_sync' => 'datetime',
     ];
+
+    /**
+     * La Période dont cette Classe dépend (#827).
+     *
+     * NULLABLE : une classe miroir KLASSCI n'a pas de Période, et ne doit pas
+     * en recevoir. Seule une classe locale s'y rattache.
+     *
+     * @return BelongsTo<TrainingSession, $this>
+     */
+    public function trainingSession(): BelongsTo
+    {
+        return $this->belongsTo(TrainingSession::class);
+    }
 
     /**
      * Relation: Matières enseignées dans cette classe

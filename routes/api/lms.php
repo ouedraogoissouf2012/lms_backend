@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\API\Dashboard\DashboardAdminController;
 use App\Http\Controllers\API\Dashboard\DashboardStudentController;
+use App\Http\Controllers\API\Dashboard\DashboardTeacherController;
 // ============================================
 // NOTIFICATIONS - Routes protégées
 // ============================================
@@ -11,7 +12,7 @@ use App\Http\Controllers\API\Dashboard\DashboardStudentController;
 // ============================================
 // DASHBOARD - Routes protégées
 // ============================================
-use App\Http\Controllers\API\Dashboard\DashboardTeacherController;
+use App\Http\Controllers\API\LMS\TrainingSessionController;
 use App\Http\Controllers\API\TeacherStatsController;
 use Illuminate\Support\Facades\Route;
 
@@ -62,6 +63,25 @@ use App\Http\Controllers\API\LMS\LMSVisioLifecycleController;
 use App\Http\Controllers\API\LMS\LMSVisioParticipantController;
 use App\Http\Controllers\API\LMS\LMSVisioRecordingController;
 use App\Http\Controllers\API\LMS\VisioRecordingWebhookController;
+
+// ============================================
+// SESSION DE FORMATION - Programme et Periode (#827)
+// ============================================
+// L entite racine du monde autonome. #800 a livre les tables ; ces routes sont
+// ce qui manquait pour s en servir.
+//
+// AUCUNE lecture du mode d etablissement : les tables sont tenant-scopees, et
+// le contrat OCP (#697 art. 1) veut que les appelants recoivent une capacite,
+// jamais un mode.
+//
+// `role:coordinateur,admin,superAdmin` : organiser une formation est un acte de
+// gestion. Un enseignant anime, il ne date pas la session ; un etudiant la suit.
+Route::middleware(['auth:sanctum', 'klassci.sync', 'role:coordinateur,admin,superAdmin'])
+    ->group(function () {
+        Route::post('/programs', [TrainingSessionController::class, 'storeProgram']);
+        Route::get('/training-sessions', [TrainingSessionController::class, 'index']);
+        Route::post('/training-sessions', [TrainingSessionController::class, 'store']);
+    });
 
 Route::middleware(['auth:sanctum', 'klassci.sync'])->prefix('lms')->group(function () {
     // Détails complets d'une classe

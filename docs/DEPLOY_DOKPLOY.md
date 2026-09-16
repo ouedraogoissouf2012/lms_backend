@@ -127,18 +127,38 @@ Onglet **Domains** → **Add Domain** :
 > L'enregistrement DNS `A` doit **déjà** pointer vers l'IP du serveur, sinon la
 > validation du certificat échoue.
 
-## 4. Post-déploiement — obligatoire
+## 4. Post-déploiement
 
-Ces deux étapes ne se font pas toutes seules : Dokploy n'a pas de hook post-deploy.
+### Les migrations sont automatiques depuis #831
+
+Le conteneur `web` joue `migrate --force` **avant** de servir la moindre
+requête, sous l'utilisateur `www-data`. Il n'y a plus rien à faire à la main.
+
+**Pourquoi ce changement.** Les migrations étaient un geste manuel prescrit
+ici même — et que personne ne faisait. Mesuré le 2026-09-16 : cinq migrations
+en attente en production, dont celle du correctif de sécurité #824. Résultat,
+ce correctif était **déployé et inerte** : l'enregistrement d'une séance
+restait téléchargeable sans compte (HTTP 200, 2 409 692 octets) pendant que le
+code, lui, attendait déjà un chemin privé. L'application était à la fois
+vulnérable et cassée. Un geste obligatoire que rien ne force n'est pas une
+procédure.
+
+**Si une migration échoue, le conteneur ne démarre pas.** C'est voulu : un
+conteneur qui refuse de servir se voit en trente secondes, une base non migrée
+est restée invisible plusieurs jours. Lire les journaux Dokploy du service, et
+corriger la migration — pas la garde.
+
+Le comportement est verrouillé par `tests/Feature/Deployment/`, qui vérifie
+qu'un seul rôle migre, que ce n'est pas en root, que l'échec reste bruyant et
+que la migration précède le service du trafic.
+
+### La seule étape encore manuelle
 
 ```bash
 # trouver le conteneur web
 docker ps --format '{{.Names}}' | grep -i 'lms.*web'
 
-# 1. migrations
-docker exec <conteneur-web> php artisan migrate --force
-
-# 2. compte supradmin — SEUL seeder à lancer en production
+# compte supradmin — SEUL seeder à lancer en production
 docker exec <conteneur-web> php artisan db:seed --class=SupradminSeeder --force
 ```
 
@@ -244,8 +264,9 @@ générées — c'est le test qui valide toute la chaîne worker + volume + Libr
 1. **Ne pas toucher** au service MySQL.
 2. Service `lms-backend` → **Redeploy**. Dokploy récupère la branche `lms` et
    reconstruit (~8-15 min).
-3. Migrations **seulement si le schéma a changé** :
-   `docker exec <web> php artisan migrate --force`
+3. Migrations : **rien à faire**, le conteneur `web` les joue au démarrage
+   (#831). Vérifier tout de même `docker exec <web> php artisan migrate:status`
+   — aucune ligne ne doit rester `Pending`.
 4. Rejouer les vérifications de la section **v**.
 
 ## vii. Les pièges
@@ -259,7 +280,8 @@ générées — c'est le test qui valide toute la chaîne worker + volume + Libr
 | Diapositives jamais générées | Worker sur la mauvaise queue, ou volume non partagé | Voir les deux vérifications de la section **v** |
 | Établissements de démo en production | `db:seed` lancé sans `--class` | Ne jamais omettre `--class=SupradminSeeder` |
 | Serveur qui devient injoignable pendant un build | Deux `build:` dans le compose, ou Nixpacks | Un seul `build:` — c'est déjà le cas ici |
-| Login impossible après déploiement | Migrations non lancées | `php artisan migrate --force` |
+| Conteneur `web` qui redémarre en boucle après un déploiement | Une migration échoue — le démarrage est volontairement bloqué (#831) | Lire les journaux Dokploy ; corriger la migration, pas la garde |
+| Média légitime en 404 alors que le fichier existe | Migration jouée à la main en **root** via `docker exec` : répertoires créés en `drwx------ root`, illisibles par Apache | Laisser l'entrypoint migrer (il le fait sous `www-data`) ; si le mal est fait : `chown -R www-data:www-data storage/app/private` |
 
 ## viii. Sauvegardes et retour arrière
 

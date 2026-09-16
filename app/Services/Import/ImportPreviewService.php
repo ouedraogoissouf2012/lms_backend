@@ -5,6 +5,11 @@ declare(strict_types=1);
 namespace App\Services\Import;
 
 use App\Enums\ImportRowStatus;
+use App\Enums\Role;
+use App\Services\Import\Fields\DateInscriptionField;
+use App\Services\Import\Fields\FieldOutcome;
+use App\Services\Import\Fields\RoleField;
+use App\Services\Import\Fields\StatutField;
 use Illuminate\Http\UploadedFile;
 use League\Csv\Info;
 use League\Csv\Reader;
@@ -17,8 +22,18 @@ final class ImportPreviewService
 {
     private const MAX_ROWS = 5000;
 
+    public function __construct(
+        private readonly RoleField $roles,
+        private readonly StatutField $statuts,
+        private readonly DateInscriptionField $dates,
+    ) {}
+
     /**
      * @param  ColumnMap  $map  déclaration « quelle colonne porte quel champ »
+     * @param  Role  $ceiling  rôle de celui qui importe — plafond des comptes
+     *                         créés. Il vient de l'appelant et jamais du
+     *                         fichier : c'est ce qui empêche la colonne `role`
+     *                         d'être une élévation de privilège.
      * @param  string|null  $delimiter  séparateur avec lequel le client a montré
      *                                  les colonnes à l'utilisateur ; laisser
      *                                  null pour le détecter.
@@ -26,7 +41,7 @@ final class ImportPreviewService
      *
      * @throws ImportPreviewFailed si aucune ligne n'est lisible
      */
-    public function preview(UploadedFile $file, ColumnMap $map, ?string $delimiter = null): array
+    public function preview(UploadedFile $file, ColumnMap $map, Role $ceiling, ?string $delimiter = null): array
     {
         $raw = $file->get();
         if (! is_string($raw) || $raw === '') {
@@ -47,7 +62,7 @@ final class ImportPreviewService
         $reader->setDelimiter($delimiter ?? $this->detectDelimiter($reader));
         $reader->setHeaderOffset(0);
 
-        return $this->scan($reader, $map);
+        return $this->scan($reader, $map, $ceiling);
     }
 
     /**
@@ -66,7 +81,7 @@ final class ImportPreviewService
      * @param  Reader<array<string, mixed>>  $reader
      * @return array{rows: list<array<string, mixed>>, counts: array{ok: int, error: int, total: int}}
      */
-    private function scan(Reader $reader, ColumnMap $map): array
+    private function scan(Reader $reader, ColumnMap $map, Role $ceiling): array
     {
         $headers = [];
         foreach ($reader->getHeader() as $header) {
@@ -95,7 +110,7 @@ final class ImportPreviewService
                 $error++;
                 break;
             }
-            $classified = $this->classify($record, $map, $seen, $lineNo);
+            $classified = $this->classify($record, $map, $ceiling, $seen, $lineNo);
             $rows[] = $classified;
             if ($classified['status'] === ImportRowStatus::Ok->value) {
                 $ok++;
@@ -115,7 +130,7 @@ final class ImportPreviewService
      * @param  array<string, true>  $seen
      * @return array{line: int, status: string, code: string|null, message: string|null, payload: array<string, string>|null}
      */
-    private function classify(array $record, ColumnMap $map, array &$seen, int $line): array
+    private function classify(array $record, ColumnMap $map, Role $ceiling, array &$seen, int $line): array
     {
         $nom = trim($map->value($record, 'nom'));
         $prenom = trim($map->value($record, 'prenom'));
@@ -133,6 +148,26 @@ final class ImportPreviewService
         if (isset($seen[$key])) {
             return $this->row($line, ImportRowStatus::Error, 'duplicate', 'Doublon dans le fichier.');
         }
+
+        // Les trois colonnes que l'écran proposait sans que rien ne les lise.
+        // Chacune peut faire échouer SA ligne en disant pourquoi : c'est le
+        // service que rend une analyse à blanc, et l'inverse exact du silence
+        // d'avant, où une valeur incomprise était comptée « acceptée ».
+        $declared = [
+            'role' => $this->roles->resolve($map->value($record, 'role'), $ceiling),
+            'date_inscription' => $this->dates->resolve($map->value($record, 'date_inscription')),
+            'statut' => $this->statuts->resolve($map->value($record, 'statut')),
+        ];
+
+        foreach ($declared as $outcome) {
+            if ($outcome->isRejected()) {
+                // Le doublon n'est marqué qu'APRÈS : une ligne refusée ici n'a
+                // rien consommé, et la même identité corrigée plus bas dans le
+                // fichier doit encore pouvoir passer.
+                return $this->row($line, ImportRowStatus::Error, $outcome->code, $outcome->message);
+            }
+        }
+
         $seen[$key] = true;
 
         return $this->row($line, ImportRowStatus::Ok, null, null, [
@@ -141,6 +176,7 @@ final class ImportPreviewService
             'email' => $email,
             'telephone' => $phone,
             'code_classe' => trim($map->value($record, 'code_classe')),
+            ...array_map(static fn (FieldOutcome $outcome): string => $outcome->value, $declared),
         ]);
     }
 

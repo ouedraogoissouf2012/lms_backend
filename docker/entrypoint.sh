@@ -32,6 +32,15 @@ case "$role" in
     exec php artisan schedule:work
     ;;
   web|*)
+    # Dokploy deploie le code sans jouer les migrations (#831) : un correctif
+    # de securite peut etre en production et inerte. Un seul role (web) les
+    # joue, sinon worker + scheduler partiraient en concurrence. www-data :
+    # un docker exec root cree des repertoires illisibles pour Apache.
+    if [ "$(id -u)" = "0" ]; then
+      su -s /bin/sh www-data -c "php artisan migrate --force --no-interaction"
+    else
+      php artisan migrate --force --no-interaction
+    fi
     exec apache2-foreground
     ;;
 esac

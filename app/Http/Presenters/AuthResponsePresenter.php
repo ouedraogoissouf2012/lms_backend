@@ -33,27 +33,39 @@ class AuthResponsePresenter
     /**
      * Réponse de succès pour un login local (sans tenant KLASSCI).
      */
-    public function successfulLocal(User $user, string $sanctumToken): JsonResponse
-    {
+    /**
+     * @param  bool  $peutInscrireLocalement  Capacite resolue par l'appelant.
+     *                                        Le presentateur ne decide rien
+     *                                        (cf. docblock de classe).
+     */
+    public function successfulLocal(
+        User $user,
+        string $sanctumToken,
+        bool $peutInscrireLocalement = false,
+    ): JsonResponse {
         return response()->json([
             'success' => true,
             'message' => 'Connexion réussie',
-            'data'    => [
+            'data' => [
                 'user' => [
-                    'id'         => $user->id,
+                    'id' => $user->id,
                     'klassci_id' => $user->klassci_id,
-                    'name'       => $user->name,
-                    'email'      => $user->email,
-                    'role'       => $user->role,
+                    'name' => $user->name,
+                    'email' => $user->email,
+                    'role' => $user->role,
                 ],
-                'token'      => $sanctumToken,
+                'token' => $sanctumToken,
                 'token_type' => 'Bearer',
             ],
             'meta' => [
-                'klassci_synced'   => false,
-                'is_supradmin'     => $user->asRoleEnum() === Role::Supradmin,
-                'institution'      => null,
+                'klassci_synced' => false,
+                'is_supradmin' => $user->asRoleEnum() === Role::Supradmin,
+                'institution' => null,
                 'institution_name' => null,
+                // Une CAPACITE, jamais le mode : le client demande ce qu'il a
+                // le droit de faire, il n'a pas a connaitre la nature de
+                // l'etablissement (#805).
+                'peut_inscrire_localement' => $peutInscrireLocalement,
             ],
         ]);
     }
@@ -71,6 +83,7 @@ class AuthResponsePresenter
         array $klassciUser,
         array $klassciMeta,
         array $tenant,
+        bool $peutInscrireLocalement = false,
     ): JsonResponse {
         $adminData = is_array($klassciUser['admin_data'] ?? null) ? $klassciUser['admin_data'] : null;
         $institutionName = is_string($adminData['etablissement'] ?? null)
@@ -80,32 +93,33 @@ class AuthResponsePresenter
         return response()->json([
             'success' => true,
             'message' => 'Connexion réussie',
-            'data'    => [
+            'data' => [
                 'user' => [
-                    'id'                => $localUser->id,
-                    'klassci_id'        => $localUser->klassci_id,
-                    'name'              => $localUser->name,
-                    'email'             => $localUser->email,
-                    'role'              => $localUser->role,
+                    'id' => $localUser->id,
+                    'klassci_id' => $localUser->klassci_id,
+                    'name' => $localUser->name,
+                    'email' => $localUser->email,
+                    'role' => $localUser->role,
                     'role_display_name' => $klassciUser['role_display_name'] ?? '',
-                    'avatar'            => $klassciUser['avatar'] ?? null,
+                    'avatar' => $klassciUser['avatar'] ?? null,
                     // #504 : `is_admin` / `permissions` / `admin_data` BRUTS retirés de la
                     // réponse de login (défense en profondeur §1.2). Un KLASSCI compromis
                     // pouvait y pousser `is_admin=true`/`permissions=['*']` — y compris
                     // imbriqués dans `admin_data`. Aligne login sur /auth/me + le stockage
                     // (whitelist #477). L'autorité reste `role` ; `institution_name` (dérivé
                     // d'`admin_data.etablissement`) reste exposé en `meta` ci-dessous.
-                    'enseignant_data'   => $klassciUser['enseignant_data'] ?? null,
-                    'etudiant_data'     => $klassciUser['etudiant_data'] ?? null,
+                    'enseignant_data' => $klassciUser['enseignant_data'] ?? null,
+                    'etudiant_data' => $klassciUser['etudiant_data'] ?? null,
                 ],
-                'token'      => $sanctumToken,
+                'token' => $sanctumToken,
                 'token_type' => 'Bearer',
             ],
             'meta' => [
-                'klassci_synced'               => true,
-                'institution'                  => $tenant['code'],
-                'institution_name'             => $institutionName,
+                'klassci_synced' => true,
+                'institution' => $tenant['code'],
+                'institution_name' => $institutionName,
                 'annee_universitaire_courante' => $klassciMeta['annee_universitaire_courante'] ?? null,
+                'peut_inscrire_localement' => $peutInscrireLocalement,
             ],
         ]);
     }
@@ -159,12 +173,12 @@ class AuthResponsePresenter
     {
         return response()->json([
             'success' => true,
-            'data'    => [
-                'id'           => $user->id,
-                'klassci_id'   => $user->klassci_id,
-                'name'         => $user->name,
-                'email'        => $user->email,
-                'role'         => $user->role,
+            'data' => [
+                'id' => $user->id,
+                'klassci_id' => $user->klassci_id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'role' => $user->role,
                 'klassci_data' => $klassciData,
             ],
         ]);
@@ -196,7 +210,7 @@ class AuthResponsePresenter
         return response()->json([
             'success' => true,
             'message' => 'Token rafraîchi',
-            'data'    => ['token' => $newToken, 'token_type' => 'Bearer'],
+            'data' => ['token' => $newToken, 'token_type' => 'Bearer'],
         ]);
     }
 
@@ -211,13 +225,13 @@ class AuthResponsePresenter
     public function checkResult(?User $user): JsonResponse
     {
         return response()->json([
-            'success'       => true,
+            'success' => true,
             'authenticated' => $user !== null,
-            'user'          => $user !== null ? [
-                'id'    => $user->id,
-                'name'  => $user->name,
+            'user' => $user !== null ? [
+                'id' => $user->id,
+                'name' => $user->name,
                 'email' => $user->email,
-                'role'  => $user->role,
+                'role' => $user->role,
             ] : null,
         ]);
     }

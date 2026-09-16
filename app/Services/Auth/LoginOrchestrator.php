@@ -11,6 +11,7 @@ use App\Services\Audit\AuditLogger;
 use App\Services\Klassci\Auth\KlassciAuthClient;
 use App\Services\Klassci\Auth\KlassciTenantDiscovery;
 use App\Services\Klassci\Auth\KlassciUserSynchronizer;
+use App\Services\Roster\RosterAuthorityFactory;
 use Illuminate\Http\JsonResponse;
 use Psr\Log\LoggerInterface;
 
@@ -27,8 +28,8 @@ final class LoginOrchestrator
         private readonly AuthResponsePresenter $presenter,
         private readonly AuditLogger $auditLogger,
         private readonly LoggerInterface $logger,
-    ) {
-    }
+        private readonly RosterAuthorityFactory $rosterAuthorities,
+    ) {}
 
     public function attemptLocal(string $username, string $password): ?JsonResponse
     {
@@ -45,7 +46,11 @@ final class LoginOrchestrator
         $token = $user->createToken('lms-backend-token', ['lms:access'])->plainTextToken;
         $this->auditLogger->logAuthEvent('login', $user->id, ['method' => 'local']);
 
-        return $this->presenter->successfulLocal($user, $token);
+        return $this->presenter->successfulLocal(
+            $user,
+            $token,
+            $this->rosterAuthorities->forInstitution($user->institution)->allowsLocalEnrolment(),
+        );
     }
 
     public function attemptKlassci(string $username, string $password): JsonResponse
@@ -121,6 +126,13 @@ final class LoginOrchestrator
             'tenant' => $tenant['code'],
         ]);
 
-        return $this->presenter->successfulKlassci($localUser, $sanctumToken, $klassciUser, $meta, $tenant);
+        return $this->presenter->successfulKlassci(
+            $localUser,
+            $sanctumToken,
+            $klassciUser,
+            $meta,
+            $tenant,
+            $this->rosterAuthorities->forInstitution($institution)->allowsLocalEnrolment(),
+        );
     }
 }

@@ -1098,6 +1098,50 @@ paths:
         '422':
           description: "Validation error"
 
+  /chapters/{chapter}/video:
+    get:
+      tags:
+        - Chapters
+      summary: "Stream a session recording (signed URL, no bearer)"
+      description: >
+        Sert l'enregistrement d'une seance depuis le disque PRIVE (#824).
+        Volontairement sans `auth:sanctum` : une balise `<video>` ne peut pas
+        envoyer d'en-tete `Authorization`. La signature tient lieu de jeton ;
+        elle n'est emise que dans la reponse d'un `GET /api/chapters/{id}`
+        authentifie, et vaut 4 h. Les requetes `Range` sont prises en charge.
+      security: []
+      parameters:
+        - name: chapter
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: signature
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: expires
+          in: query
+          required: true
+          schema:
+            type: integer
+        - name: Range
+          in: header
+          required: false
+          schema:
+            type: string
+          example: "bytes=0-1048575"
+      responses:
+        '200':
+          description: "Media complet (video/mp4)"
+        '206':
+          description: "Contenu partiel, en reponse a un en-tete Range"
+        '403':
+          description: "Signature absente, alteree ou expiree"
+        '404':
+          description: "Chapitre inconnu, sans enregistrement, ou media purge"
+
   /chapters/{id}:
     get:
       tags:

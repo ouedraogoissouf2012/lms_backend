@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Roster;
 
 use App\Enums\InstitutionMode;
+use App\Models\Institution;
 use App\Services\TenantManager;
 
 /**
@@ -43,8 +44,19 @@ final class RosterAuthorityFactory
 
     public function forCurrentTenant(): RosterAuthority
     {
-        $institution = $this->tenants->get();
+        return $this->forInstitution($this->tenants->get());
+    }
 
+    /**
+     * Pour une institution nommee, quand le tenant ambiant n'est pas encore
+     * resolu : au login, l'utilisateur n'est pas authentifie et
+     * `ResolveInstitution` n'a donc pas pu s'executer avec son etablissement.
+     *
+     * `null` rend l'autorite la plus restrictive — hors etablissement, aucune
+     * inscription locale.
+     */
+    public function forInstitution(?Institution $institution): RosterAuthority
+    {
         return $institution?->mode === InstitutionMode::Standalone
             ? new LocalRosterAuthority
             : new KlassciRosterAuthority;

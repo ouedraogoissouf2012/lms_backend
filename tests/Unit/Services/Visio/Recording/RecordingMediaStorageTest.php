@@ -28,11 +28,21 @@ use Tests\TestCase;
  * ne prouve rien sur ce qui reste sur le disque : ces tests interrogent le
  * disque après coup.
  *
+ * ## Le disque est prive depuis #824
+ *
+ * `storage/app/public` est servi par le serveur web sans traverser Laravel.
+ * Le media y etait donc telechargeable par quiconque detenait l URL. Il vit
+ * desormais sur le disque prive, et l acces passe par une URL signee.
+ *
  * @see PRODUCTION_STANDARDS.md §1.2
  */
 final class RecordingMediaStorageTest extends TestCase
 {
-    private const DISK = 'public';
+    /**
+     * On lit la constante plutot que de redeclarer le disque : ce test
+     * affirmait `public` en dur, et serait reste vert en ignorant #824.
+     */
+    private const DISK = RecordingMediaStorage::DISK;
 
     protected function setUp(): void
     {
@@ -107,17 +117,6 @@ final class RecordingMediaStorageTest extends TestCase
     public function test_returns_null_when_the_source_file_is_missing(): void
     {
         $this->assertNull($this->storage()->store('/chemin/qui/nexiste/pas.mp4', 42));
-    }
-
-    // ---------------------------------------------------------------------- url
-
-    public function test_exposes_a_readable_url(): void
-    {
-        $relative = $this->storage()->store($this->sourceFile(), 42);
-        $url = $this->storage()->url($relative);
-
-        $this->assertStringContainsString($relative, $url);
-        $this->assertNotFalse(filter_var($url, FILTER_VALIDATE_URL));
     }
 
     // -------------------------------------------------------------------- purge

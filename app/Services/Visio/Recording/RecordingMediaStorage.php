@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Visio\Recording;
 
+use App\Services\FileConversion\ChapterArtifactStorage;
 use Illuminate\Contracts\Filesystem\Factory as FilesystemFactory;
 use Illuminate\Filesystem\FilesystemAdapter;
 
@@ -22,28 +23,40 @@ use Illuminate\Filesystem\FilesystemAdapter;
  * résout pas une leçon unique (`ambiguous_lesson`, `lesson_not_found`). Ranger
  * le média sous un chapitre inexistant le rendrait inatteignable par toute purge.
  *
- * ## Le disque public, et pourquoi ce n'est pas une régression
+ * ## Le disque est PRIVÉ (#824), et pourquoi l'argument inverse est tombé
  *
- * Même disque que toute vidéo de chapitre : `<video src="/storage/...">` ne
- * s'authentifie pas, et rendre ces fichiers privés casserait la lecture des
- * cours — décision assumée de #598, pas un choix rouvert ici.
+ * Ce média vivait sur le disque `public`, servi par le serveur web sans jamais
+ * traverser Laravel — le `.htaccess` de `storage/app/public` porte
+ * `Require all granted`. Une URL qui fuitait, par un journal, un historique ou
+ * un partage, donnait la vidéo d'un cours entier à qui la détenait, sans
+ * compte et sans trace.
  *
- * La différence avec les diapositives (dette #598 : `slide_001.png`, énumérable)
- * est que le nom de fichier vient de `Str::random()` : connaître l'identifiant
- * d'un enregistrement ne permet pas de deviner l'URL de son média.
+ * Le choix était défendu ici même par : « `<video src>` ne s'authentifie pas,
+ * rendre ces fichiers privés casserait la lecture des cours ». La prémisse est
+ * exacte, la conclusion ne l'est plus : une URL **signée et temporaire** porte
+ * son autorisation dans son adresse, donc sans en-tête. `ChapterSlideService`
+ * le fait déjà pour `<img>` depuis #689 — le motif existait à côté.
  *
- * @see \App\Services\FileConversion\ChapterArtifactStorage
- * @see \App\Services\Visio\Recording\SeanceRecordingRetentionService
+ * Le nom de fichier aléatoire reste utile, mais ne protégeait rien à lui seul :
+ * il rend l'URL indevinable, pas inaccessible, et une fois connue elle valait
+ * pour toujours.
+ *
+ * @see ChapterArtifactStorage
+ * @see SeanceRecordingRetentionService
  */
 final class RecordingMediaStorage
 {
-    /** Même disque que les vidéos de chapitre (cf. #598). */
-    public const DISK = 'public';
+    /**
+     * Disque **privé** : hors de toute racine servie par le serveur web.
+     *
+     * L'accès passe désormais par une route signée et temporaire (#824), seule
+     * manière de donner accès à un `<video>` sans lui demander d'en-tête.
+     */
+    public const DISK = 'local';
 
     public function __construct(
         private readonly FilesystemFactory $filesystem,
-    ) {
-    }
+    ) {}
 
     /**
      * Copie le média dans le stockage du LMS et renvoie son chemin relatif,
@@ -80,41 +93,6 @@ final class RecordingMediaStorage
         } finally {
             fclose($stream);
         }
-    }
-
-    /**
-     * URL **absolue** du média.
-     *
-     * L'absolu n'est pas cosmétique : cette valeur est PERSISTÉE dans
-     * `chapters.video_url` et servie telle quelle au front, qui vit sur une
-     * autre origine que l'API. Une URL relative y pointerait vers le domaine du
-     * front — donc vers rien — et le défaut serait figé en base, pas seulement à
-     * l'affichage.
-     *
-     * Le disque produit déjà de l'absolu en production (`filesystems.public.url`
-     * vaut `APP_URL.'/storage'`). Mais `Storage::fake()` reconstruit un disque
-     * SANS cette clé et retombe sur du relatif : mesuré, `/storage/...` au lieu
-     * de `http://.../storage/...`. On ne laisse donc pas la forme de la valeur
-     * dépendre de cette subtilité.
-     */
-    public function url(string $relativePath): string
-    {
-        $url = $this->disk()->url($relativePath);
-
-        if (str_starts_with($url, 'http://') || str_starts_with($url, 'https://')) {
-            return $url;
-        }
-
-        $base = config('app.url');
-
-        // Ni disque ni `app.url` exploitables : on rend ce qu'on a plutôt que
-        // de fabriquer une URL fausse. Le cas est anormal et se voit — une
-        // valeur inventée, non.
-        if (! is_string($base) || $base === '') {
-            return $url;
-        }
-
-        return rtrim($base, '/').'/'.ltrim($url, '/');
     }
 
     /**

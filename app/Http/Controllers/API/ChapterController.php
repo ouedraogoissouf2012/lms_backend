@@ -14,7 +14,7 @@ use App\Http\Requests\UploadFileRequest;
 use App\Models\User;
 use App\Services\Chapter\ChapterCrudService;
 use App\Services\Chapter\ChapterFileUploadService;
-use App\Services\Chapter\ChapterSlideService;
+use App\Services\Chapter\ChapterMediaSigner;
 use App\Services\Chapter\ChapterTrashService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -40,7 +40,7 @@ final class ChapterController extends Controller
     public function __construct(
         private readonly ChapterCrudService $chapterCrud,
         private readonly ChapterFileUploadService $chapterFileUpload,
-        private readonly ChapterSlideService $slides,
+        private readonly ChapterMediaSigner $media,
         private readonly ChapterTrashService $trash,
     ) {}
 
@@ -56,7 +56,7 @@ final class ChapterController extends Controller
         }
 
         $result = $this->chapterCrud->listByLesson($lessonId, $user);
-        $result['payload'] = $this->slides->signListResponse($result['payload']);
+        $result['payload'] = $this->media->signListResponse($result['payload']);
 
         return $this->relayResponse($result);
     }
@@ -73,7 +73,7 @@ final class ChapterController extends Controller
         }
 
         $result = $this->chapterCrud->show($id, $user);
-        $result['payload'] = $this->slides->signSingleResponse($result['payload']);
+        $result['payload'] = $this->media->signSingleResponse($result['payload']);
 
         return $this->relayResponse($result);
     }

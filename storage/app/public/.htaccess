@@ -22,16 +22,23 @@
 # Reliquat historique : `php artisan chapters:purge-public-artifacts --apply`
 # (migre vers le disque privé, ne supprime pas).
 #
-# ❌ CE QUI RESTE OUVERT (pré-existant, hors périmètre #598, issue de suivi) :
-# les diapositives `chapters/{id}/slides/slide_001.png` sont servies ici SANS
-# authentification, à URL entièrement prédictible (`chapters.id` est un entier
-# séquentiel GLOBAL, le nom de fichier n'a aucune composante secrète). Le
-# contenu page à page de tous les cours de toutes les institutions reste donc
-# énumérable par un tiers non authentifié. #598 ferme le document SOURCE, pas
-# sa restitution en images.
+# ✅ REFERMÉ DEPUIS — ne pas se fier à une version antérieure de ce commentaire :
+#  • #620 : les diapositives `chapters/{id}/slides/` ne sont plus servies ici.
+#    `chapters/.htaccess` les refuse ; l'accès unique est la route signée
+#    GET /api/chapters/{id}/slides/{n}.
+#  • #824 : les enregistrements de séance ne vivent plus sous cet arbre du tout.
+#    Ils sont sur le disque privé, derrière GET /api/chapters/{id}/video (URL
+#    signée, 4 h). La règle ci-dessous les refuse en plus, par défense en
+#    profondeur : un fichier oublié par une migration ne doit pas redevenir public.
 #
 # La directive de la sous-arborescence l'emporte sur celle héritée de storage/
 # (Apache mod_authz_core : le contexte per-directory le plus proche s'applique).
+
+# #824 — refus explicite des enregistrements, même si un fichier traîne encore.
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteRule (^|/)recordings/ - [F,L]
+</IfModule>
 
 # Apache 2.4+ : ré-autorise ce sous-arbre.
 <IfModule mod_authz_core.c>

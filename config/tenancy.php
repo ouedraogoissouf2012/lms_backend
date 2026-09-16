@@ -25,6 +25,11 @@ return [
 
     'institution_scoped_tables' => [
         'users',
+        // #800 — l'entite racine du monde autonome. institution_id est NOT NULL
+        // sur ces trois tables neuves, contrairement aux historiques.
+        'programs',
+        'training_sessions',
+        'creneaux',
         'classes',
         'matieres',
         'lessons',

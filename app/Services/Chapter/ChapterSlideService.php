@@ -50,68 +50,6 @@ final class ChapterSlideService
         return $urls;
     }
 
-    /**
-     * @param  array<string, mixed>  $payload
-     * @return array<string, mixed>
-     */
-    public function replaceInPayload(Chapter $chapter, array $payload): array
-    {
-        $payload['slides_images'] = $this->signedUrls($chapter);
-
-        return $payload;
-    }
-
-    /**
-     * Signe les diapositives d'une enveloppe de détail (`data` = un chapitre).
-     *
-     * Vivait dans `ChapterController` : fouiller `data`, tester le type et
-     * appeler `toArray()` n'est pas du travail HTTP, c'est de la signature de
-     * diapositive — la responsabilité de ce service (#689).
-     *
-     * @param  array<string, mixed>  $payload
-     * @return array<string, mixed>
-     */
-    public function signSingleResponse(array $payload): array
-    {
-        $chapter = $payload['data'] ?? null;
-
-        if (! $chapter instanceof Chapter) {
-            return $payload;
-        }
-
-        $payload['data'] = $this->replaceInPayload($chapter, $chapter->toArray());
-
-        return $payload;
-    }
-
-    /**
-     * Signe les diapositives d'une enveloppe de liste (`data` = itérable).
-     *
-     * Les éléments non-`Chapter` traversent inchangés : une enveloppe d'erreur
-     * ou une liste déjà sérialisée ne doit pas faire échouer la réponse.
-     *
-     * @param  array<string, mixed>  $payload
-     * @return array<string, mixed>
-     */
-    public function signListResponse(array $payload): array
-    {
-        $chapters = $payload['data'] ?? null;
-
-        if (! is_iterable($chapters)) {
-            return $payload;
-        }
-
-        $signed = [];
-        foreach ($chapters as $chapter) {
-            $signed[] = $chapter instanceof Chapter
-                ? $this->replaceInPayload($chapter, $chapter->toArray())
-                : $chapter;
-        }
-        $payload['data'] = $signed;
-
-        return $payload;
-    }
-
     public function stream(Chapter $chapter, int $slide): ?StreamedResponse
     {
         $path = $this->pathFor($chapter, $slide);

@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\API\ChapterController;
 use App\Http\Controllers\API\ChapterOriginalController;
 use App\Http\Controllers\API\ChapterSlideController;
+use App\Http\Controllers\API\ChapterVideoController;
 
 // Routes accessibles à tous les utilisateurs authentifiés
 Route::middleware(['auth:sanctum', 'klassci.sync'])->group(function () {
@@ -34,6 +35,14 @@ Route::get('chapters/{chapter}/slides/{slide}', [ChapterSlideController::class, 
     ->whereNumber('chapter')
     ->whereNumber('slide')
     ->name('chapters.slides.show');
+
+// #824 - enregistrement signe : pas de Bearer (balise <video>), la signature
+// est le jeton. Cadence plus haute que les diapositives : un lecteur video
+// emet une requete de plage a chaque deplacement dans le fichier.
+Route::get('chapters/{chapter}/video', [ChapterVideoController::class, 'show'])
+    ->middleware(['signed', 'throttle:240,1'])
+    ->whereNumber('chapter')
+    ->name('chapters.video.show');
 
 // Routes enseignants/coordinateurs/admins
 Route::middleware(['auth:sanctum', 'klassci.sync', 'role:enseignant,coordinateur,admin'])->group(function () {

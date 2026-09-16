@@ -90,9 +90,12 @@ final class ImportJibriRecordingMedia implements ShouldQueue
             'error_message' => null,
         ]);
 
+        // #824 - on transmet le CHEMIN relatif, plus une URL publique.
+        // Le media vit desormais sur un disque prive : son adresse se signe
+        // a la lecture du chapitre, elle ne se fige plus en base.
         ProcessSeanceRecordingReady::dispatch(
             $recording->id,
-            $storage->url($relativePath),
+            $relativePath,
             $this->title,
             'jibri',
         )->onQueue('low');

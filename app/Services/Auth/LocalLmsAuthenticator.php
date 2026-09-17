@@ -126,21 +126,28 @@ class LocalLmsAuthenticator
      */
     private function candidatesFor(string $identifier): array
     {
-        $byEmail = User::withoutGlobalScope('institution')
-            ->where('email', $identifier)
-            ->limit(self::MAX_CANDIDATES + 1)
-            ->get()
-            ->all();
+        // `array_values` : `Collection::all()` rend un tableau dont les clés ne
+        // sont pas garanties séquentielles, et le niveau 9 refuse de le tenir
+        // pour une `list`. Réindexer est plus honnête qu'élargir le type promis.
+        $byEmail = array_values(
+            User::withoutGlobalScope('institution')
+                ->where('email', $identifier)
+                ->limit(self::MAX_CANDIDATES + 1)
+                ->get()
+                ->all()
+        );
 
         if ($byEmail !== []) {
             return $byEmail;
         }
 
-        return User::withoutGlobalScope('institution')
-            ->where('name', $identifier)
-            ->limit(self::MAX_CANDIDATES + 1)
-            ->get()
-            ->all();
+        return array_values(
+            User::withoutGlobalScope('institution')
+                ->where('name', $identifier)
+                ->limit(self::MAX_CANDIDATES + 1)
+                ->get()
+                ->all()
+        );
     }
 
     /**

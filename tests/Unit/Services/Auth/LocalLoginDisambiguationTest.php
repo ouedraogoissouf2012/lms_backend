@@ -99,6 +99,23 @@ final class LocalLoginDisambiguationTest extends TestCase
         self::assertNotSame($premier->id, $resultat->id);
     }
 
+    public function test_deux_comptes_partageant_une_meme_adresse_sont_departages(): void
+    {
+        // Trou de couverture trouvé en falsifiant : les autres cas d'homonymie
+        // passent par le NOM, si bien que la branche EMAIL n'était exercée par
+        // aucun test. Or `users.email` n'est unique que PAR institution — la
+        // même adresse dans deux écoles est un cas légitime (une personne
+        // inscrite aux deux), et il doit se départager comme les autres.
+        $ici = $this->compteDans(Institution::factory()->create(), 'Ali Traore', 'partage@commun.ci', 'empreinte_ici');
+        $ailleurs = $this->compteDans(Institution::factory()->create(), 'Ali Traore', 'partage@commun.ci', 'empreinte_ailleurs');
+
+        $resultat = $this->authentificateur($this->hasherAcceptant('mdp_ailleurs', $ailleurs))
+            ->attemptLocalAuth('partage@commun.ci', 'mdp_ailleurs');
+
+        self::assertSame($ailleurs->id, $resultat?->id);
+        self::assertNotSame($ici->id, $resultat->id);
+    }
+
     public function test_le_premier_homonyme_continue_de_se_connecter(): void
     {
         // Non-régression : désambiguïser ne doit pas déplacer le problème.

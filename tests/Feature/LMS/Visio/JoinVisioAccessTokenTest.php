@@ -9,10 +9,13 @@ use App\Models\Institution;
 use App\Models\Seance;
 use App\Models\User;
 use App\Services\TenantManager;
+use App\Services\Visio\VisioAccessTokenIssuer;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Config;
 use Laravel\Sanctum\Sanctum;
+use Tests\Feature\Security\NoHardcodedSecretsTest;
 use Tests\TestCase;
+use Tests\Unit\Services\Visio\VisioAccessTokenIssuerTest;
 
 /**
  * Le jeton d'accès rendu par `POST /seances/{id}/join`.
@@ -33,8 +36,8 @@ use Tests\TestCase;
  *      client — sans quoi un élève se déclarerait professeur ;
  *   3. un appelant non autorisé n'obtient aucun jeton, pas même expiré.
  *
- * @see \App\Services\Visio\VisioAccessTokenIssuer
- * @see \Tests\Unit\Services\Visio\VisioAccessTokenIssuerTest
+ * @see VisioAccessTokenIssuer
+ * @see VisioAccessTokenIssuerTest
  */
 final class JoinVisioAccessTokenTest extends TestCase
 {
@@ -42,7 +45,7 @@ final class JoinVisioAccessTokenTest extends TestCase
 
     /**
      * Valeur FICTIVE, et son intitulé le dit — c'est le contrat posé par
-     * {@see \Tests\Feature\Security\NoHardcodedSecretsTest}.
+     * {@see NoHardcodedSecretsTest}.
      *
      * Elle était auparavant un motif hexadécimal fabriqué (`a1b2c3d4…`), donc
      * indiscernable d'un vrai secret pour un lecteur comme pour un détecteur.
@@ -133,6 +136,87 @@ final class JoinVisioAccessTokenTest extends TestCase
         );
 
         self::assertSame('true', $claims['context']['user']['moderator']);
+    }
+
+    // ───────────────── Le droit d'enregistrer, rendu à la salle (#673) ─────────────────
+
+    /**
+     * La salle doit savoir QUI peut enregistrer, sans le redéduire.
+     *
+     * `VisioRoom` est monté pour TOUS les participants. Sans cette information,
+     * la salle ne pourrait afficher son bouton d'enregistrement qu'en devinant —
+     * par le rôle du compte, qui ne dit rien de la propriété de CETTE séance, ou
+     * en décodant le jeton côté client, ce qui ferait de l'interface un second
+     * juge de l'autorisation.
+     *
+     * Le serveur calcule déjà cette autorité pour décider du statut de
+     * modérateur. On la rend, on ne la recalcule pas.
+     */
+    public function test_le_droit_d_enregistrer_accompagne_le_jeton(): void
+    {
+        $seance = $this->activeSeance();
+        Sanctum::actingAs($this->user('coordinateur', 'coord@example.test'));
+
+        $this->postJson("/api/lms/seances/{$seance->id}/join")
+            ->assertOk()
+            ->assertJsonPath('data.can_manage_recording', true);
+    }
+
+    public function test_un_eleve_ne_recoit_pas_le_droit_d_enregistrer(): void
+    {
+        $seance = $this->activeSeance();
+        $this->fakeEnrolledStudents(['eleve@example.test']);
+        Sanctum::actingAs($this->user('etudiant', 'eleve@example.test'));
+
+        $this->postJson("/api/lms/seances/{$seance->id}/join")
+            ->assertOk()
+            ->assertJsonPath('data.can_manage_recording', false);
+    }
+
+    /**
+     * L'invariant qui donne sa valeur au champ : il ne peut pas diverger du jeton.
+     *
+     * Deux sources séparées pour la même question — « cette personne peut-elle
+     * commander Jibri ? » — finiraient par se contredire : l'interface offrirait
+     * un bouton que la salle refuse, ou masquerait un droit réellement accordé.
+     * C'est la leçon de #673, où le LMS et Jitsi tenaient deux vérités.
+     */
+    public function test_le_droit_expose_est_exactement_celui_du_jeton(): void
+    {
+        $seance = $this->activeSeance();
+
+        foreach ([['coordinateur', 'chef@example.test'], ['etudiant', 'autre@example.test']] as [$role, $email]) {
+            if ($role === 'etudiant') {
+                $this->fakeEnrolledStudents([$email]);
+            }
+            Sanctum::actingAs($this->user($role, $email));
+
+            $reponse = $this->postJson("/api/lms/seances/{$seance->id}/join")->assertOk();
+            $claims = $this->claims((string) $reponse->json('data.visio_token'));
+
+            self::assertSame(
+                $claims['context']['user']['moderator'] === 'true',
+                $reponse->json('data.can_manage_recording'),
+                "le droit rendu a l'interface diverge du jeton pour le role {$role}",
+            );
+        }
+    }
+
+    /**
+     * Sans secret Jitsi, il n'y a pas de salle — mais la forme de la réponse ne
+     * doit pas changer pour autant : un champ qui apparaît et disparaît oblige
+     * chaque lecteur du front à gérer son absence.
+     */
+    public function test_le_droit_est_rendu_meme_sans_jeton_configure(): void
+    {
+        Config::set('services.visio.jitsi.app_secret', null);
+        $seance = $this->activeSeance();
+        Sanctum::actingAs($this->user('coordinateur', 'coord@example.test'));
+
+        $this->postJson("/api/lms/seances/{$seance->id}/join")
+            ->assertOk()
+            ->assertJsonPath('data.visio_token_available', false)
+            ->assertJsonPath('data.can_manage_recording', true);
     }
 
     // ───────────────────── Aucun jeton sans autorisation ─────────────────────

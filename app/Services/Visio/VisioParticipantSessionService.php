@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace App\Services\Visio;
 
-use App\Services\Visio\VisioActorAuthorization;
-use App\Services\Visio\VisioAccessTokenIssuer;
 use App\Models\ESBTPAttendance;
 use App\Models\Seance;
 use App\Models\User;
@@ -232,11 +230,18 @@ final class VisioParticipantSessionService
      * presence est deja enregistree, et le client est informe explicitement
      * plutot que renvoye vers une porte close sans motif.
      *
-     * @return array{visio_token: string|null, visio_token_available: bool}
+     * @return array{visio_token: string|null, visio_token_available: bool, can_manage_recording: bool}
      */
     private function accessToken(Seance $visio, User $user): array
     {
         $room = $visio->visio_room_id;
+
+        // Calcule UNE fois, servi deux fois : c'est ce qui rend impossible la
+        // divergence entre ce que l'interface propose et ce que la salle
+        // accepte. Deux sources pour la meme question finiraient par se
+        // contredire - la lecon de #673, ou le LMS et Jitsi tenaient chacun
+        // leur verite sur le meme enregistrement.
+        $peutGerer = $this->actorAuthorization->canManage($visio, $user);
 
         if (! $this->tokenIssuer->isConfigured() || ! is_string($room) || $room === '') {
             $this->logger->warning('Acces visio sans jeton : configuration Jitsi absente', [
@@ -244,7 +249,11 @@ final class VisioParticipantSessionService
                 'configure' => $this->tokenIssuer->isConfigured(),
             ]);
 
-            return ['visio_token' => null, 'visio_token_available' => false];
+            return [
+                'visio_token' => null,
+                'visio_token_available' => false,
+                'can_manage_recording' => $peutGerer,
+            ];
         }
 
         return [
@@ -252,9 +261,10 @@ final class VisioParticipantSessionService
                 $room,
                 $user->name,
                 (string) $user->email,
-                $this->actorAuthorization->canManage($visio, $user),
+                $peutGerer,
             ),
             'visio_token_available' => true,
+            'can_manage_recording' => $peutGerer,
         ];
     }
 }

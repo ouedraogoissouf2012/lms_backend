@@ -42,8 +42,7 @@ final class InstitutionQueryService
 
     public function __construct(
         private readonly CacheRepository $cache,
-    ) {
-    }
+    ) {}
 
     /**
      * Liste de toutes les institutions avec stats par institution.
@@ -120,6 +119,9 @@ final class InstitutionQueryService
             'logo_url' => $institution->logo_url,
             'primary_color' => $institution->primary_color,
             'is_active' => $institution->is_active,
+            // #818 : sans le mode en lecture, l'écran resterait aveugle — il ne
+            // saurait ni l'afficher ni proposer la bascule qu'il vient d'obtenir.
+            'mode' => $institution->mode->value,
             'klassci_api_url' => $institution->klassci_api_url,
             'created_at' => $institution->created_at,
             'updated_at' => $institution->updated_at,

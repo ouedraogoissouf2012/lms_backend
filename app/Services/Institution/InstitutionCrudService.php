@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Institution;
 
+use App\Enums\InstitutionMode;
 use App\Exceptions\BusinessException;
 use App\Models\Institution;
 use App\Models\PersonalAccessToken;
@@ -11,6 +12,7 @@ use App\Models\User;
 use App\Services\Audit\AuditLogger;
 use Illuminate\Contracts\Cache\Repository as CacheRepository;
 use Illuminate\Database\ConnectionInterface;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -37,8 +39,7 @@ final class InstitutionCrudService
         private readonly LoggerInterface $logger,
         private readonly AuditLogger $audit,
         private readonly ConnectionInterface $db,
-    ) {
-    }
+    ) {}
 
     /**
      * @param  array<string, mixed>  $validated
@@ -61,7 +62,7 @@ final class InstitutionCrudService
     /**
      * @param  array<string, mixed>  $validated
      *
-     * @throws \Illuminate\Database\Eloquent\ModelNotFoundException
+     * @throws ModelNotFoundException
      */
     public function update(int $id, array $validated): Institution
     {
@@ -85,8 +86,8 @@ final class InstitutionCrudService
     /**
      * Inverse le flag is_active. Refuse si on désactiverait la dernière active.
      *
-     * @throws \Illuminate\Database\Eloquent\ModelNotFoundException
-     * @throws \App\Exceptions\BusinessException  Si tentative de désactiver la dernière institution active.
+     * @throws ModelNotFoundException
+     * @throws BusinessException Si tentative de désactiver la dernière institution active.
      */
     public function toggleActive(int $id): Institution
     {
@@ -96,19 +97,70 @@ final class InstitutionCrudService
         if ($institution->is_active) {
             $activeCount = Institution::where('is_active', true)->count();
             if ($activeCount <= 1) {
-                throw new \App\Exceptions\BusinessException(
+                throw new BusinessException(
                     'Impossible de désactiver la dernière institution active'
                 );
             }
         }
 
-        $institution->update(['is_active' => !$institution->is_active]);
+        $institution->update(['is_active' => ! $institution->is_active]);
 
         $this->invalidateCaches();
 
         $this->logger->info('Institution toggled', [
             'id' => $id,
             'is_active' => $institution->is_active,
+        ]);
+
+        /** @var Institution $fresh */
+        $fresh = $institution->fresh();
+
+        return $fresh;
+    }
+
+    /**
+     * Déclare le mode d'un établissement existant (#818).
+     *
+     * ## Ce que la bascule change, et ce qu'elle ne change pas
+     *
+     * `institutions.mode` n'est lu qu'à un seul endroit — `RosterAuthorityFactory`
+     * — et n'y décide que d'une chose : `allowsLocalEnrolment()`. Ses trois
+     * consommateurs sont l'analyse d'import, sa confirmation, et la capacité
+     * publiée à la connexion.
+     *
+     * Elle ne touche donc NI les inscriptions déjà écrites, NI l'accès des
+     * élèves à leurs cours : `CompositeEnrollmentSource` lit le pivot local puis
+     * se replie sur le cache KLASSCI, sans jamais consulter le mode. Et un
+     * import analysé avant la bascule ne peut pas aboutir après, sa confirmation
+     * revérifiant la capacité. La bascule est réversible, et le test le dit.
+     *
+     * ## Pourquoi une trace d'audit et pas seulement un log
+     *
+     * C'est le geste qui ouvre ou ferme l'inscription locale pour un
+     * établissement entier. Le journal applicatif s'élague ; `audit_logs` est
+     * append-only (#215) et répond à « qui a décidé ça, et quand ».
+     *
+     * @throws ModelNotFoundException
+     */
+    public function changeMode(int $id, InstitutionMode $mode): Institution
+    {
+        /** @var Institution $institution */
+        $institution = Institution::findOrFail($id);
+        $avant = $institution->mode;
+
+        $institution->update(['mode' => $mode]);
+
+        $this->invalidateCaches();
+
+        $this->audit->logSecurityEvent('institution.mode_changed', $institution, [
+            'from' => $avant->value,
+            'to' => $mode->value,
+        ]);
+
+        $this->logger->info('Institution mode changed', [
+            'id' => $id,
+            'from' => $avant->value,
+            'to' => $mode->value,
         ]);
 
         /** @var Institution $fresh */
@@ -132,8 +184,8 @@ final class InstitutionCrudService
      * une institution soft-deletée résoudrait un tenant `null` (fail-open) —
      * révoquer les sessions ferme cette fenêtre indépendamment de #565.
      *
-     * @throws \Illuminate\Database\Eloquent\ModelNotFoundException
-     * @throws BusinessException  Si l'institution est encore active.
+     * @throws ModelNotFoundException
+     * @throws BusinessException Si l'institution est encore active.
      */
     public function softDelete(int $id): void
     {
@@ -176,7 +228,7 @@ final class InstitutionCrudService
         // delete() est typé `mixed` par Larastan bien qu'il renvoie le nombre de
         // lignes supprimées → narrowing is_int (pas de cast, niveau 9).
         $deleted = PersonalAccessToken::query()
-            ->where('tokenable_type', (new User())->getMorphClass())
+            ->where('tokenable_type', (new User)->getMorphClass())
             ->whereIn(
                 'tokenable_id',
                 User::withoutGlobalScope('institution')

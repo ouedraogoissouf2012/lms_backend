@@ -124,6 +124,9 @@ Route::middleware(['auth:sanctum', 'role:supradmin', 'platform.supradmin'])
         Route::post('/', [InstitutionController::class, 'store']);
         Route::put('/{id}', [InstitutionController::class, 'update']);
         Route::patch('/{id}/toggle', [InstitutionController::class, 'toggle']);
+        // #818 : la bascule de mode a sa propre route, pour ne jamais être
+        // l'effet de bord d'un PUT de branding.
+        Route::patch('/{id}/mode', [InstitutionController::class, 'changeMode']);
         Route::post('/{id}/test-connection', [InstitutionController::class, 'testConnection']);
         Route::delete('/{id}', [InstitutionController::class, 'destroy']);
     });

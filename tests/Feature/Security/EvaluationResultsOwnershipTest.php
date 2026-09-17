@@ -8,6 +8,7 @@ use App\Models\Evaluation;
 use App\Models\Institution;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Testing\TestResponse;
 use Tests\Concerns\ActsAsTenantUser;
 use Tests\TestCase;
@@ -58,6 +59,17 @@ final class EvaluationResultsOwnershipTest extends TestCase
     {
         parent::setUp();
         $this->disableKlassciMiddleware();
+
+        // AUCUN appel ne doit sortir. `InstitutionFactory` pose un
+        // `fake()->url()` : sans ce faux, `results-by-class` interrogeait pour de
+        // bon un domaine reel, et le relais de statut (#270) renvoyait fidelement
+        // ce que ce site repondait. Un 403 venu d'un inconnu faisait echouer
+        // `assertNotSame(403)` au hasard — un test de securite intermittent, donc
+        // un test que l'on finit par ignorer.
+        Http::fake(['*' => Http::response([
+            'success' => true,
+            'data' => ['classe' => ['id' => 55, 'nom' => 'B2 COM'], 'etudiants' => []],
+        ])]);
 
         $this->institution = Institution::factory()->create();
         $this->evaluation = Evaluation::factory()->create([
@@ -116,9 +128,17 @@ final class EvaluationResultsOwnershipTest extends TestCase
 
     public function test_un_enseignant_sans_identite_klassci_est_ferme(): void
     {
-        // Fermeture par défaut : `where('klassci_enseignant_id', null)` devient
-        // `IS NULL` et ferait correspondre les évaluations orphelines — la leçon
-        // de TeacherOwnershipScope. L'absence d'identité ne vaut pas propriété.
+        // L'évaluation est ORPHELINE À DESSEIN. Sur une évaluation possédée, un
+        // compte sans identité serait déjà rejeté par la simple comparaison des
+        // identifiants : le test passerait sans rien dire de la règle qu'il
+        // prétend garder. C'est précisément ce que la falsification a montré —
+        // retirer la garde `!== null` laissait ce test vert.
+        //
+        // Orpheline, `null === null` vaut vrai : sans garde explicite, l'absence
+        // d'identité DEVIENT une preuve de propriété. C'est la leçon de
+        // TeacherOwnershipScope, ici rendue exécutable.
+        $this->evaluation->forceFill(['klassci_enseignant_id' => null])->save();
+
         $sansIdentite = $this->utilisateur('enseignant', null);
 
         $this->assertToutesLesLectures($sansIdentite, 403);

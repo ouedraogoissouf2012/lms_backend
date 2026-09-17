@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Services\TenantManager;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Schema;
 use Tests\Concerns\ActsAsTenantUser;
 use Tests\TestCase;
 
@@ -166,6 +167,25 @@ final class InstitutionModeDeclarationTest extends TestCase
         )->assertOk();
 
         self::assertSame(InstitutionMode::Klassci, $ecole->fresh()?->mode);
+    }
+
+    public function test_la_bascule_survit_a_un_audit_indisponible(): void
+    {
+        // #241 a tranché : un échec d'écriture de l'audit ne casse JAMAIS
+        // l'action métier — `AuditLogger::write()` avale ses propres échecs.
+        // Ce test tient cette décision pour la route neuve, et explique du même
+        // coup pourquoi aucune transaction n'entoure la bascule et sa trace :
+        // il n'y aurait rien à annuler.
+        $ecole = Institution::factory()->create(['mode' => InstitutionMode::Klassci]);
+        Schema::drop('audit_logs');
+
+        $this->patchJson(
+            '/api/admin/institutions/'.$ecole->id.'/mode',
+            ['mode' => 'standalone'],
+            $this->bearer($this->supradmin),
+        )->assertOk();
+
+        self::assertSame(InstitutionMode::Standalone, $ecole->fresh()?->mode);
     }
 
     public function test_une_bascule_sans_mode_est_refusee(): void

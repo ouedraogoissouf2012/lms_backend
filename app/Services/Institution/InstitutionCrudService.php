@@ -25,6 +25,7 @@ use Psr\Log\LoggerInterface;
  *
  *   - Création / mise à jour / soft delete d'une institution.
  *   - Toggle is_active avec garde-fou « ne jamais désactiver la dernière active ».
+ *   - Bascule délibérée du mode, auditée (#818).
  *   - Invalidation des caches list/overview après chaque écriture.
  *
  * La validation des payloads reste dans le controller (FormRequest implicite),
@@ -139,6 +140,13 @@ final class InstitutionCrudService
      * C'est le geste qui ouvre ou ferme l'inscription locale pour un
      * établissement entier. Le journal applicatif s'élague ; `audit_logs` est
      * append-only (#215) et répond à « qui a décidé ça, et quand ».
+     *
+     * Pas de transaction autour des deux écritures, contrairement à
+     * {@see softDelete()} : là-bas elle protège la révocation des sessions
+     * contre un soft delete à moitié appliqué. Ici il n'y a rien à protéger,
+     * `AuditLogger` avalant ses propres échecs par décision explicite (#241,
+     * `AuditLogger::write()`) — l'entourer d'une transaction n'annulerait
+     * jamais rien et ne ferait qu'ajouter un concept sans contrepartie.
      *
      * @throws ModelNotFoundException
      */

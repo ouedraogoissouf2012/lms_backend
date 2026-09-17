@@ -50,12 +50,25 @@ final class EvaluationResultsCorrectnessTest extends TestCase
     }
 
     /**
+     * Le roster est livre dans l'ENVELOPPE `classes/{id}`, comme KLASSCI le fait
+     * reellement (#669).
+     *
+     * Ce double stubbait auparavant `getClasseEtudiants()`, donc il POSTULAIT que
+     * `classes/{id}/etudiants` repondait. Cet endpoint est soumis a une
+     * autorisation par classe et refuse a tous les roles : ces trois tests
+     * restaient verts pendant que l'ecran rendait 500 en production. Le contrat
+     * verrouille ici est desormais celui de l'amont, pas celui du code.
+     *
      * @param  array<int, array<string, mixed>>  $roster
+     *
+     * @see tests/Feature/Evaluation/Teacher/EvaluationResultsRosterSourceTest.php
      */
     private function mockRoster(array $roster): void
     {
         $this->mock(KlassciProxyService::class, function (MockInterface $mock) use ($roster): void {
-            $mock->shouldReceive('getClasseEtudiants')->andReturn(['data' => $roster]);
+            $mock->shouldReceive('requestWithUserToken')->andReturn([
+                'data' => ['classe' => ['id' => 55, 'nom' => 'B2 COM'], 'etudiants' => $roster],
+            ]);
             $mock->shouldReceive('getClasses')->andReturn(['data' => []]);
             $mock->shouldReceive('getMatieres')->andReturn(['data' => []]);
         });

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\API\Evaluation;
 
+use App\Http\Controllers\API\Concerns\RendersKlassciBackedErrors;
 use App\Http\Controllers\AuthenticatedController;
 use App\Http\Requests\GradeEvaluationSubmissionRequest;
 use App\Models\Evaluation;
@@ -13,6 +14,7 @@ use App\Services\Evaluation\Teacher\TeacherEvaluationResultsService;
 use App\Services\Evaluation\Teacher\TeacherEvaluationViewService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use RuntimeException;
 
 /**
  * Thin controller for teacher-side evaluation views.
@@ -39,6 +41,11 @@ use Illuminate\Http\Request;
  */
 final class EvaluationTeacherController extends AuthenticatedController
 {
+    // #270 : un refus ou une panne KLASSCI garde son vrai statut (403 reste un
+    // 403, une indisponibilite devient un 503 + `Retry-After`). Les deux
+    // controleurs ETUDIANT des evaluations l'utilisaient deja ; celui-ci, non.
+    use RendersKlassciBackedErrors;
+
     public function __construct(
         private readonly TeacherEvaluationResultsService $resultsService,
         private readonly TeacherEvaluationViewService $viewService,
@@ -49,9 +56,11 @@ final class EvaluationTeacherController extends AuthenticatedController
     {
         $teacher = $this->authenticatedUser($request);
 
-        $result = $this->resultsService->getResultsByClass($id, $teacher);
-
-        return $this->relayResponse($result);
+        try {
+            return $this->relayResponse($this->resultsService->getResultsByClass($id, $teacher));
+        } catch (RuntimeException $e) {
+            return $this->renderKlassciFailure($e);
+        }
     }
 
     public function getSubmissions(Request $request, int $id): JsonResponse

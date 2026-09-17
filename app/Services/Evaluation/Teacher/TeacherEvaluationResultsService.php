@@ -8,10 +8,11 @@ use App\Exceptions\MissingKlassciTokenException;
 use App\Models\Evaluation;
 use App\Models\EvaluationSubmission;
 use App\Models\User;
+use App\Services\Classe\ClasseRoster;
 use App\Services\Evaluation\EvaluationEnrichmentService;
-use App\Services\KlassciProxyService;
 use App\Services\Seances\KlassciPayload;
 use Psr\Log\LoggerInterface;
+use RuntimeException;
 use Throwable;
 
 /**
@@ -43,7 +44,7 @@ use Throwable;
 final class TeacherEvaluationResultsService
 {
     public function __construct(
-        private readonly KlassciProxyService $klassciService,
+        private readonly ClasseRoster $roster,
         private readonly EvaluationEnrichmentService $enrichmentService,
         private readonly LoggerInterface $logger,
     ) {}
@@ -88,8 +89,12 @@ final class TeacherEvaluationResultsService
                 ];
             }
 
-            $classeEtudiants = $this->klassciService->getClasseEtudiants($teacherToken, (int) $evaluation->klassci_classe_id);
-            $etudiants       = $classeEtudiants['data'] ?? [];
+            // #669 : le roster est lu dans l'enveloppe `classes/{id}`. L'endpoint
+            // dedie `classes/{id}/etudiants` est soumis a une autorisation PAR
+            // CLASSE et repond 403 a TOUS les roles, superAdmin compris : il
+            // rendait cet ecran definitivement inaccessible, et le catch
+            // ci-dessous presentait ce refus comme une panne du LMS.
+            $etudiants = $this->roster->etudiants((int) $evaluation->klassci_classe_id, $teacherToken);
 
             $this->logger->info('👥 Étudiants de la classe', [
                 'total_etudiants' => count($etudiants),
@@ -123,6 +128,13 @@ final class TeacherEvaluationResultsService
                     ],
                 ],
             ];
+        } catch (RuntimeException $e) {
+            // Un refus (4xx) ou une indisponibilite KLASSCI n'est pas une
+            // defaillance du LMS. L'ecraser en 500 rendait un probleme de droits
+            // indiscernable d'une panne — pour l'utilisateur comme pour la
+            // supervision — et privait le client du 503 + `Retry-After` prevu par
+            // #243/#685. Le controleur la traduit via RendersKlassciBackedErrors.
+            throw $e;
         } catch (Throwable $e) {
             $this->logger->error('❌ Erreur récupération résultats évaluation', [
                 'evaluation_id' => $evaluationId,

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\API;
 
+use App\Enums\InstitutionMode;
 use App\Exceptions\BusinessException;
 use App\Exceptions\UnserializablePayloadException;
 use App\Http\Controllers\Controller;
@@ -65,6 +66,10 @@ final class InstitutionController extends Controller
             $institution = $this->crud->create($request->validate([
                 'slug' => ['required', 'string', 'max:50', 'regex:/^[a-z0-9\-]+$/', 'unique:institutions,slug'],
                 'name' => 'required|string|max:191',
+                // Déclaré à la naissance, où il n'y a encore personne à déplacer.
+                // Absent, le modèle retombe sur `klassci` (#814) : aucune école
+                // existante ne change de comportement.
+                'mode' => ['sometimes', Rule::enum(InstitutionMode::class)],
                 'klassci_api_url' => ['nullable', 'string', 'max:500', new KlassciApiUrl],
                 'klassci_api_token' => 'nullable|string',
                 'logo_url' => 'nullable|string|max:500',
@@ -81,6 +86,17 @@ final class InstitutionController extends Controller
         }
     }
 
+    /**
+     * `mode` est VOLONTAIREMENT absent de ces règles, et doit le rester.
+     *
+     * Basculer le mode change l'autorité d'inscription de tout l'établissement.
+     * Le laisser passer ici en ferait l'effet de bord possible d'un changement
+     * de couleur ou de logo. La bascule a sa propre route ({@see changeMode}),
+     * comme `is_active` a déjà la sienne ({@see toggle}).
+     *
+     * Une clé `mode` envoyée dans ce `PUT` n'est pas rejetée : elle est
+     * simplement absente du tableau validé, donc jamais transmise au service.
+     */
     public function update(Request $request, int $id): JsonResponse
     {
         try {
@@ -120,6 +136,32 @@ final class InstitutionController extends Controller
             return $this->businessError($e->getMessage());
         } catch (Throwable $e) {
             return $this->internalError('toggle', $e, 'Erreur lors du changement de statut', $id);
+        }
+    }
+
+    /**
+     * Bascule délibérée du mode d'un établissement (#818).
+     *
+     * Le mode voulu est exigé dans le corps plutôt qu'inversé comme le fait
+     * `toggle` : avec deux valeurs aujourd'hui et une troisième possible demain,
+     * une inversion implicite deviendrait un piège. Le dire, c'est le vouloir.
+     */
+    public function changeMode(Request $request, int $id): JsonResponse
+    {
+        try {
+            $validated = $request->validate([
+                'mode' => ['required', Rule::enum(InstitutionMode::class)],
+            ]);
+
+            $institution = $this->crud->changeMode($id, InstitutionMode::from((string) $validated['mode']));
+
+            return $this->successResponse($institution, 'Mode de l\'institution mis à jour');
+        } catch (ModelNotFoundException) {
+            return $this->notFound();
+        } catch (ValidationException $e) {
+            return $this->validationError($e);
+        } catch (Throwable $e) {
+            return $this->internalError('changeMode', $e, 'Erreur lors du changement de mode', $id);
         }
     }
 

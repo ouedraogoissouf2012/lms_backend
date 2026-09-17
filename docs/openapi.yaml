@@ -823,6 +823,87 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
+  /admin/institutions/{id}/mode:
+    patch:
+      tags:
+        - Institutions
+      summary: "Basculer le mode d'un etablissement"
+      description: |
+        Declare si l'etablissement tient sa propre liste d'inscrits
+        (`standalone`) ou la recoit de KLASSCI (`klassci`).
+
+        Le mode voulu est EXIGE dans le corps, il n'est pas inverse : avec deux
+        valeurs aujourd'hui et une troisieme possible demain, une inversion
+        implicite deviendrait un piege.
+
+        Cette bascule a sa propre route pour ne jamais etre l'effet de bord d'un
+        `PUT` de branding. Elle est tracee dans `audit_logs`
+        (`institution.mode_changed`).
+
+        Ce qu'elle change : l'inscription locale devient permise ou interdite —
+        l'assistant d'import et la capacite publiee a la connexion. Ce qu'elle ne
+        change PAS : les inscriptions deja ecrites et l'acces des eleves a leurs
+        cours, la source d'inscription ne consultant jamais le mode. La bascule
+        est donc reversible.
+      security:
+        - sanctum: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - mode
+              properties:
+                mode:
+                  type: string
+                  enum: [klassci, standalone]
+      responses:
+        '200':
+          description: "Mode mis a jour ; l'institution est renvoyee a jour."
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  data:
+                    type: object
+        '401':
+          description: "Non authentifie"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: "Reserve au supradmin plateforme"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: "Institution introuvable"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: "Mode absent ou hors de la liste fermee"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
   /programs:
     post:
       tags:

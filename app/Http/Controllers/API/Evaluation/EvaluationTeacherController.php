@@ -7,6 +7,7 @@ namespace App\Http\Controllers\API\Evaluation;
 use App\Http\Controllers\API\Concerns\RendersKlassciBackedErrors;
 use App\Http\Controllers\AuthenticatedController;
 use App\Http\Requests\GradeEvaluationSubmissionRequest;
+use App\Http\Requests\ViewEvaluationResultsRequest;
 use App\Models\Evaluation;
 use App\Models\EvaluationSubmission;
 use App\Services\Evaluation\Teacher\EvaluationTeacherGradeService;
@@ -52,7 +53,7 @@ final class EvaluationTeacherController extends AuthenticatedController
         private readonly EvaluationTeacherGradeService $gradeService,
     ) {}
 
-    public function getResultsByClass(Request $request, int $id): JsonResponse
+    public function getResultsByClass(ViewEvaluationResultsRequest $request, int $id): JsonResponse
     {
         $teacher = $this->authenticatedUser($request);
 
@@ -63,7 +64,7 @@ final class EvaluationTeacherController extends AuthenticatedController
         }
     }
 
-    public function getSubmissions(Request $request, int $id): JsonResponse
+    public function getSubmissions(ViewEvaluationResultsRequest $request, int $id): JsonResponse
     {
         $teacher = $this->authenticatedUser($request);
 

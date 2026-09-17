@@ -105,6 +105,11 @@ final class EvaluationResultsNoNPlusOneTest extends TestCase
         return Evaluation::factory()->create([
             'institution_id' => $this->institution->id,
             'klassci_classe_id' => $klassciClasseId,
+            // Le compte doit POSSEDER l'evaluation : lire les notes est desormais
+            // reserve au proprietaire (coordinateur et admin exceptes). Une fixture
+            // qui tire deux identifiants enseignant sans rapport ne modelise aucun
+            // enseignant reel — elle decrivait un acces que le produit n'accorde pas.
+            'klassci_enseignant_id' => $this->teacher->klassci_enseignant_id,
             'is_published' => true,
         ]);
     }

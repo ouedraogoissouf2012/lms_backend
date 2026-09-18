@@ -52,6 +52,38 @@ final class ClasseEnvelope
     }
 
     /**
+     * Nom affichable d'un étudiant du roster.
+     *
+     * L'enveloppe n'expose QUE `nom_complet` — jamais `nom` ni `prenom`. Un
+     * appelant qui composait le nom depuis ces deux clés absentes obtenait une
+     * chaîne vide : en production, l'écran des notes a affiché six lignes sans
+     * personne. La connaissance vit ici, avec le reste de la forme de cette
+     * enveloppe, pour qu'aucun appelant n'ait à la redécouvrir.
+     *
+     * Le repli `nom` + `prenom` couvre les sources qui séparent les deux — la
+     * règle est déjà celle de
+     * {@see \App\Services\Sync\Classes\ClasseStudentsSynchronizer}.
+     *
+     * On ne DÉCOUPE jamais `nom_complet` pour en déduire un prénom : les noms
+     * composés sont la règle ici, et découper sur la première espace
+     * fabriquerait une identité fausse.
+     *
+     * @param  array<string, mixed>  $etudiant
+     */
+    public static function nomEtudiant(array $etudiant): string
+    {
+        $complet = $etudiant['nom_complet'] ?? null;
+        if (is_string($complet) && trim($complet) !== '') {
+            return trim($complet);
+        }
+
+        $nom = is_string($etudiant['nom'] ?? null) ? $etudiant['nom'] : '';
+        $prenom = is_string($etudiant['prenom'] ?? null) ? $etudiant['prenom'] : '';
+
+        return trim($nom.' '.$prenom);
+    }
+
+    /**
      * Bloc de liste, en distinguant ABSENT (`null`) de VIDE (`[]`).
      *
      * @param  array<string, mixed>|null  $payload

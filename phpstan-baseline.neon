@@ -901,18 +901,6 @@ parameters:
 			path: app/Services/Evaluation/Student/StudentGradesAggregator.php
 
 		-
-			message: '#^Binary operation "\." between mixed and '' '' results in an error\.$#'
-			identifier: binaryOp.invalid
-			count: 1
-			path: app/Services/Evaluation/Teacher/TeacherEvaluationResultsService.php
-
-		-
-			message: '#^Binary operation "\." between non\-falsy\-string and mixed results in an error\.$#'
-			identifier: binaryOp.invalid
-			count: 1
-			path: app/Services/Evaluation/Teacher/TeacherEvaluationResultsService.php
-
-		-
 			message: '#^Cannot cast mixed to float\.$#'
 			identifier: cast.double
 			count: 2

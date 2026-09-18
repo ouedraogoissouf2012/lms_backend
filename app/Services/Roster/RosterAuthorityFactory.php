@@ -28,10 +28,17 @@ use App\Services\TenantManager;
  * nommément.
  *
  * Et `KlassciTargetResolver::baseUrl()` ne peut pas davantage servir de
- * discriminant : sa priorité 3 retombe sur la configuration GLOBALE, si bien
- * qu'un établissement autonome reçoit une URL non nulle dès que
- * `KLASSCI_API_URL` est définie. Son `null` ne vaut « autonome » que par
- * accident de déploiement.
+ * discriminant, mais la raison a changé depuis #792 (PR #844). Elle ne tient
+ * plus au déploiement : la priorité 3 ne se rabat plus sur la configuration
+ * globale, et le `null` d'un tenant résolu y est désormais absorbant — une
+ * école autonome reçoit donc bien `null`, de façon fiable.
+ *
+ * Ce que `baseUrl()` décrit reste néanmoins une LIAISON RÉSEAU, pas une
+ * intention. Les deux axes sont volontairement orthogonaux : une école peut
+ * n'avoir aucune cible KLASSCI sans avoir déclaré vouloir tenir sa propre
+ * liste, et {@see \Tests\Feature\Roster\RosterAuthorityResolutionTest} épingle
+ * les deux cas croisés. Dériver l'autorité de roster d'une URL absente
+ * confondrait « injoignable » et « autonome ».
  *
  * ## Fail-secure
  *

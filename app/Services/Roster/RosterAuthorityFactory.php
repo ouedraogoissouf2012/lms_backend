@@ -6,7 +6,11 @@ namespace App\Services\Roster;
 
 use App\Enums\InstitutionMode;
 use App\Models\Institution;
+use App\Services\Catalogue\CatalogueAuthority;
+use App\Services\Catalogue\KlassciCatalogueAuthority;
+use App\Services\Catalogue\LocalCatalogueAuthority;
 use App\Services\TenantManager;
+use Tests\Feature\Roster\RosterAuthorityResolutionTest;
 
 /**
  * LE point où le mode d'un établissement se résout (#805, épique #697 art. 1).
@@ -36,7 +40,7 @@ use App\Services\TenantManager;
  * Ce que `baseUrl()` décrit reste néanmoins une LIAISON RÉSEAU, pas une
  * intention. Les deux axes sont volontairement orthogonaux : une école peut
  * n'avoir aucune cible KLASSCI sans avoir déclaré vouloir tenir sa propre
- * liste, et {@see \Tests\Feature\Roster\RosterAuthorityResolutionTest} épingle
+ * liste, et {@see RosterAuthorityResolutionTest} épingle
  * les deux cas croisés. Dériver l'autorité de roster d'une URL absente
  * confondrait « injoignable » et « autonome ».
  *
@@ -67,5 +71,34 @@ final class RosterAuthorityFactory
         return $institution?->mode === InstitutionMode::Standalone
             ? new LocalRosterAuthority
             : new KlassciRosterAuthority;
+    }
+
+    /**
+     * Qui écrit le catalogue pédagogique — classes, matières (#848).
+     *
+     * Produite ICI et non par une seconde fabrique : la liste d'exemption
+     * travaille par FICHIER et prévient qu'une entrée de plus « revient à
+     * déplacer la frontière d'architecture ». Un second point de résolution du
+     * mode est exactement ce que cette classe existe pour empêcher.
+     *
+     * Le nom de la classe en devient trop étroit — elle résout le mode, elle ne
+     * sert plus le seul roster. Dette assumée : la renommer déplacerait une
+     * entrée d'un fichier sous CODEOWNERS, ce qui n'a pas sa place dans le lot
+     * qui introduit la capacité.
+     */
+    public function catalogueForCurrentTenant(): CatalogueAuthority
+    {
+        return $this->catalogueForInstitution($this->tenants->get());
+    }
+
+    /**
+     * `null` rend l'autorité la plus restrictive : hors établissement — un job,
+     * une route publique — aucune écriture locale du catalogue.
+     */
+    public function catalogueForInstitution(?Institution $institution): CatalogueAuthority
+    {
+        return $institution?->mode === InstitutionMode::Standalone
+            ? new LocalCatalogueAuthority
+            : new KlassciCatalogueAuthority;
     }
 }

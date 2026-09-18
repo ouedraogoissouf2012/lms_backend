@@ -100,34 +100,7 @@ final class TeacherEvaluationResultsService
                 'total_etudiants' => count($etudiants),
             ]);
 
-            $evaluationEnrichie = $this->enrichmentService->enrich(collect([$evaluation]), $teacherToken)[0];
-
-            $resultats = $this->buildResultats($evaluation, $etudiants);
-
-            // Tri alphabétique par nom complet — préserve l'ordre que le
-            // frontend attend.
-            usort($resultats, static fn (array $a, array $b): int
-                => strcmp($a['etudiant_nom_complet'], $b['etudiant_nom_complet']));
-
-            $statistiques = $this->buildStatistiques($resultats, count($etudiants));
-
-            $this->logger->info('✅ Résultats calculés', [
-                'total_etudiants' => $statistiques['total_etudiants'],
-                'soumis'          => $statistiques['etudiants_soumis'],
-                'moyenne'         => $statistiques['moyenne_classe'],
-            ]);
-
-            return [
-                'status'  => 200,
-                'payload' => [
-                    'success' => true,
-                    'data'    => [
-                        'evaluation'   => $evaluationEnrichie,
-                        'resultats'    => $resultats,
-                        'statistiques' => $statistiques,
-                    ],
-                ],
-            ];
+            return $this->assemblerReponse($evaluation, $etudiants, $teacherToken);
         } catch (RuntimeException $e) {
             // Un refus (4xx) ou une indisponibilite KLASSCI n'est pas une
             // defaillance du LMS. L'ecraser en 500 rendait un probleme de droits
@@ -151,6 +124,50 @@ final class TeacherEvaluationResultsService
                 ],
             ];
         }
+    }
+
+    /**
+     * Assemble la reponse de succes : enrichissement, lignes par etudiant, tri,
+     * statistiques.
+     *
+     * Extraite de {@see getResultsByClass()} parce que le cliquet de longueur de
+     * methode (§5) a refuse qu elle grossisse encore — elle etait a 64 lignes de
+     * dette tracee. Ce bloc etait le seul du corps a avoir une unite propre : il
+     * ne decide rien, il PRESENTE ce qui a deja ete obtenu. Le rogner de
+     * commentaires aurait satisfait la garde sans rien ameliorer.
+     *
+     * @param  array<int, array<string, mixed>>  $etudiants
+     * @return array{status:int, payload:array<string, mixed>}
+     */
+    private function assemblerReponse(Evaluation $evaluation, array $etudiants, string $teacherToken): array
+    {
+        $evaluationEnrichie = $this->enrichmentService->enrich(collect([$evaluation]), $teacherToken)[0];
+
+        $resultats = $this->buildResultats($evaluation, $etudiants);
+
+        // Tri alphabétique par nom complet — préserve l'ordre que le frontend attend.
+        usort($resultats, static fn (array $a, array $b): int
+            => strcmp($a['etudiant_nom_complet'], $b['etudiant_nom_complet']));
+
+        $statistiques = $this->buildStatistiques($resultats, count($etudiants));
+
+        $this->logger->info('✅ Résultats calculés', [
+            'total_etudiants' => $statistiques['total_etudiants'],
+            'soumis'          => $statistiques['etudiants_soumis'],
+            'moyenne'         => $statistiques['moyenne_classe'],
+        ]);
+
+        return [
+            'status'  => 200,
+            'payload' => [
+                'success' => true,
+                'data'    => [
+                    'evaluation'   => $evaluationEnrichie,
+                    'resultats'    => $resultats,
+                    'statistiques' => $statistiques,
+                ],
+            ],
+        ];
     }
 
     /**

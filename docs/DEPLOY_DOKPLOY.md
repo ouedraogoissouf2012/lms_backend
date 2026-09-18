@@ -282,6 +282,7 @@ générées — c'est le test qui valide toute la chaîne worker + volume + Libr
 | Serveur qui devient injoignable pendant un build | Deux `build:` dans le compose, ou Nixpacks | Un seul `build:` — c'est déjà le cas ici |
 | Conteneur `web` qui redémarre en boucle après un déploiement | Une migration échoue — le démarrage est volontairement bloqué (#831) | Lire les journaux Dokploy ; corriger la migration, pas la garde |
 | Média légitime en 404 alors que le fichier existe | Migration jouée à la main en **root** via `docker exec` : répertoires créés en `drwx------ root`, illisibles par Apache | Laisser l'entrypoint migrer (il le fait sous `www-data`) ; si le mal est fait : `chown -R www-data:www-data storage/app/private` |
+| Enregistrement visio en 404 alors que le `.mp4` est bien présent | Le **worker** écrivait le média en root : `drwx------ root` sous `storage/app/private/recordings/`, qu'Apache ne peut pas traverser (#673) | Corrigé : l'entrypoint fait tourner `worker` et `scheduler` sous `www-data`. Pour un média déjà écrit : `chown -R www-data:www-data storage/app/private/recordings` |
 
 ## viii. Sauvegardes et retour arrière
 

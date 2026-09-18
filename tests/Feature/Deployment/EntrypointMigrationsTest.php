@@ -101,4 +101,96 @@ final class EntrypointMigrationsTest extends TestCase
             'la migration doit preceder le demarrage du serveur',
         );
     }
+
+    /**
+     * #673 — le worker ne doit pas ecrire en root.
+     *
+     * ## Le defaut mesure
+     *
+     * `ImportJibriRecordingMedia` copie l'enregistrement depuis Jibri vers le
+     * disque PRIVE (#824). Le conteneur worker demarrant en root, Laravel creait
+     * l'arborescence avec la visibilite privee par defaut de Flysystem :
+     *
+     *   drwx------ root root  storage/app/private/recordings/4
+     *
+     * Apache tourne sous `www-data` et ne peut pas traverser ce repertoire.
+     * Mesure en production le 2026-09-18, sur le premier enregistrement mene de
+     * bout en bout : le media etait bien la, 8 075 548 octets, et la route
+     * signee rendait 404. AUCUNE video n'aurait ete lisible.
+     *
+     * C'est la consequence directe du passage au disque prive : tant que les
+     * fichiers etaient servis par Apache depuis `storage/app/public`, personne
+     * ne s'en apercevait — ils n'etaient de toute facon pas proteges.
+     *
+     * Le scheduler suit la meme regle : `recordings:purge` et l'archivage
+     * touchent les memes arborescences.
+     */
+    public function test_le_worker_n_ecrit_pas_en_root(): void
+    {
+        $roles = $this->rolesDeLEntrypoint();
+
+        // Les roles DELEGUENT : c'est l'aide partagee qui abandonne les
+        // privileges, pour que les trois suivent la meme regle.
+        self::assertStringContainsString('sous_www_data', $roles['worker']);
+        self::assertStringContainsString('sous_www_data', $roles['scheduler']);
+
+        // Et cette aide fait bien ce que son nom promet.
+        //
+        // Borne au CORPS de l'aide. Une premiere version cherchait
+        // `su ... www-data` dans tout le fichier avec l'option `/s` : le `.*`
+        // traversait le script et retombait sur le `su` du role `web`.
+        // Falsifiee en retirant le `su` de l'aide, la garde restait VERTE.
+        self::assertStringContainsString('su -s /bin/sh www-data', $this->corpsDeLAide());
+    }
+
+    public function test_chaque_role_gere_le_cas_non_root(): void
+    {
+        // Meme contrat que #831 pour `web` : `su` echouerait si le conteneur
+        // tournait deja sous un utilisateur non privilegie.
+        // `web` teste `id -u` en propre ; `worker` et `scheduler` heritent du
+        // meme repli par l'aide partagee. Les deux formes sont acceptables,
+        // c'est la PROPRIETE qui compte : aucun role ne suppose etre root.
+        $contenu = $this->entrypoint();
+        self::assertSame(
+            2,
+            substr_count($contenu, 'id -u'),
+            "chaque chemin de lancement doit savoir s'il tourne en root",
+        );
+
+        $roles = $this->rolesDeLEntrypoint();
+        self::assertStringContainsString('id -u', $roles['web']);
+    }
+
+    /** Corps de `sous_www_data`, borne a ses propres accolades. */
+    private function corpsDeLAide(): string
+    {
+        $contenu = $this->entrypoint();
+        $debut = strpos($contenu, 'sous_www_data() {');
+        self::assertNotFalse($debut, 'l\'aide sous_www_data doit exister');
+
+        // La fonction se termine a la premiere accolade en colonne 0.
+        $fin = strpos($contenu, PHP_EOL.'}', $debut);
+
+        return substr($contenu, $debut, $fin - $debut);
+    }
+
+    /**
+     * Decoupe l'aiguillage par role.
+     *
+     * @return array<string, string>
+     */
+    private function rolesDeLEntrypoint(): array
+    {
+        $contenu = $this->entrypoint();
+        $apres = substr($contenu, (int) strpos($contenu, 'case "$role"'));
+        $morceaux = preg_split('/^\s{2}(worker|scheduler|web\|\*)\)/m', $apres, -1, PREG_SPLIT_DELIM_CAPTURE);
+
+        $roles = [];
+        for ($i = 1; $i < count($morceaux); $i += 2) {
+            $nom = $morceaux[$i] === 'web|*' ? 'web' : $morceaux[$i];
+            $roles[$nom] = $morceaux[$i + 1];
+        }
+
+        return $roles;
+    }
 }

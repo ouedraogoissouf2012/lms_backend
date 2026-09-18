@@ -925,18 +925,6 @@ parameters:
 			path: app/Services/Evaluation/Teacher/TeacherEvaluationResultsService.php
 
 		-
-			message: '#^Parameter \#1 \$value of function count expects array\|Countable, mixed given\.$#'
-			identifier: argument.type
-			count: 2
-			path: app/Services/Evaluation/Teacher/TeacherEvaluationResultsService.php
-
-		-
-			message: '#^Parameter \#2 \$etudiants of method App\\Services\\Evaluation\\Teacher\\TeacherEvaluationResultsService\:\:buildResultats\(\) expects array\<int, array\<string, mixed\>\>, mixed given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Services/Evaluation/Teacher/TeacherEvaluationResultsService.php
-
-		-
 			message: '#^Parameter \#2 \$string2 of function strcmp expects string, mixed given\.$#'
 			identifier: argument.type
 			count: 1

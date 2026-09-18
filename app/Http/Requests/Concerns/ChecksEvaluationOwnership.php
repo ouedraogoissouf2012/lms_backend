@@ -71,8 +71,7 @@ trait ChecksEvaluationOwnership
      */
     protected function checkEvaluationOwnership(): bool
     {
-        /** @var User|null $user */
-        $user = auth()->user();
+        $user = $this->authenticatedUserOrNull();
 
         if (!$user) {
             return false;
@@ -83,26 +82,89 @@ trait ChecksEvaluationOwnership
             return false;
         }
 
-        // Evaluation must exist and belong to user's institution.
-        $evaluation = Evaluation::where('id', $this->route('id'))
-            ->where('institution_id', $user->institution_id)
-            ->first();
+        return $this->mayActOnRoutedEvaluation($user);
+    }
+
+    /**
+     * Returns true iff the authenticated user may READ the notes attached to the
+     * routed evaluation. False otherwise -> 403.
+     *
+     * ## Pourquoi une seconde methode, et pas la premiere reutilisee
+     *
+     * `checkEvaluationOwnership()` refuse les coordinateurs : c'est une regle de
+     * MUTATION (« un coordinateur ne modifie pas une evaluation »). La transposer
+     * telle quelle a la lecture leur retirerait un acces que la route leur accorde
+     * (`role:enseignant,coordinateur,superAdmin`) et pour lequel
+     * {@see \App\Services\Evaluation\Teacher\TeacherEvaluationViewService::preview()}
+     * ecrit deja une politique de supervision. Ce serait une regression deguisee
+     * en durcissement.
+     *
+     * Ce qui est commun aux deux — quelle colonne porte la propriete, a quelle
+     * valeur la comparer, et l'appartenance a l'institution — reste ecrit UNE
+     * fois, dans {@see mayActOnRoutedEvaluation()}. C'est la raison d'etre de ce
+     * trait : que la reponse a « qui possede cette evaluation » n'ait qu'un lieu.
+     *
+     * Le coordinateur reste borne a SON institution : c'est le `where` de
+     * {@see routedEvaluationForInstitution()}, pas un blanc-seing.
+     */
+    protected function checkEvaluationReadAccess(): bool
+    {
+        $user = $this->authenticatedUserOrNull();
+
+        if (!$user) {
+            return false;
+        }
+
+        if ($user->isCoordinator()) {
+            return $this->routedEvaluationForInstitution($user) !== null;
+        }
+
+        return $this->mayActOnRoutedEvaluation($user);
+    }
+
+    /**
+     * Propriete, invariants #119 inclus — le seul endroit ou ils sont ecrits.
+     *
+     * Lecture depuis la colonne dediee write-once `users.klassci_enseignant_id`,
+     * JAMAIS depuis le blob `klassci_data` qu'un re-sync compromis pourrait
+     * reecrire. Une identite enseignant absente ne vaut pas propriete : elle
+     * ferme, faute de quoi elle correspondrait aux evaluations orphelines —
+     * meme fermeture par defaut que
+     * {@see \App\Services\Search\TeacherOwnershipScope::applyToEvaluations()}.
+     *
+     * Contournement admin : admin / administrateur / superAdmin / supradmin.
+     */
+    private function mayActOnRoutedEvaluation(User $user): bool
+    {
+        $evaluation = $this->routedEvaluationForInstitution($user);
 
         if (!$evaluation) {
             return false;
         }
 
-        // Ownership check (issue #119) — read from the write-once dedicated
-        // column `users.klassci_enseignant_id` (never from the volatile blob).
-        // Admin bypass: full role bypass (admin / administrateur / superAdmin / supradmin).
-        if (!$user->isAdmin()) {
-            $userKlassciEnseignantId = $user->klassci_enseignant_id;
-            if ($userKlassciEnseignantId === null
-                || $evaluation->klassci_enseignant_id !== $userKlassciEnseignantId) {
-                return false;
-            }
+        if ($user->isAdmin()) {
+            return true;
         }
 
-        return true;
+        $userKlassciEnseignantId = $user->klassci_enseignant_id;
+
+        return $userKlassciEnseignantId !== null
+            && $evaluation->klassci_enseignant_id === $userKlassciEnseignantId;
+    }
+
+    /** L'evaluation routee, si elle existe DANS l'institution de l'appelant. */
+    private function routedEvaluationForInstitution(User $user): ?Evaluation
+    {
+        return Evaluation::where('id', $this->route('id'))
+            ->where('institution_id', $user->institution_id)
+            ->first();
+    }
+
+    private function authenticatedUserOrNull(): ?User
+    {
+        /** @var User|null $user */
+        $user = auth()->user();
+
+        return $user;
     }
 }

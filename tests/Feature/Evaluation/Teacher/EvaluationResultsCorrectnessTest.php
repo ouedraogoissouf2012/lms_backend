@@ -45,17 +45,35 @@ final class EvaluationResultsCorrectnessTest extends TestCase
         $this->evaluation = Evaluation::factory()->create([
             'institution_id' => $this->institution->id,
             'klassci_classe_id' => 55,
+            // Le compte doit POSSEDER l'evaluation : lire les notes est desormais
+            // reserve au proprietaire (coordinateur et admin exceptes). Une fixture
+            // qui tire deux identifiants enseignant sans rapport ne modelise aucun
+            // enseignant reel — elle decrivait un acces que le produit n'accorde pas.
+            'klassci_enseignant_id' => $this->teacher->klassci_enseignant_id,
             'is_published' => true,
         ]);
     }
 
     /**
+     * Le roster est livre dans l'ENVELOPPE `classes/{id}`, comme KLASSCI le fait
+     * reellement (#669).
+     *
+     * Ce double stubbait auparavant `getClasseEtudiants()`, donc il POSTULAIT que
+     * `classes/{id}/etudiants` repondait. Cet endpoint est soumis a une
+     * autorisation par classe et refuse a tous les roles : ces trois tests
+     * restaient verts pendant que l'ecran rendait 500 en production. Le contrat
+     * verrouille ici est desormais celui de l'amont, pas celui du code.
+     *
      * @param  array<int, array<string, mixed>>  $roster
+     *
+     * @see tests/Feature/Evaluation/Teacher/EvaluationResultsRosterSourceTest.php
      */
     private function mockRoster(array $roster): void
     {
         $this->mock(KlassciProxyService::class, function (MockInterface $mock) use ($roster): void {
-            $mock->shouldReceive('getClasseEtudiants')->andReturn(['data' => $roster]);
+            $mock->shouldReceive('requestWithUserToken')->andReturn([
+                'data' => ['classe' => ['id' => 55, 'nom' => 'B2 COM'], 'etudiants' => $roster],
+            ]);
             $mock->shouldReceive('getClasses')->andReturn(['data' => []]);
             $mock->shouldReceive('getMatieres')->andReturn(['data' => []]);
         });

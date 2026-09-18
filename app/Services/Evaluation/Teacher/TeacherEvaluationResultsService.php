@@ -8,10 +8,11 @@ use App\Exceptions\MissingKlassciTokenException;
 use App\Models\Evaluation;
 use App\Models\EvaluationSubmission;
 use App\Models\User;
+use App\Services\Classe\ClasseRoster;
 use App\Services\Evaluation\EvaluationEnrichmentService;
-use App\Services\KlassciProxyService;
 use App\Services\Seances\KlassciPayload;
 use Psr\Log\LoggerInterface;
+use RuntimeException;
 use Throwable;
 
 /**
@@ -43,7 +44,7 @@ use Throwable;
 final class TeacherEvaluationResultsService
 {
     public function __construct(
-        private readonly KlassciProxyService $klassciService,
+        private readonly ClasseRoster $roster,
         private readonly EvaluationEnrichmentService $enrichmentService,
         private readonly LoggerInterface $logger,
     ) {}
@@ -88,41 +89,25 @@ final class TeacherEvaluationResultsService
                 ];
             }
 
-            $classeEtudiants = $this->klassciService->getClasseEtudiants($teacherToken, (int) $evaluation->klassci_classe_id);
-            $etudiants       = $classeEtudiants['data'] ?? [];
+            // #669 : le roster est lu dans l'enveloppe `classes/{id}`. L'endpoint
+            // dedie `classes/{id}/etudiants` est soumis a une autorisation PAR
+            // CLASSE et repond 403 a TOUS les roles, superAdmin compris : il
+            // rendait cet ecran definitivement inaccessible, et le catch
+            // ci-dessous presentait ce refus comme une panne du LMS.
+            $etudiants = $this->roster->etudiants((int) $evaluation->klassci_classe_id, $teacherToken);
 
             $this->logger->info('👥 Étudiants de la classe', [
                 'total_etudiants' => count($etudiants),
             ]);
 
-            $evaluationEnrichie = $this->enrichmentService->enrich(collect([$evaluation]), $teacherToken)[0];
-
-            $resultats = $this->buildResultats($evaluation, $etudiants);
-
-            // Tri alphabétique par nom complet — préserve l'ordre que le
-            // frontend attend.
-            usort($resultats, static fn (array $a, array $b): int
-                => strcmp($a['etudiant_nom_complet'], $b['etudiant_nom_complet']));
-
-            $statistiques = $this->buildStatistiques($resultats, count($etudiants));
-
-            $this->logger->info('✅ Résultats calculés', [
-                'total_etudiants' => $statistiques['total_etudiants'],
-                'soumis'          => $statistiques['etudiants_soumis'],
-                'moyenne'         => $statistiques['moyenne_classe'],
-            ]);
-
-            return [
-                'status'  => 200,
-                'payload' => [
-                    'success' => true,
-                    'data'    => [
-                        'evaluation'   => $evaluationEnrichie,
-                        'resultats'    => $resultats,
-                        'statistiques' => $statistiques,
-                    ],
-                ],
-            ];
+            return $this->assemblerReponse($evaluation, $etudiants, $teacherToken);
+        } catch (RuntimeException $e) {
+            // Un refus (4xx) ou une indisponibilite KLASSCI n'est pas une
+            // defaillance du LMS. L'ecraser en 500 rendait un probleme de droits
+            // indiscernable d'une panne — pour l'utilisateur comme pour la
+            // supervision — et privait le client du 503 + `Retry-After` prevu par
+            // #243/#685. Le controleur la traduit via RendersKlassciBackedErrors.
+            throw $e;
         } catch (Throwable $e) {
             $this->logger->error('❌ Erreur récupération résultats évaluation', [
                 'evaluation_id' => $evaluationId,
@@ -139,6 +124,50 @@ final class TeacherEvaluationResultsService
                 ],
             ];
         }
+    }
+
+    /**
+     * Assemble la reponse de succes : enrichissement, lignes par etudiant, tri,
+     * statistiques.
+     *
+     * Extraite de {@see getResultsByClass()} parce que le cliquet de longueur de
+     * methode (§5) a refuse qu elle grossisse encore — elle etait a 64 lignes de
+     * dette tracee. Ce bloc etait le seul du corps a avoir une unite propre : il
+     * ne decide rien, il PRESENTE ce qui a deja ete obtenu. Le rogner de
+     * commentaires aurait satisfait la garde sans rien ameliorer.
+     *
+     * @param  array<int, array<string, mixed>>  $etudiants
+     * @return array{status:int, payload:array<string, mixed>}
+     */
+    private function assemblerReponse(Evaluation $evaluation, array $etudiants, string $teacherToken): array
+    {
+        $evaluationEnrichie = $this->enrichmentService->enrich(collect([$evaluation]), $teacherToken)[0];
+
+        $resultats = $this->buildResultats($evaluation, $etudiants);
+
+        // Tri alphabétique par nom complet — préserve l'ordre que le frontend attend.
+        usort($resultats, static fn (array $a, array $b): int
+            => strcmp($a['etudiant_nom_complet'], $b['etudiant_nom_complet']));
+
+        $statistiques = $this->buildStatistiques($resultats, count($etudiants));
+
+        $this->logger->info('✅ Résultats calculés', [
+            'total_etudiants' => $statistiques['total_etudiants'],
+            'soumis'          => $statistiques['etudiants_soumis'],
+            'moyenne'         => $statistiques['moyenne_classe'],
+        ]);
+
+        return [
+            'status'  => 200,
+            'payload' => [
+                'success' => true,
+                'data'    => [
+                    'evaluation'   => $evaluationEnrichie,
+                    'resultats'    => $resultats,
+                    'statistiques' => $statistiques,
+                ],
+            ],
+        ];
     }
 
     /**

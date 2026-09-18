@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
+use App\Services\Classe\ClasseRoster;
+use App\Services\Classe\KlassciEnvelopeClasseRoster;
 use App\Services\Roster\RosterAuthority;
 use App\Services\Roster\RosterAuthorityFactory;
 use Illuminate\Support\ServiceProvider;
@@ -33,5 +35,14 @@ final class RosterServiceProvider extends ServiceProvider
             RosterAuthority::class,
             static fn ($app) => $app->make(RosterAuthorityFactory::class)->forCurrentTenant(),
         );
+
+        // Qui sont les etudiants d'une classe (#841). Le roster se lit dans
+        // l'enveloppe `classes/{id}` et jamais via `classes/{id}/etudiants`, que
+        // KLASSCI refuse PAR CLASSE a tous les roles (#669).
+        //
+        // Ce fournisseur plutot qu'AppServiceProvider : le docblock ci-dessus a
+        // deja paye ce prix une fois. Mes cinq lignes l'avaient refait passer de
+        // 299 a 304 pour une garde a 300, et la CI les a refusees.
+        $this->app->bind(ClasseRoster::class, KlassciEnvelopeClasseRoster::class);
     }
 }

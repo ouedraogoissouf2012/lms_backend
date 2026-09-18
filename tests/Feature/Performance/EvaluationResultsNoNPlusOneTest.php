@@ -56,9 +56,16 @@ final class EvaluationResultsNoNPlusOneTest extends TestCase
         $roster55 = $this->seedRoster(size: 2, offset: 0, evaluation: $this->evalSmall);
         $roster56 = $this->seedRoster(size: 5, offset: 100, evaluation: $this->evalLarge);
 
+        // Enveloppe `classes/{id}` (#669) : le roster y est deja livre. Le double
+        // stubbait `getClasseEtudiants()`, donc l'endpoint refuse par KLASSCI.
         $this->mock(KlassciProxyService::class, function (MockInterface $mock) use ($roster55, $roster56): void {
-            $mock->shouldReceive('getClasseEtudiants')->with('test-token', 55)->andReturn(['data' => $roster55]);
-            $mock->shouldReceive('getClasseEtudiants')->with('test-token', 56)->andReturn(['data' => $roster56]);
+            $mock->shouldReceive('requestWithUserToken')->andReturnUsing(
+                static function (string $token, string $endpoint) use ($roster55, $roster56): array {
+                    $roster = str_contains($endpoint, '56') ? $roster56 : $roster55;
+
+                    return ['data' => ['classe' => ['id' => 55], 'etudiants' => $roster]];
+                }
+            );
             $mock->shouldReceive('getClasses')->andReturn(['data' => []]);
             $mock->shouldReceive('getMatieres')->andReturn(['data' => []]);
         });
@@ -98,6 +105,11 @@ final class EvaluationResultsNoNPlusOneTest extends TestCase
         return Evaluation::factory()->create([
             'institution_id' => $this->institution->id,
             'klassci_classe_id' => $klassciClasseId,
+            // Le compte doit POSSEDER l'evaluation : lire les notes est desormais
+            // reserve au proprietaire (coordinateur et admin exceptes). Une fixture
+            // qui tire deux identifiants enseignant sans rapport ne modelise aucun
+            // enseignant reel — elle decrivait un acces que le produit n'accorde pas.
+            'klassci_enseignant_id' => $this->teacher->klassci_enseignant_id,
             'is_published' => true,
         ]);
     }

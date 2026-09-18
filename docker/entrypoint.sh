@@ -14,6 +14,29 @@ if [ "${SKIP_CONFIG_CACHE:-0}" != "1" ]; then
     php artisan view:cache
 fi
 
+
+# #673 - rien ne doit ecrire en root sous /var/www/html/storage.
+#
+# `ImportJibriRecordingMedia` copie l'enregistrement vers le disque PRIVE
+# (#824). Le worker demarrant en root, Laravel creait son arborescence avec
+# la visibilite privee par defaut de Flysystem :
+#
+#   drwx------ root root  storage/app/private/recordings/4
+#
+# Apache tourne sous www-data et ne peut pas traverser ce repertoire. Mesure
+# en production le 2026-09-18, sur le premier enregistrement mene de bout en
+# bout : le media etait bien la, 8 075 548 octets, et la route signee rendait
+# 404. AUCUNE video ne fut lisible avant un chown manuel.
+#
+# Le repli non-root est le meme contrat que #831 pour les migrations : `su`
+# echouerait si le conteneur tournait deja sous un utilisateur non privilegie.
+sous_www_data() {
+  if [ "$(id -u)" = "0" ]; then
+    exec su -s /bin/sh www-data -c "$*"
+  fi
+  exec sh -c "$*"
+}
+
 role="${CONTAINER_ROLE:-web}"
 
 case "$role" in
@@ -24,12 +47,12 @@ case "$role" in
     # de diapositives, rapports PDF, enregistrements visio, sync seances) ou
     # sur `high` (notifications visio urgentes) ne serait jamais traite.
     # L'ordre porte la priorite : high avant default avant low.
-    exec php artisan queue:work database \
+    sous_www_data "php artisan queue:work database \
         --queue=high,default,low \
-        --sleep=3 --tries=3 --timeout=120 --max-time=3600
+        --sleep=3 --tries=3 --timeout=120 --max-time=3600"
     ;;
   scheduler)
-    exec php artisan schedule:work
+    sous_www_data "php artisan schedule:work"
     ;;
   web|*)
     # Dokploy deploie le code sans jouer les migrations (#831) : un correctif

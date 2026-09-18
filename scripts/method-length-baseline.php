@@ -36,7 +36,7 @@ return [
     'app/Services/ConvertApiService.php::convertPowerPointToImages' => 52,
     'app/Services/ConvertApiService.php::convertWordToImages' => 52,
     'app/Services/Evaluation/EvaluationCreationService.php::create' => 49,
-    'app/Services/Evaluation/Teacher/TeacherEvaluationResultsService.php::getResultsByClass' => 64,
+    'app/Services/Evaluation/Teacher/TeacherEvaluationResultsService.php::getResultsByClass' => 45,
     'app/Services/Evaluation/Teacher/TeacherEvaluationViewService.php::getSubmissions' => 56,
     'app/Services/Evaluation/Teacher/TeacherEvaluationViewService.php::preview' => 62,
     'app/Services/Institution/InstitutionConnectionTester.php::test' => 43,

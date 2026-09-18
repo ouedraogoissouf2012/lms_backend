@@ -210,13 +210,29 @@ final class KlassciConfigResolver implements KlassciTargetResolver
             }
         }
 
-        // Priorité 3 : token système global (supradmin, routes publiques).
+        // Priorité 3 : configuration du tenant résolu, ou config système globale
+        // quand il n'y en a aucun (supradmin, routes publiques).
+        //
+        // AUCUN repli ici, et c'est le correctif de #792. `klassciConfig()` porte
+        // DÉJÀ la distinction : il rend la config globale quand aucune institution
+        // n'est résolue, et celle du tenant sinon. Un `?? config(…)` à cet endroit
+        // était donc redondant sur la première branche et nuisible sur la seconde :
+        // il confondait « aucun tenant » avec « tenant résolu, explicitement sans
+        // KLASSCI », si bien qu'une école autonome héritait de la cible du serveur.
+        //
+        // La suppression vaut pour l'URL ET pour le jeton. Un tenant qui déclare
+        // une URL sans jeton — `klassci_api_token` est `nullable` à l'écran —
+        // empruntait le jeton système du serveur pour parler à SA cible : c'est
+        // envoyer les identifiants du serveur à un hôte tiers, la fuite que la
+        // priorité 2 refuse déjà par ailleurs (#75).
+        //
+        // Le `null` d'un tenant résolu est donc absorbant : un chemin qui exige
+        // quand même KLASSCI échoue bruyamment via `requireBaseUrl()`, ce qui vaut
+        // mieux que réussir sur la cible — ou avec les identifiants — d'un tiers.
         $config = $this->tenantManager->klassciConfig();
-        $configUrl = $config['url'] ?? config('services.klassci.url');
-        $configToken = $config['token'] ?? config('services.klassci.token');
 
-        $this->baseUrl = is_string($configUrl) ? $configUrl : null;
-        $this->token   = is_string($configToken) ? $configToken : null;
+        $this->baseUrl = is_string($config['url']) ? $config['url'] : null;
+        $this->token   = is_string($config['token']) ? $config['token'] : null;
         $this->resolved = true;
     }
 }

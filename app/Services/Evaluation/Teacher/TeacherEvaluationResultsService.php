@@ -207,7 +207,7 @@ final class TeacherEvaluationResultsService
                 'etudiant_id'           => $etudiant['id'],
                 'etudiant_nom'          => $etudiant['nom'] ?? '',
                 'etudiant_prenom'       => $etudiant['prenom'] ?? '',
-                'etudiant_nom_complet'  => ClasseEnvelope::nomEtudiant($etudiant),
+                'etudiant_nom_complet'  => ClasseEnvelope::identiteAffichable($etudiant),
                 'note'                  => $submission?->note_sur_20,
                 'score'                 => $submission?->score,
                 'status'                => $submission?->status ?? 'non_passee',

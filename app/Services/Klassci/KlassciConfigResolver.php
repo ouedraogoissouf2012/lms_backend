@@ -19,7 +19,18 @@ use Psr\Log\LoggerInterface;
  *   1. **Token personnel** de l'utilisateur connecté (KLASSCI login) — `users.klassci_token`
  *   2. **Token système** de l'institution matchant `klassci_tenant_url` de l'user
  *      (pour les comptes créés via auth locale sans token personnel).
- *   3. **Token système global** (supradmin, routes publiques sans user).
+ *   3. **Configuration du tenant résolu** — ou config système globale lorsqu'il
+ *      n'y a AUCUN tenant (supradmin, routes publiques sans user).
+ *
+ * ## Le `null` d'un tenant résolu est absorbant (#792)
+ *
+ * En priorité 3, aucun repli sur `config('services.klassci.*')` : c'est
+ * {@see \App\Services\TenantManager::klassciConfig()} qui porte la distinction
+ * entre « aucun tenant » et « tenant résolu ». Un `??` à cet endroit confondait
+ * les deux, et une école autonome héritait alors de la cible — et du jeton — du
+ * serveur. Cette ligne disait encore « token système global » après le
+ * correctif : l'en-tête d'un point de liaison ne doit pas décrire un
+ * comportement que le corps a cessé d'avoir.
  *
  * ## Sécurité — issue #75 cross-tenant fix préservé
  *

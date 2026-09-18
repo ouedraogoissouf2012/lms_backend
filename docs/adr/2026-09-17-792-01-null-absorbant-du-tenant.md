@@ -59,6 +59,22 @@ C'est exactement la fuite que la priorité 2 refuse déjà par ailleurs — son 
 
 Deux tests couvrent désormais cette moitié : une école autonome n'emprunte pas le jeton, et une école avec URL mais sans jeton garde sa cible **sans** recevoir celui du serveur.
 
+#### Mesure faite APRÈS coup, et qui nuance ce qui précède
+
+Le paragraphe ci-dessus a été écrit avant d'avoir vérifié que la fuite décrite était **atteignable**. Relevé ensuite sur la base de développement :
+
+| Institution | URL | Jeton |
+|---|---|---|
+| `presentation` | `https://presentation.klassci.com/api/lms` | **aucun** |
+| `esbtp-abidjan` | `https://esbtp-abidjan.klassci.com/api/lms` | **aucun** |
+| `esbtp-yakro` | `https://esbtp-yakro.klassci.com/api/lms` | **aucun** |
+
+Les trois institutions sont donc exactement dans le cas « URL sans jeton », et elles pointent **trois hôtes distincts** : un jeton global unique y servirait bien trois serveurs différents, ce qui confirme la direction du raisonnement.
+
+Mais `KLASSCI_API_TOKEN` et `KLASSCI_API_URL` ne sont **pas définis** dans `.env` — et #832 relève la même absence en production. Le repli rendait donc déjà `null`. **Le changement est neutre en comportement dans les environnements connus** ; il ne se manifesterait que le jour où une configuration globale serait posée, et ce jour-là son effet serait le bon.
+
+La correction reste juste, mais son urgence était surestimée : c'était un verrou de conception, pas une fuite en cours. Écrit ici parce qu'un ADR qui annonce un risque doit dire s'il a été mesuré.
+
 ### Le périmètre est de deux lignes, et c'est mesuré
 
 Balayage de `config('services.klassci` dans `app/` — 23 occurrences, dont :

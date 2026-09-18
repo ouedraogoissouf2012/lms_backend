@@ -9,8 +9,6 @@ use App\Services\Cache\Purge\TenantCachePurgerFactory;
 use App\Services\Cache\Purge\TenantCachePurgerInterface;
 use App\Services\Cache\TenantScopedCache;
 use App\Services\Cache\TenantScopedCacheInterface;
-use App\Services\Classe\ClasseRoster;
-use App\Services\Classe\KlassciEnvelopeClasseRoster;
 use App\Services\Enrollment\CompositeEnrollmentSource;
 use App\Services\Enrollment\EnrollmentSource;
 use App\Services\Integrity\ArchivedRowWriter;
@@ -76,9 +74,6 @@ class AppServiceProvider extends ServiceProvider
         $this->bindClasseAudienceSource();
         $this->bindEnrollmentSource();
         $this->app->bind(KlassciSyncGate::class, TokenPresentSyncGate::class);
-        // #669 : le roster se lit dans l'enveloppe `classes/{id}`, jamais via
-        // `classes/{id}/etudiants`, que KLASSCI refuse par classe a tous les roles.
-        $this->app->bind(ClasseRoster::class, KlassciEnvelopeClasseRoster::class);
 
         // TenantScopedCache (#374, spec redis-runtime). Le conteneur ne sait
         // pas résoudre la classe concrète Illuminate\Cache\Repository par

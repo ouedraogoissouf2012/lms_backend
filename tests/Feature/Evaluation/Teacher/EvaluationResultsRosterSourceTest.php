@@ -99,9 +99,14 @@ final class EvaluationResultsRosterSourceTest extends TestCase
                 'success' => true,
                 'data' => [
                     'classe' => ['id' => self::CLASSE_ID, 'nom' => 'B2 COM'],
+                    // FORME REELLE de l'enveloppe, verifiee en #669 : elle expose
+                    // id, matricule, nom_complet, email, telephone, photo_url.
+                    // Ni `nom` ni `prenom`. Le faux precedent les FABRIQUAIT, et
+                    // c'est ce qui a laisse passer en production un ecran dont la
+                    // colonne « etudiant » etait vide.
                     'etudiants' => [
-                        ['id' => 700, 'nom' => 'Bede', 'prenom' => 'Abel', 'email' => 'a@ecole.test'],
-                        ['id' => 701, 'nom' => 'Kone', 'prenom' => 'Awa', 'email' => 'b@ecole.test'],
+                        ['id' => 700, 'matricule' => 'M-700', 'nom_complet' => 'BEDE Abel', 'email' => 'a@ecole.test'],
+                        ['id' => 701, 'matricule' => 'M-701', 'nom_complet' => 'KONE Awa', 'email' => 'b@ecole.test'],
                     ],
                 ],
             ]),
@@ -140,6 +145,21 @@ final class EvaluationResultsRosterSourceTest extends TestCase
 
         self::assertCount(2, $reponse->json('data.resultats'));
         self::assertSame(2, $reponse->json('data.statistiques.total_etudiants'));
+    }
+
+    public function test_les_noms_viennent_de_nom_complet_seul_champ_livre_par_l_enveloppe(): void
+    {
+        // L'ecran affichait six lignes sans personne : des pastilles « ? » et une
+        // colonne « etudiant » vide. Lire `nom`/`prenom` sur une enveloppe qui ne
+        // porte que `nom_complet` rendait une chaine vide pour chacun.
+        $this->fakeKlassciReel();
+
+        $noms = array_column(
+            $this->appeler()->assertStatus(200)->json('data.resultats'),
+            'etudiant_nom_complet'
+        );
+
+        self::assertSame(['BEDE Abel', 'KONE Awa'], $noms);
     }
 
     public function test_l_endpoint_soumis_a_autorisation_par_classe_n_est_jamais_appele(): void

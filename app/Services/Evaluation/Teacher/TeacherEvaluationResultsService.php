@@ -8,6 +8,7 @@ use App\Exceptions\MissingKlassciTokenException;
 use App\Models\Evaluation;
 use App\Models\EvaluationSubmission;
 use App\Models\User;
+use App\Services\Classe\ClasseEnvelope;
 use App\Services\Classe\ClasseRoster;
 use App\Services\Evaluation\EvaluationEnrichmentService;
 use App\Services\Seances\KlassciPayload;
@@ -206,7 +207,7 @@ final class TeacherEvaluationResultsService
                 'etudiant_id'           => $etudiant['id'],
                 'etudiant_nom'          => $etudiant['nom'] ?? '',
                 'etudiant_prenom'       => $etudiant['prenom'] ?? '',
-                'etudiant_nom_complet'  => trim(($etudiant['nom'] ?? '') . ' ' . ($etudiant['prenom'] ?? '')),
+                'etudiant_nom_complet'  => ClasseEnvelope::nomEtudiant($etudiant),
                 'note'                  => $submission?->note_sur_20,
                 'score'                 => $submission?->score,
                 'status'                => $submission?->status ?? 'non_passee',

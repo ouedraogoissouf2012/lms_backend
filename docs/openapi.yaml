@@ -98,6 +98,105 @@ components:
             version:
               type: integer
 
+    MatiereInput:
+      type: object
+      required:
+        - libelle
+      properties:
+        libelle:
+          type: string
+          maxLength: 191
+        code:
+          type: string
+          maxLength: 50
+          nullable: true
+          description: |
+            FACULTATIF, et volontairement SANS contrainte d unicite : mesure
+            faite sur app/, aucun acces ne retrouve une matiere par son code.
+            En poser une garderait un chemin qui n existe pas.
+        description:
+          type: string
+          maxLength: 2000
+          nullable: true
+        coefficient:
+          type: integer
+          minimum: 1
+          maximum: 20
+          default: 1
+        credit:
+          type: integer
+          minimum: 1
+          maximum: 60
+          default: 1
+
+    MatiereCreated:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          type: object
+          properties:
+            id:
+              type: integer
+            libelle:
+              type: string
+            code:
+              type: string
+              nullable: true
+            coefficient:
+              type: integer
+            credit:
+              type: integer
+
+    ClasseInput:
+      type: object
+      required:
+        - libelle
+      properties:
+        libelle:
+          type: string
+          maxLength: 191
+        code:
+          type: string
+          maxLength: 50
+          nullable: true
+          description: |
+            Code de la classe, FACULTATIF. Unique par etablissement parmi les
+            classes qui en portent un : une chaine vide est normalisee en nul,
+            sans quoi la deuxieme classe sans code entrerait en collision.
+        description:
+          type: string
+          maxLength: 2000
+          nullable: true
+        effectif:
+          type: integer
+          minimum: 0
+          maximum: 10000
+          default: 0
+
+    ClasseCreated:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          type: object
+          properties:
+            id:
+              type: integer
+            libelle:
+              type: string
+            code:
+              type: string
+              nullable: true
+            effectif:
+              type: integer
+
     TrainingSessionInput:
       type: object
       required:
@@ -948,6 +1047,137 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
         '422':
           description: "Charge invalide"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /classes:
+    post:
+      tags:
+        - Session de formation
+      summary: "Creer une Classe sans KLASSCI"
+      description: |
+        Avant cette route, le SEUL createur d une Classe du depot etait la
+        synchronisation KLASSCI : une ecole autonome n en avait aucune, jamais,
+        et l import CSV produisait des apprenants qui n appartenaient a rien.
+
+        Reservee aux etablissements qui tiennent leur propre catalogue. Le droit
+        est une CAPACITE verifiee au point d ecriture, jamais une comparaison de
+        mode : un etablissement branche a KLASSCI recoit 403, parce que deux
+        sources ecrivant la meme realite est la cause racine de #673.
+
+        `institution_id` et `klassci_id` ne sont JAMAIS acceptes : le premier
+        vient du tenant resolu, et une classe locale n a pas d identifiant
+        KLASSCI — lui en inventer un la rendrait indiscernable d une classe
+        miroitee.
+
+        L unicite du `code` est portee par la BASE et non par une validation
+        prealable, qui ouvrirait une fenetre que deux requetes concurrentes
+        franchiraient toutes les deux.
+      security:
+        - sanctum: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ClasseInput'
+      responses:
+        '201':
+          description: "Classe creee"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClasseCreated'
+        '401':
+          description: "Non authentifie"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: |
+            Role insuffisant, ou etablissement dont le catalogue vient de
+            KLASSCI.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: "Aucun etablissement resolu"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: "Libelle manquant, ou code deja employe dans cet etablissement"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /matieres:
+    post:
+      tags:
+        - Session de formation
+      summary: "Creer une Matiere sans KLASSCI"
+      description: |
+        Le SEUL createur d une Matiere du depot etait la synchronisation
+        KLASSCI. Une ecole autonome avait des classes depuis #860, mais aucune
+        matiere : un formateur n avait rien a enseigner.
+
+        Second des trois verrous de l ADR-848-01, et le premier a exiger une
+        MIGRATION avant son ecrivain : `matieres.klassci_id` etait NOT NULL sans
+        valeur par defaut.
+
+        Reservee aux etablissements qui tiennent leur propre catalogue. Le droit
+        est une CAPACITE verifiee au point d ecriture, jamais une comparaison de
+        mode : un etablissement branche a KLASSCI recoit 403.
+
+        `institution_id` et `klassci_id` ne sont JAMAIS acceptes. Inventer un
+        identifiant KLASSCI ferait entrer la matiere dans les correspondances
+        par `whereIn('klassci_id', ...)`, ou elle n a rien a faire.
+
+        `coefficient` et `credit` valent 1 par defaut : une matiere se cree
+        souvent avant d etre ponderee.
+      security:
+        - sanctum: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MatiereInput'
+      responses:
+        '201':
+          description: "Matiere creee"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MatiereCreated'
+        '401':
+          description: "Non authentifie"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: |
+            Role insuffisant, ou etablissement dont le catalogue vient de
+            KLASSCI.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: "Aucun etablissement resolu"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: "Libelle manquant ou ponderation hors bornes"
           content:
             application/json:
               schema:

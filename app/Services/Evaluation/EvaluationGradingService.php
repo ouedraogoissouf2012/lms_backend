@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Evaluation;
 
+use App\Models\Evaluation;
 use App\Models\EvaluationQuestion;
 use App\Models\EvaluationSubmission;
 use App\Models\User;
@@ -103,6 +104,24 @@ class EvaluationGradingService
     public function requiresManualGrading(EvaluationQuestion $question): bool
     {
         return $question->type === 'dissertation';
+    }
+
+    /**
+     * L'évaluation contient-elle au moins une question dont la note automatique
+     * n'est pas le dernier mot ?
+     *
+     * La question était posée en DEUX exemplaires privés identiques — dans
+     * `EvaluationKlassciSyncController` et `EvaluationScoreRecomputationService`,
+     * tous deux délégant déjà la règle « quel type est manuel » à la méthode
+     * ci-dessus. Seule l'agrégation restait recopiée. Un troisième appelant
+     * (« l'élève voit-il cette note ? ») en aurait fait une troisième copie :
+     * elle monte donc ici, auprès de la primitive dont elle dérive.
+     */
+    public function evaluationRequiresManualGrading(Evaluation $evaluation): bool
+    {
+        return $evaluation->questions->contains(
+            fn (EvaluationQuestion $question): bool => $this->requiresManualGrading($question)
+        );
     }
 
     /**

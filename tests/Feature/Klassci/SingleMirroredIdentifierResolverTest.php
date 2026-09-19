@@ -52,10 +52,54 @@ use Tests\Unit\Models\Traits\ResolvesMirroredIdentifierTest;
 final class SingleMirroredIdentifierResolverTest extends TestCase
 {
     /**
-     * La forme ambiguë, écrite en morceaux pour ne pas se déclencher sur
-     * elle-même.
+     * Les deux formes ambigues, ecrites en morceaux pour ne pas se declencher
+     * sur elles-memes.
+     *
+     * ## Pourquoi deux, et pourquoi une expression plutot qu'une chaine
+     *
+     * La premiere version ne bannissait que la chaine litterale
+     * `orWhere('klassci_id'`. Elle ne voyait donc AUCUN site de ce chantier :
+     *
+     *  - les colonnes miroir ne s'appellent pas toutes `klassci_id`. `Seance`
+     *    porte `klassci_seance_id`, et trois sites l'arbitrent a la main ;
+     *  - la forme INVERSEE `where(klassci_...)->orWhere('id')` est tout aussi
+     *    indeterministe, et elle s'etale sur DEUX lignes — un balayage ligne a
+     *    ligne ne pouvait pas la voir.
+     *
+     * Mesure a l'ecriture de ce garde : le cliquet passait au vert alors que
+     * quatre sites vivants portaient la faute.
      */
-    private const FORME_BANNIE = 'orWhere('."'".'klassci_'.'id'."'";
+    private const FORMES_BANNIES = [
+        // cle locale PUIS colonne miroir
+        '/(?:whereKey\(|where\(\s*\'id\')[^;]{0,200}?->\s*orWhere\(\s*\'klassci_\w*id\'/s',
+        // colonne miroir PUIS cle locale (forme inversee, sur deux lignes)
+        '/where\(\s*\'klassci_\w*id\'[^;]{0,200}?->\s*(?:orWhereKey\(|orWhere\(\s*\'id\')/s',
+    ];
+
+    /**
+     * Les quatre sites heritees, geles — et le rang de la PR qui les retire.
+     *
+     * Le cliquet passe au vert sur ces quatre-la et rougit sur TOUT nouveau.
+     * C'est la convention du depot : phpstan-baseline, method-length-baseline,
+     * et les cinq cliquets du frontend fonctionnent ainsi.
+     *
+     * Chaque entree se retire avec sa PR. Une liste qui ne decroit pas est un
+     * chantier qui n'avance pas — et cela se lit ici, sans rapport a tenir.
+     *
+     * N'AJOUTER AUCUNE ENTREE. Un site neuf doit employer le trait :
+     * `Modele::localIdFor($id, $institutionId)`.
+     */
+    private const HERITEES = [
+        // PR 6 — masquage etudiant, consequence bornee a un etudiant
+        'app/Services/Seances/Mutations/SeanceHideService.php',
+        // PR 5 — validation des participants : seul site ou l'ordre du moteur
+        //        a une consequence d'AUTORISATION (role moderateur)
+        'app/Services/Seances/Mutations/ParticipantValidationService.php',
+        // PR 7 — presences : la route expose des emails
+        'app/Services/Attendances/VideoSessionAttendancesSyncer.php',
+        // PR 4 — forme INVERSEE, au coeur de la chaine visio
+        'app/Services/Seances/SeanceVisioEnricher.php',
+    ];
 
     public function test_no_file_resolves_the_two_identifier_spaces_by_itself(): void
     {
@@ -66,7 +110,7 @@ final class SingleMirroredIdentifierResolverTest extends TestCase
             $coupables,
             "Ces fichiers résolvent eux-mêmes les deux espaces d'identifiants :\n  - "
             .implode("\n  - ", $coupables)
-            ."\n\nLa forme `".self::FORME_BANNIE.', $v)` est indéterministe quand un id local'
+            ."\n\nLa forme `".'la forme ambigue'.', $v)` est indéterministe quand un id local'
             ." percute un klassci_id.\n"
             .'Déclare le modèle `implements MirroredFromKlassci`, ajoute `use ResolvesMirroredIdentifier`, '
             .'puis appelle `Modele::localIdFor($id, $institutionId)` : le trait tranche en faveur de '
@@ -95,22 +139,59 @@ final class SingleMirroredIdentifierResolverTest extends TestCase
         foreach ($fichiers as $fichier) {
             $source = (string) file_get_contents($fichier->getPathname());
 
-            foreach (explode("\n", $source) as $ligne) {
-                $nue = ltrim($ligne);
+            $relatif = str_replace(
+                DIRECTORY_SEPARATOR,
+                '/',
+                substr($fichier->getPathname(), strlen($racine) + 1),
+            );
 
-                if ($nue === '' || str_starts_with($nue, '*') || str_starts_with($nue, '//') || str_starts_with($nue, '/*')) {
-                    continue;
-                }
+            if (in_array($relatif, self::HERITEES, true)) {
+                continue;
+            }
 
-                if (str_contains($ligne, self::FORME_BANNIE)) {
-                    $coupables[] = str_replace(DIRECTORY_SEPARATOR, '/', substr($fichier->getPathname(), strlen($racine) + 1));
-                    break;
-                }
+            if ($this->porteUneFormeBannie($source)) {
+                $coupables[] = $relatif;
             }
         }
 
         sort($coupables);
 
         return $coupables;
+    }
+
+    /**
+     * Le code seul, commentaires retires.
+     *
+     * Un docblock qui DECRIT le defaut ne doit pas declencher le garde qui
+     * l'interdit : `MatiereSeancesFetcher` en cite un en prose, et le signaler
+     * rendrait ce garde inutilisable.
+     *
+     * Le depouillement precede la recherche, et ne la suit pas : la forme
+     * inversee s'etale sur deux lignes, elle ne peut donc pas etre cherchee
+     * ligne a ligne.
+     */
+    private function porteUneFormeBannie(string $source): bool
+    {
+        $code = [];
+
+        foreach (explode("\n", $source) as $ligne) {
+            $nue = ltrim($ligne);
+
+            if ($nue === '' || str_starts_with($nue, '*') || str_starts_with($nue, '//') || str_starts_with($nue, '/*')) {
+                continue;
+            }
+
+            $code[] = $ligne;
+        }
+
+        $joint = implode("\n", $code);
+
+        foreach (self::FORMES_BANNIES as $forme) {
+            if (preg_match($forme, $joint) === 1) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

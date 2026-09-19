@@ -4,6 +4,27 @@
 **Statut :** accepté  
 **Issue :** #848 (backend) · bloque #845, #846, `frontend_lms#391`
 
+> **Correction du 2026-09-19 — le troisième lot ne touche PAS `matiere_enseignant`.**
+>
+> Cet ADR annonçait, aux paragraphes « Décision » et « Trois manques de coût très
+> différent », que `matiere_enseignant` devait recevoir des colonnes `matiere_id` et
+> `enseignant_id` locales. **C'était faux**, et la lecture faite avant d'implémenter le
+> troisième lot l'a établi.
+>
+> `matiere_enseignant` est le **miroir KLASSCI** : ses deux colonnes portent des
+> identifiants KLASSCI, et `KlassciEnrollmentSource:87-91` — qui se décrit elle-même comme
+> « cache de sync KLASSCI » — l'interroge par `klassci_enseignant_id`. Y mêler des identités
+> locales referait la faute qu'ADR-803-03 nomme explicitement : deux espaces dans une même
+> table, puis un composite pour réconcilier après coup.
+>
+> Le lien local a déjà sa table : **`classe_matiere`**, pivot entièrement local
+> (`classe_id`, `matiere_id`, `enseignant_id`), que `LocalEnrollmentSource:35-40` **lit
+> déjà** pour répondre « quelles classes ce formateur enseigne-t-il ». Comme pour la Classe,
+> il ne manquait que l'écrivain — **aucune migration**.
+>
+> L'erreur venait d'avoir désigné la table par son NOM plutôt que par son rôle : celle qui
+> s'appelle « matière ↔ enseignant » n'est pas celle qui porte le lien local.
+
 ## Décision
 
 Une école autonome crée elle-même son catalogue pédagogique : **Classe**, **Matière**, et le lien **formateur ↔ matière**.

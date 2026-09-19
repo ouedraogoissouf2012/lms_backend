@@ -12,6 +12,7 @@ use App\Http\Controllers\API\Dashboard\DashboardTeacherController;
 // ============================================
 // DASHBOARD - Routes protégées
 // ============================================
+use App\Http\Controllers\API\LMS\LMSClasseMatiereController;
 use App\Http\Controllers\API\LMS\LMSClasseWriteController;
 use App\Http\Controllers\API\LMS\LMSMatiereWriteController;
 use App\Http\Controllers\API\LMS\TrainingSessionController;
@@ -100,6 +101,12 @@ Route::middleware(['auth:sanctum', 'klassci.sync', 'role:coordinateur,admin,supe
         // d abord de lever `matieres.klassci_id` NOT NULL. Sans elle, une ecole
         // autonome avait des classes mais rien a y enseigner.
         Route::post('/matieres', [LMSMatiereWriteController::class, 'store']);
+
+        // Composer le programme d une classe (#848) : rattacher une matiere, et
+        // y designer un formateur. Ecrit `classe_matiere`, le pivot LOCAL que
+        // LocalEnrollmentSource:35-40 lit deja — `matiere_enseignant` n est pas
+        // touchee, c est le miroir KLASSCI.
+        Route::post('/classes/{classe}/matieres', [LMSClasseMatiereController::class, 'store']);
     });
 
 Route::middleware(['auth:sanctum', 'klassci.sync'])->prefix('lms')->group(function () {

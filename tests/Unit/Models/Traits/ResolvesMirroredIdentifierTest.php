@@ -6,6 +6,7 @@ namespace Tests\Unit\Models\Traits;
 
 use App\Models\Institution;
 use App\Models\Matiere;
+use App\Models\Seance;
 use App\Models\Traits\ResolvesMirroredIdentifier;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -193,6 +194,79 @@ final class ResolvesMirroredIdentifierTest extends TestCase
         return Matiere::factory()->create([
             'institution_id' => $this->institution->id,
             'klassci_id' => $klassciId,
+        ]);
+    }
+
+    /**
+     * Garde de NON-REGRESSION : les deux entites qui declaraient deja le
+     * trait ne doivent RIEN changer. Le lot est une extension, pas une
+     * refonte — si cette assertion tombe, la surcharge a casse le defaut.
+     */
+    public function test_les_entites_existantes_resolvent_toujours_par_klassci_id(): void
+    {
+        $matiere = $this->matiere(klassciId: 4242);
+
+        self::assertSame($matiere->id, Matiere::localIdFor(4242, $this->institution->id));
+    }
+
+    public function test_une_seance_se_resout_par_son_identifiant_local(): void
+    {
+        $seance = $this->seance(klassciSeanceId: 9001);
+
+        self::assertSame($seance->id, Seance::localIdFor($seance->id, $this->institution->id));
+    }
+
+    public function test_une_seance_se_resout_par_son_identifiant_klassci(): void
+    {
+        $seance = $this->seance(klassciSeanceId: 9001);
+
+        self::assertSame($seance->id, Seance::localIdFor(9001, $this->institution->id));
+    }
+
+    /**
+     * L'invariant 1 du trait — precedence a l'espace LOCAL — doit valoir pour
+     * `Seance` comme pour les autres. Sans lui, la ligne rendue dependrait de
+     * l'ordre du moteur, donc du hasard, et differemment sous SQLite et MySQL.
+     */
+    public function test_sur_collision_la_seance_locale_gagne(): void
+    {
+        $locale = $this->seance(klassciSeanceId: 7777);
+        $miroir = $this->seance(klassciSeanceId: $locale->id);
+
+        self::assertSame($locale->id, Seance::localIdFor($locale->id, $this->institution->id));
+        self::assertNotSame($miroir->id, Seance::localIdFor($locale->id, $this->institution->id));
+    }
+
+    /**
+     * Le bornage tenant vaut aussi pour la seance : `klassci_seance_id` n'est
+     * unique que par institution.
+     */
+    public function test_une_seance_d_une_autre_institution_ne_se_resout_pas(): void
+    {
+        $autre = Institution::factory()->create();
+        $seance = $this->seance(klassciSeanceId: 9001);
+
+        self::assertNull(Seance::localIdFor($seance->id, $autre->id));
+        self::assertNull(Seance::localIdFor(9001, $autre->id));
+    }
+
+    /**
+     * Une seance LOCALE ne porte aucun identifiant KLASSCI. Elle doit pourtant
+     * se resoudre par sa cle primaire — c'est tout l'objet du lot.
+     */
+    public function test_une_seance_purement_locale_se_resout_quand_meme(): void
+    {
+        $seance = $this->seance(klassciSeanceId: null);
+
+        self::assertSame($seance->id, Seance::localIdFor($seance->id, $this->institution->id));
+        self::assertTrue(Seance::existsFor($seance->id, $this->institution->id));
+    }
+
+    private function seance(?int $klassciSeanceId): Seance
+    {
+        return Seance::factory()->create([
+            'institution_id' => $this->institution->id,
+            'klassci_seance_id' => $klassciSeanceId,
         ]);
     }
 }

@@ -13,6 +13,7 @@ use App\Http\Controllers\API\Dashboard\DashboardTeacherController;
 // DASHBOARD - Routes protégées
 // ============================================
 use App\Http\Controllers\API\LMS\LMSClasseWriteController;
+use App\Http\Controllers\API\LMS\LMSMatiereWriteController;
 use App\Http\Controllers\API\LMS\TrainingSessionController;
 use App\Http\Controllers\API\TeacherStatsController;
 use Illuminate\Support\Facades\Route;
@@ -93,6 +94,12 @@ Route::middleware(['auth:sanctum', 'klassci.sync', 'role:coordinateur,admin,supe
         // localement est verifie plus bas, au point d ecriture, par une
         // capacite — la route ne lit aucun mode.
         Route::post('/classes', [LMSClasseWriteController::class, 'store']);
+
+        // Creer une matiere SANS KLASSCI (#797, #848). Second des trois verrous
+        // de l ADR : la classe n exigeait que l ecrivain, la matiere exigeait
+        // d abord de lever `matieres.klassci_id` NOT NULL. Sans elle, une ecole
+        // autonome avait des classes mais rien a y enseigner.
+        Route::post('/matieres', [LMSMatiereWriteController::class, 'store']);
     });
 
 Route::middleware(['auth:sanctum', 'klassci.sync'])->prefix('lms')->group(function () {

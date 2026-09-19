@@ -2,7 +2,9 @@
 
 namespace App\Models;
 
+use App\Models\Contracts\MirroredFromKlassci;
 use App\Models\Traits\BelongsToInstitution;
+use App\Models\Traits\ResolvesMirroredIdentifier;
 use Database\Factories\SeanceFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -15,8 +17,16 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * `heure_debut`/`heure_fin` n'existent sur AUCUNE migration (vérifié) ; lues à tort par
  * `FinalizeSeanceAttendances`, qui échoue à chaque exécution planifiée — voir #390 avant `$fillable`.
  */
-class Seance extends Model
+class Seance extends Model implements MirroredFromKlassci
 {
+    use ResolvesMirroredIdentifier;
+
+    /** Cette entite nomme sa colonne miroir `klassci_seance_id` (#805). */
+    protected static function colonneMiroir(): string
+    {
+        return 'klassci_seance_id';
+    }
+
     /** @use HasFactory<SeanceFactory> */
     use BelongsToInstitution, HasFactory, SoftDeletes;
 

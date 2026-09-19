@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace App\Services\Evaluation\Student;
 
+use App\Models\Evaluation;
 use App\Models\EvaluationSubmission;
 use App\Models\User;
+use App\Services\Evaluation\EvaluationGradingService;
 use App\Services\KlassciProxyService;
 use Psr\Log\LoggerInterface;
 
@@ -23,6 +25,7 @@ final class StudentGradesAggregator
     public function __construct(
         private readonly LoggerInterface $logger,
         private readonly KlassciProxyService $klassciService,
+        private readonly EvaluationGradingService $grading,
     ) {}
 
     /**
@@ -31,7 +34,7 @@ final class StudentGradesAggregator
     public function getGradesAggregatedByMatiere(User $user): array
     {
         $matieresData = $this->fetchMatieresNames($user);
-        $submissions = $this->fetchCorrectedSubmissions($user);
+        $submissions = $this->fetchFinalSubmissions($user);
         $gradesByMatiere = $this->groupByMatiere($submissions, $matieresData);
         $this->computeMatiereAverages($gradesByMatiere);
 
@@ -75,18 +78,49 @@ final class StudentGradesAggregator
     /**
      * @return \Illuminate\Database\Eloquent\Collection<int, EvaluationSubmission>
      */
-    private function fetchCorrectedSubmissions(User $user): \Illuminate\Database\Eloquent\Collection
+    private function fetchFinalSubmissions(User $user): \Illuminate\Database\Eloquent\Collection
     {
-        return EvaluationSubmission::where('klassci_etudiant_id', $user->klassci_id)
-            ->where('status', 'corrige')
+        /** @var \Illuminate\Database\Eloquent\Collection<int, EvaluationSubmission> $soumissions */
+        $soumissions = EvaluationSubmission::where('klassci_etudiant_id', $user->klassci_id)
+            ->whereIn('status', ['soumis', 'corrige'])
             ->where(function ($q) {
                 $q->whereNull('feedback')
                     ->orWhere('feedback', 'NOT LIKE', '[PRACTICE]%');
             })
-            ->with(['evaluation' => fn ($query) => $query->where('is_published', true)])
+            // `questions` est chargée ici : `noteEstFinale()` l'interroge pour
+            // chaque soumission, et sans ce préchargement chaque note coûterait
+            // une requête de plus.
+            ->with(['evaluation' => fn ($query) => $query->where('is_published', true)->with('questions')])
             ->whereHas('evaluation', fn ($query) => $query->where('is_published', true))
             ->orderBy('submitted_at', 'desc')
             ->get();
+
+        return $soumissions->filter(fn (EvaluationSubmission $s): bool => $this->noteEstFinale($s));
+    }
+
+    /**
+     * La note ne peut-elle plus changer ?
+     *
+     * `corrige` : l'enseignant a tranché. `soumis` sans question à correction
+     * manuelle : l'auto-correction est le dernier mot. `soumis` AVEC une
+     * dissertation non notée : la note est DÉFLATÉE — la dissertation compte 0
+     * au dénominateur tant qu'elle n'est pas corrigée — donc la montrer
+     * annoncerait à l'élève un échec qui n'a pas eu lieu.
+     *
+     * C'est le critère que la synchro KLASSCI applique déjà pour refuser de
+     * pousser (409). L'élève voit ainsi ce qui est, ou sera, transmis comme
+     * officiel — et rien d'autre.
+     */
+    private function noteEstFinale(EvaluationSubmission $submission): bool
+    {
+        if ($submission->status === 'corrige') {
+            return true;
+        }
+
+        $evaluation = $submission->evaluation;
+
+        return $evaluation instanceof Evaluation
+            && ! $this->grading->evaluationRequiresManualGrading($evaluation);
     }
 
     /**

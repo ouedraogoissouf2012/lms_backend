@@ -207,9 +207,7 @@ class EvaluationKlassciSyncController extends AuthenticatedController
      */
     private function hasManualGradingQuestion(Evaluation $evaluation): bool
     {
-        return $evaluation->questions->contains(
-            fn (EvaluationQuestion $question): bool => $this->gradingService->requiresManualGrading($question)
-        );
+        return $this->gradingService->evaluationRequiresManualGrading($evaluation);
     }
 
     private function hasUngradedManualSubmission(Evaluation $evaluation): bool

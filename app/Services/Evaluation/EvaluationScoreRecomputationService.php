@@ -61,9 +61,7 @@ final class EvaluationScoreRecomputationService
 
     private function evaluationRequiresManualGrading(Evaluation $evaluation): bool
     {
-        return $evaluation->questions->contains(
-            fn ($question): bool => $this->grading->requiresManualGrading($question)
-        );
+        return $this->grading->evaluationRequiresManualGrading($evaluation);
     }
 
     /**

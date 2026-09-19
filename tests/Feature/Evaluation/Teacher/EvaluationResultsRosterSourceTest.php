@@ -114,6 +114,51 @@ final class EvaluationResultsRosterSourceTest extends TestCase
         ]);
     }
 
+    /**
+     * L'amont livre parfois un MARQUEUR D'ABSENCE la ou un nom est attendu.
+     *
+     * Constate en production le 2026-09-18 : une ligne du tableau des notes
+     * portait « N/A » comme nom de personne, avec « N/ » en initiales. KLASSCI
+     * renvoie litteralement cette chaine dans `nom_complet` quand il n'a pas le
+     * nom. La relayer telle quelle presente une absence comme une donnee.
+     */
+    private function fakeEnveloppeAvecMarqueurs(): void
+    {
+        Http::fake([
+            self::BASE_URL.'/classes/'.self::CLASSE_ID.'*' => Http::response([
+                'success' => true,
+                'data' => [
+                    'classe' => ['id' => self::CLASSE_ID, 'nom' => 'B2 COM'],
+                    'etudiants' => [
+                        ['id' => 702, 'matricule' => 'M-702', 'nom_complet' => 'N/A'],
+                        ['id' => 703, 'matricule' => '', 'nom_complet' => '-'],
+                    ],
+                ],
+            ]),
+            '*' => Http::response(['success' => true, 'data' => []]),
+        ]);
+    }
+
+    public function test_un_marqueur_d_absence_n_est_jamais_affiche_comme_un_nom(): void
+    {
+        $this->fakeEnveloppeAvecMarqueurs();
+
+        $noms = array_column(
+            $this->appeler()->assertStatus(200)->json('data.resultats'),
+            'etudiant_nom_complet'
+        );
+
+        // Ni « N/A » ni « - » ne sont des noms. Les afficher fait croire a
+        // l'enseignant que quelqu'un s'appelle ainsi.
+        self::assertNotContains('N/A', $noms);
+        self::assertNotContains('-', $noms);
+
+        // Le matricule identifie la MEME personne, il ne l'invente pas : il
+        // remplace le marqueur. Sans nom NI matricule, la cellule reste vide —
+        // on ne substitue jamais un marqueur a un autre.
+        self::assertSame(['', 'M-702'], $noms);
+    }
+
     /** L'enveloppe elle-même échoue avec `$statut`. */
     private function fakeEnveloppeEnEchec(int $statut): void
     {

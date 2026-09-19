@@ -8,6 +8,7 @@ use App\Enums\ImportRowStatus;
 use App\Enums\Role;
 use App\Services\Import\Fields\DateInscriptionField;
 use App\Services\Import\Fields\FieldOutcome;
+use App\Services\Import\Fields\PhoneNormalizer;
 use App\Services\Import\Fields\RoleField;
 use App\Services\Import\Fields\StatutField;
 use Illuminate\Http\UploadedFile;
@@ -26,6 +27,7 @@ final class ImportPreviewService
         private readonly RoleField $roles,
         private readonly StatutField $statuts,
         private readonly DateInscriptionField $dates,
+        private readonly PhoneNormalizer $phones,
     ) {}
 
     /**
@@ -180,9 +182,15 @@ final class ImportPreviewService
         ]);
     }
 
+    /**
+     * Délégué à {@see PhoneNormalizer} depuis #718 : le corps d'origine retirait
+     * tous les non-chiffres, `+` compris, si bien que `+22670000000` et
+     * `0022670000000` — le même abonné — produisaient deux clés, donc deux
+     * comptes.
+     */
     private function normalizePhone(string $raw): string
     {
-        return preg_replace('/\D+/', '', $raw) ?? '';
+        return $this->phones->normalize($raw);
     }
 
     /**

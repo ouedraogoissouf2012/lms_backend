@@ -68,7 +68,7 @@ trait ResolvesMirroredIdentifier
             return (int) $local;
         }
 
-        $miroir = self::mirroredScope($institutionId)->where('klassci_id', $recherche)->value('id');
+        $miroir = self::mirroredScope($institutionId)->where(static::colonneMiroir(), $recherche)->value('id');
 
         return is_numeric($miroir) ? (int) $miroir : null;
     }
@@ -104,9 +104,24 @@ trait ResolvesMirroredIdentifier
             return null;
         }
 
-        $local = self::mirroredScope($institutionId)->where('klassci_id', (int) $klassciId)->value('id');
+        $local = self::mirroredScope($institutionId)->where(static::colonneMiroir(), (int) $klassciId)->value('id');
 
         return is_numeric($local) ? (int) $local : null;
+    }
+
+    /**
+     * Le nom de la colonne portant l'identifiant KLASSCI.
+     *
+     * La promesse d'extension ne tenait que pour les colonnes nommees
+     * `klassci_id`. `Seance` porte `klassci_seance_id`, et huit sites la
+     * resolvent donc a la main selon TROIS formes differentes.
+     *
+     * Surchargee plutot que passee en parametre : ce nom est une propriete du
+     * MODELE, pas de l'appel — un parametre rouvrirait la divergence.
+     */
+    protected static function colonneMiroir(): string
+    {
+        return 'klassci_id';
     }
 
     /**

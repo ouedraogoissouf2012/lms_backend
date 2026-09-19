@@ -151,6 +151,41 @@ components:
             credit:
               type: integer
 
+    ClasseMatiereInput:
+      type: object
+      required:
+        - matiere_id
+      properties:
+        matiere_id:
+          type: integer
+          minimum: 1
+        enseignant_id:
+          type: integer
+          minimum: 1
+          nullable: true
+          description: |
+            FACULTATIF : on compose souvent un programme avant de savoir qui
+            l assurera. S il est nomme, il doit appartenir a l etablissement ET
+            avoir le role enseignant.
+
+    ClasseMatiereLinked:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          type: object
+          properties:
+            classe_id:
+              type: integer
+            matiere_id:
+              type: integer
+            enseignant_id:
+              type: integer
+              nullable: true
+
     ClasseInput:
       type: object
       required:
@@ -1112,6 +1147,87 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
         '422':
           description: "Libelle manquant, ou code deja employe dans cet etablissement"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /classes/{classe}/matieres:
+    post:
+      tags:
+        - Session de formation
+      summary: "Composer le programme d une classe"
+      description: |
+        Troisieme et dernier lot de l ADR-848-01 : apres la Classe et la
+        Matiere, ce qui les relie — et le formateur qui l assure.
+
+        Ecrit `classe_matiere`, le pivot LOCAL que LocalEnrollmentSource lit
+        DEJA pour repondre « quelles classes ce formateur enseigne-t-il ».
+        `matiere_enseignant` n est PAS touchee : c est le miroir KLASSCI.
+
+        TROIS appartenances sont verifiees, pas une : la classe, la matiere ET
+        le formateur doivent etre de cet etablissement. Controler la classe
+        seule laisserait rattacher la matiere d une autre ecole — une ligne
+        d apparence normale, donc une fuite silencieuse.
+
+        Le 404 ne distingue pas « n existe pas » de « appartient a quelqu un
+        d autre » : les separer dirait a un etablissement quels identifiants
+        existent chez ses voisins.
+
+        Rejouer le meme rattachement REAFFECTE le formateur au lieu d echouer :
+        `classe_matiere` porte un unique (classe_id, matiere_id), et reaffecter
+        un cours est une operation courante.
+      security:
+        - sanctum: []
+      parameters:
+        - name: classe
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ClasseMatiereInput'
+      responses:
+        '201':
+          description: "Matiere rattachee a la classe"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClasseMatiereLinked'
+        '401':
+          description: "Non authentifie"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: |
+            Role insuffisant, ou etablissement dont le programme vient de
+            KLASSCI.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: |
+            Classe, matiere ou formateur introuvable DANS CET ETABLISSEMENT.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: "Aucun etablissement resolu"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: "matiere_id manquant ou invalide"
           content:
             application/json:
               schema:

@@ -6,10 +6,10 @@ namespace App\Services\Import;
 
 use App\Enums\ImportRowStatus;
 use App\Enums\Role;
-use App\Models\Classe;
 use App\Models\Import;
 use App\Models\ImportRow;
 use App\Models\User;
+use App\Services\Enrollment\StudentEnrolmentService;
 use App\Services\Import\Fields\RoleField;
 use Illuminate\Support\Str;
 
@@ -31,7 +31,19 @@ use Illuminate\Support\Str;
  *     le rôle stocké sans le revérifier rouvrirait par le différé exactement ce
  *     que le plafond ferme à l'analyse.
  *
+ * ## L'inscription n'est plus écrite ici (#846)
+ *
+ * Elle passe par `Enrollment\StudentEnrolmentService`, le service unique
+ * qu'ADR-803-03 impose aux trois portes — saisie unitaire, import, code
+ * d'inscription. Ce service reste l'un de ses appelants ; il ne décide plus
+ * seul de ce qu'est un doublon ou une classe inconnue.
+ *
+ * Effet immédiat : un code de classe inconnu était jusqu'ici avalé en silence,
+ * la ligne comptée réussie et l'étudiant rattaché à rien. C'est désormais un
+ * rejet de ligne motivé.
+ *
  * @see docs/adr/2026-09-16-718-02-colonnes-role-statut-date.md
+ * @see docs/adr/2026-09-15-803-03-trois-portes-un-service.md
  */
 final class ImportApplyService
 {
@@ -40,6 +52,7 @@ final class ImportApplyService
 
     public function __construct(
         private readonly RoleField $roles,
+        private readonly StudentEnrolmentService $enrolments,
     ) {}
 
     public function apply(Import $import): void
@@ -92,12 +105,26 @@ final class ImportApplyService
             return false;
         }
 
-        $this->enroll(
-            $import,
+        $inscription = $this->enrolments->inscrireParCodeDeClasse(
             $this->findOrCreate($import, $email, $phone, $prenom, $nom, $role->value),
+            (int) $import->institution_id,
             $code,
             $this->pivot($payload),
         );
+
+        // Avant #846, un code de classe inconnu sortait en SILENCE : la ligne
+        // était comptée réussie et l'étudiant n'était dans aucune classe. Le
+        // refus emprunte désormais le chemin déjà en place pour le rôle refusé,
+        // et `apply()` recompte les totaux du rapport.
+        if ($inscription->estRefusee()) {
+            $row->update([
+                'status' => ImportRowStatus::Error->value,
+                'code' => $inscription->code,
+                'message' => $inscription->message,
+            ]);
+
+            return false;
+        }
 
         return true;
     }
@@ -152,30 +179,5 @@ final class ImportApplyService
             'password' => Str::password(16),
             'role' => $role,
         ]);
-    }
-
-    /**
-     * @param  array<string, string>  $pivot
-     */
-    private function enroll(Import $import, User $user, string $code, array $pivot): void
-    {
-        if ($code === '') {
-            return;
-        }
-        $classe = Classe::query()
-            ->where('institution_id', $import->institution_id)
-            ->where('code', $code)
-            ->first();
-        if ($classe === null) {
-            return;
-        }
-
-        // `syncWithoutDetaching` plutôt qu'un test d'existence suivi d'`attach` :
-        // il met à jour le pivot d'une inscription déjà là, ce qui rend l'import
-        // idempotent ET correctif — corriger un statut puis renvoyer le fichier
-        // entier est le geste que #718 veut permettre. Il ferme aussi une faille
-        // du test précédent : l'unique `(classe, user, annee)` ne contraint rien
-        // quand `annee_universitaire_id` est NULL, MySQL n'égalant jamais NULL.
-        $classe->etudiants()->syncWithoutDetaching([$user->id => $pivot]);
     }
 }

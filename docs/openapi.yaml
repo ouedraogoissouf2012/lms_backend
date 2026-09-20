@@ -661,6 +661,65 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
+  /lms/classes/local/{classeId}:
+    get:
+      tags:
+        - Classes
+      summary: "Details d'une classe designee par son identifiant LOCAL"
+      description: |
+        Porte jumelle de `/lms/classes/{classeId}`, qui parle l'espace KLASSCI.
+
+        Le LMS connait deux numerotations independantes pour la meme classe :
+        la cle primaire locale, et l'identifiant KLASSCI. Rien n'interdit que
+        l'une egale l'autre sur des lignes differentes — mesure du 19/09/2026 en
+        production : sept classes sur vingt-et-une sont dans ce cas.
+
+        Un appelant qui detient un identifiant LOCAL — par exemple celui rendu
+        par `classes_concernees` — doit donc utiliser CETTE porte. L'envoyer a
+        la porte KLASSCI rend la fiche d'une autre classe, en 200, sans erreur.
+
+        La traduction est faite au seuil ; le reste du traitement est partage
+        avec la porte historique.
+      security:
+        - sanctum: []
+      parameters:
+        - name: classeId
+          in: path
+          required: true
+          description: "Cle primaire LOCALE de la classe (table `classes`)."
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        '200':
+          description: "Details de la classe, identiques a ceux de la porte KLASSCI."
+          content:
+            application/json:
+              schema:
+                type: object
+        '401':
+          description: "Non authentifie, ou compte sans jeton KLASSCI."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: |
+            Aucune classe ne porte cet identifiant local dans l'etablissement de
+            l'appelant. Un compte sans etablissement ne resout rien.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: |
+            La classe existe mais a ete creee localement : elle n'a aucune fiche
+            KLASSCI a afficher. Un 404 mentirait, la classe est bien la.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
   /lms/visio/consent:
     post:
       tags:

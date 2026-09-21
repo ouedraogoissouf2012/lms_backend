@@ -12,6 +12,7 @@ use App\Http\Controllers\API\Dashboard\DashboardTeacherController;
 // ============================================
 // DASHBOARD - Routes protégées
 // ============================================
+use App\Http\Controllers\API\LMS\LMSClasseEnrolmentCodeController;
 use App\Http\Controllers\API\LMS\LMSClasseMatiereController;
 use App\Http\Controllers\API\LMS\LMSClasseWriteController;
 use App\Http\Controllers\API\LMS\LMSMatiereWriteController;
@@ -102,6 +103,15 @@ Route::middleware(['auth:sanctum', 'klassci.sync', 'role:coordinateur,admin,supe
         // LocalEnrollmentSource:35-40 lit deja — `matiere_enseignant` n est pas
         // touchee, c est le miroir KLASSCI.
         Route::post('/classes/{classe}/matieres', [LMSClasseMatiereController::class, 'store']);
+
+        // Le code d inscription d une classe (#846, ADR-803-03). Rendu EN CLAIR
+        // — il circule par telephone et se reaffiche, contrairement au lien
+        // d activation qui, lui, est hache et a usage unique.
+        //
+        // Emettre remplace le precedent ; retirer ferme la porte aux suivants
+        // SANS toucher aux inscriptions deja faites.
+        Route::post('/classes/{classe}/code-inscription', [LMSClasseEnrolmentCodeController::class, 'store']);
+        Route::delete('/classes/{classe}/code-inscription', [LMSClasseEnrolmentCodeController::class, 'destroy']);
     });
 
 Route::middleware(['auth:sanctum', 'klassci.sync'])->prefix('lms')->group(function () {

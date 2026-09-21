@@ -163,6 +163,43 @@ final class EvaluationSubmissionOwnerTest extends TestCase
         self::assertSame(1, $this->copies(), 'Le rejeu a produit une copie supplementaire.');
     }
 
+    public function test_une_copie_heritee_sans_miroir_local_reste_celle_de_son_auteur(): void
+    {
+        // Ce test garde le CHOIX DE LA CLÉ, et lui seul le fait ici : les
+        // autres passent tous par /start, qui écrit les deux colonnes — les
+        // deux clés y sont donc indiscernables. Une copie ANTÉRIEURE, elle, ne
+        // porte que l'identifiant KLASSCI, comme toutes celles déjà en base.
+        //
+        // Si la propriété se lisait par `student_id`, /start ne reconnaîtrait
+        // pas cette copie, en créerait une seconde au même numéro de tentative,
+        // et l'index unique la refuserait : le 500 d'origine, reproduit.
+        $evaluation = $this->publishedEvaluation();
+        $heritee = EvaluationSubmission::create([
+            'evaluation_id' => $evaluation->id,
+            'klassci_etudiant_id' => 5555,
+            'student_id' => null,
+            'attempt' => 1,
+            'status' => 'en_cours',
+            'started_at' => now(),
+            'institution_id' => $this->institution->id,
+        ]);
+        Sanctum::actingAs($this->student);
+
+        $reprise = $this->postJson("/api/evaluations/{$evaluation->id}/start");
+
+        // La reprise ne s'annonce pas par une clé `resumed` — le contrôleur ne
+        // s'en sert que pour choisir le message. Asserter la clé inventée
+        // aurait été le défaut même que ce lot combat : lire une clé que la
+        // réponse ne produit pas.
+        $reprise->assertStatus(200)->assertJsonPath('message', 'Reprise de la tentative en cours');
+        self::assertSame(1, $this->copies(), 'Une seconde copie a ete creee : la copie heritee n a pas ete reconnue.');
+        self::assertSame(
+            $heritee->id,
+            EvaluationSubmission::withoutGlobalScopes()->firstOrFail()->id,
+            'La copie reprise n est pas celle qui existait.',
+        );
+    }
+
     public function test_la_reprise_autorisee_reste_possible(): void
     {
         // Non-régression : refuser la resoumission ne doit pas interdire une

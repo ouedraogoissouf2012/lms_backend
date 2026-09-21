@@ -6,7 +6,7 @@ namespace Tests\Unit\Models;
 
 use App\Models\EvaluationSubmission;
 use App\Models\User;
-use PHPUnit\Framework\TestCase;
+use Tests\TestCase;
 
 /**
  * La portée de propriété ne doit JAMAIS interroger avec un identifiant nul.

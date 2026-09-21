@@ -34,6 +34,7 @@ class Seance extends Model implements MirroredFromKlassci
         'klassci_seance_id',
         'klassci_matiere_id',
         'klassci_classe_id',
+        'classe_id',
         'klassci_enseignant_id',
         'enseignant_nom',
         'matiere_nom',

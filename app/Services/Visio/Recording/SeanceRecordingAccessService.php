@@ -8,9 +8,12 @@ use App\Models\ESBTPAttendance;
 use App\Models\Seance;
 use App\Models\User;
 use App\Models\UserClass;
+use App\Services\Enrollment\EnrollmentSource;
 
 final class SeanceRecordingAccessService
 {
+    public function __construct(private readonly EnrollmentSource $inscriptions) {}
+
     public function canControl(Seance $seance, User $user): bool
     {
         return $user->isTeacher() && $this->teacherOwnsSeance($seance, $user);
@@ -22,7 +25,11 @@ final class SeanceRecordingAccessService
             return true;
         }
 
-        if ($seance->klassci_classe_id !== null && $this->studentBelongsToSeanceClass($seance, $user)) {
+        // Le court-circuit `klassci_classe_id !== null` fermait cette porte a
+        // TOUTE seance locale (#846) : LocalSeanceCreator ecrit ce champ a null
+        // par construction. La classe de la seance se resout desormais dans les
+        // deux mondes, et l appartenance passe par le composite.
+        if ($this->studentBelongsToSeanceClass($seance, $user)) {
             return true;
         }
 
@@ -95,16 +102,85 @@ final class SeanceRecordingAccessService
         return array_values(array_unique($ids));
     }
 
+    /**
+     * L'apprenant est-il inscrit dans la classe de cette seance ? (#846)
+     *
+     * ## Deux portes, parce que la seance declare son espace
+     *
+     * ADR-760-01, accepte : « quand une meme ressource est designee dans deux
+     * espaces d'identifiants, chaque espace a sa porte ; aucune ne devine ».
+     * Ici rien n'est a deviner : une seance locale porte `classe_id`, une seance
+     * miroitee porte `klassci_classe_id`. Deux colonnes distinctes, deux portes.
+     *
+     * ## La porte KLASSCI etait MORTE en production
+     *
+     * Elle filtrait `user_classes.institution_id`. Or `StudentClassSynchronizer`
+     * — SEUL ecrivain de cette table — n'ecrit jamais cette colonne. Mesure du
+     * 2026-09-21 : sur la donnee que la production ecrit reellement, la requete
+     * d'origine rend FAUX. Aucun apprenant ne passait par cette porte ; seules
+     * les presences ouvraient l'acces.
+     *
+     * Le test qui la couvrait posait `institution_id` a la main, et prouvait
+     * donc un etat que la production n'atteint jamais.
+     *
+     * L'isolation est desormais portee par la comparaison des etablissements de
+     * l'apprenant et de la seance — fiable — et non par une colonne laissee
+     * nulle.
+     */
     private function studentBelongsToSeanceClass(Seance $seance, User $user): bool
     {
         if (! $user->isStudent()) {
             return false;
         }
 
+        if ((int) $user->institution_id !== (int) $seance->institution_id) {
+            return false;
+        }
+
+        if (is_numeric($seance->classe_id)) {
+            return $this->parLaPorteLocale((int) $seance->classe_id, $user);
+        }
+
+        if ($seance->klassci_classe_id === null) {
+            return false;
+        }
+
+        return $this->parLaPorteKlassci((int) $seance->klassci_classe_id, $user);
+    }
+
+    /**
+     * Espace LOCAL : l'appartenance passe par le composite, comme l'exige
+     * ADR-803-03 — « aucune lecture d'inscription ne le contourne ».
+     */
+    private function parLaPorteLocale(int $classeId, User $user): bool
+    {
+        return in_array($classeId, $this->inscriptions->localClasseIdsFor($user), true);
+    }
+
+    /**
+     * Espace KLASSCI : la comparaison reste dans cet espace, sans traduction.
+     *
+     * Traduire vers `classes.id` exigerait une classe miroir locale, que rien
+     * dans le parcours d'un apprenant ne cree — mesure du 2026-09-21. Le
+     * composite ne peut donc pas servir cette porte : il rend des identifiants
+     * locaux, et sa jambe KLASSCI depend elle-meme de ce miroir.
+     */
+    private function parLaPorteKlassci(int $klassciClasseId, User $user): bool
+    {
         return UserClass::query()
-            ->where('institution_id', $seance->institution_id)
             ->where('user_id', $user->id)
-            ->where('klassci_classe_id', $seance->klassci_classe_id)
+            ->where('klassci_classe_id', $klassciClasseId)
+            // Tolere le NULL que la production ecrit, SANS accepter une autre
+            // ecole : `klassci_classe_id` n'est unique que par institution
+            // (#707), donc une ligne etrangere qui porterait le meme numero
+            // ouvrirait la seance d'autrui. Defense en profondeur : cet etat est
+            // aujourd'hui inatteignable — le synchroniseur ne cree que les
+            // classes de l'utilisateur — mais une garde d'acces ne se repose pas
+            // sur « inatteignable ».
+            ->where(function ($requete) use ($user): void {
+                $requete->whereNull('institution_id')
+                    ->orWhere('institution_id', $user->institution_id);
+            })
             ->exists();
     }
 }

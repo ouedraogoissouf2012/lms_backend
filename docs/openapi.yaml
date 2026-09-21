@@ -1211,6 +1211,129 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
+  /inscriptions:
+    post:
+      tags:
+        - Session de formation
+      summary: "S inscrire dans une classe avec un code"
+      description: |
+        La troisieme porte d ADR-803-03 : l apprenant s inscrit LUI-MEME.
+        L import suppose que l ecole detienne deja la liste ; c est faux d un
+        formateur qui diffuse son code par WhatsApp.
+
+        Route ANONYME — celui qui s inscrit n a pas encore de compte. Le code
+        EST son autorisation, et il choisit son mot de passe : contrairement a
+        l import, il est present et n a besoin d aucun lien d activation.
+
+        En-tete `X-Institution` OBLIGATOIRE : le code n est unique que par
+        etablissement, donc une requete qui ne porterait que le code serait
+        ambigue entre deux ecoles.
+
+        Debit borne par un seau NOMME a deux bornes, dont une journaliere
+        globale : la borne par IP seule ne freine pas une enumeration repartie.
+
+        La reponse ne rend NI jeton NI session : l inscrit se connecte ensuite
+        avec le mot de passe qu il vient de choisir.
+      security: []
+      parameters:
+        - name: X-Institution
+          in: header
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - code
+                - nom
+                - password
+                - password_confirmation
+              properties:
+                code:
+                  type: string
+                  minLength: 4
+                  maxLength: 12
+                  example: BUR7K2
+                nom:
+                  type: string
+                  maxLength: 191
+                email:
+                  type: string
+                  format: email
+                  nullable: true
+                telephone:
+                  type: string
+                  maxLength: 40
+                  nullable: true
+                  description: "Une adresse OU un numero est exige, sans imposer lequel."
+                password:
+                  type: string
+                  minLength: 8
+                password_confirmation:
+                  type: string
+      responses:
+        '201':
+          description: "Inscription enregistree"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  data:
+                    type: object
+                    properties:
+                      classe:
+                        type: object
+                        properties:
+                          id:
+                            type: integer
+                          libelle:
+                            type: string
+        '400':
+          description: "En-tete X-Institution absent, ou etablissement non resolu"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: |
+            Ce code n ouvre aucune inscription. Un code INCONNU et un code
+            RETIRE rendent le MEME message : les separer dirait qu un code a
+            existe pour cette valeur.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: |
+            Un compte existe deja avec ces coordonnees. Il n est PAS touche —
+            ni mot de passe, ni role, ni inscription. Sur un endpoint anonyme,
+            une adresse n est pas une preuve de propriete (#812).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: "Charge invalide, ou ni adresse ni telephone"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          description: "Debit depasse"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
   /classes/{classe}/code-inscription:
     post:
       tags:

@@ -1308,7 +1308,12 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/SuccessResponse'
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
         '403':
           description: "Role insuffisant, ou catalogue venant de KLASSCI"
           content:

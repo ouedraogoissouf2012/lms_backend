@@ -11,6 +11,7 @@ use App\Models\Institution;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
+use Tests\Concerns\OpensEvaluationAttempt;
 use Tests\TestCase;
 
 /**
@@ -28,7 +29,7 @@ use Tests\TestCase;
  */
 final class EvaluationGradingScoreTest extends TestCase
 {
-    use RefreshDatabase;
+    use OpensEvaluationAttempt, RefreshDatabase;
 
     private Institution $institution;
     private User $student;
@@ -66,10 +67,20 @@ final class EvaluationGradingScoreTest extends TestCase
     }
 
     /**
+     * Rend une copie — en ouvrant d'abord la tentative, comme un élève le fait.
+     *
+     * Ces tests postaient directement sur `/submit`, où le contrôleur
+     * fabriquait alors la copie lui-même. Il ne le fait plus : cette création
+     * sautait la fenêtre, le quota et la publication. La précondition est donc
+     * posée explicitement, ce qui rend aussi ces tests plus honnêtes — ils
+     * éprouvent désormais la notation sur le vrai parcours.
+     *
      * @param  array<int|string, mixed>  $answers
      */
-    private function submit(Evaluation $evaluation, array $answers)
+    private function submit(Evaluation $evaluation, array $answers, ?User $eleve = null)
     {
+        $this->ouvrirTentative($evaluation, $eleve ?? $this->student);
+
         return $this->postJson("/api/evaluations/{$evaluation->id}/submit", [
             'answers' => $answers,
         ]);
@@ -155,10 +166,12 @@ final class EvaluationGradingScoreTest extends TestCase
         $response = $this->submit($evaluation, [['question_id' => $q1->id, 'answer' => 'A']]);
 
         $response->assertStatus(422);
-        $this->assertNull(
-            $this->latestSubmission($evaluation),
-            'Un payload liste invalide ne doit créer aucune soumission.'
-        );
+        // La tentative existe maintenant AVANT la remise — c'est `/start` qui
+        // l'ouvre. L'assertion devient donc plus fine qu'« aucune ligne » :
+        // un payload invalide ne doit pas CLORE la tentative ni la noter.
+        $tentative = $this->latestSubmission($evaluation);
+        $this->assertSame('en_cours', $tentative->status, 'Un payload liste invalide a clos la tentative.');
+        $this->assertNull($tentative->score, 'Un payload liste invalide a produit un score.');
     }
 
     public function test_answer_exceeding_max_length_is_rejected_with_422(): void
@@ -231,7 +244,7 @@ final class EvaluationGradingScoreTest extends TestCase
         $evalB = $this->publishedEvaluation($institutionB);
         $qB = $this->question($evalB, 'qcm', ['X'], 10, 1);
         Sanctum::actingAs($studentB);
-        $responseB = $this->submit($evalB, [$qB->id => 'X']);
+        $responseB = $this->submit($evalB, [$qB->id => 'X'], $studentB);
         $responseB->assertStatus(201);
         $this->assertEquals(20.0, (float) $this->latestSubmission($evalB)->note_sur_20);
 

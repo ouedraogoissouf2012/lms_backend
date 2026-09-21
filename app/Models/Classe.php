@@ -28,6 +28,8 @@ class Classe extends Model implements MirroredFromKlassci
     protected $fillable = [
         'klassci_id',
         'code',
+        'code_inscription',
+        'code_inscription_revoque_le',
         'libelle',
         'description',
         'effectif',
@@ -43,6 +45,7 @@ class Classe extends Model implements MirroredFromKlassci
     protected $casts = [
         'klassci_data' => 'array',
         'last_klassci_sync' => 'datetime',
+        'code_inscription_revoque_le' => 'datetime',
     ];
 
     /**

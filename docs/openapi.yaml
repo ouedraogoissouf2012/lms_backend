@@ -1211,6 +1211,123 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
+  /classes/{classe}/code-inscription:
+    post:
+      tags:
+        - Session de formation
+      summary: "Emettre le code d inscription d une classe"
+      description: |
+        Le code court qu on dicte pour rejoindre une classe (ADR-803-03).
+
+        Rendu EN CLAIR, et c est voulu : contrairement au lien d activation, il
+        circule par telephone et par WhatsApp, se reaffiche autant que
+        necessaire, et se revoque. Le hacher le rendrait indictable.
+
+        SIX caracteres tires dans un alphabet de 31, sans `0` `1` `I` `L` `O` —
+        les glyphes qu on confond en dictant. Casse normalisee EN PHP, jamais
+        par la collation : SQLite est sensible a la casse, MySQL ne l est pas.
+
+        Emettre REMPLACE le code precedent, qui cesse aussitot de fonctionner,
+        et rouvre une classe dont le code avait ete retire. Aucune inscription
+        deja faite n est touchee.
+
+        Reserve aux etablissements qui tiennent leur propre catalogue : un
+        etablissement branche a KLASSCI recoit 403.
+      security:
+        - sanctum: []
+      parameters:
+        - name: classe
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        '201':
+          description: "Code emis"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  data:
+                    type: object
+                    properties:
+                      classe_id:
+                        type: integer
+                      code_inscription:
+                        type: string
+                        example: BUR7K2
+        '403':
+          description: "Role insuffisant, ou catalogue venant de KLASSCI"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: "Classe introuvable DANS CET ETABLISSEMENT"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          description: |
+            Aucun code disponible apres cinq tirages. Sur 31^6 combinaisons par
+            etablissement, signale une source d alea en panne, pas de la
+            malchance.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      tags:
+        - Session de formation
+      summary: "Retirer le code d inscription d une classe"
+      description: |
+        Ferme la porte aux suivants SANS desinscrire personne : les inscriptions
+        vivent dans `classe_etudiant`, que ce chemin ne touche pas.
+
+        La valeur du code DEMEURE en base. L effacer perdrait l unicite d un
+        code tout juste dicte, qui pourrait alors etre reattribue ailleurs.
+      security:
+        - sanctum: []
+      parameters:
+        - name: classe
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        '200':
+          description: "Code retire"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '403':
+          description: "Role insuffisant, ou catalogue venant de KLASSCI"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: "Classe introuvable DANS CET ETABLISSEMENT"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: "Cette classe n a pas de code a retirer"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
   /classes/{classe}/matieres:
     post:
       tags:

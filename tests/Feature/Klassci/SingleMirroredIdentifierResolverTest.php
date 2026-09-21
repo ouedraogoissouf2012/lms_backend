@@ -74,6 +74,14 @@ final class SingleMirroredIdentifierResolverTest extends TestCase
         '/(?:whereKey\(|where\(\s*\'id\')[^;]{0,200}?->\s*orWhere\(\s*\'klassci_\w*id\'/s',
         // colonne miroir PUIS cle locale (forme inversee, sur deux lignes)
         '/where\(\s*\'klassci_\w*id\'[^;]{0,200}?->\s*(?:orWhereKey\(|orWhere\(\s*\'id\')/s',
+        // La meme faute au PLURIEL : whereIn / orWhereIn.
+        //
+        // Angle mort decouvert en instruisant #869 : MyCoursesPresenter
+        // portait exactement cette forme, et ce cliquet la laissait passer
+        // parce que ses motifs exigeaient `where(` et `orWhere(`. Un garde qui
+        // ne connait qu'une conjugaison du verbe n'interdit pas le verbe.
+        '/whereIn\(\s*\'id\'[^;]{0,200}?->\s*orWhereIn\(\s*\'klassci_\w*id\'/s',
+        '/whereIn\(\s*\'klassci_\w*id\'[^;]{0,200}?->\s*orWhereIn\(\s*\'id\'/s',
     ];
 
     /**

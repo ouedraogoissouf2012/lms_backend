@@ -34,6 +34,7 @@ final class EvaluationListService
 {
     public function __construct(
         private readonly EvaluationEnrichmentService $enrichmentService,
+        private readonly AnswerKeyAudience $answerKeyAudience,
     ) {}
 
     /**
@@ -118,6 +119,13 @@ final class EvaluationListService
 
         if (! $evaluation) {
             return null;
+        }
+
+        // Ce chemin sert DEUX publics : l'enseignant qui rédige ses questions,
+        // et l'élève qui compose. Le corrigé est masqué par défaut sur le
+        // modèle ; seul le premier le voit, et il faut le dire explicitement.
+        if ($this->answerKeyAudience->maySee($user)) {
+            $evaluation->questions->each->makeVisible(['correct_answers', 'explanation']);
         }
 
         return $this->enrichmentService->enrich(collect([$evaluation]), $this->personalToken($user))[0];

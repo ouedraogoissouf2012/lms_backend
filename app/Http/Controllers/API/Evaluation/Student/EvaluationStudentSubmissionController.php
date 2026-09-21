@@ -49,7 +49,12 @@ final class EvaluationStudentSubmissionController extends AuthenticatedControlle
             }
 
             $submittedAt = $submission->submitted_at ? Carbon::parse($submission->submitted_at) : null;
-            $correctionAvailable = $submittedAt && now()->diffInDays($submittedAt) >= self::CORRECTION_DELAY_DAYS;
+            // `now()->diffInDays($passe)` rend un écart SIGNÉ depuis Carbon 3 :
+            // -30 pour une copie rendue il y a trente jours. La comparaison
+            // `>= 7` ne pouvait donc JAMAIS être vraie, et l'élève n'a jamais
+            // vu sa correction. Comparer deux instants ne dépend d'aucun signe.
+            $correctionAvailable = $submittedAt !== null
+                && now()->greaterThanOrEqualTo($submittedAt->copy()->addDays(self::CORRECTION_DELAY_DAYS));
             $correctionAvailableAt = $submittedAt
                 ? $submittedAt->copy()->addDays(self::CORRECTION_DELAY_DAYS)->toIso8601String()
                 : null;
@@ -58,12 +63,17 @@ final class EvaluationStudentSubmissionController extends AuthenticatedControlle
             if ($evaluation->shuffle_questions) {
                 $questions = $questions->shuffle()->values();
             }
-            $questionsData = $questions->map(function ($question) use ($correctionAvailable) {
-                $q = $question->toArray();
-                if (!$correctionAvailable) {
-                    unset($q['correct_answers'], $q['explanation']);
+            // Le corrigé est masqué par défaut sur le modèle ({@see
+            // \App\Models\EvaluationQuestion}). Ce chemin — la copie de l'élève
+            // lui-même, après le délai — est le seul à le révéler, et il le
+            // fait explicitement. L'ancien `unset` faisait l'inverse : il
+            // retirait ce que tous les autres chemins laissaient passer.
+            $questionsData = $questions->map(static function ($question) use ($correctionAvailable) {
+                if ($correctionAvailable) {
+                    $question = (clone $question)->makeVisible(['correct_answers', 'explanation']);
                 }
-                return $q;
+
+                return $question->toArray();
             });
 
             $score = $submission->score;

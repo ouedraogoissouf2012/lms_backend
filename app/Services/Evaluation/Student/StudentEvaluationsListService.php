@@ -53,7 +53,15 @@ final class StudentEvaluationsListService
             return null;
         }
 
-        $evaluationsLMS = Evaluation::with('questions', 'submissions')
+        // Ni `questions` ni `submissions` ne sont chargées : elles étaient
+        // sérialisées telles quelles par `toArray()`, livrant à l'élève le
+        // corrigé de chaque question AVANT l'épreuve, et les copies de TOUS
+        // ses camarades — réponses, score et note.
+        //
+        // Ce que cette liste doit vraiment porter est plus étroit : le NOMBRE
+        // de questions, et la propre copie de l'élève, que `enrichEvaluation`
+        // allait déjà chercher séparément.
+        $evaluationsLMS = Evaluation::withCount('questions')
             ->where('klassci_classe_id', $classeId)
             ->where('is_published', true)
             ->whereIn('status', ['planifiee', 'en_cours', 'terminee'])
@@ -107,7 +115,9 @@ final class StudentEvaluationsListService
             $this->enrichPureLmsEvaluation($evalArray, $evalLMS, $klassciToken);
         }
 
-        $evalArray['questions_count'] = $evalLMS->questions->count();
+        // `withCount` a déjà posé le compte : plus besoin de charger les
+        // questions elles-mêmes pour les dénombrer.
+        $evalArray['questions_count'] = (int) $evalLMS->questions_count;
         $evalArray['student_submission'] = $evalLMS->submissions()
             ->where('klassci_etudiant_id', $klassciEtudiantId)
             ->latest()

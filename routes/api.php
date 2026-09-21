@@ -10,8 +10,10 @@
 | les routes.
 */
 
-require __DIR__ . '/api/core.php';
-require __DIR__ . '/api/content.php';
-require __DIR__ . '/api/lms.php';
-require __DIR__ . '/api/evaluation.php';
-require __DIR__ . '/api/admin.php';
+require __DIR__.'/api/core.php';
+require __DIR__.'/api/content.php';
+require __DIR__.'/api/classes.php';
+require __DIR__.'/api/imports.php';
+require __DIR__.'/api/lms.php';
+require __DIR__.'/api/evaluation.php';
+require __DIR__.'/api/admin.php';

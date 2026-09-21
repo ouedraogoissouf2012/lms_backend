@@ -45,11 +45,7 @@ Route::middleware(['auth:sanctum', 'klassci.sync', 'role:enseignant,coordinateur
 // + 2 services partagés. Spec : .claude/specs/lms-data-controller-split/).
 // ============================================
 use App\Http\Controllers\API\Admin\AdminStatisticsController;
-use App\Http\Controllers\API\LMS\ImportConfirmController;
-use App\Http\Controllers\API\LMS\ImportPreviewController;
-use App\Http\Controllers\API\LMS\ImportShowController;
 use App\Http\Controllers\API\LMS\LMSAttendancesController;
-use App\Http\Controllers\API\LMS\LMSClassesController;
 use App\Http\Controllers\API\LMS\LMSEnseignantsController;
 use App\Http\Controllers\API\LMS\LMSMatieresAdminController;
 use App\Http\Controllers\API\LMS\LMSMatieresQueryController;
@@ -60,7 +56,6 @@ use App\Http\Controllers\API\LMS\LMSSeanceParticipantMutationController;
 use App\Http\Controllers\API\LMS\LMSSeancesHistoryController;
 use App\Http\Controllers\API\LMS\LMSSeancesListController;
 use App\Http\Controllers\API\LMS\LMSSeanceVisibilityMutationController;
-use App\Http\Controllers\API\LMS\LMSTeacherClassesController;
 use App\Http\Controllers\API\LMS\LMSVisioConsentController;
 use App\Http\Controllers\API\LMS\LMSVisioLifecycleController;
 use App\Http\Controllers\API\LMS\LMSVisioParticipantController;
@@ -110,29 +105,6 @@ Route::middleware(['auth:sanctum', 'klassci.sync', 'role:coordinateur,admin,supe
     });
 
 Route::middleware(['auth:sanctum', 'klassci.sync'])->prefix('lms')->group(function () {
-    // Détails complets d'une classe
-    Route::get('/classes/{classeId}', [LMSClassesController::class, 'classeDetails'])
-        ->name('lms.classes.details');
-
-    // Étudiants d'une classe
-    Route::get('/classes/{classeId}/etudiants', [LMSClassesController::class, 'classeEtudiants'])
-        ->name('lms.classes.etudiants');
-
-    Route::get('/teacher/classes', [LMSTeacherClassesController::class, 'index'])
-        ->middleware('role:enseignant,coordinateur')
-        ->name('lms.teacher.classes');
-
-    Route::post('/imports/preview', [ImportPreviewController::class, 'store'])
-        ->middleware(['role:enseignant,coordinateur,superAdmin', 'throttle:10,1'])
-        ->name('lms.imports.preview');
-    Route::post('/imports/{id}/confirm', [ImportConfirmController::class, 'store'])
-        ->middleware(['role:enseignant,coordinateur,superAdmin', 'throttle:10,1'])
-        ->whereNumber('id')
-        ->name('lms.imports.confirm');
-    Route::get('/imports/{id}', [ImportShowController::class, 'show'])
-        ->middleware(['role:enseignant,coordinateur,superAdmin'])
-        ->whereNumber('id')
-        ->name('lms.imports.show');
 
     // Détails complets d'une matière
     Route::get('/matieres/{matiereId}', [LMSMatieresQueryController::class, 'matiereDetails'])

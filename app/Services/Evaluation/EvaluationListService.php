@@ -55,7 +55,22 @@ final class EvaluationListService
      */
     public function listForTeacher(User $user, array $filters): array
     {
-        $query = Evaluation::with(['questions', 'submissions']);
+        // `submissions` n'est PAS chargée : elle était sérialisée telle quelle
+        // et livrait les copies de tout l'établissement — réponses, score et
+        // note — à quiconque appelle cette route, qui n'a aucune garde de rôle
+        // et qu'un élève atteint par le calendrier.
+        //
+        // Rien ne consommait le tableau : les deux écrans qui affichent le
+        // nombre de copies préfèrent déjà `submissions_count`.
+        //
+        // Ce compteur est demandé ici, par `withCount`, et non laissé à
+        // l'enrichissement : celui-ci est *fail-soft* et, quand KLASSCI est
+        // injoignable, il rend les évaluations SANS ses métadonnées calculées
+        // (`EvaluationEnrichmentService:97`). Le compteur aurait alors disparu
+        // en même temps que la relation, et le bouton « Voir les notes » avec
+        // lui — une panne KLASSCI aurait effacé les notes des enseignants.
+        // Porté par le modèle, il survit aux deux modes.
+        $query = Evaluation::withCount('submissions')->with(['questions']);
 
         if (array_key_exists('classe_id', $filters)) {
             $query->where('klassci_classe_id', $filters['classe_id']);

@@ -166,6 +166,46 @@ final class CorrigesEtCopiesExposesTest extends TestCase
         );
     }
 
+    public function test_la_liste_generale_ne_livre_pas_les_copies_des_autres(): void
+    {
+        // `GET /evaluations` n'a aucune garde de rôle — son groupe de routes
+        // est explicitement « accessible à tous les utilisateurs
+        // authentifiés » — et un élève l'atteint par le calendrier
+        // (`useCalendarEvents.js:95`). Il y recevait la relation `submissions`
+        // en entier : les copies de tout l'établissement.
+        //
+        // Le compteur, lui, reste dû : il est calculé côté serveur
+        // (`EvaluationEnrichmentService:232`) et ne dépend pas de cette
+        // relation.
+        $evaluation = $this->evaluationAvecCorrige();
+        EvaluationSubmission::create([
+            'evaluation_id' => $evaluation->id,
+            'klassci_etudiant_id' => 999,
+            'student_id' => null,
+            'attempt' => 1,
+            'status' => 'soumis',
+            'answers' => ['reponse' => 'COPIE-DU-CAMARADE'],
+            'score' => 17,
+            'note_sur_20' => 17,
+            'institution_id' => $this->ecole->id,
+        ]);
+        Sanctum::actingAs($this->eleve);
+
+        $reponse = $this->getJson('/api/evaluations');
+
+        $reponse->assertStatus(200);
+        self::assertStringNotContainsString(
+            'COPIE-DU-CAMARADE',
+            $reponse->getContent() ?: '',
+            'La liste generale livre les copies des autres eleves.',
+        );
+        self::assertSame(
+            1,
+            $reponse->json('data.0.submissions_count'),
+            'Le compteur autoritatif a disparu avec la relation : le bouton « Voir les notes » tomberait.',
+        );
+    }
+
     public function test_l_ecran_de_passage_de_l_eleve_ne_recoit_pas_le_corrige(): void
     {
         // `GET /evaluations/{id}` sert DEUX publics par le même chemin :

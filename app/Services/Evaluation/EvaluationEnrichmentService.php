@@ -229,7 +229,9 @@ class EvaluationEnrichmentService
     {
         $evalArray['is_locked'] = $this->state->isLocked($evaluation);
         $evalArray['can_be_edited'] = $this->state->canBeEdited($evaluation);
-        $evalArray['submissions_count'] = $evaluation->submissions()->count();
+        // Quand l'appelant a déjà demandé le compte par `withCount`, on le
+        // reprend : recompter ici ferait une requête par évaluation.
+        $evalArray['submissions_count'] = $evaluation->submissions_count ?? $evaluation->submissions()->count();
         $evalArray['questions_count'] = $evaluation->questions()->count();
         $evalArray['effective_status'] = $evaluation->getEffectiveStatus();
     }

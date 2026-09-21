@@ -97,14 +97,19 @@ final class SubmitEvaluationRequest extends FormRequest
             return false;
         }
 
-        // Check 5: Student must not have already submitted
-        $previousSubmission = \App\Models\EvaluationSubmission::where('evaluation_id', $evaluation->id)
-            ->where('student_id', $user->id)
-            ->exists();
-
-        if ($previousSubmission) {
-            return false;
-        }
+        // Check 5 retiré — il interrogeait `student_id`, colonne que `/start`
+        // n'écrivait jamais : la garde n'a donc jamais refusé quoi que ce soit.
+        //
+        // La rendre effective telle qu'elle était écrite aurait été pire que le
+        // défaut : « aucune soumission antérieure » interdit TOUTE reprise, et
+        // contredirait `allow_retake` / `max_attempts`, que
+        // `EvaluationAttemptStateService` fait respecter au démarrage.
+        //
+        // Le critère honnête n'est pas « n'a jamais rendu » mais « a une
+        // tentative OUVERTE à rendre ». Il vit désormais dans le contrôleur,
+        // qui répond 409 — un conflit d'état, pas un refus d'autorisation :
+        // l'élève a bien le droit de rendre, il n'a simplement rien d'ouvert.
+        // Voir EvaluationStudentAttemptController::submitEvaluation().
 
         return true;
     }

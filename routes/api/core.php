@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\API\ActivationController;
+use App\Http\Controllers\API\InscriptionParCodeController;
 use App\Http\Controllers\API\AdminController;
 use App\Http\Controllers\API\AuthController;
 use App\Http\Controllers\API\ConfigurationController;
@@ -56,6 +57,26 @@ Route::post('/school-requests', [SchoolRegistrationRequestController::class, 'st
 //
 // 5/min/IP : le jeton fait 64 caracteres aleatoires, le forcer n'a aucun sens,
 // mais un endpoint anonyme sans borne reste une porte ouverte.
+// ============================================
+// INSCRIPTION PAR CODE - anonyme par nature (#846, ADR-803-03)
+// ============================================
+// La troisieme porte : l apprenant s inscrit lui-meme. L import suppose que
+// l ecole detienne deja la liste ; c est faux d un formateur qui diffuse son
+// code par WhatsApp, le cas d usage central du monde autonome.
+//
+// `institution.header` : le code n est unique QUE par etablissement, donc une
+// requete qui ne porterait que le code serait ambigue entre deux ecoles — et
+// inscrirait au mauvais endroit. `ResolveInstitution` pose le tenant depuis
+// l en-tete en priorite 2.
+//
+// Seau NOMME et non `throttle:5,1` : le seau par defaut est `domaine|ip` sans
+// chemin, donc partage avec /auth/login. Deux bornes, dont une JOURNALIERE
+// globale : la borne par IP seule ne freine pas une enumeration repartie, et un
+// code fait six caracteres. L ADR qualifie nommement cet endpoint
+// d endpoint d enumeration.
+Route::post('/inscriptions', [InscriptionParCodeController::class, 'store'])
+    ->middleware(['institution.header', 'throttle:inscriptions']);
+
 Route::post('/activation', [ActivationController::class, 'store'])
     ->middleware('throttle:5,1');
 

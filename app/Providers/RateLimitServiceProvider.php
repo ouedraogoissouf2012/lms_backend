@@ -73,6 +73,15 @@ final class RateLimitServiceProvider extends ServiceProvider
 
     private const SCHOOL_REQUESTS_PER_DAY = 200;
 
+    /**
+     * Inscription par code (#846). Plus serre que les demandes d ouverture :
+     * celle-ci teste un SECRET de six caracteres, pas une intention. L ADR-803-03
+     * la qualifie nommement d endpoint d enumeration.
+     */
+    private const INSCRIPTIONS_PER_MINUTE = 5;
+
+    private const INSCRIPTIONS_PER_DAY = 100;
+
     public function boot(): void
     {
         RateLimiter::for('proxy', function (Request $request): Limit {
@@ -99,6 +108,21 @@ final class RateLimitServiceProvider extends ServiceProvider
             return [
                 Limit::perMinute(self::SCHOOL_REQUESTS_PER_MINUTE)->by((string) $request->ip()),
                 Limit::perDay(self::SCHOOL_REQUESTS_PER_DAY)->by('school-requests-global'),
+            ];
+        });
+
+        // Meme forme, meme raison : un seau NOMME. Celui par defaut est
+        // `domaine|ip` sans chemin, et serait donc partage avec /auth/login —
+        // cinq tentatives d inscription depuis une ecole derriere une seule IP
+        // refuseraient la connexion suivante.
+        //
+        // La borne JOURNALIERE globale est ce qui compte ici : la borne par IP
+        // seule ne freine pas une enumeration repartie, et un code fait six
+        // caracteres.
+        RateLimiter::for('inscriptions', function (Request $request): array {
+            return [
+                Limit::perMinute(self::INSCRIPTIONS_PER_MINUTE)->by((string) $request->ip()),
+                Limit::perDay(self::INSCRIPTIONS_PER_DAY)->by('inscriptions-global'),
             ];
         });
     }

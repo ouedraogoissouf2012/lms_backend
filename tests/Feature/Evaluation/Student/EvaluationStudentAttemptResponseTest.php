@@ -16,6 +16,7 @@ use Exception;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
 use Mockery\MockInterface;
+use Tests\Concerns\OpensEvaluationAttempt;
 use Tests\TestCase;
 
 /**
@@ -47,7 +48,7 @@ use Tests\TestCase;
  */
 final class EvaluationStudentAttemptResponseTest extends TestCase
 {
-    use RefreshDatabase;
+    use OpensEvaluationAttempt, RefreshDatabase;
 
     private Institution $institution;
     private User $student;
@@ -282,6 +283,11 @@ final class EvaluationStudentAttemptResponseTest extends TestCase
     {
         $evaluation = $this->publishedEvaluation();
         $question = $evaluation->questions()->first();
+        // Ce test appelait `/submit` SEUL, et passait — parce que le contrôleur
+        // fabriquait alors la copie lui-même. C'est ce succès trompeur qui a
+        // couvert le défaut : la CI restait verte sur un chemin qu'aucun élève
+        // n'emprunte, tandis que le vrai enchaînement rendait 500.
+        $this->ouvrirTentative($evaluation, $this->student);
         Sanctum::actingAs($this->student);
 
         $response = $this->postJson("/api/evaluations/{$evaluation->id}/submit", [
@@ -299,6 +305,10 @@ final class EvaluationStudentAttemptResponseTest extends TestCase
     {
         $evaluation = $this->publishedEvaluation();
         $question = $evaluation->questions()->first();
+        // Une tentative doit être ouverte pour que la remise atteigne la
+        // notation — c'est là que le faux de correction lève, et que le 500
+        // dont ce test fige l'enveloppe se produit.
+        $this->ouvrirTentative($evaluation, $this->student);
         $this->mock(
             EvaluationGradingService::class,
             fn (MockInterface $mock) => $mock->shouldReceive('submit')->andThrow(new Exception('boom')),

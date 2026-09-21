@@ -70,7 +70,7 @@ final class StudentEnrolmentService
             );
         }
 
-        $this->rattacher($classe, $etudiant, $pivot);
+        $this->inscrire($etudiant, $classe, $pivot);
 
         return StudentEnrolment::faite();
     }
@@ -84,7 +84,7 @@ final class StudentEnrolmentService
      *
      * @param  array<string, mixed>  $pivot
      */
-    private function rattacher(Classe $classe, User $etudiant, array $pivot): void
+    public function inscrire(User $etudiant, Classe $classe, array $pivot = []): void
     {
         // `->id` et non `->getKey()` : ce dernier rend `mixed`, que PHPStan n9
         // refuse comme clé de tableau — à juste titre, une clé non entière

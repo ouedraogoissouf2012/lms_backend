@@ -82,7 +82,24 @@ final class EvaluationAttemptStateService
             return $windowError;
         }
 
-        return $this->resolveOrCreateSubmission($evaluation, $klassciEtudiantId, $isPracticeMode, $window);
+        return $this->resolveOrCreateSubmission($evaluation, $user, $isPracticeMode, $window);
+    }
+
+    /**
+     * La tentative OUVERTE de cet élève sur cette évaluation, s'il en a une.
+     *
+     * Une copie se rend ; elle ne s'invente pas au moment de la rendre. C'est
+     * ici que `/submit` retrouve ce que `/start` a créé — par la même portée de
+     * propriété, ce qui rend impossible la divergence d'espaces qui faisait
+     * échouer toute remise de copie.
+     */
+    public function findOpenAttempt(int $evaluationId, User $student): ?EvaluationSubmission
+    {
+        return EvaluationSubmission::query()
+            ->where('evaluation_id', $evaluationId)
+            ->ownedBy($student)
+            ->where('status', 'en_cours')
+            ->first();
     }
 
     /**
@@ -93,19 +110,17 @@ final class EvaluationAttemptStateService
      * @param  ?array<string, mixed>  $window
      * @return array{status: string, submission?: EvaluationSubmission, window?: ?array<string, mixed>, message?: string, is_practice?: bool, resumed?: bool}
      */
-    private function resolveOrCreateSubmission(Evaluation $evaluation, ?int $klassciEtudiantId, bool $isPracticeMode, ?array $window): array
+    private function resolveOrCreateSubmission(Evaluation $evaluation, User $user, bool $isPracticeMode, ?array $window): array
     {
-        $activeSubmission = EvaluationSubmission::where('evaluation_id', $evaluation->id)
-            ->where('klassci_etudiant_id', $klassciEtudiantId)
-            ->where('status', 'en_cours')
-            ->first();
+        $activeSubmission = $this->findOpenAttempt($evaluation->id, $user);
 
         if ($activeSubmission) {
             return $this->okResponse($activeSubmission, $window, true, $isPracticeMode);
         }
 
-        $attemptsCount = EvaluationSubmission::where('evaluation_id', $evaluation->id)
-            ->where('klassci_etudiant_id', $klassciEtudiantId)
+        $attemptsCount = EvaluationSubmission::query()
+            ->where('evaluation_id', $evaluation->id)
+            ->ownedBy($user)
             ->whereIn('status', ['soumis', 'corrige'])
             ->count();
 
@@ -125,7 +140,12 @@ final class EvaluationAttemptStateService
 
         $submission = EvaluationSubmission::create([
             'evaluation_id' => $evaluation->id,
-            'klassci_etudiant_id' => $klassciEtudiantId,
+            // Les DEUX espaces sont écrits, et chacun pour sa raison :
+            // `student_id` est la clé de propriété (celle par laquelle on
+            // retrouve la copie) ; `klassci_etudiant_id` porte l'index unique
+            // `eval_sub_unique` et le renvoi des notes vers KLASSCI.
+            'student_id' => $user->id,
+            'klassci_etudiant_id' => $user->klassci_id,
             'attempt' => $attemptsCount + 1,
             'status' => 'en_cours',
             'started_at' => now(),
@@ -230,7 +250,7 @@ final class EvaluationAttemptStateService
         if (! $windowResult['fetched'] && ! $isPracticeMode) {
             $this->logger->warning('Démarrage refusé : fenêtre non vérifiable (KLASSCI indisponible)', [
                 'evaluation_id' => $evaluationId,
-                'student_id' => $klassciEtudiantId,
+                'klassci_etudiant_id' => $klassciEtudiantId,
             ]);
 
             return [[
@@ -265,7 +285,7 @@ final class EvaluationAttemptStateService
 
         $this->logger->warning('Tentative de démarrage hors fenêtre', [
             'evaluation_id' => $evaluationId,
-            'student_id' => $klassciEtudiantId,
+            'klassci_etudiant_id' => $klassciEtudiantId,
             'window' => $window,
         ]);
 

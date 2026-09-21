@@ -8,6 +8,7 @@ use App\Models\Institution;
 use App\Models\EvaluationQuestion;
 use App\Models\User;
 use Laravel\Sanctum\Sanctum;
+use Tests\Concerns\OpensEvaluationAttempt;
 use Tests\TestCase;
 
 /**
@@ -30,7 +31,7 @@ use Tests\TestCase;
  */
 class SubmitEvaluationRequestTest extends TestCase
 {
-    use \Illuminate\Foundation\Testing\RefreshDatabase;
+    use OpensEvaluationAttempt, \Illuminate\Foundation\Testing\RefreshDatabase;
 
     private Institution $institution;
     private User $student;
@@ -49,7 +50,12 @@ class SubmitEvaluationRequestTest extends TestCase
         $this->student = User::factory()
             ->student()
             ->for($this->institution)
-            ->create();
+            ->create([
+                // La propriété d'une copie se lit par `klassci_etudiant_id` —
+                // la colonne que l'index unique contraint. Un élève sans cette
+                // identité ne peut posséder aucune copie (#798).
+                'klassci_id' => 7777,
+            ]);
 
         $this->teacher = User::factory()
             ->teacher()
@@ -75,6 +81,12 @@ class SubmitEvaluationRequestTest extends TestCase
             ->for($this->evaluation)
             ->state(['question' => 'Capital of France?', 'type' => 'qcm', 'correct_answers' => ['Paris'], 'points' => 10])
             ->create();
+
+        // Rendre une copie suppose une tentative OUVERTE : le contrôleur ne la
+        // fabrique plus au moment de la remise, car cette création sautait la
+        // fenêtre, le quota et la publication. Cette suite éprouve la
+        // VALIDATION ; elle pose donc la précondition ici, une fois.
+        $this->ouvrirTentative($this->evaluation, $this->student);
     }
 
     /**
@@ -195,10 +207,13 @@ class SubmitEvaluationRequestTest extends TestCase
         ]);
 
         $response->assertStatus(422);
-        $this->assertNull(
-            EvaluationSubmission::where('evaluation_id', $this->evaluation->id)->first(),
-            'Un payload liste ne doit créer aucune soumission.'
-        );
+        // La tentative est ouverte AVANT la remise depuis que `/submit` ne
+        // fabrique plus de copie. L'assertion devient donc plus fine
+        // qu'« aucune ligne » : un payload liste ne doit pas CLORE la
+        // tentative ni la noter.
+        $tentative = EvaluationSubmission::where('evaluation_id', $this->evaluation->id)->firstOrFail();
+        $this->assertSame('en_cours', $tentative->status, 'Un payload liste a clos la tentative.');
+        $this->assertNull($tentative->score, 'Un payload liste a produit un score.');
     }
 
     /**
@@ -338,11 +353,16 @@ class SubmitEvaluationRequestTest extends TestCase
      */
     public function test_already_submitted_cannot_resubmit(): void
     {
-        // Create prior submission
-        EvaluationSubmission::factory()
-            ->for($this->evaluation)
-            ->for($this->student, 'student')
-            ->create();
+        // La version d'origine créait la copie préalable par une fabrique qui
+        // RENSEIGNAIT `student_id` — colonne que `/start` n'écrivait jamais en
+        // production. Le test passait donc pour une raison que la production
+        // n'avait pas : la garde qu'il croyait éprouver était inerte.
+        //
+        // Ici la tentative ouverte en setUp est simplement RENDUE. Il n'en
+        // reste aucune d'ouverte, et la remise est refusée — pour la vraie
+        // raison, et avec le code qui la décrit : 409, un conflit d'état, non
+        // un refus d'autorisation.
+        EvaluationSubmission::query()->update(['status' => 'soumis']);
 
         Sanctum::actingAs($this->student);
 
@@ -352,7 +372,7 @@ class SubmitEvaluationRequestTest extends TestCase
             ],
         ]);
 
-        $response->assertStatus(403);
+        $response->assertStatus(409);
     }
 
     /**

@@ -9,7 +9,6 @@ use App\Exceptions\MissingKlassciTokenException;
 use App\Http\Controllers\AuthenticatedController;
 use App\Http\Requests\StartEvaluationRequest;
 use App\Http\Requests\SubmitEvaluationRequest;
-use App\Models\EvaluationSubmission;
 use App\Services\Evaluation\EvaluationGradingService;
 use App\Services\Evaluation\Student\EvaluationAttemptStateService;
 use Illuminate\Http\JsonResponse;
@@ -84,20 +83,20 @@ final class EvaluationStudentAttemptController extends AuthenticatedController
         try {
             $user = $this->authenticatedUser($request);
 
-            $submission = EvaluationSubmission::where('evaluation_id', $id)
-                ->where('student_id', $user->id)
-                ->where('status', 'en_cours')
-                ->first();
+            // Rendre une copie, c'est clore une tentative OUVERTE — jamais en
+            // fabriquer une. Le contrôleur créait ici une seconde ligne avec
+            // `attempt` codé en dur à 1, qui violait l'index unique
+            // `eval_sub_unique` et ressortait en 500 : aucun élève ne pouvait
+            // rendre son travail. Au passage, cette création sautait la
+            // fenêtre, le quota et la publication — toutes vérifications que
+            // le service de démarrage déclare centraliser.
+            $submission = $this->attemptState->findOpenAttempt($id, $user);
 
             if (!$submission) {
-                $submission = EvaluationSubmission::create([
-                    'evaluation_id' => $id,
-                    'student_id' => $user->id,
-                    'klassci_etudiant_id' => $user->klassci_id,
-                    'attempt' => 1,
-                    'status' => 'en_cours',
-                    'started_at' => now(),
-                ]);
+                return $this->errorResponse(
+                    'Aucune tentative en cours pour cette évaluation. Démarrez-la avant de la rendre.',
+                    409
+                );
             }
 
             $submission->answers = $request->validated('answers');

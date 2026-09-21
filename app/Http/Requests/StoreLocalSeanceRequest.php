@@ -26,6 +26,10 @@ final class StoreLocalSeanceRequest extends FormRequest
             'date_seance' => 'required|date',
             'matiere_nom' => 'nullable|string|max:191',
             'classe_nom' => 'nullable|string|max:191',
+            // Aucune regle `exists` : elle validerait l existence GLOBALE et
+            // laisserait passer la classe d une AUTRE ecole. L appartenance est
+            // verifiee par LocalSeanceCreator, qui borne sur institution_id.
+            'classe_id' => 'sometimes|nullable|integer|min:1',
         ];
     }
 }

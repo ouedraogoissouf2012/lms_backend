@@ -110,7 +110,7 @@ final class LessonListService
      *
      * @return array{
      *     courses: Collection<int, array<string, mixed>>,
-     *     filters: array{matieres: Collection<int, array{id: int, name: string}>, enseignants: Collection<int, array{id: int|null, name: string}>},
+     *     filters: array{matieres: Collection<int, array{id: int, name: string}>, enseignants: Collection<int, array{id: int, name: string}>},
      *     total: int,
      *     meta: array{current_page: int, last_page: int, per_page: int, total: int},
      * }
@@ -164,26 +164,31 @@ final class LessonListService
     }
 
     /**
-     * Filtre enseignant tolérant : le frontend envoie un klassci_id ; on
-     * accepte aussi l'id local correspondant.
+     * Filtre enseignant : un seul espace, celui que la colonne stocke.
+     *
+     * ## Ce que cette methode faisait, et pourquoi c etait faux
+     *
+     * Elle se declarait « tolerante » : le frontend envoyait un `klassci_id`,
+     * elle cherchait l utilisateur correspondant puis acceptait les DEUX valeurs
+     * contre `lessons.enseignant_id` -- une colonne LOCALE par contrat
+     * (`comment('users.id (LOCAL)')`).
+     *
+     * Comparer un identifiant KLASSCI a une colonne locale ne tolere rien : sur
+     * une collision, la branche `orWhere` rend les lecons d un AUTRE enseignant.
+     * Mesure de production du 19/09/2026 : neuf utilisateurs sur 218 sont dans
+     * ce cas, dont un etudiant dont l `id` local est le `klassci_id` d un
+     * enseignant (#869).
+     *
+     * La tolerance n etait pas un service rendu au client : c etait l API qui
+     * reparait en entree l ambiguite qu elle fabriquait en sortie --
+     * `MyCoursesPresenter` emettait `klassci_id` la ou `matieres`, deux lignes
+     * plus haut, emettait l id local. Les deux emettent desormais l espace que
+     * leurs colonnes stockent, et ce filtre n a plus rien a arbitrer.
      *
      * @param  Builder<Lesson>  $query
      */
     private function applyEnseignantFilter(Builder $query, int $enseignantId): void
     {
-        $enseignantUser = User::where('klassci_id', $enseignantId)
-            ->where('role', 'enseignant')
-            ->first();
-
-        if ($enseignantUser) {
-            $query->where(function ($q) use ($enseignantUser, $enseignantId) {
-                $q->where('enseignant_id', $enseignantUser->id)
-                    ->orWhere('enseignant_id', $enseignantId);
-            });
-
-            return;
-        }
-
         $query->where('enseignant_id', $enseignantId);
     }
 

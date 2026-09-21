@@ -170,17 +170,11 @@ final class SeanceRecordingAccessService
         return UserClass::query()
             ->where('user_id', $user->id)
             ->where('klassci_classe_id', $klassciClasseId)
-            // Tolere le NULL que la production ecrit, SANS accepter une autre
-            // ecole : `klassci_classe_id` n'est unique que par institution
-            // (#707), donc une ligne etrangere qui porterait le meme numero
-            // ouvrirait la seance d'autrui. Defense en profondeur : cet etat est
-            // aujourd'hui inatteignable — le synchroniseur ne cree que les
-            // classes de l'utilisateur — mais une garde d'acces ne se repose pas
-            // sur « inatteignable ».
-            ->where(function ($requete) use ($user): void {
-                $requete->whereNull('institution_id')
-                    ->orWhere('institution_id', $user->institution_id);
-            })
+            // Aucune tolerance au NULL : #877 en avait ajoute une, et la mesure
+            // du 21/09 a montre qu'elle ne servait a rien — le scope global de
+            // `UserClass` filtre `institution_id` AVANT elle. Depuis #878 la
+            // colonne est ecrite, et le scope borne deja a l'etablissement
+            // courant. Garder la clause laisserait croire a une garde absente.
             ->exists();
     }
 }

@@ -241,6 +241,12 @@ final class StudentReplayAccessTest extends TestCase
             'institution_id' => $voisine->getKey(),
         ]);
 
+        // Le tenant est RESOLU, comme sur une requete reelle : c'est lui qui
+        // borne, via le scope global de `UserClass`. Sans cela le scope se
+        // desactive (log-and-no-op) et ce test ne prouverait rien — la faute
+        // exacte qui a masque le defaut de #878 dans la PR #877.
+        app(\App\Services\TenantManager::class)->set($ecole);
+
         $seance = Seance::factory()->create([
             'institution_id' => $ecole->getKey(),
             'classe_id' => null,

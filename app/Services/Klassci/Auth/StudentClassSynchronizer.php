@@ -24,15 +24,14 @@ final class StudentClassSynchronizer
     public function __construct(
         private readonly KlassciProxyService $klassciService,
         private readonly LoggerInterface $logger,
-    ) {
-    }
+    ) {}
 
     public function sync(User $user, string $klassciToken): void
     {
         try {
             $this->logger->info('Synchronisation des classes pour étudiant', [
                 'user_id' => $user->id,
-                'email'   => $user->email,
+                'email' => $user->email,
             ]);
 
             $classe = $this->extractClasseFromDashboard($user, $klassciToken);
@@ -44,7 +43,7 @@ final class StudentClassSynchronizer
         } catch (\Exception $e) {
             $this->logger->error('Erreur lors de la synchronisation des classes', [
                 'user_id' => $user->id,
-                'error'   => $e->getMessage(),
+                'error' => $e->getMessage(),
             ]);
         }
     }
@@ -73,8 +72,8 @@ final class StudentClassSynchronizer
         }
 
         $this->logger->info('Classe KLASSCI récupérée', [
-            'user_id'    => $user->id,
-            'classe_id'  => $classe['id'] ?? null,
+            'user_id' => $user->id,
+            'classe_id' => $classe['id'] ?? null,
             'classe_nom' => $classe['name'] ?? $classe['libelle'] ?? 'N/A',
         ]);
 
@@ -94,16 +93,29 @@ final class StudentClassSynchronizer
         $classeNom = $classe['name'] ?? $classe['libelle'] ?? null;
 
         UserClass::create([
-            'user_id'           => $user->id,
+            'user_id' => $user->id,
+            // EXPLICITE, et non delegue au trait (#878). `BelongsToInstitution`
+            // pose cette colonne a la creation depuis le tenant resolu — mais
+            // ce code tourne PENDANT le login, ou l utilisateur n est pas encore
+            // authentifie et ou aucun en-tete n a ete exige : `ResolveInstitution`
+            // n a rien pose, et le trait passe en `log-and-no-op`.
+            //
+            // La colonne restait donc nulle, et le scope global de `UserClass`
+            // — qui filtre precisement dessus — rendait AVEUGLES les cinq
+            // lecteurs de cette table. Mesure du 21/09.
+            //
+            // `KlassciUserSynchronizer:157` fait deja ainsi pour le compte
+            // lui-meme : on aligne les deux freres.
+            'institution_id' => $user->institution_id,
             'klassci_classe_id' => $classeId,
-            'classe_nom'        => $classeNom,
-            'classe_libelle'    => $classe['libelle'] ?? $classe['name'] ?? null,
-            'classe_data'       => $classe,
-            'synced_at'         => now(),
+            'classe_nom' => $classeNom,
+            'classe_libelle' => $classe['libelle'] ?? $classe['name'] ?? null,
+            'classe_data' => $classe,
+            'synced_at' => now(),
         ]);
 
         $this->logger->info('Classe synchronisée avec succès', [
-            'user_id'   => $user->id,
+            'user_id' => $user->id,
             'classe_id' => $classeId,
         ]);
     }

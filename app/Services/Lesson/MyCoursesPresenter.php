@@ -27,17 +27,15 @@ use Illuminate\Support\Collection;
  */
 final class MyCoursesPresenter
 {
-    public function __construct(private readonly LessonProgressService $progressService)
-    {
-    }
+    public function __construct(private readonly LessonProgressService $progressService) {}
 
     /**
      * @param  LengthAwarePaginator<int, Lesson>  $page  Cours de la page courante.
      * @param  Collection<int, Lesson>  $allFiltered  Toute la sélection filtrée
-     *         (hors pagination) — sert à bâtir des filtres exhaustifs.
+     *                                                (hors pagination) — sert à bâtir des filtres exhaustifs.
      * @return array{
      *     courses: Collection<int, array<string, mixed>>,
-     *     filters: array{matieres: Collection<int, array{id: int, name: string}>, enseignants: Collection<int, array{id: int|null, name: string}>},
+     *     filters: array{matieres: Collection<int, array{id: int, name: string}>, enseignants: Collection<int, array{id: int, name: string}>},
      *     total: int,
      *     meta: array{current_page: int, last_page: int, per_page: int, total: int},
      * }
@@ -47,15 +45,14 @@ final class MyCoursesPresenter
         /** @var Collection<int, Lesson> $items */
         $items = $page->getCollection();
         $enseignants = $this->preloadEnseignants($allFiltered);
-        $enseignantsByKlassci = $enseignants->keyBy('klassci_id');
 
         $courses = $items->map(
-            fn (Lesson $lesson): array => $this->mapCourse($lesson, $user, $enseignants, $enseignantsByKlassci)
+            fn (Lesson $lesson): array => $this->mapCourse($lesson, $user, $enseignants)
         );
 
         return [
             'courses' => $courses,
-            'filters' => $this->buildFilters($allFiltered, $enseignants, $enseignantsByKlassci),
+            'filters' => $this->buildFilters($allFiltered, $enseignants),
             'total' => $page->total(),
             'meta' => [
                 'current_page' => $page->currentPage(),
@@ -75,13 +72,30 @@ final class MyCoursesPresenter
      */
     private function preloadEnseignants(Collection $lessons): Collection
     {
+        // `lessons.enseignant_id` est LOCAL par contrat : sa migration le dit
+        // (`comment('users.id (LOCAL)')`, 2025_10_14_160000:35) et son unique
+        // ecrivain ecrit `$author->id` (LessonCrudOperationsService:44).
+        //
+        // La precharge resolvait pourtant `whereIn('id')->orWhereIn('klassci_id')`,
+        // puis un SECOND dictionnaire indexe sur `klassci_id` servait de repli.
+        // Les deux espaces se croisant -- neuf collisions mesurees en production
+        // le 19/09/2026 -- ce repli attribuait la lecon a QUELQU UN D AUTRE (#869).
+        //
+        // Un seul espace, donc un seul dictionnaire : le repli disparait avec la
+        // question qu il arbitrait.
+        //
+        // Aucun filtre de role : l auteur est l auteur. `role = 'enseignant'`
+        // excluait le coordinateur, que la route de creation autorise, et ratait
+        // l alias `'teacher'` (Role.php:64). C est cette exclusion qui faisait
+        // tomber la recherche locale dans le repli miroir.
+        //
+        // `withTrashed()` : le nom de l auteur doit survivre a la suppression de
+        // son compte (#566).
         $ids = $lessons->pluck('enseignant_id')->unique()->filter()->all();
 
         /** @var Collection<int, User> $enseignants */
-        $enseignants = User::where('role', 'enseignant')
-            ->where(function ($query) use ($ids) {
-                $query->whereIn('id', $ids)->orWhereIn('klassci_id', $ids);
-            })
+        $enseignants = User::withTrashed()
+            ->whereIn('id', $ids)
             ->get()
             ->keyBy(fn (User $u) => $u->id);
 
@@ -90,13 +104,12 @@ final class MyCoursesPresenter
 
     /**
      * @param  Collection<int, User>  $enseignants
-     * @param  Collection<int, User>  $enseignantsByKlassci
      * @return array<string, mixed>
      */
-    private function mapCourse(Lesson $lesson, User $user, Collection $enseignants, Collection $enseignantsByKlassci): array
+    private function mapCourse(Lesson $lesson, User $user, Collection $enseignants): array
     {
         $progress = $this->progressService->progressForUser($lesson, $user->id);
-        $enseignant = $enseignants->get($lesson->enseignant_id) ?? $enseignantsByKlassci->get($lesson->enseignant_id);
+        $enseignant = $enseignants->get($lesson->enseignant_id);
 
         return [
             'id' => $lesson->id,
@@ -133,15 +146,14 @@ final class MyCoursesPresenter
      *
      * @param  Collection<int, Lesson>  $allFiltered
      * @param  Collection<int, User>  $enseignants
-     * @param  Collection<int, User>  $enseignantsByKlassci
-     * @return array{matieres: Collection<int, array{id: int, name: string}>, enseignants: Collection<int, array{id: int|null, name: string}>}
+     * @return array{matieres: Collection<int, array{id: int, name: string}>, enseignants: Collection<int, array{id: int, name: string}>}
      */
-    private function buildFilters(Collection $allFiltered, Collection $enseignants, Collection $enseignantsByKlassci): array
+    private function buildFilters(Collection $allFiltered, Collection $enseignants): array
     {
         /** @var Collection<int, User> $uniqueEnseignants */
         $uniqueEnseignants = collect();
         foreach ($allFiltered as $lesson) {
-            $ens = $enseignants->get($lesson->enseignant_id) ?? $enseignantsByKlassci->get($lesson->enseignant_id);
+            $ens = $enseignants->get($lesson->enseignant_id);
             if ($ens && ! $uniqueEnseignants->contains('id', $ens->id)) {
                 $uniqueEnseignants->push($ens);
             }
@@ -156,7 +168,7 @@ final class MyCoursesPresenter
                 'name' => (string) ($m->name ?? $m->libelle ?? 'Matière'),
             ]),
             'enseignants' => $uniqueEnseignants->map(fn (User $e): array => [
-                'id' => $e->klassci_id,
+                'id' => $e->id,
                 'name' => (string) $e->name,
             ]),
         ];

@@ -20,9 +20,20 @@ from typing import List, Dict, Tuple
 try:
     import yaml
 except ImportError:
-    print("[WARNING] PyYAML not installed - skipping validation")
-    print("[INFO] Install with: pip install pyyaml")
-    sys.exit(0)
+    # #891 -- un garde-fou distingue TROIS sorties (PRODUCTION_STANDARDS.md
+    # §1.1-bis, issue #701) : 0 conforme, 1 violation, 2 IL N'A PAS PU
+    # TRAVAILLER. Sortir 0 ici annoncait un succes sans avoir rien inspecte.
+    #
+    # Le risque etait latent et non actif : la CI installe PyYAML
+    # (security.yml:153-154) avant l'appel :176. Il suffisait que cette etape
+    # soit retiree, renommee, ou qu'elle echoue en silence, pour que la
+    # validation passe au vert en n'ayant rien lu.
+    #
+    # Sur stderr, pas stdout : c'est la que la CI lit un echec, et non dans un
+    # journal ou un avertissement se noie parmi des centaines de lignes.
+    print("[ERROR] PyYAML absent : la validation n'a PAS eu lieu.", file=sys.stderr)
+    print("[INFO] Installer avec : pip install pyyaml", file=sys.stderr)
+    sys.exit(2)
 
 class OpenAPIValidator:
     """Validates OpenAPI 3.0.0 specification with custom rules."""

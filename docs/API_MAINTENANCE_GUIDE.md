@@ -8,8 +8,7 @@ This guide explains how to maintain and evolve the LMS Backend API. The API docu
 
 ```
 docs/
-├── openapi.yaml                    # Main OpenAPI spec (generated)
-├── openapi-full.yaml              # Source OpenAPI spec (edit this)
+├── openapi.yaml                    # THE OpenAPI spec — hand-written, the only one
 ├── API_MAINTENANCE_GUIDE.md        # This file
 ├── ADDING_NEW_ENDPOINTS.md         # Guide for adding endpoints
 └── API_VALIDATION.md               # Validation scripts and standards
@@ -17,25 +16,25 @@ docs/
 
 ## Key Files
 
-### docs/openapi-full.yaml
-- **Purpose**: Source of truth for API documentation
-- **Format**: OpenAPI 3.0.0 (YAML)
-- **Current coverage**: 130+ endpoints across 18 controllers
-- **Maintenance**: Update this file whenever endpoints change
-- **Deployment**: Copy to `storage/api-docs/openapi.yaml` for Swagger UI
+### docs/openapi.yaml
+- **Purpose**: Source of truth for API documentation — the only spec in the repository
+- **Format**: OpenAPI 3.0.0 (YAML), written by hand (no code annotations)
+- **Guarded by**: `tests/Feature/Docs/OpenApiSyncTest.php`, in both directions:
+  every documented path must be a real route, and every real route must be documented
+  or listed in `tests/Feature/Docs/openapi-coverage-baseline.php` (named debt that may only shrink)
+- **Served by**: L5-Swagger, directly — http://localhost:8000/api/documentation. No copy step.
 
-### storage/api-docs/openapi.yaml
-- **Purpose**: Served by L5-Swagger for interactive Swagger UI
-- **Access**: http://localhost:8000/api/documentation
-- **Auto-sync**: Manually copy from `docs/openapi-full.yaml` after changes
+`tests/Feature/Docs/OpenApiConventionTest.php` fails if a second spec appears, if a document
+designates another spec, or if Swagger UI serves anything but this file.
 
 ## Configuration
 
 ### L5-Swagger Config (config/l5-swagger.php)
 ```php
-'docs_yaml' => 'openapi.yaml',           // Filename in storage/api-docs
+'docs' => base_path('docs'),            // Directory Swagger UI reads from
+'docs_yaml' => 'openapi.yaml',           // → docs/openapi.yaml
 'format_to_use_for_docs' => 'yaml',      // Use YAML instead of JSON
-'generate_always' => false,              // Don't regenerate from annotations
+'generate_always' => false,              // Never regenerate: there are no annotations
 ```
 
 The configuration explicitly uses the static YAML file approach rather than code annotations. This allows:
@@ -170,21 +169,18 @@ parameters:
 2. **Add route** in `routes/api.php`
 3. **Test endpoint** locally
 4. **Document in OpenAPI** (see ADDING_NEW_ENDPOINTS.md)
-5. **Validate OpenAPI** with scripts (see API_VALIDATION.md)
-6. **Update storage/api-docs/openapi.yaml**:
-   ```bash
-   cp docs/openapi-full.yaml storage/api-docs/openapi.yaml
-   ```
+5. **Run the guards**: `php vendor/bin/phpunit --filter 'OpenApiSyncTest|OpenApiConventionTest'`
+   and `python scripts/openapi-validator.py docs/openapi.yaml --json` (see API_VALIDATION.md)
+6. **Shrink the baseline** if the route was listed in `openapi-coverage-baseline.php`
 7. **Verify Swagger UI** at http://localhost:8000/api/documentation
-8. **Commit**: Include both files in git commit
+8. **Commit**: code and `docs/openapi.yaml` together
 
 ### When You Modify an Endpoint
 
 1. **Update route/controller** as needed
 2. **Update OpenAPI spec** to match new behavior
-3. **Run validation** scripts
-4. **Copy to storage**: `cp docs/openapi-full.yaml storage/api-docs/openapi.yaml`
-5. **Test Swagger UI** reflects changes
+3. **Run the guards** and the validator (same commands as above)
+4. **Test Swagger UI** reflects changes
 6. **Update changelog** (optional but recommended)
 
 ### When You Delete an Endpoint
@@ -192,8 +188,11 @@ parameters:
 1. **Remove from routes** and controller
 2. **Remove from OpenAPI** spec
 3. **Remove deprecated section** (if any)
-4. **Copy to storage**: `cp docs/openapi-full.yaml storage/api-docs/openapi.yaml`
+4. **Remove its line from the baseline** if it was listed there
 5. **Verify Swagger** no longer shows endpoint
+
+`OpenApiSyncTest` fails while a documented path has no route: a deleted endpoint cannot
+stay in the spec.
 
 ## Error Response Consistency
 
@@ -215,7 +214,8 @@ To ensure OpenAPI matches actual code:
 
 1. **Manual verification**: Test endpoints in Swagger UI
 2. **Automated validation**: Run scripts from API_VALIDATION.md
-3. **CI integration**: Pre-commit hooks validate OpenAPI syntax
+3. **CI integration**: job "Docs Sync (OpenAPI ↔ code)" in `.github/workflows/security.yml`
+   runs `OpenApiSyncTest`, `OpenApiConventionTest` and the validator on every pull request and every push to `lms`
 
 ## Exporting & Using the Spec
 
@@ -225,14 +225,14 @@ The OpenAPI spec can be used for:
 2. **Client SDK generation**:
    ```bash
    # OpenAPI Generator can create SDKs in multiple languages
-   openapi-generator-cli generate -i docs/openapi-full.yaml -g typescript-fetch -o client-sdk/
+   openapi-generator-cli generate -i docs/openapi.yaml -g typescript-fetch -o client-sdk/
    ```
 3. **Documentation sites** (ReDoc, Swagger Petstore, etc.)
 4. **API testing tools** (Insomnia, Postman import)
 
 ## Version Control
 
-- **Always commit** both `docs/openapi-full.yaml` and `storage/api-docs/openapi.yaml`
+- **Always commit** `docs/openapi.yaml` with the code it describes
 - **Single commit** for endpoint changes: code + docs together
 - **Commit message**: Include endpoint name and action
   ```
@@ -246,9 +246,9 @@ The OpenAPI spec can be used for:
 ## Troubleshooting
 
 ### Swagger UI shows old endpoints
-- **Fix**: Ensure `storage/api-docs/openapi.yaml` is updated
-- **Verify**: `diff docs/openapi-full.yaml storage/api-docs/openapi.yaml`
-- **Action**: `cp docs/openapi-full.yaml storage/api-docs/openapi.yaml`
+- **Cause**: a cached configuration still pointing elsewhere
+- **Action**: `php artisan config:clear`
+- **Verify**: `OpenApiConventionTest::test_swagger_serves_the_guarded_spec`
 
 ### OpenAPI validation fails
 - See API_VALIDATION.md for validation script

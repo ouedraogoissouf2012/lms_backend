@@ -9,7 +9,7 @@
 # Usage: python openapi-validator.py [filepath]
 #
 # Example:
-#   python openapi-validator.py docs/openapi-full.yaml
+#   python openapi-validator.py docs/openapi.yaml
 #
 ##############################################################################
 

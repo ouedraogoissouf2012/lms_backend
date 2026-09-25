@@ -163,8 +163,8 @@ jobs:
       - name: Prepare sqlite test database
         run: mkdir -p database && touch database/database.testing.sqlite
 
-      - name: OpenAPI ↔ routes sync test
-        run: vendor/bin/phpunit --filter OpenApiSyncTest --fail-on-empty-test-suite
+      - name: OpenAPI ↔ routes sync test, and a single spec (#889)
+        run: vendor/bin/phpunit --filter 'OpenApiSyncTest|OpenApiConventionTest' --fail-on-empty-test-suite
 
       - name: OpenAPI spec validation (JSON output)
         run: python scripts/openapi-validator.py docs/openapi.yaml --json

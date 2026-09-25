@@ -9,13 +9,13 @@ This guide provides validation scripts and standards to ensure API documentation
 npm install -g spectacle-docs swagger-ui swagger-cli
 
 # Validate OpenAPI file
-swagger-cli validate docs/openapi-full.yaml
+swagger-cli validate docs/openapi.yaml
 
 # Check syntax
-yamllint docs/openapi-full.yaml
+yamllint docs/openapi.yaml
 
 # Lint with custom rules
-python scripts/openapi-validator.py docs/openapi-full.yaml
+python scripts/openapi-validator.py docs/openapi.yaml
 ```
 
 ## Validation Standards
@@ -29,10 +29,10 @@ python scripts/openapi-validator.py docs/openapi-full.yaml
 npm install -g swagger-cli
 
 # Validate
-swagger-cli validate docs/openapi-full.yaml
+swagger-cli validate docs/openapi.yaml
 
 # Expected output
-docs/openapi-full.yaml is valid ✓
+docs/openapi.yaml is valid ✓
 ```
 
 **What it checks**:
@@ -50,7 +50,7 @@ docs/openapi-full.yaml is valid ✓
 pip install yamllint
 
 # Validate
-yamllint -d relaxed docs/openapi-full.yaml
+yamllint -d relaxed docs/openapi.yaml
 
 # Configure (optional) - create .yamllint
 extends: relaxed
@@ -315,7 +315,7 @@ if __name__ == '__main__':
 
 **Run it**:
 ```bash
-python scripts/openapi-validator.py docs/openapi-full.yaml
+python scripts/openapi-validator.py docs/openapi.yaml
 ```
 
 **Output Example**:
@@ -357,7 +357,7 @@ POST   /resource/{id}/action  # Perform action
 **Validation Regex** (use in CI):
 ```bash
 # Ensure paths follow pattern
-grep -E '^\s+/(api/)?[a-z0-9/-]+:' docs/openapi-full.yaml | \
+grep -E '^\s+/(api/)?[a-z0-9/-]+:' docs/openapi.yaml | \
   grep -v -E '(api|v[0-9]|resource|auth|proxy|evaluation|chapter|lesson|file|notification|forum|quiz|dashboard)'
 # Should return 0 non-matching patterns
 ```
@@ -397,113 +397,49 @@ grep -E '^\s+/(api/)?[a-z0-9/-]+:' docs/openapi-full.yaml | \
 **Validation Script**:
 ```bash
 # Check all 401 responses use correct error_code
-grep -A 5 "'401':" docs/openapi-full.yaml | \
+grep -A 5 "'401':" docs/openapi.yaml | \
   grep -c "UNAUTHENTICATED"
 # Should match number of 401 responses
 
-grep -A 5 "'403':" docs/openapi-full.yaml | \
+grep -A 5 "'403':" docs/openapi.yaml | \
   grep -c "PERMISSION_DENIED"
 # Should match number of 403 responses
 ```
 
 ## CI/CD Integration
 
-### GitHub Actions Example
+### What CI actually runs
 
-Create: `.github/workflows/validate-api.yml`
+Job **"Docs Sync (OpenAPI ↔ code)"** in `.github/workflows/security.yml`, on every pull
+request and every push to `lms`:
 
 ```yaml
-name: API Documentation Validation
+- name: OpenAPI ↔ routes sync test, and a single spec (#889)
+  run: vendor/bin/phpunit --filter 'OpenApiSyncTest|OpenApiConventionTest' --fail-on-empty-test-suite
 
-on:
-  pull_request:
-    paths:
-      - 'docs/openapi-full.yaml'
-      - 'storage/api-docs/openapi.yaml'
-      - 'routes/api.php'
-      - 'app/Http/Controllers/**'
-
-jobs:
-  validate:
-    runs-on: ubuntu-latest
-    
-    steps:
-      - uses: actions/checkout@v3
-      
-      - name: Install dependencies
-        run: |
-          npm install -g swagger-cli yamllint
-          pip install pyyaml
-      
-      - name: Validate OpenAPI syntax
-        run: swagger-cli validate docs/openapi-full.yaml
-      
-      - name: Check YAML format
-        run: yamllint -d relaxed docs/openapi-full.yaml
-      
-      - name: Run custom validation
-        run: python scripts/openapi-validator.py docs/openapi-full.yaml
-      
-      - name: Verify both files sync
-        run: |
-          diff docs/openapi-full.yaml storage/api-docs/openapi.yaml
-          if [ $? -ne 0 ]; then
-            echo "ERROR: docs/openapi-full.yaml and storage/api-docs/openapi.yaml are out of sync"
-            echo "Run: cp docs/openapi-full.yaml storage/api-docs/openapi.yaml"
-            exit 1
-          fi
+- name: OpenAPI spec validation (JSON output)
+  run: python scripts/openapi-validator.py docs/openapi.yaml --json
 ```
 
-### Pre-commit Hook
+`OpenApiSyncTest` guards both directions: a documented path without a route fails, and a
+route that is neither documented nor listed in
+`tests/Feature/Docs/openapi-coverage-baseline.php` fails. `OpenApiConventionTest` fails if a
+second spec appears in the repository, if a document designates another spec, or if Swagger
+UI serves anything but `docs/openapi.yaml`.
 
-Create: `.git/hooks/pre-commit`
+### Pre-commit hook
 
-```bash
-#!/bin/bash
-
-# Check if OpenAPI files were modified
-if git diff --cached --name-only | grep -E '(openapi|routes/api|Controllers)' > /dev/null; then
-    echo "Validating OpenAPI documentation..."
-    
-    # Validate syntax
-    if ! swagger-cli validate docs/openapi-full.yaml 2>/dev/null; then
-        echo "❌ OpenAPI validation failed"
-        exit 1
-    fi
-    
-    # Run custom validation
-    if ! python scripts/openapi-validator.py docs/openapi-full.yaml > /dev/null 2>&1; then
-        echo "❌ Custom validation failed"
-        python scripts/openapi-validator.py docs/openapi-full.yaml
-        exit 1
-    fi
-    
-    # Check files are in sync
-    if ! diff -q docs/openapi-full.yaml storage/api-docs/openapi.yaml > /dev/null 2>&1; then
-        echo "❌ OpenAPI files are out of sync"
-        echo "Run: cp docs/openapi-full.yaml storage/api-docs/openapi.yaml"
-        exit 1
-    fi
-    
-    echo "✅ API documentation validation passed"
-fi
-
-exit 0
-```
-
-**Setup hook**:
-```bash
-chmod +x .git/hooks/pre-commit
-```
+The versioned hook `.githooks/pre-commit` (enable with `git config core.hooksPath .githooks`)
+runs only the fast guards. OpenAPI checks stay in CI.
 
 ## Testing Checklist
 
 Before committing endpoint changes:
 
-- [ ] **Syntax Valid**: `swagger-cli validate docs/openapi-full.yaml`
-- [ ] **YAML Format**: `yamllint docs/openapi-full.yaml`
-- [ ] **Custom Rules**: `python scripts/openapi-validator.py docs/openapi-full.yaml`
-- [ ] **Files Synced**: `diff docs/openapi-full.yaml storage/api-docs/openapi.yaml`
+- [ ] **Syntax Valid**: `swagger-cli validate docs/openapi.yaml`
+- [ ] **YAML Format**: `yamllint docs/openapi.yaml`
+- [ ] **Custom Rules**: `python scripts/openapi-validator.py docs/openapi.yaml`
+- [ ] **Sync Guards Pass**: `php vendor/bin/phpunit --filter 'OpenApiSyncTest|OpenApiConventionTest'`
 - [ ] **Swagger UI Displays**: http://localhost:8000/api/documentation
 - [ ] **Endpoint Works**: Test in Swagger UI or with curl
 - [ ] **Error Codes Match**: Check against CRITICAL-02 standard
@@ -540,13 +476,9 @@ get:
     '200': { ... }
 ```
 
-### "Files out of sync"
-```bash
-# storage/api-docs/openapi.yaml differs from docs/openapi-full.yaml
-cp docs/openapi-full.yaml storage/api-docs/openapi.yaml
-git add both files
-git commit -m "sync: Update OpenAPI files"
-```
+### "Route(s) API ajoutée(s) sans entrée dans docs/openapi.yaml"
+`OpenApiSyncTest` found a route that is neither documented nor listed as debt.
+Document it in `docs/openapi.yaml`. Do not add it to the baseline to make CI green.
 
 ## Continuous Improvement
 

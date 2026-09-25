@@ -42,6 +42,16 @@ final class ClasseEnrolmentCode
     public const LONGUEUR = 6;
 
     /**
+     * Bornes de SAISIE, plus larges que {@see self::LONGUEUR} : un code recopié
+     * traîne des espaces, que {@see self::normaliser()} retire ensuite. Les deux
+     * portes les partagent — un même code ne doit pas être accepté d'un côté et
+     * refusé de l'autre.
+     *
+     * @var list<string>
+     */
+    public const REGLES_DE_SAISIE = ['required', 'string', 'min:4', 'max:12'];
+
+    /**
      * Un code tiré au sort, déjà normalisé.
      *
      * @throws RandomException si la source d'aléa est indisponible

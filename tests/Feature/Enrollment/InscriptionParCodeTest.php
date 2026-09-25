@@ -44,11 +44,19 @@ final class InscriptionParCodeTest extends TestCase
     public function test_un_candidat_rejoint_la_classe_et_choisit_son_mot_de_passe(): void
     {
         [$ecole, $code] = $this->classeAvecCode();
+        $this->travelTo('2026-09-25 10:00:00');
 
         $this->postJson(self::URL, $this->charge($code), $this->entete($ecole))
             ->assertStatus(201);
 
         $inscrit = User::query()->withoutGlobalScopes()->where('email', 'awa@test.ci')->firstOrFail();
+        $ligne = DB::table('classe_etudiant')->where('user_id', $inscrit->getKey())->first();
+
+        // #885 : cette porte n'écrivait que `statut`. ADR-711-02 exige la date
+        // à toute écriture locale ; l'établissement aligne la ligne sur celles
+        // du synchroniseur.
+        self::assertSame('2026-09-25', substr((string) $ligne?->date_inscription, 0, 10));
+        self::assertSame($ecole->getKey(), (int) $ligne?->institution_id);
 
         self::assertSame(Role::Etudiant->value, $inscrit->role);
         self::assertSame($ecole->getKey(), $inscrit->institution_id);
@@ -146,6 +154,32 @@ final class InscriptionParCodeTest extends TestCase
             ->assertStatus(404);
 
         self::assertSame($inconnu->json('message'), $retire->json('message'));
+        self::assertSame(0, DB::table('classe_etudiant')->count());
+    }
+
+    public function test_un_code_inconnu_ne_dit_RIEN_d_une_adresse_connue(): void
+    {
+        // L'ordre du service est une garde : le code se résout AVANT que
+        // l'existence du compte ne soit contrôlée. Inversé, cet appel rendrait
+        // 409 — un oracle anonyme sur les adresses connues, sans aucun code.
+        [$ecole] = $this->classeAvecCode();
+        User::factory()->create(['institution_id' => $ecole->getKey(), 'email' => 'awa@test.ci']);
+
+        $this->postJson(self::URL, $this->charge('ZZZZZZ'), $this->entete($ecole))
+            ->assertStatus(404);
+    }
+
+    public function test_un_code_emis_n_ouvre_plus_rien_une_fois_l_ecole_passee_a_KLASSCI(): void
+    {
+        // Basculer vers KLASSCI ne retire pas les codes déjà dictés. Sans le
+        // contrôle du droit, ils écriraient une liste qui appartient désormais
+        // à KLASSCI — deux sources pour une même réalité (#673).
+        [$ecole, $code] = $this->classeAvecCode();
+        $ecole->update(['mode' => InstitutionMode::Klassci]);
+
+        $this->postJson(self::URL, $this->charge($code), $this->entete($ecole))
+            ->assertStatus(404);
+
         self::assertSame(0, DB::table('classe_etudiant')->count());
     }
 

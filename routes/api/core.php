@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\API\ActivationController;
 use App\Http\Controllers\API\InscriptionParCodeController;
+use App\Http\Controllers\API\RejoindreParCodeController;
 use App\Http\Controllers\API\AdminController;
 use App\Http\Controllers\API\AuthController;
 use App\Http\Controllers\API\ConfigurationController;
@@ -76,6 +77,18 @@ Route::post('/school-requests', [SchoolRegistrationRequestController::class, 'st
 // d endpoint d enumeration.
 Route::post('/inscriptions', [InscriptionParCodeController::class, 'store'])
     ->middleware(['institution.header', 'throttle:inscriptions']);
+
+// La MEME porte, authentifiee (#885). La precedente refuse tout compte existant
+// — une adresse n y prouve rien — et renvoie l apprenant ici : « Connectez-vous
+// pour rejoindre cette classe ». Meme code, meme resolution, meme service.
+//
+// Pas d `institution.header` : l etablissement vient du COMPTE. Un en-tete
+// laisserait rejoindre une classe d une ecole qui ne connait pas l apprenant.
+//
+// Seau compte PAR APPRENANT : le jour de la rentree, une classe entiere rejoint
+// depuis le wifi de l ecole, derriere une seule IP.
+Route::post('/me/inscriptions', [RejoindreParCodeController::class, 'store'])
+    ->middleware(['auth:sanctum', 'klassci.sync', 'role:etudiant', 'throttle:rejoindre-classe']);
 
 Route::post('/activation', [ActivationController::class, 'store'])
     ->middleware('throttle:5,1');

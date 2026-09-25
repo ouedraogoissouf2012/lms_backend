@@ -55,6 +55,9 @@ final class OpenApiSyncTest extends TestCase
 
     private const BASELINE_PATH = __DIR__.'/openapi-coverage-baseline.php';
 
+    /** Clés d'un Path Item OpenAPI 3 qui désignent une opération HTTP. */
+    private const HTTP_METHODS = ['get', 'put', 'post', 'delete', 'options', 'patch'];
+
     /**
      * Ensemble des URIs de routes API réelles, normalisées sans le préfixe
      * `api/` ni `api/v1/`, avec un slash de tête (`/auth/login`).
@@ -63,7 +66,20 @@ final class OpenApiSyncTest extends TestCase
      */
     private function realApiPaths(): array
     {
-        $paths = [];
+        return array_map(static fn (): bool => true, $this->realApiOperations());
+    }
+
+    /**
+     * Méthodes HTTP réellement servies, par chemin normalisé (#876).
+     *
+     * `HEAD` est écarté : Laravel l'ajoute d'office à toute route `GET`, et
+     * aucune spec ne le documente.
+     *
+     * @return array<string, array<string, true>>
+     */
+    private function realApiOperations(): array
+    {
+        $operations = [];
 
         foreach (Route::getRoutes() as $route) {
             $uri = $route->uri();
@@ -73,11 +89,37 @@ final class OpenApiSyncTest extends TestCase
                 continue;
             }
 
-            $normalized = preg_replace('#^api/(v1/|v2/)?#', '/', $uri);
-            $paths[$normalized] = true;
+            $normalized = (string) preg_replace('#^api/(v1/|v2/)?#', '/', $uri);
+            foreach ($route->methods() as $method) {
+                if ($method !== 'HEAD') {
+                    $operations[$normalized][$method] = true;
+                }
+            }
         }
 
-        return $paths;
+        return $operations;
+    }
+
+    /**
+     * Opérations déclarées par la spec, sous la forme `['METHODE', '/chemin']`.
+     *
+     * @return array<int, array{0: string, 1: string}>
+     */
+    private function documentedOperations(): array
+    {
+        $spec = Yaml::parseFile(base_path(self::SPEC_PATH));
+        $paths = is_array($spec['paths'] ?? null) ? $spec['paths'] : [];
+
+        $operations = [];
+        foreach ($paths as $path => $item) {
+            foreach (array_keys(is_array($item) ? $item : []) as $key) {
+                if (in_array($key, self::HTTP_METHODS, true)) {
+                    $operations[] = [strtoupper($key), (string) $path];
+                }
+            }
+        }
+
+        return $operations;
     }
 
     /**
@@ -130,25 +172,42 @@ final class OpenApiSyncTest extends TestCase
         $this->assertArrayHasKey('openapi', $spec);
     }
 
+    /**
+     * Toute OPÉRATION documentée existe, avec sa méthode (#213, puis #876).
+     *
+     * Comparer les seuls chemins laissait la spec mentir sur la méthode :
+     * `POST /files` « Upload file » était documenté alors que l'upload est servi
+     * par `POST /files/upload`. La production répondait 405, et ce test restait
+     * vert parce que `GET /files` existe. Un client généré depuis la spec aurait
+     * hérité d'une fonction d'upload cassée.
+     */
     public function test_every_documented_endpoint_exists_as_real_route(): void
     {
-        $real = $this->realApiPaths();
-        $documented = $this->documentedPaths();
+        $real = $this->realApiOperations();
+        $documented = $this->documentedOperations();
 
-        $this->assertNotEmpty($documented, 'La spec OpenAPI ne déclare aucun path.');
+        $this->assertNotEmpty($documented, 'La spec OpenAPI ne déclare aucune opération.');
 
         $orphans = [];
-        foreach ($documented as $path) {
+        foreach ($documented as [$method, $path]) {
             if (! isset($real[$path])) {
-                $orphans[] = $path;
+                $orphans[] = "{$method} {$path} : chemin absent des routes réelles";
+            } elseif (! isset($real[$path][$method])) {
+                $orphans[] = "{$method} {$path} : chemin servi en "
+                    .implode(', ', array_keys($real[$path])).' seulement';
             }
         }
 
         $this->assertSame(
             [],
             $orphans,
-            'Endpoints documentés dans openapi.yaml mais ABSENTS des routes réelles '
-            ."(doc obsolète, à corriger) :\n  - ".implode("\n  - ", $orphans)
+            sprintf(
+                '%d opération(s) documentée(s) dans openapi.yaml sans route réelle, sur %d inspectées '
+                ."(doc obsolète, à corriger) :\n  - %s",
+                count($orphans),
+                count($documented),
+                implode("\n  - ", $orphans)
+            )
         );
     }
 

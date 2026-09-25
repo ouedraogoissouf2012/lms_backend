@@ -2687,10 +2687,14 @@ paths:
         '200':
           description: "List of files"
 
+  # L'upload vit sous /files/upload, pas sous /files (#876) : la spec le
+  # documentait en `POST /files`, que le serveur refuse en 405.
+  /files/upload:
     post:
       tags:
         - Files
       summary: "Upload file"
+      description: "30 Mo maximum, types limités par UploadFileRequest. Limité à 60 requêtes par minute."
       security:
         - sanctum: []
       requestBody:
@@ -2699,15 +2703,38 @@ paths:
           multipart/form-data:
             schema:
               type: object
+              required:
+                - file
               properties:
                 file:
                   type: string
                   format: binary
+                  description: "pdf, doc, docx, xls, xlsx, ppt, pptx, jpg, jpeg, png ou gif"
+                category:
+                  type: string
+                  enum: [course_material, assignment, resource, other, forum_attachment, profile_picture, general]
+                fileable_type:
+                  type: string
+                  description: "Clé déclarée dans config/fileables.php (morph_map)"
+                fileable_id:
+                  type: integer
+                  minimum: 1
+                description:
+                  type: string
+                  maxLength: 500
+                is_public:
+                  type: boolean
       responses:
         '201':
           description: "File uploaded"
+        '401':
+          description: "Unauthenticated"
         '422':
           description: "Validation error"
+        '429':
+          description: "Too many requests"
+        '500':
+          description: "Storage failure"
 
   /files/{id}/download:
     get:

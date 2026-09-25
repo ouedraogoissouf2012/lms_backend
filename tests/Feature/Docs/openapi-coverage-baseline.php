@@ -64,7 +64,6 @@ return [
     '/evaluations/{id}/sync-notes',
     '/evaluations/{id}/time-status',
     '/files/stats',
-    '/files/upload',
     '/files/{file}',
     '/files/{id}',
     '/forum/posts/{post}',

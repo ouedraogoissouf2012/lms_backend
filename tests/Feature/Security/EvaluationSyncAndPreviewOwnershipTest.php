@@ -184,6 +184,23 @@ final class EvaluationSyncAndPreviewOwnershipTest extends TestCase
         );
     }
 
+    /**
+     * Une évaluation inconnue n'a pas de propriétaire : refusée en 403 avant le
+     * contrôleur, comme sur `publish`. La spec OpenAPI l'écrit ; ce test le tient.
+     */
+    public function test_une_evaluation_inconnue_est_refusee_en_403_sur_les_trois_routes(): void
+    {
+        $proprietaire = $this->utilisateur('enseignant', self::ENSEIGNANT_PROPRIETAIRE);
+
+        $statuts = [
+            'sync-klassci' => $this->asTenant($proprietaire)->postJson('/api/evaluations/999999/sync-klassci')->status(),
+            'sync-notes' => $this->asTenant($proprietaire)->postJson('/api/evaluations/999999/sync-notes')->status(),
+            'preview' => $this->asTenant($proprietaire)->getJson('/api/evaluations/999999/preview')->status(),
+        ];
+
+        self::assertSame(['sync-klassci' => 403, 'sync-notes' => 403, 'preview' => 403], $statuts);
+    }
+
     public function test_un_enseignant_ne_previsualise_pas_l_evaluation_d_un_collegue(): void
     {
         $tiers = $this->utilisateur('enseignant', self::ENSEIGNANT_TIERS);

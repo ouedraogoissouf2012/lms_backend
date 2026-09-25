@@ -124,6 +124,25 @@ final class ImportEnrolmentColumnsTest extends TestCase
         self::assertStringStartsWith('2026-09-15', (string) $inscrit->pivot->date_inscription);
     }
 
+    public function test_la_ligne_ecrite_par_l_import_porte_son_etablissement(): void
+    {
+        // #885 : le synchroniseur KLASSCI et la porte par code écrivent
+        // `institution_id` ; l'import, par `StudentEnrolmentService::inscrire()`,
+        // le laissait NULL. Le service unique pose désormais la forme de la ligne.
+        $importateur = $this->importateur('coordinator');
+        $classe = $this->classe($importateur, 'B2');
+
+        $this->executer($importateur, self::HEADER."Zongo;Lea;lea@test.ci;;B2;;\n");
+
+        $eleve = User::query()->where('email', 'lea@test.ci')->firstOrFail();
+        $ligne = \Illuminate\Support\Facades\DB::table('classe_etudiant')
+            ->where('classe_id', $classe->id)
+            ->where('user_id', $eleve->id)
+            ->first();
+
+        self::assertSame((int) $importateur->institution_id, (int) $ligne?->institution_id);
+    }
+
     public function test_une_date_inexistante_refuse_la_ligne_au_lieu_de_la_reporter(): void
     {
         $importateur = $this->importateur('coordinator');

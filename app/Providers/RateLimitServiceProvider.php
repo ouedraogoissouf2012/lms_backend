@@ -82,6 +82,21 @@ final class RateLimitServiceProvider extends ServiceProvider
 
     private const INSCRIPTIONS_PER_DAY = 100;
 
+    /**
+     * Rejoindre une classe en étant connecté (#885). Compté PAR APPRENANT et
+     * jamais par IP : une classe entière rejoint le jour de la rentrée depuis
+     * le wifi de l'école. Aucune borne globale : un seul apprenant épuiserait
+     * le budget de tous les autres.
+     *
+     * Ce seau borne UN compte, pas l'ensemble : des comptes créés un à un
+     * s'accumulent, et chacun apporte ses essais. La borne d'ensemble est un
+     * plafond d'échecs par établissement, posé dans `RejoindreParCodeService`
+     * — là où l'on sait qu'un essai a échoué.
+     */
+    private const REJOINDRE_PER_MINUTE = 10;
+
+    private const REJOINDRE_PER_DAY = 30;
+
     public function boot(): void
     {
         RateLimiter::for('proxy', function (Request $request): Limit {
@@ -123,6 +138,17 @@ final class RateLimitServiceProvider extends ServiceProvider
             return [
                 Limit::perMinute(self::INSCRIPTIONS_PER_MINUTE)->by((string) $request->ip()),
                 Limit::perDay(self::INSCRIPTIONS_PER_DAY)->by('inscriptions-global'),
+            ];
+        });
+
+        RateLimiter::for('rejoindre-classe', function (Request $request): array {
+            // La route est authentifiée ; l'IP n'est qu'un repli défensif.
+            $user = $request->user();
+            $apprenant = $user instanceof User ? 'user:'.$user->id : 'ip:'.$request->ip();
+
+            return [
+                Limit::perMinute(self::REJOINDRE_PER_MINUTE)->by('rejoindre-minute|'.$apprenant),
+                Limit::perDay(self::REJOINDRE_PER_DAY)->by('rejoindre-jour|'.$apprenant),
             ];
         });
     }

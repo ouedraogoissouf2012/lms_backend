@@ -7,6 +7,7 @@ namespace App\Services\Enrollment;
 use App\Enums\Role;
 use App\Exceptions\BusinessException;
 use App\Models\Classe;
+use App\Models\Institution;
 use App\Models\User;
 use App\Services\TenantManager;
 use Illuminate\Database\DatabaseManager;
@@ -32,17 +33,14 @@ use Psr\Log\LoggerInterface;
  * On refuse donc, explicitement. Le refus révèle qu'un compte existe, et c'est
  * assumé : la fuite est bornée — il faut déjà détenir un code valide, lui-même
  * un secret de six caractères, et le débit est limité par un seau nommé. En
- * face, le silence laisserait tout apprenant qui revient sans aucun recours.
+ * face, le silence laisserait tout apprenant qui revient sans aucun recours :
+ * le refus le renvoie vers la porte authentifiée (#885), `POST /me/inscriptions`.
  *
- * ## Code inconnu et code retiré rendent le MÊME refus
+ * ## Résolution et écriture sont PARTAGÉES avec la porte authentifiée
  *
- * Les distinguer dirait à un inconnu qu'un code a existé pour cette valeur —
- * donc qu'une classe l'attend. Même raisonnement qu'ADR-803-02 pour les trois
- * états du jeton d'activation.
- *
- * ## L'écriture passe par le service unique
- *
- * `StudentEnrolmentService::inscrire()`. ADR-803-03 : trois portes, un seul
+ * Le code se résout par {@see ClasseOuverteParCode} — code inconnu et code
+ * retiré y rendent le même refus. L'adhésion s'écrit par
+ * `StudentEnrolmentService::rejoindre()`. ADR-803-03 : trois portes, un seul
  * service. Écrire `classe_etudiant` ici produirait une quatrième politique sur
  * les mêmes questions.
  *
@@ -52,6 +50,7 @@ final class InscriptionParCodeService
 {
     public function __construct(
         private readonly StudentEnrolmentService $inscriptions,
+        private readonly ClasseOuverteParCode $classes,
         private readonly TenantManager $tenants,
         private readonly DatabaseManager $db,
         private readonly LoggerInterface $logger,
@@ -64,13 +63,16 @@ final class InscriptionParCodeService
      */
     public function inscrire(array $valide): Classe
     {
+        $ecole = $this->tenants->get();
         $institution = $this->tenants->id();
 
-        if ($institution === null) {
+        if (! $ecole instanceof Institution || $institution === null) {
             throw new BusinessException('Établissement non résolu.', 400);
         }
 
-        $classe = $this->classeOuverte($valide['code'], $institution);
+        // AVANT le contrôle d'existence du compte : sans code valide, aucun
+        // oracle sur les adresses connues.
+        $classe = $this->classes->resoudre($valide['code'], $ecole);
 
         $this->refuserSiLeCompteExiste($valide, $institution);
 
@@ -91,35 +93,10 @@ final class InscriptionParCodeService
                 'role' => Role::Etudiant->value,
             ]);
 
-            $this->inscriptions->inscrire($etudiant, $classe, ['statut' => 'actif']);
+            // `rejoindre` et non `inscrire` : la même règle que la porte
+            // authentifiée (#885) — et la ligne naît datée (ADR-711-02).
+            $this->inscriptions->rejoindre($etudiant, $classe);
         });
-
-        return $classe;
-    }
-
-    /**
-     * La classe que ce code ouvre, dans CET établissement.
-     *
-     * Bornée à l'établissement parce que `code_inscription` n'est unique que
-     * par institution : deux écoles peuvent tirer le même code, et un candidat
-     * atterrirait dans la mauvaise. Le tenant vient de l'en-tête `X-Institution`,
-     * résolu par `ResolveInstitution` en priorité 2.
-     *
-     * @throws BusinessException
-     */
-    private function classeOuverte(string $code, int $institution): Classe
-    {
-        $classe = Classe::query()->withoutGlobalScopes()
-            ->where('institution_id', $institution)
-            ->where('code_inscription', ClasseEnrolmentCode::normaliser($code))
-            ->whereNull('code_inscription_revoque_le')
-            ->first();
-
-        if (! $classe instanceof Classe) {
-            // Inconnu ET retiré rendent ce même message : les séparer dirait
-            // qu'un code a existé pour cette valeur.
-            throw new BusinessException('Ce code ne correspond à aucune inscription ouverte.', 404);
-        }
 
         return $classe;
     }

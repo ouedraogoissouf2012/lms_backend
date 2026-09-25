@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Requests;
 
+use App\Services\Enrollment\ClasseEnrolmentCode;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Validator;
 
@@ -40,7 +41,7 @@ final class InscriptionParCodeRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'code' => ['required', 'string', 'min:4', 'max:12'],
+            'code' => ClasseEnrolmentCode::REGLES_DE_SAISIE,
             'nom' => ['required', 'string', 'max:191'],
             'email' => ['sometimes', 'nullable', 'email', 'max:191'],
             'telephone' => ['sometimes', 'nullable', 'string', 'max:40'],

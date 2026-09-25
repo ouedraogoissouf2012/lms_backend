@@ -535,6 +535,26 @@ components:
           description: "Texte libre. Obligatoire : il augmente le cout d'un depot automatise."
           example: "Formations comptabilite OHADA, promotions de 25 stagiaires."
 
+    # Rejoindre une classe avec un code, deja connecte (#885). Meme forme en
+    # 201 et en 200 : l apprenant lit la classe qu il a rejointe dans les deux cas.
+    ClasseRejointeResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          type: object
+          properties:
+            classe:
+              type: object
+              properties:
+                id:
+                  type: integer
+                libelle:
+                  type: string
+
     # Error Response
     ErrorResponse:
       type: object
@@ -1305,9 +1325,10 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
         '404':
           description: |
-            Ce code n ouvre aucune inscription. Un code INCONNU et un code
-            RETIRE rendent le MEME message : les separer dirait qu un code a
-            existe pour cette valeur.
+            Ce code n ouvre aucune inscription. Un code INCONNU, un code
+            RETIRE et le code d un etablissement dont la liste des apprenants
+            vient de KLASSCI rendent le MEME message : les separer dirait qu un
+            code a existe pour cette valeur.
           content:
             application/json:
               schema:
@@ -1329,6 +1350,102 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
         '429':
           description: "Debit depasse"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /me/inscriptions:
+    post:
+      tags:
+        - Session de formation
+      summary: "Rejoindre une classe avec un code, deja connecte"
+      description: |
+        La MEME troisieme porte d ADR-803-03, authentifiee (#885). La porte
+        anonyme `/inscriptions` refuse tout compte existant — une adresse n y
+        prouve rien — et renvoie l apprenant ici. Meme code, meme resolution,
+        meme service.
+
+        L etablissement vient du COMPTE, jamais d un en-tete : un
+        `X-Institution` est ignore.
+
+        Un code fait ENTRER, il ne rouvre pas : une adhesion existante non
+        active (suspendue, abandonnee, expiree...) est refusee sans etre
+        touchee. Seul l etablissement la rouvre.
+
+        Debit compte PAR APPRENANT, jamais par IP : une classe entiere rejoint
+        depuis le wifi de l ecole.
+      security:
+        - sanctum: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - code
+              properties:
+                code:
+                  type: string
+                  minLength: 4
+                  maxLength: 12
+                  example: BUR7K2
+      responses:
+        '201':
+          description: "Adhesion creee"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClasseRejointeResponse'
+        '200':
+          description: "L apprenant etait deja inscrit : rien n est reecrit"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClasseRejointeResponse'
+        '401':
+          description: "Non authentifie"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: |
+            Le compte n est pas un apprenant — y compris l administrateur
+            d etablissement, que la garde de route laisserait passer.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: |
+            Ce code n ouvre aucune inscription dans l etablissement du compte.
+            Inconnu, retire, d une autre ecole, ou d un etablissement dont la
+            liste des apprenants vient de KLASSCI : MEME message.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: |
+            Une adhesion non active existe deja pour cette classe, ou le compte
+            n est rattache a aucun etablissement. Rien n est ecrit.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: "Code absent ou hors bornes"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          description: |
+            Debit depasse : soit le seau du compte (10/min, 30/jour), soit le
+            plafond d ECHECS de l etablissement (200/jour), qui ferme alors la
+            porte a tous ses apprenants jusqu au lendemain.
           content:
             application/json:
               schema:

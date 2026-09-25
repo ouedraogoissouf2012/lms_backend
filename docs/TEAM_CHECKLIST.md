@@ -14,7 +14,7 @@ Use this checklist when adding, modifying, or deleting endpoints:
   - [ ] Code tested manually (curl or Swagger UI)
 
 - [ ] **OpenAPI Documentation**
-  - [ ] Endpoint added to docs/openapi-full.yaml
+  - [ ] Endpoint added to docs/openapi.yaml
   - [ ] Summary (one-line description) filled
   - [ ] Description (longer detail) filled if complex
   - [ ] operationId matches pattern (camelCase)
@@ -28,15 +28,15 @@ Use this checklist when adding, modifying, or deleting endpoints:
   - [ ] Examples provided in responses
 
 - [ ] **Validation**
-  - [ ] YAML syntax valid: `yamllint docs/openapi-full.yaml`
-  - [ ] OpenAPI structure valid: `swagger-cli validate docs/openapi-full.yaml`
-  - [ ] Custom rules pass: `python scripts/openapi-validator.py docs/openapi-full.yaml`
+  - [ ] YAML syntax valid: `yamllint docs/openapi.yaml`
+  - [ ] OpenAPI structure valid: `swagger-cli validate docs/openapi.yaml`
+  - [ ] Custom rules pass: `python scripts/openapi-validator.py docs/openapi.yaml`
   - [ ] No schema references broken
   - [ ] No circular references in schemas
 
-- [ ] **Synchronization**
-  - [ ] Run: `cp docs/openapi-full.yaml storage/api-docs/openapi.yaml`
-  - [ ] Verify both files exist and are identical
+- [ ] **Guards**
+  - [ ] Run: `php vendor/bin/phpunit --filter 'OpenApiSyncTest|OpenApiConventionTest'`
+  - [ ] Baseline line removed if the route was listed in `tests/Feature/Docs/openapi-coverage-baseline.php`
 
 - [ ] **Testing**
   - [ ] Swagger UI displays correctly at http://localhost:8000/api/documentation
@@ -67,10 +67,10 @@ Use this checklist before deploying to production:
   - [ ] All role restrictions documented
 
 - [ ] **Validation Full Pass**
-  - [ ] Swagger CLI validation: `swagger-cli validate docs/openapi-full.yaml`
-  - [ ] YAML linting: `yamllint docs/openapi-full.yaml`
-  - [ ] Custom validation: `python scripts/openapi-validator.py docs/openapi-full.yaml`
-  - [ ] Pre-commit hook: `git commit --allow-empty -m "test"`
+  - [ ] Swagger CLI validation: `swagger-cli validate docs/openapi.yaml`
+  - [ ] YAML linting: `yamllint docs/openapi.yaml`
+  - [ ] Custom validation: `python scripts/openapi-validator.py docs/openapi.yaml`
+  - [ ] Versioned hooks enabled: `git config core.hooksPath` prints `.githooks`
   - [ ] No warnings or errors
 
 - [ ] **SDK Generation**
@@ -92,7 +92,6 @@ Use this checklist before deploying to production:
   - [ ] Known issues/limitations documented
 
 - [ ] **Deployment Readiness**
-  - [ ] storage/api-docs/openapi.yaml synced
   - [ ] L5-Swagger config correct for environment
   - [ ] Swagger UI accessible on target server
   - [ ] No sensitive data in documentation
@@ -122,8 +121,8 @@ Perform this check once per week:
   - [ ] Check for broken links or missing schemas
 
 - [ ] **Update Statistics**
-  - [ ] Count endpoints: `grep -E "^\s+(get|post|put|patch|delete):" docs/openapi-full.yaml | wc -l`
-  - [ ] Count schemas: `grep -E "^\s+\w+:\s*$" docs/openapi-full.yaml | grep -A 1 "components:" | wc -l`
+  - [ ] Count endpoints: `grep -E "^\s+(get|post|put|patch|delete):" docs/openapi.yaml | wc -l`
+  - [ ] Count schemas: `grep -E "^\s+\w+:\s*$" docs/openapi.yaml | grep -A 1 "components:" | wc -l`
   - [ ] Update counts in README.md
 
 ---
@@ -210,7 +209,7 @@ Perform this comprehensive check monthly:
 
 - [ ] **Quality Metrics**
   - [ ] Number of endpoints: _____ (track trend)
-  - [ ] Lines in openapi-full.yaml: _____ (track growth)
+  - [ ] Coverage printed by `OpenApiSyncTest`: ___/___ routes (the baseline only shrinks)
   - [ ] Validation warnings: _____ (should be 0)
   - [ ] Test coverage: _____ %
 
@@ -250,28 +249,24 @@ Use this to help new developers get productive:
 When documentation is broken or inconsistent:
 
 - [ ] **Swagger UI Not Loading**
-  - [ ] OpenAPI syntax valid? `swagger-cli validate docs/openapi-full.yaml`
-  - [ ] storage/api-docs/openapi.yaml exists?
+  - [ ] OpenAPI syntax valid? `swagger-cli validate docs/openapi.yaml`
   - [ ] L5-Swagger config correct in config/l5-swagger.php?
   - [ ] Cache cleared? `php artisan config:clear`
   - [ ] Server restarted? `php artisan serve`
 
 - [ ] **Endpoint Not in Swagger**
-  - [ ] Endpoint exists in docs/openapi-full.yaml?
+  - [ ] Endpoint exists in docs/openapi.yaml?
   - [ ] YAML syntax valid around endpoint?
-  - [ ] storage/api-docs/openapi.yaml updated?
-  - [ ] Run: `cp docs/openapi-full.yaml storage/api-docs/openapi.yaml`
+  - [ ] Swagger serves docs/openapi.yaml? `OpenApiConventionTest::test_swagger_serves_the_guarded_spec`
 
 - [ ] **Schema Reference Broken**
   - [ ] Schema name correct in definition?
   - [ ] Correct reference format? `$ref: '#/components/schemas/Name'`
   - [ ] Schema exists in components.schemas?
-  - [ ] Custom validation: `python scripts/openapi-validator.py docs/openapi-full.yaml`
+  - [ ] Custom validation: `python scripts/openapi-validator.py docs/openapi.yaml`
 
-- [ ] **Files Out of Sync**
-  - [ ] Fix: `cp docs/openapi-full.yaml storage/api-docs/openapi.yaml`
-  - [ ] Verify: `diff docs/openapi-full.yaml storage/api-docs/openapi.yaml`
-  - [ ] Stage both: `git add docs/openapi-full.yaml storage/api-docs/openapi.yaml`
+- [ ] **Route Missing from the Spec** (`OpenApiSyncTest` fails)
+  - [ ] Document it in docs/openapi.yaml — never add it to the baseline to turn CI green
 
 - [ ] **Validation Fails**
   - [ ] Check error message carefully
@@ -299,7 +294,7 @@ Track these metrics to maintain quality:
 
 ## 💡 Pro Tips
 
-1. **Use pre-commit hook** - Never worry about validation again
+1. **Run the guards before pushing** - `OpenApiSyncTest` is what CI will run
 2. **Keep endpoints simple** - Simpler docs, fewer bugs
 3. **Test in Swagger UI** - Most realistic way to test
 4. **Review diffs** - Always check what changed in YAML

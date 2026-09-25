@@ -522,13 +522,14 @@ Improves maintainability, allows independent evolution.
 ACCEPTANCE CRITERIA:
 - [ ] Domains: Auth, Evaluations, Dashboard, Files, Classes (5-6 domains)
 - [ ] Composition: Tool to compose domain specs into full spec
-- [ ] Files: Each domain in separate file (openapi-auth.yaml, etc)
+- [ ] Files: Each domain in a fragment under docs/openapi/ (docs/openapi/auth.yaml, etc).
+      The composed spec stays docs/openapi.yaml: the only file OpenApiSyncTest guards (#889)
 - [ ] References: $ref used to link schemas across domains
 - [ ] Generation: Tool automatically generates combined spec
 - [ ] Validation: Each domain spec validates independently
 
 DEFINITION OF DONE:
-- [ ] Domain specs created (openapi-auth.yaml, openapi-evaluations.yaml, etc)
+- [ ] Domain fragments created (docs/openapi/auth.yaml, docs/openapi/evaluations.yaml, etc)
 - [ ] Composition tool configured (OpenAPI composition tool)
 - [ ] CI/CD: Auto-generates full spec from domain specs
 - [ ] References: Proper $ref usage
@@ -615,7 +616,7 @@ ACCEPTANCE CRITERIA:
 - [ ] Documentation: How to subscribe and verify
 
 DEFINITION OF DONE:
-- [ ] docs/openapi-async.yaml created (AsyncAPI format)
+- [ ] docs/asyncapi.yaml created (AsyncAPI format — distinct from the REST spec docs/openapi.yaml)
 - [ ] 5+ event types documented
 - [ ] Payload schemas defined
 - [ ] Signature verification method documented

@@ -5,8 +5,10 @@ Complete documentation system for the LMS Backend API, including OpenAPI specifi
 ## 📚 Documentation Files
 
 ### Core Files
-- **[openapi-full.yaml](openapi-full.yaml)** - Complete OpenAPI 3.0.0 specification (130+ endpoints)
-- **[openapi.yaml](openapi.yaml)** - Served by Swagger UI (read-only, synced from openapi-full.yaml)
+- **[openapi.yaml](openapi.yaml)** - The OpenAPI 3.0.0 specification: the only one in the repository.
+  Written by hand, guarded by CI (`OpenApiSyncTest`), served as-is by Swagger UI.
+  Routes not yet documented are listed as named debt in
+  `tests/Feature/Docs/openapi-coverage-baseline.php`; that list may only shrink.
 
 ### Guides for Team
 
@@ -40,17 +42,17 @@ Complete documentation system for the LMS Backend API, including OpenAPI specifi
 
 1. Create your endpoint in code (controller + route)
 2. Follow the template in [ADDING_NEW_ENDPOINTS.md](ADDING_NEW_ENDPOINTS.md)
-3. Add endpoint to `openapi-full.yaml`
-4. Run validation: `python scripts/openapi-validator.py docs/openapi-full.yaml`
-5. Copy to storage: `cp docs/openapi-full.yaml storage/api-docs/openapi.yaml`
+3. Add endpoint to `docs/openapi.yaml`
+4. Run the guards: `php vendor/bin/phpunit --filter 'OpenApiSyncTest|OpenApiConventionTest'`
+5. Run validation: `python scripts/openapi-validator.py docs/openapi.yaml --json`
 6. Verify in Swagger UI: http://localhost:8000/api/documentation
-7. Commit both YAML files with your code
+7. Commit `docs/openapi.yaml` with your code
 
 ### For New Team Members
 
 1. Read [API_MAINTENANCE_GUIDE.md](API_MAINTENANCE_GUIDE.md) (15 min)
 2. Check [ADDING_NEW_ENDPOINTS.md](ADDING_NEW_ENDPOINTS.md) when adding endpoints (30 min)
-3. Setup validation hooks from [API_VALIDATION.md](API_VALIDATION.md) (10 min)
+3. Enable the versioned hooks: `git config core.hooksPath .githooks` — OpenAPI checks run in CI, see [API_VALIDATION.md](API_VALIDATION.md)
 
 ### For SDK Consumers
 
@@ -72,8 +74,7 @@ http://localhost:8000/api/documentation
 
 ### OpenAPI Specification
 ```
-docs/openapi-full.yaml          (Source - edit this)
-storage/api-docs/openapi.yaml   (Served to Swagger UI)
+docs/openapi.yaml   (edit this — Swagger UI serves it directly, no copy)
 ```
 
 ## 🔐 Security Standards
@@ -129,18 +130,16 @@ All errors follow CRITICAL-02 standard:
 
 ```bash
 # 1. Create endpoint in code
-# 2. Add to openapi-full.yaml (see ADDING_NEW_ENDPOINTS.md)
-# 3. Validate
-python scripts/openapi-validator.py docs/openapi-full.yaml
+# 2. Add to docs/openapi.yaml (see ADDING_NEW_ENDPOINTS.md)
+# 3. Guard and validate
+php vendor/bin/phpunit --filter 'OpenApiSyncTest|OpenApiConventionTest'
+python scripts/openapi-validator.py docs/openapi.yaml --json
 
-# 4. Sync storage
-cp docs/openapi-full.yaml storage/api-docs/openapi.yaml
-
-# 5. Verify
+# 4. Verify
 open http://localhost:8000/api/documentation
 
-# 6. Commit
-git add docs/openapi-full.yaml storage/api-docs/openapi.yaml
+# 5. Commit
+git add docs/openapi.yaml
 git commit -m "feat: Add POST /resource endpoint"
 ```
 
@@ -148,10 +147,10 @@ git commit -m "feat: Add POST /resource endpoint"
 
 ```bash
 # 1. Modify controller/route in code
-# 2. Update description/parameters in openapi-full.yaml
-# 3. Run validation and sync
-python scripts/openapi-validator.py docs/openapi-full.yaml
-cp docs/openapi-full.yaml storage/api-docs/openapi.yaml
+# 2. Update description/parameters in docs/openapi.yaml
+# 3. Guard and validate
+php vendor/bin/phpunit --filter 'OpenApiSyncTest|OpenApiConventionTest'
+python scripts/openapi-validator.py docs/openapi.yaml --json
 
 # 4. Test and commit
 ```
@@ -164,7 +163,7 @@ cp docs/openapi-full.yaml storage/api-docs/openapi.yaml
 
 # Or individual language
 openapi-generator-cli generate \
-  -i docs/openapi-full.yaml \
+  -i docs/openapi.yaml \
   -g typescript-fetch \
   -o client-sdk/typescript
 ```
@@ -182,13 +181,13 @@ openapi-generator-cli generate \
 ### Automated Validation
 ```bash
 # Syntax check
-swagger-cli validate docs/openapi-full.yaml
+swagger-cli validate docs/openapi.yaml
 
 # Format check
-yamllint docs/openapi-full.yaml
+yamllint docs/openapi.yaml
 
 # Custom rules
-python scripts/openapi-validator.py docs/openapi-full.yaml
+python scripts/openapi-validator.py docs/openapi.yaml
 
 # Test endpoint works
 curl -H "Authorization: Bearer $TOKEN" \
@@ -209,31 +208,21 @@ php artisan test --coverage
 
 ## 📊 API Statistics
 
-- **Total Endpoints**: 130+
-- **Controllers**: 18
 - **Security Schemes**: Sanctum (Bearer JWT)
 - **Response Format**: JSON
 - **OpenAPI Version**: 3.0.0
 - **Authentication Method**: Bearer tokens
 - **Supported Languages** (SDK): TypeScript, Python, JavaScript, Go, Swift, Java
 
-### Endpoints by Category
-| Category | Count | Notes |
-|----------|-------|-------|
-| Authentication | 6 | Login, logout, refresh, me |
-| Proxy/KLASSCI | 12 | Organizational data sync |
-| Evaluations | 19 | Quiz, assessment management |
-| Dashboard | 3 | Student/Teacher views |
-| Chapters & Lessons | 13 | Course content |
-| Quiz & Knowledge | 15 | Assessment endpoints |
-| Files | 7 | Upload/download |
-| Notifications | 9 | User notifications |
-| Forum | 11 | Discussion endpoints |
-| LMS Data | 33 | Core data management |
-| Search | 3 | Full-text search |
-| Reports | 3 | Analytics/reports |
-| Admin | 4 | Admin operations |
-| Institutions | 7 | Institution management |
+### Documentation coverage
+
+Measured, never maintained by hand: a hand-kept count is how this page came to claim
+130+ documented endpoints while the guarded spec held 47. `OpenApiSyncTest` prints it on
+every run:
+
+```
+[OpenAPI coverage] 47/194 routes documentées (24%). Non documentées : 147   ← 2026-09-25
+```
 
 ## 🔗 Related Documentation
 
@@ -297,16 +286,17 @@ php artisan test --coverage
 
 - [ ] Endpoint implemented and tested in code
 - [ ] Route added with proper middleware (auth:sanctum, roles)
-- [ ] OpenAPI endpoint documented in docs/openapi-full.yaml
+- [ ] OpenAPI endpoint documented in docs/openapi.yaml
 - [ ] All required fields present (tags, summary, operationId, responses)
 - [ ] Error responses documented (401, 403, 404, 422, 500)
 - [ ] Example request/response provided
-- [ ] Validation passes: `swagger-cli validate docs/openapi-full.yaml`
-- [ ] Custom validation passes: `python scripts/openapi-validator.py docs/openapi-full.yaml`
-- [ ] Files synced: `cp docs/openapi-full.yaml storage/api-docs/openapi.yaml`
+- [ ] Validation passes: `swagger-cli validate docs/openapi.yaml`
+- [ ] Custom validation passes: `python scripts/openapi-validator.py docs/openapi.yaml`
+- [ ] Guards pass: `php vendor/bin/phpunit --filter 'OpenApiSyncTest|OpenApiConventionTest'`
+- [ ] Baseline line removed if the route was listed in `openapi-coverage-baseline.php`
 - [ ] Swagger UI displays correctly at http://localhost:8000/api/documentation
 - [ ] Endpoint tested in Swagger UI "Try it out"
-- [ ] Both YAML files committed in single commit with code
+- [ ] `docs/openapi.yaml` committed in the same commit as the code
 
 ## 🎯 Goals
 

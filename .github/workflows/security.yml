@@ -166,6 +166,12 @@ jobs:
       - name: OpenAPI ↔ routes sync test
         run: vendor/bin/phpunit --filter OpenApiSyncTest --fail-on-empty-test-suite
 
+      # #889 — étape distincte : un filtre alterné (A|B) resterait non vide si
+      # l'une des deux classes disparaissait, et --fail-on-empty-test-suite
+      # ne le verrait pas.
+      - name: OpenAPI convention (a single spec, served as-is)
+        run: vendor/bin/phpunit --filter OpenApiConventionTest --fail-on-empty-test-suite
+
       - name: OpenAPI spec validation (JSON output)
         run: python scripts/openapi-validator.py docs/openapi.yaml --json
 

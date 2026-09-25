@@ -22,7 +22,7 @@ npm install -g @openapitools/openapi-generator-cli
 
 # Via Docker (no installation needed)
 docker run --rm -v ${PWD}:/local openapitools/openapi-generator-cli generate \
-  -i /local/docs/openapi-full.yaml \
+  -i /local/docs/openapi.yaml \
   -g typescript-fetch \
   -o /local/client-sdk
 ```
@@ -37,7 +37,7 @@ npm install -g @openapitools/openapi-generator-cli
 
 # Generate
 openapi-generator-cli generate \
-  -i docs/openapi-full.yaml \
+  -i docs/openapi.yaml \
   -g typescript-fetch \
   -o client-sdk/typescript \
   --additional-properties="npmName=@lms/api,npmVersion=1.0.0,supportsES6=true"
@@ -83,7 +83,7 @@ console.log(user.data.email);
 
 ```bash
 openapi-generator-cli generate \
-  -i docs/openapi-full.yaml \
+  -i docs/openapi.yaml \
   -g python \
   -o client-sdk/python \
   --additional-properties="packageName=lms_api,packageVersion=1.0.0"
@@ -110,7 +110,7 @@ print(user.data.email)
 
 ```bash
 openapi-generator-cli generate \
-  -i docs/openapi-full.yaml \
+  -i docs/openapi.yaml \
   -g javascript \
   -o client-sdk/javascript \
   --additional-properties="npmName=lms-api,npmVersion=1.0.0"
@@ -138,7 +138,7 @@ auth.getAuthenticatedUser().then(user => {
 
 ```bash
 openapi-generator-cli generate \
-  -i docs/openapi-full.yaml \
+  -i docs/openapi.yaml \
   -g go \
   -o client-sdk/go \
   --additional-properties="packageName=lmsapi,packageVersion=1.0.0"
@@ -171,7 +171,7 @@ func main() {
 
 ```bash
 openapi-generator-cli generate \
-  -i docs/openapi-full.yaml \
+  -i docs/openapi.yaml \
   -g java \
   -o client-sdk/java \
   --additional-properties="packageName=com.lms.api,artifactVersion=1.0.0"
@@ -201,7 +201,7 @@ public class App {
 
 ```bash
 openapi-generator-cli generate \
-  -i docs/openapi-full.yaml \
+  -i docs/openapi.yaml \
   -g swift5 \
   -o client-sdk/swift \
   --additional-properties="packageName=LmsApi"
@@ -235,7 +235,7 @@ on:
     branches:
       - main
     paths:
-      - 'docs/openapi-full.yaml'
+      - 'docs/openapi.yaml'
 
 jobs:
   generate:
@@ -251,7 +251,7 @@ jobs:
       - name: Generate ${{ matrix.sdk }} SDK
         uses: openapi-generators/openapi-generator-action@v1
         with:
-          openapi-file: docs/openapi-full.yaml
+          openapi-file: docs/openapi.yaml
           generator: ${{ matrix.sdk }}
           command-args: |
             --additional-properties="packageName=lms-api"
@@ -282,7 +282,7 @@ Create: `scripts/generate-sdks.sh`
 
 set -e
 
-SPEC="docs/openapi-full.yaml"
+SPEC="docs/openapi.yaml"
 
 # Languages to generate
 GENERATORS=(
@@ -359,7 +359,7 @@ Always regenerate SDKs before releasing a new API version:
 
 ```bash
 # Validate OpenAPI
-swagger-cli validate docs/openapi-full.yaml
+swagger-cli validate docs/openapi.yaml
 
 # Generate all SDKs
 ./scripts/generate-sdks.sh
@@ -421,15 +421,15 @@ Always validate before generating:
 
 ```bash
 # 1. Check syntax
-swagger-cli validate docs/openapi-full.yaml
+swagger-cli validate docs/openapi.yaml
 
 # 2. Check for generation issues
 openapi-generator-cli validate \
-  -i docs/openapi-full.yaml \
+  -i docs/openapi.yaml \
   -g typescript-fetch
 
 # 3. Custom validation
-python scripts/openapi-validator.py docs/openapi-full.yaml
+python scripts/openapi-validator.py docs/openapi.yaml
 ```
 
 ## Troubleshooting Generation

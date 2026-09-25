@@ -37,8 +37,11 @@ return [
 
                 /*
                  * Set this to `json` or `yaml` to determine which documentation file to use in UI
+                 *
+                 * Figé à `yaml` (#889) : la seule spec est docs/openapi.yaml, aucun JSON
+                 * n'existe. Une variable d'environnement ne peut que faire servir un 404.
                  */
-                'format_to_use_for_docs' => env('L5_FORMAT_TO_USE_FOR_DOCS', 'yaml'),
+                'format_to_use_for_docs' => 'yaml',
 
                 /*
                  * Absolute paths to directory containing the swagger annotations are stored.
@@ -80,8 +83,13 @@ return [
         'paths' => [
             /*
              * Absolute path to location where parsed annotations will be stored
+             *
+             * #889 : Swagger lit directement la spec que garde OpenApiSyncTest. Il
+             * lisait une copie sous storage/ : exacte en production, parce que
+             * l'entrypoint Docker l'écrasait au démarrage, vieille de cinq mois partout
+             * ailleurs.
              */
-            'docs' => storage_path('api-docs'),
+            'docs' => base_path('docs'),
 
             /*
              * Absolute path to directory where to export views
@@ -236,13 +244,18 @@ return [
         /*
          * Set this to `true` in development mode so that docs would be regenerated on each request
          * Set this to `false` to disable swagger generation on production
+         *
+         * Génération verrouillée, sans variable d'environnement (#889) : la spec est
+         * écrite à la main (aucune annotation @OA dans le dépôt), et `paths.docs`
+         * désigne docs/. Générer y écrirait une spec vide — par-dessus la spec
+         * gardée dès que la copie YAML ci-dessous serait activée.
          */
-        'generate_always' => env('L5_SWAGGER_GENERATE_ALWAYS', false),
+        'generate_always' => false,
 
         /*
          * Set this to `true` to generate a copy of documentation in yaml format
          */
-        'generate_yaml_copy' => env('L5_SWAGGER_GENERATE_YAML_COPY', false),
+        'generate_yaml_copy' => false,
 
         /*
          * Edit to trust the proxy's ip address - needed for AWS Load Balancer

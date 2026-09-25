@@ -22,7 +22,7 @@ BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 # Configuration
-SPEC="docs/openapi-full.yaml"
+SPEC="docs/openapi.yaml"
 GENERATORS=(
   "typescript-fetch"
   "python"

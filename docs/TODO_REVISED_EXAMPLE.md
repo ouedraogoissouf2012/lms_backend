@@ -369,7 +369,7 @@ Blocks: SDK testing, documentation site
 DEFINITION OF DONE
 ──────────────────
 Code:
-- [ ] Examples in docs/openapi-full.yaml
+- [ ] Examples in docs/openapi.yaml
 - [ ] Each endpoint has 3-5 examples
 - [ ] Examples marked executable
 
@@ -468,7 +468,7 @@ DEFINITION OF DONE
 ──────────────────
 Code:
 - [ ] Test file: tests/Feature/CodeDocsConsistencyTest.php
-- [ ] Parses routes/api.php and docs/openapi-full.yaml
+- [ ] Parses routes/api.php and docs/openapi.yaml
 - [ ] 5-8 test methods covering all checks
 - [ ] Clear assertion messages
 

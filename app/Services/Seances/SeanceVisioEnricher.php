@@ -8,6 +8,7 @@ use App\Models\Seance;
 use App\Models\User;
 use App\Models\UserClass;
 use App\Services\KlassciProxyService;
+use App\Services\SeanceDetailQueryService;
 use Carbon\Carbon;
 use Psr\Log\LoggerInterface;
 
@@ -26,7 +27,7 @@ use Psr\Log\LoggerInterface;
  *     (can_start / has_started / has_ended / is_in_window / is_accessible).
  *   - `resolveParticipants()` — fetch class students (KLASSCI then local fallback).
  *
- * @see \App\Services\SeanceDetailQueryService (orchestrator)
+ * @see SeanceDetailQueryService (orchestrator)
  */
 final class SeanceVisioEnricher
 {
@@ -45,7 +46,7 @@ final class SeanceVisioEnricher
     public function loadFromLocalDbFallback(int $seanceId, User $user): ?array
     {
         $this->logger->info('Séance non trouvée via API KLASSCI, tentative BDD locale', [
-            'seance_id' => $seanceId
+            'seance_id' => $seanceId,
         ]);
 
         $visioData = Seance::where('klassci_seance_id', $seanceId)
@@ -53,52 +54,74 @@ final class SeanceVisioEnricher
             ->withConnectedParticipantsCount()
             ->first();
 
-        if (!$visioData) {
+        if (! $visioData) {
             return null;
         }
 
         // IMPORTANT: Bloquer l'accès aux séances archivées pour les étudiants
-        if ($user->isStudent() && !$visioData->is_active) {
+        if ($user->isStudent() && ! $visioData->is_active) {
             return null;
         }
 
-        // Construire la séance depuis la BDD locale
-        $dateSeance = now()->format('Y-m-d');
+        // La seance est DECRITE depuis la ligne locale -- elle n'est plus
+        // fabriquee (#870).
+        //
+        // Ce bloc affirmait sept valeurs : `'B2 COM'` en dur comme nom de
+        // classe, la date du JOUR, un horaire 08h-10h, une salle `'TEAM'`,
+        // `matiere.id = 1` a defaut, `duree_minutes = 120`, `statut` fige.
+        //
+        // Aucune ne compensait une donnee manquante. Mesure de production du
+        // 22/09/2026, sur les 6 seances en base : `classe_nom`, `matiere_nom`,
+        // `enseignant_nom`, `date_seance` et `klassci_matiere_id` sont peuples
+        // partout -- zero nul. Et `date_seance` porte de VRAIES heures (14h30,
+        // 07h00, 16h30...), jamais minuit.
+        //
+        // Le litteral tombait juste par accident : cinq seances sur six sont
+        // reellement « B2 COM ». La sixieme est une « 1ere annee BTS Genie Civil
+        // Option Batiment » du 19 mai, affichee « B2 COM » a la date du jour.
+        //
+        // Ce qui n'a pas de source n'est plus affirme : `salle` n'a AUCUNE
+        // colonne, et `heure_fin` non plus. Le frontend gere deja leur absence
+        // (EventSeanceDetails.vue:59, ClassePlanningTab.vue:30).
+        $debut = $visioData->date_seance ? Carbon::parse($visioData->date_seance) : null;
+
         $seance = [
             'id' => $visioData->klassci_seance_id ?? $visioData->id,
             'classe' => [
-                'id' => $visioData->klassci_classe_id ?? null,
-                'nom' => 'B2 COM'
+                'id' => $visioData->klassci_classe_id,
+                'nom' => $visioData->classe_nom,
             ],
             'programmation' => [
-                'date' => $dateSeance,
-                'heure_debut' => $dateSeance . 'T08:00:00+00:00',
-                'heure_fin' => $dateSeance . 'T10:00:00+00:00',
-                'salle' => 'TEAM'
+                'date' => $debut?->format('Y-m-d'),
+                'heure_debut' => $debut?->toISOString(),
+                'heure_fin' => null,
+                'salle' => null,
             ],
             'enseignant' => [
-                'nom' => $visioData->enseignant_nom ?? 'Non assigné',
-                'prenom' => ''
+                'nom' => $visioData->enseignant_nom,
+                'prenom' => '',
             ],
             'matiere' => [
-                'id' => $visioData->klassci_matiere_id ?? 1,
-                'nom' => $visioData->matiere_nom ?? 'Matière',
-                'code' => null
+                'id' => $visioData->klassci_matiere_id,
+                'nom' => $visioData->matiere_nom,
+                'code' => null,
             ],
             'visio_enabled' => $visioData->visio_enabled ?? false,
             'visio_type' => $visioData->visio_type ?? 'jitsi',
             'visio_room_id' => $visioData->visio_room_id,
             'visio_status' => $visioData->visio_status,
             'visio_participants_count' => $visioData->current_participants_count ?? 0,
-            'duree_minutes' => 120,
-            'statut' => 'programme'
+            // La table ne porte pas d'heure de fin : la duree est donc inconnue,
+            // et le dire vaut mieux que rendre 120 pour tout le monde.
+            'duree_minutes' => null,
+            'statut' => $visioData->is_active ? 'programme' : 'archive',
         ];
 
         $matiereInfo = $seance['matiere'];
 
         $this->logger->info('Séance récupérée depuis BDD locale (fallback global)', [
             'seance_id' => $seanceId,
-            'matiere' => $matiereInfo['nom']
+            'matiere' => $matiereInfo['nom'],
         ]);
 
         return [$seance, $matiereInfo];
@@ -107,7 +130,7 @@ final class SeanceVisioEnricher
     /**
      * Overlays visio_* fields from the local DB onto the séance array (by reference).
      *
-     * @param array<string, mixed> $seance Modified by reference.
+     * @param  array<string, mixed>  $seance  Modified by reference.
      */
     public function enrichWithVisioData(array &$seance, int $seanceId): ?Seance
     {
@@ -125,7 +148,7 @@ final class SeanceVisioEnricher
                 if ($visioData->enseignant_nom) {
                     $seance['enseignant'] = [
                         'nom' => $visioData->enseignant_nom,
-                        'prenom' => $visioData->enseignant_prenom ?? ''
+                        'prenom' => $visioData->enseignant_prenom ?? '',
                     ];
                 }
 
@@ -133,17 +156,19 @@ final class SeanceVisioEnricher
             }
 
             $this->applyVisioDefaults($seance);
+
             return null;
 
         } catch (\Exception $e) {
             $this->logger->warning('Erreur accès table seances', ['error' => $e->getMessage()]);
             $this->applyVisioDefaults($seance);
+
             return null;
         }
     }
 
     /**
-     * @param array<string, mixed> $seance Modified by reference.
+     * @param  array<string, mixed>  $seance  Modified by reference.
      */
     private function applyVisioDefaults(array &$seance): void
     {
@@ -157,7 +182,7 @@ final class SeanceVisioEnricher
     /**
      * Builds the temporal visio window flags (can_start / is_in_window / etc.).
      *
-     * @param array<string, mixed> $seance
+     * @param  array<string, mixed>  $seance
      * @return array<string, mixed>
      */
     public function buildVisioWindow(Carbon $heureDebut, Carbon $heureFin, array $seance, ?Seance $visioData): array
@@ -180,8 +205,8 @@ final class SeanceVisioEnricher
             'can_start' => $canStart && $canStillStart,
             'has_started' => $now->greaterThanOrEqualTo($heureDebut),
             'has_ended' => $now->greaterThan($heureFin),
-            'is_in_window' => $canStart && !$now->greaterThan($heureFin),
-            'is_accessible' => $visioAccessible || ($canStart && !$now->greaterThan($heureFin)),
+            'is_in_window' => $canStart && ! $now->greaterThan($heureFin),
+            'is_accessible' => $visioAccessible || ($canStart && ! $now->greaterThan($heureFin)),
             'start_window' => $heureDebut->copy()->subMinutes(15)->toIso8601String(),
             'end_window' => $heureFin->copy()->addMinutes(30)->toIso8601String(),
         ];
@@ -195,7 +220,7 @@ final class SeanceVisioEnricher
      */
     public function resolveParticipants(?int $classeId, string $klassciToken, ?Seance $visioData): array
     {
-        if (!$classeId) {
+        if (! $classeId) {
             return [];
         }
 
@@ -218,7 +243,7 @@ final class SeanceVisioEnricher
         } catch (\Exception $e) {
             $this->logger->warning('Erreur récupération étudiants séance via KLASSCI', [
                 'classe_id' => $classeId,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ]);
         }
 
@@ -233,19 +258,20 @@ final class SeanceVisioEnricher
 
                 $students = $localStudents->map(function ($student): array {
                     $nameParts = explode(' ', $student->name, 2);
+
                     return [
                         'id' => $student->id,
                         'nom' => $nameParts[0] ?? $student->name,
                         'prenom' => $nameParts[1] ?? '',
                         'email' => $student->email,
                         'klassci_id' => $student->klassci_id,
-                        'statut' => 'actif'
+                        'statut' => 'actif',
                     ];
                 })->toArray();
             } catch (\Exception $e) {
                 $this->logger->error('Erreur fallback BDD pour étudiants', [
                     'classe_id' => $visioData->klassci_classe_id,
-                    'error' => $e->getMessage()
+                    'error' => $e->getMessage(),
                 ]);
             }
         }

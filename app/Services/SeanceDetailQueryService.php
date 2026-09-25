@@ -5,10 +5,12 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Exceptions\MissingKlassciTokenException;
+use App\Http\Controllers\API\LMS\LMSAttendancesController;
+use App\Http\Controllers\API\LMS\LMSSeanceDetailsController;
+use App\Http\Controllers\API\LMS\LMSVisioParticipantController;
 use App\Models\User;
 use App\Services\Seances\KlassciSeanceLookupService;
 use App\Services\Seances\SeanceVisioEnricher;
-use Carbon\Carbon;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -41,9 +43,9 @@ use Psr\Log\LoggerInterface;
  * - Missing KLASSCI token on user → throws `RuntimeException` (caller renders 401).
  * - Unexpected errors propagate up (caller logs and renders 500).
  *
- * @see \App\Http\Controllers\API\LMS\LMSSeanceDetailsController (route handler)
- * @see \App\Http\Controllers\API\LMS\LMSVisioParticipantController (consumes getSeanceDetailsArray)
- * @see \App\Http\Controllers\API\LMS\LMSAttendancesController (consumes getSeanceDetailsArray)
+ * @see LMSSeanceDetailsController (route handler)
+ * @see LMSVisioParticipantController (consumes getSeanceDetailsArray)
+ * @see LMSAttendancesController (consumes getSeanceDetailsArray)
  */
 final class SeanceDetailQueryService
 {
@@ -52,6 +54,7 @@ final class SeanceDetailQueryService
         private readonly KlassciProxyService $klassciService,
         private readonly KlassciSeanceLookupService $klassciLookup,
         private readonly SeanceVisioEnricher $visioEnricher,
+        private readonly Seances\SeanceHoraireResolver $horaire,
     ) {}
 
     /**
@@ -68,7 +71,7 @@ final class SeanceDetailQueryService
     {
         $klassciToken = $user->klassci_token;
 
-        if (!$klassciToken) {
+        if (! $klassciToken) {
             throw MissingKlassciTokenException::forUser($user->id);
         }
 
@@ -78,7 +81,7 @@ final class SeanceDetailQueryService
         [$seance, $matiereInfo] = $this->klassciLookup->lookup($seanceId, $user, $klassciToken);
 
         // 2. Si la séance n'a pas été trouvée via l'API KLASSCI, essayer la BDD locale
-        if (!$seance) {
+        if (! $seance) {
             $fallback = $this->visioEnricher->loadFromLocalDbFallback($seanceId, $user);
             if ($fallback === null) {
                 return null; // 404
@@ -86,10 +89,13 @@ final class SeanceDetailQueryService
             [$seance, $matiereInfo] = $fallback;
         }
 
-        // 3. Enrichir avec durée calculée
-        $heureDebut = Carbon::parse($seance['programmation']['heure_debut']);
-        $heureFin = Carbon::parse($seance['programmation']['heure_fin']);
-        $seance['duree_minutes'] = $heureDebut->diffInMinutes($heureFin);
+        // 3. Duree AFFICHEE et fenetre d'OUVERTURE : deux questions distinctes,
+        //    deleguees a un collaborateur dedie (#870).
+        /** @var array<string, mixed> $programmation */
+        $programmation = is_array($seance['programmation'] ?? null) ? $seance['programmation'] : [];
+
+        $seance['duree_minutes'] = $this->horaire->dureeMinutes($programmation);
+        [$heureDebut, $heureFin] = $this->horaire->fenetreOuverture($programmation);
 
         // 4. Enrichir avec données visio depuis BDD locale
         $visioData = $this->visioEnricher->enrichWithVisioData($seance, $seanceId);
@@ -107,7 +113,7 @@ final class SeanceDetailQueryService
             $seance['matiere'] = [
                 'id' => $matiereInfo['id'],
                 'nom' => $matiereInfo['nom'] ?? $matiereInfo['libelle'] ?? 'N/A',
-                'code' => $matiereInfo['code'] ?? null
+                'code' => $matiereInfo['code'] ?? null,
             ];
         }
 
@@ -119,8 +125,8 @@ final class SeanceDetailQueryService
                 'type' => $seance['visio_type'],
                 'room_id' => $seance['visio_room_id'],
                 'status' => $seance['visio_status'],
-                'window' => $seance['visio_window']
-            ]
+                'window' => $seance['visio_window'],
+            ],
         ];
 
         // 9. Les participants sont visibles QUE pour les enseignants et coordinateurs
@@ -128,7 +134,7 @@ final class SeanceDetailQueryService
             $response['participants'] = [
                 'teacher' => $teacher,
                 'students' => $students,
-                'total' => 1 + count($students)
+                'total' => 1 + count($students),
             ];
         }
 
@@ -154,6 +160,7 @@ final class SeanceDetailQueryService
         }
 
         $programmation = $details['seance']['programmation'] ?? null;
+
         return is_array($programmation) ? $programmation : null;
     }
 
@@ -175,20 +182,20 @@ final class SeanceDetailQueryService
     {
         $klassciToken = $user->klassci_token;
 
-        if (!$klassciToken) {
+        if (! $klassciToken) {
             throw MissingKlassciTokenException::forUser($user->id);
         }
 
         $this->logger->info('Récupération participants séance', ['seance_id' => $seanceId]);
 
         $seance = $this->findSeanceForParticipants($seanceId, $user, $klassciToken);
-        if (!$seance) {
+        if (! $seance) {
             return null;
         }
 
         $teacher = [
             'id' => $user->klassci_id,
-            'nom' => $user->name
+            'nom' => $user->name,
         ];
         $classeId = $seance['classe']['id'] ?? null;
         $students = $this->fetchActiveStudents($classeId, $klassciToken);
@@ -197,7 +204,7 @@ final class SeanceDetailQueryService
             'seance' => $seance,
             'teacher' => $teacher,
             'students' => $students,
-            'total_participants' => 1 + count($students)
+            'total_participants' => 1 + count($students),
         ];
     }
 
@@ -248,7 +255,7 @@ final class SeanceDetailQueryService
      */
     private function fetchActiveStudents(?int $classeId, string $klassciToken): array
     {
-        if (!$classeId) {
+        if (! $classeId) {
             return [];
         }
 
@@ -269,8 +276,9 @@ final class SeanceDetailQueryService
         } catch (\Exception $e) {
             $this->logger->warning('Erreur récupération étudiants', [
                 'classe_id' => $classeId,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ]);
+
             return [];
         }
     }

@@ -36,6 +36,17 @@ final class CiEmptyFilterFailsTest extends TestCase
         );
     }
 
+    /** #889 : la garde de convention a sa propre étape, donc son propre filtre non vide. */
+    public function test_openapi_convention_ci_step_uses_fail_on_empty_test_suite(): void
+    {
+        $yml = (string) file_get_contents(base_path('.github/workflows/security.yml'));
+
+        self::assertStringContainsString(
+            'vendor/bin/phpunit --filter OpenApiConventionTest --fail-on-empty-test-suite',
+            $yml,
+        );
+    }
+
     public function test_pull_request_trigger_is_not_limited_to_lms(): void
     {
         $yml = (string) file_get_contents(base_path('.github/workflows/security.yml'));

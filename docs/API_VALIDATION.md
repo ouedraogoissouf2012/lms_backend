@@ -414,8 +414,11 @@ Job **"Docs Sync (OpenAPI ↔ code)"** in `.github/workflows/security.yml`, on e
 request and every push to `lms`:
 
 ```yaml
-- name: OpenAPI ↔ routes sync test, and a single spec (#889)
-  run: vendor/bin/phpunit --filter 'OpenApiSyncTest|OpenApiConventionTest' --fail-on-empty-test-suite
+- name: OpenAPI ↔ routes sync test
+  run: vendor/bin/phpunit --filter OpenApiSyncTest --fail-on-empty-test-suite
+
+- name: OpenAPI convention (a single spec, served as-is)
+  run: vendor/bin/phpunit --filter OpenApiConventionTest --fail-on-empty-test-suite
 
 - name: OpenAPI spec validation (JSON output)
   run: python scripts/openapi-validator.py docs/openapi.yaml --json

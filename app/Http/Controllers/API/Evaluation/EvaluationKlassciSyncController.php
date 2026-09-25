@@ -9,6 +9,7 @@ use App\Http\Requests\PublishEvaluationRequest;
 use App\Http\Requests\StartEvaluationRequest;
 use App\Http\Requests\StoreEvaluationRequest;
 use App\Http\Requests\SubmitEvaluationRequest;
+use App\Http\Requests\SyncEvaluationNotesRequest;
 use App\Http\Requests\UpdateEvaluationRequest;
 use App\Models\Evaluation;
 use App\Models\EvaluationQuestion;
@@ -18,7 +19,6 @@ use App\Services\Evaluation\EvaluationEnrichmentService;
 use App\Services\Evaluation\EvaluationGradingService;
 use App\Services\KlassciProxyService;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -37,7 +37,7 @@ class EvaluationKlassciSyncController extends AuthenticatedController
         private EvaluationGradingService $gradingService,
     ) {}
 
-    public function syncToKlassci(Request $request, int $id): JsonResponse
+    public function syncToKlassci(SyncEvaluationNotesRequest $request, int $id): JsonResponse
     {
         $evaluation = Evaluation::with(['submissions', 'questions'])->find($id);
 
@@ -108,7 +108,7 @@ class EvaluationKlassciSyncController extends AuthenticatedController
         }
     }
 
-    public function syncNotesToKlassci(int $id): JsonResponse
+    public function syncNotesToKlassci(SyncEvaluationNotesRequest $request, int $id): JsonResponse
     {
         try {
             $evaluation = Evaluation::with('questions')->findOrFail($id);

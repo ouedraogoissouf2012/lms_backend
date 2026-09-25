@@ -7,6 +7,7 @@ namespace App\Http\Controllers\API\Evaluation;
 use App\Http\Controllers\API\Concerns\RendersKlassciBackedErrors;
 use App\Http\Controllers\AuthenticatedController;
 use App\Http\Requests\GradeEvaluationSubmissionRequest;
+use App\Http\Requests\PreviewEvaluationRequest;
 use App\Http\Requests\ViewEvaluationResultsRequest;
 use App\Models\Evaluation;
 use App\Models\EvaluationSubmission;
@@ -14,7 +15,6 @@ use App\Services\Evaluation\Teacher\EvaluationTeacherGradeService;
 use App\Services\Evaluation\Teacher\TeacherEvaluationResultsService;
 use App\Services\Evaluation\Teacher\TeacherEvaluationViewService;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 use RuntimeException;
 
 /**
@@ -73,7 +73,7 @@ final class EvaluationTeacherController extends AuthenticatedController
         return $this->relayResponse($result);
     }
 
-    public function preview(Request $request, int $id): JsonResponse
+    public function preview(PreviewEvaluationRequest $request, int $id): JsonResponse
     {
         $teacher = $this->authenticatedUser($request);
 

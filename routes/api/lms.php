@@ -17,6 +17,7 @@ use App\Http\Controllers\API\LMS\LMSClasseMatiereController;
 use App\Http\Controllers\API\LMS\LMSClasseWriteController;
 use App\Http\Controllers\API\LMS\LMSMatiereWriteController;
 use App\Http\Controllers\API\LMS\TrainingSessionController;
+use App\Http\Controllers\API\LMS\TrainingSessionTransitionController;
 use App\Http\Controllers\API\TeacherStatsController;
 use Illuminate\Support\Facades\Route;
 
@@ -80,6 +81,19 @@ Route::middleware(['auth:sanctum', 'klassci.sync', 'role:coordinateur,admin,supe
         Route::post('/programs', [TrainingSessionController::class, 'storeProgram']);
         Route::get('/training-sessions', [TrainingSessionController::class, 'index']);
         Route::post('/training-sessions', [TrainingSessionController::class, 'store']);
+
+        // Faire avancer une Periode (#845, ADR-845-01). Cinq etats sur six
+        // etaient inatteignables : TrainingSessionCrudService:55 ecrivait
+        // Brouillon et rien ne le faisait avancer.
+        //
+        // Quatre operations NOMMEES et non un `PATCH status` : un statut libre
+        // laisserait passer brouillon -> archivee, ou le retour d une periode
+        // annulee. `purgee` n est atteignable par AUCUNE route — ce n est pas
+        // une decision humaine mais l issue d une politique de retention.
+        Route::post('/training-sessions/{trainingSession}/publier', [TrainingSessionTransitionController::class, 'publier']);
+        Route::post('/training-sessions/{trainingSession}/annuler', [TrainingSessionTransitionController::class, 'annuler']);
+        Route::post('/training-sessions/{trainingSession}/cloturer', [TrainingSessionTransitionController::class, 'cloturer']);
+        Route::post('/training-sessions/{trainingSession}/archiver', [TrainingSessionTransitionController::class, 'archiver']);
 
         // Creer une classe SANS KLASSCI (#848). Le seul createur d une Classe
         // etait jusqu ici la synchronisation : une ecole autonome n en avait

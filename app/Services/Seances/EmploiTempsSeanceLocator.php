@@ -34,12 +34,19 @@ use App\Services\KlassciProxyService;
  *
  * ## Ce qui reste à faire, et qui n'est pas ici
  *
- * `KlassciSeanceLookupService` et son moteur `KlassciSeanceMatiereScanner`
- * rendent le même service et portent le même défaut : `findSeance()` y lit
- * encore la clé morte. Les migrer dessus impose de reprendre le parcours
- * « détail d'une séance », qui relève du périmètre restant de #740 et mérite ses
- * propres tests. Cette classe est le remplaçant canonique vers lequel ils
- * doivent converger — pas une troisième implémentation destinée à coexister.
+ * `KlassciSeanceLookupService` a converge, mais pour l'ENSEIGNANT SEULEMENT :
+ * `lookupForTeacher()` delegue desormais ici, et le parcours « detail d'une
+ * seance » d'un enseignant ne lit plus la cle morte.
+ *
+ * Les branches ETUDIANT et COORDINATEUR lisent encore `KlassciSeanceMatiereScanner`,
+ * donc `seances_programmees`. Ce n'est pas un oubli : pour un non-enseignant,
+ * `matieresOf()` ci-dessous interroge le catalogue `matieres`, quand l'ancien
+ * chemin lisait `me/dashboard.cours` -- les cours DE l'etudiant. Les migrer
+ * elargirait la surface d'autorisation ; c'est une decision de perimetre, a
+ * instruire pour elle-meme.
+ *
+ * Cette classe reste le remplacant canonique vers lequel ils doivent converger —
+ * pas une troisieme implementation destinee a coexister.
  *
  * Vérifié par tests/Feature/Visio/VisioActivationSeanceSourceTest.php.
  */

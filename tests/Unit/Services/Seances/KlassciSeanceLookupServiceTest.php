@@ -7,6 +7,7 @@ namespace Tests\Unit\Services\Seances;
 use App\Models\User;
 use App\Services\KlassciProxyService;
 use App\Services\Seances\KlassciSeanceLookupService;
+use App\Services\Seances\KlassciSeanceMatiereScanner;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Mockery;
 use Mockery\MockInterface;
@@ -16,7 +17,7 @@ use Tests\TestCase;
 /**
  * Depuis la refonte #517, l'algorithme de recherche (fast-path local résolu
  * via `seances.klassci_matiere_id` + fallback batché) vit dans
- * {@see \App\Services\Seances\KlassciSeanceMatiereScanner} — testé
+ * {@see KlassciSeanceMatiereScanner} — testé
  * séparément (`KlassciSeanceMatiereScannerTest`). Ce test exerce la chaîne
  * réelle (container + `KlassciSeanceMatiereScanner` + `LocalSeanceMatiereResolver`
  * non mockés, base vide -> résolution locale absente -> chemin batch), seul
@@ -36,6 +37,23 @@ final class KlassciSeanceLookupServiceTest extends TestCase
         parent::tearDown();
     }
 
+    /**
+     * Le chemin ENSEIGNANT lit desormais l'emploi du temps (#740).
+     *
+     * Ces deux tests assertaient `seances_programmees` — une cle mesuree VIDE
+     * chez KLASSCI le 2026-09-14 (`total_programmees = 47` annonce dans le meme
+     * corps que `seances_programmees = 0`). Ils figeaient donc une recherche qui
+     * echoue par construction, et l'ecran tombait dans un repli qui INVENTE la
+     * classe, la date et l'horaire.
+     *
+     * Les mettre a jour n'est pas « faire passer un test » : c'est enregistrer
+     * un changement de source voulu. Ce qu'ils GARDENT est conserve a
+     * l'identique — une matiere malformee reste ecartee, et l'identite de
+     * l'enseignant reste attachee a la seance trouvee.
+     *
+     * Les branches etudiant et coordinateur, plus bas, lisent toujours le
+     * scanner : leur migration est une decision d'autorisation, pas de source.
+     */
     public function test_teacher_lookup_ignores_malformed_matieres_and_returns_matching_seance(): void
     {
         $this->mock(KlassciProxyService::class, function (MockInterface $mock): void {
@@ -50,21 +68,16 @@ final class KlassciSeanceLookupServiceTest extends TestCase
                         ],
                     ],
                 ]);
-            // Le fallback batch ne fetch QUE l'id résoluble (17) : la matière
-            // malformée sans id est écartée avant tout appel réseau.
-            $mock->shouldReceive('fetchManyMatieresDetails')
-                ->once()
-                ->with([17], self::TOKEN)
-                ->andReturn([
-                    17 => [
-                        'data' => [
-                            'matiere' => ['id' => 17, 'nom' => 'Mathematiques'],
-                            'seances_programmees' => [
-                                ['id' => '44', 'titre' => 'Algebre'],
-                            ],
-                        ],
-                    ],
-                ]);
+
+            // La matiere sans id est ecartee AVANT tout appel reseau : seul 17
+            // est demande a l'emploi du temps.
+            $mock->shouldReceive('getEmploiTemps')
+                ->andReturn(['data' => [[
+                    'id' => '44',
+                    'titre' => 'Algebre',
+                    'matiere' => ['id' => 17, 'nom' => 'Mathematiques'],
+                    'programmation' => ['date_seance' => now()->addDay()->format('Y-m-d')],
+                ]]]);
         });
 
         [$seance, $matiere] = app(KlassciSeanceLookupService::class)
@@ -86,10 +99,8 @@ final class KlassciSeanceLookupServiceTest extends TestCase
                 ->once()
                 ->with(self::TOKEN, 'me/teacher-dashboard', 'GET')
                 ->andReturn(['data' => ['matieres' => [['id' => 17]]]]);
-            $mock->shouldReceive('fetchManyMatieresDetails')
-                ->once()
-                ->with([17], self::TOKEN)
-                ->andReturn([17 => ['data' => ['seances_programmees' => []]]]);
+
+            $mock->shouldReceive('getEmploiTemps')->andReturn(['data' => []]);
         });
 
         [$seance, $matiere] = app(KlassciSeanceLookupService::class)

@@ -22,9 +22,27 @@ use Psr\Log\LoggerInterface;
  * ## Responsibility (SRP)
  *
  * ONE job: given a séance id + user role, return the séance + matière payload
- * from KLASSCI, or `[null, null]` if not found. The three branches (teacher /
- * student / coordinator) differ only in which endpoint supplies the candidate
- * matière set, and how the `enseignant` field is attached afterward.
+ * from KLASSCI, or `[null, null]` if not found.
+ *
+ * ## Les trois branches ne lisent plus la meme source (#740)
+ *
+ * L'ENSEIGNANT passe par {@see EmploiTempsSeanceLocator}, le remplacant
+ * canonique. Les deux autres lisent encore le scanner, donc la cle
+ * `seances_programmees` -- **systematiquement vide chez KLASSCI**, mesure du
+ * 2026-09-14 : `total_programmees = 47` annonce dans le meme corps que
+ * `seances_programmees = 0`.
+ *
+ * Leur recherche echoue donc par construction, et le detail tombe dans
+ * `SeanceVisioEnricher::loadFromLocalDbFallback()` -- un bloc qui INVENTE six
+ * valeurs que la ligne locale porte deja.
+ *
+ * Pourquoi l'enseignant seul a converge : le locator lit `me/teacher-dashboard`
+ * pour lui, source IDENTIQUE a l'ancienne. Pour les autres il lit le catalogue
+ * `matieres`, quand l'ancien chemin lisait `me/dashboard.cours` -- les cours DE
+ * l'etudiant. Migrer les deux autres elargirait la surface d'autorisation :
+ * c'est une decision de perimetre, pas de source, et elle merite sa propre PR.
+ *
+ * Verifie par tests/Feature/Seances/SeanceDetailSourceTest.php.
  *
  * @see SeanceDetailQueryService (orchestrator)
  */
@@ -34,6 +52,7 @@ final class KlassciSeanceLookupService
         private readonly LoggerInterface $logger,
         private readonly KlassciProxyService $klassciService,
         private readonly KlassciSeanceMatiereScanner $scanner,
+        private readonly EmploiTempsSeanceLocator $emploiTempsLocator,
     ) {}
 
     /**
@@ -60,24 +79,12 @@ final class KlassciSeanceLookupService
      */
     private function lookupForTeacher(int $seanceId, User $user, string $klassciToken): array
     {
-        $dashboard = $this->klassciService->requestWithUserToken(
-            $klassciToken,
-            'me/teacher-dashboard',
-            'GET'
-        );
-
-        $matieres = KlassciPayload::listOfArrays(
-            KlassciPayload::asArray($dashboard['data'] ?? null)['matieres'] ?? null
-        );
-        $matieresById = $this->keyByMatiereId($matieres, fn (array $m): ?int => KlassciPayload::toInt($m['id'] ?? null));
-
-        [$seanceTrouvee, $matiereDetails, $matiereFallback] = $this->scanner->scan($matieresById, $seanceId, $klassciToken);
+        [$seanceTrouvee, $matiereInfo] = $this->emploiTempsLocator->locate($seanceId, $user, $klassciToken);
 
         if ($seanceTrouvee === null) {
             return [null, null];
         }
 
-        $matiereInfo = $this->matiereInfo($matiereDetails, $matiereFallback);
         $seanceTrouvee['enseignant'] = [
             'id' => $user->klassci_id,
             'nom' => $user->name,

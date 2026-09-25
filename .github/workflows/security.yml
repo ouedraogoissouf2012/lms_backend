@@ -175,6 +175,71 @@ jobs:
       - name: OpenAPI spec validation (JSON output)
         run: python scripts/openapi-validator.py docs/openapi.yaml --json
 
+  # #876 — le backend vérifie ce que le front CONSOMME, avant la fusion.
+  #
+  # Sans ce job, une PR qui retire ou renomme une route passe au vert tant que
+  # la route n'est pas documentée : la baseline #809 invite même à retirer sa
+  # ligne. Le front ne l'apprenait qu'en production (#337, #17).
+  #
+  # Le job rejoue la garde du front (`frontend_lms`, branche `dev`, dépôt
+  # public) contre la spec DE CETTE PR et contre la table de routes qu'elle
+  # sert réellement. Face aux routes, aucune baseline : un appel du front vers
+  # une route absente fait échouer la PR.
+  front-contract:
+    name: Front contract (consumer calls vs served routes)
+    runs-on: ubuntu-latest
+
+    env:
+      APP_ENV: testing
+      TELESCOPE_ENABLED: "false"
+      DB_CONNECTION: sqlite
+      DB_DATABASE: database/database.testing.sqlite
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Generate ephemeral APP_KEY
+        run: echo "APP_KEY=base64:$(openssl rand -base64 32)" >> "$GITHUB_ENV"
+
+      - name: Setup PHP 8.3
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.3"
+          coverage: none
+          tools: composer:v2
+
+      - name: Install PHP dependencies
+        run: composer install --no-interaction --no-progress --prefer-dist --no-scripts
+
+      - name: Export served route table
+        run: php artisan route:list --json --path=api > "$RUNNER_TEMP/routes.json"
+
+      - name: Checkout frontend (consumer)
+        uses: actions/checkout@v4
+        with:
+          repository: ouedraogoissouf2012/frontend_lms
+          ref: dev
+          path: front
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: front/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: front
+        run: npm ci
+
+      - name: Every front call exists and is declared
+        working-directory: front
+        run: >
+          node scripts/lint-api-contract.mjs
+          --spec "$GITHUB_WORKSPACE/docs/openapi.yaml"
+          --routes "$RUNNER_TEMP/routes.json"
+
   commitlint:
     name: Commit messages (conventional)
     runs-on: ubuntu-latest

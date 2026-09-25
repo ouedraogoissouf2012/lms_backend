@@ -20,6 +20,8 @@ final class CiAppKeyNotCommittedTest extends TestCase
             $yml,
         );
         self::assertStringContainsString('openssl rand -base64 32', $yml);
-        self::assertSame(2, substr_count($yml, 'Generate ephemeral APP_KEY'));
+        // Un job par amorçage de Laravel : docs-sync, front-contract (#876,
+        // `route:list`) et tests. Chacun génère sa clé, aucun ne la versionne.
+        self::assertSame(3, substr_count($yml, 'Generate ephemeral APP_KEY'));
     }
 }

@@ -52,7 +52,6 @@ return [
     '/dashboard/stats',
     '/documentation',
     '/files/stats',
-    '/files/upload',
     '/files/{file}',
     '/files/{id}',
     '/forum/posts/{post}',

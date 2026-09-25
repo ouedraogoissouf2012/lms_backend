@@ -481,8 +481,8 @@ parameters:
 These are the checks CI runs (`.github/workflows/security.yml`, job "Docs Sync"):
 
 ```bash
-# Both directions: every documented path is a real route,
-# and every real route is documented or listed as named debt.
+# Both directions: every documented operation (method AND path) is a real
+# route, and every real route is documented or listed as named debt.
 php vendor/bin/phpunit --filter 'OpenApiSyncTest|OpenApiConventionTest'
 
 # Internal quality rules (operationId, error format, roles…)
@@ -490,6 +490,16 @@ python scripts/openapi-validator.py docs/openapi.yaml --json
 ```
 
 See API_VALIDATION.md for the validation rules.
+
+A third job, "Front contract", replays the frontend's own guard
+(`frontend_lms`, `scripts/lint-api-contract.mjs`) against the spec of your PR
+and the routes it really serves (#876). It fails if you remove or rename a route
+the frontend still calls, even an undocumented one. There is no baseline on
+that side: fix the frontend first, or keep the route.
+
+The frontend cannot call a route that is not in `docs/openapi.yaml`: its own
+debt list may only shrink. Documenting a route is therefore what makes it
+usable by the frontend.
 
 ## Step 6: Pay Down the Baseline
 

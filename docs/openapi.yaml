@@ -556,6 +556,271 @@ components:
                   type: string
 
     # Error Response
+    # --- Cycle evaluation (#892) -------------------------------------------
+    # Formes MESUREES par appel reel des routes, pas deduites des noms.
+
+    Decimal2:
+      type: string
+      pattern: '^-?\d+\.\d{2}$'
+      example: "16.00"
+      description: |
+        Nombre decimal SERIALISE EN CHAINE : le cast Eloquent `decimal:2`
+        (`EvaluationSubmission`, `Evaluation`, `EvaluationQuestion`) rend
+        `"16.00"`, jamais `16`. Un client type doit le convertir.
+
+    EvaluationWindow:
+      type: object
+      nullable: true
+      description: |
+        Fenetre de passage relayee depuis KLASSCI (`programmation.window`).
+        `null` quand l evaluation n en a pas, ou quand KLASSCI n a pas pu etre
+        joint. Le LMS ne lit que les cles ci-dessous ; les autres passent telles
+        quelles.
+      additionalProperties: true
+      properties:
+        is_open:
+          type: boolean
+        has_started:
+          type: boolean
+        has_ended:
+          type: boolean
+        start_at:
+          type: string
+          format: date-time
+        end_at:
+          type: string
+          format: date-time
+
+    EvaluationSubmissionRecord:
+      type: object
+      description: |
+        Une copie (`evaluation_submissions`), serialisee telle quelle.
+
+        Une copie TOUT JUSTE CREEE n expose que les colonnes ecrites a sa
+        creation (`id`, `evaluation_id`, `student_id`, `klassci_etudiant_id`,
+        `attempt`, `status`, `started_at`, `institution_id`, `feedback`,
+        `created_at`, `updated_at`) ; une copie relue les expose toutes.
+      properties:
+        id:
+          type: integer
+        evaluation_id:
+          type: integer
+        student_id:
+          type: integer
+          nullable: true
+        klassci_etudiant_id:
+          type: integer
+        attempt:
+          type: integer
+        status:
+          type: string
+          enum: [en_cours, soumis, corrige]
+        started_at:
+          type: string
+          format: date-time
+          nullable: true
+        submitted_at:
+          type: string
+          format: date-time
+          nullable: true
+        answers:
+          type: object
+          nullable: true
+          description: "MAP `{ \"<question_id>\": reponse }` (chaine, ou tableau de chaines pour `qcm_multiple`)."
+          additionalProperties: true
+        manual_points:
+          type: object
+          nullable: true
+          description: "Points attribues a la main, par question (dissertations)."
+          additionalProperties:
+            type: number
+        score:
+          type: string
+          pattern: '^-?\d+\.\d{2}$'
+          nullable: true
+          description: "Decimal en chaine (voir `Decimal2`)."
+        note_sur_20:
+          type: string
+          pattern: '^-?\d+\.\d{2}$'
+          nullable: true
+          description: "Decimal en chaine (voir `Decimal2`)."
+        feedback:
+          type: string
+          nullable: true
+          description: "Commence par `[PRACTICE]` pour une tentative d entrainement (note non officielle)."
+        graded_by:
+          type: integer
+          nullable: true
+        graded_at:
+          type: string
+          format: date-time
+          nullable: true
+        synced_to_klassci:
+          type: boolean
+        synced_at:
+          type: string
+          format: date-time
+          nullable: true
+        institution_id:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    EvaluationRecord:
+      type: object
+      description: "Une evaluation (`evaluations`), serialisee telle quelle (seul `klassci_link_guard` est masque)."
+      additionalProperties: true
+      properties:
+        id:
+          type: integer
+        institution_id:
+          type: integer
+        klassci_evaluation_id:
+          type: integer
+          nullable: true
+        klassci_matiere_id:
+          type: integer
+          nullable: true
+        klassci_classe_id:
+          type: integer
+          nullable: true
+        klassci_enseignant_id:
+          type: integer
+          nullable: true
+        titre:
+          type: string
+        description:
+          type: string
+          nullable: true
+        type:
+          type: string
+        status:
+          type: string
+          description: "Statut STOCKE (`brouillon`, `planifiee`, `en_cours`, `terminee`…)."
+        date_evaluation:
+          type: string
+          format: date-time
+          nullable: true
+        deadline_at:
+          type: string
+          format: date-time
+          nullable: true
+        duree_minutes:
+          type: integer
+          nullable: true
+        coefficient:
+          $ref: '#/components/schemas/Decimal2'
+        bareme:
+          $ref: '#/components/schemas/Decimal2'
+        is_online:
+          type: boolean
+        allow_retake:
+          type: boolean
+        max_attempts:
+          type: integer
+          nullable: true
+        shuffle_questions:
+          type: boolean
+        show_results:
+          type: boolean
+        is_published:
+          type: boolean
+        notes_published:
+          type: boolean
+        is_locked:
+          type: boolean
+        locked_at:
+          type: string
+          format: date-time
+          nullable: true
+        matiere_nom:
+          type: string
+          nullable: true
+        classe_nom:
+          type: string
+          nullable: true
+        enseignant_nom:
+          type: string
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        deleted_at:
+          type: string
+          format: date-time
+          nullable: true
+
+    EvaluationQuestionPublic:
+      type: object
+      description: "Une question SANS son corrige (`correct_answers` et `explanation` sont masques sur le modele)."
+      properties:
+        id:
+          type: integer
+        evaluation_id:
+          type: integer
+        question:
+          type: string
+        type:
+          type: string
+          enum: [qcm, qcm_multiple, vrai_faux, reponse_courte, dissertation]
+        ordre:
+          type: integer
+        points:
+          $ref: '#/components/schemas/Decimal2'
+        options:
+          nullable: true
+          description: "Choix proposes (qcm) ; `null` pour les autres types."
+        is_required:
+          type: boolean
+        institution_id:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    ValidationFailed:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        message:
+          type: string
+          example: "Validation failed"
+        errors:
+          type: object
+          description: "Messages par champ."
+          additionalProperties:
+            type: array
+            items:
+              type: string
+
+    ErrorWithDetail:
+      type: object
+      description: |
+        Forme de 500 portee par quelques routes anciennes : une cle `error`
+        AU SINGULIER, hors de l enveloppe canonique. Conservee telle quelle
+        pour ne pas casser le client.
+      properties:
+        success:
+          type: boolean
+          example: false
+        message:
+          type: string
+        error:
+          type: string
+          example: "Une erreur est survenue."
+
     ErrorResponse:
       type: object
       properties:
@@ -2456,6 +2721,1230 @@ paths:
           description: "Permission denied"
         '404':
           description: "Not found"
+
+  # ============ CYCLE EVALUATION (#892) ============
+  # Chaque code et chaque cle ci-dessous a ete MESURE par appel reel de la
+  # route (app.debug=false, comme en production). Les references au code
+  # sont dans la PR qui a ecrit ce bloc.
+
+  /evaluations/student:
+    get:
+      tags:
+        - Evaluations
+      operationId: listMyEvaluations
+      summary: "Evaluations publiees de la classe de l eleve"
+      description: |
+        La classe est lue sur KLASSCI (`me/dashboard`). Ne remonte que les
+        evaluations publiees, de statut `planifiee`, `en_cours` ou `terminee`,
+        ayant au moins une question — triees par date decroissante.
+
+        Chaque element est l evaluation enrichie : `questions_count`, la
+        derniere copie de l eleve (`student_submission`), et, relayes depuis
+        KLASSCI sans garantie de forme, `programmation`, `lms_integration`,
+        `classe`, `matiere`. Les questions et les copies des autres eleves ne
+        sont PAS chargees.
+
+        Une erreur 4xx renvoyee par KLASSCI est relayee avec SON statut, et un
+        message generique.
+      security:
+        - sanctum: []
+      responses:
+        '200':
+          description: "Liste (eventuellement vide)"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      allOf:
+                        - $ref: '#/components/schemas/EvaluationRecord'
+                        - type: object
+                          properties:
+                            questions_count:
+                              type: integer
+                            student_submission:
+                              $ref: '#/components/schemas/EvaluationSubmissionRecord'
+                            programmation:
+                              type: object
+                              nullable: true
+                              additionalProperties: true
+                            lms_integration:
+                              nullable: true
+                            classe:
+                              nullable: true
+                              description: "Relaye depuis KLASSCI, forme non garantie par le LMS."
+                            matiere:
+                              nullable: true
+                              description: "Relaye depuis KLASSCI, forme non garantie par le LMS."
+        '401':
+          description: |
+            Non authentifie, compte sans identifiant KLASSCI synchronise, ou
+            sans jeton KLASSCI.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageOnly'
+        '404':
+          description: "KLASSCI ne rattache l eleve a aucune classe (« Classe non trouvee »)"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageOnly'
+        '503':
+          description: "KLASSCI indisponible (en-tete `Retry-After`)"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageOnly'
+        '500':
+          description: "Erreur interne"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageOnly'
+
+  /my-grades:
+    get:
+      tags:
+        - Evaluations
+      operationId: getMyGrades
+      summary: "Notes de l eleve, par matiere"
+      description: |
+        Ne compte que les notes FINALES : copies `corrige`, ou `soumis` sans
+        question a correction manuelle ; les tentatives d entrainement
+        (`feedback` commencant par `[PRACTICE]`) et les evaluations non
+        publiees sont exclues.
+
+        `moyenne` est ponderee par `coefficient` ; `moyenne_generale` est la
+        moyenne simple des moyennes de matiere. Toutes deux valent `0` (entier)
+        quand il n y a rien a moyenner.
+      security:
+        - sanctum: []
+      responses:
+        '200':
+          description: "Notes agregees"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      matieres:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            matiere_id:
+                              type: integer
+                              description: "`0` quand l evaluation n a pas de matiere KLASSCI"
+                            matiere_nom:
+                              type: string
+                            moyenne:
+                              type: number
+                            total_evaluations:
+                              type: integer
+                            evaluations:
+                              type: array
+                              items:
+                                type: object
+                                properties:
+                                  evaluation_id:
+                                    type: integer
+                                  titre:
+                                    type: string
+                                  type:
+                                    type: string
+                                  note:
+                                    type: string
+                                    pattern: '^-?\d+\.\d{2}$'
+                                    nullable: true
+                                    description: "Note sur 20, decimal en chaine"
+                                  coefficient:
+                                    description: "Decimal en chaine ; l entier `1` quand l evaluation n en a pas"
+                                  date_evaluation:
+                                    type: string
+                                    format: date-time
+                                    nullable: true
+                                  date_soumission:
+                                    type: string
+                                    format: date-time
+                                    nullable: true
+                                  temps_passe:
+                                    nullable: true
+                                    description: "Toujours `null` aujourd hui : aucune donnee ne l alimente."
+                      moyenne_generale:
+                        type: number
+                      total_matieres:
+                        type: integer
+                      total_evaluations:
+                        type: integer
+        '401':
+          description: "Non authentifie, ou compte sans identifiant KLASSCI synchronise"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageOnly'
+        '500':
+          description: "Erreur interne"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorWithDetail'
+
+  /evaluations/{id}/start:
+    post:
+      tags:
+        - Evaluations
+      operationId: startEvaluation
+      summary: "Demarrer (ou reprendre) une tentative"
+      description: |
+        Reservee aux eleves. Aucun corps de requete : l identite vient du jeton.
+
+        Si une tentative `en_cours` existe, elle est REPRISE (meme `id`) ;
+        sinon une nouvelle copie est creee. Une evaluation terminee se passe
+        en mode entrainement (`is_practice: true`) : fenetre, quota et reprise
+        n y sont pas appliques, et la note n est pas officielle.
+
+        Limite : 300 requetes / minute.
+      security:
+        - sanctum: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: |
+            Tentative demarree (« Evaluation demarree », « Mode entrainement
+            demarre ») ou reprise (« Reprise de la tentative en cours »).
+            `window` et `is_practice` sont a la RACINE, hors de `data`.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  data:
+                    $ref: '#/components/schemas/EvaluationSubmissionRecord'
+                  window:
+                    $ref: '#/components/schemas/EvaluationWindow'
+                  is_practice:
+                    type: boolean
+        '401':
+          description: "Non authentifie, ou compte sans jeton KLASSCI"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageOnly'
+        '403':
+          description: |
+            L un de ces refus, que `message` nomme :
+            - l appelant n est pas eleve (message generique) ;
+            - fenetre fermee — la reponse porte alors `window` a la racine ;
+            - nombre maximum de tentatives atteint ;
+            - reprise interdite (`allow_retake: false`) ;
+            - evaluation qui ne se passe pas en ligne.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  window:
+                    $ref: '#/components/schemas/EvaluationWindow'
+        '404':
+          description: "Evaluation inexistante ou non publiee (« Evaluation non disponible »)"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageOnly'
+        '422':
+          description: "L evaluation n a encore aucune question"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageOnly'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '503':
+          description: |
+            Fenetre non verifiable : KLASSCI injoignable. Refus par prudence
+            (aucune tentative creee) — reessayer.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageOnly'
+
+  /evaluations/{id}/submit:
+    post:
+      tags:
+        - Evaluations
+      operationId: submitEvaluation
+      summary: "Rendre la tentative en cours"
+      description: |
+        Clot la tentative `en_cours` ouverte par `/start` — n en cree jamais.
+        La correction automatique s applique ; les dissertations attendent une
+        notation manuelle (`/submissions/{submission}/grade`).
+
+        Quand `show_results` est faux, `score` et `note_sur_20` sont RETIRES
+        de la reponse (a la racine de `data` comme dans `data.submission`).
+
+        Limite : 60 requetes / minute.
+      security:
+        - sanctum: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - answers
+              properties:
+                answers:
+                  type: object
+                  minProperties: 1
+                  description: |
+                    MAP indexee par identifiant de question. Chaque valeur est
+                    une chaine (<= 10 000 caracteres), ou un tableau de chaines
+                    pour `qcm_multiple` (<= 200 elements). `""`, `[]` ou `null` =
+                    question non repondue (0 point).
+                  additionalProperties:
+                    oneOf:
+                      - type: string
+                        maxLength: 10000
+                        nullable: true
+                      - type: array
+                        maxItems: 200
+                        items:
+                          type: string
+                          maxLength: 10000
+                  example:
+                    "12": "A"
+                    "13": ["A", "C"]
+                submitted_at:
+                  type: string
+                  description: "Format `Y-m-d\\TH:i:s\\Z` ; l heure du serveur par defaut."
+                  example: "2026-09-25T14:30:00Z"
+      responses:
+        '201':
+          description: "Copie rendue"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  data:
+                    type: object
+                    properties:
+                      submission:
+                        allOf:
+                          - $ref: '#/components/schemas/EvaluationSubmissionRecord'
+                          - type: object
+                            properties:
+                              evaluation:
+                                $ref: '#/components/schemas/EvaluationRecord'
+                      score:
+                        type: string
+                        pattern: '^-?\d+\.\d{2}$'
+                        nullable: true
+                        description: "Absent quand `show_results` est faux"
+                      note_sur_20:
+                        type: string
+                        pattern: '^-?\d+\.\d{2}$'
+                        nullable: true
+                        description: "Absent quand `show_results` est faux"
+        '401':
+          description: "Non authentifie"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageOnly'
+        '403':
+          description: |
+            Message generique. L appelant n est pas eleve, OU l evaluation
+            n existe pas / n est pas publiee, OU sa date limite est passee :
+            une evaluation inconnue rend 403, pas 404.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageOnly'
+        '409':
+          description: "Aucune tentative en cours : la demarrer avec `/start` avant de la rendre"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageOnly'
+        '422':
+          description: "`answers` absent, vide, ou d un type refuse"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          description: "Erreur interne"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageOnly'
+
+  /evaluations/{id}/time-status:
+    get:
+      tags:
+        - Evaluations
+      operationId: getEvaluationTimeStatus
+      summary: "Fenetre de passage et heure du serveur"
+      description: |
+        Informatif : si KLASSCI est injoignable, `window` vaut `null` et la
+        reponse reste 200. C est `/start` qui refuse, pas cette route.
+      security:
+        - sanctum: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: "Etat temporel"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      window:
+                        $ref: '#/components/schemas/EvaluationWindow'
+                      server_time:
+                        type: string
+                        format: date-time
+        '401':
+          description: "Non authentifie, ou compte sans jeton KLASSCI"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageOnly'
+        '404':
+          description: "Evaluation non trouvee"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageOnly'
+
+  /evaluations/{id}/my-submission:
+    get:
+      tags:
+        - Evaluations
+      operationId: getMySubmission
+      summary: "Derniere copie de l eleve, et son corrige apres delai"
+      description: |
+        Rend la tentative de plus haut numero, quel que soit son statut.
+
+        Le corrige (`correct_answers`, `explanation` sur chaque question)
+        n apparait qu a partir de `correction_available_at` : 7 jours apres
+        la remise. Avant, les questions sont rendues sans lui. Quand
+        `show_results` est faux, `score` et `note_sur_20` valent `null`.
+      security:
+        - sanctum: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: "La copie"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      id:
+                        type: integer
+                      evaluation_id:
+                        type: integer
+                      attempt:
+                        type: integer
+                      status:
+                        type: string
+                        enum: [en_cours, soumis, corrige]
+                      started_at:
+                        type: string
+                        format: date-time
+                        nullable: true
+                      submitted_at:
+                        type: string
+                        format: date-time
+                        nullable: true
+                      score:
+                        type: string
+                        pattern: '^-?\d+\.\d{2}$'
+                        nullable: true
+                      note_sur_20:
+                        type: string
+                        pattern: '^-?\d+\.\d{2}$'
+                        nullable: true
+                      feedback:
+                        type: string
+                        nullable: true
+                      questions:
+                        type: array
+                        items:
+                          allOf:
+                            - $ref: '#/components/schemas/EvaluationQuestionPublic'
+                            - type: object
+                              properties:
+                                correct_answers:
+                                  description: "Present seulement une fois `correction_available` vrai"
+                                explanation:
+                                  type: string
+                                  nullable: true
+                                  description: "Present seulement une fois `correction_available` vrai"
+                      answers:
+                        type: object
+                        additionalProperties: true
+                      correction_available:
+                        type: boolean
+                      correction_available_at:
+                        type: string
+                        format: date-time
+                        nullable: true
+                      correction_delay_days:
+                        type: integer
+                        example: 7
+                      evaluation:
+                        type: object
+                        properties:
+                          id:
+                            type: integer
+                          titre:
+                            type: string
+                          bareme:
+                            $ref: '#/components/schemas/Decimal2'
+                          coefficient:
+                            $ref: '#/components/schemas/Decimal2'
+        '401':
+          description: "Non authentifie, ou compte sans identifiant KLASSCI synchronise"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageOnly'
+        '404':
+          description: "Evaluation non trouvee, ou aucune copie de l eleve pour elle"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageOnly'
+        '500':
+          description: "Erreur interne"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageOnly'
+
+  /evaluations/{id}/publish:
+    post:
+      tags:
+        - Evaluations
+      operationId: publishEvaluation
+      summary: "Publier une evaluation"
+      description: |
+        Rend l evaluation visible aux eleves : `is_published` vrai, `status`
+        `planifiee`. Aucun corps de requete. Republier une evaluation deja
+        publiee est accepte.
+
+        Roles : enseignant (proprietaire de l evaluation) ou administrateur.
+        Les coordinateurs ne publient pas.
+      security:
+        - sanctum: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: "Evaluation publiee"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  data:
+                    $ref: '#/components/schemas/EvaluationRecord'
+        '401':
+          description: "Non authentifie"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageOnly'
+        '403':
+          description: |
+            Role insuffisant, coordinateur, enseignant non proprietaire — ou
+            evaluation inconnue dans cet etablissement : elle rend 403, pas 404.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageOnly'
+        '422':
+          description: "Aucune question, ou evaluation deja terminee"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageOnly'
+
+  /evaluations/{id}/preview:
+    get:
+      tags:
+        - Evaluations
+      operationId: previewEvaluation
+      summary: "Previsualiser une evaluation, sans son corrige"
+      description: |
+        Roles : enseignant, coordinateur, administrateur. Un coordinateur ne
+        previsualise que les evaluations terminees. `correct_answers` n est
+        jamais expose ici.
+      security:
+        - sanctum: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: "Apercu"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      id:
+                        type: integer
+                      titre:
+                        type: string
+                      description:
+                        type: string
+                        nullable: true
+                      type:
+                        type: string
+                      duree_minutes:
+                        type: integer
+                        nullable: true
+                      coefficient:
+                        $ref: '#/components/schemas/Decimal2'
+                      bareme:
+                        $ref: '#/components/schemas/Decimal2'
+                      date_evaluation:
+                        type: string
+                        format: date-time
+                        nullable: true
+                      questions:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            id:
+                              type: integer
+                            question:
+                              type: string
+                            type:
+                              type: string
+                            points:
+                              $ref: '#/components/schemas/Decimal2'
+                            ordre:
+                              type: integer
+                            options:
+                              nullable: true
+                      questions_count:
+                        type: integer
+                      total_points:
+                        type: number
+                        description: "Somme des points — un NOMBRE, contrairement a `points` par question"
+                      is_preview:
+                        type: boolean
+                        example: true
+        '401':
+          description: "Non authentifie"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageOnly'
+        '403':
+          description: "Role insuffisant, ou coordinateur sur une evaluation non terminee"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageOnly'
+        '404':
+          description: "Evaluation non trouvee"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageOnly'
+        '500':
+          description: "Erreur interne"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorWithDetail'
+
+  /evaluations/{id}/submissions:
+    get:
+      tags:
+        - Evaluations
+      operationId: listEvaluationSubmissions
+      summary: "Copies d une evaluation"
+      description: |
+        Toutes les tentatives, entrainements compris, triees par remise
+        decroissante. Lecture : enseignant proprietaire, coordinateur de
+        l etablissement, administrateur.
+      security:
+        - sanctum: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: "Copies"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: integer
+                        evaluation_id:
+                          type: integer
+                        klassci_etudiant_id:
+                          type: integer
+                        student_name:
+                          type: string
+                          description: "`Etudiant #<id>` quand aucun compte local ne correspond"
+                        attempt:
+                          type: integer
+                        status:
+                          type: string
+                          enum: [en_cours, soumis, corrige]
+                        started_at:
+                          type: string
+                          format: date-time
+                          nullable: true
+                        submitted_at:
+                          type: string
+                          format: date-time
+                          nullable: true
+                        score:
+                          type: string
+                          pattern: '^-?\d+\.\d{2}$'
+                          nullable: true
+                        note_sur_20:
+                          type: string
+                          pattern: '^-?\d+\.\d{2}$'
+                          nullable: true
+                        synced_to_klassci:
+                          type: boolean
+                        synced_at:
+                          type: string
+                          format: date-time
+                          nullable: true
+        '401':
+          description: "Non authentifie"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageOnly'
+        '403':
+          description: |
+            Role insuffisant, enseignant non proprietaire — ou evaluation
+            inconnue dans cet etablissement : elle rend 403, pas 404.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageOnly'
+        '500':
+          description: "Erreur interne"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorWithDetail'
+
+  /evaluations/{id}/submissions/{submission}/grade:
+    post:
+      tags:
+        - Evaluations
+      operationId: gradeEvaluationSubmission
+      summary: "Noter les dissertations d une copie"
+      description: |
+        Attribue les points des questions `dissertation`, recalcule
+        `note_sur_20` et passe la copie en `corrige`. Chaque dissertation de
+        l evaluation doit recevoir des points. Les points des autres questions
+        restent ceux de la correction automatique.
+
+        Enseignant proprietaire ou administrateur ; les coordinateurs ne
+        notent pas. `data.student` est le compte complet de l eleve : au-dela
+        des champs de `User`, il porte notamment `klassci_id`, `klassci_data`,
+        `phone`, `institution_id`.
+      security:
+        - sanctum: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: submission
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - points
+              properties:
+                points:
+                  type: object
+                  minProperties: 1
+                  description: "MAP `{ \"<question_id>\": points }`, points >= 0"
+                  additionalProperties:
+                    type: number
+                    minimum: 0
+                  example:
+                    "14": 4
+                feedback:
+                  type: string
+                  maxLength: 1000
+                  nullable: true
+      responses:
+        '200':
+          description: "Copie notee"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  data:
+                    allOf:
+                      - $ref: '#/components/schemas/EvaluationSubmissionRecord'
+                      - type: object
+                        properties:
+                          student:
+                            $ref: '#/components/schemas/User'
+        '401':
+          description: "Non authentifie"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageOnly'
+        '403':
+          description: |
+            Role insuffisant, coordinateur, enseignant non proprietaire — ou
+            evaluation inconnue dans cet etablissement : elle rend 403, pas 404.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageOnly'
+        '404':
+          description: "Copie inexistante, ou appartenant a une autre evaluation"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageOnly'
+        '409':
+          description: "Copie encore `en_cours` : elle ne peut pas etre notee"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageOnly'
+        '422':
+          description: |
+            `points` absent ou invalide (forme `ValidationFailed`) ; ou
+            evaluation sans dissertation, ou dissertation sans points (forme
+            `MessageOnly`).
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/ValidationFailed'
+                  - $ref: '#/components/schemas/MessageOnly'
+
+  /evaluations/{id}/results-by-class:
+    get:
+      tags:
+        - Evaluations
+      operationId: getEvaluationResultsByClass
+      summary: "Resultats par eleve de la classe, et statistiques"
+      description: |
+        Une ligne par eleve de la classe (liste lue sur KLASSCI), qu il ait
+        passe l evaluation ou non (`status: non_passee`). Les tentatives
+        d entrainement sont ignorees. Lecture : enseignant proprietaire,
+        coordinateur de l etablissement, admin d etablissement (`superAdmin`).
+
+        `data.evaluation` est l evaluation enrichie : ses questions (sans
+        corrige), toutes ses copies, et des champs de presentation.
+
+        Une erreur 4xx renvoyee par KLASSCI est relayee avec SON statut, et un
+        message generique.
+      security:
+        - sanctum: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: "Resultats"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      evaluation:
+                        allOf:
+                          - $ref: '#/components/schemas/EvaluationRecord'
+                          - type: object
+                            properties:
+                              questions:
+                                type: array
+                                items:
+                                  $ref: '#/components/schemas/EvaluationQuestionPublic'
+                              submissions:
+                                type: array
+                                items:
+                                  $ref: '#/components/schemas/EvaluationSubmissionRecord'
+                              classe:
+                                nullable: true
+                              matiere:
+                                nullable: true
+                              enseignant:
+                                nullable: true
+                              date_evaluation_formatted:
+                                type: string
+                                nullable: true
+                                example: "28/09/2026 à 16:44"
+                              date_evaluation_short:
+                                type: string
+                                nullable: true
+                                example: "28/09/2026"
+                              can_be_edited:
+                                type: boolean
+                              submissions_count:
+                                type: integer
+                              questions_count:
+                                type: integer
+                              effective_status:
+                                type: string
+                      resultats:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            etudiant_id:
+                              type: integer
+                            etudiant_nom:
+                              type: string
+                            etudiant_prenom:
+                              type: string
+                            etudiant_nom_complet:
+                              type: string
+                            note:
+                              type: string
+                              pattern: '^-?\d+\.\d{2}$'
+                              nullable: true
+                              description: "Note sur 20"
+                            score:
+                              type: string
+                              pattern: '^-?\d+\.\d{2}$'
+                              nullable: true
+                            status:
+                              type: string
+                              enum: [non_passee, en_cours, soumis, corrige]
+                            submitted_at:
+                              type: string
+                              format: date-time
+                              nullable: true
+                            attempt:
+                              type: integer
+                              nullable: true
+                            feedback:
+                              type: string
+                              nullable: true
+                      statistiques:
+                        type: object
+                        properties:
+                          total_etudiants:
+                            type: integer
+                          etudiants_soumis:
+                            type: integer
+                            description: "Copies `soumis` ou `corrige`"
+                          etudiants_en_cours:
+                            type: integer
+                          etudiants_non_passes:
+                            type: integer
+                          taux_participation:
+                            type: number
+                            description: "Pourcentage, arrondi a 2 decimales"
+                          moyenne_classe:
+                            type: number
+                            nullable: true
+                          note_max:
+                            type: number
+                            nullable: true
+                          note_min:
+                            type: number
+                            nullable: true
+        '401':
+          description: "Non authentifie, ou enseignant sans jeton KLASSCI"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageOnly'
+        '403':
+          description: |
+            Role insuffisant, enseignant non proprietaire — ou evaluation
+            inconnue dans cet etablissement : elle rend 403, pas 404.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageOnly'
+        '503':
+          description: "KLASSCI indisponible (en-tete `Retry-After`)"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageOnly'
+        '500':
+          description: "Erreur interne"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorWithDetail'
+
+  /evaluations/{id}/sync-klassci:
+    post:
+      tags:
+        - Evaluations
+      operationId: syncEvaluationNotesToKlassci
+      summary: "Envoyer les notes a KLASSCI"
+      description: |
+        Envoie a KLASSCI la note sur 20 de chaque copie `soumis` ou `corrige`
+        (entrainements exclus), puis marque l evaluation `notes_published` et
+        ses copies `synced_to_klassci`. Aucun corps de requete.
+
+        Bloque (409) tant qu une copie a dissertation n est pas notee.
+        `data` est la reponse de KLASSCI, relayee telle quelle.
+
+        Roles : enseignant, coordinateur, administrateur.
+      security:
+        - sanctum: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: "Notes envoyees"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  data:
+                    description: "Reponse de KLASSCI, forme non garantie par le LMS"
+        '400':
+          description: "L evaluation n est liee a aucune evaluation KLASSCI"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageOnly'
+        '401':
+          description: "Non authentifie, ou compte sans jeton KLASSCI"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageOnly'
+        '403':
+          description: "Role insuffisant"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageOnly'
+        '404':
+          description: "Evaluation non trouvee"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageOnly'
+        '409':
+          description: "Une copie a dissertation n est pas encore notee"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageOnly'
+        '500':
+          description: "Echec, y compris une panne de KLASSCI (rendue en 500, pas en 503)"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorWithDetail'
+
+  /evaluations/{id}/sync-notes:
+    post:
+      tags:
+        - Evaluations
+      operationId: markEvaluationNotesSynced
+      summary: "Marquer les copies comme synchronisees (ne transmet rien)"
+      description: |
+        ATTENTION : cette route ne transmet AUCUNE note a KLASSCI. Elle marque
+        `synced_to_klassci` les copies `soumis` qui ne l etaient pas, et compte
+        combien elle en a marquees. Pour envoyer reellement les notes, utiliser
+        `/evaluations/{id}/sync-klassci`.
+
+        Bloque (409) tant qu une copie a dissertation n est pas notee. Une
+        evaluation inconnue rend 500, pas 404.
+
+        Roles : enseignant, coordinateur, administrateur.
+      security:
+        - sanctum: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: |
+            Copies marquees. `synced_count` et `errors` sont a la RACINE ;
+            `errors` est absent quand il n y avait rien a marquer.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  synced_count:
+                    type: integer
+                  errors:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        submission_id:
+                          type: integer
+                        student_id:
+                          type: integer
+                        error:
+                          type: string
+        '401':
+          description: "Non authentifie"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageOnly'
+        '403':
+          description: "Role insuffisant"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageOnly'
+        '409':
+          description: "Une copie a dissertation n est pas encore notee"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageOnly'
+        '500':
+          description: "Echec, y compris evaluation inconnue"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorWithDetail'
 
   # ============ DASHBOARD ============
   /dashboard/student:

@@ -3345,9 +3345,9 @@ paths:
       operationId: previewEvaluation
       summary: "Previsualiser une evaluation, sans son corrige"
       description: |
-        Roles : enseignant, coordinateur, administrateur. Un coordinateur ne
-        previsualise que les evaluations terminees. `correct_answers` n est
-        jamais expose ici.
+        Lecture : enseignant proprietaire de l evaluation, coordinateur de
+        l etablissement, administrateur. Un coordinateur ne previsualise que
+        les evaluations terminees. `correct_answers` n est jamais expose ici.
       security:
         - sanctum: []
       parameters:
@@ -3421,13 +3421,10 @@ paths:
               schema:
                 $ref: '#/components/schemas/MessageOnly'
         '403':
-          description: "Role insuffisant, ou coordinateur sur une evaluation non terminee"
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/MessageOnly'
-        '404':
-          description: "Evaluation non trouvee"
+          description: |
+            Role insuffisant, enseignant non proprietaire, coordinateur sur une
+            evaluation non terminee — ou evaluation inconnue dans cet
+            etablissement : elle rend 403, pas 404.
           content:
             application/json:
               schema:
@@ -3810,7 +3807,8 @@ paths:
         Bloque (409) tant qu une copie a dissertation n est pas notee.
         `data` est la reponse de KLASSCI, relayee telle quelle.
 
-        Roles : enseignant, coordinateur, administrateur.
+        Enseignant proprietaire de l evaluation ou administrateur. Les
+        coordinateurs ne synchronisent pas, comme ils ne publient pas.
       security:
         - sanctum: []
       parameters:
@@ -3846,13 +3844,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/MessageOnly'
         '403':
-          description: "Role insuffisant"
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/MessageOnly'
-        '404':
-          description: "Evaluation non trouvee"
+          description: |
+            Role insuffisant, coordinateur, enseignant non proprietaire — ou
+            evaluation inconnue dans cet etablissement : elle rend 403, pas 404.
           content:
             application/json:
               schema:
@@ -3882,10 +3876,10 @@ paths:
         combien elle en a marquees. Pour envoyer reellement les notes, utiliser
         `/evaluations/{id}/sync-klassci`.
 
-        Bloque (409) tant qu une copie a dissertation n est pas notee. Une
-        evaluation inconnue rend 500, pas 404.
+        Bloque (409) tant qu une copie a dissertation n est pas notee.
 
-        Roles : enseignant, coordinateur, administrateur.
+        Enseignant proprietaire de l evaluation ou administrateur. Les
+        coordinateurs ne synchronisent pas, comme ils ne publient pas.
       security:
         - sanctum: []
       parameters:
@@ -3928,7 +3922,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/MessageOnly'
         '403':
-          description: "Role insuffisant"
+          description: |
+            Role insuffisant, coordinateur, enseignant non proprietaire — ou
+            evaluation inconnue dans cet etablissement : elle rend 403.
           content:
             application/json:
               schema:
@@ -3940,7 +3936,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/MessageOnly'
         '500':
-          description: "Echec, y compris evaluation inconnue"
+          description: "Echec interne"
           content:
             application/json:
               schema:

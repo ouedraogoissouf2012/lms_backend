@@ -23,7 +23,10 @@ use Tests\TestCase;
  * `{success, message, errors?}`) sont migrables sans changer le JSON client.
  *
  * MIGRÉES (et donc verrouillées ici) — `syncToKlassci` :
- *  - 404 `{success, message}`                  (évaluation introuvable)
+ *  - 404 `{success, message}`                  (évaluation introuvable) — branche
+ *    désormais INATTEIGNABLE : depuis que la route exige d'être propriétaire
+ *    (SyncEvaluationNotesRequest), une évaluation inconnue est refusée en 403
+ *    par `authorize()`, AVANT le contrôleur — comme `publish` et `submissions`.
  *  - 400 `{success, message}`                  (aucune évaluation KLASSCI liée)
  *  - 200 `{success, message, data}`            (notes synchronisées)
  *
@@ -62,14 +65,19 @@ final class EvaluationKlassciSyncResponseTest extends TestCase
 
     // ───────────────────────── syncToKlassci ─────────────────────────
 
-    public function test_sync_to_klassci_not_found_returns_404_error_envelope(): void
+    /**
+     * Une évaluation inconnue n'a pas de propriétaire : `authorize()` la refuse
+     * avant le contrôleur. 403 et non 404, comme sur `publish` — répondre 404
+     * ici dirait à l'appelant quelles évaluations existent ailleurs.
+     */
+    public function test_sync_to_klassci_unknown_evaluation_is_refused_before_the_controller(): void
     {
         Sanctum::actingAs($this->teacher);
 
         $response = $this->postJson('/api/evaluations/999999/sync-klassci');
 
-        $response->assertStatus(404)
-            ->assertExactJson(['success' => false, 'message' => 'Évaluation non trouvée']);
+        $response->assertStatus(403)
+            ->assertJsonPath('success', false);
     }
 
     public function test_sync_to_klassci_without_linked_evaluation_returns_400_error_envelope(): void
@@ -77,6 +85,8 @@ final class EvaluationKlassciSyncResponseTest extends TestCase
         // Pas d'évaluation KLASSCI liée → la branche d'envoi est sautée → 400.
         $evaluation = Evaluation::factory()->create([
             'institution_id'        => $this->institution->id,
+            // Possédée par l'enseignant du test : synchroniser exige d'être propriétaire.
+            'klassci_enseignant_id' => $this->teacher->klassci_enseignant_id,
             'klassci_evaluation_id' => null,
         ]);
 
@@ -97,6 +107,8 @@ final class EvaluationKlassciSyncResponseTest extends TestCase
 
         $evaluation = Evaluation::factory()->create([
             'institution_id'        => $this->institution->id,
+            // Possédée par l'enseignant du test : synchroniser exige d'être propriétaire.
+            'klassci_enseignant_id' => $this->teacher->klassci_enseignant_id,
             'klassci_evaluation_id' => 7777,
         ]);
         EvaluationSubmission::factory()->create([
@@ -132,6 +144,8 @@ final class EvaluationKlassciSyncResponseTest extends TestCase
 
         $evaluation = Evaluation::factory()->create([
             'institution_id'        => $this->institution->id,
+            // Possédée par l'enseignant du test : synchroniser exige d'être propriétaire.
+            'klassci_enseignant_id' => $this->teacher->klassci_enseignant_id,
             'klassci_evaluation_id' => 8888,
         ]);
         EvaluationQuestion::factory()->create([

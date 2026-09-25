@@ -1603,6 +1603,282 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
+  /training-sessions/{trainingSession}/publier:
+    post:
+      tags:
+        - Session de formation
+      summary: "Publier une periode"
+      description: |
+        Transition NOMMEE, et non un `PATCH status` : un statut libre
+        laisserait passer `brouillon -> archivee` ou le retour d une periode
+        annulee.
+
+        De `brouillon` vers `publiee`.
+
+        EXIGE une date de debut : `phase` se derive des dates, et sans `starts_on` la periode n en aurait aucune.
+
+        Aucun corps de requete : l operation EST dans l URL.
+      security:
+        - sanctum: []
+      parameters:
+        - name: trainingSession
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        '200':
+          description: "Transition appliquee"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  data:
+                    type: object
+                    properties:
+                      id:
+                        type: integer
+                      libelle:
+                        type: string
+                      status:
+                        type: string
+                      phase:
+                        type: string
+        '403':
+          description: "Role insuffisant : organiser une formation est un acte de gestion"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: "Periode introuvable DANS CET ETABLISSEMENT"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: |
+            Transition interdite depuis le statut courant, que le message
+            porte : « transition invalide » n apprend rien a qui vient de
+            cliquer.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /training-sessions/{trainingSession}/annuler:
+    post:
+      tags:
+        - Session de formation
+      summary: "Annuler une periode"
+      description: |
+        Transition NOMMEE, et non un `PATCH status` : un statut libre
+        laisserait passer `brouillon -> archivee` ou le retour d une periode
+        annulee.
+
+        De `brouillon ou publiee` vers `annulee`.
+
+        IRREVERSIBLE. Ne desinscrit PERSONNE : les inscriptions vivent dans `classe_etudiant`.
+
+        Aucun corps de requete : l operation EST dans l URL.
+      security:
+        - sanctum: []
+      parameters:
+        - name: trainingSession
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        '200':
+          description: "Transition appliquee"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  data:
+                    type: object
+                    properties:
+                      id:
+                        type: integer
+                      libelle:
+                        type: string
+                      status:
+                        type: string
+                      phase:
+                        type: string
+        '403':
+          description: "Role insuffisant : organiser une formation est un acte de gestion"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: "Periode introuvable DANS CET ETABLISSEMENT"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: |
+            Transition interdite depuis le statut courant, que le message
+            porte : « transition invalide » n apprend rien a qui vient de
+            cliquer.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /training-sessions/{trainingSession}/cloturer:
+    post:
+      tags:
+        - Session de formation
+      summary: "Cloturer une periode"
+      description: |
+        Transition NOMMEE, et non un `PATCH status` : un statut libre
+        laisserait passer `brouillon -> archivee` ou le retour d une periode
+        annulee.
+
+        De `publiee` vers `cloturee`.
+
+        Decision humaine : une periode dont les dates sont passees reste `publiee`, c est sa PHASE qui dit terminee.
+
+        Aucun corps de requete : l operation EST dans l URL.
+      security:
+        - sanctum: []
+      parameters:
+        - name: trainingSession
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        '200':
+          description: "Transition appliquee"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  data:
+                    type: object
+                    properties:
+                      id:
+                        type: integer
+                      libelle:
+                        type: string
+                      status:
+                        type: string
+                      phase:
+                        type: string
+        '403':
+          description: "Role insuffisant : organiser une formation est un acte de gestion"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: "Periode introuvable DANS CET ETABLISSEMENT"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: |
+            Transition interdite depuis le statut courant, que le message
+            porte : « transition invalide » n apprend rien a qui vient de
+            cliquer.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /training-sessions/{trainingSession}/archiver:
+    post:
+      tags:
+        - Session de formation
+      summary: "Archiver une periode"
+      description: |
+        Transition NOMMEE, et non un `PATCH status` : un statut libre
+        laisserait passer `brouillon -> archivee` ou le retour d une periode
+        annulee.
+
+        De `cloturee ou annulee` vers `archivee`.
+
+        Etat terminal. `purgee` n est atteignable par AUCUNE route.
+
+        Aucun corps de requete : l operation EST dans l URL.
+      security:
+        - sanctum: []
+      parameters:
+        - name: trainingSession
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        '200':
+          description: "Transition appliquee"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  data:
+                    type: object
+                    properties:
+                      id:
+                        type: integer
+                      libelle:
+                        type: string
+                      status:
+                        type: string
+                      phase:
+                        type: string
+        '403':
+          description: "Role insuffisant : organiser une formation est un acte de gestion"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: "Periode introuvable DANS CET ETABLISSEMENT"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: |
+            Transition interdite depuis le statut courant, que le message
+            porte : « transition invalide » n apprend rien a qui vient de
+            cliquer.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
   /training-sessions:
     get:
       tags:

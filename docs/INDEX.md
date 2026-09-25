@@ -104,7 +104,8 @@ suivra le mauvais guide.
 | [START_IMPROVEMENTS.md](START_IMPROVEMENTS.md) · [IMPROVEMENT_PRIORITIES.md](IMPROVEMENT_PRIORITIES.md) |
 | [PROD_ITEMS_REVISED.md](PROD_ITEMS_REVISED.md) · [SHOULD_HAVE_ITEMS_REVISED.md](SHOULD_HAVE_ITEMS_REVISED.md) · [COULD_HAVE_ITEMS_REVISED.md](COULD_HAVE_ITEMS_REVISED.md) |
 | [TODO_REVISED_EXAMPLE.md](TODO_REVISED_EXAMPLE.md) · [EXECUTION_GUIDE.md](EXECUTION_GUIDE.md) |
-| [../CRITICAL-05_TIER1_COMPLETION.md](../CRITICAL-05_TIER1_COMPLETION.md) · [../OPENAPI_FIX_LOG.md](../OPENAPI_FIX_LOG.md) · [../DOCUMENTATION_PACKAGE.md](../DOCUMENTATION_PACKAGE.md) |
+| [../CRITICAL-05_TIER1_COMPLETION.md](../CRITICAL-05_TIER1_COMPLETION.md) |
+| [archive/2026-04-paquet-documentaire-openapi/](archive/2026-04-paquet-documentaire-openapi/) — le paquet documentaire d'avril (#45) et son journal de correction. Ils prescrivaient une seconde spec et sa copie pour Swagger ; la seule spec est `docs/openapi.yaml` depuis #889 |
 | [archive/2025-notes-diagnostic/](archive/2025-notes-diagnostic/) — 13 notes de diagnostic 2025, déjà archivées |
 
 ---

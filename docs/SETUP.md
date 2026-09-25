@@ -26,21 +26,20 @@ pip3 install pyyaml
 ### 3. Setup Pre-commit Hook
 
 ```bash
-# Make hook executable
-chmod +x .git/hooks/pre-commit
-
-# Test it
-git commit --allow-empty -m "test: pre-commit hook"
+# Use the versioned hooks (#702): file size, method length, hard-coded secrets
+git config core.hooksPath .githooks
 ```
+
+The hook runs only fast guards. OpenAPI checks run in CI (job "Docs Sync").
 
 ### 4. Verify Setup
 
 ```bash
 # Test swagger-cli
-swagger-cli validate docs/openapi-full.yaml
+swagger-cli validate docs/openapi.yaml
 
 # Test Python validator
-python scripts/openapi-validator.py docs/openapi-full.yaml
+python scripts/openapi-validator.py docs/openapi.yaml
 ```
 
 **Expected output:**
@@ -73,37 +72,36 @@ curl -H "Authorization: Bearer $TOKEN" \
 
 ```bash
 # 1. Create in code (controller + route)
-# 2. Add to docs/openapi-full.yaml (see ADDING_NEW_ENDPOINTS.md)
-# 3. Validate
-python scripts/openapi-validator.py docs/openapi-full.yaml
+# 2. Add to docs/openapi.yaml (see ADDING_NEW_ENDPOINTS.md)
+# 3. Guard and validate
+php vendor/bin/phpunit --filter 'OpenApiSyncTest|OpenApiConventionTest'
+python scripts/openapi-validator.py docs/openapi.yaml --json
 
-# 4. Sync files
-cp docs/openapi-full.yaml storage/api-docs/openapi.yaml
-
-# 5. Test in Swagger UI
+# 4. Test in Swagger UI (it serves docs/openapi.yaml directly)
 open http://localhost:8000/api/documentation
 
-# 6. Commit
-git add docs/openapi-full.yaml storage/api-docs/openapi.yaml
+# 5. Commit
+git add docs/openapi.yaml
 git commit -m "feat: Add POST /resource endpoint"
 ```
 
 ### Validate API Documentation
 
 ```bash
-# Full validation (all checks)
-./scripts/validate-api.sh
+# What CI runs (job "Docs Sync" in .github/workflows/security.yml)
+php vendor/bin/phpunit --filter 'OpenApiSyncTest|OpenApiConventionTest'
+python scripts/openapi-validator.py docs/openapi.yaml --json
 
-# Or individually:
+# Optional local tools:
 
 # YAML syntax
-yamllint docs/openapi-full.yaml
+yamllint docs/openapi.yaml
 
 # OpenAPI structure
-swagger-cli validate docs/openapi-full.yaml
+swagger-cli validate docs/openapi.yaml
 
 # Custom rules
-python scripts/openapi-validator.py docs/openapi-full.yaml
+python scripts/openapi-validator.py docs/openapi.yaml
 ```
 
 ### Generate Client SDK
@@ -152,28 +150,15 @@ pip3 install pyyaml
 ### Pre-commit hook not running
 
 ```bash
-# Make it executable
-chmod +x .git/hooks/pre-commit
-
-# Verify
-ls -la .git/hooks/pre-commit
-
-# Should show:
-# -rwxr-xr-x  1 user  staff   ...  pre-commit
+# Should print: .githooks
+git config core.hooksPath
 ```
 
-### "Files are out of sync" error
+### "route(s) API ajoutée(s) sans entrée dans docs/openapi.yaml"
 
-```bash
-# Fix
-cp docs/openapi-full.yaml storage/api-docs/openapi.yaml
-
-# Stage both
-git add docs/openapi-full.yaml storage/api-docs/openapi.yaml
-
-# Retry commit
-git commit -m "..."
-```
+`OpenApiSyncTest` found a route that is neither documented nor listed as debt in
+`tests/Feature/Docs/openapi-coverage-baseline.php`. Document it in `docs/openapi.yaml`.
+There is no copy to keep in sync: Swagger UI reads `docs/openapi.yaml` directly.
 
 ## IDE Integration
 
@@ -241,8 +226,8 @@ For production, update in `config/l5-swagger.php`:
 |------|---------|
 | Start server | `php artisan serve` |
 | View API docs | http://localhost:8000/api/documentation |
-| Validate OpenAPI | `swagger-cli validate docs/openapi-full.yaml` |
-| Run custom validation | `python scripts/openapi-validator.py docs/openapi-full.yaml` |
+| Validate OpenAPI | `swagger-cli validate docs/openapi.yaml` |
+| Run custom validation | `python scripts/openapi-validator.py docs/openapi.yaml` |
 | Generate SDKs | `./scripts/generate-sdks.sh` |
 | Run tests | `php artisan test` |
 | Run specific test | `php artisan test tests/Feature/ExceptionHandlerTest.php` |
@@ -267,24 +252,19 @@ curl -H "Authorization: Bearer $TOKEN" \
 ### Batch Validate All Changes
 
 ```bash
-# In git pre-commit, automatically validates:
-# - YAML syntax
-# - OpenAPI structure
-# - Custom rules
-# - File synchronization
-
-# To bypass (not recommended)
-git commit --no-verify
+# CI validates on every pull request (job "Docs Sync"):
+# - every documented path is a real route, every route is documented or named debt
+# - a single spec exists, and Swagger UI serves it
+# - custom rules (scripts/openapi-validator.py)
+php vendor/bin/phpunit --filter 'OpenApiSyncTest|OpenApiConventionTest'
+python scripts/openapi-validator.py docs/openapi.yaml --json
 ```
 
 ### Compare OpenAPI Versions
 
 ```bash
-# See what changed
-diff docs/openapi-full.yaml docs/openapi-full.yaml.bak
-
-# Or in git
-git diff docs/openapi-full.yaml
+# See what changed (git is the history: no .bak copies)
+git diff docs/openapi.yaml
 ```
 
 ### Generate Documentation Website
@@ -292,7 +272,7 @@ git diff docs/openapi-full.yaml
 ```bash
 # Using ReDoc
 npm install -g redoc-cli
-redoc-cli build docs/openapi-full.yaml -o docs/index.html
+redoc-cli build docs/openapi.yaml -o docs/index.html
 
 # Then open in browser
 open docs/index.html

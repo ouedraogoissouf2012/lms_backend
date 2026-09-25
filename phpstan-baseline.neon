@@ -1249,17 +1249,7 @@ parameters:
 			count: 1
 			path: app/Services/Report/ReportGenerationService.php
 
-		-
-			message: '#^Cannot access offset ''heure_debut'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 1
-			path: app/Services/SeanceDetailQueryService.php
 
-		-
-			message: '#^Cannot access offset ''heure_fin'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 1
-			path: app/Services/SeanceDetailQueryService.php
 
 		-
 			message: '#^Cannot access offset ''id'' on mixed\.$#'
@@ -1315,11 +1305,6 @@ parameters:
 			count: 1
 			path: app/Services/SeanceDetailQueryService.php
 
-		-
-			message: '#^Parameter \#1 \$time of static method Carbon\\Carbon\:\:parse\(\) expects Carbon\\Month\|Carbon\\WeekDay\|DateTimeInterface\|float\|int\|string\|null, mixed given\.$#'
-			identifier: argument.type
-			count: 2
-			path: app/Services/SeanceDetailQueryService.php
 
 		-
 			message: '#^Parameter \#1 \$value of function collect expects Illuminate\\Contracts\\Support\\Arrayable\<\(int\|string\), mixed\>\|iterable\<\(int\|string\), mixed\>\|null, mixed given\.$#'

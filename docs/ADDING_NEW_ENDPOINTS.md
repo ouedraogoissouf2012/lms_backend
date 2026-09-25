@@ -7,9 +7,9 @@ This guide walks you through adding a new endpoint from code to documentation.
 - [ ] Create controller method
 - [ ] Add route in routes/api.php
 - [ ] Test endpoint locally
-- [ ] Add OpenAPI documentation in docs/openapi-full.yaml
-- [ ] Run validation scripts
-- [ ] Copy to storage/api-docs/openapi.yaml
+- [ ] Add OpenAPI documentation in docs/openapi.yaml — the only spec in the repository
+- [ ] Run the OpenAPI guards (`OpenApiSyncTest`, `OpenApiConventionTest`) and the validator
+- [ ] If the route was listed in the coverage baseline, remove its line
 - [ ] Test in Swagger UI
 - [ ] Commit both code and documentation
 
@@ -81,7 +81,7 @@ curl -X POST http://localhost:8000/api/evaluations \
 
 ### Step 4: Document in OpenAPI
 
-Edit: `docs/openapi-full.yaml`
+Edit: `docs/openapi.yaml` (the only spec: CI guards it, Swagger UI serves it)
 
 Find the evaluations section under `paths:` and add:
 
@@ -476,26 +476,32 @@ parameters:
                         format: date-time
 ```
 
-## Step 5: Run Validation
+## Step 5: Run the Guards
 
-See API_VALIDATION.md for validation scripts.
-
-Quick check:
-```bash
-# Check YAML syntax
-yamllint docs/openapi-full.yaml
-
-# View in browser
-open http://localhost:8000/api/documentation
-```
-
-## Step 6: Copy to Storage
-
-After validation passes:
+These are the checks CI runs (`.github/workflows/security.yml`, job "Docs Sync"):
 
 ```bash
-cp docs/openapi-full.yaml storage/api-docs/openapi.yaml
+# Both directions: every documented path is a real route,
+# and every real route is documented or listed as named debt.
+php vendor/bin/phpunit --filter 'OpenApiSyncTest|OpenApiConventionTest'
+
+# Internal quality rules (operationId, error format, roles…)
+python scripts/openapi-validator.py docs/openapi.yaml --json
 ```
+
+See API_VALIDATION.md for the validation rules.
+
+## Step 6: Pay Down the Baseline
+
+Routes that exist without documentation are listed, one per line, in
+`tests/Feature/Docs/openapi-coverage-baseline.php`. That list may only shrink.
+
+- If your route was listed there, remove its line: `OpenApiSyncTest` prints the
+  routes that are now documented.
+- Never add a line by hand to make CI green. A new route is documented, not listed.
+
+There is no copy step: Swagger UI reads `docs/openapi.yaml` directly
+(`config/l5-swagger.php`, `paths.docs`).
 
 ## Step 7: Test in Swagger UI
 
@@ -511,8 +517,8 @@ cp docs/openapi-full.yaml storage/api-docs/openapi.yaml
 ```bash
 git add app/Http/Controllers/EvaluationController.php
 git add routes/api.php
-git add docs/openapi-full.yaml
-git add storage/api-docs/openapi.yaml
+git add docs/openapi.yaml
+git add tests/Feature/Docs/openapi-coverage-baseline.php  # only if you removed a line
 
 git commit -m "feat: Add POST /evaluations endpoint
 

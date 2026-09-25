@@ -53,7 +53,7 @@ docs/COMMIT_CONVENTION.md (new - document format)
 # 1. Modify scripts/openapi-validator.py
 # 2. Add --output json flag
 # 3. Parse JSON in CI/CD pipeline
-# 4. Test: python validator.py docs/openapi-full.yaml --output json
+# 4. Test: python validator.py docs/openapi.yaml --output json
 ```
 
 #### Files to Create/Modify
@@ -110,7 +110,7 @@ README.md (update - link to policy)
 #### How to Implement
 ```bash
 # 1. Create tests/Feature/CodeDocsConsistencyTest.php
-# 2. Parse openapi-full.yaml
+# 2. Parse docs/openapi.yaml
 # 3. Compare with actual routes from routes/api.php
 # 4. Run: php artisan test --filter CodeDocs
 # 5. Fail: If any mismatch found
@@ -330,7 +330,7 @@ name: Validate API with JSON Output
 on:
   pull_request:
     paths:
-      - 'docs/openapi-full.yaml'
+      - 'docs/openapi.yaml'
 
 jobs:
   validate:
@@ -340,7 +340,7 @@ jobs:
       
       - name: Validate OpenAPI
         run: |
-          python scripts/openapi-validator.py docs/openapi-full.yaml --output json > validation-result.json
+          python scripts/openapi-validator.py docs/openapi.yaml --output json > validation-result.json
           
       - name: Check Validation Result
         run: |

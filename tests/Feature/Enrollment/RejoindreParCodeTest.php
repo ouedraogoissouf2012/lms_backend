@@ -312,10 +312,21 @@ final class RejoindreParCodeTest extends TestCase
         $jeton = $this->jeton($this->apprenant($ecole));
 
         $this->withToken($jeton)->postJson(self::URL, ['code' => $code])->assertStatus(201);
-        self::assertSame(0, RateLimiter::attempts(self::ECHECS.$ecole->getKey()), 'Un code valide a été compté comme un échec.');
+        self::assertSame(0, $this->echecsDe($ecole), 'Un code valide a été compté comme un échec.');
 
         $this->withToken($jeton)->postJson(self::URL, ['code' => 'ZZZZZZ'])->assertStatus(404);
-        self::assertSame(1, RateLimiter::attempts(self::ECHECS.$ecole->getKey()), 'Un code erroné n\'a pas été compté.');
+        self::assertSame(1, $this->echecsDe($ecole), 'Un code erroné n\'a pas été compté.');
+    }
+
+    /**
+     * `RateLimiter::attempts()` rend ce que le cache a stocké : l'entier `1`
+     * sous le store `database`, la CHAÎNE `'1'` sous Redis — mesuré sur la
+     * jambe Redis de la CI (#899). La garde de production n'en dépend pas :
+     * elle compare par `>=` (`RateLimiter:129`), où `'200' >= 200` est vrai.
+     */
+    private function echecsDe(Institution $ecole): int
+    {
+        return (int) RateLimiter::attempts(self::ECHECS.$ecole->getKey());
     }
 
     // ───────────────────────── la course

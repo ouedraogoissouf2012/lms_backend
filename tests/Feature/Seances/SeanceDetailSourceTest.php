@@ -9,6 +9,7 @@ use App\Models\Seance;
 use App\Models\User;
 use App\Services\KlassciProxyService;
 use App\Services\TenantManager;
+use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
 use Mockery;
@@ -155,6 +156,134 @@ final class SeanceDetailSourceTest extends TestCase
             $seance['matiere']['id'] ?? null,
             'sans identifiant KLASSCI de matiere, en fabriquer un designe la matiere de quelqu un d autre',
         );
+    }
+
+    // ───────── Le repli lui-meme (#870) : ce qu il sert quand il s execute ─────────
+
+    /**
+     * Le repli decrit la seance, il ne la fabrique pas.
+     *
+     * Depuis #888 l ENSEIGNANT ne tombe plus ici. L ETUDIANT, si : son parcours
+     * lit encore `seances_programmees`. Ce test emprunte donc son chemin, seul
+     * moyen d exercer le repli reellement.
+     *
+     * Mesure de production du 22/09/2026 : sur les 6 seances en base, AUCUNE
+     * colonne n est vide -- ni `classe_nom`, ni `matiere_nom`, ni `date_seance`.
+     * Les inventions ne compensent donc aucune donnee manquante.
+     */
+    public function test_le_repli_sert_les_valeurs_de_la_ligne_et_non_des_litteraux(): void
+    {
+        $locale = $this->seanceLocale();
+        $etudiant = $this->etudiant();
+        $this->fakeKlassciSansRienTrouver();
+
+        $seance = $this->detailPour($etudiant)['seance'] ?? [];
+
+        self::assertSame(self::CLASSE_REELLE, $seance['classe']['nom'] ?? null, 'nom de classe fabrique');
+        self::assertSame(
+            $locale->date_seance->format('Y-m-d'),
+            $seance['programmation']['date'] ?? null,
+            'la date du JOUR est servie a la place de celle de la seance',
+        );
+        self::assertSame(
+            $locale->date_seance->format('H:i'),
+            substr((string) ($seance['programmation']['heure_debut'] ?? ''), 11, 5),
+            'l horaire 08h00 est fabrique : `date_seance` porte l heure reelle',
+        );
+    }
+
+    /**
+     * La salle n a AUCUNE colonne. En inventer une (`'TEAM'`) affirme un lieu.
+     *
+     * L omettre est sans danger : le frontend rend deja « N/A » ou masque le
+     * champ -- `EventSeanceDetails.vue:59`, `ClassePlanningTab.vue:30`,
+     * `CoordinatorSeanceCard.vue:35`.
+     */
+    public function test_le_repli_n_invente_pas_de_salle(): void
+    {
+        $this->seanceLocale();
+        $etudiant = $this->etudiant();
+        $this->fakeKlassciSansRienTrouver();
+
+        $seance = $this->detailPour($etudiant)['seance'] ?? [];
+
+        self::assertNotSame('TEAM', $seance['programmation']['salle'] ?? null, 'une salle est affirmee sans source');
+    }
+
+    /**
+     * Une duree inconnue se DIT, elle ne se fabrique pas.
+     *
+     * La table ne porte pas d heure de fin. Le bloc rendait `120` pour tout le
+     * monde ; l orchestrateur, lui, aurait calcule l ecart entre le debut et
+     * l INSTANT DE LA REQUETE si on lui avait passe `null` sans garde --
+     * `Carbon::parse(null)` rend maintenant.
+     *
+     * La fenetre d ouverture de la visio, elle, garde une borne declaree :
+     * sans elle `is_accessible` serait toujours faux et la visio d une seance
+     * locale deviendrait inatteignable. Ce test verrouille la distinction.
+     */
+    public function test_une_duree_inconnue_n_est_pas_fabriquee(): void
+    {
+        $this->seanceLocale();
+        $etudiant = $this->etudiant();
+        $this->fakeKlassciSansRienTrouver();
+
+        $detail = $this->detailPour($etudiant);
+
+        // `$x ?? 'absente'` rend 'absente' quand $x EST nul : l'operateur que
+        // j'avais mis par prudence rendait l'assertion incapable de distinguer
+        // nul d'absent -- exactement ce qu'elle doit verifier. On teste donc la
+        // presence de la cle, puis sa valeur.
+        self::assertArrayHasKey('duree_minutes', $detail['seance']);
+        self::assertNull(
+            $detail['seance']['duree_minutes'],
+            'une duree est affirmee alors que la table ne porte pas d heure de fin',
+        );
+        // Verifier que la fenetre EXISTE ne suffit pas : une fenetre de duree
+        // NULLE est non-nulle elle aussi, et rendrait la visio inatteignable.
+        // Mesure a l'ecriture : une falsification reduisant la fenetre a zero
+        // laissait `assertNotNull` verte. On mesure donc son AMPLITUDE.
+        $fenetre = $detail['seance']['visio_window'] ?? [];
+        self::assertArrayHasKey('end_window', $fenetre);
+
+        $ouverture = Carbon::parse($fenetre['start_window'])
+            ->diffInMinutes(Carbon::parse($fenetre['end_window']));
+
+        self::assertGreaterThanOrEqual(
+            60,
+            $ouverture,
+            'la fenetre d ouverture est trop etroite : la visio d une seance locale serait inatteignable',
+        );
+    }
+
+    private function etudiant(): User
+    {
+        return User::factory()->create([
+            'institution_id' => $this->institution->id,
+            'role' => 'etudiant',
+            'klassci_token' => self::TOKEN,
+        ]);
+    }
+
+    /** KLASSCI ne trouve rien : le repli local s execute. */
+    private function fakeKlassciSansRienTrouver(): void
+    {
+        $this->mock(KlassciProxyService::class, function (MockInterface $mock): void {
+            $mock->shouldReceive('requestWithUserToken')->andReturn(['data' => []]);
+            $mock->shouldReceive('fetchManyMatieresDetails')->andReturn([]);
+            $mock->shouldReceive('fetchManyClassesDetails')->andReturn([]);
+            $mock->shouldReceive('getEmploiTemps')->andReturn(['data' => []]);
+        });
+    }
+
+    /** @return array<string, mixed> */
+    private function detailPour(User $acteur): array
+    {
+        Sanctum::actingAs($acteur);
+
+        return $this->getJson('/api/lms/seances/'.self::KLASSCI_SEANCE_ID.'/details')
+            ->assertStatus(200)
+            ->json('data') ?? [];
     }
 
     /**

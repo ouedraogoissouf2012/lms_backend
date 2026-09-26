@@ -10,6 +10,7 @@ use App\Models\Institution;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use PHPUnit\Framework\Attributes\DataProvider;
+use Tests\Concerns\ActsAsTenantUser;
 use Tests\TestCase;
 
 /**
@@ -28,13 +29,16 @@ use Tests\TestCase;
  * **Qu'un code ne sort que vers l'établissement qui le possède**, et qu'un code
  * retiré ne sort plus du tout : l'afficher inviterait à dicter un code mort.
  *
- * Jeton Bearer RÉEL : sans lui, `ResolveInstitution` ne pose aucun tenant, et le
- * test d'isolation serait vert sans rien prouver.
+ * Jeton Bearer RÉEL, par `asTenant()` : sans jeton, `ResolveInstitution` ne pose
+ * aucun tenant, et le test d'isolation serait vert sans rien prouver. Le trait
+ * purge aussi le garde avant chaque pose — le garde mémoïse l'utilisateur du
+ * premier appel, et une seconde identité ne serait sinon jamais lue.
  *
  * @see docs/adr/2026-09-25-905-01-la-collection-des-classes-locales.md
  */
 final class ClassesLocalesListTest extends TestCase
 {
+    use ActsAsTenantUser;
     use RefreshDatabase;
 
     private const URL = '/api/classes';
@@ -51,7 +55,7 @@ final class ClassesLocalesListTest extends TestCase
         $this->classeLocale($ecole, 'A — code actif', 'BUR7K2');
         $this->classeLocale($ecole, 'B — code retiré', 'CXR4M9', retire: true);
 
-        $reponse = $this->withToken($this->jeton($this->membre($ecole, 'coordinateur')))
+        $reponse = $this->asTenant($this->membre($ecole, 'coordinateur'))
             ->getJson(self::URL)
             ->assertStatus(200);
 
@@ -66,10 +70,10 @@ final class ClassesLocalesListTest extends TestCase
         // LE manque de #905 : relire, sans invalider le code déjà dicté.
         $ecole = $this->ecole();
         $classe = $this->classeLocale($ecole, 'Bureautique', 'BUR7K2');
-        $jeton = $this->jeton($this->membre($ecole, 'coordinateur'));
+        $gestionnaire = $this->membre($ecole, 'coordinateur');
 
-        $this->withToken($jeton)->getJson(self::URL)->assertJsonPath('data.0.code_inscription.valeur', 'BUR7K2');
-        $this->withToken($jeton)->getJson(self::URL)->assertJsonPath('data.0.code_inscription.valeur', 'BUR7K2');
+        $this->asTenant($gestionnaire)->getJson(self::URL)->assertJsonPath('data.0.code_inscription.valeur', 'BUR7K2');
+        $this->asTenant($gestionnaire)->getJson(self::URL)->assertJsonPath('data.0.code_inscription.valeur', 'BUR7K2');
 
         self::assertSame('BUR7K2', $classe->fresh()?->code_inscription);
     }
@@ -82,7 +86,7 @@ final class ClassesLocalesListTest extends TestCase
         $ecole = $this->ecole();
         $this->classeLocale($ecole, 'Bureautique');
 
-        $ligne = $this->withToken($this->jeton($this->membre($ecole, 'coordinateur')))
+        $ligne = $this->asTenant($this->membre($ecole, 'coordinateur'))
             ->getJson(self::URL)
             ->json('data.0');
 
@@ -100,7 +104,7 @@ final class ClassesLocalesListTest extends TestCase
         $this->classeLocale($sienne, 'La mienne', 'BUR7K2');
         $this->classeLocale($autre, 'La voisine', 'VZN3P8');
 
-        $reponse = $this->withToken($this->jeton($this->membre($sienne, 'coordinateur')))
+        $reponse = $this->asTenant($this->membre($sienne, 'coordinateur'))
             ->getJson(self::URL)
             ->assertStatus(200);
 
@@ -114,7 +118,7 @@ final class ClassesLocalesListTest extends TestCase
         $this->classeLocale($ecole, 'Locale');
         Classe::factory()->create(['institution_id' => $ecole->getKey(), 'klassci_id' => 4242, 'libelle' => 'Miroir']);
 
-        $reponse = $this->withToken($this->jeton($this->membre($ecole, 'coordinateur')))->getJson(self::URL);
+        $reponse = $this->asTenant($this->membre($ecole, 'coordinateur'))->getJson(self::URL);
 
         self::assertSame(['Locale'], array_column((array) $reponse->json('data'), 'libelle'));
     }
@@ -126,10 +130,10 @@ final class ClassesLocalesListTest extends TestCase
         // « Le même refus » se VÉRIFIE : on compare au message que l'émission
         // du code oppose réellement, pas à une copie écrite dans le test. Si
         // l'un des deux textes change seul, ce test rougit.
-        $jeton = $this->jeton($this->membre($this->ecole(InstitutionMode::Klassci), 'coordinateur'));
+        $gestionnaire = $this->membre($this->ecole(InstitutionMode::Klassci), 'coordinateur');
 
-        $lecture = $this->withToken($jeton)->getJson(self::URL)->assertStatus(403);
-        $emission = $this->withToken($jeton)->postJson('/api/classes/1/code-inscription')->assertStatus(403);
+        $lecture = $this->asTenant($gestionnaire)->getJson(self::URL)->assertStatus(403);
+        $emission = $this->asTenant($gestionnaire)->postJson('/api/classes/1/code-inscription')->assertStatus(403);
 
         self::assertSame($emission->json('message'), $lecture->json('message'));
     }
@@ -143,7 +147,7 @@ final class ClassesLocalesListTest extends TestCase
         $this->classeLocale($this->ecole(), 'Ecole B', 'VZN3P8');
         $plateforme = User::factory()->create(['institution_id' => null, 'role' => 'supradmin']);
 
-        $reponse = $this->withToken($this->jeton($plateforme))
+        $reponse = $this->asTenant($plateforme)
             ->getJson(self::URL)
             ->assertStatus(409);
 
@@ -159,7 +163,7 @@ final class ClassesLocalesListTest extends TestCase
         $ecole = $this->ecole();
         $this->classeLocale($ecole, 'Bureautique', 'BUR7K2');
 
-        $this->withToken($this->jeton($this->membre($ecole, $role)))
+        $this->asTenant($this->membre($ecole, $role))
             ->getJson(self::URL)
             ->assertStatus(200)
             ->assertJsonPath('data.0.code_inscription.valeur', 'BUR7K2');
@@ -181,7 +185,7 @@ final class ClassesLocalesListTest extends TestCase
         $ecole = $this->ecole();
         $this->classeLocale($ecole, 'Bureautique', 'BUR7K2');
 
-        $reponse = $this->withToken($this->jeton($this->membre($ecole, $role)))
+        $reponse = $this->asTenant($this->membre($ecole, $role))
             ->getJson(self::URL)
             ->assertStatus(403);
 
@@ -209,15 +213,15 @@ final class ClassesLocalesListTest extends TestCase
         for ($i = 1; $i <= 3; $i++) {
             $this->classeLocale($ecole, "Classe {$i}");
         }
-        $jeton = $this->jeton($this->membre($ecole, 'coordinateur'));
+        $gestionnaire = $this->membre($ecole, 'coordinateur');
 
-        $this->withToken($jeton)->getJson(self::URL.'?per_page=2')
+        $this->asTenant($gestionnaire)->getJson(self::URL.'?per_page=2')
             ->assertJsonCount(2, 'data')
             ->assertJsonPath('meta.total', 3)
             ->assertJsonPath('meta.last_page', 2);
 
         // Au-delà de 100, la borne s'applique au lieu de tout rendre d'un coup.
-        $this->withToken($jeton)->getJson(self::URL.'?per_page=5000')
+        $this->asTenant($gestionnaire)->getJson(self::URL.'?per_page=5000')
             ->assertJsonPath('meta.per_page', 100);
     }
 
@@ -242,18 +246,13 @@ final class ClassesLocalesListTest extends TestCase
         $ecole = $this->ecole();
         $this->classeLocale($ecole, 'Bureautique');
 
-        $this->withToken($this->jeton($this->membre($ecole, 'coordinateur')))
+        $this->asTenant($this->membre($ecole, 'coordinateur'))
             ->getJson(self::URL.'?per_page='.$saisie)
             ->assertStatus(200)
             ->assertJsonPath('meta.per_page', $attendue);
     }
 
     // ───────────────────────── harnais
-
-    private function jeton(User $user): string
-    {
-        return $user->createToken('classes-locales-905')->plainTextToken;
-    }
 
     private function ecole(InstitutionMode $mode = InstitutionMode::Standalone): Institution
     {

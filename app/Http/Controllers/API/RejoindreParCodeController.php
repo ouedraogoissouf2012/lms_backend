@@ -38,7 +38,8 @@ final class RejoindreParCodeController extends Controller
         try {
             $rejointe = $this->adhesions->rejoindre($apprenant, $request->code());
         } catch (BusinessException $e) {
-            return $this->errorResponse($e->getMessage(), $this->statut($e));
+            // Le motif départage les 409 et les 429 de cette porte (#906, ADR-906-01).
+            return $this->errorResponse($e->getMessage(), $this->statut($e), reason: $e->reason);
         }
 
         $nouvelle = $rejointe->adhesion === Adhesion::Nouvelle;

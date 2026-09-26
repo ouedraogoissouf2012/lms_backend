@@ -110,6 +110,9 @@ $payload = [
 if ($errors !== []) {
     $payload['errors'] = $errors; // omis si vide (R2.2)
 }
+if ($reason !== null) {
+    $payload['reason'] = $reason; // omis si null (#906, même règle que R2.2)
+}
 return response()->json($payload, $status);
 ```
 
@@ -123,8 +126,11 @@ return response()->json($payload, $status);
 | `successResponse($d, 'OK', 200, ['page' => 2])` | `{...,"data":{...},"meta":{"page":2}}` | 200 |
 | `errorResponse('Interdit', 403)` | `{"success":false,"message":"Interdit"}` | 403 |
 | `errorResponse('Invalide', 422, ['email' => ['requis']])` | `{"success":false,"message":"Invalide","errors":{"email":["requis"]}}` | 422 |
+| `errorResponse('Inactive', 409, reason: 'enrolment_not_active')` | `{"success":false,"message":"Inactive","reason":"enrolment_not_active"}` | 409 |
 
 Cette table est le **golden contract** : les tests R5 l'assertent ligne par ligne.
+
+**Amendement #906 (2026-09-26, ADR-906-01)** : `errorResponse()` accepte un `?string $reason`, omis si `null`. C'est une **chaîne**, jamais une exception : R4 reste entière — le trait n'offre toujours aucun point d'entrée pour `$e->getMessage()`, que le contrôleur continue d'extraire lui-même d'une `BusinessException`.
 
 ## 5. Gestion d'erreur & sécurité
 

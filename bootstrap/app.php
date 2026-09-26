@@ -94,12 +94,19 @@ $app = Application::configure(basePath: dirname(__DIR__))
         // reconstruirait la réponse JSON en PERDANT les headers de l'exception.
         $exceptions->render(function (\Illuminate\Http\Exceptions\ThrottleRequestsException $e, $request) {
             if ($request->expectsJson()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Trop de requêtes. Veuillez réessayer plus tard.',
-                ], 429, $e->getHeaders());
+                return \App\Http\Presenters\TooManyRequestsPresenter::json($e->getHeaders());
             }
         });
+
+        // #906 — une `HttpResponseException` PORTE déjà sa réponse : la rendre
+        // telle quelle, comme le fait Laravel (Handler:623). Sans ce handler, le
+        // rendu générique \Throwable ci-dessous passe AVANT Laravel
+        // (`renderViaCallbacks`, Handler:618) et la transforme en 500 muet —
+        // mesuré : statut 500, `Retry-After` perdu. C'est pourtant par elle
+        // qu'un seau nommé rend son propre 429 (`Limit::response()`).
+        $exceptions->render(
+            fn (\Illuminate\Http\Exceptions\HttpResponseException $e) => $e->getResponse()
+        );
 
         // #270 — KLASSCI indisponible (URL de base absente/invalide, ou service
         // injoignable) = panne EXTERNE temporaire → 503 (retryable), jamais 500.

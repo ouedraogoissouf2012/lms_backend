@@ -155,7 +155,10 @@ final class StudentEnrolmentService
 
         throw new BusinessException(
             'Votre inscription dans cette classe n\'est pas active. Adressez-vous à votre établissement.',
-            409
+            409,
+            // Une décision de l'établissement, pas une panne (#906) : le front
+            // ne doit pas l'afficher en erreur technique.
+            reason: 'enrolment_not_active',
         );
     }
 

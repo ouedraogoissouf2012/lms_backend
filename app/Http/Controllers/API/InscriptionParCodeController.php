@@ -33,7 +33,8 @@ final class InscriptionParCodeController extends Controller
         try {
             $classe = $this->inscriptions->inscrire($request->donnees());
         } catch (BusinessException $e) {
-            return $this->errorResponse($e->getMessage(), $this->statut($e));
+            // Le motif départage les 409 des deux portes (#906, ADR-906-01).
+            return $this->errorResponse($e->getMessage(), $this->statut($e), reason: $e->reason);
         }
 
         return $this->successResponse([

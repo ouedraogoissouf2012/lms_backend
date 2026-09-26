@@ -75,14 +75,21 @@ final class RejoindreParCodeService
     public function rejoindre(User $apprenant, string $code): ClasseRejointe
     {
         $ecole = $this->ecoleDeLApprenant($apprenant);
-        $echecs = 'rejoindre-echecs|institution:'.$ecole->id;
+        $echecs = self::cleDesEchecs($ecole->id);
 
         if ($this->limiteur->tooManyAttempts($echecs, self::ECHECS_PAR_JOUR)) {
             $this->logger->warning('Rejoindre par code : plafond d\'échecs atteint', [
                 'institution_id' => $ecole->id,
             ]);
 
-            throw new BusinessException('Trop de codes erronés aujourd\'hui dans cet établissement. Réessayez demain.', 429);
+            // `institution_cap_reached` et non le motif du seau du compte (#906) :
+            // l'un se lève en attendant une minute, l'autre ferme la porte à
+            // toute l'école jusqu'au lendemain.
+            throw new BusinessException(
+                'Trop de codes erronés aujourd\'hui dans cet établissement. Réessayez demain.',
+                429,
+                reason: 'institution_cap_reached',
+            );
         }
 
         try {
@@ -94,6 +101,16 @@ final class RejoindreParCodeService
         }
 
         return new ClasseRejointe($classe, $this->inscriptions->rejoindre($apprenant, $classe));
+    }
+
+    /**
+     * La clé du plafond d'échecs d'un établissement. Publique pour que les
+     * tests la LISENT au lieu de la recopier : une clé dupliquée qui dérive
+     * laisse un seau plein d'un test à l'autre, sans bruit.
+     */
+    public static function cleDesEchecs(int $institution): string
+    {
+        return 'rejoindre-echecs|institution:'.$institution;
     }
 
     /**
@@ -110,7 +127,7 @@ final class RejoindreParCodeService
         // Un compte de plateforme n'appartient à aucune école : aucun code ne
         // peut lui désigner une classe sans ambiguïté.
         if (! $ecole instanceof Institution) {
-            throw new BusinessException('Ce compte n\'est rattaché à aucun établissement.', 409);
+            throw new BusinessException('Ce compte n\'est rattaché à aucun établissement.', 409, reason: 'no_institution');
         }
 
         return $ecole;

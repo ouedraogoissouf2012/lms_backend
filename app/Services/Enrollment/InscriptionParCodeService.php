@@ -132,7 +132,10 @@ final class InscriptionParCodeService
 
         throw new BusinessException(
             'Un compte existe déjà avec ces coordonnées. Connectez-vous pour rejoindre cette classe.',
-            409
+            409,
+            // Le front y lit « connectez-vous », puis la porte authentifiée
+            // (#906) — un autre sens que le 409 de celle-ci.
+            reason: 'account_exists',
         );
     }
 }

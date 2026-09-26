@@ -21,6 +21,28 @@ class ExceptionHandlerTest extends TestCase
         ])->assertStatus(500);
     }
 
+    /**
+     * #906 — une `HttpResponseException` sort avec la réponse qu'elle porte.
+     *
+     * Mesuré avant le correctif : le rendu générique \Throwable passait avant
+     * Laravel et la transformait en 500 « Une erreur est survenue. », en-têtes
+     * perdus. C'est pourtant par elle qu'un seau de débit rend son propre 429.
+     */
+    public function test_http_response_exception_keeps_its_own_response(): void
+    {
+        $this->app['config']->set('app.debug', false);
+
+        $portee = response()->json(['success' => false, 'reason' => 'essai'], 429, ['Retry-After' => '42']);
+        $requete = \Illuminate\Http\Request::create('/api/nimporte', 'POST', [], [], [], ['HTTP_ACCEPT' => 'application/json']);
+
+        $rendue = $this->app->make(\Illuminate\Contracts\Debug\ExceptionHandler::class)
+            ->render($requete, new \Illuminate\Http\Exceptions\HttpResponseException($portee));
+
+        $this->assertSame(429, $rendue->getStatusCode());
+        $this->assertSame('42', $rendue->headers->get('Retry-After'));
+        $this->assertSame('{"success":false,"reason":"essai"}', $rendue->getContent());
+    }
+
     public function test_validation_exception_returns_422(): void
     {
         $this->post('/api/auth/login', [], [

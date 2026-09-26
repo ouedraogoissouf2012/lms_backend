@@ -4,8 +4,11 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
+use App\Http\Presenters\TooManyRequestsPresenter;
 use App\Models\User;
+use Closure;
 use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
@@ -35,6 +38,13 @@ use Illuminate\Support\ServiceProvider;
  *  - `search`       : 30 req/min/utilisateur (#548 — /api/search/* n'avait
  *                      aucun throttle, frappe KLASSCI potentiellement fan-out
  *                      ×5 sous-requêtes par appel).
+ *  - `visio-heartbeat` : 12 req/min par utilisateur ET par séance.
+ *  - `school-requests` : 5 req/min/IP + 200/jour global (#812, demande
+ *                      d'ouverture anonyme).
+ *  - `inscriptions` : 5 req/min/IP + 100/jour global (#846, porte anonyme) —
+ *                      motifs `ip_quota_exceeded` / `global_cap_reached`.
+ *  - `rejoindre-classe` : 10 req/min + 30/jour par compte (#885, porte
+ *                      authentifiée) — motif `account_quota_exceeded`.
  *
  * Le `supradmin` (gestionnaire plateforme) est exempté (`Limit::none()`) —
  * cohérent avec son bypass tenant existant.
@@ -42,6 +52,13 @@ use Illuminate\Support\ServiceProvider;
  * Les en-têtes `X-RateLimit-Limit` / `X-RateLimit-Remaining` (+ `Retry-After`
  * et `X-RateLimit-Reset` au 429) sont ajoutés automatiquement par le
  * middleware `throttle:<name>` de Laravel.
+ *
+ * ## Un 429 qui dit quel budget (#906, ADR-906-01)
+ *
+ * Les seaux `inscriptions` et `rejoindre-classe` rendent, en plus, un motif
+ * `reason` dans le corps ({@see self::refusMotive()}) : chacune de leurs bornes
+ * a un sens différent pour celui qui la rencontre. Les autres seaux gardent le
+ * rendu global, sans motif.
  *
  * @see routes/api.php (groupes proxy → middleware throttle:proxy / proxy-write)
  */
@@ -136,8 +153,10 @@ final class RateLimitServiceProvider extends ServiceProvider
         // caracteres.
         RateLimiter::for('inscriptions', function (Request $request): array {
             return [
-                Limit::perMinute(self::INSCRIPTIONS_PER_MINUTE)->by((string) $request->ip()),
-                Limit::perDay(self::INSCRIPTIONS_PER_DAY)->by('inscriptions-global'),
+                Limit::perMinute(self::INSCRIPTIONS_PER_MINUTE)->by((string) $request->ip())
+                    ->response($this->refusMotive('ip_quota_exceeded')),
+                Limit::perDay(self::INSCRIPTIONS_PER_DAY)->by('inscriptions-global')
+                    ->response($this->refusMotive('global_cap_reached')),
             ];
         });
 
@@ -147,10 +166,30 @@ final class RateLimitServiceProvider extends ServiceProvider
             $apprenant = $user instanceof User ? 'user:'.$user->id : 'ip:'.$request->ip();
 
             return [
-                Limit::perMinute(self::REJOINDRE_PER_MINUTE)->by('rejoindre-minute|'.$apprenant),
-                Limit::perDay(self::REJOINDRE_PER_DAY)->by('rejoindre-jour|'.$apprenant),
+                Limit::perMinute(self::REJOINDRE_PER_MINUTE)->by('rejoindre-minute|'.$apprenant)
+                    ->response($this->refusMotive('account_quota_exceeded')),
+                Limit::perDay(self::REJOINDRE_PER_DAY)->by('rejoindre-jour|'.$apprenant)
+                    ->response($this->refusMotive('account_quota_exceeded')),
             ];
         });
+    }
+
+    /**
+     * Le 429 d'un seau qui dit QUEL budget est épuisé (#906, ADR-906-01).
+     *
+     * Même réponse que le rendu global — même constructeur,
+     * {@see TooManyRequestsPresenter} — avec le motif en plus, dans le CORPS : le
+     * front de production est cross-origin et `exposed_headers: []` lui cache
+     * tout en-tête non standard.
+     *
+     * Passe par une `HttpResponseException` : `bootstrap/app.php` la rend telle
+     * quelle, sans quoi elle ressortirait en 500.
+     *
+     * @return Closure(Request, array<string, mixed>): JsonResponse
+     */
+    private function refusMotive(string $reason): Closure
+    {
+        return static fn (Request $request, array $entetes): JsonResponse => TooManyRequestsPresenter::json($entetes, $reason);
     }
 
     /**

@@ -37,8 +37,9 @@ use Illuminate\Http\JsonResponse;
  *
  * - Succès : `{ "success": true, "message"?: string, "data"?: mixed, "meta"?: object }`
  *   — `message` omis si `''` ; `data` omis si `null` ; `meta` omis si vide.
- * - Erreur : `{ "success": false, "message": string, "errors"?: object }` + status HTTP
- *   — `errors` omis si vide.
+ * - Erreur : `{ "success": false, "message": string, "errors"?: object, "reason"?: string }`
+ *   + status HTTP — `errors` omis si vide ; `reason` omis si `null` (#906,
+ *   ADR-906-01 : un motif stable, quand un même statut porte plusieurs sens).
  *
  * Le trait centralise donc la **construction** sans imposer une forme unique :
  * pour reproduire `{success, data}` on appelle `successResponse($data)` ; pour
@@ -180,11 +181,15 @@ trait RespondsWithJson
      * @param  string  $message  Libellé d'erreur métier (jamais `$e->getMessage()`).
      * @param  int  $status  Code HTTP d'échec (400 par défaut ; 403, 404, 422…).
      * @param  array<string, mixed>  $errors  Détail structuré optionnel ; clé `errors` omise si vide.
+     * @param  string|null  $reason  Motif stable, `snake_case` anglais, que le client traduit par son
+     *                               propre catalogue ; clé `reason` omise si `null` (#906).
+     *                               Une chaîne, jamais une exception : R4 de la spec d'enveloppe tient.
      */
     protected function errorResponse(
         string $message,
         int $status = 400,
         array $errors = [],
+        ?string $reason = null,
     ): JsonResponse {
         JsonPayloadGuard::rejectClosures($errors, 'errors');
 
@@ -195,6 +200,12 @@ trait RespondsWithJson
 
         if ($errors !== []) {
             $payload['errors'] = $errors;
+        }
+
+        // Omis si absent, même règle que `errors` (R2.2) : aucun JSON existant
+        // ne change.
+        if ($reason !== null) {
+            $payload['reason'] = $reason;
         }
 
         return response()->json($payload, $status);

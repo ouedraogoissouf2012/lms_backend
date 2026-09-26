@@ -867,6 +867,33 @@ components:
           type: string
           example: "Une erreur est survenue."
 
+    # #906 — un refus qui dit POURQUOI, pour que le front traduise par son
+    # propre catalogue sans lire le message du serveur. Le motif va dans le
+    # CORPS : le front de production est cross-origin, et `exposed_headers: []`
+    # lui cache tout en-tete non standard. Convention : ADR-906-01.
+    RefusMotive:
+      type: object
+      required:
+        - success
+        - message
+        - reason
+      properties:
+        success:
+          type: boolean
+          example: false
+        message:
+          type: string
+        reason:
+          type: string
+          enum:
+            - account_exists
+            - enrolment_not_active
+            - no_institution
+            - account_quota_exceeded
+            - institution_cap_reached
+            - ip_quota_exceeded
+            - global_cap_reached
+
     ErrorResponse:
       type: object
       properties:
@@ -1714,10 +1741,17 @@ paths:
             Un compte existe deja avec ces coordonnees. Il n est PAS touche —
             ni mot de passe, ni role, ni inscription. Sur un endpoint anonyme,
             une adresse n est pas une preuve de propriete (#812).
+
+            `reason: account_exists` — le front y lit « connectez-vous », puis
+            la porte authentifiee `/me/inscriptions` (#906).
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: '#/components/schemas/RefusMotive'
+              example:
+                success: false
+                message: "Un compte existe deja avec ces coordonnees. Connectez-vous pour rejoindre cette classe."
+                reason: account_exists
         '422':
           description: "Charge invalide, ou ni adresse ni telephone"
           content:
@@ -1725,11 +1759,14 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '429':
-          description: "Debit depasse"
+          description: |
+            Debit depasse. Le motif dit QUEL budget (#906), avec `Retry-After` :
+            - `ip_quota_exceeded` : 5 par minute depuis cette adresse ;
+            - `global_cap_reached` : 100 par jour pour toute la plateforme.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: '#/components/schemas/RefusMotive'
 
   /me/inscriptions:
     post:
@@ -1805,12 +1842,14 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
         '409':
           description: |
-            Une adhesion non active existe deja pour cette classe, ou le compte
-            n est rattache a aucun etablissement. Rien n est ecrit.
+            Rien n est ecrit. Deux sens, deux motifs (#906) :
+            - `enrolment_not_active` : une adhesion non active existe deja —
+              decision de l etablissement, pas une panne ;
+            - `no_institution` : le compte n est rattache a aucun etablissement.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: '#/components/schemas/RefusMotive'
         '422':
           description: "Code absent ou hors bornes"
           content:
@@ -1819,13 +1858,16 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
         '429':
           description: |
-            Debit depasse : soit le seau du compte (10/min, 30/jour), soit le
-            plafond d ECHECS de l etablissement (200/jour), qui ferme alors la
-            porte a tous ses apprenants jusqu au lendemain.
+            Debit depasse. Le motif dit QUEL budget (#906) :
+            - `account_quota_exceeded` : le seau du compte (10/min, 30/jour),
+              avec `Retry-After` ;
+            - `institution_cap_reached` : le plafond d ECHECS de l etablissement
+              (200/jour), qui ferme la porte a tous ses apprenants jusqu au
+              lendemain.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: '#/components/schemas/RefusMotive'
 
   /classes/{classe}/code-inscription:
     post:

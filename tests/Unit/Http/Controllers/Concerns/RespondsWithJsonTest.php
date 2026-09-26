@@ -44,9 +44,9 @@ final class RespondsWithJsonTest extends TestCase
             /**
              * @param  array<string, mixed>  $errors
              */
-            public function error(string $message, int $status = 400, array $errors = []): JsonResponse
+            public function error(string $message, int $status = 400, array $errors = [], ?string $reason = null): JsonResponse
             {
-                return $this->errorResponse($message, $status, $errors);
+                return $this->errorResponse($message, $status, $errors, $reason);
             }
         };
     }
@@ -132,6 +132,25 @@ final class RespondsWithJsonTest extends TestCase
 
         $this->assertSame(
             ['success' => false, 'message' => 'Invalide', 'errors' => ['email' => ['requis']]],
+            $response->getData(true),
+        );
+    }
+
+    public function test_error_without_reason_omits_reason_key(): void
+    {
+        // #906 — la forme d'un refus sans motif ne change pas.
+        $response = $this->subject()->error('Interdit', 403);
+
+        $this->assertArrayNotHasKey('reason', $response->getData(true));
+    }
+
+    public function test_error_with_reason_includes_it(): void
+    {
+        $response = $this->subject()->error('Inactive', 409, reason: 'enrolment_not_active');
+
+        $this->assertSame(409, $response->status());
+        $this->assertSame(
+            ['success' => false, 'message' => 'Inactive', 'reason' => 'enrolment_not_active'],
             $response->getData(true),
         );
     }

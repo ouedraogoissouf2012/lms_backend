@@ -9,6 +9,7 @@ use App\Models\Classe;
 use App\Models\Institution;
 use App\Models\User;
 use App\Services\Enrollment\ClasseEnrolmentCodeService;
+use App\Services\Enrollment\RejoindreParCodeService;
 use App\Services\TenantManager;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -46,36 +47,11 @@ final class RejoindreParCodeTest extends TestCase
 
     private const URL = '/api/me/inscriptions';
 
-    /** Clé du plafond d'échecs d'un établissement, posée par `RejoindreParCodeService`. */
-    private const ECHECS = 'rejoindre-echecs|institution:';
-
-    /**
-     * Sur la jambe Redis de la CI, le cache survit au test ; sous SQLite, les
-     * id sont réattribués au test suivant. Sans ce nettoyage, un seau rempli
-     * ici refuserait un apprenant ou une école d'un autre test.
-     * `RateLimiter::clear('rejoindre-classe')` n'y suffirait pas : les seaux
-     * sont rangés sous une clé par compte, que seul le limiteur sait former.
-     */
-    protected function tearDown(): void
-    {
-        $limiteur = RateLimiter::limiter('rejoindre-classe');
-
-        foreach (User::query()->withoutGlobalScopes()->get() as $compte) {
-            $requete = request()->duplicate();
-            $requete->setUserResolver(static fn () => $compte);
-
-            foreach ((array) ($limiteur ? $limiteur($requete) : []) as $borne) {
-                // Même forme que `ThrottleRequests:134`.
-                RateLimiter::clear(md5('rejoindre-classe'.$borne->key));
-            }
-        }
-
-        foreach (Institution::query()->pluck('id') as $id) {
-            RateLimiter::clear(self::ECHECS.$id);
-        }
-
-        parent::tearDown();
-    }
+    // Aucun nettoyage des seaux : `Tests\TestCase::setUp()` vide le store Redis
+    // avant chaque test (#374), et `RefreshDatabase` annule la table `cache` en
+    // mode database. Le `tearDown` que #885 avait posé ici reposait sur une
+    // prémisse fausse — « sous Redis, le cache survit au test » — et refaisait
+    // ce qui existait déjà (retiré par #906).
 
     // ───────────────────────── le parcours nominal
 
@@ -296,7 +272,7 @@ final class RejoindreParCodeTest extends TestCase
         [$ecole, $code] = $this->classeAvecCode();
 
         for ($i = 0; $i < 200; $i++) {
-            RateLimiter::hit(self::ECHECS.$ecole->getKey(), 86_400);
+            RateLimiter::hit(RejoindreParCodeService::cleDesEchecs((int) $ecole->getKey()), 86_400);
         }
 
         $this->withToken($this->jeton($this->apprenant($ecole)))
@@ -326,7 +302,7 @@ final class RejoindreParCodeTest extends TestCase
      */
     private function echecsDe(Institution $ecole): int
     {
-        return (int) RateLimiter::attempts(self::ECHECS.$ecole->getKey());
+        return (int) RateLimiter::attempts(RejoindreParCodeService::cleDesEchecs((int) $ecole->getKey()));
     }
 
     // ───────────────────────── la course

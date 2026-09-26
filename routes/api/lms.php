@@ -14,6 +14,7 @@ use App\Http\Controllers\API\Dashboard\DashboardTeacherController;
 // ============================================
 use App\Http\Controllers\API\LMS\LMSClasseEnrolmentCodeController;
 use App\Http\Controllers\API\LMS\LMSClasseMatiereController;
+use App\Http\Controllers\API\LMS\LMSClassesLocalesController;
 use App\Http\Controllers\API\LMS\LMSClasseWriteController;
 use App\Http\Controllers\API\LMS\LMSMatiereWriteController;
 use App\Http\Controllers\API\LMS\TrainingSessionController;
@@ -105,6 +106,16 @@ Route::middleware(['auth:sanctum', 'klassci.sync', 'role:coordinateur,admin,supe
         // localement est verifie plus bas, au point d ecriture, par une
         // capacite — la route ne lit aucun mode.
         Route::post('/classes', [LMSClasseWriteController::class, 'store']);
+
+        // Sa collection (#905, ADR-905-01) : les classes LOCALES et leur code.
+        // Rien ne les listait — la liste d administration vient de KLASSCI, et
+        // la porte locale de #760 repond 409 a une classe sans identifiant
+        // KLASSCI. Le code revient avec la classe : le relire ne le regenere
+        // plus, donc n invalide plus celui deja dicte.
+        //
+        // Meme garde de role que l emission : un apprenant qui lirait les codes
+        // des autres classes y entrerait sans y avoir ete invite.
+        Route::get('/classes', [LMSClassesLocalesController::class, 'index']);
 
         // Creer une matiere SANS KLASSCI (#797, #848). Second des trois verrous
         // de l ADR : la classe n exigeait que l ecrivain, la matiere exigeait

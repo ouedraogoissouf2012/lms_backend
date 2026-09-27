@@ -79,11 +79,14 @@ trait RespondsWithJson
     /**
      * @param  array<string, mixed>  $errors  Détail structuré optionnel (ex. erreurs de validation) ;
      *                                         clé 'errors' OMISE si vide (R2.2). JAMAIS de getMessage() (R4).
+     * @param  ?string  $reason  Motif stable, `snake_case` anglais, quand un statut porte plusieurs
+     *                           sens ; clé 'reason' OMISE si null (R2.2, amendé #906).
      */
     protected function errorResponse(
         string $message,
         int $status = 400,
         array $errors = [],
+        ?string $reason = null,   // amendé #906
     ): JsonResponse;
 }
 ```
@@ -134,7 +137,7 @@ Cette table est le **golden contract** : les tests R5 l'assertent ligne par lign
 
 ## 5. Gestion d'erreur & sécurité
 
-- `errorResponse()` n'accepte qu'un `string $message` métier et un `array $errors` structuré — **aucun** point d'entrée pour `$e->getMessage()` ([R4](requirements.md), [§1.2](../../../PRODUCTION_STANDARDS.md#L36)). La responsabilité de ne pas passer de détail technique reste au caller, mais la signature ne facilite aucune fuite.
+- `errorResponse()` n'accepte qu'un `string $message` métier, un `array $errors` structuré et un `?string $reason` (amendé #906) — **aucun** point d'entrée pour `$e->getMessage()` ([R4](requirements.md), [§1.2](../../../PRODUCTION_STANDARDS.md#L36)). La responsabilité de ne pas passer de détail technique reste au caller, mais la signature ne facilite aucune fuite.
 - Statuts par défaut sûrs : succès 200, erreur 400. Le caller précise 201/403/404/422 explicitement.
 
 ## 6. Stratégie de test (R5)
@@ -153,6 +156,8 @@ Le trait est exercé via une **classe anonyme** qui l'utilise et expose les mét
 | 6 | erreur simple | status 400, `success=false`, pas de clé `errors` |
 | 7 | erreur avec `errors` | `errors` présent et égal |
 | 8 | erreur status custom (403/422) | status respecté |
+| 9 | erreur sans `reason` (amendé #906) | clé `reason` **absente** |
+| 10 | erreur avec `reason` (amendé #906) | `reason` présent, après `errors` |
 
 ## 7. Approche des migrations ultérieures (cadrage, hors PR-0)
 

@@ -4,18 +4,15 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Enrollment;
 
-use App\Enums\InstitutionMode;
-use App\Models\Classe;
-use App\Models\Institution;
 use App\Models\User;
-use App\Services\Enrollment\ClasseEnrolmentCodeService;
 use App\Services\Enrollment\RejoindreParCodeService;
-use App\Services\TenantManager;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Testing\TestResponse;
+use Symfony\Component\HttpFoundation\Response;
 use Tests\Concerns\ActsAsTenantUser;
+use Tests\Concerns\PreparesClasseWithCode;
 use Tests\TestCase;
 
 /**
@@ -23,8 +20,9 @@ use Tests\TestCase;
  *
  * ## Le manque
  *
- * Le front n'affiche jamais le message du serveur (hors 422) : il traduit un
- * STATUT par son propre catalogue. Or un même statut portait ici plusieurs sens —
+ * Le chemin central d'erreur du front (`normalizeError`) n'affiche pas le
+ * message du serveur (hors 422) : il traduit un STATUT par son propre
+ * catalogue. Or un même statut portait ici plusieurs sens —
  * « connectez-vous » et « votre inscription n'est pas active » sont deux 409 ;
  * « attendez une minute » et « votre école est bloquée jusqu'à demain », deux
  * 429. Le 409 finissait en « erreur inattendue », et l'apprenant chez le support.
@@ -44,6 +42,7 @@ use Tests\TestCase;
 final class MotifsDesRefusTest extends TestCase
 {
     use ActsAsTenantUser;
+    use PreparesClasseWithCode;
     use RefreshDatabase;
 
     private const ANONYME = '/api/inscriptions';
@@ -102,12 +101,20 @@ final class MotifsDesRefusTest extends TestCase
         User::factory()->create(['institution_id' => $ecole->getKey(), 'email' => 'awa@test.ci']);
         $anonyme = $this->postJson(self::ANONYME, $this->candidature($code), ['X-Institution' => (string) $ecole->slug]);
 
+        // Une ligne COMPLÈTE, comme celles que les portes écrivent : établissement
+        // et date d'inscription compris (ADR-711-02).
         $apprenant = $this->apprenant($ecole, 'autre@test.ci');
-        $classe->etudiants()->attach($apprenant->id, ['statut' => 'abandonne']);
+        $classe->etudiants()->attach($apprenant->id, [
+            'institution_id' => $ecole->getKey(),
+            'statut' => 'abandonne',
+            'date_inscription' => '2026-01-10',
+        ]);
         $authentifiee = $this->asTenant($apprenant)->postJson(self::AUTHENTIFIEE, ['code' => $code]);
 
-        self::assertNotNull($anonyme->json('reason'));
-        self::assertNotSame($anonyme->json('reason'), $authentifiee->json('reason'));
+        // Statuts ET motifs exacts : comparer deux motifs sans les nommer
+        // resterait vert si l'une des deux portes rendait un 500 sans motif.
+        $anonyme->assertStatus(409)->assertJsonPath('reason', 'account_exists');
+        $authentifiee->assertStatus(409)->assertJsonPath('reason', 'enrolment_not_active');
     }
 
     public function test_un_refus_sans_motif_ne_change_pas_de_forme(): void
@@ -140,11 +147,13 @@ final class MotifsDesRefusTest extends TestCase
             ->assertJsonPath('reason', 'account_quota_exceeded');
     }
 
-    public function test_porte_authentifiee_le_quota_journalier_du_compte_porte_le_meme_motif(): void
+    public function test_porte_authentifiee_le_quota_journalier_du_compte_a_son_propre_motif(): void
     {
-        // Le seau du compte a DEUX bornes, chacune avec son propre rendu : la
-        // journalière doit dire la même chose que celle de la minute. Remplie
-        // sous la clé que `ThrottleRequests:134` lui donne.
+        // Le seau du compte a DEUX bornes, et elles n'appellent pas le même
+        // message : « réessayez dans une minute » n'est pas « revenez demain ».
+        // Même règle que la porte anonyme : `*_quota_exceeded` pour la minute,
+        // `*_cap_reached` pour le jour (#924). Remplie sous la clé que
+        // `ThrottleRequests:134` lui donne.
         [$ecole] = $this->classeAvecCode();
         $apprenant = $this->apprenant($ecole);
 
@@ -153,7 +162,7 @@ final class MotifsDesRefusTest extends TestCase
         }
 
         $this->unVrai429($this->asTenant($apprenant)->postJson(self::AUTHENTIFIEE, ['code' => 'ZZZZZZ']))
-            ->assertJsonPath('reason', 'account_quota_exceeded');
+            ->assertJsonPath('reason', 'account_daily_cap_reached');
     }
 
     public function test_porte_authentifiee_le_plafond_de_l_ecole(): void
@@ -164,9 +173,15 @@ final class MotifsDesRefusTest extends TestCase
             RateLimiter::hit(RejoindreParCodeService::cleDesEchecs((int) $ecole->getKey()), 86_400);
         }
 
+        // Un refus métier, pas un seau : aucun `Retry-After`. Les `X-RateLimit-*`
+        // sont là, posés par le middleware sur toute réponse qui a traversé le
+        // seau du COMPTE — ils décrivent ce seau-là, pas le plafond de l'école
+        // (mesuré, #924 ; `openapi.yaml` le dit).
         $this->asTenant($this->apprenant($ecole))->postJson(self::AUTHENTIFIEE, ['code' => $code])
             ->assertStatus(429)
-            ->assertJsonPath('reason', 'institution_cap_reached');
+            ->assertJsonPath('reason', 'institution_cap_reached')
+            ->assertHeaderMissing('Retry-After')
+            ->assertHeader('X-RateLimit-Limit');
     }
 
     public function test_porte_anonyme_le_quota_de_l_adresse(): void
@@ -211,27 +226,21 @@ final class MotifsDesRefusTest extends TestCase
     }
 
     /**
-     * Un 429 produit par un seau : le statut tient, `Retry-After` survit, et le
-     * message reste celui que le front connaissait.
+     * Un 429 produit par un seau : le statut tient, les en-têtes de débit que
+     * `openapi.yaml` déclare survivent, et le message reste celui que le front
+     * connaissait.
      *
-     * @param  TestResponse<\Symfony\Component\HttpFoundation\Response>  $reponse
-     * @return TestResponse<\Symfony\Component\HttpFoundation\Response>
+     * @param  TestResponse<Response>  $reponse
+     * @return TestResponse<Response>
      */
     private function unVrai429(TestResponse $reponse): TestResponse
     {
         return $reponse->assertStatus(429)
             ->assertHeader('Retry-After')
+            ->assertHeader('X-RateLimit-Limit')
+            ->assertHeader('X-RateLimit-Remaining', '0')
             ->assertJsonPath('success', false)
             ->assertJsonPath('message', 'Trop de requêtes. Veuillez réessayer plus tard.');
-    }
-
-    private function apprenant(Institution $ecole, string $email = 'awa@test.ci'): User
-    {
-        return User::factory()->create([
-            'institution_id' => $ecole->getKey(),
-            'email' => $email,
-            'role' => 'etudiant',
-        ]);
     }
 
     /**
@@ -246,26 +255,5 @@ final class MotifsDesRefusTest extends TestCase
             'password' => 'mot-de-passe-choisi',
             'password_confirmation' => 'mot-de-passe-choisi',
         ];
-    }
-
-    /**
-     * @return array{0: Institution, 1: string, 2: Classe}
-     */
-    private function classeAvecCode(): array
-    {
-        $ecole = Institution::factory()->create(['mode' => InstitutionMode::Standalone]);
-        app(TenantManager::class)->set($ecole);
-
-        $classe = Classe::factory()->create([
-            'institution_id' => $ecole->getKey(),
-            'klassci_id' => null,
-        ]);
-
-        $code = app(ClasseEnrolmentCodeService::class)->generer($classe->getKey());
-
-        // Le tenant est ensuite posé par le jeton ou l'en-tête, comme en production.
-        app(TenantManager::class)->reset();
-
-        return [$ecole, $code, $classe];
     }
 }

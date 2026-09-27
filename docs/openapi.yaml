@@ -890,6 +890,7 @@ components:
             - enrolment_not_active
             - no_institution
             - account_quota_exceeded
+            - account_daily_cap_reached
             - institution_cap_reached
             - ip_quota_exceeded
             - global_cap_reached
@@ -1594,7 +1595,7 @@ paths:
         - name: per_page
           in: query
           required: false
-          description: "Ramene entre 1 et 100 ; absent ou non numerique vaut 25. Jamais refuse"
+          description: "Entre 1 et 100 ; absent vaut 25. Hors bornes ou non entier : 422 (spec #548)"
           schema:
             type: integer
             minimum: 1
@@ -1628,14 +1629,26 @@ paths:
           description: |
             Le compte n est rattache a aucun etablissement — compte de
             plateforme. Controle AVANT le droit du catalogue : sans
-            etablissement, aucune classe ne sort, d aucune ecole.
+            etablissement, aucune classe ne sort, d aucune ecole. Motif
+            `no_institution` (#924).
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: '#/components/schemas/RefusMotive'
+              example:
+                success: false
+                message: "Aucun établissement résolu."
+                reason: no_institution
+        '422':
+          description: "`per_page` ou `page` hors bornes, ou non entier (spec #548)"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationFailed'
 
   /inscriptions:
     post:
+      operationId: registerWithEnrolmentCode
       tags:
         - Session de formation
       summary: "S inscrire dans une classe avec un code"
@@ -1757,12 +1770,25 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: '#/components/schemas/ValidationFailed'
         '429':
           description: |
             Debit depasse. Le motif dit QUEL budget (#906), avec `Retry-After` :
             - `ip_quota_exceeded` : 5 par minute depuis cette adresse ;
             - `global_cap_reached` : 100 par jour pour toute la plateforme.
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+              description: "Secondes a attendre avant de reessayer."
+            X-RateLimit-Limit:
+              schema:
+                type: integer
+              description: "Quota de la borne qui a refuse."
+            X-RateLimit-Remaining:
+              schema:
+                type: integer
+              description: "Requetes restantes dans la fenetre courante."
           content:
             application/json:
               schema:
@@ -1770,6 +1796,7 @@ paths:
 
   /me/inscriptions:
     post:
+      operationId: joinClassWithEnrolmentCode
       tags:
         - Session de formation
       summary: "Rejoindre une classe avec un code, deja connecte"
@@ -1855,15 +1882,30 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: '#/components/schemas/ValidationFailed'
         '429':
           description: |
             Debit depasse. Le motif dit QUEL budget (#906) :
-            - `account_quota_exceeded` : le seau du compte (10/min, 30/jour),
-              avec `Retry-After` ;
+            - `account_quota_exceeded` : le seau du compte, borne de la
+              minute (10/min), avec `Retry-After` ;
+            - `account_daily_cap_reached` : le meme seau, borne du jour
+              (30/jour) ;
             - `institution_cap_reached` : le plafond d ECHECS de l etablissement
               (200/jour), qui ferme la porte a tous ses apprenants jusqu au
               lendemain.
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+              description: "Secondes a attendre avant de reessayer. Absent sur `institution_cap_reached`, refus metier et non seau."
+            X-RateLimit-Limit:
+              schema:
+                type: integer
+              description: "Quota de la borne qui a refuse. Sur `institution_cap_reached`, decrit le seau du COMPTE, pas le plafond de l etablissement."
+            X-RateLimit-Remaining:
+              schema:
+                type: integer
+              description: "Requetes restantes dans la fenetre courante. Sur `institution_cap_reached`, decrit le seau du COMPTE, pas le plafond de l etablissement."
           content:
             application/json:
               schema:

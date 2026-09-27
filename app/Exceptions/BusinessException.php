@@ -22,11 +22,11 @@ use Throwable;
  *
  * ## Le motif (#906, ADR-906-01)
  *
- * Le front n'affiche jamais le message du serveur : il traduit par son propre
- * catalogue. Quand un même statut porte plusieurs sens, le motif `reason` les
- * départage — un identifiant stable, `snake_case` anglais, comme
- * `klassci_session_expired`. Optionnel : un refus qui n'a qu'un sens n'en a
- * pas besoin.
+ * Le chemin central d'erreur du front (`normalizeError`) n'affiche pas le
+ * message du serveur : il traduit par son propre catalogue. Quand un même
+ * statut porte plusieurs sens, le motif `reason` les départage — un
+ * identifiant stable, `snake_case` anglais, comme `klassci_session_expired`.
+ * Optionnel : un refus qui n'a qu'un sens n'en a pas besoin.
  */
 final class BusinessException extends RuntimeException
 {

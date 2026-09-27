@@ -54,7 +54,7 @@ final class ClassesLocalesQuery
         // compte de plateforme recevrait « cet établissement vient de KLASSCI »,
         // qui est faux pour qui n'en a aucun. Le 409 dit ce qui manque.
         if ($institution === null) {
-            throw new BusinessException('Aucun établissement résolu.', 409);
+            throw new BusinessException('Aucun établissement résolu.', 409, reason: 'no_institution');
         }
 
         if (! $this->autorite->allowsLocalCatalogue()) {

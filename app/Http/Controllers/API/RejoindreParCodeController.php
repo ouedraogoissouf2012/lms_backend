@@ -5,10 +5,9 @@ declare(strict_types=1);
 namespace App\Http\Controllers\API;
 
 use App\Exceptions\BusinessException;
+use App\Http\Controllers\AuthenticatedController;
 use App\Http\Controllers\Concerns\RespondsWithJson;
-use App\Http\Controllers\Controller;
 use App\Http\Requests\RejoindreParCodeRequest;
-use App\Models\User;
 use App\Services\Enrollment\Adhesion;
 use App\Services\Enrollment\RejoindreParCodeService;
 use Illuminate\Http\JsonResponse;
@@ -21,7 +20,7 @@ use Throwable;
  * double clic n'est pas une faute, et une erreur lui ferait croire qu'il n'est
  * pas dans sa classe.
  */
-final class RejoindreParCodeController extends Controller
+final class RejoindreParCodeController extends AuthenticatedController
 {
     use RespondsWithJson;
 
@@ -29,14 +28,8 @@ final class RejoindreParCodeController extends Controller
 
     public function store(RejoindreParCodeRequest $request): JsonResponse
     {
-        $apprenant = $request->user();
-
-        if (! $apprenant instanceof User) {
-            return $this->errorResponse('Non authentifié', 401);
-        }
-
         try {
-            $rejointe = $this->adhesions->rejoindre($apprenant, $request->code());
+            $rejointe = $this->adhesions->rejoindre($this->authenticatedUser($request), $request->code());
         } catch (BusinessException $e) {
             // Le motif départage les 409 et les 429 de cette porte (#906, ADR-906-01).
             return $this->errorResponse($e->getMessage(), $this->statut($e), reason: $e->reason);

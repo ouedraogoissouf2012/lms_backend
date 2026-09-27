@@ -130,10 +130,16 @@ final class ClassesLocalesListTest extends TestCase
         // « Le même refus » se VÉRIFIE : on compare au message que l'émission
         // du code oppose réellement, pas à une copie écrite dans le test. Si
         // l'un des deux textes change seul, ce test rougit.
-        $gestionnaire = $this->membre($this->ecole(InstitutionMode::Klassci), 'coordinateur');
+        // Une classe RÉELLE de l'école : jamais un identifiant écrit en dur, que
+        // MySQL n'attribuerait pas (ClasseLocalDetailsDoorTest:29-31).
+        $ecole = $this->ecole(InstitutionMode::Klassci);
+        $classe = Classe::factory()->create(['institution_id' => $ecole->getKey()]);
+        $gestionnaire = $this->membre($ecole, 'coordinateur');
 
         $lecture = $this->asTenant($gestionnaire)->getJson(self::URL)->assertStatus(403);
-        $emission = $this->asTenant($gestionnaire)->postJson('/api/classes/1/code-inscription')->assertStatus(403);
+        $emission = $this->asTenant($gestionnaire)
+            ->postJson('/api/classes/'.$classe->getKey().'/code-inscription')
+            ->assertStatus(403);
 
         self::assertSame($emission->json('message'), $lecture->json('message'));
     }
@@ -147,9 +153,12 @@ final class ClassesLocalesListTest extends TestCase
         $this->classeLocale($this->ecole(), 'Ecole B', 'VZN3P8');
         $plateforme = User::factory()->create(['institution_id' => null, 'role' => 'supradmin']);
 
+        // Même sens, même motif que `/me/inscriptions` (ADR-906-01) : un client
+        // générique ne doit pas lire deux vocabulaires pour un seul refus.
         $reponse = $this->asTenant($plateforme)
             ->getJson(self::URL)
-            ->assertStatus(409);
+            ->assertStatus(409)
+            ->assertJsonPath('reason', 'no_institution');
 
         self::assertStringNotContainsString('BUR7K2', (string) $reponse->getContent());
         self::assertStringNotContainsString('VZN3P8', (string) $reponse->getContent());
@@ -220,36 +229,56 @@ final class ClassesLocalesListTest extends TestCase
             ->assertJsonPath('meta.total', 3)
             ->assertJsonPath('meta.last_page', 2);
 
-        // Au-delà de 100, la borne s'applique au lieu de tout rendre d'un coup.
-        $this->asTenant($gestionnaire)->getJson(self::URL.'?per_page=5000')
+        // La borne haute est ACCEPTÉE ; l'absence vaut le défaut.
+        $this->asTenant($gestionnaire)->getJson(self::URL.'?per_page=100')
+            ->assertStatus(200)
             ->assertJsonPath('meta.per_page', 100);
+        $this->asTenant($gestionnaire)->getJson(self::URL)
+            ->assertJsonPath('meta.per_page', 25);
     }
 
     /**
-     * @return array<string, array{string, int}>
+     * @return array<string, array{string}>
      */
-    public static function tailliesDePageDouteuses(): array
+    public static function taillesDePageHorsBornes(): array
     {
         return [
-            // Le défaut qu'un bornage en ligne produirait : `intval('abc')` vaut
-            // 0, borné à 1 — une classe par page, en silence.
-            'non numerique' => ['abc', 25],
-            'vide' => ['', 25],
-            'zero' => ['0', 1],
-            'negatif' => ['-5', 1],
+            'non numerique' => ['abc'],
+            'zero' => ['0'],
+            'negatif' => ['-5'],
+            'au-dessus du plafond' => ['101'],
+            'tres au-dessus' => ['5000'],
         ];
     }
 
-    #[DataProvider('tailliesDePageDouteuses')]
-    public function test_une_taille_de_page_douteuse_est_ramenee_jamais_refusee(string $saisie, int $attendue): void
+    /**
+     * Refusée, jamais ramenée : la spec approuvée #548 écarte nommément le
+     * « clamp silencieux », qui masquerait au client un appel fautif, et tout
+     * le dépôt suit le 422 (FilterLessonsRequest, ListNotificationsRequest…).
+     * #905 l'avait d'abord ramenée ; #924 le corrige.
+     */
+    #[DataProvider('taillesDePageHorsBornes')]
+    public function test_une_taille_de_page_hors_bornes_est_refusee(string $saisie): void
     {
         $ecole = $this->ecole();
         $this->classeLocale($ecole, 'Bureautique');
 
         $this->asTenant($this->membre($ecole, 'coordinateur'))
             ->getJson(self::URL.'?per_page='.$saisie)
-            ->assertStatus(200)
-            ->assertJsonPath('meta.per_page', $attendue);
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('per_page');
+    }
+
+    public function test_un_numero_de_page_invalide_est_refuse(): void
+    {
+        // Même règle que `ListNotificationsRequest:35` : le paginateur de
+        // Laravel ramènerait `page=0` à 1, en silence.
+        $ecole = $this->ecole();
+
+        $this->asTenant($this->membre($ecole, 'coordinateur'))
+            ->getJson(self::URL.'?page=0')
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('page');
     }
 
     // ───────────────────────── harnais

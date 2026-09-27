@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Enrollment;
 
+use App\Enums\ClasseEtudiantStatut;
 use App\Enums\InstitutionMode;
 use App\Models\Classe;
 use App\Models\Institution;
@@ -15,6 +16,8 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\RateLimiter;
 use PHPUnit\Framework\Attributes\DataProvider;
+use Tests\Concerns\ActsAsTenantUser;
+use Tests\Concerns\PreparesClasseWithCode;
 use Tests\TestCase;
 
 /**
@@ -43,6 +46,8 @@ use Tests\TestCase;
  */
 final class RejoindreParCodeTest extends TestCase
 {
+    use ActsAsTenantUser;
+    use PreparesClasseWithCode;
     use RefreshDatabase;
 
     private const URL = '/api/me/inscriptions';
@@ -61,7 +66,7 @@ final class RejoindreParCodeTest extends TestCase
         $apprenant = $this->apprenant($ecole);
         $this->travelTo('2026-09-25 10:00:00');
 
-        $this->withToken($this->jeton($apprenant))
+        $this->withToken($this->tokenFor($apprenant))
             ->postJson(self::URL, ['code' => $code])
             ->assertStatus(201)
             ->assertJsonPath('data.classe.id', $classe->getKey());
@@ -80,7 +85,7 @@ final class RejoindreParCodeTest extends TestCase
     {
         [$ecole, $code] = $this->classeAvecCode();
 
-        $this->withToken($this->jeton($this->apprenant($ecole)))
+        $this->withToken($this->tokenFor($this->apprenant($ecole)))
             ->postJson(self::URL, ['code' => '  '.strtolower($code).' '])
             ->assertStatus(201);
     }
@@ -93,7 +98,7 @@ final class RejoindreParCodeTest extends TestCase
         $apprenant = $this->apprenant($ecole);
         $this->adhesion($classe, $apprenant, 'actif', '2026-01-10');
 
-        $this->withToken($this->jeton($apprenant))
+        $this->withToken($this->tokenFor($apprenant))
             ->postJson(self::URL, ['code' => $code])
             ->assertStatus(200)
             ->assertJsonPath('data.classe.id', $classe->getKey());
@@ -111,7 +116,7 @@ final class RejoindreParCodeTest extends TestCase
         $apprenant = $this->apprenant($ecole);
         $this->adhesion($classe, $apprenant, $statut, '2026-01-10');
 
-        $this->withToken($this->jeton($apprenant))
+        $this->withToken($this->tokenFor($apprenant))
             ->postJson(self::URL, ['code' => $code])
             ->assertStatus(409);
 
@@ -126,13 +131,17 @@ final class RejoindreParCodeTest extends TestCase
      */
     public static function adhesionsCloses(): array
     {
-        // Les cinq valeurs que la base accepte, moins `actif` (ADR-711-02).
-        return [
-            'suspendu' => ['suspendu'],
-            'abandonne' => ['abandonne'],
-            'inactif' => ['inactif'],
-            'expire' => ['expire'],
-        ];
+        // Tout statut, moins `actif` (ADR-711-02) — dérivé de l'énumération : un
+        // statut ajouté demain est gardé sans qu'on pense à l'écrire ici.
+        $clos = array_filter(
+            ClasseEtudiantStatut::cases(),
+            static fn (ClasseEtudiantStatut $s): bool => $s !== ClasseEtudiantStatut::Actif,
+        );
+
+        return array_combine(
+            array_map(static fn (ClasseEtudiantStatut $s): string => $s->value, $clos),
+            array_map(static fn (ClasseEtudiantStatut $s): array => [$s->value], $clos),
+        );
     }
 
     // ───────────────────────── les autres refus
@@ -140,7 +149,7 @@ final class RejoindreParCodeTest extends TestCase
     public function test_un_code_inconnu_et_un_code_RETIRE_rendent_le_meme_refus(): void
     {
         [$ecole, $code, $classe] = $this->classeAvecCode();
-        $jeton = $this->jeton($this->apprenant($ecole));
+        $jeton = $this->tokenFor($this->apprenant($ecole));
 
         $inconnu = $this->withToken($jeton)->postJson(self::URL, ['code' => 'ZZZZZZ'])->assertStatus(404);
 
@@ -163,7 +172,7 @@ final class RejoindreParCodeTest extends TestCase
         [$autre, $code] = $this->classeAvecCode();
         $sienne = Institution::factory()->create(['mode' => InstitutionMode::Standalone]);
 
-        $this->withToken($this->jeton($this->apprenant($sienne)))
+        $this->withToken($this->tokenFor($this->apprenant($sienne)))
             ->withHeader('X-Institution', (string) $autre->slug)
             ->postJson(self::URL, ['code' => $code])
             ->assertStatus(404);
@@ -176,7 +185,7 @@ final class RejoindreParCodeTest extends TestCase
         [$ecole, $code] = $this->classeAvecCode();
         $formateur = User::factory()->create(['institution_id' => $ecole->getKey(), 'role' => 'enseignant']);
 
-        $this->withToken($this->jeton($formateur))
+        $this->withToken($this->tokenFor($formateur))
             ->postJson(self::URL, ['code' => $code])
             ->assertStatus(403);
 
@@ -191,7 +200,7 @@ final class RejoindreParCodeTest extends TestCase
         [$ecole, $code] = $this->classeAvecCode();
         $admin = User::factory()->create(['institution_id' => $ecole->getKey(), 'role' => 'superAdmin']);
 
-        $this->withToken($this->jeton($admin))
+        $this->withToken($this->tokenFor($admin))
             ->postJson(self::URL, ['code' => $code])
             ->assertStatus(403);
 
@@ -204,7 +213,7 @@ final class RejoindreParCodeTest extends TestCase
         $apprenant = $this->apprenant($ecole);
         $ecole->update(['mode' => InstitutionMode::Klassci]);
 
-        $this->withToken($this->jeton($apprenant))
+        $this->withToken($this->tokenFor($apprenant))
             ->postJson(self::URL, ['code' => $code])
             ->assertStatus(404);
 
@@ -226,7 +235,7 @@ final class RejoindreParCodeTest extends TestCase
     {
         [$ecole] = $this->classeAvecCode();
 
-        $this->withToken($this->jeton($this->apprenant($ecole)))
+        $this->withToken($this->tokenFor($this->apprenant($ecole)))
             ->postJson(self::URL, [])
             ->assertStatus(422);
     }
@@ -242,10 +251,10 @@ final class RejoindreParCodeTest extends TestCase
         $voisin = $this->apprenant($ecole, 'voisin@test.ci');
 
         for ($i = 0; $i < 10; $i++) {
-            $this->withToken($this->jeton($insistant))->postJson(self::URL, ['code' => 'ZZZZZZ']);
+            $this->withToken($this->tokenFor($insistant))->postJson(self::URL, ['code' => 'ZZZZZZ']);
         }
 
-        $this->withToken($this->jeton($insistant))
+        $this->withToken($this->tokenFor($insistant))
             ->postJson(self::URL, ['code' => 'ZZZZZZ'])
             ->assertStatus(429);
 
@@ -254,7 +263,7 @@ final class RejoindreParCodeTest extends TestCase
         $this->flushHeaders();
         $this->app['auth']->forgetGuards();
 
-        $reponse = $this->withToken($this->jeton($voisin))
+        $reponse = $this->withToken($this->tokenFor($voisin))
             ->postJson(self::URL, ['code' => 'ZZZZZZ']);
 
         // Le voisin répond sur ses propres mérites — un 404, son code n'ouvrant
@@ -275,7 +284,7 @@ final class RejoindreParCodeTest extends TestCase
             RateLimiter::hit(RejoindreParCodeService::cleDesEchecs((int) $ecole->getKey()), 86_400);
         }
 
-        $this->withToken($this->jeton($this->apprenant($ecole)))
+        $this->withToken($this->tokenFor($this->apprenant($ecole)))
             ->postJson(self::URL, ['code' => $code])
             ->assertStatus(429);
 
@@ -285,7 +294,7 @@ final class RejoindreParCodeTest extends TestCase
     public function test_seul_un_echec_consomme_le_plafond_de_l_ecole(): void
     {
         [$ecole, $code] = $this->classeAvecCode();
-        $jeton = $this->jeton($this->apprenant($ecole));
+        $jeton = $this->tokenFor($this->apprenant($ecole));
 
         $this->withToken($jeton)->postJson(self::URL, ['code' => $code])->assertStatus(201);
         self::assertSame(0, $this->echecsDe($ecole), 'Un code valide a été compté comme un échec.');
@@ -326,7 +335,7 @@ final class RejoindreParCodeTest extends TestCase
             $this->adhesion($classe, $apprenant, 'suspendu', '2026-01-10');
         });
 
-        $this->withToken($this->jeton($apprenant))
+        $this->withToken($this->tokenFor($apprenant))
             ->postJson(self::URL, ['code' => $code])
             ->assertStatus(409);
 
@@ -336,20 +345,6 @@ final class RejoindreParCodeTest extends TestCase
     }
 
     // ───────────────────────── harnais
-
-    private function jeton(User $user): string
-    {
-        return $user->createToken('test')->plainTextToken;
-    }
-
-    private function apprenant(Institution $ecole, string $email = 'awa@test.ci'): User
-    {
-        return User::factory()->create([
-            'institution_id' => $ecole->getKey(),
-            'email' => $email,
-            'role' => 'etudiant',
-        ]);
-    }
 
     private function adhesion(Classe $classe, User $apprenant, string $statut, string $date): void
     {
@@ -370,26 +365,5 @@ final class RejoindreParCodeTest extends TestCase
             ->where('classe_id', $classe->getKey())
             ->where('user_id', $apprenant->getKey())
             ->first();
-    }
-
-    /**
-     * @return array{0: Institution, 1: string, 2: Classe}
-     */
-    private function classeAvecCode(): array
-    {
-        $ecole = Institution::factory()->create(['mode' => InstitutionMode::Standalone]);
-        app(TenantManager::class)->set($ecole);
-
-        $classe = Classe::factory()->create([
-            'institution_id' => $ecole->getKey(),
-            'klassci_id' => null,
-        ]);
-
-        $code = app(ClasseEnrolmentCodeService::class)->generer($classe->getKey());
-
-        // Le tenant est ensuite posé par le jeton, comme en production.
-        app(TenantManager::class)->reset();
-
-        return [$ecole, $code, $classe];
     }
 }

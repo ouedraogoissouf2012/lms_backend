@@ -36,7 +36,7 @@ final class LMSClassesLocalesController extends Controller
         try {
             $page = $this->classes->lister($request->parPage());
         } catch (BusinessException $e) {
-            return $this->errorResponse($e->getMessage(), $this->statut($e));
+            return $this->errorResponse($e->getMessage(), $this->statut($e), reason: $e->reason);
         }
 
         return $this->successResponse(

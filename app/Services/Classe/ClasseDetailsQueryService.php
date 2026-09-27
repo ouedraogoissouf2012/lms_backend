@@ -89,7 +89,7 @@ final class ClasseDetailsQueryService
                 'success' => true,
                 'data' => [
                     'classe' => $classe,
-                    'etudiants' => $etudiantsActifs,
+                    'etudiants' => $this->rosterVisiblePar($user, $etudiantsActifs),
                     'matieres_disponibles' => $matieres ?? [],
                     'emploi_temps_semaine' => $emploiTemps ?? [],
                     'evaluations_programmees' => $evaluations,
@@ -190,6 +190,27 @@ final class ClasseDetailsQueryService
             ->filter(fn (array $etudiant): bool => $this->estEtudiantActif($etudiant, $classeId))
             ->values()
             ->all();
+    }
+
+    /**
+     * Le roster n'est rendu qu'au personnel (GHSA-gg7j).
+     *
+     * La fiche de classe reste ouverte à l'élève — matières, planning,
+     * évaluations — mais la liste de ses camarades et leurs données
+     * personnelles ne le regardent pas. Décidé ICI et non sur la route : les deux
+     * portes (ADR-760-01) servent ce service, et une garde posée sur l'une
+     * laisserait l'autre ouverte. Les statistiques, elles, gardent leur
+     * effectif : un nombre n'est pas une donnée sur quelqu'un.
+     *
+     * Fail-closed : tout rôle qui n'est pas du personnel est traité comme un
+     * élève.
+     *
+     * @param  array<int, array<string, mixed>>  $etudiantsActifs
+     * @return array<int, array<string, mixed>>
+     */
+    private function rosterVisiblePar(User $user, array $etudiantsActifs): array
+    {
+        return $user->isStaff() ? $etudiantsActifs : [];
     }
 
     /**

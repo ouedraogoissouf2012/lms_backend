@@ -2,6 +2,8 @@
 
 namespace App\Http\Requests;
 
+use App\Models\User;
+use Closure;
 use Illuminate\Foundation\Http\FormRequest;
 
 /**
@@ -50,6 +52,7 @@ final class ListFilesRequest extends FormRequest
                 'sometimes',
                 'integer',
                 'min:1',
+                $this->sesPropresFichiersSeulement(),
             ],
             'fileable_type' => [
                 'sometimes',
@@ -73,6 +76,25 @@ final class ListFilesRequest extends FormRequest
                 'max:100',
             ],
         ];
+    }
+
+    /**
+     * Un élève ne liste que ses propres fichiers (GHSA-gg7j) : cibler un autre
+     * compte, c'est demander ce qu'un camarade a déposé. Fail-closed : tout
+     * rôle qui n'est pas du personnel est traité comme un élève. Une valeur
+     * non numérique est laissée à la règle `integer`, qui la refuse déjà.
+     */
+    private function sesPropresFichiersSeulement(): Closure
+    {
+        return function (string $attribute, mixed $value, Closure $fail): void {
+            $user = $this->user();
+            if (! $user instanceof User || $user->isStaff() || ! is_numeric($value)) {
+                return;
+            }
+            if ((int) $value !== $user->id) {
+                $fail('Vous ne pouvez lister que vos propres fichiers.');
+            }
+        };
     }
 
     public function messages(): array

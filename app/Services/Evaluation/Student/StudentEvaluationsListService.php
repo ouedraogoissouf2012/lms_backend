@@ -48,10 +48,16 @@ final class StudentEvaluationsListService
         ]);
 
         $dashboard = $this->klassciService->requestWithUserToken($klassciToken, 'me/dashboard', 'GET');
-        $classeId = $dashboard['data']['classe']['id'] ?? null;
-        if (!$classeId) {
+        $classe = $dashboard['data']['classe'] ?? null;
+        if (!is_array($classe) || !is_numeric($classe['id'] ?? null)) {
             return null;
         }
+        $classeId = (int) $classe['id'];
+
+        // La seule chose que la liste dira de la classe : son identité, déjà en
+        // main. L'enveloppe `classes/{id}`, qui porte le roster, n'est plus
+        // demandée (GHSA-gg7j).
+        $classeIdentite = ['id' => $classeId, 'nom' => $this->nomDeClasse($classe)];
 
         // Ni `questions` ni `submissions` ne sont chargées : elles étaient
         // sérialisées telles quelles par `toArray()`, livrant à l'élève le
@@ -72,7 +78,7 @@ final class StudentEvaluationsListService
         $klassciEvaluations = $this->fetchKlassciEvaluationsSafe($klassciToken);
 
         return $evaluationsLMS->map(
-            fn ($evalLMS) => $this->enrichEvaluation($evalLMS, $klassciEvaluations, $klassciEtudiantId, $klassciToken)
+            fn ($evalLMS) => $this->enrichEvaluation($evalLMS, $klassciEvaluations, $klassciEtudiantId, $klassciToken, $classeIdentite)
         )->values()->toArray();
     }
 
@@ -92,13 +98,15 @@ final class StudentEvaluationsListService
 
     /**
      * @param  \Illuminate\Support\Collection<int, array<string, mixed>>  $klassciEvaluations
+     * @param  array{id: int, nom: ?string}  $classeIdentite
      * @return array<string, mixed>
      */
     private function enrichEvaluation(
         Evaluation $evalLMS,
         \Illuminate\Support\Collection $klassciEvaluations,
         ?int $klassciEtudiantId,
-        string $klassciToken
+        string $klassciToken,
+        array $classeIdentite
     ): array {
         $evalArray = $evalLMS->toArray();
         $klassciEval = $klassciEvaluations->firstWhere('id', $evalLMS->klassci_evaluation_id);
@@ -112,7 +120,7 @@ final class StudentEvaluationsListService
             $evalArray['classe'] = $klassciEval['classe'] ?? null;
             $evalArray['matiere'] = $klassciEval['matiere'] ?? null;
         } else {
-            $this->enrichPureLmsEvaluation($evalArray, $evalLMS, $klassciToken);
+            $this->enrichPureLmsEvaluation($evalArray, $evalLMS, $klassciToken, $classeIdentite);
         }
 
         // `withCount` a déjà posé le compte : plus besoin de charger les
@@ -127,30 +135,51 @@ final class StudentEvaluationsListService
     }
 
     /**
+     * Évaluation sans correspondance KLASSCI : la matière est demandée, la
+     * classe ne l'est PLUS. `classes/{id}` livre l'enveloppe entière de la
+     * classe — roster, e-mails, téléphones — et elle partait telle quelle vers
+     * l'élève (GHSA-gg7j). Son identité suffit, et elle est déjà connue.
+     *
      * @param  array<string, mixed>  $evalArray  Modifié par référence.
+     * @param  array{id: int, nom: ?string}  $classeIdentite
      */
-    private function enrichPureLmsEvaluation(array &$evalArray, Evaluation $evalLMS, string $klassciToken): void
-    {
-        try {
-            if ($evalLMS->klassci_matiere_id) {
-                $matiereResponse = $this->klassciService->requestWithUserToken(
-                    $klassciToken,
-                    "matieres/{$evalLMS->klassci_matiere_id}",
-                    'GET'
-                );
-                $evalArray['matiere'] = $matiereResponse['data']['matiere'] ?? null;
-            }
+    private function enrichPureLmsEvaluation(
+        array &$evalArray,
+        Evaluation $evalLMS,
+        string $klassciToken,
+        array $classeIdentite
+    ): void {
+        $evalArray['classe'] = $classeIdentite;
 
-            if ($evalLMS->klassci_classe_id) {
-                $classeResponse = $this->klassciService->requestWithUserToken(
-                    $klassciToken,
-                    "classes/{$evalLMS->klassci_classe_id}",
-                    'GET'
-                );
-                $evalArray['classe'] = $classeResponse['data'] ?? null;
-            }
-        } catch (\Exception $e) {
-            $this->logger->warning('Could not fetch matiere/classe for pure LMS eval', ['error' => $e->getMessage()]);
+        if (!$evalLMS->klassci_matiere_id) {
+            return;
         }
+
+        try {
+            $matiereResponse = $this->klassciService->requestWithUserToken(
+                $klassciToken,
+                "matieres/{$evalLMS->klassci_matiere_id}",
+                'GET'
+            );
+            $evalArray['matiere'] = $matiereResponse['data']['matiere'] ?? null;
+        } catch (\Exception $e) {
+            $this->logger->warning('Could not fetch matiere for pure LMS eval', ['error' => $e->getMessage()]);
+        }
+    }
+
+    /**
+     * KLASSCI nomme la classe `nom`, `name` ou `libelle` selon l'endpoint.
+     *
+     * @param  array<string, mixed>  $classe
+     */
+    private function nomDeClasse(array $classe): ?string
+    {
+        foreach (['nom', 'name', 'libelle'] as $cle) {
+            if (is_string($classe[$cle] ?? null)) {
+                return $classe[$cle];
+            }
+        }
+
+        return null;
     }
 }

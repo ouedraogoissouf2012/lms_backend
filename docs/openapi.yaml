@@ -2971,8 +2971,18 @@ paths:
                             lms_integration:
                               nullable: true
                             classe:
+                              type: object
                               nullable: true
-                              description: "Relaye depuis KLASSCI, forme non garantie par le LMS."
+                              description: |
+                                L identite de la classe de l eleve, et rien d autre : le
+                                LMS ne relaie plus l enveloppe KLASSCI de la classe, qui
+                                portait la liste des eleves.
+                              properties:
+                                id:
+                                  type: integer
+                                nom:
+                                  type: string
+                                  nullable: true
                             matiere:
                               nullable: true
                               description: "Relaye depuis KLASSCI, forme non garantie par le LMS."

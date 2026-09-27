@@ -774,11 +774,6 @@ parameters:
 			count: 1
 			path: app/Services/Evaluation/Student/StudentEvaluationsListService.php
 
-		-
-			message: '#^Cannot access offset ''id'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 1
-			path: app/Services/Evaluation/Student/StudentEvaluationsListService.php
 
 		-
 			message: '#^Cannot access offset ''matiere'' on mixed\.$#'

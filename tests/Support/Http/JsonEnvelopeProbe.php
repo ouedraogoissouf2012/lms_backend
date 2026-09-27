@@ -30,8 +30,8 @@ final class JsonEnvelopeProbe
     /**
      * @param  array<string, mixed>  $errors
      */
-    public function error(string $message, int $status = 400, array $errors = []): JsonResponse
+    public function error(string $message, int $status = 400, array $errors = [], ?string $reason = null): JsonResponse
     {
-        return $this->errorResponse($message, $status, $errors);
+        return $this->errorResponse($message, $status, $errors, $reason);
     }
 }

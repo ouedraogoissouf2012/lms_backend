@@ -36,7 +36,7 @@
 > **Amendement (décision utilisateur, Phase 4)** : le code réel montre que les controllers émettent des formes hétérogènes (`{success, data}` sans message, `{success, message}` sans data, `{success, message, data}`). L'hypothèse initiale R2.4 (forme universelle d'`AuthResponsePresenter`) était **fausse**. Objectif retenu : **DRY sans changer le JSON** → chaque clé optionnelle est OMISE quand absente. L'uniformisation (toujours les 3 clés) est un chantier distinct (coordination frontend).
 
 - **R2.1** — L'enveloppe de succès SHALL être `{ "success": true, "message"?: string, "data"?: mixed, "meta"?: object }` : `message` **omis** si `''`, `data` **omis** si `null`, `meta` **omis** si vide. Ainsi `successResponse($d)` reproduit `{success, data}` et `successResponse(null, $m)` reproduit `{success, message}`.
-- **R2.2** — L'enveloppe d'erreur SHALL être `{ "success": false, "message": string, "errors"?: object }`, `errors` **omis** si vide, + **code HTTP** explicite (défaut succès 200, erreur 400).
+- **R2.2** — L'enveloppe d'erreur SHALL être `{ "success": false, "message": string, "errors"?: object, "reason"?: string }`, `errors` **omis** si vide, `reason` **omis** si null, + **code HTTP** explicite (défaut succès 200, erreur 400). _Amendé #906 (ADR-906-01) : `reason` ajouté, même règle d'omission — aucun JSON existant ne change._
 - **R2.3** — Le trait SHALL être capable de reproduire **à l'identique** chacune des 3 formes existantes, de sorte qu'une migration ne modifie aucune clé visible par le client (cf. R3).
 
 ### R3 — Non-régression du contrat d'API (le plus critique)

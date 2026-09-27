@@ -6,7 +6,6 @@ namespace Tests\Feature\Enrollment;
 
 use App\Enums\InstitutionMode;
 use App\Enums\Role;
-use App\Models\Classe;
 use App\Models\Institution;
 use App\Models\User;
 use App\Services\Enrollment\ClasseEnrolmentCodeService;
@@ -14,6 +13,7 @@ use App\Services\TenantManager;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Tests\Concerns\PreparesClasseWithCode;
 use Tests\TestCase;
 
 /**
@@ -35,6 +35,7 @@ use Tests\TestCase;
  */
 final class InscriptionParCodeTest extends TestCase
 {
+    use PreparesClasseWithCode;
     use RefreshDatabase;
 
     private const URL = '/api/inscriptions';
@@ -247,26 +248,5 @@ final class InscriptionParCodeTest extends TestCase
             'password' => 'mot-de-passe-choisi',
             'password_confirmation' => 'mot-de-passe-choisi',
         ];
-    }
-
-    /**
-     * @return array{0: Institution, 1: string, 2: Classe}
-     */
-    private function classeAvecCode(): array
-    {
-        $ecole = Institution::factory()->create(['mode' => InstitutionMode::Standalone]);
-        app(TenantManager::class)->set($ecole);
-
-        $classe = Classe::factory()->create([
-            'institution_id' => $ecole->getKey(),
-            'klassci_id' => null,
-        ]);
-
-        $code = app(ClasseEnrolmentCodeService::class)->generer($classe->getKey());
-
-        // Le tenant est ensuite posé par l'en-tête, comme en production.
-        app(TenantManager::class)->reset();
-
-        return [$ecole, $code, $classe];
     }
 }

@@ -54,6 +54,9 @@
   - [x] P3.1 Test de caractérisation `KnowledgeCheckCrudResponseTest` : 11 réponses (6 succès + 5 erreurs 403/404/400), erreurs en `assertExactJson`, succès via présence/absence de clés. **Vert sur le code NON migré** (capture du comportement).
   - [x] P3.2 Migration des 11 réponses vers `successResponse`/`errorResponse`. 132→97 l, `response()->json` éliminé.
   - [x] P3.3 Test rejoué après migration : **11 passed (37 assertions)**, PHPStan vert → sortie identique prouvée.
+- [x] **#906 — Le motif d'un refus** _(R2.2 amendé, ADR-906-01)_ — _PR #916, complété par #924_
+  - [x] M.1 `errorResponse()` accepte `?string $reason`, omis si null ; jamais une exception (R4.1 intacte).
+  - [x] M.2 Tests du trait : cas 9 et 10 de design §6 ; le corpus d'invariants (`RespondsWithJsonInvariantsTest`) couvre `reason` (#924).
 - [ ] **PR-4+ — Autres controllers** : Evaluation/Quiz (mixtes, réponses payload-racine à exclure), Proxy*/Dashboard*/TeacherStats/Report/Search (test de caractérisation d'abord). _(R7.1)_
 
 ---

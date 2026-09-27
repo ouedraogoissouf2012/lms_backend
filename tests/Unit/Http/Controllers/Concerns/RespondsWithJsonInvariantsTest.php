@@ -21,7 +21,7 @@ use Tests\TestCase;
  * - I2 : `message` présent ⟺ `message !== ''` (succès) / toujours présent (erreur).
  * - I3 : `data` présent ⟺ `data !== null` — y compris pour les valeurs falsy
  *        (`false`, `0`, `''`, `[]`, `'0'`), pièges classiques d'un `empty()` mal placé.
- * - I4 : `meta`/`errors` présents ⟺ tableau non vide.
+ * - I4 : `meta`/`errors` présents ⟺ tableau non vide ; `reason` présent ⟺ non null (#906).
  * - I5 : le statut HTTP passé est restitué tel quel (aucune réécriture).
  * - I6 : `data` fait l'aller-retour d'encodage sans altération (assertSame).
  * - I7 : aucune clé parasite hors du contrat.
@@ -93,18 +93,30 @@ final class RespondsWithJsonInvariantsTest extends TestCase
             $errors = $this->nextInt(2) === 0
                 ? ['field_'.$this->nextInt(10) => ['règle violée '.$this->nextInt(10)]]
                 : [];
+            // #906 : le motif est le quatrième membre de l'enveloppe d'erreur.
+            $reason = $this->nextInt(2) === 0 ? 'motif_'.$this->nextInt(10) : null;
 
-            $payload = $this->probe->error($message, $status, $errors)->getData(true);
+            $payload = $this->probe->error($message, $status, $errors, $reason)->getData(true);
             $context = sprintf('itération %d — message=%s status=%d', $i, json_encode($message), $status);
 
-            // Contrat erreur : success=false et message TOUJOURS présents (même '').
-            $expectedKeys = $errors === [] ? ['success', 'message'] : ['success', 'message', 'errors'];
+            // Contrat erreur : success=false et message TOUJOURS présents (même '') ;
+            // `errors` puis `reason`, chacun seulement s'il porte quelque chose.
+            $expectedKeys = ['success', 'message'];
+            if ($errors !== []) {
+                $expectedKeys[] = 'errors';
+            }
+            if ($reason !== null) {
+                $expectedKeys[] = 'reason';
+            }
             self::assertSame($expectedKeys, array_keys($payload), $context);
             self::assertFalse($payload['success'], $context);
             self::assertSame($message, $payload['message'], $context);
 
             if ($errors !== []) {
                 self::assertSame($errors, $payload['errors'], $context);
+            }
+            if ($reason !== null) {
+                self::assertSame($reason, $payload['reason'], $context);
             }
         }
     }

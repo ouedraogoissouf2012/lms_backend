@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Http\Controllers\API\LMS\LMSClasseLocalDetailsController;
 use App\Http\Controllers\API\LMS\LMSClassesController;
+use App\Http\Controllers\API\LMS\LMSClassesLocalesController;
 use App\Http\Controllers\API\LMS\LMSTeacherClassesController;
 use Illuminate\Support\Facades\Route;
 
@@ -46,3 +47,18 @@ Route::middleware(['auth:sanctum', 'klassci.sync'])->prefix('lms')->group(functi
         ->middleware('role:enseignant,coordinateur')
         ->name('lms.teacher.classes');
 });
+
+// La collection des classes LOCALES et de leur code (#905, ADR-905-01). Rien
+// ne les listait — la liste d'administration vient de KLASSCI, et la porte
+// locale de #760 répond 409 à une classe sans identifiant KLASSCI. Le code
+// revient avec la classe : le relire ne le régénère plus, donc n'invalide plus
+// celui déjà dicté.
+//
+// Hors du préfixe `lms` : son URL, `/api/classes`, est celle de la création
+// (`lms.php`), dont elle est la collection. Déplacée ici par #924 — une
+// lecture n'avait rien à faire dans le fichier des écritures.
+//
+// Même garde de rôle que l'émission du code : un apprenant qui lirait les codes
+// des autres classes y entrerait sans y avoir été invité.
+Route::middleware(['auth:sanctum', 'klassci.sync', 'role:coordinateur,admin,superAdmin'])
+    ->get('/classes', [LMSClassesLocalesController::class, 'index']);

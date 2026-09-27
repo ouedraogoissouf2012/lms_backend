@@ -44,7 +44,8 @@ use Illuminate\Support\ServiceProvider;
  *  - `inscriptions` : 5 req/min/IP + 100/jour global (#846, porte anonyme) —
  *                      motifs `ip_quota_exceeded` / `global_cap_reached`.
  *  - `rejoindre-classe` : 10 req/min + 30/jour par compte (#885, porte
- *                      authentifiée) — motif `account_quota_exceeded`.
+ *                      authentifiée) — motifs `account_quota_exceeded` /
+ *                      `account_daily_cap_reached`.
  *
  * Le `supradmin` (gestionnaire plateforme) est exempté (`Limit::none()`) —
  * cohérent avec son bypass tenant existant.
@@ -168,8 +169,10 @@ final class RateLimitServiceProvider extends ServiceProvider
             return [
                 Limit::perMinute(self::REJOINDRE_PER_MINUTE)->by('rejoindre-minute|'.$apprenant)
                     ->response($this->refusMotive('account_quota_exceeded')),
+                // Motif propre : « réessayez dans une minute » n'est pas « revenez
+                // demain » (#924) — même règle que `inscriptions`, ci-dessus.
                 Limit::perDay(self::REJOINDRE_PER_DAY)->by('rejoindre-jour|'.$apprenant)
-                    ->response($this->refusMotive('account_quota_exceeded')),
+                    ->response($this->refusMotive('account_daily_cap_reached')),
             ];
         });
     }

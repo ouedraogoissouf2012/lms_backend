@@ -52,8 +52,10 @@ final class ProxyOrganisationRosterIsolationTest extends TestCase
     {
         $institution = $this->institution();
         $alice = $this->user($institution, 'token-alice');
+        // Un membre du personnel : la route est désormais réservée au personnel
+        // (GHSA-gg7j), et ce test porte sur le JETON absent, pas sur le rôle.
         $tokenless = User::factory()->for($institution)->create([
-            'role' => 'etudiant',
+            'role' => 'enseignant',
             'klassci_token' => null,
             'klassci_tenant_url' => self::TENANT_URL,
             'last_klassci_sync' => now(),

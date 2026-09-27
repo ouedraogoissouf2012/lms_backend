@@ -39,8 +39,11 @@ Route::middleware(['auth:sanctum', 'klassci.sync'])->prefix('lms')->group(functi
     Route::get('/classes/{classeId}', [LMSClassesController::class, 'classeDetails'])
         ->name('lms.classes.details');
 
-    // Étudiants d'une classe
+    // Étudiants d'une classe — réservé au personnel (GHSA-gg7j) : cette route
+    // n'existe que pour lister des élèves, et un élève ne reçoit jamais de
+    // données sur un autre élève. Même garde que /seances/{id}/attendances.
     Route::get('/classes/{classeId}/etudiants', [LMSClassesController::class, 'classeEtudiants'])
+        ->middleware('role:enseignant,coordinateur,admin')
         ->name('lms.classes.etudiants');
 
     Route::get('/teacher/classes', [LMSTeacherClassesController::class, 'index'])

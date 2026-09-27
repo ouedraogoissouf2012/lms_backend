@@ -83,13 +83,14 @@ final class FileController extends AuthenticatedController
      */
     public function show(Request $request, int $id): JsonResponse
     {
-        $file = $this->queryService->find($id);
+        $user = $this->authenticatedUser($request);
+        $file = $this->queryService->find($id, $user);
 
         if ($file === null) {
             return $this->errorResponse('Fichier non trouvé', 404);
         }
 
-        if (! $this->canReadFile($file, $this->authenticatedUser($request))) {
+        if (! $this->canReadFile($file, $user)) {
             return $this->errorResponse('Accès refusé', 403);
         }
 

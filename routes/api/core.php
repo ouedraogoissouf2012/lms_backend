@@ -147,7 +147,10 @@ Route::prefix('proxy')
 
         // Classes et étudiants
         Route::get('/classes', [ProxyOrganisationController::class, 'classes']);
-        Route::get('/classes/{id}/etudiants', [ProxyOrganisationController::class, 'etudiants']);
+        // Réservé au personnel (GHSA-gg7j) : le LMS ne délègue plus à KLASSCI le
+        // soin de refuser un élève — c'est le point 4 de #617, resté ouvert.
+        Route::get('/classes/{id}/etudiants', [ProxyOrganisationController::class, 'etudiants'])
+            ->middleware('role:enseignant,coordinateur,admin');
 
         // Matières et enseignants
         Route::get('/matieres', [ProxyOrganisationController::class, 'matieres']);

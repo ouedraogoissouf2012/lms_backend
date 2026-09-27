@@ -186,8 +186,10 @@ Route::middleware(['auth:sanctum', 'klassci.sync'])->prefix('lms')->group(functi
     Route::get('/seances/{seanceId}/details', [LMSSeanceDetailsController::class, 'seanceDetails'])
         ->name('lms.seances.details');
 
-    // Participants autorisés pour une séance
+    // Participants autorisés pour une séance — réservé au personnel (GHSA-gg7j),
+    // comme /attendances ci-dessus : c'est la même liste d'élèves.
     Route::get('/seances/{seanceId}/participants', [LMSSeanceDetailsController::class, 'seanceParticipants'])
+        ->middleware('role:enseignant,coordinateur,admin')
         ->name('lms.seances.participants');
 
     // Valider l'accès d'un participant
@@ -292,7 +294,12 @@ Route::middleware(['auth:sanctum', 'klassci.sync'])->prefix('lms')->group(functi
     // REQ-4 du spec : route renommée `/visio-participants` pour résoudre le
     // conflit avec `lms.seances.participants` (LMSSeancesController, ligne 530)
     // qui matchait toujours en premier — la route legacy était INACCESSIBLE.
+    // Réservé au personnel (GHSA-gg7j) : la liste porte nom, e-mail et heures de
+    // connexion de toute la classe, lus dans la base LOCALE — aucune garde amont
+    // ne la protège. Le bouton qui l'ouvre est déjà réservé côté front
+    // (VisioManager.vue) ; la route l'est désormais aussi.
     Route::get('/seances/{seanceId}/visio-participants', [LMSVisioParticipantController::class, 'getVisioParticipants'])
+        ->middleware('role:enseignant,coordinateur,admin')
         ->name('lms.seances.visio-participants');
 
     // Masquer une séance (étudiant uniquement)

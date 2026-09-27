@@ -6,8 +6,10 @@ namespace App\Services\File;
 
 use App\Models\File;
 use App\Models\User;
+use Closure;
 use Illuminate\Contracts\Cache\Repository as CacheRepository;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
  * FileQueryService — extrait verbatim de `FileController` (split-16/file).
@@ -57,7 +59,7 @@ final class FileQueryService
      */
     public function list(User $caller, array $filters): LengthAwarePaginator
     {
-        $query = File::with(['user:id,name,email,role']);
+        $query = File::with($this->auteurVisiblePar($caller));
 
         if ($caller->isStudent()) {
             $query->where(function ($q) use ($caller) {
@@ -111,6 +113,29 @@ final class FileQueryService
     }
 
     /**
+     * L'auteur d'un fichier n'est rendu qu'au personnel et à son propriétaire
+     * (GHSA-gg7j).
+     *
+     * Un fichier public reste lisible par un élève — c'est du contenu partagé —
+     * mais qui l'a déposé est une donnée sur cette personne. La règle est posée
+     * sur le CHARGEMENT de la relation : pour qui n'est pas du personnel, `user`
+     * vaut `null` sur tout fichier qui n'est pas le sien, en une seule requête
+     * et sans second passage sur la liste. Fail-closed : un rôle inconnu est
+     * traité comme un élève.
+     *
+     * @return array<string, Closure(BelongsTo<User, File>): void>
+     */
+    private function auteurVisiblePar(User $viewer): array
+    {
+        return ['user' => static function (BelongsTo $relation) use ($viewer): void {
+            $relation->select(['users.id', 'users.name', 'users.email', 'users.role']);
+            if (! $viewer->isStaff()) {
+                $relation->where('users.id', $viewer->id);
+            }
+        }];
+    }
+
+    /**
      * Récupération unitaire d'un fichier — appelée par `GET /api/files/{id}`.
      *
      * Renvoie `null` si l'ID est inconnu (le caller traduit en 404). Les attributs
@@ -118,11 +143,13 @@ final class FileQueryService
      * la version pré-refacto.
      *
      * L'autorisation `canReadFile` reste dans le controller (trait
-     * `ChecksFileAuthorization`) — pas dupliquée dans le service.
+     * `ChecksFileAuthorization`) — pas dupliquée dans le service. Ce que le
+     * fichier dit de son AUTEUR, en revanche, dépend de qui regarde :
+     * {@see auteurVisiblePar()}.
      */
-    public function find(int $id): ?File
+    public function find(int $id, User $viewer): ?File
     {
-        $file = File::with(['user:id,name,email,role', 'fileable'])->find($id);
+        $file = File::with([...$this->auteurVisiblePar($viewer), 'fileable'])->find($id);
 
         if ($file === null) {
             return null;

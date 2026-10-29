@@ -6,7 +6,10 @@ namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\AuthenticatedController;
 use App\Http\Requests\SubmitKnowledgeCheckAttemptRequest;
+use App\Models\KnowledgeCheck;
+use App\Models\User;
 use App\Services\KnowledgeCheck\KnowledgeCheckAttemptService;
+use App\Services\Lesson\LessonProgressGate;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -25,6 +28,7 @@ final class KnowledgeCheckAttemptController extends AuthenticatedController
 {
     public function __construct(
         private readonly KnowledgeCheckAttemptService $service,
+        private readonly LessonProgressGate $gate,
     ) {
     }
 
@@ -35,6 +39,10 @@ final class KnowledgeCheckAttemptController extends AuthenticatedController
     public function startAttempt(Request $request, string $id): JsonResponse
     {
         $user = $this->authenticatedUser($request);
+        if ($refus = $this->refusTentative($id, $user)) {
+            return $refus;
+        }
+
         $payload = $this->service->startAttempt($id, $user);
 
         if ($payload === null) {
@@ -51,6 +59,10 @@ final class KnowledgeCheckAttemptController extends AuthenticatedController
     public function submitAttempt(SubmitKnowledgeCheckAttemptRequest $request, string $id): JsonResponse
     {
         $user = $this->authenticatedUser($request);
+        if ($refus = $this->refusTentative($id, $user)) {
+            return $refus;
+        }
+
         $result = $this->service->submitAttempt(
             $id,
             $user,
@@ -73,5 +85,18 @@ final class KnowledgeCheckAttemptController extends AuthenticatedController
         $user = $this->authenticatedUser($request);
 
         return $this->successResponse($this->service->getMyAttempts($id, $user));
+    }
+
+    /**
+     * Refus de jouer un quiz dont le chapitre n'est pas lisible (#934), AVANT
+     * toute écriture : aucune tentative créée, aucun essai consommé. Un quiz
+     * inexistant reste rendu par le service, comme jusqu'ici.
+     */
+    private function refusTentative(string $id, User $user): ?JsonResponse
+    {
+        $quiz = KnowledgeCheck::query()->with('chapter')->find($id);
+        $refus = $quiz instanceof KnowledgeCheck ? $this->gate->refusEcritureQuiz($quiz, $user) : null;
+
+        return $refus === null ? null : $this->errorResponse($refus['message'], $refus['status']);
     }
 }

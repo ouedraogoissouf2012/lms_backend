@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Search;
 
+use App\Models\Lesson;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
 
@@ -63,6 +64,9 @@ use Illuminate\Database\Eloquent\Builder;
  */
 final class TeacherOwnershipScope
 {
+    /** La colonne qui désigne l'auteur d'une leçon : `users.id` LOCAL (voir plus haut). */
+    private const LESSON_OWNER_COLUMN = 'enseignant_id';
+
     /**
      * Restreindre aux leçons dont `$teacher` est l'auteur.
      *
@@ -70,7 +74,18 @@ final class TeacherOwnershipScope
      */
     public function applyToLessons(Builder $query, User $teacher): void
     {
-        $query->where('enseignant_id', $teacher->id);
+        $query->where(self::LESSON_OWNER_COLUMN, $teacher->id);
+    }
+
+    /**
+     * `$teacher` est-il l'auteur de cette leçon ? Même règle que
+     * {@see applyToLessons()}, pour un modèle déjà chargé (#934).
+     */
+    public function ownsLesson(Lesson $lesson, User $teacher): bool
+    {
+        $auteur = $lesson->getAttribute(self::LESSON_OWNER_COLUMN);
+
+        return is_numeric($auteur) && (int) $auteur === (int) $teacher->id;
     }
 
     /**

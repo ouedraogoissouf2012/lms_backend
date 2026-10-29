@@ -14,6 +14,8 @@ use App\Http\Requests\UnpublishLessonRequest;
 use App\Http\Requests\UpdateLessonProgressRequest;
 use App\Models\Lesson;
 use App\Models\LessonProgress;
+use App\Models\User;
+use App\Services\Lesson\LessonProgressGate;
 use App\Services\Lesson\LessonProgressService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -28,6 +30,7 @@ class LessonProgressController extends AuthenticatedController
     public function __construct(
         private LessonProgressService $progressService,
         private LessonProgressRosterPresenter $roster,
+        private LessonProgressGate $gate,
     ) {
     }
 
@@ -45,8 +48,13 @@ class LessonProgressController extends AuthenticatedController
 
         $user = $this->authenticatedUser($request);
 
-        // Hors personnel reconnu : sa propre progression, et rien d'autre (#941).
+        // Hors personnel reconnu : sa propre progression, et rien d'autre (#941),
+        // sur une leçon qu'il peut lire : la ligne n'est créée qu'à cette condition (#934).
         if ($user->isLearnerAudience()) {
+            if ($refus = $this->refusEcriture($lesson, $user)) {
+                return $refus;
+            }
+
             $progress = $this->progressService->progressForUser($lesson, $user->id);
 
             if (!$progress) {
@@ -60,8 +68,12 @@ class LessonProgressController extends AuthenticatedController
             return $this->successResponse($progress);
         }
 
-        // Personnel : progression de tous les élèves, chacun réduit à {id, name}
-        // par le presenter (jamais l'objet User sérialisé).
+        // Personnel : l'auteur de la leçon et les gestionnaires seulement (#934).
+        // Chaque élève est réduit à {id, name} par le presenter.
+        if (! $this->gate->peutLireLesProgressions($lesson, $user)) {
+            return $this->errorResponse('Réservé à l\'auteur de la leçon et aux gestionnaires', 403);
+        }
+
         $progresses = $lesson->progress()->with('user:id,name')->get();
 
         // Non migré vers successResponse() : expose une clé racine `statistics`
@@ -92,6 +104,9 @@ class LessonProgressController extends AuthenticatedController
         }
 
         $user = $this->authenticatedUser($request);
+        if ($refus = $this->refusEcriture($lesson, $user)) {
+            return $refus;
+        }
 
         // Trouver ou créer la progression
         $progress = LessonProgress::firstOrCreate(
@@ -117,6 +132,9 @@ class LessonProgressController extends AuthenticatedController
         }
 
         $user = $this->authenticatedUser($request);
+        if ($refus = $this->refusEcriture($lesson, $user)) {
+            return $refus;
+        }
 
         $progress = LessonProgress::firstOrCreate(
             ['user_id' => $user->id, 'lesson_id' => $lesson->id]
@@ -140,6 +158,9 @@ class LessonProgressController extends AuthenticatedController
         }
 
         $user = $this->authenticatedUser($request);
+        if ($refus = $this->refusEcriture($lesson, $user)) {
+            return $refus;
+        }
 
         $progress = LessonProgress::firstOrCreate(
             ['user_id' => $user->id, 'lesson_id' => $lesson->id]
@@ -148,5 +169,16 @@ class LessonProgressController extends AuthenticatedController
         $this->progressService->addRating($progress, $request->rating, $request->feedback);
 
         return $this->successResponse($progress->fresh(), 'Note enregistrée');
+    }
+
+    /**
+     * Refus d'écrire une progression (#934), AVANT toute ligne créée : 404 si
+     * l'apprenant ne peut pas lire la leçon, 403 pour le personnel.
+     */
+    private function refusEcriture(Lesson $lesson, User $user): ?JsonResponse
+    {
+        $refus = $this->gate->refusEcriture($lesson, $user);
+
+        return $refus === null ? null : $this->errorResponse($refus['message'], $refus['status']);
     }
 }

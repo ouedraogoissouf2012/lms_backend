@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\E2E;
 
 use App\Models\Chapter;
+use App\Models\Classe;
 use App\Models\Institution;
 use App\Models\KnowledgeCheck;
 use App\Models\Lesson;
@@ -60,9 +61,14 @@ final class StudentChapterProgressionFlowTest extends TestCase
             'role' => 'etudiant',
         ]);
 
+        // L'élève suit la leçon : elle a une classe, et il y est inscrit. Écrire
+        // sa progression l'exige (#934, même règle que la lecture des chapitres).
+        $classe = Classe::factory()->create(['institution_id' => $this->institution->id]);
+        $classe->etudiants()->attach($this->student->id, ['statut' => 'actif']);
         $this->lesson = Lesson::factory()->create([
             'institution_id' => $this->institution->id,
             'enseignant_id' => $this->teacher->id,
+            'classe_id' => $classe->id,
             'status' => 'published',
             'published_at' => now()->subDay(),
         ]);

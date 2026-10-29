@@ -37,12 +37,15 @@ final class LessonWithoutInstitutionTest extends TestCase
 
     private Lesson $leconB;
 
+    private Lesson $brouillonA;
+
     /** @return iterable<string, array{0: string}> */
     public static function sansEtablissement(): iterable
     {
         // `Supradmin` et `SUPRADMIN` : variantes NON strictes, qui ne sont pas
-        // le supradmin plateforme.
-        foreach (['enseignant', 'etudiant', 'coordinateur', 'admin', 'superAdmin', 'Supradmin', 'SUPRADMIN'] as $role) {
+        // le supradmin plateforme. '' : le rôle absent que la base admet
+        // (`users.role` est NOT NULL).
+        foreach (['enseignant', 'etudiant', 'coordinateur', 'admin', 'superAdmin', 'Supradmin', 'SUPRADMIN', ''] as $role) {
             yield "« $role » sans établissement" => [$role];
         }
     }
@@ -57,6 +60,10 @@ final class LessonWithoutInstitutionTest extends TestCase
         self::assertSame(0, $this->asTenant($compte)->getJson('/api/lessons/my-courses?per_page=100')->assertOk()->json('meta.total'), 'my-courses');
         $this->asTenant($compte)->getJson("/api/lessons/{$this->leconA->id}")->assertNotFound();
         $this->asTenant($compte)->getJson("/api/lessons/{$this->leconB->id}")->assertNotFound();
+        // L'ordre de denies() : le refus de tenant (404) passe AVANT celui de
+        // publication (403). Inversé, un apprenant sans établissement verrait
+        // en 403 qu'un brouillon existe.
+        $this->asTenant($compte)->getJson("/api/lessons/{$this->brouillonA->id}")->assertNotFound();
     }
 
     public function test_le_supradmin_plateforme_lit_les_deux_etablissements(): void
@@ -77,7 +84,7 @@ final class LessonWithoutInstitutionTest extends TestCase
         $enseignant = User::factory()->create(['institution_id' => $this->leconA->institution_id, 'role' => 'enseignant']);
 
         $ids = collect($this->asTenant($enseignant)->getJson('/api/lessons?per_page=100')->assertOk()->json('data.data'))->pluck('id')->all();
-        self::assertSame([$this->leconA->id], $ids);
+        self::assertEqualsCanonicalizing([$this->leconA->id, $this->brouillonA->id], $ids, 'son établissement, brouillon compris pour le personnel');
         $this->asTenant($enseignant)->getJson("/api/lessons/{$this->leconB->id}")->assertNotFound();
     }
 
@@ -95,7 +102,7 @@ final class LessonWithoutInstitutionTest extends TestCase
         Sanctum::actingAs($enseignant);
 
         $ids = collect($this->getJson('/api/lessons?per_page=100')->assertOk()->json('data.data'))->pluck('id')->all();
-        self::assertSame([$this->leconA->id], $ids, 'liste : l\'autre établissement est filtré explicitement');
+        self::assertEqualsCanonicalizing([$this->leconA->id, $this->brouillonA->id], $ids, 'liste : l\'autre établissement est filtré explicitement');
         $this->getJson("/api/lessons/{$this->leconB->id}")->assertNotFound();
     }
 
@@ -110,5 +117,6 @@ final class LessonWithoutInstitutionTest extends TestCase
 
         $this->leconA = Lesson::factory()->published()->create(['institution_id' => $a->id, 'classe_id' => $classeA->id]);
         $this->leconB = Lesson::factory()->published()->create(['institution_id' => $b->id, 'classe_id' => $classeB->id]);
+        $this->brouillonA = Lesson::factory()->create(['institution_id' => $a->id, 'classe_id' => $classeA->id, 'status' => 'draft']);
     }
 }

@@ -10,7 +10,10 @@ use App\Services\Enrollment\EnrollmentSource;
 use Illuminate\Database\Eloquent\Builder;
 
 /**
- * Quelles leçons un compte lit : SOURCE UNIQUE de la portée de lecture (#942).
+ * Quelles leçons un compte lit : source unique de la portée des LISTES et du
+ * DÉTAIL de LessonListService (#942). `ChapterReadGate::canReadLesson` porte
+ * encore une seconde règle de lecture d'une leçon (l'accès aux chapitres) ;
+ * leur unification relève d'un lot ultérieur.
  *
  * Deux axes, et rien d'autre : ni chargement, ni filtre de requête, ni
  * pagination, qui restent à l'appelant.

@@ -12,6 +12,7 @@ use App\Models\TrainingSession;
 use App\Models\User;
 use App\Services\TenantManager;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 /**
@@ -27,8 +28,9 @@ use Tests\TestCase;
  * ## Ce que ces tests gardent SURTOUT
  *
  * Élargir une machine d'états est l'occasion classique de trop ouvrir. **Neuf
- * des quinze cas sont des refus** : chaque transition interdite par ADR-845-01
- * a son test, et l'irréversibilité de l'annulation en a deux.
+ * des dix-sept cas sont des refus** : chaque transition interdite par ADR-845-01
+ * a son test, et l'irréversibilité de l'annulation en a deux. Les deux derniers
+ * (#968) figent le message de succès, que l'écran affiche tel quel.
  *
  * @see docs/adr/2026-09-22-845-01-transitions-de-la-periode.md
  */
@@ -208,21 +210,76 @@ final class TrainingSessionTransitionsTest extends TestCase
         self::assertNotSame(TrainingSessionStatus::Purgee, $this->relire($periode)->status);
     }
 
+    // ───────────────────────── le message que l'écran affiche tel quel
+
+    /** @return iterable<string, array{0: InstitutionMode, 1: array<string, mixed>}> */
+    public static function volets(): iterable
+    {
+        // L'acteur klassci est le compte par défaut de la fabrique (issu de KLASSCI) ;
+        // l'acteur standalone est un compte local, sans aucune identité KLASSCI.
+        yield 'ecole klassci (compte issu de KLASSCI)' => [InstitutionMode::Klassci, []];
+        yield 'ecole standalone (compte local)' => [InstitutionMode::Standalone, [
+            'klassci_id' => null,
+            'klassci_enseignant_id' => null,
+            'klassci_token' => null,
+            'klassci_data' => null,
+        ]];
+    }
+
+    /**
+     * #968 — l'écran de pilotage (frontend_lms#391) affiche `message` sans le
+     * retoucher : il doit être écrit en français correct, accents compris.
+     * Le message ne dépend pas du mode ; les deux volets le prouvent.
+     *
+     * @param  array<string, mixed>  $compte
+     */
+    #[DataProvider('volets')]
+    public function test_publier_cloturer_archiver_disent_leur_message_accentue(InstitutionMode $mode, array $compte): void
+    {
+        [$acteur, $periode] = $this->periode([], $mode, $compte);
+
+        $this->agir($acteur, $periode, 'publier')->assertOk()
+            ->assertJsonPath('message', 'Période publiée.');
+        $this->agir($acteur, $periode, 'cloturer')->assertOk()
+            ->assertJsonPath('message', 'Période clôturée.');
+        $this->agir($acteur, $periode, 'archiver')->assertOk()
+            ->assertJsonPath('message', 'Période archivée.');
+    }
+
+    /**
+     * Méthode à part : une seconde période exigerait un second acteur, et le garde
+     * mémoïse le premier d'une requête à l'autre.
+     *
+     * @param  array<string, mixed>  $compte
+     */
+    #[DataProvider('volets')]
+    public function test_annuler_dit_son_message_accentue(InstitutionMode $mode, array $compte): void
+    {
+        [$acteur, $periode] = $this->periode([], $mode, $compte);
+
+        $this->agir($acteur, $periode, 'annuler')->assertOk()
+            ->assertJsonPath('message', 'Période annulée. Les inscriptions déjà faites sont conservées.');
+    }
+
     // ───────────────────────── harnais
 
     /**
      * @param  array<string, mixed>  $attributs
+     * @param  array<string, mixed>  $compte  surcharge de l'acteur (origine du compte)
      * @return array{0: User, 1: TrainingSession, 2: Institution}
      */
-    private function periode(array $attributs = []): array
-    {
-        $ecole = Institution::factory()->create(['mode' => InstitutionMode::Standalone]);
+    private function periode(
+        array $attributs = [],
+        InstitutionMode $mode = InstitutionMode::Standalone,
+        array $compte = [],
+    ): array {
+        $ecole = Institution::factory()->create(['mode' => $mode]);
         app(TenantManager::class)->set($ecole);
 
-        $acteur = User::factory()->create([
+        $acteur = User::factory()->create(array_merge([
             'institution_id' => $ecole->getKey(),
             'role' => 'coordinateur',
-        ]);
+        ], $compte));
 
         $programme = Program::factory()->create(['institution_id' => $ecole->getKey()]);
 

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Requests;
 
 use App\Http\Requests\Concerns\NormalizesQueryBooleans;
+use App\Models\User;
 use Illuminate\Foundation\Http\FormRequest;
 
 /**
@@ -18,9 +19,18 @@ final class ListEvaluationsRequest extends FormRequest
 {
     use NormalizesQueryBooleans;
 
+    /**
+     * Réservé au personnel reconnu, fermé par défaut : la liste porte les
+     * évaluations de tout l'établissement, brouillons et questions compris.
+     * L'élève a sa propre route (`/evaluations/student`). Le prédicat est
+     * `isStaff()`, en correspondance exacte, et non le middleware `role:`, qui
+     * ignore la casse (#949).
+     */
     public function authorize(): bool
     {
-        return true;
+        $user = $this->user();
+
+        return $user instanceof User && $user->isStaff();
     }
 
     /**

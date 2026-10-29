@@ -57,8 +57,9 @@ final class EvaluationListService
     {
         // `submissions` n'est PAS chargée : elle était sérialisée telle quelle
         // et livrait les copies de tout l'établissement — réponses, score et
-        // note — à quiconque appelle cette route, qui n'a aucune garde de rôle
-        // et qu'un élève atteint par le calendrier.
+        // note — à quiconque appelait cette route, alors sans garde de rôle.
+        // Elle est désormais réservée au personnel (ListEvaluationsRequest::
+        // authorize) ; la copie reste hors de la réponse.
         //
         // Rien ne consommait le tableau : les deux écrans qui affichent le
         // nombre de copies préfèrent déjà `submissions_count`.

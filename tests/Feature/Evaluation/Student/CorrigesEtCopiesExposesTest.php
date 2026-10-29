@@ -13,6 +13,7 @@ use App\Services\KlassciProxyService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
 use Mockery\MockInterface;
+use Tests\Concerns\ActsAsTenantUser;
 use Tests\TestCase;
 
 /**
@@ -49,6 +50,7 @@ use Tests\TestCase;
  */
 final class CorrigesEtCopiesExposesTest extends TestCase
 {
+    use ActsAsTenantUser;
     use RefreshDatabase;
 
     private const CLASSE_KLASSCI = 4242;
@@ -166,17 +168,9 @@ final class CorrigesEtCopiesExposesTest extends TestCase
         );
     }
 
-    public function test_la_liste_generale_ne_livre_pas_les_copies_des_autres(): void
+    /** Une évaluation, et la copie rendue d'un CAMARADE. */
+    private function evaluationAvecCopieDuCamarade(): Evaluation
     {
-        // `GET /evaluations` n'a aucune garde de rôle — son groupe de routes
-        // est explicitement « accessible à tous les utilisateurs
-        // authentifiés » — et un élève l'atteint par le calendrier
-        // (`useCalendarEvents.js:95`). Il y recevait la relation `submissions`
-        // en entier : les copies de tout l'établissement.
-        //
-        // Le compteur, lui, reste dû : il est calculé côté serveur
-        // (`EvaluationEnrichmentService:232`) et ne dépend pas de cette
-        // relation.
         $evaluation = $this->evaluationAvecCorrige();
         EvaluationSubmission::create([
             'evaluation_id' => $evaluation->id,
@@ -189,9 +183,24 @@ final class CorrigesEtCopiesExposesTest extends TestCase
             'note_sur_20' => 17,
             'institution_id' => $this->ecole->id,
         ]);
-        Sanctum::actingAs($this->eleve);
 
-        $reponse = $this->getJson('/api/evaluations');
+        return $evaluation;
+    }
+
+    public function test_la_liste_generale_ne_livre_pas_les_copies_des_autres(): void
+    {
+        // `GET /evaluations` livrait la relation `submissions` en entier : les
+        // copies de tout l'établissement. La route est désormais réservée au
+        // personnel (l'élève y reçoit 403, test suivant) ; même pour lui, la
+        // liste ne recopie aucune copie.
+        //
+        // Le compteur, lui, reste dû : il est calculé côté serveur
+        // (`EvaluationEnrichmentService:232`) et ne dépend pas de cette
+        // relation.
+        $this->evaluationAvecCopieDuCamarade();
+        $enseignant = User::factory()->teacher()->create(['institution_id' => $this->ecole->id]);
+
+        $reponse = $this->asTenant($enseignant)->getJson('/api/evaluations');
 
         $reponse->assertStatus(200);
         self::assertStringNotContainsString(
@@ -204,6 +213,25 @@ final class CorrigesEtCopiesExposesTest extends TestCase
             $reponse->json('data.0.submissions_count'),
             'Le compteur autoritatif a disparu avec la relation : le bouton « Voir les notes » tomberait.',
         );
+    }
+
+    /**
+     * La propriété d'origine, pour l'élève : il n'obtient pas les copies des
+     * autres par la liste générale. Elle est désormais plus forte, la liste lui
+     * est refusée, et le refus ne porte AUCUNE donnée : ni `data`, ni copie, ni
+     * titre.
+     */
+    public function test_l_eleve_n_obtient_rien_de_la_liste_generale(): void
+    {
+        $evaluation = $this->evaluationAvecCopieDuCamarade();
+
+        $reponse = $this->asTenant($this->eleve)->getJson('/api/evaluations');
+
+        $reponse->assertForbidden();
+        self::assertSame(['success', 'message'], array_keys((array) $reponse->json()));
+        self::assertFalse($reponse->json('success'));
+        self::assertStringNotContainsString('COPIE-DU-CAMARADE', $reponse->getContent() ?: '');
+        self::assertStringNotContainsString((string) $evaluation->titre, $reponse->getContent() ?: '');
     }
 
     public function test_l_ecran_de_passage_de_l_eleve_ne_recoit_pas_le_corrige(): void

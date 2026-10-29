@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace App\Services\KnowledgeCheck;
 
-use App\Models\ChapterProgress;
 use App\Models\KnowledgeCheck;
 use App\Models\KnowledgeCheckAttempt;
 use App\Models\User;
+use App\Services\Chapter\ChapterTimeRecorder;
 use Illuminate\Database\ConnectionInterface;
 use Illuminate\Database\Eloquent\Collection;
 use RuntimeException;
@@ -37,10 +37,22 @@ use RuntimeException;
  */
 final class KnowledgeCheckAttemptService
 {
+    /**
+     * Tentatives de la transaction de soumission (#944). Le temps du chapitre
+     * s'y écrit par ChapterTimeRecorder, dont la propre transaction, imbriquée,
+     * ne peut pas retenter : Laravel ne retente qu'au premier niveau. Un
+     * interblocage résiduel (deux toutes premières écritures simultanées sur la
+     * même leçon) doit donc être retenté ICI. Le rejeu est sûr : InnoDB annule
+     * toute la transaction (tentative et progression), puis la fermeture repart
+     * de zéro.
+     */
+    private const TRANSACTION_ATTEMPTS = 3;
+
     public function __construct(
         private readonly KnowledgeCheckGradingService $grader,
         private readonly KnowledgeCheckAccessService $access,
         private readonly ConnectionInterface $db,
+        private readonly ChapterTimeRecorder $timeRecorder,
     ) {
     }
 
@@ -158,7 +170,7 @@ final class KnowledgeCheckAttemptService
             );
 
             return $attempt;
-        });
+        }, self::TRANSACTION_ATTEMPTS);
 
         if (! $attempt instanceof KnowledgeCheckAttempt) {
             throw new RuntimeException('Enregistrement de la tentative interrompu.');
@@ -227,9 +239,15 @@ final class KnowledgeCheckAttemptService
      * Met à jour la progression du chapitre après une soumission :
      *   - conserve le meilleur score (`quiz_score`),
      *   - marque comme réussi + complète si `passed`,
-     *   - accumule le temps passé.
+     *   - ajoute le temps passé, par son unique écrivain (#944).
      *
-     * Logique extraite verbatim de l'ancien controller.
+     * Le temps passe EN PREMIER : ChapterTimeRecorder verrouille la ligne de la
+     * leçon avant celle du chapitre, et ce même ordre doit valoir pour le score
+     * écrit ensuite dans la même transaction. Écrire le chapitre d'abord
+     * croiserait les verrous d'un autre écrivain et ouvrirait un interblocage.
+     *
+     * Le score et la complétion restent ici, inchangés : leur divergence avec
+     * ChapterProgressService::recordQuizScore est suivie par #955.
      */
     private function updateChapterProgress(
         int $userId,
@@ -238,10 +256,7 @@ final class KnowledgeCheckAttemptService
         bool $passed,
         int $timeSpentSeconds
     ): void {
-        $progress = ChapterProgress::firstOrCreate(
-            ['user_id' => $userId, 'chapter_id' => $chapterId],
-            ['time_spent_seconds' => 0]
-        );
+        $progress = $this->timeRecorder->record($userId, $chapterId, max(0, $timeSpentSeconds));
 
         if ($progress->quiz_score === null || $score > $progress->quiz_score) {
             $progress->quiz_score = $score;
@@ -255,8 +270,5 @@ final class KnowledgeCheckAttemptService
         }
 
         $progress->save();
-        if ($timeSpentSeconds > 0) {
-            $progress->increment('time_spent_seconds', $timeSpentSeconds);
-        }
     }
 }

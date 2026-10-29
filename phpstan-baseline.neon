@@ -121,12 +121,6 @@ parameters:
 			path: app/Http/Controllers/API/Lesson/LessonProgressController.php
 
 		-
-			message: '#^Parameter \#3 \$timeSpentMinutes of method App\\Services\\Lesson\\LessonProgressService\:\:updateProgress\(\) expects int\|null, mixed given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Controllers/API/Lesson/LessonProgressController.php
-
-		-
 			message: '#^Cannot cast mixed to int\.$#'
 			identifier: cast.int
 			count: 1

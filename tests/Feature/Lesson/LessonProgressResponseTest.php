@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Lesson;
 
+use App\Models\Classe;
 use App\Models\Institution;
 use App\Models\Lesson;
 use App\Models\User;
@@ -49,9 +50,14 @@ final class LessonProgressResponseTest extends TestCase
             'institution_id' => $this->institution->id,
             'role' => 'enseignant',
         ]);
+        // L'élève suit la leçon : elle a une classe, et il y est inscrit. Écrire
+        // sa progression l'exige (#934, même règle que la lecture des chapitres).
+        $classe = Classe::factory()->create(['institution_id' => $this->institution->id]);
+        $classe->etudiants()->attach($this->student->id, ['statut' => 'actif']);
         $this->lesson = Lesson::factory()->create([
             'institution_id' => $this->institution->id,
             'enseignant_id' => $this->teacher->id,
+            'classe_id' => $classe->id,
             'status' => 'published',
         ]);
     }

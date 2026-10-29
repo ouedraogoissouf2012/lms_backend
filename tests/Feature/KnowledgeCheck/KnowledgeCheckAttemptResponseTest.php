@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\KnowledgeCheck;
 
 use App\Models\Chapter;
+use App\Models\Classe;
 use App\Models\Institution;
 use App\Models\KnowledgeCheck;
 use App\Models\KnowledgeCheckAttempt;
@@ -50,9 +51,14 @@ final class KnowledgeCheckAttemptResponseTest extends TestCase
             'role' => 'etudiant',
         ]);
 
+        // L'élève suit la leçon du quiz : elle a une classe, et il y est inscrit
+        // (#934 : jouer un quiz exige de pouvoir lire son chapitre).
+        $classe = Classe::factory()->create(['institution_id' => $this->institution->id]);
+        $classe->etudiants()->attach($this->student->id, ['statut' => 'actif']);
         $lesson = Lesson::factory()->create([
             'institution_id' => $this->institution->id,
             'enseignant_id' => $teacher->id,
+            'classe_id' => $classe->id,
             'status' => 'published',
         ]);
         $this->chapter = Chapter::factory()->create([

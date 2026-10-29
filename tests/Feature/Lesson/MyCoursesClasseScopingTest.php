@@ -10,7 +10,7 @@ use App\Models\Lesson;
 use App\Models\User;
 use App\Models\UserClass;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Laravel\Sanctum\Sanctum;
+use Tests\Concerns\ActsAsTenantUser;
 use Tests\TestCase;
 
 /**
@@ -22,12 +22,19 @@ use Tests\TestCase;
  * `classe_id` correspond à SA classe (résolue via le pont
  * UserClass.klassci_classe_id → classes.klassci_id → classes.id).
  *
+ * ## Vrai jeton porteur (#943)
+ *
+ * Ces tests s'authentifiaient par `Sanctum::actingAs`, qui n'émet aucun jeton :
+ * `ResolveInstitution` ne posait aucun tenant et le scope `BelongsToInstitution`
+ * ne filtrait rien. Ils passent désormais par {@see ActsAsTenantUser::asTenant()}.
+ *
  * @see app/Services/Lesson/LessonListService.php
- * @see app/Services/Lesson/StudentClasseResolver.php
+ * @see app/Services/Enrollment/CompositeEnrollmentSource.php
  * @see .claude/specs/lessons-student-classe-scoping/
  */
 final class MyCoursesClasseScopingTest extends TestCase
 {
+    use ActsAsTenantUser;
     use RefreshDatabase;
 
     private Institution $institution;
@@ -70,6 +77,32 @@ final class MyCoursesClasseScopingTest extends TestCase
         return $classe;
     }
 
+    /**
+     * Inscription par le SEUL cache KLASSCI (`user_classes`), sans pivot local.
+     *
+     * `CompositeEnrollmentSource` lit d'abord le pivot `classe_etudiant` et ne
+     * se replie sur le cache que si le pivot est vide. Un test qui attache aussi
+     * le pivot ne traverse donc jamais le pont : il resterait vert avec une
+     * `KlassciEnrollmentSource` qui ne rend rien (#943).
+     */
+    private function enrollThroughKlassciCacheOnly(User $student, int $klassciClasseId): Classe
+    {
+        $classe = Classe::factory()->create([
+            'institution_id' => $this->institution->id,
+            'klassci_id' => $klassciClasseId,
+        ]);
+
+        UserClass::create([
+            'user_id' => $student->id,
+            'klassci_classe_id' => $klassciClasseId,
+            'classe_nom' => $classe->libelle,
+            'institution_id' => $this->institution->id,
+            'synced_at' => now(),
+        ]);
+
+        return $classe;
+    }
+
     private function publishedLesson(?int $localClasseId): Lesson
     {
         return Lesson::factory()->create([
@@ -94,8 +127,7 @@ final class MyCoursesClasseScopingTest extends TestCase
         $lessonA = $this->publishedLesson($classeA->id);
         $this->publishedLesson($classeB->id); // ne doit PAS apparaître
 
-        Sanctum::actingAs($student);
-        $response = $this->getJson('/api/lessons/my-courses');
+        $response = $this->asTenant($student)->getJson('/api/lessons/my-courses');
 
         $response->assertStatus(200)->assertJsonPath('success', true);
         $ids = collect($response->json('data'))->pluck('id')->all();
@@ -111,8 +143,7 @@ final class MyCoursesClasseScopingTest extends TestCase
         $lessonA = $this->publishedLesson($classeA->id);
         $this->publishedLesson(null); // classe_id NULL → exclue (REQ-3)
 
-        Sanctum::actingAs($student);
-        $ids = collect($this->getJson('/api/lessons/my-courses')->json('data'))->pluck('id')->all();
+        $ids = collect($this->asTenant($student)->getJson('/api/lessons/my-courses')->json('data'))->pluck('id')->all();
 
         $this->assertEqualsCanonicalizing([$lessonA->id], $ids);
     }
@@ -124,8 +155,7 @@ final class MyCoursesClasseScopingTest extends TestCase
             Classe::factory()->create(['institution_id' => $this->institution->id])->id
         );
 
-        Sanctum::actingAs($student);
-        $response = $this->getJson('/api/lessons/my-courses');
+        $response = $this->asTenant($student)->getJson('/api/lessons/my-courses');
 
         $response->assertStatus(200);
         $this->assertSame([], $response->json('data')); // REQ-4 fail-secure
@@ -135,14 +165,17 @@ final class MyCoursesClasseScopingTest extends TestCase
     {
         $student = $this->student();
         // klassci_classe_id = 5555 ; la classe locale a un id DIFFÉRENT de 5555.
-        $classe = $this->enrollStudentInClasse($student, klassciClasseId: 5555);
+        $classe = $this->enrollThroughKlassciCacheOnly($student, klassciClasseId: 5555);
         $this->assertNotSame(5555, $classe->id, 'Le test doit prouver le pont, pas une coïncidence d\'ids.');
+        $this->assertSame(0, $student->classes()->count(), 'Aucun pivot local : seul le cache KLASSCI doit pouvoir répondre.');
 
         $lesson = $this->publishedLesson($classe->id);
+        $this->publishedLesson(
+            Classe::factory()->create(['institution_id' => $this->institution->id, 'klassci_id' => 6666])->id
+        ); // classe où l'étudiant n'est pas inscrit : absente
 
-        Sanctum::actingAs($student);
-        $ids = collect($this->getJson('/api/lessons/my-courses')->json('data'))->pluck('id')->all();
+        $ids = collect($this->asTenant($student)->getJson('/api/lessons/my-courses')->json('data'))->pluck('id')->all();
 
-        $this->assertContains($lesson->id, $ids);
+        $this->assertSame([$lesson->id], $ids);
     }
 }

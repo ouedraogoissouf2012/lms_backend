@@ -59,6 +59,12 @@ THE SYSTEM SHALL construire `filters` (dictionnaires matières/enseignants) à
 partir des cours **de la page courante** (cohérent avec `data`) — comportement
 identique à l'actuel qui les dérive de la collection renvoyée.
 
+> **ANNOTÉ le 2026-10-29 (#938) : cet énoncé est faux.** Le code dérive
+> `filters` de TOUTE la sélection filtrée (`LessonListService.php:125-128`),
+> comme l'a décidé `design.md` §4 (menus déroulants exhaustifs), et non de la
+> page courante. C'est le code qui fait foi ; il est décrit dans
+> `docs/openapi.yaml` (`MyCoursesPage.filters`).
+
 **REQ-6 — Restriction classe préservée (#482)**
 THE SYSTEM SHALL conserver la restriction classe étudiant introduite en #482
 (la pagination s'applique APRÈS le filtre classe).
@@ -66,6 +72,14 @@ THE SYSTEM SHALL conserver la restriction classe étudiant introduite en #482
 **REQ-7 — Défaut sans paramètres**
 WHERE aucun `page`/`per_page` n'est fourni, THE SYSTEM SHALL se comporter comme
 aujourd'hui du point de vue client (première page, 15 éléments) sans erreur.
+
+> **ANNOTÉ le 2026-10-29 (#938) : prémisse fausse.** Avant #483, le client
+> recevait TOUTE la liste (`->get()`), pas 15 éléments. Le défaut à 15 a tronqué
+> la vue d'un front qui ne lisait pas `meta` : l'élève ne voyait que 15 cours,
+> sans le savoir (ouedraogoissouf2012/frontend_lms#434). La décision D1 du
+> pilote my-courses garde la pagination ; c'est le front qui consomme `meta` et
+> charge les pages suivantes. Même erreur dans le critère d'acceptation 2
+> ci-dessous (« le frontend actuel fonctionne sans modification »).
 
 ## Critères d'acceptation
 

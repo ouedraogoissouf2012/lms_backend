@@ -135,15 +135,4 @@ class Chapter extends Model
     {
         return $query->where('lesson_id', $lessonId);
     }
-
-    /**
-     * Scope: Par type de contenu
-     *
-     * @param  Builder<Chapter>  $query
-     * @return Builder<Chapter>
-     */
-    public function scopeByContentType($query, string $contentType)
-    {
-        return $query->where('content_type', $contentType);
-    }
 }

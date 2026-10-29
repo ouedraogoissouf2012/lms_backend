@@ -226,6 +226,69 @@ final class ChapterTimeSpentAggregateTest extends TestCase
     }
 
     /**
+     * #965 — la ligne du chapitre est relue par une lecture verrouillante, après
+     * le verrou parent et après sa création, avant l'incrément. Un `firstOrCreate`
+     * la lisait sur l'instantané de la transaction : le second de deux tout
+     * premiers écrivains simultanés ne voyait pas la ligne du premier, et son
+     * INSERT échouait sur la clé unique.
+     *
+     * Première écriture (ligne absente) : sans le correctif, aucune lecture ne
+     * suit l'insertion, ROUGE sur les deux moteurs. Écriture suivante (ligne
+     * présente) : la lecture doit être verrouillante, ROUGE sous MySQL.
+     */
+    public function test_la_ligne_du_chapitre_est_relue_verrouillee_avant_l_increment(): void
+    {
+        $this->ecoleAvecUneLecon('klassci');
+        $recorder = $this->app->make(ChapterTimeRecorder::class);
+
+        $premiere = $this->sqlDe(fn () => $recorder->record($this->apprenant->id, $this->ch1->id, 30));
+        $parent = $this->premierIndex($premiere, fn (string $s) => str_starts_with($s, 'select') && str_contains($s, 'from lesson_progress ') && str_contains($s, 'limit 1'));
+        $insertion = $this->premierIndex($premiere, fn (string $s) => preg_match('/^insert (or )?(ignore )?into chapter_progress /', $s) === 1);
+        self::assertNotNull($parent, 'lecture de la ligne parente introuvable : '.implode(' | ', $premiere));
+        self::assertNotNull($insertion, 'création de la ligne du chapitre introuvable : '.implode(' | ', $premiere));
+        self::assertLessThan($insertion, $parent, 'la ligne du chapitre est créée AVANT le verrou parent');
+        $this->assertRelueVerrouilleeAvantIncrement($premiere, $insertion);
+
+        $suivante = $this->sqlDe(fn () => $recorder->record($this->apprenant->id, $this->ch1->id, 30));
+        $parent = $this->premierIndex($suivante, fn (string $s) => str_starts_with($s, 'select') && str_contains($s, 'from lesson_progress ') && str_contains($s, 'limit 1'));
+        self::assertNotNull($parent);
+        $this->assertRelueVerrouilleeAvantIncrement($suivante, $parent);
+
+        self::assertSame(60, ChapterProgress::query()->where('user_id', $this->apprenant->id)->where('chapter_id', $this->ch1->id)->value('time_spent_seconds'));
+        self::assertSame(1, $this->agregat());
+    }
+
+    /** @param list<string> $sql */
+    private function assertRelueVerrouilleeAvantIncrement(array $sql, int $apres): void
+    {
+        $increment = $this->premierIndex($sql, fn (string $s) => str_starts_with($s, 'update chapter_progress set time_spent_seconds'));
+        $lecture = null;
+        foreach ($sql as $i => $requete) {
+            if ($i > $apres && str_starts_with($requete, 'select') && str_contains($requete, 'from chapter_progress ') && str_contains($requete, 'limit 1')) {
+                $lecture = $i;
+                break;
+            }
+        }
+
+        self::assertNotNull($increment, 'incrément introuvable : '.implode(' | ', $sql));
+        self::assertNotNull($lecture, 'la ligne du chapitre n\'est pas relue avant l\'incrément : '.implode(' | ', $sql));
+        self::assertLessThan($increment, $lecture, 'la ligne du chapitre est relue APRÈS l\'incrément');
+        $this->assertVerrouillantSurMysql($sql[$lecture]);
+    }
+
+    /** @return list<string> */
+    private function sqlDe(\Closure $ecriture): array
+    {
+        $sql = [];
+        DB::listen(function ($requete) use (&$sql): void {
+            $sql[] = $this->sansGuillemets($requete->sql);
+        });
+        $ecriture();
+
+        return $sql;
+    }
+
+    /**
      * SQL capturé, en minuscules et SANS délimiteurs d'identifiants : SQLite cite
      * entre guillemets doubles, MySQL entre accents graves. Le premier jet de ce
      * test cherchait `"lesson_progress"` et a échoué sur la jambe MySQL de la CI.

@@ -11,7 +11,7 @@ use App\Models\User;
 use App\Models\UserClass;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Testing\TestResponse;
-use Laravel\Sanctum\Sanctum;
+use Tests\Concerns\ActsAsTenantUser;
 use Tests\TestCase;
 
 /**
@@ -40,11 +40,14 @@ use Tests\TestCase;
  * Les identifiants sont donc **créés puis relus**, jamais écrits en dur — un id
  * fixé à la main est vert sous SQLite et faux sous MySQL dès le second test.
  *
+ * Vrai jeton porteur depuis #943 : `Sanctum::actingAs` ne posait aucun tenant.
+ *
  * @see app/Services/Lesson/MyCoursesPresenter.php
  * @see app/Services/Lesson/LessonListService.php
  */
 final class MyCoursesEnseignantEspaceTest extends TestCase
 {
+    use ActsAsTenantUser;
     use RefreshDatabase;
 
     private Institution $institution;
@@ -200,9 +203,7 @@ final class MyCoursesEnseignantEspaceTest extends TestCase
 
     private function appel(array $parametres = []): TestResponse
     {
-        Sanctum::actingAs($this->etudiant);
-
-        return $this->getJson('/api/lessons/my-courses'.($parametres === [] ? '' : '?'.http_build_query($parametres)))
+        return $this->asTenant($this->etudiant)->getJson('/api/lessons/my-courses'.($parametres === [] ? '' : '?'.http_build_query($parametres)))
             ->assertStatus(200);
     }
 

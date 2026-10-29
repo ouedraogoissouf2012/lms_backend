@@ -148,9 +148,11 @@ final class KlassciErrorVsMissingTokenTest extends TestCase
         [$url] = self::ENDPOINTS[$key];
         $this->actingAsTeacher(token: null);
 
+        // #806 : le motif, pas le texte, distingue le jeton absent d'une session
+        // expirée. L'ancien texte annonçait une expiration qui n'avait pas eu lieu.
         $this->getJson($url)
             ->assertStatus(401)
-            ->assertJsonPath('message', 'Session KLASSCI expirée. Veuillez vous reconnecter.');
+            ->assertJsonPath('reason', 'klassci_token_missing');
     }
 
     // ───────── La panne KLASSCI reste un 503 retryable ─────────

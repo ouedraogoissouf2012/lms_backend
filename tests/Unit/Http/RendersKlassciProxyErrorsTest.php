@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Unit\Http;
 
 use App\Exceptions\KlassciUnavailableException;
+use App\Exceptions\MissingKlassciTokenException;
 use App\Http\Controllers\API\Proxy\Concerns\RendersKlassciProxyErrors;
 use App\Support\Klassci\KlassciClientErrorCatalog;
 use Illuminate\Http\Client\ConnectionException;
@@ -49,6 +50,19 @@ final class RendersKlassciProxyErrorsTest extends TestCase
             'message' => 'Session KLASSCI expirée. Veuillez vous reconnecter.',
             'reason' => 'klassci_session_expired',
         ], $response->getData(true));
+    }
+
+    /**
+     * #806 — un jeton ABSENT n'est pas une session expirée. L'exception est elle
+     * aussi une RuntimeException de code 401 : testée après la branche 401, elle
+     * en ressortait étiquetée `klassci_session_expired`.
+     */
+    public function test_missing_token_is_not_reported_as_an_expired_session(): void
+    {
+        $response = $this->render(MissingKlassciTokenException::forUser(806));
+
+        self::assertSame(401, $response->getStatusCode());
+        self::assertSame('klassci_token_missing', $response->getData(true)['reason'] ?? null);
     }
 
     /** Le cas qui motive le correctif. */

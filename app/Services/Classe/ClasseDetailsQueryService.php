@@ -38,10 +38,7 @@ final class ClasseDetailsQueryService
         if (!$klassciToken) {
             return [
                 'status' => 401,
-                'payload' => [
-                    'success' => false,
-                    'message' => MissingKlassciTokenException::CLIENT_MESSAGE,
-                ],
+                'payload' => MissingKlassciTokenException::payload(),
             ];
         }
 

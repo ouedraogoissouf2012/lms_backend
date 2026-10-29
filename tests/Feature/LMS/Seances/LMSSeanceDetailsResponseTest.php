@@ -65,6 +65,7 @@ final class LMSSeanceDetailsResponseTest extends TestCase
             ->assertExactJson([
                 'success' => false,
                 'message' => MissingKlassciTokenException::CLIENT_MESSAGE,
+                'reason' => 'klassci_token_missing',
             ]);
     }
 
@@ -77,6 +78,7 @@ final class LMSSeanceDetailsResponseTest extends TestCase
             ->assertExactJson([
                 'success' => false,
                 'message' => MissingKlassciTokenException::CLIENT_MESSAGE,
+                'reason' => 'klassci_token_missing',
             ]);
     }
 }

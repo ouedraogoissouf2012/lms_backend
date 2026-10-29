@@ -67,6 +67,30 @@ components:
                 type: string
                 example: "Trop de requêtes. Veuillez réessayer plus tard."
 
+    # #806 — un 401 d'une route adossee a KLASSCI a TROIS sens, que seul
+    # `reason` distingue. CIBLE : le client decide sur `reason`, jamais sur le
+    # message. Le front lit encore le message aujourd'hui (frontend_lms#420).
+    KlassciUnauthorized:
+      description: |
+        Trois causes, distinguees par `reason` :
+        - absent : jeton Sanctum invalide ou expire, session LMS morte ;
+        - `klassci_token_missing` : ce compte n a aucun jeton KLASSCI, ou aucune
+          identite KLASSCI (compte local, ecole autonome). Se reconnecter n y
+          change rien ;
+        - `klassci_session_expired` : KLASSCI refuse le jeton utilise. Selon la
+          route, c est le jeton du compte, ou a defaut celui de l etablissement
+          (`/proxy/structure`, `classes`, `enseignants`, `filieres`,
+          `niveaux-etudes`). Se reconnecter ne renouvelle que le jeton du compte.
+        Selon la route, l un des deux motifs KLASSCI peut ne jamais survenir.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/RefusKlassci'
+          example:
+            success: false
+            message: "Aucun accès KLASSCI n'est enregistré pour ce compte : ces données, qui proviennent de KLASSCI, ne peuvent pas être affichées."
+            reason: klassci_token_missing
+
   schemas:
     ProgramInput:
       type: object
@@ -1075,6 +1099,24 @@ components:
             - institution_cap_reached
             - ip_quota_exceeded
             - global_cap_reached
+
+    # #806 — `reason` est FACULTATIF ici : un 401 Sanctum n en porte aucun.
+    RefusKlassci:
+      type: object
+      required:
+        - success
+        - message
+      properties:
+        success:
+          type: boolean
+          example: false
+        message:
+          type: string
+        reason:
+          type: string
+          enum:
+            - klassci_token_missing
+            - klassci_session_expired
 
     ErrorResponse:
       type: object
@@ -2834,7 +2876,7 @@ paths:
         '200':
           description: "Structure data"
         '401':
-          description: "Unauthenticated"
+          $ref: '#/components/responses/KlassciUnauthorized'
         '429':
           $ref: '#/components/responses/TooManyRequests'
 
@@ -2858,7 +2900,7 @@ paths:
         '200':
           description: "List of classes"
         '401':
-          description: "Unauthenticated"
+          $ref: '#/components/responses/KlassciUnauthorized'
 
   /proxy/classes/{id}/etudiants:
     get:
@@ -2881,7 +2923,7 @@ paths:
         '200':
           description: "List of students"
         '401':
-          description: "Unauthenticated"
+          $ref: '#/components/responses/KlassciUnauthorized'
         '404':
           description: "Class not found"
 
@@ -2904,6 +2946,8 @@ paths:
       responses:
         '200':
           description: "List of subjects"
+        '401':
+          $ref: '#/components/responses/KlassciUnauthorized'
 
   /proxy/matieres/{id}:
     get:
@@ -2921,6 +2965,8 @@ paths:
       responses:
         '200':
           description: "Subject details"
+        '401':
+          $ref: '#/components/responses/KlassciUnauthorized'
 
   /proxy/enseignants:
     get:
@@ -2932,6 +2978,8 @@ paths:
       responses:
         '200':
           description: "List of teachers"
+        '401':
+          $ref: '#/components/responses/KlassciUnauthorized'
 
   /proxy/filieres:
     get:
@@ -2943,6 +2991,8 @@ paths:
       responses:
         '200':
           description: "List of branches"
+        '401':
+          $ref: '#/components/responses/KlassciUnauthorized'
 
   /proxy/niveaux-etudes:
     get:
@@ -2954,6 +3004,8 @@ paths:
       responses:
         '200':
           description: "List of study levels"
+        '401':
+          $ref: '#/components/responses/KlassciUnauthorized'
 
   /proxy/evaluations:
     get:
@@ -2965,6 +3017,8 @@ paths:
       responses:
         '200':
           description: "List of evaluations"
+        '401':
+          $ref: '#/components/responses/KlassciUnauthorized'
 
   /proxy/emploi-temps:
     get:
@@ -2976,6 +3030,8 @@ paths:
       responses:
         '200':
           description: "Schedule data"
+        '401':
+          $ref: '#/components/responses/KlassciUnauthorized'
 
   /proxy/test-connection:
     get:
@@ -2989,7 +3045,7 @@ paths:
         '200':
           description: "Connection successful"
         '401':
-          description: "Unauthenticated"
+          $ref: '#/components/responses/KlassciUnauthorized'
         '403':
           description: "Insufficient permissions (requires coordinateur or admin role)"
 
@@ -3168,13 +3224,7 @@ paths:
                               nullable: true
                               description: "Relaye depuis KLASSCI, forme non garantie par le LMS."
         '401':
-          description: |
-            Non authentifie, compte sans identifiant KLASSCI synchronise, ou
-            sans jeton KLASSCI.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/MessageOnly'
+          $ref: '#/components/responses/KlassciUnauthorized'
         '404':
           description: "KLASSCI ne rattache l eleve a aucune classe (« Classe non trouvee »)"
           content:
@@ -3274,11 +3324,7 @@ paths:
                       total_evaluations:
                         type: integer
         '401':
-          description: "Non authentifie, ou compte sans identifiant KLASSCI synchronise"
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/MessageOnly'
+          $ref: '#/components/responses/KlassciUnauthorized'
         '500':
           description: "Erreur interne"
           content:
@@ -3331,11 +3377,7 @@ paths:
                   is_practice:
                     type: boolean
         '401':
-          description: "Non authentifie, ou compte sans jeton KLASSCI"
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/MessageOnly'
+          $ref: '#/components/responses/KlassciUnauthorized'
         '403':
           description: |
             L un de ces refus, que `message` nomme :
@@ -3539,11 +3581,7 @@ paths:
                         type: string
                         format: date-time
         '401':
-          description: "Non authentifie, ou compte sans jeton KLASSCI"
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/MessageOnly'
+          $ref: '#/components/responses/KlassciUnauthorized'
         '404':
           description: "Evaluation non trouvee"
           content:
@@ -3650,11 +3688,7 @@ paths:
                           coefficient:
                             $ref: '#/components/schemas/Decimal2'
         '401':
-          description: "Non authentifie, ou compte sans identifiant KLASSCI synchronise"
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/MessageOnly'
+          $ref: '#/components/responses/KlassciUnauthorized'
         '404':
           description: "Evaluation non trouvee, ou aucune copie de l eleve pour elle"
           content:
@@ -4153,11 +4187,7 @@ paths:
                             type: number
                             nullable: true
         '401':
-          description: "Non authentifie, ou enseignant sans jeton KLASSCI"
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/MessageOnly'
+          $ref: '#/components/responses/KlassciUnauthorized'
         '403':
           description: |
             Role insuffisant, enseignant non proprietaire — ou evaluation
@@ -4224,11 +4254,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/MessageOnly'
         '401':
-          description: "Non authentifie, ou compte sans jeton KLASSCI"
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/MessageOnly'
+          $ref: '#/components/responses/KlassciUnauthorized'
         '403':
           description: |
             Role insuffisant, coordinateur, enseignant non proprietaire — ou

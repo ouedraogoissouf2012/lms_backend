@@ -72,7 +72,7 @@ class EvaluationKlassciSyncController extends AuthenticatedController
             if ($evaluation->klassci_evaluation_id) {
                 $teacherToken = $this->authenticatedUser($request)->klassci_token;
                 if (! is_string($teacherToken) || $teacherToken === '') {
-                    return $this->errorResponse(MissingKlassciTokenException::CLIENT_MESSAGE, 401);
+                    return MissingKlassciTokenException::jsonResponse();
                 }
 
                 $result = $this->klassciService->saveNotes(

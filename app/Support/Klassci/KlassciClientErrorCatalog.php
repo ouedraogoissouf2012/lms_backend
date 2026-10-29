@@ -16,10 +16,10 @@ namespace App\Support\Klassci;
  * problème de droits indiscernable d'une indisponibilité — pour l'utilisateur comme
  * pour la supervision.
  *
- * Seule la CLASSIFICATION est factorisée ici. Chaque trait garde son enveloppe : le
- * proxy écrit sa réponse à la main et porte une clé `reason` que ses clients
- * consomment ; les contrôleurs LMS passent par `errorResponse()`. Les fusionner
- * changerait l'un des deux contrats client.
+ * Seule la CLASSIFICATION est factorisée ici, motif du 401 compris
+ * ({@see self::reasonFor()}, #806). Chaque trait garde son enveloppe : le proxy écrit
+ * sa réponse à la main, les contrôleurs LMS passent par `errorResponse()`. Les
+ * fusionner changerait le message de l'un des deux contrats client.
  *
  * Aucun message ne dérive du corps KLASSCI ni de `$e->getMessage()` (§1.2) — ce
  * dernier vaut « Erreur API KLASSCI: 403 » et n'a rien à faire dans une réponse.
@@ -32,6 +32,14 @@ final class KlassciClientErrorCatalog
     private const CLIENT_ERROR_MIN = 400;
 
     private const CLIENT_ERROR_MAX = 499;
+
+    /**
+     * Motif d'un 401 amont : KLASSCI refuse le jeton UTILISÉ, celui du compte ou,
+     * à défaut, celui de l'établissement (`KlassciConfigResolver`). Se reconnecter
+     * ne renouvelle que le premier. À ne pas confondre avec un jeton absent
+     * ({@see \App\Exceptions\MissingKlassciTokenException::REASON}, #806).
+     */
+    public const SESSION_EXPIRED_REASON = 'klassci_session_expired';
 
     /**
      * Le statut est-il un code d'erreur client relayable au demandeur ?
@@ -72,5 +80,15 @@ final class KlassciClientErrorCatalog
             429 => 'KLASSCI limite temporairement les requêtes. Veuillez réessayer dans quelques instants.',
             default => 'KLASSCI a refusé la requête.',
         };
+    }
+
+    /**
+     * Motif stable du statut, que le client lit à la place du message (#806).
+     * Seul le 401 en porte un : sans lui, le client ne distingue un jeton KLASSCI
+     * refusé ni d'une session LMS morte, ni d'un jeton absent.
+     */
+    public static function reasonFor(int $status): ?string
+    {
+        return $status === 401 ? self::SESSION_EXPIRED_REASON : null;
     }
 }

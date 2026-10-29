@@ -33,9 +33,11 @@ use Tests\TestCase;
  * - Le test du tri porte sur la REQUÊTE construite, indépendante du moteur :
  *   c'est lui qui rougit sans le correctif, ici comme en CI.
  * - Le test des pages est vert sous SQLite même sans le correctif : le
- *   `rowid` y départage les égalités par hasard d'implémentation. Il garde le
- *   contrat de bout en bout, et c'est la jambe MySQL de la CI qui l'éprouve
- *   vraiment.
+ *   `rowid` y départage les égalités par hasard d'implémentation. Il n'a été
+ *   éprouvé SANS le correctif sur AUCUN moteur, MySQL compris : sous InnoDB,
+ *   un index peut aussi rendre les lignes égales dans l'ordre de la clé
+ *   primaire, et le défaut ne s'y verrait pas. C'est une garde de bout en bout
+ *   du contrat (aucune leçon doublée ni perdue), non une preuve du défaut.
  *
  * Les deux volets sont couverts : école klassci (inscription par le cache
  * `user_classes`) et école standalone (pivot local), sans lire le mode.
@@ -58,7 +60,7 @@ final class LessonOrderingTest extends TestCase
             Lesson::query()->ordered()->getQuery()->orders ?? [],
         );
 
-        self::assertSame(['order asc', 'created_at asc', 'id asc'], $tri);
+        self::assertSame(['lessons.order asc', 'lessons.created_at asc', 'lessons.id asc'], $tri);
     }
 
     /** @return iterable<string, array{0: string}> */

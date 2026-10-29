@@ -757,12 +757,6 @@ parameters:
 			path: app/Services/Evaluation/Student/EvaluationAttemptStateService.php
 
 		-
-			message: '#^Cannot access offset ''classe'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 1
-			path: app/Services/Evaluation/Student/StudentEvaluationsListService.php
-
-		-
 			message: '#^Cannot access offset ''date_evaluation'' on mixed\.$#'
 			identifier: offsetAccess.nonOffsetAccessible
 			count: 1

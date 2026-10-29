@@ -7,9 +7,12 @@ namespace App\Services\Evaluation;
 use App\Models\Evaluation;
 use App\Models\EvaluationSubmission;
 use App\Models\User;
+use App\Services\Evaluation\Student\LearnerEvaluationScope;
 
 /**
- * Liste + détail des évaluations côté enseignant/admin.
+ * Liste (personnel) + détail des évaluations. Le détail sert aussi l'élève qui
+ * compose : il ne lui rend que ce que sa propre liste lui propose
+ * ({@see LearnerEvaluationScope}).
  *
  * Extrait de `EvaluationCrudController::index` et `::show` (split §5).
  *
@@ -20,13 +23,9 @@ use App\Models\User;
  *
  * ## DI strict (§1.6 D du manifeste)
  *
- * Constructeur injecte uniquement `EvaluationEnrichmentService`. Aucun `app()`,
- * aucune Facade. Pas de logger ici — le service ne logge pas (lecture pure).
- *
- * ## Comportement préservé
- *
- * Aucun changement runtime : la logique de filtrage, d'enrichissement et de
- * batch query est déplacée verbatim depuis le controller.
+ * Le constructeur injecte ses trois collaborateurs (enrichissement, audience du
+ * corrigé, portée de l'élève). Aucun `app()`, aucune Facade. Pas de logger ici —
+ * le service ne logge pas (lecture pure).
  *
  * @see app/Http/Controllers/API/Evaluation/EvaluationCrudController.php
  */
@@ -35,6 +34,7 @@ final class EvaluationListService
     public function __construct(
         private readonly EvaluationEnrichmentService $enrichmentService,
         private readonly AnswerKeyAudience $answerKeyAudience,
+        private readonly LearnerEvaluationScope $learnerScope,
     ) {}
 
     /**
@@ -124,16 +124,21 @@ final class EvaluationListService
     /**
      * Récupère une évaluation par id, avec ses questions et enrichissement KLASSCI.
      *
-     * Retourne `null` quand l'évaluation n'existe pas — le caller (controller)
-     * convertit en HTTP 404.
+     * Retourne `null` quand l'évaluation n'existe pas, ou qu'un apprenant ne la
+     * voit pas dans sa propre liste — le caller (controller) convertit en HTTP
+     * 404, sans distinguer les deux cas.
      *
      * @return array<string, mixed>|null
      */
     public function findOne(int $id, User $user): ?array
     {
-        $evaluation = Evaluation::with('questions')->find($id);
+        // Pour un apprenant, la portée est résolue AVANT la lecture : il ne
+        // charge que dans ce que sa liste lui propose. Le 404 ne distingue donc
+        // jamais « n'existe pas » de « pas la vôtre ».
+        $query = $user->isLearnerAudience() ? $this->learnerScope->visibleFor($user) : Evaluation::query();
+        $evaluation = $query?->with('questions')->find($id);
 
-        if (! $evaluation) {
+        if (! $evaluation instanceof Evaluation) {
             return null;
         }
 

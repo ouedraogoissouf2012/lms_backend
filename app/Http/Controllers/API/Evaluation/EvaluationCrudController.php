@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\API\Evaluation;
 
+use App\Http\Controllers\API\Concerns\RendersKlassciBackedErrors;
 use App\Http\Controllers\AuthenticatedController;
 use App\Http\Requests\DeleteEvaluationRequest;
 use App\Http\Requests\ListEvaluationsRequest;
@@ -17,6 +18,7 @@ use App\Services\Evaluation\EvaluationStateService;
 use App\Services\Evaluation\EvaluationUpdateService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use RuntimeException;
 
 /**
  * Thin controller for evaluation CRUD endpoints.
@@ -42,6 +44,8 @@ use Illuminate\Http\Request;
  */
 final class EvaluationCrudController extends AuthenticatedController
 {
+    use RendersKlassciBackedErrors;
+
     public function __construct(
         private readonly EvaluationListService $listService,
         private readonly EvaluationCreationService $creationService,
@@ -63,7 +67,14 @@ final class EvaluationCrudController extends AuthenticatedController
 
     public function show(Request $request, int $id): JsonResponse
     {
-        $enriched = $this->listService->findOne($id, $this->authenticatedUser($request));
+        // Pour un apprenant, la lecture consulte KLASSCI (sa classe, par son
+        // jeton) : une panne ou un jeton expiré se rendent comme dans la liste
+        // de l'élève (EvaluationStudentListController), jamais en 500.
+        try {
+            $enriched = $this->listService->findOne($id, $this->authenticatedUser($request));
+        } catch (RuntimeException $e) {
+            return $this->renderKlassciFailure($e);
+        }
 
         if ($enriched === null) {
             return $this->errorResponse('Évaluation non trouvée', 404);

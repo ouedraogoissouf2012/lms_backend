@@ -27,6 +27,7 @@ final class StudentEvaluationsListService
     public function __construct(
         private readonly LoggerInterface $logger,
         private readonly KlassciProxyService $klassciService,
+        private readonly LearnerEvaluationScope $scope,
     ) {}
 
     /**
@@ -47,9 +48,10 @@ final class StudentEvaluationsListService
             'klassci_id' => $klassciEtudiantId,
         ]);
 
-        $dashboard = $this->klassciService->requestWithUserToken($klassciToken, 'me/dashboard', 'GET');
-        $classe = $dashboard['data']['classe'] ?? null;
-        if (!is_array($classe) || !is_numeric($classe['id'] ?? null)) {
+        // Même source et même filtre que la lecture d'une évaluation par
+        // l'élève (EvaluationListService::findOne) : LearnerEvaluationScope.
+        $classe = $this->scope->classeOf($user);
+        if ($classe === null || !is_numeric($classe['id'] ?? null)) {
             return null;
         }
         $classeId = (int) $classe['id'];
@@ -67,11 +69,8 @@ final class StudentEvaluationsListService
         // Ce que cette liste doit vraiment porter est plus étroit : le NOMBRE
         // de questions, et la propre copie de l'élève, que `enrichEvaluation`
         // allait déjà chercher séparément.
-        $evaluationsLMS = Evaluation::withCount('questions')
-            ->where('klassci_classe_id', $classeId)
-            ->where('is_published', true)
-            ->whereIn('status', ['planifiee', 'en_cours', 'terminee'])
-            ->whereHas('questions')
+        $evaluationsLMS = $this->scope->visibleIn($classeId, $user->institution_id)
+            ->withCount('questions')
             ->orderBy('date_evaluation', 'desc')
             ->get();
 

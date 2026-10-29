@@ -88,4 +88,23 @@ trait InteractsWithRoles
     {
         return $this->isCoordinator() || $this->isAdmin();
     }
+
+    /**
+     * Le compte lit-il le contenu avec la portée d'un APPRENANT (#941) ?
+     * C'est la portée PAR DÉFAUT : seul le personnel reconnu en sort.
+     *
+     * Ne pas écrire `isStudent()` à la place : il ne vaut vrai que sur un rôle
+     * RECONNU, et tout rôle non reconnu (`Etudiant`, `eleve`…) recevait alors la
+     * portée du personnel. Ouvert par défaut, donc.
+     *
+     * Rien de ce qui porte #511 et #102 ne change : `isStaff()` repose sur
+     * {@see Role::tryFromString}, en correspondance exacte. Une variante de casse
+     * d'un rôle à privilège (`SuperAdmin`, `Supradmin`) n'y gagne aucun droit,
+     * elle reçoit la portée la moins privilégiée. L'alignement des deux
+     * normalisations du rôle relève de #949.
+     */
+    public function isLearnerAudience(): bool
+    {
+        return ! $this->isStaff();
+    }
 }

@@ -75,9 +75,9 @@ final class LessonListService
             $query->where('type', $request->type);
         }
 
-        // Étudiants : uniquement les cours publiés ET de LEUR classe (#482 —
-        // isolation inter-classes, résolue via le pont KLASSCI→local).
-        if ($user->isStudent()) {
+        // Hors personnel : uniquement les cours publiés ET de SES classes (#482 —
+        // isolation inter-classes, résolue via le pont KLASSCI→local ; #941).
+        if ($user->isLearnerAudience()) {
             $query->published()
                 ->whereIn('classe_id', $this->classeResolver->localClasseIdsFor($user));
         } elseif ($request->has('status')) {
@@ -88,8 +88,8 @@ final class LessonListService
         $perPage = $request->integer('per_page', 15);
         $lessons = $query->ordered()->paginate($perPage);
 
-        // Ajouter la progression pour chaque cours (si étudiant)
-        if ($user->isStudent()) {
+        // Ajouter la progression pour chaque cours (hors personnel)
+        if ($user->isLearnerAudience()) {
             $lessons->getCollection()->transform(function ($lesson) use ($user) {
                 $lesson->user_progress = $this->progressService->progressForUser($lesson, $user->id);
 
@@ -146,9 +146,9 @@ final class LessonListService
             $query->where('institution_id', $user->institution_id);
         }
 
-        // Étudiant : restreindre à SA classe (#482). classe_id NULL et autres
-        // classes exclues.
-        if ($user->isStudent()) {
+        // Hors personnel : restreindre à SES classes (#482, #941). classe_id NULL
+        // et autres classes exclues.
+        if ($user->isLearnerAudience()) {
             $query->whereIn('classe_id', $this->classeResolver->localClasseIdsFor($user));
         }
 
@@ -213,7 +213,7 @@ final class LessonListService
         }
 
         // Vérifier les permissions
-        if ($user->isStudent() && ! $lesson->isPublished()) {
+        if ($user->isLearnerAudience() && ! $lesson->isPublished()) {
             return ['error' => 'Ce cours n\'est pas encore disponible', 'status' => 403];
         }
 

@@ -285,11 +285,17 @@ components:
             filtree, pas sur la seule page. Avec `matiere_id` ou
             `enseignant_id`, ils se reduisent donc a cette selection : le
             dictionnaire complet est celui d une reponse sans filtre.
+          required:
+            - matieres
+            - enseignants
           properties:
             matieres:
               type: array
               items:
                 type: object
+                required:
+                  - id
+                  - name
                 properties:
                   id:
                     type: integer
@@ -300,6 +306,9 @@ components:
               type: array
               items:
                 type: object
+                required:
+                  - id
+                  - name
                 properties:
                   id:
                     type: integer
@@ -328,11 +337,21 @@ components:
 
     MyCourse:
       type: object
+      description: |
+        Les 12 cles sont TOUJOURS emises par MyCoursesPresenter, certaines a
+        null (`nullable`) : `required` ne dit pas « non nul », il dit
+        « toujours present ».
       required:
         - id
         - title
+        - description
         - type
+        - duree_estimee
         - niveau_difficulte
+        - enseignant
+        - matiere
+        - classe
+        - progress
         - published_at
         - created_at
       properties:
@@ -357,6 +376,10 @@ components:
         enseignant:
           type: object
           nullable: true
+          required:
+            - id
+            - klassci_id
+            - name
           properties:
             id:
               type: integer
@@ -369,6 +392,9 @@ components:
         matiere:
           type: object
           nullable: true
+          required:
+            - id
+            - name
           properties:
             id:
               type: integer
@@ -377,6 +403,9 @@ components:
         classe:
           type: object
           nullable: true
+          required:
+            - id
+            - name
           properties:
             id:
               type: integer
@@ -387,6 +416,10 @@ components:
           type: object
           nullable: true
           description: "Progression de l appelant sur la lecon ; null s il ne l a jamais commencee"
+          required:
+            - percentage
+            - status
+            - completed_at
           properties:
             percentage:
               type: integer
@@ -4335,11 +4368,18 @@ paths:
         pagination se lit dans `meta`. Un client qui ne lit que `data` ne voit
         que la premiere page, 15 cours par defaut.
 
-        Ce que l appelant voit :
-        - un apprenant : les lecons PUBLIEES de SES classes (pivot local
-          `classe_etudiant`, puis repli sur le cache KLASSCI `user_classes`) ;
-          sans classe, `data` est vide ;
-        - le personnel : toutes les lecons publiees de son etablissement.
+        Ce que l appelant voit, regle REELLE du code a ce jour :
+        - un compte dont le role est reconnu comme apprenant (`etudiant`,
+          `student`, `étudiant`, correspondance exacte) : les lecons PUBLIEES de
+          SES classes (pivot local `classe_etudiant`, puis repli sur le cache
+          KLASSCI `user_classes`) ; sans classe, `data` est vide ;
+        - TOUT AUTRE compte, y compris un role non reconnu (`Etudiant`,
+          `eleve`...) : toutes les lecons publiees de son etablissement. Ce
+          repli ouvert est un defaut suivi par #941, qui donnera la vue
+          apprenant a tout compte hors personnel reconnu ;
+        - un compte sans etablissement : le supradmin plateforme voit tous les
+          etablissements, par conception ; tout autre compte sans etablissement
+          aussi, ce qui est un defaut suivi par #942.
         Meme forme dans une ecole reliee a KLASSCI et dans une ecole autonome.
 
         Ordre TOTAL : `order`, puis `created_at`, puis `id` (#937). Aucune page
@@ -4347,8 +4387,10 @@ paths:
 
         Au-dela de `last_page`, la reponse est 200 avec `data` vide, pas 404.
 
-        401 : le corps reel est `{"success": false, "message": "Unauthenticated."}`,
-        sans `error_code`, contrairement a `ErrorResponse` (ecart suivi par #919).
+        401 : le corps reel est `{"success": false, "message": "Unauthenticated."}`
+        (bootstrap/app.php:72-76), sans `error_code`. Il est donc decrit par
+        `MessageOnly`, pas par `ErrorResponse`, qui exige un `error_code` que
+        l API n emet jamais (ecart suivi par #919).
       security:
         - sanctum: []
       parameters:
@@ -4388,11 +4430,11 @@ paths:
               schema:
                 $ref: '#/components/schemas/MyCoursesPage'
         '401':
-          description: "Non authentifie"
+          description: "Non authentifie (corps reel sans error_code, voir #919)"
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: '#/components/schemas/MessageOnly'
         '422':
           description: "`page`, `per_page`, `matiere_id` ou `enseignant_id` hors bornes, ou non entier"
           content:

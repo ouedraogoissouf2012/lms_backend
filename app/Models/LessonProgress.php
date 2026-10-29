@@ -19,12 +19,17 @@ class LessonProgress extends Model
 
     protected $table = 'lesson_progress';
 
+    /**
+     * `time_spent_minutes` n'y est PAS (#944) : c'est un agrégat que seul
+     * ChapterTimeRecorder écrit, par attribut. Hors de `$fillable`, aucune
+     * assignation de masse (`update`, `create`, `fill`) ne peut le réécrire,
+     * même depuis un tableau préparé à l'avance qu'aucune garde statique ne lit.
+     */
     protected $fillable = [
         'user_id',
         'lesson_id',
         'status',
         'progress_percentage',
-        'time_spent_minutes',
         'started_at',
         'completed_at',
         'last_accessed_at',

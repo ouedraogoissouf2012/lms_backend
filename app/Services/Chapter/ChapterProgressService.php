@@ -23,6 +23,7 @@ final class ChapterProgressService
         private readonly LoggerInterface $logger,
         private readonly ChapterAccessGate $accessGate,
         private readonly LessonChapterProgressCalculator $progressCalculator,
+        private readonly ChapterTimeRecorder $timeRecorder,
     ) {}
 
     /** @return array{status:int, payload: array<string, mixed>} */
@@ -123,17 +124,13 @@ final class ChapterProgressService
             }
         }
 
-        $progress = $this->getOrCreateProgress($userId, $chapterId);
+        // Le temps EN PREMIER, par son unique écrivain : il verrouille la leçon
+        // avant le chapitre. Écrire la complétion d'abord inverserait cet ordre
+        // dans toute transaction englobante (voir la docblock de ChapterTimeRecorder).
+        $progress = $this->timeRecorder->record($userId, $chapterId, max(0, (int) ($input['time_spent_seconds'] ?? 0)));
 
         $progress->completed_at = now();
         $progress->save();
-
-        if (array_key_exists('time_spent_seconds', $input)) {
-            $added = (int) ($input['time_spent_seconds'] ?? 0);
-            if ($added > 0) {
-                $progress->increment('time_spent_seconds', $added);
-            }
-        }
 
         $lessonProgress = $this->progressCalculator->calculate($userId, $chapter->lesson_id);
 
@@ -181,10 +178,7 @@ final class ChapterProgressService
         // findOrFail conservé pour parité (404 si chapitre inexistant)
         Chapter::findOrFail($chapterId);
 
-        $progress = $this->getOrCreateProgress($user->id, $chapterId);
-        if ($additionalSeconds > 0) {
-            $progress->increment('time_spent_seconds', $additionalSeconds);
-        }
+        $progress = $this->timeRecorder->record($user->id, $chapterId, max(0, $additionalSeconds));
 
         return [
             'status' => 200,
@@ -231,11 +225,8 @@ final class ChapterProgressService
         }
 
         try {
-            $chapters = Chapter::where('lesson_id', $lessonId)->pluck('id');
-
-            ChapterProgress::where('user_id', $targetUserId)
-                ->whereIn('chapter_id', $chapters)
-                ->delete();
+            // Supprimer des chapitres change la somme : l'agrégat suit (#944).
+            $this->timeRecorder->resetLesson($targetUserId, $lessonId);
 
             $this->logger->info('Progression de leçon réinitialisée', [
                 'lesson_id' => $lessonId,

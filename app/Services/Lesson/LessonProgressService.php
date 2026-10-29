@@ -82,15 +82,16 @@ class LessonProgressService
      *   - not_started + percentage > 0 → in_progress (`started_at` = now)
      *   - percentage >= 100 + not completed → completed (`completed_at` = now)
      *
-     * Accumule `time_spent_minutes` si fourni. Clamp `percentage` à [0, 100].
+     * Clamp `percentage` à [0, 100].
+     *
+     * Le temps passé n'est PAS écrit ici (#944) : `time_spent_minutes` est un
+     * agrégat recalculé par ChapterTimeRecorder depuis le temps des chapitres.
+     * Le cumuler depuis le client en ferait un second compteur, faussable.
      *
      * @return bool  Résultat du `update()` Eloquent.
      */
-    public function updateProgress(
-        LessonProgress $progress,
-        int $percentage,
-        ?int $timeSpentMinutes = null
-    ): bool {
+    public function updateProgress(LessonProgress $progress, int $percentage): bool
+    {
         $data = [
             'progress_percentage' => min(100, max(0, $percentage)),
             'last_accessed_at' => now(),
@@ -99,10 +100,6 @@ class LessonProgressService
         if ($progress->status === 'not_started' && $percentage > 0) {
             $data['status'] = 'in_progress';
             $data['started_at'] = now();
-        }
-
-        if ($timeSpentMinutes !== null) {
-            $data['time_spent_minutes'] = $progress->time_spent_minutes + $timeSpentMinutes;
         }
 
         // Auto-complétion si 100%

@@ -94,11 +94,8 @@ class LessonProgressController extends AuthenticatedController
             ['user_id' => $user->id, 'lesson_id' => $lesson->id]
         );
 
-        $this->progressService->updateProgress(
-            $progress,
-            $request->progress_percentage,
-            $request->time_spent_minutes
-        );
+        // `time_spent_minutes` reste accepté mais ignoré : c'est un agrégat (#944).
+        $this->progressService->updateProgress($progress, $request->progress_percentage);
 
         return $this->successResponse($progress->fresh(), 'Progression mise à jour');
     }

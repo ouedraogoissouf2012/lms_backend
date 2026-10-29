@@ -179,19 +179,21 @@ final class ChapterTimeSpentAggregateTest extends TestCase
 
         $sql = [];
         DB::listen(function ($requete) use (&$sql): void {
-            $sql[] = strtolower($requete->sql);
+            $sql[] = $this->sansGuillemets($requete->sql);
         });
         $this->app->make(ChapterTimeRecorder::class)->record($this->apprenant->id, $this->ch1->id, 30);
 
-        $parent = $this->premierIndex($sql, fn (string $s) => str_starts_with($s, 'select') && str_contains($s, 'from "lesson_progress"') && str_contains($s, 'limit 1'));
-        $increment = $this->premierIndex($sql, fn (string $s) => str_starts_with($s, 'update "chapter_progress" set "time_spent_seconds"'));
-        $somme = $this->premierIndex($sql, fn (string $s) => str_contains($s, 'sum("time_spent_seconds")'));
+        $parent = $this->premierIndex($sql, fn (string $s) => str_starts_with($s, 'select') && str_contains($s, 'from lesson_progress ') && str_contains($s, 'limit 1'));
+        $increment = $this->premierIndex($sql, fn (string $s) => str_starts_with($s, 'update chapter_progress set time_spent_seconds'));
+        $somme = $this->premierIndex($sql, fn (string $s) => str_contains($s, 'sum(time_spent_seconds)'));
 
         self::assertNotNull($parent, 'lecture de la ligne parente introuvable : '.implode(' | ', $sql));
         self::assertNotNull($increment);
         self::assertNotNull($somme);
         self::assertLessThan($increment, $parent, 'la ligne parente doit être verrouillée AVANT le chapitre');
         self::assertLessThan($somme, $increment, 'la somme doit être lue APRÈS l\'incrément');
+        $this->assertVerrouillantSurMysql($sql[$parent]);
+        $this->assertVerrouillantSurMysql($sql[$somme]);
     }
 
     /**
@@ -210,16 +212,38 @@ final class ChapterTimeSpentAggregateTest extends TestCase
 
         $sql = [];
         DB::listen(function ($requete) use (&$sql): void {
-            $sql[] = strtolower($requete->sql);
+            $sql[] = $this->sansGuillemets($requete->sql);
         });
         $this->ecrire("/api/chapters/{$this->ch1->id}/complete", 45);
 
-        $parent = $this->premierIndex($sql, fn (string $s) => str_starts_with($s, 'select') && str_contains($s, 'from "lesson_progress"') && str_contains($s, 'limit 1'));
-        $ecritureChapitre = $this->premierIndex($sql, fn (string $s) => preg_match('/^(insert into|update) "chapter_progress"/', $s) === 1);
+        $parent = $this->premierIndex($sql, fn (string $s) => str_starts_with($s, 'select') && str_contains($s, 'from lesson_progress ') && str_contains($s, 'limit 1'));
+        $ecritureChapitre = $this->premierIndex($sql, fn (string $s) => preg_match('/^(insert into|update) chapter_progress /', $s) === 1);
 
         self::assertNotNull($parent, 'lecture de la ligne parente introuvable : '.implode(' | ', $sql));
         self::assertNotNull($ecritureChapitre);
         self::assertLessThan($ecritureChapitre, $parent, 'markAsCompleted écrit le chapitre AVANT de verrouiller la ligne parente');
+        $this->assertVerrouillantSurMysql($sql[$parent]);
+    }
+
+    /**
+     * SQL capturé, en minuscules et SANS délimiteurs d'identifiants : SQLite cite
+     * entre guillemets doubles, MySQL entre accents graves. Le premier jet de ce
+     * test cherchait `"lesson_progress"` et a échoué sur la jambe MySQL de la CI.
+     */
+    private function sansGuillemets(string $sql): string
+    {
+        return strtolower(str_replace(['"', '`'], '', $sql));
+    }
+
+    /**
+     * Sous MySQL, la lecture DOIT être verrouillante. SQLite ignore `FOR UPDATE`
+     * (un seul écrivain à la fois par base) : là, seul l'ordre se mesure.
+     */
+    private function assertVerrouillantSurMysql(string $sql): void
+    {
+        if (DB::connection()->getDriverName() === 'mysql') {
+            self::assertStringContainsString('for update', $sql, 'lecture non verrouillante sous MySQL : '.$sql);
+        }
     }
 
     /**

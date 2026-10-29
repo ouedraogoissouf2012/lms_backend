@@ -11,7 +11,7 @@ use App\Models\Matiere;
 use App\Models\User;
 use App\Models\UserClass;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Laravel\Sanctum\Sanctum;
+use Tests\Concerns\ActsAsTenantUser;
 use Tests\TestCase;
 
 /**
@@ -22,12 +22,17 @@ use Tests\TestCase;
  * TABLEAU PLAT (contrat frontend `response.data`), `meta` additif, per_page
  * borné (anti-DOS), restriction classe #482 préservée, filtres exhaustifs.
  *
+ * L'étudiant n'est inscrit que par le cache KLASSCI (`user_classes`) : ces tests
+ * traversent le repli de `CompositeEnrollmentSource`. Vrai jeton porteur
+ * depuis #943 (le tenant est résolu, le scope global filtre).
+ *
  * @see app/Services/Lesson/LessonListService.php myCourses()
  * @see app/Services/Lesson/MyCoursesPresenter.php
  * @see .claude/specs/my-courses-pagination/
  */
 final class MyCoursesPaginationTest extends TestCase
 {
+    use ActsAsTenantUser;
     use RefreshDatabase;
 
     private Institution $institution;
@@ -70,8 +75,7 @@ final class MyCoursesPaginationTest extends TestCase
     {
         $this->publishedLessonsInStudentClasse(20);
 
-        Sanctum::actingAs($this->student);
-        $response = $this->getJson('/api/lessons/my-courses?per_page=5');
+        $response = $this->asTenant($this->student)->getJson('/api/lessons/my-courses?per_page=5');
 
         $response->assertStatus(200)->assertJsonPath('success', true);
 
@@ -88,9 +92,7 @@ final class MyCoursesPaginationTest extends TestCase
 
     public function test_my_courses_rejects_oversized_per_page(): void
     {
-        Sanctum::actingAs($this->student);
-
-        $this->getJson('/api/lessons/my-courses?per_page=1000')
+        $this->asTenant($this->student)->getJson('/api/lessons/my-courses?per_page=1000')
             ->assertStatus(422); // anti-DOS via MyCoursesRequest
     }
 
@@ -98,8 +100,7 @@ final class MyCoursesPaginationTest extends TestCase
     {
         $this->publishedLessonsInStudentClasse(3);
 
-        Sanctum::actingAs($this->student);
-        $response = $this->getJson('/api/lessons/my-courses');
+        $response = $this->asTenant($this->student)->getJson('/api/lessons/my-courses');
 
         $response->assertStatus(200);
         $this->assertLessThanOrEqual(15, count($response->json('data')));
@@ -118,8 +119,7 @@ final class MyCoursesPaginationTest extends TestCase
             'classe_id' => $otherClasse->id,
         ]);
 
-        Sanctum::actingAs($this->student);
-        $response = $this->getJson('/api/lessons/my-courses?per_page=50');
+        $response = $this->asTenant($this->student)->getJson('/api/lessons/my-courses?per_page=50');
 
         $response->assertStatus(200);
         // Seuls les 5 de SA classe, malgré per_page large (#482 préservé).
@@ -135,9 +135,8 @@ final class MyCoursesPaginationTest extends TestCase
         $this->publishedLessonsInStudentClasse(5, $matiereA);
         $this->publishedLessonsInStudentClasse(5, $matiereB);
 
-        Sanctum::actingAs($this->student);
         // per_page=3 : une seule page ne contiendrait pas les 2 matières.
-        $response = $this->getJson('/api/lessons/my-courses?per_page=3');
+        $response = $this->asTenant($this->student)->getJson('/api/lessons/my-courses?per_page=3');
 
         $response->assertStatus(200);
         $matiereIds = collect($response->json('filters.matieres'))->pluck('id')->all();

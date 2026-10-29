@@ -4,11 +4,9 @@ declare(strict_types=1);
 
 namespace App\Services\Chapter;
 
-use App\Models\Chapter;
 use App\Models\ChapterProgress;
 use App\Models\KnowledgeCheck;
 use App\Models\User;
-use App\Services\Lesson\LessonProgressGate;
 use Psr\Log\LoggerInterface;
 use Throwable;
 
@@ -25,12 +23,16 @@ final class ChapterProgressService
         private readonly ChapterAccessGate $accessGate,
         private readonly LessonChapterProgressCalculator $progressCalculator,
         private readonly ChapterTimeRecorder $timeRecorder,
-        private readonly LessonProgressGate $progressGate,
+        private readonly ChapterProgressAccess $access,
     ) {}
 
     /** @return array{status:int, payload: array<string, mixed>} */
     public function getLessonProgress(int $lessonId, User $user): array
     {
+        if ($refus = $this->access->refusLectureLecon($lessonId, $user)) {
+            return $refus;
+        }
+
         $progress = $this->progressCalculator->calculate($user->id, $lessonId);
 
         return [
@@ -51,7 +53,10 @@ final class ChapterProgressService
     public function getChapterProgress(int $chapterId, User $user): array
     {
         $userId = $user->id;
-        $chapter = Chapter::findOrFail($chapterId);
+        $chapter = $this->access->chapitre($chapterId, $user, ecriture: false);
+        if (is_array($chapter)) {
+            return $chapter;
+        }
 
         $progress = ChapterProgress::where('user_id', $userId)
             ->where('chapter_id', $chapterId)
@@ -92,10 +97,9 @@ final class ChapterProgressService
     public function markAsCompleted(int $chapterId, User $user, array $input): array
     {
         $userId = $user->id;
-        $chapter = Chapter::findOrFail($chapterId);
-
-        if ($refus = $this->refusEcriture($chapter, $user, sequentiel: true)) {
-            return $refus;
+        $chapter = $this->access->chapitre($chapterId, $user, ecriture: true, sequentiel: true);
+        if (is_array($chapter)) {
+            return $chapter;
         }
 
         if ($chapter->content_type === 'quiz') {
@@ -171,11 +175,9 @@ final class ChapterProgressService
      */
     public function updateTimeSpent(int $chapterId, int $additionalSeconds, User $user): array
     {
-        // findOrFail conservé pour parité (404 si chapitre inexistant)
-        $chapter = Chapter::findOrFail($chapterId);
-
-        if ($refus = $this->refusEcriture($chapter, $user)) {
-            return $refus;
+        $chapter = $this->access->chapitre($chapterId, $user, ecriture: true);
+        if (is_array($chapter)) {
+            return $chapter;
         }
 
         $progress = $this->timeRecorder->record($user->id, $chapterId, max(0, $additionalSeconds));
@@ -258,23 +260,6 @@ final class ChapterProgressService
         }
     }
 
-
-    /**
-     * Refus d'écrire la progression d'un chapitre, AVANT toute ligne créée :
-     * la règle de LessonProgressGate (#934), puis, pour la complétion, l'ordre
-     * des chapitres.
-     *
-     * @return array{status:int, payload: array<string, mixed>}|null
-     */
-    private function refusEcriture(Chapter $chapter, User $user, bool $sequentiel = false): ?array
-    {
-        $refus = $this->progressGate->refusEcritureChapitre($chapter, $user);
-        if ($refus === null && $sequentiel && ! $this->accessGate->canAccess($user->id, $chapter)) {
-            $refus = ['status' => 403, 'message' => 'Vous devez d\'abord completer le chapitre precedent'];
-        }
-
-        return $refus === null ? null : ['status' => $refus['status'], 'payload' => ['success' => false, 'message' => $refus['message']]];
-    }
 
     /**
      * Récupère ou crée la progression user×chapitre —

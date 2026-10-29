@@ -13,6 +13,7 @@ use App\Models\KnowledgeCheckAttempt;
 use App\Models\Lesson;
 use App\Models\LessonProgress;
 use App\Models\User;
+use App\Models\UserClass;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\Concerns\ActsAsTenantUser;
@@ -100,31 +101,47 @@ final class LessonProgressGateTest extends TestCase
         self::assertSame(0, KnowledgeCheckAttempt::query()->where('user_id', $this->eleve->id)->count(), 'tentatives');
     }
 
+    /**
+     * Le personnel n'écrit aucune progression, par AUCUN chemin : 403 sur les
+     * écritures de progression ; l'aperçu du quiz répond 200, mais ne crée ni
+     * ligne de leçon ni ligne de chapitre.
+     */
     public function test_le_personnel_n_ecrit_pas_de_progression(): void
     {
         $this->ecole('klassci');
 
         foreach ($this->ecritures('sienne') as $chemin => [$url, $corps]) {
-            if (str_starts_with($chemin, 'quiz')) {
-                continue;
-            }
-            self::assertSame(403, $this->asTenant($this->auteur)->postJson($url, $corps)->status(), $chemin);
+            $attendu = str_starts_with($chemin, 'quiz') ? 200 : 403;
+            self::assertSame($attendu, $this->asTenant($this->auteur)->postJson($url, $corps)->status(), $chemin);
         }
 
-        self::assertSame(0, LessonProgress::query()->where('user_id', $this->auteur->id)->count());
-        self::assertSame(0, ChapterProgress::query()->where('user_id', $this->auteur->id)->count());
+        self::assertSame(0, LessonProgress::query()->where('user_id', $this->auteur->id)->count(), 'lesson_progress');
+        self::assertSame(0, ChapterProgress::query()->where('user_id', $this->auteur->id)->count(), 'chapter_progress');
     }
 
-    /** L'écran /teacher/lessons/:id/chapters joue le quiz en aperçu : il démarre et soumet. */
-    public function test_l_enseignant_garde_l_apercu_du_quiz(): void
+    /**
+     * L'écran /teacher/lessons/:id/chapters joue le quiz en aperçu et relit le
+     * meilleur score depuis les TENTATIVES : elles restent persistées. La
+     * progression, jamais, même à la seconde soumission. L'élève inscrit, lui,
+     * crée bien la sienne.
+     */
+    public function test_l_apercu_du_quiz_persiste_la_tentative_jamais_la_progression(): void
     {
         $this->ecole('klassci');
+        $quiz = $this->quiz['sienne'];
+        $soumission = ['answers' => ['4', 'True'], 'time_spent_seconds' => 20];
 
-        foreach ($this->ecritures('sienne') as $chemin => [$url, $corps]) {
-            if (str_starts_with($chemin, 'quiz')) {
-                $this->asTenant($this->auteur)->postJson($url, $corps)->assertOk();
-            }
-        }
+        $this->asTenant($this->auteur)->postJson("/api/knowledge-checks/{$quiz->id}/start")->assertOk();
+        $this->asTenant($this->auteur)->postJson("/api/knowledge-checks/{$quiz->id}/submit", $soumission)->assertOk();
+        $this->asTenant($this->auteur)->postJson("/api/knowledge-checks/{$quiz->id}/submit", $soumission)->assertOk();
+
+        self::assertSame(2, KnowledgeCheckAttempt::query()->where('user_id', $this->auteur->id)->count(), 'tentatives de l\'aperçu');
+        self::assertSame(0, ChapterProgress::query()->where('user_id', $this->auteur->id)->count(), 'chapter_progress du personnel');
+        self::assertSame(0, LessonProgress::query()->where('user_id', $this->auteur->id)->count(), 'lesson_progress du personnel');
+
+        $this->asTenant($this->eleve)->postJson("/api/knowledge-checks/{$quiz->id}/submit", $soumission)->assertOk();
+        self::assertSame(1, ChapterProgress::query()->where('user_id', $this->eleve->id)->count(), 'le droit de l\'élève');
+        self::assertSame(1, LessonProgress::query()->where('user_id', $this->eleve->id)->count());
     }
 
     public function test_la_liste_des_progressions_est_reservee_a_l_auteur_et_aux_gestionnaires(): void
@@ -136,16 +153,34 @@ final class LessonProgressGateTest extends TestCase
 
         $this->asTenant($this->auteur)->getJson("/api/lessons/{$this->sienne->id}/progress")->assertOk();
         $this->asTenant($coordinateur)->getJson("/api/lessons/{$this->sienne->id}/progress")->assertOk();
-        // Effet voulu : un co-enseignant ne lit pas les progressions de la leçon d'un collègue.
-        $this->asTenant($coEnseignant)->getJson("/api/lessons/{$this->sienne->id}/progress")->assertForbidden();
+        foreach (['admin', 'superAdmin'] as $role) {
+            $gestionnaire = User::factory()->create(['institution_id' => $ecole, 'role' => $role]);
+            $this->asTenant($gestionnaire)->getJson("/api/lessons/{$this->sienne->id}/progress")->assertOk();
+        }
+
+        // Effet voulu : un co-enseignant ne lit pas les progressions de la leçon
+        // d'un collègue, et le refus ne porte AUCUNE donnée.
+        $refus = $this->asTenant($coEnseignant)->getJson("/api/lessons/{$this->sienne->id}/progress")->assertForbidden();
+        self::assertSame(['success', 'message'], array_keys((array) $refus->json()));
+        self::assertStringNotContainsString($this->eleve->name, (string) $refus->getContent());
+    }
+
+    public function test_la_liste_dans_une_ecole_autonome_et_pour_le_gestionnaire_d_une_autre_ecole(): void
+    {
+        $this->ecole('standalone');
+        $this->asTenant($this->auteur)->getJson("/api/lessons/{$this->sienne->id}/progress")->assertOk();
+
+        $ailleurs = Institution::factory()->create();
+        $coordinateurAilleurs = User::factory()->create(['institution_id' => $ailleurs->id, 'role' => 'coordinateur']);
+        $this->asTenant($coordinateurAilleurs)->getJson("/api/lessons/{$this->sienne->id}/progress")->assertNotFound();
     }
 
     /**
      * Un compte SANS établissement (hors supradmin) n'écrit rien, comme il ne lit
      * rien (#942) : ResolveInstitution ne pose aucun tenant pour lui, donc seule
-     * la porte tient. L'apprenant reçoit 404 partout ; le personnel 403 sur les
-     * écritures de progression, et 404 sur le quiz, dont le chapitre ne lui est
-     * pas lisible.
+     * la porte tient. Le contrôle d'établissement passe AVANT le refus du
+     * personnel : 404 partout, pour l'apprenant comme pour le personnel. Un 403
+     * dirait au personnel que la leçon existe.
      *
      * @return iterable<string, array{0: string}>
      */
@@ -162,15 +197,185 @@ final class LessonProgressGateTest extends TestCase
         $compte = User::factory()->create(['institution_id' => null, 'role' => $role]);
 
         foreach ($this->ecritures('sienne') as $chemin => [$url, $corps]) {
-            $attendu = $compte->isStaff() && ! str_starts_with($chemin, 'quiz') ? 403 : 404;
-            self::assertSame($attendu, $this->asTenant($compte)->postJson($url, $corps)->status(), $chemin);
+            self::assertSame(404, $this->asTenant($compte)->postJson($url, $corps)->status(), $chemin);
         }
-        $lecture = $this->asTenant($compte)->getJson("/api/lessons/{$this->sienne->id}/progress")->status();
-        self::assertSame($compte->isStaff() ? 403 : 404, $lecture, 'lecture');
+        $this->asTenant($compte)->getJson("/api/lessons/{$this->sienne->id}/progress")->assertNotFound();
 
         self::assertSame(0, LessonProgress::query()->where('user_id', $compte->id)->count(), 'lesson_progress');
         self::assertSame(0, ChapterProgress::query()->where('user_id', $compte->id)->count(), 'chapter_progress');
         self::assertSame(0, KnowledgeCheckAttempt::query()->where('user_id', $compte->id)->count(), 'tentatives');
+    }
+
+    /** Le chemin KLASSCI réel : inscription par le cache `user_classes`, SANS pivot. */
+    public function test_l_eleve_inscrit_par_le_cache_klassci_ecrit_sa_progression(): void
+    {
+        $this->ecole('klassci');
+        $this->eleve->classes()->detach();
+        $this->cacheKlassci(7001);
+
+        foreach ($this->ecritures('sienne') as $chemin => [$url, $corps]) {
+            self::assertSame(200, $this->asTenant($this->eleve)->postJson($url, $corps)->status(), $chemin);
+        }
+    }
+
+    /**
+     * FIGE le comportement actuel, sans le juger (ADR-818-01, une décision à
+     * part) : un élève INACTIF dans le pivot d'une école KLASSCI, mais présent
+     * dans le cache `user_classes`, écrit sa progression. Le composite ne lit le
+     * pivot que pour `statut = actif` ; vide, il se replie sur le cache KLASSCI.
+     */
+    public function test_l_eleve_inactif_au_pivot_mais_dans_le_cache_klassci_ecrit_encore(): void
+    {
+        $this->ecole('klassci');
+        $this->eleve->classes()->updateExistingPivot($this->sienne->classe_id, ['statut' => 'inactif']);
+        $this->cacheKlassci(7001);
+
+        $this->asTenant($this->eleve)->postJson("/api/lessons/{$this->sienne->id}/progress", ['progress_percentage' => 30])->assertOk();
+    }
+
+    /**
+     * La leçon, le chapitre ou le quiz d'un AUTRE établissement : 404, avec le
+     * MÊME corps qu'une ressource qui n'existe pas (rien ne se devine).
+     */
+    public function test_une_autre_ecole_et_une_ressource_absente_rendent_le_meme_404(): void
+    {
+        $this->ecole('klassci');
+        [$lecon, $chapitre, $quiz] = $this->autreEcole();
+
+        $paires = [
+            'leçon' => ["/api/lessons/{$lecon->id}/progress", '/api/lessons/999999/progress', ['progress_percentage' => 30]],
+            'chapitre' => ["/api/chapters/{$chapitre->id}/time", '/api/chapters/999999/time', ['time_spent_seconds' => 60]],
+            'quiz' => ["/api/knowledge-checks/{$quiz->id}/start", '/api/knowledge-checks/999999/start', []],
+        ];
+        // Même école, autre classe : la ressource EXISTE et le tenant la voit, mais
+        // elle est illisible. C'est ce cas qui prouve le même corps : l'autre école,
+        // elle, est déjà masquée par le scope global (introuvable comme l'absente).
+        $paires += [
+            'leçon illisible' => ["/api/lessons/{$this->autreClasse->id}/progress", '/api/lessons/999999/progress', ['progress_percentage' => 30]],
+            'chapitre illisible' => ["/api/chapters/{$this->chapitres['autreClasse']->id}/time", '/api/chapters/999999/time', ['time_spent_seconds' => 60]],
+            'quiz illisible' => ["/api/knowledge-checks/{$this->quiz['autreClasse']->id}/start", '/api/knowledge-checks/999999/start', []],
+        ];
+        foreach ($paires as $cas => [$ailleurs, $absent, $corps]) {
+            $refus = $this->asTenant($this->eleve)->postJson($ailleurs, $corps);
+            self::assertSame(404, $refus->status(), $cas);
+            self::assertSame($this->asTenant($this->eleve)->postJson($absent, $corps)->json(), $refus->json(), "$cas : corps identique");
+        }
+
+        self::assertSame(0, LessonProgress::query()->where('user_id', $this->eleve->id)->count());
+        self::assertSame(0, ChapterProgress::query()->where('user_id', $this->eleve->id)->count());
+        self::assertSame(0, KnowledgeCheckAttempt::query()->where('user_id', $this->eleve->id)->count());
+    }
+
+    /**
+     * Le supradmin plateforme est du personnel : il n'écrit pas de
+     * progression. Il peut jouer en aperçu le quiz d'une autre école (sans
+     * progression), et lit la liste des progressions.
+     */
+    public function test_le_supradmin_plateforme(): void
+    {
+        $this->ecole('klassci');
+        [, , $quizAilleurs] = $this->autreEcole();
+        $supradmin = User::factory()->create(['institution_id' => null, 'role' => 'supradmin']);
+
+        foreach ($this->ecritures('sienne') as $chemin => [$url, $corps]) {
+            if (! str_starts_with($chemin, 'quiz')) {
+                self::assertSame(403, $this->asTenant($supradmin)->postJson($url, $corps)->status(), $chemin);
+            }
+        }
+        $this->asTenant($supradmin)->postJson("/api/knowledge-checks/{$quizAilleurs->id}/submit", ['answers' => ['4', 'True'], 'time_spent_seconds' => 5])->assertOk();
+        $this->asTenant($supradmin)->getJson("/api/lessons/{$this->sienne->id}/progress")->assertOk();
+
+        self::assertSame(0, LessonProgress::query()->where('user_id', $supradmin->id)->count());
+        self::assertSame(0, ChapterProgress::query()->where('user_id', $supradmin->id)->count());
+    }
+
+    /** Un rôle hors de l'énumération, même inscrit, ne lit pas la leçon (ChapterReadGate) : il n'écrit rien. */
+    public function test_un_role_hors_enumeration_n_ecrit_rien(): void
+    {
+        $this->ecole('klassci');
+        $this->eleve->update(['role' => 'Etudiant']);
+
+        foreach ($this->ecritures('sienne') as $chemin => [$url, $corps]) {
+            self::assertSame(404, $this->asTenant($this->eleve)->postJson($url, $corps)->status(), $chemin);
+        }
+        self::assertSame(0, LessonProgress::query()->where('user_id', $this->eleve->id)->count());
+        self::assertSame(0, ChapterProgress::query()->where('user_id', $this->eleve->id)->count());
+    }
+
+    /**
+     * Un chapitre supprimé, le quiz d'un chapitre supprimé, une leçon
+     * dépubliée APRÈS le début de la progression : plus rien ne s'écrit.
+     */
+    public function test_chapitre_supprime_et_lecon_depubliee_n_acceptent_plus_d_ecriture(): void
+    {
+        $this->ecole('klassci');
+        $this->asTenant($this->eleve)->postJson("/api/lessons/{$this->sienne->id}/progress", ['progress_percentage' => 10])->assertOk();
+
+        $this->chapitres['sienne']->delete();
+        $this->asTenant($this->eleve)->postJson("/api/chapters/{$this->chapitres['sienne']->id}/time", ['time_spent_seconds' => 60])->assertNotFound();
+        $this->asTenant($this->eleve)->postJson("/api/knowledge-checks/{$this->quiz['sienne']->id}/start")->assertNotFound();
+
+        $this->sienne->update(['status' => 'draft']);
+        $this->asTenant($this->eleve)->postJson("/api/lessons/{$this->sienne->id}/progress", ['progress_percentage' => 50])->assertNotFound();
+
+        self::assertSame(10, LessonProgress::query()->where('user_id', $this->eleve->id)->value('progress_percentage'), 'la progression d\'avant reste, rien ne s\'écrit');
+        self::assertSame(0, ChapterProgress::query()->where('user_id', $this->eleve->id)->count());
+    }
+
+    /**
+     * Les deux lectures de SA progression (B2, B3) passent par la règle de
+     * lecture : la leçon ou le chapitre d'une autre classe, ou d'une autre
+     * école, est introuvable, sans rien de son contenu.
+     */
+    public function test_lire_sa_progression_suit_la_regle_de_lecture(): void
+    {
+        $this->ecole('klassci');
+        [$leconAilleurs, $chapitreAilleurs] = $this->autreEcole();
+
+        $this->asTenant($this->eleve)->getJson("/api/lessons/{$this->sienne->id}/chapter-progress")->assertOk();
+        $this->asTenant($this->eleve)->getJson("/api/chapters/{$this->chapitres['sienne']->id}/progress")->assertOk();
+
+        foreach ([
+            "/api/lessons/{$this->autreClasse->id}/chapter-progress",
+            "/api/lessons/{$this->brouillon->id}/chapter-progress",
+            "/api/lessons/{$leconAilleurs->id}/chapter-progress",
+            "/api/chapters/{$this->chapitres['autreClasse']->id}/progress",
+            "/api/chapters/{$this->chapitres['brouillon']->id}/progress",
+            "/api/chapters/{$chapitreAilleurs->id}/progress",
+        ] as $url) {
+            $reponse = $this->asTenant($this->eleve)->getJson($url);
+            self::assertSame(404, $reponse->status(), $url);
+            self::assertSame(['success', 'message'], array_keys((array) $reponse->json()), $url);
+        }
+    }
+
+    /** Inscription par le cache KLASSCI, comme l'écrit le login. */
+    private function cacheKlassci(int $klassciClasseId): void
+    {
+        UserClass::create([
+            'user_id' => $this->eleve->id,
+            'klassci_classe_id' => $klassciClasseId,
+            'classe_nom' => 'L1',
+            'institution_id' => $this->sienne->institution_id,
+            'synced_at' => now(),
+        ]);
+    }
+
+    /**
+     * Une leçon publiée, son chapitre et son quiz, dans une AUTRE école.
+     *
+     * @return array{0: Lesson, 1: Chapter, 2: KnowledgeCheck}
+     */
+    private function autreEcole(): array
+    {
+        $ailleurs = Institution::factory()->create();
+        $classe = Classe::factory()->create(['institution_id' => $ailleurs->id, 'klassci_id' => 7001]);
+        $auteur = User::factory()->create(['institution_id' => $ailleurs->id, 'role' => 'enseignant']);
+        $lecon = Lesson::factory()->published()->create(['institution_id' => $ailleurs->id, 'classe_id' => $classe->id, 'enseignant_id' => $auteur->id]);
+        $chapitre = Chapter::factory()->create(['lesson_id' => $lecon->id, 'institution_id' => $ailleurs->id, 'enseignant_id' => $auteur->id, 'content_type' => 'text', 'order' => 0]);
+        $quiz = KnowledgeCheck::factory()->create(['chapter_id' => $chapitre->id, 'institution_id' => $ailleurs->id]);
+
+        return [$lecon, $chapitre, $quiz];
     }
 
     /**

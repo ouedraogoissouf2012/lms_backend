@@ -8,6 +8,7 @@ use App\Models\KnowledgeCheck;
 use App\Models\KnowledgeCheckAttempt;
 use App\Models\User;
 use App\Services\Chapter\ChapterTimeRecorder;
+use App\Services\Lesson\LessonProgressGate;
 use Illuminate\Database\ConnectionInterface;
 use Illuminate\Database\Eloquent\Collection;
 use RuntimeException;
@@ -53,6 +54,7 @@ final class KnowledgeCheckAttemptService
         private readonly KnowledgeCheckAccessService $access,
         private readonly ConnectionInterface $db,
         private readonly ChapterTimeRecorder $timeRecorder,
+        private readonly LessonProgressGate $progressGate,
     ) {
     }
 
@@ -162,7 +164,7 @@ final class KnowledgeCheckAttemptService
             ]);
 
             $this->updateChapterProgress(
-                $user->id,
+                $user,
                 (int) $quiz->chapter_id,
                 $result['score'],
                 $result['passed'],
@@ -250,13 +252,19 @@ final class KnowledgeCheckAttemptService
      * ChapterProgressService::recordQuizScore est suivie par #955.
      */
     private function updateChapterProgress(
-        int $userId,
+        User $user,
         int $chapterId,
         int $score,
         bool $passed,
         int $timeSpentSeconds
     ): void {
-        $progress = $this->timeRecorder->record($userId, $chapterId, max(0, $timeSpentSeconds));
+        if (! $this->progressGate->ecritLaProgression($user)) {
+            // Aperçu du personnel : la tentative est persistée (l'écran enseignant
+            // relit son meilleur score), la progression JAMAIS (#934).
+            return;
+        }
+
+        $progress = $this->timeRecorder->record($user->id, $chapterId, max(0, $timeSpentSeconds));
 
         if ($progress->quiz_score === null || $score > $progress->quiz_score) {
             $progress->quiz_score = $score;

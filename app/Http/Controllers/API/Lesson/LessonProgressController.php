@@ -70,8 +70,8 @@ class LessonProgressController extends AuthenticatedController
 
         // Personnel : l'auteur de la leçon et les gestionnaires seulement (#934).
         // Chaque élève est réduit à {id, name} par le presenter.
-        if (! $this->gate->peutLireLesProgressions($lesson, $user)) {
-            return $this->errorResponse('Réservé à l\'auteur de la leçon et aux gestionnaires', 403);
+        if ($refus = $this->gate->refusLectureDesProgressions($lesson, $user)) {
+            return $this->errorResponse($refus['message'], $refus['status']);
         }
 
         $progresses = $lesson->progress()->with('user:id,name')->get();

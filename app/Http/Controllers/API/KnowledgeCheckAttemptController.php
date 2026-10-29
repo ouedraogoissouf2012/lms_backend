@@ -90,12 +90,12 @@ final class KnowledgeCheckAttemptController extends AuthenticatedController
     /**
      * Refus de jouer un quiz dont le chapitre n'est pas lisible (#934), AVANT
      * toute écriture : aucune tentative créée, aucun essai consommé. Un quiz
-     * inexistant reste rendu par le service, comme jusqu'ici.
+     * inexistant reçoit le MÊME 404 qu'un quiz illisible.
      */
     private function refusTentative(string $id, User $user): ?JsonResponse
     {
         $quiz = KnowledgeCheck::query()->with('chapter')->find($id);
-        $refus = $quiz instanceof KnowledgeCheck ? $this->gate->refusEcritureQuiz($quiz, $user) : null;
+        $refus = $this->gate->refusEcritureQuiz($quiz instanceof KnowledgeCheck ? $quiz : null, $user);
 
         return $refus === null ? null : $this->errorResponse($refus['message'], $refus['status']);
     }

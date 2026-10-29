@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Services\Chapter;
 
-use App\Models\Chapter;
 use App\Models\ChapterProgress;
 use App\Models\KnowledgeCheck;
 use App\Models\User;
@@ -24,11 +23,16 @@ final class ChapterProgressService
         private readonly ChapterAccessGate $accessGate,
         private readonly LessonChapterProgressCalculator $progressCalculator,
         private readonly ChapterTimeRecorder $timeRecorder,
+        private readonly ChapterProgressAccess $access,
     ) {}
 
     /** @return array{status:int, payload: array<string, mixed>} */
     public function getLessonProgress(int $lessonId, User $user): array
     {
+        if ($refus = $this->access->refusLectureLecon($lessonId, $user)) {
+            return $refus;
+        }
+
         $progress = $this->progressCalculator->calculate($user->id, $lessonId);
 
         return [
@@ -49,7 +53,10 @@ final class ChapterProgressService
     public function getChapterProgress(int $chapterId, User $user): array
     {
         $userId = $user->id;
-        $chapter = Chapter::findOrFail($chapterId);
+        $chapter = $this->access->chapitre($chapterId, $user, ecriture: false);
+        if (is_array($chapter)) {
+            return $chapter;
+        }
 
         $progress = ChapterProgress::where('user_id', $userId)
             ->where('chapter_id', $chapterId)
@@ -90,16 +97,9 @@ final class ChapterProgressService
     public function markAsCompleted(int $chapterId, User $user, array $input): array
     {
         $userId = $user->id;
-        $chapter = Chapter::findOrFail($chapterId);
-
-        if (! $this->accessGate->canAccess($userId, $chapter)) {
-            return [
-                'status' => 403,
-                'payload' => [
-                    'success' => false,
-                    'message' => 'Vous devez d\'abord completer le chapitre precedent',
-                ],
-            ];
+        $chapter = $this->access->chapitre($chapterId, $user, ecriture: true, sequentiel: true);
+        if (is_array($chapter)) {
+            return $chapter;
         }
 
         if ($chapter->content_type === 'quiz') {
@@ -175,8 +175,10 @@ final class ChapterProgressService
      */
     public function updateTimeSpent(int $chapterId, int $additionalSeconds, User $user): array
     {
-        // findOrFail conservé pour parité (404 si chapitre inexistant)
-        Chapter::findOrFail($chapterId);
+        $chapter = $this->access->chapitre($chapterId, $user, ecriture: true);
+        if (is_array($chapter)) {
+            return $chapter;
+        }
 
         $progress = $this->timeRecorder->record($user->id, $chapterId, max(0, $additionalSeconds));
 

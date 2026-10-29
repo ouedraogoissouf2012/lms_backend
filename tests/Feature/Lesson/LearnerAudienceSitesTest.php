@@ -67,12 +67,23 @@ final class LearnerAudienceSitesTest extends TestCase
     {
         $compte = $this->ecole($volet, $role);
 
-        $data = $this->asTenant($compte)->getJson("/api/lessons/{$this->publiee->id}/progress")->assertOk()->json('data');
+        $reponse = $this->asTenant($compte)->getJson("/api/lessons/{$this->publiee->id}/progress");
+        self::assertStringNotContainsString($this->camarade->email, (string) $reponse->getContent());
 
+        if (! $compte->isStudent()) {
+            // #934 : la progression suit la règle de lecture de la leçon
+            // (ChapterReadGate), qui ne reconnaît que les rôles de
+            // l'énumération. Un rôle hors de l'énumération reçoit 404, sans
+            // aucune donnée : jamais la liste, jamais celle d'un autre.
+            $reponse->assertNotFound();
+
+            return;
+        }
+
+        $data = $reponse->assertOk()->json('data');
         self::assertIsArray($data);
         self::assertArrayHasKey('user_id', $data, 'une seule progression, la sienne, pas une liste');
         self::assertSame($compte->id, $data['user_id']);
-        self::assertStringNotContainsString($this->camarade->email, (string) json_encode($data));
     }
 
     #[DataProvider('horsPersonnel')]
@@ -152,6 +163,8 @@ final class LearnerAudienceSitesTest extends TestCase
     public function test_l_enseignant_lit_les_progressions_reduites_au_nom(): void
     {
         $compte = $this->ecole('klassci', 'enseignant', inscrire: false);
+        // L'auteur de la leçon : un co-enseignant ne lit pas cette liste (#934).
+        $this->publiee->update(['enseignant_id' => $compte->id]);
 
         $data = $this->asTenant($compte)->getJson("/api/lessons/{$this->publiee->id}/progress")->assertOk()->json('data');
 

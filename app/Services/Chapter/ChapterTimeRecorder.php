@@ -57,17 +57,14 @@ final class ChapterTimeRecorder
     {
         // withTrashed : un écrivain existant ne doit pas se mettre à répondre 404
         // pour un chapitre supprimé dont la progression s'écrivait jusqu'ici.
-        $chapter = Chapter::withTrashed()->select(['id', 'lesson_id'])->findOrFail($chapterId);
+        $chapter = Chapter::withTrashed()->select(['id', 'lesson_id', 'institution_id'])->findOrFail($chapterId);
         $lessonId = (int) $chapter->lesson_id;
 
         /** @var ChapterProgress $progress */
-        $progress = $this->db->transaction(function () use ($userId, $chapterId, $lessonId, $seconds): ChapterProgress {
+        $progress = $this->db->transaction(function () use ($userId, $chapter, $lessonId, $seconds): ChapterProgress {
             $parent = $this->lockLessonRow($userId, $lessonId);
 
-            $progress = ChapterProgress::firstOrCreate(
-                ['user_id' => $userId, 'chapter_id' => $chapterId],
-                ['time_spent_seconds' => 0],
-            );
+            $progress = $this->lockChapterRow($userId, $chapter);
             if ($seconds > 0) {
                 $progress->increment('time_spent_seconds', $seconds);
             }
@@ -137,6 +134,36 @@ final class ChapterTimeRecorder
         $parent = LessonProgress::query()->where($cle)->lockForUpdate()->firstOrFail();
 
         return $parent;
+    }
+
+    /**
+     * Ligne du chapitre, verrouillée APRÈS la ligne parente, sur le même schéma
+     * qu'elle (#965). Un `firstOrCreate` ne suffit pas : sa lecture n'est pas
+     * verrouillante et lit l'instantané de la transaction, pris AVANT l'attente
+     * du verrou parent (manuel MySQL 8.0, §17.7.2.3). Le second de deux tout
+     * premiers écrivains simultanés n'y voit donc pas la ligne que le premier
+     * vient de valider, son INSERT viole la clé unique `(user_id, chapter_id)`,
+     * et cette erreur n'est pas de celles que les tentatives rejouent. La
+     * lecture verrouillante, elle, lit la dernière version validée.
+     */
+    private function lockChapterRow(int $userId, Chapter $chapter): ChapterProgress
+    {
+        $cle = ['user_id' => $userId, 'chapter_id' => $chapter->id];
+
+        if (! ChapterProgress::query()->where($cle)->exists()) {
+            // insertOrIgnore contourne le modèle : l'établissement est celui du
+            // chapitre, posé explicitement (aucun tenant en ligne de commande).
+            ChapterProgress::query()->insertOrIgnore([$cle + [
+                'institution_id' => $chapter->institution_id,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]]);
+        }
+
+        /** @var ChapterProgress $progress */
+        $progress = ChapterProgress::query()->where($cle)->lockForUpdate()->firstOrFail();
+
+        return $progress;
     }
 
     /** Somme des chapitres de la leçon, en lecture verrouillante, puis écriture. */

@@ -127,9 +127,12 @@ final class MyCoursesPresenter
                 'id' => $lesson->matiere->id,
                 'name' => $lesson->matiere->name ?? $lesson->matiere->libelle ?? 'Matière',
             ] : null,
+            // `classes` n'a ni `name` ni `nom` : seulement `libelle`, NOT NULL.
+            // L'ancien repli `name ?? nom ?? 'Classe'` rendait toujours la
+            // constante (#939). La clé `name` reste, la forme ne change pas.
             'classe' => $lesson->classe ? [
                 'id' => $lesson->classe->id,
-                'name' => $lesson->classe->name ?? $lesson->classe->nom ?? 'Classe',
+                'name' => $lesson->classe->libelle,
             ] : null,
             'progress' => $progress ? [
                 'percentage' => $progress->progress_percentage,

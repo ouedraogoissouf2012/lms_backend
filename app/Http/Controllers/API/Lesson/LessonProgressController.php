@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\API\Lesson;
 
 use App\Http\Controllers\AuthenticatedController;
+use App\Http\Presenters\LessonProgressRosterPresenter;
 use App\Http\Requests\FilterLessonsRequest;
 use App\Http\Requests\StoreLessonRequest;
 use App\Http\Requests\UpdateLessonRequest;
@@ -24,8 +25,10 @@ use Illuminate\Http\Request;
  */
 class LessonProgressController extends AuthenticatedController
 {
-    public function __construct(private LessonProgressService $progressService)
-    {
+    public function __construct(
+        private LessonProgressService $progressService,
+        private LessonProgressRosterPresenter $roster,
+    ) {
     }
 
     /**
@@ -42,8 +45,8 @@ class LessonProgressController extends AuthenticatedController
 
         $user = $this->authenticatedUser($request);
 
-        // Étudiant: sa propre progression
-        if ($user->isStudent()) {
+        // Hors personnel reconnu : sa propre progression, et rien d'autre (#941).
+        if ($user->isLearnerAudience()) {
             $progress = $this->progressService->progressForUser($lesson, $user->id);
 
             if (!$progress) {
@@ -57,15 +60,16 @@ class LessonProgressController extends AuthenticatedController
             return $this->successResponse($progress);
         }
 
-        // Enseignant: progression de tous les étudiants
-        $progresses = $lesson->progress()->with('user')->get();
+        // Personnel : progression de tous les élèves, chacun réduit à {id, name}
+        // par le presenter (jamais l'objet User sérialisé).
+        $progresses = $lesson->progress()->with('user:id,name')->get();
 
         // Non migré vers successResponse() : expose une clé racine `statistics`
         // hors enveloppe que le trait ne reproduit pas (axe #1 « DRY-only »,
         // cf. LessonCrudController::myCourses).
         return response()->json([
             'success' => true,
-            'data' => $progresses,
+            'data' => $this->roster->present($progresses),
             'statistics' => [
                 'total_students' => $progresses->count(),
                 'students_started' => $this->progressService->studentsStartedCount($lesson),

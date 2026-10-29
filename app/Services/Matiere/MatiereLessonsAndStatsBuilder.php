@@ -89,7 +89,7 @@ final class MatiereLessonsAndStatsBuilder
         try {
             $query = Lesson::where('matiere_id', $matiereId);
 
-            if ($user->isStudent()) {
+            if ($user->isLearnerAudience()) {
                 $query->published();
 
                 // PERF-03 — eager load `progress` filtered to current user.
@@ -103,7 +103,7 @@ final class MatiereLessonsAndStatsBuilder
                 ->map(function (Lesson $lesson) use ($user): array {
                     $lessonArray = $lesson->toArray();
 
-                    if ($user->isStudent()) {
+                    if ($user->isLearnerAudience()) {
                         // progress is filtered to the current user, so 0 or 1 entry.
                         $lessonArray['user_progress'] = $lesson->progress->first();
                     }

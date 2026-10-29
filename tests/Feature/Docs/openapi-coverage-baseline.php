@@ -74,7 +74,6 @@ return [
     '/knowledge-checks/{id}/start',
     '/knowledge-checks/{id}/submit',
     '/lessons',
-    '/lessons/my-courses',
     '/lessons/{id}',
     '/lessons/{id}/complete',
     '/lessons/{id}/progress',

@@ -411,7 +411,7 @@ components:
               type: integer
             name:
               type: string
-              description: "Vaut aujourd hui toujours \"Classe\" (#939 le corrige en libelle)"
+              description: "Libelle de la classe (classes.libelle, jamais null). Valait toujours \"Classe\" avant #939"
         progress:
           type: object
           nullable: true

@@ -258,6 +258,154 @@ components:
             total:
               type: integer
 
+    MyCoursesPage:
+      type: object
+      description: |
+        Reponse de `GET /lessons/my-courses` (#938). Hors enveloppe
+        `successResponse` : `filters`, `total` et `meta` vivent a la RACINE,
+        a cote de `data`. `data` est un tableau PLAT, jamais `data.data`.
+      required:
+        - success
+        - data
+        - filters
+        - total
+        - meta
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/MyCourse'
+        filters:
+          type: object
+          description: |
+            Dictionnaires des menus de filtre, calcules sur TOUTE la selection
+            filtree, pas sur la seule page. Avec `matiere_id` ou
+            `enseignant_id`, ils se reduisent donc a cette selection : le
+            dictionnaire complet est celui d une reponse sans filtre.
+          properties:
+            matieres:
+              type: array
+              items:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                    description: "matieres.id LOCAL"
+                  name:
+                    type: string
+            enseignants:
+              type: array
+              items:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                    description: "users.id LOCAL de l auteur (#869), l espace qu accepte `enseignant_id`"
+                  name:
+                    type: string
+        total:
+          type: integer
+          description: "Nombre de cours de TOUTE la selection, toutes pages confondues (egal a meta.total)"
+        meta:
+          type: object
+          required:
+            - current_page
+            - last_page
+            - per_page
+            - total
+          properties:
+            current_page:
+              type: integer
+            last_page:
+              type: integer
+            per_page:
+              type: integer
+            total:
+              type: integer
+
+    MyCourse:
+      type: object
+      required:
+        - id
+        - title
+        - type
+        - niveau_difficulte
+        - published_at
+        - created_at
+      properties:
+        id:
+          type: integer
+          description: "lessons.id LOCAL"
+        title:
+          type: string
+        description:
+          type: string
+          nullable: true
+        type:
+          type: string
+          enum: [cours, tp, td, projet, autre]
+        duree_estimee:
+          type: integer
+          nullable: true
+          description: "Duree ESTIMEE en minutes (lessons.duree_estimee_minutes). Ce n est pas un temps passe."
+        niveau_difficulte:
+          type: string
+          enum: [debutant, intermediaire, avance]
+        enseignant:
+          type: object
+          nullable: true
+          properties:
+            id:
+              type: integer
+              description: "users.id LOCAL"
+            klassci_id:
+              type: integer
+              nullable: true
+            name:
+              type: string
+        matiere:
+          type: object
+          nullable: true
+          properties:
+            id:
+              type: integer
+            name:
+              type: string
+        classe:
+          type: object
+          nullable: true
+          properties:
+            id:
+              type: integer
+            name:
+              type: string
+              description: "Vaut aujourd hui toujours \"Classe\" (#939 le corrige en libelle)"
+        progress:
+          type: object
+          nullable: true
+          description: "Progression de l appelant sur la lecon ; null s il ne l a jamais commencee"
+          properties:
+            percentage:
+              type: integer
+              minimum: 0
+              maximum: 100
+            status:
+              type: string
+              enum: [not_started, in_progress, completed]
+            completed_at:
+              type: string
+              format: date-time
+              nullable: true
+        published_at:
+          type: string
+          format: date-time
+        created_at:
+          type: string
+          format: date-time
+
     ClasseCreated:
       type: object
       properties:
@@ -4174,6 +4322,84 @@ paths:
         '401':
           description: "Unauthenticated"
 
+  # ============ LESSONS ============
+  /lessons/my-courses:
+    get:
+      operationId: listMyCourses
+      tags:
+        - Lessons
+      summary: "Lister les cours de l appelant, pagines"
+      description: |
+        La vue « Mes cours » (#938). La forme de cette reponse est le contrat
+        (decision D1 du pilote my-courses) : `data` est un tableau PLAT, et la
+        pagination se lit dans `meta`. Un client qui ne lit que `data` ne voit
+        que la premiere page, 15 cours par defaut.
+
+        Ce que l appelant voit :
+        - un apprenant : les lecons PUBLIEES de SES classes (pivot local
+          `classe_etudiant`, puis repli sur le cache KLASSCI `user_classes`) ;
+          sans classe, `data` est vide ;
+        - le personnel : toutes les lecons publiees de son etablissement.
+        Meme forme dans une ecole reliee a KLASSCI et dans une ecole autonome.
+
+        Ordre TOTAL : `order`, puis `created_at`, puis `id` (#937). Aucune page
+        ne double ni ne perd une lecon.
+
+        Au-dela de `last_page`, la reponse est 200 avec `data` vide, pas 404.
+
+        401 : le corps reel est `{"success": false, "message": "Unauthenticated."}`,
+        sans `error_code`, contrairement a `ErrorResponse` (ecart suivi par #919).
+      security:
+        - sanctum: []
+      parameters:
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+        - name: per_page
+          in: query
+          required: false
+          description: "Entre 1 et 100 ; absent vaut 15. Hors bornes ou non entier : 422 (spec #548)"
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+        - name: matiere_id
+          in: query
+          required: false
+          description: "matieres.id LOCAL"
+          schema:
+            type: integer
+            minimum: 1
+        - name: enseignant_id
+          in: query
+          required: false
+          description: "users.id LOCAL de l auteur. Un identifiant KLASSCI ne ramene rien (#869)"
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        '200':
+          description: "Une page des cours de l appelant"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MyCoursesPage'
+        '401':
+          description: "Non authentifie"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: "`page`, `per_page`, `matiere_id` ou `enseignant_id` hors bornes, ou non entier"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationFailed'
+
   # ============ CHAPTERS ============
   /lessons/{lessonId}/chapters:
     get:
@@ -4468,6 +4694,8 @@ tags:
     description: "Student evaluations and assessments"
   - name: "Dashboard"
     description: "Dashboard endpoints for students and teachers"
+  - name: "Lessons"
+    description: "Lecons et vue Mes cours"
   - name: "Chapters"
     description: "Course chapters and content"
   - name: "Notifications"

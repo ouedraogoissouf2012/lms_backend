@@ -172,8 +172,9 @@ class LessonProgressController extends AuthenticatedController
     }
 
     /**
-     * Refus d'écrire une progression (#934), AVANT toute ligne créée : 404 si
-     * l'apprenant ne peut pas lire la leçon, 403 pour le personnel.
+     * Refus d'écrire une progression (#934), AVANT toute ligne créée, dans cet
+     * ordre : 404 hors de son établissement (contrôlé d'abord, pour ne rien
+     * révéler), 403 pour le personnel, 404 si l'apprenant ne peut pas lire la leçon.
      */
     private function refusEcriture(Lesson $lesson, User $user): ?JsonResponse
     {

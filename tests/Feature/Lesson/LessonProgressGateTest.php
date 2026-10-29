@@ -64,7 +64,7 @@ final class LessonProgressGateTest extends TestCase
     }
 
     #[DataProvider('volets')]
-    public function test_l_eleve_inscrit_ecrit_sa_progression_par_les_six_chemins(string $volet): void
+    public function test_l_eleve_inscrit_ecrit_sa_progression_par_les_sept_chemins(string $volet): void
     {
         $this->ecole($volet);
 
@@ -106,9 +106,10 @@ final class LessonProgressGateTest extends TestCase
      * écritures de progression ; l'aperçu du quiz répond 200, mais ne crée ni
      * ligne de leçon ni ligne de chapitre.
      */
-    public function test_le_personnel_n_ecrit_pas_de_progression(): void
+    #[DataProvider('volets')]
+    public function test_le_personnel_n_ecrit_pas_de_progression(string $volet): void
     {
-        $this->ecole('klassci');
+        $this->ecole($volet);
 
         foreach ($this->ecritures('sienne') as $chemin => [$url, $corps]) {
             $attendu = str_starts_with($chemin, 'quiz') ? 200 : 403;
@@ -125,9 +126,10 @@ final class LessonProgressGateTest extends TestCase
      * progression, jamais, même à la seconde soumission. L'élève inscrit, lui,
      * crée bien la sienne.
      */
-    public function test_l_apercu_du_quiz_persiste_la_tentative_jamais_la_progression(): void
+    #[DataProvider('volets')]
+    public function test_l_apercu_du_quiz_persiste_la_tentative_jamais_la_progression(string $volet): void
     {
-        $this->ecole('klassci');
+        $this->ecole($volet);
         $quiz = $this->quiz['sienne'];
         $soumission = ['answers' => ['4', 'True'], 'time_spent_seconds' => 20];
 
@@ -170,6 +172,11 @@ final class LessonProgressGateTest extends TestCase
         $this->ecole('standalone');
         $this->asTenant($this->auteur)->getJson("/api/lessons/{$this->sienne->id}/progress")->assertOk();
 
+        // Ce cas serait vert MÊME SANS le correctif C2 : avec un vrai jeton, le
+        // scope global masque déjà la leçon de l'autre école (introuvable avant
+        // la porte). Il documente le comportement, il ne prouve pas C2. Le cas qui
+        // prouve C2 sur la liste est l'enseignant SANS établissement, que le
+        // scope ne filtre pas : test_un_compte_sans_etablissement_n_ecrit_rien.
         $ailleurs = Institution::factory()->create();
         $coordinateurAilleurs = User::factory()->create(['institution_id' => $ailleurs->id, 'role' => 'coordinateur']);
         $this->asTenant($coordinateurAilleurs)->getJson("/api/lessons/{$this->sienne->id}/progress")->assertNotFound();
@@ -237,9 +244,10 @@ final class LessonProgressGateTest extends TestCase
      * La leçon, le chapitre ou le quiz d'un AUTRE établissement : 404, avec le
      * MÊME corps qu'une ressource qui n'existe pas (rien ne se devine).
      */
-    public function test_une_autre_ecole_et_une_ressource_absente_rendent_le_meme_404(): void
+    #[DataProvider('volets')]
+    public function test_une_autre_ecole_et_une_ressource_absente_rendent_le_meme_404(string $volet): void
     {
-        $this->ecole('klassci');
+        $this->ecole($volet);
         [$lecon, $chapitre, $quiz] = $this->autreEcole();
 
         $paires = [
@@ -335,17 +343,21 @@ final class LessonProgressGateTest extends TestCase
         $this->asTenant($this->eleve)->getJson("/api/lessons/{$this->sienne->id}/chapter-progress")->assertOk();
         $this->asTenant($this->eleve)->getJson("/api/chapters/{$this->chapitres['sienne']->id}/progress")->assertOk();
 
+        // Chaque refus porte le MÊME corps qu'une ressource absente de la même
+        // école : ni titre, ni ordre, ni quiz bloquant, rien qui se devine.
+        $absenteLecon = $this->asTenant($this->eleve)->getJson('/api/lessons/999999/chapter-progress')->assertNotFound()->json();
+        $absentChapitre = $this->asTenant($this->eleve)->getJson('/api/chapters/999999/progress')->assertNotFound()->json();
         foreach ([
-            "/api/lessons/{$this->autreClasse->id}/chapter-progress",
-            "/api/lessons/{$this->brouillon->id}/chapter-progress",
-            "/api/lessons/{$leconAilleurs->id}/chapter-progress",
-            "/api/chapters/{$this->chapitres['autreClasse']->id}/progress",
-            "/api/chapters/{$this->chapitres['brouillon']->id}/progress",
-            "/api/chapters/{$chapitreAilleurs->id}/progress",
-        ] as $url) {
+            "/api/lessons/{$this->autreClasse->id}/chapter-progress" => $absenteLecon,
+            "/api/lessons/{$this->brouillon->id}/chapter-progress" => $absenteLecon,
+            "/api/lessons/{$leconAilleurs->id}/chapter-progress" => $absenteLecon,
+            "/api/chapters/{$this->chapitres['autreClasse']->id}/progress" => $absentChapitre,
+            "/api/chapters/{$this->chapitres['brouillon']->id}/progress" => $absentChapitre,
+            "/api/chapters/{$chapitreAilleurs->id}/progress" => $absentChapitre,
+        ] as $url => $corpsAbsent) {
             $reponse = $this->asTenant($this->eleve)->getJson($url);
             self::assertSame(404, $reponse->status(), $url);
-            self::assertSame(['success', 'message'], array_keys((array) $reponse->json()), $url);
+            self::assertSame($corpsAbsent, $reponse->json(), "$url : corps identique à une ressource absente");
         }
     }
 
@@ -379,7 +391,7 @@ final class LessonProgressGateTest extends TestCase
     }
 
     /**
-     * Les six chemins d'écriture vers la leçon `$cible` et son chapitre.
+     * Les sept chemins d'écriture vers la leçon `$cible` et son chapitre.
      *
      * @return array<string, array{0: string, 1: array<string, mixed>}>
      */

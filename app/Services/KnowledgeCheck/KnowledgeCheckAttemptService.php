@@ -27,7 +27,9 @@ use RuntimeException;
  *   les bonnes réponses, retourner le payload « in progress ».
  * - **`submitAttempt`** : déléguer au {@see KnowledgeCheckGradingService}
  *   pour le calcul du score, persister le `KnowledgeCheckAttempt`, mettre à
- *   jour `ChapterProgress` (best score + complétion + temps cumulé).
+ *   jour `ChapterProgress` (best score + complétion + temps cumulé). Sauf pour
+ *   le personnel (aperçu depuis l'écran de gestion des chapitres) : sa
+ *   tentative est persistée, sa progression JAMAIS (#934, LessonProgressGate).
  * - **`getMyAttempts`** : historique des tentatives d'un user pour un quiz.
  *
  * ## DI strict (§1.6 D)
@@ -120,7 +122,9 @@ final class KnowledgeCheckAttemptService
 
     /**
      * Soumet les réponses : grade, persiste l'attempt, met à jour la
-     * progression du chapitre (best score + complétion + temps cumulé).
+     * progression du chapitre (best score + complétion + temps cumulé). Pour
+     * le personnel, la tentative est persistée mais la progression jamais
+     * écrite (#934) ; la réponse est la même.
      *
      * Retourne le payload destiné au frontend (déjà mis en forme).
      *

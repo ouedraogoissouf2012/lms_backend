@@ -7,7 +7,6 @@ namespace App\Services\Lesson;
 use App\Models\Lesson;
 use App\Models\Matiere;
 use App\Models\User;
-use App\Services\Enrollment\EnrollmentSource;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
@@ -25,9 +24,10 @@ use Illuminate\Support\Collection;
  * Pas de Facade ni `app()` — toute la logique se base sur les modèles et
  * relations Eloquent passés en argument.
  *
- * ## Comportement
+ * ## Portée
  *
- * Aucun changement runtime : déplacement verbatim depuis le god-controller.
+ * Ce qu'un compte lit (tenant et audience) ne se décide pas ici : les trois
+ * lectures délèguent à {@see LessonReadScope}, source unique (#942).
  *
  * @see app/Http/Controllers/API/Lesson/LessonCrudController.php
  */
@@ -35,7 +35,7 @@ final class LessonListService
 {
     public function __construct(
         private readonly LessonProgressService $progressService,
-        private readonly EnrollmentSource $classeResolver,
+        private readonly LessonReadScope $readScope,
         private readonly MyCoursesPresenter $myCoursesPresenter,
     ) {}
 
@@ -50,14 +50,7 @@ final class LessonListService
     public function list(Request $request, User $user): LengthAwarePaginator
     {
         $query = Lesson::with(['matiere', 'enseignant', 'classe']);
-
-        // Defense en profondeur (fix E2E #211 flow 5) : le global scope
-        // BelongsToInstitution est no-op si le tenant n'est pas resolu —
-        // filtre tenant EXPLICITE depuis le user authentifie.
-        // institution_id null = supradmin cross-tenant by design.
-        if ($user->institution_id !== null) {
-            $query->where('institution_id', $user->institution_id);
-        }
+        $this->readScope->apply($query, $user);
 
         if ($request->has('matiere_id')) {
             $query->forMatiere($request->integer('matiere_id'));
@@ -75,12 +68,9 @@ final class LessonListService
             $query->where('type', $request->type);
         }
 
-        // Hors personnel : uniquement les cours publiés ET de SES classes (#482 —
-        // isolation inter-classes, résolue via le pont KLASSCI→local ; #941).
-        if ($user->isLearnerAudience()) {
-            $query->published()
-                ->whereIn('classe_id', $this->classeResolver->localClasseIdsFor($user));
-        } elseif ($request->has('status')) {
+        // Le filtre `status` n'appartient qu'au personnel : hors personnel, la
+        // portée impose déjà les seules leçons publiées (LessonReadScope).
+        if (! $user->isLearnerAudience() && $request->has('status')) {
             $query->where('status', $request->status);
         }
 
@@ -140,17 +130,7 @@ final class LessonListService
     private function buildMyCoursesQuery(Request $request, User $user): Builder
     {
         $query = Lesson::with(['matiere', 'classe'])->published()->ordered();
-
-        // Defense en profondeur (fix E2E #211 flow 5) — cf. list().
-        if ($user->institution_id !== null) {
-            $query->where('institution_id', $user->institution_id);
-        }
-
-        // Hors personnel : restreindre à SES classes (#482, #941). classe_id NULL
-        // et autres classes exclues.
-        if ($user->isLearnerAudience()) {
-            $query->whereIn('classe_id', $this->classeResolver->localClasseIdsFor($user));
-        }
+        $this->readScope->apply($query, $user);
 
         if ($request->has('matiere_id')) {
             $query->forMatiere($request->integer('matiere_id'));
@@ -206,15 +186,9 @@ final class LessonListService
             return ['error' => 'Cours non trouvé', 'status' => 404];
         }
 
-        // Defense en profondeur (fix E2E #211 flow 5) : acces direct par ID
-        // cross-tenant -> 404 (ne pas revelér l'existence de la ressource).
-        if ($user->institution_id !== null && $lesson->institution_id !== $user->institution_id) {
-            return ['error' => 'Cours non trouvé', 'status' => 404];
-        }
-
-        // Vérifier les permissions
-        if ($user->isLearnerAudience() && ! $lesson->isPublished()) {
-            return ['error' => 'Ce cours n\'est pas encore disponible', 'status' => 403];
+        $refus = $this->readScope->denies($lesson, $user);
+        if ($refus !== null) {
+            return $refus;
         }
 
         // L'identifiant KLASSCI de la matière, pendant exact de

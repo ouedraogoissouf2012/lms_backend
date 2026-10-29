@@ -29,22 +29,22 @@ final class TrainingSessionTransitionController extends AuthenticatedController
 
     public function publier(Request $request, int $trainingSession): JsonResponse
     {
-        return $this->transitionner($request, fn ($acteur) => $this->transitions->publier($acteur, $trainingSession), 'Periode publiee.');
+        return $this->transitionner($request, fn ($acteur) => $this->transitions->publier($acteur, $trainingSession), 'Période publiée.');
     }
 
     public function annuler(Request $request, int $trainingSession): JsonResponse
     {
-        return $this->transitionner($request, fn ($acteur) => $this->transitions->annuler($acteur, $trainingSession), 'Periode annulee. Les inscriptions deja faites sont conservees.');
+        return $this->transitionner($request, fn ($acteur) => $this->transitions->annuler($acteur, $trainingSession), 'Période annulée. Les inscriptions déjà faites sont conservées.');
     }
 
     public function cloturer(Request $request, int $trainingSession): JsonResponse
     {
-        return $this->transitionner($request, fn ($acteur) => $this->transitions->cloturer($acteur, $trainingSession), 'Periode cloturee.');
+        return $this->transitionner($request, fn ($acteur) => $this->transitions->cloturer($acteur, $trainingSession), 'Période clôturée.');
     }
 
     public function archiver(Request $request, int $trainingSession): JsonResponse
     {
-        return $this->transitionner($request, fn ($acteur) => $this->transitions->archiver($acteur, $trainingSession), 'Periode archivee.');
+        return $this->transitionner($request, fn ($acteur) => $this->transitions->archiver($acteur, $trainingSession), 'Période archivée.');
     }
 
     /**

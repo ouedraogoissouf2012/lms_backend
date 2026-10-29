@@ -234,7 +234,7 @@ final class GlobalSearchService
                 if ($user->isTeacher()) {
                     $this->ownership->applyToLessons($q, $user);
                 }
-                if ($user->isStudent()) {
+                if ($user->isLearnerAudience()) {
                     $q->where('status', LessonStatus::Published->value);
                 }
             })
@@ -265,7 +265,7 @@ final class GlobalSearchService
                 if ($user->isTeacher()) {
                     $this->ownership->applyToEvaluations($q, $user);
                 }
-                if ($user->isStudent()) {
+                if ($user->isLearnerAudience()) {
                     $q->where('status', 'published');
                 }
             })

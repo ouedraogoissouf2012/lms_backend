@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Search;
 
+use App\Enums\LessonStatus;
 use App\Models\Evaluation;
 use App\Models\Lesson;
 use App\Models\User;
@@ -69,6 +70,11 @@ final class SearchSuggestionsService
                 if ($user->isTeacher()) {
                     $this->ownership->applyToLessons($q, $user);
                 }
+                // Même portée que la recherche globale (#941) : hors personnel,
+                // le titre d'un brouillon ne se suggère pas.
+                if ($user->isLearnerAudience()) {
+                    $q->where('status', LessonStatus::Published->value);
+                }
             })
             ->limit($limit)
             ->pluck('title')
@@ -80,6 +86,14 @@ final class SearchSuggestionsService
             ->where(function (Builder $q) use ($user): void {
                 if ($user->isTeacher()) {
                     $this->ownership->applyToEvaluations($q, $user);
+                }
+                // Filtre identique à GlobalSearchService::searchEvaluations, à
+                // dessein : `published` n'est pas une valeur d'EvaluationStatus,
+                // donc rien ne sort. C'est fermé, et l'ouvrir aux statuts réels
+                // exposerait les évaluations des AUTRES classes : à trancher avec
+                // la portée de classe de la recherche, dans un lot à part.
+                if ($user->isLearnerAudience()) {
+                    $q->where('status', 'published');
                 }
             })
             ->limit($limit)

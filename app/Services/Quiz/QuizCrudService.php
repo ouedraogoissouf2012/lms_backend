@@ -76,7 +76,8 @@ final class QuizCrudService
             $query->where('institution_id', $user->institution_id);
         }
 
-        if ($user->isStudent()) {
+        // Hors personnel reconnu : seuls les quiz disponibles (#941).
+        if ($user->isLearnerAudience()) {
             $query->available();
         }
 
@@ -179,7 +180,8 @@ final class QuizCrudService
             'lesson:id,title',
         ]);
 
-        if ($user->isStudent() && ! $this->access->isAvailable($quiz)) {
+        // Même portée que list() (#941) : un rôle non reconnu n'ouvre pas un quiz indisponible.
+        if ($user->isLearnerAudience() && ! $this->access->isAvailable($quiz)) {
             return [
                 'status'  => 403,
                 'success' => false,

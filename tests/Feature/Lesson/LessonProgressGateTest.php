@@ -141,6 +141,39 @@ final class LessonProgressGateTest extends TestCase
     }
 
     /**
+     * Un compte SANS établissement (hors supradmin) n'écrit rien, comme il ne lit
+     * rien (#942) : ResolveInstitution ne pose aucun tenant pour lui, donc seule
+     * la porte tient. L'apprenant reçoit 404 partout ; le personnel 403 sur les
+     * écritures de progression, et 404 sur le quiz, dont le chapitre ne lui est
+     * pas lisible.
+     *
+     * @return iterable<string, array{0: string}>
+     */
+    public static function sansEtablissement(): iterable
+    {
+        yield 'apprenant sans établissement' => ['etudiant'];
+        yield 'enseignant sans établissement' => ['enseignant'];
+    }
+
+    #[DataProvider('sansEtablissement')]
+    public function test_un_compte_sans_etablissement_n_ecrit_rien(string $role): void
+    {
+        $this->ecole('klassci');
+        $compte = User::factory()->create(['institution_id' => null, 'role' => $role]);
+
+        foreach ($this->ecritures('sienne') as $chemin => [$url, $corps]) {
+            $attendu = $compte->isStaff() && ! str_starts_with($chemin, 'quiz') ? 403 : 404;
+            self::assertSame($attendu, $this->asTenant($compte)->postJson($url, $corps)->status(), $chemin);
+        }
+        $lecture = $this->asTenant($compte)->getJson("/api/lessons/{$this->sienne->id}/progress")->status();
+        self::assertSame($compte->isStaff() ? 403 : 404, $lecture, 'lecture');
+
+        self::assertSame(0, LessonProgress::query()->where('user_id', $compte->id)->count(), 'lesson_progress');
+        self::assertSame(0, ChapterProgress::query()->where('user_id', $compte->id)->count(), 'chapter_progress');
+        self::assertSame(0, KnowledgeCheckAttempt::query()->where('user_id', $compte->id)->count(), 'tentatives');
+    }
+
+    /**
      * Les six chemins d'écriture vers la leçon `$cible` et son chapitre.
      *
      * @return array<string, array{0: string, 1: array<string, mixed>}>

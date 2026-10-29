@@ -62,10 +62,13 @@ final class MyCoursesClasseLibelleTest extends TestCase
         if ($volet === 'standalone') {
             $classe->etudiants()->attach($apprenant->id, ['statut' => 'actif']);
         } else {
+            // Un nom de cache volontairement DIFFÉRENT du libellé : si la réponse
+            // lisait le cache KLASSCI (`user_classes.classe_nom`) au lieu de la
+            // classe locale, ce test le verrait.
             UserClass::create([
                 'user_id' => $apprenant->id,
                 'klassci_classe_id' => 7001,
-                'classe_nom' => $classe->libelle,
+                'classe_nom' => 'Nom du cache KLASSCI, perime',
                 'institution_id' => $ecole->id,
                 'synced_at' => now(),
             ]);

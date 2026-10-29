@@ -21,6 +21,9 @@ final class EvaluationAllowRetakeTest extends TestCase
 {
     use RefreshDatabase;
 
+    /** La classe KLASSCI de l'élève, que `me/dashboard` rend et que portent ses évaluations. */
+    private const CLASSE = 4242;
+
     private Institution $institution;
 
     private User $student;
@@ -79,6 +82,7 @@ final class EvaluationAllowRetakeTest extends TestCase
     {
         $evaluation = Evaluation::factory()->planifiee()->create(array_merge([
             'institution_id' => $this->institution->id,
+            'klassci_classe_id' => self::CLASSE,
             'klassci_evaluation_id' => 5011,
             'is_published' => true,
             'is_online' => true,
@@ -104,10 +108,12 @@ final class EvaluationAllowRetakeTest extends TestCase
 
     private function openWindow(Evaluation $evaluation): void
     {
+        // `me/dashboard` rend la classe de l'élève ; `evaluations`, l'évaluation sans fenêtre.
         $this->mock(KlassciProxyService::class, function ($mock) use ($evaluation): void {
-            $mock->shouldReceive('requestWithUserToken')->andReturn([
-                'data' => [['id' => $evaluation->klassci_evaluation_id]],
-            ]);
+            $mock->shouldReceive('requestWithUserToken')
+                ->andReturnUsing(static fn (string $jeton, string $endpoint): array => $endpoint === 'me/dashboard'
+                    ? ['data' => ['classe' => ['id' => self::CLASSE, 'name' => 'L1']]]
+                    : ['data' => [['id' => $evaluation->klassci_evaluation_id]]]);
         });
     }
 }

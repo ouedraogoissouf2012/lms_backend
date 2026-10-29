@@ -35,6 +35,9 @@ final class KlassciEtudiantIdFromTokenTest extends TestCase
 {
     use RefreshDatabase;
 
+    /** La classe KLASSCI de l'élève, que `me/dashboard` rend et que porte l'évaluation. */
+    private const CLASSE = 4242;
+
     private Institution $institution;
 
     protected function setUp(): void
@@ -65,6 +68,7 @@ final class KlassciEtudiantIdFromTokenTest extends TestCase
         // lors du PERF-03 audit).
         $evaluation = Evaluation::factory()->create(array_merge([
             'institution_id'  => $this->institution->id,
+            'klassci_classe_id' => self::CLASSE,
             'is_published'    => true,
             'is_locked'       => false,
             'status'          => 'en_cours',
@@ -95,8 +99,12 @@ final class KlassciEtudiantIdFromTokenTest extends TestCase
      */
     private function fakeKlassciAvailable(): void
     {
+        // `me/dashboard` rend la classe de l'élève, que porte l'évaluation.
         $this->mock(KlassciProxyService::class, function (MockInterface $mock): void {
-            $mock->shouldReceive('requestWithUserToken')->andReturn(['data' => []]);
+            $mock->shouldReceive('requestWithUserToken')
+                ->andReturnUsing(static fn (string $jeton, string $endpoint): array => $endpoint === 'me/dashboard'
+                    ? ['data' => ['classe' => ['id' => self::CLASSE, 'name' => 'L1']]]
+                    : ['data' => []]);
         });
     }
 
@@ -131,12 +139,15 @@ final class KlassciEtudiantIdFromTokenTest extends TestCase
         $studentA = $this->student(klassciId: 42);
         $evaluation = $this->publishedEvaluation();
 
+        // L'établissement de la copie, comme `/start` l'écrit : la propriété d'une
+        // copie le porte (EvaluationSubmission::scopeOwnedBy).
         $existingSubmission = EvaluationSubmission::create([
             'evaluation_id'       => $evaluation->id,
             'klassci_etudiant_id' => 42,
             'attempt'             => 1,
             'status'              => 'en_cours',
             'started_at'          => now(),
+            'institution_id'      => $this->institution->id,
         ]);
         $this->fakeKlassciAvailable();
 

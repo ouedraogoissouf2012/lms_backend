@@ -240,10 +240,12 @@ final class CorrigesEtCopiesExposesTest extends TestCase
         // l'enseignant qui rédige (`useCreateQuestions.js:76`) et l'élève qui
         // compose (`useTakeEvaluation.js:57`). Sans distinction, le navigateur
         // de l'élève détenait les bonnes réponses PENDANT l'épreuve.
+        // KLASSCI rend la classe de l'élève : le détail vérifie qu'elle est
+        // celle de l'évaluation (LearnerEvaluationScope).
         $evaluation = $this->evaluationAvecCorrige();
-        Sanctum::actingAs($this->eleve);
+        $this->fakeKlassci();
 
-        $reponse = $this->getJson("/api/evaluations/{$evaluation->id}");
+        $reponse = $this->asTenant($this->eleve)->getJson("/api/evaluations/{$evaluation->id}");
 
         $reponse->assertStatus(200);
         self::assertStringNotContainsString(

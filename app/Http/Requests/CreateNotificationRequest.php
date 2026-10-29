@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use App\Models\User;
+use App\Rules\NotificationActionUrl;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Auth;
 
@@ -20,7 +21,8 @@ use Illuminate\Support\Facades\Auth;
  *
  * ## Optional Fields
  * - type: Notification type enum (info, success, warning, danger) — defaults to 'info'
- * - action_url: Call-to-action URL (must be valid URL format if provided)
+ * - action_url: Call-to-action link — an internal LMS path (`/…`) or an `https://`
+ *   address, nothing else ({@see NotificationActionUrl})
  *
  * ## Authorization model (issue #98 fix)
  *
@@ -87,7 +89,7 @@ final class CreateNotificationRequest extends FormRequest
     /**
      * Get validation rules for notification creation.
      *
-     * @return array<string, array<int, string>>
+     * @return array<string, array<int, string|NotificationActionUrl>>
      */
     public function rules(): array
     {
@@ -111,9 +113,17 @@ final class CreateNotificationRequest extends FormRequest
                 'string',
                 'in:info,success,warning,danger',
             ],
+            // Un chemin interne du LMS, ou une adresse https : la règle `url`
+            // du framework refusait le premier et acceptait `data://` ou
+            // `file://` (NotificationActionUrl). `bail` : une valeur trop longue
+            // ou non textuelle s'arrête là, sans message en double ni motif
+            // lancé sur plus de 2048 caractères.
             'action_url' => [
+                'bail',
                 'nullable',
-                'url',
+                'string',
+                'max:2048',
+                new NotificationActionUrl(),
             ],
         ];
     }
@@ -136,7 +146,8 @@ final class CreateNotificationRequest extends FormRequest
             'message.string' => 'Le message doit être du texte',
             'type.string' => 'Le type doit être du texte',
             'type.in' => 'Le type de notification est invalide (info, success, warning, danger)',
-            'action_url.url' => 'L\'URL d\'action doit être un URL valide',
+            'action_url.string' => NotificationActionUrl::MESSAGE,
+            'action_url.max' => 'L\'URL d\'action ne doit pas dépasser 2048 caractères',
         ];
     }
 }

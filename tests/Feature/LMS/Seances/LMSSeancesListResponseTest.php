@@ -74,7 +74,7 @@ final class LMSSeancesListResponseTest extends TestCase
 
         $this->getJson('/api/lms/seances/upcoming')
             ->assertStatus(401)
-            ->assertExactJson(['success' => false, 'message' => MissingKlassciTokenException::CLIENT_MESSAGE]);
+            ->assertExactJson(['success' => false, 'message' => MissingKlassciTokenException::CLIENT_MESSAGE, 'reason' => 'klassci_token_missing']);
     }
 
     public function test_my_teaching_without_klassci_token_returns_401_envelope(): void
@@ -83,7 +83,7 @@ final class LMSSeancesListResponseTest extends TestCase
 
         $this->getJson('/api/lms/seances/my-teaching')
             ->assertStatus(401)
-            ->assertExactJson(['success' => false, 'message' => MissingKlassciTokenException::CLIENT_MESSAGE]);
+            ->assertExactJson(['success' => false, 'message' => MissingKlassciTokenException::CLIENT_MESSAGE, 'reason' => 'klassci_token_missing']);
     }
 
     public function test_my_classes_without_klassci_token_returns_401_envelope(): void
@@ -92,7 +92,7 @@ final class LMSSeancesListResponseTest extends TestCase
 
         $this->getJson('/api/lms/seances/my-classes')
             ->assertStatus(401)
-            ->assertExactJson(['success' => false, 'message' => MissingKlassciTokenException::CLIENT_MESSAGE]);
+            ->assertExactJson(['success' => false, 'message' => MissingKlassciTokenException::CLIENT_MESSAGE, 'reason' => 'klassci_token_missing']);
     }
 
     public function test_upcoming_manager_uses_local_seances_without_walking_all_klassci_matieres(): void

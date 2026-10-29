@@ -32,6 +32,6 @@ trait ResolvesPersonalKlassciToken
 
     protected function missingKlassciTokenResponse(): JsonResponse
     {
-        return $this->errorResponse(MissingKlassciTokenException::CLIENT_MESSAGE, 401);
+        return MissingKlassciTokenException::jsonResponse();
     }
 }

@@ -83,10 +83,7 @@ final class TeacherEvaluationResultsService
             if (! is_string($teacherToken) || $teacherToken === '') {
                 return [
                     'status'  => 401,
-                    'payload' => [
-                        'success' => false,
-                        'message' => MissingKlassciTokenException::CLIENT_MESSAGE,
-                    ],
+                    'payload' => MissingKlassciTokenException::payload(),
                 ];
             }
 

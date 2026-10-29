@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Evaluation\Student;
 
+use App\Exceptions\MissingKlassciTokenException;
 use App\Models\Evaluation;
 use App\Models\EvaluationQuestion;
 use App\Models\EvaluationSubmission;
@@ -75,7 +76,8 @@ final class EvaluationStudentSubmissionResponseTest extends TestCase
         $response->assertStatus(401)
             ->assertExactJson([
                 'success' => false,
-                'message' => 'Utilisateur sans ID KLASSCI synchronisé',
+                'message' => MissingKlassciTokenException::CLIENT_MESSAGE,
+                'reason' => 'klassci_token_missing',
             ]);
     }
 

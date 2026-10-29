@@ -16,7 +16,7 @@ use RuntimeException;
  * Sépare trois causes que les contrôleurs confondaient sous un unique
  * `catch (RuntimeException)` répondant invariablement 401 :
  *
- *   1. Jeton réellement absent          → 401, l'utilisateur doit se reconnecter.
+ *   1. Jeton réellement absent          → 401 `klassci_token_missing` (#806).
  *   2. KLASSCI indisponible (5xx, circuit ouvert) → 503 + `Retry-After`.
  *   3. KLASSCI répond une erreur 4xx    → on relaie SON statut.
  *
@@ -28,11 +28,11 @@ use RuntimeException;
  *
  * ## Pourquoi ce trait n'est PAS {@see \App\Http\Controllers\API\Proxy\Concerns\RendersKlassciProxyErrors}
  *
- * Les deux classent les mêmes exceptions, mais n'émettent pas la même enveloppe :
- * le proxy renvoie une clé `reason` que ses clients consomment, et écrit sa
- * réponse à la main ; les contrôleurs LMS passent par `errorResponse()`
- * ({@see \App\Http\Controllers\Concerns\RespondsWithJson}). Les fusionner
- * imposerait de changer l'un des deux contrats côté client.
+ * Les deux classent les mêmes exceptions et, depuis #806, posent les mêmes motifs
+ * (`klassci_token_missing`, `klassci_session_expired`). Ils n'émettent pas le même
+ * message : le proxy écrit sa réponse à la main, les contrôleurs LMS passent par
+ * `errorResponse()` ({@see \App\Http\Controllers\Concerns\RespondsWithJson}). Les
+ * fusionner imposerait de changer le message de l'un des deux contrats client.
  *
  * DETTE TRACÉE : la classification (quel statut signifie quoi) est donc écrite
  * deux fois. Le 503 est déjà factorisé dans
@@ -61,7 +61,7 @@ trait RendersKlassciBackedErrors
         }
 
         if ($e instanceof MissingKlassciTokenException) {
-            return $this->errorResponse(MissingKlassciTokenException::CLIENT_MESSAGE, 401);
+            return MissingKlassciTokenException::jsonResponse();
         }
 
         $status = $e->getCode();
@@ -72,6 +72,12 @@ trait RendersKlassciBackedErrors
             return $this->errorResponse('Une erreur est survenue.', 500);
         }
 
-        return $this->errorResponse(KlassciClientErrorCatalog::messageFor($status), $status);
+        // Un 401 amont porte `klassci_session_expired`, comme sur le proxy (#806) :
+        // sans motif, le client le confondait avec un jeton absent.
+        return $this->errorResponse(
+            KlassciClientErrorCatalog::messageFor($status),
+            $status,
+            reason: KlassciClientErrorCatalog::reasonFor($status),
+        );
     }
 }

@@ -56,6 +56,8 @@ Avant #906, le dépôt émettait déjà un motif dans le corps, sous trois forme
 - **`reason` en français** — `injoignable`, `pas_klassci`, `klassci_erreur` (`InstitutionConnectionTester:93`, via `ApplicationProofResult`). Même clé, autre langue : non migré ici.
 - **`code`** — `ImportPreviewController:49` (`ImportPreviewFailed::machineCode()`). Autre clé pour le même rôle : non migré ici.
 
+**Après #906 (#806, 2026-10-29)** : `klassci_token_missing` (`MissingKlassciTokenException::REASON`) distingue un jeton KLASSCI absent de `klassci_session_expired`, que le 401 amont des routes LMS porte désormais aussi (`KlassciClientErrorCatalog::reasonFor()`).
+
 ## Ce qui reste
 
 - **Un contrôleur qui ne passe pas `reason:` supprime le motif sans signal.** Les deux portes d'inscription le passent ; les sept autres relais de `BusinessException` (#898) ne le font pas, et perdraient un motif qu'un service poserait demain.

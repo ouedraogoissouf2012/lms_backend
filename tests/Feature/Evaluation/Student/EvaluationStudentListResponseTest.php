@@ -31,9 +31,9 @@ use Tests\TestCase;
  * interne de `getMatieres` avale déjà les erreurs KLASSCI). La consigne de migration
  * le laisse explicitement inline → aucune régression possible côté trait.
  *
- * NB : le libellé « Utilisateur sans ID KLASSCI synchronisé » (myEvaluations)
- * et « Utilisateur sans ID KlassCI synchronisé » (myGrades) diffèrent par leur
- * casse — incohérence existante PRÉSERVÉE telle quelle (axe #1 « DRY-only »).
+ * #806 : un compte sans `klassci_id` recevait « Utilisateur sans ID KLASSCI
+ * synchronisé » (deux graphies), sans motif. Il reçoit désormais le refus du
+ * jeton absent, `klassci_token_missing` : sans identité, aucun jeton n'existe.
  *
  * @see app/Http/Controllers/API/Evaluation/Student/EvaluationStudentListController.php
  */
@@ -79,7 +79,8 @@ final class EvaluationStudentListResponseTest extends TestCase
         $response->assertStatus(401)
             ->assertExactJson([
                 'success' => false,
-                'message' => 'Utilisateur sans ID KLASSCI synchronisé',
+                'message' => MissingKlassciTokenException::CLIENT_MESSAGE,
+                'reason' => 'klassci_token_missing',
             ]);
     }
 
@@ -94,6 +95,7 @@ final class EvaluationStudentListResponseTest extends TestCase
             ->assertExactJson([
                 'success' => false,
                 'message' => MissingKlassciTokenException::CLIENT_MESSAGE,
+                'reason' => 'klassci_token_missing',
             ]);
     }
 
@@ -159,7 +161,8 @@ final class EvaluationStudentListResponseTest extends TestCase
         $response->assertStatus(401)
             ->assertExactJson([
                 'success' => false,
-                'message' => 'Utilisateur sans ID KlassCI synchronisé',
+                'message' => MissingKlassciTokenException::CLIENT_MESSAGE,
+                'reason' => 'klassci_token_missing',
             ]);
     }
 

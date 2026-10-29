@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\API\Evaluation\Student;
 
+use App\Exceptions\MissingKlassciTokenException;
 use App\Http\Controllers\API\Concerns\RendersKlassciBackedErrors;
 use App\Http\Controllers\AuthenticatedController;
 use App\Services\Evaluation\Student\StudentEvaluationsListService;
@@ -33,8 +34,10 @@ final class EvaluationStudentListController extends AuthenticatedController
     public function myEvaluations(Request $request): JsonResponse
     {
         $user = $this->authenticatedUser($request);
+        // #806 : sans identité KLASSCI (élève local, école autonome), aucun jeton
+        // n'existe non plus. Même refus, même motif que le jeton absent.
         if (!$user->klassci_id) {
-            return $this->errorResponse('Utilisateur sans ID KLASSCI synchronisé', 401);
+            return MissingKlassciTokenException::jsonResponse();
         }
 
         try {
@@ -59,7 +62,7 @@ final class EvaluationStudentListController extends AuthenticatedController
         try {
             $user = $this->authenticatedUser($request);
             if (!$user->klassci_id) {
-                return $this->errorResponse('Utilisateur sans ID KlassCI synchronisé', 401);
+                return MissingKlassciTokenException::jsonResponse();
             }
 
             $data = $this->gradesAggregator->getGradesAggregatedByMatiere($user);

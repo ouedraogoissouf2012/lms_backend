@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\API\Proxy\Concerns;
 
 use App\Exceptions\KlassciUnavailableException;
+use App\Exceptions\MissingKlassciTokenException;
 use App\Support\Klassci\KlassciClientErrorCatalog;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\JsonResponse;
@@ -45,14 +46,21 @@ trait RendersKlassciProxyErrors
 {
     /**
      * Mappe une exception remontée d'un appel proxy KLASSCI vers la réponse HTTP
-     * appropriée : 503 si indisponibilité, 401 si session expirée, relais du 4xx
-     * amont sinon, et 500 pour tout ce qui n'est pas imputable à KLASSCI.
+     * appropriée : 503 si indisponibilité, 401 `klassci_token_missing` si jeton
+     * absent, 401 `klassci_session_expired` si KLASSCI refuse le jeton, relais du
+     * 4xx amont sinon, et 500 pour tout ce qui n'est pas imputable à KLASSCI.
      */
     protected function proxyErrorResponse(Throwable $e): JsonResponse
     {
         // (1) Panne externe temporaire : réponse canonique, avec `Retry-After`.
         if ($e instanceof KlassciUnavailableException || $e instanceof ConnectionException) {
             return KlassciUnavailableException::jsonResponse();
+        }
+
+        // (1 bis) Jeton ABSENT (#806). Elle aussi est une RuntimeException de code
+        // 401 : testée après, elle sortirait en « session expirée ».
+        if ($e instanceof MissingKlassciTokenException) {
+            return MissingKlassciTokenException::jsonResponse();
         }
 
         if ($e instanceof \RuntimeException) {
@@ -64,7 +72,7 @@ trait RendersKlassciProxyErrors
                 return response()->json([
                     'success' => false,
                     'message' => 'Session KLASSCI expirée. Veuillez vous reconnecter.',
-                    'reason' => 'klassci_session_expired',
+                    'reason' => KlassciClientErrorCatalog::SESSION_EXPIRED_REASON,
                 ], 401);
             }
 

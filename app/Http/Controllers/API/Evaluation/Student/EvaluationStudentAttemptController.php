@@ -42,7 +42,7 @@ final class EvaluationStudentAttemptController extends AuthenticatedController
         return match ($result['status']) {
             'not_found' => $this->errorResponse('Évaluation non disponible', 404),
             'no_questions' => $this->errorResponse('Cette évaluation n\'a pas encore de questions.', 422),
-            'no_token' => $this->errorResponse(MissingKlassciTokenException::CLIENT_MESSAGE, 401),
+            'no_token' => MissingKlassciTokenException::jsonResponse(),
             // Non migré vers errorResponse() : cette réponse expose une clé racine
             // `window` hors enveloppe que le trait ne reproduit pas. La déplacer
             // (sous `errors`) changerait le contrat client → conservé tel quel

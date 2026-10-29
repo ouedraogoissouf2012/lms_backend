@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\API\Evaluation\Student;
 
+use App\Exceptions\MissingKlassciTokenException;
 use App\Http\Controllers\AuthenticatedController;
 use App\Models\Evaluation;
 use App\Models\EvaluationSubmission;
@@ -30,8 +31,9 @@ final class EvaluationStudentSubmissionController extends AuthenticatedControlle
     {
         try {
             $user = $this->authenticatedUser($request);
+            // #806 : même refus, même motif que le jeton absent.
             if (!$user->klassci_id) {
-                return $this->errorResponse('Utilisateur sans ID KLASSCI synchronisé', 401);
+                return MissingKlassciTokenException::jsonResponse();
             }
 
             $evaluation = Evaluation::find($id);

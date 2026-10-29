@@ -159,6 +159,7 @@ final class EvaluationStudentAttemptResponseTest extends TestCase
             ->assertExactJson([
                 'success' => false,
                 'message' => MissingKlassciTokenException::CLIENT_MESSAGE,
+                'reason' => 'klassci_token_missing',
             ]);
     }
 
@@ -359,6 +360,6 @@ final class EvaluationStudentAttemptResponseTest extends TestCase
         $response = $this->getJson("/api/evaluations/{$evaluation->id}/time-status");
 
         $response->assertStatus(401)
-            ->assertExactJson(['success' => false, 'message' => MissingKlassciTokenException::CLIENT_MESSAGE]);
+            ->assertExactJson(['success' => false, 'message' => MissingKlassciTokenException::CLIENT_MESSAGE, 'reason' => 'klassci_token_missing']);
     }
 }

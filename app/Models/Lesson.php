@@ -129,10 +129,16 @@ class Lesson extends Model
         return $query->where('enseignant_id', $enseignantId);
     }
 
-    /** @param Builder<Lesson> $query
+    /**
+     * Ordre TOTAL (#937) : `id` départage les égalités, que `order` (0 à la
+     * création) et `created_at` (à la seconde) laissent nombreuses. Sans lui,
+     * MySQL rend les lignes égales dans un ordre libre, et une pagination peut
+     * doubler ou perdre une leçon (manuel MySQL 8.0, §10.2.1.19).
+     *
+     * @param Builder<Lesson> $query
      * @return Builder<Lesson> */
     public function scopeOrdered(Builder $query)
     {
-        return $query->orderBy('order')->orderBy('created_at');
+        return $query->orderBy('order')->orderBy('created_at')->orderBy('id');
     }
 }

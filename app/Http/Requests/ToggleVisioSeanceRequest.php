@@ -14,8 +14,11 @@ use Illuminate\Foundation\Http\FormRequest;
  * ## Authorization Model
  * 1. User authenticated
  * 2. User is coordinateur or superAdmin (enforced by route middleware role:coordinateur,superAdmin)
- * 3. User has KLASSCI token (needed for subsequent API calls)
- * 4. Input validation: enabled (boolean required), visio_type (nullable enum)
+ * 3. Input validation: enabled (boolean required), visio_type (nullable enum)
+ *
+ * The KLASSCI token is NOT checked here : it is a precondition of the work,
+ * not a right. `VisioToggleService::toggle()`
+ * answers a missing token with the motivated 401 of #806, before any write.
  *
  * If ANY check fails → 401/403/422
  */
@@ -32,11 +35,6 @@ final class ToggleVisioSeanceRequest extends FormRequest
         // Check 2: User must be coordinateur or superAdmin
         // (route middleware also enforces this, defense in depth)
         if (!($user->isCoordinator() || $user->isAdmin())) {
-            return false;
-        }
-
-        // Check 3: User must have klassci token (needed for KLASSCI API calls in controller)
-        if (!$user->klassci_token) {
             return false;
         }
 

@@ -14,9 +14,13 @@ use Illuminate\Validation\Rule;
  *
  * ## Authorization Model
  * 1. User authenticated (via auth:sanctum middleware)
- * 2. User has valid KLASSCI token (needed for subsequent checks in controller)
- * 3. Seance exists (visio must be enabled)
- * 4. Input: user_id exists in users table
+ * 2. Seance exists (visio must be enabled)
+ * 3. Input: user_id exists in users table
+ *
+ * No KLASSCI token is required : validation reads local data only (#712). The
+ * access decision lives in `ParticipantValidationService`
+ * — institution filter, then a manager or the seance's own teacher
+ * (`VisioActorAuthorization::canValidate()`).
  *
  * If ANY check fails → 401/403/404/422
  */
@@ -27,11 +31,6 @@ final class ValidateParticipantRequest extends FormRequest
         // Check 1: User must be authenticated
         $user = auth()->user();
         if (! $user) {
-            return false;
-        }
-
-        // Check 2: User must have klassci token (needed for subsequent processing)
-        if (! $user->klassci_token) {
             return false;
         }
 

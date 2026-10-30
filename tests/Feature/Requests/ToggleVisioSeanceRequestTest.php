@@ -2,14 +2,17 @@
 
 namespace Tests\Feature\Requests;
 
+use App\Exceptions\MissingKlassciTokenException;
 use App\Models\Institution;
 use App\Models\Seance;
 use App\Models\User;
 use Laravel\Sanctum\Sanctum;
+use Tests\Concerns\ActsAsTenantUser;
 use Tests\TestCase;
 
 class ToggleVisioSeanceRequestTest extends TestCase
 {
+    use ActsAsTenantUser;
     use \Illuminate\Foundation\Testing\RefreshDatabase;
 
     private Institution $institution;
@@ -77,18 +80,25 @@ class ToggleVisioSeanceRequestTest extends TestCase
         $this->assertTrue(in_array($response->status(), [200, 201]));
     }
 
-    public function test_coordinator_without_klassci_token_cannot_toggle(): void
+    /**
+     * La bascule cherche — et crée si absente — la séance sous son identifiant
+     * KLASSCI : sans jeton, le 401 motivé de #806, AVANT toute écriture. Vrai
+     * jeton porteur (`asTenant`).
+     */
+    public function test_coordinator_without_klassci_token_gets_the_motivated_401_before_any_write(): void
     {
         $coordinatorNoToken = User::factory()->coordinator()->for($this->institution)->create([
             'klassci_token' => null,
         ]);
 
-        Sanctum::actingAs($coordinatorNoToken);
-        $response = $this->postJson("/api/lms/seances/{$this->seance->klassci_seance_id}/toggle-visio", [
-            'enabled' => true,
-        ]);
+        $this->asTenant($coordinatorNoToken)
+            ->postJson("/api/lms/seances/{$this->seance->klassci_seance_id}/toggle-visio", [
+                'enabled' => true,
+            ])
+            ->assertUnauthorized()
+            ->assertExactJson(MissingKlassciTokenException::payload());
 
-        $response->assertStatus(403);
+        $this->assertSame((bool) $this->seance->visio_enabled, (bool) $this->seance->fresh()?->visio_enabled);
     }
 
     public function test_missing_enabled_returns_422(): void

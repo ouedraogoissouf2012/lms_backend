@@ -9,10 +9,12 @@ use App\Models\User;
 use App\Services\TenantManager;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
+use Tests\Concerns\ActsAsTenantUser;
 use Tests\TestCase;
 
 class SyncAttendancesRequestTest extends TestCase
 {
+    use ActsAsTenantUser;
     use RefreshDatabase;
 
     private Institution $institution;
@@ -74,20 +76,26 @@ class SyncAttendancesRequestTest extends TestCase
         $response->assertStatus(401);
     }
 
-    public function test_user_without_klassci_token_cannot_sync(): void
+    /**
+     * Sans jeton, la garde ne refuse plus : la synchronisation n'appelle pas
+     * KLASSCI. L'accès est jugé par le SERVICE — cet enseignant n'est pas celui
+     * de la séance, d'où `actor_not_authorized`, et non un 403 générique. Vrai
+     * jeton porteur (`asTenant`).
+     */
+    public function test_user_without_klassci_token_is_judged_by_the_service(): void
     {
         $user = User::factory()->teacher()->for($this->institution)->create([
             'klassci_token' => null,
         ]);
 
-        Sanctum::actingAs($user);
-        $response = $this->postJson('/api/lms/attendances/from-video-session', [
-            'seance_cours_id' => $this->seance->id,
-            'date' => now()->format('Y-m-d'),
-            'participants' => [['etudiant_id' => 100, 'statut' => 'present']],
-        ]);
-
-        $response->assertStatus(403);
+        $this->asTenant($user)
+            ->postJson('/api/lms/attendances/from-video-session', [
+                'seance_cours_id' => $this->seance->id,
+                'date' => now()->format('Y-m-d'),
+                'participants' => [['etudiant_id' => 100, 'statut' => 'present']],
+            ])
+            ->assertForbidden()
+            ->assertExactJson(['success' => false, 'reason' => 'actor_not_authorized']);
     }
 
     public function test_valid_sync_request(): void

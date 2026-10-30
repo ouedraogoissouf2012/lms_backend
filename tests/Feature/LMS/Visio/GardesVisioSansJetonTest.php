@@ -17,15 +17,19 @@ use Tests\Concerns\ActsAsTenantUser;
 use Tests\TestCase;
 
 /**
- * Cinq gardes visio refusaient un compte sans jeton KLASSCI par `authorize() = false`.
+ * Quatre gardes visio refusaient un compte sans jeton KLASSCI par `authorize() = false`.
  *
  * En production, ce refus sortait en `403 « Une erreur est survenue. »` par le rendu
  * générique `\Throwable` (`bootstrap/app.php`), avec un `Log::error` et sa trace.
  * Or le jeton n'est une condition du TRAVAIL que pour deux routes, dont la clé est
  * KLASSCI : l'activation (l'emploi du temps KLASSCI) et la bascule (la séance sous
  * son identifiant KLASSCI). Elles rendent désormais le 401 motivé de #806, avant
- * toute écriture. Les trois autres n'appellent pas KLASSCI : un compte sans jeton
- * y passe, et c'est le SERVICE qui décide de l'accès (établissement, propriétaire).
+ * toute écriture. Les deux autres (validation, synchronisation des présences)
+ * n'appellent pas KLASSCI : un compte sans jeton y passe, et c'est le SERVICE qui
+ * décide de l'accès (établissement, propriétaire).
+ *
+ * Le rappel de séance (`send-session-reminder`) n'est pas ici : bouchon sans
+ * appelant, il est retiré par un lot séparé plutôt qu'ouvert sans rôle.
  *
  * Volet autonome : un compte d'école autonome n'a JAMAIS de jeton. La garde le
  * bloquait sur des routes qui n'en ont pas besoin. Les comptes ci-dessous sont
@@ -38,6 +42,15 @@ final class GardesVisioSansJetonTest extends TestCase
 {
     use ActsAsTenantUser;
     use RefreshDatabase;
+
+    /**
+     * La propriété KLASSCI se lit sur `klassci_enseignant_id`, la colonne d'autorité
+     * (#119). Le `klassci_id` du compte est volontairement DIFFÉRENT : ces tests ne
+     * reposent pas sur le repli `klassci_id` de `teacherOwns` (#698, point 2).
+     */
+    private const A = ['klassci_id' => 5777, 'klassci_enseignant_id' => 777];
+
+    private const B = ['klassci_id' => 5888, 'klassci_enseignant_id' => 888];
 
     private Institution $ecole;
 
@@ -69,7 +82,38 @@ final class GardesVisioSansJetonTest extends TestCase
     {
         return Seance::factory()->for($this->ecole)->withVisio()->create($volet === 'standalone'
             ? ['created_by' => $enseignant->id, 'klassci_enseignant_id' => null, 'klassci_seance_id' => null]
-            : ['klassci_enseignant_id' => $enseignant->klassci_id]);
+            : ['klassci_enseignant_id' => $enseignant->klassci_enseignant_id]);
+    }
+
+    /**
+     * Une séance de `$enseignant` dont un élève est INSCRIT (`klassci_id` 100) : si
+     * un contrôle d'accès manquait, la synchronisation ÉCRIRAIT une présence, et le
+     * test la verrait. Sans élève inscrit, le syncer refuse `not_enrolled` avant
+     * d'écrire, et « aucune présence » ne prouverait rien.
+     *
+     * Volet autonome : la propriété passe par `created_by`. `klassci_classe_id` est
+     * posé pour que le roster existe — une séance locale réelle l'a nul, et le syncer
+     * la refuse alors `not_enrolled` (limite d'autonomie hors lot, #929).
+     */
+    private function seanceAvecEleveInscrit(User $enseignant, string $volet): Seance
+    {
+        $classe = Classe::factory()->for($this->ecole)->create(['klassci_id' => 55]);
+        $eleve = User::factory()->student()->for($this->ecole)->create(['klassci_id' => 100]);
+        $classe->etudiants()->attach($eleve->id, ['statut' => 'actif']);
+
+        return Seance::factory()->for($this->ecole)->create(['klassci_classe_id' => 55] + ($volet === 'standalone'
+            ? ['created_by' => $enseignant->id, 'klassci_enseignant_id' => null, 'klassci_seance_id' => null]
+            : ['klassci_enseignant_id' => $enseignant->klassci_enseignant_id]));
+    }
+
+    /** @return array<string, mixed> */
+    private static function presence(Seance $seance): array
+    {
+        return [
+            'seance_cours_id' => $seance->id,
+            'date' => '2026-10-30',
+            'participants' => [['etudiant_id' => 100, 'statut' => 'present']],
+        ];
     }
 
     #[DataProvider('volets')]
@@ -128,7 +172,7 @@ final class GardesVisioSansJetonTest extends TestCase
     public function test_un_enseignant_sans_jeton_valide_sur_sa_propre_seance(string $volet): void
     {
         $this->ecole($volet);
-        $a = $this->sansJeton('teacher', ['klassci_id' => 777]);
+        $a = $this->sansJeton('teacher', self::A);
 
         $this->asTenant($a)
             ->postJson("/api/lms/seances/{$this->seanceDe($a, $volet)->id}/validate-participant", ['user_id' => $a->id])
@@ -145,8 +189,8 @@ final class GardesVisioSansJetonTest extends TestCase
     public function test_l_enseignant_b_ne_valide_pas_sur_la_seance_de_l_enseignant_a(string $volet): void
     {
         $this->ecole($volet);
-        $a = $this->sansJeton('teacher', ['klassci_id' => 777]);
-        $b = $this->sansJeton('teacher', ['klassci_id' => 888]);
+        $a = $this->sansJeton('teacher', self::A);
+        $b = $this->sansJeton('teacher', self::B);
 
         $this->asTenant($b)
             ->postJson("/api/lms/seances/{$this->seanceDe($a, $volet)->id}/validate-participant", ['user_id' => $b->id])
@@ -163,57 +207,79 @@ final class GardesVisioSansJetonTest extends TestCase
     public function test_l_enseignant_b_ne_synchronise_pas_les_presences_de_la_seance_de_l_enseignant_a(string $volet): void
     {
         $this->ecole($volet);
-        $a = $this->sansJeton('teacher', ['klassci_id' => 777]);
-        $b = $this->sansJeton('teacher', ['klassci_id' => 888]);
+        $a = $this->sansJeton('teacher', self::A);
+        $b = $this->sansJeton('teacher', self::B);
 
         $this->asTenant($b)
-            ->postJson('/api/lms/attendances/from-video-session', [
-                'seance_cours_id' => $this->seanceDe($a, $volet)->id,
-                'date' => '2026-10-30',
-                'participants' => [['etudiant_id' => 100, 'statut' => 'present']],
-            ])
+            ->postJson('/api/lms/attendances/from-video-session', self::presence($this->seanceAvecEleveInscrit($a, $volet)))
             ->assertForbidden()
             ->assertExactJson(['success' => false, 'reason' => 'actor_not_authorized']);
 
         self::assertSame(0, DB::table('esbtp_attendance')->count());
     }
 
-    public function test_un_enseignant_klassci_sans_jeton_synchronise_les_presences_de_sa_seance(): void
+    /** Le témoin de la précédente : sur la MÊME séance, son propriétaire écrit. */
+    #[DataProvider('volets')]
+    public function test_l_enseignant_a_sans_jeton_synchronise_les_presences_de_sa_seance(string $volet): void
     {
-        $this->ecole('klassci');
-        $a = $this->sansJeton('teacher', ['klassci_id' => 777]);
-        $classe = Classe::factory()->for($this->ecole)->create(['klassci_id' => 55]);
-        $eleve = User::factory()->student()->for($this->ecole)->create(['klassci_id' => 100]);
-        $classe->etudiants()->attach($eleve->id, ['statut' => 'actif']);
-        $seance = Seance::factory()->for($this->ecole)->create([
-            'klassci_enseignant_id' => 777,
-            'klassci_classe_id' => 55,
-        ]);
+        $this->ecole($volet);
+        $a = $this->sansJeton('teacher', self::A);
 
         $this->asTenant($a)
-            ->postJson('/api/lms/attendances/from-video-session', [
-                'seance_cours_id' => $seance->id,
-                'date' => '2026-10-30',
-                'participants' => [['etudiant_id' => 100, 'statut' => 'present']],
-            ])
+            ->postJson('/api/lms/attendances/from-video-session', self::presence($this->seanceAvecEleveInscrit($a, $volet)))
             ->assertOk()
             ->assertJsonPath('data.created', 1)
             ->assertJsonPath('data.errors', []);
+
+        self::assertSame(1, DB::table('esbtp_attendance')->count());
     }
 
+    /**
+     * Entre établissements : le personnel de l'école X, sans jeton, n'atteint pas
+     * une séance de l'école Y. Un coordinateur est GESTIONNAIRE : seul le filtre
+     * d'établissement peut le refuser, et un élève de Y est inscrit, si bien qu'un
+     * filtre manquant se verrait à l'écriture.
+     */
     #[DataProvider('volets')]
-    public function test_le_rappel_de_seance_n_exige_pas_de_jeton(string $volet): void
+    public function test_le_personnel_d_une_autre_ecole_ne_synchronise_pas(string $volet): void
     {
         $this->ecole($volet);
+        $proprietaire = $this->sansJeton('teacher', self::A);
+        $seanceDeY = $this->seanceAvecEleveInscrit($proprietaire, $volet);
 
-        $this->asTenant($this->sansJeton('teacher'))
-            ->postJson('/api/lms/notifications/send-session-reminder', [
-                'seance_cours_id' => 12,
-                'channels' => ['app'],
-            ])
-            ->assertOk()
-            ->assertJsonPath('success', true)
-            ->assertJsonPath('data.sent_count', 0);
+        $this->ecole($volet);
+        $this->asTenant($this->sansJeton('coordinator'))
+            ->postJson('/api/lms/attendances/from-video-session', self::presence($seanceDeY))
+            ->assertNotFound()
+            ->assertExactJson(['success' => false, 'reason' => 'seance_not_found']);
+
+        self::assertSame(0, DB::table('esbtp_attendance')->count());
+    }
+
+    /**
+     * Même règle pour la validation. Le service ne dit pas qu'une séance existe
+     * ailleurs : vue de X, une séance de Y n'a « pas de visio » — c'est le motif de
+     * la séance introuvable dans l'établissement (`ParticipantValidationService:47-50`).
+     */
+    #[DataProvider('volets')]
+    public function test_le_personnel_d_une_autre_ecole_ne_valide_pas(string $volet): void
+    {
+        $this->ecole($volet);
+        $proprietaire = $this->sansJeton('teacher', self::A);
+        $seanceDeY = $this->seanceDe($proprietaire, $volet);
+
+        $this->ecole($volet);
+        $coordinateurDeX = $this->sansJeton('coordinator');
+
+        $this->asTenant($coordinateurDeX)
+            ->postJson("/api/lms/seances/{$seanceDeY->id}/validate-participant", ['user_id' => $coordinateurDeX->id])
+            ->assertForbidden()
+            ->assertExactJson([
+                'success' => false,
+                'authorized' => false,
+                'reason' => 'visio_not_enabled',
+                'message' => 'Visioconférence non activée pour cette séance',
+            ]);
     }
 
     /** @return iterable<string, array{0: string, 1: string, 2: array<string, mixed>}> */
@@ -233,9 +299,12 @@ final class GardesVisioSansJetonTest extends TestCase
     {
         $this->ecole($volet);
 
+        // Le corps exact : c'est le middleware de RÔLE qui refuse, pas une garde
+        // ni un service plus loin.
         $this->asTenant($this->sansJeton('student'))
             ->postJson($route, $corps)
-            ->assertForbidden();
+            ->assertForbidden()
+            ->assertExactJson(['success' => false, 'message' => 'Accès refusé - Permissions insuffisantes']);
 
         self::assertSame(0, DB::table('seances')->count());
     }

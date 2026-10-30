@@ -5,12 +5,10 @@ namespace Tests\Feature\Requests;
 use App\Models\Institution;
 use App\Models\User;
 use Laravel\Sanctum\Sanctum;
-use Tests\Concerns\ActsAsTenantUser;
 use Tests\TestCase;
 
 class SendSessionReminderRequestTest extends TestCase
 {
-    use ActsAsTenantUser;
     use \Illuminate\Foundation\Testing\RefreshDatabase;
 
     private Institution $institution;
@@ -37,23 +35,19 @@ class SendSessionReminderRequestTest extends TestCase
         $response->assertStatus(401);
     }
 
-    /**
-     * Le rappel n'appelle pas KLASSCI : exiger un jeton ne refusait que les
-     * comptes d'école autonome, qui n'en ont jamais. Vrai jeton porteur (`asTenant`).
-     */
-    public function test_user_without_klassci_token_can_send(): void
+    public function test_user_without_klassci_token_cannot_send(): void
     {
         $user = User::factory()->teacher()->for($this->institution)->create([
             'klassci_token' => null,
         ]);
 
-        $this->asTenant($user)
-            ->postJson('/api/lms/notifications/send-session-reminder', [
-                'seance_cours_id' => 1,
-                'channels' => ['email'],
-            ])
-            ->assertOk()
-            ->assertJsonPath('data.sent_count', 0);
+        Sanctum::actingAs($user);
+        $response = $this->postJson('/api/lms/notifications/send-session-reminder', [
+            'seance_cours_id' => 1,
+            'channels' => ['email'],
+        ]);
+
+        $response->assertStatus(403);
     }
 
     public function test_valid_reminder_request(): void

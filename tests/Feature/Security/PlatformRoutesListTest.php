@@ -14,9 +14,10 @@ use Tests\TestCase;
 /**
  * Les routes qu'un compte sans établissement atteint, et elles seules.
  *
- * Trois propriétés, qui échouent dès qu'une route s'écarte de la règle :
- * - toute route API passe par la porte (`etablissement.requis`) : une route
- *   enregistrée hors de `routes/api.php` serait ouverte, et ce test le dit ;
+ * Quatre propriétés, qui échouent dès qu'une route s'écarte de la règle :
+ * - les routes servies HORS de la porte, sur TOUTE l'application, sont figées
+ *   ci-dessous : une route ajoutée ailleurs que dans `routes/api.php` échoue ;
+ * - toute route API passe par la porte (`etablissement.requis`) ;
  * - la liste des routes marquées `plateforme` est FIGÉE ci-dessous, en clair,
  *   pour être relue par un humain : en ajouter une est un choix conscient ;
  * - toute route authentifiée NON marquée refuse le supradmin (403, le message de
@@ -30,8 +31,10 @@ final class PlatformRoutesListTest extends TestCase
 
     /**
      * Les routes de GESTION plateforme (méthode, chemin sans le préfixe `api/`).
-     * Relue : écoles, demandes d'école, comptes, configuration, intégrations,
+     * Relue : écoles, demandes d'école, configuration, intégrations,
      * notifications d'administration, la session et ses propres notifications.
+     * La gestion des COMPTES d'école (`users`, `recent-users`) n'y est pas :
+     * décision A8 en attente, valeur prudente.
      */
     private const ROUTES_PLATEFORME = [
         'GET institutions/active',
@@ -42,9 +45,6 @@ final class PlatformRoutesListTest extends TestCase
         'GET auth/check',
         'GET user',
         'GET proxy/test-connection',
-        'POST users',
-        'PUT users/{user}',
-        'DELETE users/{user}',
         'GET configuration',
         'PUT configuration',
         'DELETE configuration',
@@ -52,7 +52,6 @@ final class PlatformRoutesListTest extends TestCase
         'POST integrations/authorize',
         'POST integrations/test',
         'POST integrations/disconnect',
-        'GET admin/analytics/recent-users',
         'GET notifications',
         'GET notifications/unread-count',
         'GET notifications/recent',
@@ -74,6 +73,39 @@ final class PlatformRoutesListTest extends TestCase
         'POST admin/school-requests/{schoolRequest}/validate',
         'POST admin/school-requests/{schoolRequest}/refuse',
     ];
+
+    /**
+     * Les routes de l'application servies HORS de la porte (méthode, chemin).
+     * Aucune n'est authentifiée par Sanctum : la page d'accueil, la sonde de
+     * vie, les fichiers du disque local (URL signées), le cookie CSRF, et la
+     * documentation. Toute autre route, d'où qu'elle soit enregistrée, doit
+     * passer par la porte.
+     */
+    private const ROUTES_HORS_PORTE = [
+        'GET /',
+        'GET up',
+        'GET storage/{path}',
+        'PUT storage/{path}',
+        'GET sanctum/csrf-cookie',
+        'GET docs',
+        'GET docs/asset/{asset}',
+    ];
+
+    /** TOUTES les routes, et non les seules `api/` : une route ajoutée ailleurs échoue ici. */
+    public function test_les_routes_hors_porte_sont_figees(): void
+    {
+        $horsPorte = [];
+        foreach ($this->routesApplication() as $route) {
+            if (! in_array('etablissement.requis', $route->gatherMiddleware(), true)) {
+                $horsPorte[] = $this->cle($route, '');
+            }
+        }
+        sort($horsPorte);
+        $attendues = self::ROUTES_HORS_PORTE;
+        sort($attendues);
+
+        self::assertSame($attendues, $horsPorte, 'une route echappe a la porte : la passer dans routes/api.php, ou la relire puis mettre a jour ROUTES_HORS_PORTE');
+    }
 
     public function test_toute_route_api_passe_par_la_porte(): void
     {
@@ -131,19 +163,27 @@ final class PlatformRoutesListTest extends TestCase
     }
 
     /**
-     * Les routes API de l'APPLICATION. La sonde de tenant du harnais
+     * Les routes de l'APPLICATION. La sonde de tenant du harnais
      * (`__test.tenant-scope-probe`, posée par tests/TestCase.php pour les tests
      * d'isolation) n'est servie qu'en test : elle est écartée par son nom, et
      * elle seule.
      *
      * @return list<Route>
      */
-    private function routesApi(): array
+    private function routesApplication(): array
     {
         return array_values(array_filter(
             $this->app['router']->getRoutes()->getRoutes(),
-            static fn (Route $route): bool => str_starts_with($route->uri(), 'api/')
-                && $route->getName() !== '__test.tenant-scope-probe',
+            static fn (Route $route): bool => $route->getName() !== '__test.tenant-scope-probe',
+        ));
+    }
+
+    /** @return list<Route> */
+    private function routesApi(): array
+    {
+        return array_values(array_filter(
+            $this->routesApplication(),
+            static fn (Route $route): bool => str_starts_with($route->uri(), 'api/'),
         ));
     }
 

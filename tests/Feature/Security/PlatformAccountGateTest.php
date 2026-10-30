@@ -8,6 +8,7 @@ use App\Models\Chapter;
 use App\Models\Institution;
 use App\Models\Lesson;
 use App\Models\User;
+use Illuminate\Auth\GenericUser;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\Concerns\ActsAsTenantUser;
@@ -56,7 +57,9 @@ final class PlatformAccountGateTest extends TestCase
         yield 'recherche' => ['GET', '/api/search?query=algebre'];
         yield 'rapport des notes' => ['POST', '/api/admin/reports/grades'];
         yield 'séances' => ['GET', '/api/lms/seances/history'];
-        yield 'journal d audit (décision en attente)' => ['GET', '/api/admin/audit-log'];
+        yield 'journal d audit (décision A1 en attente)' => ['GET', '/api/admin/audit-log'];
+        yield 'comptes d école (décision A8 en attente)' => ['PUT', '/api/users/1'];
+        yield 'comptes récents (décision A8 en attente)' => ['GET', '/api/admin/analytics/recent-users'];
     }
 
     #[DataProvider('routesNonMarquees')]
@@ -64,8 +67,8 @@ final class PlatformAccountGateTest extends TestCase
     {
         $reponse = $this->asTenant($this->supradmin())->json($methode, $uri);
 
-        $reponse->assertForbidden()->assertJsonPath('success', false);
-        self::assertSame(self::MESSAGE, $reponse->json('message'));
+        // Le motif de l'ADR-906-01 : le front le traduit par son catalogue.
+        $reponse->assertForbidden()->assertExactJson(['success' => false, 'message' => self::MESSAGE, 'reason' => 'no_institution']);
     }
 
     /** Un compte orphelin (sans établissement, pas supradmin) est refusé de la même façon. */
@@ -74,6 +77,22 @@ final class PlatformAccountGateTest extends TestCase
         $orphelin = User::factory()->create(['institution_id' => null, 'role' => 'coordinateur']);
 
         $this->asTenant($orphelin)->getJson('/api/lessons')->assertForbidden();
+    }
+
+    /** Un établissement `0` n'en est pas un, comme pour ResolveInstitution : refusé. */
+    public function test_un_etablissement_zero_n_en_est_pas_un(): void
+    {
+        $compte = User::factory()->make(['institution_id' => 0, 'role' => 'enseignant']);
+
+        self::assertFalse($compte->isSchoolMember());
+    }
+
+    /** Un utilisateur authentifié qui n'est pas un `User` n'a pas d'établissement : refusé. */
+    public function test_un_authentifie_qui_n_est_pas_un_user_est_refuse(): void
+    {
+        $this->actingAs(new GenericUser(['id' => 1]));
+
+        $this->getJson('/api/lessons')->assertForbidden()->assertJsonPath('reason', 'no_institution');
     }
 
     /**

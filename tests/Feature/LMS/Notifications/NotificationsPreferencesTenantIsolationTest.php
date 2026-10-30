@@ -78,7 +78,12 @@ final class NotificationsPreferencesTenantIsolationTest extends TestCase
             ->assertJsonPath('data.user_id', $target->id);
     }
 
-    public function test_platform_supradmin_can_read_cross_tenant(): void
+    /**
+     * Décision A6 en attente, valeur prudente : le compte plateforme ne lit pas
+     * les préférences d'un compte d'école. La porte des comptes sans
+     * établissement le refuse.
+     */
+    public function test_le_supradmin_ne_lit_pas_les_preferences_decision_a6_en_attente(): void
     {
         $instB = Institution::factory()->create(['slug' => 'iso-plat']);
         $supradmin = $this->userIn(null, 'supradmin');
@@ -86,6 +91,8 @@ final class NotificationsPreferencesTenantIsolationTest extends TestCase
         $this->asTenant($supradmin);
 
         $this->getJson("/api/lms/notifications/preferences/{$targetB->id}")
-            ->assertStatus(200);
+            ->assertForbidden()
+            ->assertJsonPath('reason', 'no_institution')
+            ->assertJsonMissingPath('data');
     }
 }

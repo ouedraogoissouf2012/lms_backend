@@ -64,7 +64,7 @@ final class LessonWithoutInstitutionTest extends TestCase
         foreach (['/api/lessons?per_page=100', '/api/lessons/my-courses?per_page=100', "/api/lessons/{$this->leconA->id}",
             "/api/lessons/{$this->leconB->id}", "/api/lessons/{$this->brouillonA->id}"] as $url) {
             $this->asTenant($compte)->getJson($url)
-                ->assertForbidden()->assertExactJson(['success' => false, 'message' => EnsureSchoolMemberOrPlatformRoute::MESSAGE]);
+                ->assertForbidden()->assertExactJson(['success' => false, 'message' => EnsureSchoolMemberOrPlatformRoute::MESSAGE, 'reason' => EnsureSchoolMemberOrPlatformRoute::REASON]);
         }
     }
 

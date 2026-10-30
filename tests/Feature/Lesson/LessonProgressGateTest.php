@@ -205,7 +205,7 @@ final class LessonProgressGateTest extends TestCase
         $this->ecole('klassci');
         $compte = User::factory()->create(['institution_id' => null, 'role' => $role]);
 
-        $refus = ['success' => false, 'message' => EnsureSchoolMemberOrPlatformRoute::MESSAGE];
+        $refus = ['success' => false, 'message' => EnsureSchoolMemberOrPlatformRoute::MESSAGE, 'reason' => EnsureSchoolMemberOrPlatformRoute::REASON];
         foreach ($this->ecritures('sienne') as $chemin => [$url, $corps]) {
             $reponse = $this->asTenant($compte)->postJson($url, $corps);
             self::assertSame([403, $refus], [$reponse->status(), $reponse->json()], $chemin);

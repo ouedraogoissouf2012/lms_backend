@@ -74,9 +74,15 @@ class EvaluationSubmission extends Model
      * Parce que c'est la colonne que l'index unique contraint :
      * `eval_sub_unique (evaluation_id, klassci_etudiant_id, attempt)`
      * (`2025_10_19_181127:42`). **La clé par laquelle on RETROUVE une copie doit
-     * être celle par laquelle la base juge si l'on peut en INSÉRER une.** Sinon
-     * « je n'en trouve pas » et « il en existe déjà une » se contredisent : on
-     * croit devoir créer, la base refuse, et la remise échoue en 500.
+     * s'accorder avec celle par laquelle la base juge si l'on peut en INSÉRER
+     * une.** Sinon « je n'en trouve pas » et « il en existe déjà une » se
+     * contredisent : on croit devoir créer, la base refuse, et le démarrage
+     * échoue en 500.
+     *
+     * La recherche ajoute l'établissement (ci-dessous), que l'index ne porte
+     * pas. Les deux s'accordent tant que chaque copie porte l'établissement de
+     * son évaluation. `/start` l'écrit ainsi, et la migration `2026_10_29_200000`
+     * y a ramené les copies plus anciennes.
      *
      * C'est exactement le défaut d'origine, et une première version de ce
      * correctif l'a reproduit en keyant la propriété sur `student_id` : les
@@ -106,17 +112,28 @@ class EvaluationSubmission extends Model
      * (ADR-760-01). Une seule portée, appelée partout, rend la divergence
      * impossible plutôt qu'improbable.
      *
+     * ## Pourquoi l'établissement en fait partie
+     *
+     * L'identifiant KLASSCI n'est unique qu'au sein d'un établissement. Sans
+     * tenant résolu, le scope global s'ouvre, et le seul identifiant désignerait
+     * aussi les copies d'un homonyme d'une autre école. L'établissement est donc
+     * filtré ICI, explicitement, et un établissement nul ne ramène rien, comme
+     * un identifiant nul.
+     *
      * @param  Builder<EvaluationSubmission>  $query
      * @return Builder<EvaluationSubmission>
      */
     public function scopeOwnedBy(Builder $query, User $student): Builder
     {
         $proprietaireKlassci = $student->klassci_id;
+        $etablissement = $student->institution_id;
 
-        if ($proprietaireKlassci === null) {
+        if ($proprietaireKlassci === null || $etablissement === null) {
             return $query->whereRaw('1 = 0');
         }
 
-        return $query->where('klassci_etudiant_id', $proprietaireKlassci);
+        return $query
+            ->where($query->qualifyColumn('klassci_etudiant_id'), $proprietaireKlassci)
+            ->where($query->qualifyColumn('institution_id'), $etablissement);
     }
 }

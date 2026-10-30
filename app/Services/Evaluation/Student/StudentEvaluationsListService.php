@@ -77,7 +77,7 @@ final class StudentEvaluationsListService
         $klassciEvaluations = $this->fetchKlassciEvaluationsSafe($klassciToken);
 
         return $evaluationsLMS->map(
-            fn ($evalLMS) => $this->enrichEvaluation($evalLMS, $klassciEvaluations, $klassciEtudiantId, $klassciToken, $classeIdentite)
+            fn ($evalLMS) => $this->enrichEvaluation($evalLMS, $klassciEvaluations, $user, $klassciToken, $classeIdentite)
         )->values()->toArray();
     }
 
@@ -103,7 +103,7 @@ final class StudentEvaluationsListService
     private function enrichEvaluation(
         Evaluation $evalLMS,
         \Illuminate\Support\Collection $klassciEvaluations,
-        ?int $klassciEtudiantId,
+        User $student,
         string $klassciToken,
         array $classeIdentite
     ): array {
@@ -125,8 +125,9 @@ final class StudentEvaluationsListService
         // `withCount` a déjà posé le compte : plus besoin de charger les
         // questions elles-mêmes pour les dénombrer.
         $evalArray['questions_count'] = (int) $evalLMS->questions_count;
+        // Sa copie, par l'UNIQUE définition de la propriété d'une copie.
         $evalArray['student_submission'] = $evalLMS->submissions()
-            ->where('klassci_etudiant_id', $klassciEtudiantId)
+            ->ownedBy($student)
             ->latest()
             ->first();
 

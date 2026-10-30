@@ -50,6 +50,9 @@ final class EvaluationStudentAttemptResponseTest extends TestCase
 {
     use OpensEvaluationAttempt, RefreshDatabase;
 
+    /** La classe KLASSCI de l'élève, que `me/dashboard` rend et que portent ses évaluations. */
+    private const CLASSE = 4242;
+
     private Institution $institution;
     private User $student;
 
@@ -64,6 +67,10 @@ final class EvaluationStudentAttemptResponseTest extends TestCase
             'klassci_id' => 5555,
             'klassci_token' => 'student-klassci-token',
         ]);
+        // Le démarrage et l'état temporel lisent la classe de l'élève : KLASSCI
+        // est simulé dès le départ, sans fenêtre, pour qu'aucun test n'appelle
+        // le vrai service.
+        $this->fakeKlassciWindow(9001, null);
     }
 
     /**
@@ -74,6 +81,7 @@ final class EvaluationStudentAttemptResponseTest extends TestCase
     {
         $evaluation = Evaluation::factory()->planifiee()->create([
             'institution_id' => $this->institution->id,
+            'klassci_classe_id' => self::CLASSE,
             'klassci_evaluation_id' => 9001,
             'max_attempts' => $maxAttempts,
             'allow_retake' => true,
@@ -91,7 +99,8 @@ final class EvaluationStudentAttemptResponseTest extends TestCase
 
     /**
      * Fige la fenêtre KLASSCI renvoyée par le proxy pour l'endpoint
-     * `evaluations`. `null` ⇒ aucune fenêtre (le check passe).
+     * `evaluations`. `null` ⇒ aucune fenêtre (le check passe). `me/dashboard`
+     * rend la classe de l'élève.
      *
      * @param  ?array<string, mixed>  $window
      */
@@ -102,19 +111,30 @@ final class EvaluationStudentAttemptResponseTest extends TestCase
             : ['data' => [['id' => $klassciEvaluationId, 'programmation' => ['window' => $window]]]];
 
         $this->mock(KlassciProxyService::class, function (MockInterface $mock) use ($payload): void {
-            $mock->shouldReceive('requestWithUserToken')->andReturn($payload);
+            $mock->shouldReceive('requestWithUserToken')
+                ->andReturnUsing(static fn (string $jeton, string $endpoint): array => $endpoint === 'me/dashboard'
+                    ? ['data' => ['classe' => ['id' => self::CLASSE, 'name' => 'L1']]]
+                    : $payload);
         });
     }
 
     /**
-     * Simule une panne KLASSCI : l'appel `evaluations` lève une exception,
-     * exerçant le `catch` de `fetchWindow` (#499).
+     * Simule une panne KLASSCI sur la FENÊTRE : l'appel `evaluations` lève une
+     * exception, exerçant le `catch` de `fetchWindow` (#499). La classe de
+     * l'élève, lue avant, reste lisible : c'est la panne de la fenêtre, et
+     * elle seule, que ces tests isolent.
      */
     private function fakeKlassciFailure(): void
     {
         $this->mock(KlassciProxyService::class, function (MockInterface $mock): void {
             $mock->shouldReceive('requestWithUserToken')
-                ->andThrow(new \RuntimeException('KLASSCI indisponible'));
+                ->andReturnUsing(static function (string $jeton, string $endpoint): array {
+                    if ($endpoint === 'me/dashboard') {
+                        return ['data' => ['classe' => ['id' => self::CLASSE, 'name' => 'L1']]];
+                    }
+
+                    throw new \RuntimeException('KLASSCI indisponible');
+                });
         });
     }
 
@@ -130,20 +150,23 @@ final class EvaluationStudentAttemptResponseTest extends TestCase
             ->assertExactJson(['success' => false, 'message' => 'Évaluation non disponible']);
     }
 
-    public function test_start_without_questions_returns_422_error_envelope(): void
+    /**
+     * Une évaluation sans question ne figure pas dans la liste de l'élève : elle
+     * répond comme une évaluation absente. L'ancien 422 n'était plus joignable
+     * depuis l'écran, dont le détail rend déjà 404 sur ce cas.
+     */
+    public function test_start_without_questions_returns_404_like_an_absent_evaluation(): void
     {
         $evaluation = Evaluation::factory()->planifiee()->create([
             'institution_id' => $this->institution->id,
+            'klassci_classe_id' => self::CLASSE,
         ]);
         Sanctum::actingAs($this->student);
 
         $response = $this->postJson("/api/evaluations/{$evaluation->id}/start");
 
-        $response->assertStatus(422)
-            ->assertExactJson([
-                'success' => false,
-                'message' => 'Cette évaluation n\'a pas encore de questions.',
-            ]);
+        $response->assertStatus(404)
+            ->assertExactJson(['success' => false, 'message' => 'Évaluation non disponible']);
     }
 
     public function test_start_without_klassci_token_returns_401_error_envelope(): void
@@ -211,6 +234,53 @@ final class EvaluationStudentAttemptResponseTest extends TestCase
     }
 
     /**
+     * Les dates de la fenêtre ne servent qu'au MESSAGE : la décision se lit sur
+     * `is_open`. Un horodatage se convertit comme une chaîne, comme avant.
+     */
+    public function test_a_closed_window_dated_by_a_timestamp_keeps_its_date(): void
+    {
+        $horodatage = 1577872800;
+        $evaluation = $this->publishedEvaluation();
+        $this->fakeKlassciWindow($evaluation->klassci_evaluation_id, [
+            'is_open' => false, 'has_started' => true, 'has_ended' => true, 'end_at' => $horodatage,
+        ]);
+        Sanctum::actingAs($this->student);
+
+        $this->postJson("/api/evaluations/{$evaluation->id}/start")->assertStatus(403)->assertJsonPath(
+            'message',
+            "L'évaluation est fermée depuis le " . \Carbon\Carbon::parse($horodatage)->format('d/m/Y à H:i'),
+        );
+    }
+
+    /**
+     * Une date d'un type imprévu, ou une chaîne qui n'est pas une date, ne
+     * donnent aucune date : le démarrage reste REFUSÉ (403, message générique,
+     * aucune copie), jamais ouvert, jamais en 500.
+     *
+     * @return iterable<string, array{0: mixed}>
+     */
+    public static function datesIllisibles(): iterable
+    {
+        yield 'un tableau' => [['inattendu']];
+        yield 'une chaîne qui n est pas une date' => ['pas-une-date'];
+    }
+
+    #[\PHPUnit\Framework\Attributes\DataProvider('datesIllisibles')]
+    public function test_a_closed_window_with_an_unreadable_date_still_refuses(mixed $date): void
+    {
+        $evaluation = $this->publishedEvaluation();
+        $this->fakeKlassciWindow($evaluation->klassci_evaluation_id, [
+            'is_open' => false, 'has_started' => false, 'has_ended' => false, 'start_at' => $date,
+        ]);
+        Sanctum::actingAs($this->student);
+
+        $this->postJson("/api/evaluations/{$evaluation->id}/start")
+            ->assertStatus(403)
+            ->assertJsonPath('message', "L'évaluation n'est pas encore ouverte");
+        $this->assertSame(0, EvaluationSubmission::where('evaluation_id', $evaluation->id)->count());
+    }
+
+    /**
      * #499 — fenêtre non vérifiable (KLASSCI en panne) hors entraînement :
      * le démarrage doit échouer FERMÉ (503), aucune tentative créée.
      */
@@ -238,6 +308,7 @@ final class EvaluationStudentAttemptResponseTest extends TestCase
     {
         $evaluation = Evaluation::factory()->terminee()->create([
             'institution_id' => $this->institution->id,
+            'klassci_classe_id' => self::CLASSE,
             'klassci_evaluation_id' => 9002,
             'is_published' => true,
             'max_attempts' => 3,

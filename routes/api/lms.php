@@ -321,10 +321,6 @@ Route::middleware(['auth:sanctum', 'klassci.sync'])->prefix('lms')->group(functi
     Route::get('/notifications/preferences/{userId}', [LMSNotificationsPreferencesController::class, 'getNotificationPreferences'])
         ->middleware('plateforme')
         ->name('lms.notifications.preferences');
-
-    // Envoyer rappel de séance
-    Route::post('/notifications/send-session-reminder', [LMSNotificationsPreferencesController::class, 'sendSessionReminder'])
-        ->name('lms.notifications.send-session-reminder');
 });
 
 Route::post('/webhooks/visio/recording-ready', [VisioRecordingWebhookController::class, 'recordingReady'])

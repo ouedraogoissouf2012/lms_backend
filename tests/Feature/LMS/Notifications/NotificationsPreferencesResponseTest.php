@@ -17,11 +17,14 @@ use Tests\TestCase;
  *
  * Verrouille la forme JSON des enveloppes migrables :
  *   - 403 `getNotificationPreferences` → `assertExactJson` ;
- *   - succès des deux endpoints → présence des clés `success`/`message`/`data`.
+ *   - succès de l'endpoint → présence des clés `success`/`message`/`data`.
  *
- * Cas NON migré : les deux handlers `catch` 500 émettent une clé custom `error`
+ * Cas NON migré : le handler `catch` 500 émet une clé custom `error`
  * (singulier) que le contrat du trait (`errors` pluriel) ne peut pas reproduire.
- * Ils restent intacts (ils ne sont pas déclenchables sur ces stubs sans mock).
+ * Il reste intact (il n'est pas déclenchable sur ce stub sans mock).
+ *
+ * L'envoi de rappel de séance a été retiré (bouchon sans appelant) : son retrait
+ * est figé par `RappelSeanceRetireTest`.
  *
  * @see app/Http/Controllers/API/LMS/LMSNotificationsPreferencesController.php
  */
@@ -73,26 +76,5 @@ final class NotificationsPreferencesResponseTest extends TestCase
 
         $response->assertStatus(403)
             ->assertExactJson(['success' => false, 'message' => 'Accès refusé']);
-    }
-
-    // ───────────────────────── sendSessionReminder ─────────────────────────
-
-    public function test_send_session_reminder_returns_success_message_and_data(): void
-    {
-        $user = $this->userInInstitution('coordinateur');
-        Sanctum::actingAs($user);
-
-        $response = $this->postJson('/api/lms/notifications/send-session-reminder', [
-            'seance_cours_id' => 42,
-            'channels' => ['email', 'app'],
-            'minutes_before' => 30,
-        ]);
-
-        $response->assertStatus(200);
-        $body = $response->json();
-        $this->assertSame(['success', 'message', 'data'], array_keys($body));
-        $this->assertTrue($body['success']);
-        $this->assertSame('Rappels acceptés (intégration NotificationService en cours).', $body['message']);
-        $this->assertSame(0, $body['data']['sent_count']);
     }
 }

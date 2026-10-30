@@ -93,14 +93,16 @@ class Chapter extends Model
     }
 
     /**
-     * Scope: Ordonné
+     * Ordre total (#963, sur le modèle de Lesson, #937) : `id` départage les égalités.
      *
      * @param  Builder<Chapter>  $query
      * @return Builder<Chapter>
      */
     public function scopeOrdered($query)
     {
-        return $query->orderBy('order')->orderBy('created_at');
+        return $query->orderBy($query->qualifyColumn('order'))
+            ->orderBy($query->qualifyColumn('created_at'))
+            ->orderBy($query->qualifyColumn('id'));
     }
 
     /**
@@ -134,16 +136,5 @@ class Chapter extends Model
     public function scopeForLesson($query, int $lessonId)
     {
         return $query->where('lesson_id', $lessonId);
-    }
-
-    /**
-     * Scope: Par type de contenu
-     *
-     * @param  Builder<Chapter>  $query
-     * @return Builder<Chapter>
-     */
-    public function scopeByContentType($query, string $contentType)
-    {
-        return $query->where('content_type', $contentType);
     }
 }

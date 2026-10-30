@@ -116,13 +116,16 @@ class KnowledgeCheck extends Model
     }
 
     /**
-     * Scope: Ordonne par position
+     * Ordonne par position. Ordre total (#963, sur le modèle de Lesson, #937) :
+     * `id` départage les égalités.
      *
      * @param  Builder<KnowledgeCheck>  $query
      * @return Builder<KnowledgeCheck>
      */
     public function scopeOrdered($query)
     {
-        return $query->orderBy('position')->orderBy('created_at');
+        return $query->orderBy($query->qualifyColumn('position'))
+            ->orderBy($query->qualifyColumn('created_at'))
+            ->orderBy($query->qualifyColumn('id'));
     }
 }

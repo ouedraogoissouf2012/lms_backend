@@ -47,14 +47,16 @@ class QuizAnswer extends Model
     }
 
     /**
-     * Scope: Réponses ordonnées
+     * Réponses ordonnées. Ordre total (#963, sur le modèle de Lesson, #937) :
+     * `id` départage deux réponses au même rang.
      *
      * @param  Builder<QuizAnswer>  $query
      * @return Builder<QuizAnswer>
      */
     public function scopeOrdered(Builder $query)
     {
-        return $query->orderBy('order');
+        return $query->orderBy($query->qualifyColumn('order'))
+            ->orderBy($query->qualifyColumn('id'));
     }
 
     /**

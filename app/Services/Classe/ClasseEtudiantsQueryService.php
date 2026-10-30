@@ -6,9 +6,7 @@ namespace App\Services\Classe;
 
 use App\Exceptions\MissingKlassciTokenException;
 use App\Models\User;
-use App\Services\KlassciProxyService;
 use Psr\Log\LoggerInterface;
-use Throwable;
 
 /**
  * ClasseEtudiantsQueryService — liste roster des étudiants d'une classe.
@@ -16,6 +14,14 @@ use Throwable;
  * Extrait de {@see \App\Http\Controllers\API\LMS\LMSClassesController::classeEtudiants()}
  * (split-20/lms-classes) afin de respecter §1.1/§5 (controllers et services
  * bornés en taille).
+ *
+ * ## La source : l'enveloppe, via {@see ClasseRoster}
+ *
+ * KLASSCI applique une autorisation PAR CLASSE sur `classes/{id}/etudiants` et
+ * répond 403 à TOUS les rôles (mesuré en #669). Ce service était le dernier
+ * lecteur resté sur cet appel : la route rendait un 500 permanent, que l'écran
+ * affichait « 0 étudiant ». Le roster est lu dans l'enveloppe `classes/{id}`,
+ * par le même composant que les résultats d'évaluation.
  *
  * ## Différence subtile vs. {@see ClasseDetailsQueryService}
  *
@@ -29,22 +35,27 @@ use Throwable;
  *
  * ## DI strict (§1.6 D)
  *
- * Aucune Facade. {@see KlassciProxyService} et PSR-3 {@see LoggerInterface}
+ * Aucune Facade. {@see ClasseRoster} et PSR-3 {@see LoggerInterface}
  * injectés par constructeur.
  *
  * ## Contrat de retour
  *
  * Tuple `array{status: int, payload: array<string, mixed>}` :
  *   - `200` + `{success: true, data: {etudiants, total}}` ;
- *   - `401` si pas de token KLASSCI ;
- *   - `500` sur exception inattendue (message générique, détail loggué).
+ *   - `401` si pas de token KLASSCI.
+ *
+ * Un refus ou une indisponibilité de KLASSCI n'est PAS rattrapé ici : il remonte
+ * en `RuntimeException`, que le contrôleur rend par
+ * {@see \App\Http\Controllers\API\Concerns\RendersKlassciBackedErrors} (4xx relayé
+ * avec son motif, panne en 503 + `Retry-After`). L'ancien `catch (Throwable)`
+ * les écrasait en 500 générique.
  *
  * @see app/Http/Controllers/API/LMS/LMSClassesController.php
  */
 final class ClasseEtudiantsQueryService
 {
     public function __construct(
-        private readonly KlassciProxyService $klassciService,
+        private readonly ClasseRoster $roster,
         private readonly LoggerInterface $logger,
     ) {}
 
@@ -52,67 +63,43 @@ final class ClasseEtudiantsQueryService
      * Récupère la liste des étudiants d'une classe pour un utilisateur authentifié.
      *
      * @return array{status: int, payload: array<string, mixed>}
+     *
+     * @throws \RuntimeException refus (4xx) ou indisponibilité de KLASSCI.
      */
     public function getEtudiants(int $classeId, User $user): array
     {
         $klassciToken = $user->klassci_token;
 
-        if (!$klassciToken) {
+        if (!is_string($klassciToken) || $klassciToken === '') {
             return [
                 'status' => 401,
                 'payload' => MissingKlassciTokenException::payload(),
             ];
         }
 
-        try {
-            $this->logger->info('Récupération étudiants classe', [
-                'classe_id' => $classeId,
-                'user_id' => $user->id,
-            ]);
+        $this->logger->info('Récupération étudiants classe', [
+            'classe_id' => $classeId,
+            'user_id' => $user->id,
+        ]);
 
-            $etudiantsResponse = $this->klassciService->requestWithUserToken(
-                $klassciToken,
-                "classes/{$classeId}/etudiants",
-                'GET'
-            );
+        // Filtre permissif : un étudiant sans champ `statut` est inclus
+        // (legacy rows). Cf. docblock du service pour le rationale.
+        $etudiantsActifs = collect($this->roster->etudiants($classeId, $klassciToken))
+            ->filter(static function (array $etudiant): bool {
+                return !isset($etudiant['statut']) || $etudiant['statut'] === 'actif';
+            })
+            ->values()
+            ->all();
 
-            /** @var array<int, array<string, mixed>> $etudiants */
-            $etudiants = $etudiantsResponse['data'] ?? [];
-
-            // Filtre permissif : un étudiant sans champ `statut` est inclus
-            // (legacy rows). Cf. docblock du service pour le rationale.
-            $etudiantsActifs = collect($etudiants)
-                ->filter(static function (array $etudiant): bool {
-                    return !isset($etudiant['statut']) || $etudiant['statut'] === 'actif';
-                })
-                ->values()
-                ->all();
-
-            return [
-                'status' => 200,
-                'payload' => [
-                    'success' => true,
-                    'data' => [
-                        'etudiants' => $etudiantsActifs,
-                        'total' => count($etudiantsActifs),
-                    ],
+        return [
+            'status' => 200,
+            'payload' => [
+                'success' => true,
+                'data' => [
+                    'etudiants' => $etudiantsActifs,
+                    'total' => count($etudiantsActifs),
                 ],
-            ];
-        } catch (Throwable $e) {
-            $this->logger->error('Erreur récupération étudiants classe', [
-                'classe_id' => $classeId,
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-            ]);
-
-            return [
-                'status' => 500,
-                'payload' => [
-                    'success' => false,
-                    'message' => 'Erreur lors de la récupération des étudiants',
-                    'error' => 'Une erreur est survenue.',
-                ],
-            ];
-        }
+            ],
+        ];
     }
 }

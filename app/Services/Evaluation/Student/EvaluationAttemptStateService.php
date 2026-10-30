@@ -8,9 +8,6 @@ use App\Exceptions\MissingKlassciTokenException;
 use App\Models\Evaluation;
 use App\Models\EvaluationSubmission;
 use App\Models\User;
-use App\Services\KlassciProxyService;
-use App\Services\Seances\KlassciPayload;
-use Psr\Log\LoggerInterface;
 use RuntimeException;
 
 /**
@@ -18,15 +15,22 @@ use RuntimeException;
  * fenêtre temporelle KLASSCI — extrait de `EvaluationStudentController`
  * (startEvaluation + getTimeStatus) lors du split §5.
  *
- * Toutes les vérifications business (publication, questions, fenêtre,
- * tentatives max, mode entraînement) sont centralisées ici. Le caller
- * map les `status` en codes HTTP.
+ * Toutes les vérifications business (portée de l'élève, fenêtre, tentatives
+ * max, mode entraînement) sont centralisées ici. Le caller map les `status`
+ * en codes HTTP. La fenêtre KLASSCI elle-même est lue par
+ * {@see EvaluationWindowGate}.
+ *
+ * L'élève n'atteint que ce que SA liste lui propose : la portée
+ * ({@see LearnerEvaluationScope}) est résolue AVANT la lecture. La remise
+ * (`findOpenAttempt`) ne la relit pas : elle ne clôt qu'une tentative que le
+ * démarrage a admise, et ne dépend ainsi d'aucun appel KLASSCI au moment où
+ * l'élève rend sa copie.
  */
 final class EvaluationAttemptStateService
 {
     public function __construct(
-        private readonly LoggerInterface $logger,
-        private readonly KlassciProxyService $klassciService,
+        private readonly EvaluationWindowGate $windowGate,
+        private readonly LearnerEvaluationScope $scope,
     ) {}
 
     /**
@@ -34,8 +38,9 @@ final class EvaluationAttemptStateService
      *
      * Statuts possibles :
      *   - ok                 → tentative démarrée / reprise (200 ou 201)
-     *   - not_found          → évaluation absente ou non publiée (404)
-     *   - no_questions       → évaluation sans question (422)
+     *   - not_found          → hors de la liste de l'élève : absente, d'une autre
+     *                          classe ou d'une autre école, non publiée, ou sans
+     *                          question (404, sans distinction)
      *   - no_token           → user sans klassci_token (401)
      *   - window_closed      → fenêtre temporelle fermée hors mode entraînement (403)
      *   - window_check_failed → fenêtre non vérifiable (KLASSCI indisponible) hors entraînement (503)
@@ -44,21 +49,21 @@ final class EvaluationAttemptStateService
      *   - offline_only       → is_online=false, pas de passage LMS (403)
      *
      * @return array{status: string, submission?: EvaluationSubmission, window?: ?array<string, mixed>, message?: string, is_practice?: bool, resumed?: bool}
+     *
+     * @throws RuntimeException  KLASSCI injoignable ou en erreur en lisant la
+     *                           classe de l'élève (le caller la classe).
      */
     public function startAttempt(int $evaluationId, User $user): array
     {
-        $evaluation = Evaluation::find($evaluationId);
-        if (!$evaluation || !$evaluation->is_published) {
-            return ['status' => 'not_found'];
-        }
-
-        if ($evaluation->questions()->count() === 0) {
-            return ['status' => 'no_questions'];
-        }
-
+        // Le jeton d'abord : son absence ne dit rien de l'évaluation.
         $klassciToken = $user->klassci_token;
         if (!$klassciToken) {
             return ['status' => 'no_token'];
+        }
+
+        $evaluation = $this->visibleEvaluation($evaluationId, $user);
+        if ($evaluation === null) {
+            return ['status' => 'not_found'];
         }
 
         $klassciEtudiantId = $user->klassci_id;
@@ -71,7 +76,7 @@ final class EvaluationAttemptStateService
             ];
         }
 
-        [$windowError, $window] = $this->resolveWindowGate(
+        [$windowError, $window] = $this->windowGate->resolveWindowGate(
             $klassciToken,
             $evaluation,
             $isPracticeMode,
@@ -141,9 +146,10 @@ final class EvaluationAttemptStateService
         $submission = EvaluationSubmission::create([
             'evaluation_id' => $evaluation->id,
             // Les DEUX espaces sont écrits, et chacun pour sa raison :
-            // `student_id` est la clé de propriété (celle par laquelle on
-            // retrouve la copie) ; `klassci_etudiant_id` porte l'index unique
-            // `eval_sub_unique` et le renvoi des notes vers KLASSCI.
+            // `klassci_etudiant_id` porte la propriété (avec l'établissement,
+            // EvaluationSubmission::scopeOwnedBy), l'index unique
+            // `eval_sub_unique` et le renvoi des notes vers KLASSCI ;
+            // `student_id` en est le miroir local.
             'student_id' => $user->id,
             'klassci_etudiant_id' => $user->klassci_id,
             'attempt' => $attemptsCount + 1,
@@ -177,23 +183,24 @@ final class EvaluationAttemptStateService
 
     /**
      * @return array{window: ?array<string, mixed>, server_time: string}
-     * @throws RuntimeException  Si évaluation absente ou pas de klassci_token
+     * @throws RuntimeException  Pas de klassci_token, évaluation hors de la
+     *                           liste de l'élève, ou KLASSCI en échec
      */
     public function getTimeStatus(int $evaluationId, User $user): array
     {
-        $evaluation = Evaluation::find($evaluationId);
-        if (!$evaluation) {
-            throw new RuntimeException('Évaluation non trouvée');
-        }
-
         $klassciToken = $user->klassci_token;
         if (!$klassciToken) {
             throw MissingKlassciTokenException::forUser($user->id);
         }
 
+        $evaluation = $this->visibleEvaluation($evaluationId, $user);
+        if ($evaluation === null) {
+            throw new RuntimeException('Évaluation non trouvée');
+        }
+
         // Endpoint informatif : on tolère `null` (pas de fenêtre OU KLASSCI
         // indisponible) — ce n'est pas un gate (#499, getTimeStatus inchangé).
-        $window = $this->fetchWindow($klassciToken, $evaluation->klassci_evaluation_id)['window'];
+        $window = $this->windowGate->fetchWindow($klassciToken, $evaluation->klassci_evaluation_id)['window'];
         return [
             'window' => $window,
             'server_time' => now()->toIso8601String(),
@@ -201,94 +208,14 @@ final class EvaluationAttemptStateService
     }
 
     /**
-     * Récupère la fenêtre temporelle KLASSCI d'une évaluation, en distinguant
-     * « appel échoué » de « pas de fenêtre configurée » (#499) :
-     *   - fetched=false            → l'appel KLASSCI a échoué (le caller doit
-     *                                fail-closed hors mode entraînement) ;
-     *   - fetched=true, window=null → appel réussi, aucune fenêtre (toujours ouverte) ;
-     *   - fetched=true, window=[…]  → fenêtre à évaluer par {@see checkWindow}.
-     *
-     * @return array{fetched: bool, window: ?array<string, mixed>}
+     * L'évaluation, si elle figure dans la liste de l'élève ; sinon null, sans
+     * dire pourquoi. La portée est posée AVANT la lecture : rien n'est chargé
+     * hors de ce que la liste propose.
      */
-    private function fetchWindow(string $klassciToken, ?int $klassciEvaluationId): array
+    private function visibleEvaluation(int $evaluationId, User $user): ?Evaluation
     {
-        try {
-            $response = $this->klassciService->requestWithUserToken($klassciToken, 'evaluations', 'GET');
-            $klassciEval = collect($response['data'] ?? [])->firstWhere('id', $klassciEvaluationId);
-            $rawWindow = $klassciEval['programmation']['window'] ?? null;
+        $evaluation = $this->scope->visibleFor($user)?->find($evaluationId);
 
-            return [
-                'fetched' => true,
-                'window' => is_array($rawWindow) ? KlassciPayload::asArray($rawWindow) : null,
-            ];
-        } catch (\Exception $e) {
-            $this->logger->warning('Window check failed (KLASSCI)', ['error' => $e->getMessage()]);
-
-            return ['fetched' => false, 'window' => null];
-        }
-    }
-
-    /**
-     * Résout le « gate » de fenêtre : renvoie `[erreur, null]` si le démarrage
-     * doit être bloqué (fenêtre invérifiable hors entraînement, ou fermée),
-     * sinon `[null, window]` pour poursuivre. Centralise la logique fenêtre pour
-     * garder `startAttempt` sous la limite §1.1.
-     *
-     * @return array{0: ?array{status: string, window?: ?array<string, mixed>, message?: string}, 1: ?array<string, mixed>}
-     */
-    private function resolveWindowGate(
-        string $klassciToken,
-        Evaluation $evaluation,
-        bool $isPracticeMode,
-        int $evaluationId,
-        ?int $klassciEtudiantId
-    ): array {
-        $windowResult = $this->fetchWindow($klassciToken, $evaluation->klassci_evaluation_id);
-
-        // Fail-closed : fenêtre non vérifiable (KLASSCI indisponible) hors
-        // entraînement → refus, aucune tentative créée (#499).
-        if (! $windowResult['fetched'] && ! $isPracticeMode) {
-            $this->logger->warning('Démarrage refusé : fenêtre non vérifiable (KLASSCI indisponible)', [
-                'evaluation_id' => $evaluationId,
-                'klassci_etudiant_id' => $klassciEtudiantId,
-            ]);
-
-            return [[
-                'status' => 'window_check_failed',
-                'message' => "Impossible de vérifier la disponibilité de l'évaluation pour le moment. Veuillez réessayer dans un instant.",
-            ], null];
-        }
-
-        $window = $windowResult['window'];
-
-        return [$this->checkWindow($window, $isPracticeMode, $evaluationId, $klassciEtudiantId), $window];
-    }
-
-    /**
-     * @param  ?array<string, mixed>  $window
-     * @return ?array{status: string, window?: ?array<string, mixed>, message?: string}
-     */
-    private function checkWindow(?array $window, bool $isPracticeMode, int $evaluationId, ?int $klassciEtudiantId): ?array
-    {
-        if (!$window || $window['is_open'] || $isPracticeMode) {
-            return null;
-        }
-
-        $message = "L'évaluation n'est pas encore ouverte";
-        if (!($window['has_started'] ?? true)) {
-            $startAt = \Carbon\Carbon::parse($window['start_at'])->format('d/m/Y à H:i');
-            $message = "L'évaluation ouvrira le {$startAt}";
-        } elseif ($window['has_ended'] ?? false) {
-            $endAt = \Carbon\Carbon::parse($window['end_at'])->format('d/m/Y à H:i');
-            $message = "L'évaluation est fermée depuis le {$endAt}";
-        }
-
-        $this->logger->warning('Tentative de démarrage hors fenêtre', [
-            'evaluation_id' => $evaluationId,
-            'klassci_etudiant_id' => $klassciEtudiantId,
-            'window' => $window,
-        ]);
-
-        return ['status' => 'window_closed', 'window' => $window, 'message' => $message];
+        return $evaluation instanceof Evaluation ? $evaluation : null;
     }
 }

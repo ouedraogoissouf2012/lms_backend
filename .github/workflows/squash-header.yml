@@ -1,0 +1,75 @@
+name: Squash header
+
+# #946 — l'en-tête du commit de squash, linté AVANT la fusion.
+#
+# Sur une PR, le job `commitlint` de security.yml ne lit que les commits de la
+# PR. L'en-tête du commit de squash n'est fabriqué qu'à la fusion : le titre du
+# commit ou de la PR, plus « (#N) ». Une règle de .commitlintrc.json (la
+# longueur maximale, par exemple) ne tombait donc qu'après coup, sur `lms`, qui
+# restait rouge. Ce job prédit cet en-tête et le passe à commitlint, avec la
+# MÊME configuration. Le lint sur `push` vers `lms` reste tel quel : c'est le
+# signal.
+#
+# Workflow à part : `edited` relance ce seul job quand le titre de la PR change,
+# sans relancer toute la sécurité.
+#
+# Limite : la personne qui fusionne peut retoucher l'en-tête dans la boîte de
+# dialogue de GitHub. Aucun contrôle de PR ne le voit ; le lint du `push` le verra.
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+
+permissions:
+  contents: read
+
+jobs:
+  squash-header:
+    name: Squash header (commitlint)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup PHP 8.3
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.3"
+          coverage: none
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      # Versions du verrou de wagoid/commitlint-github-action@v6, l'action du job
+      # `commitlint` : les deux contrôles appliquent les mêmes règles de la même façon.
+      - name: Install commitlint
+        run: npm install --no-save --no-package-lock @commitlint/cli@19.2.1 @commitlint/config-conventional@19.1.0
+
+      # Le titre et l'en-tête passent par l'environnement, jamais interpolés dans
+      # le script : un titre de PR est une donnée de l'auteur.
+      #
+      # Le réglage se lit par GraphQL : mesuré sur cette PR (#946), le REST
+      # `repos/{repo}` rend `squash_merge_commit_title` VIDE à ce jeton en
+      # lecture, quand GraphQL rend `squashMergeCommitTitle`. Une valeur vide
+      # fait échouer le script (code 2) : il ne devine jamais.
+      - name: Predict and lint the squash header
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_COMMITS: ${{ github.event.pull_request.commits }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          setting=$(gh api graphql -f owner="${REPO%/*}" -f name="${REPO#*/}" \
+            -f query='query($owner: String!, $name: String!) { repository(owner: $owner, name: $name) { squashMergeCommitTitle } }' \
+            --jq '.data.repository.squashMergeCommitTitle')
+          git fetch --no-tags --depth=1 origin "$HEAD_SHA"
+          commit_header=$(git log -1 --format=%s "$HEAD_SHA")
+          header=$(php scripts/predict-squash-header.php "$setting" "$PR_NUMBER" "$PR_COMMITS" "$PR_TITLE" "$commit_header")
+          echo "Réglage : $setting — $PR_COMMITS commit(s)"
+          echo "En-tête prédit (${#header} caractères) : $header"
+          printf '%s\n' "$header" | npx --no-install commitlint --config .commitlintrc.json

@@ -3398,13 +3398,10 @@ paths:
                   window:
                     $ref: '#/components/schemas/EvaluationWindow'
         '404':
-          description: "Evaluation inexistante ou non publiee (« Evaluation non disponible »)"
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/MessageOnly'
-        '422':
-          description: "L evaluation n a encore aucune question"
+          description: |
+            « Evaluation non disponible » : l evaluation ne figure pas dans la
+            liste de l eleve (`GET /evaluations/student`), quelle qu en soit la
+            raison — la meme regle que le detail `GET /evaluations/{id}`.
           content:
             application/json:
               schema:
@@ -3413,8 +3410,8 @@ paths:
           $ref: '#/components/responses/TooManyRequests'
         '503':
           description: |
-            Fenetre non verifiable : KLASSCI injoignable. Refus par prudence
-            (aucune tentative creee) — reessayer.
+            KLASSCI injoignable : la classe de l eleve ou la fenetre ne peut pas
+            etre verifiee. Refus par prudence (aucune tentative creee) — reessayer.
           content:
             application/json:
               schema:
@@ -3583,7 +3580,15 @@ paths:
         '401':
           $ref: '#/components/responses/KlassciUnauthorized'
         '404':
-          description: "Evaluation non trouvee"
+          description: |
+            « Evaluation non trouvee » : l evaluation ne figure pas dans la liste
+            de l eleve — la meme regle que `/start`.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageOnly'
+        '503':
+          description: "KLASSCI injoignable : la classe de l eleve ne peut pas etre lue (en-tete `Retry-After`)."
           content:
             application/json:
               schema:
@@ -3690,7 +3695,11 @@ paths:
         '401':
           $ref: '#/components/responses/KlassciUnauthorized'
         '404':
-          description: "Evaluation non trouvee, ou aucune copie de l eleve pour elle"
+          description: |
+            « Aucune soumission trouvee pour cette evaluation » : l eleve n a pas
+            de copie sur cette evaluation dans son etablissement. Le meme corps
+            vaut pour une evaluation inexistante. Le droit de lire sa copie tient
+            a la copie, pas a la classe actuelle de l eleve.
           content:
             application/json:
               schema:

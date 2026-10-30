@@ -7,6 +7,8 @@ namespace App\Services\Matiere;
 use App\Models\Evaluation;
 use App\Models\EvaluationSubmission;
 use App\Models\User;
+use App\Services\Evaluation\Student\LearnerEvaluationScope;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 
 /**
@@ -28,8 +30,13 @@ use Illuminate\Support\Collection;
  * matières before this change: identical ids, identical count, in both sources —
  * `matieres/{id}`'s embedded `evaluations` carries the richer shape (window,
  * lms_integration), matching the precedent already used elsewhere in this codebase
- * (`MyMatieresQueryService::fetchEvaluationsFor()`). No KLASSCI dependency remains
- * in this class as a result.
+ * (`MyMatieresQueryService::fetchEvaluationsFor()`). This class makes no
+ * `GET evaluations` call as a result.
+ *
+ * Reach: a learner only gets the LMS evaluations of HIS list
+ * ({@see LearnerEvaluationScope}, the rule of his list and of the take screen),
+ * resolved ONCE per request. Otherwise this sheet would show him evaluations
+ * that the take screen then refuses. Staff reach is unchanged.
  *
  * Performance contract preserved (PERF-03 batch 2):
  *   - One main query + `withCount` for questions/submissions + a single batched
@@ -45,6 +52,7 @@ final class MatiereEvaluationsFetcher
 {
     public function __construct(
         private readonly \App\Services\Evaluation\EvaluationStateService $evaluationState,
+        private readonly LearnerEvaluationScope $learnerScope,
     ) {}
 
     /**
@@ -58,17 +66,33 @@ final class MatiereEvaluationsFetcher
         User $user,
     ): array {
         $klassciEvaluations = $this->filterEmbeddedEvaluations($matiereData, $matiereId);
+        $reachable = $this->reachableBy($user);
 
         $klassciEnriched = $klassciEvaluations
-            ->map(fn (array $eval): array => $this->enrichKlassciEvaluation($eval, $user))
+            ->map(fn (array $eval): array => $this->enrichKlassciEvaluation($eval, $user, $reachable))
             ->all();
 
-        $lmsOnly = $this->fetchLmsOnlyEvaluations($matiereId, $user);
+        $lmsOnly = $this->fetchLmsOnlyEvaluations($matiereId, $user, $reachable);
 
         return [
             'evaluations_enrichies' => array_merge($klassciEnriched, $lmsOnly),
             'evaluations_raw_count' => $klassciEvaluations->count(),
         ];
+    }
+
+    /**
+     * The LMS evaluations this user reaches on this sheet. A learner: those of
+     * his own list, and none without a class. Staff: all of them, as before.
+     *
+     * @return Builder<Evaluation>
+     */
+    private function reachableBy(User $user): Builder
+    {
+        if (! $user->isLearnerAudience()) {
+            return Evaluation::query();
+        }
+
+        return $this->learnerScope->visibleFor($user) ?? Evaluation::query()->whereRaw('1 = 0');
     }
 
     /**
@@ -116,15 +140,18 @@ final class MatiereEvaluationsFetcher
 
     /**
      * @param  array<string, mixed>  $eval
+     * @param  Builder<Evaluation>  $reachable
      * @return array<string, mixed>
      */
-    private function enrichKlassciEvaluation(array $eval, User $user): array
+    private function enrichKlassciEvaluation(array $eval, User $user, Builder $reachable): array
     {
         $klassciEvaluationId = $eval['id'] ?? null;
 
+        // A version this user cannot reach counts as no version: the sheet never
+        // links to a take screen that would refuse it.
         $quizLMS = null;
         if ($klassciEvaluationId !== null) {
-            $quizLMS = Evaluation::where('klassci_evaluation_id', $klassciEvaluationId)->first();
+            $quizLMS = (clone $reachable)->where('klassci_evaluation_id', $klassciEvaluationId)->first();
         }
 
         $evalArray = $eval;
@@ -141,15 +168,9 @@ final class MatiereEvaluationsFetcher
                 'submissions_count' => $quizLMS->submissions()->count(),
             ];
 
-            if ($user->klassci_id) {
-                $submission = $quizLMS->submissions()
-                    ->where('klassci_etudiant_id', $user->klassci_id)
-                    ->latest()
-                    ->first();
-                $evalArray['student_submission'] = $submission;
-            } else {
-                $evalArray['student_submission'] = null;
-            }
+            // Sa copie, par l'UNIQUE définition de la propriété d'une copie
+            // (sans identité KLASSCI ou sans établissement : aucune).
+            $evalArray['student_submission'] = $quizLMS->submissions()->ownedBy($user)->latest()->first();
         } else {
             $evalArray['online_version'] = null;
             $evalArray['student_submission'] = null;
@@ -159,11 +180,12 @@ final class MatiereEvaluationsFetcher
     }
 
     /**
+     * @param  Builder<Evaluation>  $reachable
      * @return array<int, array<string, mixed>>
      */
-    private function fetchLmsOnlyEvaluations(int $matiereId, User $user): array
+    private function fetchLmsOnlyEvaluations(int $matiereId, User $user, Builder $reachable): array
     {
-        $evaluationsLMSPuresModels = Evaluation::where('klassci_matiere_id', $matiereId)
+        $evaluationsLMSPuresModels = (clone $reachable)->where('klassci_matiere_id', $matiereId)
             ->whereNull('klassci_evaluation_id')
             ->withCount(['questions', 'submissions'])
             ->get();
@@ -174,7 +196,7 @@ final class MatiereEvaluationsFetcher
         if ($user->klassci_id && $evaluationsLMSPuresModels->isNotEmpty()) {
             $userLatestSubmissions = EvaluationSubmission::query()
                 ->whereIn('evaluation_id', $evaluationsLMSPuresModels->pluck('id'))
-                ->where('klassci_etudiant_id', $user->klassci_id)
+                ->ownedBy($user)
                 ->orderByDesc('id')
                 ->get()
                 ->groupBy('evaluation_id')

@@ -25,7 +25,7 @@ final class LessonChapterProgressCalculator
      */
     public function calculate(int $userId, int $lessonId): array
     {
-        $chapters = Chapter::where('lesson_id', $lessonId)->orderBy('order')->get();
+        $chapters = Chapter::where('lesson_id', $lessonId)->ordered()->get();
         $totalChapters = $chapters->count();
 
         if ($totalChapters === 0) {

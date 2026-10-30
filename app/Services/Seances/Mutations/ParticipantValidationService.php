@@ -8,6 +8,7 @@ use App\Models\Seance;
 use App\Models\User;
 use App\Services\Audience\ClasseAudienceSource;
 use App\Services\Visio\VisioActorAuthorization;
+use App\Services\Visio\VisioStatusRefusal;
 use Psr\Log\LoggerInterface;
 use Throwable;
 
@@ -72,8 +73,13 @@ final class ParticipantValidationService
      */
     private function authorize(Seance $visioData, User $actor, User $userToValidate): array
     {
+        // Une visio programmée se valide d'avance ; terminée ou absente, non. Le
+        // motif vient de la table commune : `visio_not_started` ne vaut plus pour
+        // une visio terminée.
         if (! in_array($visioData->visio_status, ['active', 'programmee'], true)) {
-            return $this->fail(403, 'visio_not_started', 'La visioconférence n\'a pas encore démarré');
+            $reason = VisioStatusRefusal::reasonFor($visioData->visio_status) ?? VisioStatusRefusal::NOT_ENABLED;
+
+            return $this->fail(403, $reason, VisioStatusRefusal::messageFor($reason));
         }
 
         if (! $this->authorization->canValidate($visioData, $actor, $userToValidate)) {

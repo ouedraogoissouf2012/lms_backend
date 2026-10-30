@@ -80,8 +80,11 @@ final class StudentGradesAggregator
      */
     private function fetchFinalSubmissions(User $user): \Illuminate\Database\Eloquent\Collection
     {
+        // Les copies de CET élève, dans SON établissement : la portée de propriété,
+        // et non l'identifiant KLASSCI seul, qui désignerait aussi les copies d'un
+        // homonyme d'une autre école quand aucun tenant n'est résolu.
         /** @var \Illuminate\Database\Eloquent\Collection<int, EvaluationSubmission> $soumissions */
-        $soumissions = EvaluationSubmission::where('klassci_etudiant_id', $user->klassci_id)
+        $soumissions = EvaluationSubmission::query()->ownedBy($user)
             ->whereIn('status', ['soumis', 'corrige'])
             ->where(function ($q) {
                 $q->whereNull('feedback')

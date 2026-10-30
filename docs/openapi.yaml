@@ -710,6 +710,225 @@ components:
                 Lien vers l'application WEB, jamais vers l'API. Affiche UNE
                 SEULE FOIS : le jeton n'est stocke qu'en empreinte SHA-256.
 
+    # D10 — les rapports (POST /admin/reports/*, suivi et telechargement
+    # asynchrones). Schemas SERRES, propres a ces routes.
+    RapportPresencesInput:
+      type: object
+      properties:
+        date_start:
+          type: string
+          format: date
+          nullable: true
+        date_end:
+          type: string
+          format: date
+          nullable: true
+        classe_id:
+          type: integer
+          nullable: true
+        seance_id:
+          type: integer
+          nullable: true
+          description: "Rapport d'UNE seance : toujours synchrone."
+        format:
+          type: string
+          nullable: true
+          enum:
+            - pdf
+            - excel
+            - xlsx
+            - null
+
+    RapportNotesInput:
+      type: object
+      properties:
+        date_start:
+          type: string
+          format: date
+          nullable: true
+        date_end:
+          type: string
+          format: date
+          nullable: true
+        evaluation_id:
+          type: integer
+          nullable: true
+
+    RapportActiviteInput:
+      type: object
+      properties:
+        date_start:
+          type: string
+          format: date
+          nullable: true
+        date_end:
+          type: string
+          format: date
+          nullable: true
+        activity_type:
+          type: string
+          nullable: true
+          enum:
+            - login
+            - logout
+            - content_view
+            - submission
+            - grading
+            - all
+            - null
+
+    RapportAccepte:
+      type: object
+      additionalProperties: false
+      required:
+        - success
+        - data
+      properties:
+        success:
+          type: boolean
+          enum:
+            - true
+        data:
+          type: object
+          additionalProperties: false
+          required:
+            - id
+            - status
+            - status_url
+            - download_url
+          properties:
+            id:
+              type: string
+              description: "UUID du rapport."
+            status:
+              type: string
+              enum:
+                - pending
+            status_url:
+              type: string
+              description: "Chemin relatif : /api/admin/reports/async/{id}."
+            download_url:
+              type: string
+              description: "Chemin relatif : /api/admin/reports/async/{id}/download."
+
+    RapportSuivi:
+      type: object
+      additionalProperties: false
+      required:
+        - success
+        - data
+      properties:
+        success:
+          type: boolean
+          enum:
+            - true
+        data:
+          type: object
+          additionalProperties: false
+          required:
+            - id
+            - type
+            - status
+            - created_at
+            - updated_at
+            - meta
+          properties:
+            id:
+              type: string
+            type:
+              type: string
+              enum:
+                - attendance
+                - grades
+                - activity
+            status:
+              type: string
+              enum:
+                - pending
+                - running
+                - completed
+                - failed
+            created_at:
+              type: string
+              format: date-time
+            updated_at:
+              type: string
+              format: date-time
+            meta:
+              type: object
+              additionalProperties: false
+              required:
+                - filters
+              properties:
+                filters:
+                  type: object
+                  description: "La charge VALIDEE de la demande, telle quelle."
+            filename:
+              type: string
+              description: "Present une fois le rapport `completed`."
+            message:
+              type: string
+              description: |
+                Present une fois le rapport `failed`. Peut apparaitre sur une
+                tentative non definitive : le job retente (trois essais), et un
+                rapport peut repasser par `running` puis finir `completed`.
+              enum:
+                - report_generation_failed
+
+    RapportRefus:
+      type: object
+      additionalProperties: false
+      required:
+        - success
+        - message
+      properties:
+        success:
+          type: boolean
+          enum:
+            - false
+        message:
+          type: string
+
+    RapportInterdit:
+      type: object
+      additionalProperties: false
+      required:
+        - success
+        - message
+      properties:
+        success:
+          type: boolean
+          enum:
+            - false
+        message:
+          type: string
+        reason:
+          type: string
+          description: "Facultatif. `no_institution` : un compte sans etablissement (ADR-906-01)."
+          enum:
+            - no_institution
+
+    RapportInvalide:
+      type: object
+      additionalProperties: false
+      required:
+        - success
+        - message
+        - errors
+      properties:
+        success:
+          type: boolean
+          enum:
+            - false
+        message:
+          type: string
+        errors:
+          type: object
+          additionalProperties:
+            type: array
+            items:
+              type: string
+
     VisioConsentInput:
       type: object
       required:
@@ -1301,6 +1520,388 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+
+  /admin/reports/attendance:
+    post:
+      tags:
+        - Reports
+      summary: "Rapport de presences"
+      description: |
+        ASYNCHRONE par defaut (#547) : la reponse est un 202, et le rapport se
+        suit par `status_url` puis se recupere par `download_url` (chemins
+        relatifs, prefixe `/api` compris), pendant 24 heures. Le rendu synchrone
+        (200, le PDF) est un opt-out explicite : `?sync=1` ou
+        `Prefer: respond-sync`.
+
+        Le 403 a plusieurs sources, et le client ne doit pas lire le message :
+        - le role de la route (« Accès refusé - Permissions insuffisantes ») ;
+        - l'autorisation de la requete, rendue par le gestionnaire generique :
+          « This action is unauthorized. » si `APP_DEBUG` est vrai, « Une
+          erreur est survenue. » sinon, ce qui est le cas en production ;
+        - un etablissement desactive (« Établissement désactivé… ») ;
+        - un compte sans etablissement (motif `no_institution`).
+
+        Route ouverte a `coordinateur`, `superAdmin` et `enseignant`. Sans
+        `seance_id`, la requete n'admet que le coordinateur et l'administrateur :
+        un enseignant recoit 403 avant tout envoi. AVEC `seance_id`, le rendu est
+        TOUJOURS synchrone (200, PDF ou tableur selon `format`) ; une seance
+        d'une autre ecole et une seance inexistante rendent le meme 403.
+      security:
+        - sanctum: []
+      parameters:
+        - name: sync
+          in: query
+          required: false
+          description: "Opt-out EXPLICITE du defaut asynchrone : le PDF est rendu dans la reponse (200)."
+          schema:
+            type: boolean
+        - name: async
+          in: query
+          required: false
+          description: "Opt-in asynchrone, accepte pour retro-compatibilite. S'il coexiste avec sync, l'asynchrone l'emporte."
+          schema:
+            type: boolean
+        - name: Prefer
+          in: header
+          required: false
+          description: "`respond-sync` vaut `?sync=1`, `respond-async` vaut `?async=1`."
+          schema:
+            type: string
+            enum:
+              - respond-sync
+              - respond-async
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RapportPresencesInput'
+      responses:
+        '202':
+          description: "Rapport accepte, a suivre par status_url."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RapportAccepte'
+        '200':
+          description: "Rendu synchrone (opt-out) : le fichier, en piece jointe."
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+            application/vnd.ms-excel:
+              schema:
+                type: string
+                format: binary
+        '401':
+          description: "Non authentifie"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RapportRefus'
+        '403':
+          description: "Role ou requete non admis, etablissement desactive, ou compte sans etablissement"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RapportInterdit'
+        '422':
+          description: "Charge invalide"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RapportInvalide'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          description: "Echec du rendu SYNCHRONE (forme ancienne, cle error au singulier)"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorWithDetail'
+
+  /admin/reports/grades:
+    post:
+      tags:
+        - Reports
+      summary: "Rapport de notes"
+      description: |
+        ASYNCHRONE par defaut (#547) : la reponse est un 202, et le rapport se
+        suit par `status_url` puis se recupere par `download_url` (chemins
+        relatifs, prefixe `/api` compris), pendant 24 heures. Le rendu synchrone
+        (200, le PDF) est un opt-out explicite : `?sync=1` ou
+        `Prefer: respond-sync`.
+
+        Le 403 a plusieurs sources, et le client ne doit pas lire le message :
+        - le role de la route (« Accès refusé - Permissions insuffisantes ») ;
+        - l'autorisation de la requete, rendue par le gestionnaire generique :
+          « This action is unauthorized. » si `APP_DEBUG` est vrai, « Une
+          erreur est survenue. » sinon, ce qui est le cas en production ;
+        - un etablissement desactive (« Établissement désactivé… ») ;
+        - un compte sans etablissement (motif `no_institution`).
+
+        Reserve a `coordinateur` et `superAdmin`.
+
+      security:
+        - sanctum: []
+      parameters:
+        - name: sync
+          in: query
+          required: false
+          description: "Opt-out EXPLICITE du defaut asynchrone : le PDF est rendu dans la reponse (200)."
+          schema:
+            type: boolean
+        - name: async
+          in: query
+          required: false
+          description: "Opt-in asynchrone, accepte pour retro-compatibilite. S'il coexiste avec sync, l'asynchrone l'emporte."
+          schema:
+            type: boolean
+        - name: Prefer
+          in: header
+          required: false
+          description: "`respond-sync` vaut `?sync=1`, `respond-async` vaut `?async=1`."
+          schema:
+            type: string
+            enum:
+              - respond-sync
+              - respond-async
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RapportNotesInput'
+      responses:
+        '202':
+          description: "Rapport accepte, a suivre par status_url."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RapportAccepte'
+        '200':
+          description: "Rendu synchrone (opt-out) : le fichier, en piece jointe."
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+        '401':
+          description: "Non authentifie"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RapportRefus'
+        '403':
+          description: "Role ou requete non admis, etablissement desactive, ou compte sans etablissement"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RapportInterdit'
+        '422':
+          description: "Charge invalide"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RapportInvalide'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          description: "Echec du rendu SYNCHRONE (forme ancienne, cle error au singulier)"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorWithDetail'
+
+  /admin/reports/activity:
+    post:
+      tags:
+        - Reports
+      summary: "Rapport d'activite"
+      description: |
+        ASYNCHRONE par defaut (#547) : la reponse est un 202, et le rapport se
+        suit par `status_url` puis se recupere par `download_url` (chemins
+        relatifs, prefixe `/api` compris), pendant 24 heures. Le rendu synchrone
+        (200, le PDF) est un opt-out explicite : `?sync=1` ou
+        `Prefer: respond-sync`.
+
+        Le 403 a plusieurs sources, et le client ne doit pas lire le message :
+        - le role de la route (« Accès refusé - Permissions insuffisantes ») ;
+        - l'autorisation de la requete, rendue par le gestionnaire generique :
+          « This action is unauthorized. » si `APP_DEBUG` est vrai, « Une
+          erreur est survenue. » sinon, ce qui est le cas en production ;
+        - un etablissement desactive (« Établissement désactivé… ») ;
+        - un compte sans etablissement (motif `no_institution`).
+
+        Reserve a `coordinateur` et `superAdmin`.
+
+      security:
+        - sanctum: []
+      parameters:
+        - name: sync
+          in: query
+          required: false
+          description: "Opt-out EXPLICITE du defaut asynchrone : le PDF est rendu dans la reponse (200)."
+          schema:
+            type: boolean
+        - name: async
+          in: query
+          required: false
+          description: "Opt-in asynchrone, accepte pour retro-compatibilite. S'il coexiste avec sync, l'asynchrone l'emporte."
+          schema:
+            type: boolean
+        - name: Prefer
+          in: header
+          required: false
+          description: "`respond-sync` vaut `?sync=1`, `respond-async` vaut `?async=1`."
+          schema:
+            type: string
+            enum:
+              - respond-sync
+              - respond-async
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RapportActiviteInput'
+      responses:
+        '202':
+          description: "Rapport accepte, a suivre par status_url."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RapportAccepte'
+        '200':
+          description: "Rendu synchrone (opt-out) : le fichier, en piece jointe."
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+        '401':
+          description: "Non authentifie"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RapportRefus'
+        '403':
+          description: "Role ou requete non admis, etablissement desactive, ou compte sans etablissement"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RapportInterdit'
+        '422':
+          description: "Charge invalide"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RapportInvalide'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          description: "Echec du rendu SYNCHRONE (forme ancienne, cle error au singulier)"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorWithDetail'
+
+  /admin/reports/async/{id}:
+    get:
+      tags:
+        - Reports
+      summary: "Suivre un rapport asynchrone"
+      description: |
+        Reserve au demandeur (`coordinateur` ou `superAdmin`). Un rapport
+        absent, d'un autre utilisateur ou expire (24 heures) rend le MEME 404.
+      security:
+        - sanctum: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: "Etat du rapport."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RapportSuivi'
+        '401':
+          description: "Non authentifie"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RapportRefus'
+        '403':
+          description: "Role non admis, etablissement desactive, ou compte sans etablissement"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RapportInterdit'
+        '404':
+          description: "Rapport introuvable (absent, d'un autre utilisateur, ou expire)"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RapportRefus'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
+  /admin/reports/async/{id}/download:
+    get:
+      tags:
+        - Reports
+      summary: "Telecharger un rapport asynchrone termine"
+      description: |
+        Le fichier une fois `status` a `completed`. Avant : 409. Un rapport
+        absent, d'un autre utilisateur ou expire rend 404 « Rapport
+        introuvable » ; un fichier disparu, 404 « Fichier introuvable ».
+      security:
+        - sanctum: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: "Le PDF, en piece jointe."
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+        '401':
+          description: "Non authentifie"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RapportRefus'
+        '403':
+          description: "Role non admis, etablissement desactive, ou compte sans etablissement"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RapportInterdit'
+        '404':
+          description: "Rapport ou fichier introuvable"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RapportRefus'
+        '409':
+          description: "Rapport non pret"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RapportRefus'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
 
   /lms/visio/consent:
     post:

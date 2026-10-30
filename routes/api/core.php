@@ -27,12 +27,12 @@ Route::get('/ping', function () {
 });
 
 // Liste des institutions actives (public, pour sélecteur sur page login)
-Route::get('/institutions/active', [InstitutionDirectoryController::class, 'active']);
+Route::get('/institutions/active', [InstitutionDirectoryController::class, 'active'])->middleware('plateforme');
 
 // ============================================
 // INSTITUTION - Informations sur l'institution courante
 // ============================================
-Route::get('/institution/current', [InstitutionDirectoryController::class, 'current']);
+Route::get('/institution/current', [InstitutionDirectoryController::class, 'current'])->middleware('plateforme');
 
 // ============================================
 // OUVERTURE D'ECOLE - Demande publique (#803, ADR-803-01)
@@ -116,7 +116,7 @@ Route::prefix('auth')->group(function () {
 // ============================================
 // AUTHENTIFICATION - Routes protégées
 // ============================================
-Route::prefix('auth')->middleware('auth:sanctum')->group(function () {
+Route::prefix('auth')->middleware(['auth:sanctum', 'plateforme'])->group(function () {
     Route::get('/me', [AuthController::class, 'me']);
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::post('/refresh', [AuthController::class, 'refresh']);
@@ -130,7 +130,7 @@ Route::prefix('proxy')
     ->middleware(['auth:sanctum', 'klassci.sync', 'role:coordinateur,superAdmin,supradmin', 'throttle:proxy'])
     ->group(function () {
         // Test de connexion KLASSCI — réservé aux admins
-        Route::get('/test-connection', [ProxyOrganisationController::class, 'testConnection']);
+        Route::get('/test-connection', [ProxyOrganisationController::class, 'testConnection'])->middleware('plateforme');
     });
 
 // ============================================
@@ -196,7 +196,7 @@ Route::middleware(['auth:sanctum', 'klassci.sync', 'role:coordinateur,superAdmin
 // ============================================
 // CONFIGURATION - Gestion de la configuration système
 // ============================================
-Route::middleware(['auth:sanctum', 'klassci.sync', 'role:superAdmin'])->group(function () {
+Route::middleware(['auth:sanctum', 'klassci.sync', 'role:superAdmin', 'plateforme'])->group(function () {
     Route::get('configuration', [ConfigurationController::class, 'get'])
         ->middleware('throttle:60,1');
     Route::put('configuration', [ConfigurationController::class, 'update'])
@@ -208,7 +208,7 @@ Route::middleware(['auth:sanctum', 'klassci.sync', 'role:superAdmin'])->group(fu
 // ============================================
 // INTEGRATIONS - Services tiers
 // ============================================
-Route::middleware(['auth:sanctum', 'klassci.sync', 'role:superAdmin'])->prefix('integrations')->group(function () {
+Route::middleware(['auth:sanctum', 'klassci.sync', 'role:superAdmin', 'plateforme'])->prefix('integrations')->group(function () {
     Route::post('connect', [IntegrationController::class, 'connect'])
         ->middleware('throttle:30,1');
     Route::post('authorize', [IntegrationController::class, 'authorize'])
@@ -237,7 +237,7 @@ Route::prefix('proxy')
 // ============================================
 // ROUTE USER PROFILE (Protégée)
 // ============================================
-Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
+Route::middleware(['auth:sanctum', 'plateforme'])->get('/user', function (Request $request) {
     return response()->json([
         'success' => true,
         'data' => $request->user(),

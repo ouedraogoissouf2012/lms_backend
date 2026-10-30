@@ -238,6 +238,10 @@ final class AdminUserEmailUniquenessTest extends TestCase
      * R5 — fail-closed. Un `supradmin` plateforme n'a pas d'`institution_id` : la ligne créée
      * naîtrait avec `institution_id = NULL`, un ensemble que l'index unique ne contraint PAS
      * (deux NULL ne sont jamais égaux en SQL). On refuse plutôt que de valider contre du vide.
+     *
+     * La porte des comptes sans établissement refuse désormais la première (403, motif
+     * `no_institution` ; la gestion des comptes d'école reste à l'admin de l'école, décision
+     * A8, D55). Le 422 de la validation reste derrière elle, en défense en profondeur.
      */
     public function test_platform_supradmin_without_institution_is_refused_fail_closed(): void
     {
@@ -248,8 +252,8 @@ final class AdminUserEmailUniquenessTest extends TestCase
 
         $this->withHeaders($this->bearer($platform))
             ->postJson('/api/users', $this->payload(['email' => 'orphelin@example.test']))
-            ->assertStatus(422)
-            ->assertJsonValidationErrors('email');
+            ->assertStatus(403)
+            ->assertJsonPath('reason', 'no_institution');
 
         $this->assertDatabaseMissing('users', ['email' => 'orphelin@example.test']);
     }

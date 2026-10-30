@@ -13,8 +13,7 @@ use Illuminate\Foundation\Http\FormRequest;
  *
  * ## Authorization Model
  * 1. User authenticated (via auth:sanctum middleware)
- * 2. User has KLASSCI token (for subsequent processing)
- * 3. Input validation:
+ * 2. Input validation:
  *    - seance_cours_id (required, integer) - ID of the course seance
  *    - date (required, date format)
  *    - participants[] array with:
@@ -24,6 +23,11 @@ use Illuminate\Foundation\Http\FormRequest;
  *      - duration_minutes (nullable, integer >= 0)
  *
  * If ANY check fails → 401/422
+ *
+ * No KLASSCI token is required : the sync writes local attendances only. The
+ * access decision lives in `VideoSessionAttendancesSyncer`
+ * — the seance is read in the actor's institution, and only a manager or the
+ * seance's own teacher may write (`VisioActorAuthorization::canManage()`).
  */
 final class SyncAttendancesRequest extends FormRequest
 {
@@ -32,11 +36,6 @@ final class SyncAttendancesRequest extends FormRequest
         // Check 1: User must be authenticated
         $user = auth()->user();
         if (!$user) {
-            return false;
-        }
-
-        // Check 2: User must have klassci token
-        if (!$user->klassci_token) {
             return false;
         }
 

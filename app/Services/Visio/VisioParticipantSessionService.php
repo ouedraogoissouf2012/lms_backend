@@ -55,13 +55,12 @@ final class VisioParticipantSessionService
                 return $this->notFound('Visio non trouvée');
             }
 
-            if ($visio->visio_status !== 'active') {
+            // Statut et message inchangés ; le motif dit quel état refuse.
+            $refus = VisioStatusRefusal::reasonFor($visio->visio_status);
+            if ($refus !== null) {
                 return [
                     'status' => 400,
-                    'payload' => [
-                        'success' => false,
-                        'message' => "La visio n'est pas active",
-                    ],
+                    'payload' => ['success' => false, 'message' => "La visio n'est pas active", 'reason' => $refus],
                 ];
             }
 

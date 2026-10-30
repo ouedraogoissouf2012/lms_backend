@@ -89,8 +89,11 @@ final class MotifsDesRefusTest extends TestCase
         [, $code] = $this->classeAvecCode();
         $sansEcole = User::factory()->create(['institution_id' => null, 'role' => 'etudiant']);
 
+        // La porte des comptes sans établissement répond la première, en 403, avec
+        // le même motif ; le 409 de RejoindreParCodeService reste derrière elle,
+        // en défense en profondeur (ADR-906-01).
         $this->asTenant($sansEcole)->postJson(self::AUTHENTIFIEE, ['code' => $code])
-            ->assertStatus(409)
+            ->assertStatus(403)
             ->assertJsonPath('reason', 'no_institution');
     }
 

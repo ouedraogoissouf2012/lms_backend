@@ -214,6 +214,10 @@ final class VisioConsentPersistenceTest extends TestCase
      * `consents.institution_id` est `constrained()`, donc NOT NULL : sans ce
      * garde, un supradmin declencherait une violation de contrainte, c est-a-dire
      * un 500 la ou un refus explicite est la bonne reponse.
+     *
+     * La porte des comptes sans etablissement refuse desormais la premiere (403,
+     * motif `no_institution`) ; le 422 du service reste derriere elle, en
+     * defense en profondeur.
      */
     public function test_an_account_without_institution_is_refused_not_crashed(): void
     {
@@ -226,7 +230,8 @@ final class VisioConsentPersistenceTest extends TestCase
             ->postJson('/api/lms/visio/consent', [
                 'captation' => true, 'diffusion' => true, 'reutilisation' => true,
             ])
-            ->assertStatus(422);
+            ->assertStatus(403)
+            ->assertJsonPath('reason', 'no_institution');
 
         self::assertDatabaseCount('consents', 0);
     }

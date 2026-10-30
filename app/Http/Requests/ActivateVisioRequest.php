@@ -15,8 +15,12 @@ use Illuminate\Foundation\Http\FormRequest;
  * ## Authorization Model
  * 1. User authenticated (via auth:sanctum middleware)
  * 2. User is enseignant or coordinateur (enforced by route middleware)
- * 3. User has KLASSCI token (needed for KLASSCI API calls)
- * 4. Seance must exist in KLASSCI (checked in controller via API call)
+ * 3. Seance must exist in KLASSCI (checked by the service via API call)
+ *
+ * `authorize()` answers « may this user do this? », not « will the upstream
+ * call work? ». The KLASSCI token is a precondition of the WORK : a missing
+ * token is answered by `VisioActivationService::activate()`
+ * with the motivated 401 of #806 — no longer a generic 403 from here.
  *
  * If ANY check fails → 401/403/404
  *
@@ -35,11 +39,6 @@ final class ActivateVisioRequest extends FormRequest
         // Check 2: User must be enseignant or coordinateur
         // (route middleware also enforces this, defense in depth)
         if (!($user->isTeacher() || $user->isCoordinator())) {
-            return false;
-        }
-
-        // Check 3: User must have klassci token (needed for KLASSCI API calls)
-        if (!$user->klassci_token) {
             return false;
         }
 

@@ -153,11 +153,13 @@ final class ClassesLocalesListTest extends TestCase
         $this->classeLocale($this->ecole(), 'Ecole B', 'VZN3P8');
         $plateforme = User::factory()->create(['institution_id' => null, 'role' => 'supradmin']);
 
-        // Même sens, même motif que `/me/inscriptions` (ADR-906-01) : un client
-        // générique ne doit pas lire deux vocabulaires pour un seul refus.
+        // Même motif que `/me/inscriptions` (ADR-906-01) : un client générique
+        // ne doit pas lire deux vocabulaires pour un seul refus. La porte des
+        // comptes sans établissement répond la première, en 403 ; le 409 de
+        // ClassesLocalesQuery reste derrière elle, en défense en profondeur.
         $reponse = $this->asTenant($plateforme)
             ->getJson(self::URL)
-            ->assertStatus(409)
+            ->assertStatus(403)
             ->assertJsonPath('reason', 'no_institution');
 
         self::assertStringNotContainsString('BUR7K2', (string) $reponse->getContent());

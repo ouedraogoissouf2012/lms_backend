@@ -137,10 +137,12 @@ final class CloseTopicAuthorizationTest extends TestCase
         $response->assertStatus(403);
     }
 
-    public function test_supradmin_can_close_topic_cross_tenant(): void
+    /** Le supradmin plateforme ne ferme aucun sujet d'une école (décision produit) : refus, sujet inchangé. */
+    public function test_supradmin_cannot_close_any_topic(): void
     {
         $author = $this->createUser($this->instA, 'enseignant');
         $topic = $this->createTopic($this->instA, $author);
+        $avant = $topic->fresh()?->getAttributes();
 
         $supradmin = User::factory()->create([
             'institution_id' => null,
@@ -150,6 +152,7 @@ final class CloseTopicAuthorizationTest extends TestCase
 
         $response = $this->postJson("/api/forum/topics/{$topic->id}/close");
 
-        $response->assertStatus(200);
+        $response->assertStatus(403);
+        $this->assertSame($avant, $topic->fresh()?->getAttributes());
     }
 }

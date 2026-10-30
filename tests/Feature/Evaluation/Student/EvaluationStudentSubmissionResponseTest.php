@@ -81,6 +81,10 @@ final class EvaluationStudentSubmissionResponseTest extends TestCase
             ]);
     }
 
+    /**
+     * Une évaluation absente répond comme une évaluation sans copie de l'élève :
+     * un seul corps de refus, qui ne dit pas si l'évaluation existe ailleurs.
+     */
     public function test_my_submission_unknown_evaluation_returns_404_error_envelope(): void
     {
         Sanctum::actingAs($this->student);
@@ -88,7 +92,7 @@ final class EvaluationStudentSubmissionResponseTest extends TestCase
         $response = $this->getJson('/api/evaluations/999999/my-submission');
 
         $response->assertStatus(404)
-            ->assertExactJson(['success' => false, 'message' => 'Évaluation non trouvée']);
+            ->assertExactJson(['success' => false, 'message' => 'Aucune soumission trouvée pour cette évaluation']);
     }
 
     public function test_my_submission_without_submission_returns_404_error_envelope(): void

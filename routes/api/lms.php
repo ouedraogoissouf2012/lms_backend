@@ -316,8 +316,10 @@ Route::middleware(['auth:sanctum', 'klassci.sync'])->prefix('lms')->group(functi
     // NOTIFICATIONS
     // ============================================
 
-    // Préférences de notification d'un utilisateur
+    // Préférences de notification d'un utilisateur. Route PLATEFORME (D54) ; le
+    // contrôleur garde la règle de #512 sur les préférences d'un autre compte.
     Route::get('/notifications/preferences/{userId}', [LMSNotificationsPreferencesController::class, 'getNotificationPreferences'])
+        ->middleware('plateforme')
         ->name('lms.notifications.preferences');
 });
 

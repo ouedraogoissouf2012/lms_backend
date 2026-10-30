@@ -11,6 +11,7 @@ use App\Models\User;
 use App\Models\UserClass;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use PHPUnit\Framework\Attributes\DataProvider;
+use App\Http\Middleware\EnsureSchoolMemberOrPlatformRoute;
 use Tests\Concerns\ActsAsTenantUser;
 use Tests\TestCase;
 
@@ -112,16 +113,18 @@ final class LessonRoleNonReconnuTest extends TestCase
     }
 
     /** Le supradmin plateforme (institution NULL, comparaison stricte #511) garde sa vue. */
-    public function test_le_supradmin_plateforme_garde_sa_vue(): void
+    /**
+     * Le supradmin plateforme ne lit aucune leçon, brouillon ou publiée (décision
+     * produit) : la porte des comptes sans établissement le refuse.
+     */
+    public function test_le_supradmin_plateforme_ne_lit_aucune_lecon(): void
     {
         $this->ecoleAvecDeuxClasses('klassci', 'enseignant', inscrire: false);
         $supradmin = User::factory()->create(['institution_id' => null, 'role' => 'supradmin']);
 
-        $this->asTenant($supradmin)->getJson("/api/lessons/{$this->brouillonA->id}")->assertOk();
-        self::assertContains(
-            $this->brouillonA->id,
-            collect($this->asTenant($supradmin)->getJson('/api/lessons?per_page=100')->json('data.data'))->pluck('id')->all(),
-        );
+        $this->asTenant($supradmin)->getJson("/api/lessons/{$this->brouillonA->id}")
+            ->assertForbidden()->assertJsonPath('message', EnsureSchoolMemberOrPlatformRoute::MESSAGE);
+        $this->asTenant($supradmin)->getJson('/api/lessons?per_page=100')->assertForbidden()->assertJsonMissingPath('data');
     }
 
     private function ecoleAvecDeuxClasses(string $volet, string $role, bool $inscrire = true): User

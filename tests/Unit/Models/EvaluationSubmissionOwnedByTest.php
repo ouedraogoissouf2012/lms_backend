@@ -55,10 +55,27 @@ final class EvaluationSubmissionOwnedByTest extends TestCase
         // test sans remplir son office.
         $avecKlassci = new User;
         $avecKlassci->klassci_id = 4242;
+        $avecKlassci->institution_id = 7;
 
         $sql = EvaluationSubmission::query()->ownedBy($avecKlassci)->toSql();
 
         self::assertStringContainsString('klassci_etudiant_id', $sql);
+        self::assertStringContainsString('institution_id', $sql, 'L identifiant KLASSCI n est unique qu au sein d un etablissement.');
         self::assertStringNotContainsString('1 = 0', $sql);
+    }
+
+    public function test_un_eleve_sans_etablissement_n_interroge_pas_par_whereNull(): void
+    {
+        // Sans établissement, l'identifiant KLASSCI seul désignerait les copies
+        // de toutes les écoles ; et `where('institution_id', null)` deviendrait
+        // un whereNull, qui ramènerait les copies orphelines.
+        $sansEtablissement = new User;
+        $sansEtablissement->klassci_id = 4242;
+        $sansEtablissement->institution_id = null;
+
+        $sql = EvaluationSubmission::query()->ownedBy($sansEtablissement)->toSql();
+
+        self::assertStringNotContainsString('institution_id" is null', $sql);
+        self::assertStringContainsString('1 = 0', $sql, 'La portee doit ne rien ramener, explicitement.');
     }
 }

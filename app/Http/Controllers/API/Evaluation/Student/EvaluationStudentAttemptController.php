@@ -14,6 +14,7 @@ use App\Services\Evaluation\Student\EvaluationAttemptStateService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use PDOException;
 use RuntimeException;
 
 /**
@@ -37,11 +38,26 @@ final class EvaluationStudentAttemptController extends AuthenticatedController
     public function startEvaluation(int $id, StartEvaluationRequest $request): JsonResponse
     {
         $user = $this->authenticatedUser($request);
-        $result = $this->attemptState->startAttempt($id, $user);
+
+        // Le démarrage lit la classe de l'élève chez KLASSCI : une panne ou un
+        // jeton expiré se rendent comme dans sa liste, jamais en 500. Seuls les
+        // échecs KLASSCI sont classés ici. Une erreur de base (`QueryException`
+        // est une `PDOException`, donc une `RuntimeException`) remonte au
+        // gestionnaire global, qui la rapporte.
+        try {
+            $result = $this->attemptState->startAttempt($id, $user);
+        } catch (RuntimeException $e) {
+            if ($e instanceof PDOException) {
+                throw $e;
+            }
+
+            return $this->renderKlassciFailure($e);
+        }
 
         return match ($result['status']) {
+            // Hors de la liste de l'élève, quelle qu'en soit la raison : le même
+            // 404, qui ne distingue pas « n'existe pas » de « pas la vôtre ».
             'not_found' => $this->errorResponse('Évaluation non disponible', 404),
-            'no_questions' => $this->errorResponse('Cette évaluation n\'a pas encore de questions.', 422),
             'no_token' => MissingKlassciTokenException::jsonResponse(),
             // Non migré vers errorResponse() : cette réponse expose une clé racine
             // `window` hors enveloppe que le trait ne reproduit pas. La déplacer

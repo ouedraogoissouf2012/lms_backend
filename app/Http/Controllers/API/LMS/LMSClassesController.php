@@ -5,12 +5,14 @@ declare(strict_types=1);
 namespace App\Http\Controllers\API\LMS;
 
 use App\Exceptions\UnserializablePayloadException;
+use App\Http\Controllers\API\Concerns\RendersKlassciBackedErrors;
 use App\Http\Controllers\AuthenticatedController;
 use App\Services\Classe\ClasseDetailsQueryService;
 use App\Services\Classe\ClasseEtudiantsQueryService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Psr\Log\LoggerInterface;
+use RuntimeException;
 use Throwable;
 
 /**
@@ -35,6 +37,10 @@ use Throwable;
  */
 final class LMSClassesController extends AuthenticatedController
 {
+    // Le roster : un refus KLASSCI garde son statut et son motif, une panne
+    // devient un 503 + `Retry-After` (#270). Jamais un 500 générique.
+    use RendersKlassciBackedErrors;
+
     public function __construct(
         private readonly ClasseDetailsQueryService $detailsService,
         private readonly ClasseEtudiantsQueryService $etudiantsService,
@@ -99,6 +105,8 @@ final class LMSClassesController extends AuthenticatedController
             // attrapee » — c'est une erreur de programmation, pas une panne
             // metier. On la relance pour le handler global.
             throw $e;
+        } catch (RuntimeException $e) {
+            return $this->renderKlassciFailure($e);
         } catch (Throwable $e) {
             $this->logger->error('Erreur récupération étudiants classe', [
                 'classe_id' => $classeId,

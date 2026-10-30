@@ -47,6 +47,9 @@ final class EvaluationSubmissionOwnerTest extends TestCase
 {
     use RefreshDatabase;
 
+    /** La classe KLASSCI de l'élève, que `me/dashboard` rend et que portent ses évaluations. */
+    private const CLASSE = 4242;
+
     private Institution $institution;
 
     private User $student;
@@ -63,9 +66,13 @@ final class EvaluationSubmissionOwnerTest extends TestCase
             'klassci_token' => 'student-klassci-token',
         ]);
 
-        // Aucune fenêtre KLASSCI : le contrôle passe sans refus (#499).
+        // La classe de l'élève, que portent ses évaluations, et aucune fenêtre
+        // KLASSCI : le contrôle passe sans refus (#499).
         $this->mock(KlassciProxyService::class, function (MockInterface $mock): void {
-            $mock->shouldReceive('requestWithUserToken')->andReturn(['data' => []]);
+            $mock->shouldReceive('requestWithUserToken')
+                ->andReturnUsing(static fn (string $jeton, string $endpoint): array => $endpoint === 'me/dashboard'
+                    ? ['data' => ['classe' => ['id' => self::CLASSE, 'name' => 'L1']]]
+                    : ['data' => []]);
         });
     }
 
@@ -73,6 +80,7 @@ final class EvaluationSubmissionOwnerTest extends TestCase
     {
         $evaluation = Evaluation::factory()->planifiee()->create([
             'institution_id' => $this->institution->id,
+            'klassci_classe_id' => self::CLASSE,
             'klassci_evaluation_id' => 9001,
             'max_attempts' => $maxAttempts,
             'allow_retake' => $allowRetake,

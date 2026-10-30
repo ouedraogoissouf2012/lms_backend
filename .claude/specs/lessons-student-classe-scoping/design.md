@@ -1,5 +1,10 @@
 # Design — Restreindre les leçons d'un étudiant à sa classe (#482)
 
+> **Historique (2026-10-29, #950).** Le service `StudentClasseResolver` décrit ici a été réduit à un
+> délégué de `EnrollmentSource` (#712), puis supprimé faute d'appelant (#950). La résolution des classes
+> locales d'un apprenant passe par `EnrollmentSource::localClasseIdsFor()`, liée à
+> `CompositeEnrollmentSource` (`AppServiceProvider`). Le reste de ce document est conservé tel quel.
+
 ## 1. Le pont KLASSCI → local (cœur du problème)
 
 ```

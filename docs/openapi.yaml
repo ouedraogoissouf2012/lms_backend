@@ -710,6 +710,183 @@ components:
                 Lien vers l'application WEB, jamais vers l'API. Affiche UNE
                 SEULE FOIS : le jeton n'est stocke qu'en empreinte SHA-256.
 
+    # D9 — creation d'une seance LOCALE (POST /lms/seances).
+    SeanceLocaleInput:
+      type: object
+      required:
+        - titre
+        - date_seance
+      properties:
+        titre:
+          type: string
+          minLength: 3
+          maxLength: 255
+        date_seance:
+          type: string
+          description: "Toute date lisible : `2026-11-03`, `2026-11-03 08:30:00`."
+          example: "2026-11-03 08:30:00"
+        matiere_nom:
+          type: string
+          maxLength: 191
+          nullable: true
+        classe_nom:
+          type: string
+          maxLength: 191
+          nullable: true
+          description: "Libelle libre, pour l'affichage."
+        classe_id:
+          type: integer
+          minimum: 1
+          nullable: true
+          description: |
+            Classe de l'etablissement de l'auteur, facultative (une classe locale
+            ou le miroir d'une classe KLASSCI). Une classe inexistante ou d'une
+            autre ecole rend 404.
+
+    SeanceLocaleCreated:
+      type: object
+      additionalProperties: false
+      required:
+        - success
+        - message
+        - data
+      properties:
+        success:
+          type: boolean
+          enum:
+            - true
+        message:
+          type: string
+          example: "Séance créée"
+        data:
+          type: object
+          additionalProperties: false
+          required:
+            - id
+            - titre
+            - date_seance
+            - matiere_nom
+            - classe_nom
+            - classe_id
+            - created_by
+            - institution_id
+            - is_active
+            - klassci_seance_id
+            - klassci_enseignant_id
+            - klassci_matiere_id
+            - klassci_classe_id
+            - current_participants_count
+            - created_at
+            - updated_at
+          properties:
+            id:
+              type: integer
+            titre:
+              type: string
+            date_seance:
+              type: string
+              format: date-time
+            matiere_nom:
+              type: string
+              nullable: true
+            classe_nom:
+              type: string
+              nullable: true
+            classe_id:
+              type: integer
+              nullable: true
+            created_by:
+              type: integer
+            institution_id:
+              type: integer
+            is_active:
+              type: boolean
+            klassci_seance_id:
+              type: integer
+              nullable: true
+              description: "Toujours nul pour une seance locale."
+            klassci_enseignant_id:
+              type: integer
+              nullable: true
+              description: "Toujours nul pour une seance locale."
+            klassci_matiere_id:
+              type: integer
+              nullable: true
+              description: "Toujours nul pour une seance locale."
+            klassci_classe_id:
+              type: integer
+              nullable: true
+              description: "Toujours nul pour une seance locale."
+            current_participants_count:
+              type: integer
+              minimum: 0
+            created_at:
+              type: string
+              format: date-time
+            updated_at:
+              type: string
+              format: date-time
+
+    # Les refus de POST /lms/seances, SERRES : propres a la route, pour que le
+    # test de contrat garde aussi les erreurs (MessageOnly et ValidationFailed,
+    # partages, restent laches).
+    SeanceLocaleRefus:
+      type: object
+      additionalProperties: false
+      required:
+        - success
+        - message
+      properties:
+        success:
+          type: boolean
+          enum:
+            - false
+        message:
+          type: string
+
+    SeanceLocaleInterdite:
+      type: object
+      additionalProperties: false
+      required:
+        - success
+        - message
+      properties:
+        success:
+          type: boolean
+          enum:
+            - false
+        message:
+          type: string
+        reason:
+          type: string
+          description: |
+            Facultatif. `no_institution` : un compte sans etablissement, refuse
+            par la porte des comptes sans etablissement (ADR-906-01).
+          enum:
+            - no_institution
+
+    SeanceLocaleInvalide:
+      type: object
+      additionalProperties: false
+      required:
+        - success
+        - message
+        - errors
+      properties:
+        success:
+          type: boolean
+          enum:
+            - false
+        message:
+          type: string
+        errors:
+          type: object
+          description: "Messages par champ."
+          additionalProperties:
+            type: array
+            items:
+              type: string
+
     VisioConsentInput:
       type: object
       required:
@@ -1301,6 +1478,76 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+
+  /lms/seances:
+    post:
+      tags:
+        - Visio
+      summary: "Creer une seance locale"
+      description: |
+        Cree une seance LOCALE, dans les deux volets (ecole KLASSCI et ecole
+        autonome) : aucun identifiant KLASSCI n'est pose, tous les `klassci_*`
+        valent nul, et `institution_id` est celui de l'auteur.
+
+        `classe_id` est FACULTATIF : une seance peut se creer avant que la
+        classe soit arretee. S'il est fourni, la classe doit etre de
+        l'etablissement de l'auteur. Sinon 404, le meme refus pour une classe
+        inexistante et pour celle d'une autre ecole : la reponse ne dit pas
+        quels identifiants existent ailleurs.
+
+        Reserve aux roles `enseignant` (alias `teacher`), `coordinateur` (alias
+        `coordinator`) et `superAdmin`, ecrits exactement ainsi. Le 403 a
+        plusieurs sources, et le client ne doit pas lire le message :
+        - le role de la route, qui compare sans la casse et refuse tout autre
+          role, `admin` compris (« Accès refusé - Permissions insuffisantes ») ;
+        - l'autorisation de la requete, qui compare strictement : une variante
+          de casse (`Enseignant`) passe la route et est refusee ici. Son message
+          passe par le rendu generique des exceptions : « This action is
+          unauthorized. » si `APP_DEBUG` est vrai, « Une erreur est survenue. »
+          sinon, ce qui est le cas en production ;
+        - un etablissement desactive ou introuvable (« Établissement désactivé.
+          Accès suspendu, contactez votre administration. ») ;
+        - un compte sans etablissement, refuse par la porte des comptes sans
+          etablissement, avec le motif `no_institution`.
+      security:
+        - sanctum: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SeanceLocaleInput'
+      responses:
+        '201':
+          description: "Seance creee."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SeanceLocaleCreated'
+        '401':
+          description: "Non authentifie"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SeanceLocaleRefus'
+        '403':
+          description: "Role non admis a creer une seance, ou compte sans etablissement"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SeanceLocaleInterdite'
+        '404':
+          description: "Classe introuvable dans l'etablissement de l'auteur (inexistante, ou d'une autre ecole)"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SeanceLocaleRefus'
+        '422':
+          description: "Charge invalide"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SeanceLocaleInvalide'
 
   /lms/visio/consent:
     post:
@@ -3398,13 +3645,10 @@ paths:
                   window:
                     $ref: '#/components/schemas/EvaluationWindow'
         '404':
-          description: "Evaluation inexistante ou non publiee (« Evaluation non disponible »)"
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/MessageOnly'
-        '422':
-          description: "L evaluation n a encore aucune question"
+          description: |
+            « Evaluation non disponible » : l evaluation ne figure pas dans la
+            liste de l eleve (`GET /evaluations/student`), quelle qu en soit la
+            raison — la meme regle que le detail `GET /evaluations/{id}`.
           content:
             application/json:
               schema:
@@ -3413,8 +3657,8 @@ paths:
           $ref: '#/components/responses/TooManyRequests'
         '503':
           description: |
-            Fenetre non verifiable : KLASSCI injoignable. Refus par prudence
-            (aucune tentative creee) — reessayer.
+            KLASSCI injoignable : la classe de l eleve ou la fenetre ne peut pas
+            etre verifiee. Refus par prudence (aucune tentative creee) — reessayer.
           content:
             application/json:
               schema:
@@ -3583,7 +3827,15 @@ paths:
         '401':
           $ref: '#/components/responses/KlassciUnauthorized'
         '404':
-          description: "Evaluation non trouvee"
+          description: |
+            « Evaluation non trouvee » : l evaluation ne figure pas dans la liste
+            de l eleve — la meme regle que `/start`.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageOnly'
+        '503':
+          description: "KLASSCI injoignable : la classe de l eleve ne peut pas etre lue (en-tete `Retry-After`)."
           content:
             application/json:
               schema:
@@ -3690,7 +3942,11 @@ paths:
         '401':
           $ref: '#/components/responses/KlassciUnauthorized'
         '404':
-          description: "Evaluation non trouvee, ou aucune copie de l eleve pour elle"
+          description: |
+            « Aucune soumission trouvee pour cette evaluation » : l eleve n a pas
+            de copie sur cette evaluation dans son etablissement. Le meme corps
+            vaut pour une evaluation inexistante. Le droit de lire sa copie tient
+            a la copie, pas a la classe actuelle de l eleve.
           content:
             application/json:
               schema:

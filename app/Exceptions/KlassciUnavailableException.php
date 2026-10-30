@@ -46,6 +46,21 @@ final class KlassciUnavailableException extends RuntimeException
         return new self('URL de base KLASSCI absente ou invalide (config services.klassci.url / KLASSCI_API_URL).');
     }
 
+    /**
+     * KLASSCI a répondu 2xx, mais sans le bloc que la lecture attend — par exemple
+     * `{success: false}` sans `data`.
+     *
+     * Ce n'est pas une mesure : rendre cette réponse comme une liste vide
+     * fabriquerait un zéro, indiscernable d'une classe réellement vide. Elle prend
+     * donc le rendu canonique d'une indisponibilité (503 + `Retry-After`). Le
+     * message interne nomme l'endpoint pour le journal ; il ne sort jamais vers
+     * le client (§1.2).
+     */
+    public static function invalidPayload(string $endpoint): self
+    {
+        return new self("Réponse KLASSCI sans le bloc attendu ({$endpoint}).");
+    }
+
     public static function upstreamFailure(int $status): self
     {
         return new self("API KLASSCI indisponible ou en erreur serveur ({$status}).", $status);

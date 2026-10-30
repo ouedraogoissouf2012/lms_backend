@@ -2,14 +2,17 @@
 
 namespace Tests\Feature\Requests;
 
+use App\Exceptions\MissingKlassciTokenException;
 use App\Models\Institution;
 use App\Models\Seance;
 use App\Models\User;
 use Laravel\Sanctum\Sanctum;
+use Tests\Concerns\ActsAsTenantUser;
 use Tests\TestCase;
 
 class ActivateVisioRequestTest extends TestCase
 {
+    use ActsAsTenantUser;
     use \Illuminate\Foundation\Testing\RefreshDatabase;
 
     private Institution $institution;
@@ -54,17 +57,22 @@ class ActivateVisioRequestTest extends TestCase
         $response->assertStatus(403);
     }
 
-    public function test_teacher_without_klassci_token_cannot_activate(): void
+    /**
+     * Le jeton est une condition du TRAVAIL (l'emploi du temps KLASSCI), pas un
+     * droit : son absence est le 401 motivé de #806, rendu par le service — et
+     * non plus un 403 générique de la FormRequest. Vrai jeton porteur (`asTenant`).
+     */
+    public function test_teacher_without_klassci_token_gets_the_motivated_401(): void
     {
         $teacherWithoutToken = User::factory()
             ->teacher()
             ->for($this->institution)
             ->create(['klassci_token' => null]);
 
-        Sanctum::actingAs($teacherWithoutToken);
-        $response = $this->postJson("/api/lms/seances/{$this->seance->id}/activate-visio");
-
-        $response->assertStatus(403);
+        $this->asTenant($teacherWithoutToken)
+            ->postJson("/api/lms/seances/{$this->seance->id}/activate-visio")
+            ->assertUnauthorized()
+            ->assertExactJson(MissingKlassciTokenException::payload());
     }
 
     public function test_teacher_with_token_can_attempt_activation(): void
@@ -85,17 +93,17 @@ class ActivateVisioRequestTest extends TestCase
         $this->assertNotEquals(403, $response->status());
     }
 
-    public function test_coordinator_without_token_cannot_activate(): void
+    public function test_coordinator_without_token_gets_the_motivated_401(): void
     {
         $coordWithoutToken = User::factory()
             ->coordinator()
             ->for($this->institution)
             ->create(['klassci_token' => null]);
 
-        Sanctum::actingAs($coordWithoutToken);
-        $response = $this->postJson("/api/lms/seances/{$this->seance->id}/activate-visio");
-
-        $response->assertStatus(403);
+        $this->asTenant($coordWithoutToken)
+            ->postJson("/api/lms/seances/{$this->seance->id}/activate-visio")
+            ->assertUnauthorized()
+            ->assertExactJson(MissingKlassciTokenException::payload());
     }
 
     public function test_authorized_user_passes_formrequest_validation(): void

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Visio\Lifecycle;
 
+use App\Exceptions\MissingKlassciTokenException;
 use App\Models\Classe;
 use App\Models\Seance;
 use App\Models\User;
@@ -36,13 +37,23 @@ final class VisioActivationService
     /**
      * Active la visio sur une séance future.
      *
+     * Sans jeton KLASSCI : 401 motivé (#806). La séance n'est cherchée que dans
+     * l'emploi du temps KLASSCI ({@see EmploiTempsSeanceLocator::locate()}) ;
+     * sans jeton, cette recherche rendait « Séance non trouvée », une absence
+     * présentée comme un 404. Le refus vivait auparavant dans la FormRequest,
+     * en 403 générique.
+     *
      * @param  array<string, mixed>  $params  Payload validé (réservé futur)
      * @return array{status:int, payload: array<string, mixed>}
      */
     public function activate(int $seanceId, User $user, array $params = []): array
     {
+        $klassciToken = $user->klassci_token;
+        if (! is_string($klassciToken) || $klassciToken === '') {
+            return ['status' => 401, 'payload' => MissingKlassciTokenException::payload()];
+        }
+
         try {
-            $klassciToken = $user->klassci_token;
             [$seanceFound, $matiereInfo] = $this->seanceLocator->locate($seanceId, $user, $klassciToken);
 
             if (! $seanceFound) {

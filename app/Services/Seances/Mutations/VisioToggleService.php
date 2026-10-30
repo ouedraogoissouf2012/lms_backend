@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Seances\Mutations;
 
+use App\Exceptions\MissingKlassciTokenException;
 use App\Http\Controllers\API\LMS\Concerns\FetchesSeanceDataFromKlassci;
 use App\Models\Seance;
 use App\Models\User;
@@ -45,6 +46,13 @@ final class VisioToggleService
     /**
      * Toggle la visio pour la séance donnée.
      *
+     * Sans jeton KLASSCI : 401 motivé (#806), AVANT toute écriture. La séance
+     * est cherchée — et créée si absente — sous son identifiant KLASSCI
+     * (`restoreOrCreateVisio`) : c'est une opération KLASSCI. Une séance
+     * d'école autonome naît avec `klassci_seance_id` nul ; la basculer ici
+     * créerait une séance fantôme sous son identifiant local, et répondrait
+     * « activée » sans avoir touché la vraie.
+     *
      * @return array{status:int, payload: array<string, mixed>}
      */
     public function toggle(
@@ -53,9 +61,13 @@ final class VisioToggleService
         ?string $visioType,
         User $user,
     ): array {
+        $klassciToken = $user->klassci_token;
+        if (! is_string($klassciToken) || $klassciToken === '') {
+            return ['status' => 401, 'payload' => MissingKlassciTokenException::payload()];
+        }
+
         try {
             $visioType = $visioType ?? 'jitsi';
-            $klassciToken = $user->klassci_token;
 
             $this->logger->info('Toggle visio séance', [
                 'klassci_seance_id' => $seanceId,
@@ -93,10 +105,7 @@ final class VisioToggleService
                 $visio->save();
             }
 
-            $notificationsSent = 0;
-            if ($enabled && $klassciToken !== null && $klassciToken !== '') {
-                $notificationsSent = $this->dispatchNotifications($seanceId, $visio, (string) $klassciToken);
-            }
+            $notificationsSent = $enabled ? $this->dispatchNotifications($seanceId, $visio, $klassciToken) : 0;
 
             return [
                 'status' => 200,
@@ -110,11 +119,11 @@ final class VisioToggleService
                         'visio_room_id' => $visio->visio_room_id,
                         'visio_active' => $visio->visio_active,
                         'notifications_sent' => $notificationsSent,
-                        'notifications_queued' => $enabled && $klassciToken !== null && $klassciToken !== '',
+                        // Le jeton est garanti à ce point : la planification suit l'activation.
+                        'notifications_queued' => $enabled,
                     ],
                 ],
             ];
-
         } catch (Throwable $e) {
             $this->logger->error('Erreur toggle visio séance', [
                 'seance_id' => $seanceId,

@@ -6,10 +6,12 @@ use App\Models\Institution;
 use App\Models\Seance;
 use App\Models\User;
 use Laravel\Sanctum\Sanctum;
+use Tests\Concerns\ActsAsTenantUser;
 use Tests\TestCase;
 
 class ValidateParticipantRequestTest extends TestCase
 {
+    use ActsAsTenantUser;
     use \Illuminate\Foundation\Testing\RefreshDatabase;
 
     private Institution $institution;
@@ -43,18 +45,28 @@ class ValidateParticipantRequestTest extends TestCase
         $response->assertStatus(401);
     }
 
-    public function test_user_without_klassci_token_cannot_validate(): void
+    /**
+     * Sans jeton, la garde ne refuse plus : la validation lit des données
+     * locales (#712). C'est le SERVICE qui répond — ici, la séance n'a pas de
+     * visio. Vrai jeton porteur (`asTenant`).
+     */
+    public function test_user_without_klassci_token_is_judged_by_the_service(): void
     {
         $user = User::factory()->teacher()->for($this->institution)->create([
             'klassci_token' => null,
         ]);
 
-        Sanctum::actingAs($user);
-        $response = $this->postJson("/api/lms/seances/{$this->seance->klassci_seance_id}/validate-participant", [
-            'user_id' => $this->student->id,
-        ]);
-
-        $response->assertStatus(403);
+        $this->asTenant($user)
+            ->postJson("/api/lms/seances/{$this->seance->klassci_seance_id}/validate-participant", [
+                'user_id' => $this->student->id,
+            ])
+            ->assertForbidden()
+            ->assertExactJson([
+                'success' => false,
+                'authorized' => false,
+                'reason' => 'visio_not_enabled',
+                'message' => 'Visioconférence non activée pour cette séance',
+            ]);
     }
 
     public function test_valid_participant_passes_validation(): void

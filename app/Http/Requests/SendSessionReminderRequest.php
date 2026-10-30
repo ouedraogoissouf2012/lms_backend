@@ -13,13 +13,16 @@ use Illuminate\Foundation\Http\FormRequest;
  *
  * ## Authorization Model
  * 1. User authenticated (via auth:sanctum middleware)
- * 2. User has KLASSCI token (for subsequent processing)
- * 3. Input validation:
+ * 2. Input validation:
  *    - seance_cours_id (required, integer) - ID of the course seance
  *    - channels[] (required, array with enum values: whatsapp, email, sms, app)
  *    - minutes_before (nullable, integer 0-1440)
  *
  * If ANY check fails → 401/422
+ *
+ * No KLASSCI token is required : the reminder is a stub that calls nothing
+ * upstream. Requiring one only refused accounts of standalone schools, which
+ * never hold a token — a generic 403 that authorized nothing.
  */
 final class SendSessionReminderRequest extends FormRequest
 {
@@ -28,11 +31,6 @@ final class SendSessionReminderRequest extends FormRequest
         // Check 1: User must be authenticated
         $user = auth()->user();
         if (!$user) {
-            return false;
-        }
-
-        // Check 2: User must have klassci token
-        if (!$user->klassci_token) {
             return false;
         }
 

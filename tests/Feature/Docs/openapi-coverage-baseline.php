@@ -93,7 +93,6 @@ return [
     '/lms/matieres/{matiereId}',
     '/lms/notifications/preferences/{userId}',
     '/lms/notifications/send-session-reminder',
-    '/lms/seances',
     '/lms/seances/history',
     '/lms/seances/my-classes',
     '/lms/seances/my-teaching',

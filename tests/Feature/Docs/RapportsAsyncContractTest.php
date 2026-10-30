@@ -4,12 +4,14 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Docs;
 
+use App\Jobs\GenerateReportPdf;
 use App\Models\Institution;
 use App\Models\Seance;
 use App\Models\User;
 use App\Services\Report\AsyncReportStore;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Testing\TestResponse;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -45,6 +47,9 @@ final class RapportsAsyncContractTest extends TestCase
         parent::setUp();
         $this->disableKlassciMiddleware();
         Storage::fake('local');
+        // La file simulée : le job poussé s'exécute à la main, de la même façon
+        // sur les trois jambes de la CI (database ou redis).
+        Queue::fake();
     }
 
     /** @return iterable<string, array{0: bool, 1: string}> */
@@ -79,7 +84,10 @@ final class RapportsAsyncContractTest extends TestCase
         $this->app->make(AsyncReportStore::class)->running($id);
         $this->suivi($coordinateur, $id, 'running');
 
-        Artisan::call('queue:work', ['--once' => true, '--queue' => 'low', '--stop-when-empty' => true]);
+        Queue::assertPushedOn('low', GenerateReportPdf::class);
+        $job = Queue::pushed(GenerateReportPdf::class)->first();
+        self::assertInstanceOf(GenerateReportPdf::class, $job);
+        $this->app->call([$job, 'handle']);
         self::assertNotNull($this->suivi($coordinateur, $id, 'completed')->json('data.filename'));
 
         $fichier = $this->asTenant($coordinateur)->get("/api/admin/reports/async/$id/download")->assertOk();
@@ -109,6 +117,11 @@ final class RapportsAsyncContractTest extends TestCase
     /**
      * Un rapport d'un autre utilisateur, un identifiant inconnu et un rapport
      * expiré rendent le MÊME 404, au suivi comme au téléchargement.
+     *
+     * L'expiration est simulée par l'entrée retirée du cache : le temps figé de
+     * Laravel (`travel`) n'agit pas sur le TTL d'une clé Redis, qui court sur
+     * l'horloge réelle du serveur. La durée de 24 heures elle-même est éprouvée
+     * par AsyncReportStoreTest.
      */
     #[DataProvider('volets')]
     public function test_404_le_meme_refus_pour_ce_qui_n_est_pas_a_soi(bool $autonome): void
@@ -119,9 +132,8 @@ final class RapportsAsyncContractTest extends TestCase
 
         $voisin = $this->asTenant($this->compte($ecole, 'coordinateur'))->getJson("/api/admin/reports/async/$id")->assertNotFound();
         $inconnu = $this->asTenant($demandeur)->getJson('/api/admin/reports/async/00000000-0000-0000-0000-000000000000')->assertNotFound();
-        $this->travel(25)->hours();
+        Cache::forget('async_report_'.$id);
         $expire = $this->asTenant($demandeur)->getJson("/api/admin/reports/async/$id")->assertNotFound();
-        $this->travelBack();
 
         $this->assertMatchesOpenApiResponse($voisin, self::SUIVI, 'get');
         $this->assertOpenApiSchemaRefuseSans($voisin, self::SUIVI, 'get', 'message');

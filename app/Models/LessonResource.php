@@ -50,14 +50,16 @@ class LessonResource extends Model
     }
 
     /**
-     * Scope: Ordonné
+     * Ordre total (#963, sur le modèle de Lesson, #937) : `id` départage les égalités.
      *
      * @param  Builder<LessonResource>  $query
      * @return Builder<LessonResource>
      */
     public function scopeOrdered(Builder $query)
     {
-        return $query->orderBy('order')->orderBy('created_at');
+        return $query->orderBy($query->qualifyColumn('order'))
+            ->orderBy($query->qualifyColumn('created_at'))
+            ->orderBy($query->qualifyColumn('id'));
     }
 
     /**

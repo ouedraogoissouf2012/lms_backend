@@ -123,9 +123,12 @@ final class MyCoursesPresenter
                 'klassci_id' => $enseignant->klassci_id,
                 'name' => $enseignant->name,
             ] : null,
+            // `matieres` n'a pas de colonne `name` : seulement `libelle`, NOT NULL.
+            // L'ancien repli `name ?? libelle ?? 'Matière'` lisait une colonne
+            // inexistante et gardait une constante inatteignable (#962).
             'matiere' => $lesson->matiere ? [
                 'id' => $lesson->matiere->id,
-                'name' => $lesson->matiere->name ?? $lesson->matiere->libelle ?? 'Matière',
+                'name' => $lesson->matiere->libelle,
             ] : null,
             // `classes` n'a ni `name` ni `nom` : seulement `libelle`, NOT NULL.
             // L'ancien repli `name ?? nom ?? 'Classe'` rendait toujours la
@@ -168,7 +171,7 @@ final class MyCoursesPresenter
         return [
             'matieres' => $uniqueMatieres->map(fn (Matiere $m): array => [
                 'id' => $m->id,
-                'name' => (string) ($m->name ?? $m->libelle ?? 'Matière'),
+                'name' => $m->libelle,
             ]),
             'enseignants' => $uniqueEnseignants->map(fn (User $e): array => [
                 'id' => $e->id,

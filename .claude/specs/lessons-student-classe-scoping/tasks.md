@@ -1,5 +1,8 @@
 # Tasks — Restreindre les leçons d'un étudiant à sa classe (#482)
 
+> **Historique (2026-10-29, #950).** `StudentClasseResolver` (tâches 2.1, 2.2 et 4.2) n'existe plus :
+> voir la note en tête de [design.md](design.md).
+
 Ordre TDD : RED → GREEN → non-régression → vérif.
 
 ## 1. Test d'isolation (RED)

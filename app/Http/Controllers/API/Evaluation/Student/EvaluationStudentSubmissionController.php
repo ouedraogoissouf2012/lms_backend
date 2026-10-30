@@ -8,6 +8,7 @@ use App\Exceptions\MissingKlassciTokenException;
 use App\Http\Controllers\AuthenticatedController;
 use App\Models\Evaluation;
 use App\Models\EvaluationSubmission;
+use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -36,17 +37,9 @@ final class EvaluationStudentSubmissionController extends AuthenticatedControlle
                 return MissingKlassciTokenException::jsonResponse();
             }
 
-            $evaluation = Evaluation::find($id);
-            if (!$evaluation) {
-                return $this->errorResponse('Évaluation non trouvée', 404);
-            }
-
-            $submission = EvaluationSubmission::where('evaluation_id', $id)
-                ->where('klassci_etudiant_id', $user->klassci_id)
-                ->orderBy('attempt', 'desc')
-                ->first();
-
-            if (!$submission) {
+            $submission = $this->ownLatestCopy($id, $user);
+            $evaluation = $submission?->evaluation;
+            if (! $submission instanceof EvaluationSubmission || ! $evaluation instanceof Evaluation) {
                 return $this->errorResponse('Aucune soumission trouvée pour cette évaluation', 404);
             }
 
@@ -114,5 +107,31 @@ final class EvaluationStudentSubmissionController extends AuthenticatedControlle
             ]);
             return $this->errorResponse('Erreur lors de la récupération de la soumission', 500);
         }
+    }
+
+    /**
+     * La dernière copie de CET élève sur cette évaluation, dans SON établissement.
+     *
+     * Le droit de lire sa copie tient à la PROPRIÉTÉ de la copie, pas à sa
+     * classe actuelle : l'écran des notes (my-grades) propose aussi les copies
+     * des classes passées. Le démarrage d'une copie passe désormais par la
+     * portée de l'élève (LearnerEvaluationScope) ; les copies plus anciennes
+     * restent lisibles par leur auteur.
+     *
+     * La copie est celle de l'élève DANS SON établissement (`ownedBy` : sans
+     * établissement, rien). L'évaluation est cherchée dans ce même
+     * établissement, explicitement, sans s'en remettre au scope global, ouvert
+     * quand aucun tenant n'est posé. Une évaluation absente, d'une autre école
+     * ou sans copie de l'élève rendent le même 404.
+     */
+    private function ownLatestCopy(int $evaluationId, User $user): ?EvaluationSubmission
+    {
+        return EvaluationSubmission::query()
+            ->where('evaluation_id', $evaluationId)
+            ->ownedBy($user)
+            ->whereIn('evaluation_id', Evaluation::query()->select('id')->where('institution_id', $user->institution_id))
+            ->with('evaluation')
+            ->orderBy('attempt', 'desc')
+            ->first();
     }
 }

@@ -108,7 +108,8 @@ final class FileReadAuthorizationTest extends TestCase
         );
     }
 
-    public function test_supradmin_can_read_cross_tenant(): void
+    /** Le supradmin plateforme ne lit aucun fichier d'une école (décision produit) : la porte le refuse. */
+    public function test_supradmin_cannot_read_any_school_file(): void
     {
         $owner = $this->createUser($this->instA, 'etudiant');
         $file = $this->createFile($this->instA, $owner);
@@ -118,7 +119,7 @@ final class FileReadAuthorizationTest extends TestCase
         ]);
         Sanctum::actingAs($supradmin);
 
-        $this->getJson("/api/files/{$file->id}")->assertStatus(200);
+        $this->getJson("/api/files/{$file->id}")->assertStatus(403)->assertJsonMissingPath('data');
     }
 
     public function test_download_admin_cannot_cross_tenant(): void

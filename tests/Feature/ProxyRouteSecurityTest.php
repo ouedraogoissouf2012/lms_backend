@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use Tests\TestCase;
+use App\Models\Institution;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
@@ -56,6 +57,7 @@ class ProxyRouteSecurityTest extends TestCase
     public function test_authenticated_student_can_access_proxy_data_routes(): void
     {
         $user = User::factory()->create([
+            'institution_id' => Institution::factory()->create()->id,
             'role' => 'etudiant',
             'last_klassci_sync' => now(),
         ]);
@@ -83,6 +85,7 @@ class ProxyRouteSecurityTest extends TestCase
     public function test_student_cannot_access_test_connection(): void
     {
         $user = User::factory()->create([
+            'institution_id' => Institution::factory()->create()->id,
             'role' => 'etudiant',
             'last_klassci_sync' => now(),
         ]);
@@ -104,6 +107,7 @@ class ProxyRouteSecurityTest extends TestCase
     public function test_coordinator_can_access_test_connection(): void
     {
         $user = User::factory()->create([
+            'institution_id' => Institution::factory()->create()->id,
             'role' => 'coordinateur',
             'last_klassci_sync' => now(),
         ]);
@@ -145,6 +149,7 @@ class ProxyRouteSecurityTest extends TestCase
     public function test_authenticated_student_can_access_me_dashboard(): void
     {
         $user = User::factory()->create([
+            'institution_id' => Institution::factory()->create()->id,
             'role' => 'etudiant',
             'last_klassci_sync' => now(),
         ]);
@@ -164,6 +169,7 @@ class ProxyRouteSecurityTest extends TestCase
     public function test_student_cannot_access_me_teacher_dashboard(): void
     {
         $user = User::factory()->create([
+            'institution_id' => Institution::factory()->create()->id,
             'role' => 'etudiant',
             'last_klassci_sync' => now(),
         ]);
@@ -185,6 +191,7 @@ class ProxyRouteSecurityTest extends TestCase
     public function test_teacher_can_access_me_teacher_dashboard(): void
     {
         $user = User::factory()->create([
+            'institution_id' => Institution::factory()->create()->id,
             'role' => 'enseignant',
             'last_klassci_sync' => now(),
         ]);

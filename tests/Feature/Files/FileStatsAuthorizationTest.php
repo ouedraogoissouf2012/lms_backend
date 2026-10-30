@@ -89,7 +89,8 @@ final class FileStatsAuthorizationTest extends TestCase
             ->assertJsonPath('data.total_files', 1);
     }
 
-    public function test_supradmin_sees_global_stats(): void
+    /** Le supradmin plateforme ne reçoit aucune statistique de fichiers, ni leurs derniers dépôts (décision produit). */
+    public function test_supradmin_gets_no_file_stats(): void
     {
         $supradmin = User::factory()->create([
             'institution_id' => null,
@@ -98,8 +99,8 @@ final class FileStatsAuthorizationTest extends TestCase
         Sanctum::actingAs($supradmin);
 
         $this->getJson('/api/files/stats')
-            ->assertStatus(200)
-            ->assertJsonPath('data.total_files', 5);
+            ->assertStatus(403)
+            ->assertJsonMissingPath('data');
     }
 
     public function test_superadmin_institution_is_scoped_to_their_institution(): void

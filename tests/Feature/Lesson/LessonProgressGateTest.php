@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Lesson;
 
+use App\Http\Middleware\EnsureSchoolMemberOrPlatformRoute;
 use App\Models\Chapter;
 use App\Models\ChapterProgress;
 use App\Models\Classe;
@@ -174,20 +175,21 @@ final class LessonProgressGateTest extends TestCase
 
         // Ce cas serait vert MÊME SANS le correctif C2 : avec un vrai jeton, le
         // scope global masque déjà la leçon de l'autre école (introuvable avant
-        // la porte). Il documente le comportement, il ne prouve pas C2. Le cas qui
-        // prouve C2 sur la liste est l'enseignant SANS établissement, que le
-        // scope ne filtre pas : test_un_compte_sans_etablissement_n_ecrit_rien.
+        // la porte). Il documente le comportement, il ne prouve pas C2. Le compte
+        // SANS établissement, que le scope ne filtre pas, est désormais refusé
+        // par la porte des comptes sans établissement, avant C2 : la preuve de C2
+        // sans passer par la porte appartient au lot de défense en profondeur.
         $ailleurs = Institution::factory()->create();
         $coordinateurAilleurs = User::factory()->create(['institution_id' => $ailleurs->id, 'role' => 'coordinateur']);
         $this->asTenant($coordinateurAilleurs)->getJson("/api/lessons/{$this->sienne->id}/progress")->assertNotFound();
     }
 
     /**
-     * Un compte SANS établissement (hors supradmin) n'écrit rien, comme il ne lit
-     * rien (#942) : ResolveInstitution ne pose aucun tenant pour lui, donc seule
-     * la porte tient. Le contrôle d'établissement passe AVANT le refus du
-     * personnel : 404 partout, pour l'apprenant comme pour le personnel. Un 403
-     * dirait au personnel que la leçon existe.
+     * Un compte SANS établissement n'écrit rien, comme il ne lit rien (#942) :
+     * ResolveInstitution ne pose aucun tenant pour lui, et la porte des comptes
+     * sans établissement le refuse avant tout contrôleur. Le même refus pour
+     * l'apprenant et pour le personnel, sur chaque chemin : il ne dit rien de la
+     * leçon.
      *
      * @return iterable<string, array{0: string}>
      */
@@ -203,10 +205,12 @@ final class LessonProgressGateTest extends TestCase
         $this->ecole('klassci');
         $compte = User::factory()->create(['institution_id' => null, 'role' => $role]);
 
+        $refus = ['success' => false, 'message' => EnsureSchoolMemberOrPlatformRoute::MESSAGE];
         foreach ($this->ecritures('sienne') as $chemin => [$url, $corps]) {
-            self::assertSame(404, $this->asTenant($compte)->postJson($url, $corps)->status(), $chemin);
+            $reponse = $this->asTenant($compte)->postJson($url, $corps);
+            self::assertSame([403, $refus], [$reponse->status(), $reponse->json()], $chemin);
         }
-        $this->asTenant($compte)->getJson("/api/lessons/{$this->sienne->id}/progress")->assertNotFound();
+        $this->asTenant($compte)->getJson("/api/lessons/{$this->sienne->id}/progress")->assertForbidden()->assertExactJson($refus);
 
         self::assertSame(0, LessonProgress::query()->where('user_id', $compte->id)->count(), 'lesson_progress');
         self::assertSame(0, ChapterProgress::query()->where('user_id', $compte->id)->count(), 'chapter_progress');
@@ -279,6 +283,12 @@ final class LessonProgressGateTest extends TestCase
      * progression. Il peut jouer en aperçu le quiz d'une autre école (sans
      * progression), et lit la liste des progressions.
      */
+    /**
+     * Le supradmin plateforme ne lit ni n'écrit aucune progression, aucun quiz
+     * (décision produit) : la porte des comptes sans établissement le refuse sur
+     * chaque chemin, y compris le quiz d'une autre école et la liste des
+     * progressions, et rien n'est écrit en base.
+     */
     public function test_le_supradmin_plateforme(): void
     {
         $this->ecole('klassci');
@@ -286,15 +296,15 @@ final class LessonProgressGateTest extends TestCase
         $supradmin = User::factory()->create(['institution_id' => null, 'role' => 'supradmin']);
 
         foreach ($this->ecritures('sienne') as $chemin => [$url, $corps]) {
-            if (! str_starts_with($chemin, 'quiz')) {
-                self::assertSame(403, $this->asTenant($supradmin)->postJson($url, $corps)->status(), $chemin);
-            }
+            self::assertSame(403, $this->asTenant($supradmin)->postJson($url, $corps)->status(), $chemin);
         }
-        $this->asTenant($supradmin)->postJson("/api/knowledge-checks/{$quizAilleurs->id}/submit", ['answers' => ['4', 'True'], 'time_spent_seconds' => 5])->assertOk();
-        $this->asTenant($supradmin)->getJson("/api/lessons/{$this->sienne->id}/progress")->assertOk();
+        $this->asTenant($supradmin)->postJson("/api/knowledge-checks/{$quizAilleurs->id}/submit", ['answers' => ['4', 'True'], 'time_spent_seconds' => 5])
+            ->assertForbidden()->assertJsonPath('message', EnsureSchoolMemberOrPlatformRoute::MESSAGE);
+        $this->asTenant($supradmin)->getJson("/api/lessons/{$this->sienne->id}/progress")->assertForbidden()->assertJsonMissingPath('data');
 
         self::assertSame(0, LessonProgress::query()->where('user_id', $supradmin->id)->count());
         self::assertSame(0, ChapterProgress::query()->where('user_id', $supradmin->id)->count());
+        self::assertSame(0, KnowledgeCheckAttempt::withoutGlobalScopes()->where('user_id', $supradmin->id)->count());
     }
 
     /** Un rôle hors de l'énumération, même inscrit, ne lit pas la leçon (ChapterReadGate) : il n'écrit rien. */

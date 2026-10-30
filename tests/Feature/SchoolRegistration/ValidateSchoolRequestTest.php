@@ -64,6 +64,19 @@ final class ValidateSchoolRequestTest extends TestCase
     }
 
     /**
+     * Le titulaire du lien n'a pas de compte : on oublie l'en-tête du supradmin
+     * ET l'utilisateur que le garde a mémoïsé. Sans cela, l'appel « anonyme »
+     * partirait avec le jeton du supradmin.
+     */
+    private function sansCompte(): static
+    {
+        $this->flushHeaders();
+        $this->app['auth']->forgetGuards();
+
+        return $this;
+    }
+
+    /**
      * @return array<string, string>
      */
     private function enteteSupradmin(): array
@@ -300,7 +313,7 @@ final class ValidateSchoolRequestTest extends TestCase
         // On fait vieillir le jeton au-delà de sa fenêtre.
         ActivationToken::query()->update(['expires_at' => now()->subDay()]);
 
-        $this->postJson('/api/activation', [
+        $this->sansCompte()->postJson('/api/activation', [
             'token' => $this->jetonDepuis($url),
             'password' => 'MotDePasseSolide#2026',
             'password_confirmation' => 'MotDePasseSolide#2026',
@@ -367,7 +380,7 @@ final class ValidateSchoolRequestTest extends TestCase
             ->postJson($this->routeValidation($demande))
             ->json('data.activation_url');
 
-        $this->postJson('/api/activation', [
+        $this->sansCompte()->postJson('/api/activation', [
             'token' => $this->jetonDepuis($url),
             'password' => 'MotDePasseSolide#2026',
             'password_confirmation' => 'MotDePasseSolide#2026',
@@ -393,11 +406,11 @@ final class ValidateSchoolRequestTest extends TestCase
             'password_confirmation' => 'MotDePasseSolide#2026',
         ];
 
-        $this->postJson('/api/activation', $charge)->assertStatus(200);
+        $this->sansCompte()->postJson('/api/activation', $charge)->assertStatus(200);
 
         // Deuxième usage : refusé, même dans la fenêtre de validité. C'est ce
         // qu'une simple expiration ne garantit PAS.
-        $this->postJson('/api/activation', $charge)->assertStatus(410);
+        $this->sansCompte()->postJson('/api/activation', $charge)->assertStatus(410);
     }
 
     public function test_un_jeton_inconnu_est_refuse(): void

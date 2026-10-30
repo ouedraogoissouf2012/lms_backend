@@ -159,7 +159,8 @@ final class ShowAttemptAuthorizationTest extends TestCase
         self::assertContains($response->status(), [403, 404]);
     }
 
-    public function test_supradmin_can_view_attempt_cross_tenant(): void
+    /** Le supradmin plateforme ne lit aucune copie d'élève (décision produit) : la porte le refuse. */
+    public function test_supradmin_cannot_view_any_attempt(): void
     {
         $teacher = $this->createUser($this->instA, 'enseignant');
         $student = $this->createUser($this->instA, 'etudiant');
@@ -174,6 +175,6 @@ final class ShowAttemptAuthorizationTest extends TestCase
 
         $response = $this->getJson("/api/quiz-attempts/{$attempt->id}");
 
-        $response->assertStatus(200);
+        $response->assertStatus(403)->assertJsonMissingPath('data');
     }
 }

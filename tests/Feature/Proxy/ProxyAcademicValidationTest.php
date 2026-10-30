@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Proxy;
 
+use App\Models\Institution;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
@@ -27,6 +28,7 @@ final class ProxyAcademicValidationTest extends TestCase
         /** @var User $user */
         // Ces routes d'ecriture exigent role:enseignant,coordinateur (routes/api/core.php:101).
         $user = User::factory()->create([
+            'institution_id' => Institution::factory()->create()->id,
             'klassci_token' => 'jeton-perso-de-test',
             'role' => 'enseignant',
         ]);

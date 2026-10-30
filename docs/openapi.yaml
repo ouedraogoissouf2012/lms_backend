@@ -1253,6 +1253,10 @@ components:
     # propre catalogue sans lire le message du serveur. Le motif va dans le
     # CORPS : le front de production est cross-origin, et `exposed_headers: []`
     # lui cache tout en-tete non standard. Convention : ADR-906-01.
+    # P5-a : toute route authentifiee non marquee `plateforme` peut aussi rendre
+    # ce refus en 403, motif `no_institution`, pour un compte sans
+    # etablissement (EnsureSchoolMemberOrPlatformRoute). Ce refus est global :
+    # il n est pas recopie route par route.
     RefusMotive:
       type: object
       required:

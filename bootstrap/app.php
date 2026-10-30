@@ -47,7 +47,17 @@ $app = Application::configure(basePath: dirname(__DIR__))
             'institution.header' => \App\Http\Middleware\RequireInstitutionHeader::class,
             // #511 : garde plateforme STRICTE (défense en profondeur cross-tenant).
             'platform.supradmin' => \App\Http\Middleware\EnsurePlatformSupradmin::class,
+            'etablissement.requis' => \App\Http\Middleware\EnsureSchoolMemberOrPlatformRoute::class,
+            \App\Http\Middleware\MarksPlatformRoute::ALIAS => \App\Http\Middleware\MarksPlatformRoute::class,
         ]);
+
+        // La porte des comptes sans établissement passe JUSTE APRÈS
+        // l'authentification : une requête sans jeton reçoit d'abord le 401, et
+        // le refus vient avant toute résolution de modèle par la route.
+        $middleware->appendToPriorityList(
+            \Illuminate\Contracts\Auth\Middleware\AuthenticatesRequests::class,
+            \App\Http\Middleware\EnsureSchoolMemberOrPlatformRoute::class,
+        );
 
         // #244 : API stateless — ne JAMAIS rediriger un invité vers une page de
         // login web (`route('login')` n'existe pas → 500 RouteNotFoundException

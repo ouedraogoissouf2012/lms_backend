@@ -13,8 +13,10 @@ use Illuminate\Support\Facades\Route;
 // ============================================
 // ADMIN - Journal d'audit (#215) — supradmin uniquement (lecture seule)
 // L'autorisation stricte supradmin est portée par ViewAuditLogRequest.
+// Route PLATEFORME (D51) : le supradmin, sans école, lit le journal de toutes les
+// écoles pour diagnostiquer et corriger. L'exception est limitée à l'audit.
 // ============================================
-Route::middleware(['auth:sanctum'])->prefix('admin')->group(function () {
+Route::middleware(['auth:sanctum', 'plateforme'])->prefix('admin')->group(function () {
     Route::get('/audit-log', [AuditLogController::class, 'index']);
 });
 
@@ -76,7 +78,7 @@ Route::middleware(['auth:sanctum', 'role:coordinateur,superAdmin'])->prefix('adm
 // ============================================
 // NOTIFICATIONS - Gestion des notifications
 // ============================================
-Route::middleware(['auth:sanctum'])->prefix('notifications')->group(function () {
+Route::middleware(['auth:sanctum', 'plateforme'])->prefix('notifications')->group(function () {
     // Récupérer toutes les notifications (paginées)
     Route::get('/', [NotificationsController::class, 'index']);
 
@@ -103,7 +105,7 @@ Route::middleware(['auth:sanctum'])->prefix('notifications')->group(function () 
 // `supradmin` added (issue #98 fix): platform manager can create cross-tenant
 // notifications and view global stats; tenant isolation enforced by FormRequest
 // authorize() + stats() filter logic.
-Route::middleware(['auth:sanctum', 'role:coordinateur,superAdmin,supradmin'])->prefix('admin/notifications')->group(function () {
+Route::middleware(['auth:sanctum', 'role:coordinateur,superAdmin,supradmin', 'plateforme'])->prefix('admin/notifications')->group(function () {
     // Créer une notification manuelle
     Route::post('/create', [NotificationsController::class, 'create']);
 
@@ -116,7 +118,7 @@ Route::middleware(['auth:sanctum', 'role:coordinateur,superAdmin,supradmin'])->p
 // ============================================
 // #511 : `platform.supradmin` = 2ᵉ garde STRICTE (défense en profondeur) sur le
 // CRUD cross-tenant le plus sensible, en plus de `role:supradmin`.
-Route::middleware(['auth:sanctum', 'role:supradmin', 'platform.supradmin'])
+Route::middleware(['auth:sanctum', 'role:supradmin', 'platform.supradmin', 'plateforme'])
     ->prefix('admin/institutions')
     ->group(function () {
         Route::get('/', [InstitutionController::class, 'index']);
@@ -137,7 +139,7 @@ Route::middleware(['auth:sanctum', 'role:supradmin', 'platform.supradmin'])
 // Meme double garde que le CRUD institutions (#511) : valider une demande CREE
 // un tenant et son premier compte. C'est l'ecriture cross-tenant la plus
 // sensible du systeme.
-Route::middleware(['auth:sanctum', 'role:supradmin', 'platform.supradmin'])
+Route::middleware(['auth:sanctum', 'role:supradmin', 'platform.supradmin', 'plateforme'])
     ->prefix('admin/school-requests')
     ->group(function () {
         Route::get('/', [SchoolRequestDecisionController::class, 'index']);

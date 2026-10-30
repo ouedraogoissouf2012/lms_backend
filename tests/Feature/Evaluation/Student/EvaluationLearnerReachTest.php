@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Evaluation\Student;
 
 use App\Exceptions\KlassciUnavailableException;
+use App\Http\Middleware\EnsureSchoolMemberOrPlatformRoute;
 use App\Models\Evaluation;
 use App\Models\EvaluationQuestion;
 use App\Models\EvaluationSubmission;
@@ -230,7 +231,8 @@ final class EvaluationLearnerReachTest extends TestCase
     /**
      * Un homonyme (même identifiant KLASSCI) d'un élève qui a une copie : sans
      * établissement, ou d'une autre école. Sans tenant résolu, à dessein : le
-     * scope global est ouvert, et seule la portée de propriété tient.
+     * scope global est ouvert, et seule la portée de propriété tient. Sans
+     * établissement, la porte des comptes sans école refuse avant (#984).
      *
      * @return iterable<string, array{0: bool}>
      */
@@ -250,7 +252,9 @@ final class EvaluationLearnerReachTest extends TestCase
         $this->klassciRend(self::CLASSE);
         Sanctum::actingAs($this->homonyme($sansEtablissement));
 
-        $this->postJson("/api/evaluations/{$evaluation->id}/submit", $this->reponses($evaluation))->assertStatus(409);
+        $reponse = $this->postJson("/api/evaluations/{$evaluation->id}/submit", $this->reponses($evaluation));
+
+        $sansEtablissement ? $this->assertRefusDeLaPorte($reponse) : $reponse->assertStatus(409);
 
         $copie = EvaluationSubmission::withoutGlobalScopes()->findOrFail($tentative->id);
         self::assertSame('en_cours', $copie->status, 'la copie de l homonyme a ete rendue');
@@ -267,9 +271,14 @@ final class EvaluationLearnerReachTest extends TestCase
         $this->klassciRend(self::CLASSE);
         Sanctum::actingAs($this->homonyme($sansEtablissement));
 
-        $notes = $this->getJson('/api/my-grades')->assertOk();
+        $notes = $this->getJson('/api/my-grades');
 
-        self::assertSame(0, $notes->json('data.total_evaluations'), 'des copies d un autre eleve sont rendues');
+        if ($sansEtablissement) {
+            $this->assertRefusDeLaPorte($notes);
+        } else {
+            $notes->assertOk();
+            self::assertSame(0, $notes->json('data.total_evaluations'), 'des copies d un autre eleve sont rendues');
+        }
         self::assertStringNotContainsString('Algebre, controle', (string) $notes->getContent());
     }
 
@@ -384,7 +393,8 @@ final class EvaluationLearnerReachTest extends TestCase
         $refus = $appel("/api/evaluations/{$copie->id}/my-submission");
         $absente = $appel('/api/evaluations/999999/my-submission');
 
-        $refus->assertNotFound();
+        // Sans établissement, la porte refuse avant le code des évaluations (#984).
+        $cas === 'sans-etablissement' ? $this->assertRefusDeLaPorte($refus) : $refus->assertNotFound();
         self::assertSame($absente->json(), $refus->json(), 'le refus se distingue d une copie absente');
         self::assertStringNotContainsString('LA-REPONSE-SECRETE', (string) $refus->getContent());
     }
@@ -393,7 +403,9 @@ final class EvaluationLearnerReachTest extends TestCase
      * Sans établissement, le filtre ne devient pas `institution_id IS NULL` : un
      * compte sans établissement ne lit pas une copie ORPHELINE (sans
      * établissement, sur une évaluation sans établissement) qui porte son
-     * identifiant KLASSCI. C'est le rôle du `1 = 0` (ADR-792-01).
+     * identifiant KLASSCI. La porte des comptes sans école refuse d'abord (#984) ;
+     * le `1 = 0` (ADR-792-01) reste la défense en profondeur, éprouvée en
+     * unitaire par EvaluationSubmissionOwnedByTest.
      */
     public function test_sans_etablissement_une_copie_orpheline_reste_introuvable(): void
     {
@@ -413,7 +425,7 @@ final class EvaluationLearnerReachTest extends TestCase
 
         $refus = $this->getJson("/api/evaluations/{$orpheline->id}/my-submission");
 
-        $refus->assertNotFound();
+        $this->assertRefusDeLaPorte($refus);
         self::assertSame($this->getJson('/api/evaluations/999999/my-submission')->json(), $refus->json());
     }
 
@@ -554,6 +566,16 @@ final class EvaluationLearnerReachTest extends TestCase
     }
 
     /** Un élève, sans établissement ou d'une autre école, qui porte le MÊME identifiant KLASSCI que l'élève des fixtures. */
+    /** Le refus de la porte des comptes sans école : son corps EXACT, rien de plus. */
+    private function assertRefusDeLaPorte(TestResponse $reponse): void
+    {
+        $reponse->assertForbidden()->assertExactJson([
+            'success' => false,
+            'message' => EnsureSchoolMemberOrPlatformRoute::MESSAGE,
+            'reason' => EnsureSchoolMemberOrPlatformRoute::REASON,
+        ]);
+    }
+
     private function homonyme(bool $sansEtablissement): User
     {
         return User::factory()->create([

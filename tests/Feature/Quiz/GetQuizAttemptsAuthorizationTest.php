@@ -147,7 +147,8 @@ final class GetQuizAttemptsAuthorizationTest extends TestCase
         $response->assertStatus(403);
     }
 
-    public function test_supradmin_can_list_attempts_cross_tenant(): void
+    /** Le supradmin plateforme ne liste les copies d'aucun quiz (décision produit) : la porte le refuse. */
+    public function test_supradmin_cannot_list_any_attempts(): void
     {
         $teacher = $this->createUser($this->instA, 'enseignant');
         $quiz = $this->createQuiz($this->instA, $teacher);
@@ -160,6 +161,6 @@ final class GetQuizAttemptsAuthorizationTest extends TestCase
 
         $response = $this->getJson("/api/quizzes/{$quiz->id}/attempts");
 
-        $response->assertStatus(200);
+        $response->assertStatus(403)->assertJsonMissingPath('data');
     }
 }

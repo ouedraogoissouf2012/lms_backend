@@ -57,9 +57,8 @@ final class PlatformAccountGateTest extends TestCase
         yield 'recherche' => ['GET', '/api/search?query=algebre'];
         yield 'rapport des notes' => ['POST', '/api/admin/reports/grades'];
         yield 'séances' => ['GET', '/api/lms/seances/history'];
-        yield 'journal d audit (décision A1 en attente)' => ['GET', '/api/admin/audit-log'];
-        yield 'comptes d école (décision A8 en attente)' => ['PUT', '/api/users/1'];
-        yield 'comptes récents (décision A8 en attente)' => ['GET', '/api/admin/analytics/recent-users'];
+        yield 'comptes d école (décision A8, D55)' => ['PUT', '/api/users/1'];
+        yield 'comptes récents (décision A8, D55)' => ['GET', '/api/admin/analytics/recent-users'];
     }
 
     #[DataProvider('routesNonMarquees')]
@@ -109,6 +108,7 @@ final class PlatformAccountGateTest extends TestCase
         yield 'session' => ['GET', '/api/auth/me'];
         yield 'compte courant' => ['GET', '/api/user'];
         yield 'ses notifications' => ['GET', '/api/notifications/unread-count'];
+        yield 'journal d audit (D51)' => ['GET', '/api/admin/audit-log'];
     }
 
     #[DataProvider('routesMarquees')]

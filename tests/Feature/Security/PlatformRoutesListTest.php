@@ -32,9 +32,10 @@ final class PlatformRoutesListTest extends TestCase
     /**
      * Les routes de GESTION plateforme (méthode, chemin sans le préfixe `api/`).
      * Relue : écoles, demandes d'école, configuration, intégrations,
-     * notifications d'administration, la session et ses propres notifications.
+     * notifications d'administration, la session et ses propres notifications,
+     * le journal d'audit (D51) et la page des préférences de notification (D54).
      * La gestion des COMPTES d'école (`users`, `recent-users`) n'y est pas :
-     * décision A8 en attente, valeur prudente.
+     * décision A8 (D55), réservée à l'admin de l'école.
      */
     private const ROUTES_PLATEFORME = [
         'GET institutions/active',
@@ -72,6 +73,8 @@ final class PlatformRoutesListTest extends TestCase
         'GET admin/school-requests',
         'POST admin/school-requests/{schoolRequest}/validate',
         'POST admin/school-requests/{schoolRequest}/refuse',
+        'GET admin/audit-log',
+        'GET lms/notifications/preferences/{userId}',
     ];
 
     /**

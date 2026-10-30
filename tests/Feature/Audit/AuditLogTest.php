@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Audit;
 
-use App\Http\Middleware\EnsureSchoolMemberOrPlatformRoute;
 use App\Models\AuditLog;
 use App\Models\Evaluation;
 use App\Models\Institution;
@@ -138,24 +137,25 @@ final class AuditLogTest extends TestCase
         $this->getJson('/api/admin/audit-log')->assertStatus(403);
     }
 
-    /**
-     * Décision A1 en attente, valeur prudente : le journal porte des réponses et
-     * des notes d'élèves, et le compte plateforme ne lit aucun contenu d'école.
-     * La porte des comptes sans établissement le refuse. Le journal n'est donc
-     * plus lisible par personne : dette tracée, liée à A1.
-     */
-    public function test_le_supradmin_ne_lit_pas_le_journal_decision_a1_en_attente(): void
+    public function test_supradmin_can_view_and_filter_audit_log(): void
     {
         AuditLog::factory()->create(['action' => 'login']);
+        AuditLog::factory()->create(['action' => 'delete']);
 
         Sanctum::actingAs(User::factory()->create([
             'institution_id' => null,
             'role' => 'supradmin',
         ]));
 
-        $this->getJson('/api/admin/audit-log')
-            ->assertForbidden()
-            ->assertExactJson(['success' => false, 'message' => EnsureSchoolMemberOrPlatformRoute::MESSAGE, 'reason' => 'no_institution']);
+        $all = $this->getJson('/api/admin/audit-log');
+        $all->assertStatus(200)->assertJsonPath('success', true);
+
+        // Filtre par action.
+        $filtered = $this->getJson('/api/admin/audit-log?action=login');
+        $filtered->assertStatus(200);
+        foreach ($filtered->json('data.data') as $entry) {
+            $this->assertSame('login', $entry['action']);
+        }
     }
 
     public function test_purge_command_respects_retention(): void

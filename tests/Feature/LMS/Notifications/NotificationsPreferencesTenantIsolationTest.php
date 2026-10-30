@@ -7,6 +7,7 @@ namespace Tests\Feature\LMS\Notifications;
 use App\Models\Institution;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\Concerns\ActsAsTenantUser;
 use Tests\TestCase;
 
@@ -78,21 +79,28 @@ final class NotificationsPreferencesTenantIsolationTest extends TestCase
             ->assertJsonPath('data.user_id', $target->id);
     }
 
-    /**
-     * Décision A6 en attente, valeur prudente : le compte plateforme ne lit pas
-     * les préférences d'un compte d'école. La porte des comptes sans
-     * établissement le refuse.
-     */
-    public function test_le_supradmin_ne_lit_pas_les_preferences_decision_a6_en_attente(): void
+    /** @return iterable<string, array{0: bool}> */
+    public static function volets(): iterable
     {
-        $instB = Institution::factory()->create(['slug' => 'iso-plat']);
-        $supradmin = $this->userIn(null, 'supradmin');
-        $targetB = $this->userIn($instB->id, 'etudiant');
-        $this->asTenant($supradmin);
+        yield 'école reliée à KLASSCI' => [false];
+        yield 'école autonome' => [true];
+    }
 
-        $this->getJson("/api/lms/notifications/preferences/{$targetB->id}")
-            ->assertForbidden()
-            ->assertJsonPath('reason', 'no_institution')
-            ->assertJsonMissingPath('data');
+    /**
+     * D54 ouvre la route au supradmin plateforme, sans école ; la lecture des
+     * préférences d'un autre compte découle de la règle de #512, déjà portée par
+     * le contrôleur.
+     */
+    #[DataProvider('volets')]
+    public function test_le_supradmin_sans_ecole_lit_les_preferences_des_deux_volets(bool $autonome): void
+    {
+        $ecole = $autonome ? Institution::factory()->standalone()->create() : Institution::factory()->create();
+        $supradmin = $this->userIn(null, 'supradmin');
+        $cible = $this->userIn($ecole->id, 'etudiant');
+
+        $this->asTenant($supradmin)->getJson("/api/lms/notifications/preferences/{$cible->id}")
+            ->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.user_id', $cible->id);
     }
 }

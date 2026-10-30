@@ -13,8 +13,10 @@ use Illuminate\Support\Facades\Route;
 // ============================================
 // ADMIN - Journal d'audit (#215) — supradmin uniquement (lecture seule)
 // L'autorisation stricte supradmin est portée par ViewAuditLogRequest.
+// Route PLATEFORME (D51) : le supradmin, sans école, lit le journal de toutes les
+// écoles pour diagnostiquer et corriger. L'exception est limitée à l'audit.
 // ============================================
-Route::middleware(['auth:sanctum'])->prefix('admin')->group(function () {
+Route::middleware(['auth:sanctum', 'plateforme'])->prefix('admin')->group(function () {
     Route::get('/audit-log', [AuditLogController::class, 'index']);
 });
 

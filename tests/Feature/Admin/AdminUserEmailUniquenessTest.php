@@ -240,8 +240,8 @@ final class AdminUserEmailUniquenessTest extends TestCase
      * (deux NULL ne sont jamais égaux en SQL). On refuse plutôt que de valider contre du vide.
      *
      * La porte des comptes sans établissement refuse désormais la première (403, motif
-     * `no_institution` ; la gestion des comptes d'école par le compte plateforme attend la
-     * décision A8). Le 422 de la validation reste derrière elle, en défense en profondeur.
+     * `no_institution` ; la gestion des comptes d'école reste à l'admin de l'école, décision
+     * A8, D55). Le 422 de la validation reste derrière elle, en défense en profondeur.
      */
     public function test_platform_supradmin_without_institution_is_refused_fail_closed(): void
     {

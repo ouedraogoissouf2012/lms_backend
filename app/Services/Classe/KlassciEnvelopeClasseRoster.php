@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Classe;
 
+use App\Exceptions\KlassciUnavailableException;
 use App\Services\KlassciProxyService;
 
 /**
@@ -59,6 +60,15 @@ final class KlassciEnvelopeClasseRoster implements ClasseRoster
         /** @var array<string, mixed>|null $payload */
         $payload = is_array($reponse['data'] ?? null) ? $reponse['data'] : null;
 
-        return ClasseEnvelope::etudiants($payload);
+        // Bloc ABSENT (`{success: false}` sans `data`, ou enveloppe sans
+        // `etudiants`) : ce n'est pas une classe vide. Le rendre `[]` publierait
+        // une absence comme une mesure — l'écran affichait « 0 étudiant ». Un
+        // bloc présent et vide, lui, reste `[]`.
+        $etudiants = ClasseEnvelope::optionalList($payload, 'etudiants');
+        if ($etudiants === null) {
+            throw KlassciUnavailableException::invalidPayload("classes/{$classeId}");
+        }
+
+        return $etudiants;
     }
 }

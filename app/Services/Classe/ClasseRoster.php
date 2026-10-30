@@ -24,7 +24,8 @@ namespace App\Services\Classe;
  * {@see \RuntimeException} portant le statut, que les contrôleurs traduisent via
  * {@see \App\Http\Controllers\API\Concerns\RendersKlassciBackedErrors} (#270).
  * Avaler l'échec ici le transformerait en « classe vide » — un zéro fabriqué,
- * indiscernable d'une mesure.
+ * indiscernable d'une mesure. Une réponse amont qui ne porte pas le roster du
+ * tout est un échec de la même famille : elle lève, elle ne rend pas `[]`.
  */
 interface ClasseRoster
 {
@@ -37,7 +38,8 @@ interface ClasseRoster
      *
      * @return array<int, array<string, mixed>>
      *
-     * @throws \RuntimeException refus (4xx) ou indisponibilité de la source.
+     * @throws \RuntimeException refus (4xx), indisponibilité de la source, ou
+     *                           réponse sans roster.
      */
     public function etudiants(int $classeId, string $userToken): array;
 }

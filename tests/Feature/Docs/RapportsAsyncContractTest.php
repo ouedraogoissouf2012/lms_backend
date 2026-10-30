@@ -140,9 +140,10 @@ final class RapportsAsyncContractTest extends TestCase
         self::assertSame([$voisin->getContent(), $voisin->getContent()], [$inconnu->getContent(), $expire->getContent()]);
     }
 
-    public function test_404_un_fichier_disparu(): void
+    #[DataProvider('volets')]
+    public function test_404_un_fichier_disparu(bool $autonome): void
     {
-        $coordinateur = $this->compte($this->ecole(true), 'coordinateur');
+        $coordinateur = $this->compte($this->ecole($autonome), 'coordinateur');
         $id = (string) $this->asTenant($coordinateur)->postJson('/api/admin/reports/grades', self::DATES)->json('data.id');
         $this->app->make(AsyncReportStore::class)->completed($id, 'reports/async/absent.pdf', 'rapport.pdf');
 
@@ -239,7 +240,7 @@ final class RapportsAsyncContractTest extends TestCase
 
     /**
      * Le schéma mord AUSSI dans `data` : la réponse réelle privée d'une clé de
-     * `data` est refusée. Sans cette preuve, un `required` imbriqué retiré de la
+     * `data`, ou augmentée d'une clé non décrite (`path`), est refusée. Sans cette preuve, un `required` imbriqué retiré de la
      * spec passerait en silence (mesuré : falsification « meta retiré »).
      *
      * @param  TestResponse<\Symfony\Component\HttpFoundation\Response>  $reponse
@@ -251,9 +252,13 @@ final class RapportsAsyncContractTest extends TestCase
         self::assertNotNull($schema);
         $corps = json_decode((string) $reponse->getContent(), false, 512, JSON_THROW_ON_ERROR);
         self::assertTrue(isset($corps->data) && property_exists($corps->data, $cle), "la réponse n'a pas de data.$cle à retirer");
+        $enTrop = json_decode((string) $reponse->getContent(), false, 512, JSON_THROW_ON_ERROR);
         unset($corps->data->$cle);
+        // Une clé non décrite dans data : le verrou qui attrape une fuite (path, user_id).
+        $enTrop->data->path = 'x';
 
         self::assertNotSame([], $spec->erreurs($corps, $schema), "le schéma admet la réponse sans data.$cle");
+        self::assertNotSame([], $spec->erreurs($enTrop, $schema), 'le schéma admet une clé non décrite dans data');
     }
 
     /**

@@ -45,8 +45,7 @@ Route::middleware(['auth:sanctum', 'role:coordinateur,superAdmin'])->prefix('adm
     Route::get('/pending-tasks', [AdminAnalyticsController::class, 'getPendingTasks']);
 
     // Utilisateurs récents
-    Route::get('/recent-users', [AdminAnalyticsController::class, 'getRecentUsers'])
-        ->middleware('plateforme');
+    Route::get('/recent-users', [AdminAnalyticsController::class, 'getRecentUsers']);
 });
 
 // ============================================

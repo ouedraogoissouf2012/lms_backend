@@ -27,6 +27,9 @@ Premier périmètre :
 | 429 | authentifiée | `account_quota_exceeded` (minute), `account_daily_cap_reached` (jour), `institution_cap_reached` |
 | 429 | anonyme | `ip_quota_exceeded`, `global_cap_reached` |
 | 409 | `GET /classes` (#924) | `no_institution` — même sens que sur la porte authentifiée |
+| 403 | toute route authentifiée non marquée `plateforme` (porte des comptes sans établissement, P5-a) | `no_institution` — même sens |
+
+**Amendement (2026-10-30, P5-a).** La porte des comptes sans établissement (`EnsureSchoolMemberOrPlatformRoute`) refuse désormais, en 403 et avec le motif `no_institution`, tout compte sans établissement sur une route authentifiée qui n'est pas une route de gestion de la plateforme. Elle répond AVANT les deux 409 ci-dessus (`RejoindreParCodeService`, `ClassesLocalesQuery`), qui restent en place comme défense en profondeur derrière elle. Un même motif sous deux statuts : c'est le cas que cet ADR prévoit, puisque le front lit le motif quel que soit le statut.
 
 ## Pourquoi
 

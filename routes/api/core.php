@@ -184,7 +184,7 @@ Route::prefix('proxy')
 // ============================================
 // ADMIN - Gestion des utilisateurs et configuration
 // ============================================
-Route::middleware(['auth:sanctum', 'klassci.sync', 'role:coordinateur,superAdmin', 'plateforme'])->group(function () {
+Route::middleware(['auth:sanctum', 'klassci.sync', 'role:coordinateur,superAdmin'])->group(function () {
     Route::post('users', [AdminController::class, 'createUser'])
         ->middleware('throttle:30,1');
     Route::put('users/{user}', [AdminController::class, 'updateUser'])

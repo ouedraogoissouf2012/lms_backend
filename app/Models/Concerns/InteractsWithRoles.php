@@ -116,9 +116,13 @@ trait InteractsWithRoles
      *
      * `isAdmin()`, `isStaff()` et `isManager()` gardent leur sens : ils disent
      * le RÔLE, celui-ci dit l'APPARTENANCE.
+     *
+     * L'établissement est un identifiant entier strictement positif, comme pour
+     * ResolveInstitution, qui ne pose aucun tenant pour `0`.
      */
     public function isSchoolMember(): bool
     {
-        return $this->institution_id !== null && ! $this->isPlatformSupradmin();
+        return filter_var($this->institution_id, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]) !== false
+            && ! $this->isPlatformSupradmin();
     }
 }

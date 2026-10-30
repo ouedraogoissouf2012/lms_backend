@@ -19,7 +19,10 @@ use Symfony\Component\HttpFoundation\Response;
  * - un membre d'une école ({@see User::isSchoolMember()}) ;
  * - un compte sans établissement, SEULEMENT sur une route qui porte le
  *   marqueur `plateforme` ({@see MarksPlatformRoute}).
- * Partout ailleurs : 403. Une route nouvelle naît donc fermée à un tel compte.
+ * Partout ailleurs : 403, avec le motif `no_institution` (ADR-906-01), que le
+ * front traduit par son catalogue. Une route nouvelle naît donc fermée à un tel
+ * compte. Un utilisateur authentifié qui n'est pas un `User` n'a pas
+ * d'établissement : il est refusé de même.
  *
  * ## Le compte, et non le tenant résolu
  *
@@ -37,15 +40,23 @@ final class EnsureSchoolMemberOrPlatformRoute
 {
     public const MESSAGE = "Cet espace est réservé aux comptes d'un établissement.";
 
+    /** Le motif du refus « compte sans établissement » (ADR-906-01). */
+    public const REASON = 'no_institution';
+
     public function handle(Request $request, Closure $next): Response
     {
-        $user = $request->user();
+        // Le résolveur, et non `$request->user()` : celui-ci est déclaré `User|null`,
+        // alors qu'un autre garde peut authentifier un autre `Authenticatable`.
+        $user = ($request->getUserResolver())();
 
-        if (! $user instanceof User || $user->isSchoolMember() || $this->isPlatformRoute($request)) {
+        if ($user === null || ($user instanceof User && $user->isSchoolMember()) || $this->isPlatformRoute($request)) {
             return $next($request);
         }
 
-        return response()->json(['success' => false, 'message' => self::MESSAGE], Response::HTTP_FORBIDDEN);
+        return response()->json(
+            ['success' => false, 'message' => self::MESSAGE, 'reason' => self::REASON],
+            Response::HTTP_FORBIDDEN,
+        );
     }
 
     private function isPlatformRoute(Request $request): bool

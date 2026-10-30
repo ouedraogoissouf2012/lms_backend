@@ -3,30 +3,29 @@
 namespace App\Http\Controllers\API\LMS;
 
 use App\Http\Controllers\AuthenticatedController;
-use App\Http\Requests\SendSessionReminderRequest;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
 /**
- * LMS Notifications Preferences — préférences de notification utilisateur + envoi rappels séance.
+ * LMS Notifications Preferences — préférences de notification utilisateur.
  *
  * Extracted from `LMSDataController` as part of the god-object refactor
  * (spec: `.claude/specs/lms-data-controller-split/`).
  *
  * Responsibilities:
  *   - GET  /api/lms/notifications/preferences/{userId}     → getNotificationPreferences()
- *   - POST /api/lms/notifications/send-session-reminder    → sendSessionReminder()
  *
- * Note : les deux méthodes sont des STUBS documentés. Le contrat de réponse est respecté,
- * mais le wiring backend reste à faire :
- *   - `getNotificationPreferences` retourne des defaults hardcodés en attendant l'intégration
- *     de la table `parent_notification_preferences`.
- *   - `sendSessionReminder` accepte la requête et renvoie success, mais n'envoie rien
- *     en attendant l'intégration avec `NotificationService`.
- * Cette docblock est la trace officielle du stub status (cf. PR #151). À traiter
- * dans une issue follow-up dédiée.
+ * Note : `getNotificationPreferences` est un STUB documenté. Le contrat de réponse est
+ * respecté, mais il retourne des defaults hardcodés en attendant l'intégration de la
+ * table `parent_notification_preferences` (cf. PR #151).
+ *
+ * L'envoi de rappel de séance (`POST /lms/notifications/send-session-reminder`) a été
+ * RETIRÉ : bouchon depuis sa naissance (ac614e1b), sans appelant, sans issue de suivi,
+ * il répondait « Rappels acceptés » sans rien envoyer. Le besoin réel — prévenir les
+ * élèves d'une séance — est servi par `DispatchVisioNotification` (activation et
+ * bascule de la visio).
  *
  * Security (#512, corrige le pattern #87/#91/#98/#102/#103) : le bypass rôle de
  * `getNotificationPreferences` est désormais scopé au TENANT — un manager
@@ -123,60 +122,5 @@ final class LMSNotificationsPreferencesController extends AuthenticatedControlle
         return $currentUser->institution_id !== null
             && $target !== null
             && $target->institution_id === $currentUser->institution_id;
-    }
-
-    /**
-     * POST /api/lms/notifications/send-session-reminder
-     * Envoie un rappel pour une séance.
-     *
-     * Currently a stub — returns success but doesn't yet wire to the
-     * `NotificationService` integration. Tracked in follow-up issue.
-     */
-    public function sendSessionReminder(SendSessionReminderRequest $request): JsonResponse
-    {
-        try {
-            // Authentication is enforced upstream by `auth:sanctum` and
-            // the FormRequest validates the payload. We still call
-            // authenticatedUser() to enforce the contract for downstream
-            // (auditing/tracing) consistency.
-            $this->authenticatedUser($request);
-
-            $seanceCoursId = $request->validated('seance_cours_id');
-            $channels = $request->validated('channels');
-            $minutesBefore = $request->validated('minutes_before') ?? 15;
-
-            Log::info('Envoi rappel séance', [
-                'seance_cours_id' => $seanceCoursId,
-                'channels' => $channels,
-                'minutes_before' => $minutesBefore
-            ]);
-
-            // Stub : valide la requête et retourne success sans envoyer réellement.
-            // Intégration avec `NotificationService` suivie en follow-up séparé.
-            // Le `sent_count = 0` est intentionnellement honnête (rien n'a été envoyé).
-            return $this->successResponse(
-                [
-                    'seance_cours_id' => $seanceCoursId,
-                    'channels'        => $channels,
-                    'sent_count'      => 0,
-                ],
-                'Rappels acceptés (intégration NotificationService en cours).',
-            );
-
-        } catch (\Exception $e) {
-            Log::error('Erreur envoi rappel séance', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
-            ]);
-
-            // NON migré : la clé `error` (singulier) n'est pas reproductible par
-            // `errorResponse` (qui n'expose qu'`errors` pluriel). Laisser intact
-            // pour préserver le JSON client (axe #1 « DRY-only »).
-            return response()->json([
-                'success' => false,
-                'message' => 'Erreur lors de l\'envoi des rappels',
-                'error' => 'Une erreur est survenue.'
-            ], 500);
-        }
     }
 }

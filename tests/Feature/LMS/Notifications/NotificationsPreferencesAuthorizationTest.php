@@ -14,13 +14,13 @@ use Tests\TestCase;
  * Integration tests for `LMSNotificationsPreferencesController` after extraction
  * from `LMSDataController` (PR D of the LMS split spec).
  *
- * Endpoints:
+ * Endpoint:
  *   - GET  /api/lms/notifications/preferences/{userId}
- *   - POST /api/lms/notifications/send-session-reminder
  *
- * Note: both legacy methods are stubs (documented in the controller's docblock,
+ * Note: the legacy method is a stub (documented in the controller's docblock,
  * cf. PR #151) — these tests cover the HTTP contract (auth + ownership/role rules),
- * not the business logic which is not yet implemented.
+ * not the business logic which is not yet implemented. The send-session-reminder
+ * route was removed (stub without caller) : `RappelSeanceRetireTest` pins it.
  *
  * @see app/Http/Controllers/API/LMS/LMSNotificationsPreferencesController.php
  * @see .claude/specs/lms-data-controller-split/
@@ -88,15 +88,6 @@ final class NotificationsPreferencesAuthorizationTest extends TestCase
         $user = $this->userInInstitution();
 
         $response = $this->getJson("/api/lms/notifications/preferences/{$user->id}");
-
-        $response->assertStatus(401);
-    }
-
-    // ---------- sendSessionReminder ----------
-
-    public function test_send_session_reminder_requires_auth(): void
-    {
-        $response = $this->postJson('/api/lms/notifications/send-session-reminder', []);
 
         $response->assertStatus(401);
     }

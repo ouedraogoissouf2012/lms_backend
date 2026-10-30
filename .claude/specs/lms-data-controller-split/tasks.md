@@ -94,6 +94,10 @@ Pattern par PR (à reproduire sur les 10) :
 - [ ] **D.3** Constructeur : injecter `NotificationService` + `KlassciProxyService`
 - [ ] **D.4** Migrer `getNotificationPreferences(int $userId, Request $request)` (L1455-1503)
 - [ ] **D.5** Migrer `sendSessionReminder(...)` (L2132-2177)
+  - **Annotation (2026-10-30)** : la méthode a été migrée (#111), puis **RETIRÉE** avec sa route
+    (`POST /lms/notifications/send-session-reminder`) : bouchon depuis `ac614e1b`, sans appelant
+    front, sans issue de suivi, il répondait « Rappels acceptés » sans rien envoyer. Le besoin
+    est servi par `DispatchVisioNotification`. Retrait figé par `RappelSeanceRetireTest`.
 - [ ] **D.6** `$request->user()` → `$this->authenticatedUser($request)`
 - [ ] **D.7** Update `routes/api.php` (2 routes Notifications)
 - [ ] **D.8** PHPStan validation

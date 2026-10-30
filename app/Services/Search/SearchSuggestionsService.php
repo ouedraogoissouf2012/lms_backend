@@ -87,13 +87,10 @@ final class SearchSuggestionsService
                 if ($user->isTeacher()) {
                     $this->ownership->applyToEvaluations($q, $user);
                 }
-                // Filtre identique à GlobalSearchService::searchEvaluations, à
-                // dessein : `published` n'est pas une valeur d'EvaluationStatus,
-                // donc rien ne sort. C'est fermé, et l'ouvrir aux statuts réels
-                // exposerait les évaluations des AUTRES classes : à trancher avec
-                // la portée de classe de la recherche, dans un lot à part.
+                // Même fermeture que GlobalSearchService::searchEvaluations, et
+                // pour la même raison : hors personnel, aucune évaluation.
                 if ($user->isLearnerAudience()) {
-                    $q->where('status', 'published');
+                    $q->whereRaw('1 = 0');
                 }
             })
             ->limit($limit)

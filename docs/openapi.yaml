@@ -868,7 +868,10 @@ components:
               description: "Present une fois le rapport `completed`."
             message:
               type: string
-              description: "Present une fois le rapport `failed`."
+              description: |
+                Present une fois le rapport `failed`. Peut apparaitre sur une
+                tentative non definitive : le job retente (trois essais), et un
+                rapport peut repasser par `running` puis finir `completed`.
               enum:
                 - report_generation_failed
 

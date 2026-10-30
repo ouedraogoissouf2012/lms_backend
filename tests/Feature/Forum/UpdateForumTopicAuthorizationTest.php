@@ -134,7 +134,8 @@ final class UpdateForumTopicAuthorizationTest extends TestCase
         $response->assertStatus(403);
     }
 
-    public function test_supradmin_can_update_topic_cross_tenant(): void
+    /** Le supradmin plateforme ne modère aucun sujet d'une école (décision produit) : refus, rien d'écrit. */
+    public function test_supradmin_cannot_update_any_topic(): void
     {
         $author = $this->createUser($this->instA, 'etudiant');
         $topic = $this->createTopic($this->instA, $author);
@@ -149,6 +150,7 @@ final class UpdateForumTopicAuthorizationTest extends TestCase
             'title' => 'Supradmin override',
         ]);
 
-        $response->assertStatus(200);
+        $response->assertStatus(403);
+        $this->assertNotSame('Supradmin override', $topic->fresh()?->title);
     }
 }

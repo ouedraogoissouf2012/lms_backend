@@ -4,6 +4,7 @@ namespace Tests\Feature\Requests;
 
 use Illuminate\Http\UploadedFile;
 use Laravel\Sanctum\Sanctum;
+use App\Models\Institution;
 use App\Models\User;
 use Tests\TestCase;
 
@@ -40,7 +41,7 @@ class UploadFileRequestTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->user = User::factory()->create();
+        $this->user = User::factory()->create(['institution_id' => Institution::factory()->create()->id]);
         $this->disableKlassciMiddleware();
     }
 

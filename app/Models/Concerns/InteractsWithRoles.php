@@ -107,4 +107,22 @@ trait InteractsWithRoles
     {
         return ! $this->isStaff();
     }
+
+    /**
+     * Membre d'une école : rattaché à un établissement, et pas le compte
+     * plateforme. Seul un membre d'une école atteint le contenu de son école ;
+     * un compte sans établissement n'atteint que les routes de gestion marquées
+     * « plateforme » (EnsureSchoolMemberOrPlatformRoute).
+     *
+     * `isAdmin()`, `isStaff()` et `isManager()` gardent leur sens : ils disent
+     * le RÔLE, celui-ci dit l'APPARTENANCE.
+     *
+     * L'établissement est un identifiant entier strictement positif, comme pour
+     * ResolveInstitution, qui ne pose aucun tenant pour `0`.
+     */
+    public function isSchoolMember(): bool
+    {
+        return filter_var($this->institution_id, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]) !== false
+            && ! $this->isPlatformSupradmin();
+    }
 }

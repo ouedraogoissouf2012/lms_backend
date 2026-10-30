@@ -11,21 +11,24 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
 use PHPUnit\Framework\Attributes\DataProvider;
+use App\Http\Middleware\EnsureSchoolMemberOrPlatformRoute;
 use Tests\Concerns\ActsAsTenantUser;
 use Tests\TestCase;
 
 /**
- * #942 — un compte sans établissement ne lit AUCUNE leçon, sauf le supradmin
- * plateforme (`isPlatformSupradmin()`, comparaison stricte, #511), cross-tenant
- * par conception.
+ * #942 — un compte sans établissement ne lit AUCUNE leçon, supradmin plateforme
+ * compris.
  *
  * Pour un tel compte, `ResolveInstitution` ne pose aucun tenant (#972) et le
- * scope global est ouvert par défaut : seul le filtre de LessonReadScope tient.
- * C'est le `null` absorbant d'ADR-792-01.
+ * scope global est ouvert par défaut. La porte des comptes sans établissement
+ * le refuse avant tout contrôleur. Derrière elle, le filtre de LessonReadScope
+ * (le `null` absorbant d'ADR-792-01) reste en place ; sa preuve sans passer par
+ * la porte appartient au lot de défense en profondeur.
  *
  * Deux établissements, un par volet (klassci et standalone) : le compte n'en
  * voit aucun. Vrai jeton porteur.
  *
+ * @see app/Http/Middleware/EnsureSchoolMemberOrPlatformRoute.php
  * @see app/Services/Lesson/LessonReadScope.php
  */
 final class LessonWithoutInstitutionTest extends TestCase
@@ -56,26 +59,29 @@ final class LessonWithoutInstitutionTest extends TestCase
         $this->deuxEcoles();
         $compte = User::factory()->create(['institution_id' => null, 'role' => $role]);
 
-        self::assertSame(0, $this->asTenant($compte)->getJson('/api/lessons?per_page=100')->assertOk()->json('data.total'), 'GET /lessons');
-        self::assertSame(0, $this->asTenant($compte)->getJson('/api/lessons/my-courses?per_page=100')->assertOk()->json('meta.total'), 'my-courses');
-        $this->asTenant($compte)->getJson("/api/lessons/{$this->leconA->id}")->assertNotFound();
-        $this->asTenant($compte)->getJson("/api/lessons/{$this->leconB->id}")->assertNotFound();
-        // L'ordre de denies() : le refus de tenant (404) passe AVANT celui de
-        // publication (403). Inversé, un apprenant sans établissement verrait
-        // en 403 qu'un brouillon existe.
-        $this->asTenant($compte)->getJson("/api/lessons/{$this->brouillonA->id}")->assertNotFound();
+        // Le même refus de la porte partout, leçon publiée, brouillon ou liste :
+        // la réponse ne dit pas qu'un brouillon existe.
+        foreach (['/api/lessons?per_page=100', '/api/lessons/my-courses?per_page=100', "/api/lessons/{$this->leconA->id}",
+            "/api/lessons/{$this->leconB->id}", "/api/lessons/{$this->brouillonA->id}"] as $url) {
+            $this->asTenant($compte)->getJson($url)
+                ->assertForbidden()->assertExactJson(['success' => false, 'message' => EnsureSchoolMemberOrPlatformRoute::MESSAGE, 'reason' => EnsureSchoolMemberOrPlatformRoute::REASON]);
+        }
     }
 
-    public function test_le_supradmin_plateforme_lit_les_deux_etablissements(): void
+    /**
+     * Le supradmin plateforme gère les écoles, il ne lit AUCUN contenu (décision
+     * produit) : la porte des comptes sans établissement le refuse, dans les deux
+     * écoles, avant toute lecture.
+     */
+    public function test_le_supradmin_plateforme_ne_lit_les_lecons_d_aucun_etablissement(): void
     {
         $this->deuxEcoles();
         $supradmin = User::factory()->create(['institution_id' => null, 'role' => 'supradmin']);
 
-        $ids = collect($this->asTenant($supradmin)->getJson('/api/lessons?per_page=100')->assertOk()->json('data.data'))->pluck('id')->all();
-        self::assertContains($this->leconA->id, $ids);
-        self::assertContains($this->leconB->id, $ids);
-        $this->asTenant($supradmin)->getJson("/api/lessons/{$this->leconA->id}")->assertOk();
-        $this->asTenant($supradmin)->getJson("/api/lessons/{$this->leconB->id}")->assertOk();
+        $this->asTenant($supradmin)->getJson('/api/lessons?per_page=100')
+            ->assertForbidden()->assertJsonPath('message', EnsureSchoolMemberOrPlatformRoute::MESSAGE);
+        $this->asTenant($supradmin)->getJson("/api/lessons/{$this->leconA->id}")->assertForbidden()->assertJsonMissingPath('data');
+        $this->asTenant($supradmin)->getJson("/api/lessons/{$this->leconB->id}")->assertForbidden()->assertJsonMissingPath('data');
     }
 
     public function test_un_compte_rattache_ne_lit_que_son_etablissement(): void

@@ -98,6 +98,12 @@ final class EnsureRoleSupradminStrictTest extends TestCase
     /**
      * Non-régression : le platform supradmin garde son bypass total sur les
      * routes non-supradmin.
+     *
+     * Ce test porte sur le middleware ISOLÉ. Par HTTP, le supradmin n'atteint
+     * plus que les routes marquées `plateforme` : la porte des comptes sans
+     * établissement (EnsureSchoolMemberOrPlatformRoute) le refuse partout
+     * ailleurs, avant ce middleware. Le bypass ne joue donc plus que sur ces
+     * routes de gestion (PlatformRoutesListTest).
      */
     public function test_platform_supradmin_bypasses_any_route(): void
     {

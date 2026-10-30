@@ -6,6 +6,7 @@ namespace Tests\Feature\Chapter;
 
 use App\Jobs\ConvertChapterFile;
 use App\Models\Chapter;
+use App\Models\Institution;
 use App\Models\User;
 use App\Services\Chapter\AsyncChapterConversionStore;
 use App\Services\Chapter\ChapterFileUploadService;
@@ -34,8 +35,10 @@ final class AsyncChapterConversionTest extends TestCase
         Queue::fake();
         Storage::fake('local');
 
-        $teacher = User::factory()->teacher()->create();
-        $chapter = Chapter::factory()->forTeacher($teacher)->create();
+        // Un enseignant appartient à son école, comme en production ; son chapitre aussi.
+        $ecole = Institution::factory()->create();
+        $teacher = User::factory()->teacher()->create(['institution_id' => $ecole->id]);
+        $chapter = Chapter::factory()->forTeacher($teacher)->create(['institution_id' => $ecole->id]);
         Sanctum::actingAs($teacher);
 
         $response = $this->postJson("/api/chapters/{$chapter->id}/upload?async=1", [
@@ -61,8 +64,10 @@ final class AsyncChapterConversionTest extends TestCase
     {
         Storage::fake('local');
 
-        $teacher = User::factory()->teacher()->create();
-        $chapter = Chapter::factory()->forTeacher($teacher)->create();
+        // Un enseignant appartient à son école, comme en production ; son chapitre aussi.
+        $ecole = Institution::factory()->create();
+        $teacher = User::factory()->teacher()->create(['institution_id' => $ecole->id]);
+        $chapter = Chapter::factory()->forTeacher($teacher)->create(['institution_id' => $ecole->id]);
         $conversionId = 'chapter-conversion-test';
         $sourcePath = 'chapter-conversions/'.$conversionId.'/source.pdf';
 
@@ -88,8 +93,10 @@ final class AsyncChapterConversionTest extends TestCase
     {
         Storage::fake('local');
 
-        $teacher = User::factory()->teacher()->create();
-        $chapter = Chapter::factory()->forTeacher($teacher)->create();
+        // Un enseignant appartient à son école, comme en production ; son chapitre aussi.
+        $ecole = Institution::factory()->create();
+        $teacher = User::factory()->teacher()->create(['institution_id' => $ecole->id]);
+        $chapter = Chapter::factory()->forTeacher($teacher)->create(['institution_id' => $ecole->id]);
         $conversionId = 'completed-chapter-conversion-test';
 
         $store = app(AsyncChapterConversionStore::class);

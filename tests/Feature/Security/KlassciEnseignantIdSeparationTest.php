@@ -192,10 +192,12 @@ final class KlassciEnseignantIdSeparationTest extends TestCase
     // REQ-7 #10 — Admin bypass preserved.
     public function test_admin_can_delete_evaluation_regardless_of_klassci_enseignant_id(): void
     {
+        // L'admin de l'ÉCOLE : un compte `supradmin` est le compte plateforme,
+        // sans établissement, et ne touche aucun contenu d'école.
         $admin = User::factory()->create([
             'institution_id'        => $this->institution->id,
-            'role'                  => 'supradmin',
-            'klassci_role'          => 'supradmin',
+            'role'                  => 'admin',
+            'klassci_role'          => 'admin',
             'klassci_enseignant_id' => null,
         ]);
         $evaluation = $this->evaluation(999);

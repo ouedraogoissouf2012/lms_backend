@@ -101,7 +101,8 @@ final class FileModerateAuthorizationTest extends TestCase
         );
     }
 
-    public function test_supradmin_can_update_cross_tenant(): void
+    /** Le supradmin plateforme ne modère aucun fichier d'une école (décision produit) : refus, rien d'écrit. */
+    public function test_supradmin_cannot_update_any_school_file(): void
     {
         $owner = $this->createUser($this->instA, 'etudiant');
         $file = $this->createFile($this->instA, $owner);
@@ -112,7 +113,8 @@ final class FileModerateAuthorizationTest extends TestCase
         Sanctum::actingAs($supradmin);
 
         $this->putJson("/api/files/{$file->id}", ['description' => 'supradmin'])
-            ->assertStatus(200);
+            ->assertStatus(403);
+        $this->assertNotSame('supradmin', $file->fresh()?->description);
     }
 
     public function test_admin_cannot_delete_cross_tenant(): void

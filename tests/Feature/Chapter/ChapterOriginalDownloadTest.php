@@ -12,6 +12,7 @@ use App\Models\Lesson;
 use App\Models\User;
 use App\Models\UserClass;
 use App\Services\FileConversion\ChapterArtifactStorage;
+use App\Http\Middleware\EnsureSchoolMemberOrPlatformRoute;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
@@ -136,21 +137,23 @@ final class ChapterOriginalDownloadTest extends TestCase
      * comparaison stricte `'supradmin'` en `asRoleEnum()`, qui normaliserait
      * aussi `'superAdmin'`.
      */
-    public function test_supradmin_downloads_across_institutions_but_admin_stays_scoped(): void
+    public function test_supradmin_is_refused_and_admin_stays_scoped(): void
     {
         $institution = $this->institution();
         $chapter = $this->chapterWithSource($institution, allowDownload: false);
 
-        // Un supradmin RÉEL n'a pas d'institution : c'est `institution_id = null`
-        // qui fait que `ResolveInstitution` le laisse non scopé (cf. #565).
+        // Le supradmin plateforme gère les écoles, il ne télécharge AUCUN document
+        // d'enseignant (décision produit) : la porte des comptes sans
+        // établissement le refuse, avant toute résolution du chapitre.
         $supradmin = User::factory()->create([
             'role'              => 'supradmin',
             'institution_id'    => null,
             'last_klassci_sync' => now(),
         ]);
         $this->actingWithToken($supradmin)
-            ->get("/api/chapters/{$chapter->id}/original")
-            ->assertOk();
+            ->getJson("/api/chapters/{$chapter->id}/original")
+            ->assertForbidden()
+            ->assertJsonPath('message', EnsureSchoolMemberOrPlatformRoute::MESSAGE);
 
         $foreignAdmin = $this->user($this->institution(), 'admin');
         $this->actingWithToken($foreignAdmin)
@@ -204,6 +207,10 @@ final class ChapterOriginalDownloadTest extends TestCase
      */
     private function actingWithToken(User $user): static
     {
+        // Le garde mémoïse l'utilisateur de la première requête : sans cet
+        // oubli, un second compte dans le même test agirait sous le premier.
+        $this->app['auth']->forgetGuards();
+
         return $this->withToken($user->createToken('test-598')->plainTextToken);
     }
 

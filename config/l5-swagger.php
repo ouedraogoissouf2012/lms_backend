@@ -68,10 +68,14 @@ return [
              * Middleware allows to prevent unexpected access to API documentation
              */
             'middleware' => [
-                'api' => [],
+                // `api/documentation` et `api/oauth2-callback` sont servies sous
+                // `api/`, hors de `routes/api.php` : la porte des comptes sans
+                // établissement y est posée ici, comme sur toute route API
+                // (PlatformRoutesListTest). Sans compte, elle laisse passer.
+                'api' => ['etablissement.requis'],
                 'asset' => [],
                 'docs' => [],
-                'oauth2_callback' => [],
+                'oauth2_callback' => ['etablissement.requis'],
             ],
 
             /*

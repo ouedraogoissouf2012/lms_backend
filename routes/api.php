@@ -10,10 +10,17 @@
 | les routes.
 */
 
-require __DIR__.'/api/core.php';
-require __DIR__.'/api/content.php';
-require __DIR__.'/api/classes.php';
-require __DIR__.'/api/imports.php';
-require __DIR__.'/api/lms.php';
-require __DIR__.'/api/evaluation.php';
-require __DIR__.'/api/admin.php';
+use Illuminate\Support\Facades\Route;
+
+// La porte de TOUTES les routes API : un compte sans établissement n'atteint
+// que les routes marquées `plateforme` (EnsureSchoolMemberOrPlatformRoute).
+// Une route nouvelle, ajoutée ici ou dans un fichier requis, naît fermée.
+Route::middleware('etablissement.requis')->group(function (): void {
+    require __DIR__.'/api/core.php';
+    require __DIR__.'/api/content.php';
+    require __DIR__.'/api/classes.php';
+    require __DIR__.'/api/imports.php';
+    require __DIR__.'/api/lms.php';
+    require __DIR__.'/api/evaluation.php';
+    require __DIR__.'/api/admin.php';
+});

@@ -20,7 +20,7 @@ return [
     'app/Console/Commands/PurgeSeanceRecordings.php::handle' => 49,
     'app/Http/Controllers/API/Evaluation/EvaluationKlassciSyncController.php::syncNotesToKlassci' => 50,
     'app/Http/Controllers/API/Evaluation/EvaluationKlassciSyncController.php::syncToKlassci' => 42,
-    'app/Http/Controllers/API/Evaluation/Student/EvaluationStudentSubmissionController.php::getMySubmission' => 60,
+    'app/Http/Controllers/API/Evaluation/Student/EvaluationStudentSubmissionController.php::getMySubmission' => 55,
     'app/Http/Controllers/API/LMS/LMSMatieresAdminController.php::adminMatieresList' => 86,
     'app/Http/Requests/StoreLessonRequest.php::rules' => 49,
     'app/Jobs/CleanOldEvaluations.php::handle' => 49,

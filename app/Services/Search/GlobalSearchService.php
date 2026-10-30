@@ -265,8 +265,14 @@ final class GlobalSearchService
                 if ($user->isTeacher()) {
                     $this->ownership->applyToEvaluations($q, $user);
                 }
+                // Hors personnel : aucune évaluation. Le résultat mène à un écran
+                // enseignant (`url` ci-dessous) ; un apprenant n'y a pas de
+                // destination. Fermé explicitement : l'ancien filtre sur un statut
+                // inexistant (`published`) ne fermait que par accident, et le
+                // « corriger » en un statut réel aurait ouvert les évaluations de
+                // toutes les classes. L'ouvrir passerait par LearnerEvaluationScope.
                 if ($user->isLearnerAudience()) {
-                    $q->where('status', 'published');
+                    $q->whereRaw('1 = 0');
                 }
             })
             ->limit($limit)

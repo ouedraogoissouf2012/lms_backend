@@ -93,7 +93,7 @@ class Lesson extends Model
     /** @return HasMany<Chapter, $this> Chapitres de la leçon (une leçon contient plusieurs chapitres). */
     public function chapters(): HasMany
     {
-        return $this->hasMany(Chapter::class)->orderBy('order')->orderBy('created_at');
+        return $this->hasMany(Chapter::class)->ordered();
     }
 
     /** @return HasMany<LessonResource, $this> Ressources complémentaires. */

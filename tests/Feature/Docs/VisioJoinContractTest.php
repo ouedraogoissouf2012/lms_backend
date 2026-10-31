@@ -6,10 +6,15 @@ namespace Tests\Feature\Docs;
 
 use App\Models\Institution;
 use App\Models\User;
+use App\Services\Visio\VisioParticipantSessionService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Testing\TestResponse;
 use PHPUnit\Framework\Attributes\DataProvider;
+use Psr\Log\AbstractLogger;
+use Psr\Log\LoggerInterface;
+use RuntimeException;
+use Stringable;
 use Tests\Concerns\ActsAsTenantUser;
 use Tests\Concerns\BuildsVisioSeance;
 use Tests\Concerns\ValidatesAgainstOpenApi;
@@ -19,7 +24,8 @@ use Tests\TestCase;
  * Contrat de `POST /lms/seances/{seanceId}/join` : chaque réponse RÉELLE suit
  * ce que `docs/openapi.yaml` en dit, statut et corps.
  *
- * Aucune donnée KLASSCI n'est lue : les deux volets tournent. L'état de la
+ * La décision ne lit que des données locales, aucun jeton KLASSCI n'est
+ * exigé : les deux volets tournent. L'état de la
  * visio (400) est dit avant le droit d'entrer (403) ; le droit est celui de la
  * validation d'un participant, l'appelant étant sa propre cible. Le 429
  * (300 par minute) est décrit, pas testé. Vrai jeton porteur (`asTenant`).
@@ -34,6 +40,8 @@ final class VisioJoinContractTest extends TestCase
     use ValidatesAgainstOpenApi;
 
     private const CHEMIN = '/lms/seances/{seanceId}/join';
+
+    private const CLES_DATA = ['visio_room_id', 'participants_count', 'visio_token', 'visio_token_available', 'can_manage_recording'];
 
     protected function setUp(): void
     {
@@ -51,6 +59,7 @@ final class VisioJoinContractTest extends TestCase
         yield 'élève inscrit' => ['eleve', false];
         yield 'enseignant de la séance' => ['enseignant', true];
         yield 'coordinateur, en observateur' => ['coordinateur', true];
+        yield 'admin' => ['admin', true];
     }
 
     #[DataProvider('entrants')]
@@ -61,25 +70,49 @@ final class VisioJoinContractTest extends TestCase
         $compte = match ($entrant) {
             'eleve' => $this->eleveInscrit($ecole),
             'enseignant' => $this->enseignantDeLaSeance($ecole),
-            default => $this->compte($ecole, 'coordinateur'),
+            default => $this->compte($ecole, $entrant),
         };
 
         $reponse = $this->entrer($compte, $seance->id)->assertOk();
 
         $this->assertMatchesOpenApiResponse($reponse, self::CHEMIN, 'post');
         $this->assertOpenApiSchemaRefuseSans($reponse, self::CHEMIN, 'post', 'data');
-        $reponse->assertJsonPath('data.visio_token_available', true)
+        $reponse->assertJsonStructure(['data' => self::CLES_DATA])
+            ->assertJsonPath('data.visio_token_available', true)
             ->assertJsonPath('data.can_manage_recording', $gereLEnregistrement);
         self::assertIsString($reponse->json('data.visio_token'));
     }
 
-    /** Sans configuration Jitsi : la présence est enregistrée, la clé est nulle. */
-    public function test_200_sans_jitsi_la_cle_est_nulle(): void
+    /** La séance se désigne aussi par son identifiant KLASSCI. */
+    public function test_200_par_l_identifiant_klassci(): void
     {
-        Config::set('services.visio.jitsi.app_secret', null);
         $ecole = $this->ecole(false);
+        $seance = $this->visio($ecole);
 
-        $reponse = $this->entrer($this->compte($ecole, 'coordinateur'), $this->visio($ecole)->id)->assertOk();
+        $reponse = $this->entrer($this->compte($ecole, 'coordinateur'), (int) $seance->klassci_seance_id)->assertOk();
+
+        $this->assertMatchesOpenApiResponse($reponse, self::CHEMIN, 'post');
+        $reponse->assertJsonPath('data.visio_room_id', $seance->visio_room_id);
+    }
+
+    /** @return iterable<string, array{0: bool, 1: bool}> */
+    public static function sansCle(): iterable
+    {
+        yield 'Jitsi non configuré' => [false, true];
+        yield 'séance sans salon' => [true, false];
+    }
+
+    /** La présence est enregistrée, la clé est nulle et le client en est averti. */
+    #[DataProvider('sansCle')]
+    public function test_200_sans_cle(bool $jitsiConfigure, bool $avecSalon): void
+    {
+        if (! $jitsiConfigure) {
+            Config::set('services.visio.jitsi.app_secret', null);
+        }
+        $ecole = $this->ecole(false);
+        $seance = $this->visio($ecole, null, $avecSalon ? [] : ['visio_room_id' => null]);
+
+        $reponse = $this->entrer($this->compte($ecole, 'coordinateur'), $seance->id)->assertOk();
 
         $this->assertMatchesOpenApiResponse($reponse, self::CHEMIN, 'post');
         $reponse->assertJsonPath('data.visio_token', null)->assertJsonPath('data.visio_token_available', false);
@@ -126,6 +159,13 @@ final class VisioJoinContractTest extends TestCase
 
         $this->assertMatchesOpenApiResponse($reponse, self::CHEMIN, 'post');
         $this->assertOpenApiSchemaRefuseSans($reponse, self::CHEMIN, 'post', 'message');
+    }
+
+    public function test_401_un_jeton_porteur_invalide(): void
+    {
+        $reponse = $this->withToken('jeton-invalide')->postJson('/api/lms/seances/1/join')->assertUnauthorized();
+
+        $this->assertMatchesOpenApiResponse($reponse, self::CHEMIN, 'post');
     }
 
     public function test_403_un_compte_sans_etablissement(): void
@@ -192,7 +232,8 @@ final class VisioJoinContractTest extends TestCase
         $this->assertOpenApiSchemaRefuseSans($reponse, self::CHEMIN, 'post', 'message');
     }
 
-    public function test_500_rattrape_par_le_service(): void
+    /** La validation échoue : son 500 est relayé tel quel. */
+    public function test_500_de_la_validation_relaye(): void
     {
         $this->inscriptionIllisible();
         $ecole = $this->ecole(false);
@@ -200,7 +241,31 @@ final class VisioJoinContractTest extends TestCase
         $reponse = $this->entrer($this->compte($ecole, 'etudiant'), $this->visio($ecole)->id)->assertStatus(500);
 
         $this->assertMatchesOpenApiResponse($reponse, self::CHEMIN, 'post');
-        $reponse->assertJsonPath('error', 'Une erreur est survenue.');
+        $reponse->assertJsonPath('message', 'Erreur lors de la validation du participant')
+            ->assertJsonPath('error', 'Une erreur est survenue.');
+    }
+
+    /** L'entrée échoue après la validation : le 500 rattrapé par l'entrée elle-même. */
+    public function test_500_rattrape_par_l_entree(): void
+    {
+        $this->app->when(VisioParticipantSessionService::class)->needs(LoggerInterface::class)->give(
+            static fn (): LoggerInterface => new class extends AbstractLogger
+            {
+                public function log($level, string|Stringable $message, array $context = []): void
+                {
+                    if ($level === 'info') {
+                        throw new RuntimeException('panne provoquée par le test');
+                    }
+                }
+            },
+        );
+        $ecole = $this->ecole(false);
+
+        $reponse = $this->entrer($this->compte($ecole, 'coordinateur'), $this->visio($ecole)->id)->assertStatus(500);
+
+        $this->assertMatchesOpenApiResponse($reponse, self::CHEMIN, 'post');
+        $reponse->assertJsonPath('message', 'Erreur lors de la connexion')
+            ->assertJsonPath('error', 'Une erreur est survenue.');
     }
 
     public function test_500_du_gestionnaire_global_sans_error(): void

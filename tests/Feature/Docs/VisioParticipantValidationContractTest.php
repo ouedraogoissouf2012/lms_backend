@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace Tests\Feature\Docs;
 
 use App\Models\Institution;
+use App\Models\Seance;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Testing\TestResponse;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\Concerns\ActsAsTenantUser;
@@ -18,7 +20,8 @@ use Tests\TestCase;
  * Contrat de `POST /lms/seances/{seanceId}/validate-participant` : chaque
  * réponse RÉELLE suit ce que `docs/openapi.yaml` en dit, statut et corps.
  *
- * La route ne lit que des données locales : les deux volets tournent. Le 403
+ * La décision ne lit que des données locales, aucun jeton KLASSCI n'est
+ * exigé : les deux volets tournent. Le 403
  * a plusieurs formes sous un même schéma fermé (pas de `oneOf` dans l'outillage
  * de contrat) : chaque motif est donc prouvé par `assertJsonPath`. Vrai jeton
  * porteur (`asTenant`).
@@ -53,6 +56,7 @@ final class VisioParticipantValidationContractTest extends TestCase
         yield 'élève inscrit' => ['eleve', 'student'];
         yield 'enseignant de la séance' => ['enseignant', 'teacher'];
         yield 'coordinateur' => ['coordinateur', 'moderator'];
+        yield 'admin' => ['admin', 'moderator'];
     }
 
     #[DataProvider('ciblesAdmises')]
@@ -63,14 +67,27 @@ final class VisioParticipantValidationContractTest extends TestCase
         $vise = match ($cible) {
             'eleve' => $this->eleveInscrit($ecole),
             'enseignant' => $this->enseignantDeLaSeance($ecole),
-            default => $this->compte($ecole, 'coordinateur'),
+            default => $this->compte($ecole, $cible),
         };
 
         $reponse = $this->valider($this->compte($ecole, 'coordinateur'), $seance->id, $vise->id)->assertOk();
 
         $this->assertMatchesOpenApiResponse($reponse, self::CHEMIN, 'post');
         $this->assertOpenApiSchemaRefuseSans($reponse, self::CHEMIN, 'post', 'authorized');
-        $reponse->assertJsonPath('authorized', true)->assertJsonPath('role', $role);
+        $reponse->assertJsonPath('authorized', true)->assertJsonPath('role', $role)->assertJsonStructure(['message']);
+    }
+
+    /** L'enseignant de la séance valide un de ses élèves, et la séance se désigne par son identifiant KLASSCI. */
+    public function test_200_l_enseignant_valide_par_l_identifiant_klassci(): void
+    {
+        $ecole = $this->ecole(false);
+        $seance = $this->visio($ecole);
+
+        $reponse = $this->valider($this->enseignantDeLaSeance($ecole), (int) $seance->klassci_seance_id, $this->eleveInscrit($ecole)->id)
+            ->assertOk();
+
+        $this->assertMatchesOpenApiResponse($reponse, self::CHEMIN, 'post');
+        $reponse->assertJsonPath('authorized', true)->assertJsonPath('role', 'student');
     }
 
     /** Volet autonome : l'enseignant auteur de la séance passe. */
@@ -105,6 +122,32 @@ final class VisioParticipantValidationContractTest extends TestCase
 
         $this->assertMatchesOpenApiResponse($reponse, self::CHEMIN, 'post');
         $this->assertOpenApiSchemaRefuseSans($reponse, self::CHEMIN, 'post', 'message');
+    }
+
+    public function test_401_un_jeton_porteur_invalide(): void
+    {
+        $reponse = $this->withToken('jeton-invalide')
+            ->postJson('/api/lms/seances/1/validate-participant', ['user_id' => 1])
+            ->assertUnauthorized();
+
+        $this->assertMatchesOpenApiResponse($reponse, self::CHEMIN, 'post');
+    }
+
+    /**
+     * Un compte supprimé en douceur passe la règle `exists` de la requête, mais
+     * la relecture l'exclut : 404, sans `message`.
+     */
+    public function test_404_un_compte_supprime(): void
+    {
+        $ecole = $this->ecole(false);
+        $supprime = $this->compte($ecole, 'etudiant');
+        $supprime->delete();
+
+        $reponse = $this->valider($this->compte($ecole, 'coordinateur'), $this->visio($ecole)->id, $supprime->id)->assertNotFound();
+
+        $this->assertMatchesOpenApiResponse($reponse, self::CHEMIN, 'post');
+        $this->assertOpenApiSchemaRefuseSans($reponse, self::CHEMIN, 'post', 'reason');
+        $reponse->assertExactJson(['success' => false, 'authorized' => false, 'reason' => 'user_not_found']);
     }
 
     /** Refusé par la garde de rôle, dans les deux volets. */
@@ -160,6 +203,23 @@ final class VisioParticipantValidationContractTest extends TestCase
             : $this->compte($ecole, 'etudiant');
 
         $this->assertRefus($this->valider($acteur, $seance->id, $vise->id)->assertForbidden(), $motif);
+    }
+
+    /**
+     * Le vrai chemin de `no_classe_id` en école KLASSCI : la bascule efface la
+     * classe de la séance, qui refuse alors ses élèves (défaut H, décrit tel quel).
+     */
+    public function test_403_une_seance_basculee_refuse_ses_eleves(): void
+    {
+        Http::fake();
+        $ecole = $this->ecole(false);
+        $coordinateur = $this->compte($ecole, 'coordinateur', ['klassci_token' => 'jeton-klassci']);
+        $this->asTenant($coordinateur)->postJson('/api/lms/seances/4242/toggle-visio', ['enabled' => true])->assertOk();
+        $seance = Seance::query()->withoutGlobalScopes()->where('klassci_seance_id', 4242)->firstOrFail();
+
+        $reponse = $this->valider($coordinateur, $seance->id, $this->compte($ecole, 'etudiant')->id)->assertForbidden();
+
+        $this->assertRefus($reponse, 'no_classe_id');
     }
 
     /** Volet autonome : la séance n'a pas de classe KLASSCI, l'élève est refusé (défaut G, décrit tel quel). */

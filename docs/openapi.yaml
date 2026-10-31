@@ -1363,6 +1363,136 @@ components:
           type: string
           enum: [etudiant, enseignant, coordinateur, admin, superAdmin]
 
+    # Visio d'une seance KLASSCI : activation et bascule (#990).
+    VisioActivee:
+      type: object
+      additionalProperties: false
+      required:
+        - success
+        - message
+        - data
+      properties:
+        success:
+          type: boolean
+          enum:
+            - true
+        message:
+          type: string
+        data:
+          type: object
+          additionalProperties: false
+          required:
+            - visio_enabled
+            - visio_status
+            - visio_room_id
+            - notifications_sent
+            - notifications_queued
+            - classe_synced
+          properties:
+            visio_enabled:
+              type: boolean
+              enum:
+                - true
+            visio_status:
+              type: string
+              enum:
+                - programmee
+            visio_room_id:
+              type: string
+            notifications_sent:
+              type: integer
+              minimum: 0
+            notifications_queued:
+              type: boolean
+            classe_synced:
+              type: boolean
+              description: "La classe et ses eleves ont ete relus dans KLASSCI pour les notifications."
+
+    VisioBasculeInput:
+      type: object
+      additionalProperties: false
+      required:
+        - enabled
+      properties:
+        enabled:
+          type: boolean
+        visio_type:
+          type: string
+          nullable: true
+          description: "Seul Jitsi est cable. Absent ou null : `jitsi`."
+          enum:
+            - jitsi
+            - null
+
+    VisioBasculee:
+      type: object
+      additionalProperties: false
+      required:
+        - success
+        - message
+        - data
+      properties:
+        success:
+          type: boolean
+          enum:
+            - true
+        message:
+          type: string
+        data:
+          type: object
+          additionalProperties: false
+          required:
+            - seance_id
+            - visio_enabled
+            - visio_type
+            - visio_room_id
+            - visio_active
+            - notifications_sent
+            - notifications_queued
+          properties:
+            seance_id:
+              type: integer
+              description: "L'identifiant KLASSCI recu dans le chemin."
+            visio_enabled:
+              type: boolean
+            visio_type:
+              type: string
+              nullable: true
+              description: "`jitsi` a l'activation, null a la desactivation."
+              enum:
+                - jitsi
+                - null
+            visio_room_id:
+              type: string
+              nullable: true
+              description: "Un salon neuf a l'activation, null a la desactivation."
+            visio_active:
+              type: boolean
+            notifications_sent:
+              type: integer
+              minimum: 0
+            notifications_queued:
+              type: boolean
+              description: "Vrai a l'activation, faux a la desactivation."
+
+    VisioErreurInterne:
+      type: object
+      additionalProperties: false
+      required:
+        - success
+        - message
+        - error
+      properties:
+        success:
+          type: boolean
+          enum:
+            - false
+        message:
+          type: string
+        error:
+          type: string
+          example: "Une erreur est survenue."
+
 # Paths
 paths:
   # ============ AUTHENTICATION ============
@@ -1622,6 +1752,137 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+
+  /lms/seances/{seanceId}/activate-visio:
+    post:
+      tags:
+        - Visio
+      summary: "Activer la visio d'une seance KLASSCI"
+      description: |
+        Reserve aux roles enseignant et coordinateur.
+
+        La seance est cherchee dans l'emploi du temps KLASSCI, parmi les matieres
+        du porteur du jeton : `seanceId` est l'identifiant KLASSCI de la seance.
+        Un salon deja attribue est conserve.
+
+        La route lit KLASSCI avec le jeton du compte. Sans ce jeton, elle rend le
+        401 `klassci_token_missing` avant toute ecriture. Un compte d'ecole
+        autonome n'a jamais de jeton KLASSCI : il recoit toujours ce 401.
+
+        Une panne de KLASSCI pendant la recherche (jeton refuse, service
+        indisponible) rend le 500 decrit ci-dessous, sans motif ni `Retry-After`.
+      security:
+        - sanctum: []
+      parameters:
+        - name: seanceId
+          in: path
+          required: true
+          description: "Identifiant KLASSCI de la seance."
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: "Visio activee, en statut `programmee`."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VisioActivee'
+        '401':
+          description: |
+            Jeton porteur absent ou invalide (sans `reason`), ou compte sans jeton
+            KLASSCI (`reason: klassci_token_missing`). Voir la reponse partagee
+            `KlassciUnauthorized`.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefusKlassci'
+        '403':
+          description: |
+            Role non admis, ou compte sans etablissement (`reason: no_institution`).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SeanceLocaleInterdite'
+        '404':
+          description: |
+            Aucune seance de cet identifiant dans l'emploi du temps KLASSCI des
+            matieres du porteur.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SeanceLocaleRefus'
+        '500':
+          description: "Erreur interne, y compris une panne de KLASSCI pendant la recherche."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VisioErreurInterne'
+
+  /lms/seances/{seanceId}/toggle-visio:
+    post:
+      tags:
+        - Visio
+      summary: "Activer ou desactiver la visio d'une seance KLASSCI"
+      description: |
+        Reserve aux roles coordinateur et superAdmin.
+
+        `seanceId` est l'identifiant KLASSCI de la seance. La bascule ne verifie
+        pas que KLASSCI connait cette seance : un identifiant inconnu cree une
+        seance locale sous cet identifiant, et la reponse est 200.
+
+        Sans jeton KLASSCI, la route rend le 401 `klassci_token_missing` avant
+        toute ecriture. Un compte d'ecole autonome n'a jamais de jeton KLASSCI :
+        il recoit toujours ce 401.
+      security:
+        - sanctum: []
+      parameters:
+        - name: seanceId
+          in: path
+          required: true
+          description: "Identifiant KLASSCI de la seance."
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VisioBasculeInput'
+      responses:
+        '200':
+          description: "Visio activee (`enabled: true`) ou desactivee (`enabled: false`)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VisioBasculee'
+        '401':
+          description: |
+            Jeton porteur absent ou invalide (sans `reason`), ou compte sans jeton
+            KLASSCI (`reason: klassci_token_missing`). Voir la reponse partagee
+            `KlassciUnauthorized`.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefusKlassci'
+        '403':
+          description: |
+            Role non admis, ou compte sans etablissement (`reason: no_institution`).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SeanceLocaleInterdite'
+        '422':
+          description: "Charge invalide"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SeanceLocaleInvalide'
+        '500':
+          description: "Erreur interne"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VisioErreurInterne'
 
   /activation:
     post:

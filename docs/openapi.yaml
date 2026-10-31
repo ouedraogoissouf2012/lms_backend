@@ -615,6 +615,76 @@ components:
             total:
               type: integer
 
+    # Les eleves d'une classe KLASSCI (lot C).
+    ClasseEleves:
+      type: object
+      additionalProperties: false
+      required:
+        - success
+        - data
+      properties:
+        success:
+          type: boolean
+          enum:
+            - true
+        data:
+          type: object
+          additionalProperties: false
+          required:
+            - etudiants
+            - total
+          properties:
+            etudiants:
+              type: array
+              description: |
+                Les eleves de l'enveloppe KLASSCI de la classe, de statut `actif`
+                ou sans statut. Chaque element est l'objet KLASSCI, non normalise.
+              items:
+                type: object
+            total:
+              type: integer
+              minimum: 0
+
+    RefusClasseEleves:
+      type: object
+      description: |
+        Un refus sans donnees : la garde de role, un etablissement desactive, un
+        compte sans etablissement (`reason: no_institution`), ou un refus de
+        KLASSCI relaye avec le message de son catalogue.
+      additionalProperties: false
+      required:
+        - success
+        - message
+      properties:
+        success:
+          type: boolean
+          enum:
+            - false
+        message:
+          type: string
+        reason:
+          type: string
+          enum:
+            - no_institution
+
+    KlassciIndisponible:
+      type: object
+      description: |
+        KLASSCI ne peut pas rendre la donnee pour l'instant : panne, circuit
+        ouvert, reponse illisible, ou bloc attendu absent. Toujours avec
+        l'en-tete `Retry-After`. Le client reessaie apres ce delai.
+      additionalProperties: false
+      required:
+        - success
+        - message
+      properties:
+        success:
+          type: boolean
+          enum:
+            - false
+        message:
+          type: string
+
     MessageOnly:
       type: object
       properties:
@@ -1483,6 +1553,8 @@ components:
       description: |
         `error` n'est present que si le service a rattrape l'erreur. Le
         gestionnaire global rend `success` et `message` seuls.
+        Forme partagee des 500 rattrapes, au-dela de la visio (les eleves
+        d'une classe, par exemple) : le nom est plus etroit que l'usage.
       additionalProperties: false
       required:
         - success
@@ -2264,6 +2336,112 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+
+  /lms/classes/{classeId}/etudiants:
+    get:
+      tags:
+        - Classes
+      summary: "Les eleves actifs d'une classe KLASSCI"
+      description: |
+        Reserve aux roles enseignant, coordinateur et admin. Lit le roster dans
+        l'enveloppe KLASSCI `classes/{id}`, avec le jeton KLASSCI du compte, et
+        ne garde que les eleves de statut `actif` ou sans statut.
+
+        Sans jeton KLASSCI, la route rend le 401 `klassci_token_missing` avant
+        tout appel. Le refus porte sur le jeton du compte, pas sur le type ni
+        le mode de l'ecole. Un compte d'une ecole creee depuis le LMS n'a jamais
+        de jeton KLASSCI : il recoit ce 401. Une ecole creee depuis KLASSCI
+        passee en mode autonome garde les jetons de ses comptes : ils lisent
+        encore KLASSCI.
+
+        Un refus de KLASSCI (4xx) est relaye avec son statut et le message du
+        catalogue : 401 (`klassci_session_expired`), 403, et tout autre code de
+        400 a 499, dont ceux decrits ici. Une panne de KLASSCI, une reponse
+        illisible ou une enveloppe sans roster rendent le 503, avec
+        `Retry-After`. Une reponse en echec n'est gardee en cache que ce delai.
+      security:
+        - sanctum: []
+      parameters:
+        - name: classeId
+          in: path
+          required: true
+          description: "Identifiant KLASSCI de la classe."
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: "Les eleves actifs de la classe, et leur nombre."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClasseEleves'
+        '400':
+          description: "Requete refusee par KLASSCI, relayee (message par defaut du catalogue)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefusClasseEleves'
+        '401':
+          description: |
+            Jeton porteur absent ou invalide (sans `reason`), compte sans jeton
+            KLASSCI (`reason: klassci_token_missing`), ou session KLASSCI
+            refusee par KLASSCI (`reason: klassci_session_expired`).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefusKlassci'
+        '403':
+          description: |
+            Sans `reason` : role non admis, etablissement desactive, ou refus de
+            KLASSCI relaye. `no_institution` : compte sans etablissement.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefusClasseEleves'
+        '404':
+          description: "Aucune donnee KLASSCI pour ce compte, relaye."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefusClasseEleves'
+        '409':
+          description: "Conflit signale par KLASSCI, relaye."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefusClasseEleves'
+        '422':
+          description: "Donnees refusees par KLASSCI, relaye. Sans detail par champ."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefusClasseEleves'
+        '429':
+          description: "KLASSCI limite les requetes, relaye. La route elle-meme n'a pas de limite propre."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefusClasseEleves'
+        '500':
+          description: |
+            Erreur interne. Rattrapee par le controleur : avec `error`. Sans
+            `error` : erreur sans detail, ou gestionnaire global (par exemple un
+            `classeId` non numerique).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VisioErreurInterne'
+        '503':
+          description: "KLASSCI indisponible, reponse illisible, ou enveloppe sans roster."
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+              description: "Secondes a attendre avant de reessayer."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/KlassciIndisponible'
 
   /classes:
     post:

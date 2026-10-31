@@ -41,6 +41,29 @@ class TenantScopedCache implements TenantScopedCacheInterface
         return $this->cache->remember($this->namespaced($key), $ttl, $callback);
     }
 
+    public function rememberFor(string $key, \Closure $callback, \Closure $ttlOf): mixed
+    {
+        // Même tag, ou même namespace, que `remember()` : la purge tenant
+        // atteint ces entrées de la même façon.
+        [$store, $cle] = $this->cache->supportsTags()
+            ? [$this->cache->tags([$this->tenantTag()]), $key]
+            : [$this->cache, $this->namespaced($key)];
+
+        $enCache = $store->get($cle);
+        if ($enCache !== null) {
+            return $enCache;
+        }
+
+        $valeur = $callback();
+        $ttl = $ttlOf($valeur);
+
+        if ($ttl > 0) {
+            $store->put($cle, $valeur, $ttl);
+        }
+
+        return $valeur;
+    }
+
     public function flushTenant(): void
     {
         $this->purger->purge($this->tenantTag());

@@ -23,6 +23,18 @@ interface TenantScopedCacheInterface
     public function remember(string $key, int $ttl, \Closure $callback): mixed;
 
     /**
+     * Comme `remember()`, mais la durée se décide APRÈS le calcul, sur le
+     * résultat : `$ttlOf($valeur)` rend la durée en secondes, et 0 (ou moins)
+     * ne mémorise rien. Sert à garder un échec moins longtemps qu'une donnée.
+     *
+     * Une valeur `null` n'est jamais servie depuis le cache, comme `remember()`.
+     *
+     * @param  \Closure(): mixed  $callback
+     * @param  \Closure(mixed): int  $ttlOf
+     */
+    public function rememberFor(string $key, \Closure $callback, \Closure $ttlOf): mixed;
+
+    /**
      * Purge physiquement les entrées cache de l'institution courante.
      *
      * La stratégie dépend du store actif (#547) :

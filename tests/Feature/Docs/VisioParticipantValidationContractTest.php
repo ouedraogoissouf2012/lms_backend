@@ -21,7 +21,7 @@ use Tests\TestCase;
  * réponse RÉELLE suit ce que `docs/openapi.yaml` en dit, statut et corps.
  *
  * La décision ne lit que des données locales, aucun jeton KLASSCI n'est
- * exigé : les deux volets tournent. Le 403
+ * exigé : les deux types d'école tournent. Le 403
  * a plusieurs formes sous un même schéma fermé (pas de `oneOf` dans l'outillage
  * de contrat) : chaque motif est donc prouvé par `assertJsonPath`. Vrai jeton
  * porteur (`asTenant`).
@@ -44,10 +44,10 @@ final class VisioParticipantValidationContractTest extends TestCase
     }
 
     /** @return iterable<string, array{0: bool}> */
-    public static function volets(): iterable
+    public static function typesDEcole(): iterable
     {
-        yield 'école KLASSCI' => [false];
-        yield 'école autonome' => [true];
+        yield 'école créée depuis KLASSCI' => [false];
+        yield 'école créée depuis le LMS' => [true];
     }
 
     /** @return iterable<string, array{0: string, 1: string}> */
@@ -90,8 +90,8 @@ final class VisioParticipantValidationContractTest extends TestCase
         $reponse->assertJsonPath('authorized', true)->assertJsonPath('role', 'student');
     }
 
-    /** Volet autonome : l'enseignant auteur de la séance passe. */
-    public function test_200_l_enseignant_auteur_d_une_seance_autonome(): void
+    /** Séance sans identifiant KLASSCI (état fabriqué) : l'enseignant auteur de la séance passe. */
+    public function test_200_l_enseignant_auteur_d_une_seance_sans_klassci(): void
     {
         $ecole = $this->ecole(true);
         $auteur = $this->compte($ecole, 'enseignant');
@@ -150,11 +150,11 @@ final class VisioParticipantValidationContractTest extends TestCase
         $reponse->assertExactJson(['success' => false, 'authorized' => false, 'reason' => 'user_not_found']);
     }
 
-    /** Refusé par la garde de rôle, dans les deux volets. */
-    #[DataProvider('volets')]
-    public function test_403_un_eleve_ne_valide_pas(bool $autonome): void
+    /** Refusé par la garde de rôle, pour les deux types d'école. */
+    #[DataProvider('typesDEcole')]
+    public function test_403_un_eleve_ne_valide_pas(bool $depuisLeLms): void
     {
-        $ecole = $this->ecole($autonome);
+        $ecole = $this->ecole($depuisLeLms);
         $eleve = $this->compte($ecole, 'etudiant');
 
         $reponse = $this->valider($eleve, $this->visio($ecole)->id, $eleve->id)->assertForbidden();
@@ -185,7 +185,7 @@ final class VisioParticipantValidationContractTest extends TestCase
         }
     }
 
-    /** Chaque motif de la décision d'accès, atteint par un vrai chemin (volet KLASSCI). */
+    /** Chaque motif de la décision d'accès, atteint par un vrai chemin (école créée depuis KLASSCI). */
     #[DataProvider('motifsDeRefus')]
     public function test_403_la_decision_d_acces(string $motif): void
     {
@@ -222,8 +222,8 @@ final class VisioParticipantValidationContractTest extends TestCase
         $this->assertRefus($reponse, 'no_classe_id');
     }
 
-    /** Volet autonome : la séance n'a pas de classe KLASSCI, l'élève est refusé (défaut G, décrit tel quel). */
-    public function test_403_un_eleve_d_une_seance_autonome(): void
+    /** Séance sans identifiant KLASSCI (état fabriqué) : la séance n'a pas de classe KLASSCI, l'élève est refusé (défaut G, décrit tel quel). */
+    public function test_403_un_eleve_d_une_seance_sans_klassci(): void
     {
         $ecole = $this->ecole(true);
         $seance = $this->visio($ecole, $this->compte($ecole, 'enseignant'));

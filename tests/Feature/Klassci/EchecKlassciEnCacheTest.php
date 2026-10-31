@@ -38,7 +38,8 @@ use Tests\TestCase;
  * sur l'horloge réelle, ces deux cas sont donc sautés (précédent SearchDegradationTest).
  * Le TTL transmis au store étiqueté est prouvé par TenantScopedCacheTest.
  *
- * Volet KLASSCI seul : un compte d'école autonome n'a pas de jeton KLASSCI, et
+ * École créée depuis KLASSCI seule : un compte d'une école créée depuis le LMS
+ * n'a jamais de jeton KLASSCI, et
  * ces lectures lui rendent le 401 motivé (couvert par ClasseEtudiantsTest).
  * Une seule closure `Http::fake` par test (deux faux s'empilent, le premier
  * gagne). Jeton porteur réel (`asTenant`).

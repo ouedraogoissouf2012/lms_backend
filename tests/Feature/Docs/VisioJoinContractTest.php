@@ -25,7 +25,7 @@ use Tests\TestCase;
  * ce que `docs/openapi.yaml` en dit, statut et corps.
  *
  * La décision ne lit que des données locales, aucun jeton KLASSCI n'est
- * exigé : les deux volets tournent. L'état de la
+ * exigé : les deux types d'école tournent. L'état de la
  * visio (400) est dit avant le droit d'entrer (403) ; le droit est celui de la
  * validation d'un participant, l'appelant étant sa propre cible. Le 429
  * (300 par minute) est décrit, pas testé. Vrai jeton porteur (`asTenant`).
@@ -118,8 +118,8 @@ final class VisioJoinContractTest extends TestCase
         $reponse->assertJsonPath('data.visio_token', null)->assertJsonPath('data.visio_token_available', false);
     }
 
-    /** Volet autonome : l'enseignant auteur entre. */
-    public function test_200_l_enseignant_auteur_d_une_seance_autonome(): void
+    /** Séance sans identifiant KLASSCI (état fabriqué) : l'enseignant auteur entre. */
+    public function test_200_l_enseignant_auteur_d_une_seance_sans_klassci(): void
     {
         $ecole = $this->ecole(true);
         $auteur = $this->compte($ecole, 'enseignant');
@@ -132,18 +132,18 @@ final class VisioJoinContractTest extends TestCase
     /** @return iterable<string, array{0: string|null, 1: string, 2: bool}> */
     public static function etatsNonActifs(): iterable
     {
-        foreach ([false => 'école KLASSCI', true => 'école autonome'] as $autonome => $volet) {
-            yield "programmée, $volet" => ['programmee', 'visio_not_started', (bool) $autonome];
-            yield "terminée, $volet" => ['terminee', 'visio_ended', (bool) $autonome];
-            yield "jamais activée, $volet" => [null, 'visio_not_enabled', (bool) $autonome];
+        foreach ([false => 'école créée depuis KLASSCI', true => 'école créée depuis le LMS'] as $depuisLeLms => $type) {
+            yield "programmée, $type" => ['programmee', 'visio_not_started', (bool) $depuisLeLms];
+            yield "terminée, $type" => ['terminee', 'visio_ended', (bool) $depuisLeLms];
+            yield "jamais activée, $type" => [null, 'visio_not_enabled', (bool) $depuisLeLms];
         }
     }
 
     /** L'état est dit avant le droit : même un compte sans droit reçoit ce 400. */
     #[DataProvider('etatsNonActifs')]
-    public function test_400_la_visio_n_est_pas_active(?string $statut, string $motif, bool $autonome): void
+    public function test_400_la_visio_n_est_pas_active(?string $statut, string $motif, bool $depuisLeLms): void
     {
-        $ecole = $this->ecole($autonome);
+        $ecole = $this->ecole($depuisLeLms);
         $seance = $this->visio($ecole, null, ['visio_status' => $statut]);
 
         $reponse = $this->entrer($this->compte($ecole, 'etudiant'), $seance->id)->assertStatus(400);
@@ -190,7 +190,7 @@ final class VisioJoinContractTest extends TestCase
         }
     }
 
-    /** Chaque motif de la décision d'accès, atteint par un vrai chemin (volet KLASSCI). */
+    /** Chaque motif de la décision d'accès, atteint par un vrai chemin (école créée depuis KLASSCI). */
     #[DataProvider('motifsDeRefus')]
     public function test_403_la_decision_d_acces(string $motif): void
     {
@@ -204,8 +204,8 @@ final class VisioJoinContractTest extends TestCase
         $this->assertRefus($this->entrer($compte, $seance->id)->assertForbidden(), $motif);
     }
 
-    /** Volet autonome : la séance n'a pas de classe KLASSCI, l'élève est refusé (défaut G, décrit tel quel). */
-    public function test_403_un_eleve_d_une_seance_autonome(): void
+    /** Séance sans identifiant KLASSCI (état fabriqué) : la séance n'a pas de classe KLASSCI, l'élève est refusé (défaut G, décrit tel quel). */
+    public function test_403_un_eleve_d_une_seance_sans_klassci(): void
     {
         $ecole = $this->ecole(true);
         $seance = $this->visio($ecole, $this->compte($ecole, 'enseignant'));

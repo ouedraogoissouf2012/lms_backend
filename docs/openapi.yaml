@@ -1930,10 +1930,10 @@ paths:
 
         La route lit KLASSCI avec le jeton KLASSCI du compte. Sans ce jeton, elle
         rend le 401 `klassci_token_missing` avant toute ecriture. Le refus porte
-        sur le jeton du compte, pas sur le mode de l'ecole : un compte cree dans
-        une ecole autonome n'a pas de jeton et recoit ce 401, mais un compte qui
-        a garde son jeton apres le passage de son ecole en mode autonome n'est
-        pas refuse.
+        sur le jeton du compte, pas sur le type ni le mode de l'ecole. Un compte
+        d'une ecole creee depuis le LMS n'a jamais de jeton KLASSCI : il recoit
+        ce 401. Une ecole creee depuis KLASSCI passee en mode autonome garde les
+        jetons de ses comptes : ils ne sont pas refuses.
 
         Une panne de KLASSCI pendant la recherche (jeton refuse, service
         indisponible) rend le 500, sans motif ni `Retry-After`. Une reponse de
@@ -2007,10 +2007,11 @@ paths:
         l'adresse precedente cesse de valoir.
 
         Sans jeton KLASSCI, la route rend le 401 `klassci_token_missing` avant
-        toute ecriture. Le refus porte sur le jeton du compte, pas sur le mode
-        de l'ecole : un compte cree dans une ecole autonome n'a pas de jeton et
-        recoit ce 401, mais un compte qui a garde son jeton apres le passage de
-        son ecole en mode autonome n'est pas refuse.
+        toute ecriture. Le refus porte sur le jeton du compte, pas sur le type
+        ni le mode de l'ecole. Un compte d'une ecole creee depuis le LMS n'a
+        jamais de jeton KLASSCI : il recoit ce 401. Une ecole creee depuis
+        KLASSCI passee en mode autonome garde les jetons de ses comptes : ils
+        ne sont pas refuses.
       security:
         - sanctum: []
       parameters:
@@ -2133,8 +2134,8 @@ paths:
         inscrit dans la classe KLASSCI de la seance.
 
         Une seance sans classe KLASSCI refuse l'eleve (`no_classe_id`) : une
-        seance activee par `toggle-visio`, qui efface la classe de la seance, ou
-        une seance locale d'ecole autonome.
+        seance activee par `toggle-visio`, qui efface sa classe, ou une seance
+        creee dans le LMS (`POST /lms/seances`), quel que soit le type d'ecole.
 
         Un compte dont le role n'est ni du personnel ni un eleve recoit un REFUS
         rendu en 200 (`authorized: false`, `reason: invalid_role`).
@@ -2221,11 +2222,11 @@ paths:
         cible. La decision ne lit que des donnees locales : aucun jeton KLASSCI
         n'est exige.
 
-        Rien ne peut activer la visio d'une seance locale d'ecole autonome :
-        elle rend le 400 `visio_not_enabled`.
+        Rien ne peut activer la visio d'une seance creee dans le LMS, quel que
+        soit le type d'ecole : elle rend le 400 `visio_not_enabled`.
         Une seance sans classe KLASSCI refuse l'eleve (`no_classe_id`) : une
-        seance activee par `toggle-visio`, qui efface la classe de la seance, ou
-        une seance locale d'ecole autonome.
+        seance activee par `toggle-visio`, qui efface sa classe, ou une seance
+        creee dans le LMS (`POST /lms/seances`), quel que soit le type d'ecole.
       security:
         - sanctum: []
       parameters:

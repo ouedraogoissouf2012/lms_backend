@@ -15,11 +15,12 @@ use RuntimeException;
 /**
  * Une visio prête pour les contrats d'entrée et de validation (lot B).
  *
- * Volet KLASSCI : la séance porte la classe et l'enseignant KLASSCI, l'élève est
- * inscrit au pivot local de cette classe (vérité de #712). Volet autonome : la
- * séance est locale, sans classe ni enseignant KLASSCI, son auteur en est
- * l'enseignant. Rien ne peut activer la visio d'une séance autonome ; une séance
- * autonome activée est l'état d'une école passée de KLASSCI à autonome.
+ * École créée depuis KLASSCI : la séance porte la classe et l'enseignant KLASSCI,
+ * l'élève est inscrit au pivot local de cette classe (vérité de #712). École
+ * créée depuis le LMS (`standalone()`, sans URL KLASSCI) : la séance n'a ni classe
+ * ni enseignant KLASSCI, son auteur en est l'enseignant. Une telle séance à visio
+ * ACTIVE est un état fabriqué : rien ne peut aujourd'hui activer la visio d'une
+ * séance sans identifiant KLASSCI. Il fige le refus que l'élève y recevrait.
  */
 trait BuildsVisioSeance
 {
@@ -27,9 +28,9 @@ trait BuildsVisioSeance
 
     private const ENSEIGNANT_KLASSCI = 777;
 
-    private function ecole(bool $autonome): Institution
+    private function ecole(bool $depuisLeLms): Institution
     {
-        return $autonome ? Institution::factory()->standalone()->create() : Institution::factory()->create();
+        return $depuisLeLms ? Institution::factory()->standalone()->create() : Institution::factory()->create();
     }
 
     private function compte(Institution $ecole, string $role, array $attributs = []): User
@@ -45,13 +46,13 @@ trait BuildsVisioSeance
     /** @param  array<string, mixed>  $attributs */
     private function visio(Institution $ecole, ?User $auteur = null, array $attributs = []): Seance
     {
-        $autonome = $ecole->mode === InstitutionMode::Standalone;
+        $depuisLeLms = $ecole->mode === InstitutionMode::Standalone;
 
         return Seance::factory()->visioActive()->create([
             'institution_id' => $ecole->id,
-            'klassci_seance_id' => $autonome ? null : 12345,
-            'klassci_classe_id' => $autonome ? null : self::CLASSE_KLASSCI,
-            'klassci_enseignant_id' => $autonome ? null : self::ENSEIGNANT_KLASSCI,
+            'klassci_seance_id' => $depuisLeLms ? null : 12345,
+            'klassci_classe_id' => $depuisLeLms ? null : self::CLASSE_KLASSCI,
+            'klassci_enseignant_id' => $depuisLeLms ? null : self::ENSEIGNANT_KLASSCI,
             'created_by' => $auteur?->id,
         ] + $attributs);
     }

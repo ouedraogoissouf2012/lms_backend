@@ -24,13 +24,14 @@ use Tests\TestCase;
  * Contrat de `POST /lms/seances/{seanceId}/toggle-visio` : chaque réponse
  * RÉELLE suit ce que `docs/openapi.yaml` en dit, statut et corps.
  *
- * Les refus tournent dans les DEUX volets. Le 200, le 422 et le 500 ne
- * tournent que dans le volet KLASSCI : la route rend le 401 à tout compte sans
- * jeton KLASSCI. Dans le volet autonome, le compte est créé SANS jeton, comme
- * tout compte créé dans une école autonome (`UserFactory` en donne un à tout
- * compte). La route ne lit pas le mode de l'école : un compte qui garde son
- * jeton après le passage de son école en autonome n'est pas refusé, ce que la
- * spec dit. Vrai jeton porteur (`asTenant`). KLASSCI est simulé vide : les
+ * Les refus tournent pour les DEUX types d'école : créée depuis KLASSCI,
+ * créée depuis le LMS. Le 200, le 422 et le 500 ne tournent que pour une
+ * école créée depuis KLASSCI : la route rend le 401 à tout compte sans jeton
+ * KLASSCI. Pour une école créée depuis le LMS, le compte est créé SANS jeton,
+ * comme tout compte d'une telle école (`UserFactory` en donne un à tout
+ * compte). La route ne lit ni le type ni le mode de l'école : une école créée
+ * depuis KLASSCI passée en mode autonome garde les jetons de ses comptes, qui
+ * ne sont pas refusés, ce que la spec dit. Vrai jeton porteur (`asTenant`). KLASSCI est simulé vide : les
  * notifications ne partent pas, la bascule aboutit.
  *
  * @see app/Services/Seances/Mutations/VisioToggleService.php
@@ -55,10 +56,10 @@ final class VisioBasculeContractTest extends TestCase
     }
 
     /** @return iterable<string, array{0: bool}> */
-    public static function volets(): iterable
+    public static function typesDEcole(): iterable
     {
-        yield 'école KLASSCI' => [false];
-        yield 'école autonome' => [true];
+        yield 'école créée depuis KLASSCI' => [false];
+        yield 'école créée depuis le LMS' => [true];
     }
 
     /** @return iterable<string, array{0: string, 1: array<string, mixed>}> */
@@ -104,10 +105,10 @@ final class VisioBasculeContractTest extends TestCase
     }
 
     /** Un compte sans jeton KLASSCI : le 401 motivé de #806, et aucune séance n'est créée. */
-    #[DataProvider('volets')]
-    public function test_401_sans_jeton_klassci(bool $autonome): void
+    #[DataProvider('typesDEcole')]
+    public function test_401_sans_jeton_klassci(bool $depuisLeLms): void
     {
-        $compte = $this->compte($this->ecole($autonome), 'coordinateur', null);
+        $compte = $this->compte($this->ecole($depuisLeLms), 'coordinateur', null);
 
         $reponse = $this->asTenant($compte)->postJson(self::URL, ['enabled' => true])->assertUnauthorized();
 
@@ -127,16 +128,16 @@ final class VisioBasculeContractTest extends TestCase
     /** @return iterable<string, array{0: bool, 1: string}> */
     public static function rolesRefuses(): iterable
     {
-        foreach (self::volets() as $volet => [$autonome]) {
-            yield "enseignant, $volet" => [$autonome, 'enseignant'];
-            yield "étudiant, $volet" => [$autonome, 'etudiant'];
+        foreach (self::typesDEcole() as $type => [$depuisLeLms]) {
+            yield "enseignant, $type" => [$depuisLeLms, 'enseignant'];
+            yield "étudiant, $type" => [$depuisLeLms, 'etudiant'];
         }
     }
 
     #[DataProvider('rolesRefuses')]
-    public function test_403_un_role_non_admis(bool $autonome, string $role): void
+    public function test_403_un_role_non_admis(bool $depuisLeLms, string $role): void
     {
-        $compte = $this->compte($this->ecole($autonome), $role, $autonome ? null : self::JETON_KLASSCI);
+        $compte = $this->compte($this->ecole($depuisLeLms), $role, $depuisLeLms ? null : self::JETON_KLASSCI);
 
         $reponse = $this->asTenant($compte)->postJson(self::URL, ['enabled' => true])->assertForbidden();
 
@@ -228,9 +229,9 @@ final class VisioBasculeContractTest extends TestCase
         self::assertSame(0, Seance::query()->withoutGlobalScopes()->count());
     }
 
-    private function ecole(bool $autonome): Institution
+    private function ecole(bool $depuisLeLms): Institution
     {
-        return $autonome ? Institution::factory()->standalone()->create() : Institution::factory()->create();
+        return $depuisLeLms ? Institution::factory()->standalone()->create() : Institution::factory()->create();
     }
 
     private function compte(Institution $ecole, string $role, ?string $jetonKlassci): User

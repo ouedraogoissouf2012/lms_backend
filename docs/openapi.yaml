@@ -210,6 +210,208 @@ components:
               type: integer
               nullable: true
 
+    # Ecole independante, lot 1 : « Mes matieres » et la page d une matiere.
+    # La MEME route sert les deux volets ; seule la source change. Les cles
+    # decrites sont celles que le front LIT (fichier cite pour chacune) ; les
+    # objets restent ouverts la ou la source KLASSCI relaie sa propre charge.
+    MesMatieresListe:
+      type: object
+      additionalProperties: false
+      required:
+        - success
+        - data
+      properties:
+        success:
+          type: boolean
+          enum:
+            - true
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/MesMatieresCarte'
+
+    MesMatieresCarte:
+      type: object
+      description: |
+        Une matiere enseignee par l appelant (`MatiereCourseCard.vue`). Ouvert :
+        la source KLASSCI relaie la matiere telle que KLASSCI la decrit.
+      required:
+        - id
+        - statistiques
+      properties:
+        id:
+          type: integer
+          description: |
+            Navigation vers la page de la matiere (useTeacherMatieres.js:37, qui
+            lit `matiere_id` d abord). Requis : la source KLASSCI n ajoute ses
+            compteurs qu a une matiere identifiee (`MyMatieresQueryService`).
+        matiere_id:
+          type: integer
+          description: "Variante de `id` que KLASSCI peut employer ; la source locale ne l emet pas."
+        nom:
+          type: string
+          description: "Titre de la carte (MatiereCourseCard.vue:12)."
+        coefficient:
+          type: number
+          nullable: true
+        classes:
+          type: array
+          description: "Badges de classes (MatiereCourseCard.vue:41-48)."
+          items:
+            $ref: '#/components/schemas/PageMatiereClasse'
+        statistiques:
+          type: object
+          additionalProperties: false
+          required:
+            - nombre_lessons_publiees
+            - nombre_lessons_brouillons
+            - nombre_seances
+            - nombre_evaluations
+          properties:
+            nombre_lessons_publiees:
+              type: integer
+            nombre_lessons_brouillons:
+              type: integer
+            nombre_seances:
+              type: integer
+              nullable: true
+              description: |
+                `null` = inconnu : une seance locale ne porte que le NOM de sa
+                matiere, en texte. Jamais un zero fabrique.
+            nombre_evaluations:
+              type: integer
+
+    PageMatiere:
+      type: object
+      additionalProperties: false
+      required:
+        - success
+        - data
+      properties:
+        success:
+          type: boolean
+          enum:
+            - true
+        data:
+          type: object
+          additionalProperties: false
+          required:
+            - matiere
+            - combinaisons
+            - enseignants
+            - lessons
+            - seances_programmees
+            - evaluations_programmees
+            - statistiques
+            - matiere_id_local
+            - classes_concernees
+          properties:
+            matiere:
+              type: object
+              description: "En-tete de la page (MatiereDetailsHeader.vue)."
+              required:
+                - nom
+              properties:
+                nom:
+                  type: string
+                code:
+                  type: string
+                  nullable: true
+                coefficient:
+                  type: integer
+                  nullable: true
+            combinaisons:
+              type: array
+              items:
+                type: object
+            enseignants:
+              type: array
+              items:
+                type: object
+            lessons:
+              type: array
+              description: |
+                Onglet Lecons (LessonCard.vue). Dans la source locale, un
+                enseignant n y voit que les siennes.
+              items:
+                type: object
+                required:
+                  - id
+                  - title
+                properties:
+                  id:
+                    type: integer
+                  title:
+                    type: string
+            seances_programmees:
+              type: array
+              items:
+                type: object
+            evaluations_programmees:
+              type: array
+              items:
+                type: object
+            statistiques:
+              type: object
+              required:
+                - nombre_lessons
+                - nombre_evaluations
+                - nombre_seances_programmees
+              properties:
+                nombre_lessons:
+                  type: integer
+                nombre_evaluations:
+                  type: integer
+                nombre_seances_programmees:
+                  type: integer
+                  nullable: true
+            matiere_id_local:
+              type: integer
+              nullable: true
+              description: |
+                L id LOCAL que la creation de lecon envoie (matiereDetails.js:116-124).
+                `null` quand la matiere KLASSCI n est pas encore miroitee.
+            classes_concernees:
+              type: array
+              description: "Ids LOCAUX (#740). La premiere sert de `classe_id` a la creation de lecon."
+              items:
+                $ref: '#/components/schemas/PageMatiereClasse'
+
+    PageMatiereClasse:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - nom
+      properties:
+        id:
+          type: integer
+        nom:
+          type: string
+
+    PageMatiereRefus:
+      type: object
+      description: |
+        Tout refus de « Mes matieres » et de la page d une matiere, hors 401.
+        `reason` quand la couche qui refuse en pose un (`no_institution` a la
+        porte des comptes sans etablissement) ; `error` dans le seul 500 de la
+        page matiere (`LMSMatieresQueryController::echecDetails`).
+      additionalProperties: false
+      required:
+        - success
+        - message
+      properties:
+        success:
+          type: boolean
+          enum:
+            - false
+        message:
+          type: string
+        reason:
+          type: string
+        error:
+          type: string
+
     ClasseInput:
       type: object
       required:
@@ -2939,6 +3141,156 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+
+  /lms/teacher/my-matieres:
+    get:
+      tags:
+        - Matieres
+      operationId: listMyTeachingSubjects
+      summary: "Les matieres qu enseigne l appelant"
+      description: |
+        Les matieres ou l appelant est designe formateur, avec les classes ou il
+        les enseigne et quatre compteurs, qui ne portent que sur SES lecons. La
+        route dit « my » : dans la source locale, seul un compte de role
+        enseignant peut etre designe formateur, et un coordinateur ou un
+        superAdmin, que la route admet, recoit donc une liste vide.
+
+        Deux sources, choisies par l etablissement au point de liaison, jamais
+        par le client : KLASSCI (`me/teacher-dashboard`, avec le jeton du
+        compte), ou le programme local (`classe_matiere`) dans une ecole
+        independante. Les ids sont ceux de la source.
+      security:
+        - sanctum: []
+      responses:
+        '200':
+          description: "Les matieres de l appelant"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MesMatieresListe'
+        '401':
+          description: |
+            Non authentifie, ou, dans un etablissement relie a KLASSCI, compte
+            sans jeton KLASSCI (`reason: klassci_token_missing`).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefusKlassci'
+        '403':
+          description: |
+            Role non admis (la route admet enseignant et coordinateur, et le
+            superAdmin passe toute garde de role d etablissement),
+            compte sans etablissement (`reason: no_institution`), etablissement
+            desactive, ou refus relaye de KLASSCI (source KLASSCI).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PageMatiereRefus'
+        '404':
+          description: "Refus relaye de KLASSCI (profil enseignant introuvable), source KLASSCI seulement"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PageMatiereRefus'
+        '500':
+          description: |
+            Defaillance interne, journalisee (base de donnees comprise). Le corps
+            ne porte jamais le detail technique.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PageMatiereRefus'
+        '503':
+          description: |
+            Source KLASSCI injoignable ou mal configuree. En-tete `Retry-After`.
+            Les autres 4xx de KLASSCI sont relayes avec leur statut.
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PageMatiereRefus'
+
+  /lms/matieres/{matiereId}:
+    get:
+      tags:
+        - Matieres
+      operationId: getSubjectPage
+      summary: "La page d une matiere"
+      description: |
+        La matiere, ses classes, ses lecons et leurs compteurs. La source suit
+        l etablissement : KLASSCI (l id est celui de KLASSCI), ou le programme
+        local dans une ecole independante (l id est local, seul espace qui y
+        existe).
+
+        Dans la source locale :
+        - la gestion lit toute matiere de l etablissement ;
+        - un enseignant, celle ou il est designe, et seulement SES lecons ;
+        - un apprenant, celle d une classe ou son inscription est ACTIVE, et les
+          lecons publiees de ces classes.
+        Hors de ces cas, 404 : le refus ne dit pas si la matiere existe ailleurs.
+      security:
+        - sanctum: []
+      parameters:
+        - name: matiereId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: "La page de la matiere"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PageMatiere'
+        '401':
+          description: |
+            Non authentifie, ou, dans un etablissement relie a KLASSCI, compte
+            sans jeton KLASSCI (`reason: klassci_token_missing`).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefusKlassci'
+        '404':
+          description: |
+            Matiere introuvable pour cet appelant, ou identifiant non numerique
+            (la route n accepte que des chiffres).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PageMatiereRefus'
+        '403':
+          description: |
+            Compte sans etablissement (`reason: no_institution`), etablissement
+            desactive, ou refus relaye de KLASSCI (source KLASSCI). La route
+            n impose aucun role.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PageMatiereRefus'
+        '500':
+          description: |
+            Defaillance interne, journalisee (base de donnees comprise). Le corps
+            ne porte jamais le detail technique.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PageMatiereRefus'
+        '503':
+          description: |
+            Source KLASSCI injoignable ou mal configuree. En-tete `Retry-After`.
+            Les autres 4xx de KLASSCI sont relayes avec leur statut.
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PageMatiereRefus'
 
   /training-sessions/{trainingSession}/publier:
     post:

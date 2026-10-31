@@ -131,8 +131,11 @@ Route::middleware(['auth:sanctum', 'klassci.sync', 'role:coordinateur,admin,supe
 
 Route::middleware(['auth:sanctum', 'klassci.sync'])->prefix('lms')->group(function () {
 
-    // Détails complets d'une matière
+    // Détails complets d'une matière. `whereNumber` : le contrôleur type son
+    // paramètre `int`, et un segment non numérique levait un TypeError AVANT
+    // son `try`, rendu en 500. C'est une adresse qui n'existe pas : 404.
     Route::get('/matieres/{matiereId}', [LMSMatieresQueryController::class, 'matiereDetails'])
+        ->whereNumber('matiereId')
         ->name('lms.matieres.details');
 
     // Liste des enseignants (depuis KLASSCI externe + cache local 10 min)

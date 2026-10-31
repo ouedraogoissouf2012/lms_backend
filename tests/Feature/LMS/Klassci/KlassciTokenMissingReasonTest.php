@@ -66,6 +66,24 @@ final class KlassciTokenMissingReasonTest extends TestCase
         yield 'ecole standalone' => [InstitutionMode::Standalone];
     }
 
+    /**
+     * Le volet KLASSCI SEUL, pour les sites qu'une école indépendante
+     * n'atteint plus : depuis ADR-EI-01, la même route y lit sa source locale,
+     * et le point de rendu du 401 n'est plus sur son chemin. Ce n'est pas une
+     * exception à la règle « aucun site ne lit le mode » : c'est le point de
+     * liaison qui a choisi une autre source.
+     *
+     * Le volet indépendant de ces sites est gardé ailleurs, et PLUS
+     * strictement : `MatieresEcoleIndependanteTest` vérifie qu'aucun appel
+     * KLASSCI ne part, même pour un compte porteur d'un jeton.
+     *
+     * @return iterable<string, array{0: InstitutionMode}>
+     */
+    public static function voletKlassciSeul(): iterable
+    {
+        yield 'ecole klassci' => [InstitutionMode::Klassci];
+    }
+
     // ───────────────────────── proxy : ResolvesPersonalKlassciToken
 
     #[DataProvider('volets')]
@@ -86,7 +104,7 @@ final class KlassciTokenMissingReasonTest extends TestCase
 
     // ───────────────────────── routes LMS : RendersKlassciBackedErrors
 
-    #[DataProvider('volets')]
+    #[DataProvider('voletKlassciSeul')]
     public function test_mes_matieres_dit_le_jeton_absent(InstitutionMode $mode): void
     {
         $compte = $this->compteSansJeton($mode, 'enseignant');
@@ -209,7 +227,7 @@ final class KlassciTokenMissingReasonTest extends TestCase
             ->assertJsonPath('reason', 'klassci_session_expired');
     }
 
-    #[DataProvider('volets')]
+    #[DataProvider('voletKlassciSeul')]
     public function test_jeton_expire_sur_une_route_lms_dit_session_expiree(InstitutionMode $mode): void
     {
         $compte = $this->compteAvecJeton($mode, 'enseignant');

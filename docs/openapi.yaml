@@ -1233,6 +1233,141 @@ components:
             items:
               type: string
 
+    # Entree en visio et validation d'un participant (lot B).
+    ParticipantValide:
+      type: object
+      description: |
+        Deux formes sous le meme statut 200. `authorized: true` : l'acces est
+        accorde, avec `role` et `message`. `authorized: false` : un REFUS rendu
+        en 200, motif `invalid_role`, pour un compte dont le role n'est ni du
+        personnel ni un eleve. Le client lit `authorized`, pas le statut.
+      additionalProperties: false
+      required:
+        - success
+        - authorized
+      properties:
+        success:
+          type: boolean
+          enum:
+            - true
+        authorized:
+          type: boolean
+        role:
+          type: string
+          description: "Present si l'acces est accorde : `moderator` pour un coordinateur ou un administrateur."
+          enum:
+            - moderator
+            - teacher
+            - student
+        message:
+          type: string
+        reason:
+          type: string
+          description: "Present si l'acces est refuse."
+          enum:
+            - invalid_role
+        user_role:
+          type: string
+          description: "Le role brut du compte refuse."
+
+    RefusParticipant:
+      type: object
+      description: |
+        Les refus 403 de la validation d'un participant et de l'entree en visio.
+        Trois sources sous ce statut : la garde de role ou un etablissement
+        desactive (`message` seul) ; la porte des comptes sans etablissement
+        (`reason: no_institution`) ; la decision d'acces (`authorized: false` et
+        `reason`). Faute de `oneOf` dans l'outillage de contrat, le schema admet
+        toutes ces formes : il ne lie pas un motif a sa forme.
+      additionalProperties: false
+      required:
+        - success
+        - message
+      properties:
+        success:
+          type: boolean
+          enum:
+            - false
+        message:
+          type: string
+        authorized:
+          type: boolean
+          enum:
+            - false
+        reason:
+          type: string
+          enum:
+            - no_institution
+            - visio_not_enabled
+            - visio_ended
+            - actor_not_authorized
+            - teacher_not_owner
+            - no_classe_id
+            - not_enrolled
+
+    VisioNonActive:
+      type: object
+      additionalProperties: false
+      required:
+        - success
+        - message
+        - reason
+      properties:
+        success:
+          type: boolean
+          enum:
+            - false
+        message:
+          type: string
+        reason:
+          type: string
+          description: "L'etat de la visio : programmee, terminee, ou non activee."
+          enum:
+            - visio_not_started
+            - visio_ended
+            - visio_not_enabled
+
+    VisioRejointe:
+      type: object
+      additionalProperties: false
+      required:
+        - success
+        - message
+        - data
+      properties:
+        success:
+          type: boolean
+          enum:
+            - true
+        message:
+          type: string
+        data:
+          type: object
+          additionalProperties: false
+          required:
+            - visio_room_id
+            - participants_count
+            - visio_token
+            - visio_token_available
+            - can_manage_recording
+          properties:
+            visio_room_id:
+              type: string
+              nullable: true
+            participants_count:
+              type: integer
+              minimum: 0
+              description: "Participants connectes, compte avant l'entree de l'appelant."
+            visio_token:
+              type: string
+              nullable: true
+              description: "Cle d'entree de CE salon pour CET utilisateur. Null si Jitsi n'est pas configure, ou sans salon."
+            visio_token_available:
+              type: boolean
+            can_manage_recording:
+              type: boolean
+              description: "Decide par le serveur : coordinateur, administrateur ou enseignant de la seance."
+
     ErrorWithDetail:
       type: object
       description: |
@@ -1956,6 +2091,159 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+
+  /lms/seances/{seanceId}/validate-participant:
+    post:
+      tags:
+        - Visio
+      summary: "Decider si un participant peut entrer dans une visio"
+      description: |
+        Reserve aux roles enseignant, coordinateur, admin et superAdmin. Ne lit
+        que des donnees locales : aucun jeton KLASSCI n'est demande.
+
+        `seanceId` est l'identifiant local de la seance ou son identifiant
+        KLASSCI. `user_id` designe un compte du meme etablissement.
+
+        Decision : une visio `active` ou `programmee` se valide ; l'acteur doit
+        etre coordinateur, administrateur, ou l'enseignant de la seance ; un
+        enseignant cible doit etre celui de la seance ; un eleve cible doit etre
+        inscrit dans la classe KLASSCI de la seance. Une seance d'ecole autonome
+        n'a pas de classe KLASSCI : un eleve y est refuse (`no_classe_id`).
+
+        Un compte dont le role n'est ni du personnel ni un eleve recoit un REFUS
+        rendu en 200 (`authorized: false`, `reason: invalid_role`).
+      security:
+        - sanctum: []
+      parameters:
+        - name: seanceId
+          in: path
+          required: true
+          description: "Identifiant local de la seance, ou son identifiant KLASSCI."
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required:
+                - user_id
+              properties:
+                user_id:
+                  type: integer
+                  description: "Un compte du meme etablissement. Sinon : 422."
+      responses:
+        '200':
+          description: "Acces accorde, ou refus rendu en 200 (`invalid_role`)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ParticipantValide'
+        '401':
+          description: "Jeton porteur absent ou invalide. Aucun jeton KLASSCI n'est lu ici."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SeanceLocaleRefus'
+        '403':
+          description: |
+            Sans `reason` : role non admis, ou etablissement desactive.
+            `no_institution` : compte sans etablissement. Decision d'acces
+            (`authorized: false`) : `visio_not_enabled` (seance absente ou visio
+            non activee), `visio_ended`, `actor_not_authorized`,
+            `teacher_not_owner`, `no_classe_id`, `not_enrolled`.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefusParticipant'
+        '422':
+          description: "`user_id` absent, non entier, ou hors de l'etablissement."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SeanceLocaleInvalide'
+        '500':
+          description: |
+            Erreur interne. Rattrapee par le service : avec `error`. Non
+            rattrapee (gestionnaire global) : sans `error`.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorWithDetail'
+
+  /lms/seances/{seanceId}/join:
+    post:
+      tags:
+        - Visio
+      summary: "Entrer dans une visio"
+      description: |
+        Ouvert a tout compte de l'etablissement. Enregistre la presence, puis
+        rend la cle d'entree du salon. Un coordinateur entre en observateur.
+
+        `seanceId` est l'identifiant local de la seance ou son identifiant
+        KLASSCI. Seule une visio `active` s'ouvre ; l'etat est dit (400) AVANT
+        que le droit d'entrer ne soit verifie (403). Le droit est celui de la
+        validation d'un participant, l'appelant etant sa propre cible.
+
+        Une seance d'ecole autonome n'a pas de classe KLASSCI : un eleve y est
+        refuse (`no_classe_id`). Rien ne peut d'ailleurs activer la visio d'une
+        seance locale : elle rend le 400 `visio_not_enabled`.
+      security:
+        - sanctum: []
+      parameters:
+        - name: seanceId
+          in: path
+          required: true
+          description: "Identifiant local de la seance, ou son identifiant KLASSCI."
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: "Presence enregistree, cle d'entree du salon."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VisioRejointe'
+        '400':
+          description: "La visio n'est pas active : programmee, terminee, ou non activee."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VisioNonActive'
+        '401':
+          description: "Jeton porteur absent ou invalide. Aucun jeton KLASSCI n'est lu ici."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SeanceLocaleRefus'
+        '403':
+          description: |
+            Sans `reason` : etablissement desactive. `no_institution` : compte
+            sans etablissement. Decision d'acces (`authorized: false`) :
+            `visio_not_enabled`, `actor_not_authorized` (enseignant d'une autre
+            seance, ou role sans droit), `no_classe_id`, `not_enrolled`.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefusParticipant'
+        '404':
+          description: "Aucune seance de cet identifiant dans l'etablissement."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SeanceLocaleRefus'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          description: |
+            Erreur interne. Rattrapee par le service : avec `error`. Non
+            rattrapee (gestionnaire global) : sans `error`.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorWithDetail'
 
   /admin/school-requests:
     get:

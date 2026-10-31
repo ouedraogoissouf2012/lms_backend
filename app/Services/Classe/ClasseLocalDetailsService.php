@@ -49,10 +49,14 @@ use App\Models\User;
  * Une classe créée localement (ADR-848-01) a un `klassci_id` nul : il n'existe
  * aucune fiche KLASSCI à aller chercher. Répondre 404 mentirait — la classe
  * existe. Cette porte rend donc **409**, qui dit la vérité : la ressource est
- * là, mais la question posée n'a pas de sens pour elle.
+ * là, mais la question posée n'a pas de sens pour elle. Ce 409 porte un motif
+ * (ADR-906-01) : le front ne lit que le statut et le motif, et un 409 nu y
+ * devenait un « conflit » générique.
  */
 final class ClasseLocalDetailsService
 {
+    public const LOCAL_ONLY_REASON = 'classe_local_only';
+
     public function __construct(
         private readonly ClasseDetailsQueryService $details,
     ) {}
@@ -75,6 +79,7 @@ final class ClasseLocalDetailsService
             return $this->erreur(
                 409,
                 "Cette classe a été créée localement : elle n'a pas de fiche KLASSCI à afficher.",
+                self::LOCAL_ONLY_REASON,
             );
         }
 
@@ -100,16 +105,17 @@ final class ClasseLocalDetailsService
     }
 
     /**
+     * Le motif est omis quand le refus n'a qu'un sens (ADR-906-01).
+     *
      * @return array{status: int, payload: array<string, mixed>}
      */
-    private function erreur(int $status, string $message): array
+    private function erreur(int $status, string $message, ?string $reason = null): array
     {
-        return [
-            'status' => $status,
-            'payload' => [
-                'success' => false,
-                'message' => $message,
-            ],
-        ];
+        $payload = ['success' => false, 'message' => $message];
+        if ($reason !== null) {
+            $payload['reason'] = $reason;
+        }
+
+        return ['status' => $status, 'payload' => $payload];
     }
 }

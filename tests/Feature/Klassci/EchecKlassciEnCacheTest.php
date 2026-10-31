@@ -14,6 +14,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Testing\TestResponse;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\Concerns\ActsAsTenantUser;
 use Tests\TestCase;
 
@@ -92,6 +93,37 @@ final class EchecKlassciEnCacheTest extends TestCase
         $this->lireLesEleves()->assertStatus(503)->assertHeader('Retry-After');
         $this->lireLesEleves()->assertStatus(503);
         self::assertCount(1, $this->appelsKlassci, 'pendant le délai annoncé, l échec est relu du cache');
+
+        $this->travel(KlassciUnavailableException::retryAfterSeconds() + 1)->seconds();
+
+        $this->lireLesEleves()->assertOk()->assertJsonPath('data.total', 1);
+        self::assertCount(2, $this->appelsKlassci, 'après le délai annoncé, KLASSCI est réinterrogé');
+    }
+
+    /** @return iterable<string, array{0: array<string, mixed>}> */
+    public static function enveloppesSansRoster(): iterable
+    {
+        yield 'succès déclaré, sans élèves' => [['success' => true, 'data' => ['classe' => ['id' => 42]]]];
+        yield 'data nul' => [['data' => null]];
+        yield 'message seul, sans success' => [['message' => 'Classe indisponible']];
+    }
+
+    /**
+     * KLASSCI ne déclare pas d'échec, mais l'enveloppe ne porte pas le roster :
+     * le lecteur rend 503 (#987). Cet échec-là non plus n'est gardé que le délai
+     * annoncé. C'est le lecteur qui dit ce qui lui est exploitable.
+     *
+     * @param  array<string, mixed>  $sansRoster
+     */
+    #[DataProvider('enveloppesSansRoster')]
+    public function test_une_enveloppe_sans_roster_n_est_gardee_que_le_delai_annonce(array $sansRoster): void
+    {
+        $this->sauterSiLeStoreSuitLHorlogeReelle();
+        $this->klassciRepond([$sansRoster, self::ENVELOPPE]);
+
+        $this->lireLesEleves()->assertStatus(503)->assertHeader('Retry-After');
+        $this->lireLesEleves()->assertStatus(503);
+        self::assertCount(1, $this->appelsKlassci, 'pendant le délai annoncé, la réponse est relue du cache');
 
         $this->travel(KlassciUnavailableException::retryAfterSeconds() + 1)->seconds();
 

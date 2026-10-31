@@ -41,6 +41,20 @@ final class KlassciCacheTtlTest extends TestCase
         self::assertSame($attendu, KlassciCacheTtl::pour($reponse, $ttl));
     }
 
+    /**
+     * Le lecteur qui sait ce qu'il attend le dit : une réponse inexploitable pour
+     * lui (une enveloppe `success: true` sans le bloc lu, par exemple) est un échec.
+     */
+    public function test_une_reponse_inexploitable_pour_son_lecteur_est_un_echec(): void
+    {
+        config()->set('services.klassci.retry_after', 30);
+        $sansRoster = ['success' => true, 'data' => ['classe' => ['id' => 42]]];
+
+        self::assertSame(30, KlassciCacheTtl::pour($sansRoster, 300, static fn (mixed $r): bool => false));
+        self::assertSame(300, KlassciCacheTtl::pour($sansRoster, 300, static fn (mixed $r): bool => true));
+        self::assertSame(30, KlassciCacheTtl::pour(['success' => false], 300, static fn (mixed $r): bool => true), 'un échec déclaré le reste');
+    }
+
     public function test_un_echec_declare_suit_le_delai_configure(): void
     {
         config()->set('services.klassci.retry_after', 45);

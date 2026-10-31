@@ -102,6 +102,27 @@ final class KlassciCorpsIllisibleTest extends TestCase
     }
 
     /**
+     * Un corps illisible COMPTE comme un échec, comme un 5xx : seuil à 2, deux
+     * pages de maintenance en 200 ouvrent le circuit. Sans cela, rien n'étant
+     * gardé en cache, chaque requête repartait vers KLASSCI.
+     */
+    public function test_des_corps_illisibles_seuls_ouvrent_le_circuit(): void
+    {
+        config(['services.klassci.circuit_breaker_enabled' => true, 'services.klassci.circuit_breaker_failures' => 2]);
+        $this->klassciRepond(['<html>maintenance</html>']);
+
+        foreach ([1, 2] as $_) {
+            try {
+                $this->client()->executeHttp('GET', 'classes/42', [], 'jeton');
+            } catch (KlassciUnavailableException) {
+                // Attendu pour chacun des deux appels.
+            }
+        }
+
+        self::assertTrue(app(KlassciCircuitBreaker::class)->isOpen());
+    }
+
+    /**
      * Une seule closure : chaque appel consomme le corps suivant. Dans le test du
      * circuit, le 2e corps (illisible) est rendu en 200, les autres au statut donné.
      *

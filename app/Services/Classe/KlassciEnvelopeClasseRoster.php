@@ -55,20 +55,33 @@ final class KlassciEnvelopeClasseRoster implements ClasseRoster
             'GET',
             [],
             self::TTL_SECONDES,
+            // La même règle décide de la lecture et de la durée de cache : une
+            // enveloppe sans roster n'est gardée que le délai `Retry-After`.
+            static fn (mixed $r): bool => self::roster($r) !== null,
         );
-
-        /** @var array<string, mixed>|null $payload */
-        $payload = is_array($reponse['data'] ?? null) ? $reponse['data'] : null;
 
         // Bloc ABSENT (`{success: false}` sans `data`, ou enveloppe sans
         // `etudiants`) : ce n'est pas une classe vide. Le rendre `[]` publierait
         // une absence comme une mesure — l'écran affichait « 0 étudiant ». Un
         // bloc présent et vide, lui, reste `[]`.
-        $etudiants = ClasseEnvelope::optionalList($payload, 'etudiants');
+        $etudiants = self::roster($reponse);
         if ($etudiants === null) {
             throw KlassciUnavailableException::invalidPayload("classes/{$classeId}");
         }
 
         return $etudiants;
+    }
+
+    /**
+     * Le roster de l'enveloppe, ou null s'il est absent.
+     *
+     * @return array<int, array<string, mixed>>|null
+     */
+    private static function roster(mixed $reponse): ?array
+    {
+        /** @var array<string, mixed>|null $payload */
+        $payload = is_array($reponse) && is_array($reponse['data'] ?? null) ? $reponse['data'] : null;
+
+        return ClasseEnvelope::optionalList($payload, 'etudiants');
     }
 }

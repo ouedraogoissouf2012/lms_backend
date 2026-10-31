@@ -150,10 +150,7 @@ final class KlassciHttpClient
             throw new \RuntimeException("Erreur API KLASSCI: {$status}", $status);
         }
 
-        $result = $response->json();
-        if (! is_array($result)) {
-            $result = [];
-        }
+        $result = $this->decodeSuccessfulBody($response, $method, $endpoint);
 
         $this->logger->info("KLASSCI API Response{$logSuffix}", [
             'success' => $result['success'] ?? false,
@@ -163,6 +160,25 @@ final class KlassciHttpClient
 
         /** @var array<string, mixed> $result */
         return $result;
+    }
+
+    /**
+     * Corps d'un 2xx ({@see KlassciSuccessBody}). Illisible en lecture : une panne, comptée
+     * par le circuit comme un 5xx (rien n'est gardé en cache : sans lui, rien ne borne les
+     * appels). Une écriture a abouti : le corps reste `[]`. Journal sans le corps (#256).
+     *
+     * @return array<mixed>
+     */
+    private function decodeSuccessfulBody(Response $response, string $method, string $endpoint): array
+    {
+        $corps = KlassciSuccessBody::lire($response);
+        if ($corps !== null || $method !== 'GET') {
+            return $corps ?? [];
+        }
+
+        $this->logger->warning('KLASSCI API Response illisible', ['status' => $response->status(), 'endpoint' => $endpoint]);
+        $this->circuitBreaker->reportFailure();
+        throw KlassciUnavailableException::invalidPayload($endpoint);
     }
 
     /**

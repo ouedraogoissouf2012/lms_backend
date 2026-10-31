@@ -29,7 +29,7 @@ class TenantScopedCache implements TenantScopedCacheInterface
         private readonly TenantCachePurgerInterface $purger,
     ) {}
 
-    public function remember(string $key, int $ttl, \Closure $callback): mixed
+    public function remember(string $key, int|\Closure $ttl, \Closure $callback): mixed
     {
         if ($this->cache->supportsTags()) {
             return $this->cache->tags([$this->tenantTag()])->remember($key, $ttl, $callback);

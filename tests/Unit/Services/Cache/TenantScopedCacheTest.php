@@ -6,6 +6,7 @@ use App\Models\Institution;
 use App\Services\Cache\Purge\TenantCachePurgerInterface;
 use App\Services\Cache\TenantScopedCache;
 use App\Services\TenantManager;
+use Illuminate\Cache\ArrayStore;
 use Illuminate\Cache\Repository;
 use Illuminate\Cache\TaggedCache;
 use Mockery;
@@ -128,5 +129,50 @@ class TenantScopedCacheTest extends MockeryTestCase
         $this->purger->shouldReceive('purge')->once()->with('institution_none');
 
         $this->makeCache()->flushTenant();
+    }
+
+    /**
+     * Une durée décidée sur le résultat : la closure passe telle quelle au
+     * store étiqueté, qui l'évalue sur la valeur (`value($ttl, $value)`).
+     */
+    public function test_remember_passes_a_ttl_closure_to_the_tagged_store(): void
+    {
+        $this->setTenant(42);
+        $callback = fn (): array => ['success' => false];
+        $ttl = fn (mixed $v): int => $v === ['success' => false] ? 30 : 300;
+
+        $tagged = Mockery::mock(TaggedCache::class);
+        $tagged->shouldReceive('remember')->once()->with('cle', $ttl, $callback)->andReturn(['success' => false]);
+
+        $this->repository->shouldReceive('supportsTags')->once()->andReturnTrue();
+        $this->repository->shouldReceive('tags')->once()->with(['institution_42'])->andReturn($tagged);
+
+        self::assertSame(['success' => false], $this->makeCache()->remember('cle', $ttl, $callback));
+    }
+
+    /**
+     * Sur un vrai store étiqueté (`ArrayStore` supporte les tags, comme redis) :
+     * la durée est calculée sur la valeur, une durée nulle ne garde rien, et
+     * l'entrée porte le tag du tenant, que la purge atteint.
+     */
+    public function test_a_ttl_closure_is_computed_on_the_value_and_zero_keeps_nothing(): void
+    {
+        $this->setTenant(42);
+        $store = new Repository(new ArrayStore);
+        $cache = new TenantScopedCache($store, $this->tenantManager, $this->purger);
+        $appels = 0;
+        $calcul = function () use (&$appels): string {
+            $appels++;
+
+            return "valeur-{$appels}";
+        };
+
+        self::assertSame('valeur-1', $cache->remember('rien', fn (): int => 0, $calcul));
+        self::assertSame('valeur-2', $cache->remember('rien', fn (): int => 0, $calcul), 'une durée nulle ne garde rien');
+
+        self::assertSame('valeur-3', $cache->remember('garde', fn (mixed $v): int => $v === 'valeur-3' ? 60 : 0, $calcul));
+        self::assertSame('valeur-3', $cache->remember('garde', fn (): int => 0, $calcul), 'la durée calculée sur la valeur a été appliquée');
+        self::assertTrue($store->tags(['institution_42'])->has('garde'));
+        self::assertFalse($store->tags(['institution_42'])->has('rien'));
     }
 }

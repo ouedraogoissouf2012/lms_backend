@@ -18,9 +18,14 @@ interface TenantScopedCacheInterface
      * Lit la clé en cache ou exécute le callback et mémorise son résultat,
      * l'entrée étant taguée `institution_{id}` quand le store le permet.
      *
+     * La durée peut se décider sur le résultat : une closure reçoit la valeur
+     * calculée et rend des secondes ; 0 (ou moins) ne mémorise rien. Le framework
+     * l'évalue lui-même (`Repository::remember()`, `value($ttl, $value)`).
+     *
+     * @param  int|\Closure(mixed): int  $ttl
      * @param  \Closure(): mixed  $callback
      */
-    public function remember(string $key, int $ttl, \Closure $callback): mixed;
+    public function remember(string $key, int|\Closure $ttl, \Closure $callback): mixed;
 
     /**
      * Purge physiquement les entrées cache de l'institution courante.

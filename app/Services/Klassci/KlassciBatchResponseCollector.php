@@ -84,13 +84,15 @@ final class KlassciBatchResponseCollector
                 continue;
             }
 
-            $payload = $response->json();
-            if (! is_array($payload)) {
-                $payload = [];
+            $payload = KlassciSuccessBody::lire($response);
+            if ($payload === null) {
+                $this->logIllegibleBody($id, $meta['endpoint'], $response->status());
+
+                continue;
             }
 
             /** @var array<string, mixed> $payload */
-            $this->cache->put($meta['cacheKey'], $payload, $ttl);
+            $this->cache->put($meta['cacheKey'], $payload, KlassciCacheTtl::pour($payload, $ttl));
             $this->memo->put($meta['memoKey'], $payload);
             $resolved[$id] = $payload;
         }
@@ -111,6 +113,18 @@ final class KlassciBatchResponseCollector
             'endpoint' => $meta['endpoint'],
             'status' => 'no-response',
         ]);
+    }
+
+    /**
+     * Un 2xx au corps illisible ({@see KlassciSuccessBody}) n'est pas une
+     * ressource vide : `[]` était gardé 300 s comme une donnée. KLASSCI a
+     * répondu, donc rien à rejouer : l'identifiant est perdu, comme sur une
+     * réponse d'erreur, et rien n'est mis en cache. (Un écran qui compte
+     * l'effectif lit encore une classe perdue comme 0 : `KlassciPayload`.)
+     */
+    private function logIllegibleBody(int $id, string $endpoint, int $status): void
+    {
+        $this->logger->warning('KLASSCI batch response illisible', ['id' => $id, 'endpoint' => $endpoint, 'status' => $status]);
     }
 
     /**

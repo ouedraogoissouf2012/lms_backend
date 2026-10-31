@@ -24,8 +24,10 @@ use Tests\TestCase;
  *
  * KLASSCI est simulé par UN seul `Http::fake` par test (deux s'empilent, le
  * premier gagne) : c'est l'URL émise et la réponse amont qui décident, pas une
- * doublure du proxy. Les refus tournent dans les deux volets ; la lecture, qui
- * suppose un jeton KLASSCI, dans le volet KLASSCI. Vrai jeton porteur (`asTenant`).
+ * doublure du proxy. Les refus tournent pour les deux types d'école : créée
+ * depuis KLASSCI, créée depuis le LMS (`standalone()`, sans URL KLASSCI). La
+ * lecture, qui suppose un jeton KLASSCI, tourne pour une école créée depuis
+ * KLASSCI. Vrai jeton porteur (`asTenant`).
  *
  * @see app/Http/Controllers/API/LMS/LMSClassesController.php
  * @see app/Http/Controllers/API/Concerns/RendersKlassciBackedErrors.php
@@ -49,10 +51,10 @@ final class ClasseElevesContractTest extends TestCase
     }
 
     /** @return iterable<string, array{0: bool}> */
-    public static function volets(): iterable
+    public static function typesDEcole(): iterable
     {
-        yield 'école KLASSCI' => [false];
-        yield 'école autonome' => [true];
+        yield 'école créée depuis KLASSCI' => [false];
+        yield 'école créée depuis le LMS' => [true];
     }
 
     /** @return iterable<string, array{0: string}> */
@@ -90,13 +92,13 @@ final class ClasseElevesContractTest extends TestCase
         $reponse->assertExactJson(['success' => false, 'message' => 'Unauthenticated.']);
     }
 
-    /** Sans jeton KLASSCI, avant tout appel : un compte d'école autonome n'en a pas. */
-    #[DataProvider('volets')]
-    public function test_401_sans_jeton_klassci(bool $autonome): void
+    /** Sans jeton KLASSCI, avant tout appel : un compte d'une école créée depuis le LMS n'en a jamais. */
+    #[DataProvider('typesDEcole')]
+    public function test_401_sans_jeton_klassci(bool $depuisLeLms): void
     {
         Http::fake();
 
-        $reponse = $this->lire($this->compte($autonome, 'enseignant', null))->assertUnauthorized();
+        $reponse = $this->lire($this->compte($depuisLeLms, 'enseignant', null))->assertUnauthorized();
 
         $this->assertMatchesOpenApiResponse($reponse, self::CHEMIN, 'get');
         $reponse->assertExactJson(MissingKlassciTokenException::payload());
@@ -113,11 +115,11 @@ final class ClasseElevesContractTest extends TestCase
         $reponse->assertJsonPath('reason', 'klassci_session_expired');
     }
 
-    /** Refusé par la garde de rôle, dans les deux volets. */
-    #[DataProvider('volets')]
-    public function test_403_un_eleve(bool $autonome): void
+    /** Refusé par la garde de rôle, pour les deux types d'école. */
+    #[DataProvider('typesDEcole')]
+    public function test_403_un_eleve(bool $depuisLeLms): void
     {
-        $reponse = $this->lire($this->compte($autonome, 'etudiant'))->assertForbidden();
+        $reponse = $this->lire($this->compte($depuisLeLms, 'etudiant'))->assertForbidden();
 
         $this->assertRefus($reponse, null);
     }
@@ -227,9 +229,9 @@ final class ClasseElevesContractTest extends TestCase
         });
     }
 
-    private function compte(bool $autonome, string $role, ?string $jeton = 'jeton-klassci'): User
+    private function compte(bool $depuisLeLms, string $role, ?string $jeton = 'jeton-klassci'): User
     {
-        $ecole = $autonome
+        $ecole = $depuisLeLms
             ? Institution::factory()->standalone()->create()
             : Institution::factory()->create(['klassci_api_url' => self::BASE_URL, 'is_active' => true]);
 
@@ -237,7 +239,7 @@ final class ClasseElevesContractTest extends TestCase
             'institution_id' => $ecole->id,
             'role' => $role,
             'klassci_token' => $jeton,
-            'klassci_tenant_url' => $autonome ? null : self::BASE_URL,
+            'klassci_tenant_url' => $depuisLeLms ? null : self::BASE_URL,
         ]);
     }
 

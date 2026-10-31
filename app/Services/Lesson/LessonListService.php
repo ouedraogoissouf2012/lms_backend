@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace App\Services\Lesson;
 
 use App\Models\Lesson;
-use App\Models\Matiere;
 use App\Models\User;
+use App\Services\Matiere\KlassciMatierePageNavigation;
+use App\Services\Matiere\LocalMatierePageNavigation;
+use App\Services\Roster\RosterAuthorityFactory;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
@@ -37,6 +39,7 @@ final class LessonListService
         private readonly LessonProgressService $progressService,
         private readonly LessonReadScope $readScope,
         private readonly MyCoursesPresenter $myCoursesPresenter,
+        private readonly RosterAuthorityFactory $sources,
     ) {}
 
     /**
@@ -202,8 +205,13 @@ final class LessonListService
         // L'en-tête annonçait une matière, la liste en montrait une autre, et
         // une leçon a été supprimée par erreur depuis cet écran le 2026-09-07.
         //
-        // Chaque espace est nommé ; aucun n'est deviné.
-        $lesson->matiere_klassci_id = $this->matiereKlassciId($lesson);
+        // Chaque espace est nommé ; aucun n'est deviné. Et la source qui sert
+        // la page matière décide lequel : résolue ICI, à l'appel, jamais au
+        // constructeur — ce service vit dans un contrôleur que Laravel garde
+        // sur l'objet Route (ADR-EI-01).
+        $lesson->matiere_klassci_id = $this->sources
+            ->sourceForCurrentTenant(KlassciMatierePageNavigation::class, LocalMatierePageNavigation::class)
+            ->pageIdFor($lesson);
 
         // Charger la progression de l'utilisateur
         $lesson->user_progress = $this->progressService->progressForUser($lesson, $user->id);
@@ -218,27 +226,5 @@ final class LessonListService
         }
 
         return ['lesson' => $lesson];
-    }
-
-    /**
-     * Le `klassci_id` de la matière de la leçon, borné à l'institution de la
-     * LEÇON — pas à celle du demandeur.
-     *
-     * La nuance compte : une leçon ne doit rien révéler d'une matière d'un
-     * autre établissement, même par accident de données. Le `klassci_id` n'est
-     * unique que par institution (#707).
-     */
-    private function matiereKlassciId(Lesson $lesson): ?int
-    {
-        if ($lesson->matiere_id === null) {
-            return null;
-        }
-
-        $klassciId = Matiere::query()
-            ->where('id', $lesson->matiere_id)
-            ->where('institution_id', $lesson->institution_id)
-            ->value('klassci_id');
-
-        return is_numeric($klassciId) ? (int) $klassciId : null;
     }
 }

@@ -30,7 +30,7 @@ use App\Models\User;
  * @see PRODUCTION_STANDARDS.md §1.1 (services ≤300 lignes)
  * @see PRODUCTION_STANDARDS.md §1.6 D (DI strict)
  */
-final class MatiereDetailsQueryService
+final class MatiereDetailsQueryService implements MatiereDetailsReader
 {
     public function __construct(
         private readonly MatiereInfoFetcher $infoFetcher,

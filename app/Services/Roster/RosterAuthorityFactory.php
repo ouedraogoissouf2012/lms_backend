@@ -10,6 +10,7 @@ use App\Services\Catalogue\CatalogueAuthority;
 use App\Services\Catalogue\KlassciCatalogueAuthority;
 use App\Services\Catalogue\LocalCatalogueAuthority;
 use App\Services\TenantManager;
+use Illuminate\Contracts\Container\Container;
 use Tests\Feature\Roster\RosterAuthorityResolutionTest;
 
 /**
@@ -51,7 +52,10 @@ use Tests\Feature\Roster\RosterAuthorityResolutionTest;
  */
 final class RosterAuthorityFactory
 {
-    public function __construct(private readonly TenantManager $tenants) {}
+    public function __construct(
+        private readonly TenantManager $tenants,
+        private readonly Container $container,
+    ) {}
 
     public function forCurrentTenant(): RosterAuthority
     {
@@ -100,5 +104,34 @@ final class RosterAuthorityFactory
         return $institution?->mode === InstitutionMode::Standalone
             ? new LocalCatalogueAuthority
             : new KlassciCatalogueAuthority;
+    }
+
+    /**
+     * La SOURCE d'une lecture : la même route sert les deux volets, seule
+     * l'implémentation change (école indépendante, lot 1).
+     *
+     * Une méthode générique et non une par lecture : chacune recopierait la
+     * comparaison au mode, et ce fichier existe pour qu'elle n'ait lieu qu'à
+     * un seul endroit. L'appelant nomme deux classes, il ne reçoit jamais le
+     * mode.
+     *
+     * Sans établissement, la source KLASSCI : c'est le comportement d'avant ce
+     * choix, et un compte sans école s'arrête déjà à la porte de #984.
+     *
+     * Résolue par le conteneur : une instance qu'un test y a posée pour la
+     * classe KLASSCI reste servie, et les dépendances suivent le câblage
+     * habituel.
+     *
+     * @template TSource of object
+     *
+     * @param  class-string<TSource>  $klassci
+     * @param  class-string<TSource>  $local
+     * @return TSource
+     */
+    public function sourceForCurrentTenant(string $klassci, string $local): object
+    {
+        return $this->container->make(
+            $this->tenants->get()?->mode === InstitutionMode::Standalone ? $local : $klassci,
+        );
     }
 }

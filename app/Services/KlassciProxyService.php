@@ -45,10 +45,10 @@ use App\Services\Klassci\KlassciRequestMemo;
  *   1. Calcul `memoKey` via `KlassciRequestMemo::memoKey()`.
  *   2. Si memo hit → retour immédiat (pas d'I/O cache, pas de HTTP).
  *   3. Sinon, génération `cacheKey` via `KlassciCacheKeyStrategy` puis
- *      `TenantScopedCache::rememberFor()` (TTL configurable par appel, entrée
+ *      `TenantScopedCache::remember()` (TTL configurable par appel, entrée
  *      taguée `institution_{id}` quand le store supporte les tags). Un échec que
- *      KLASSCI déclare (`success: false`) n'est gardé que `Retry-After` secondes
- *      ({@see KlassciCacheTtl}).
+ *      KLASSCI déclare (`success: false`), ou une réponse que son lecteur juge
+ *      inexploitable, n'est gardé que `Retry-After` secondes ({@see KlassciCacheTtl}).
  *   4. Sur cache miss : `KlassciHttpClient::executeHttp('GET', ...)`.
  *   5. Memo populate.
  *
@@ -101,10 +101,10 @@ class KlassciProxyService
         $ttl = $customTTL ?? $this->cacheTTL;
 
         /** @var array<string, mixed> $result */
-        $result = $this->tenantCache->rememberFor(
+        $result = $this->tenantCache->remember(
             $cacheKey,
-            fn (): array => $this->http->executeHttp('GET', $endpoint, $params),
             fn (mixed $reponse): int => KlassciCacheTtl::pour($reponse, $ttl),
+            fn (): array => $this->http->executeHttp('GET', $endpoint, $params),
         );
 
         $this->memo->put($memoKey, $result);
@@ -161,7 +161,11 @@ class KlassciProxyService
      *
      * POST/PUT/DELETE : direct HTTP + invalidation tenant + reset memo.
      *
+     * `$exploitable` (GET) : la règle du lecteur. Une réponse qu'il ne peut pas
+     * lire est gardée comme un échec, le délai `Retry-After` seulement.
+     *
      * @param  array<string, mixed>  $data
+     * @param  (\Closure(mixed): bool)|null  $exploitable
      * @return array<string, mixed>
      *
      * @throws \Exception
@@ -172,6 +176,7 @@ class KlassciProxyService
         string $method = 'GET',
         array $data = [],
         ?int $customTTL = null,
+        ?\Closure $exploitable = null,
     ): array {
         $tokenHash = $this->memo->userTokenHash($userToken);
 
@@ -186,10 +191,10 @@ class KlassciProxyService
             $ttl = $customTTL ?? $this->userTokenDefaultTTL;
 
             /** @var array<string, mixed> $result */
-            $result = $this->tenantCache->rememberFor(
+            $result = $this->tenantCache->remember(
                 $cacheKey,
+                fn (mixed $reponse): int => KlassciCacheTtl::pour($reponse, $ttl, $exploitable),
                 fn (): array => $this->http->executeHttp($method, $endpoint, $data, $userToken),
-                fn (mixed $reponse): int => KlassciCacheTtl::pour($reponse, $ttl),
             );
 
             $this->memo->put($memoKey, $result);

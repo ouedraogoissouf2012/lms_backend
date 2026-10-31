@@ -16,8 +16,10 @@ use App\Exceptions\KlassciUnavailableException;
  * Le garder quand même, plutôt que pas du tout, borne les appels à KLASSCI
  * pendant sa panne : un hôte qui filtre déjà sur le volume.
  *
- * Seul l'échec EXPLICITE compte. Une réponse sans clé `success` (liste nue,
- * par exemple) reste une donnée.
+ * Un échec est soit EXPLICITE (`success: false`), soit dit par le lecteur de
+ * la réponse : lui seul sait quel bloc il attend (le roster d'une classe, par
+ * exemple), et il le dit par `$exploitable`. Sans cette règle, une réponse sans
+ * clé `success` (liste nue, par exemple) reste une donnée.
  *
  * Point unique de la règle : `KlassciProxyService` (lectures une à une) et
  * `KlassciBatchResponseCollector` (lots) la lisent ici. Fonction pure, sans
@@ -25,11 +27,15 @@ use App\Exceptions\KlassciUnavailableException;
  */
 final class KlassciCacheTtl
 {
-    /** @param  int  $ttl  la durée d'une donnée pour cet appel, en secondes */
-    public static function pour(mixed $reponse, int $ttl): int
+    /**
+     * @param  int  $ttl  la durée d'une donnée pour cet appel, en secondes
+     * @param  (\Closure(mixed): bool)|null  $exploitable  la règle du lecteur, s'il en a une
+     */
+    public static function pour(mixed $reponse, int $ttl, ?\Closure $exploitable = null): int
     {
         $echecDeclare = is_array($reponse) && ($reponse['success'] ?? null) === false;
+        $inexploitable = $exploitable !== null && ! $exploitable($reponse);
 
-        return $echecDeclare ? min($ttl, KlassciUnavailableException::retryAfterSeconds()) : $ttl;
+        return $echecDeclare || $inexploitable ? min($ttl, KlassciUnavailableException::retryAfterSeconds()) : $ttl;
     }
 }

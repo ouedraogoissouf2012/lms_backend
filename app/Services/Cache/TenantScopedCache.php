@@ -29,7 +29,7 @@ class TenantScopedCache implements TenantScopedCacheInterface
         private readonly TenantCachePurgerInterface $purger,
     ) {}
 
-    public function remember(string $key, int $ttl, \Closure $callback): mixed
+    public function remember(string $key, int|\Closure $ttl, \Closure $callback): mixed
     {
         if ($this->cache->supportsTags()) {
             return $this->cache->tags([$this->tenantTag()])->remember($key, $ttl, $callback);
@@ -39,29 +39,6 @@ class TenantScopedCache implements TenantScopedCacheInterface
         // namespace tenant pour que la purge ciblée (DatabaseCachePurger)
         // puisse la retrouver par motif `LIKE {prefix}{namespace}:%`.
         return $this->cache->remember($this->namespaced($key), $ttl, $callback);
-    }
-
-    public function rememberFor(string $key, \Closure $callback, \Closure $ttlOf): mixed
-    {
-        // Même tag, ou même namespace, que `remember()` : la purge tenant
-        // atteint ces entrées de la même façon.
-        [$store, $cle] = $this->cache->supportsTags()
-            ? [$this->cache->tags([$this->tenantTag()]), $key]
-            : [$this->cache, $this->namespaced($key)];
-
-        $enCache = $store->get($cle);
-        if ($enCache !== null) {
-            return $enCache;
-        }
-
-        $valeur = $callback();
-        $ttl = $ttlOf($valeur);
-
-        if ($ttl > 0) {
-            $store->put($cle, $valeur, $ttl);
-        }
-
-        return $valeur;
     }
 
     public function flushTenant(): void

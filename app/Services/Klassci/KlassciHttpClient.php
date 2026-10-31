@@ -163,10 +163,9 @@ final class KlassciHttpClient
     }
 
     /**
-     * Le corps d'une réponse 2xx ({@see KlassciSuccessBody}). Illisible : en lecture,
-     * une indisponibilité, comme un 5xx, et pas un succès du circuit ; une écriture
-     * a abouti chez KLASSCI, la signaler en échec serait faux, le corps reste `[]`.
-     * Journal : statut et endpoint, jamais le corps ni son extrait (#256).
+     * Corps d'un 2xx ({@see KlassciSuccessBody}). Illisible en lecture : une panne, comptée
+     * par le circuit comme un 5xx (rien n'est gardé en cache : sans lui, rien ne borne les
+     * appels). Une écriture a abouti : le corps reste `[]`. Journal sans le corps (#256).
      *
      * @return array<mixed>
      */
@@ -178,6 +177,7 @@ final class KlassciHttpClient
         }
 
         $this->logger->warning('KLASSCI API Response illisible', ['status' => $response->status(), 'endpoint' => $endpoint]);
+        $this->circuitBreaker->reportFailure();
         throw KlassciUnavailableException::invalidPayload($endpoint);
     }
 

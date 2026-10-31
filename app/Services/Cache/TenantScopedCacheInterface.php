@@ -18,21 +18,14 @@ interface TenantScopedCacheInterface
      * Lit la clé en cache ou exécute le callback et mémorise son résultat,
      * l'entrée étant taguée `institution_{id}` quand le store le permet.
      *
+     * La durée peut se décider sur le résultat : une closure reçoit la valeur
+     * calculée et rend des secondes ; 0 (ou moins) ne mémorise rien. Le framework
+     * l'évalue lui-même (`Repository::remember()`, `value($ttl, $value)`).
+     *
+     * @param  int|\Closure(mixed): int  $ttl
      * @param  \Closure(): mixed  $callback
      */
-    public function remember(string $key, int $ttl, \Closure $callback): mixed;
-
-    /**
-     * Comme `remember()`, mais la durée se décide APRÈS le calcul, sur le
-     * résultat : `$ttlOf($valeur)` rend la durée en secondes, et 0 (ou moins)
-     * ne mémorise rien. Sert à garder un échec moins longtemps qu'une donnée.
-     *
-     * Une valeur `null` n'est jamais servie depuis le cache, comme `remember()`.
-     *
-     * @param  \Closure(): mixed  $callback
-     * @param  \Closure(mixed): int  $ttlOf
-     */
-    public function rememberFor(string $key, \Closure $callback, \Closure $ttlOf): mixed;
+    public function remember(string $key, int|\Closure $ttl, \Closure $callback): mixed;
 
     /**
      * Purge physiquement les entrées cache de l'institution courante.

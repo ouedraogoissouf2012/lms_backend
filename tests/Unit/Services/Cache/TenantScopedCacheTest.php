@@ -129,4 +129,68 @@ class TenantScopedCacheTest extends MockeryTestCase
 
         $this->makeCache()->flushTenant();
     }
+
+    /**
+     * rememberFor() : la durée se décide sur le résultat. Même tag que
+     * remember(), pour que la purge tenant atteigne l'entrée.
+     */
+    public function test_remember_for_puts_with_the_ttl_computed_from_the_value_when_store_supports_tags(): void
+    {
+        $this->setTenant(42);
+
+        $tagged = Mockery::mock(TaggedCache::class);
+        $tagged->shouldReceive('get')->once()->with('cle')->andReturnNull();
+        $tagged->shouldReceive('put')->once()->with('cle', ['success' => false], 30);
+
+        $this->repository->shouldReceive('supportsTags')->once()->andReturnTrue();
+        $this->repository->shouldReceive('tags')->once()->with(['institution_42'])->andReturn($tagged);
+
+        $valeur = $this->makeCache()->rememberFor(
+            'cle',
+            fn (): array => ['success' => false],
+            fn (mixed $v): int => $v === ['success' => false] ? 30 : 300,
+        );
+
+        self::assertSame(['success' => false], $valeur);
+    }
+
+    public function test_remember_for_namespaces_key_when_store_does_not_support_tags(): void
+    {
+        $this->setTenant(42);
+
+        $this->repository->shouldReceive('supportsTags')->once()->andReturnFalse();
+        $this->repository->shouldNotReceive('tags');
+        $this->repository->shouldReceive('get')->once()->with('institution_42:cle')->andReturnNull();
+        $this->repository->shouldReceive('put')->once()->with('institution_42:cle', 'valeur', 300);
+
+        self::assertSame('valeur', $this->makeCache()->rememberFor('cle', fn (): string => 'valeur', fn (): int => 300));
+    }
+
+    public function test_remember_for_keeps_nothing_when_the_ttl_is_zero(): void
+    {
+        $this->setTenant(42);
+
+        $this->repository->shouldReceive('supportsTags')->once()->andReturnFalse();
+        $this->repository->shouldReceive('get')->once()->andReturnNull();
+        $this->repository->shouldNotReceive('put');
+
+        self::assertSame('valeur', $this->makeCache()->rememberFor('cle', fn (): string => 'valeur', fn (): int => 0));
+    }
+
+    public function test_remember_for_serves_a_hit_without_calling_back(): void
+    {
+        $this->setTenant(42);
+
+        $this->repository->shouldReceive('supportsTags')->once()->andReturnFalse();
+        $this->repository->shouldReceive('get')->once()->with('institution_42:cle')->andReturn('en cache');
+        $this->repository->shouldNotReceive('put');
+
+        $valeur = $this->makeCache()->rememberFor(
+            'cle',
+            static fn (): never => throw new \LogicException('le callback ne doit pas être appelé sur un succès de cache'),
+            static fn (): never => throw new \LogicException('la durée ne doit pas être calculée sur un succès de cache'),
+        );
+
+        self::assertSame('en cache', $valeur);
+    }
 }

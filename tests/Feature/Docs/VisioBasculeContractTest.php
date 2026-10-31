@@ -24,12 +24,14 @@ use Tests\TestCase;
  * Contrat de `POST /lms/seances/{seanceId}/toggle-visio` : chaque réponse
  * RÉELLE suit ce que `docs/openapi.yaml` en dit, statut et corps.
  *
- * Les refus tournent dans les DEUX volets. Le 200, le 422 et le 500 n'existent
- * que dans le volet KLASSCI : la route rend le 401 à tout compte sans jeton
- * KLASSCI, et un compte d'école autonome n'en a jamais. Dans ce volet, le
- * compte est créé SANS jeton (`UserFactory` en donne un à tout compte). Vrai
- * jeton porteur (`asTenant`). KLASSCI est simulé vide : les notifications ne
- * partent pas, la bascule aboutit.
+ * Les refus tournent dans les DEUX volets. Le 200, le 422 et le 500 ne
+ * tournent que dans le volet KLASSCI : la route rend le 401 à tout compte sans
+ * jeton KLASSCI. Dans le volet autonome, le compte est créé SANS jeton, comme
+ * tout compte créé dans une école autonome (`UserFactory` en donne un à tout
+ * compte). La route ne lit pas le mode de l'école : un compte qui garde son
+ * jeton après le passage de son école en autonome n'est pas refusé, ce que la
+ * spec dit. Vrai jeton porteur (`asTenant`). KLASSCI est simulé vide : les
+ * notifications ne partent pas, la bascule aboutit.
  *
  * @see app/Services/Seances/Mutations/VisioToggleService.php
  */
@@ -80,6 +82,25 @@ final class VisioBasculeContractTest extends TestCase
         $this->assertMatchesOpenApiResponse($reponse, self::CHEMIN, 'post');
         $this->assertOpenApiSchemaRefuseSans($reponse, self::CHEMIN, 'post', 'data');
         $reponse->assertJsonPath('data.visio_enabled', $charge['enabled']);
+    }
+
+    /**
+     * Une séance déjà activée, puis désactivée et supprimée en douceur : la mise
+     * à jour et la restauration rendent le même contrat que la création.
+     */
+    public function test_200_une_seance_existante_puis_supprimee(): void
+    {
+        $compte = $this->compte($this->ecole(false), 'coordinateur', self::JETON_KLASSCI);
+        $this->asTenant($compte)->postJson(self::URL, ['enabled' => true])->assertOk();
+
+        $miseAJour = $this->asTenant($compte)->postJson(self::URL, ['enabled' => true])->assertOk();
+        $this->assertMatchesOpenApiResponse($miseAJour, self::CHEMIN, 'post');
+
+        Seance::query()->withoutGlobalScopes()->where('klassci_seance_id', 4242)->firstOrFail()->delete();
+
+        $restauration = $this->asTenant($compte)->postJson(self::URL, ['enabled' => false])->assertOk();
+        $this->assertMatchesOpenApiResponse($restauration, self::CHEMIN, 'post');
+        self::assertSame(1, Seance::query()->withoutGlobalScopes()->count());
     }
 
     /** Un compte sans jeton KLASSCI : le 401 motivé de #806, et aucune séance n'est créée. */
@@ -135,6 +156,18 @@ final class VisioBasculeContractTest extends TestCase
         $reponse->assertJsonPath('reason', 'no_institution');
     }
 
+    public function test_403_un_etablissement_desactive(): void
+    {
+        $ecole = Institution::factory()->create(['is_active' => false]);
+        $compte = $this->compte($ecole, 'coordinateur', self::JETON_KLASSCI);
+
+        $reponse = $this->asTenant($compte)->postJson(self::URL, ['enabled' => true])->assertForbidden();
+
+        $this->assertMatchesOpenApiResponse($reponse, self::CHEMIN, 'post');
+        $reponse->assertJsonMissingPath('reason');
+        self::assertSame(0, Seance::query()->withoutGlobalScopes()->count());
+    }
+
     /** @return iterable<string, array{0: array<string, mixed>}> */
     public static function chargesInvalides(): iterable
     {
@@ -178,7 +211,20 @@ final class VisioBasculeContractTest extends TestCase
         $reponse = $this->asTenant($compte)->postJson(self::URL, ['enabled' => true])->assertStatus(500);
 
         $this->assertMatchesOpenApiResponse($reponse, self::CHEMIN, 'post');
-        $this->assertOpenApiSchemaRefuseSans($reponse, self::CHEMIN, 'post', 'error');
+        $this->assertOpenApiSchemaRefuseSans($reponse, self::CHEMIN, 'post', 'message');
+        $reponse->assertJsonPath('error', 'Une erreur est survenue.');
+        self::assertSame(0, Seance::query()->withoutGlobalScopes()->count());
+    }
+
+    /** Le 500 du gestionnaire global, sans `error` : la spec admet les deux formes. */
+    public function test_500_du_gestionnaire_global_sans_error(): void
+    {
+        $compte = $this->compte($this->ecole(false), 'coordinateur', self::JETON_KLASSCI);
+
+        $reponse = $this->asTenant($compte)->postJson('/api/lms/seances/abc/toggle-visio', ['enabled' => true])->assertStatus(500);
+
+        $this->assertMatchesOpenApiResponse($reponse, self::CHEMIN, 'post');
+        $reponse->assertJsonMissingPath('error');
         self::assertSame(0, Seance::query()->withoutGlobalScopes()->count());
     }
 

@@ -1402,8 +1402,10 @@ components:
             notifications_sent:
               type: integer
               minimum: 0
+              description: "Toujours 0 : les notifications sont planifiees, pas envoyees pendant la requete."
             notifications_queued:
               type: boolean
+              description: "Toujours vrai, meme si la planification a echoue (l'echec est journalise, pas rendu)."
             classe_synced:
               type: boolean
               description: "La classe et ses eleves ont ete relus dans KLASSCI pour les notifications."
@@ -1465,23 +1467,26 @@ components:
             visio_room_id:
               type: string
               nullable: true
-              description: "Un salon neuf a l'activation, null a la desactivation."
+              description: "Un salon neuf a chaque activation, y compris d'une seance deja activee ; null a la desactivation."
             visio_active:
               type: boolean
             notifications_sent:
               type: integer
               minimum: 0
+              description: "Toujours 0 : les notifications sont planifiees, pas envoyees pendant la requete."
             notifications_queued:
               type: boolean
-              description: "Vrai a l'activation, faux a la desactivation."
+              description: "Vrai a l'activation, meme si la planification a echoue ; faux a la desactivation."
 
     VisioErreurInterne:
       type: object
+      description: |
+        `error` n'est present que si le service a rattrape l'erreur. Le
+        gestionnaire global rend `success` et `message` seuls.
       additionalProperties: false
       required:
         - success
         - message
-        - error
       properties:
         success:
           type: boolean
@@ -1761,16 +1766,22 @@ paths:
       description: |
         Reserve aux roles enseignant et coordinateur.
 
-        La seance est cherchee dans l'emploi du temps KLASSCI, parmi les matieres
-        du porteur du jeton : `seanceId` est l'identifiant KLASSCI de la seance.
-        Un salon deja attribue est conserve.
+        La seance est cherchee dans l'emploi du temps KLASSCI, parmi des
+        matieres : celles du tableau de bord pour un enseignant, le catalogue des
+        matieres pour un coordinateur. `seanceId` est l'identifiant KLASSCI de la
+        seance. Un salon deja attribue est conserve.
 
-        La route lit KLASSCI avec le jeton du compte. Sans ce jeton, elle rend le
-        401 `klassci_token_missing` avant toute ecriture. Un compte d'ecole
-        autonome n'a jamais de jeton KLASSCI : il recoit toujours ce 401.
+        La route lit KLASSCI avec le jeton KLASSCI du compte. Sans ce jeton, elle
+        rend le 401 `klassci_token_missing` avant toute ecriture. Le refus porte
+        sur le jeton du compte, pas sur le mode de l'ecole : un compte cree dans
+        une ecole autonome n'a pas de jeton et recoit ce 401, mais un compte qui
+        a garde son jeton apres le passage de son ecole en mode autonome n'est
+        pas refuse.
 
         Une panne de KLASSCI pendant la recherche (jeton refuse, service
-        indisponible) rend le 500 decrit ci-dessous, sans motif ni `Retry-After`.
+        indisponible) rend le 500, sans motif ni `Retry-After`. Une reponse de
+        KLASSCI qui ne livre aucune matiere, echec declare (`success: false`)
+        compris, rend le 404.
       security:
         - sanctum: []
       parameters:
@@ -1798,7 +1809,10 @@ paths:
                 $ref: '#/components/schemas/RefusKlassci'
         '403':
           description: |
-            Role non admis, ou compte sans etablissement (`reason: no_institution`).
+            Sans `reason` : role non admis (refuse par la garde de role ; un
+            superAdmin, que cette garde laisse passer, est refuse par la requete
+            avec un message generique), ou etablissement desactive. Avec
+            `reason: no_institution` : compte sans etablissement.
           content:
             application/json:
               schema:
@@ -1806,13 +1820,16 @@ paths:
         '404':
           description: |
             Aucune seance de cet identifiant dans l'emploi du temps KLASSCI des
-            matieres du porteur.
+            matieres lues, ou aucune matiere lue.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/SeanceLocaleRefus'
         '500':
-          description: "Erreur interne, y compris une panne de KLASSCI pendant la recherche."
+          description: |
+            Erreur interne, y compris une panne de KLASSCI pendant la recherche.
+            Rattrapee par le service : avec `error`. Non rattrapee (gestionnaire
+            global, par exemple un `seanceId` non numerique) : sans `error`.
           content:
             application/json:
               schema:
@@ -1828,11 +1845,15 @@ paths:
 
         `seanceId` est l'identifiant KLASSCI de la seance. La bascule ne verifie
         pas que KLASSCI connait cette seance : un identifiant inconnu cree une
-        seance locale sous cet identifiant, et la reponse est 200.
+        seance locale sous cet identifiant, et la reponse est 200. Chaque
+        activation tire un salon neuf, y compris sur une seance deja activee :
+        l'adresse precedente cesse de valoir.
 
         Sans jeton KLASSCI, la route rend le 401 `klassci_token_missing` avant
-        toute ecriture. Un compte d'ecole autonome n'a jamais de jeton KLASSCI :
-        il recoit toujours ce 401.
+        toute ecriture. Le refus porte sur le jeton du compte, pas sur le mode
+        de l'ecole : un compte cree dans une ecole autonome n'a pas de jeton et
+        recoit ce 401, mais un compte qui a garde son jeton apres le passage de
+        son ecole en mode autonome n'est pas refuse.
       security:
         - sanctum: []
       parameters:
@@ -1866,7 +1887,8 @@ paths:
                 $ref: '#/components/schemas/RefusKlassci'
         '403':
           description: |
-            Role non admis, ou compte sans etablissement (`reason: no_institution`).
+            Sans `reason` : role non admis, ou etablissement desactive. Avec
+            `reason: no_institution` : compte sans etablissement.
           content:
             application/json:
               schema:
@@ -1878,7 +1900,10 @@ paths:
               schema:
                 $ref: '#/components/schemas/SeanceLocaleInvalide'
         '500':
-          description: "Erreur interne"
+          description: |
+            Erreur interne. Rattrapee par le service : avec `error`. Non
+            rattrapee (gestionnaire global, par exemple un `seanceId` non
+            numerique) : sans `error`.
           content:
             application/json:
               schema:

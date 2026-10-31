@@ -151,8 +151,9 @@ class TenantScopedCacheTest extends MockeryTestCase
     }
 
     /**
-     * Sur un vrai store (sans tags, donc la clé en namespace) : la durée est
-     * calculée sur la valeur, et une durée nulle ne garde rien.
+     * Sur un vrai store étiqueté (`ArrayStore` supporte les tags, comme redis) :
+     * la durée est calculée sur la valeur, une durée nulle ne garde rien, et
+     * l'entrée porte le tag du tenant, que la purge atteint.
      */
     public function test_a_ttl_closure_is_computed_on_the_value_and_zero_keeps_nothing(): void
     {
@@ -171,6 +172,7 @@ class TenantScopedCacheTest extends MockeryTestCase
 
         self::assertSame('valeur-3', $cache->remember('garde', fn (mixed $v): int => $v === 'valeur-3' ? 60 : 0, $calcul));
         self::assertSame('valeur-3', $cache->remember('garde', fn (): int => 0, $calcul), 'la durée calculée sur la valeur a été appliquée');
-        self::assertTrue($store->has('institution_42:garde'));
+        self::assertTrue($store->tags(['institution_42'])->has('garde'));
+        self::assertFalse($store->tags(['institution_42'])->has('rien'));
     }
 }

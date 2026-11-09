@@ -9,8 +9,11 @@ use App\Models\Institution;
 use App\Models\Lesson;
 use App\Models\User;
 use Illuminate\Database\MultipleRecordsFoundException;
+use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
+use Monolog\Formatter\LineFormatter;
 use Monolog\Level;
 use Monolog\LogRecord;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -32,8 +35,10 @@ use Tests\TestCase;
  *
  * Rien de la requête n'est écrit hormis sa route, sa méthode et son identifiant :
  * ni corps, ni chaîne de requête, ni en-tête `Authorization`. Une trace ne porte
- * pas les arguments des fonctions. Des témoins sont envoyés par chacun de ces
- * chemins, et le journal formaté ne doit en contenir aucun.
+ * pas les arguments des fonctions. Une exception SQL est écrite sans les valeurs
+ * de la requête : son message les porte, il n'est pas écrit. Des témoins sont
+ * envoyés par chacun de ces chemins, et le journal formaté ne doit en contenir
+ * aucun.
  *
  * @see app/Exceptions/UncaughtExceptionReporting.php
  * @see bootstrap/app.php withExceptions()
@@ -51,6 +56,14 @@ final class UncaughtExceptionReportingTest extends TestCase
     private const TEMOIN_ENTETE = 'temoin-entetes-948-jamais-ecrit';
 
     private const TEMOIN_ARGUMENT = 'temoin-argumnt-948-jamais-ecrit';
+
+    /** Une adresse factice, liée à une requête SQL qui échoue. */
+    private const TEMOIN_SQL = 'temoin.sql.948@exemple.invalid';
+
+    /** Ce qu'écrit l'échec d'une requête SQL, et rien d'autre : ni message, ni valeurs. */
+    private const CONTEXTE_D_UN_ECHEC_SQL = [
+        'code', 'connection', 'driver_code', 'exception_class', 'method', 'origin', 'request_id', 'route', 'sql', 'trace',
+    ];
 
     /** Ce que le rapport d'une requête peut porter, et rien d'autre. */
     private const CONTEXTE_D_UNE_REQUETE = ['method', 'request_id', 'route'];
@@ -70,6 +83,7 @@ final class UncaughtExceptionReportingTest extends TestCase
             Route::get('panne-sous-argument', fn () => self::echouerAvec(self::TEMOIN_ARGUMENT));
             Route::get('indisponible', fn () => abort(503));
             Route::get('doublon', fn () => throw new MultipleRecordsFoundException(2));
+            Route::get('requete-sql', fn () => DB::table('table_absente_948')->where('email', self::TEMOIN_SQL)->get());
         });
     }
 
@@ -178,6 +192,35 @@ final class UncaughtExceptionReportingTest extends TestCase
         $this->getJson('/api/_948/doublon')->assertStatus(500);
 
         self::assertInstanceOf(MultipleRecordsFoundException::class, $this->uneSeulePanne()->context['exception']);
+    }
+
+    /**
+     * Le message d'une `QueryException` porte le SQL avec ses valeurs liées : une
+     * adresse, ici. Une requête réelle échoue sur la base de test ; le journal
+     * écrit garde le SQL à marqueurs, jamais la valeur.
+     */
+    public function test_une_exception_sql_est_ecrite_une_fois_sans_les_valeurs_de_la_requete(): void
+    {
+        $this->getJson('/api/_948/requete-sql')
+            ->assertStatus(500)
+            ->assertExactJson(['success' => false, 'message' => 'Une erreur est survenue.']);
+
+        $enregistrements = $this->rapports();
+        self::assertCount(1, $enregistrements, 'Une exception SQL doit être écrite une fois, pas deux.');
+        $echec = $enregistrements[0];
+        self::assertSame(Level::Error, $echec->level);
+        $this->assertNoWitnessWritten(self::TEMOIN_SQL);
+        self::assertSame(UncaughtExceptionReporting::QUERY_FAILURE_MESSAGE, $echec->message);
+        $contexte = array_keys($echec->context);
+        sort($contexte);
+        self::assertSame(self::CONTEXTE_D_UN_ECHEC_SQL, $contexte, 'Ni l\'exception (son message), ni les valeurs, ni le compte.');
+        self::assertSame(QueryException::class, $echec->context['exception_class']);
+        self::assertSame('api/_948/requete-sql', $echec->context['route']);
+        self::assertIsString($echec->context['sql']);
+        self::assertStringContainsString('table_absente_948', $echec->context['sql']);
+        self::assertStringContainsString('= ?', $echec->context['sql']);
+        self::assertNotSame('', $echec->context['trace']);
+        self::assertStringContainsString('= ?', (new LineFormatter(null, null, true, true, true))->format($echec));
     }
 
     private static function echouerAvec(string $valeur): never

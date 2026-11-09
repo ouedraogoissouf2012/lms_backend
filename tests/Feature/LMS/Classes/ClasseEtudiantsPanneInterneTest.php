@@ -34,6 +34,8 @@ use Tests\TestCase;
  * Le rapport ne porte ni le jeton porteur, ni le jeton KLASSCI, ni la chaîne de
  * requête. Le jeton KLASSCI est un ARGUMENT de `ClasseRoster::etudiants()` : sans
  * `zend.exception_ignore_args`, la trace en écrirait les 15 premiers caractères.
+ * Une `QueryException` est écrite sans les valeurs de sa requête : son message,
+ * qui les porte, ne l'est pas.
  *
  * Les échecs KLASSCI (4xx relayé, indisponibilité) gardent leur rendu et ne sont
  * pas rapportés par le trait : le client HTTP les journalise déjà.
@@ -58,6 +60,9 @@ final class ClasseEtudiantsPanneInterneTest extends TestCase
 
     private const TEMOIN_REQUETE = 'temoin-requete-948-jamais-ecrit';
 
+    /** Une adresse factice, liée à la requête SQL qui échoue. */
+    private const TEMOIN_SQL = 'temoin.sql.948@exemple.invalid';
+
     private User $enseignant;
 
     protected function setUp(): void
@@ -79,16 +84,30 @@ final class ClasseEtudiantsPanneInterneTest extends TestCase
         ]);
     }
 
-    /** @return iterable<string, array{0: class-string<RuntimeException>}> */
+    /**
+     * La classe levée, et les clés exactes de ce que son rapport écrit.
+     *
+     * @return iterable<string, array{0: class-string<RuntimeException>, 1: list<string>}>
+     */
     public static function pannesInternes(): iterable
     {
-        yield 'panne de base (QueryException)' => [QueryException::class];
-        yield 'RuntimeException de code 0' => [RuntimeException::class];
+        // Ni l'exception (son message porte les valeurs liées), ni le compte.
+        yield 'panne de base (QueryException)' => [QueryException::class, [
+            'code', 'connection', 'driver_code', 'exception_class', 'method', 'origin', 'request_id', 'route', 'sql', 'trace',
+        ]];
+        // `userId` est ajouté par le rapporteur de Laravel à tout rapport
+        // (Handler::context()) ; son retrait relève du lot Handler, déclaré en #948.
+        yield 'RuntimeException de code 0' => [RuntimeException::class, [
+            'exception', 'method', 'request_id', 'route', 'userId',
+        ]];
     }
 
-    /** @param  class-string<RuntimeException>  $panne */
+    /**
+     * @param  class-string<RuntimeException>  $panne
+     * @param  list<string>  $cles
+     */
     #[DataProvider('pannesInternes')]
-    public function test_une_panne_interne_rend_le_500_et_est_rapportee_une_fois(string $panne): void
+    public function test_une_panne_interne_rend_le_500_et_est_rapportee_une_fois(string $panne, array $cles): void
     {
         $this->rosterEchoue($panne);
         $porteur = $this->porteur();
@@ -101,18 +120,19 @@ final class ClasseEtudiantsPanneInterneTest extends TestCase
         self::assertCount(1, $enregistrements, 'La panne doit être écrite une fois.');
         $rapport = $enregistrements[0];
         self::assertSame(Level::Error, $rapport->level);
-        self::assertInstanceOf($panne, $rapport->context['exception'] ?? null);
+        $this->assertNoWitnessWritten(self::JETON_KLASSCI, $porteur, self::TEMOIN_REQUETE, self::TEMOIN_SQL);
         self::assertSame('lms.classes.etudiants', $rapport->context['route'] ?? null);
         self::assertSame('GET', $rapport->context['method'] ?? null);
         self::assertNotEmpty($rapport->context['request_id'] ?? null);
-
-        // `userId` est ajouté par le rapporteur de Laravel à tout rapport
-        // (Handler::context()) ; son retrait relève du lot Handler, déclaré en #948.
         $contexte = array_keys($rapport->context);
         sort($contexte);
-        self::assertSame(['exception', 'method', 'request_id', 'route', 'userId'], $contexte);
-
-        $this->assertNoWitnessWritten(self::JETON_KLASSCI, $porteur, self::TEMOIN_REQUETE);
+        self::assertSame($cles, $contexte);
+        if ($panne === QueryException::class) {
+            self::assertSame(QueryException::class, $rapport->context['exception_class']);
+            self::assertSame('select * from classes where email = ?', $rapport->context['sql']);
+        } else {
+            self::assertInstanceOf($panne, $rapport->context['exception']);
+        }
     }
 
     /** @return iterable<string, array{0: int, 1: int}> */
@@ -154,18 +174,18 @@ final class ClasseEtudiantsPanneInterneTest extends TestCase
      */
     private function rosterEchoue(string $panne): void
     {
-        $this->app->instance(ClasseRoster::class, new class($panne) implements ClasseRoster
+        $this->app->instance(ClasseRoster::class, new class($panne, self::TEMOIN_SQL) implements ClasseRoster
         {
             /** @param  class-string<RuntimeException>  $panne */
-            public function __construct(private readonly string $panne) {}
+            public function __construct(private readonly string $panne, private readonly string $valeurLiee) {}
 
             public function etudiants(int $classeId, string $userToken): array
             {
                 throw $this->panne === QueryException::class
                     ? new QueryException(
                         'sqlite',
-                        'select * from classes where id = ?',
-                        [],
+                        'select * from classes where email = ?',
+                        [$this->valeurLiee],
                         new PDOException('SQLSTATE[HY000]: General error: 5 database is locked'),
                     )
                     : new RuntimeException('Panne interne de diagnostic #948.');

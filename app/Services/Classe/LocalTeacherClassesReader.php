@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Classe;
 
 use App\Models\Classe;
+use App\Models\Matiere;
 use App\Models\User;
 
 /**
@@ -51,7 +52,9 @@ final class LocalTeacherClassesReader implements TeacherClassesReader
             ->where('institution_id', $institution)
             ->whereHas('matieres', static function ($programme) use ($teacher, $institution): void {
                 $programme->where('classe_matiere.enseignant_id', $teacher->id)
-                    ->where('matieres.institution_id', $institution);
+                    ->whereIn('classe_matiere.matiere_id', Matiere::query()
+                        ->where('institution_id', $institution)
+                        ->select('id'));
             })
             ->withCount(['etudiantsActifs as effectif_actuel'])
             // L'ordre est un CONTRAT : la liste se rend en cartes, qui ne

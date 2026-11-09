@@ -5498,21 +5498,43 @@ paths:
           $ref: '#/components/responses/KlassciUnauthorized'
         '403':
           description: |
-            L un de ces refus, que `message` nomme :
-            - l appelant n est pas eleve (message generique) ;
-            - fenetre fermee — la reponse porte alors `window` a la racine ;
-            - nombre maximum de tentatives atteint ;
-            - reprise interdite (`allow_retake: false`) ;
-            - evaluation qui ne se passe pas en ligne.
+            L un de ces refus. `message` le nomme ; `reason`, motif stable que le
+            client traduit, le designe :
+            - fenetre fermee : `evaluation_window_closed` ; la reponse porte
+              alors `window` a la racine ;
+            - nombre maximum de tentatives atteint : `evaluation_max_attempts` ;
+            - reprise interdite (`allow_retake: false`) :
+              `evaluation_retake_forbidden` ;
+            - evaluation qui ne se passe pas en ligne : `evaluation_offline_only`.
+
+            L appelant qui n est pas eleve recoit un refus generique, SANS
+            `reason`.
+
+            Ces quatre refus n existent que dans l ecole creee depuis KLASSCI :
+            dans l ecole creee depuis le LMS, le demarrage s arrete avant, faute
+            de jeton KLASSCI (401).
           content:
             application/json:
               schema:
                 type: object
+                additionalProperties: false
+                required:
+                  - success
+                  - message
                 properties:
                   success:
                     type: boolean
+                    enum:
+                      - false
                   message:
                     type: string
+                  reason:
+                    type: string
+                    enum:
+                      - evaluation_window_closed
+                      - evaluation_max_attempts
+                      - evaluation_retake_forbidden
+                      - evaluation_offline_only
                   window:
                     $ref: '#/components/schemas/EvaluationWindow'
         '404':

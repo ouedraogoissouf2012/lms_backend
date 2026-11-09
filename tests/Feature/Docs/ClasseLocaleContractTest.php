@@ -287,7 +287,7 @@ final class ClasseLocaleContractTest extends TestCase
      * Une erreur qui n'est pas un échec de lecture n'est pas rattrapée : le 500 du
      * gestionnaire global, sans `error`. Une `LogicException`, parce qu'une
      * `RuntimeException` passe désormais par le rendu des échecs KLASSCI
-     * (`FicheClasseEchecKlassciTest` couvre ce cas).
+     * (`FicheClasseEchecsTest` couvre ce cas).
      */
     public function test_500_une_erreur_non_rattrapee(): void
     {

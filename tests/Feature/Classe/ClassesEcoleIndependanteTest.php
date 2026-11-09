@@ -286,6 +286,9 @@ final class ClassesEcoleIndependanteTest extends TestCase
         $voisin = $this->membre($autre, 'enseignant');
         $voisine = $this->classe($autre, 'Classe voisine');
         $this->programme($voisine, $this->matiere($autre, 'Matière voisine'), $voisin);
+        // Une matière de SON école, rattachée à la classe voisine : seul le
+        // bornage de la CLASSE l'écarte de « Mes classes ».
+        $this->rattacherSansGarde($voisine, $this->matiere($sienne, 'Matière d ici'), $voisin);
         $voisin->forceFill(['institution_id' => $sienne->getKey()])->save();
         app(TenantManager::class)->reset();
 
@@ -305,6 +308,8 @@ final class ClassesEcoleIndependanteTest extends TestCase
         $intrus = $this->membre($autre, 'etudiant');
         $this->inscrire($intrus, $classe, 'actif');
         $this->rattacherSansGarde($classe, $this->matiere($autre, 'Matière voisine'), $moi);
+        // Un formateur d'une autre école, désigné sur une matière de la classe.
+        $this->rattacherSansGarde($classe, $this->matiere($ecole, 'Physique'), $this->membre($autre, 'enseignant'));
         $coordinateur = $this->membre($ecole, 'coordinateur');
         app(TenantManager::class)->reset();
 
@@ -313,7 +318,11 @@ final class ClassesEcoleIndependanteTest extends TestCase
         self::assertSame(200, $fiche['status']);
         $donnees = (array) $fiche['payload']['data'];
         self::assertSame([], (array) $donnees['etudiants']);
-        self::assertSame(['Maths'], array_column((array) $donnees['matieres_disponibles'], 'nom'));
+        $programme = (array) $donnees['matieres_disponibles'];
+        self::assertSame(['Maths', 'Physique'], array_column($programme, 'nom'));
+        self::assertSame([], array_column($programme, 'enseignants', 'nom')['Physique'], 'formateur d une autre ecole affiche');
+        // La carte de « Mes classes » compte comme la fiche : l'intrus n'y est pas.
+        self::assertSame(0, app(LocalTeacherClassesReader::class)->listFor($moi)[0]['effectif_actuel']);
     }
 
     public function test_sans_tenant_une_matiere_d_une_autre_ecole_ne_designe_personne(): void

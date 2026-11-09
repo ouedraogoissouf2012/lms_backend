@@ -183,12 +183,7 @@ final class FicheClasseEchecsTest extends TestCase
     #[DataProvider('voletsEtPortes')]
     public function test_une_panne_de_base_est_rapportee_une_fois_sans_ses_valeurs(InstitutionMode $mode, string $route): void
     {
-        $this->sourcesEnPanne($mode, new QueryException(
-            'sqlite',
-            'select * from classes where email = ?',
-            [self::TEMOIN_SQL],
-            new PDOException('SQLSTATE[HY000]: General error: 5 database is locked'),
-        ));
+        $this->sourcesEnPanne($mode, $this->panneDeBase());
         $this->captureWrittenLog();
 
         $this->asTenant($this->coordinateur($mode))->getJson($this->url($route))
@@ -214,19 +209,27 @@ final class FicheClasseEchecsTest extends TestCase
 
     /**
      * Le filet du contrôleur (porte historique et élèves) : une erreur qui n'est
-     * pas une `RuntimeException` est rapportée une fois, et le corps garde `error`.
+     * pas une `RuntimeException` est RAPPORTÉE une fois, et le corps garde
+     * `error`. Elle enveloppe ici une panne de base porteuse d'un témoin lié :
+     * seul le rapporteur commun (#948) remonte la chaîne `previous` jusqu'au SQL
+     * à marqueurs ; une écriture faite à la main écrirait le message, et le
+     * témoin avec.
      */
     #[DataProvider('filets')]
     public function test_une_erreur_hors_runtime_exception_est_rapportee_une_fois(InstitutionMode $mode, string $route): void
     {
-        $this->sourcesEnPanne($mode, new LogicException('panne interne de diagnostic'));
+        $this->sourcesEnPanne($mode, new LogicException('panne interne : '.self::TEMOIN_SQL, 0, $this->panneDeBase()));
         $this->captureWrittenLog();
 
         $this->asTenant($this->coordinateur($mode))->getJson($this->url($route))
             ->assertStatus(500)
             ->assertJsonPath('error', 'Une erreur est survenue.');
 
-        self::assertCount(1, $this->recordsAtLeast(Level::Error), 'La panne doit être écrite une fois.');
+        $ecrits = $this->recordsAtLeast(Level::Error);
+        self::assertCount(1, $ecrits, 'La panne doit être écrite une fois.');
+        self::assertSame(LogicException::class, $ecrits[0]->context['exception_class'] ?? null);
+        self::assertSame('select * from classes where email = ?', $ecrits[0]->context['sql'] ?? null);
+        $this->assertNoWitnessWritten(self::TEMOIN_SQL);
     }
 
     // ───────────────────────── harnais
@@ -264,6 +267,17 @@ final class FicheClasseEchecsTest extends TestCase
         foreach ($sources as $source) {
             $this->app->instance($source, $doublure);
         }
+    }
+
+    /** Une panne de base dont la requête porte le témoin lié. */
+    private function panneDeBase(): QueryException
+    {
+        return new QueryException(
+            'sqlite',
+            'select * from classes where email = ?',
+            [self::TEMOIN_SQL],
+            new PDOException('SQLSTATE[HY000]: General error: 5 database is locked'),
+        );
     }
 
     private function coordinateur(InstitutionMode $mode): User

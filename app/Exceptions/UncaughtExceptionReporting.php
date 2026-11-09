@@ -15,17 +15,20 @@ use Throwable;
 /**
  * #948 — ce que le journal garde d'une exception non attrapée, selon son statut.
  *
- * - **5xx, ou exception sans statut** : une panne. Le rapporteur de Laravel
- *   l'écrit UNE fois, en `error`, avec la trace. Le rendu JSON de
- *   `bootstrap/app.php` ne journalise plus rien : il l'écrivait une seconde fois.
+ * - **5xx, ou exception sans statut** : une panne, écrite UNE fois, en `error`,
+ *   avec la trace, par le rapport par défaut de Laravel (hors exception SQL,
+ *   ci-dessous). Le rendu JSON de `bootstrap/app.php` ne journalise plus rien :
+ *   il l'écrivait une seconde fois.
  * - **403** : un refus n'est pas une panne, mais c'est la seule trace d'un refus
  *   levé en exception (FormRequest, `abort`) ; les middlewares de rôle écrivent
  *   les leurs, et aucun refus n'est audité par `AuditLogger`. Il est écrit en
  *   `warning`, SANS trace : c'est le signal d'un sondage d'accès.
  * - **Autres 4xx** (404, 405, 429…) : rien. Un balayage d'URL ne remplit plus le
  *   journal.
- * - **Exception SQL** (`QueryException`) : une panne, écrite une fois en `error`,
- *   SANS les valeurs de la requête ni le message qui les porte.
+ * - **Exception SQL** (une `QueryException`, ou une exception qui en enveloppe
+ *   une, comme la `DeadlockException` d'une transaction imbriquée) : une panne,
+ *   écrite une fois en `error` par cette classe, SANS les valeurs de la requête
+ *   ni le message qui les porte.
  *
  * Le rapporteur reçoit l'exception AVANT `prepareException()` : un refus de
  * FormRequest y arrive en `AuthorizationException` brute, pas en
@@ -34,8 +37,9 @@ use Throwable;
  * De la requête, seuls la route (nommée, ou le chemin sans chaîne de requête) et
  * la méthode sont écrits ; `request_id` l'est déjà par `AssignRequestId`
  * (`Log::shareContext`). Ni corps, ni chaîne de requête, ni en-tête, ni compte ;
- * seul le rapport d'une panne porte encore le `userId` que Laravel y ajoute
- * (`Handler::context()`), dont le retrait est différé au lot Handler.
+ * seul le rapport par défaut d'une panne hors SQL porte encore le `userId` que
+ * Laravel y ajoute (`Handler::context()`), dont le retrait est différé au lot
+ * Handler.
  *
  * Résolue par `bootstrap/app.php`, racine de composition, dans chaque callback.
  */
@@ -64,8 +68,9 @@ final class UncaughtExceptionReporting
      */
     public function report(Throwable $e, Request $request): ?bool
     {
-        if ($e instanceof QueryException) {
-            $this->reportQueryFailure($e, $request);
+        $query = $this->queryExceptionIn($e);
+        if ($query !== null) {
+            $this->reportQueryFailure($e, $query, $request);
 
             return false;
         }
@@ -99,22 +104,38 @@ final class UncaughtExceptionReporting
     }
 
     /**
-     * Le message d'une `QueryException` porte le SQL avec ses valeurs liées, et
-     * les détails de la connexion. Il n'est pas écrit, et l'exception n'est pas
-     * passée au contexte : le formateur en écrirait le message. Le message du
-     * pilote non plus, il peut citer une valeur (MySQL 1062 : « Duplicate entry »).
-     * Restent le SQL à marqueurs, la connexion, les codes, l'origine et la trace,
-     * dont `zend.exception_ignore_args` a retiré les arguments.
+     * La `QueryException` de tête, ou la première de la chaîne `previous` : une
+     * enveloppe (`DeadlockException`, `ViewException`…) recopie souvent son
+     * message, et le formateur écrirait toute la chaîne.
      */
-    private function reportQueryFailure(QueryException $e, Request $request): void
+    private function queryExceptionIn(Throwable $e): ?QueryException
+    {
+        for ($maillon = $e; $maillon !== null; $maillon = $maillon->getPrevious()) {
+            if ($maillon instanceof QueryException) {
+                return $maillon;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Le message d'une `QueryException` porte le SQL avec ses valeurs liées, et
+     * les détails de la connexion ; une enveloppe le recopie. Aucun message n'est
+     * écrit, et aucune exception n'est passée au contexte : le formateur en
+     * écrirait le message et la chaîne `previous`. Le message du pilote non plus,
+     * il peut citer une valeur (MySQL 1062 : « Duplicate entry »). Restent la
+     * classe de tête, le SQL à marqueurs, la connexion, les codes, et la trace de
+     * tête, dont `zend.exception_ignore_args` a retiré les arguments.
+     */
+    private function reportQueryFailure(Throwable $e, QueryException $query, Request $request): void
     {
         $this->logger->error(self::QUERY_FAILURE_MESSAGE, [
             'exception_class' => $e::class,
-            'connection' => $e->getConnectionName(),
-            'sql' => $e->getSql(),
-            'code' => $e->getCode(),
-            'driver_code' => $e->errorInfo[1] ?? null,
-            'origin' => $e->getFile().':'.$e->getLine(),
+            'connection' => $query->getConnectionName(),
+            'sql' => $query->getSql(),
+            'code' => $query->getCode(),
+            'driver_code' => $query->errorInfo[1] ?? null,
             'trace' => $e->getTraceAsString(),
         ] + $this->requestContext($request));
     }

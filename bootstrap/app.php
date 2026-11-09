@@ -183,7 +183,11 @@ $app = Application::configure(basePath: dirname(__DIR__))
                 // #948 — le rendu ne journalise plus : il écrivait chaque 404 en
                 // `error` avec sa trace, et chaque panne une seconde fois, après le
                 // rapport de Laravel. Le rapport est configuré plus haut.
-                return response()->json(['success' => false, 'message' => $message], $statusCode);
+                // Les en-têtes d'une HttpException sont gardés : `Allow` d'un 405,
+                // `Retry-After` d'un 503 (mode maintenance), comme dans le rendu de Laravel.
+                $entetes = $e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface ? $e->getHeaders() : [];
+
+                return response()->json(['success' => false, 'message' => $message], $statusCode, $entetes);
             }
         });
     })->create();

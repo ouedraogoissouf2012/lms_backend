@@ -74,8 +74,9 @@ final class KlassciTokenMissingReasonTest extends TestCase
      * liaison qui a choisi une autre source.
      *
      * Le volet indépendant de ces sites est gardé ailleurs, et PLUS
-     * strictement : `MatieresEcoleIndependanteTest` vérifie qu'aucun appel
-     * KLASSCI ne part, même pour un compte porteur d'un jeton.
+     * strictement : `MatieresEcoleIndependanteTest` et
+     * `ClassesEcoleIndependanteTest` vérifient qu'aucun appel KLASSCI ne part,
+     * même pour un compte porteur d'un jeton.
      *
      * @return iterable<string, array{0: InstitutionMode}>
      */
@@ -114,7 +115,7 @@ final class KlassciTokenMissingReasonTest extends TestCase
 
     // ───────────────────────── services { status, payload }
 
-    #[DataProvider('volets')]
+    #[DataProvider('voletKlassciSeul')]
     public function test_details_de_classe_dit_le_jeton_absent(InstitutionMode $mode): void
     {
         $compte = $this->compteSansJeton($mode, 'enseignant');
@@ -122,7 +123,7 @@ final class KlassciTokenMissingReasonTest extends TestCase
         $this->assertJetonAbsent($this->asTenant($compte)->getJson('/api/lms/classes/42'));
     }
 
-    #[DataProvider('volets')]
+    #[DataProvider('voletKlassciSeul')]
     public function test_eleves_de_classe_dit_le_jeton_absent(InstitutionMode $mode): void
     {
         $compte = $this->compteSansJeton($mode, 'enseignant');

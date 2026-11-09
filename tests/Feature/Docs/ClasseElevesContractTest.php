@@ -26,10 +26,12 @@ use Tests\TestCase;
  *
  * KLASSCI est simulé par UN seul `Http::fake` par test (deux s'empilent, le
  * premier gagne) : c'est l'URL émise et la réponse amont qui décident, pas une
- * doublure du proxy. Les refus tournent pour les deux types d'école : créée
- * depuis KLASSCI, créée depuis le LMS (`standalone()`, sans URL KLASSCI). La
- * lecture, qui suppose un jeton KLASSCI, tourne pour une école créée depuis
- * KLASSCI. Vrai jeton porteur (`asTenant`).
+ * doublure du proxy. La garde de rôle tourne pour les deux types d'école :
+ * créée depuis KLASSCI, créée depuis le LMS (`standalone()`, sans URL KLASSCI).
+ * La lecture et les refus de jeton tournent pour une école créée depuis
+ * KLASSCI : une école créée depuis le LMS lit le roster local
+ * (ADR-EI-01), décrit par `ClassesContractTest`. Vrai jeton porteur
+ * (`asTenant`).
  *
  * @see app/Http/Controllers/API/LMS/LMSClassesController.php
  * @see app/Http/Controllers/API/Concerns/RendersKlassciBackedErrors.php
@@ -105,13 +107,16 @@ final class ClasseElevesContractTest extends TestCase
         $reponse->assertExactJson(['success' => false, 'message' => 'Unauthenticated.']);
     }
 
-    /** Sans jeton KLASSCI, avant tout appel : un compte d'une école créée depuis le LMS n'en a jamais. */
-    #[DataProvider('typesDEcole')]
-    public function test_401_sans_jeton_klassci(bool $depuisLeLms): void
+    /**
+     * Sans jeton KLASSCI, avant tout appel, dans une école créée depuis KLASSCI.
+     * Une école créée depuis le LMS ne passe plus par ce refus : elle lit le
+     * roster local.
+     */
+    public function test_401_sans_jeton_klassci(): void
     {
         Http::fake();
 
-        $reponse = $this->lire($this->compte($depuisLeLms, 'enseignant', null))->assertUnauthorized();
+        $reponse = $this->lire($this->compte(false, 'enseignant', null))->assertUnauthorized();
 
         $this->assertMatchesOpenApiResponse($reponse, self::CHEMIN, 'get');
         $reponse->assertExactJson(MissingKlassciTokenException::payload());

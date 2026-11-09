@@ -51,6 +51,28 @@ final class ClassesEtablissementContractTest extends TestCase
         $reponse->assertJsonPath('data.0.id', $classe->id)->assertJsonPath('data.0.places_occupees', 1);
     }
 
+    /**
+     * UN `Http::fake` : KLASSCI rend la forme MESURÉE sur l'API réelle, `libelle`
+     * à `null` et le nom dans `name` (front `utils/classes.js`), un id en chaîne
+     * et une filière scalaire. La route la relaie telle quelle, et la spec doit
+     * l'admettre.
+     */
+    public function test_200_la_forme_de_klassci_dans_une_ecole_creee_depuis_klassci(): void
+    {
+        $classe = ['id' => '12', 'name' => 'B2 COM', 'libelle' => null, 'filiere' => 4, 'niveau' => ['id' => 2, 'nom' => 'B2']];
+        Http::fake(static fn () => Http::response(['success' => true, 'data' => [$classe]], 200));
+        $ecole = Institution::factory()->create([
+            'mode' => InstitutionMode::Klassci,
+            'klassci_api_url' => 'https://ecole.klassci.test/api/lms',
+            'is_active' => true,
+        ]);
+
+        $reponse = $this->asTenant($this->membre($ecole, 'coordinateur'))->getJson('/api'.self::CHEMIN)->assertOk();
+
+        $this->assertMatchesOpenApiResponse($reponse, self::CHEMIN, 'get');
+        $reponse->assertExactJson(['success' => true, 'data' => [$classe]]);
+    }
+
     /** UN `Http::fake` : KLASSCI répond 503, la route rend le 503 canonique avec `Retry-After`. */
     public function test_503_klassci_indisponible_dans_une_ecole_creee_depuis_klassci(): void
     {

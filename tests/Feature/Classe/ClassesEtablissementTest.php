@@ -16,6 +16,7 @@ use App\Services\Classe\KlassciInstitutionClassesReader;
 use App\Services\Classe\LocalInstitutionClassesReader;
 use App\Services\KlassciProxyService;
 use App\Services\TenantManager;
+use App\Support\Klassci\KlassciClientErrorCatalog;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
@@ -24,6 +25,7 @@ use Mockery\MockInterface;
 use Monolog\Level;
 use PDOException;
 use PHPUnit\Framework\Attributes\DataProvider;
+use RuntimeException;
 use Tests\Concerns\ActsAsTenantUser;
 use Tests\Concerns\BuildsEcoleIndependante;
 use Tests\Concerns\CapturesWrittenLog;
@@ -69,7 +71,16 @@ final class ClassesEtablissementTest extends TestCase
 
     // ───────────────────────── école créée depuis le LMS
 
-    public function test_la_gestion_lit_toutes_les_classes_de_l_ecole_avec_les_ids_locaux(): void
+    /** @return iterable<string, array{0: string}> */
+    public static function gestion(): iterable
+    {
+        yield 'coordinateur' => ['coordinateur'];
+        yield 'admin' => ['admin'];
+        yield 'superAdmin' => ['superAdmin'];
+    }
+
+    #[DataProvider('gestion')]
+    public function test_la_gestion_lit_toutes_les_classes_de_l_ecole_avec_les_ids_locaux(string $role): void
     {
         $ecole = $this->ecole();
         // Créées dans le DÉSORDRE : le tri par libellé doit être éprouvé.
@@ -81,7 +92,7 @@ final class ClassesEtablissementTest extends TestCase
         $this->inscrire($this->membre($ecole, 'etudiant'), $sixieme, 'actif');
         $this->inscrire($this->membre($ecole, 'etudiant'), $sixieme, 'inactif');
 
-        $reponse = $this->asTenant($this->membre($ecole, 'coordinateur'))->getJson(self::LISTE)->assertOk();
+        $reponse = $this->asTenant($this->membre($ecole, $role))->getJson(self::LISTE)->assertOk();
 
         $reponse->assertJsonPath('success', true);
         self::assertSame([
@@ -95,7 +106,8 @@ final class ClassesEtablissementTest extends TestCase
     {
         yield 'publiée, en cours' => [TrainingSessionStatus::Publiee, 'en_cours', true];
         yield 'publiée, inscriptions ouvertes' => [TrainingSessionStatus::Publiee, 'inscriptions_ouvertes', true];
-        yield 'publiée, à venir' => [TrainingSessionStatus::Publiee, 'a_venir', false];
+        // Pas terminée : active (D124).
+        yield 'publiée, à venir' => [TrainingSessionStatus::Publiee, 'a_venir', true];
         yield 'publiée, terminée' => [TrainingSessionStatus::Publiee, 'terminee', false];
         yield 'brouillon, en cours' => [TrainingSessionStatus::Brouillon, 'en_cours', false];
         yield 'annulée, en cours' => [TrainingSessionStatus::Annulee, 'en_cours', false];
@@ -199,6 +211,10 @@ final class ClassesEtablissementTest extends TestCase
         $autre = $this->ecole();
         $classe = $this->classe($ecole, '6e A');
         $this->classe($autre, 'Classe voisine');
+        // Une Période d'une AUTRE école, publiée et en cours : lue sans borne,
+        // elle rendrait la classe active.
+        Carbon::setTestNow('2026-11-09');
+        $classe->forceFill(['training_session_id' => $this->periode($autre, TrainingSessionStatus::Publiee, 'en_cours')->id])->save();
         $this->inscrire($this->membre($autre, 'etudiant'), $classe, 'actif');
         DB::table('classe_matiere')->insert([
             'classe_id' => $classe->id,
@@ -215,6 +231,31 @@ final class ClassesEtablissementTest extends TestCase
         self::assertSame([$this->ligne($classe, '6e A', null, 0, 0)], $reponse['data']);
     }
 
+    public function test_un_compte_sans_etablissement_ne_lit_aucune_classe(): void
+    {
+        // Par HTTP, il est refusé avant le contrôleur (`no_institution`) : la
+        // source ne doit pas en dépendre.
+        $this->classe($this->ecole(), '6e A');
+        $sansEcole = User::factory()->create(['role' => 'coordinateur', 'institution_id' => null]);
+        app(TenantManager::class)->reset();
+
+        self::assertSame(['success' => true, 'data' => []], app(LocalInstitutionClassesReader::class)->list($sansEcole, []));
+    }
+
+    public function test_une_periode_supprimee_rend_l_etat_inconnu(): void
+    {
+        Carbon::setTestNow('2026-11-09');
+        $ecole = $this->ecole();
+        $periode = $this->periode($ecole, TrainingSessionStatus::Publiee, 'en_cours');
+        $this->classe($ecole, '6e A')->forceFill(['training_session_id' => $periode->id])->save();
+        $periode->delete();
+
+        $this->asTenant($this->membre($ecole, 'coordinateur'))
+            ->getJson(self::LISTE)
+            ->assertOk()
+            ->assertJsonPath('data.0.is_active', null);
+    }
+
     // ───────────────────────── école créée depuis KLASSCI
 
     public function test_l_ecole_creee_depuis_klassci_recoit_ce_que_rend_klassci(): void
@@ -229,6 +270,34 @@ final class ClassesEtablissementTest extends TestCase
             ->getJson(self::LISTE.'?filiere_id=3')
             ->assertOk()
             ->assertExactJson($rendu);
+    }
+
+    public function test_l_ecole_creee_depuis_klassci_recoit_le_refus_de_session_de_klassci(): void
+    {
+        $this->mock(KlassciProxyService::class, function (MockInterface $mock): void {
+            $mock->shouldReceive('getClasses')->once()->andThrow(new RuntimeException('Erreur API KLASSCI: 401', 401));
+        });
+
+        $this->asTenant($this->membre($this->ecole(InstitutionMode::Klassci), 'coordinateur'))
+            ->getJson(self::LISTE)
+            ->assertStatus(401)
+            ->assertExactJson([
+                'success' => false,
+                'message' => 'Session KLASSCI expirée. Veuillez vous reconnecter.',
+                'reason' => KlassciClientErrorCatalog::SESSION_EXPIRED_REASON,
+            ]);
+    }
+
+    public function test_l_ecole_creee_depuis_klassci_recoit_le_refus_relaye_de_klassci(): void
+    {
+        $this->mock(KlassciProxyService::class, function (MockInterface $mock): void {
+            $mock->shouldReceive('getClasses')->once()->andThrow(new RuntimeException('Erreur API KLASSCI: 403', 403));
+        });
+
+        $this->asTenant($this->membre($this->ecole(InstitutionMode::Klassci), 'coordinateur'))
+            ->getJson(self::LISTE)
+            ->assertStatus(403)
+            ->assertExactJson(['success' => false, 'message' => KlassciClientErrorCatalog::messageFor(403)]);
     }
 
     public function test_deux_ecoles_dans_la_meme_methode_recoivent_chacune_leur_source(): void
@@ -272,6 +341,7 @@ final class ClassesEtablissementTest extends TestCase
         $coordinateur = $this->membre($basculee, 'coordinateur');
 
         $liste = (array) $this->asTenant($coordinateur)->getJson(self::LISTE)->assertOk()->json('data');
+        self::assertCount(2, $liste, 'une liste vide laisserait la boucle sans rien prouver');
         foreach ($liste as $ligne) {
             $this->asTenant($coordinateur)->getJson('/api/lms/classes/'.$ligne['id'])
                 ->assertOk()

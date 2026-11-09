@@ -1040,9 +1040,12 @@ components:
                   type: integer
                   nullable: true
                 capacite_classe:
+                  type: integer
+                  nullable: true
                   description: |
-                    Le nombre de places tel que KLASSCI le donne, non normalise,
-                    ou `null`. Sans type : la source KLASSCI ne le garantit pas.
+                    Le nombre de places tel que KLASSCI le donne (`nombre_places`),
+                    ou `null`. Ecart connu : la source KLASSCI relaie la valeur sans
+                    la normaliser ; une chaine numerique ressortirait telle quelle.
                 taux_remplissage:
                   type: number
                   nullable: true

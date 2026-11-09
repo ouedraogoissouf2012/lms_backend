@@ -12,6 +12,7 @@ use App\Services\KlassciProxyService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Mockery\MockInterface;
+use Illuminate\Testing\TestResponse;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\Concerns\ActsAsTenantUser;
 use Tests\Concerns\BuildsEcoleIndependante;
@@ -150,14 +151,44 @@ final class ClassesContractTest extends TestCase
     {
         yield 'refus 403, relayé' => [403, ['success' => false, 'message' => 'refus amont'], 403];
         yield 'refus 404, relayé' => [404, ['success' => false, 'message' => 'introuvable'], 404];
-        yield 'session refusée, 401 motivé' => [401, ['message' => 'Unauthenticated.'], 401];
         yield 'panne, 503' => [503, ['message' => 'panne'], 503];
         yield 'corps illisible, 503' => [503, '<html>maintenance</html>', 200];
     }
 
-    /** @param  array<string, mixed>|string  $corps */
+    /**
+     * Les refus et les pannes ont un schéma FERMÉ : une clé non décrite le fait
+     * échouer.
+     *
+     * @param  array<string, mixed>|string  $corps
+     */
     #[DataProvider('echecsDeKlassci')]
     public function test_source_klassci_fiche_echecs_suivent_le_contrat(int $attendu, array|string $corps, int $statut): void
+    {
+        $reponse = $this->lireLaFicheKlassci($corps, $statut)->assertStatus($attendu);
+
+        $this->assertMatchesOpenApiResponse($reponse, self::FICHE, 'get');
+        $this->assertOpenApiSchemaRefuseSans($reponse, self::FICHE, 'get', 'message');
+    }
+
+    /** Le 401 suit `RefusKlassci`, ouvert (un 401 Sanctum ne porte pas de motif) : son motif est prouvé à part. */
+    public function test_source_klassci_fiche_session_refusee_suit_le_contrat(): void
+    {
+        $reponse = $this->lireLaFicheKlassci(['message' => 'Unauthenticated.'], 401)->assertUnauthorized();
+
+        $this->assertMatchesOpenApiResponse($reponse, self::FICHE, 'get');
+        $reponse->assertJsonPath('reason', 'klassci_session_expired');
+    }
+
+    // ───────────────────────── harnais
+
+    /**
+     * La fiche KLASSCI 12, lue par un enseignant d'une école créée depuis
+     * KLASSCI. UNE closure : `classes/12` rend le corps donné, tout le reste une
+     * enveloppe vide.
+     *
+     * @param  array<string, mixed>|string  $corps
+     */
+    private function lireLaFicheKlassci(array|string $corps, int $statut): TestResponse
     {
         Http::fake(static function ($requete) use ($corps, $statut) {
             if (! str_contains($requete->url(), '/classes/12')) {
@@ -178,13 +209,8 @@ final class ClassesContractTest extends TestCase
             'klassci_tenant_url' => 'https://ecole.klassci.test/api/lms',
         ]);
 
-        $reponse = $this->asTenant($compte)->getJson('/api/lms/classes/12')->assertStatus($attendu);
-
-        $this->assertMatchesOpenApiResponse($reponse, self::FICHE, 'get');
-        $this->assertOpenApiSchemaRefuseSans($reponse, self::FICHE, 'get', 'message');
+        return $this->asTenant($compte)->getJson('/api/lms/classes/12');
     }
-
-    // ───────────────────────── harnais
 
     /**
      * @return array{0: Classe, 1: User}

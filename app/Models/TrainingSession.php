@@ -107,14 +107,18 @@ class TrainingSession extends Model
     }
 
     /**
-     * « Active » : publiée, et ouverte aux inscriptions ou en cours. C'est la
-     * seule règle qui dit si une classe d'une école créée depuis le LMS est
-     * « active cette année » (lot 3a) : un fait daté, jamais une valeur inventée.
+     * « Active » : publiée, et pas terminée (D124). C'est la seule règle qui dit
+     * si une classe d'une école créée depuis le LMS est « active cette année »
+     * (lot 3a) : un fait daté, jamais une valeur inventée.
+     *
+     * « Pas terminée » couvre la phase « à venir », y compris entre la clôture
+     * des inscriptions et le début : une classe complète qui démarre dans quinze
+     * jours n'est pas inactive pour un gestionnaire.
      */
     public function estActive(): bool
     {
         return $this->status === TrainingSessionStatus::Publiee
-            && in_array($this->phase, [TrainingSessionPhase::InscriptionsOuvertes, TrainingSessionPhase::EnCours], true);
+            && $this->phase !== TrainingSessionPhase::Terminee;
     }
 
     /**

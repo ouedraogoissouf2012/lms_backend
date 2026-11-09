@@ -96,9 +96,12 @@ $app = Application::configure(basePath: dirname(__DIR__))
             }
         });
 
-        // Handle ValidationException for FormRequests
+        // Saisie invalide (FormRequest, validate()) : 422 JSON. Même règle que le
+        // 401 ci-dessus : une route `api/*` y a droit sans `Accept: application/json`,
+        // sinon Laravel rend une redirection HTML à un client qui n'en a que faire.
+        // Les routes web gardent la redirection de Laravel.
         $exceptions->render(function (\Illuminate\Validation\ValidationException $e, $request) {
-            if ($request->expectsJson()) {
+            if ($request->expectsJson() || $request->is('api/*')) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Validation failed',
@@ -118,9 +121,9 @@ $app = Application::configure(basePath: dirname(__DIR__))
         });
 
         // #906 — une `HttpResponseException` PORTE déjà sa réponse : la rendre
-        // telle quelle, comme le fait Laravel (Handler:623). Sans ce handler, le
+        // telle quelle, comme le fait Laravel (Handler:634, 12.70.2). Sans ce handler, le
         // rendu générique \Throwable ci-dessous passe AVANT Laravel
-        // (`renderViaCallbacks`, Handler:618) et la transforme en 500 muet —
+        // (`renderViaCallbacks`, Handler:629) et la transforme en 500 muet —
         // mesuré : statut 500, `Retry-After` perdu. C'est pourtant par elle
         // qu'un seau nommé rend son propre 429 (`Limit::response()`).
         $exceptions->render(

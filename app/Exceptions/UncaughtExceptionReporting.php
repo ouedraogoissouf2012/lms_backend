@@ -17,9 +17,10 @@ use Throwable;
  * - **5xx, ou exception sans statut** : une panne. Le rapporteur de Laravel
  *   l'écrit UNE fois, en `error`, avec la trace. Le rendu JSON de
  *   `bootstrap/app.php` ne journalise plus rien : il l'écrivait une seconde fois.
- * - **403** : un refus n'est pas une panne, mais c'est aujourd'hui la seule trace
- *   d'un accès refusé (aucun refus n'est audité par `AuditLogger`). Il est écrit
- *   en `warning`, SANS trace : c'est le signal d'un sondage d'accès.
+ * - **403** : un refus n'est pas une panne, mais c'est la seule trace d'un refus
+ *   levé en exception (FormRequest, `abort`) ; les middlewares de rôle écrivent
+ *   les leurs, et aucun refus n'est audité par `AuditLogger`. Il est écrit en
+ *   `warning`, SANS trace : c'est le signal d'un sondage d'accès.
  * - **Autres 4xx** (404, 405, 429…) : rien. Un balayage d'URL ne remplit plus le
  *   journal.
  *
@@ -29,7 +30,9 @@ use Throwable;
  *
  * De la requête, seuls la route (nommée, ou le chemin sans chaîne de requête) et
  * la méthode sont écrits ; `request_id` l'est déjà par `AssignRequestId`
- * (`Log::shareContext`). Ni corps, ni chaîne de requête, ni en-tête, ni compte.
+ * (`Log::shareContext`). Ni corps, ni chaîne de requête, ni en-tête, ni compte ;
+ * seul le rapport d'une panne porte encore le `userId` que Laravel y ajoute
+ * (`Handler::context()`), dont le retrait est différé au lot Handler.
  *
  * Résolue par `bootstrap/app.php`, racine de composition, dans chaque callback.
  */

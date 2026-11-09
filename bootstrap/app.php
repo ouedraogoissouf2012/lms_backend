@@ -144,11 +144,14 @@ $app = Application::configure(basePath: dirname(__DIR__))
         // (5xx, ou sans statut) est écrite une fois en `error` avec la trace, un
         // refus d'accès (403) en `warning` sans trace, les autres 4xx pas du tout.
         // Laravel ignore d'office `HttpException` et `AuthorizationException` : on
-        // lève cette exclusion pour décider ici, au statut. Les règles vivent dans
+        // lève cette exclusion pour décider ici, au statut. Il ignore aussi
+        // `MultipleRecordsFoundException`, qu'aucun rendu ne convertit en 4xx : un
+        // 500, donc une panne, à rapporter. Les règles vivent dans
         // `UncaughtExceptionReporting`, résolue ici, racine de composition.
         $exceptions->stopIgnoring([
             \Symfony\Component\HttpKernel\Exception\HttpException::class,
             \Illuminate\Auth\Access\AuthorizationException::class,
+            \Illuminate\Database\MultipleRecordsFoundException::class,
         ]);
         $exceptions->dontReportWhen(
             fn (\Throwable $e): bool => app(\App\Exceptions\UncaughtExceptionReporting::class)->isSilentClientError($e)

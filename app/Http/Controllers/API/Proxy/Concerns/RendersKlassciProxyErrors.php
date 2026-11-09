@@ -88,7 +88,13 @@ trait RendersKlassciProxyErrors
             }
         }
 
-        // (4) Ni panne KLASSCI, ni erreur client amont : défaillance interne.
+        // (4) Ni panne KLASSCI, ni erreur client amont : défaillance interne
+        // (une `QueryException` est une RuntimeException). Attrapée ici, le
+        // rapporteur de Laravel ne la verrait jamais : elle est rapportée, une
+        // fois, par la règle commune (#948), sans le message ni les valeurs
+        // d'une requête SQL.
+        report($e);
+
         return response()->json([
             'success' => false,
             'message' => 'Service indisponible. Veuillez réessayer.',

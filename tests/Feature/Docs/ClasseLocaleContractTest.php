@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Docs;
 
+use App\Enums\InstitutionMode;
 use App\Exceptions\MissingKlassciTokenException;
 use App\Models\Classe;
 use App\Models\Institution;
@@ -58,18 +59,35 @@ final class ClasseLocaleContractTest extends TestCase
         yield 'école créée depuis le LMS' => [true];
     }
 
-    public function test_200_la_fiche_klassci_de_la_classe(): void
+    /** @return iterable<string, array{0: InstitutionMode}> */
+    public static function modesDUneEcoleKlassci(): iterable
+    {
+        yield 'école créée depuis KLASSCI, mode klassci' => [InstitutionMode::Klassci];
+        yield 'école créée depuis KLASSCI, passée en mode autonome' => [InstitutionMode::Standalone];
+    }
+
+    /** Le mode de l'école n'est pas lu : passée en mode autonome, une école créée depuis KLASSCI lit encore KLASSCI. */
+    #[DataProvider('modesDUneEcoleKlassci')]
+    public function test_200_la_fiche_klassci_de_la_classe(InstitutionMode $mode): void
     {
         $this->klassciRepond(['success' => true, 'data' => [
             'classe' => ['id' => self::CLASSE_KLASSCI, 'nom' => 'BTS 1'],
             'etudiants' => [],
         ]]);
-        $ecole = $this->ecole(false);
+        $ecole = Institution::factory()->create(['klassci_api_url' => self::BASE_URL, 'is_active' => true, 'mode' => $mode]);
 
         $reponse = $this->lire($this->compte($ecole), $this->classe($ecole, self::CLASSE_KLASSCI)->id)->assertOk();
 
         $this->assertMatchesOpenApiResponse($reponse, self::CHEMIN, 'get');
         $reponse->assertJsonPath('data.classe.id', self::CLASSE_KLASSCI);
+    }
+
+    /** Sans jeton porteur, un en-tête `X-Institution` inconnu rend 400, avant l'authentification. */
+    public function test_400_une_ecole_inconnue_sans_jeton_porteur(): void
+    {
+        $reponse = $this->withHeader('X-Institution', 'ecole-inconnue')->getJson('/api/lms/classes/local/1')->assertStatus(400);
+
+        $this->assertRefus($reponse, null);
     }
 
     public function test_401_sans_jeton_porteur(): void
@@ -104,6 +122,15 @@ final class ClasseLocaleContractTest extends TestCase
         $reponse->assertJsonPath('reason', 'no_institution');
     }
 
+    /** Le gestionnaire de la plateforme n'entre pas dans une école, même rattaché à l'une d'elles. */
+    public function test_403_un_supradmin(): void
+    {
+        $reponse = $this->lire($this->compte($this->ecole(false), 'jeton-klassci', 'supradmin'), 1)->assertForbidden();
+
+        $this->assertMatchesOpenApiResponse($reponse, self::CHEMIN, 'get');
+        $reponse->assertJsonPath('reason', 'no_institution');
+    }
+
     public function test_403_un_etablissement_desactive(): void
     {
         $ecole = Institution::factory()->create(['is_active' => false]);
@@ -125,7 +152,7 @@ final class ClasseLocaleContractTest extends TestCase
         $this->assertRefus($reponse, null);
     }
 
-    /** KLASSCI ne rend pas la fiche de la classe : le même 404, sans motif. */
+    /** KLASSCI répond 2xx SANS fiche de classe : le même 404, sans motif. Un 404 HTTP de KLASSCI rend le 500. */
     public function test_404_klassci_ne_rend_pas_la_fiche(): void
     {
         $this->klassciRepond(['success' => true, 'data' => []]);
@@ -149,10 +176,35 @@ final class ClasseLocaleContractTest extends TestCase
         Http::assertNothingSent();
     }
 
-    /** Toute erreur de KLASSCI pendant la lecture rend ce 500, sans motif ni `error` (décrit tel quel). */
-    public function test_500_une_panne_de_klassci(): void
+    /** Pas de garde de rôle : un élève reçoit la même réponse. */
+    public function test_409_un_eleve_aussi(): void
     {
-        $this->klassciRepond(['message' => 'panne'], 503);
+        $ecole = $this->ecole(true);
+
+        $reponse = $this->lire($this->compte($ecole, null, 'etudiant'), $this->classe($ecole, null)->id)->assertStatus(409);
+
+        $this->assertRefus($reponse, 'classe_local_only');
+    }
+
+    /** @return iterable<string, array{0: array<string, mixed>|string, 1: int}> */
+    public static function erreursDeKlassci(): iterable
+    {
+        yield 'panne (503)' => [['message' => 'panne'], 503];
+        yield 'refus HTTP (404)' => [['message' => 'introuvable'], 404];
+        yield 'refus HTTP (403)' => [['message' => 'interdit'], 403];
+        yield 'corps illisible' => ['<html>maintenance</html>', 200];
+    }
+
+    /**
+     * Toute erreur de KLASSCI pendant la lecture rend ce 500, sans motif ni `error`
+     * (décrit tel quel ; le défaut est suivi à part).
+     *
+     * @param  array<string, mixed>|string  $corps
+     */
+    #[DataProvider('erreursDeKlassci')]
+    public function test_500_une_erreur_de_klassci(array|string $corps, int $statut): void
+    {
+        $this->klassciRepond($corps, $statut);
         $ecole = $this->ecole(false);
 
         $reponse = $this->lire($this->compte($ecole), $this->classe($ecole, self::CLASSE_KLASSCI)->id)->assertStatus(500);
@@ -184,26 +236,33 @@ final class ClasseLocaleContractTest extends TestCase
                 }
             },
         );
+        Http::fake();
         $ecole = $this->ecole(false);
 
         $reponse = $this->lire($this->compte($ecole), $this->classe($ecole, self::CLASSE_KLASSCI)->id)->assertStatus(500);
 
         $this->assertMatchesOpenApiResponse($reponse, self::CHEMIN, 'get');
         $reponse->assertJsonMissingPath('error');
+        self::assertNotSame('Erreur lors de la récupération de la classe', $reponse->json('message'), 'le gestionnaire global, pas le catch de la lecture');
+        Http::assertNothingSent();
     }
 
     /** UNE closure : `classes/42` rend le corps donné, tout le reste une enveloppe vide. */
-    private function klassciRepond(array $corps, int $statut = 200): void
+    private function klassciRepond(array|string $corps, int $statut = 200): void
     {
         Http::fake(static function ($requete) use ($corps, $statut) {
             if (! str_contains($requete->url(), '/classes/'.self::CLASSE_KLASSCI)) {
                 return Http::response(['success' => true, 'data' => []]);
             }
 
-            return Http::response($corps, $statut);
+            return Http::response($corps, $statut, is_string($corps) ? ['Content-Type' => 'text/html'] : []);
         });
     }
 
+    /**
+     * Faute de colonne de type, une école créée depuis le LMS se modélise comme
+     * SchoolRequestDecisionService la crée : mode standalone, sans URL KLASSCI.
+     */
     private function ecole(bool $depuisLeLms): Institution
     {
         return $depuisLeLms
@@ -211,11 +270,11 @@ final class ClasseLocaleContractTest extends TestCase
             : Institution::factory()->create(['klassci_api_url' => self::BASE_URL, 'is_active' => true]);
     }
 
-    private function compte(Institution $ecole, ?string $jeton = 'jeton-klassci'): User
+    private function compte(Institution $ecole, ?string $jeton = 'jeton-klassci', string $role = 'enseignant'): User
     {
         return User::factory()->create([
             'institution_id' => $ecole->id,
-            'role' => 'enseignant',
+            'role' => $role,
             'klassci_token' => $jeton,
             'klassci_tenant_url' => $ecole->klassci_api_url,
         ]);

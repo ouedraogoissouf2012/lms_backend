@@ -85,7 +85,6 @@ return [
     '/lms/attendance/history',
     '/lms/attendances/from-video-session',
     '/lms/classes/{classeId}',
-    '/lms/classes/{classeId}/etudiants',
     '/lms/enseignants',
     '/lms/imports/preview',
     '/lms/imports/{id}',

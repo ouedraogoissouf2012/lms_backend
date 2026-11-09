@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Exceptions;
 
+use App\Http\Presenters\TooManyRequestsPresenter;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Testing\TestResponse;
@@ -38,6 +39,7 @@ final class ApiRenderWithoutAcceptTest extends TestCase
             Route::get('refus', fn () => abort(403));
             Route::get('panne', fn () => throw new RuntimeException('Panne de diagnostic.'));
             Route::get('debit', fn () => ['ok' => true])->middleware('throttle:1,1');
+            Route::get('indisponible', fn () => abort(503, 'Maintenance', ['Retry-After' => '120']));
         });
     }
 
@@ -69,12 +71,35 @@ final class ApiRenderWithoutAcceptTest extends TestCase
         $reponse = $this->get('/api/_rendus/debit')
             ->assertStatus(429)
             ->assertHeader('Content-Type', 'application/json')
-            ->assertJsonPath('success', false)
+            ->assertExactJson(['success' => false, 'message' => TooManyRequestsPresenter::MESSAGE])
             ->assertHeader('Retry-After')
             ->assertHeader('X-RateLimit-Limit', '1')
             ->assertHeader('X-RateLimit-Remaining', '0');
 
         self::assertGreaterThan(0, (int) $reponse->headers->get('Retry-After'));
+    }
+
+    /**
+     * Les en-têtes d'une `HttpException` sont gardés : `Allow` d'un 405 (RFC 9110
+     * §15.5.6), `Retry-After` d'un 503 (mode maintenance, `abort`).
+     *
+     * @return iterable<string, array{0: bool}>
+     */
+    public static function accepts(): iterable
+    {
+        yield 'sans Accept JSON' => [false];
+        yield 'avec Accept JSON' => [true];
+    }
+
+    #[DataProvider('accepts')]
+    public function test_les_en_tetes_d_une_http_exception_sont_gardes(bool $json): void
+    {
+        $refus = $json ? $this->postJson('/api/_rendus/lecture') : $this->post('/api/_rendus/lecture');
+        $refus->assertStatus(405)->assertHeader('Content-Type', 'application/json');
+        self::assertStringContainsString('GET', (string) $refus->headers->get('Allow'));
+
+        $indisponible = $json ? $this->getJson('/api/_rendus/indisponible') : $this->get('/api/_rendus/indisponible');
+        $indisponible->assertStatus(503)->assertHeader('Content-Type', 'application/json')->assertHeader('Retry-After', '120');
     }
 
     public function test_une_route_web_absente_garde_le_rendu_de_laravel(): void

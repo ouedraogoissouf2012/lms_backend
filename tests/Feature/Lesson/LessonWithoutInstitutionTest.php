@@ -87,11 +87,13 @@ final class LessonWithoutInstitutionTest extends TestCase
     public function test_un_compte_rattache_ne_lit_que_son_etablissement(): void
     {
         $this->deuxEcoles();
-        $enseignant = User::factory()->create(['institution_id' => $this->leconA->institution_id, 'role' => 'enseignant']);
+        // La gestion : la liste d'un enseignant ne porte que ses leçons (D72),
+        // ce qui masquerait la frontière mesurée ici.
+        $gestion = User::factory()->create(['institution_id' => $this->leconA->institution_id, 'role' => 'coordinateur']);
 
-        $ids = collect($this->asTenant($enseignant)->getJson('/api/lessons?per_page=100')->assertOk()->json('data.data'))->pluck('id')->all();
+        $ids = collect($this->asTenant($gestion)->getJson('/api/lessons?per_page=100')->assertOk()->json('data.data'))->pluck('id')->all();
         self::assertEqualsCanonicalizing([$this->leconA->id, $this->brouillonA->id], $ids, 'son établissement, brouillon compris pour le personnel');
-        $this->asTenant($enseignant)->getJson("/api/lessons/{$this->leconB->id}")->assertNotFound();
+        $this->asTenant($gestion)->getJson("/api/lessons/{$this->leconB->id}")->assertNotFound();
     }
 
     /**
@@ -104,8 +106,9 @@ final class LessonWithoutInstitutionTest extends TestCase
     public function test_sans_tenant_resolu_le_filtre_explicite_tient_seul(): void
     {
         $this->deuxEcoles();
-        $enseignant = User::factory()->create(['institution_id' => $this->leconA->institution_id, 'role' => 'enseignant']);
-        Sanctum::actingAs($enseignant);
+        // La gestion, pour la même raison que plus haut.
+        $gestion = User::factory()->create(['institution_id' => $this->leconA->institution_id, 'role' => 'coordinateur']);
+        Sanctum::actingAs($gestion);
 
         $ids = collect($this->getJson('/api/lessons?per_page=100')->assertOk()->json('data.data'))->pluck('id')->all();
         self::assertEqualsCanonicalizing([$this->leconA->id, $this->brouillonA->id], $ids, 'liste : l\'autre établissement est filtré explicitement');

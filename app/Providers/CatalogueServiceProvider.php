@@ -5,11 +5,19 @@ declare(strict_types=1);
 namespace App\Providers;
 
 use App\Services\Catalogue\CatalogueAuthority;
+use App\Services\Matiere\LocalMatiereDetailsReader;
+use App\Services\Matiere\LocalTeacherMatieresReader;
+use App\Services\Matiere\MatiereDetailsQueryService;
+use App\Services\Matiere\MatiereDetailsReader;
+use App\Services\Matiere\MyMatieresQueryService;
+use App\Services\Matiere\TeacherMatieresReader;
 use App\Services\Roster\RosterAuthorityFactory;
 use Illuminate\Support\ServiceProvider;
 
 /**
- * Liaison de l'autorité sur le catalogue pédagogique (#848).
+ * Liaison de l'autorité sur le catalogue pédagogique (#848), et des sources
+ * qui le LISENT (école indépendante, lot 1) : la même route sert les deux
+ * volets, la fabrique choisit la source.
  *
  * Fournisseur dédié, comme `RosterServiceProvider` et `RetentionServiceProvider`
  * avant lui. Ce n'est pas un choix de style : `AppServiceProvider` mesure 299
@@ -17,6 +25,7 @@ use Illuminate\Support\ServiceProvider;
  * refusé une liaison de cinq lignes ajoutée là.
  *
  * @see docs/adr/2026-09-18-848-01-catalogue-pedagogique-local.md
+ * @see docs/adr/2026-10-30-ecole-independante-01-meme-route-autre-source.md
  */
 final class CatalogueServiceProvider extends ServiceProvider
 {
@@ -35,6 +44,21 @@ final class CatalogueServiceProvider extends ServiceProvider
         $this->app->bind(
             CatalogueAuthority::class,
             static fn ($app) => $app->make(RosterAuthorityFactory::class)->catalogueForCurrentTenant(),
+        );
+
+        // Même règle pour les sources : `bind()`, résolu à chaque demande. Le
+        // contrôleur les reçoit par sa MÉTHODE, pas par son constructeur —
+        // Laravel garde le contrôleur sur l'objet Route, et une source reçue à
+        // la construction resterait celle de la première école servie.
+        $this->app->bind(
+            TeacherMatieresReader::class,
+            static fn ($app) => $app->make(RosterAuthorityFactory::class)
+                ->sourceForCurrentTenant(MyMatieresQueryService::class, LocalTeacherMatieresReader::class),
+        );
+        $this->app->bind(
+            MatiereDetailsReader::class,
+            static fn ($app) => $app->make(RosterAuthorityFactory::class)
+                ->sourceForCurrentTenant(MatiereDetailsQueryService::class, LocalMatiereDetailsReader::class),
         );
     }
 }

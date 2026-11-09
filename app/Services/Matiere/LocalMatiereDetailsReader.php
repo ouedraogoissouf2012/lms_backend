@@ -30,9 +30,12 @@ use Illuminate\Support\Facades\DB;
  * Hors de ces cas, `null`, rendu en 404 : le refus ne dit pas si la matière
  * existe, ni dans quelle école.
  *
- * La borne d'auteur est celle des listes de `LessonListService`, dans les deux
- * types d'école : {@see \App\Services\Lesson\LessonReadScope::limitToAuthor()},
- * appliquée par `lessonsForLocalMatiere`.
+ * Les bornes d'audience et d'auteur sont celles des listes de
+ * `LessonListService`, dans les deux types d'école
+ * ({@see \App\Services\Lesson\LessonReadScope::limitToAudience()},
+ * {@see \App\Services\Lesson\LessonReadScope::limitToAuthor()}), appliquées par
+ * `lessonsForLocalMatiere`. Pour un apprenant, `classeIds` restreint encore aux
+ * classes où la matière est au programme.
  *
  * ## Les compteurs qu'on ne connaît pas
  *

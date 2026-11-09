@@ -118,13 +118,12 @@ final class MatiereLessonsAndStatsBuilder
      *
      * Publique pour la source locale de la page matière (école indépendante,
      * lot 1), où il n'existe qu'un espace d'identifiants : rien à traduire. Le
-     * chemin KLASSCI l'appelle après sa traduction stricte, sans rien changer à
-     * ce qu'il rendait.
+     * chemin KLASSCI l'appelle après sa traduction stricte.
      *
-     * `$classeIds` borne aux classes nommées, `$institutionId` à un
+     * `$classeIds` borne en plus aux classes nommées, `$institutionId` à un
      * établissement — explicitement, sans dépendre du scope global, fail-open
-     * sans tenant résolu. `null` ne borne pas, comme le chemin KLASSCI l'a
-     * toujours fait.
+     * sans tenant résolu. `null` n'ajoute aucune borne ; les règles des listes
+     * ci-dessous s'appliquent toujours.
      *
      * Les règles des listes s'y appliquent, dans les deux types d'école : un
      * apprenant n'y lit que les leçons publiées de ses classes

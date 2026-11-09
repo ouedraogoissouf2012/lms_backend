@@ -43,12 +43,17 @@ use Illuminate\Database\Eloquent\Builder;
  * école. La lecture DIRECTE d'une leçon ({@see denies()}, `ChapterReadGate`)
  * n'est pas bornée à l'auteur : D72 ne porte que sur les listes.
  *
- * Appelants de {@see limitToAudience()} et de {@see limitToAuthor()} : les deux
- * listes de `LessonListService` et la page d'une matière
- * (`MatiereLessonsAndStatsBuilder::lessonsForLocalMatiere`). Dette déclarée :
- * la recherche (`GlobalSearchService`, `SearchSuggestionsService`), le tableau
- * de bord enseignant et les compteurs de « Mes matières » écrivent encore la
- * règle d'auteur eux-mêmes, sans passer par cette méthode.
+ * Appelants : les deux listes de `LessonListService` passent par {@see apply()} ;
+ * la page d'une matière (`MatiereLessonsAndStatsBuilder::lessonsForLocalMatiere`)
+ * appelle directement {@see limitToAudience()} et {@see limitToAuthor()}.
+ *
+ * Dette déclarée : d'autres lectures écrivent encore ces règles elles-mêmes,
+ * sans passer par ces méthodes.
+ * - La règle d'auteur : la recherche (`GlobalSearchService`,
+ *   `SearchSuggestionsService`), le tableau de bord enseignant et les compteurs
+ *   de « Mes matières ».
+ * - La règle d'audience : la même recherche, qui borne un apprenant aux leçons
+ *   publiées de son école, sans borne de classe.
  */
 final class LessonReadScope
 {

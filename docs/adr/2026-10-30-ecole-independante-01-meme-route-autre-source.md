@@ -123,8 +123,9 @@ Ce que le lot 2 change AUSSI dans l'école créée depuis KLASSCI, voulu et déc
 - **Des tests existants changent**, sur décision : leurs cas « école créée depuis le LMS » passent à la source
   locale ; leurs cas « école créée depuis KLASSCI » restent inchangés.
 
-**Dette tracée : l'école basculée.** Une école créée depuis KLASSCI puis passée en mode autonome (route du
-supradmin, `InstitutionController`) suit son mode : ses portes lisent l'id LOCAL.
+**Dette FERMÉE par le lot 3a : l'école basculée.** Une école créée depuis KLASSCI puis passée en mode autonome
+(route du supradmin, `InstitutionController`) suit son mode : ses portes lisent l'id LOCAL. Tracée au lot 2, telle
+qu'elle était :
 - **Cause** : ses classes gardent leur `klassci_id`, et la liste d'administration (`/proxy/classes`, lue par
   `useAdminClasses`) comme le référentiel que « Mes classes » fusionne par `id` restent dans l'espace KLASSCI.
 - **Effet exact** :
@@ -132,14 +133,29 @@ supradmin, `InstitutionController`) suit son mode : ses portes lisent l'id LOCAL
     même école, en 200, ou un 404 ;
   - une carte de « Mes classes » peut porter la mesure d'une autre classe.
   - Aucune fuite entre écoles : tout reste borné à l'établissement.
-- **Ce qui la ferme** : le lot des écrans d'administration. La liste des classes et son référentiel y suivent le mode
-  de l'école, par un port, comme ici.
-- **D'ici là, aucune école créée depuis KLASSCI n'est basculée.** Cette contention est MANUELLE : `changeMode`
-  (`InstitutionCrudService`) ne refuse pas la bascule.
+- **Ce qui l'a fermée** : le lot 3a. `/proxy/classes` suit le mode, par le port `InstitutionClassesReader` : la liste
+  d'administration et le référentiel de « Mes classes » donnent l'id LOCAL, celui des portes de la fiche. Le test
+  `ClassesEtablissementTest::test_dans_une_ecole_basculee_la_liste_et_la_fiche_parlent_le_meme_espace` le prouve.
+- Jusqu'à la fusion du lot 3a, la contention reste MANUELLE : `changeMode` (`InstitutionCrudService`) ne refuse pas
+  la bascule.
 
 **Écart connu, échec fermé** : la grille d'accès lit le rôle par `isManager()` / `isTeacher()`, en correspondance
 exacte, alors que la garde de rôle des routes ignore la casse et admet l'alias `administrator`. L'alignement va au
 lot de #949.
+
+## Troisième cas appliqué (lot 3a, 2026-11-09)
+
+| Route | Port | Source KLASSCI | Source locale |
+|---|---|---|---|
+| `GET /proxy/classes` | `InstitutionClassesReader` | `KlassciInstitutionClassesReader` (l'appel `getClasses` d'avant) | `LocalInstitutionClassesReader` |
+
+- La grille d'accès de la fiche est extraite dans `ClassesAtteintes`. C'est une seule règle pour la fiche et la
+  liste, et l'effectif est rendu, jamais la liste des élèves.
+- `is_active` vient de la Période : `TrainingSession::estActive()`, publiée et ouverte aux inscriptions ou en cours ;
+  `null` sans Période.
+- **Changement aussi dans l'école créée depuis KLASSCI, voulu et déclaré** : la branche « défaillance interne » du
+  rendu des proxys (`RendersKlassciProxyErrors`) rapporte désormais la panne, une fois (#948). C'est valable pour
+  toutes les routes `/proxy` ; leur rendu ne change pas.
 
 ## Conséquences
 

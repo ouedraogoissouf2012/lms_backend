@@ -93,10 +93,11 @@ final class ClasseEtudiantsPanneInterneTest extends TestCase
     {
         // Ni l'exception (son message porte les valeurs liées), ni le compte.
         yield 'panne de base (QueryException)' => [QueryException::class, [
-            'code', 'connection', 'driver_code', 'exception_class', 'method', 'origin', 'request_id', 'route', 'sql', 'trace',
+            'code', 'connection', 'driver_code', 'exception_class', 'method', 'request_id', 'route', 'sql', 'trace',
         ]];
-        // `userId` est ajouté par le rapporteur de Laravel à tout rapport
-        // (Handler::context()) ; son retrait relève du lot Handler, déclaré en #948.
+        // `userId` est ajouté par le rapport par défaut de Laravel (Handler::context()),
+        // que suit toute panne hors SQL ; son retrait relève du lot Handler, déclaré
+        // en #948.
         yield 'RuntimeException de code 0' => [RuntimeException::class, [
             'exception', 'method', 'request_id', 'route', 'userId',
         ]];

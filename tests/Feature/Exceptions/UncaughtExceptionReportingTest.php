@@ -8,6 +8,7 @@ use App\Exceptions\UncaughtExceptionReporting;
 use App\Models\Institution;
 use App\Models\Lesson;
 use App\Models\User;
+use Illuminate\Database\DeadlockException;
 use Illuminate\Database\MultipleRecordsFoundException;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -62,7 +63,7 @@ final class UncaughtExceptionReportingTest extends TestCase
 
     /** Ce qu'écrit l'échec d'une requête SQL, et rien d'autre : ni message, ni valeurs. */
     private const CONTEXTE_D_UN_ECHEC_SQL = [
-        'code', 'connection', 'driver_code', 'exception_class', 'method', 'origin', 'request_id', 'route', 'sql', 'trace',
+        'code', 'connection', 'driver_code', 'exception_class', 'method', 'request_id', 'route', 'sql', 'trace',
     ];
 
     /** Ce que le rapport d'une requête peut porter, et rien d'autre. */
@@ -83,7 +84,8 @@ final class UncaughtExceptionReportingTest extends TestCase
             Route::get('panne-sous-argument', fn () => self::echouerAvec(self::TEMOIN_ARGUMENT));
             Route::get('indisponible', fn () => abort(503));
             Route::get('doublon', fn () => throw new MultipleRecordsFoundException(2));
-            Route::get('requete-sql', fn () => DB::table('table_absente_948')->where('email', self::TEMOIN_SQL)->get());
+            Route::get('requete-sql', fn () => self::requeteQuiEchoue());
+            Route::get('interblocage', fn () => self::interblocage());
         });
     }
 
@@ -221,6 +223,47 @@ final class UncaughtExceptionReportingTest extends TestCase
         self::assertStringContainsString('= ?', $echec->context['sql']);
         self::assertNotSame('', $echec->context['trace']);
         self::assertStringContainsString('= ?', (new LineFormatter(null, null, true, true, true))->format($echec));
+    }
+
+    /**
+     * Un interblocage dans une transaction imbriquée : Laravel enveloppe la
+     * `QueryException` dans une `DeadlockException`, qui n'en est pas une, en
+     * recopiant son message (`ManagesTransactions::handleTransactionException`).
+     * Le formateur écrirait ce message, et la chaîne `previous` avec lui.
+     */
+    public function test_une_exception_sql_enveloppee_est_ecrite_sans_les_valeurs_de_la_requete(): void
+    {
+        $this->getJson('/api/_948/interblocage')->assertStatus(500);
+
+        $enregistrements = $this->rapports();
+        self::assertCount(1, $enregistrements, 'Une exception SQL doit être écrite une fois, pas deux.');
+        $echec = $enregistrements[0];
+        self::assertSame(Level::Error, $echec->level);
+        $this->assertNoWitnessWritten(self::TEMOIN_SQL);
+        self::assertSame(UncaughtExceptionReporting::QUERY_FAILURE_MESSAGE, $echec->message);
+        $contexte = array_keys($echec->context);
+        sort($contexte);
+        self::assertSame(self::CONTEXTE_D_UN_ECHEC_SQL, $contexte);
+        self::assertSame(DeadlockException::class, $echec->context['exception_class']);
+        self::assertIsString($echec->context['sql']);
+        self::assertStringContainsString('= ?', $echec->context['sql']);
+    }
+
+    private static function requeteQuiEchoue(): never
+    {
+        DB::table('table_absente_948')->where('email', self::TEMOIN_SQL)->get();
+
+        throw new RuntimeException('La requête devait échouer : la table est absente.');
+    }
+
+    /** Ce que fait `ManagesTransactions` d'un interblocage dans une transaction imbriquée. */
+    private static function interblocage(): never
+    {
+        try {
+            self::requeteQuiEchoue();
+        } catch (QueryException $e) {
+            throw new DeadlockException($e->getMessage(), 0, $e);
+        }
     }
 
     private static function echouerAvec(string $valeur): never

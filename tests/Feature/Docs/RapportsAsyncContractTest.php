@@ -130,14 +130,74 @@ final class RapportsAsyncContractTest extends TestCase
         $demandeur = $this->compte($ecole, 'coordinateur');
         $id = (string) $this->asTenant($demandeur)->postJson('/api/admin/reports/grades', self::DATES)->json('data.id');
 
-        $voisin = $this->asTenant($this->compte($ecole, 'coordinateur'))->getJson("/api/admin/reports/async/$id")->assertNotFound();
-        $inconnu = $this->asTenant($demandeur)->getJson('/api/admin/reports/async/00000000-0000-0000-0000-000000000000')->assertNotFound();
+        $autre = $this->compte($ecole, 'coordinateur');
+        $inconnuId = '00000000-0000-0000-0000-000000000000';
+
+        $voisin = $this->asTenant($autre)->getJson("/api/admin/reports/async/$id")->assertNotFound();
+        $voisinFichier = $this->asTenant($autre)->getJson("/api/admin/reports/async/$id/download")->assertNotFound();
+        $inconnu = $this->asTenant($demandeur)->getJson("/api/admin/reports/async/$inconnuId")->assertNotFound();
+        $inconnuFichier = $this->asTenant($demandeur)->getJson("/api/admin/reports/async/$inconnuId/download")->assertNotFound();
         Cache::forget('async_report_'.$id);
         $expire = $this->asTenant($demandeur)->getJson("/api/admin/reports/async/$id")->assertNotFound();
+        $expireFichier = $this->asTenant($demandeur)->getJson("/api/admin/reports/async/$id/download")->assertNotFound();
 
         $this->assertMatchesOpenApiResponse($voisin, self::SUIVI, 'get');
         $this->assertOpenApiSchemaRefuseSans($voisin, self::SUIVI, 'get', 'message');
-        self::assertSame([$voisin->getContent(), $voisin->getContent()], [$inconnu->getContent(), $expire->getContent()]);
+        $this->assertMatchesOpenApiResponse($voisinFichier, self::TELECHARGEMENT, 'get');
+        $corps = [$inconnu, $expire, $voisinFichier, $inconnuFichier, $expireFichier];
+        foreach ($corps as $reponse) {
+            self::assertSame($voisin->getContent(), $reponse->getContent());
+        }
+    }
+
+    #[DataProvider('volets')]
+    public function test_409_un_rapport_en_echec_ne_se_telecharge_pas(bool $autonome): void
+    {
+        // En cours comme en échec : 409. Le statut final se lit au suivi.
+        $coordinateur = $this->compte($this->ecole($autonome), 'coordinateur');
+        $id = (string) $this->asTenant($coordinateur)->postJson('/api/admin/reports/grades', self::DATES)->json('data.id');
+        $this->app->make(AsyncReportStore::class)->failed($id, 'report_generation_failed');
+
+        $reponse = $this->asTenant($coordinateur)->getJson("/api/admin/reports/async/$id/download")->assertStatus(409);
+
+        $this->assertMatchesOpenApiResponse($reponse, self::TELECHARGEMENT, 'get');
+        $this->suivi($coordinateur, $id, 'failed');
+    }
+
+    /** @return iterable<string, array{0: bool, 1: string, 2: array<string, string>, 3: string}> */
+    public static function valeursHorsEnum(): iterable
+    {
+        foreach (['école KLASSCI' => false, 'école autonome' => true] as $volet => $autonome) {
+            yield "format, $volet" => [$autonome, '/admin/reports/attendance', ['format' => 'docx'], 'format'];
+            yield "activity_type, $volet" => [$autonome, '/admin/reports/activity', ['activity_type' => 'tout'], 'activity_type'];
+        }
+    }
+
+    /** @param array<string, string> $champ */
+    #[DataProvider('valeursHorsEnum')]
+    public function test_422_une_valeur_hors_de_l_enum(bool $autonome, string $chemin, array $champ, string $cle): void
+    {
+        $reponse = $this->asTenant($this->compte($this->ecole($autonome), 'coordinateur'))
+            ->postJson('/api'.$chemin, self::DATES + $champ)
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors($cle);
+
+        $this->assertMatchesOpenApiResponse($reponse, $chemin, 'post');
+    }
+
+    #[DataProvider('volets')]
+    public function test_403_un_etablissement_desactive(bool $autonome): void
+    {
+        $ecole = $this->ecole($autonome);
+        $coordinateur = $this->compte($ecole, 'coordinateur');
+        $ecole->forceFill(['is_active' => false])->save();
+
+        $poste = $this->asTenant($coordinateur)->postJson('/api/admin/reports/grades', self::DATES)->assertForbidden();
+        $suivi = $this->asTenant($coordinateur)->getJson('/api/admin/reports/async/00000000-0000-0000-0000-000000000000')->assertForbidden();
+
+        $this->assertMatchesOpenApiResponse($poste, '/admin/reports/grades', 'post');
+        $this->assertMatchesOpenApiResponse($suivi, self::SUIVI, 'get');
+        Queue::assertNothingPushed();
     }
 
     #[DataProvider('volets')]

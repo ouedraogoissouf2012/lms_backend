@@ -1105,6 +1105,10 @@ components:
         classe_id:
           type: integer
           nullable: true
+          description: |
+            Filtre les seances d une classe liee a KLASSCI. Pour une classe
+            creee dans le LMS, le filtre est aujourd hui sans effet et le
+            rapport couvre l etablissement.
         seance_id:
           type: integer
           nullable: true
@@ -1112,6 +1116,10 @@ components:
         format:
           type: string
           nullable: true
+          description: |
+            Lu seulement avec `seance_id`. Sans lui, le rapport de periode est
+            toujours un PDF. `excel` et `xlsx` rendent tous deux un tableur au
+            format Excel 97-2003 (`application/vnd.ms-excel`).
           enum:
             - pdf
             - excel
@@ -1147,6 +1155,9 @@ components:
         activity_type:
           type: string
           nullable: true
+          description: |
+            Accepte et valide (valeur par defaut `all`), mais aujourd hui sans
+            effet sur le contenu du rapport.
           enum:
             - login
             - logout
@@ -1283,7 +1294,7 @@ components:
           type: string
         reason:
           type: string
-          description: "Facultatif. `no_institution` : un compte sans etablissement (ADR-906-01)."
+          description: "Facultatif. `no_institution` : un compte sans etablissement."
           enum:
             - no_institution
 
@@ -2115,10 +2126,11 @@ paths:
         - Reports
       summary: "Rapport de presences"
       description: |
-        ASYNCHRONE par defaut (#547) : la reponse est un 202, et le rapport se
+        ASYNCHRONE par defaut : la reponse est un 202, et le rapport se
         suit par `status_url` puis se recupere par `download_url` (chemins
-        relatifs, prefixe `/api` compris), pendant 24 heures. Le rendu synchrone
-        (200, le PDF) est un opt-out explicite : `?sync=1` ou
+        relatifs, prefixe `/api` compris), pendant 24 heures apres son dernier
+        changement d etat. Le rendu synchrone (200, le PDF) est un opt-out
+        explicite : `sync` (parametre de requete ou champ du corps JSON) ou
         `Prefer: respond-sync`.
 
         Le 403 a plusieurs sources, et le client ne doit pas lire le message :
@@ -2140,13 +2152,13 @@ paths:
         - name: sync
           in: query
           required: false
-          description: "Opt-out EXPLICITE du defaut asynchrone : le PDF est rendu dans la reponse (200)."
+          description: "Opt-out EXPLICITE du defaut asynchrone : le PDF est rendu dans la reponse (200). Lu aussi dans le corps JSON."
           schema:
             type: boolean
         - name: async
           in: query
           required: false
-          description: "Opt-in asynchrone, accepte pour retro-compatibilite. S'il coexiste avec sync, l'asynchrone l'emporte."
+          description: "Opt-in asynchrone, accepte pour retro-compatibilite. S'il coexiste avec sync, l'asynchrone l'emporte. Lu aussi dans le corps JSON."
           schema:
             type: boolean
         - name: Prefer
@@ -2203,7 +2215,10 @@ paths:
         '429':
           $ref: '#/components/responses/TooManyRequests'
         '500':
-          description: "Echec du rendu SYNCHRONE (forme ancienne, cle error au singulier)"
+          description: |
+            Defaillance interne. L echec d un rendu synchrone porte une cle
+            `error` ; une mise en file impossible, ou l echec du rapport d une
+            seance, rend le corps generique `{success, message}`.
           content:
             application/json:
               schema:
@@ -2215,10 +2230,11 @@ paths:
         - Reports
       summary: "Rapport de notes"
       description: |
-        ASYNCHRONE par defaut (#547) : la reponse est un 202, et le rapport se
+        ASYNCHRONE par defaut : la reponse est un 202, et le rapport se
         suit par `status_url` puis se recupere par `download_url` (chemins
-        relatifs, prefixe `/api` compris), pendant 24 heures. Le rendu synchrone
-        (200, le PDF) est un opt-out explicite : `?sync=1` ou
+        relatifs, prefixe `/api` compris), pendant 24 heures apres son dernier
+        changement d etat. Le rendu synchrone (200, le PDF) est un opt-out
+        explicite : `sync` (parametre de requete ou champ du corps JSON) ou
         `Prefer: respond-sync`.
 
         Le 403 a plusieurs sources, et le client ne doit pas lire le message :
@@ -2237,13 +2253,13 @@ paths:
         - name: sync
           in: query
           required: false
-          description: "Opt-out EXPLICITE du defaut asynchrone : le PDF est rendu dans la reponse (200)."
+          description: "Opt-out EXPLICITE du defaut asynchrone : le PDF est rendu dans la reponse (200). Lu aussi dans le corps JSON."
           schema:
             type: boolean
         - name: async
           in: query
           required: false
-          description: "Opt-in asynchrone, accepte pour retro-compatibilite. S'il coexiste avec sync, l'asynchrone l'emporte."
+          description: "Opt-in asynchrone, accepte pour retro-compatibilite. S'il coexiste avec sync, l'asynchrone l'emporte. Lu aussi dans le corps JSON."
           schema:
             type: boolean
         - name: Prefer
@@ -2296,7 +2312,10 @@ paths:
         '429':
           $ref: '#/components/responses/TooManyRequests'
         '500':
-          description: "Echec du rendu SYNCHRONE (forme ancienne, cle error au singulier)"
+          description: |
+            Defaillance interne. L echec d un rendu synchrone porte une cle
+            `error` ; une mise en file impossible, ou l echec du rapport d une
+            seance, rend le corps generique `{success, message}`.
           content:
             application/json:
               schema:
@@ -2308,10 +2327,11 @@ paths:
         - Reports
       summary: "Rapport d'activite"
       description: |
-        ASYNCHRONE par defaut (#547) : la reponse est un 202, et le rapport se
+        ASYNCHRONE par defaut : la reponse est un 202, et le rapport se
         suit par `status_url` puis se recupere par `download_url` (chemins
-        relatifs, prefixe `/api` compris), pendant 24 heures. Le rendu synchrone
-        (200, le PDF) est un opt-out explicite : `?sync=1` ou
+        relatifs, prefixe `/api` compris), pendant 24 heures apres son dernier
+        changement d etat. Le rendu synchrone (200, le PDF) est un opt-out
+        explicite : `sync` (parametre de requete ou champ du corps JSON) ou
         `Prefer: respond-sync`.
 
         Le 403 a plusieurs sources, et le client ne doit pas lire le message :
@@ -2330,13 +2350,13 @@ paths:
         - name: sync
           in: query
           required: false
-          description: "Opt-out EXPLICITE du defaut asynchrone : le PDF est rendu dans la reponse (200)."
+          description: "Opt-out EXPLICITE du defaut asynchrone : le PDF est rendu dans la reponse (200). Lu aussi dans le corps JSON."
           schema:
             type: boolean
         - name: async
           in: query
           required: false
-          description: "Opt-in asynchrone, accepte pour retro-compatibilite. S'il coexiste avec sync, l'asynchrone l'emporte."
+          description: "Opt-in asynchrone, accepte pour retro-compatibilite. S'il coexiste avec sync, l'asynchrone l'emporte. Lu aussi dans le corps JSON."
           schema:
             type: boolean
         - name: Prefer
@@ -2389,7 +2409,10 @@ paths:
         '429':
           $ref: '#/components/responses/TooManyRequests'
         '500':
-          description: "Echec du rendu SYNCHRONE (forme ancienne, cle error au singulier)"
+          description: |
+            Defaillance interne. L echec d un rendu synchrone porte une cle
+            `error` ; une mise en file impossible, ou l echec du rapport d une
+            seance, rend le corps generique `{success, message}`.
           content:
             application/json:
               schema:
@@ -2402,7 +2425,9 @@ paths:
       summary: "Suivre un rapport asynchrone"
       description: |
         Reserve au demandeur (`coordinateur` ou `superAdmin`). Un rapport
-        absent, d'un autre utilisateur ou expire (24 heures) rend le MEME 404.
+        absent, d'un autre utilisateur ou expire rend le MEME 404. Un rapport
+        expire 24 heures apres son dernier changement d etat. Le statut final,
+        `completed` ou `failed`, se lit ici.
       security:
         - sanctum: []
       parameters:
@@ -2438,6 +2463,12 @@ paths:
                 $ref: '#/components/schemas/RapportRefus'
         '429':
           $ref: '#/components/responses/TooManyRequests'
+        '500':
+          description: "Defaillance interne (stockage du suivi indisponible)"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorWithDetail'
 
   /admin/reports/async/{id}/download:
     get:
@@ -2445,9 +2476,11 @@ paths:
         - Reports
       summary: "Telecharger un rapport asynchrone termine"
       description: |
-        Le fichier une fois `status` a `completed`. Avant : 409. Un rapport
-        absent, d'un autre utilisateur ou expire rend 404 « Rapport
-        introuvable » ; un fichier disparu, 404 « Fichier introuvable ».
+        Le fichier une fois `status` a `completed`. Tant qu il ne l est pas,
+        en cours comme en ECHEC, la reponse est 409 : le statut final se lit
+        au suivi (`status_url`). Un rapport absent, d'un autre utilisateur ou
+        expire rend 404 « Rapport introuvable » ; un fichier disparu, 404
+        « Fichier introuvable ».
       security:
         - sanctum: []
       parameters:
@@ -2483,13 +2516,19 @@ paths:
               schema:
                 $ref: '#/components/schemas/RapportRefus'
         '409':
-          description: "Rapport non pret"
+          description: "Rapport pas encore `completed` : en cours, ou en echec (voir le suivi)"
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/RapportRefus'
         '429':
           $ref: '#/components/responses/TooManyRequests'
+        '500':
+          description: "Defaillance interne (stockage du suivi indisponible)"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorWithDetail'
 
   /lms/visio/consent:
     post:

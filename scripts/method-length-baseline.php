@@ -60,7 +60,7 @@ return [
     'app/Services/Visio/Lifecycle/VisioSessionService.php::end' => 55,
     'app/Services/Visio/Lifecycle/VisioSessionService.php::start' => 56,
     'app/Services/Visio/VisioHeartbeatService.php::heartbeat' => 48,
-    'app/Services/Visio/VisioParticipantSessionService.php::join' => 54,
+    'app/Services/Visio/VisioParticipantSessionService.php::join' => 52,
     'app/Services/Visio/VisioParticipantSessionService.php::leave' => 42,
     'app/Services/Visio/VisioParticipantsStatsBuilder.php::build' => 47,
 ];

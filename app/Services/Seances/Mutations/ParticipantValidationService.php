@@ -26,9 +26,47 @@ final class ParticipantValidationService
     ) {}
 
     /**
+     * Valider pour une séance DÉJÀ résolue par l'appelant.
+     *
+     * La séance n'est jamais relue ici : la décision porte sur l'objet que
+     * l'appelant a résolu, pas sur une seconde lecture du même identifiant.
+     *
      * @return array{status:int, payload: array<string, mixed>}
      */
-    public function validate(int $seanceId, int $userIdToValidate, User $actor): array
+    public function validate(Seance $seance, int $userIdToValidate, User $actor): array
+    {
+        return $this->valider(static fn (): Seance => $seance, (int) $seance->id, $userIdToValidate, $actor);
+    }
+
+    /**
+     * Valider pour l'identifiant reçu d'une route, résolu UNE fois, par la
+     * traduction du modèle (`Seance::localIdFor`) : précédence au local,
+     * bornage à l'établissement de l'acteur.
+     *
+     * @return array{status:int, payload: array<string, mixed>}
+     */
+    public function validateById(int $seanceId, int $userIdToValidate, User $actor): array
+    {
+        return $this->valider(
+            static function (int $institutionId) use ($seanceId): ?Seance {
+                $localId = Seance::localIdFor($seanceId, $institutionId);
+
+                return $localId === null ? null : Seance::query()->whereKey($localId)->first();
+            },
+            $seanceId,
+            $userIdToValidate,
+            $actor,
+        );
+    }
+
+    /**
+     * L'ordre des refus est un contrat : établissement, puis compte à valider,
+     * puis séance. La séance n'est demandée qu'après les deux premiers.
+     *
+     * @param  \Closure(int): ?Seance  $seance
+     * @return array{status:int, payload: array<string, mixed>}
+     */
+    private function valider(\Closure $seance, int $seanceId, int $userIdToValidate, User $actor): array
     {
         try {
             $institutionId = $actor->institution_id;
@@ -44,8 +82,8 @@ final class ParticipantValidationService
                 return $this->fail(404, 'user_not_found');
             }
 
-            $visioData = $this->findSeance($seanceId, $institutionId);
-            if ($visioData === null) {
+            $visioData = $seance($institutionId);
+            if ($visioData === null || $visioData->institution_id !== $institutionId || ! $visioData->visio_enabled) {
                 return $this->fail(403, 'visio_not_enabled', 'Visioconférence non activée pour cette séance');
             }
 
@@ -147,23 +185,6 @@ final class ParticipantValidationService
                 'message' => 'Étudiant inscrit dans la classe - accès autorisé',
             ],
         ];
-    }
-
-    private function findSeance(int $seanceId, int $institutionId): ?Seance
-    {
-        $visioData = Seance::query()
-            ->where('institution_id', $institutionId)
-            ->where(function ($query) use ($seanceId): void {
-                $query->whereKey($seanceId)
-                    ->orWhere('klassci_seance_id', $seanceId);
-            })
-            ->first();
-
-        if (! $visioData || ! $visioData->visio_enabled) {
-            return null;
-        }
-
-        return $visioData;
     }
 
     /**

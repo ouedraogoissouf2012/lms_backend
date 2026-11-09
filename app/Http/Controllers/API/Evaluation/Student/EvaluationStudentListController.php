@@ -9,9 +9,9 @@ use App\Http\Controllers\API\Concerns\RendersKlassciBackedErrors;
 use App\Http\Controllers\AuthenticatedController;
 use App\Services\Evaluation\Student\StudentEvaluationsListService;
 use App\Services\Evaluation\Student\StudentGradesAggregator;
+use App\Support\Logging\CaughtExceptionLog;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
 use RuntimeException;
 
 /**
@@ -29,6 +29,7 @@ final class EvaluationStudentListController extends AuthenticatedController
     public function __construct(
         private readonly StudentEvaluationsListService $listService,
         private readonly StudentGradesAggregator $gradesAggregator,
+        private readonly CaughtExceptionLog $journal,
     ) {}
 
     public function myEvaluations(Request $request): JsonResponse
@@ -49,10 +50,7 @@ final class EvaluationStudentListController extends AuthenticatedController
         } catch (RuntimeException $e) {
             return $this->renderKlassciFailure($e);
         } catch (\Exception $e) {
-            Log::error('Erreur récupération évaluations étudiant', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-            ]);
+            $this->journal->error('Erreur récupération évaluations étudiant', $e);
             return $this->errorResponse('Erreur lors de la récupération des évaluations', 500);
         }
     }
@@ -68,9 +66,8 @@ final class EvaluationStudentListController extends AuthenticatedController
             $data = $this->gradesAggregator->getGradesAggregatedByMatiere($user);
             return $this->successResponse($data);
         } catch (\Exception $e) {
-            Log::error('Erreur récupération notes étudiant', [
+            $this->journal->error('Erreur récupération notes étudiant', $e, [
                 'user_id' => $request->user()?->id,
-                'error' => $e->getMessage(),
             ]);
             // Non migré vers errorResponse() : cette réponse expose une clé racine
             // `error` (singulier, string) que le trait ne reproduit pas — il ne

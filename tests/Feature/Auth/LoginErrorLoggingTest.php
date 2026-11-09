@@ -47,7 +47,7 @@ final class LoginErrorLoggingTest extends TestCase
         Log::shouldHaveReceived('error')
             ->withArgs(function (string $message, array $context = []): bool {
                 return str_contains($message, 'login')
-                    && ($context['exception'] ?? null) === \RuntimeException::class;
+                    && ($context['exception_class'] ?? null) === \RuntimeException::class;
             })
             ->once();
     }

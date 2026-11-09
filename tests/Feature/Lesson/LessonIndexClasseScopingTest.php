@@ -54,14 +54,14 @@ final class LessonIndexClasseScopingTest extends TestCase
         return $classe;
     }
 
-    private function publishedLesson(int $localClasseId): Lesson
+    private function publishedLesson(int $localClasseId, ?User $auteur = null): Lesson
     {
         return Lesson::factory()->create([
             'institution_id' => $this->institution->id,
             'classe_id' => $localClasseId,
             'status' => 'published',
             'published_at' => now()->subDay(),
-        ]);
+        ] + ($auteur === null ? [] : ['enseignant_id' => $auteur->id]));
     }
 
     public function test_student_index_is_restricted_to_their_classe(): void
@@ -98,8 +98,9 @@ final class LessonIndexClasseScopingTest extends TestCase
         $classeA = Classe::factory()->create(['institution_id' => $this->institution->id, 'klassci_id' => 1001]);
         $classeB = Classe::factory()->create(['institution_id' => $this->institution->id, 'klassci_id' => 2002]);
 
-        $lessonA = $this->publishedLesson($classeA->id);
-        $lessonB = $this->publishedLesson($classeB->id);
+        // Ses propres leçons : sa liste ne porte que les siennes (D72).
+        $lessonA = $this->publishedLesson($classeA->id, $teacher);
+        $lessonB = $this->publishedLesson($classeB->id, $teacher);
 
         Sanctum::actingAs($teacher);
         $response = $this->getJson('/api/lessons');

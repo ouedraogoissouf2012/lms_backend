@@ -26,7 +26,6 @@ return [
     '/admin/institutions/{id}',
     '/admin/institutions/{id}/test-connection',
     '/admin/institutions/{id}/toggle',
-    '/admin/matieres',
     '/admin/notifications/create',
     '/admin/notifications/stats',
     '/admin/statistics',

@@ -144,6 +144,12 @@ final class TenantModeIsolationHarnessTest extends TestCase
      * D'ATTEINTE de la garde : il distingue « arrêtée par le résolveur » de
      * « arrêtée par l'authentification ou le débit », qui rendraient eux aussi
      * zéro requête.
+     *
+     * La sonde passait par `/proxy/structure`. Depuis le lot 3c, cette route a
+     * une source locale dans une école autonome : elle n'atteint plus le
+     * résolveur, et ne prouverait plus rien de lui. La sonde passe donc par
+     * `/proxy/filieres`, qui l'atteint encore. Quand une tranche lui donnera à
+     * son tour une source locale, la sonde devra changer de route encore.
      */
     public function test_une_ecole_autonome_n_emet_rien(): void
     {
@@ -151,7 +157,7 @@ final class TenantModeIsolationHarnessTest extends TestCase
 
         $autonome = Institution::factory()->standalone()->create(['slug' => 'ecole-autonome']);
 
-        $reponse = $this->asTenant($this->membreDe($autonome))->getJson('/api/proxy/structure');
+        $reponse = $this->asTenant($this->membreDe($autonome))->getJson('/api/proxy/filieres');
 
         Http::assertNothingSent();
 

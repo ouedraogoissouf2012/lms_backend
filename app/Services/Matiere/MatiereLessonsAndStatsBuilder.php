@@ -7,6 +7,7 @@ namespace App\Services\Matiere;
 use App\Models\Lesson;
 use App\Models\Matiere;
 use App\Models\User;
+use App\Services\Lesson\LessonReadScope;
 use Psr\Log\LoggerInterface;
 use Throwable;
 
@@ -18,7 +19,8 @@ use Throwable;
  *
  * Responsibility:
  *   - Loads `Lesson` rows for the matière, scoped by role
- *     (students see only published lessons + their progress; others see all).
+ *     (students see only published lessons + their progress; a teacher sees
+ *     only his own, {@see LessonReadScope::limitToAuthor()}; management sees all).
  *   - Computes the aggregate statistics block returned with the matière.
  *
  * @see PRODUCTION_STANDARDS.md §1.1
@@ -27,6 +29,7 @@ final class MatiereLessonsAndStatsBuilder
 {
     public function __construct(
         private readonly LoggerInterface $logger,
+        private readonly LessonReadScope $readScope,
     ) {}
 
     /**
@@ -117,10 +120,13 @@ final class MatiereLessonsAndStatsBuilder
      * chemin KLASSCI l'appelle après sa traduction stricte, sans rien changer à
      * ce qu'il rendait.
      *
-     * `$classeIds` borne aux classes nommées, `$enseignantId` aux leçons d'un
-     * auteur, `$institutionId` à un établissement — explicitement, sans
-     * dépendre du scope global, fail-open sans tenant résolu. `null` ne borne
-     * pas, comme le chemin KLASSCI l'a toujours fait.
+     * `$classeIds` borne aux classes nommées, `$institutionId` à un
+     * établissement — explicitement, sans dépendre du scope global, fail-open
+     * sans tenant résolu. `null` ne borne pas, comme le chemin KLASSCI l'a
+     * toujours fait.
+     *
+     * Un enseignant n'y lit que ses leçons, dans les deux types d'école : la
+     * règle des listes, {@see LessonReadScope::limitToAuthor()}.
      *
      * @param  list<int>|null  $classeIds
      * @return array<int, array<string, mixed>>
@@ -129,7 +135,6 @@ final class MatiereLessonsAndStatsBuilder
         int $matiereIdLocal,
         User $user,
         ?array $classeIds = null,
-        ?int $enseignantId = null,
         ?int $institutionId = null,
     ): array {
         $query = Lesson::where('matiere_id', $matiereIdLocal);
@@ -142,9 +147,7 @@ final class MatiereLessonsAndStatsBuilder
             $query->whereIn('classe_id', $classeIds);
         }
 
-        if ($enseignantId !== null) {
-            $query->where('enseignant_id', $enseignantId);
-        }
+        $this->readScope->limitToAuthor($query, $user);
 
         if ($user->isLearnerAudience()) {
             $query->published();

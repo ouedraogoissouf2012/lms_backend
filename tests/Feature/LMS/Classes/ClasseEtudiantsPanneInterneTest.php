@@ -40,9 +40,10 @@ use Tests\TestCase;
  * Les échecs KLASSCI (4xx relayé, indisponibilité) gardent leur rendu et ne sont
  * pas rapportés par le trait : le client HTTP les journalise déjà.
  *
- * École créée depuis KLASSCI : tous les cas. École créée depuis le LMS : un
- * compte sans jeton KLASSCI reçoit le 401 `klassci_token_missing` avant tout
- * appel du roster (`ClasseEtudiantsTest`), branche que ce lot ne touche pas.
+ * École créée depuis KLASSCI : tous les cas. École créée depuis le LMS : le
+ * roster est lu dans les tables locales (#1001, ADR-EI-01), sans appel à
+ * KLASSCI ; sa panne de base est couverte par `FicheClasseEchecsTest`, et sa
+ * forme par `ClassesContractTest`.
  *
  * @see app/Http/Controllers/API/Concerns/RendersKlassciBackedErrors.php
  */

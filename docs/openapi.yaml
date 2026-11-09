@@ -2506,9 +2506,9 @@ paths:
                 $ref: '#/components/schemas/ClasseLocaleRefus'
         '500':
           description: |
-            Panne de base de donnees, journalisee : avec `error`. Sans `error` :
-            erreur interne sans detail, ou erreur non rattrapee, rendue par le
-            gestionnaire global.
+            Panne interne, base de donnees comprise : « Une erreur est survenue. »,
+            sans `error`, rapportee une fois au journal. Ou erreur non rattrapee,
+            rendue par le gestionnaire global, sans `error`.
           content:
             application/json:
               schema:
@@ -2640,9 +2640,11 @@ paths:
                 $ref: '#/components/schemas/RefusClasseEleves'
         '500':
           description: |
-            Erreur interne. Rattrapee par le controleur et journalisee : avec
-            `error`. Sans `error` : erreur interne sans detail, ou gestionnaire
-            global (par exemple un `classeId` non numerique).
+            Erreur interne, toujours rapportee une fois au journal. Panne de base
+            ou autre erreur d'execution : « Une erreur est survenue. », sans
+            `error`. Toute autre erreur, rattrapee par le controleur : avec
+            `error`. Gestionnaire global (par exemple un `classeId` non
+            numerique) : sans `error`.
           content:
             application/json:
               schema:

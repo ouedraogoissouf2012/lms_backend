@@ -116,9 +116,10 @@ Ce que le lot 2 change AUSSI dans l'école créée depuis KLASSCI, voulu et déc
 - **La fiche ne rend plus 500 pour un échec de KLASSCI** (le défaut de `fetchClasse`, qui rattrapait toute erreur).
   Ses deux portes passent par `RendersKlassciBackedErrors`, comme le roster : 4xx relayé, 401
   `klassci_session_expired`, 503 avec `Retry-After`.
-- **Une panne de base a sa branche journalisée**, avant le rendu KLASSCI, sur les deux portes et sur le roster. Sur
-  `/etudiants`, une `QueryException` rendait le 500 du trait, sans journal ; elle rend désormais un 500 journalisé,
-  avec `error`.
+- **Une panne interne est rapportée, jamais écrite à la main** (#948). Une panne de base, `RuntimeException`, passe
+  par la branche 500 du trait, qui la rapporte une fois sans le message ni les valeurs de la requête. Le filet des
+  autres erreurs (porte historique, `/etudiants`) fait `report()` au lieu d'écrire message et trace : son corps ne
+  change pas.
 - **Des tests existants changent**, sur décision : leurs cas « école créée depuis le LMS » passent à la source
   locale ; leurs cas « école créée depuis KLASSCI » restent inchangés.
 

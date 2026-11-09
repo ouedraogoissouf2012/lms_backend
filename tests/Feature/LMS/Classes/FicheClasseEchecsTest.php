@@ -21,15 +21,18 @@ use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Exceptions;
 use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Testing\TestResponse;
-use Mockery;
+use LogicException;
+use Monolog\Level;
+use PDOException;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Psr\Log\AbstractLogger;
 use Psr\Log\LoggerInterface;
 use RuntimeException;
 use Stringable;
+use Throwable;
 use Tests\Concerns\ActsAsTenantUser;
+use Tests\Concerns\CapturesWrittenLog;
 use Tests\TestCase;
 
 /**
@@ -50,9 +53,12 @@ use Tests\TestCase;
  *
  * ## Dans les deux types d'école
  *
- * Une `QueryException` est une `RuntimeException` (par `PDOException`) : sans
- * branche à elle, une panne de base tomberait dans le rendu des échecs KLASSCI.
- * Elle a sa branche, journalisée, comme au lot 1.
+ * Une panne de base est une `RuntimeException` (par `PDOException`) : elle passe
+ * par la branche 500 du même trait, qui la RAPPORTE une fois (#948), sans le
+ * message ni les valeurs de sa requête. Le journal est lu tel qu'il est ÉCRIT
+ * (`CapturesWrittenLog`), avec un témoin lié qui ne doit jamais y figurer. Les
+ * erreurs qui ne sont pas des `RuntimeException` passent par le filet du
+ * contrôleur, rapportées une fois elles aussi.
  *
  * KLASSCI est simulé par UN seul `Http::fake` par test. Vrai jeton porteur
  * (`asTenant`).
@@ -60,16 +66,21 @@ use Tests\TestCase;
 final class FicheClasseEchecsTest extends TestCase
 {
     use ActsAsTenantUser;
+    use CapturesWrittenLog;
     use RefreshDatabase;
 
     private const BASE_URL = 'https://ecole.klassci.test/api/lms';
 
     private const CLASSE_KLASSCI = 42;
 
+    /** Une valeur liée à la requête SQL qui échoue : elle ne doit jamais être écrite. */
+    private const TEMOIN_SQL = 'temoin.sql.lot2@exemple.invalid';
+
     protected function setUp(): void
     {
         parent::setUp();
         $this->disableKlassciMiddleware();
+        $this->app['config']->set('app.debug', false);
     }
 
     /** @return iterable<string, array{0: string}> */
@@ -157,7 +168,7 @@ final class FicheClasseEchecsTest extends TestCase
         );
     }
 
-    // ───────────────────────── les deux types d'école : une panne de base
+    // ───────────────────────── les deux types d'école : une panne interne
 
     /** @return iterable<string, array{0: InstitutionMode, 1: string}> */
     public static function voletsEtPortes(): iterable
@@ -170,29 +181,52 @@ final class FicheClasseEchecsTest extends TestCase
     }
 
     #[DataProvider('voletsEtPortes')]
-    public function test_une_panne_de_base_est_journalisee_et_rendue_en_500(InstitutionMode $mode, string $route): void
+    public function test_une_panne_de_base_est_rapportee_une_fois_sans_ses_valeurs(InstitutionMode $mode, string $route): void
     {
-        $this->sourceEnPanneDeBase($mode);
-        $ecole = Institution::factory()->create(['mode' => $mode]);
-        $compte = User::factory()->create([
-            'institution_id' => $ecole->id,
-            'role' => 'coordinateur',
-            'klassci_token' => $mode === InstitutionMode::Klassci ? 'jeton-klassci' : null,
-        ]);
-        Log::spy();
+        $this->sourcesEnPanne($mode, new QueryException(
+            'sqlite',
+            'select * from classes where email = ?',
+            [self::TEMOIN_SQL],
+            new PDOException('SQLSTATE[HY000]: General error: 5 database is locked'),
+        ));
+        $this->captureWrittenLog();
 
-        $url = match ($route) {
-            'historique' => '/api/lms/classes/7',
-            'locale' => '/api/lms/classes/local/7',
-            default => '/api/lms/classes/7/etudiants',
-        };
-        $journal = $route === 'eleves' ? 'Erreur récupération étudiants classe' : 'Erreur récupération détails classe';
+        $this->asTenant($this->coordinateur($mode))->getJson($this->url($route))
+            ->assertStatus(500)
+            ->assertExactJson(['success' => false, 'message' => 'Une erreur est survenue.']);
 
-        $this->asTenant($compte)->getJson($url)
+        $ecrits = $this->recordsAtLeast(Level::Error);
+        self::assertCount(1, $ecrits, 'La panne doit être écrite une fois.');
+        self::assertSame(QueryException::class, $ecrits[0]->context['exception_class'] ?? null);
+        self::assertSame('select * from classes where email = ?', $ecrits[0]->context['sql'] ?? null);
+        $this->assertNoWitnessWritten(self::TEMOIN_SQL);
+    }
+
+    /** @return iterable<string, array{0: InstitutionMode, 1: string}> */
+    public static function filets(): iterable
+    {
+        foreach ([InstitutionMode::Klassci, InstitutionMode::Standalone] as $mode) {
+            foreach (['historique', 'eleves'] as $route) {
+                yield "école {$mode->value}, $route" => [$mode, $route];
+            }
+        }
+    }
+
+    /**
+     * Le filet du contrôleur (porte historique et élèves) : une erreur qui n'est
+     * pas une `RuntimeException` est rapportée une fois, et le corps garde `error`.
+     */
+    #[DataProvider('filets')]
+    public function test_une_erreur_hors_runtime_exception_est_rapportee_une_fois(InstitutionMode $mode, string $route): void
+    {
+        $this->sourcesEnPanne($mode, new LogicException('panne interne de diagnostic'));
+        $this->captureWrittenLog();
+
+        $this->asTenant($this->coordinateur($mode))->getJson($this->url($route))
             ->assertStatus(500)
             ->assertJsonPath('error', 'Une erreur est survenue.');
 
-        Log::shouldHaveReceived('error')->with($journal, Mockery::type('array'))->once();
+        self::assertCount(1, $this->recordsAtLeast(Level::Error), 'La panne doit être écrite une fois.');
     }
 
     // ───────────────────────── harnais
@@ -201,23 +235,25 @@ final class FicheClasseEchecsTest extends TestCase
      * Les sources sont `final` : une doublure qui implémente les ports prend la
      * place de celles que la fabrique résoudra pour ce type d'école.
      */
-    private function sourceEnPanneDeBase(InstitutionMode $mode): void
+    private function sourcesEnPanne(InstitutionMode $mode, Throwable $panne): void
     {
-        $panne = new class implements ClasseDetailsReader, ClasseEtudiantsReader, ClasseLocalDoorReader
+        $doublure = new class($panne) implements ClasseDetailsReader, ClasseEtudiantsReader, ClasseLocalDoorReader
         {
+            public function __construct(private readonly Throwable $panne) {}
+
             public function getDetailsForUser(int $classeId, User $user): array
             {
-                throw new QueryException('sqlite', 'select 1', [], new RuntimeException('panne simulée'));
+                throw $this->panne;
             }
 
             public function detailsForLocalId(int $classeId, User $user): array
             {
-                throw new QueryException('sqlite', 'select 1', [], new RuntimeException('panne simulée'));
+                throw $this->panne;
             }
 
             public function getEtudiants(int $classeId, User $user): array
             {
-                throw new QueryException('sqlite', 'select 1', [], new RuntimeException('panne simulée'));
+                throw $this->panne;
             }
         };
 
@@ -226,8 +262,28 @@ final class FicheClasseEchecsTest extends TestCase
             : [LocalClasseDetailsReader::class];
 
         foreach ($sources as $source) {
-            $this->app->instance($source, $panne);
+            $this->app->instance($source, $doublure);
         }
+    }
+
+    private function coordinateur(InstitutionMode $mode): User
+    {
+        $ecole = Institution::factory()->create(['mode' => $mode]);
+
+        return User::factory()->create([
+            'institution_id' => $ecole->id,
+            'role' => 'coordinateur',
+            'klassci_token' => $mode === InstitutionMode::Klassci ? 'jeton-klassci' : null,
+        ]);
+    }
+
+    private function url(string $route): string
+    {
+        return match ($route) {
+            'historique' => '/api/lms/classes/7',
+            'locale' => '/api/lms/classes/local/7',
+            default => '/api/lms/classes/7/etudiants',
+        };
     }
 
     /** UNE closure : `classes/42` rend le corps donné, tout le reste une enveloppe vide. */

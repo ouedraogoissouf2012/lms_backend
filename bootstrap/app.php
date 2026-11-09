@@ -114,8 +114,9 @@ $app = Application::configure(basePath: dirname(__DIR__))
         // `X-RateLimit-*` (RFC 6585) pour que le client sache quand réessayer.
         // Sans ce handler dédié, le handler générique \Throwable ci-dessous
         // reconstruirait la réponse JSON en PERDANT les headers de l'exception.
+        // Une route `api/*` y a droit sans `Accept: application/json` (#244).
         $exceptions->render(function (\Illuminate\Http\Exceptions\ThrottleRequestsException $e, $request) {
-            if ($request->expectsJson()) {
+            if ($request->expectsJson() || $request->is('api/*')) {
                 return \App\Http\Presenters\TooManyRequestsPresenter::json($e->getHeaders());
             }
         });
@@ -168,8 +169,11 @@ $app = Application::configure(basePath: dirname(__DIR__))
             fn (): array => app(\App\Exceptions\UncaughtExceptionReporting::class)->requestContext(request())
         );
 
+        // Rendu générique (403, 404, 405, 500…) : JSON pour une requête JSON ou une
+        // route `api/*`, même règle que le 401 (#244). Les routes web gardent le
+        // rendu de Laravel.
         $exceptions->render(function (\Throwable $e, $request) {
-            if ($request->expectsJson()) {
+            if ($request->expectsJson() || $request->is('api/*')) {
                 $statusCode = method_exists($e, 'getStatusCode') ? $e->getStatusCode() : 500;
                 // CRITICAL-02: ne pas se fier à `isProduction()` seul (laisserait fuir
                 // les détails en staging/demo/preview). On gate sur `config('app.debug')`

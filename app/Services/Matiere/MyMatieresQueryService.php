@@ -44,7 +44,7 @@ use Psr\Log\LoggerInterface;
  *
  * @see PRODUCTION_STANDARDS.md §1.1
  */
-final class MyMatieresQueryService
+final class MyMatieresQueryService implements TeacherMatieresReader
 {
     public function __construct(
         private readonly KlassciProxyService $klassciService,

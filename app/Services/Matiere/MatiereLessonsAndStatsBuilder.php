@@ -87,29 +87,7 @@ final class MatiereLessonsAndStatsBuilder
         }
 
         try {
-            $query = Lesson::where('matiere_id', $matiereId);
-
-            if ($user->isLearnerAudience()) {
-                $query->published();
-
-                // PERF-03 — eager load `progress` filtered to current user.
-                $query->with(['progress' => function ($q) use ($user) {
-                    $q->where('user_id', $user->id);
-                }]);
-            }
-
-            $lessons = $query->ordered()
-                ->get()
-                ->map(function (Lesson $lesson) use ($user): array {
-                    $lessonArray = $lesson->toArray();
-
-                    if ($user->isLearnerAudience()) {
-                        // progress is filtered to the current user, so 0 or 1 entry.
-                        $lessonArray['user_progress'] = $lesson->progress->first();
-                    }
-
-                    return $lessonArray;
-                })->all();
+            $lessons = $this->lessonsForLocalMatiere($matiereId, $user);
 
             // Les deux espaces sont nommés : un journal qui écrit « matiere_id »
             // sans dire lequel est précisément l'ambiguïté qu'on vient de lever.
@@ -129,6 +107,66 @@ final class MatiereLessonsAndStatsBuilder
 
             return [];
         }
+    }
+
+    /**
+     * Les leçons d'une matière désignée par son id LOCAL, déjà connu.
+     *
+     * Publique pour la source locale de la page matière (école indépendante,
+     * lot 1), où il n'existe qu'un espace d'identifiants : rien à traduire. Le
+     * chemin KLASSCI l'appelle après sa traduction stricte, sans rien changer à
+     * ce qu'il rendait.
+     *
+     * `$classeIds` borne aux classes nommées, `$enseignantId` aux leçons d'un
+     * auteur, `$institutionId` à un établissement — explicitement, sans
+     * dépendre du scope global, fail-open sans tenant résolu. `null` ne borne
+     * pas, comme le chemin KLASSCI l'a toujours fait.
+     *
+     * @param  list<int>|null  $classeIds
+     * @return array<int, array<string, mixed>>
+     */
+    public function lessonsForLocalMatiere(
+        int $matiereIdLocal,
+        User $user,
+        ?array $classeIds = null,
+        ?int $enseignantId = null,
+        ?int $institutionId = null,
+    ): array {
+        $query = Lesson::where('matiere_id', $matiereIdLocal);
+
+        if ($institutionId !== null) {
+            $query->where('institution_id', $institutionId);
+        }
+
+        if ($classeIds !== null) {
+            $query->whereIn('classe_id', $classeIds);
+        }
+
+        if ($enseignantId !== null) {
+            $query->where('enseignant_id', $enseignantId);
+        }
+
+        if ($user->isLearnerAudience()) {
+            $query->published();
+
+            // PERF-03 — eager load `progress` filtered to current user.
+            $query->with(['progress' => function ($q) use ($user) {
+                $q->where('user_id', $user->id);
+            }]);
+        }
+
+        return $query->ordered()
+            ->get()
+            ->map(function (Lesson $lesson) use ($user): array {
+                $lessonArray = $lesson->toArray();
+
+                if ($user->isLearnerAudience()) {
+                    // progress is filtered to the current user, so 0 or 1 entry.
+                    $lessonArray['user_progress'] = $lesson->progress->first();
+                }
+
+                return $lessonArray;
+            })->all();
     }
 
     /**

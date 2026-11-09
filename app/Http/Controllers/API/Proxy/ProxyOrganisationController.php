@@ -8,6 +8,8 @@ use App\Http\Controllers\API\Proxy\Concerns\RendersKlassciProxyErrors;
 use App\Http\Controllers\API\Proxy\Concerns\ResolvesPersonalKlassciToken;
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Services\Klassci\TeacherDirectory\LocalTeacherDirectory;
+use App\Services\Klassci\TeacherDirectory\TeacherDirectoryVisibility;
 use App\Services\KlassciProxyService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -25,6 +27,8 @@ final class ProxyOrganisationController extends Controller
 
     public function __construct(
         private readonly KlassciProxyService $klassciService,
+        private readonly TeacherDirectoryVisibility $visibility,
+        private readonly LocalTeacherDirectory $localDirectory,
     ) {
     }
 
@@ -112,37 +116,30 @@ final class ProxyOrganisationController extends Controller
         }
     }
 
-    /** GET /api/proxy/enseignants — fallback BDD si KLASSCI renvoie 0. */
-    public function enseignants(): JsonResponse
+    /**
+     * GET /api/proxy/enseignants — fallback BDD si KLASSCI renvoie 0.
+     *
+     * La liste suit la grille des rôles (`TeacherDirectoryVisibility`), appliquée
+     * après le cache de KLASSCI, qui est commun à l'établissement. Un lecteur qui
+     * n'en verrait aucune ligne ne déclenche aucun appel.
+     */
+    public function enseignants(Request $request): JsonResponse
     {
+        $lecteur = $request->user();
+        if (! $lecteur instanceof User || ! $this->visibility->readsAnything($lecteur)) {
+            return response()->json(['success' => true, 'data' => []]);
+        }
+
         try {
             $data = $this->klassciService->getEnseignants();
 
             if (empty($data['data'])) {
                 Log::info('KLASSCI retourne 0 enseignants, utilisation BDD locale');
-                $localEnseignants = User::whereIn('role', ['enseignant', 'teacher'])
-                    ->get()
-                    ->map(static fn (User $user): array => [
-                        'id' => $user->klassci_id ?? $user->id,
-                        'nom' => $user->name,
-                        'prenom' => '',
-                        'email' => $user->email,
-                        'role' => $user->role,
-                        'source' => 'lms_local',
-                    ])->all();
 
-                return response()->json([
-                    'success' => true,
-                    'data' => $localEnseignants,
-                    'meta' => [
-                        'total' => count($localEnseignants),
-                        'source' => 'lms_local',
-                        'note' => 'Données provenant de la BDD locale car KLASSCI retourne 0',
-                    ],
-                ]);
+                return response()->json($this->localDirectory->forReader($lecteur));
             }
 
-            return response()->json($data);
+            return response()->json($this->visibility->envelopeFor($lecteur, $data));
         } catch (\Exception $e) {
             return $this->proxyErrorResponse($e);
         }

@@ -8,6 +8,7 @@ use App\Exceptions\UncaughtExceptionReporting;
 use App\Models\Institution;
 use App\Models\Lesson;
 use App\Models\User;
+use Illuminate\Database\MultipleRecordsFoundException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Route;
 use Monolog\Level;
@@ -68,6 +69,7 @@ final class UncaughtExceptionReportingTest extends TestCase
             Route::post('panne', fn () => throw new RuntimeException('Panne de diagnostic #948.'));
             Route::get('panne-sous-argument', fn () => self::echouerAvec(self::TEMOIN_ARGUMENT));
             Route::get('indisponible', fn () => abort(503));
+            Route::get('doublon', fn () => throw new MultipleRecordsFoundException(2));
         });
     }
 
@@ -164,6 +166,18 @@ final class UncaughtExceptionReportingTest extends TestCase
         $enregistrements = $this->rapports();
         self::assertCount(1, $enregistrements);
         self::assertSame(Level::Error, $enregistrements[0]->level);
+    }
+
+    /**
+     * Un `sole()` qui trouve des doublons : Laravel tait cette exception
+     * (`internalDontReport`), mais aucun rendu ne la convertit en 4xx. C'est un
+     * 500, donc une panne, qu'aucun journal n'écrirait sinon.
+     */
+    public function test_des_doublons_sous_sole_sont_une_panne_journalisee(): void
+    {
+        $this->getJson('/api/_948/doublon')->assertStatus(500);
+
+        self::assertInstanceOf(MultipleRecordsFoundException::class, $this->uneSeulePanne()->context['exception']);
     }
 
     private static function echouerAvec(string $valeur): never

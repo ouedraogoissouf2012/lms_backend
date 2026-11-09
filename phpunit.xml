@@ -35,6 +35,10 @@
              128 MB par défaut PHP fait OOM avec dump de stack massif. -->
         <ini name="memory_limit" value="512M"/>
         <ini name="xdebug.mode" value="coverage"/>
+        <!-- #948 : la suite part du réglage de l'image de production, qui ne charge
+             pas php.ini-production. setup-php, en CI, l'active d'office : sans
+             cette ligne, retirer l'ini_set de bootstrap/app.php y resterait vert. -->
+        <ini name="zend.exception_ignore_args" value="0"/>
         <env name="APP_ENV" value="testing"/>
         <!-- APP_KEY n'est PAS hardcodé ici (anti-pattern). Laravel le lit depuis
              le .env local du dev. CI doit fournir APP_KEY via env var GitHub Actions

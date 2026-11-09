@@ -889,6 +889,26 @@ components:
         message:
           type: string
 
+    # Les refus de la porte locale des classes (lot D).
+    ClasseLocaleRefus:
+      type: object
+      additionalProperties: false
+      required:
+        - success
+        - message
+      properties:
+        success:
+          type: boolean
+          enum:
+            - false
+        message:
+          type: string
+        reason:
+          type: string
+          description: "Present sur le 409 seulement : la classe a ete creee dans le LMS."
+          enum:
+            - classe_local_only
+
     MessageOnly:
       type: object
       properties:
@@ -2239,8 +2259,20 @@ paths:
         par `classes_concernees` — doit donc utiliser CETTE porte. L'envoyer a
         la porte KLASSCI rend la fiche d'une autre classe, en 200, sans erreur.
 
-        La traduction est faite au seuil ; le reste du traitement est partage
-        avec la porte historique.
+        Ouverte a tout compte de l'etablissement, sans garde de role. La classe
+        est d'abord resolue localement, avant toute lecture de sa fiche : 404 si
+        l'etablissement n'a pas cette classe, 409 (`classe_local_only`) si elle
+        a ete creee dans le LMS et n'a donc pas d'identifiant KLASSCI. Les
+        classes d'une ecole creee depuis le LMS sont creees dans le LMS : elles
+        rendent ce 409. Dans une ecole creee depuis KLASSCI, seules les classes
+        creees dans le LMS le rendent.
+
+        Sinon, la fiche est lue dans KLASSCI, comme par la porte historique, avec
+        le jeton KLASSCI du compte : 401 `klassci_token_missing` sans ce jeton.
+        Le mode de l'ecole n'est pas lu : une ecole creee depuis KLASSCI passee
+        en mode autonome lit encore la fiche dans KLASSCI. Toute erreur de
+        KLASSCI pendant cette lecture (panne, refus HTTP dont un 404, reponse
+        illisible, circuit ouvert) rend le 500, sans motif ni `Retry-After`.
       security:
         - sanctum: []
       parameters:
@@ -2252,34 +2284,67 @@ paths:
             type: integer
             minimum: 1
       responses:
+        '400':
+          description: |
+            Sans jeton porteur, un en-tete `X-Institution` inconnu : refuse
+            avant l'authentification.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClasseLocaleRefus'
         '200':
-          description: "Details de la classe, identiques a ceux de la porte KLASSCI."
+          description: |
+            Details de la classe, identiques a ceux de la porte KLASSCI, dont la
+            forme n'est pas encore decrite : le schema reste ouvert.
           content:
             application/json:
               schema:
                 type: object
         '401':
-          description: "Non authentifie, ou compte sans jeton KLASSCI."
+          description: |
+            Jeton porteur absent ou invalide (sans `reason`), ou compte sans jeton
+            KLASSCI (`reason: klassci_token_missing`), pour une classe qui en a une
+            fiche.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: '#/components/schemas/RefusKlassci'
+        '403':
+          description: |
+            Sans `reason` : etablissement desactive ou supprime. `no_institution` :
+            compte sans etablissement, ou gestionnaire de la plateforme
+            (`supradmin`), meme rattache a un etablissement.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefusClasseEleves'
         '404':
           description: |
             Aucune classe ne porte cet identifiant local dans l'etablissement de
-            l'appelant. Un compte sans etablissement ne resout rien.
+            l'appelant ; KLASSCI repond 2xx sans fiche de classe (un 404 HTTP de
+            KLASSCI rend, lui, le 500) ; ou l'identifiant n'est pas numerique (la
+            route ne le trouve pas). Sans motif.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: '#/components/schemas/ClasseLocaleRefus'
         '409':
           description: |
-            La classe existe mais a ete creee localement : elle n'a aucune fiche
-            KLASSCI a afficher. Un 404 mentirait, la classe est bien la.
+            La classe existe mais a ete creee dans le LMS : elle n'a aucune fiche
+            KLASSCI a afficher. Un 404 mentirait, la classe est bien la. Motif
+            `classe_local_only`.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: '#/components/schemas/ClasseLocaleRefus'
+        '500':
+          description: |
+            Toute erreur de KLASSCI pendant la lecture de la fiche, sans `error` ;
+            ou une erreur non rattrapee, rendue par le gestionnaire global.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VisioErreurInterne'
 
   /lms/seances:
     post:

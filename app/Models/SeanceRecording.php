@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Enums\RecordingFailureReason;
 use App\Enums\SeanceRecordingStatus;
 use App\Models\Traits\BelongsToInstitution;
 use Database\Factories\SeanceRecordingFactory;
@@ -99,7 +100,8 @@ final class SeanceRecording extends Model
             'started_at' => $this->started_at?->toIso8601String(),
             'stopped_at' => $this->stopped_at?->toIso8601String(),
             'processed_at' => $this->processed_at?->toIso8601String(),
-            'error_message' => $this->error_message,
+            // Liste blanche à la sortie : une valeur hors registre n'est jamais servie.
+            'error_message' => RecordingFailureReason::servable($this->error_message),
             'is_recording' => $status === SeanceRecordingStatus::Recording,
             'consent_required' => $status->isActive(),
             'consent_message' => self::CONSENT_MESSAGE,

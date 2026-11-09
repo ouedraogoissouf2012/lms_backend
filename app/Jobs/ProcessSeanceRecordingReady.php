@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Jobs;
 
+use App\Enums\RecordingFailureReason;
 use App\Enums\SeanceRecordingStatus;
 use App\Models\SeanceRecording;
 use App\Services\Visio\Recording\SeanceRecordingAttachmentResolver;
@@ -51,7 +52,7 @@ final class ProcessSeanceRecordingReady implements ShouldQueue
 
         $seance = $recording->seance;
         if ($seance === null) {
-            $this->markFailed($recording, 'seance_not_found');
+            $this->markFailed($recording, RecordingFailureReason::SeanceNotFound);
 
             return;
         }
@@ -72,12 +73,14 @@ final class ProcessSeanceRecordingReady implements ShouldQueue
                 $this->provider,
             );
         } catch (Throwable $exception) {
-            $this->markFailed($recording, $exception->getMessage());
+            // Un motif du registre. L'exception relancée est rapportée par le
+            // worker (UncaughtExceptionReporting).
+            $this->markFailed($recording, RecordingFailureReason::ProcessingException);
             throw $exception;
         }
 
-        if (! $result->success) {
-            $this->markFailed($recording, $result->reason);
+        if ($result->failureReason !== null) {
+            $this->markFailed($recording, $result->failureReason);
             $logger->warning('[ProcessSeanceRecordingReady] Recording attachment failed', [
                 'recording_id' => $recording->id,
                 'reason' => $result->reason,
@@ -99,15 +102,15 @@ final class ProcessSeanceRecordingReady implements ShouldQueue
     {
         $recording = SeanceRecording::withoutGlobalScope('institution')->find($this->recordingId);
         if ($recording !== null) {
-            $this->markFailed($recording, $exception->getMessage());
+            $this->markFailed($recording, RecordingFailureReason::ProcessingException);
         }
     }
 
-    private function markFailed(SeanceRecording $recording, string $message): void
+    private function markFailed(SeanceRecording $recording, RecordingFailureReason $reason): void
     {
         $recording->update([
             'status' => SeanceRecordingStatus::Failed,
-            'error_message' => $message,
+            'error_message' => $reason->value,
             'processed_at' => now(),
         ]);
     }

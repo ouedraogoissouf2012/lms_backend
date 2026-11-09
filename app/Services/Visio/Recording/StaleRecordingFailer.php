@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Visio\Recording;
 
+use App\Enums\RecordingFailureReason;
 use App\Enums\SeanceRecordingStatus;
 use App\Models\SeanceRecording;
 use Carbon\CarbonInterface;
@@ -52,10 +53,6 @@ use Psr\Log\LoggerInterface;
  */
 final class StaleRecordingFailer
 {
-    private const PROCESSING_FAILURE_MESSAGE = 'Aucun fichier reçu du fournisseur d\'enregistrement dans le délai imparti.';
-
-    private const RECORDING_FAILURE_MESSAGE = 'Enregistrement jamais arrêté : la visioconférence est terminée ou la durée maximale est dépassée.';
-
     public function __construct(
         private readonly DatabaseManager $database,
         private readonly LoggerInterface $logger,
@@ -80,7 +77,7 @@ final class StaleRecordingFailer
                         && $locked->stopped_at !== null
                         && $locked->stopped_at->lt($cutoff);
 
-                    if ($this->failWhenStillStale($recording, self::PROCESSING_FAILURE_MESSAGE, $stillStale)) {
+                    if ($this->failWhenStillStale($recording, RecordingFailureReason::NoMediaReceived, $stillStale)) {
                         $failed++;
                     }
                 }
@@ -157,7 +154,7 @@ final class StaleRecordingFailer
                 || ($locked->started_at !== null && $locked->started_at->lt($startedBefore));
         };
 
-        return $this->failWhenStillStale($recording, self::RECORDING_FAILURE_MESSAGE, $stillStale);
+        return $this->failWhenStillStale($recording, RecordingFailureReason::NeverStopped, $stillStale);
     }
 
     /**
@@ -167,9 +164,9 @@ final class StaleRecordingFailer
      *
      * @param  callable(SeanceRecording): bool  $stillStale
      */
-    private function failWhenStillStale(SeanceRecording $recording, string $message, callable $stillStale): bool
+    private function failWhenStillStale(SeanceRecording $recording, RecordingFailureReason $reason, callable $stillStale): bool
     {
-        return (bool) $this->database->transaction(function () use ($recording, $message, $stillStale): bool {
+        return (bool) $this->database->transaction(function () use ($recording, $reason, $stillStale): bool {
             $locked = SeanceRecording::withoutGlobalScope('institution')
                 ->whereKey($recording->getKey())
                 ->lockForUpdate()
@@ -181,7 +178,7 @@ final class StaleRecordingFailer
 
             $locked->update([
                 'status' => SeanceRecordingStatus::Failed,
-                'error_message' => $message,
+                'error_message' => $reason->value,
                 'stopped_at' => $locked->stopped_at ?? now(),
                 'processed_at' => now(),
             ]);

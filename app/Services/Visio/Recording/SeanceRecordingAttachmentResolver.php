@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Visio\Recording;
 
+use App\Enums\RecordingFailureReason;
 use App\Models\Chapter;
 use App\Models\Classe;
 use App\Models\Lesson;
@@ -27,12 +28,12 @@ final class SeanceRecordingAttachmentResolver
         string $provider = 'external',
     ): RecordingAttachmentResult {
         if ($seance->klassci_matiere_id === null) {
-            return $this->fail($seance, 'missing_klassci_matiere_id', ['recording_url' => $recordingUrl]);
+            return $this->fail($seance, RecordingFailureReason::MissingKlassciMatiereId, ['recording_url' => $recordingUrl]);
         }
 
         $matiere = $this->resolveMatiere($seance);
         if ($matiere === null) {
-            return $this->fail($seance, 'matiere_not_found', [
+            return $this->fail($seance, RecordingFailureReason::MatiereNotFound, [
                 'klassci_matiere_id' => $seance->klassci_matiere_id,
                 'recording_url' => $recordingUrl,
             ]);
@@ -40,14 +41,14 @@ final class SeanceRecordingAttachmentResolver
 
         $lessons = $this->candidateLessons($seance, $matiere);
         if ($lessons->isEmpty()) {
-            return $this->fail($seance, 'lesson_not_found', [
+            return $this->fail($seance, RecordingFailureReason::LessonNotFound, [
                 'matiere_id' => $matiere->id,
                 'recording_url' => $recordingUrl,
             ]);
         }
 
         if ($lessons->count() > 1) {
-            return $this->fail($seance, 'ambiguous_lesson', [
+            return $this->fail($seance, RecordingFailureReason::AmbiguousLesson, [
                 'lesson_ids' => $lessons->pluck('id')->values()->all(),
                 'recording_url' => $recordingUrl,
             ]);
@@ -247,10 +248,10 @@ final class SeanceRecordingAttachmentResolver
     /**
      * @param  array<string, mixed>  $context
      */
-    private function fail(Seance $seance, string $reason, array $context): RecordingAttachmentResult
+    private function fail(Seance $seance, RecordingFailureReason $reason, array $context): RecordingAttachmentResult
     {
         $this->logger->warning('Visio recording attachment failed', [
-            'reason' => $reason,
+            'reason' => $reason->value,
             'seance_id' => $seance->id,
             'klassci_seance_id' => $seance->klassci_seance_id,
         ] + $context);

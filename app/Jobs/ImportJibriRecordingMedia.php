@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace App\Jobs;
 
+use App\Enums\RecordingFailureReason;
 use App\Enums\SeanceRecordingStatus;
 use App\Models\SeanceRecording;
 use App\Services\Visio\Recording\RecordingMediaSource;
 use App\Services\Visio\Recording\RecordingMediaStorage;
+use App\Support\Logging\ExceptionDescription;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -70,7 +72,7 @@ final class ImportJibriRecordingMedia implements ShouldQueue
         $absolutePath = $source->locate($this->sessionId);
 
         if ($absolutePath === null) {
-            $this->fail($recording, 'media_not_found', $logger);
+            $this->fail($recording, RecordingFailureReason::MediaNotFound, $logger);
 
             return;
         }
@@ -78,7 +80,7 @@ final class ImportJibriRecordingMedia implements ShouldQueue
         $relativePath = $storage->store($absolutePath, $recording->id);
 
         if ($relativePath === null) {
-            $this->fail($recording, 'media_copy_failed', $logger);
+            $this->fail($recording, RecordingFailureReason::MediaCopyFailed, $logger);
 
             return;
         }
@@ -106,17 +108,17 @@ final class ImportJibriRecordingMedia implements ShouldQueue
      * est serialise dans la reponse API (§1.2). Le detail technique va au
      * journal, ou il est utile sans etre expose.
      */
-    private function fail(SeanceRecording $recording, string $reason, LoggerInterface $logger): void
+    private function fail(SeanceRecording $recording, RecordingFailureReason $reason, LoggerInterface $logger): void
     {
         $recording->update([
             'status' => SeanceRecordingStatus::Failed,
-            'error_message' => $reason,
+            'error_message' => $reason->value,
         ]);
 
         $logger->warning('visio.recording.import.failed', [
             'recording_id' => $recording->getKey(),
             'session_id' => $this->sessionId,
-            'reason' => $reason,
+            'reason' => $reason->value,
         ]);
     }
 
@@ -140,13 +142,14 @@ final class ImportJibriRecordingMedia implements ShouldQueue
             && $recording->status !== SeanceRecordingStatus::Ready) {
             $recording->update([
                 'status' => SeanceRecordingStatus::Failed,
-                'error_message' => 'storage_exception',
+                'error_message' => RecordingFailureReason::StorageException->value,
             ]);
         }
 
+        // Décrite, et non son message : celui d'une exception SQL porte les
+        // valeurs de la requête (ExceptionDescription).
         $logger->error('Job ImportJibriRecordingMedia failed after all retries', [
             'recording_id' => $this->recordingId,
-            'exception' => $exception->getMessage(),
-        ]);
+        ] + app(ExceptionDescription::class)->describe($exception));
     }
 }

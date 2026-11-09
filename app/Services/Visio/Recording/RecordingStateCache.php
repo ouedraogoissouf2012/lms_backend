@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Visio\Recording;
 
+use App\Enums\RecordingFailureReason;
 use App\Enums\SeanceRecordingStatus;
 use App\Models\Seance;
 use App\Models\SeanceRecording;
@@ -19,7 +20,8 @@ use Illuminate\Contracts\Cache\Repository as CacheRepository;
  * 300 (`PRODUCTION_STANDARDS.md` §1.1, sans exception) ; la découpe suit la
  * consigne du garde-fou — un collaborateur injecté, pas un fichier plus gros.
  *
- * Aucun changement de comportement : les méthodes sont déplacées telles quelles.
+ * Les méthodes ont été déplacées telles quelles ; depuis, `normalize()` sert le
+ * motif d'échec par la liste blanche de `RecordingFailureReason`.
  */
 final class RecordingStateCache
 {
@@ -91,7 +93,8 @@ final class RecordingStateCache
             'started_at' => $this->stringOrNull($state['started_at'] ?? null),
             'stopped_at' => $this->stringOrNull($state['stopped_at'] ?? null),
             'processed_at' => $this->stringOrNull($state['processed_at'] ?? null),
-            'error_message' => $this->stringOrNull($state['error_message'] ?? null),
+            // Un état mis en cache peut dater d'avant le registre.
+            'error_message' => RecordingFailureReason::servable($this->stringOrNull($state['error_message'] ?? null)),
             'is_recording' => ($state['status'] ?? null) === 'recording',
             'consent_required' => in_array($state['status'] ?? null, SeanceRecordingStatus::activeValues(), true),
             'consent_message' => self::CONSENT_MESSAGE,

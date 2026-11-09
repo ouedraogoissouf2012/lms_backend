@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Services\Classe;
 
 use App\Models\Classe;
-use App\Models\Matiere;
 use App\Models\User;
 
 /**
@@ -22,7 +21,8 @@ use App\Models\User;
  * ## Les classes de l'APPELANT, coordinateur compris
  *
  * Celles où il est désigné formateur d'au moins une matière
- * (`classe_matiere.enseignant_id`) — la règle de « Mes matières » au lot 1.
+ * (`classe_matiere.enseignant_id`) — la règle de « Mes matières » au lot 1,
+ * écrite une seule fois dans {@see ClassesEnseignees}.
  *
  * ## Deux effectifs, deux sens
  *
@@ -48,14 +48,11 @@ final class LocalTeacherClassesReader implements TeacherClassesReader
 
         // Bornage EXPLICITE, sur la classe comme sur la matière : le scope
         // global est fail-open sans tenant résolu.
-        $classes = Classe::query()
-            ->where('institution_id', $institution)
-            ->whereHas('matieres', static function ($programme) use ($teacher, $institution): void {
-                $programme->where('classe_matiere.enseignant_id', $teacher->id)
-                    ->whereIn('classe_matiere.matiere_id', Matiere::query()
-                        ->where('institution_id', $institution)
-                        ->select('id'));
-            })
+        $classes = ClassesEnseignees::par(
+            Classe::query()->where('institution_id', $institution),
+            $teacher->id,
+            $institution,
+        )
             ->withCount(['etudiantsActifs as effectif_actuel'])
             // L'ordre est un CONTRAT : la liste se rend en cartes, qui ne
             // doivent pas sauter d'un chargement à l'autre.

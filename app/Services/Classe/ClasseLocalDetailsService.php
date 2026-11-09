@@ -28,8 +28,8 @@ use App\Models\User;
  * ## Pourquoi une porte, et pas une résolution sur la route existante
  *
  * L'issue proposait de résoudre l'entrée avec `Classe::localIdFor()`. Cette
- * méthode donne la **précédence au local** : sur les sept classes en collision,
- * elle détournerait les deux appelants KLASSCI vers la mauvaise ligne. **Deux
+ * méthode donne la **précédence au local** : sur les classes en collision, elle
+ * détournerait les deux appelants KLASSCI vers la mauvaise ligne. **Deux
  * chemins cassés pour un réparé**, et silencieusement.
  *
  * ## Pourquoi pas non plus « émettre les deux espaces »

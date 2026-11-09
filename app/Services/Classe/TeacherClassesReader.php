@@ -10,9 +10,10 @@ use App\Models\User;
  * Les classes que l'appelant enseigne, pour l'écran « Mes classes ».
  *
  * Nommée par ce qu'elle rend, jamais par le mode : la route reste la même dans
- * les deux volets, la source est choisie au point de liaison (ADR-EI-01). La
- * signature est celle de {@see TeacherClassesQueryService}, mot pour mot : le
- * volet KLASSCI reste prouvé par ses tests, sans retouche.
+ * les deux types d'école, la source est choisie au point de liaison
+ * (ADR-EI-01). La signature est celle de {@see TeacherClassesQueryService}, mot
+ * pour mot : l'école créée depuis KLASSCI reste prouvée par ses tests, sans
+ * retouche.
  *
  * @see docs/adr/2026-10-30-ecole-independante-01-meme-route-autre-source.md
  */

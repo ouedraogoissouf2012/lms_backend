@@ -9,9 +9,13 @@ use Psr\Log\LoggerInterface;
 use Throwable;
 
 /**
- * La panne INTERNE de la fiche d'une classe, rendue de la même façon par ses
+ * La panne de BASE de la fiche d'une classe, rendue de la même façon par ses
  * deux portes (`lms/classes/{id}` et `lms/classes/local/{id}`) : journalisée
  * côté serveur, un 500 générique côté client (§1.2).
+ *
+ * Les autres erreurs internes, non : la porte historique les rattrape aussi par
+ * ce rendu (son filet `Throwable`, préexistant), la porte locale les laisse au
+ * gestionnaire global (500 sans `error`).
  *
  * Une `QueryException` y passe AVANT le rendu des échecs KLASSCI : elle est une
  * `RuntimeException` (par `PDOException`), et sans cette branche une panne de

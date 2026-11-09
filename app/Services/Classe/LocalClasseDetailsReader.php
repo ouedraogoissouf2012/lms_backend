@@ -17,8 +17,8 @@ use Illuminate\Support\Facades\DB;
  *
  * La porte historique, la porte locale et le roster appliquent la MÊME grille
  * d'accès et le MÊME roster actif. Trois classes la recopieraient trois fois,
- * et trois copies finissent par diverger. Dans une école à source locale, les
- * deux portes attendent le même espace, l'id local (ADR-760-01, amendement
+ * et trois copies finissent par diverger. Dans une école créée depuis le LMS,
+ * les deux portes attendent le même espace, l'id local (ADR-760-01, amendement
  * EI-02).
  *
  * ## Qui atteint la classe
@@ -30,7 +30,14 @@ use Illuminate\Support\Facades\DB;
  * | apprenant, et tout rôle non reconnu (#941) | une classe où son inscription est ACTIVE (D57) | `[]` (GHSA-gg7j) |
  *
  * Hors de ces cas, 404 « Classe non trouvée » — le corps de la source KLASSCI,
- * qui ne dit pas si la classe existe ailleurs.
+ * qui ne dit pas si la classe existe ailleurs. « Désigné » est la règle de
+ * {@see ClassesEnseignees}, la même que « Mes classes ».
+ *
+ * ÉCART CONNU, échec fermé : le rôle est lu par `isManager()` / `isTeacher()`
+ * (correspondance exacte), alors que la garde de rôle des routes ignore la casse
+ * et admet l'alias `administrator`. Un compte `administrator` passe la garde du
+ * roster puis est traité ici comme un apprenant (404, ou `[]`). L'alignement va
+ * au lot de #949.
  *
  * ## Ce qu'on ne sait pas vaut `null`, pas 0
  *
@@ -125,13 +132,15 @@ final class LocalClasseDetailsReader implements ClasseDetailsReader, ClasseEtudi
      */
     private function classeAtteinte(int $classeId, User $user): ?Classe
     {
-        if ($user->institution_id === null) {
+        $institution = $user->institution_id;
+
+        if ($institution === null) {
             return null;
         }
 
         // Bornage EXPLICITE : le scope global est fail-open sans tenant.
         $classe = Classe::query()
-            ->where('institution_id', $user->institution_id)
+            ->where('institution_id', $institution)
             ->whereKey($classeId);
 
         if ($user->isManager()) {
@@ -139,9 +148,7 @@ final class LocalClasseDetailsReader implements ClasseDetailsReader, ClasseEtudi
         }
 
         if ($user->isTeacher()) {
-            $classe->whereHas('matieres', static function ($programme) use ($user): void {
-                $programme->where('classe_matiere.enseignant_id', $user->id);
-            });
+            ClassesEnseignees::par($classe, $user->id, $institution);
         } else {
             $classe->whereHas('etudiants', static function ($inscrits) use ($user): void {
                 $inscrits->where('users.id', $user->id)->where('classe_etudiant.statut', 'actif');

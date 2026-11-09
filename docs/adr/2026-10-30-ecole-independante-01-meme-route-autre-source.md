@@ -112,6 +112,32 @@ Dans la source locale :
 
 ADR-760-01 est amendé en conséquence (amendement EI-02).
 
+Ce que le lot 2 change AUSSI dans l'école créée depuis KLASSCI, voulu et déclaré :
+- **La fiche ne rend plus 500 pour un échec de KLASSCI** (le défaut de `fetchClasse`, qui rattrapait toute erreur).
+  Ses deux portes passent par `RendersKlassciBackedErrors`, comme le roster : 4xx relayé, 401
+  `klassci_session_expired`, 503 avec `Retry-After`.
+- **Une panne de base a sa branche journalisée**, avant le rendu KLASSCI, sur les deux portes et sur le roster. Sur
+  `/etudiants`, une `QueryException` rendait le 500 du trait, sans journal ; elle rend désormais un 500 journalisé,
+  avec `error`.
+- **Des tests existants changent**, sur décision : leurs cas « école créée depuis le LMS » passent à la source
+  locale ; leurs cas « école créée depuis KLASSCI » restent inchangés.
+
+**Dette tracée : l'école basculée.** Une école créée depuis KLASSCI puis passée en mode autonome (route du
+supradmin, `InstitutionController`) suit son mode : ses portes lisent l'id LOCAL.
+- **Cause** : ses classes gardent leur `klassci_id`, et la liste d'administration (`/proxy/classes`, lue par
+  `useAdminClasses`) comme le référentiel que « Mes classes » fusionne par `id` restent dans l'espace KLASSCI.
+- **Effet exact** :
+  - un identifiant KLASSCI ouvert par la porte historique est lu comme local : la fiche d'une autre classe de la
+    même école, en 200, ou un 404 ;
+  - une carte de « Mes classes » peut porter la mesure d'une autre classe.
+  - Aucune fuite entre écoles : tout reste borné à l'établissement.
+- **Ce qui la ferme** : le lot des écrans d'administration. La liste des classes et son référentiel y suivent le mode
+  de l'école, par un port, comme ici. D'ici là, aucune école créée depuis KLASSCI n'est basculée.
+
+**Écart connu, échec fermé** : la grille d'accès lit le rôle par `isManager()` / `isTeacher()`, en correspondance
+exacte, alors que la garde de rôle des routes ignore la casse et admet l'alias `administrator`. L'alignement va au
+lot de #949.
+
 ## Conséquences
 
 - **Le volet KLASSCI ne change pas dans ce qu'il rend.** Il est prouvé par ses tests existants, lancés sans

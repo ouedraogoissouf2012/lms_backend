@@ -9,16 +9,23 @@
 > La source de chaque porte est choisie par le mode DÉCLARÉ de l'école, au point de liaison
 > (`RosterAuthorityFactory::sourceForCurrentTenant`), jamais devinée à partir de l'entier reçu.
 >
-> - **École créée depuis KLASSCI** : rien ne change. La porte historique attend l'espace KLASSCI, la
->   porte locale traduit, et le 409 « créée localement » reste rendu pour une classe sans
->   `klassci_id`.
-> - **École créée depuis le LMS** (ou basculée en mode autonome) : les deux portes servent la même
->   fiche, lue dans les tables locales, pour l'id LOCAL, sans 409. La prémisse de cet ADR, « une
->   ressource désignée dans deux espaces », n'y vaut pas : `klassci_id` y est NULL partout.
+> - **École créée depuis KLASSCI** : les espaces ne changent pas. La porte historique attend l'espace
+>   KLASSCI, la porte locale traduit, et le 409 « créée localement » reste rendu pour une classe sans
+>   `klassci_id`. Seul le rendu des échecs change : les deux portes relaient les refus de KLASSCI
+>   (4xx) et rendent ses pannes en 503 avec `Retry-After`, au lieu d'un 500.
+> - **École créée depuis le LMS** : les deux portes servent la même fiche, lue dans les tables
+>   locales, pour l'id LOCAL, sans 409. La prémisse de cet ADR, « une ressource désignée dans deux
+>   espaces », n'y vaut pas : `klassci_id` y est NULL partout.
+> - **École basculée** (créée depuis KLASSCI, passée en mode autonome) : elle suit son mode déclaré,
+>   comme une école créée depuis le LMS. Mais ses classes gardent leur `klassci_id`, et la liste
+>   d'administration (`/proxy/classes`) lui donne encore des identifiants KLASSCI. Ouvert par la
+>   porte historique, un tel identifiant est lu comme local : la fiche d'une autre classe, ou 404.
+>   **Dette tracée**, fermée par le lot des écrans d'administration (la liste suivra le mode) ; voir
+>   ADR-EI-01.
 >
-> La règle de cet ADR, « on n'arbitre pas à l'entrée », tient dans les deux cas : rien n'est deviné.
-> Le même lot fait relayer par les deux portes les échecs de KLASSCI (4xx relayé, 503 avec
-> `Retry-After`) au lieu de les rendre en 500.
+> La règle de cet ADR, « on n'arbitre pas à l'entrée », tient dans tous les cas : rien n'est deviné.
+> Garder KLASSCI sur la porte historique d'une école basculée lirait le mode hors du point de
+> liaison : écarté.
 
 ## Décision
 

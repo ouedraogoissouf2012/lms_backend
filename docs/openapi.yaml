@@ -817,7 +817,7 @@ components:
             total:
               type: integer
 
-    # Les eleves d'une classe KLASSCI (lot C).
+    # Les eleves d'une classe (lot C ; source locale au lot 2).
     ClasseEleves:
       type: object
       additionalProperties: false
@@ -839,10 +839,12 @@ components:
             etudiants:
               type: array
               description: |
-                Les eleves de l'enveloppe KLASSCI de la classe, de statut `actif`
-                ou sans statut. Chaque element est l'objet KLASSCI, non normalise.
-                Ecart connu : un element vide cote KLASSCI ressortirait en tableau
-                vide `[]`, que ce schema ne decrit pas.
+                Ecole creee depuis KLASSCI : les eleves de l'enveloppe KLASSCI de
+                la classe, de statut `actif` ou sans statut ; chaque element est
+                l'objet KLASSCI, non normalise. Ecart connu : un element vide cote
+                KLASSCI ressortirait en tableau vide `[]`, que ce schema ne decrit
+                pas. Ecole creee depuis le LMS : les inscriptions actives, chaque
+                element `{id, name, email, matricule: null, statut: actif}`.
               items:
                 type: object
             total:
@@ -2551,13 +2553,20 @@ paths:
         appel a KLASSCI. La gestion lit toute classe de l'etablissement, un
         enseignant une classe ou il est designe formateur, un eleve une classe
         ou son inscription est active, sans la liste des eleves. Sinon, 404.
+
+        **Ecart connu, ecole basculee.** Ses classes gardent leur
+        `klassci_id`, et la liste d'administration (`/proxy/classes`) donne
+        encore des identifiants KLASSCI. Ouvert par cette porte, un tel
+        identifiant est lu comme LOCAL : la fiche d'une autre classe, ou 404.
+        L'ecart se ferme quand la liste d'administration suit le mode de
+        l'ecole.
       security:
         - sanctum: []
       parameters:
         - name: classeId
           in: path
           required: true
-          description: "Identifiant KLASSCI dans une ecole creee depuis KLASSCI, identifiant local dans une ecole creee depuis le LMS."
+          description: "Identifiant KLASSCI dans une ecole creee depuis KLASSCI, identifiant local dans une ecole creee depuis le LMS ou basculee."
           schema:
             type: integer
       responses:
@@ -4691,21 +4700,21 @@ paths:
       operationId: listMyTeachingClasses
       summary: "Les classes de l appelant"
       description: |
-        Les classes ou l appelant est designe formateur d au moins une matiere,
-        triees par libelle puis par identifiant. La route admet enseignant et
-        coordinateur ; un coordinateur recoit SES classes, donc souvent une
-        liste vide. La source est choisie par le mode DECLARE de l ecole, au
-        point de liaison, jamais par le client.
+        Les classes de l appelant, pour l ecran « Mes classes ». La route admet
+        enseignant et coordinateur. La source est choisie par le mode DECLARE de
+        l ecole, au point de liaison, jamais par le client.
 
         **Ecole creee depuis KLASSCI.** Les classes que KLASSCI reconnait a
-        l enseignant, avec les identifiants KLASSCI ; a defaut, le miroir local
-        des classes reliees a KLASSCI. Un echec de KLASSCI n est pas une erreur :
-        la liste se replie sur le miroir.
+        l enseignant, avec les identifiants KLASSCI, triees par libelle ; a
+        defaut, le miroir local des classes reliees a KLASSCI. Un echec de
+        KLASSCI n est pas une erreur : la liste se replie sur le miroir.
 
-        **Ecole creee depuis le LMS**, ou basculee en mode autonome. Le programme
-        local (`classe_matiere`), avec les identifiants locaux, sans aucun appel
-        a KLASSCI. `effectif` vaut `null` et `effectif_actuel` compte les
-        inscriptions actives.
+        **Ecole creee depuis le LMS**, ou basculee en mode autonome. Les classes
+        ou l appelant est designe formateur d au moins une matiere du programme
+        local (`classe_matiere`), triees par libelle puis par identifiant, avec
+        les identifiants locaux, sans aucun appel a KLASSCI. Un coordinateur
+        recoit SES classes, donc souvent une liste vide. `effectif` vaut `null`
+        et `effectif_actuel` compte les inscriptions actives.
       security:
         - sanctum: []
       responses:

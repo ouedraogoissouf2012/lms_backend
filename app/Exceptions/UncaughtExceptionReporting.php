@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Exceptions;
 
 use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Route;
 use Psr\Log\LoggerInterface;
@@ -23,6 +24,8 @@ use Throwable;
  *   `warning`, SANS trace : c'est le signal d'un sondage d'accès.
  * - **Autres 4xx** (404, 405, 429…) : rien. Un balayage d'URL ne remplit plus le
  *   journal.
+ * - **Exception SQL** (`QueryException`) : une panne, écrite une fois en `error`,
+ *   SANS les valeurs de la requête ni le message qui les porte.
  *
  * Le rapporteur reçoit l'exception AVANT `prepareException()` : un refus de
  * FormRequest y arrive en `AuthorizationException` brute, pas en
@@ -40,6 +43,8 @@ final class UncaughtExceptionReporting
 {
     public const ACCESS_DENIED_MESSAGE = 'Accès refusé';
 
+    public const QUERY_FAILURE_MESSAGE = 'Échec d\'une requête SQL';
+
     public function __construct(
         private readonly LoggerInterface $logger,
     ) {}
@@ -53,18 +58,25 @@ final class UncaughtExceptionReporting
     }
 
     /**
-     * Écrit le refus d'accès en `warning`, sans trace, et arrête le rapport par
-     * défaut (`false`). Toute autre exception poursuit son rapport (`null`).
+     * Écrit lui-même le refus d'accès et l'échec SQL, puis arrête le rapport par
+     * défaut (`false`) : chacun est écrit une fois. Toute autre exception poursuit
+     * le rapport de Laravel (`null`).
      */
-    public function reportAccessDenied(Throwable $e, Request $request): ?bool
+    public function report(Throwable $e, Request $request): ?bool
     {
-        if ($this->statusOf($e) !== 403) {
-            return null;
+        if ($e instanceof QueryException) {
+            $this->reportQueryFailure($e, $request);
+
+            return false;
         }
 
-        $this->logger->warning(self::ACCESS_DENIED_MESSAGE, $this->requestContext($request));
+        if ($this->statusOf($e) === 403) {
+            $this->logger->warning(self::ACCESS_DENIED_MESSAGE, $this->requestContext($request));
 
-        return false;
+            return false;
+        }
+
+        return null;
     }
 
     /**
@@ -84,6 +96,27 @@ final class UncaughtExceptionReporting
             'route' => $route->getName() ?? $request->path(),
             'method' => $request->getMethod(),
         ];
+    }
+
+    /**
+     * Le message d'une `QueryException` porte le SQL avec ses valeurs liées, et
+     * les détails de la connexion. Il n'est pas écrit, et l'exception n'est pas
+     * passée au contexte : le formateur en écrirait le message. Le message du
+     * pilote non plus, il peut citer une valeur (MySQL 1062 : « Duplicate entry »).
+     * Restent le SQL à marqueurs, la connexion, les codes, l'origine et la trace,
+     * dont `zend.exception_ignore_args` a retiré les arguments.
+     */
+    private function reportQueryFailure(QueryException $e, Request $request): void
+    {
+        $this->logger->error(self::QUERY_FAILURE_MESSAGE, [
+            'exception_class' => $e::class,
+            'connection' => $e->getConnectionName(),
+            'sql' => $e->getSql(),
+            'code' => $e->getCode(),
+            'driver_code' => $e->errorInfo[1] ?? null,
+            'origin' => $e->getFile().':'.$e->getLine(),
+            'trace' => $e->getTraceAsString(),
+        ] + $this->requestContext($request));
     }
 
     /** Le statut HTTP que portera la réponse, ou null pour une panne sans statut. */

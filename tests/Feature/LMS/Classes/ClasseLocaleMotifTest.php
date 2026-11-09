@@ -18,13 +18,14 @@ use Tests\TestCase;
 /**
  * Le 409 de `GET /lms/classes/local/{id}` porte un motif (ADR-906-01).
  *
- * Une classe créée localement n'a aucune fiche KLASSCI : la porte rend 409. Le
+ * Une classe créée dans le LMS n'a aucune fiche KLASSCI : la porte rend 409. Le
  * front ne lit que le statut et le motif (`normalizeError`) ; sans motif, ce
  * refus métier devenait un « conflit » générique. Le 404 d'une classe
  * introuvable, lui, n'a qu'un sens : il reste sans motif.
  *
- * Les deux volets sont joués : une classe locale dans une école KLASSCI, et dans
- * une école autonome. Vrai jeton porteur (`asTenant`), jamais `Sanctum::actingAs`.
+ * Les deux types d'école sont joués : une classe créée dans le LMS, dans une
+ * école créée depuis KLASSCI, et dans une école créée depuis le LMS. Vrai jeton
+ * porteur (`asTenant`), jamais `Sanctum::actingAs`.
  *
  * @see ClasseLocalDetailsService
  */
@@ -36,8 +37,8 @@ final class ClasseLocaleMotifTest extends TestCase
     /** @return iterable<string, array{0: string}> */
     public static function volets(): iterable
     {
-        yield 'classe locale dans une ecole klassci' => ['klassci'];
-        yield 'classe locale dans une ecole autonome' => ['standalone'];
+        yield 'classe créée dans le LMS, école créée depuis KLASSCI' => ['klassci'];
+        yield 'classe créée dans le LMS, école créée depuis le LMS' => ['standalone'];
     }
 
     #[DataProvider('volets')]

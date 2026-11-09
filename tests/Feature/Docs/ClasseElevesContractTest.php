@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Docs;
 
+use App\Exceptions\KlassciUnavailableException;
 use App\Exceptions\MissingKlassciTokenException;
 use App\Models\Institution;
 use App\Models\User;
 use App\Services\Classe\ClasseRoster;
+use App\Support\Klassci\KlassciClientErrorCatalog;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Testing\TestResponse;
@@ -63,6 +65,9 @@ final class ClasseElevesContractTest extends TestCase
         yield 'enseignant' => ['enseignant'];
         yield 'coordinateur' => ['coordinateur'];
         yield 'admin' => ['admin'];
+        // La garde de rôle laisse passer superAdmin (EnsureRole) et accepte les alias.
+        yield 'superAdmin' => ['superAdmin'];
+        yield 'alias teacher' => ['teacher'];
     }
 
     #[DataProvider('rolesAdmis')]
@@ -82,6 +87,14 @@ final class ClasseElevesContractTest extends TestCase
         $this->assertMatchesOpenApiResponse($reponse, self::CHEMIN, 'get');
         $this->assertOpenApiSchemaRefuseSans($reponse, self::CHEMIN, 'get', 'data');
         $reponse->assertJsonPath('data.total', 2)->assertJsonStructure(['data' => ['etudiants', 'total']]);
+    }
+
+    /** Sans jeton porteur, un en-tête `X-Institution` inconnu rend 400, avant l'authentification. */
+    public function test_400_une_ecole_inconnue_sans_jeton_porteur(): void
+    {
+        $reponse = $this->withHeader('X-Institution', 'ecole-inconnue')->getJson(self::ROUTE)->assertStatus(400);
+
+        $this->assertRefus($reponse, null);
     }
 
     public function test_401_sans_jeton_porteur(): void
@@ -122,6 +135,7 @@ final class ClasseElevesContractTest extends TestCase
         $reponse = $this->lire($this->compte($depuisLeLms, 'etudiant'))->assertForbidden();
 
         $this->assertRefus($reponse, null);
+        $reponse->assertJsonPath('message', 'Accès refusé - Permissions insuffisantes');
     }
 
     public function test_403_un_compte_sans_etablissement(): void
@@ -156,7 +170,7 @@ final class ClasseElevesContractTest extends TestCase
         $reponse = $this->lire($this->compte(false, 'enseignant'))->assertStatus($statut);
 
         $this->assertRefus($reponse, null);
-        self::assertNotSame('refus amont', $reponse->json('message'), 'le message amont n est jamais relayé tel quel');
+        $reponse->assertJsonPath('message', KlassciClientErrorCatalog::messageFor($statut));
     }
 
     /** @return iterable<string, array{0: array<string, mixed>|string, 1: int}> */
@@ -173,10 +187,14 @@ final class ClasseElevesContractTest extends TestCase
     {
         $this->klassciRepond($corps, $statut);
 
-        $reponse = $this->lire($this->compte(false, 'enseignant'))->assertStatus(503)->assertHeader('Retry-After');
+        $reponse = $this->lire($this->compte(false, 'enseignant'))
+            ->assertStatus(503)
+            ->assertHeader('Retry-After', (string) KlassciUnavailableException::retryAfterSeconds());
 
         $this->assertMatchesOpenApiResponse($reponse, self::CHEMIN, 'get');
         $this->assertOpenApiSchemaRefuseSans($reponse, self::CHEMIN, 'get', 'message');
+        // Le 503 vient bien de la lecture de CETTE classe, pas du repli de la closure.
+        Http::assertSent(static fn ($requete): bool => str_contains($requete->url(), '/classes/42'));
     }
 
     /** @return iterable<string, array{0: \Throwable, 1: bool}> */
@@ -229,6 +247,11 @@ final class ClasseElevesContractTest extends TestCase
         });
     }
 
+    /**
+     * Faute de colonne de type, une école créée depuis le LMS se modélise comme
+     * SchoolRequestDecisionService la crée : mode standalone, sans URL KLASSCI.
+     * Ses comptes n'ont pas de jeton KLASSCI : seule une connexion KLASSCI en pose un.
+     */
     private function compte(bool $depuisLeLms, string $role, ?string $jeton = 'jeton-klassci'): User
     {
         $ecole = $depuisLeLms
@@ -238,7 +261,7 @@ final class ClasseElevesContractTest extends TestCase
         return User::factory()->create([
             'institution_id' => $ecole->id,
             'role' => $role,
-            'klassci_token' => $jeton,
+            'klassci_token' => $depuisLeLms ? null : $jeton,
             'klassci_tenant_url' => $depuisLeLms ? null : self::BASE_URL,
         ]);
     }

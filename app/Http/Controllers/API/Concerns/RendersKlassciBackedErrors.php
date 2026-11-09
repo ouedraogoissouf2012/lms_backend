@@ -68,7 +68,12 @@ trait RendersKlassciBackedErrors
 
         // Hors 4xx : l'exception n'est pas imputable à KLASSCI (les 5xx KLASSCI
         // sont déjà convertis en KlassciUnavailableException par le client HTTP).
+        // C'est une panne interne (une `QueryException` est une RuntimeException) :
+        // attrapée ici, le rapporteur de Laravel ne la verrait jamais. #948 — elle
+        // est rapportée, une fois, par la même règle que toute panne non attrapée.
         if (! KlassciClientErrorCatalog::isRelayableClientStatus($status)) {
+            report($e);
+
             return $this->errorResponse('Une erreur est survenue.', 500);
         }
 

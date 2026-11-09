@@ -4,6 +4,7 @@ namespace App\Jobs;
 
 use App\Jobs\Concerns\InteractsWithDrainBudget;
 use App\Models\Seance;
+use App\Support\Logging\CaughtExceptionLog;
 use DateTimeInterface;
 use Illuminate\Bus\Queueable;
 use Illuminate\Database\Eloquent\Builder;
@@ -41,7 +42,7 @@ class ArchiveOldSeances implements ShouldQueue
     /**
      * Exécuter le job
      */
-    public function handle(LoggerInterface $logger): void
+    public function handle(LoggerInterface $logger, CaughtExceptionLog $journal): void
     {
         $logger->info('🗂️ Début de l\'archivage automatique des séances obsolètes');
 
@@ -82,10 +83,7 @@ class ArchiveOldSeances implements ShouldQueue
             ]);
 
         } catch (\Exception $e) {
-            $logger->error('❌ Erreur lors de l\'archivage automatique', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
-            ]);
+            $journal->error('❌ Erreur lors de l\'archivage automatique', $e);
 
             throw $e;
         }
@@ -118,12 +116,8 @@ class ArchiveOldSeances implements ShouldQueue
     {
         // Pattern AutoCloseEmptySeances (#209) : failed() est appelée hors
         // container (aucune injection possible) — résolution explicite.
-        /** @var LoggerInterface $logger */
-        $logger = app(LoggerInterface::class);
-
-        $logger->error('Job ArchiveOldSeances failed after all retries', [
-            'tries'     => $this->tries,
-            'exception' => $exception->getMessage(),
+        app(CaughtExceptionLog::class)->error('Job ArchiveOldSeances failed after all retries', $exception, [
+            'tries' => $this->tries,
         ]);
     }
 }

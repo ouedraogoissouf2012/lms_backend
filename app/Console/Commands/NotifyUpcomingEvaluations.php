@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use App\Models\Evaluation;
 use App\Models\Notification;
 use App\Services\KlassciProxyService;
+use App\Support\Logging\CaughtExceptionLog;
 use Carbon\Carbon;
 use Illuminate\Console\Command;
 
@@ -20,7 +21,7 @@ class NotifyUpcomingEvaluations extends Command
         $this->klassciService = $klassciService;
     }
 
-    public function handle(): int
+    public function handle(CaughtExceptionLog $journal): int
     {
         $hoursBeforeNotification = (int) $this->option('hours');
         $this->info("Recherche des évaluations dans les prochaines {$hoursBeforeNotification} heures...");
@@ -93,7 +94,9 @@ class NotifyUpcomingEvaluations extends Command
                 }
 
             } catch (\Exception $e) {
-                $this->error("Erreur: {$e->getMessage()}");
+                // La sortie console n'écrit que l'évaluation ; l'exception va au journal.
+                $this->error("Erreur pendant le traitement de l'évaluation {$evaluation->id}.");
+                $journal->error('Rappel d\'évaluation interrompu', $e, ['evaluation_id' => $evaluation->id]);
                 continue;
             }
         }

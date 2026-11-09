@@ -5,12 +5,14 @@ declare(strict_types=1);
 namespace App\Http\Controllers\API\LMS;
 
 use App\Exceptions\UnserializablePayloadException;
+use App\Http\Controllers\API\Concerns\RendersClasseDetailsFailure;
 use App\Http\Controllers\API\Concerns\RendersKlassciBackedErrors;
 use App\Http\Controllers\AuthenticatedController;
 use App\Services\Classe\ClasseDetailsQueryService;
 use App\Services\Classe\ClasseDetailsReader;
 use App\Services\Classe\ClasseEtudiantsQueryService;
 use App\Services\Classe\ClasseEtudiantsReader;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Psr\Log\LoggerInterface;
@@ -44,9 +46,12 @@ use Throwable;
  */
 final class LMSClassesController extends AuthenticatedController
 {
-    // Le roster : un refus KLASSCI garde son statut et son motif, une panne
-    // devient un 503 + `Retry-After` (#270). Jamais un 500 générique.
+    // La fiche et le roster : un refus KLASSCI garde son statut et son motif,
+    // une panne devient un 503 + `Retry-After` (#270). Jamais un 500 générique.
     use RendersKlassciBackedErrors;
+
+    // Une panne de base a sa branche, journalisée, AVANT le rendu KLASSCI.
+    use RendersClasseDetailsFailure;
 
     public function __construct(
         private readonly LoggerInterface $logger,
@@ -73,19 +78,13 @@ final class LMSClassesController extends AuthenticatedController
             // attrapee » — c'est une erreur de programmation, pas une panne
             // metier. On la relance pour le handler global.
             throw $e;
+        } catch (QueryException $e) {
+            return $this->echecDetailsClasse($this->logger, $classeId, $e);
+        } catch (RuntimeException $e) {
+            return $this->renderKlassciFailure($e);
         } catch (Throwable $e) {
             // §1.2 — message générique au client, détail loggué côté serveur.
-            $this->logger->error('Erreur récupération détails classe', [
-                'classe_id' => $classeId,
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-            ]);
-
-            return response()->json([
-                'success' => false,
-                'message' => 'Erreur lors de la récupération des détails de la classe',
-                'error' => 'Une erreur est survenue.',
-            ], 500);
+            return $this->echecDetailsClasse($this->logger, $classeId, $e);
         }
     }
 
@@ -102,28 +101,29 @@ final class LMSClassesController extends AuthenticatedController
 
             return $this->relayResponse($result);
         } catch (UnserializablePayloadException $e) {
-            // #693 — la garde de serialisabilite ne doit PAS etre avalee ici.
-            // `UnserializablePayloadException` etend `LogicException`, donc
-            // `Throwable` : sans ce catch, elle tombait dans le fourre-tout
-            // ci-dessous, etait journalisee sous une cause FAUSSE, et rendue en
-            // 500 generique. Son propre docblock dit « elle ne doit pas etre
-            // attrapee » — c'est une erreur de programmation, pas une panne
-            // metier. On la relance pour le handler global.
+            // #693 — même règle que `classeDetails()` : relancée, jamais avalée.
             throw $e;
+        } catch (QueryException $e) {
+            return $this->echecEtudiants($classeId, $e);
         } catch (RuntimeException $e) {
             return $this->renderKlassciFailure($e);
         } catch (Throwable $e) {
-            $this->logger->error('Erreur récupération étudiants classe', [
-                'classe_id' => $classeId,
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-            ]);
-
-            return response()->json([
-                'success' => false,
-                'message' => 'Erreur lors de la récupération des étudiants',
-                'error' => 'Une erreur est survenue.',
-            ], 500);
+            return $this->echecEtudiants($classeId, $e);
         }
+    }
+
+    private function echecEtudiants(int $classeId, Throwable $e): JsonResponse
+    {
+        $this->logger->error('Erreur récupération étudiants classe', [
+            'classe_id' => $classeId,
+            'error' => $e->getMessage(),
+            'trace' => $e->getTraceAsString(),
+        ]);
+
+        return response()->json([
+            'success' => false,
+            'message' => 'Erreur lors de la récupération des étudiants',
+            'error' => 'Une erreur est survenue.',
+        ], 500);
     }
 }

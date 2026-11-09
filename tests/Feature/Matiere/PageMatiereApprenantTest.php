@@ -74,7 +74,32 @@ final class PageMatiereApprenantTest extends TestCase
 
         $page = $this->asTenant($eleve)->getJson('/api/lms/matieres/'.$this->matiereKlassci->klassci_id)->assertOk();
 
-        self::assertSame([], $this->ids($page->json('data.lessons')));
+        // La clé est présente et vaut une liste vide : une page sans clé, ou un
+        // échec avalé par le builder, ne passerait pas pour une borne.
+        self::assertSame([], $page->json('data.lessons'));
+        self::assertSame(0, $page->json('data.statistiques.nombre_lessons'));
+    }
+
+    /**
+     * Une leçon sans classe n'appartient à aucune classe de l'apprenant : elle
+     * n'est plus listée, comme dans « Mes cours » et comme pour ses chapitres
+     * (`ChapterReadGate::canReadLesson`).
+     */
+    public function test_ecole_klassci_une_lecon_sans_classe_n_est_pas_listee_a_l_apprenant(): void
+    {
+        $this->ecoleKlassci();
+        $eleve = $this->eleveKlassci();
+        $this->inscritParLeCache($eleve, self::CLASSE_A);
+        [$sienne] = $this->troisLecons($this->matiereKlassci);
+        Lesson::factory()->published()->create([
+            'institution_id' => $this->ecole->id,
+            'matiere_id' => $this->matiereKlassci->id,
+            'classe_id' => null,
+        ]);
+
+        $page = $this->asTenant($eleve)->getJson('/api/lms/matieres/'.$this->matiereKlassci->klassci_id)->assertOk();
+
+        self::assertSame([$sienne->id], $this->ids($page->json('data.lessons')));
     }
 
     public function test_ecole_klassci_la_gestion_lit_toujours_toutes_les_lecons(): void

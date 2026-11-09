@@ -3902,7 +3902,9 @@ paths:
         est l'identifiant local. Les eleves dont l'inscription est active, lus
         dans les tables locales, sans aucun appel a KLASSCI : toute classe de
         l'etablissement pour la gestion, une classe ou il est designe formateur
-        pour un enseignant. Sinon, 404.
+        pour un enseignant. Sinon, 404. Ecart connu : la garde de role admet
+        l'alias `administrator`, que la grille d'acces ne reconnait pas ; un tel
+        compte y est traite comme un eleve, et recoit 404.
 
         **Ecole creee depuis KLASSCI.** `classeId` est l'identifiant KLASSCI. Lit
         le roster dans l'enveloppe KLASSCI `classes/{id}`, avec le jeton KLASSCI
@@ -4714,9 +4716,16 @@ paths:
         **Ecole creee depuis le LMS**, ou basculee en mode autonome. Les classes
         ou l appelant est designe formateur d au moins une matiere du programme
         local (`classe_matiere`), triees par libelle puis par identifiant, avec
-        les identifiants locaux, sans aucun appel a KLASSCI. Un coordinateur
-        recoit SES classes, donc souvent une liste vide. `effectif` vaut `null`
-        et `effectif_actuel` compte les inscriptions actives.
+        les identifiants locaux, sans aucun appel a KLASSCI. Le programme local
+        ne designe qu'un compte de role enseignant : un coordinateur recoit une
+        liste vide. `effectif` vaut `null` et `effectif_actuel` compte les
+        inscriptions actives d'eleves de l'etablissement.
+
+        **Ecart connu, ecole basculee.** Les identifiants rendus sont locaux,
+        mais le referentiel que l'ecran fusionne par `id` (`/proxy/classes`)
+        reste dans l'espace KLASSCI : une carte peut porter la mesure d'une
+        autre classe. L'ecart se ferme quand ce referentiel suit le mode de
+        l'ecole.
       security:
         - sanctum: []
       responses:

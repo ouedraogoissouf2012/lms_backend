@@ -5,17 +5,14 @@ declare(strict_types=1);
 namespace App\Http\Controllers\API\LMS;
 
 use App\Exceptions\UnserializablePayloadException;
-use App\Http\Controllers\API\Concerns\RendersClasseDetailsFailure;
 use App\Http\Controllers\API\Concerns\RendersKlassciBackedErrors;
 use App\Http\Controllers\AuthenticatedController;
 use App\Services\Classe\ClasseDetailsQueryService;
 use App\Services\Classe\ClasseDetailsReader;
 use App\Services\Classe\ClasseEtudiantsQueryService;
 use App\Services\Classe\ClasseEtudiantsReader;
-use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Psr\Log\LoggerInterface;
 use RuntimeException;
 use Throwable;
 
@@ -43,19 +40,19 @@ use Throwable;
  *
  * Le controller se borne à : auth + délégation + sérialisation JSON +
  * filet de sécurité 500 pour les exceptions imprévues.
+ *
+ * Une panne interne n'est jamais écrite à la main : elle est RAPPORTÉE
+ * (`report()`), une fois, par la règle commune (#948), qui n'écrit ni le
+ * message d'une `QueryException` ni les valeurs de sa requête. Une panne de base
+ * est une `RuntimeException` : elle passe par la branche 500 du trait.
  */
 final class LMSClassesController extends AuthenticatedController
 {
     // La fiche et le roster : un refus KLASSCI garde son statut et son motif,
     // une panne devient un 503 + `Retry-After` (#270). Jamais un 500 générique.
+    // Toute autre `RuntimeException`, panne de base comprise, est rapportée et
+    // rendue en 500 générique par la branche du trait.
     use RendersKlassciBackedErrors;
-
-    // Une panne de base a sa branche, journalisée, AVANT le rendu KLASSCI.
-    use RendersClasseDetailsFailure;
-
-    public function __construct(
-        private readonly LoggerInterface $logger,
-    ) {}
 
     /**
      * GET /api/lms/classes/{id}
@@ -78,13 +75,10 @@ final class LMSClassesController extends AuthenticatedController
             // attrapee » — c'est une erreur de programmation, pas une panne
             // metier. On la relance pour le handler global.
             throw $e;
-        } catch (QueryException $e) {
-            return $this->echecDetailsClasse($this->logger, $classeId, $e);
         } catch (RuntimeException $e) {
             return $this->renderKlassciFailure($e);
         } catch (Throwable $e) {
-            // §1.2 — message générique au client, détail loggué côté serveur.
-            return $this->echecDetailsClasse($this->logger, $classeId, $e);
+            return $this->panneInterne($e, 'Erreur lors de la récupération des détails de la classe');
         }
     }
 
@@ -103,26 +97,25 @@ final class LMSClassesController extends AuthenticatedController
         } catch (UnserializablePayloadException $e) {
             // #693 — même règle que `classeDetails()` : relancée, jamais avalée.
             throw $e;
-        } catch (QueryException $e) {
-            return $this->echecEtudiants($classeId, $e);
         } catch (RuntimeException $e) {
             return $this->renderKlassciFailure($e);
         } catch (Throwable $e) {
-            return $this->echecEtudiants($classeId, $e);
+            return $this->panneInterne($e, 'Erreur lors de la récupération des étudiants');
         }
     }
 
-    private function echecEtudiants(int $classeId, Throwable $e): JsonResponse
+    /**
+     * Le filet des erreurs qui ne sont pas des `RuntimeException` : rapportée une
+     * fois (#948), sans message ni trace écrits à la main ; le corps garde sa
+     * forme (`error` présent : erreur rattrapée par le contrôleur).
+     */
+    private function panneInterne(Throwable $e, string $message): JsonResponse
     {
-        $this->logger->error('Erreur récupération étudiants classe', [
-            'classe_id' => $classeId,
-            'error' => $e->getMessage(),
-            'trace' => $e->getTraceAsString(),
-        ]);
+        report($e);
 
         return response()->json([
             'success' => false,
-            'message' => 'Erreur lors de la récupération des étudiants',
+            'message' => $message,
             'error' => 'Une erreur est survenue.',
         ], 500);
     }

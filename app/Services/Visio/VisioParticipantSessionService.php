@@ -49,7 +49,7 @@ final class VisioParticipantSessionService
     public function join(int $seanceId, User $user, Request $request): array
     {
         try {
-            $visio = $this->resolveSeance($seanceId);
+            $visio = $this->resolveSeance($seanceId, $user);
 
             if ($visio === null) {
                 return $this->notFound('Visio non trouvée');
@@ -64,7 +64,8 @@ final class VisioParticipantSessionService
                 ];
             }
 
-            $authorization = $this->participantValidation->validate($visio->id, $user->id, $user);
+            // La séance DÉJÀ résolue : la validation ne la relit pas.
+            $authorization = $this->participantValidation->validate($visio, $user->id, $user);
             if ($authorization['status'] !== 200
                 || ($authorization['payload']['authorized'] ?? false) !== true) {
                 return $authorization;
@@ -130,7 +131,7 @@ final class VisioParticipantSessionService
     public function leave(int $seanceId, User $user): array
     {
         try {
-            $visio = $this->resolveSeance($seanceId);
+            $visio = $this->resolveSeance($seanceId, $user);
 
             if ($visio === null) {
                 return $this->notFound('Visio non trouvée');
@@ -186,18 +187,17 @@ final class VisioParticipantSessionService
     }
 
     /**
-     * Résolution dual-ID : tente d'abord l'ID local, puis le klassci_seance_id.
-     * Conserve le comportement legacy verbatim.
+     * La SEULE résolution de l'identifiant reçu : la traduction du modèle
+     * (`Seance::localIdFor`), qui donne la précédence au local et borne à
+     * l'établissement du compte, sans dépendre du scope global.
      */
-    private function resolveSeance(int $seanceId): ?Seance
+    private function resolveSeance(int $seanceId, User $user): ?Seance
     {
-        $visio = Seance::withConnectedParticipantsCount()->find($seanceId);
+        $localId = Seance::localIdFor($seanceId, $user->institution_id);
 
-        if ($visio === null) {
-            $visio = Seance::where('klassci_seance_id', $seanceId)->withConnectedParticipantsCount()->first();
-        }
-
-        return $visio;
+        return $localId === null
+            ? null
+            : Seance::withConnectedParticipantsCount()->whereKey($localId)->first();
     }
 
     /**

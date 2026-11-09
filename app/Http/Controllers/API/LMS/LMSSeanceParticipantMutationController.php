@@ -31,7 +31,7 @@ final class LMSSeanceParticipantMutationController extends AuthenticatedControll
     {
         $actor = $this->authenticatedUser($request);
         $userId = (int) $request->validated('user_id');
-        $result = $this->participantValidation->validate($seanceId, $userId, $actor);
+        $result = $this->participantValidation->validateById($seanceId, $userId, $actor);
 
         return $this->relayResponse($result);
     }

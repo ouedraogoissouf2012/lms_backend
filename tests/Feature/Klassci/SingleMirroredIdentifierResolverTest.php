@@ -85,9 +85,11 @@ final class SingleMirroredIdentifierResolverTest extends TestCase
     ];
 
     /**
-     * Les quatre sites heritees, geles — et le rang de la PR qui les retire.
+     * Les sites herites, geles — et le rang de la PR qui les retire. La
+     * validation des participants (PR 5) en est sortie : elle recoit la
+     * seance deja resolue.
      *
-     * Le cliquet passe au vert sur ces quatre-la et rougit sur TOUT nouveau.
+     * Le cliquet passe au vert sur ceux-la et rougit sur TOUT nouveau.
      * C'est la convention du depot : phpstan-baseline, method-length-baseline,
      * et les cinq cliquets du frontend fonctionnent ainsi.
      *
@@ -100,9 +102,6 @@ final class SingleMirroredIdentifierResolverTest extends TestCase
     private const HERITEES = [
         // PR 6 — masquage etudiant, consequence bornee a un etudiant
         'app/Services/Seances/Mutations/SeanceHideService.php',
-        // PR 5 — validation des participants : seul site ou l'ordre du moteur
-        //        a une consequence d'AUTORISATION (role moderateur)
-        'app/Services/Seances/Mutations/ParticipantValidationService.php',
         // PR 7 — presences : la route expose des emails
         'app/Services/Attendances/VideoSessionAttendancesSyncer.php',
         // PR 4 — forme INVERSEE, au coeur de la chaine visio

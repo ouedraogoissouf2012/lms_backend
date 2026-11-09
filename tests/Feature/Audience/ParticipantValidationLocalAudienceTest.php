@@ -41,7 +41,7 @@ final class ParticipantValidationLocalAudienceTest extends TestCase
         [$seance, $student] = $this->seanceAndStudent(enrolled: true);
 
         $result = app(ParticipantValidationService::class)
-            ->validate($seance->id, $student->id, $student);
+            ->validate($seance, $student->id, $student);
 
         $this->assertSame(200, $result['status']);
         $this->assertTrue($result['payload']['authorized']);
@@ -53,7 +53,7 @@ final class ParticipantValidationLocalAudienceTest extends TestCase
         [$seance, $student] = $this->seanceAndStudent(enrolled: false);
 
         $result = app(ParticipantValidationService::class)
-            ->validate($seance->id, $student->id, $student);
+            ->validate($seance, $student->id, $student);
 
         $this->assertSame(403, $result['status']);
         $this->assertSame('not_enrolled', $result['payload']['reason']);
@@ -77,7 +77,7 @@ final class ParticipantValidationLocalAudienceTest extends TestCase
         $this->app->instance(ClasseAudienceSource::class, $fake);
 
         $result = app(ParticipantValidationService::class)
-            ->validate($seance->id, $student->id, $student);
+            ->validate($seance, $student->id, $student);
 
         $this->assertTrue($result['payload']['authorized']);
         Http::assertNothingSent();

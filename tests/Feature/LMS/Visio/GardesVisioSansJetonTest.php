@@ -259,7 +259,8 @@ final class GardesVisioSansJetonTest extends TestCase
     /**
      * Même règle pour la validation. Le service ne dit pas qu'une séance existe
      * ailleurs : vue de X, une séance de Y n'a « pas de visio » — c'est le motif de
-     * la séance introuvable dans l'établissement (`ParticipantValidationService:47-50`).
+     * la séance introuvable dans l'établissement (`ParticipantValidationService::valider`,
+     * refus `visio_not_enabled`).
      */
     #[DataProvider('volets')]
     public function test_le_personnel_d_une_autre_ecole_ne_valide_pas(string $volet): void

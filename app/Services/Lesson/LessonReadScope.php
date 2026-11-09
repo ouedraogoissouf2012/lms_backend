@@ -43,7 +43,8 @@ use Illuminate\Database\Eloquent\Builder;
  * école. La lecture DIRECTE d'une leçon ({@see denies()}, `ChapterReadGate`)
  * n'est pas bornée à l'auteur : D72 ne porte que sur les listes.
  *
- * Appelants : les deux listes de `LessonListService` et la page d'une matière
+ * Appelants de {@see limitToAudience()} et de {@see limitToAuthor()} : les deux
+ * listes de `LessonListService` et la page d'une matière
  * (`MatiereLessonsAndStatsBuilder::lessonsForLocalMatiere`). Dette déclarée :
  * la recherche (`GlobalSearchService`, `SearchSuggestionsService`), le tableau
  * de bord enseignant et les compteurs de « Mes matières » écrivent encore la
@@ -71,12 +72,26 @@ final class LessonReadScope
             $query->whereRaw('1 = 0');
         }
 
-        if ($user->isLearnerAudience()) {
-            $query->published()
-                ->whereIn($query->qualifyColumn('classe_id'), $this->inscriptions->localClasseIdsFor($user));
+        $this->limitToAudience($query, $user);
+        $this->limitToAuthor($query, $user);
+    }
+
+    /**
+     * Restreint une LISTE à l'audience d'un apprenant : les leçons publiées de
+     * SES classes, par la source d'inscriptions (le pivot actif, sinon le cache
+     * KLASSCI `user_classes`, #482). Sans classe, aucune leçon. Le personnel
+     * reconnu n'est pas restreint.
+     *
+     * @param  Builder<Lesson>  $query
+     */
+    public function limitToAudience(Builder $query, User $user): void
+    {
+        if (! $user->isLearnerAudience()) {
+            return;
         }
 
-        $this->limitToAuthor($query, $user);
+        $query->published()
+            ->whereIn($query->qualifyColumn('classe_id'), $this->inscriptions->localClasseIdsFor($user));
     }
 
     /**

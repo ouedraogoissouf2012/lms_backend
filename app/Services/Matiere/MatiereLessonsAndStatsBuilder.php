@@ -19,8 +19,9 @@ use Throwable;
  *
  * Responsibility:
  *   - Loads `Lesson` rows for the matière, scoped by role
- *     (students see only published lessons + their progress; a teacher sees
- *     only his own, {@see LessonReadScope::limitToAuthor()}; management sees all).
+ *     (students see only published lessons of their classes + their progress,
+ *     {@see LessonReadScope::limitToAudience()}; a teacher sees only his own,
+ *     {@see LessonReadScope::limitToAuthor()}; management sees all).
  *   - Computes the aggregate statistics block returned with the matière.
  *
  * @see PRODUCTION_STANDARDS.md §1.1
@@ -125,8 +126,10 @@ final class MatiereLessonsAndStatsBuilder
      * sans tenant résolu. `null` ne borne pas, comme le chemin KLASSCI l'a
      * toujours fait.
      *
-     * Un enseignant n'y lit que ses leçons, dans les deux types d'école : la
-     * règle des listes, {@see LessonReadScope::limitToAuthor()}.
+     * Les règles des listes s'y appliquent, dans les deux types d'école : un
+     * apprenant n'y lit que les leçons publiées de ses classes
+     * ({@see LessonReadScope::limitToAudience()}), un enseignant que les siennes
+     * ({@see LessonReadScope::limitToAuthor()}).
      *
      * @param  list<int>|null  $classeIds
      * @return array<int, array<string, mixed>>
@@ -147,11 +150,10 @@ final class MatiereLessonsAndStatsBuilder
             $query->whereIn('classe_id', $classeIds);
         }
 
+        $this->readScope->limitToAudience($query, $user);
         $this->readScope->limitToAuthor($query, $user);
 
         if ($user->isLearnerAudience()) {
-            $query->published();
-
             // PERF-03 — eager load `progress` filtered to current user.
             $query->with(['progress' => function ($q) use ($user) {
                 $q->where('user_id', $user->id);

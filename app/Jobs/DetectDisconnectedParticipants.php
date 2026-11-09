@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use App\Models\ESBTPAttendance;
+use App\Support\Logging\CaughtExceptionLog;
 use Carbon\Carbon;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -121,12 +122,6 @@ class DetectDisconnectedParticipants implements ShouldQueue
     {
                 // Pattern AutoCloseEmptySeances (#209) : failed() est appelée hors
         // container (aucune injection possible) — résolution explicite.
-        /** @var LoggerInterface $logger */
-        $logger = app(LoggerInterface::class);
-
-        $logger->error('[DetectDisconnectedParticipants] Job échoué', [
-            'error' => $exception->getMessage(),
-            'trace' => $exception->getTraceAsString()
-        ]);
+        app(CaughtExceptionLog::class)->error('[DetectDisconnectedParticipants] Job échoué', $exception);
     }
 }

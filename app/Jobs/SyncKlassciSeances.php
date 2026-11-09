@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use App\Services\Seances\Sync\KlassciSeancesSyncService;
+use App\Support\Logging\CaughtExceptionLog;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -34,7 +35,7 @@ class SyncKlassciSeances implements ShouldQueue
     /**
      * Execute the job.
      */
-    public function handle(KlassciSeancesSyncService $syncService, LoggerInterface $logger): void
+    public function handle(KlassciSeancesSyncService $syncService, LoggerInterface $logger, CaughtExceptionLog $journal): void
     {
         $logger->info('Job SyncKlassciSeances démarré');
 
@@ -43,10 +44,7 @@ class SyncKlassciSeances implements ShouldQueue
 
             $logger->info('Job SyncKlassciSeances terminé', $stats->toArray());
         } catch (\Exception $e) {
-            $logger->error('Erreur fatale dans job SyncKlassciSeances', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-            ]);
+            $journal->error('Erreur fatale dans job SyncKlassciSeances', $e);
             // Re-throw pour permettre au retry mechanism de fonctionner.
             throw $e;
         }
@@ -59,12 +57,8 @@ class SyncKlassciSeances implements ShouldQueue
     {
         // Pattern AutoCloseEmptySeances (#209) : failed() est appelée hors
         // container (aucune injection possible) — résolution explicite.
-        /** @var LoggerInterface $logger */
-        $logger = app(LoggerInterface::class);
-
-        $logger->error('[SyncKlassciSeances] Job failed after all retries', [
+        app(CaughtExceptionLog::class)->error('[SyncKlassciSeances] Job failed after all retries', $exception, [
             'tries' => $this->tries,
-            'exception' => $exception->getMessage(),
         ]);
     }
 }

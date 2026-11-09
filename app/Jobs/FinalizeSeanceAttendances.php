@@ -5,6 +5,7 @@ namespace App\Jobs;
 use App\Jobs\Concerns\InteractsWithDrainBudget;
 use App\Models\ESBTPAttendance;
 use App\Models\Seance;
+use App\Support\Logging\CaughtExceptionLog;
 use Carbon\Carbon;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -137,12 +138,6 @@ class FinalizeSeanceAttendances implements ShouldQueue
     {
         // Pattern AutoCloseEmptySeances (#209) : failed() est appelée hors
         // container (aucune injection possible) — résolution explicite.
-        /** @var LoggerInterface $logger */
-        $logger = app(LoggerInterface::class);
-
-        $logger->error('[FinalizeSeanceAttendances] Job échoué', [
-            'error' => $exception->getMessage(),
-            'trace' => $exception->getTraceAsString(),
-        ]);
+        app(CaughtExceptionLog::class)->error('[FinalizeSeanceAttendances] Job échoué', $exception);
     }
 }

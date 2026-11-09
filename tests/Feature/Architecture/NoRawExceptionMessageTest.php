@@ -60,7 +60,6 @@ final class NoRawExceptionMessageTest extends TestCase
 
     /** @var array<string, int> fichier => compte ; ne fait que décroître. */
     private const SITES_A_MIGRER = [
-        'app/Console/Commands/NotifyUpcomingEvaluations.php' => 1,
         'app/Http/Controllers/API/AuthController.php' => 1,
         'app/Http/Controllers/API/Evaluation/EvaluationKlassciSyncController.php' => 2,
         'app/Http/Controllers/API/Evaluation/Student/EvaluationStudentAttemptController.php' => 3,
@@ -78,16 +77,6 @@ final class NoRawExceptionMessageTest extends TestCase
         'app/Http/Controllers/API/Proxy/ProxyDashboardController.php' => 2,
         'app/Http/Controllers/API/TeacherStatsController.php' => 2,
         'app/Http/Middleware/EnsureKlassciSync.php' => 1,
-        'app/Jobs/ArchiveOldSeances.php' => 3,
-        'app/Jobs/AutoCloseEmptySeances.php' => 2,
-        'app/Jobs/CleanOldEvaluations.php' => 1,
-        'app/Jobs/DetectDisconnectedParticipants.php' => 2,
-        'app/Jobs/DispatchLessonPublishedNotifications.php' => 2,
-        'app/Jobs/DispatchVisioNotification.php' => 1,
-        'app/Jobs/FinalizeSeanceAttendances.php' => 2,
-        'app/Jobs/SyncKlassciClasse.php' => 1,
-        'app/Jobs/SyncKlassciSeances.php' => 3,
-        'app/Jobs/SyncUserClasses.php' => 1,
         'app/Services/Attendances/AttendanceHistoryQueryService.php' => 3,
         'app/Services/Attendances/SeanceAttendancesQueryService.php' => 2,
         'app/Services/Attendances/VideoSessionAttendancesSyncer.php' => 3,

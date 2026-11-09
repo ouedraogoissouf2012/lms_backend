@@ -11,7 +11,10 @@ use App\Services\Classe\ClasseEtudiantsQueryService;
 use App\Services\Classe\ClasseEtudiantsReader;
 use App\Services\Classe\ClasseLocalDetailsService;
 use App\Services\Classe\ClasseLocalDoorReader;
+use App\Services\Classe\InstitutionClassesReader;
+use App\Services\Classe\KlassciInstitutionClassesReader;
 use App\Services\Classe\LocalClasseDetailsReader;
+use App\Services\Classe\LocalInstitutionClassesReader;
 use App\Services\Classe\LocalTeacherClassesReader;
 use App\Services\Classe\TeacherClassesQueryService;
 use App\Services\Classe\TeacherClassesReader;
@@ -93,6 +96,13 @@ final class CatalogueServiceProvider extends ServiceProvider
             ClasseEtudiantsReader::class,
             static fn ($app) => $app->make(RosterAuthorityFactory::class)
                 ->sourceForCurrentTenant(ClasseEtudiantsQueryService::class, LocalClasseDetailsReader::class),
+        );
+
+        // Lot 3a : les classes de l'établissement, pour les écrans de gestion.
+        $this->app->bind(
+            InstitutionClassesReader::class,
+            static fn ($app) => $app->make(RosterAuthorityFactory::class)
+                ->sourceForCurrentTenant(KlassciInstitutionClassesReader::class, LocalInstitutionClassesReader::class),
         );
     }
 }

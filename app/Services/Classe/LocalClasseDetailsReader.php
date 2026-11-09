@@ -30,8 +30,9 @@ use Illuminate\Support\Facades\DB;
  * | apprenant, et tout rôle non reconnu (#941) | une classe où son inscription est ACTIVE (D57) | `[]` (GHSA-gg7j) |
  *
  * Hors de ces cas, 404 « Classe non trouvée » — le corps de la source KLASSCI,
- * qui ne dit pas si la classe existe ailleurs. « Désigné » est la règle de
- * {@see ClassesEnseignees}, la même que « Mes classes ».
+ * qui ne dit pas si la classe existe ailleurs. La grille est écrite une fois,
+ * dans {@see ClassesAtteintes}, qui sert aussi la liste des classes de
+ * l'établissement.
  *
  * ÉCART CONNU, échec fermé : le rôle est lu par `isManager()` / `isTeacher()`
  * (correspondance exacte), alors que la garde de rôle des routes ignore la casse
@@ -139,23 +140,11 @@ final class LocalClasseDetailsReader implements ClasseDetailsReader, ClasseEtudi
         }
 
         // Bornage EXPLICITE : le scope global est fail-open sans tenant.
-        $classe = Classe::query()
-            ->where('institution_id', $institution)
-            ->whereKey($classeId);
-
-        if ($user->isManager()) {
-            return $classe->first();
-        }
-
-        if ($user->isTeacher()) {
-            ClassesEnseignees::par($classe, $user->id, $institution);
-        } else {
-            $classe->whereHas('etudiants', static function ($inscrits) use ($user): void {
-                $inscrits->where('users.id', $user->id)->where('classe_etudiant.statut', 'actif');
-            });
-        }
-
-        return $classe->first();
+        return ClassesAtteintes::par(
+            Classe::query()->where('institution_id', $institution)->whereKey($classeId),
+            $user,
+            $institution,
+        )->first();
     }
 
     /**

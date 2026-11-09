@@ -107,6 +107,17 @@ class TrainingSession extends Model
     }
 
     /**
+     * « Active » : publiée, et ouverte aux inscriptions ou en cours. C'est la
+     * seule règle qui dit si une classe d'une école créée depuis le LMS est
+     * « active cette année » (lot 3a) : un fait daté, jamais une valeur inventée.
+     */
+    public function estActive(): bool
+    {
+        return $this->status === TrainingSessionStatus::Publiee
+            && in_array($this->phase, [TrainingSessionPhase::InscriptionsOuvertes, TrainingSessionPhase::EnCours], true);
+    }
+
+    /**
      * La phase, LUE des dates — jamais écrite.
      *
      * @return Attribute<TrainingSessionPhase, never>

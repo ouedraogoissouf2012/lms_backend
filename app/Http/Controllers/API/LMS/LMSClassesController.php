@@ -61,8 +61,11 @@ final class LMSClassesController extends AuthenticatedController
      */
     public function classeDetails(int $classeId, Request $request, ClasseDetailsReader $details): JsonResponse
     {
+        // Hors du `try` : un compte absent est un 401 du gestionnaire global,
+        // jamais une panne du filet (que le rapporteur tairait).
+        $user = $this->authenticatedUser($request);
+
         try {
-            $user = $this->authenticatedUser($request);
             $result = $details->getDetailsForUser($classeId, $user);
 
             return $this->relayResponse($result);
@@ -89,8 +92,9 @@ final class LMSClassesController extends AuthenticatedController
      */
     public function classeEtudiants(int $classeId, Request $request, ClasseEtudiantsReader $etudiants): JsonResponse
     {
+        $user = $this->authenticatedUser($request);
+
         try {
-            $user = $this->authenticatedUser($request);
             $result = $etudiants->getEtudiants($classeId, $user);
 
             return $this->relayResponse($result);

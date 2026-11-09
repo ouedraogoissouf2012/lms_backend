@@ -16,15 +16,18 @@ use Illuminate\Database\Eloquent\Builder;
  * UNE règle, pour « Mes classes » ({@see LocalTeacherClassesReader}) et pour la
  * grille d'accès de la fiche ({@see LocalClasseDetailsReader}). Écrite deux fois,
  * elle avait déjà divergé : la liste bornait la matière à l'établissement, la
- * fiche non.
+ * fiche non. Les lecteurs des matières (lot 1) gardent leur propre copie, à
+ * réunir ici quand un lot les touchera.
  *
  * Pas un scope du modèle : `Classe` est à la limite de taille des modèles.
  */
 final class ClassesEnseignees
 {
     /**
-     * Le bornage de la matière passe par le modèle `Matiere` : une colonne
-     * qualifiée `matieres.*` dans la fermeture échappe au schéma que lit PHPStan.
+     * Le bornage de la matière passe par une sous-requête sur le modèle
+     * `Matiere` : écrit `matieres.institution_id` dans la fermeture, il était
+     * refusé par PHPStan, dont le schéma ne voit pas cette colonne sur `matieres`
+     * (CI de #1001).
      *
      * @param  Builder<Classe>  $classes
      * @return Builder<Classe>

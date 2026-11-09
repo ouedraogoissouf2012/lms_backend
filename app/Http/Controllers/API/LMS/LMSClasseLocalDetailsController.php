@@ -36,10 +36,10 @@ final class LMSClasseLocalDetailsController extends AuthenticatedController
 
     public function show(int $classeId, Request $request, ClasseLocalDoorReader $details): JsonResponse
     {
+        $user = $this->authenticatedUser($request);
+
         try {
-            return $this->relayResponse(
-                $details->detailsForLocalId($classeId, $this->authenticatedUser($request)),
-            );
+            return $this->relayResponse($details->detailsForLocalId($classeId, $user));
         } catch (RuntimeException $e) {
             return $this->renderKlassciFailure($e);
         }

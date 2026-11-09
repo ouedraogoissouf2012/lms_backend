@@ -21,12 +21,14 @@ use App\Models\User;
  * ## Les classes de l'APPELANT, coordinateur compris
  *
  * Celles où il est désigné formateur d'au moins une matière
- * (`classe_matiere.enseignant_id`) — la règle de « Mes matières » au lot 1,
- * écrite une seule fois dans {@see ClassesEnseignees}.
+ * (`classe_matiere.enseignant_id`) — la même règle que « Mes matières » au
+ * lot 1. Pour les classes, elle est écrite une seule fois, dans
+ * {@see ClassesEnseignees} ; les lecteurs du lot 1 gardent la leur.
  *
  * ## Deux effectifs, deux sens
  *
- * - `effectif_actuel` : les inscriptions ACTIVES (D57), un fait mesuré.
+ * - `effectif_actuel` : les inscriptions ACTIVES (D57) d'élèves de
+ *   l'établissement, un fait mesuré ; le même compte que la fiche.
  * - `effectif` : `null`. La colonne n'est tenue que par le synchroniseur
  *   KLASSCI et vaut 0 pour une classe locale ; l'exposer afficherait un zéro
  *   faux (même règle que `ClassesLocalesListTest`).
@@ -53,7 +55,9 @@ final class LocalTeacherClassesReader implements TeacherClassesReader
             $teacher->id,
             $institution,
         )
-            ->withCount(['etudiantsActifs as effectif_actuel'])
+            ->withCount(['etudiantsActifs as effectif_actuel' => static function ($inscrits) use ($institution): void {
+                $inscrits->whereIn('users.id', User::query()->where('institution_id', $institution)->select('id'));
+            }])
             // L'ordre est un CONTRAT : la liste se rend en cartes, qui ne
             // doivent pas sauter d'un chargement à l'autre.
             ->orderBy('libelle')

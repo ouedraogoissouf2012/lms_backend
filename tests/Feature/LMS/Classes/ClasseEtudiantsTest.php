@@ -31,8 +31,10 @@ use Tests\TestCase;
  * `Sanctum::actingAs` (aucun tenant résolu) : il prouvait un appel que la
  * production ne réussit jamais. Ici, jeton porteur réel (`asTenant`).
  *
- * Volet KLASSCI : tous les cas ci-dessous. Volet autonome : un compte sans jeton
- * KLASSCI reçoit le 401 motivé — ce roster n'a pas de source locale (hors lot).
+ * École créée depuis KLASSCI : les cas ci-dessous. École créée depuis le LMS : le
+ * roster a désormais sa source locale (ADR-EI-01), que
+ * `ClassesEcoleIndependanteTest` couvre ; ici, un seul cas, la classe inconnue,
+ * qui rend le 404 sans aucun appel.
  *
  * Note : le filtre est volontairement permissif (`!isset($statut) || $statut ===
  * 'actif'`), à la différence de `classeDetails` (strict).
@@ -183,7 +185,11 @@ final class ClasseEtudiantsTest extends TestCase
         Http::assertNothingSent();
     }
 
-    public function test_un_compte_d_ecole_autonome_recoit_le_401_motive(): void
+    /**
+     * Une école créée depuis le LMS lit le roster LOCAL (ADR-EI-01) : plus de 401
+     * de jeton. Une classe qu'elle n'a pas rend le 404, toujours sans appel.
+     */
+    public function test_une_classe_inconnue_d_une_ecole_creee_depuis_le_lms_rend_404_sans_appel(): void
     {
         Http::fake();
         $autonome = Institution::factory()->standalone()->create();
@@ -194,8 +200,8 @@ final class ClasseEtudiantsTest extends TestCase
         ]);
 
         $this->appeler($enseignant)
-            ->assertUnauthorized()
-            ->assertExactJson(MissingKlassciTokenException::payload());
+            ->assertNotFound()
+            ->assertExactJson(['success' => false, 'message' => 'Classe non trouvée']);
         Http::assertNothingSent();
     }
 

@@ -52,7 +52,7 @@ use Psr\Log\LoggerInterface;
  *
  * @see app/Http/Controllers/API/LMS/LMSClassesController.php
  */
-final class ClasseEtudiantsQueryService
+final class ClasseEtudiantsQueryService implements ClasseEtudiantsReader
 {
     public function __construct(
         private readonly ClasseRoster $roster,

@@ -8,7 +8,6 @@ use App\Exceptions\MissingKlassciTokenException;
 use App\Models\User;
 use App\Services\KlassciProxyService;
 use Psr\Log\LoggerInterface;
-use Throwable;
 
 /**
  * Orchestrateur « détails classe ». Extrait de
@@ -18,7 +17,7 @@ use Throwable;
  * + stats. Blocs secondaires en dégradation gracieuse (échec amont KLASSCI →
  * bloc vide, warning logué).
  */
-final class ClasseDetailsQueryService
+final class ClasseDetailsQueryService implements ClasseDetailsReader
 {
     public function __construct(
         private readonly KlassciProxyService $klassciService,
@@ -30,6 +29,8 @@ final class ClasseDetailsQueryService
      * Construit le payload « détails classe » pour un utilisateur authentifié.
      *
      * @return array{status: int, payload: array<string, mixed>}
+     *
+     * @throws \RuntimeException refus (4xx) ou indisponibilité de KLASSCI.
      */
     public function getDetailsForUser(int $classeId, User $user): array
     {
@@ -107,67 +108,60 @@ final class ClasseDetailsQueryService
      * `matieres` et `emploi_temps` valent `null` quand l'enveloppe ne porte PAS
      * le bloc : une absence amont ne doit pas se présenter comme une mesure nulle.
      *
-     * @return array{status: 200, classe: array<string, mixed>, etudiants: array<int, array<string, mixed>>, matieres: ?array<int, array<string, mixed>>, emploi_temps: ?array<int, array<string, mixed>>}|array{status: 404|500, payload: array<string, mixed>}
+     * Un échec de KLASSCI n'est PAS rattrapé ici : il remonte en
+     * `RuntimeException`, que le contrôleur rend par `RendersKlassciBackedErrors`
+     * (4xx relayé avec son motif, panne en 503 + `Retry-After`), comme le roster
+     * de {@see ClasseEtudiantsQueryService}. L'ancien `catch (Throwable)` les
+     * écrasait en 500.
+     *
+     * @return array{status: 200, classe: array<string, mixed>, etudiants: array<int, array<string, mixed>>, matieres: ?array<int, array<string, mixed>>, emploi_temps: ?array<int, array<string, mixed>>}|array{status: 404, payload: array<string, mixed>}
+     *
+     * @throws \RuntimeException refus (4xx) ou indisponibilité de KLASSCI.
      */
     private function fetchClasse(int $classeId, string $klassciToken): array
     {
-        try {
-            $classeResponse = $this->klassciService->requestWithUserToken(
-                $klassciToken,
-                "classes/{$classeId}?with=filiere,niveau",
-                'GET'
-            );
+        $classeResponse = $this->klassciService->requestWithUserToken(
+            $klassciToken,
+            "classes/{$classeId}?with=filiere,niveau",
+            'GET'
+        );
 
-            // `data` est une ENVELOPPE : {classe, etudiants, matieres, evaluations,
-            // emploi_temps_semaine, statistiques}. La prendre pour la classe
-            // elle-même perdait `filiere` et `niveau`, et masquait le fait que les
-            // étudiants s'y trouvaient déjà.
-            /** @var array<string, mixed>|null $payload */
-            $payload = $classeResponse['data'] ?? null;
-            $classe = ClasseEnvelope::classe($payload);
-            $etudiants = ClasseEnvelope::etudiants($payload);
+        // `data` est une ENVELOPPE : {classe, etudiants, matieres, evaluations,
+        // emploi_temps_semaine, statistiques}. La prendre pour la classe
+        // elle-même perdait `filiere` et `niveau`, et masquait le fait que les
+        // étudiants s'y trouvaient déjà.
+        /** @var array<string, mixed>|null $payload */
+        $payload = $classeResponse['data'] ?? null;
+        $classe = ClasseEnvelope::classe($payload);
+        $etudiants = ClasseEnvelope::etudiants($payload);
 
-            $this->logger->info('Classe récupérée depuis KLASSCI', [
-                'classe_id' => $classeId,
-                'has_filiere' => isset($classe['filiere']),
-                'filiere_id' => $classe['filiere']['id'] ?? 'N/A',
-                'has_niveau' => isset($classe['niveau']),
-                'niveau_id' => $classe['niveau']['id'] ?? 'N/A',
-                'classe_data' => $classe,
-            ]);
+        $this->logger->info('Classe récupérée depuis KLASSCI', [
+            'classe_id' => $classeId,
+            'has_filiere' => isset($classe['filiere']),
+            'filiere_id' => $classe['filiere']['id'] ?? 'N/A',
+            'has_niveau' => isset($classe['niveau']),
+            'niveau_id' => $classe['niveau']['id'] ?? 'N/A',
+            'classe_data' => $classe,
+        ]);
 
-            if (!$classe) {
-                return [
-                    'status' => 404,
-                    'payload' => [
-                        'success' => false,
-                        'message' => 'Classe non trouvée',
-                    ],
-                ];
-            }
-
-            /** @var array<string, mixed> $classe */
+        if (!$classe) {
             return [
-                'status' => 200,
-                'classe' => $classe,
-                'etudiants' => $etudiants,
-                'matieres' => ClasseEnvelope::optionalList($payload, 'matieres'),
-                'emploi_temps' => ClasseEnvelope::optionalList($payload, 'emploi_temps_semaine'),
-            ];
-        } catch (Throwable $e) {
-            $this->logger->error('Erreur récupération classe', [
-                'classe_id' => $classeId,
-                'error' => $e->getMessage(),
-            ]);
-
-            return [
-                'status' => 500,
+                'status' => 404,
                 'payload' => [
                     'success' => false,
-                    'message' => 'Erreur lors de la récupération de la classe',
+                    'message' => 'Classe non trouvée',
                 ],
             ];
         }
+
+        /** @var array<string, mixed> $classe */
+        return [
+            'status' => 200,
+            'classe' => $classe,
+            'etudiants' => $etudiants,
+            'matieres' => ClasseEnvelope::optionalList($payload, 'matieres'),
+            'emploi_temps' => ClasseEnvelope::optionalList($payload, 'emploi_temps_semaine'),
+        ];
     }
 
     /**

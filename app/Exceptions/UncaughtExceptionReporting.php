@@ -37,9 +37,9 @@ use Throwable;
  * De la requête, seuls la route (nommée, ou le chemin sans chaîne de requête) et
  * la méthode sont écrits ; `request_id` l'est déjà par `AssignRequestId`
  * (`Log::shareContext`). Ni corps, ni chaîne de requête, ni en-tête, ni compte ;
- * seul le rapport par défaut d'une panne hors SQL porte encore le `userId` que
- * Laravel y ajoute (`Handler::context()`), dont le retrait est différé au lot
- * Handler.
+ * seul le rapport par défaut d'une panne hors SQL porte le `userId` que
+ * Laravel y ajoute (`Handler::context()`). Il est gardé : c'est un identifiant
+ * interne, le seul lien entre une panne et un compte.
  *
  * Résolue par `bootstrap/app.php`, racine de composition, dans chaque callback.
  */

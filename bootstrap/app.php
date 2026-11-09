@@ -96,9 +96,12 @@ $app = Application::configure(basePath: dirname(__DIR__))
             }
         });
 
-        // Handle ValidationException for FormRequests
+        // Saisie invalide (FormRequest, validate()) : 422 JSON. Même règle que le
+        // 401 ci-dessus : une route `api/*` y a droit sans `Accept: application/json`,
+        // sinon Laravel rend une redirection HTML à un client qui n'en a que faire.
+        // Les routes web gardent la redirection de Laravel.
         $exceptions->render(function (\Illuminate\Validation\ValidationException $e, $request) {
-            if ($request->expectsJson()) {
+            if ($request->expectsJson() || $request->is('api/*')) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Validation failed',

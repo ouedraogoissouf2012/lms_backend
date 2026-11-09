@@ -292,6 +292,11 @@ flowchart TD
 
 ## Error Handling
 
+> **Historique (2026-11-09).** `app/Exceptions/Handler.php`, cité ci-dessous comme gestionnaire central, n'était plus
+> lu depuis Laravel 11 : le gestionnaire est configuré dans `bootstrap/app.php` (`withExceptions`). Le fichier a été
+> supprimé, et son seul rendu voulu, le 422 JSON d'une route `api/*`, vit désormais dans `bootstrap/app.php`. Le
+> reste de ce document est conservé tel quel.
+
 - **Erreurs Redis (connexion, timeout, échec d'écriture)** — jamais de `$e->getMessage()` brut au client (Requirement 10.3, déjà la convention du projet, cf. `LMSEnseignantsController.php:106-117` et `PRODUCTION_STANDARDS.md` checklist pré-commit). `TenantScopedCache` ne catch **pas** ces exceptions elle-même : elles remontent au gestionnaire d'exception central de l'application (`app/Exceptions/Handler.php`, déjà audité PR #42 « Critical 02/exception handler v2 ») qui les traduit en réponse générique. Aucune nouvelle logique de traduction d'erreur n'est introduite ici — réutilisation du mécanisme existant, pas de duplication.
 - **`flushTenant()` sur store sans support des tags** — jamais d'exception (`BadMethodCallException` sinon levée par `Illuminate\Cache\Repository::tags()`), toujours un `warning` loggé puis retour silencieux. Décision tranchée pour Requirement 4.5 : **ignorer silencieusement plutôt qu'invalider plus largement**, car « invalider plus largement » signifierait réintroduire exactement le `Cache::flush()` global que `CONTRIBUTING.md:258` interdit — la dégradation ne doit jamais escalader vers un rayon d'action plus large que ce qui était demandé. Cohérent avec Requirement 6.2 (« sans provoquer d'erreur fatale ni de corruption d'état »).
 - **Mode dégradé `database` et tags** — même chemin de code que ci-dessus : `supportsTags()` retourne `false` pour `Illuminate\Cache\DatabaseStore` (vérifié dans le code source Laravel 12.0 : `class DatabaseStore implements LockProvider, Store` — n'étend pas `TaggableStore`, ne définit pas `tags()`). Aucune branche de code séparée n'est nécessaire pour le mode dégradé : c'est la **même** condition `supportsTags()` qui couvre à la fois « store non-taggable en prod redis absent » et « store `database` explicitement choisi ».

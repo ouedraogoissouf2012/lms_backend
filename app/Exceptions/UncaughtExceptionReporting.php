@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Exceptions;
 
+use App\Support\Logging\ExceptionDescription;
 use Illuminate\Auth\Access\AuthorizationException;
-use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Route;
 use Psr\Log\LoggerInterface;
@@ -51,6 +51,7 @@ final class UncaughtExceptionReporting
 
     public function __construct(
         private readonly LoggerInterface $logger,
+        private readonly ExceptionDescription $description,
     ) {}
 
     /** Un 4xx autre qu'un refus d'accès : rien à journaliser. */
@@ -68,9 +69,13 @@ final class UncaughtExceptionReporting
      */
     public function report(Throwable $e, Request $request): ?bool
     {
-        $query = $this->queryExceptionIn($e);
-        if ($query !== null) {
-            $this->reportQueryFailure($e, $query, $request);
+        $queryFailure = $this->description->queryFailure($e);
+        if ($queryFailure !== null) {
+            // La description ne porte ni message ni valeur (ExceptionDescription) ;
+            // la trace de tête est sans arguments (zend.exception_ignore_args).
+            $this->logger->error(self::QUERY_FAILURE_MESSAGE, $queryFailure + [
+                'trace' => $e->getTraceAsString(),
+            ] + $this->requestContext($request));
 
             return false;
         }
@@ -101,43 +106,6 @@ final class UncaughtExceptionReporting
             'route' => $route->getName() ?? $request->path(),
             'method' => $request->getMethod(),
         ];
-    }
-
-    /**
-     * La `QueryException` de tête, ou la première de la chaîne `previous` : une
-     * enveloppe (`DeadlockException`, `ViewException`…) recopie souvent son
-     * message, et le formateur écrirait toute la chaîne.
-     */
-    private function queryExceptionIn(Throwable $e): ?QueryException
-    {
-        for ($maillon = $e; $maillon !== null; $maillon = $maillon->getPrevious()) {
-            if ($maillon instanceof QueryException) {
-                return $maillon;
-            }
-        }
-
-        return null;
-    }
-
-    /**
-     * Le message d'une `QueryException` porte le SQL avec ses valeurs liées, et
-     * les détails de la connexion ; une enveloppe le recopie. Aucun message n'est
-     * écrit, et aucune exception n'est passée au contexte : le formateur en
-     * écrirait le message et la chaîne `previous`. Le message du pilote non plus,
-     * il peut citer une valeur (MySQL 1062 : « Duplicate entry »). Restent la
-     * classe de tête, le SQL à marqueurs, la connexion, les codes, et la trace de
-     * tête, dont `zend.exception_ignore_args` a retiré les arguments.
-     */
-    private function reportQueryFailure(Throwable $e, QueryException $query, Request $request): void
-    {
-        $this->logger->error(self::QUERY_FAILURE_MESSAGE, [
-            'exception_class' => $e::class,
-            'connection' => $query->getConnectionName(),
-            'sql' => $query->getSql(),
-            'code' => $query->getCode(),
-            'driver_code' => $query->errorInfo[1] ?? null,
-            'trace' => $e->getTraceAsString(),
-        ] + $this->requestContext($request));
     }
 
     /** Le statut HTTP que portera la réponse, ou null pour une panne sans statut. */

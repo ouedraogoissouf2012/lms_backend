@@ -66,7 +66,8 @@ final class LessonReadScopeAuthorTest extends TestCase
         $requete = Lesson::query();
         app(LessonReadScope::class)->limitToAuthor($requete, $compte);
 
-        self::assertSame(['enseignant_id'], $this->colonnes($requete));
+        // Colonne qualifiée : `classe_matiere` porte aussi un `enseignant_id`.
+        self::assertSame(['lessons.enseignant_id'], $this->colonnes($requete));
         self::assertSame([41], $requete->getBindings());
     }
 

@@ -79,7 +79,7 @@ final class ListesDesLeconsDeLEnseignantTest extends TestCase
     public static function gestion(): iterable
     {
         foreach (self::ecoles() as $nom => [$mode]) {
-            foreach (['coordinateur', 'admin', 'superAdmin'] as $role) {
+            foreach (['coordinateur', 'coordinator', 'admin', 'administrateur', 'superAdmin'] as $role) {
                 yield "{$role}, {$nom}" => [$mode, $role];
             }
         }
@@ -110,6 +110,25 @@ final class ListesDesLeconsDeLEnseignantTest extends TestCase
             ->assertOk()
             ->assertJsonPath('data.total', 0)
             ->assertJsonPath('data.data', []);
+    }
+
+    /**
+     * La borne d'auteur ne remplace pas celle de l'école : une leçon qu'il a
+     * écrite dans une AUTRE école (compte déplacé, donnée ancienne) n'est pas
+     * listée.
+     */
+    #[DataProvider('ecoles')]
+    public function test_ses_lecons_d_une_autre_ecole_ne_sont_pas_listees(InstitutionMode $mode): void
+    {
+        $this->ecoleAvecDeuxEnseignants($mode, 'enseignant');
+        $ailleurs = Institution::factory()->create(['mode' => $mode]);
+        Lesson::factory()->published()->create(['institution_id' => $ailleurs->id, 'enseignant_id' => $this->moi->id]);
+
+        $liste = $this->asTenant($this->moi)->getJson('/api/lessons?per_page=100')->assertOk();
+        self::assertSame($this->ids($this->miennes), $this->idsDe($liste->json('data.data')));
+
+        $mesCours = $this->asTenant($this->moi)->getJson('/api/lessons/my-courses?per_page=100')->assertOk();
+        self::assertSame([$this->miennes['publiee']->id], $this->idsDe($mesCours->json('data')));
     }
 
     #[DataProvider('gestion')]

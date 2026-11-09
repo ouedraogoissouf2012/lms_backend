@@ -8,6 +8,7 @@ use App\Http\Controllers\API\Concerns\RendersKlassciBackedErrors;
 use App\Http\Controllers\AuthenticatedController;
 use App\Services\Matiere\MatiereDetailsReader;
 use App\Services\Matiere\TeacherMatieresReader;
+use App\Support\Logging\CaughtExceptionLog;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -44,6 +45,7 @@ final class LMSMatieresQueryController extends AuthenticatedController
 
     public function __construct(
         private readonly LoggerInterface $logger,
+        private readonly CaughtExceptionLog $journal,
     ) {}
 
     /**
@@ -105,10 +107,8 @@ final class LMSMatieresQueryController extends AuthenticatedController
 
     private function echecDetails(int $matiereId, Throwable $e): JsonResponse
     {
-        $this->logger->error('Erreur récupération détails matière', [
+        $this->journal->error('Erreur récupération détails matière', $e, [
             'matiere_id' => $matiereId,
-            'error' => $e->getMessage(),
-            'trace' => $e->getTraceAsString(),
         ]);
 
         // Réponse NON migrée : la clé racine `error` (hors enveloppe standard)
@@ -123,10 +123,7 @@ final class LMSMatieresQueryController extends AuthenticatedController
     private function echecMesMatieres(Throwable $e): JsonResponse
     {
         // §1.2 — Detail logged server-side, generic message to client.
-        $this->logger->error('Erreur myMatieres', [
-            'error' => $e->getMessage(),
-            'trace' => $e->getTraceAsString(),
-        ]);
+        $this->journal->error('Erreur myMatieres', $e);
 
         return $this->errorResponse('Erreur lors du chargement des matières.', 500);
     }

@@ -51,6 +51,7 @@ final class NoRawExceptionMessageTest extends TestCase
 
     /** @var array<string, array{0: int, 1: string}> fichier => [compte, motif] */
     private const SITES_NOMMES = [
+        'app/Http/Controllers/API/Evaluation/Student/EvaluationStudentAttemptController.php' => [1, 'comparaison avec le message d\'un service métier ; rien n\'est écrit'],
         'app/Exceptions/KlassciUnavailableException.php' => [1, 'transport KLASSCI : le message d\'une ConnectionException (hôte, URL)'],
         'app/Services/Klassci/Auth/KlassciAuthClient.php' => [1, 'transport KLASSCI : message d\'une ConnectionException'],
         'app/Services/Klassci/Health/HttpKlassciReachability.php' => [1, 'mesure de joignabilité : message d\'une ConnectionException'],
@@ -60,23 +61,6 @@ final class NoRawExceptionMessageTest extends TestCase
 
     /** @var array<string, int> fichier => compte ; ne fait que décroître. */
     private const SITES_A_MIGRER = [
-        'app/Http/Controllers/API/AuthController.php' => 1,
-        'app/Http/Controllers/API/Evaluation/EvaluationKlassciSyncController.php' => 2,
-        'app/Http/Controllers/API/Evaluation/Student/EvaluationStudentAttemptController.php' => 3,
-        'app/Http/Controllers/API/Evaluation/Student/EvaluationStudentListController.php' => 3,
-        'app/Http/Controllers/API/Evaluation/Student/EvaluationStudentSubmissionController.php' => 1,
-        'app/Http/Controllers/API/InstitutionController.php' => 1,
-        'app/Http/Controllers/API/LMS/Concerns/FetchesSeanceDataFromKlassci.php' => 1,
-        'app/Http/Controllers/API/LMS/LMSEnseignantsController.php' => 2,
-        'app/Http/Controllers/API/LMS/LMSMatieresAdminController.php' => 2,
-        'app/Http/Controllers/API/LMS/LMSMatieresQueryController.php' => 4,
-        'app/Http/Controllers/API/LMS/LMSNotificationsPreferencesController.php' => 1,
-        'app/Http/Controllers/API/LMS/LMSSeanceDetailsController.php' => 4,
-        'app/Http/Controllers/API/LMS/LMSSeancesHistoryController.php' => 2,
-        'app/Http/Controllers/API/LMS/LMSSeancesListController.php' => 6,
-        'app/Http/Controllers/API/Proxy/ProxyDashboardController.php' => 2,
-        'app/Http/Controllers/API/TeacherStatsController.php' => 2,
-        'app/Http/Middleware/EnsureKlassciSync.php' => 1,
         'app/Services/Attendances/AttendanceHistoryQueryService.php' => 3,
         'app/Services/Attendances/SeanceAttendancesQueryService.php' => 2,
         'app/Services/Attendances/VideoSessionAttendancesSyncer.php' => 3,

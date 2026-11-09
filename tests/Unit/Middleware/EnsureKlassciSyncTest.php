@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Services\Klassci\Data\KlassciDataWhitelist;
 use App\Services\Klassci\Sync\TokenPresentSyncGate;
 use App\Services\KlassciProxyService;
+use App\Support\Logging\CaughtExceptionLog;
 use Illuminate\Http\Request;
 use Mockery;
 use PHPUnit\Framework\Attributes\CoversClass;
@@ -135,6 +136,7 @@ final class EnsureKlassciSyncTest extends EnsureKlassciSyncTestCase
     {
         $user = $this->staleUser('etudiant', email: 'real@school.fr');
         $originalKlassciRole = $user->klassci_role;
+        $capturedWarnings = $this->captureLogWarnings();
 
         $klassciService = Mockery::mock(KlassciProxyService::class);
         $klassciService->shouldReceive('requestWithUserToken')
@@ -144,13 +146,20 @@ final class EnsureKlassciSyncTest extends EnsureKlassciSyncTestCase
         $request = Request::create('/api/dummy', 'GET');
         $request->setUserResolver(fn () => $user);
 
-        $middleware = new EnsureKlassciSync($klassciService, new KlassciDataWhitelist(), new TokenPresentSyncGate());
+        $middleware = new EnsureKlassciSync($klassciService, new KlassciDataWhitelist(), new TokenPresentSyncGate(), app(CaughtExceptionLog::class));
         $middleware->handle($request, fn ($req) => new Response('ok', 200));
 
         $user->refresh();
         self::assertSame('etudiant', $user->role);
         self::assertSame('real@school.fr', $user->email);
         self::assertSame($originalKlassciRole, $user->klassci_role, 'klassci_role must also be preserved on API failure.');
+
+        // L'échec est journalisé par l'aide : un avertissement, décrit, sans trace.
+        $echec = $this->findWarningByEvent($capturedWarnings, "Échec re-synchronisation KLASSCI pour user {$user->id}");
+        self::assertNotNull($echec, "L'échec de re-synchronisation doit être journalisé.");
+        self::assertSame(\Exception::class, $echec[1]['exception_class'] ?? null);
+        self::assertSame('KLASSCI down', $echec[1]['error'] ?? null);
+        self::assertArrayNotHasKey('trace', $echec[1]);
     }
 
     public function test_escalation_attempt_flag_is_false_when_klassci_role_is_less_permissive(): void
@@ -189,7 +198,7 @@ final class EnsureKlassciSyncTest extends EnsureKlassciSyncTestCase
         $request = Request::create('/api/dummy', 'GET');
         $request->setUserResolver(fn () => $user);
 
-        $middleware = new EnsureKlassciSync($klassciService, new KlassciDataWhitelist(), new TokenPresentSyncGate());
+        $middleware = new EnsureKlassciSync($klassciService, new KlassciDataWhitelist(), new TokenPresentSyncGate(), app(CaughtExceptionLog::class));
         $response = $middleware->handle($request, fn ($req) => new Response('ok', 200));
 
         self::assertSame(200, $response->getStatusCode());

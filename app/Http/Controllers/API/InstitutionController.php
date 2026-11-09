@@ -12,13 +12,13 @@ use App\Rules\KlassciApiUrl;
 use App\Services\Institution\InstitutionConnectionTester;
 use App\Services\Institution\InstitutionCrudService;
 use App\Services\Institution\InstitutionQueryService;
+use App\Support\Logging\CaughtExceptionLog;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
-use Psr\Log\LoggerInterface;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 use Throwable;
 
@@ -32,7 +32,7 @@ final class InstitutionController extends Controller
         private readonly InstitutionQueryService $queries,
         private readonly InstitutionCrudService $crud,
         private readonly InstitutionConnectionTester $connectionTester,
-        private readonly LoggerInterface $logger,
+        private readonly CaughtExceptionLog $journal,
     ) {}
 
     public function index(): JsonResponse
@@ -241,11 +241,7 @@ final class InstitutionController extends Controller
             return $this->errorResponse('Requête invalide', $e->getStatusCode());
         }
 
-        $context = ['error' => $e->getMessage()];
-        if ($id !== null) {
-            $context['id'] = $id;
-        }
-        $this->logger->error('InstitutionController@'.$method, $context);
+        $this->journal->error('InstitutionController@'.$method, $e, $id !== null ? ['id' => $id] : []);
 
         return $this->errorResponse($message, 500);
     }

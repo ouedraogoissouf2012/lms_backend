@@ -4,6 +4,15 @@ use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 
+// #948 — une trace ne porte jamais les arguments des fonctions. Sans ce réglage
+// (actif dans php.ini-production, absent de l'image de production), chaque
+// trace journalisée par `getTraceAsString()` écrit les valeurs passées, chaînes
+// tronquées à 15 caractères ; or un argument peut être une donnée sensible
+// (§1.2). Posé ici, avant toute exception de l'application, il vaut pour le
+// web, artisan, les workers et les tests. La trace garde fichier, ligne et
+// fonction.
+ini_set('zend.exception_ignore_args', '1');
+
 $app = Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
         web: __DIR__.'/../routes/web.php',
@@ -131,6 +140,27 @@ $app = Application::configure(basePath: dirname(__DIR__))
             }
         });
 
+        // #948 — le RAPPORT d'une exception, distinct de son rendu : une panne
+        // (5xx, ou sans statut) est écrite une fois en `error` avec la trace, un
+        // refus d'accès (403) en `warning` sans trace, les autres 4xx pas du tout.
+        // Laravel ignore d'office `HttpException` et `AuthorizationException` : on
+        // lève cette exclusion pour décider ici, au statut. Les règles vivent dans
+        // `UncaughtExceptionReporting`, résolue ici, racine de composition.
+        $exceptions->stopIgnoring([
+            \Symfony\Component\HttpKernel\Exception\HttpException::class,
+            \Illuminate\Auth\Access\AuthorizationException::class,
+        ]);
+        $exceptions->dontReportWhen(
+            fn (\Throwable $e): bool => app(\App\Exceptions\UncaughtExceptionReporting::class)->isSilentClientError($e)
+        );
+        $exceptions->report(
+            fn (\Throwable $e): ?bool => app(\App\Exceptions\UncaughtExceptionReporting::class)
+                ->reportAccessDenied($e, request())
+        );
+        $exceptions->context(
+            fn (): array => app(\App\Exceptions\UncaughtExceptionReporting::class)->requestContext(request())
+        );
+
         $exceptions->render(function (\Throwable $e, $request) {
             if ($request->expectsJson()) {
                 $statusCode = method_exists($e, 'getStatusCode') ? $e->getStatusCode() : 500;
@@ -139,15 +169,9 @@ $app = Application::configure(basePath: dirname(__DIR__))
                 // qui est le contrat Laravel standard pour exposer les détails.
                 $message = config('app.debug') ? $e->getMessage() : 'Une erreur est survenue.';
 
-                \Illuminate\Support\Facades\Log::error('Exception non-catchée', [
-                    'exception' => get_class($e),
-                    'message' => $e->getMessage(),
-                    'url' => $request->fullUrl(),
-                    'method' => $request->getMethod(),
-                    'request_id' => $request->headers->get('X-Request-Id'),
-                    'trace' => $e->getTraceAsString(),
-                ]);
-
+                // #948 — le rendu ne journalise plus : il écrivait chaque 404 en
+                // `error` avec sa trace, et chaque panne une seconde fois, après le
+                // rapport de Laravel. Le rapport est configuré plus haut.
                 return response()->json(['success' => false, 'message' => $message], $statusCode);
             }
         });

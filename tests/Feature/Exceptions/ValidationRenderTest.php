@@ -8,6 +8,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Testing\TestResponse;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 /**
@@ -31,24 +32,42 @@ final class ValidationRenderTest extends TestCase
     {
         parent::setUp();
 
-        Route::middleware('web')->get('/_validation-web', fn (Request $requete) => $requete->validate([
-            'champ' => 'required',
-        ]));
+        $valider = fn (Request $requete): array => $requete->validate(['champ' => 'required']);
+        Route::middleware('api')->post('/api/_validation-api', $valider);
+        Route::middleware('web')->get('/_validation-web', $valider);
     }
 
-    public function test_une_route_api_sans_accept_json_rend_le_422_json(): void
+    /** @return iterable<string, array{0: array<string, string>}> */
+    public static function entetesSansJson(): iterable
     {
-        $this->assertLe422DeValidation($this->post('/api/auth/login'));
+        yield 'sans en-tête Accept' => [[]];
+        yield 'Accept d\'un export PDF' => [['Accept' => 'application/pdf']];
+        yield 'Accept HTML' => [['Accept' => 'text/html']];
+    }
+
+    /** @param  array<string, string>  $entetes */
+    #[DataProvider('entetesSansJson')]
+    public function test_une_route_api_sans_accept_json_rend_le_422_json(array $entetes): void
+    {
+        $this->assertLe422DeValidation($this->post('/api/_validation-api', [], $entetes));
     }
 
     public function test_une_route_api_avec_accept_json_rend_le_meme_422(): void
     {
-        $this->assertLe422DeValidation($this->postJson('/api/auth/login'));
+        $this->assertLe422DeValidation($this->postJson('/api/_validation-api'));
     }
 
-    public function test_une_route_web_garde_la_redirection_de_laravel(): void
+    /** Le chemin réel : une FormRequest d'une route métier. */
+    public function test_une_formrequest_reelle_sans_accept_json_rend_le_422_json(): void
     {
-        $this->get('/_validation-web')->assertRedirect();
+        $this->post('/api/auth/login')
+            ->assertStatus(422)
+            ->assertJsonPath('message', 'Validation failed');
+    }
+
+    public function test_une_route_web_garde_la_redirection_de_validation_de_laravel(): void
+    {
+        $this->get('/_validation-web')->assertRedirect()->assertSessionHasErrors('champ');
     }
 
     private function assertLe422DeValidation(TestResponse $reponse): void
@@ -57,7 +76,7 @@ final class ValidationRenderTest extends TestCase
             ->assertHeader('Content-Type', 'application/json')
             ->assertJsonPath('success', false)
             ->assertJsonPath('message', 'Validation failed')
-            ->assertJsonStructure(['errors' => ['username', 'password']]);
+            ->assertJsonStructure(['errors' => ['champ']]);
         self::assertSame(['success', 'message', 'errors'], array_keys((array) $reponse->json()));
     }
 }

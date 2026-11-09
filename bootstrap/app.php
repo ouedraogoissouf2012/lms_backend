@@ -121,9 +121,9 @@ $app = Application::configure(basePath: dirname(__DIR__))
         });
 
         // #906 — une `HttpResponseException` PORTE déjà sa réponse : la rendre
-        // telle quelle, comme le fait Laravel (Handler:623). Sans ce handler, le
+        // telle quelle, comme le fait Laravel (Handler:634, 12.70.2). Sans ce handler, le
         // rendu générique \Throwable ci-dessous passe AVANT Laravel
-        // (`renderViaCallbacks`, Handler:618) et la transforme en 500 muet —
+        // (`renderViaCallbacks`, Handler:629) et la transforme en 500 muet —
         // mesuré : statut 500, `Retry-After` perdu. C'est pourtant par elle
         // qu'un seau nommé rend son propre 429 (`Limit::response()`).
         $exceptions->render(

@@ -5507,8 +5507,11 @@ paths:
               `evaluation_retake_forbidden` ;
             - evaluation qui ne se passe pas en ligne : `evaluation_offline_only`.
 
-            L appelant qui n est pas eleve recoit un refus generique, SANS
-            `reason`.
+            Les autres refus de cette route, communs a toutes :
+            - compte sans etablissement : `no_institution` ;
+            - etablissement desactive : sans `reason` ;
+            - appelant d un etablissement qui n est pas eleve : refus generique,
+              sans `reason`.
 
             Ces quatre refus n existent que dans l ecole creee depuis KLASSCI :
             dans l ecole creee depuis le LMS, le demarrage s arrete avant, faute
@@ -5535,6 +5538,7 @@ paths:
                       - evaluation_max_attempts
                       - evaluation_retake_forbidden
                       - evaluation_offline_only
+                      - no_institution
                   window:
                     $ref: '#/components/schemas/EvaluationWindow'
         '404':

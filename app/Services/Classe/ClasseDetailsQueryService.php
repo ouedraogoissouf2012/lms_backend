@@ -18,7 +18,7 @@ use Throwable;
  * + stats. Blocs secondaires en dégradation gracieuse (échec amont KLASSCI →
  * bloc vide, warning logué).
  */
-final class ClasseDetailsQueryService
+final class ClasseDetailsQueryService implements ClasseDetailsReader
 {
     public function __construct(
         private readonly KlassciProxyService $klassciService,

@@ -8,7 +8,9 @@ use App\Exceptions\UnserializablePayloadException;
 use App\Http\Controllers\API\Concerns\RendersKlassciBackedErrors;
 use App\Http\Controllers\AuthenticatedController;
 use App\Services\Classe\ClasseDetailsQueryService;
+use App\Services\Classe\ClasseDetailsReader;
 use App\Services\Classe\ClasseEtudiantsQueryService;
+use App\Services\Classe\ClasseEtudiantsReader;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Psr\Log\LoggerInterface;
@@ -27,10 +29,15 @@ use Throwable;
  *   - GET /api/lms/classes/{classeId}              → classeDetails()
  *   - GET /api/lms/classes/{classeId}/etudiants    → classeEtudiants()
  *
- * Toute la logique d'orchestration KLASSCI (5 appels API, filtres, stats,
- * dégradation gracieuse par bloc) est déléguée à :
- *   - {@see ClasseDetailsQueryService}  — endpoint « détails ».
- *   - {@see ClasseEtudiantsQueryService} — endpoint « roster étudiants ».
+ * Chaque lecture passe par un port, dont la source est choisie au point de
+ * liaison selon le type d'école (ADR-EI-01) :
+ *   - {@see ClasseDetailsReader}  — endpoint « détails » ; source KLASSCI
+ *     {@see ClasseDetailsQueryService}.
+ *   - {@see ClasseEtudiantsReader} — endpoint « roster étudiants » ; source
+ *     KLASSCI {@see ClasseEtudiantsQueryService}.
+ * La source est reçue par la MÉTHODE : Laravel garde le contrôleur sur l'objet
+ * Route, et une source reçue par le constructeur resterait celle de la première
+ * école servie.
  *
  * Le controller se borne à : auth + délégation + sérialisation JSON +
  * filet de sécurité 500 pour les exceptions imprévues.
@@ -42,8 +49,6 @@ final class LMSClassesController extends AuthenticatedController
     use RendersKlassciBackedErrors;
 
     public function __construct(
-        private readonly ClasseDetailsQueryService $detailsService,
-        private readonly ClasseEtudiantsQueryService $etudiantsService,
         private readonly LoggerInterface $logger,
     ) {}
 
@@ -52,11 +57,11 @@ final class LMSClassesController extends AuthenticatedController
      * Retourne les détails complets d'une classe (infos, étudiants actifs,
      * matières, emploi du temps de la semaine, évaluations programmées, stats).
      */
-    public function classeDetails(int $classeId, Request $request): JsonResponse
+    public function classeDetails(int $classeId, Request $request, ClasseDetailsReader $details): JsonResponse
     {
         try {
             $user = $this->authenticatedUser($request);
-            $result = $this->detailsService->getDetailsForUser($classeId, $user);
+            $result = $details->getDetailsForUser($classeId, $user);
 
             return $this->relayResponse($result);
         } catch (UnserializablePayloadException $e) {
@@ -89,11 +94,11 @@ final class LMSClassesController extends AuthenticatedController
      * Retourne la liste des étudiants d'une classe (filtre permissif —
      * cf. {@see ClasseEtudiantsQueryService}).
      */
-    public function classeEtudiants(int $classeId, Request $request): JsonResponse
+    public function classeEtudiants(int $classeId, Request $request, ClasseEtudiantsReader $etudiants): JsonResponse
     {
         try {
             $user = $this->authenticatedUser($request);
-            $result = $this->etudiantsService->getEtudiants($classeId, $user);
+            $result = $etudiants->getEtudiants($classeId, $user);
 
             return $this->relayResponse($result);
         } catch (UnserializablePayloadException $e) {

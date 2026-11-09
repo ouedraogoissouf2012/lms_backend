@@ -4,9 +4,9 @@ namespace App\Http\Controllers\API\LMS;
 
 use App\Http\Controllers\AuthenticatedController;
 use App\Models\User;
+use App\Support\Logging\CaughtExceptionLog;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
 
 /**
  * LMS Notifications Preferences — préférences de notification utilisateur.
@@ -35,6 +35,10 @@ use Illuminate\Support\Facades\Log;
  */
 final class LMSNotificationsPreferencesController extends AuthenticatedController
 {
+    public function __construct(
+        private readonly CaughtExceptionLog $journal,
+    ) {}
+
     /**
      * GET /api/lms/notifications/preferences/{userId}
      * Retourne les préférences de notification pour un utilisateur.
@@ -75,9 +79,8 @@ final class LMSNotificationsPreferencesController extends AuthenticatedControlle
             ]);
 
         } catch (\Exception $e) {
-            Log::error('Erreur récupération préférences notifications', [
+            $this->journal->error('Erreur récupération préférences notifications', $e, [
                 'user_id' => $userId,
-                'error' => $e->getMessage()
             ]);
 
             // NON migré : la clé `error` (singulier) n'est pas reproductible par

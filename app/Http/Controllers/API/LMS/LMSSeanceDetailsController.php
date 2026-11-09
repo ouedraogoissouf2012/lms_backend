@@ -7,9 +7,9 @@ namespace App\Http\Controllers\API\LMS;
 use App\Http\Controllers\API\Concerns\RendersKlassciBackedErrors;
 use App\Http\Controllers\AuthenticatedController;
 use App\Services\SeanceDetailQueryService;
+use App\Support\Logging\CaughtExceptionLog;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
 use RuntimeException;
 
 /**
@@ -36,6 +36,7 @@ final class LMSSeanceDetailsController extends AuthenticatedController
 
     public function __construct(
         private readonly SeanceDetailQueryService $seanceDetailQuery,
+        private readonly CaughtExceptionLog $journal,
     ) {}
 
     /**
@@ -57,10 +58,8 @@ final class LMSSeanceDetailsController extends AuthenticatedController
         } catch (RuntimeException $e) {
             return $this->renderKlassciFailure($e);
         } catch (\Exception $e) {
-            Log::error('Erreur récupération détails séance', [
+            $this->journal->error('Erreur récupération détails séance', $e, [
                 'seance_id' => $seanceId,
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
             ]);
 
             // NON migré : enveloppe d'erreur portant une clé sœur `error` (singulier)
@@ -91,10 +90,8 @@ final class LMSSeanceDetailsController extends AuthenticatedController
         } catch (RuntimeException $e) {
             return $this->renderKlassciFailure($e);
         } catch (\Exception $e) {
-            Log::error('Erreur récupération participants séance', [
+            $this->journal->error('Erreur récupération participants séance', $e, [
                 'seance_id' => $seanceId,
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
             ]);
 
             // NON migré : enveloppe d'erreur portant une clé sœur `error` (singulier)

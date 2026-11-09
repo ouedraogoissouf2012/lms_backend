@@ -10,6 +10,7 @@ use App\Services\Seances\AutoClose\Rules\AllParticipantsDisconnectedRule;
 use App\Services\Seances\AutoClose\Rules\NoParticipantsRule;
 use App\Services\Seances\AutoClose\Rules\TeacherDisconnectionRule;
 use App\Services\Seances\AutoClose\SeanceClosingService;
+use App\Support\Logging\CaughtExceptionLog;
 use Carbon\Carbon;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -136,18 +137,12 @@ final class AutoCloseEmptySeances implements ShouldQueue
      * Contrairement à `handle()`, le worker Laravel appelle
      * `$command->failed($e)` sans pouvoir injecter de dépendances par le
      * container (cf. {@see \Illuminate\Queue\CallQueuedHandler::failed()}).
-     * On résout le LoggerInterface via {@see app()} — c'est la seule
+     * On résout `CaughtExceptionLog` via {@see app()} — c'est la seule
      * concession §1.6 D justifiée et tracée : Laravel ne nous laisse
      * pas le choix de la signature.
      */
     public function failed(Throwable $exception): void
     {
-        /** @var LoggerInterface $logger */
-        $logger = app(LoggerInterface::class);
-
-        $logger->error('[AutoCloseEmptySeances] Job échoué', [
-            'error' => $exception->getMessage(),
-            'trace' => $exception->getTraceAsString(),
-        ]);
+        app(CaughtExceptionLog::class)->error('[AutoCloseEmptySeances] Job échoué', $exception);
     }
 }

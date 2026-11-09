@@ -6,6 +6,7 @@ use App\Enums\EvaluationStatus;
 use App\Enums\EvaluationSubmissionStatus;
 use App\Models\Evaluation;
 use App\Models\EvaluationSubmission;
+use App\Support\Logging\CaughtExceptionLog;
 use Carbon\Carbon;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
@@ -140,12 +141,8 @@ class CleanOldEvaluations implements ShouldQueue
     {
                 // Pattern AutoCloseEmptySeances (#209) : failed() est appelée hors
         // container (aucune injection possible) — résolution explicite.
-        /** @var LoggerInterface $logger */
-        $logger = app(LoggerInterface::class);
-
-        $logger->error('[CleanOldEvaluations] Job failed after all retries', [
-            'tries'     => $this->tries,
-            'exception' => $exception->getMessage(),
+        app(CaughtExceptionLog::class)->error('[CleanOldEvaluations] Job failed after all retries', $exception, [
+            'tries' => $this->tries,
         ]);
     }
 }

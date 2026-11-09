@@ -8,6 +8,7 @@ use App\Models\Institution;
 use App\Models\User;
 use App\Services\ClasseSyncService;
 use App\Services\Seances\Sync\SyncTenantContext;
+use App\Support\Logging\CaughtExceptionLog;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -120,12 +121,10 @@ final class SyncKlassciClasse implements ShouldQueue
      */
     public function failed(Throwable $exception): void
     {
-        app(LoggerInterface::class)->error('Synchronisation classe KLASSCI définitivement échouée', [
+        app(CaughtExceptionLog::class)->error('Synchronisation classe KLASSCI définitivement échouée', $exception, [
             'klassci_classe_id' => $this->klassciClasseId,
             'user_id' => $this->userId,
             'institution_id' => $this->institutionId,
-            'exception' => $exception::class,
-            'message' => $exception->getMessage(),
         ]);
     }
 }

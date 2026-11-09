@@ -14,6 +14,7 @@ use App\Services\Classe\LocalTeacherClassesReader;
 use App\Services\KlassciProxyService;
 use App\Services\TenantManager;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Mockery\MockInterface;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\Concerns\ActsAsTenantUser;
@@ -240,6 +241,12 @@ final class ClassesEcoleIndependanteTest extends TestCase
         $this->asTenant($sansJeton)->getJson('/api/lms/classes/'.$classeKlassci->getKey().'/etudiants')
             ->assertUnauthorized()->assertJsonPath('reason', 'klassci_token_missing');
         $this->asTenant($moi)->getJson('/api/lms/classes/'.$classe->getKey().'/etudiants')->assertOk();
+        $this->asTenant($sansJeton)->getJson('/api/lms/classes/local/'.$classeKlassci->getKey())
+            ->assertUnauthorized()->assertJsonPath('reason', 'klassci_token_missing');
+        $this->asTenant($moi)->getJson('/api/lms/classes/local/'.$classe->getKey())->assertOk();
+        // La source KLASSCI rend une liste vide à ce compte sans jeton ni
+        // classe miroitée ; la source locale rend la classe désignée.
+        $this->asTenant($sansJeton)->getJson(self::MES_CLASSES)->assertExactJson(['success' => true, 'data' => []]);
         $this->asTenant($moi)->getJson(self::MES_CLASSES)->assertOk()->assertJsonPath('data.0.id', $classe->getKey());
     }
 
@@ -288,7 +295,56 @@ final class ClassesEcoleIndependanteTest extends TestCase
         self::assertSame([], app(LocalTeacherClassesReader::class)->listFor($voisin));
     }
 
+    public function test_sans_tenant_le_roster_et_le_programme_restent_bornes_a_l_ecole(): void
+    {
+        // Une inscription et un rattachement forgés vers une AUTRE école :
+        // le produit les refuse, le bornage explicite doit les écarter quand
+        // même, sans tenant résolu (scope global fail-open).
+        [$ecole, $classe, $moi] = $this->classeEnseignee();
+        $autre = $this->ecole();
+        $intrus = $this->membre($autre, 'etudiant');
+        $this->inscrire($intrus, $classe, 'actif');
+        $this->rattacherSansGarde($classe, $this->matiere($autre, 'Matière voisine'), $moi);
+        $coordinateur = $this->membre($ecole, 'coordinateur');
+        app(TenantManager::class)->reset();
+
+        $fiche = app(LocalClasseDetailsReader::class)->getDetailsForUser((int) $classe->getKey(), $coordinateur);
+
+        self::assertSame(200, $fiche['status']);
+        $donnees = (array) $fiche['payload']['data'];
+        self::assertSame([], (array) $donnees['etudiants']);
+        self::assertSame(['Maths'], array_column((array) $donnees['matieres_disponibles'], 'nom'));
+    }
+
+    public function test_sans_tenant_une_matiere_d_une_autre_ecole_ne_designe_personne(): void
+    {
+        $ecole = $this->ecole();
+        $moi = $this->membre($ecole, 'enseignant');
+        $classe = $this->classe($ecole, '6e A');
+        $this->rattacherSansGarde($classe, $this->matiere($this->ecole(), 'Matière voisine'), $moi);
+        app(TenantManager::class)->reset();
+
+        self::assertSame([], app(LocalTeacherClassesReader::class)->listFor($moi));
+        self::assertSame(404, app(LocalClasseDetailsReader::class)->getDetailsForUser((int) $classe->getKey(), $moi)['status']);
+    }
+
     // ───────────────────────── harnais
+
+    /**
+     * Un rattachement écrit SANS le service du produit, qui refuse une matière
+     * d'une autre école : seul moyen d'éprouver le bornage du lecteur.
+     */
+    private function rattacherSansGarde(Classe $classe, Matiere $matiere, User $enseignant): void
+    {
+        DB::table('classe_matiere')->insert([
+            'classe_id' => $classe->getKey(),
+            'matiere_id' => $matiere->getKey(),
+            'enseignant_id' => $enseignant->getKey(),
+            'institution_id' => $classe->institution_id,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+    }
 
     /**
      * Une classe de 6e A où « moi » enseigne les maths.

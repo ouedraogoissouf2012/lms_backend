@@ -158,13 +158,17 @@ final class ClasseLocaleContractTest extends TestCase
         $reponse->assertJsonMissingPath('reason');
     }
 
-    /** Aucune classe de cet identifiant dans l'établissement : celle d'une autre école ne se résout pas. */
+    /**
+     * Aucune classe de cet identifiant dans l'établissement : celle d'une autre
+     * école ne se résout pas. Un coordinateur, qui lit toute classe de SON école :
+     * le 404 vient du bornage à l'établissement, pas de la grille d'accès.
+     */
     #[DataProvider('typesDEcole')]
     public function test_404_une_classe_d_une_autre_ecole(bool $depuisLeLms): void
     {
         $etrangere = $this->classe($this->ecole($depuisLeLms), null);
 
-        $reponse = $this->lire($this->compte($this->ecole($depuisLeLms)), $etrangere->id)->assertNotFound();
+        $reponse = $this->lire($this->compte($this->ecole($depuisLeLms), 'jeton-klassci', 'coordinateur'), $etrangere->id)->assertNotFound();
 
         $this->assertRefus($reponse, null);
     }

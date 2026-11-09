@@ -108,6 +108,29 @@ final class ClassesContractTest extends TestCase
 
     // ───────────────────────── source KLASSCI
 
+    /** Une classe miroitée (effectifs connus) et une qui ne l'est pas (effectifs `null`). */
+    public function test_source_klassci_mes_classes_suit_le_contrat(): void
+    {
+        $ecole = $this->ecole(InstitutionMode::Klassci);
+        $enseignant = User::factory()->create([
+            'institution_id' => $ecole->getKey(),
+            'role' => 'enseignant',
+            'klassci_token' => 'jeton-enseignant',
+        ]);
+        Classe::factory()->create(['institution_id' => $ecole->getKey(), 'klassci_id' => 7001, 'libelle' => 'B2 COM', 'effectif' => 30]);
+        $this->mock(KlassciProxyService::class, function (MockInterface $mock): void {
+            $mock->shouldReceive('requestWithUserToken')
+                ->with('jeton-enseignant', 'me/teacher-dashboard', 'GET')
+                ->andReturn(['data' => ['classes' => [['id' => 7001, 'name' => 'B2 COM'], ['id' => 9999, 'name' => 'Jamais miroitée']]]]);
+            $mock->shouldReceive('requestWithUserToken')->andReturn(['data' => []]);
+        });
+
+        $reponse = $this->asTenant($enseignant)->getJson('/api'.self::MES_CLASSES)->assertOk();
+
+        $this->assertMatchesOpenApiResponse($reponse, self::MES_CLASSES, 'get');
+        $reponse->assertJsonCount(2, 'data')->assertJsonPath('data.1.effectif', null);
+    }
+
     public function test_source_klassci_fiche_suit_le_contrat(): void
     {
         // Forme RÉELLE de l'enveloppe `classes/{id}` (ClasseEnvelope) : la

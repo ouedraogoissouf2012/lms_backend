@@ -2030,16 +2030,19 @@ paths:
         la porte KLASSCI rend la fiche d'une autre classe, en 200, sans erreur.
 
         Ouverte a tout compte de l'etablissement, sans garde de role. La classe
-        est d'abord resolue localement, AVANT tout jeton : 404 si l'etablissement
-        n'a pas cette classe, 409 (`classe_local_only`) si elle a ete creee dans
-        le LMS et n'a donc pas d'identifiant KLASSCI. Dans une ecole creee depuis
-        le LMS, toute classe est dans ce cas. Dans une ecole creee depuis
-        KLASSCI, seules les classes creees dans le LMS le sont.
+        est d'abord resolue localement, avant toute lecture de sa fiche : 404 si
+        l'etablissement n'a pas cette classe, 409 (`classe_local_only`) si elle
+        a ete creee dans le LMS et n'a donc pas d'identifiant KLASSCI. Les
+        classes d'une ecole creee depuis le LMS sont creees dans le LMS : elles
+        rendent ce 409. Dans une ecole creee depuis KLASSCI, seules les classes
+        creees dans le LMS le rendent.
 
         Sinon, la fiche est lue dans KLASSCI, comme par la porte historique, avec
         le jeton KLASSCI du compte : 401 `klassci_token_missing` sans ce jeton.
-        Toute erreur de KLASSCI pendant cette lecture (panne, refus, reponse
-        illisible) rend le 500, sans motif ni `Retry-After`.
+        Le mode de l'ecole n'est pas lu : une ecole creee depuis KLASSCI passee
+        en mode autonome lit encore la fiche dans KLASSCI. Toute erreur de
+        KLASSCI pendant cette lecture (panne, refus HTTP dont un 404, reponse
+        illisible, circuit ouvert) rend le 500, sans motif ni `Retry-After`.
       security:
         - sanctum: []
       parameters:
@@ -2051,6 +2054,14 @@ paths:
             type: integer
             minimum: 1
       responses:
+        '400':
+          description: |
+            Sans jeton porteur, un en-tete `X-Institution` inconnu : refuse
+            avant l'authentification.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClasseLocaleRefus'
         '200':
           description: |
             Details de la classe, identiques a ceux de la porte KLASSCI, dont la
@@ -2070,8 +2081,9 @@ paths:
                 $ref: '#/components/schemas/RefusKlassci'
         '403':
           description: |
-            Sans `reason` : etablissement desactive. `no_institution` : compte sans
-            etablissement.
+            Sans `reason` : etablissement desactive ou supprime. `no_institution` :
+            compte sans etablissement, ou gestionnaire de la plateforme
+            (`supradmin`), meme rattache a un etablissement.
           content:
             application/json:
               schema:
@@ -2079,9 +2091,9 @@ paths:
         '404':
           description: |
             Aucune classe ne porte cet identifiant local dans l'etablissement de
-            l'appelant, KLASSCI ne rend pas la fiche de la classe, ou
-            l'identifiant n'est pas numerique (la route ne le trouve pas). Sans
-            motif.
+            l'appelant ; KLASSCI repond 2xx sans fiche de classe (un 404 HTTP de
+            KLASSCI rend, lui, le 500) ; ou l'identifiant n'est pas numerique (la
+            route ne le trouve pas). Sans motif.
           content:
             application/json:
               schema:

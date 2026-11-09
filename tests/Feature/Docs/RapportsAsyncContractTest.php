@@ -227,6 +227,26 @@ final class RapportsAsyncContractTest extends TestCase
         $this->assertOpenApiSchemaRefuseSans($suivi, self::SUIVI, 'get', 'message');
     }
 
+    public function test_403_un_compte_sans_etablissement_s_arrete_a_la_porte(): void
+    {
+        // Un compte de plateforme passe la garde de rôle, qui le laisse entrer
+        // partout. C'est la porte des comptes sans établissement (#984) qui
+        // l'arrête, avec le motif `no_institution`, avant tout service : aucun
+        // rapport n'est mis en file.
+        $plateforme = User::factory()->create(['institution_id' => null, 'role' => 'supradmin', 'klassci_token' => null]);
+
+        $poste = $this->asTenant($plateforme)->postJson('/api/admin/reports/attendance', self::DATES)
+            ->assertForbidden()
+            ->assertJsonPath('reason', 'no_institution');
+        $suivi = $this->asTenant($plateforme)->getJson('/api/admin/reports/async/00000000-0000-0000-0000-000000000000')
+            ->assertForbidden()
+            ->assertJsonPath('reason', 'no_institution');
+
+        $this->assertMatchesOpenApiResponse($poste, '/admin/reports/attendance', 'post');
+        $this->assertMatchesOpenApiResponse($suivi, self::SUIVI, 'get');
+        Queue::assertNothingPushed();
+    }
+
     /** @return TestResponse<\Symfony\Component\HttpFoundation\Response> */
     private function suivi(User $demandeur, string $id, string $statut): TestResponse
     {

@@ -841,6 +841,8 @@ components:
               description: |
                 Les eleves de l'enveloppe KLASSCI de la classe, de statut `actif`
                 ou sans statut. Chaque element est l'objet KLASSCI, non normalise.
+                Ecart connu : un element vide cote KLASSCI ressortirait en tableau
+                vide `[]`, que ce schema ne decrit pas.
               items:
                 type: object
             total:
@@ -873,8 +875,8 @@ components:
       type: object
       description: |
         KLASSCI ne peut pas rendre la donnee pour l'instant : panne, circuit
-        ouvert, reponse illisible, ou bloc attendu absent. Toujours avec
-        l'en-tete `Retry-After`. Le client reessaie apres ce delai.
+        ouvert, reponse illisible, ou bloc attendu absent. Rendu avec l'en-tete
+        `Retry-After` ; le client reessaie apres ce delai.
       additionalProperties: false
       required:
         - success
@@ -2545,22 +2547,26 @@ paths:
         - Classes
       summary: "Les eleves actifs d'une classe KLASSCI"
       description: |
-        Reserve aux roles enseignant, coordinateur et admin. Lit le roster dans
-        l'enveloppe KLASSCI `classes/{id}`, avec le jeton KLASSCI du compte, et
-        ne garde que les eleves de statut `actif` ou sans statut.
+        Reserve aux roles enseignant, coordinateur et admin, alias compris
+        (`teacher`, `coordinator`, `administrateur`, `administrator`). La garde de
+        role laisse aussi passer `superAdmin`. Lit le roster dans l'enveloppe
+        KLASSCI `classes/{id}`, avec le jeton KLASSCI du compte, et ne garde que
+        les eleves de statut `actif` ou sans statut.
 
         Sans jeton KLASSCI, la route rend le 401 `klassci_token_missing` avant
         tout appel. Le refus porte sur le jeton du compte, pas sur le type ni
-        le mode de l'ecole. Un compte d'une ecole creee depuis le LMS n'a jamais
-        de jeton KLASSCI : il recoit ce 401. Une ecole creee depuis KLASSCI
-        passee en mode autonome garde les jetons de ses comptes : ils lisent
-        encore KLASSCI.
+        le mode de l'ecole. Un compte d'une ecole creee depuis le LMS n'a pas de
+        jeton KLASSCI (seule une connexion KLASSCI en pose un) : il recoit ce
+        401. Une ecole creee depuis KLASSCI passee en mode autonome garde les
+        jetons de ses comptes : ils lisent encore KLASSCI.
 
         Un refus de KLASSCI (4xx) est relaye avec son statut et le message du
-        catalogue : 401 (`klassci_session_expired`), 403, et tout autre code de
-        400 a 499, dont ceux decrits ici. Une panne de KLASSCI, une reponse
+        catalogue, jamais le message amont : 401 (`klassci_session_expired`),
+        403, et tout autre code de 400 a 499. Une panne de KLASSCI, une reponse
         illisible ou une enveloppe sans roster rendent le 503, avec
-        `Retry-After`. Une reponse en echec n'est gardee en cache que ce delai.
+        `Retry-After`. Une reponse 2xx en echec (`success: false`, ou sans
+        roster) n'est gardee en cache que ce delai ; les autres erreurs ne sont
+        pas gardees.
       security:
         - sanctum: []
       parameters:
@@ -2578,7 +2584,10 @@ paths:
               schema:
                 $ref: '#/components/schemas/ClasseEleves'
         '400':
-          description: "Requete refusee par KLASSCI, relayee (message par defaut du catalogue)."
+          description: |
+            Requete refusee par KLASSCI, relayee (message par defaut du
+            catalogue). Ou, sans jeton porteur, un en-tete `X-Institution`
+            inconnu : refuse avant l'authentification.
           content:
             application/json:
               schema:
@@ -2619,7 +2628,17 @@ paths:
               schema:
                 $ref: '#/components/schemas/RefusClasseEleves'
         '429':
-          description: "KLASSCI limite les requetes, relaye. La route elle-meme n'a pas de limite propre."
+          description: |
+            KLASSCI limite les requetes, relaye, SANS son en-tete `Retry-After`.
+            La route elle-meme n'a pas de limite propre.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefusClasseEleves'
+        '4XX':
+          description: |
+            Tout autre refus de KLASSCI de 400 a 499 est relaye avec son statut et
+            le message par defaut du catalogue.
           content:
             application/json:
               schema:
@@ -2634,7 +2653,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/VisioErreurInterne'
         '503':
-          description: "KLASSCI indisponible, reponse illisible, ou enveloppe sans roster."
+          description: |
+            KLASSCI indisponible (panne, circuit ouvert, transport, URL absente),
+            reponse illisible, ou enveloppe sans roster.
           headers:
             Retry-After:
               schema:

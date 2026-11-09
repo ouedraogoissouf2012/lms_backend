@@ -204,6 +204,7 @@ final class EvaluationStudentAttemptResponseTest extends TestCase
             ->assertExactJson([
                 'success' => false,
                 'message' => 'Nombre maximum de tentatives atteint (1)',
+                'reason' => 'evaluation_max_attempts',
             ]);
     }
 
@@ -230,6 +231,7 @@ final class EvaluationStudentAttemptResponseTest extends TestCase
                 'success' => false,
                 'message' => 'L\'évaluation est fermée depuis le 01/01/2020 à 10:00',
                 'window' => $window,
+                'reason' => 'evaluation_window_closed',
             ]);
     }
 

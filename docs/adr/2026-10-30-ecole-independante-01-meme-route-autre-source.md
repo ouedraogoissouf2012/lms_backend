@@ -151,11 +151,13 @@ lot de #949.
 
 - La grille d'accès de la fiche est extraite dans `ClassesAtteintes`. C'est une seule règle pour la fiche et la
   liste, et l'effectif est rendu, jamais la liste des élèves.
-- `is_active` vient de la Période : `TrainingSession::estActive()`, publiée et ouverte aux inscriptions ou en cours ;
-  `null` sans Période.
+- `is_active` vient de la Période : `TrainingSession::estActive()`, publiée et pas terminée (D124) ; `null` sans
+  Période, ou quand la Période est supprimée.
 - **Changement aussi dans l'école créée depuis KLASSCI, voulu et déclaré** : la branche « défaillance interne » du
   rendu des proxys (`RendersKlassciProxyErrors`) rapporte désormais la panne, une fois (#948). C'est valable pour
-  toutes les routes `/proxy` ; leur rendu ne change pas.
+  toutes les routes `/proxy` ; leur rendu ne change pas. Les deux tableaux de bord (`ProxyDashboardController`)
+  écrivaient eux-mêmes le message de l'exception avant de la rendre : la panne aurait été écrite deux fois, l'une
+  avec les valeurs du SQL. Ces deux écritures sont retirées.
 
 ## Conséquences
 

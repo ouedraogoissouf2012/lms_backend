@@ -26,15 +26,20 @@ use App\Models\User;
  *   basculée, c'est ce qui accorde la liste d'administration et la fiche (dette
  *   de la bascule, ADR-EI-01).
  * - `name` et `libelle` : le libellé. Le front lit l'un ou l'autre selon l'écran.
- * - `filiere`, `niveau` : `null`, aucun modèle local ne les porte.
- * - `is_active` : la Période de la classe, publiée, et ouverte aux inscriptions
- *   ou en cours ({@see TrainingSession::estActive()}) ; `null` sans Période.
+ * - `filiere`, `niveau` : `null`. L'école créée depuis le LMS n'en a aucun ;
+ *   les classes d'une école basculée gardent leurs `filiere_id` et `niveau_id`
+ *   KLASSCI, qui ne sont pas relus : ils parlent l'espace de KLASSCI.
+ * - `is_active` : la Période de la classe, publiée et pas terminée
+ *   ({@see TrainingSession::estActive()}, D124) ; `null` sans Période, ou quand
+ *   la Période est supprimée.
  * - `places_occupees` : les inscriptions ACTIVES (D57) d'élèves de
  *   l'établissement. `places_totales` : `null`, aucune capacité n'est tenue.
  * - `nb_matieres` : le programme, en matières de l'établissement.
  *
- * Les filtres `filiere_id`, `niveau_id` et `annee_id` sont sans objet ici : aucun
- * n'est sélectionnable, puisque les filières et les niveaux locaux sont vides.
+ * Les filtres `filiere_id`, `niveau_id` et `annee_id` sont sans effet ici :
+ * aucune filière, aucun niveau, aucune année n'est lu en local. Dans une école
+ * basculée, le front peut encore proposer des filières de KLASSCI ; leurs ids ne
+ * désignent rien dans les tables locales.
  *
  * Bornage EXPLICITE partout : le scope global est fail-open sans tenant.
  *

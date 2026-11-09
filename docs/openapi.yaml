@@ -1083,35 +1083,42 @@ components:
       type: object
       description: |
         Ecole creee depuis KLASSCI : la classe telle que KLASSCI la decrit
-        (schema ouvert). Ecole creee depuis le LMS : exactement les cles
-        ci-dessous.
+        (schema ouvert, types variables : seuls ceux que KLASSCI tient sont
+        fixes). Ecole creee depuis le LMS : exactement les cles ci-dessous.
       required:
         - id
       properties:
         id:
-          type: integer
+          description: "Entier. KLASSCI l'envoie parfois en chaine numerique ; le LMS, toujours en entier."
+          oneOf:
+            - type: integer
+            - type: string
         name:
           type: string
         libelle:
           type: string
+          nullable: true
+          description: "Ecole creee depuis KLASSCI : souvent `null`, le libelle vit dans `name`."
         code:
           type: string
           nullable: true
         filiere:
-          type: object
-          nullable: true
-          description: "Toujours `null` dans une ecole creee depuis le LMS : aucune filiere locale."
+          description: |
+            Ecole creee depuis KLASSCI : un objet ou un identifiant. Toujours
+            `null` dans une ecole creee depuis le LMS, ou basculee : aucune
+            filiere n'est lue en local.
         niveau:
-          type: object
-          nullable: true
-          description: "Toujours `null` dans une ecole creee depuis le LMS : aucun niveau local."
+          description: |
+            Ecole creee depuis KLASSCI : un objet ou un identifiant. Toujours
+            `null` dans une ecole creee depuis le LMS, ou basculee : aucun
+            niveau n'est lu en local.
         is_active:
           type: boolean
           nullable: true
           description: |
             Ecole creee depuis le LMS : vrai si la Periode de la classe est
-            publiee, et ouverte aux inscriptions ou en cours ; faux pour toute
-            autre Periode ; `null` sans Periode (etat inconnu).
+            publiee et pas terminee ; faux pour toute autre Periode ; `null`
+            sans Periode, ou quand la Periode est supprimee (etat inconnu).
         places_occupees:
           type: integer
           description: "Ecole creee depuis le LMS : les inscriptions actives d'eleves de l'etablissement."
@@ -5702,8 +5709,9 @@ paths:
         ou il est designe formateur, un eleve, et tout role non reconnu, celles
         ou son inscription est active. Chaque classe porte son effectif, jamais
         la liste de ses eleves. Les filtres `filiere_id`, `niveau_id` et
-        `annee_id` y sont sans effet : aucun n'est selectionnable, les filieres
-        et les niveaux locaux etant vides.
+        `annee_id` y sont sans effet : aucune filiere, aucun niveau ni aucune
+        annee n'est lu en local, y compris dans une ecole basculee, dont les
+        classes gardent leurs identifiants KLASSCI de filiere et de niveau.
       security:
         - sanctum: []
       parameters:
@@ -5758,6 +5766,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/VisioErreurInterne'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
         '503':
           description: "Ecole creee depuis KLASSCI : KLASSCI indisponible (panne, circuit ouvert, configuration absente)."
           headers:

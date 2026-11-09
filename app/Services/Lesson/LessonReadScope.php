@@ -42,6 +42,12 @@ use Illuminate\Database\Eloquent\Builder;
  * {@see limitToAuthor()}, dans les deux types d'école. La gestion lit toute son
  * école. La lecture DIRECTE d'une leçon ({@see denies()}, `ChapterReadGate`)
  * n'est pas bornée à l'auteur : D72 ne porte que sur les listes.
+ *
+ * Appelants : les deux listes de `LessonListService` et la page d'une matière
+ * (`MatiereLessonsAndStatsBuilder::lessonsForLocalMatiere`). Dette déclarée :
+ * la recherche (`GlobalSearchService`, `SearchSuggestionsService`), le tableau
+ * de bord enseignant et les compteurs de « Mes matières » écrivent encore la
+ * règle d'auteur eux-mêmes, sans passer par cette méthode.
  */
 final class LessonReadScope
 {

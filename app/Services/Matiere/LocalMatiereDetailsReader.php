@@ -30,7 +30,7 @@ use Illuminate\Support\Facades\DB;
  * Hors de ces cas, `null`, rendu en 404 : le refus ne dit pas si la matière
  * existe, ni dans quelle école.
  *
- * La borne d'auteur est celle de toutes les listes de leçons, dans les deux
+ * La borne d'auteur est celle des listes de `LessonListService`, dans les deux
  * types d'école : {@see \App\Services\Lesson\LessonReadScope::limitToAuthor()},
  * appliquée par `lessonsForLocalMatiere`.
  *

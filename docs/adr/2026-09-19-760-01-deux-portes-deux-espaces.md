@@ -1,8 +1,24 @@
 # ADR-760-01 — Deux portes quand une ressource est désignée dans deux espaces
 
 **Date :** 2026-09-19  
-**Statut :** accepté  
+**Statut :** accepté, amendé le 2026-11-09 ([ADR-EI-01](2026-10-30-ecole-independante-01-meme-route-autre-source.md), lot 2)  
 **Issue :** #760 (fermée) · PR #874 (`926963db`) · prolonge [ADR-805-01](2026-09-19-805-01-resolution-des-identifiants.md)
+
+> **Amendement EI-02 du 2026-11-09 — une école créée depuis le LMS n'a qu'un espace.**
+>
+> La source de chaque porte est choisie par le mode DÉCLARÉ de l'école, au point de liaison
+> (`RosterAuthorityFactory::sourceForCurrentTenant`), jamais devinée à partir de l'entier reçu.
+>
+> - **École créée depuis KLASSCI** : rien ne change. La porte historique attend l'espace KLASSCI, la
+>   porte locale traduit, et le 409 « créée localement » reste rendu pour une classe sans
+>   `klassci_id`.
+> - **École créée depuis le LMS** (ou basculée en mode autonome) : les deux portes servent la même
+>   fiche, lue dans les tables locales, pour l'id LOCAL, sans 409. La prémisse de cet ADR, « une
+>   ressource désignée dans deux espaces », n'y vaut pas : `klassci_id` y est NULL partout.
+>
+> La règle de cet ADR, « on n'arbitre pas à l'entrée », tient dans les deux cas : rien n'est deviné.
+> Le même lot fait relayer par les deux portes les échecs de KLASSCI (4xx relayé, 503 avec
+> `Retry-After`) au lieu de les rendre en 500.
 
 ## Décision
 
@@ -33,7 +49,7 @@ Toutes deux servent `ClasseDetailsQueryService`, inchangé.
 
 L'issue prescrivait de résoudre l'entrée par `Classe::localIdFor()`. Cette méthode donne la **précédence au local** ; son propre docblock avertit qu'« elle rendrait la ligne de l'autre espace, silencieusement ».
 
-**Mesuré en production le 19/09/2026 :** sur 21 classes, **une seule** a `id` égal à `klassci_id`, et **sept** sont en collision franche. L'arbitrage aurait donc détourné les deux appelants KLASSCI vers la mauvaise classe. **Deux chemins cassés pour un réparé.**
+**Mesuré en production le 19/09/2026 :** les identifiants local et KLASSCI divergent, avec des collisions franches. L'arbitrage aurait donc détourné les deux appelants KLASSCI vers la mauvaise classe. **Deux chemins cassés pour un réparé.**
 
 La leçon générale : *un résolveur à précédence est le bon outil quand l'espace est réellement inconnu. Quand on connaît les appelants et qu'ils sont majoritairement d'un espace, arbitrer revient à se tromper sur la majorité.*
 

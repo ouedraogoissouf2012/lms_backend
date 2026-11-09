@@ -59,8 +59,8 @@ Ce n'est pas l'arbitrage à l'entrée qu'interdit ADR-760-01. Rien n'est deviné
 mode déclaré. Et la prémisse de cet ADR, « une ressource désignée dans deux espaces », ne vaut pas dans un établissement
 qui n'en a qu'un.
 
-**ADR-760-01 n'est pas modifié par ce lot.** Sa porte locale répond encore 409 à une classe sans `klassci_id`. Le lot
-qui sert le détail d'une classe locale le rouvrira explicitement.
+**ADR-760-01 est amendé par le lot 2** (amendement EI-02, 2026-11-09) : dans une école créée depuis le LMS, ses deux
+portes servent la même fiche locale, et son 409 ne vaut plus que dans une école créée depuis KLASSCI.
 
 ## Premier cas appliqué (lot 1)
 
@@ -90,6 +90,27 @@ Dans la source locale :
 - **Les évaluations rendues vides (`[]`, 0) sont PROVISOIRES.** L'utilisateur a décidé que l'école indépendante aura
   ses évaluations (D72). Le lot qui les construit reprendra ces sources locales, page matière comme fiche de classe,
   pour y brancher les évaluations locales.
+
+## Deuxième cas appliqué (lot 2, 2026-11-09)
+
+| Route | Port | Source KLASSCI | Source locale |
+|---|---|---|---|
+| `GET /lms/teacher/classes` | `TeacherClassesReader` | `TeacherClassesQueryService` | `LocalTeacherClassesReader` |
+| `GET /lms/classes/{id}` | `ClasseDetailsReader` | `ClasseDetailsQueryService` | `LocalClasseDetailsReader` |
+| `GET /lms/classes/local/{id}` | `ClasseLocalDoorReader` | `ClasseLocalDetailsService` | `LocalClasseDetailsReader` |
+| `GET /lms/classes/{id}/etudiants` | `ClasseEtudiantsReader` | `ClasseEtudiantsQueryService` | `LocalClasseDetailsReader` |
+
+Dans la source locale :
+- **« Mes classes »** : les classes où l'appelant est désigné formateur d'au moins une matière, triées par libellé.
+  `effectif_actuel` compte les inscriptions actives ; `effectif` vaut `null`, la colonne n'étant tenue que par le
+  synchroniseur KLASSCI.
+- **La fiche et le roster** : UNE classe sert les trois lectures, pour qu'une seule grille d'accès existe. La gestion
+  lit toute classe de l'établissement, un enseignant une classe où il est désigné, un apprenant une classe où son
+  inscription est active, sans la liste des élèves (GHSA-gg7j). Hors de ces cas, 404.
+- **Ce qu'aucune table locale ne porte vaut `null`** (capacité, séances de la semaine, taux de remplissage) ; l'emploi
+  du temps et les évaluations programmées valent `[]`, les secondes provisoirement (D72).
+
+ADR-760-01 est amendé en conséquence (amendement EI-02).
 
 ## Conséquences
 

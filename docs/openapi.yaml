@@ -909,6 +909,144 @@ components:
           enum:
             - classe_local_only
 
+    # Les classes de l'enseignant et la fiche d'une classe (lot 2).
+    MesClassesListe:
+      type: object
+      additionalProperties: false
+      required:
+        - success
+        - data
+      properties:
+        success:
+          type: boolean
+          enum:
+            - true
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/MesClassesCarte'
+
+    MesClassesCarte:
+      type: object
+      description: |
+        Une classe de l appelant (`TeacherClassCard.vue`). `id` mene a la fiche
+        par `/lms/classes/{classeId}` : identifiant KLASSCI dans une ecole creee
+        depuis KLASSCI, identifiant local dans une ecole creee depuis le LMS.
+      additionalProperties: false
+      required:
+        - id
+        - libelle
+        - code
+        - effectif
+        - effectif_actuel
+      properties:
+        id:
+          type: integer
+        libelle:
+          type: string
+          nullable: true
+        code:
+          type: string
+          nullable: true
+        effectif:
+          type: integer
+          nullable: true
+          description: |
+            L effectif tenu par KLASSCI, quand la classe est miroitee. Toujours
+            `null` dans une ecole creee depuis le LMS : la colonne n y est pas
+            tenue, et un 0 serait une fausse mesure.
+        effectif_actuel:
+          type: integer
+          nullable: true
+          description: "Les inscriptions actives ; `null` quand la classe n est pas miroitee."
+
+    FicheClasse:
+      type: object
+      additionalProperties: false
+      required:
+        - success
+        - data
+      properties:
+        success:
+          type: boolean
+          enum:
+            - true
+        data:
+          type: object
+          additionalProperties: false
+          required:
+            - classe
+            - etudiants
+            - matieres_disponibles
+            - emploi_temps_semaine
+            - evaluations_programmees
+            - statistiques
+          properties:
+            classe:
+              type: object
+              description: |
+                La classe. L en-tete lit `id`, `name` (ou `libelle`, `nom`),
+                `code`, `filiere.nom` et `niveau.nom`. Ouvert : la source KLASSCI
+                relaie la classe telle que KLASSCI la decrit. Dans une ecole creee
+                depuis le LMS, `filiere` et `niveau` valent `null`.
+            etudiants:
+              type: array
+              description: |
+                Les eleves actifs, pour le personnel seulement : `[]` pour un
+                eleve, et pour tout role qui n est pas du personnel.
+              items:
+                type: object
+            matieres_disponibles:
+              type: array
+              description: |
+                Le programme de la classe. Dans une ecole creee depuis le LMS :
+                `id`, `nom`, `code`, `coefficient` et `enseignants` (le formateur
+                designe, 0 ou 1, `{id, nom}`).
+              items:
+                type: object
+            emploi_temps_semaine:
+              type: array
+              description: "Toujours `[]` dans une ecole creee depuis le LMS : l emploi du temps est une notion KLASSCI."
+              items:
+                type: object
+            evaluations_programmees:
+              type: array
+              description: "Toujours `[]` dans une ecole creee depuis le LMS, en attendant ses evaluations."
+              items:
+                type: object
+            statistiques:
+              type: object
+              additionalProperties: false
+              required:
+                - nombre_etudiants
+                - nombre_seances_semaine
+                - nombre_evaluations_programmees
+                - nombre_matieres
+                - capacite_classe
+                - taux_remplissage
+              description: |
+                Un bloc que la source ne livre pas vaut `null`, jamais 0. Dans
+                une ecole creee depuis le LMS, `nombre_seances_semaine`,
+                `capacite_classe` et `taux_remplissage` valent `null`.
+              properties:
+                nombre_etudiants:
+                  type: integer
+                nombre_seances_semaine:
+                  type: integer
+                  nullable: true
+                nombre_evaluations_programmees:
+                  type: integer
+                nombre_matieres:
+                  type: integer
+                  nullable: true
+                capacite_classe:
+                  description: |
+                    Le nombre de places tel que KLASSCI le donne, non normalise,
+                    ou `null`. Sans type : la source KLASSCI ne le garantit pas.
+                taux_remplissage:
+                  type: number
+                  nullable: true
+
     MessageOnly:
       type: object
       properties:
@@ -2246,33 +2384,35 @@ paths:
     get:
       tags:
         - Classes
+      operationId: getLocalClassPage
       summary: "Details d'une classe designee par son identifiant LOCAL"
       description: |
-        Porte jumelle de `/lms/classes/{classeId}`, qui parle l'espace KLASSCI.
+        Porte jumelle de `/lms/classes/{classeId}`. Ouverte a tout compte de
+        l'etablissement, sans garde de role. La source est choisie par le mode
+        DECLARE de l'ecole, au point de liaison, jamais par le client.
 
-        Le LMS connait deux numerotations independantes pour la meme classe :
-        la cle primaire locale, et l'identifiant KLASSCI. Rien n'interdit que
-        l'une egale l'autre sur des lignes differentes — mesure du 19/09/2026 en
-        production : sept classes sur vingt-et-une sont dans ce cas.
+        **Ecole creee depuis KLASSCI.** Le LMS y connait deux numerotations
+        independantes pour la meme classe : la cle primaire locale, et
+        l'identifiant KLASSCI. En production, elles divergent, avec des
+        collisions franches. Un appelant qui detient un identifiant LOCAL — par
+        exemple celui rendu par `classes_concernees` — doit donc utiliser CETTE
+        porte : l'envoyer a la porte historique rend la fiche d'une autre
+        classe, en 200, sans erreur. La classe est d'abord resolue localement,
+        avant toute lecture de sa fiche : 404 si l'etablissement n'a pas cette
+        classe, 409 (`classe_local_only`) si elle a ete creee dans le LMS et n'a
+        donc pas d'identifiant KLASSCI. Sinon, la fiche est lue dans KLASSCI,
+        avec le jeton KLASSCI du compte : 401 `klassci_token_missing` sans ce
+        jeton. Un refus de KLASSCI (4xx) est relaye avec son statut et le
+        message du catalogue, 401 avec `klassci_session_expired` ; une panne, un
+        circuit ouvert ou une reponse illisible rendent le 503 avec
+        `Retry-After`.
 
-        Un appelant qui detient un identifiant LOCAL — par exemple celui rendu
-        par `classes_concernees` — doit donc utiliser CETTE porte. L'envoyer a
-        la porte KLASSCI rend la fiche d'une autre classe, en 200, sans erreur.
-
-        Ouverte a tout compte de l'etablissement, sans garde de role. La classe
-        est d'abord resolue localement, avant toute lecture de sa fiche : 404 si
-        l'etablissement n'a pas cette classe, 409 (`classe_local_only`) si elle
-        a ete creee dans le LMS et n'a donc pas d'identifiant KLASSCI. Les
-        classes d'une ecole creee depuis le LMS sont creees dans le LMS : elles
-        rendent ce 409. Dans une ecole creee depuis KLASSCI, seules les classes
-        creees dans le LMS le rendent.
-
-        Sinon, la fiche est lue dans KLASSCI, comme par la porte historique, avec
-        le jeton KLASSCI du compte : 401 `klassci_token_missing` sans ce jeton.
-        Le mode de l'ecole n'est pas lu : une ecole creee depuis KLASSCI passee
-        en mode autonome lit encore la fiche dans KLASSCI. Toute erreur de
-        KLASSCI pendant cette lecture (panne, refus HTTP dont un 404, reponse
-        illisible, circuit ouvert) rend le 500, sans motif ni `Retry-After`.
+        **Ecole creee depuis le LMS**, ou basculee en mode autonome. La fiche
+        est lue dans les tables locales, pour l'id local, sans aucun appel a
+        KLASSCI et sans 409 : la meme fiche que par la porte historique. La
+        gestion lit toute classe de l'etablissement, un enseignant une classe
+        ou il est designe formateur, un eleve une classe ou son inscription est
+        active, sans la liste des eleves. Sinon, 404.
       security:
         - sanctum: []
       parameters:
@@ -2287,33 +2427,33 @@ paths:
         '400':
           description: |
             Sans jeton porteur, un en-tete `X-Institution` inconnu : refuse
-            avant l'authentification.
+            avant l'authentification. Ou requete refusee par KLASSCI, relayee.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ClasseLocaleRefus'
         '200':
-          description: |
-            Details de la classe, identiques a ceux de la porte KLASSCI, dont la
-            forme n'est pas encore decrite : le schema reste ouvert.
+          description: "La fiche de la classe, la meme que par la porte historique."
           content:
             application/json:
               schema:
-                type: object
+                $ref: '#/components/schemas/FicheClasse'
         '401':
           description: |
-            Jeton porteur absent ou invalide (sans `reason`), ou compte sans jeton
-            KLASSCI (`reason: klassci_token_missing`), pour une classe qui en a une
-            fiche.
+            Jeton porteur absent ou invalide (sans `reason`). Dans une ecole creee
+            depuis KLASSCI, pour une classe qui a une fiche KLASSCI : compte sans
+            jeton KLASSCI (`reason: klassci_token_missing`), ou session refusee
+            par KLASSCI (`reason: klassci_session_expired`).
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/RefusKlassci'
         '403':
           description: |
-            Sans `reason` : etablissement desactive ou supprime. `no_institution` :
-            compte sans etablissement, ou gestionnaire de la plateforme
-            (`supradmin`), meme rattache a un etablissement.
+            Sans `reason` : etablissement desactive ou supprime, ou refus de
+            KLASSCI relaye. `no_institution` : compte sans etablissement, ou
+            gestionnaire de la plateforme (`supradmin`), meme rattache a un
+            etablissement.
           content:
             application/json:
               schema:
@@ -2321,30 +2461,192 @@ paths:
         '404':
           description: |
             Aucune classe ne porte cet identifiant local dans l'etablissement de
-            l'appelant ; KLASSCI repond 2xx sans fiche de classe (un 404 HTTP de
-            KLASSCI rend, lui, le 500) ; ou l'identifiant n'est pas numerique (la
-            route ne le trouve pas). Sans motif.
+            l'appelant ; dans une ecole creee depuis le LMS, une classe que
+            l'appelant n'atteint pas ; KLASSCI repond 2xx sans fiche de classe, ou
+            404, relaye ; ou l'identifiant n'est pas numerique (la route ne le
+            trouve pas). Sans motif.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ClasseLocaleRefus'
         '409':
           description: |
-            La classe existe mais a ete creee dans le LMS : elle n'a aucune fiche
-            KLASSCI a afficher. Un 404 mentirait, la classe est bien la. Motif
-            `classe_local_only`.
+            Ecole creee depuis KLASSCI seulement. La classe existe mais a ete
+            creee dans le LMS : elle n'a aucune fiche KLASSCI a afficher. Un 404
+            mentirait, la classe est bien la. Motif `classe_local_only`. Sans
+            motif : conflit signale par KLASSCI, relaye.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClasseLocaleRefus'
+        '422':
+          description: "Donnees refusees par KLASSCI, relaye. Sans detail par champ."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClasseLocaleRefus'
+        '429':
+          description: "KLASSCI limite les requetes, relaye, SANS son en-tete `Retry-After`."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClasseLocaleRefus'
+        '4XX':
+          description: |
+            Tout autre refus de KLASSCI de 400 a 499 est relaye avec son statut et
+            le message par defaut du catalogue.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ClasseLocaleRefus'
         '500':
           description: |
-            Toute erreur de KLASSCI pendant la lecture de la fiche, sans `error` ;
-            ou une erreur non rattrapee, rendue par le gestionnaire global.
+            Panne de base de donnees, journalisee : avec `error`. Sans `error` :
+            erreur interne sans detail, ou erreur non rattrapee, rendue par le
+            gestionnaire global.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/VisioErreurInterne'
+        '503':
+          description: |
+            Ecole creee depuis KLASSCI : KLASSCI indisponible (panne, circuit
+            ouvert), ou reponse illisible.
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/KlassciIndisponible'
+
+  /lms/classes/{classeId}:
+    get:
+      tags:
+        - Classes
+      operationId: getClassPage
+      summary: "La fiche d'une classe (porte historique)"
+      description: |
+        La fiche ouverte depuis la carte d'une classe (`TeacherClassCard.vue`) et
+        la liste d'administration. Ouverte a tout compte de l'etablissement, sans
+        garde de role. La source est choisie par le mode DECLARE de l'ecole, au
+        point de liaison, jamais par le client.
+
+        **Ecole creee depuis KLASSCI.** `classeId` est l'identifiant KLASSCI. La
+        fiche est lue dans KLASSCI avec le jeton KLASSCI du compte : 401
+        `klassci_token_missing` sans ce jeton, avant tout appel. Un refus de
+        KLASSCI (4xx) est relaye avec son statut et le message du catalogue, 401
+        avec `klassci_session_expired` ; une panne, un circuit ouvert ou une
+        reponse illisible rendent le 503 avec `Retry-After`. KLASSCI repond 2xx
+        sans fiche : 404. Les evaluations programmees sont lues a part ; leur
+        echec laisse la liste vide.
+
+        **Ecole creee depuis le LMS**, ou basculee en mode autonome. `classeId`
+        est l'identifiant local, et la fiche est celle de la porte locale
+        (`/lms/classes/local/{classeId}`), lue dans les tables locales sans aucun
+        appel a KLASSCI. La gestion lit toute classe de l'etablissement, un
+        enseignant une classe ou il est designe formateur, un eleve une classe
+        ou son inscription est active, sans la liste des eleves. Sinon, 404.
+      security:
+        - sanctum: []
+      parameters:
+        - name: classeId
+          in: path
+          required: true
+          description: "Identifiant KLASSCI dans une ecole creee depuis KLASSCI, identifiant local dans une ecole creee depuis le LMS."
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: "La fiche de la classe."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FicheClasse'
+        '400':
+          description: |
+            Requete refusee par KLASSCI, relayee. Ou, sans jeton porteur, un
+            en-tete `X-Institution` inconnu : refuse avant l'authentification.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefusClasseEleves'
+        '401':
+          description: |
+            Jeton porteur absent ou invalide (sans `reason`). Dans une ecole creee
+            depuis KLASSCI : compte sans jeton KLASSCI (`reason:
+            klassci_token_missing`), ou session refusee par KLASSCI (`reason:
+            klassci_session_expired`).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefusKlassci'
+        '403':
+          description: |
+            Sans `reason` : etablissement desactive, ou refus de KLASSCI relaye.
+            `no_institution` : compte sans etablissement, ou gestionnaire de la
+            plateforme (`supradmin`).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefusClasseEleves'
+        '404':
+          description: |
+            « Classe non trouvee » : KLASSCI repond 2xx sans fiche, ou, dans une
+            ecole creee depuis le LMS, une classe que l'appelant n'atteint pas.
+            Ou refus 404 de KLASSCI, relaye. Sans motif.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefusClasseEleves'
+        '409':
+          description: "Conflit signale par KLASSCI, relaye."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefusClasseEleves'
+        '422':
+          description: "Donnees refusees par KLASSCI, relaye. Sans detail par champ."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefusClasseEleves'
+        '429':
+          description: "KLASSCI limite les requetes, relaye, SANS son en-tete `Retry-After`."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefusClasseEleves'
+        '4XX':
+          description: |
+            Tout autre refus de KLASSCI de 400 a 499 est relaye avec son statut et
+            le message par defaut du catalogue.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefusClasseEleves'
+        '500':
+          description: |
+            Erreur interne. Rattrapee par le controleur et journalisee : avec
+            `error`. Sans `error` : erreur interne sans detail, ou gestionnaire
+            global (par exemple un `classeId` non numerique).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VisioErreurInterne'
+        '503':
+          description: |
+            Ecole creee depuis KLASSCI : KLASSCI indisponible (panne, circuit
+            ouvert), ou reponse illisible.
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/KlassciIndisponible'
 
   /lms/seances:
     post:
@@ -3575,20 +3877,24 @@ paths:
     get:
       tags:
         - Classes
-      summary: "Les eleves actifs d'une classe KLASSCI"
+      summary: "Les eleves actifs d'une classe"
       description: |
         Reserve aux roles enseignant, coordinateur et admin, alias compris
         (`teacher`, `coordinator`, `administrateur`, `administrator`). La garde de
-        role laisse aussi passer `superAdmin`. Lit le roster dans l'enveloppe
-        KLASSCI `classes/{id}`, avec le jeton KLASSCI du compte, et ne garde que
-        les eleves de statut `actif` ou sans statut.
+        role laisse aussi passer `superAdmin`. La source est choisie par le mode
+        DECLARE de l'ecole, au point de liaison, jamais par le client.
 
+        **Ecole creee depuis le LMS**, ou basculee en mode autonome. `classeId`
+        est l'identifiant local. Les eleves dont l'inscription est active, lus
+        dans les tables locales, sans aucun appel a KLASSCI : toute classe de
+        l'etablissement pour la gestion, une classe ou il est designe formateur
+        pour un enseignant. Sinon, 404.
+
+        **Ecole creee depuis KLASSCI.** `classeId` est l'identifiant KLASSCI. Lit
+        le roster dans l'enveloppe KLASSCI `classes/{id}`, avec le jeton KLASSCI
+        du compte, et ne garde que les eleves de statut `actif` ou sans statut.
         Sans jeton KLASSCI, la route rend le 401 `klassci_token_missing` avant
-        tout appel. Le refus porte sur le jeton du compte, pas sur le type ni
-        le mode de l'ecole. Un compte d'une ecole creee depuis le LMS n'a pas de
-        jeton KLASSCI (seule une connexion KLASSCI en pose un) : il recoit ce
-        401. Une ecole creee depuis KLASSCI passee en mode autonome garde les
-        jetons de ses comptes : ils lisent encore KLASSCI.
+        tout appel.
 
         Un refus de KLASSCI (4xx) est relaye avec son statut et le message du
         catalogue, jamais le message amont : 401 (`klassci_session_expired`),
@@ -3603,7 +3909,7 @@ paths:
         - name: classeId
           in: path
           required: true
-          description: "Identifiant KLASSCI de la classe."
+          description: "Identifiant KLASSCI dans une ecole creee depuis KLASSCI, identifiant local dans une ecole creee depuis le LMS."
           schema:
             type: integer
       responses:
@@ -3624,9 +3930,10 @@ paths:
                 $ref: '#/components/schemas/RefusClasseEleves'
         '401':
           description: |
-            Jeton porteur absent ou invalide (sans `reason`), compte sans jeton
-            KLASSCI (`reason: klassci_token_missing`), ou session KLASSCI
-            refusee par KLASSCI (`reason: klassci_session_expired`).
+            Jeton porteur absent ou invalide (sans `reason`). Dans une ecole creee
+            depuis KLASSCI : compte sans jeton KLASSCI (`reason:
+            klassci_token_missing`), ou session refusee par KLASSCI (`reason:
+            klassci_session_expired`).
           content:
             application/json:
               schema:
@@ -3640,7 +3947,10 @@ paths:
               schema:
                 $ref: '#/components/schemas/RefusClasseEleves'
         '404':
-          description: "Aucune donnee KLASSCI pour ce compte, relaye."
+          description: |
+            « Classe non trouvee » : dans une ecole creee depuis le LMS, une
+            classe que l'appelant n'atteint pas. Ou aucune donnee KLASSCI pour ce
+            compte, relaye.
           content:
             application/json:
               schema:
@@ -4370,6 +4680,58 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+
+  /lms/teacher/classes:
+    get:
+      tags:
+        - Classes
+      operationId: listMyTeachingClasses
+      summary: "Les classes de l appelant"
+      description: |
+        Les classes ou l appelant est designe formateur d au moins une matiere,
+        triees par libelle puis par identifiant. La route admet enseignant et
+        coordinateur ; un coordinateur recoit SES classes, donc souvent une
+        liste vide. La source est choisie par le mode DECLARE de l ecole, au
+        point de liaison, jamais par le client.
+
+        **Ecole creee depuis KLASSCI.** Les classes que KLASSCI reconnait a
+        l enseignant, avec les identifiants KLASSCI ; a defaut, le miroir local
+        des classes reliees a KLASSCI. Un echec de KLASSCI n est pas une erreur :
+        la liste se replie sur le miroir.
+
+        **Ecole creee depuis le LMS**, ou basculee en mode autonome. Le programme
+        local (`classe_matiere`), avec les identifiants locaux, sans aucun appel
+        a KLASSCI. `effectif` vaut `null` et `effectif_actuel` compte les
+        inscriptions actives.
+      security:
+        - sanctum: []
+      responses:
+        '200':
+          description: "Les classes de l appelant"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MesClassesListe'
+        '401':
+          description: "Non authentifie (sans `reason`)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefusKlassci'
+        '403':
+          description: |
+            Role non admis, etablissement desactive, ou compte sans etablissement
+            (`reason: no_institution`).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefusClasseEleves'
+        '500':
+          description: "Erreur non rattrapee, rendue par le gestionnaire global, sans `error`."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VisioErreurInterne'
 
   /lms/teacher/my-matieres:
     get:

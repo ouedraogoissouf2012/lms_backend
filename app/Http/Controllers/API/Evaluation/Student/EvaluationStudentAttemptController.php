@@ -64,14 +64,18 @@ final class EvaluationStudentAttemptController extends AuthenticatedController
             // `window` hors enveloppe que le trait ne reproduit pas. La déplacer
             // (sous `errors`) changerait le contrat client → conservé tel quel
             // (axe #1 « DRY-only », préservation de la sortie).
+            //
+            // Chaque refus porte un motif stable que le client traduit
+            // (`reason`, #906) ; le message reste celui du serveur.
             'window_closed' => response()->json([
                 'success' => false,
                 'message' => $result['message'],
                 'window' => $result['window'] ?? null,
+                'reason' => 'evaluation_window_closed',
             ], 403),
-            'max_attempts' => $this->errorResponse($result['message'], 403),
-            'retake_forbidden' => $this->errorResponse($result['message'] ?? 'Reprise non autorisée', 403),
-            'offline_only' => $this->errorResponse($result['message'] ?? 'Évaluation hors ligne', 403),
+            'max_attempts' => $this->errorResponse($result['message'], 403, reason: 'evaluation_max_attempts'),
+            'retake_forbidden' => $this->errorResponse($result['message'] ?? 'Reprise non autorisée', 403, reason: 'evaluation_retake_forbidden'),
+            'offline_only' => $this->errorResponse($result['message'] ?? 'Évaluation hors ligne', 403, reason: 'evaluation_offline_only'),
             // #499 : fenêtre non vérifiable (KLASSCI indisponible) → 503 transitoire
             // (fail-closed), pas 403 : ce n'est pas un refus d'accès mais une
             // indisponibilité de dépendance ; le client doit réessayer.

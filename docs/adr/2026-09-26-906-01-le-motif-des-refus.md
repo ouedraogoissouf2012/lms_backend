@@ -39,7 +39,7 @@ Ce n'est vrai **que** de ce chemin : 32 endroits de `src/` (tronc `dev`, `c7c86d
 
 **Tension avec ADR-845-01**, écrit quatre jours plus tôt : une transition de période refusée porte « le statut courant dans le message ». Sous la prémisse ci-dessus, cette information n'atteint pas un écran qui passe par `normalizeError`. Aucune des deux décisions n'annule l'autre ; si un écran de période doit la montrer, c'est un motif qu'il lui faudra.
 
-**Pas dans un en-tête** : le front de production est cross-origin et `config/cors.php` déclare `exposed_headers: []`. Tout en-tête non standard y est invisible au navigateur, alors qu'il est lisible en dev via le proxy Vite. frontend_lms#426 est ce défaut, déjà livré, pour `Retry-After`.
+**Pas dans un en-tête** : le front de production est cross-origin et `config/cors.php` déclarait `exposed_headers: []` (jusqu'à #1020, voir l'amendement). Tout en-tête non standard y est invisible au navigateur, alors qu'il est lisible en dev via le proxy Vite. frontend_lms#426 est ce défaut, déjà livré, pour `Retry-After`.
 
 ## Le piège mesuré
 
@@ -60,6 +60,8 @@ Avant #906, le dépôt émettait déjà un motif dans le corps, sous trois forme
 - **`code`** — `ImportPreviewController:49` (`ImportPreviewFailed::machineCode()`). Autre clé pour le même rôle : non migré ici.
 
 **Après #906 (#806, 2026-10-29)** : `klassci_token_missing` (`MissingKlassciTokenException::REASON`) distingue un jeton KLASSCI absent de `klassci_session_expired`, que le 401 amont des routes LMS porte désormais aussi (`KlassciClientErrorCatalog::reasonFor()`).
+
+**Après #906 (#1020, 2026-11-10)** : `klassci_unavailable` (`KlassciUnavailableException::REASON`) sur le 503 canonique d'une panne KLASSCI (`jsonResponse()`), pour que le client classe la panne par le corps et non par `Retry-After` (frontend_lms#426).
 
 ## Ce qui reste
 
@@ -82,6 +84,11 @@ Relevé par une relecture de tout le code, après fusion :
 - **Les précédents étaient omis**, et leur compte faux (« cinq » ; treize mesurés). Section « Précédents » ajoutée ; « la liste fermée existe déjà côté contrat » retiré — elle ne ferme que ce périmètre.
 - **Un motif pour deux sens.** Les deux bornes du seau du compte disaient `account_quota_exceeded` ; la borne du jour dit désormais `account_daily_cap_reached`, sur la règle de la porte anonyme (`*_quota_exceeded` / `*_cap_reached`).
 - **Une réserve rangée parmi les erreurs.** L'absence de `Retry-After` sur `institution_cap_reached` n'en est pas une : elle est passée dans « Ce qui reste ».
+
+## Amendé (#1020, 2026-11-10)
+
+- **Le fait a changé, pas le principe.** `config/cors.php` expose désormais `Retry-After`, `X-RateLimit-Limit`, `X-RateLimit-Remaining` et `X-RateLimit-Reset` à toute origine admise. Ce sont des **valeurs** (un délai, un quota) : le front de production en avait besoin et ne pouvait pas les lire.
+- **La règle tient** : la classe d'une erreur va dans le corps, jamais dans un en-tête. L'exposition ne crée aucun canal de motif ; le 503 KLASSCI reçoit au contraire son `reason`, ci-dessus.
 
 ## Ce qui ferait changer d'avis
 

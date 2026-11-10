@@ -37,9 +37,10 @@ final class KlassciUnavailableException extends RuntimeException
     public const CLIENT_MESSAGE = 'Service KLASSCI temporairement indisponible. Veuillez réessayer dans quelques instants.';
 
     /**
-     * Motif du 503 canonique (frontend_lms#426). Le front classait cette panne à
-     * l'en-tête `Retry-After`, invisible cross-origin tant que le CORS ne
-     * l'expose pas : la classe d'une erreur va dans le corps (ADR-906-01),
+     * Motif du 503 canonique (frontend_lms#426). Le front classe encore cette
+     * panne à l'en-tête `Retry-After` (`errorHandler.js`, corrigé par
+     * frontend_lms#516), un en-tête invisible cross-origin tant que le CORS ne
+     * l'exposait pas. La classe d'une erreur va dans le corps (ADR-906-01) ;
      * l'en-tête ne porte que le délai.
      */
     public const REASON = 'klassci_unavailable';

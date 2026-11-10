@@ -182,8 +182,9 @@ final class RateLimitServiceProvider extends ServiceProvider
      *
      * Même réponse que le rendu global — même constructeur,
      * {@see TooManyRequestsPresenter} — avec le motif en plus, dans le CORPS : le
-     * front de production est cross-origin et `exposed_headers: []` lui cache
-     * tout en-tête non standard.
+     * front de production est cross-origin, et le CORS ne lui expose que des
+     * en-têtes de valeur (`Retry-After`, `X-RateLimit-*`, `config/cors.php`) ; la
+     * classe d'une erreur ne dépend jamais d'un en-tête.
      *
      * Passe par une `HttpResponseException` : `bootstrap/app.php` la rend telle
      * quelle, sans quoi elle ressortirait en 500.

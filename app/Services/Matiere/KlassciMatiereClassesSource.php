@@ -10,7 +10,7 @@ use App\Services\Klassci\TeacherDashboardClasses;
 use App\Services\KlassciProxyService;
 use App\Services\Seances\KlassciPayload;
 use App\Services\Sync\Classes\ClasseMatieresSynchronizer;
-use Psr\Log\LoggerInterface;
+use App\Support\Logging\CaughtExceptionLog;
 use Throwable;
 
 /**
@@ -57,7 +57,7 @@ final class KlassciMatiereClassesSource
         private readonly KlassciProxyService $klassciService,
         private readonly TeacherDashboardClasses $dashboardClasses,
         private readonly ClasseMatieresSynchronizer $matieresSynchronizer,
-        private readonly LoggerInterface $logger,
+        private readonly CaughtExceptionLog $journal,
     ) {}
 
     /**
@@ -102,9 +102,8 @@ final class KlassciMatiereClassesSource
         } catch (Throwable $e) {
             // Jamais une erreur remontée : l'écran affiche « aucune classe »,
             // pas une page en 500.
-            $this->logger->warning('Classes de la matière — KLASSCI injoignable', [
+            $this->journal->warning('Classes de la matière — KLASSCI injoignable', $e, [
                 'klassci_matiere_id' => $klassciMatiereId,
-                'error' => $e->getMessage(),
             ]);
 
             return [];
@@ -174,9 +173,8 @@ final class KlassciMatiereClassesSource
             try {
                 $this->matieresSynchronizer->sync($locale, $porteuses[$klassciId]);
             } catch (Throwable $e) {
-                $this->logger->warning('Miroir classe_matiere non alimente — les classes sont rendues quand meme', [
+                $this->journal->warning('Miroir classe_matiere non alimente — les classes sont rendues quand meme', $e, [
                     'classe_id' => $locale->id,
-                    'error' => $e->getMessage(),
                 ]);
             }
         }

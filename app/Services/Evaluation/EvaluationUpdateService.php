@@ -7,8 +7,8 @@ namespace App\Services\Evaluation;
 use App\Models\Evaluation;
 use App\Models\EvaluationQuestion;
 use App\Models\User;
+use App\Support\Logging\CaughtExceptionLog;
 use Illuminate\Database\DatabaseManager;
-use Psr\Log\LoggerInterface;
 use Throwable;
 
 /**
@@ -19,7 +19,8 @@ use Throwable;
  *
  * ## DI strict (§1.6 D du manifeste)
  *
- * Constructeur injecte uniquement `LoggerInterface` (PSR-3). Aucune Facade
+ * Constructeur injecte `DatabaseManager`, `EvaluationStateService` et
+ * `CaughtExceptionLog` (journal des exceptions attrapées). Aucune Facade
  * `Log::`, aucun `app()`. La transaction utilise `$this->db->beginTransaction()` —
  * Facade autorisée car bas niveau Eloquent/transactional (cf. autres services
  * du projet).
@@ -59,8 +60,8 @@ final class EvaluationUpdateService
 
     public function __construct(
         private readonly DatabaseManager $db,
-        private readonly LoggerInterface $logger,
         private readonly EvaluationStateService $state,
+        private readonly CaughtExceptionLog $journal,
     ) {}
 
     /**
@@ -110,7 +111,7 @@ final class EvaluationUpdateService
             ];
         } catch (Throwable $e) {
             $this->db->rollBack();
-            $this->logger->error('Erreur mise à jour évaluation', ['error' => $e->getMessage()]);
+            $this->journal->error('Erreur mise à jour évaluation', $e);
 
             return [
                 'status'  => 500,

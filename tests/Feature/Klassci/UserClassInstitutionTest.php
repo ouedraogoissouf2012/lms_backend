@@ -144,6 +144,6 @@ final class UserClassInstitutionTest extends TestCase
         $proxy->shouldReceive('requestWithUserToken')
             ->andReturn(['data' => ['classe' => ['id' => $klassciClasseId, 'name' => 'Classe '.$klassciClasseId]]]);
 
-        (new StudentClassSynchronizer($proxy, new NullLogger))->sync($user, 'jeton-klassci');
+        (new StudentClassSynchronizer($proxy, new NullLogger, app(\App\Support\Logging\CaughtExceptionLog::class)))->sync($user, 'jeton-klassci');
     }
 }

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Matiere;
 
 use App\Services\KlassciProxyService;
+use App\Support\Logging\CaughtExceptionLog;
 use Carbon\Carbon;
 use Psr\Log\LoggerInterface;
 use Throwable;
@@ -32,6 +33,7 @@ final class MatiereInfoFetcher
     public function __construct(
         private readonly KlassciProxyService $klassciService,
         private readonly LoggerInterface $logger,
+        private readonly CaughtExceptionLog $journal,
     ) {}
 
     /**
@@ -118,9 +120,8 @@ final class MatiereInfoFetcher
 
             return $enseignants;
         } catch (Throwable $e) {
-            $this->logger->warning('Erreur récupération enseignants via emploi du temps', [
+            $this->journal->warning('Erreur récupération enseignants via emploi du temps', $e, [
                 'matiere_id' => $matiereId,
-                'error' => $e->getMessage(),
             ]);
 
             return [];

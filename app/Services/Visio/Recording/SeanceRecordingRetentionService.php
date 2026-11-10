@@ -7,18 +7,18 @@ namespace App\Services\Visio\Recording;
 use App\Models\Chapter;
 use App\Models\SeanceRecording;
 use App\Services\FileConversion\ChapterArtifactStorage;
+use App\Support\Logging\CaughtExceptionLog;
 use Carbon\CarbonInterface;
 use Illuminate\Database\DatabaseManager;
-use Psr\Log\LoggerInterface;
 use Throwable;
 
 final class SeanceRecordingRetentionService
 {
     public function __construct(
         private readonly DatabaseManager $database,
-        private readonly LoggerInterface $logger,
         private readonly RecordingMediaStorage $media,
         private readonly ChapterArtifactStorage $artifacts,
+        private readonly CaughtExceptionLog $journal,
     ) {}
 
     public function eligible(SeanceRecording $recording, CarbonInterface $cutoff): bool
@@ -91,11 +91,9 @@ final class SeanceRecordingRetentionService
 
     public function logFailure(SeanceRecording $recording, Throwable $exception): void
     {
-        $this->logger->error('Visio recording retention purge failed', [
+        $this->journal->error('Visio recording retention purge failed', $exception, [
             'recording_id' => $recording->getKey(),
             'seance_id' => $recording->seance_id,
-            'exception' => $exception::class,
-            'message' => $exception->getMessage(),
         ]);
     }
 

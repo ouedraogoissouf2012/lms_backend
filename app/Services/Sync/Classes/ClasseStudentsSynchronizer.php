@@ -8,6 +8,7 @@ use App\Models\Classe;
 use App\Models\User;
 use App\Services\KlassciProxyService;
 use App\Services\TenantManager;
+use App\Support\Logging\CaughtExceptionLog;
 use Illuminate\Database\DatabaseManager;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Psr\Log\LoggerInterface;
@@ -71,6 +72,7 @@ final class ClasseStudentsSynchronizer
         private readonly DatabaseManager $db,
         private readonly TenantManager $tenantManager,
         private readonly LoggerInterface $logger,
+        private readonly CaughtExceptionLog $journal,
     ) {
     }
 
@@ -99,10 +101,9 @@ final class ClasseStudentsSynchronizer
 
                 $this->upsertEnrollment($classe, $student, $institutionId, $stats);
             } catch (\Exception $e) {
-                $this->logger->error('Erreur sync étudiant', [
+                $this->journal->error('Erreur sync étudiant', $e, [
                     'classe_id' => $classe->id,
                     'etudiant_id' => $etudiantData['id'] ?? null,
-                    'error' => $e->getMessage(),
                 ]);
             }
         }

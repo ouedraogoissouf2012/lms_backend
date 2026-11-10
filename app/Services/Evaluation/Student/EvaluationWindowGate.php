@@ -7,6 +7,7 @@ namespace App\Services\Evaluation\Student;
 use App\Models\Evaluation;
 use App\Services\KlassciProxyService;
 use App\Services\Seances\KlassciPayload;
+use App\Support\Logging\CaughtExceptionLog;
 use Carbon\Carbon;
 use Carbon\Exceptions\InvalidFormatException;
 use Psr\Log\LoggerInterface;
@@ -30,6 +31,7 @@ final class EvaluationWindowGate
     public function __construct(
         private readonly LoggerInterface $logger,
         private readonly KlassciProxyService $klassciService,
+        private readonly CaughtExceptionLog $journal,
     ) {}
 
     /**
@@ -53,7 +55,7 @@ final class EvaluationWindowGate
                 'window' => is_array($rawWindow) ? KlassciPayload::asArray($rawWindow) : null,
             ];
         } catch (\Exception $e) {
-            $this->logger->warning('Window check failed (KLASSCI)', ['error' => $e->getMessage()]);
+            $this->journal->warning('Window check failed (KLASSCI)', $e);
 
             return ['fetched' => false, 'window' => null];
         }

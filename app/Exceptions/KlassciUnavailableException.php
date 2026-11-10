@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Exceptions;
 
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\JsonResponse;
 use RuntimeException;
 
@@ -84,9 +85,10 @@ final class KlassciUnavailableException extends RuntimeException
      * produisait un écran vide.
      *
      * Le détail réseau reste dans la cause chaînée, pour le journal ; il ne sort
-     * jamais vers le client (§1.2).
+     * jamais vers le client (§1.2). La cause est typée : seul le message d'une
+     * panne de transport (hôte, URL) entre dans celui de cette exception.
      */
-    public static function transportFailure(\Throwable $cause): self
+    public static function transportFailure(ConnectionException $cause): self
     {
         return new self("API KLASSCI injoignable (panne de transport) : {$cause->getMessage()}", 503, $cause);
     }

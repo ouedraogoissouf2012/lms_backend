@@ -8,6 +8,7 @@ use App\Models\Seance;
 use App\Models\User;
 use App\Services\ClasseSyncService;
 use App\Services\Notification\AsyncVisioNotificationDispatcher;
+use App\Support\Logging\CaughtExceptionLog;
 use Psr\Log\LoggerInterface;
 use Throwable;
 
@@ -36,6 +37,7 @@ final class VisioSessionService
         private readonly ClasseSyncService $classeSyncService,
         private readonly AsyncVisioNotificationDispatcher $notifications,
         private readonly LoggerInterface $logger,
+        private readonly CaughtExceptionLog $journal,
     ) {}
 
     /**
@@ -102,9 +104,8 @@ final class VisioSessionService
                 ],
             ];
         } catch (Throwable $e) {
-            $this->logger->error('Erreur démarrage visio', [
+            $this->journal->error('Erreur démarrage visio', $e, [
                 'seance_id' => $seanceId,
-                'error' => $e->getMessage(),
             ]);
 
             return [
@@ -175,9 +176,8 @@ final class VisioSessionService
                 ],
             ];
         } catch (Throwable $e) {
-            $this->logger->error('Erreur fin visio', [
+            $this->journal->error('Erreur fin visio', $e, [
                 'seance_id' => $seanceId,
-                'error' => $e->getMessage(),
             ]);
 
             return [
@@ -222,9 +222,8 @@ final class VisioSessionService
                 }
             }
         } catch (Throwable $e) {
-            $this->logger->error('Erreur synchronisation classe au démarrage', [
+            $this->journal->error('Erreur synchronisation classe au démarrage', $e, [
                 'seance_id' => $seanceId,
-                'error' => $e->getMessage(),
             ]);
         }
     }
@@ -247,9 +246,8 @@ final class VisioSessionService
                 'seance_id' => $seanceId,
             ]);
         } catch (Throwable $e) {
-            $this->logger->error('Erreur envoi notifications visio démarrée', [
+            $this->journal->error('Erreur envoi notifications visio démarrée', $e, [
                 'seance_id' => $seanceId,
-                'error' => $e->getMessage(),
             ]);
         }
     }

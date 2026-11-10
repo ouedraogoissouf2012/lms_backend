@@ -11,6 +11,7 @@ use App\Models\User;
 use App\Models\UserClass;
 use App\Services\Seances\KlassciPayload;
 use App\Services\Visio\VisioActorAuthorization;
+use App\Support\Logging\CaughtExceptionLog;
 use Psr\Log\LoggerInterface;
 use Throwable;
 
@@ -32,6 +33,7 @@ final class VideoSessionAttendancesSyncer
     public function __construct(
         private readonly LoggerInterface $logger,
         private readonly VisioActorAuthorization $authorization,
+        private readonly CaughtExceptionLog $journal,
     ) {}
 
     /**
@@ -80,9 +82,8 @@ final class VideoSessionAttendancesSyncer
                         $updated++;
                     }
                 } catch (Throwable $e) {
-                    $this->logger->error('Erreur sync attendance pour étudiant', [
+                    $this->journal->error('Erreur sync attendance pour étudiant', $e, [
                         'etudiant_id' => $participant['etudiant_id'] ?? null,
-                        'error' => $e->getMessage(),
                     ]);
 
                     $errors[] = [
@@ -106,10 +107,7 @@ final class VideoSessionAttendancesSyncer
             ];
 
         } catch (Throwable $e) {
-            $this->logger->error('Erreur synchronisation attendances vidéo', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-            ]);
+            $this->journal->error('Erreur synchronisation attendances vidéo', $e);
 
             return [
                 'status' => 500,

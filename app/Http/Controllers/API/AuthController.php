@@ -139,7 +139,7 @@ class AuthController extends AuthenticatedController
     {
         try {
             $user = $this->authenticatedUser($request);
-            $this->auditLogger->logAuthEvent('logout', $user->id);
+            $this->auditLogger->logAuthEvent('logout', $user);
             $user->currentAccessToken()->delete();
 
             try {

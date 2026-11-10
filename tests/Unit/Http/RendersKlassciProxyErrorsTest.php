@@ -76,7 +76,7 @@ final class RendersKlassciProxyErrorsTest extends TestCase
         self::assertFalse($body['success']);
         self::assertSame(KlassciClientErrorCatalog::messageFor(403), $body['message']);
 
-        // `reason` est le contrat de la seule expiration de session : ne pas l'élargir.
+        // Un 403 relayé n'a qu'un sens : il ne porte pas de `reason` (règle d'omission, ADR-906-01).
         self::assertArrayNotHasKey('reason', $body);
     }
 

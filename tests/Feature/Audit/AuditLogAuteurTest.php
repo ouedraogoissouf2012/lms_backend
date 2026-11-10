@@ -62,7 +62,11 @@ final class AuditLogAuteurTest extends TestCase
 
         $reponse = $this->lire($supradminRattache);
 
+        // Témoin : le tenant de l'école A est bien posé pour cette requête (sinon
+        // le test ne prouverait rien sur le scope).
+        self::assertSame($ecoleA->id, app(\App\Services\TenantManager::class)->id());
         self::assertSame('Auteur de B', $this->auteurDe($reponse, $entree)['name'] ?? null);
+        $this->assertMatchesOpenApiResponse($reponse, self::CHEMIN, 'get');
     }
 
     private function lire(User $lecteur): TestResponse

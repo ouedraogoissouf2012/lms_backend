@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Audit;
 
 use App\Models\AuditLog;
+use App\Models\Institution;
 use App\Models\User;
 use App\Support\Logging\CaughtExceptionLog;
 use Illuminate\Contracts\Auth\Factory as AuthFactory;
@@ -16,15 +17,18 @@ use Illuminate\Http\Request;
  * Point d'entrée unique pour écrire dans le journal d'audit (#215).
  *
  * Capture « qui / quoi / quand / depuis où » :
- *   - acteur : utilisateur authentifié courant (null si échec d'auth / job) ;
+ *   - acteur : le compte passé explicitement (connexion, déconnexion), sinon
+ *     l'utilisateur authentifié courant (null si échec d'auth / job) ;
  *   - provenance : IP + user-agent de la requête courante (null hors HTTP) ;
- *   - tenant : institution de l'acteur (null pour supradmin / système).
+ *   - école : celle de l'acteur ; à défaut d'acteur rattaché à une école
+ *     (supradmin, job système), celle de la cible (voir `write()`).
  *
  * DI strict §1.6 : AuthFactory, Request et ConfigRepository injectés — aucun
  * helper global `auth()` / `request()` / `config()`. Testable en isolation.
  *
  * @see app/Observers/AuditableObserver.php (CREATE/UPDATE/DELETE)
- * @see app/Http/Controllers/API/AuthController.php (events auth)
+ * @see app/Http/Controllers/API/AuthController.php (déconnexion)
+ * @see app/Services/Auth/LoginOrchestrator.php (connexions)
  */
 final class AuditLogger
 {
@@ -48,21 +52,24 @@ final class AuditLogger
             'auditable_id' => $model->getKey(),
             'before' => $before,
             'after' => $after,
-        ]);
+        ], cible: $model);
     }
 
     /**
      * Enregistre un événement d'authentification (login/logout/login_failed).
      *
-     * @param  int|null  $userId  Acteur explicite (un login échoué n'a pas de user
-     *                            authentifié ; on passe l'id résolu si connu).
+     * @param  User|null  $acteur  Le compte qui se connecte ou se déconnecte.
+     *                             Au login, le garde n'est pas encore
+     *                             authentifié : c'est ce compte qui donne
+     *                             l'école de l'entrée. Null pour un login
+     *                             échoué, dont le compte n'est pas identifié.
      * @param  array<string, mixed>|null  $context  Métadonnées additionnelles.
      */
-    public function logAuthEvent(string $action, ?int $userId = null, ?array $context = null): void
+    public function logAuthEvent(string $action, ?User $acteur = null, ?array $context = null): void
     {
         $this->write($action, [
             'after' => $context,
-        ], $userId);
+        ], $acteur);
     }
 
     /**
@@ -76,23 +83,24 @@ final class AuditLogger
             'auditable_type' => $target?->getMorphClass(),
             'auditable_id' => $target?->getKey(),
             'after' => $context,
-        ]);
+        ], cible: $target);
     }
 
     /**
      * Écriture bas-niveau, append-only.
      *
+     * L'école de l'entrée est celle de l'ACTEUR (explicite, sinon celui du
+     * garde). À défaut d'acteur rattaché à une école (supradmin, job système),
+     * c'est celle de la CIBLE : le supradmin qui diagnostique cherche l'école
+     * visée. La cible n'écrase jamais l'école d'un acteur qui en a une.
+     *
      * @param  array<string, mixed>  $attributes
      */
-    private function write(string $action, array $attributes, ?int $explicitUserId = null): void
+    private function write(string $action, array $attributes, ?User $acteur = null, ?Model $cible = null): void
     {
         if (! $this->config->get('audit.enabled', true)) {
             return;
         }
-
-        $user = $this->auth->guard()->user();
-        $userId = $explicitUserId ?? $user?->getAuthIdentifier();
-        $institutionId = $user instanceof User ? $user->institution_id : null;
 
         // #241 : l'audit est transversal — un échec d'écriture (table absente,
         // DB momentanément indisponible…) ne doit JAMAIS casser l'action métier
@@ -100,6 +108,13 @@ final class AuditLogger
         // continue : la traçabilité est importante mais secondaire devant la
         // disponibilité de l'opération auditée.
         try {
+            $garde = $this->auth->guard()->user();
+            $acteur ??= $garde instanceof User ? $garde : null;
+            // L'auteur et son école viennent du même compte : jamais l'id du garde
+            // avec l'école d'un acteur explicite.
+            $userId = $acteur !== null ? $acteur->getKey() : $garde?->getAuthIdentifier();
+            $institutionId = $this->ecoleDe($acteur) ?? $this->ecoleDe($cible);
+
             AuditLog::create(array_merge([
                 'user_id' => $userId,
                 'institution_id' => $institutionId,
@@ -112,5 +127,19 @@ final class AuditLogger
                 'audit_action' => $action,
             ]);
         }
+    }
+
+    /** L'école d'un modèle : son id pour une école, son `institution_id` sinon. */
+    private function ecoleDe(?Model $modele): ?int
+    {
+        if ($modele instanceof Institution) {
+            $id = $modele->getKey();
+
+            return is_numeric($id) ? (int) $id : null;
+        }
+
+        $ecole = $modele?->getAttribute('institution_id');
+
+        return is_numeric($ecole) ? (int) $ecole : null;
     }
 }

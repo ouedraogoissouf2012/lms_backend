@@ -21,10 +21,9 @@ use Tests\TestCase;
  * Une défaillance interne d'un tableau de bord `/proxy` est rapportée UNE fois,
  * sans le message ni les valeurs de la requête (#948).
  *
- * Les deux tableaux de bord écrivaient eux-mêmes le message de l'exception
- * avant de la rendre. Depuis que le rendu des erreurs proxy rapporte la panne
- * (lot 3a), elle était écrite deux fois, et l'une des deux portait le SQL avec
- * ses valeurs liées.
+ * Les deux tableaux de bord journalisaient eux-mêmes l'exception avant de la
+ * rendre (`CaughtExceptionLog`). Depuis que le rendu des erreurs proxy rapporte
+ * la panne (lot 3a), elle était écrite deux fois.
  */
 final class ProxyDashboardPanneTest extends TestCase
 {

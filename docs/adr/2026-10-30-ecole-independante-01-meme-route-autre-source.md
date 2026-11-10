@@ -156,8 +156,8 @@ lot de #949.
 - **Changement aussi dans l'école créée depuis KLASSCI, voulu et déclaré** : la branche « défaillance interne » du
   rendu des proxys (`RendersKlassciProxyErrors`) rapporte désormais la panne, une fois (#948). C'est valable pour
   toutes les routes `/proxy` ; leur rendu ne change pas. Les deux tableaux de bord (`ProxyDashboardController`)
-  écrivaient eux-mêmes le message de l'exception avant de la rendre : la panne aurait été écrite deux fois, l'une
-  avec les valeurs du SQL. Ces deux écritures sont retirées.
+  journalisaient aussi l'exception avant de la rendre (`CaughtExceptionLog`, #1008) : la panne aurait été écrite
+  deux fois. Ce sont les deux seuls des 16 sites de `proxyErrorResponse` à le faire ; leur écriture est retirée.
 
 ## Conséquences
 

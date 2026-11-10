@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace App\Services\Search;
 
-use App\Enums\LessonStatus;
 use App\Models\Evaluation;
 use App\Models\Lesson;
 use App\Models\User;
+use App\Services\Lesson\LessonReadScope;
 use Illuminate\Database\Eloquent\Builder;
 
 /**
@@ -20,8 +20,9 @@ use Illuminate\Database\Eloquent\Builder;
  *
  * ## DI strict (§1.6 D)
  *
- * Aucune Facade ni `app()` : la seule collaboration ({@see TeacherOwnershipScope})
- * est injectée par le constructeur.
+ * Aucune Facade ni `app()` : les collaborations ({@see TeacherOwnershipScope} pour
+ * les évaluations, {@see LessonReadScope} pour les leçons) sont injectées par le
+ * constructeur.
  *
  * ## Correctifs #575
  *
@@ -42,6 +43,7 @@ final class SearchSuggestionsService
 
     public function __construct(
         private readonly TeacherOwnershipScope $ownership,
+        private readonly LessonReadScope $lessonScope,
     ) {
     }
 
@@ -66,16 +68,8 @@ final class SearchSuggestionsService
 
         /** @var array<int, string> $lessonSuggestions */
         $lessonSuggestions = Lesson::where('title', 'LIKE', "%{$query}%")
-            ->where(function (Builder $q) use ($user): void {
-                if ($user->isTeacher()) {
-                    $this->ownership->applyToLessons($q, $user);
-                }
-                // Même portée que la recherche globale (#941) : hors personnel,
-                // le titre d'un brouillon ne se suggère pas.
-                if ($user->isLearnerAudience()) {
-                    $q->where('status', LessonStatus::Published->value);
-                }
-            })
+            // Même règle que la recherche globale : celle des listes de leçons.
+            ->tap(fn (Builder $q) => $this->lessonScope->apply($q, $user))
             ->limit($limit)
             ->pluck('title')
             ->all();

@@ -11,9 +11,9 @@ use App\Http\Requests\StartEvaluationRequest;
 use App\Http\Requests\SubmitEvaluationRequest;
 use App\Services\Evaluation\EvaluationGradingService;
 use App\Services\Evaluation\Student\EvaluationAttemptStateService;
+use App\Support\Logging\CaughtExceptionLog;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
 use PDOException;
 use RuntimeException;
 
@@ -33,6 +33,7 @@ final class EvaluationStudentAttemptController extends AuthenticatedController
     public function __construct(
         private readonly EvaluationAttemptStateService $attemptState,
         private readonly EvaluationGradingService $gradingService,
+        private readonly CaughtExceptionLog $journal,
     ) {}
 
     public function startEvaluation(int $id, StartEvaluationRequest $request): JsonResponse
@@ -131,7 +132,7 @@ final class EvaluationStudentAttemptController extends AuthenticatedController
 
             return $this->successResponse($payload, 'Évaluation soumise avec succès', 201);
         } catch (\Exception $e) {
-            Log::error('Erreur soumission évaluation', ['error' => $e->getMessage()]);
+            $this->journal->error('Erreur soumission évaluation', $e);
             return $this->errorResponse('Erreur lors de la soumission', 500);
         }
     }
@@ -152,9 +153,8 @@ final class EvaluationStudentAttemptController extends AuthenticatedController
 
             return $this->renderKlassciFailure($e);
         } catch (\Exception $e) {
-            Log::error('Erreur récupération état temporel', [
+            $this->journal->error('Erreur récupération état temporel', $e, [
                 'evaluation_id' => $id,
-                'error' => $e->getMessage(),
             ]);
             return $this->errorResponse('Impossible de récupérer l\'état temporel', 500);
         }

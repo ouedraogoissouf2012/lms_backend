@@ -13,6 +13,7 @@ use App\Services\KlassciProxyService;
 use App\Services\Notification\AsyncVisioNotificationDispatcher;
 use App\Services\Seances\SeanceRestoreGuard;
 use App\Services\Visio\SecureVisioRoomIdGenerator;
+use App\Support\Logging\CaughtExceptionLog;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Psr\Log\LoggerInterface;
 use Throwable;
@@ -41,6 +42,7 @@ final class VisioToggleService
         private readonly ClasseSyncService $classeSyncService,
         private readonly AsyncVisioNotificationDispatcher $notifications,
         private readonly LoggerInterface $logger,
+        private readonly CaughtExceptionLog $journal,
     ) {}
 
     /**

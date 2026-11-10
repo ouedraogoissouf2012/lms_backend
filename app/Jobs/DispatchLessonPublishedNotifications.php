@@ -9,6 +9,7 @@ use App\Models\Notification;
 use App\Models\User;
 use App\Services\KlassciProxyService;
 use App\Services\TenantManager;
+use App\Support\Logging\CaughtExceptionLog;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -69,6 +70,7 @@ final class DispatchLessonPublishedNotifications implements ShouldQueue
         KlassciProxyService $klassci,
         TenantManager $tenantManager,
         LoggerInterface $logger,
+        CaughtExceptionLog $journal,
     ): void {
         // Purge un tenant résiduel d'un job précédent (worker persistant), puis
         // repose le tenant du demandeur — sinon les requêtes ci-dessous ne sont
@@ -110,8 +112,9 @@ final class DispatchLessonPublishedNotifications implements ShouldQueue
             $this->insertNotifications($userIds);
         } catch (Throwable $e) {
             // Best-effort : la publication reste acquise (comportement pré-#538).
-            $logger->warning(
-                'Erreur lors du fan-out des notifications de publication: ' . $e->getMessage(),
+            $journal->warning(
+                'Erreur lors du fan-out des notifications de publication',
+                $e,
                 ['lesson_id' => $this->lessonId],
             );
         } finally {
@@ -213,10 +216,6 @@ final class DispatchLessonPublishedNotifications implements ShouldQueue
 
     public function failed(Throwable $exception): void
     {
-        /** @var LoggerInterface $logger */
-        $logger = app(LoggerInterface::class);
-        $logger->error('Job DispatchLessonPublishedNotifications failed after all retries', [
-            'exception' => $exception->getMessage(),
-        ]);
+        app(CaughtExceptionLog::class)->error('Job DispatchLessonPublishedNotifications failed after all retries', $exception);
     }
 }

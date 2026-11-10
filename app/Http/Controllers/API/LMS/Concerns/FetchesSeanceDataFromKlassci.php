@@ -4,16 +4,15 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\API\LMS\Concerns;
 
-use Illuminate\Support\Facades\Log;
-
 /**
- * Trait extrait du privé `getSeanceDataFromKlassci()` partagé entre
- * `LMSSeancesQueryController` et `LMSSeancesMutationController` lors
- * du split du god-controller `LMSSeancesController` (PR #154).
+ * Trait extrait du privé `getSeanceDataFromKlassci()` lors du split du
+ * god-controller `LMSSeancesController` (PR #154). Son seul hôte est
+ * aujourd'hui {@see \App\Services\Visio\VisioToggleService}.
  *
  * Trait plutôt que service dédié : la méthode dépend de `$this->klassciService`
- * (déjà injecté dans les 2 controllers), garde la signature `private`, et
- * réutilise telle quelle l'implémentation legacy.
+ * et de `$this->journal` (`CaughtExceptionLog`), injectés par l'hôte ; elle
+ * garde la signature `private` et réutilise telle quelle l'implémentation
+ * legacy.
  *
  * À promouvoir en service `SeanceKlassciFetcher` dans une PR ultérieure
  * si d'autres controllers en ont besoin.
@@ -61,9 +60,8 @@ trait FetchesSeanceDataFromKlassci
             return null;
 
         } catch (\Exception $e) {
-            Log::error('Erreur récupération données séance Klassci', [
+            $this->journal->error('Erreur récupération données séance Klassci', $e, [
                 'seance_id' => $seanceId,
-                'error'     => $e->getMessage(),
             ]);
             return null;
         }

@@ -1,8 +1,31 @@
 # ADR-760-01 — Deux portes quand une ressource est désignée dans deux espaces
 
 **Date :** 2026-09-19  
-**Statut :** accepté  
+**Statut :** accepté, amendé le 2026-11-09 ([ADR-EI-01](2026-10-30-ecole-independante-01-meme-route-autre-source.md), lot 2)  
 **Issue :** #760 (fermée) · PR #874 (`926963db`) · prolonge [ADR-805-01](2026-09-19-805-01-resolution-des-identifiants.md)
+
+> **Amendement EI-02 du 2026-11-09 — une école créée depuis le LMS n'a qu'un espace.**
+>
+> La source de chaque porte est choisie par le mode DÉCLARÉ de l'école, au point de liaison
+> (`RosterAuthorityFactory::sourceForCurrentTenant`), jamais devinée à partir de l'entier reçu.
+>
+> - **École créée depuis KLASSCI** : les espaces ne changent pas. La porte historique attend l'espace
+>   KLASSCI, la porte locale traduit, et le 409 « créée localement » reste rendu pour une classe sans
+>   `klassci_id`. Seul le rendu des échecs change : les deux portes relaient les refus de KLASSCI
+>   (4xx) et rendent ses pannes en 503 avec `Retry-After`, au lieu d'un 500.
+> - **École créée depuis le LMS** : les deux portes servent la même fiche, lue dans les tables
+>   locales, pour l'id LOCAL, sans 409. La prémisse de cet ADR, « une ressource désignée dans deux
+>   espaces », n'y vaut pas : `klassci_id` y est NULL partout.
+> - **École basculée** (créée depuis KLASSCI, passée en mode autonome) : elle suit son mode déclaré,
+>   comme une école créée depuis le LMS. Mais ses classes gardent leur `klassci_id`, et la liste
+>   d'administration (`/proxy/classes`) lui donne encore des identifiants KLASSCI. Ouvert par la
+>   porte historique, un tel identifiant est lu comme local : la fiche d'une autre classe, ou 404.
+>   **Dette tracée**, fermée par le lot des écrans d'administration (la liste suivra le mode) ; voir
+>   ADR-EI-01.
+>
+> La règle de cet ADR, « on n'arbitre pas à l'entrée », tient dans tous les cas : rien n'est deviné.
+> Garder KLASSCI sur la porte historique d'une école basculée lirait le mode hors du point de
+> liaison : écarté.
 
 ## Décision
 
@@ -33,7 +56,7 @@ Toutes deux servent `ClasseDetailsQueryService`, inchangé.
 
 L'issue prescrivait de résoudre l'entrée par `Classe::localIdFor()`. Cette méthode donne la **précédence au local** ; son propre docblock avertit qu'« elle rendrait la ligne de l'autre espace, silencieusement ».
 
-**Mesuré en production le 19/09/2026 :** sur 21 classes, **une seule** a `id` égal à `klassci_id`, et **sept** sont en collision franche. L'arbitrage aurait donc détourné les deux appelants KLASSCI vers la mauvaise classe. **Deux chemins cassés pour un réparé.**
+**Mesuré en production le 19/09/2026 :** les identifiants local et KLASSCI divergent, avec des collisions franches. L'arbitrage aurait donc détourné les deux appelants KLASSCI vers la mauvaise classe. **Deux chemins cassés pour un réparé.**
 
 La leçon générale : *un résolveur à précédence est le bon outil quand l'espace est réellement inconnu. Quand on connaît les appelants et qu'ils sont majoritairement d'un espace, arbitrer revient à se tromper sur la majorité.*
 

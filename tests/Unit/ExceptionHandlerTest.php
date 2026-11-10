@@ -93,31 +93,28 @@ class ExceptionHandlerTest extends TestCase
     }
 
     /**
-     * Régression inverse : on doit CONSERVER `Log::*(... getMessage() ...)`
-     * pour les logs serveur — sinon le détail des exceptions disparaît
-     * complètement. Le seuil n'est pas critique, on s'assure juste qu'on
-     * n'a pas vidé les logs par erreur.
+     * Régression inverse : les contrôleurs journalisent encore leurs exceptions
+     * attrapées, désormais par `CaughtExceptionLog` (au moins quatre appels à
+     * l'aide avec une exception). Le seuil n'est pas critique : on s'assure
+     * qu'on n'a pas vidé les journaux par erreur.
+     *
+     * Ce test ne prouve PAS le contenu du journal : la description de
+     * l'exception est prouvée par `tests/Feature/Logging/CaughtExceptionLogTest`
+     * et `SitesDesControleursTest`, et l'ancienne forme (`getMessage()` écrit à
+     * la main) est interdite par `NoRawExceptionMessageTest`.
      */
-    public function test_log_still_contains_exception_details(): void
+    public function test_controllers_still_log_caught_exceptions_through_the_helper(): void
     {
         $logged = $this->scanLinesMatchingBoth(
             base_path('app/Http/Controllers'),
-            'Log::',
-            'getMessage()'
+            '$this->journal->',
+            ', $'
         );
 
-        // de la logique de logging dans les services (TIER 1 + splits §5/§1.6 D).
-        // Les controllers migrent de la Facade `Log::` vers l'injection PSR-3
-        // `LoggerInterface` au fil des splits, donc le compteur peut baisser.
-        // Seuil ajusté à >3 après split-19/search (`SearchController` migré vers
-        // PSR-3 `LoggerInterface` dans `GlobalSearchService`). Le logging des
-        // détails d'exception est toujours préservé — il passe simplement par
-        // l'injection au lieu de la Facade. Reste >3 pour garantir qu'on n'a
-        // pas vidé les logs serveur par erreur.
         $this->assertGreaterThan(
             3,
             count($logged),
-            'Log:: should still contain getMessage() for server-side logging — found only ' . count($logged) . ' lines.'
+            'Les contrôleurs doivent encore journaliser leurs exceptions attrapées par CaughtExceptionLog — trouvé seulement ' . count($logged) . ' ligne(s).'
         );
     }
 

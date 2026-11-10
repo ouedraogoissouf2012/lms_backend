@@ -5,7 +5,9 @@ namespace App\Http\Controllers\API\LMS;
 use App\Exceptions\KlassciUnavailableException;
 use App\Http\Controllers\AuthenticatedController;
 use App\Models\LmsEnseignantCache;
+use App\Services\Klassci\TeacherDirectory\TeacherDirectoryVisibility;
 use App\Services\KlassciProxyService;
+use App\Support\Logging\CaughtExceptionLog;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -34,6 +36,8 @@ final class LMSEnseignantsController extends AuthenticatedController
 {
     public function __construct(
         private readonly KlassciProxyService $klassciService,
+        private readonly CaughtExceptionLog $journal,
+        private readonly TeacherDirectoryVisibility $visibility,
     ) {}
 
     /**
@@ -46,13 +50,15 @@ final class LMSEnseignantsController extends AuthenticatedController
     public function getEnseignantsFromKlassci(Request $request): JsonResponse
     {
         try {
-            // Authentification garantie par AuthenticatedController + auth:sanctum.
-            // L'appel à `authenticatedUser()` enforce que la requête est typée même
-            // si la méthode n'utilise pas directement $user (cohérence avec les
-            // autres méthodes migrées du LMS split).
-            $this->authenticatedUser($request);
-
+            // La liste suit la grille des rôles (`TeacherDirectoryVisibility`),
+            // appliquée après le cache de KLASSCI, commun à l'établissement. Un
+            // lecteur qui n'en verrait aucune ligne ne déclenche aucun appel.
+            $lecteur = $this->authenticatedUser($request);
             $startTime = microtime(true);
+            if (! $this->visibility->readsAnything($lecteur)) {
+                return $this->successResponse([], '', 200, ['total' => 0]);
+            }
+
             $withDetails = $request->boolean('with_details', false);
 
             Log::info('[LMS Enseignants KLASSCI] Récupération depuis API externe', [
@@ -77,7 +83,9 @@ final class LMSEnseignantsController extends AuthenticatedController
                 $this->warmEnseignantCache($enseignants);
             }
 
-            return $this->successResponse($enseignants, '', 200, $this->buildMeta($response, $startTime));
+            $servie = $this->visibility->envelopeFor($lecteur, $response);
+
+            return $this->successResponse($servie['data'] ?? [], '', 200, $this->buildMeta($servie, $startTime));
 
         } catch (KlassciUnavailableException $e) {
             // Panne KLASSCI : 503 retryable, jamais le 500 generique ci-dessous.
@@ -87,9 +95,7 @@ final class LMSEnseignantsController extends AuthenticatedController
             return KlassciUnavailableException::jsonResponse();
         } catch (\Exception $e) {
             // §1.2 — Détail technique loggé server-side, message générique au client.
-            Log::error('[LMS Enseignants KLASSCI] Erreur', [
-                'error' => $e->getMessage(),
-            ]);
+            $this->journal->error('[LMS Enseignants KLASSCI] Erreur', $e);
 
             return response()->json([
                 'success' => false,
@@ -120,9 +126,8 @@ final class LMSEnseignantsController extends AuthenticatedController
             try {
                 LmsEnseignantCache::store($enseignant['id'], $enseignant, 10);
             } catch (\Exception $cacheErr) {
-                Log::warning('[LMS Enseignants KLASSCI] Cache store failed', [
+                $this->journal->warning('[LMS Enseignants KLASSCI] Cache store failed', $cacheErr, [
                     'enseignant_id' => $enseignant['id'],
-                    'error' => $cacheErr->getMessage(),
                 ]);
             }
         }

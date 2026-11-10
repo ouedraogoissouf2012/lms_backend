@@ -33,7 +33,7 @@ use RuntimeException;
  * d'approvisionnement sans rien sécuriser.
  *
  * @see PRODUCTION_STANDARDS.md §1.2 (sécurité absolue) · §1.6 D (DI stricte)
- * @see \Tests\Unit\Services\Visio\VisioAccessTokenIssuerTest
+ * @see `tests/Unit/Services/Visio/VisioAccessTokenIssuerTest.php`
  */
 final class VisioAccessTokenIssuer
 {

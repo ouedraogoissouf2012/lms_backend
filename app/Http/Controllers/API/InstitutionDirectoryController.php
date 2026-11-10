@@ -13,7 +13,7 @@ use Illuminate\Http\JsonResponse;
  *
  * Remplace les closures historiques de `routes/api/core.php` à contrat JSON
  * strictement identique (golden master :
- * {@see \Tests\Feature\Api\PublicCoreRoutesContractTest}). Le frontend
+ * `tests/Feature/Api/PublicCoreRoutesContractTest.php`). Le frontend
  * (`lms-frontend/src/stores/auth.js`) consomme `/institutions/active` pour le
  * sélecteur de la page de login — avant toute authentification.
  *

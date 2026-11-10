@@ -37,7 +37,7 @@ use Psr\Log\LoggerInterface;
  * désormais seul l'archivage, et il est le seul protégé par le garde de
  * souillure. Un second archiveur réintroduirait un chemin non gardé.
  *
- * @see \Tests\Feature\Seances\NoPhantomKlassciSeanceProbeTest  garde structurel
+ * @see `tests/Feature/Seances/NoPhantomKlassciSeanceProbeTest.php`  garde structurel
  *
  * @see PRODUCTION_STANDARDS.md §1.1 (≤300 lignes) · §1.6 D (DI strict)
  */

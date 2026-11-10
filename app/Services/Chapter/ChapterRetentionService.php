@@ -13,7 +13,6 @@ use Carbon\CarbonInterface;
 use Illuminate\Contracts\Config\Repository as ConfigRepository;
 use Illuminate\Database\DatabaseManager;
 use Illuminate\Database\Eloquent\Builder;
-use Tests\Feature\Chapter\ChapterRetentionPurgeTest;
 use Throwable;
 
 /**
@@ -50,7 +49,7 @@ use Throwable;
  * n'étant pas en suppression réversible, la ligne disparaît vraiment à la purge
  * visio, et le chapitre nous revient au passage suivant.
  *
- * @see ChapterRetentionPurgeTest
+ * @see `tests/Feature/Chapter/ChapterRetentionPurgeTest.php`
  */
 final class ChapterRetentionService
 {

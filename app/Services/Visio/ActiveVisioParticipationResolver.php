@@ -51,7 +51,7 @@ use App\Models\User;
  * filtrage EXPLICITE par l'institution de l'utilisateur authentifié, posé des
  * deux côtés.
  *
- * @see \Tests\Feature\LMS\Visio\ActiveVisioParticipationTest
+ * @see `tests/Feature/LMS/Visio/ActiveVisioParticipationTest.php`
  */
 final class ActiveVisioParticipationResolver
 {

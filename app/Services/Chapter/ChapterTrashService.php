@@ -8,7 +8,6 @@ use App\Models\Chapter;
 use App\Services\Visio\AttendanceLifecycleService;
 use App\Support\Logging\CaughtExceptionLog;
 use Psr\Log\LoggerInterface;
-use Tests\Feature\Chapter\ChapterTrashAndRestoreTest;
 use Throwable;
 
 /**
@@ -38,7 +37,7 @@ use Throwable;
  * {@see AttendanceLifecycleService}, qui porte l'arrivée et
  * le départ d'un participant.
  *
- * @see ChapterTrashAndRestoreTest
+ * @see `tests/Feature/Chapter/ChapterTrashAndRestoreTest.php`
  */
 final class ChapterTrashService
 {

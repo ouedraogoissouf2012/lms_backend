@@ -1062,9 +1062,9 @@ components:
           type: object
           nullable: true
           description: |
-            L'auteur de l'action. `null` pour un job systeme, un echec de
-            connexion, ou un auteur supprime depuis (la relation ne lit pas les
-            comptes supprimes).
+            L'auteur de l'action, supprime depuis ou non. `null` pour un job
+            systeme ou un echec de connexion, ou apres une purge physique du
+            compte.
           additionalProperties: false
           required:
             - id

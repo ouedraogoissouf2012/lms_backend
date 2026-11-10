@@ -9,7 +9,6 @@ use App\Models\Institution;
 use App\Models\User;
 use App\Services\KlassciProxyService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Testing\TestResponse;
 use Mockery\MockInterface;
 use Symfony\Component\HttpFoundation\Response;
@@ -28,8 +27,9 @@ use Tests\TestCase;
  * erreur ne dépend pas de lui : le 503 canonique porte `reason` dans son corps
  * (ADR-906-01 : un motif va dans le corps, pas dans un en-tête).
  *
- * Vraie route, vrai jeton, `Origin` réelle : le test mesure ce que le navigateur
- * reçoit, middleware CORS compris.
+ * Ce qui est réel : la route, le jeton porteur (`asTenant`), l'en-tête `Origin` et
+ * le middleware CORS. KLASSCI est simulé. L'origine admise est celle par défaut
+ * (`edu.klassci.com`) : une seule origine admise, comme en production.
  */
 final class CorsExposedHeadersTest extends TestCase
 {
@@ -63,7 +63,6 @@ final class CorsExposedHeadersTest extends TestCase
             'institution_id' => Institution::factory()->create()->id,
             'role' => 'etudiant',
         ]);
-        RateLimiter::clear('search:'.$user->id);
         $this->asTenant($user)->withHeaders(['Origin' => self::ALLOWED_ORIGIN]);
 
         for ($i = 0; $i < 30; $i++) {
@@ -81,10 +80,11 @@ final class CorsExposedHeadersTest extends TestCase
     }
 
     /**
-     * L'exposition ne vaut que pour une origine admise. Le middleware pose la
-     * liste `Access-Control-Expose-Headers` quelle que soit l'origine (mesuré) :
-     * ce n'est pas elle qui protège, c'est `Access-Control-Allow-Origin`. Tant
-     * qu'il ne reflète pas l'origine tierce, le navigateur ne laisse lire à
+     * L'exposition ne vaut que pour une origine admise. Avec une seule origine
+     * admise, cas de la production, le middleware renvoie cette origine à toute
+     * requête, et donc aussi la liste `Access-Control-Expose-Headers`. Ce n'est
+     * pas elle qui protège, c'est `Access-Control-Allow-Origin` : tant qu'il ne
+     * nomme ni l'origine tierce ni le joker `*`, le navigateur ne laisse lire à
      * celle-ci aucune partie de la réponse, en-têtes exposés compris.
      */
     public function test_an_untrusted_origin_reads_nothing_of_the_response(): void
@@ -92,7 +92,12 @@ final class CorsExposedHeadersTest extends TestCase
         $response = $this->klassciOutageFrom(self::UNTRUSTED_ORIGIN);
 
         $response->assertStatus(503);
-        self::assertNotSame(self::UNTRUSTED_ORIGIN, $response->headers->get('Access-Control-Allow-Origin'));
+        $allowOrigin = $response->headers->get('Access-Control-Allow-Origin');
+        if ($allowOrigin !== null) {
+            self::assertNotSame('*', $allowOrigin);
+            self::assertContains($allowOrigin, config('cors.allowed_origins'));
+            self::assertNotSame(self::UNTRUSTED_ORIGIN, $allowOrigin);
+        }
     }
 
     /**

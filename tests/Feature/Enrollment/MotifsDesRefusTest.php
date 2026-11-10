@@ -30,8 +30,9 @@ use Tests\TestCase;
  * ## Ce que ce fichier garde
  *
  * Qu'à chaque sens correspond UN motif stable, dans le CORPS — jamais dans un
- * en-tête : le front de production est cross-origin, et `exposed_headers: []`
- * rend tout en-tête non standard invisible au navigateur.
+ * en-tête : le front de production est cross-origin, et le CORS ne lui expose
+ * que des en-têtes de valeur (`Retry-After`, `X-RateLimit-*`) ; la classe d'une
+ * erreur ne dépend jamais de la configuration CORS.
  *
  * Et qu'un 429 reste un 429 : le mécanisme de Laravel qui porte le motif d'un
  * seau lève une `HttpResponseException`, que le rendu générique de

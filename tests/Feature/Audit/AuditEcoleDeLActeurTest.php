@@ -89,15 +89,21 @@ final class AuditEcoleDeLActeurTest extends TestCase
             'klassci_id' => 200001,
             'klassci_token' => 'jeton-expire',
         ]);
-        $this->mock(KlassciAuthClient::class, fn ($mock) => $mock->shouldReceive('attemptLogin')->andReturn([
+        $this->mock(KlassciAuthClient::class, fn ($mock) => $mock->shouldReceive('attemptLogin')->once()->andReturn([
             'data' => ['user' => ['id' => 200001, 'email' => $compte->email, 'nom' => $compte->name, 'role' => 'enseignant'], 'token' => 'jeton-frais'],
             'meta' => [],
         ]));
-        $this->mock(KlassciUserSynchronizer::class, fn ($mock) => $mock->shouldReceive('sync')->andReturn($compte));
+        $this->mock(KlassciUserSynchronizer::class, fn ($mock) => $mock->shouldReceive('sync')->once()->andReturn($compte));
 
-        $this->postJson('/api/auth/login', ['username' => 'teacher@klassci.test', 'password' => self::MOT_DE_PASSE])->assertOk();
+        // Le chemin KLASSCI, et non le repli local qui écrirait la même ligne.
+        $this->postJson('/api/auth/login', ['username' => 'teacher@klassci.test', 'password' => self::MOT_DE_PASSE])
+            ->assertOk()
+            ->assertJsonPath('meta.klassci_synced', true);
 
-        $this->assertDatabaseHas('audit_logs', ['action' => 'login', 'user_id' => $compte->id, 'institution_id' => $ecole->id]);
+        $entree = AuditLog::query()->withoutGlobalScope('institution')->where('action', 'login')->sole();
+        self::assertSame($compte->id, $entree->user_id);
+        self::assertSame($ecole->id, $entree->institution_id);
+        self::assertSame('klassci', $entree->after['method'] ?? null);
     }
 
     public function test_un_echec_de_connexion_n_a_pas_d_ecole(): void

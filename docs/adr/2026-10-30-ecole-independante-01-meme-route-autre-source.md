@@ -176,10 +176,9 @@ lot de #949.
 - La grille des matières est `MatieresAtteintes`. Elle réutilise `ClassesAtteintes`, et y ajoute, pour l'enseignant, la
   désignation sur CETTE matière. Les règles d'affichage de l'écran d'administration (couleur par défaut, `N/A`, totaux)
   sont écrites une fois, dans `AdminMatierePresentation`, pour les deux sources.
-- **Changement aussi dans l'école créée depuis KLASSCI, voulu et déclaré** : une défaillance interne de
-  `/admin/matieres` est rapportée une fois, sans les valeurs du SQL (#948). Le contrôleur écrivait le message de
-  l'exception, valeurs liées comprises. Le corps du 500 ne change pas. Un refus 4xx de KLASSCI y rend toujours 500 :
-  c'est préexistant, et hors de ce lot.
+- Une défaillance interne de `/admin/matieres` reste écrite une fois par `CaughtExceptionLog`, sans les valeurs du
+  SQL (#1008) ; les tests du lot la fixent pour les deux sources. Le corps du 500 ne change pas. Un refus 4xx de
+  KLASSCI y rend toujours 500 : c'est préexistant, et hors de ce lot.
 
 ## Conséquences
 

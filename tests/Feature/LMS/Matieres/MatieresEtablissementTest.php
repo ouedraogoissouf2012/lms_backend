@@ -361,8 +361,7 @@ final class MatieresEtablissementTest extends TestCase
 
     /**
      * Une panne de base est rapportée une fois, sans le message ni les valeurs
-     * de la requête (#948). L'administration écrivait le message de
-     * l'exception, valeurs liées comprises, dans le journal.
+     * de la requête (#948), par les deux routes et dans les deux types d'école.
      *
      * @param  class-string<InstitutionMatieresReader>  $source
      * @param  array<string, mixed>  $corps

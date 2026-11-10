@@ -8,7 +8,6 @@ use App\Models\Evaluation;
 use App\Models\Lesson;
 use App\Models\User;
 use App\Services\Lesson\LessonReadScope;
-use Illuminate\Contracts\Cache\Repository as CacheRepository;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Str;
 use Psr\Log\LoggerInterface;
@@ -23,8 +22,9 @@ use Throwable;
  *
  * ## DI strict (§1.6 D)
  *
- * Aucune Facade (`Cache`, `Log`) ni `app()` : `CacheRepository`, PSR-3
- * `LoggerInterface` et {@see KlassciSearchSources} sont injectés.
+ * Aucune Facade (`Cache`, `Log`) ni `app()` : {@see SearchResultCache}, PSR-3
+ * `LoggerInterface`, {@see TeacherOwnershipScope}, {@see KlassciSearchSources} et
+ * {@see LessonReadScope} sont injectés.
  *
  * ## Comportement
  *

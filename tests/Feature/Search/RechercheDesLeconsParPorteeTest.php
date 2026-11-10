@@ -25,7 +25,10 @@ use Tests\TestCase;
  * - la gestion, toutes celles de son école.
  *
  * La recherche texte (titre, description ou contenu) reste groupée : un mot
- * trouvé dans une leçon d'une autre classe ne la fait pas passer la borne.
+ * trouvé dans une leçon d'une autre classe ne la fait pas passer la borne. Ce
+ * groupement est prouvé par le cas de l'ENSEIGNANT. Pour l'apprenant, Eloquent
+ * regroupe déjà les clauses antérieures quand `published()` est appelé
+ * (`Builder::callScope`), et sa borne de classe tient même sans la closure.
  * Vrai jeton porteur ; KLASSCI ne répond rien (sources dégradables). La
  * recherche demande 20 résultats par catégorie (5 par défaut) : aucun n'est
  * tronqué.

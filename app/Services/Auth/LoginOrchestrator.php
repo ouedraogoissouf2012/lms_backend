@@ -44,7 +44,7 @@ final class LoginOrchestrator
         }
 
         $token = $user->createToken('lms-backend-token', ['lms:access'])->plainTextToken;
-        $this->auditLogger->logAuthEvent('login', $user->id, ['method' => 'local']);
+        $this->auditLogger->logAuthEvent('login', $user, ['method' => 'local']);
 
         return $this->presenter->successfulLocal(
             $user,
@@ -121,7 +121,7 @@ final class LoginOrchestrator
         $localUser = $this->userSync->sync($klassciUser, $klassciToken, $tenant['api_base_url'], $institution);
         $sanctumToken = $localUser->createToken('lms-backend-token', ['lms:access'])->plainTextToken;
 
-        $this->auditLogger->logAuthEvent('login', $localUser->id, [
+        $this->auditLogger->logAuthEvent('login', $localUser, [
             'method' => 'klassci',
             'tenant' => $tenant['code'],
         ]);

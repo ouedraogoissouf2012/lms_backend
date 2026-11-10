@@ -106,11 +106,13 @@ final class MyCoursesDeuxEcolesTest extends TestCase
      */
     public function test_le_personnel_d_une_ecole_ne_voit_jamais_les_lecons_de_l_autre(): void
     {
-        $profA = $this->compte($this->ecoleKlassci, 'enseignant', klassciId: 920001);
-        $profB = $this->compte($this->ecoleAutonome, 'enseignant', klassciId: null);
+        // La gestion : la liste d'un enseignant ne porte que ses leçons (D72),
+        // ce qui masquerait la frontière mesurée ici.
+        $gestionA = $this->compte($this->ecoleKlassci, 'coordinateur', klassciId: 920001);
+        $gestionB = $this->compte($this->ecoleAutonome, 'coordinateur', klassciId: null);
 
-        self::assertEqualsCanonicalizing($this->leconsA, $this->idsVusPar($profA));
-        self::assertEqualsCanonicalizing($this->leconsB, $this->idsVusPar($profB));
+        self::assertEqualsCanonicalizing($this->leconsA, $this->idsVusPar($gestionA));
+        self::assertEqualsCanonicalizing($this->leconsB, $this->idsVusPar($gestionB));
     }
 
     /**

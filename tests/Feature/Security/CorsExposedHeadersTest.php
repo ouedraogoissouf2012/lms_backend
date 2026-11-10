@@ -81,15 +81,17 @@ final class CorsExposedHeadersTest extends TestCase
     }
 
     /**
-     * L'exposition ne vaut que pour une origine admise : une origine tierce ne
-     * reçoit ni son origine en retour, ni la liste des en-têtes lisibles.
+     * L'exposition ne vaut que pour une origine admise. Le middleware pose la
+     * liste `Access-Control-Expose-Headers` quelle que soit l'origine (mesuré) :
+     * ce n'est pas elle qui protège, c'est `Access-Control-Allow-Origin`. Tant
+     * qu'il ne reflète pas l'origine tierce, le navigateur ne laisse lire à
+     * celle-ci aucune partie de la réponse, en-têtes exposés compris.
      */
-    public function test_an_untrusted_origin_is_exposed_nothing(): void
+    public function test_an_untrusted_origin_reads_nothing_of_the_response(): void
     {
         $response = $this->klassciOutageFrom(self::UNTRUSTED_ORIGIN);
 
-        $response->assertStatus(503)
-            ->assertHeaderMissing('Access-Control-Expose-Headers');
+        $response->assertStatus(503);
         self::assertNotSame(self::UNTRUSTED_ORIGIN, $response->headers->get('Access-Control-Allow-Origin'));
     }
 

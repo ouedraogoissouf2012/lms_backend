@@ -142,7 +142,7 @@ final class ClasseEtudiantsTest extends TestCase
         $this->appeler()
             ->assertStatus(503)
             ->assertHeader('Retry-After')
-            ->assertExactJson(['success' => false, 'message' => KlassciUnavailableException::CLIENT_MESSAGE]);
+            ->assertExactJson(['success' => false, 'message' => KlassciUnavailableException::CLIENT_MESSAGE, 'reason' => KlassciUnavailableException::REASON]);
     }
 
     public function test_une_enveloppe_sans_bloc_etudiants_n_est_pas_une_classe_vide(): void
@@ -151,7 +151,7 @@ final class ClasseEtudiantsTest extends TestCase
 
         $this->appeler()
             ->assertStatus(503)
-            ->assertExactJson(['success' => false, 'message' => KlassciUnavailableException::CLIENT_MESSAGE]);
+            ->assertExactJson(['success' => false, 'message' => KlassciUnavailableException::CLIENT_MESSAGE, 'reason' => KlassciUnavailableException::REASON]);
     }
 
     public function test_un_refus_de_l_enveloppe_reste_un_403_et_non_un_500(): void

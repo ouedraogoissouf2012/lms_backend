@@ -16,6 +16,10 @@ info:
     Chaque réponse expose les en-têtes `X-RateLimit-Limit` et
     `X-RateLimit-Remaining`. Au dépassement, l'API répond `429 Too Many
     Requests` avec `Retry-After` (secondes) et `X-RateLimit-Reset`.
+
+    Ces quatre en-têtes sont exposés par le CORS (`Access-Control-Expose-Headers`)
+    à toute origine admise : un front servi depuis une autre origine que l'API
+    peut les lire. `Retry-After` porte aussi le délai d'un 503 KLASSCI.
   version: "1.0.0"
   contact:
     name: "LMS Team"
@@ -878,11 +882,14 @@ components:
       description: |
         KLASSCI ne peut pas rendre la donnee pour l'instant : panne, circuit
         ouvert, reponse illisible, ou bloc attendu absent. Rendu avec l'en-tete
-        `Retry-After` ; le client reessaie apres ce delai.
+        `Retry-After` ; le client reessaie apres ce delai. Le client classe
+        cette panne par `reason`, jamais par l'en-tete : `Retry-After` ne porte
+        que le delai (frontend_lms#426).
       additionalProperties: false
       required:
         - success
         - message
+        - reason
       properties:
         success:
           type: boolean
@@ -890,6 +897,10 @@ components:
             - false
         message:
           type: string
+        reason:
+          type: string
+          enum:
+            - klassci_unavailable
 
     # Les refus de la porte locale des classes (lot D).
     ClasseLocaleRefus:

@@ -7,8 +7,8 @@ namespace App\Services\Attendances;
 use App\Models\ESBTPAttendance;
 use App\Models\Seance;
 use App\Models\User;
+use App\Support\Logging\CaughtExceptionLog;
 use Illuminate\Support\Collection;
-use Psr\Log\LoggerInterface;
 use Throwable;
 
 /**
@@ -29,7 +29,7 @@ use Throwable;
 final class SeanceAttendancesQueryService
 {
     public function __construct(
-        private readonly LoggerInterface $logger,
+        private readonly CaughtExceptionLog $journal,
     ) {}
 
     /**
@@ -79,10 +79,8 @@ final class SeanceAttendancesQueryService
             ];
 
         } catch (Throwable $e) {
-            $this->logger->error('Erreur récupération attendances séance', [
+            $this->journal->error('Erreur récupération attendances séance', $e, [
                 'seance_id' => $seanceId,
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
             ]);
 
             return [

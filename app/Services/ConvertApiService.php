@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Support\Logging\CaughtExceptionLog;
 use ConvertApi\ConvertApi;
 use Psr\Log\LoggerInterface;
 
@@ -14,8 +15,9 @@ class ConvertApiService
      * pour ne pas bloquer la résolution DI des routes qui n'utilisent pas le SDK.
      */
     public function __construct(
-        private readonly LoggerInterface $logger)
-    {
+        private readonly LoggerInterface $logger,
+        private readonly CaughtExceptionLog $journal,
+    ) {
     }
 
     /**
@@ -126,9 +128,8 @@ class ConvertApiService
             return $images;
 
         } catch (\Exception $e) {
-            $this->logger->error('[ConvertAPI] Erreur conversion PowerPoint', [
-                'error' => $e->getMessage(),
-                'file' => $filePath
+            $this->journal->error('[ConvertAPI] Erreur conversion PowerPoint', $e, [
+                'file' => $filePath,
             ]);
             throw $e;
         }
@@ -213,9 +214,8 @@ class ConvertApiService
             return $images;
 
         } catch (\Exception $e) {
-            $this->logger->error('[ConvertAPI] Erreur conversion Word', [
-                'error' => $e->getMessage(),
-                'file' => $filePath
+            $this->journal->error('[ConvertAPI] Erreur conversion Word', $e, [
+                'file' => $filePath,
             ]);
             throw $e;
         }
@@ -277,9 +277,8 @@ class ConvertApiService
             return $images;
 
         } catch (\Exception $e) {
-            $this->logger->error('[ConvertAPI] Erreur conversion PDF', [
-                'error' => $e->getMessage(),
-                'file' => $filePath
+            $this->journal->error('[ConvertAPI] Erreur conversion PDF', $e, [
+                'file' => $filePath,
             ]);
             throw $e;
         }

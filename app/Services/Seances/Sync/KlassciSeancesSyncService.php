@@ -9,6 +9,7 @@ use App\Services\Seances\KlassciPayload;
 use App\Services\Seances\Sync\Cursor\SeanceSyncCursorStore;
 use App\Services\Seances\Sync\Cursor\TeacherCursorStream;
 use App\Services\Seances\UserOwnMatieresResolver;
+use App\Support\Logging\CaughtExceptionLog;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -56,6 +57,7 @@ final class KlassciSeancesSyncService
         private readonly SeanceSyncStamper $stamper,
         private readonly SeanceUpsertService $upserter,
         private readonly LoggerInterface $logger,
+        private readonly CaughtExceptionLog $journal,
     ) {}
 
     /**
@@ -164,9 +166,8 @@ final class KlassciSeancesSyncService
         } catch (\Exception $e) {
             $stats->errors++;
             $state->taint($institutionId);
-            $this->logger->error('Erreur traitement enseignant dans job', [
+            $this->journal->error('Erreur traitement enseignant dans job', $e, [
                 'teacher_id' => $teacher->id,
-                'error' => $e->getMessage(),
             ]);
         } finally {
             // Marquage même en cas d'erreur partielle : ce qui a été confirmé
@@ -255,9 +256,8 @@ final class KlassciSeancesSyncService
             } catch (\Exception $e) {
                 $stats->errors++;
                 $state->taint($institutionId);
-                $this->logger->error('Erreur traitement séance dans job', [
+                $this->journal->error('Erreur traitement séance dans job', $e, [
                     'seance_id' => $seanceArr['id'] ?? 'unknown',
-                    'error' => $e->getMessage(),
                 ]);
             }
         }

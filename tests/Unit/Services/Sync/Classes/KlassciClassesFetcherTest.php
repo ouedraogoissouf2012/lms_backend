@@ -9,7 +9,6 @@ use App\Services\Sync\Classes\KlassciClassesFetcher;
 use Mockery;
 use Mockery\MockInterface;
 use PHPUnit\Framework\Attributes\CoversClass;
-use Psr\Log\NullLogger;
 use Tests\TestCase;
 
 /**
@@ -108,7 +107,7 @@ final class KlassciClassesFetcherTest extends TestCase
 
     private function fetcher(KlassciProxyService $klassci): KlassciClassesFetcher
     {
-        return new KlassciClassesFetcher($klassci, new NullLogger);
+        return new KlassciClassesFetcher($klassci, app(\App\Support\Logging\CaughtExceptionLog::class));
     }
 
     private function mockKlassci(): KlassciProxyService&MockInterface

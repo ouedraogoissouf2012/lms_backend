@@ -24,8 +24,10 @@ use Tests\TestCase;
  *   au client par contrat (`BusinessException`).
  * - `IMPLEMENTATIONS` : les classes qui portent la règle.
  * - `SITES_NOMMES` : des sites gardés, chacun avec son motif.
- * - `SITES_A_MIGRER` : les sites à migrer vers `CaughtExceptionLog`. La liste ne
- *   fait que décroître ; la dernière PR du lot la vide.
+ *
+ * Le garde est strict : tous les sites ont été migrés vers `CaughtExceptionLog`
+ * (la liste des sites à migrer, décroissante, est morte avec la dernière PR du
+ * lot). Une forme hors de ces listes est un échec.
  *
  * Le dénominateur est publié : « rien à redire » et « rien regardé » ne
  * produisent jamais le même message.
@@ -59,61 +61,6 @@ final class NoRawExceptionMessageTest extends TestCase
         'app/Support/Shell/ShellExecutor.php' => [1, 'sortie d\'un processus externe (Symfony Process)'],
     ];
 
-    /** @var array<string, int> fichier => compte ; ne fait que décroître. */
-    private const SITES_A_MIGRER = [
-        'app/Services/Attendances/AttendanceHistoryQueryService.php' => 3,
-        'app/Services/Attendances/SeanceAttendancesQueryService.php' => 2,
-        'app/Services/Attendances/VideoSessionAttendancesSyncer.php' => 3,
-        'app/Services/Audit/AuditLogger.php' => 1,
-        'app/Services/Chapter/ChapterCrudService.php' => 4,
-        'app/Services/Chapter/ChapterFileUploadService.php' => 2,
-        'app/Services/Chapter/ChapterProgressService.php' => 1,
-        'app/Services/Chapter/ChapterRetentionService.php' => 1,
-        'app/Services/Chapter/ChapterTrashService.php' => 1,
-        'app/Services/Classe/ClasseSecondaryDataFetcher.php' => 1,
-        'app/Services/Classe/TeacherClassesQueryService.php' => 1,
-        'app/Services/ClasseSyncService.php' => 5,
-        'app/Services/ConvertApiService.php' => 3,
-        'app/Services/Evaluation/EvaluationCreationService.php' => 2,
-        'app/Services/Evaluation/EvaluationEnrichmentService.php' => 1,
-        'app/Services/Evaluation/EvaluationUpdateService.php' => 1,
-        'app/Services/Evaluation/Student/EvaluationWindowGate.php' => 1,
-        'app/Services/Evaluation/Student/StudentEvaluationsListService.php' => 2,
-        'app/Services/Evaluation/Student/StudentGradesAggregator.php' => 1,
-        'app/Services/Evaluation/Teacher/TeacherEvaluationResultsService.php' => 2,
-        'app/Services/Evaluation/Teacher/TeacherEvaluationViewService.php' => 2,
-        'app/Services/FileConversion/PdfConverter.php' => 1,
-        'app/Services/FileConversion/PowerPointConverter.php' => 1,
-        'app/Services/Klassci/Auth/KlassciUserSynchronizer.php' => 1,
-        'app/Services/Klassci/Auth/StudentClassSynchronizer.php' => 1,
-        'app/Services/Matiere/KlassciMatiereClassesSource.php' => 2,
-        'app/Services/Matiere/MatiereInfoFetcher.php' => 1,
-        'app/Services/Matiere/MatiereLessonsAndStatsBuilder.php' => 1,
-        'app/Services/Matiere/MatiereSeancesFetcher.php' => 2,
-        'app/Services/MatiereSyncService.php' => 1,
-        'app/Services/Report/ReportGenerationService.php' => 1,
-        'app/Services/SeanceDetailQueryService.php' => 1,
-        'app/Services/Seances/AutoClose/SeanceClosingService.php' => 2,
-        'app/Services/Seances/KlassciSeanceLookupService.php' => 1,
-        'app/Services/Seances/Mutations/ParticipantValidationService.php' => 1,
-        'app/Services/Seances/Mutations/SeanceDeleteService.php' => 2,
-        'app/Services/Seances/Mutations/SeanceHideService.php' => 2,
-        'app/Services/Seances/Mutations/VisioToggleService.php' => 2,
-        'app/Services/Seances/SeanceVisioEnricher.php' => 3,
-        'app/Services/Seances/Sync/KlassciSeancesSyncService.php' => 2,
-        'app/Services/Seances/TeachingSeancesFetcher.php' => 1,
-        'app/Services/Seances/UpcomingSeancesFetcher.php' => 1,
-        'app/Services/Search/GlobalSearchService.php' => 2,
-        'app/Services/Sync/Classes/ClasseStudentsSynchronizer.php' => 1,
-        'app/Services/Sync/Classes/KlassciClassesFetcher.php' => 2,
-        'app/Services/Visio/Lifecycle/VisioActivationService.php' => 6,
-        'app/Services/Visio/Lifecycle/VisioSessionService.php' => 4,
-        'app/Services/Visio/Recording/SeanceRecordingRetentionService.php' => 1,
-        'app/Services/Visio/VisioHeartbeatService.php' => 1,
-        'app/Services/Visio/VisioParticipantSessionService.php' => 2,
-        'app/Services/Visio/VisioParticipantsListService.php' => 5,
-    ];
-
     public function test_chaque_fichier_a_exactement_le_compte_declare(): void
     {
         $ecarts = [];
@@ -125,7 +72,7 @@ final class NoRawExceptionMessageTest extends TestCase
             }
             $inspectes++;
             $trouve = $this->compte($chemin);
-            $attendu = self::SITES_A_MIGRER[$chemin] ?? (self::SITES_NOMMES[$chemin][0] ?? 0);
+            $attendu = self::SITES_NOMMES[$chemin][0] ?? 0;
             if ($trouve !== $attendu) {
                 $ecarts[] = "{$chemin} : {$trouve} trouvé(s), {$attendu} déclaré(s)";
             }
@@ -139,7 +86,7 @@ final class NoRawExceptionMessageTest extends TestCase
 
     public function test_les_listes_ne_citent_que_des_fichiers_existants(): void
     {
-        foreach ([...array_keys(self::SITES_A_MIGRER), ...array_keys(self::SITES_NOMMES), ...self::IMPLEMENTATIONS] as $chemin) {
+        foreach ([...array_keys(self::SITES_NOMMES), ...self::IMPLEMENTATIONS] as $chemin) {
             self::assertFileExists(base_path($chemin), "Liste périmée : {$chemin}");
         }
     }

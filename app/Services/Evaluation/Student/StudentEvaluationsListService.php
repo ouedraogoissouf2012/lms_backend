@@ -8,6 +8,7 @@ use App\Exceptions\MissingKlassciTokenException;
 use App\Models\Evaluation;
 use App\Models\User;
 use App\Services\KlassciProxyService;
+use App\Support\Logging\CaughtExceptionLog;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -28,6 +29,7 @@ final class StudentEvaluationsListService
         private readonly LoggerInterface $logger,
         private readonly KlassciProxyService $klassciService,
         private readonly LearnerEvaluationScope $scope,
+        private readonly CaughtExceptionLog $journal,
     ) {}
 
     /**
@@ -90,7 +92,7 @@ final class StudentEvaluationsListService
             $response = $this->klassciService->requestWithUserToken($klassciToken, 'evaluations', 'GET');
             return collect($response['data'] ?? []);
         } catch (\Exception $e) {
-            $this->logger->warning('Could not fetch KLASSCI evaluations for windows', ['error' => $e->getMessage()]);
+            $this->journal->warning('Could not fetch KLASSCI evaluations for windows', $e);
             return collect([]);
         }
     }
@@ -163,7 +165,7 @@ final class StudentEvaluationsListService
             );
             $evalArray['matiere'] = $matiereResponse['data']['matiere'] ?? null;
         } catch (\Exception $e) {
-            $this->logger->warning('Could not fetch matiere for pure LMS eval', ['error' => $e->getMessage()]);
+            $this->journal->warning('Could not fetch matiere for pure LMS eval', $e);
         }
     }
 

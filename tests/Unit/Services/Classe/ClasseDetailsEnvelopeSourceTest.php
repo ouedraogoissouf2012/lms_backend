@@ -99,7 +99,7 @@ final class ClasseDetailsEnvelopeSourceTest extends TestCase
 
         $service = new ClasseDetailsQueryService(
             $klassci,
-            new ClasseSecondaryDataFetcher($klassci, new NullLogger()),
+            new ClasseSecondaryDataFetcher($klassci, app(\App\Support\Logging\CaughtExceptionLog::class)),
             new NullLogger(),
         );
 

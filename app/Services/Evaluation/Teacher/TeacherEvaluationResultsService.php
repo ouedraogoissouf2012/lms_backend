@@ -12,6 +12,7 @@ use App\Services\Classe\ClasseEnvelope;
 use App\Services\Classe\ClasseRoster;
 use App\Services\Evaluation\EvaluationEnrichmentService;
 use App\Services\Seances\KlassciPayload;
+use App\Support\Logging\CaughtExceptionLog;
 use Psr\Log\LoggerInterface;
 use RuntimeException;
 use Throwable;
@@ -48,6 +49,7 @@ final class TeacherEvaluationResultsService
         private readonly ClasseRoster $roster,
         private readonly EvaluationEnrichmentService $enrichmentService,
         private readonly LoggerInterface $logger,
+        private readonly CaughtExceptionLog $journal,
     ) {}
 
     /**
@@ -107,10 +109,8 @@ final class TeacherEvaluationResultsService
             // #243/#685. Le controleur la traduit via RendersKlassciBackedErrors.
             throw $e;
         } catch (Throwable $e) {
-            $this->logger->error('❌ Erreur récupération résultats évaluation', [
+            $this->journal->error('❌ Erreur récupération résultats évaluation', $e, [
                 'evaluation_id' => $evaluationId,
-                'error'         => $e->getMessage(),
-                'trace'         => $e->getTraceAsString(),
             ]);
 
             return [

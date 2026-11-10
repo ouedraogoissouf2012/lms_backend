@@ -7,6 +7,7 @@ namespace App\Services\Klassci\Auth;
 use App\Models\User;
 use App\Models\UserClass;
 use App\Services\KlassciProxyService;
+use App\Support\Logging\CaughtExceptionLog;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -24,6 +25,7 @@ final class StudentClassSynchronizer
     public function __construct(
         private readonly KlassciProxyService $klassciService,
         private readonly LoggerInterface $logger,
+        private readonly CaughtExceptionLog $journal,
     ) {}
 
     public function sync(User $user, string $klassciToken): void
@@ -41,9 +43,8 @@ final class StudentClassSynchronizer
 
             $this->persistStudentClasse($user, $classe);
         } catch (\Exception $e) {
-            $this->logger->error('Erreur lors de la synchronisation des classes', [
+            $this->journal->error('Erreur lors de la synchronisation des classes', $e, [
                 'user_id' => $user->id,
-                'error' => $e->getMessage(),
             ]);
         }
     }

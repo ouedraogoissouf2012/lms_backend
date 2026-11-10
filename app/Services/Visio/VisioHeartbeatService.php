@@ -7,7 +7,7 @@ namespace App\Services\Visio;
 use App\Models\ESBTPAttendance;
 use App\Models\Seance;
 use App\Models\User;
-use Psr\Log\LoggerInterface;
+use App\Support\Logging\CaughtExceptionLog;
 use Throwable;
 
 /**
@@ -25,8 +25,8 @@ use Throwable;
 final class VisioHeartbeatService
 {
     public function __construct(
-        private readonly LoggerInterface $logger,
         private readonly AttendanceLifecycleService $lifecycle,
+        private readonly CaughtExceptionLog $journal,
     ) {}
 
     /**
@@ -82,9 +82,8 @@ final class VisioHeartbeatService
                 ],
             ];
         } catch (Throwable $e) {
-            $this->logger->error('Erreur heartbeat visio', [
+            $this->journal->error('Erreur heartbeat visio', $e, [
                 'seance_id' => $seanceId,
-                'error' => $e->getMessage(),
             ]);
 
             return [

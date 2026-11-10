@@ -37,6 +37,14 @@ final class KlassciUnavailableException extends RuntimeException
     public const CLIENT_MESSAGE = 'Service KLASSCI temporairement indisponible. Veuillez réessayer dans quelques instants.';
 
     /**
+     * Motif du 503 canonique (frontend_lms#426). Le front classait cette panne à
+     * l'en-tête `Retry-After`, invisible cross-origin tant que le CORS ne
+     * l'expose pas : la classe d'une erreur va dans le corps (ADR-906-01),
+     * l'en-tête ne porte que le délai.
+     */
+    public const REASON = 'klassci_unavailable';
+
+    /**
      * Fabrique pour le cas #270 : URL de base KLASSCI absente ou invalide.
      * Le message interne (diagnostic ops, jamais exposé au client) nomme la clé
      * de config à corriger.
@@ -104,6 +112,7 @@ final class KlassciUnavailableException extends RuntimeException
         return response()->json([
             'success' => false,
             'message' => self::CLIENT_MESSAGE,
+            'reason' => self::REASON,
         ], 503, [
             'Retry-After' => (string) self::retryAfterSeconds(),
         ]);

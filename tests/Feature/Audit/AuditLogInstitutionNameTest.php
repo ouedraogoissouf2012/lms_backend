@@ -52,6 +52,17 @@ final class AuditLogInstitutionNameTest extends TestCase
         $lms = Institution::factory()->standalone()->create(['name' => 'Collège créé depuis le LMS']);
         $deKlassci = $this->entree($klassci);
         $deLms = $this->entree($lms);
+        // Une entrée réaliste : une action récente hors des neuf historiques,
+        // un diff objet et un auteur sans courriel (élève synchronisé).
+        $sansCourriel = User::factory()->create(['institution_id' => $lms->id, 'role' => 'enseignant', 'email' => null]);
+        AuditLog::factory()->create([
+            'institution_id' => $lms->id,
+            'user_id' => $sansCourriel->id,
+            'action' => 'visio_recording_start',
+            'auditable_type' => 'App\Models\SeanceRecording',
+            'auditable_id' => 1,
+            'after' => ['statut' => 'en_cours'],
+        ]);
 
         $reponse = $this->lire();
 
@@ -67,7 +78,29 @@ final class AuditLogInstitutionNameTest extends TestCase
         $fermee->delete();
         self::assertSoftDeleted($fermee);
 
-        self::assertSame(['id' => $fermee->id, 'name' => 'École fermée'], $this->ecoleDe($this->lire(), $entree));
+        $reponse = $this->lire();
+        self::assertSame(['id' => $fermee->id, 'name' => 'École fermée'], $this->ecoleDe($reponse, $entree));
+        $this->assertMatchesOpenApiResponse($reponse, self::CHEMIN, 'get');
+    }
+
+    /** Les refus de la route suivent la spec : non authentifié, superAdmin d'une école, filtre invalide. */
+    public function test_les_refus_suivent_la_spec(): void
+    {
+        $this->assertMatchesOpenApiResponse($this->getJson('/api'.self::CHEMIN)->assertUnauthorized(), self::CHEMIN, 'get');
+
+        $ecole = Institution::factory()->create();
+        $superAdmin = User::factory()->create(['institution_id' => $ecole->id, 'role' => 'superAdmin']);
+        $this->assertMatchesOpenApiResponse(
+            $this->asTenant($superAdmin)->getJson('/api'.self::CHEMIN)->assertForbidden(),
+            self::CHEMIN,
+            'get',
+        );
+
+        $this->assertMatchesOpenApiResponse(
+            $this->asTenant($this->supradmin)->getJson('/api'.self::CHEMIN.'?per_page=500')->assertUnprocessable(),
+            self::CHEMIN,
+            'get',
+        );
     }
 
     public function test_une_entree_sans_ecole_porte_une_ecole_nulle(): void

@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace App\Services\Search;
 
-use App\Enums\LessonStatus;
 use App\Models\Evaluation;
 use App\Models\Lesson;
 use App\Models\User;
+use App\Services\Lesson\LessonReadScope;
 use Illuminate\Contracts\Cache\Repository as CacheRepository;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Str;
@@ -33,7 +33,9 @@ use Throwable;
  * SQLite et fatals (erreur 1054) sous MySQL :
  *
  *   - le filtre enseignant portait sur `teacher_id`, colonne inexistante —
- *     l'appartenance est désormais déléguée à {@see TeacherOwnershipScope} ;
+ *     l'appartenance est désormais déléguée à {@see TeacherOwnershipScope}
+ *     pour les évaluations, et à la règle des listes de leçons
+ *     ({@see LessonReadScope::apply()}) pour les leçons ;
  *   - la recherche d'évaluations portait sur `title`, alors que la colonne
  *     migrée s'appelle `titre` (la clé `title` de la réponse, elle, ne change
  *     pas : c'est le contrat client).
@@ -68,6 +70,7 @@ final class GlobalSearchService
         private readonly LoggerInterface $logger,
         private readonly TeacherOwnershipScope $ownership,
         private readonly KlassciSearchSources $klassciSources,
+        private readonly LessonReadScope $lessonScope,
     ) {
     }
 
@@ -230,14 +233,10 @@ final class GlobalSearchService
                 ->orWhere('description', 'LIKE', "%{$query}%")
                 ->orWhere('content', 'LIKE', "%{$query}%");
         })
-            ->where(function (Builder $q) use ($user): void {
-                if ($user->isTeacher()) {
-                    $this->ownership->applyToLessons($q, $user);
-                }
-                if ($user->isLearnerAudience()) {
-                    $q->where('status', LessonStatus::Published->value);
-                }
-            })
+            // La règle des listes : école, audience de l'apprenant (publiées de
+            // SES classes), auteur pour l'enseignant. La recherche texte reste
+            // groupée ci-dessus : son OR ne franchit aucune de ces bornes.
+            ->tap(fn (Builder $q) => $this->lessonScope->apply($q, $user))
             ->limit($limit)
             ->get()
             ->map(fn (Lesson $lesson): array => [

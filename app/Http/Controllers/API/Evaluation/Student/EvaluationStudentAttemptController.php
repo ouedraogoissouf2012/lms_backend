@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\API\Evaluation\Student;
 
 use App\Http\Controllers\API\Concerns\RendersKlassciBackedErrors;
+use App\Exceptions\KlassciUnavailableException;
 use App\Exceptions\MissingKlassciTokenException;
 use App\Http\Controllers\AuthenticatedController;
 use App\Http\Requests\StartEvaluationRequest;
@@ -78,10 +79,13 @@ final class EvaluationStudentAttemptController extends AuthenticatedController
             // #499 : fenêtre non vérifiable (KLASSCI indisponible) → 503 transitoire
             // (fail-closed), pas 403 : ce n'est pas un refus d'accès mais une
             // indisponibilité de dépendance ; le client doit réessayer.
+            // Le client réessaie après le délai que le dépôt annonce pour toute
+            // indisponibilité KLASSCI.
             'window_check_failed' => $this->errorResponse(
                 $result['message'] ?? "Service momentanément indisponible, veuillez réessayer.",
-                503
-            ),
+                503,
+                reason: 'evaluation_window_unverifiable',
+            )->header('Retry-After', (string) KlassciUnavailableException::retryAfterSeconds()),
             // Non migré vers successResponse() : cette réponse expose des clés
             // racine `window` + `is_practice` hors enveloppe que le trait ne
             // reproduit pas → conservé tel quel (axe #1 « DRY-only »).

@@ -7,9 +7,9 @@ namespace App\Http\Controllers\API;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Services\Dashboard\TeacherStatsService;
+use App\Support\Logging\CaughtExceptionLog;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Psr\Log\LoggerInterface;
 
 /**
  * TeacherStatsController — endpoint thin pour les compteurs de contenu
@@ -26,7 +26,8 @@ use Psr\Log\LoggerInterface;
  *
  * ## DI strict (§1.6 D)
  *
- * `TeacherStatsService` et le logger PSR-3 sont injectés par le
+ * `TeacherStatsService` et le journal des exceptions attrapées
+ * (`CaughtExceptionLog`) sont injectés par le
  * constructeur (la dépendance morte `KlassciProxyService`, jamais
  * utilisée par `getStats`, a été supprimée).
  *
@@ -36,7 +37,7 @@ class TeacherStatsController extends Controller
 {
     public function __construct(
         private readonly TeacherStatsService $statsService,
-        private readonly LoggerInterface $logger,
+        private readonly CaughtExceptionLog $journal,
     ) {
     }
 
@@ -58,10 +59,7 @@ class TeacherStatsController extends Controller
 
             return $this->successResponse($this->statsService->buildStats($user));
         } catch (\Exception $e) {
-            $this->logger->error('Erreur récupération statistiques enseignant:', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-            ]);
+            $this->journal->error('Erreur récupération statistiques enseignant:', $e);
 
             // Non migré vers errorResponse() : expose une clé racine `error`
             // (chaîne) que le trait ne reproduit pas — il n'émet que `errors`

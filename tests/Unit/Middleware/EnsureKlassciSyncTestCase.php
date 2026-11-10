@@ -10,10 +10,12 @@ use App\Models\User;
 use App\Services\Klassci\Data\KlassciDataWhitelist;
 use App\Services\Klassci\Sync\TokenPresentSyncGate;
 use App\Services\KlassciProxyService;
+use App\Support\Logging\CaughtExceptionLog;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Mockery;
+use Psr\Log\LoggerInterface;
 use Symfony\Component\HttpFoundation\Response;
 use Tests\TestCase;
 
@@ -56,7 +58,8 @@ abstract class EnsureKlassciSyncTestCase extends TestCase
     {
         /** @var \ArrayObject<int, array{0: string, 1: array<string, mixed>}> $captured */
         $captured = new \ArrayObject;
-        $spy = Mockery::mock();
+        // Typé : `CaughtExceptionLog` reçoit ce journal par `LoggerInterface`.
+        $spy = Mockery::mock(LoggerInterface::class);
         $spy->shouldReceive('warning')
             ->andReturnUsing(function (string $event, array $context = []) use ($captured): void {
                 $captured->append([$event, $context]);
@@ -95,7 +98,7 @@ abstract class EnsureKlassciSyncTestCase extends TestCase
         $request = Request::create('/api/dummy', 'GET');
         $request->setUserResolver(fn () => $user);
 
-        $middleware = new EnsureKlassciSync($klassciService, new KlassciDataWhitelist(), new TokenPresentSyncGate());
+        $middleware = new EnsureKlassciSync($klassciService, new KlassciDataWhitelist(), new TokenPresentSyncGate(), app(CaughtExceptionLog::class));
 
         return $middleware->handle($request, fn ($nextRequest) => new Response('ok', 200));
     }

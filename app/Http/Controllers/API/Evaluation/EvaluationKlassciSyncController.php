@@ -18,6 +18,7 @@ use App\Models\User;
 use App\Services\Evaluation\EvaluationEnrichmentService;
 use App\Services\Evaluation\EvaluationGradingService;
 use App\Services\KlassciProxyService;
+use App\Support\Logging\CaughtExceptionLog;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
 
@@ -35,6 +36,7 @@ class EvaluationKlassciSyncController extends AuthenticatedController
         private KlassciProxyService $klassciService,
         private EvaluationEnrichmentService $enrichmentService,
         private EvaluationGradingService $gradingService,
+        private readonly CaughtExceptionLog $journal,
     ) {}
 
     public function syncToKlassci(SyncEvaluationNotesRequest $request, int $id): JsonResponse
@@ -94,7 +96,7 @@ class EvaluationKlassciSyncController extends AuthenticatedController
             return $this->errorResponse('Aucune évaluation KLASSCI liée', 400);
 
         } catch (\Exception $e) {
-            \Log::error('Erreur synchronisation KLASSCI', ['error' => $e->getMessage()]);
+            $this->journal->error('Erreur synchronisation KLASSCI', $e);
 
             // Non migré vers errorResponse() : cette réponse porte une clé racine
             // `error` (singulier) hors contrat du trait ({success, message, errors?}).
@@ -184,9 +186,8 @@ class EvaluationKlassciSyncController extends AuthenticatedController
                 'errors' => $errors
             ]);
         } catch (\Exception $e) {
-            \Log::error('Erreur synchronisation notes', [
+            $this->journal->error('Erreur synchronisation notes', $e, [
                 'evaluation_id' => $id,
-                'error' => $e->getMessage()
             ]);
 
             // Non migré : clé racine `error` (singulier) hors contrat du trait

@@ -1,14 +1,14 @@
-# ADR-EI-01 — Même route, autre source : les lectures d'une école indépendante
+# ADR-EI-01 — Même route, autre source : les lectures d'une école créée depuis le LMS
 
 **Date :** 2026-10-30  
-**Statut :** accepté (ARRÊT 2 validé, lot 1)  
+**Statut :** accepté (lot 1 ; lot 2, les classes, ajouté le 2026-11-09)  
 **Issue :** aucune encore · prolonge [ADR-848-01](2026-09-18-848-01-catalogue-pedagogique-local.md),
 [ADR-805-01](2026-09-19-805-01-resolution-des-identifiants.md) et
 [ADR-760-01](2026-09-19-760-01-deux-portes-deux-espaces.md)
 
 ## Le constat
 
-Un test de bout en bout d'une école indépendante, créée par les chemins du produit, a montré sept écrans
+Un test de bout en bout d'une école créée depuis le LMS, par les chemins du produit, a montré sept écrans
 d'administration sur treize inutilisables, et un enseignant incapable de créer une leçon depuis l'écran.
 
 La cause est la même partout. Chaque route cassée ne connaît qu'UNE source, KLASSCI :
@@ -51,7 +51,7 @@ dans les deux volets sans aucune branche.
 
 ## L'espace d'identifiants
 
-Une école indépendante n'a qu'un espace : `klassci_id` y est NULL partout. La source locale rend donc l'id local, et
+Une école créée depuis le LMS n'a qu'un espace : `klassci_id` y est NULL partout. La source locale rend donc l'id local, et
 c'est celui que le front renvoie. Les écritures l'acceptent déjà (`ResolvesMirroredIdentifier::localIdFor`, avec
 précédence au local).
 
@@ -59,8 +59,8 @@ Ce n'est pas l'arbitrage à l'entrée qu'interdit ADR-760-01. Rien n'est deviné
 mode déclaré. Et la prémisse de cet ADR, « une ressource désignée dans deux espaces », ne vaut pas dans un établissement
 qui n'en a qu'un.
 
-**ADR-760-01 n'est pas modifié par ce lot.** Sa porte locale répond encore 409 à une classe sans `klassci_id`. Le lot
-qui sert le détail d'une classe locale le rouvrira explicitement.
+**ADR-760-01 est amendé par le lot 2** (amendement EI-02, 2026-11-09) : dans une école créée depuis le LMS, ses deux
+portes servent la même fiche locale, et son 409 ne vaut plus que dans une école créée depuis KLASSCI.
 
 ## Premier cas appliqué (lot 1)
 
@@ -82,18 +82,68 @@ Dans la source locale :
   - Hors de ces cas, 404.
 - **L'identifiant de navigation vers la page matière** (`matiere_klassci_id` sur une leçon) suit la même source, par
   un troisième port, `MatierePageNavigation`, résolu à l'appel dans `LessonListService`. KLASSCI : le `klassci_id`,
-  comme avant. Locale : `null`, et le front recharge ou revient en arrière. Sans cela, une école passée de KLASSCI à
-  indépendante, dont les matières gardent leur `klassci_id`, enverrait un id KLASSCI à une page qui lit l'id local, et
+  comme avant. Locale : `null`, et le front recharge ou revient en arrière. Sans cela, une école créée depuis KLASSCI
+  puis basculée en mode autonome, dont les matières gardent leur `klassci_id`, enverrait un id KLASSCI à une page qui lit l'id local, et
   ouvrirait une autre matière en 200. Naviguer par l'id local passera par une clé neutre : c'est une suite déclarée.
 - **Les compteurs inconnus valent `null`, pas 0.** Une séance locale ne porte que le nom de sa matière, en texte.
   Les évaluations valent 0, ce qui est un fait.
-- **Les évaluations rendues vides (`[]`, 0) sont PROVISOIRES.** L'utilisateur a décidé que l'école indépendante aura
+- **Les évaluations rendues vides (`[]`, 0) sont PROVISOIRES.** L'utilisateur a décidé que l'école créée depuis le LMS aura
   ses évaluations (D72). Le lot qui les construit reprendra ces sources locales, page matière comme fiche de classe,
   pour y brancher les évaluations locales.
 
+## Deuxième cas appliqué (lot 2, 2026-11-09)
+
+| Route | Port | Source KLASSCI | Source locale |
+|---|---|---|---|
+| `GET /lms/teacher/classes` | `TeacherClassesReader` | `TeacherClassesQueryService` | `LocalTeacherClassesReader` |
+| `GET /lms/classes/{id}` | `ClasseDetailsReader` | `ClasseDetailsQueryService` | `LocalClasseDetailsReader` |
+| `GET /lms/classes/local/{id}` | `ClasseLocalDoorReader` | `ClasseLocalDetailsService` | `LocalClasseDetailsReader` |
+| `GET /lms/classes/{id}/etudiants` | `ClasseEtudiantsReader` | `ClasseEtudiantsQueryService` | `LocalClasseDetailsReader` |
+
+Dans la source locale :
+- **« Mes classes »** : les classes où l'appelant est désigné formateur d'au moins une matière, triées par libellé.
+  `effectif_actuel` compte les inscriptions actives ; `effectif` vaut `null`, la colonne n'étant tenue que par le
+  synchroniseur KLASSCI.
+- **La fiche et le roster** : UNE classe sert les trois lectures, pour qu'une seule grille d'accès existe. La gestion
+  lit toute classe de l'établissement, un enseignant une classe où il est désigné, un apprenant une classe où son
+  inscription est active, sans la liste des élèves (GHSA-gg7j). Hors de ces cas, 404.
+- **Ce qu'aucune table locale ne porte vaut `null`** (capacité, séances de la semaine, taux de remplissage) ; l'emploi
+  du temps et les évaluations programmées valent `[]`, les secondes provisoirement (D72).
+
+ADR-760-01 est amendé en conséquence (amendement EI-02).
+
+Ce que le lot 2 change AUSSI dans l'école créée depuis KLASSCI, voulu et déclaré :
+- **La fiche ne rend plus 500 pour un échec de KLASSCI** (le défaut de `fetchClasse`, qui rattrapait toute erreur).
+  Ses deux portes passent par `RendersKlassciBackedErrors`, comme le roster : 4xx relayé, 401
+  `klassci_session_expired`, 503 avec `Retry-After`.
+- **Une panne interne est rapportée, jamais écrite à la main** (#948). Une panne de base, `RuntimeException`, passe
+  par la branche 500 du trait, qui la rapporte une fois sans le message ni les valeurs de la requête. Le filet des
+  autres erreurs (porte historique, `/etudiants`) fait `report()` au lieu d'écrire message et trace : son corps ne
+  change pas.
+- **Des tests existants changent**, sur décision : leurs cas « école créée depuis le LMS » passent à la source
+  locale ; leurs cas « école créée depuis KLASSCI » restent inchangés.
+
+**Dette tracée : l'école basculée.** Une école créée depuis KLASSCI puis passée en mode autonome (route du
+supradmin, `InstitutionController`) suit son mode : ses portes lisent l'id LOCAL.
+- **Cause** : ses classes gardent leur `klassci_id`, et la liste d'administration (`/proxy/classes`, lue par
+  `useAdminClasses`) comme le référentiel que « Mes classes » fusionne par `id` restent dans l'espace KLASSCI.
+- **Effet exact** :
+  - un identifiant KLASSCI ouvert par la porte historique est lu comme local : la fiche d'une autre classe de la
+    même école, en 200, ou un 404 ;
+  - une carte de « Mes classes » peut porter la mesure d'une autre classe.
+  - Aucune fuite entre écoles : tout reste borné à l'établissement.
+- **Ce qui la ferme** : le lot des écrans d'administration. La liste des classes et son référentiel y suivent le mode
+  de l'école, par un port, comme ici.
+- **D'ici là, aucune école créée depuis KLASSCI n'est basculée.** Cette contention est MANUELLE : `changeMode`
+  (`InstitutionCrudService`) ne refuse pas la bascule.
+
+**Écart connu, échec fermé** : la grille d'accès lit le rôle par `isManager()` / `isTeacher()`, en correspondance
+exacte, alors que la garde de rôle des routes ignore la casse et admet l'alias `administrator`. L'alignement va au
+lot de #949.
+
 ## Conséquences
 
-- **Le volet KLASSCI ne change pas dans ce qu'il rend.** Il est prouvé par ses tests existants, lancés sans
+- **Lot 1 : l'école créée depuis KLASSCI ne change pas dans ce qu'elle rend.** Il est prouvé par ses tests existants, lancés sans
   modification. Code partagé touché :
   - `MatiereLessonsAndStatsBuilder` : la lecture des leçons par id local devient une méthode publique, que le chemin
     KLASSCI appelle après sa traduction ;
@@ -105,7 +155,7 @@ Dans la source locale :
   - une `QueryException` est une `RuntimeException` : elle tombait dans le rendu des erreurs KLASSCI, sans être
     JOURNALISÉE. Elle prend désormais la branche interne, journalisée, dans les deux méthodes du contrôleur.
 - **Un test existant change, et c'est déclaré.** `KlassciTokenMissingReasonTest` (#806) jouait le 401 de
-  `my-matieres` dans les deux volets. Une école indépendante n'atteint plus ce point de rendu : les deux méthodes de
+  `my-matieres` dans les deux volets. Une école créée depuis le LMS n'atteint plus ce point de rendu : les deux méthodes de
   cette route passent sur le volet KLASSCI seul. Les autres sites gardent leurs deux volets. En échange,
   `MatieresEcoleIndependanteTest` vérifie plus strictement le volet indépendant : un compte porteur d'un jeton n'émet
   AUCUN appel KLASSCI. Les lots suivants appliqueront la même règle, site par site.

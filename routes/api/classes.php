@@ -23,6 +23,8 @@ use Illuminate\Support\Facades\Route;
 |
 | Ce fichier porte DEUX portes vers la même ressource, dans deux espaces
 | d'identifiants distincts. Le pourquoi est dans `ClasseLocalDetailsService`.
+| Dans une école créée depuis le LMS, il n'y a qu'un espace : les deux portes
+| servent la même fiche locale (ADR-760-01, amendement EI-02).
 |
 */
 
@@ -53,7 +55,8 @@ Route::middleware(['auth:sanctum', 'klassci.sync'])->prefix('lms')->group(functi
 
 // La collection des classes LOCALES et de leur code (#905, ADR-905-01). Rien
 // ne les listait — la liste d'administration vient de KLASSCI, et la porte
-// locale de #760 répond 409 à une classe sans identifiant KLASSCI. Le code
+// locale de #760 répondait 409 à une classe sans identifiant KLASSCI (elle ne
+// le fait plus que dans une école créée depuis KLASSCI). Le code
 // revient avec la classe : le relire ne le régénère plus, donc n'invalide plus
 // celui déjà dicté.
 //

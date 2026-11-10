@@ -5,6 +5,16 @@ declare(strict_types=1);
 namespace App\Providers;
 
 use App\Services\Catalogue\CatalogueAuthority;
+use App\Services\Classe\ClasseDetailsQueryService;
+use App\Services\Classe\ClasseDetailsReader;
+use App\Services\Classe\ClasseEtudiantsQueryService;
+use App\Services\Classe\ClasseEtudiantsReader;
+use App\Services\Classe\ClasseLocalDetailsService;
+use App\Services\Classe\ClasseLocalDoorReader;
+use App\Services\Classe\LocalClasseDetailsReader;
+use App\Services\Classe\LocalTeacherClassesReader;
+use App\Services\Classe\TeacherClassesQueryService;
+use App\Services\Classe\TeacherClassesReader;
 use App\Services\Matiere\LocalMatiereDetailsReader;
 use App\Services\Matiere\LocalTeacherMatieresReader;
 use App\Services\Matiere\MatiereDetailsQueryService;
@@ -16,8 +26,9 @@ use Illuminate\Support\ServiceProvider;
 
 /**
  * Liaison de l'autorité sur le catalogue pédagogique (#848), et des sources
- * qui le LISENT (école indépendante, lot 1) : la même route sert les deux
- * volets, la fabrique choisit la source.
+ * qui le LISENT (école créée depuis le LMS : lot 1, les matières ; lot 2, les
+ * classes) : la même route sert les deux types d'école, la fabrique choisit la
+ * source.
  *
  * Fournisseur dédié, comme `RosterServiceProvider` et `RetentionServiceProvider`
  * avant lui. Ce n'est pas un choix de style : `AppServiceProvider` mesure 299
@@ -59,6 +70,29 @@ final class CatalogueServiceProvider extends ServiceProvider
             MatiereDetailsReader::class,
             static fn ($app) => $app->make(RosterAuthorityFactory::class)
                 ->sourceForCurrentTenant(MatiereDetailsQueryService::class, LocalMatiereDetailsReader::class),
+        );
+
+        // Lot 2 : les classes. Une seule source locale sert la fiche par ses
+        // deux portes et le roster ; elle applique une seule grille d'accès.
+        $this->app->bind(
+            TeacherClassesReader::class,
+            static fn ($app) => $app->make(RosterAuthorityFactory::class)
+                ->sourceForCurrentTenant(TeacherClassesQueryService::class, LocalTeacherClassesReader::class),
+        );
+        $this->app->bind(
+            ClasseDetailsReader::class,
+            static fn ($app) => $app->make(RosterAuthorityFactory::class)
+                ->sourceForCurrentTenant(ClasseDetailsQueryService::class, LocalClasseDetailsReader::class),
+        );
+        $this->app->bind(
+            ClasseLocalDoorReader::class,
+            static fn ($app) => $app->make(RosterAuthorityFactory::class)
+                ->sourceForCurrentTenant(ClasseLocalDetailsService::class, LocalClasseDetailsReader::class),
+        );
+        $this->app->bind(
+            ClasseEtudiantsReader::class,
+            static fn ($app) => $app->make(RosterAuthorityFactory::class)
+                ->sourceForCurrentTenant(ClasseEtudiantsQueryService::class, LocalClasseDetailsReader::class),
         );
     }
 }

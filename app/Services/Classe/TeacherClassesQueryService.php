@@ -54,7 +54,7 @@ use Throwable;
  *
  * Vérifié par tests/Feature/Classe/TeacherClassesLiveSourceTest.php.
  */
-final class TeacherClassesQueryService
+final class TeacherClassesQueryService implements TeacherClassesReader
 {
     public function __construct(
         private readonly EnrollmentSource $enrollment,

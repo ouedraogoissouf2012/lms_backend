@@ -77,7 +77,7 @@ final class SeanceRecordingWebhookService
     /**
      * Voie HISTORIQUE : le fournisseur héberge le média et connaît notre
      * identifiant (modèle JaaS). **Inchangée** — verrouillée par
-     * {@see \Tests\Feature\LMS\Visio\VisioRecordingWebhookTest}.
+     * `tests/Feature/LMS/Visio/VisioRecordingWebhookTest.php`.
      *
      * @param  array<string, mixed>  $payload
      * @return array{status:int, payload: array<string, mixed>}

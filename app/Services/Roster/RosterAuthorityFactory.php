@@ -11,7 +11,6 @@ use App\Services\Catalogue\KlassciCatalogueAuthority;
 use App\Services\Catalogue\LocalCatalogueAuthority;
 use App\Services\TenantManager;
 use Illuminate\Contracts\Container\Container;
-use Tests\Feature\Roster\RosterAuthorityResolutionTest;
 
 /**
  * LE point où le mode d'un établissement se résout (#805, épique #697 art. 1).
@@ -41,7 +40,7 @@ use Tests\Feature\Roster\RosterAuthorityResolutionTest;
  * Ce que `baseUrl()` décrit reste néanmoins une LIAISON RÉSEAU, pas une
  * intention. Les deux axes sont volontairement orthogonaux : une école peut
  * n'avoir aucune cible KLASSCI sans avoir déclaré vouloir tenir sa propre
- * liste, et {@see RosterAuthorityResolutionTest} épingle
+ * liste, et `tests/Feature/Roster/RosterAuthorityResolutionTest.php` épingle
  * les deux cas croisés. Dériver l'autorité de roster d'une URL absente
  * confondrait « injoignable » et « autonome ».
  *

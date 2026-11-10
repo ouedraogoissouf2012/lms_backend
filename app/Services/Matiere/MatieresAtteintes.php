@@ -53,7 +53,7 @@ final class MatieresAtteintes
      */
     public static function classesAtteintes(Builder $classes, User $user, int $institution): void
     {
-        $classes->where('classes.institution_id', $institution);
+        $classes->where($classes->qualifyColumn('institution_id'), $institution);
 
         if ($user->isTeacher()) {
             $classes->where('classe_matiere.enseignant_id', $user->id);

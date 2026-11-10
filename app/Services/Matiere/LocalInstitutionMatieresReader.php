@@ -9,6 +9,7 @@ use App\Models\Lesson;
 use App\Models\Matiere;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 /**
  * Les matières de l'établissement, lues dans le catalogue LOCAL, pour une école
@@ -59,8 +60,8 @@ final class LocalInstitutionMatieresReader implements InstitutionMatieresReader
 
         $matieres = $this->atteintes($user, $institution)
             ->with(['classes' => static function ($classes) use ($user, $institution): void {
-                MatieresAtteintes::classesAtteintes($classes->getQuery(), $user, $institution);
-                $classes->orderBy('classes.libelle')->orderBy('classes.id');
+                /** @var BelongsToMany<Classe, Matiere> $classes */
+                self::classesAtteintes($classes, $user, $institution);
             }])
             ->get()
             ->all();
@@ -111,6 +112,18 @@ final class LocalInstitutionMatieresReader implements InstitutionMatieresReader
     }
 
     /**
+     * Les classes de chaque matière où ce compte l'atteint, triées par libellé
+     * puis par identifiant.
+     *
+     * @param  BelongsToMany<Classe, Matiere>  $classes
+     */
+    private static function classesAtteintes(BelongsToMany $classes, User $user, int $institution): void
+    {
+        MatieresAtteintes::classesAtteintes($classes->getQuery(), $user, $institution);
+        $classes->orderBy('classes.libelle')->orderBy('classes.id');
+    }
+
+    /**
      * @return Builder<Matiere>
      */
     private function atteintes(User $user, int $institution): Builder
@@ -125,7 +138,7 @@ final class LocalInstitutionMatieresReader implements InstitutionMatieresReader
      * montre à la gestion ({@see MatiereLessonsAndStatsBuilder::lessonsForLocalMatiere()}).
      * Un compte par matière en UNE requête, quel que soit leur nombre.
      *
-     * @param  list<Matiere>  $matieres
+     * @param  array<int, Matiere>  $matieres
      * @return array<int, int>
      */
     private function leconsParMatiere(array $matieres, int $institution): array

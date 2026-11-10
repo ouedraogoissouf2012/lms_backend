@@ -19,6 +19,8 @@ use Throwable;
  * - `error` : une panne. La trace de tête est jointe (sans arguments,
  *   `zend.exception_ignore_args`).
  * - `warning` : une dégradation attendue. Sans trace.
+ * - `info` et `debug` : un repli prévu, journalisé à ce niveau par son site.
+ *   Sans trace.
  *
  * Le contexte du site passe en premier : une clé de la description ne
  * l'écrase pas.
@@ -42,5 +44,17 @@ final class CaughtExceptionLog
     public function warning(string $message, Throwable $e, array $context = []): void
     {
         $this->logger->warning($message, $context + $this->description->describe($e));
+    }
+
+    /** @param  array<string, mixed>  $context */
+    public function info(string $message, Throwable $e, array $context = []): void
+    {
+        $this->logger->info($message, $context + $this->description->describe($e));
+    }
+
+    /** @param  array<string, mixed>  $context */
+    public function debug(string $message, Throwable $e, array $context = []): void
+    {
+        $this->logger->debug($message, $context + $this->description->describe($e));
     }
 }

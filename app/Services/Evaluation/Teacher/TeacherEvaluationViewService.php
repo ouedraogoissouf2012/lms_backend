@@ -7,8 +7,8 @@ namespace App\Services\Evaluation\Teacher;
 use App\Models\Evaluation;
 use App\Models\EvaluationSubmission;
 use App\Models\User;
+use App\Support\Logging\CaughtExceptionLog;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
-use Psr\Log\LoggerInterface;
 use Throwable;
 
 /**
@@ -19,8 +19,9 @@ use Throwable;
  *
  * ## DI strict (§1.6 D du manifeste)
  *
- * Constructeur injecte uniquement PSR-3 `LoggerInterface`. Aucun `app()`,
- * aucune Facade `Log::` ni `auth()`. L'identité du caller est passée en
+ * Constructeur injecte uniquement `CaughtExceptionLog` (journal des exceptions
+ * attrapées). Aucun `app()`, aucune Facade `Log::` ni `auth()`. L'identité du
+ * caller est passée en
  * paramètre (`User $teacher`), jamais résolue depuis le container.
  *
  * ## Comportement préservé
@@ -40,7 +41,7 @@ use Throwable;
 final class TeacherEvaluationViewService
 {
     public function __construct(
-        private readonly LoggerInterface $logger,
+        private readonly CaughtExceptionLog $journal,
     ) {}
 
     /**
@@ -104,10 +105,9 @@ final class TeacherEvaluationViewService
                 ],
             ];
         } catch (Throwable $e) {
-            $this->logger->error('Erreur récupération soumissions', [
+            $this->journal->error('Erreur récupération soumissions', $e, [
                 'evaluation_id' => $evaluationId,
-                'teacher_id'    => $teacher->id,
-                'error'         => $e->getMessage(),
+                'teacher_id' => $teacher->id,
             ]);
 
             return [
@@ -190,10 +190,9 @@ final class TeacherEvaluationViewService
                 ],
             ];
         } catch (Throwable $e) {
-            $this->logger->error('Erreur prévisualisation évaluation', [
+            $this->journal->error('Erreur prévisualisation évaluation', $e, [
                 'evaluation_id' => $evaluationId,
-                'teacher_id'    => $teacher->id,
-                'error'         => $e->getMessage(),
+                'teacher_id' => $teacher->id,
             ]);
 
             return [

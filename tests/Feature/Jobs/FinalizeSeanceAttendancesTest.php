@@ -90,8 +90,8 @@ class FinalizeSeanceAttendancesTest extends TestCase
         $pdf = new CapturingPdf;
         $service = new ReportGenerationService(
             $pdf,
-            new NullLogger,
             new AttendanceReportContextBuilder,
+            app(\App\Support\Logging\CaughtExceptionLog::class),
         );
         $result = $service->generateAttendance([
             'date_start' => '2026-07-06',

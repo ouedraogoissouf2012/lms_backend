@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\FileConversion;
 
 use App\Services\ConvertApiService;
+use App\Support\Logging\CaughtExceptionLog;
 use Exception;
 use Illuminate\Http\UploadedFile;
 use Psr\Log\LoggerInterface;
@@ -38,6 +39,7 @@ final class PdfConverter
         private readonly PdfToPngRendererInterface $pdfRenderer,
         private readonly FileValidator $validator,
         private readonly ChapterArtifactStorage $artifacts,
+        private readonly CaughtExceptionLog $journal,
     ) {
     }
 
@@ -64,9 +66,7 @@ final class PdfConverter
         try {
             return $this->tryConvertApi($fullOriginalPath, $originalPath, $chapterId);
         } catch (Exception $convertApiError) {
-            $this->logger->warning('⚠️ ConvertAPI échoué, fallback sur Imagick', [
-                'error' => $convertApiError->getMessage(),
-            ]);
+            $this->journal->warning('⚠️ ConvertAPI échoué, fallback sur Imagick', $convertApiError);
 
             return $this->fallbackLocalRenderer($fullOriginalPath, $originalPath, $chapterId);
         }

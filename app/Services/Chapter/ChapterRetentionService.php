@@ -8,11 +8,11 @@ use App\Models\Chapter;
 use App\Models\SeanceRecording;
 use App\Services\FileConversion\ChapterArtifactStorage;
 use App\Services\Visio\Recording\SeanceRecordingRetentionService;
+use App\Support\Logging\CaughtExceptionLog;
 use Carbon\CarbonInterface;
 use Illuminate\Contracts\Config\Repository as ConfigRepository;
 use Illuminate\Database\DatabaseManager;
 use Illuminate\Database\Eloquent\Builder;
-use Psr\Log\LoggerInterface;
 use Tests\Feature\Chapter\ChapterRetentionPurgeTest;
 use Throwable;
 
@@ -57,8 +57,8 @@ final class ChapterRetentionService
     public function __construct(
         private readonly ConfigRepository $config,
         private readonly DatabaseManager $database,
-        private readonly LoggerInterface $logger,
         private readonly ChapterArtifactStorage $artifacts,
+        private readonly CaughtExceptionLog $journal,
     ) {}
 
     /** Date avant laquelle une mise à la corbeille est arrivée à échéance. */
@@ -181,12 +181,10 @@ final class ChapterRetentionService
 
     public function logFailure(Chapter $chapter, Throwable $exception): void
     {
-        $this->logger->error('Chapter retention purge failed', [
+        $this->journal->error('Chapter retention purge failed', $exception, [
             'chapter_id' => $chapter->getKey(),
             'lesson_id' => $chapter->lesson_id,
             'institution_id' => $chapter->institution_id,
-            'exception' => $exception::class,
-            'message' => $exception->getMessage(),
         ]);
     }
 

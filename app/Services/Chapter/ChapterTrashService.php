@@ -6,6 +6,7 @@ namespace App\Services\Chapter;
 
 use App\Models\Chapter;
 use App\Services\Visio\AttendanceLifecycleService;
+use App\Support\Logging\CaughtExceptionLog;
 use Psr\Log\LoggerInterface;
 use Tests\Feature\Chapter\ChapterTrashAndRestoreTest;
 use Throwable;
@@ -41,7 +42,10 @@ use Throwable;
  */
 final class ChapterTrashService
 {
-    public function __construct(private readonly LoggerInterface $logger) {}
+    public function __construct(
+        private readonly LoggerInterface $logger,
+        private readonly CaughtExceptionLog $journal,
+    ) {}
 
     /**
      * Met un chapitre à la corbeille — SANS toucher à ses fichiers.
@@ -105,7 +109,7 @@ final class ChapterTrashService
      */
     private function failed(string $context, int $id, Throwable $e): array
     {
-        $this->logger->error($context, ['chapter_id' => $id, 'error' => $e->getMessage()]);
+        $this->journal->error($context, $e, ['chapter_id' => $id]);
 
         return [
             'status' => 500,

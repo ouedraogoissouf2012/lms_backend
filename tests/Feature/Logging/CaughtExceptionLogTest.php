@@ -55,6 +55,23 @@ final class CaughtExceptionLogTest extends TestCase
         );
     }
 
+    /** Un repli journalisé en `info` ou en `debug` par son site garde ce niveau, sans trace. */
+    public function test_info_et_debug_gardent_leur_niveau_sans_trace(): void
+    {
+        $journal = $this->app->make(CaughtExceptionLog::class);
+        $journal->info('Endpoint non accessible, essai suivant', new RuntimeException('Refusé.'), ['role' => 'enseignant']);
+        $journal->debug('Détail ignoré', new RuntimeException('Archivée.'), ['seance_id' => 3]);
+
+        self::assertSame(
+            ['role' => 'enseignant', 'exception_class' => RuntimeException::class, 'error' => 'Refusé.'],
+            array_diff_key($this->unSeul(Level::Info)->context, ['request_id' => true]),
+        );
+        self::assertSame(
+            ['seance_id' => 3, 'exception_class' => RuntimeException::class, 'error' => 'Archivée.'],
+            array_diff_key($this->unSeul(Level::Debug)->context, ['request_id' => true]),
+        );
+    }
+
     public function test_une_exception_sql_enveloppee_est_decrite_de_meme(): void
     {
         $sql = $this->echecSql();

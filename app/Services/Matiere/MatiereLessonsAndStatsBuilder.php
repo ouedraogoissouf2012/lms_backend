@@ -7,6 +7,7 @@ namespace App\Services\Matiere;
 use App\Models\Lesson;
 use App\Models\Matiere;
 use App\Models\User;
+use App\Support\Logging\CaughtExceptionLog;
 use Psr\Log\LoggerInterface;
 use Throwable;
 
@@ -27,6 +28,7 @@ final class MatiereLessonsAndStatsBuilder
 {
     public function __construct(
         private readonly LoggerInterface $logger,
+        private readonly CaughtExceptionLog $journal,
     ) {}
 
     /**
@@ -99,10 +101,9 @@ final class MatiereLessonsAndStatsBuilder
 
             return $lessons;
         } catch (Throwable $e) {
-            $this->logger->warning('Erreur récupération lessons LMS', [
+            $this->journal->warning('Erreur récupération lessons LMS', $e, [
                 'matiere_id_local' => $matiereId,
                 'klassci_matiere_id' => $klassciMatiereId,
-                'error' => $e->getMessage(),
             ]);
 
             return [];

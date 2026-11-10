@@ -8,10 +8,9 @@ use App\Enums\LessonStatus;
 use App\Models\Evaluation;
 use App\Models\Lesson;
 use App\Models\User;
-use Illuminate\Contracts\Cache\Repository as CacheRepository;
+use App\Support\Logging\CaughtExceptionLog;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Str;
-use Psr\Log\LoggerInterface;
 use Throwable;
 
 /**
@@ -23,8 +22,9 @@ use Throwable;
  *
  * ## DI strict (§1.6 D)
  *
- * Aucune Facade (`Cache`, `Log`) ni `app()` : `CacheRepository`, PSR-3
- * `LoggerInterface` et {@see KlassciSearchSources} sont injectés.
+ * Aucune Facade (`Cache`, `Log`) ni `app()` : {@see SearchResultCache},
+ * {@see TeacherOwnershipScope}, {@see KlassciSearchSources} et
+ * `CaughtExceptionLog` sont injectés.
  *
  * ## Comportement
  *
@@ -65,9 +65,9 @@ final class GlobalSearchService
 {
     public function __construct(
         private readonly SearchResultCache $cache,
-        private readonly LoggerInterface $logger,
         private readonly TeacherOwnershipScope $ownership,
         private readonly KlassciSearchSources $klassciSources,
+        private readonly CaughtExceptionLog $journal,
     ) {
     }
 
@@ -176,17 +176,14 @@ final class GlobalSearchService
         } catch (Throwable $e) {
             $failedSources[] = $name;
 
-            // La classe ET l'exception sont journalisées : le `catch` est large
-            // par nécessité (il couvre toute la production de la source), donc il
-            // attrape aussi bien une panne KLASSCI qu'un défaut de code ou une
-            // institution mal configurée. Sans le type ni la trace, ces cas
-            // seraient indiscernables dans les logs — le client, lui, ne reçoit
-            // toujours que le nom de la source (§1.2).
-            $this->logger->error('Source de recherche indisponible', [
+            // La classe et la trace sont journalisées (`error` de l'aide) : le
+            // `catch` est large par nécessité (il couvre toute la production de
+            // la source), donc il attrape aussi bien une panne KLASSCI qu'un
+            // défaut de code ou une institution mal configurée. Sans le type ni
+            // la trace, ces cas seraient indiscernables dans les logs — le
+            // client, lui, ne reçoit toujours que le nom de la source (§1.2).
+            $this->journal->error('Source de recherche indisponible', $e, [
                 'source' => $name,
-                'exception_class' => $e::class,
-                'error' => $e->getMessage(),
-                'exception' => $e,
             ]);
 
             return [];

@@ -6187,7 +6187,7 @@ paths:
             - la fenetre ne peut pas etre verifiee :
               `reason: evaluation_window_unverifiable` ;
             - la classe de l eleve ne peut pas etre lue : le refus canonique
-              d une indisponibilite KLASSCI, sans `reason`.
+              d une indisponibilite KLASSCI, `reason: klassci_unavailable`.
           headers:
             Retry-After:
               description: "Secondes avant de reessayer"
@@ -6201,6 +6201,7 @@ paths:
                 required:
                   - success
                   - message
+                  - reason
                 properties:
                   success:
                     type: boolean
@@ -6212,6 +6213,7 @@ paths:
                     type: string
                     enum:
                       - evaluation_window_unverifiable
+                      - klassci_unavailable
 
   /evaluations/{id}/submit:
     post:

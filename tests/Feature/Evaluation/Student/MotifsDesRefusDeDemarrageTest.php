@@ -252,6 +252,55 @@ final class MotifsDesRefusDeDemarrageTest extends TestCase
         });
     }
 
+    /**
+     * La fenêtre ne peut pas être vérifiée (KLASSCI en panne sur `evaluations`) :
+     * 503 avec son motif, et `Retry-After`, la même valeur que toute
+     * indisponibilité KLASSCI du dépôt. Aucune tentative n'est créée.
+     */
+    public function test_une_fenetre_non_verifiable_porte_son_motif_et_retry_after(): void
+    {
+        config(['services.klassci.retry_after' => 47]);
+        $evaluation = $this->evaluation([]);
+        $this->klassciEnPanne(surLaClasse: false);
+
+        $reponse = $this->demarrer($evaluation)->assertStatus(503)->assertExactJson([
+            'success' => false,
+            'message' => "Impossible de vérifier la disponibilité de l'évaluation pour le moment. Veuillez réessayer dans un instant.",
+            'reason' => 'evaluation_window_unverifiable',
+        ]);
+
+        $reponse->assertHeader('Retry-After', '47');
+        self::assertSame(0, \App\Models\EvaluationSubmission::query()->where('evaluation_id', $evaluation->id)->count());
+        $this->assertMatchesOpenApiResponse($reponse, self::CHEMIN, 'post');
+    }
+
+    /** La classe de l'élève illisible chez KLASSCI : le 503 canonique, sans motif, suit la même spec. */
+    public function test_une_classe_illisible_rend_le_503_canonique(): void
+    {
+        $evaluation = $this->evaluation([]);
+        $this->klassciEnPanne(surLaClasse: true);
+
+        $reponse = $this->demarrer($evaluation)->assertStatus(503)->assertJsonMissingPath('reason');
+
+        $reponse->assertHeader('Retry-After');
+        $this->assertMatchesOpenApiResponse($reponse, self::CHEMIN, 'post');
+    }
+
+    /** KLASSCI lève sur la fenêtre (`evaluations`), ou dès la classe de l'élève (`me/dashboard`). */
+    private function klassciEnPanne(bool $surLaClasse): void
+    {
+        $this->mock(KlassciProxyService::class, function (MockInterface $mock) use ($surLaClasse): void {
+            $mock->shouldReceive('requestWithUserToken')
+                ->andReturnUsing(static function (string $jeton, string $endpoint) use ($surLaClasse): array {
+                    if ($endpoint === 'me/dashboard' && ! $surLaClasse) {
+                        return ['data' => ['classe' => ['id' => self::CLASSE, 'name' => 'L1']]];
+                    }
+
+                    throw new \App\Exceptions\KlassciUnavailableException('KLASSCI indisponible', 503);
+                });
+        });
+    }
+
     private function demarrer(Evaluation $evaluation): TestResponse
     {
         return $this->asTenant($this->eleve)->postJson("/api/evaluations/{$evaluation->id}/start");

@@ -8,10 +8,12 @@ use App\Http\Controllers\API\Proxy\Concerns\RendersKlassciProxyErrors;
 use App\Http\Controllers\API\Proxy\Concerns\ResolvesPersonalKlassciToken;
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Services\Catalogue\InstitutionStructureReader;
 use App\Services\Classe\InstitutionClassesReader;
 use App\Services\Klassci\TeacherDirectory\LocalTeacherDirectory;
 use App\Services\Klassci\TeacherDirectory\TeacherDirectoryVisibility;
 use App\Services\KlassciProxyService;
+use App\Services\Matiere\InstitutionMatieresReader;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -36,12 +38,15 @@ final class ProxyOrganisationController extends Controller
 
     /**
      * GET /api/proxy/structure — Structure organisationnelle (filières, niveaux).
+     *
+     * Même route, autre source (ADR-EI-01, lot 3c) : KLASSCI relayé dans une
+     * école créée depuis KLASSCI, des listes vides dans une école créée depuis
+     * le LMS. La source est reçue par la MÉTHODE, comme pour `classes()`.
      */
-    public function structure(): JsonResponse
+    public function structure(InstitutionStructureReader $structure): JsonResponse
     {
         try {
-            $data = $this->klassciService->getStructure();
-            return response()->json($data);
+            return response()->json($structure->structure());
         } catch (\Exception $e) {
             return $this->proxyErrorResponse($e);
         }
@@ -94,19 +99,26 @@ final class ProxyOrganisationController extends Controller
     }
 
     /**
-     * GET /api/proxy/matieres — Matières.
+     * GET /api/proxy/matieres — les matières de l'établissement.
+     *
+     * Même route, autre source (ADR-EI-01, lot 3c). Le jeton KLASSCI personnel
+     * est exigé par la source KLASSCI, plus ici : vérifié avant le choix de
+     * source, il refuserait l'école créée depuis le LMS. Un jeton absent y lève
+     * `MissingKlassciTokenException`, rendue en 401 `klassci_token_missing`
+     * comme avant.
      */
-    public function matieres(Request $request): JsonResponse
+    public function matieres(Request $request, InstitutionMatieresReader $matieres): JsonResponse
     {
-        try {
-            $klassciToken = $this->personalKlassciToken($request);
-            if ($klassciToken === null) {
-                return $this->missingKlassciTokenResponse();
-            }
+        $user = $request->user();
 
+        if (! $user instanceof User) {
+            throw new AuthenticationException;
+        }
+
+        try {
             $filters = $request->only(['filiere_id', 'niveau_id']);
-            $data = $this->klassciService->getMatieres($klassciToken, $filters);
-            return response()->json($data);
+
+            return response()->json($matieres->list($user, $filters));
         } catch (\Exception $e) {
             return $this->proxyErrorResponse($e);
         }

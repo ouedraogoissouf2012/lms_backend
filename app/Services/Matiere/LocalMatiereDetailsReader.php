@@ -30,8 +30,9 @@ use Illuminate\Support\Facades\DB;
  * Hors de ces cas, `null`, rendu en 404 : le refus ne dit pas si la matière
  * existe, ni dans quelle école.
  *
- * La source KLASSCI rend encore à l'enseignant les leçons de ses collègues :
- * l'aligner relève du lot qui borne les lectures de leçons, pas de celui-ci.
+ * La borne d'auteur est celle des listes de `LessonListService`, dans les deux
+ * types d'école : {@see \App\Services\Lesson\LessonReadScope::limitToAuthor()},
+ * appliquée par `lessonsForLocalMatiere`.
  *
  * ## Les compteurs qu'on ne connaît pas
  *
@@ -69,7 +70,6 @@ final class LocalMatiereDetailsReader implements MatiereDetailsReader
             $matiere->id,
             $user,
             classeIds: $user->isLearnerAudience() ? $classeIds : null,
-            enseignantId: $user->isTeacher() ? $user->id : null,
             institutionId: $institution,
         );
         $enseignants = $this->enseignants($matiere, $classeIds, $institution);

@@ -53,7 +53,8 @@ final class EnseignantsAuthorizationTest extends TestCase
 
     public function test_returns_enseignants_simple_format(): void
     {
-        $user = $this->userInInstitution();
+        // La liste complete est celle de la gestion (grille des roles).
+        $user = $this->userInInstitution('admin');
         Sanctum::actingAs($user);
 
         $this->mock(KlassciProxyService::class, function (MockInterface $mock) {

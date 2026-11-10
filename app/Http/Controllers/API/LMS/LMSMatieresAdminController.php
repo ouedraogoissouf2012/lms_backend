@@ -6,6 +6,7 @@ use App\Exceptions\KlassciUnavailableException;
 use App\Http\Controllers\API\Proxy\Concerns\ResolvesPersonalKlassciToken;
 use App\Http\Controllers\AuthenticatedController;
 use App\Services\Matiere\AdminMatieresQueryService;
+use App\Support\Logging\CaughtExceptionLog;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Psr\Log\LoggerInterface;
@@ -25,6 +26,7 @@ final class LMSMatieresAdminController extends AuthenticatedController
     public function __construct(
         private readonly AdminMatieresQueryService $matieresQuery,
         private readonly LoggerInterface $logger,
+        private readonly CaughtExceptionLog $journal,
     ) {}
 
     /**
@@ -69,10 +71,7 @@ final class LMSMatieresAdminController extends AuthenticatedController
             // de quelques minutes en echec permanent.
             return KlassciUnavailableException::jsonResponse();
         } catch (\Exception $e) {
-            $this->logger->error('Erreur liste matières admin', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-            ]);
+            $this->journal->error('Erreur liste matières admin', $e);
 
             return response()->json([
                 'success' => false,

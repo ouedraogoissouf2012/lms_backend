@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Services\Klassci\Data\KlassciDataWhitelist;
 use App\Services\Klassci\Sync\KlassciSyncGate;
 use App\Services\KlassciProxyService;
+use App\Support\Logging\CaughtExceptionLog;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -46,6 +47,7 @@ class EnsureKlassciSync
         private readonly KlassciProxyService $klassciService,
         private readonly KlassciDataWhitelist $whitelist,
         private readonly KlassciSyncGate $syncGate,
+        private readonly CaughtExceptionLog $journal,
     ) {}
 
     /**
@@ -116,9 +118,7 @@ class EnsureKlassciSync
             // En cas d'erreur, logger mais continuer quand même.
             // Les données locales (même obsolètes) restent utilisables — `role`,
             // `email`, `klassci_role` sont tous préservés en l'état.
-            Log::warning("Échec re-synchronisation KLASSCI pour user {$user->id}", [
-                'error' => $e->getMessage(),
-            ]);
+            $this->journal->warning("Échec re-synchronisation KLASSCI pour user {$user->id}", $e);
         }
 
         return $next($request);

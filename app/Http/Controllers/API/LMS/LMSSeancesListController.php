@@ -7,9 +7,9 @@ namespace App\Http\Controllers\API\LMS;
 use App\Http\Controllers\API\Concerns\RendersKlassciBackedErrors;
 use App\Http\Controllers\AuthenticatedController;
 use App\Services\SeancesListQueryService;
+use App\Support\Logging\CaughtExceptionLog;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
 use RuntimeException;
 
 /**
@@ -37,6 +37,7 @@ final class LMSSeancesListController extends AuthenticatedController
 
     public function __construct(
         private readonly SeancesListQueryService $seancesList,
+        private readonly CaughtExceptionLog $journal,
     ) {}
 
     /**
@@ -71,10 +72,7 @@ final class LMSSeancesListController extends AuthenticatedController
             // le message vient d'une table fixe côté LMS.
             return $this->renderKlassciFailure($e);
         } catch (\Exception $e) {
-            Log::error('Erreur récupération séances à venir', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
-            ]);
+            $this->journal->error('Erreur récupération séances à venir', $e);
 
             // NON migré : enveloppe d'erreur portant une clé sœur `error` (singulier)
             // que le trait ne reproduit pas (errorResponse n'a qu'un `errors` pluriel).
@@ -103,10 +101,7 @@ final class LMSSeancesListController extends AuthenticatedController
             // le message vient d'une table fixe côté LMS.
             return $this->renderKlassciFailure($e);
         } catch (\Exception $e) {
-            Log::error('Erreur récupération séances enseignant', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
-            ]);
+            $this->journal->error('Erreur récupération séances enseignant', $e);
 
             // NON migré : enveloppe d'erreur portant une clé sœur `error` (singulier)
             // que le trait ne reproduit pas (errorResponse n'a qu'un `errors` pluriel).
@@ -145,10 +140,7 @@ final class LMSSeancesListController extends AuthenticatedController
             // le message vient d'une table fixe côté LMS.
             return $this->renderKlassciFailure($e);
         } catch (\Exception $e) {
-            Log::error('Erreur récupération séances étudiant', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
-            ]);
+            $this->journal->error('Erreur récupération séances étudiant', $e);
 
             // NON migré : enveloppe d'erreur portant une clé sœur `error` (singulier)
             // que le trait ne reproduit pas (errorResponse n'a qu'un `errors` pluriel).

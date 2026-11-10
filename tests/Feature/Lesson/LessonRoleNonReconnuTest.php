@@ -98,11 +98,16 @@ final class LessonRoleNonReconnuTest extends TestCase
      * l'établissement, brouillons compris, et le filtre `status`. Rien de ce
      * qui porte #511 / #102 n'a changé (`Role::tryFromString`, `EnsureRole`,
      * `isPlatformSupradmin`).
+     *
+     * Les leçons sont celles du compte : la liste d'un enseignant ne porte que
+     * les siennes (D72), ce que couvre ListesDesLeconsDeLEnseignantTest. Ici,
+     * seule l'audience est mesurée.
      */
     #[DataProvider('personnel')]
     public function test_le_personnel_reconnu_garde_sa_vue(string $role): void
     {
         $compte = $this->ecoleAvecDeuxClasses('klassci', $role, inscrire: false);
+        Lesson::query()->where('institution_id', $this->ecole->id)->update(['enseignant_id' => $compte->id]);
 
         $liste = $this->asTenant($compte)->getJson('/api/lessons?per_page=100')->assertOk();
         self::assertSame(6, $liste->json('data.total'), 'les 5 publiées et le brouillon');

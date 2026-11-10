@@ -38,7 +38,8 @@ final class LMSEnseignantsResponseTest extends TestCase
         $institution = Institution::factory()->create();
         Sanctum::actingAs(User::factory()->create([
             'institution_id' => $institution->id,
-            'role' => 'enseignant',
+            // La liste complète est celle de la gestion (grille des rôles).
+            'role' => 'admin',
             'klassci_token' => 'fake-token',
         ]));
 

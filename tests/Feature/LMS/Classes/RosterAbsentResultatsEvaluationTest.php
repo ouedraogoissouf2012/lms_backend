@@ -90,7 +90,7 @@ final class RosterAbsentResultatsEvaluationTest extends TestCase
         $this->appeler()
             ->assertStatus(503)
             ->assertHeader('Retry-After')
-            ->assertExactJson(['success' => false, 'message' => KlassciUnavailableException::CLIENT_MESSAGE]);
+            ->assertExactJson(['success' => false, 'message' => KlassciUnavailableException::CLIENT_MESSAGE, 'reason' => KlassciUnavailableException::REASON]);
     }
 
     public function test_un_bloc_etudiants_present_et_vide_reste_une_classe_vide(): void

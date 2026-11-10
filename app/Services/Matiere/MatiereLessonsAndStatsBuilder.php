@@ -19,8 +19,9 @@ use Throwable;
  *
  * Responsibility:
  *   - Loads `Lesson` rows for the matière, scoped by role
- *     (students see only published lessons + their progress; a teacher sees
- *     only his own, {@see LessonReadScope::limitToAuthor()}; management sees all).
+ *     (students see only published lessons of their classes + their progress,
+ *     {@see LessonReadScope::limitToAudience()}; a teacher sees only his own,
+ *     {@see LessonReadScope::limitToAuthor()}; management sees all).
  *   - Computes the aggregate statistics block returned with the matière.
  *
  * @see PRODUCTION_STANDARDS.md §1.1
@@ -117,16 +118,17 @@ final class MatiereLessonsAndStatsBuilder
      *
      * Publique pour la source locale de la page matière (école indépendante,
      * lot 1), où il n'existe qu'un espace d'identifiants : rien à traduire. Le
-     * chemin KLASSCI l'appelle après sa traduction stricte, sans rien changer à
-     * ce qu'il rendait.
+     * chemin KLASSCI l'appelle après sa traduction stricte.
      *
-     * `$classeIds` borne aux classes nommées, `$institutionId` à un
+     * `$classeIds` borne en plus aux classes nommées, `$institutionId` à un
      * établissement — explicitement, sans dépendre du scope global, fail-open
-     * sans tenant résolu. `null` ne borne pas, comme le chemin KLASSCI l'a
-     * toujours fait.
+     * sans tenant résolu. `null` n'ajoute aucune borne ; les règles des listes
+     * ci-dessous s'appliquent toujours.
      *
-     * Un enseignant n'y lit que ses leçons, dans les deux types d'école : la
-     * règle des listes, {@see LessonReadScope::limitToAuthor()}.
+     * Les règles des listes s'y appliquent, dans les deux types d'école : un
+     * apprenant n'y lit que les leçons publiées de ses classes
+     * ({@see LessonReadScope::limitToAudience()}), un enseignant que les siennes
+     * ({@see LessonReadScope::limitToAuthor()}).
      *
      * @param  list<int>|null  $classeIds
      * @return array<int, array<string, mixed>>
@@ -147,11 +149,10 @@ final class MatiereLessonsAndStatsBuilder
             $query->whereIn('classe_id', $classeIds);
         }
 
+        $this->readScope->limitToAudience($query, $user);
         $this->readScope->limitToAuthor($query, $user);
 
         if ($user->isLearnerAudience()) {
-            $query->published();
-
             // PERF-03 — eager load `progress` filtered to current user.
             $query->with(['progress' => function ($q) use ($user) {
                 $q->where('user_id', $user->id);

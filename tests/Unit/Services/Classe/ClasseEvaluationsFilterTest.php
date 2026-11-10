@@ -8,7 +8,6 @@ use App\Services\Classe\ClasseSecondaryDataFetcher;
 use App\Services\KlassciProxyService;
 use Mockery;
 use PHPUnit\Framework\Attributes\CoversClass;
-use Psr\Log\NullLogger;
 use Tests\TestCase;
 
 /**
@@ -51,7 +50,7 @@ final class ClasseEvaluationsFilterTest extends TestCase
             ->with(self::TOKEN, 'evaluations', 'GET')
             ->andReturn(['data' => $catalogue]);
 
-        $fetcher = new ClasseSecondaryDataFetcher($klassci, new NullLogger());
+        $fetcher = new ClasseSecondaryDataFetcher($klassci, app(\App\Support\Logging\CaughtExceptionLog::class));
 
         return $fetcher->fetchEvaluations(self::CLASSE_ID, self::TOKEN);
     }

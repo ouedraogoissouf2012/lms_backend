@@ -6,6 +6,7 @@ namespace App\Services\Seances;
 
 use App\Models\User;
 use App\Services\SeancesListQueryService;
+use App\Support\Logging\CaughtExceptionLog;
 use Illuminate\Support\Collection;
 use Psr\Log\LoggerInterface;
 
@@ -44,6 +45,7 @@ final class UpcomingSeancesFetcher
         private readonly UserOwnMatieresResolver $ownMatieres,
         private readonly KlassciEmploiTempsSeances $emploiTemps,
         private readonly UpcomingSeanceLocalOverlay $overlay,
+        private readonly CaughtExceptionLog $journal,
     ) {}
 
     /**
@@ -70,9 +72,7 @@ final class UpcomingSeancesFetcher
             // séance » au lieu de signaler la panne. Comportement CONSERVÉ ici :
             // le corriger est un changement de contrat HTTP, qui n'a pas sa
             // place dans un changement de source. Suivi à part.
-            $this->logger->error('Erreur récupération séances via emploi-temps', [
-                'error' => $e->getMessage(),
-            ]);
+            $this->journal->error('Erreur récupération séances via emploi-temps', $e);
         }
 
         // Le lookup est passe EN ARGUMENT : il porte l'etat du prechargement

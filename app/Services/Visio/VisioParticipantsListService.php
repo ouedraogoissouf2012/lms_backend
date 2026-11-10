@@ -9,6 +9,7 @@ use App\Models\Seance;
 use App\Models\User;
 use App\Models\UserClass;
 use App\Services\SeanceDetailQueryService;
+use App\Support\Logging\CaughtExceptionLog;
 use DateTime;
 use Psr\Log\LoggerInterface;
 use Throwable;
@@ -44,6 +45,7 @@ final class VisioParticipantsListService
         private readonly VisioParticipantsStatsBuilder $statsBuilder,
         private readonly LoggerInterface $logger,
         private readonly AttendanceLifecycleService $lifecycle,
+        private readonly CaughtExceptionLog $journal,
     ) {}
 
     /**
@@ -151,10 +153,8 @@ final class VisioParticipantsListService
                 ],
             ];
         } catch (Throwable $e) {
-            $this->logger->error('Erreur récupération participants', [
+            $this->journal->error('Erreur récupération participants', $e, [
                 'seance_id' => $seanceId,
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
             ]);
 
             return [
@@ -194,9 +194,8 @@ final class VisioParticipantsListService
                 }
             }
         } catch (Throwable $e) {
-            $this->logger->warning('Impossible de calculer la durée de la séance', [
+            $this->journal->warning('Impossible de calculer la durée de la séance', $e, [
                 'seance_id' => $seanceId,
-                'error' => $e->getMessage(),
             ]);
         }
 
@@ -219,12 +218,10 @@ final class VisioParticipantsListService
                 $allClassStudents = $seanceArray['participants']['students'];
             }
         } catch (Throwable $e) {
-            $this->logger->warning(
+            $this->journal->warning(
                 'Impossible de récupérer la liste complète des étudiants via SeanceDetailQueryService',
-                [
-                    'seance_id' => $seanceId,
-                    'error' => $e->getMessage(),
-                ],
+                $e,
+                ['seance_id' => $seanceId],
             );
         }
 
@@ -273,10 +270,9 @@ final class VisioParticipantsListService
 
             return $allClassStudents;
         } catch (Throwable $e) {
-            $this->logger->error('Erreur fallback BDD pour récupération étudiants', [
+            $this->journal->error('Erreur fallback BDD pour récupération étudiants', $e, [
                 'seance_id' => $seanceId,
                 'classe_id' => $klassciClasseId,
-                'error' => $e->getMessage(),
             ]);
 
             return [];

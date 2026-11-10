@@ -13,6 +13,7 @@ use App\Services\Notification\AsyncVisioNotificationDispatcher;
 use App\Services\Seances\EmploiTempsSeanceLocator;
 use App\Services\Seances\KlassciPayload;
 use App\Services\Visio\SecureVisioRoomIdGenerator;
+use App\Support\Logging\CaughtExceptionLog;
 use Psr\Log\LoggerInterface;
 use Throwable;
 
@@ -32,6 +33,7 @@ final class VisioActivationService
         private readonly ClasseSyncService $classeSyncService,
         private readonly AsyncVisioNotificationDispatcher $notifications,
         private readonly LoggerInterface $logger,
+        private readonly CaughtExceptionLog $journal,
     ) {}
 
     /**
@@ -97,9 +99,8 @@ final class VisioActivationService
                 ],
             ];
         } catch (Throwable $e) {
-            $this->logger->error('Erreur activation visio', [
+            $this->journal->error('Erreur activation visio', $e, [
                 'seance_id' => $seanceId,
-                'error' => $e->getMessage(),
             ]);
 
             return [
@@ -159,9 +160,8 @@ final class VisioActivationService
                 ],
             ];
         } catch (Throwable $e) {
-            $this->logger->error('Erreur désactivation visio', [
+            $this->journal->error('Erreur désactivation visio', $e, [
                 'seance_id' => $seanceId,
-                'error' => $e->getMessage(),
             ]);
 
             return [
@@ -255,10 +255,8 @@ final class VisioActivationService
                 }
             }
         } catch (Throwable $e) {
-            $this->logger->error('Erreur synchronisation classe', [
+            $this->journal->error('Erreur synchronisation classe', $e, [
                 'seance_id' => $seanceId,
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
             ]);
         }
 
@@ -281,10 +279,8 @@ final class VisioActivationService
                 'classe_local_id' => $classe?->id,
             ]);
         } catch (Throwable $e) {
-            $this->logger->error('Erreur envoi notifications visio programmée', [
+            $this->journal->error('Erreur envoi notifications visio programmée', $e, [
                 'seance_id' => $seanceId,
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
             ]);
         }
 

@@ -188,6 +188,7 @@ final class ClasseStudentsSynchronizerEnrollmentTest extends TestCase
             app(DatabaseManager::class),
             app(TenantManager::class),
             new NullLogger(),
+            app(\App\Support\Logging\CaughtExceptionLog::class),
         );
     }
 }

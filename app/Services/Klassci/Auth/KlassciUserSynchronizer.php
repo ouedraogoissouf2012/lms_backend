@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Services\Klassci\Data\KlassciDataWhitelist;
 use App\Services\Matiere\MyMatieresQueryService;
 use App\Services\MatiereSyncService;
+use App\Support\Logging\CaughtExceptionLog;
 use Illuminate\Contracts\Hashing\Hasher;
 use Illuminate\Database\ConnectionInterface;
 use Psr\Log\LoggerInterface;
@@ -55,6 +56,7 @@ class KlassciUserSynchronizer
         private readonly LoggerInterface $logger,
         private readonly KlassciDataWhitelist $whitelist,
         private readonly KlassciRoleSanitizer $roleSanitizer,
+        private readonly CaughtExceptionLog $journal,
     ) {}
 
     /**
@@ -153,9 +155,8 @@ class KlassciUserSynchronizer
         try {
             $this->matiereSync->syncUserMatieres($klassciToken, $institutionId);
         } catch (\Throwable $e) {
-            $this->logger->error('Erreur sync matières au login', [
+            $this->journal->error('Erreur sync matières au login', $e, [
                 'institution_id' => $institutionId,
-                'error' => $e->getMessage(),
             ]);
         }
     }

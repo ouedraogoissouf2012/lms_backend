@@ -8,11 +8,11 @@ use App\Models\ESBTPAttendance;
 use App\Models\Evaluation;
 use App\Models\EvaluationSubmission;
 use App\Models\User;
+use App\Support\Logging\CaughtExceptionLog;
 use Barryvdh\DomPDF\PDF;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\Response;
-use Psr\Log\LoggerInterface;
 use Throwable;
 
 /**
@@ -27,8 +27,8 @@ final class ReportGenerationService
 {
     public function __construct(
         private readonly PDF $pdf,
-        private readonly LoggerInterface $logger,
         private readonly AttendanceReportContextBuilder $attendanceContext,
+        private readonly CaughtExceptionLog $journal,
     ) {}
 
     /**
@@ -203,11 +203,9 @@ final class ReportGenerationService
      */
     private function errorPayload(Throwable $e, string $reportType, User $user): array
     {
-        $this->logger->error('Échec génération rapport', [
+        $this->journal->error('Échec génération rapport', $e, [
             'report_type' => $reportType,
             'user_id' => $user->id,
-            'exception' => $e::class,
-            'message' => $e->getMessage(),
         ]);
 
         return [

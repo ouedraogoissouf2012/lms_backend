@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\FileConversion;
 
 use App\Services\ConvertApiService;
+use App\Support\Logging\CaughtExceptionLog;
 use App\Support\Shell\ShellExecutionException;
 use App\Support\Shell\ShellExecutorInterface;
 use Exception;
@@ -54,6 +55,7 @@ final class PowerPointConverter
         private readonly PdfToPngRendererInterface $pdfRenderer,
         private readonly FileValidator $validator,
         private readonly ChapterArtifactStorage $artifacts,
+        private readonly CaughtExceptionLog $journal,
     ) {
     }
 
@@ -83,9 +85,7 @@ final class PowerPointConverter
         try {
             return $this->tryConvertApi($fullOriginalPath, $originalPath, $chapterId);
         } catch (Exception $convertApiError) {
-            $this->logger->warning('⚠️ ConvertAPI échoué, fallback sur LibreOffice', [
-                'error' => $convertApiError->getMessage(),
-            ]);
+            $this->journal->warning('⚠️ ConvertAPI échoué, fallback sur LibreOffice', $convertApiError);
 
             return $this->fallbackLibreOffice($fullOriginalPath, $originalPath, $chapterId);
         }

@@ -6,11 +6,11 @@ namespace App\Services\Audit;
 
 use App\Models\AuditLog;
 use App\Models\User;
+use App\Support\Logging\CaughtExceptionLog;
 use Illuminate\Contracts\Auth\Factory as AuthFactory;
 use Illuminate\Contracts\Config\Repository as ConfigRepository;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
-use Psr\Log\LoggerInterface;
 
 /**
  * Point d'entrée unique pour écrire dans le journal d'audit (#215).
@@ -32,7 +32,7 @@ final class AuditLogger
         private readonly AuthFactory $auth,
         private readonly Request $request,
         private readonly ConfigRepository $config,
-        private readonly LoggerInterface $logger,
+        private readonly CaughtExceptionLog $journal,
     ) {}
 
     /**
@@ -108,10 +108,8 @@ final class AuditLogger
                 'user_agent' => substr((string) $this->request->userAgent(), 0, 512),
             ], $attributes));
         } catch (\Throwable $e) {
-            $this->logger->warning('Échec écriture audit log — action métier préservée', [
+            $this->journal->warning('Échec écriture audit log — action métier préservée', $e, [
                 'audit_action' => $action,
-                'exception' => $e::class,
-                'message' => $e->getMessage(),
             ]);
         }
     }

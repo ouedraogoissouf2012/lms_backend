@@ -9,8 +9,8 @@ use App\Models\User;
 use App\Services\Enrollment\EnrollmentSource;
 use App\Services\Klassci\TeacherDashboardClasses;
 use App\Services\Seances\KlassciPayload;
+use App\Support\Logging\CaughtExceptionLog;
 use Illuminate\Database\Eloquent\Builder;
-use Psr\Log\LoggerInterface;
 use Throwable;
 
 /**
@@ -59,7 +59,7 @@ final class TeacherClassesQueryService implements TeacherClassesReader
     public function __construct(
         private readonly EnrollmentSource $enrollment,
         private readonly TeacherDashboardClasses $dashboardClasses,
-        private readonly LoggerInterface $logger,
+        private readonly CaughtExceptionLog $journal,
     ) {}
 
     /**
@@ -94,9 +94,8 @@ final class TeacherClassesQueryService implements TeacherClassesReader
             $classes = $this->dashboardClasses->forToken($klassciToken);
         } catch (Throwable $e) {
             // Dégrader, pas vider : le miroir prend le relais.
-            $this->logger->warning('Classes enseignant — KLASSCI injoignable, repli sur le miroir local', [
+            $this->journal->warning('Classes enseignant — KLASSCI injoignable, repli sur le miroir local', $e, [
                 'user_id' => $teacher->id,
-                'error' => $e->getMessage(),
             ]);
 
             return [];

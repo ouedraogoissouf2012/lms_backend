@@ -318,6 +318,7 @@ final class ChapterArtifactPrivacyTest extends TestCase
             $this->pdfRenderer,
             $this->validator,
             $this->artifacts(),
+            app(\App\Support\Logging\CaughtExceptionLog::class),
         );
     }
 
@@ -329,6 +330,7 @@ final class ChapterArtifactPrivacyTest extends TestCase
             $this->pdfRenderer,
             $this->validator,
             $this->artifacts(),
+            app(\App\Support\Logging\CaughtExceptionLog::class),
         );
     }
 

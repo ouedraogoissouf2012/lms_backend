@@ -6,7 +6,7 @@ namespace App\Services\Sync\Classes;
 
 use App\Services\KlassciProxyService;
 use App\Services\Seances\KlassciPayload;
-use Psr\Log\LoggerInterface;
+use App\Support\Logging\CaughtExceptionLog;
 
 /**
  * KlassciClassesFetcher
@@ -20,7 +20,8 @@ use Psr\Log\LoggerInterface;
  *
  * ## DI strict (§1.6 D du manifeste)
  *
- * Constructeur injecte `KlassciProxyService` et `LoggerInterface` (PSR-3).
+ * Constructeur injecte `KlassciProxyService` et `CaughtExceptionLog` (journal
+ * des exceptions attrapées).
  * Pas de Facade `Log::` dans le code métier.
  *
  * ## Comportement préservé
@@ -47,7 +48,7 @@ final class KlassciClassesFetcher
 {
     public function __construct(
         private readonly KlassciProxyService $klassciService,
-        private readonly LoggerInterface $logger,
+        private readonly CaughtExceptionLog $journal,
     ) {}
 
     /**
@@ -63,9 +64,8 @@ final class KlassciClassesFetcher
             return $this->fetchAllClassesWithDetails($klassciToken);
         } catch (\Exception $e) {
             // Si /classes échoue (403, etc.), essayer les autres endpoints
-            $this->logger->info('Endpoint /classes non accessible, essai selon rôle', [
+            $this->journal->info('Endpoint /classes non accessible, essai selon rôle', $e, [
                 'role' => $userRole,
-                'error' => $e->getMessage(),
             ]);
         }
 
@@ -118,9 +118,7 @@ final class KlassciClassesFetcher
         try {
             $detailsMap = $this->fetchManyClasseDetails($classes, $klassciToken);
         } catch (\Exception $e) {
-            $this->logger->warning('Erreur récupération détails classes (batch) — infos basiques conservées', [
-                'error' => $e->getMessage(),
-            ]);
+            $this->journal->warning('Erreur récupération détails classes (batch) — infos basiques conservées', $e);
 
             return $classes;
         }

@@ -103,10 +103,10 @@ final class ClasseDetailsQueryServiceTest extends TestCase
 
         $klassci = $this->makeKlassci($etudiants);
 
-        // Collaborateur réel : on n'isole que la frontière KLASSCI. Son logger
-        // est neutralisé (NullLogger) pour que seuls les warnings du service
-        // sous test soient observés par le spy.
-        $secondary = new ClasseSecondaryDataFetcher($klassci, new NullLogger());
+        // Collaborateur réel : on n'isole que la frontière KLASSCI. Son journal
+        // (CaughtExceptionLog) écrit dans le journal de l'application, pas dans
+        // le spy : seuls les warnings du service sous test y sont observés.
+        $secondary = new ClasseSecondaryDataFetcher($klassci, app(\App\Support\Logging\CaughtExceptionLog::class));
 
         $service = new ClasseDetailsQueryService($klassci, $secondary, $logger);
 

@@ -9,7 +9,7 @@ use App\Models\User;
 use App\Services\Audience\ClasseAudienceSource;
 use App\Services\Visio\VisioActorAuthorization;
 use App\Services\Visio\VisioStatusRefusal;
-use Psr\Log\LoggerInterface;
+use App\Support\Logging\CaughtExceptionLog;
 use Throwable;
 
 /**
@@ -20,9 +20,9 @@ use Throwable;
 final class ParticipantValidationService
 {
     public function __construct(
-        private readonly LoggerInterface $logger,
         private readonly VisioActorAuthorization $authorization,
         private readonly ClasseAudienceSource $audience,
+        private readonly CaughtExceptionLog $journal,
     ) {}
 
     /**
@@ -89,10 +89,9 @@ final class ParticipantValidationService
 
             return $this->authorize($visioData, $actor, $userToValidate);
         } catch (Throwable $e) {
-            $this->logger->error('Participant validation failed', [
+            $this->journal->error('Participant validation failed', $e, [
                 'seance_id' => $seanceId,
                 'user_id' => $userIdToValidate,
-                'error' => $e->getMessage(),
             ]);
 
             return [

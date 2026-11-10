@@ -50,7 +50,7 @@ namespace App\Services\Klassci\Concerns;
  * donnée liée à l'identité **fuit**.
  *
  * Garde exécutable de cette règle :
- * {@see \Tests\Unit\Services\Klassci\KlassciEndpointClassificationGuardTest}.
+ * `tests/Unit/Services/Klassci/KlassciEndpointClassificationGuardTest.php`.
  *
  * @see \App\Services\KlassciProxyService
  * @see .claude/specs/perf-02-klassci-batch-cache/design.md §7 (table TTL)

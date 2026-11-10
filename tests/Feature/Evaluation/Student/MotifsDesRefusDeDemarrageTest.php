@@ -278,7 +278,7 @@ final class MotifsDesRefusDeDemarrageTest extends TestCase
         $this->assertOpenApiSchemaRefuseSans($reponse, self::CHEMIN, 'post', 'message');
     }
 
-    /** La classe de l'élève illisible chez KLASSCI : le 503 canonique, sans motif, suit la même spec. */
+    /** La classe de l'élève illisible chez KLASSCI : le 503 canonique, avec son motif, suit la même spec. */
     public function test_une_classe_illisible_rend_le_503_canonique(): void
     {
         config(['services.klassci.retry_after' => 47]);
@@ -288,6 +288,7 @@ final class MotifsDesRefusDeDemarrageTest extends TestCase
         $reponse = $this->demarrer($evaluation)->assertStatus(503)->assertExactJson([
             'success' => false,
             'message' => KlassciUnavailableException::CLIENT_MESSAGE,
+            'reason' => KlassciUnavailableException::REASON,
         ]);
 
         $reponse->assertHeader('Retry-After', '47');

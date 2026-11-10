@@ -45,10 +45,10 @@ Le filtre `action` n'accepte que les neuf valeurs historiques
 (`ViewAuditLogRequest`).
 
 Chaque entrée porte son auteur (`user: {id, name, email, role}`) et son école
-(`institution: {id, name}`, D127), chargés en une requête chacun. Une école
-supprimée logiquement garde son nom ; `institution` vaut `null` sans école ou
-après une purge physique. Le contrat complet est dans `docs/openapi.yaml`
-(`AuditLogPage`, `AuditLogEntry`).
+(`institution: {id, name}`, D127), chargés en une requête chacun, sans scope de
+tenant. Supprimés logiquement, ils restent servis ; `user` et `institution`
+valent `null` sans auteur ou sans école, ou après une purge physique. Le
+contrat complet est dans `docs/openapi.yaml` (`AuditLogPage`, `AuditLogEntry`).
 
 ```
 GET /api/admin/audit-log?action=login&per_page=50

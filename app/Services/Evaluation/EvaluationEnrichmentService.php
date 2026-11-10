@@ -7,8 +7,8 @@ namespace App\Services\Evaluation;
 use App\Models\Evaluation;
 use App\Models\User;
 use App\Services\KlassciProxyService;
+use App\Support\Logging\CaughtExceptionLog;
 use Illuminate\Support\Collection;
-use Psr\Log\LoggerInterface;
 
 /**
  * Enrichit les évaluations avec les données KLASSCI (classes, matières, enseignant)
@@ -20,7 +20,8 @@ use Psr\Log\LoggerInterface;
  *
  * ## DI strict (§1.6 D du manifeste)
  *
- * Constructeur injecte `KlassciProxyService` et `LoggerInterface` (PSR-3).
+ * Constructeur injecte `KlassciProxyService`, `EvaluationStateService` et
+ * `CaughtExceptionLog` (journal des exceptions attrapées).
  * Pas de Facade `Log::` dans le code métier.
  *
  * ## Comportement préservé
@@ -42,8 +43,8 @@ class EvaluationEnrichmentService
 {
     public function __construct(
         private readonly KlassciProxyService $klassciService,
-        private readonly LoggerInterface $logger,
         private readonly EvaluationStateService $state,
+        private readonly CaughtExceptionLog $journal,
     ) {}
 
     /**
@@ -91,7 +92,7 @@ class EvaluationEnrichmentService
                 return $evalArray;
             })->toArray();
         } catch (\Exception $e) {
-            $this->logger->error('Erreur enrichissement évaluations', ['error' => $e->getMessage()]);
+            $this->journal->error('Erreur enrichissement évaluations', $e);
 
             // Fail-soft : retourner les évaluations sans enrichissement plutôt que de casser la page.
             return $evaluations->toArray();

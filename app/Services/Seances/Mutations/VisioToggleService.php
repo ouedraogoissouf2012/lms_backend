@@ -127,9 +127,8 @@ final class VisioToggleService
                 ],
             ];
         } catch (Throwable $e) {
-            $this->logger->error('Erreur toggle visio séance', [
+            $this->journal->error('Erreur toggle visio séance', $e, [
                 'seance_id' => $seanceId,
-                'error' => $e->getMessage(),
             ]);
 
             return [
@@ -227,9 +226,8 @@ final class VisioToggleService
 
             return 0;
         } catch (Throwable $e) {
-            $this->logger->error('Erreur envoi notifications via toggleVisio', [
+            $this->journal->error('Erreur envoi notifications via toggleVisio', $e, [
                 'seance_id' => $seanceId,
-                'error' => $e->getMessage(),
             ]);
 
             return 0;

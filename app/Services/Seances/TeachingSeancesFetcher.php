@@ -9,6 +9,7 @@ use App\Models\Seance;
 use App\Models\User;
 use App\Services\KlassciProxyService;
 use App\Services\SeancesListQueryService;
+use App\Support\Logging\CaughtExceptionLog;
 use Illuminate\Support\Collection;
 use Psr\Log\LoggerInterface;
 
@@ -50,6 +51,7 @@ final class TeachingSeancesFetcher
         private readonly KlassciProxyService $klassciService,
         private readonly SeanceCacheDataBuilder $cacheBuilder,
         private readonly KlassciEmploiTempsSeances $emploiTemps,
+        private readonly CaughtExceptionLog $journal,
     ) {}
 
     /**
@@ -212,9 +214,8 @@ final class TeachingSeancesFetcher
                 'klassci_enseignant_id' => $user->klassci_id,
             ]);
         } catch (\Exception $e) {
-            $this->logger->error('Erreur création entrée séance locale', [
+            $this->journal->error('Erreur création entrée séance locale', $e, [
                 'seance_id' => $klassciSeanceId,
-                'error' => $e->getMessage(),
             ]);
         }
 

@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Classe;
 
 use App\Services\KlassciProxyService;
-use Psr\Log\LoggerInterface;
+use App\Support\Logging\CaughtExceptionLog;
 use Throwable;
 
 /**
@@ -26,7 +26,7 @@ final class ClasseSecondaryDataFetcher
 {
     public function __construct(
         private readonly KlassciProxyService $klassciService,
-        private readonly LoggerInterface $logger,
+        private readonly CaughtExceptionLog $journal,
     ) {}
 
     /**
@@ -53,9 +53,8 @@ final class ClasseSecondaryDataFetcher
                 ->values()
                 ->all();
         } catch (Throwable $e) {
-            $this->logger->warning('Erreur récupération évaluations', [
+            $this->journal->warning('Erreur récupération évaluations', $e, [
                 'classe_id' => $classeId,
-                'error' => $e->getMessage(),
             ]);
 
             return [];

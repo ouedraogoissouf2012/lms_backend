@@ -29,8 +29,19 @@ final class AuditLogController extends Controller
     {
         // Helpers typés de la Request (string/integer) plutôt que des casts de
         // `mixed` issus de validated() — conforme PHPStan niveau 9.
+        //
+        // L'auteur et l'école de chaque entrée, chargés en une requête chacun
+        // (D127). Supprimés depuis, ils restent servis : c'est le cas qu'on
+        // diagnostique. La lecture est plateforme (D51) : aucun scope de tenant
+        // ne masque l'auteur d'une autre école. `id` est gardé dans chaque
+        // sélection : c'est la clé de la jointure.
         $query = AuditLog::withoutGlobalScope('institution')
-            ->with('user:id,name,email,role')
+            ->with([
+                'user' => static fn ($auteur) => $auteur->withTrashed()
+                    ->withoutGlobalScope('institution')
+                    ->select('id', 'name', 'email', 'role'),
+                'institution' => static fn ($ecole) => $ecole->withTrashed()->select('id', 'name'),
+            ])
             ->recent();
 
         if ($request->filled('action')) {

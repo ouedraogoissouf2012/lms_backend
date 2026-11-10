@@ -8,7 +8,16 @@ et les investigations de sécurité.
 | Source | Actions |
 |---|---|
 | Modèles sensibles (`Evaluation`, `EvaluationSubmission`, `QuizAttempt`) | `create`, `update`, `delete` |
-| Authentification (`AuthController`) | `login`, `logout`, `login_failed` |
+| Authentification (`LoginOrchestrator`, `AuthController`) | `login`, `logout`, `login_failed` |
+| Enregistrements visio (`SeanceRecordingControlService`) | `visio_recording_start`, `visio_recording_stop`, `visio_recording_read` |
+| Écoles (`InstitutionCrudService`) | `institution.mode_changed`, `institution.soft_deleted` |
+| Comptes (`UserDeletionService`) | `user.soft_deleted` |
+| Rétention (`RetentionRunner`) | `recording.purged`, `institution.purged`, `user.purged`, `chapter.purged`, `audit-logs.purged.bulk` |
+
+La colonne `action` est une chaîne libre (`string(32)`) : cette table est la liste des valeurs écrites aujourd'hui.
+
+L'école (`institution_id`) d'une entrée est celle de l'utilisateur authentifié au moment de l'écriture : les connexions
+et les actions du supradmin n'en ont pas.
 
 Chaque entrée capture : acteur (`user_id`), tenant (`institution_id`), action,
 cible (`auditable_type` + `auditable_id`), diff (`before` / `after`),
@@ -32,6 +41,14 @@ provenance (`ip_address`, `user_agent`) et horodatage (`created_at`).
 
 Filtres : `action`, `user_id`, `per_page` (1-100), `page`. Trié du plus
 récent au plus ancien. Lecture seule — aucune route d'écriture/suppression.
+Le filtre `action` n'accepte que les neuf valeurs historiques
+(`ViewAuditLogRequest`).
+
+Chaque entrée porte son auteur (`user: {id, name, email, role}`) et son école
+(`institution: {id, name}`, D127), chargés en une requête chacun, sans scope de
+tenant. Supprimés logiquement, ils restent servis ; `user` et `institution`
+valent `null` sans auteur ou sans école, ou après une purge physique. Le
+contrat complet est dans `docs/openapi.yaml` (`AuditLogPage`, `AuditLogEntry`).
 
 ```
 GET /api/admin/audit-log?action=login&per_page=50

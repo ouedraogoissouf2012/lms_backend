@@ -7,6 +7,7 @@ namespace App\Services\Chapter;
 use App\Models\ChapterProgress;
 use App\Models\KnowledgeCheck;
 use App\Models\User;
+use App\Support\Logging\CaughtExceptionLog;
 use Psr\Log\LoggerInterface;
 use Throwable;
 
@@ -24,6 +25,7 @@ final class ChapterProgressService
         private readonly LessonChapterProgressCalculator $progressCalculator,
         private readonly ChapterTimeRecorder $timeRecorder,
         private readonly ChapterProgressAccess $access,
+        private readonly CaughtExceptionLog $journal,
     ) {}
 
     /** @return array{status:int, payload: array<string, mixed>} */
@@ -244,10 +246,9 @@ final class ChapterProgressService
                 ],
             ];
         } catch (Throwable $e) {
-            $this->logger->error('Erreur réinitialisation progression leçon', [
+            $this->journal->error('Erreur réinitialisation progression leçon', $e, [
                 'lesson_id' => $lessonId,
                 'target_user_id' => $targetUserId,
-                'error' => $e->getMessage(),
             ]);
 
             return [

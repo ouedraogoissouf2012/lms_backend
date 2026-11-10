@@ -10,6 +10,7 @@ use App\Http\Requests\UpdateChapterRequest;
 use App\Models\Chapter;
 use App\Models\Lesson;
 use App\Models\User;
+use App\Support\Logging\CaughtExceptionLog;
 use Psr\Log\LoggerInterface;
 use Throwable;
 
@@ -26,6 +27,7 @@ final class ChapterCrudService
     public function __construct(
         private readonly LoggerInterface $logger,
         private readonly ChapterReadGate $reads,
+        private readonly CaughtExceptionLog $journal,
     ) {}
 
     /**
@@ -51,9 +53,8 @@ final class ChapterCrudService
                 ],
             ];
         } catch (Throwable $e) {
-            $this->logger->error('Erreur récupération chapitres', [
+            $this->journal->error('Erreur récupération chapitres', $e, [
                 'lesson_id' => $lessonId,
-                'error' => $e->getMessage(),
             ]);
 
             return [
@@ -166,9 +167,8 @@ final class ChapterCrudService
                 ],
             ];
         } catch (Throwable $e) {
-            $this->logger->error('Erreur création chapitre', [
+            $this->journal->error('Erreur création chapitre', $e, [
                 'lesson_id' => $lessonId,
-                'error' => $e->getMessage(),
             ]);
 
             return [
@@ -203,9 +203,8 @@ final class ChapterCrudService
                 ],
             ];
         } catch (Throwable $e) {
-            $this->logger->error('Erreur mise à jour chapitre', [
+            $this->journal->error('Erreur mise à jour chapitre', $e, [
                 'chapter_id' => $id,
-                'error' => $e->getMessage(),
             ]);
 
             return [
@@ -246,9 +245,8 @@ final class ChapterCrudService
                 ],
             ];
         } catch (Throwable $e) {
-            $this->logger->error('Erreur réorganisation chapitres', [
+            $this->journal->error('Erreur réorganisation chapitres', $e, [
                 'lesson_id' => $lessonId,
-                'error' => $e->getMessage(),
             ]);
 
             return [

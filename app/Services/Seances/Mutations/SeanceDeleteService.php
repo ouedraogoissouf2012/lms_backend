@@ -6,6 +6,7 @@ namespace App\Services\Seances\Mutations;
 
 use App\Models\Seance;
 use App\Models\User;
+use App\Support\Logging\CaughtExceptionLog;
 use Psr\Log\LoggerInterface;
 use Throwable;
 
@@ -23,6 +24,7 @@ final class SeanceDeleteService
 {
     public function __construct(
         private readonly LoggerInterface $logger,
+        private readonly CaughtExceptionLog $journal,
     ) {}
 
     /**
@@ -76,10 +78,8 @@ final class SeanceDeleteService
             ];
 
         } catch (Throwable $e) {
-            $this->logger->error('Erreur suppression séance', [
+            $this->journal->error('Erreur suppression séance', $e, [
                 'seance_id' => $seanceId,
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
             ]);
 
             return [

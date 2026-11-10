@@ -14,7 +14,6 @@ use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Response;
 use Illuminate\Support\Collection;
-use Psr\Log\NullLogger;
 use Tests\TestCase;
 
 class AttendanceReportGenerationServiceTest extends TestCase
@@ -45,8 +44,8 @@ class AttendanceReportGenerationServiceTest extends TestCase
         $pdf = new ReportCapturingPdf;
         $service = new ReportGenerationService(
             $pdf,
-            new NullLogger,
             new AttendanceReportContextBuilder,
+            app(\App\Support\Logging\CaughtExceptionLog::class),
         );
 
         $result = $service->generateAttendance([

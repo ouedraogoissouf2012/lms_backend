@@ -43,7 +43,7 @@ final class AttendanceLifecycleService
      * `last_seen_at` avance dans les deux cas — c'est lui, et lui seul, qui
      * porte le signal d'activité.
      *
-     * @see \Tests\Feature\LMS\Visio\JoinVisioPreservesJoinedAtTest
+     * @see `tests/Feature/LMS/Visio/JoinVisioPreservesJoinedAtTest.php`
      */
     public function record(Seance $visio, User $user, Request $request, bool $isObserver): ESBTPAttendance
     {

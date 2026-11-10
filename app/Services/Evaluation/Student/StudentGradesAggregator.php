@@ -9,7 +9,7 @@ use App\Models\EvaluationSubmission;
 use App\Models\User;
 use App\Services\Evaluation\EvaluationGradingService;
 use App\Services\KlassciProxyService;
-use Psr\Log\LoggerInterface;
+use App\Support\Logging\CaughtExceptionLog;
 
 /**
  * Agrégation des notes étudiantes par matière — extrait de
@@ -23,9 +23,9 @@ use Psr\Log\LoggerInterface;
 final class StudentGradesAggregator
 {
     public function __construct(
-        private readonly LoggerInterface $logger,
         private readonly KlassciProxyService $klassciService,
         private readonly EvaluationGradingService $grading,
+        private readonly CaughtExceptionLog $journal,
     ) {}
 
     /**
@@ -70,7 +70,7 @@ final class StudentGradesAggregator
                 }
             }
         } catch (\Exception $e) {
-            $this->logger->warning('Impossible de récupérer les matières depuis KLASSCI', ['error' => $e->getMessage()]);
+            $this->journal->warning('Impossible de récupérer les matières depuis KLASSCI', $e);
         }
         return $matieresData;
     }

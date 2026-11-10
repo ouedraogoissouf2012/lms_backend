@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Evaluation\Student;
 
 use App\Enums\InstitutionMode;
+use App\Exceptions\KlassciUnavailableException;
 use App\Exceptions\MissingKlassciTokenException;
 use App\Models\Evaluation;
 use App\Models\EvaluationQuestion;
@@ -21,7 +22,7 @@ use Tests\Support\OpenApi\OpenApiSchemaValidator;
 use Tests\TestCase;
 
 /**
- * Chaque refus de démarrer une évaluation (403) porte un motif stable, que le
+ * Chaque refus de démarrer une évaluation porte un motif stable, que le
  * client traduit (`reason`, #906). Le statut et le message ne changent pas.
  *
  * | Refus | `reason` |
@@ -30,6 +31,7 @@ use Tests\TestCase;
  * | nombre maximum de tentatives atteint | `evaluation_max_attempts` |
  * | reprise interdite | `evaluation_retake_forbidden` |
  * | évaluation qui ne se passe pas en ligne | `evaluation_offline_only` |
+ * | fenêtre non vérifiable chez KLASSCI (503, avec `Retry-After`) | `evaluation_window_unverifiable` |
  *
  * Ces refus n'existent que dans l'école créée depuis KLASSCI : dans l'école
  * créée depuis le LMS, le démarrage s'arrête avant, faute de jeton KLASSCI
@@ -249,6 +251,61 @@ final class MotifsDesRefusDeDemarrageTest extends TestCase
                 ->andReturnUsing(static fn (string $jeton, string $endpoint): array => $endpoint === 'me/dashboard'
                     ? ['data' => ['classe' => ['id' => self::CLASSE, 'name' => 'L1']]]
                     : ['data' => [$ligne]]);
+        });
+    }
+
+    /**
+     * La fenêtre ne peut pas être vérifiée (KLASSCI en panne sur `evaluations`) :
+     * 503 avec son motif, et `Retry-After`, la même valeur que toute
+     * indisponibilité KLASSCI du dépôt. Aucune tentative n'est créée.
+     */
+    public function test_une_fenetre_non_verifiable_porte_son_motif_et_retry_after(): void
+    {
+        config(['services.klassci.retry_after' => 47]);
+        $evaluation = $this->evaluation([]);
+        $this->klassciEnPanne(surLaClasse: false);
+
+        $reponse = $this->demarrer($evaluation)->assertStatus(503)->assertExactJson([
+            'success' => false,
+            'message' => "Impossible de vérifier la disponibilité de l'évaluation pour le moment. Veuillez réessayer dans un instant.",
+            'reason' => 'evaluation_window_unverifiable',
+        ]);
+
+        $reponse->assertHeader('Retry-After', '47');
+        self::assertSame(0, EvaluationSubmission::query()->where('evaluation_id', $evaluation->id)->count());
+        $this->assertMatchesOpenApiResponse($reponse, self::CHEMIN, 'post');
+        // Le schéma fermé du 503 mord : privé de `message`, ou augmenté d'une clé non décrite, il refuse.
+        $this->assertOpenApiSchemaRefuseSans($reponse, self::CHEMIN, 'post', 'message');
+    }
+
+    /** La classe de l'élève illisible chez KLASSCI : le 503 canonique, sans motif, suit la même spec. */
+    public function test_une_classe_illisible_rend_le_503_canonique(): void
+    {
+        config(['services.klassci.retry_after' => 47]);
+        $evaluation = $this->evaluation([]);
+        $this->klassciEnPanne(surLaClasse: true);
+
+        $reponse = $this->demarrer($evaluation)->assertStatus(503)->assertExactJson([
+            'success' => false,
+            'message' => KlassciUnavailableException::CLIENT_MESSAGE,
+        ]);
+
+        $reponse->assertHeader('Retry-After', '47');
+        $this->assertMatchesOpenApiResponse($reponse, self::CHEMIN, 'post');
+    }
+
+    /** KLASSCI lève sur la fenêtre (`evaluations`), ou dès la classe de l'élève (`me/dashboard`). */
+    private function klassciEnPanne(bool $surLaClasse): void
+    {
+        $this->mock(KlassciProxyService::class, function (MockInterface $mock) use ($surLaClasse): void {
+            $mock->shouldReceive('requestWithUserToken')
+                ->andReturnUsing(static function (string $jeton, string $endpoint) use ($surLaClasse): array {
+                    if ($endpoint === 'me/dashboard' && ! $surLaClasse) {
+                        return ['data' => ['classe' => ['id' => self::CLASSE, 'name' => 'L1']]];
+                    }
+
+                    throw new KlassciUnavailableException('KLASSCI indisponible', 503);
+                });
         });
     }
 

@@ -937,6 +937,117 @@ components:
           type: string
           description: "Sur un ecran sans renvoi possible du lien, une faute de frappe enfermerait le titulaire dehors."
 
+    AuditLogPage:
+      type: object
+      description: |
+        Reponse de `GET /admin/audit-log` : l'enveloppe `successResponse`
+        autour d'une page Laravel (`data.data` porte les entrees).
+      additionalProperties: false
+      required:
+        - success
+        - data
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          required:
+            - current_page
+            - data
+            - per_page
+            - total
+          properties:
+            current_page:
+              type: integer
+            data:
+              type: array
+              items:
+                $ref: '#/components/schemas/AuditLogEntry'
+            per_page:
+              type: integer
+            total:
+              type: integer
+            last_page:
+              type: integer
+
+    AuditLogEntry:
+      type: object
+      description: |
+        Une entree du journal d'audit (`audit_logs`), avec son auteur et son
+        ecole. `before` et `after` sont les attributs avant et apres l'action ;
+        un tableau vide est serialise en liste vide `[]`, que ce schema ne decrit
+        pas (aucun `oneOf` ici).
+      additionalProperties: false
+      required:
+        - id
+        - user_id
+        - institution_id
+        - action
+        - created_at
+        - user
+        - institution
+      properties:
+        id:
+          type: integer
+        user_id:
+          type: integer
+          nullable: true
+        institution_id:
+          type: integer
+          nullable: true
+        action:
+          type: string
+          enum: [create, update, delete, view, export, import, login, logout, login_failed]
+        auditable_type:
+          type: string
+          nullable: true
+        auditable_id:
+          type: integer
+          nullable: true
+        before:
+          type: object
+          nullable: true
+          additionalProperties: true
+        after:
+          type: object
+          nullable: true
+          additionalProperties: true
+        ip_address:
+          type: string
+          nullable: true
+        user_agent:
+          type: string
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        user:
+          type: object
+          nullable: true
+          description: "L'auteur de l'action, null pour un job systeme ou un echec de connexion"
+          properties:
+            id:
+              type: integer
+            name:
+              type: string
+            email:
+              type: string
+            role:
+              type: string
+        institution:
+          type: object
+          nullable: true
+          description: "L'ecole de l'entree, supprimee ou non ; null pour une entree sans ecole (D127)"
+          additionalProperties: false
+          required:
+            - id
+            - name
+          properties:
+            id:
+              type: integer
+            name:
+              type: string
+
     SchoolRequestQueue:
       type: object
       properties:
@@ -3262,6 +3373,67 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/VisioErreurInterne'
+
+  /admin/audit-log:
+    get:
+      tags:
+        - Audit
+      summary: "Le journal d'audit, toutes ecoles confondues"
+      description: |
+        Route PLATEFORME (D51) : reservee au supradmin, qui lit les entrees de
+        toutes les ecoles pour diagnostiquer. Le superAdmin d'une ecole n'y a pas
+        acces. Lecture seule, triee de la plus recente a la plus ancienne.
+
+        Chaque entree porte son ecole, `institution: {id, name}` (D127), y compris
+        une ecole supprimee depuis. Une entree sans ecole (job systeme, echec de
+        connexion) porte `institution: null`.
+      security:
+        - sanctum: []
+      parameters:
+        - name: per_page
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 50
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+        - name: action
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [create, update, delete, view, export, import, login, logout, login_failed]
+        - name: user_id
+          in: query
+          required: false
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: "Une page du journal"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuditLogPage'
+        '401':
+          description: "Non authentifie"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: "Reserve au supradmin plateforme"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 
   /admin/school-requests:
     get:

@@ -22,7 +22,6 @@ return [
     '/admin/analytics/pending-tasks',
     '/admin/analytics/recent-users',
     '/admin/analytics/system-metrics',
-    '/admin/audit-log',
     '/admin/institutions',
     '/admin/institutions/{id}',
     '/admin/institutions/{id}/test-connection',

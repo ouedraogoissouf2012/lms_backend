@@ -74,7 +74,9 @@ final class TeacherOwnershipScope
      */
     public function applyToLessons(Builder $query, User $teacher): void
     {
-        $query->where(self::LESSON_OWNER_COLUMN, $teacher->id);
+        // Qualifiée : `classe_matiere` porte aussi un `enseignant_id`, et une
+        // jointure la rendrait ambiguë.
+        $query->where($query->qualifyColumn(self::LESSON_OWNER_COLUMN), $teacher->id);
     }
 
     /**

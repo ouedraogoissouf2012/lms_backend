@@ -22,14 +22,14 @@ use App\Models\User;
  * Le troisième, l'onglet Classes d'une matière (`useMatiereDetails.js:255`), y
  * envoie un identifiant **local**, pris dans `classes_concernees`. KLASSCI rend
  * alors la classe qui porte ce nombre chez LUI — une autre — en 200, sans
- * erreur. Mesuré en production : sur 21 classes, **une seule** a `id` égal à
- * `klassci_id`, et **sept** sont en collision franche.
+ * erreur. En production, les identifiants local et KLASSCI divergent, avec des
+ * collisions franches.
  *
  * ## Pourquoi une porte, et pas une résolution sur la route existante
  *
  * L'issue proposait de résoudre l'entrée avec `Classe::localIdFor()`. Cette
- * méthode donne la **précédence au local** : sur les sept classes en collision,
- * elle détournerait les deux appelants KLASSCI vers la mauvaise ligne. **Deux
+ * méthode donne la **précédence au local** : sur les classes en collision, elle
+ * détournerait les deux appelants KLASSCI vers la mauvaise ligne. **Deux
  * chemins cassés pour un réparé**, et silencieusement.
  *
  * ## Pourquoi pas non plus « émettre les deux espaces »
@@ -52,8 +52,15 @@ use App\Models\User;
  * là, mais la question posée n'a pas de sens pour elle. Ce 409 porte un motif
  * (ADR-906-01) : le front ne lit que le statut et le motif, et un 409 nu y
  * devenait un « conflit » générique.
+ *
+ * ## La source KLASSCI de la porte locale, et elle seule
+ *
+ * Ce service ne sert que l'école créée depuis KLASSCI. Dans une école créée
+ * depuis le LMS, toutes les classes sont créées dans le LMS : la porte y lit la
+ * fiche locale ({@see LocalClasseDetailsReader}), choisie au point de liaison
+ * (ADR-760-01, amendement EI-02).
  */
-final class ClasseLocalDetailsService
+final class ClasseLocalDetailsService implements ClasseLocalDoorReader
 {
     public const LOCAL_ONLY_REASON = 'classe_local_only';
 

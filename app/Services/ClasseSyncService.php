@@ -8,6 +8,7 @@ use App\Models\Classe;
 use App\Services\Sync\Classes\ClasseMatieresSynchronizer;
 use App\Services\Sync\Classes\ClasseStudentsSynchronizer;
 use App\Services\Sync\Classes\KlassciClassesFetcher;
+use App\Support\Logging\CaughtExceptionLog;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -46,6 +47,7 @@ final class ClasseSyncService
         private readonly ClasseMatieresSynchronizer $matieresSynchronizer,
         private readonly LoggerInterface $logger,
         private readonly TenantManager $tenantManager,
+        private readonly CaughtExceptionLog $journal,
     ) {}
 
     /**
@@ -110,11 +112,12 @@ final class ClasseSyncService
                     }
                 } catch (\Exception $e) {
                     $classeName = $klasseData['nom'] ?? $klasseData['libelle'] ?? $klasseData['id'] ?? 'Inconnue';
-                    $this->logger->error('Erreur sync classe', [
+                    $this->journal->error('Erreur sync classe', $e, [
                         'classe_id' => $klasseData['id'] ?? null,
-                        'error' => $e->getMessage(),
                     ]);
-                    $stats['errors'][] = "Classe {$classeName}: {$e->getMessage()}";
+                    // Un libellé stable : le détail de l'exception est dans le
+                    // journal ci-dessus, jamais dans le bilan rendu.
+                    $stats['errors'][] = "Classe {$classeName}: échec de synchronisation";
                 }
             }
 
@@ -122,10 +125,7 @@ final class ClasseSyncService
 
             return $stats;
         } catch (\Exception $e) {
-            $this->logger->error('Erreur synchronisation classes', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-            ]);
+            $this->journal->error('Erreur synchronisation classes', $e);
             throw $e;
         }
     }
@@ -190,9 +190,8 @@ final class ClasseSyncService
 
             return $result['classe'];
         } catch (\Exception $e) {
-            $this->logger->error('Erreur sync classe par ID', [
+            $this->journal->error('Erreur sync classe par ID', $e, [
                 'klassci_classe_id' => $klassciClasseId,
-                'error' => $e->getMessage(),
             ]);
 
             return null;

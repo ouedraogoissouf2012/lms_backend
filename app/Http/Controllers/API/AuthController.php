@@ -10,6 +10,7 @@ use App\Services\Auth\LoginOrchestrator;
 use App\Services\Klassci\Data\KlassciDataWhitelist;
 use App\Services\Audit\AuditLogger;
 use App\Services\KlassciProxyService;
+use App\Support\Logging\CaughtExceptionLog;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Psr\Log\LoggerInterface;
@@ -40,6 +41,7 @@ class AuthController extends AuthenticatedController
         private AuditLogger $auditLogger,
         private LoggerInterface $logger,
         private KlassciDataWhitelist $klassciDataWhitelist,
+        private readonly CaughtExceptionLog $journal,
     ) {}
 
     /**
@@ -80,10 +82,8 @@ class AuthController extends AuthenticatedController
             // audit absente — incident 2026-06-20) restaient invisibles dans
             // laravel.log. On ne logue JAMAIS le mot de passe ; le username
             // (déjà fourni par l'utilisateur) aide à corréler l'incident.
-            $this->logger->error('Échec inattendu du login', [
+            $this->journal->error('Échec inattendu du login', $e, [
                 'username' => $request->username(),
-                'exception' => $e::class,
-                'message' => $e->getMessage(),
                 'at' => $e->getFile() . ':' . $e->getLine(),
             ]);
 

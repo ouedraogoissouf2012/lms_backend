@@ -16,6 +16,7 @@ use App\Services\NotificationService;
 use App\Services\Seances\Sync\KlassciSeancesSyncService;
 use App\Services\Seances\TeachingSeancesFetcher;
 use App\Services\TenantManager;
+use App\Support\Logging\CaughtExceptionLog;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Mockery\MockInterface;
 use Psr\Log\LoggerInterface;
@@ -246,6 +247,7 @@ final class SeanceTenantIsolationTest extends TestCase
         (new SyncKlassciSeances)->handle(
             app(KlassciSeancesSyncService::class),
             app(LoggerInterface::class),
+            app(CaughtExceptionLog::class),
         );
     }
 

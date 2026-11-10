@@ -9,10 +9,10 @@ use App\Http\Controllers\AuthenticatedController;
 use App\Models\Evaluation;
 use App\Models\EvaluationSubmission;
 use App\Models\User;
+use App\Support\Logging\CaughtExceptionLog;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
 
 /**
  * Lecture de la dernière soumission étudiant pour une évaluation, avec
@@ -27,6 +27,10 @@ final class EvaluationStudentSubmissionController extends AuthenticatedControlle
 {
     /** Délai (jours) avant que les corrections soient visibles à l'étudiant. */
     private const CORRECTION_DELAY_DAYS = 7;
+
+    public function __construct(
+        private readonly CaughtExceptionLog $journal,
+    ) {}
 
     public function getMySubmission(int $id, Request $request): JsonResponse
     {
@@ -101,9 +105,8 @@ final class EvaluationStudentSubmissionController extends AuthenticatedControlle
                 ],
             ]);
         } catch (\Exception $e) {
-            Log::error('Erreur récupération soumission étudiant', [
+            $this->journal->error('Erreur récupération soumission étudiant', $e, [
                 'evaluation_id' => $id,
-                'error' => $e->getMessage(),
             ]);
             return $this->errorResponse('Erreur lors de la récupération de la soumission', 500);
         }

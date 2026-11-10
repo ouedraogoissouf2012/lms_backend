@@ -7,6 +7,7 @@ namespace App\Services\Seances\Mutations;
 use App\Models\Seance;
 use App\Models\SeanceUserHidden;
 use App\Models\User;
+use App\Support\Logging\CaughtExceptionLog;
 use Psr\Log\LoggerInterface;
 use Throwable;
 
@@ -25,6 +26,7 @@ final class SeanceHideService
 {
     public function __construct(
         private readonly LoggerInterface $logger,
+        private readonly CaughtExceptionLog $journal,
     ) {}
 
     /**
@@ -68,9 +70,8 @@ final class SeanceHideService
             ];
 
         } catch (Throwable $e) {
-            $this->logger->error('Erreur masquage séance', [
+            $this->journal->error('Erreur masquage séance', $e, [
                 'seance_id' => $seanceId,
-                'error' => $e->getMessage(),
             ]);
 
             return [
@@ -133,9 +134,8 @@ final class SeanceHideService
             ];
 
         } catch (Throwable $e) {
-            $this->logger->error('Erreur réaffichage séance', [
+            $this->journal->error('Erreur réaffichage séance', $e, [
                 'seance_id' => $seanceId,
-                'error' => $e->getMessage(),
             ]);
 
             return [

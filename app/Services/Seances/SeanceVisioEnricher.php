@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Models\UserClass;
 use App\Services\KlassciProxyService;
 use App\Services\SeanceDetailQueryService;
+use App\Support\Logging\CaughtExceptionLog;
 use Carbon\Carbon;
 use Psr\Log\LoggerInterface;
 
@@ -34,6 +35,7 @@ final class SeanceVisioEnricher
     public function __construct(
         private readonly LoggerInterface $logger,
         private readonly KlassciProxyService $klassciService,
+        private readonly CaughtExceptionLog $journal,
     ) {}
 
     /**
@@ -160,7 +162,7 @@ final class SeanceVisioEnricher
             return null;
 
         } catch (\Exception $e) {
-            $this->logger->warning('Erreur accès table seances', ['error' => $e->getMessage()]);
+            $this->journal->warning('Erreur accès table seances', $e);
             $this->applyVisioDefaults($seance);
 
             return null;
@@ -241,9 +243,8 @@ final class SeanceVisioEnricher
                 ->toArray();
 
         } catch (\Exception $e) {
-            $this->logger->warning('Erreur récupération étudiants séance via KLASSCI', [
+            $this->journal->warning('Erreur récupération étudiants séance via KLASSCI', $e, [
                 'classe_id' => $classeId,
-                'error' => $e->getMessage(),
             ]);
         }
 
@@ -269,9 +270,8 @@ final class SeanceVisioEnricher
                     ];
                 })->toArray();
             } catch (\Exception $e) {
-                $this->logger->error('Erreur fallback BDD pour étudiants', [
+                $this->journal->error('Erreur fallback BDD pour étudiants', $e, [
                     'classe_id' => $visioData->klassci_classe_id,
-                    'error' => $e->getMessage(),
                 ]);
             }
         }

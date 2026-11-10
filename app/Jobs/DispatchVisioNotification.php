@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Jobs;
 
 use App\Services\NotificationService;
+use App\Support\Logging\CaughtExceptionLog;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -69,12 +70,9 @@ final class DispatchVisioNotification implements ShouldQueue
 
     public function failed(Throwable $exception): void
     {
-        /** @var LoggerInterface $logger */
-        $logger = app(LoggerInterface::class);
-        $logger->error('Job DispatchVisioNotification failed after all retries', [
+        app(CaughtExceptionLog::class)->error('Job DispatchVisioNotification failed after all retries', $exception, [
             'kind' => $this->kind,
             'seance_id' => $this->seanceId,
-            'exception' => $exception->getMessage(),
         ]);
     }
 }

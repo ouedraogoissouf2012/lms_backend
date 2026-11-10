@@ -7,6 +7,7 @@ namespace App\Services\Lesson;
 use App\Models\Lesson;
 use App\Models\User;
 use App\Services\Enrollment\EnrollmentSource;
+use App\Services\Search\TeacherOwnershipScope;
 use Illuminate\Database\Eloquent\Builder;
 
 /**
@@ -15,7 +16,7 @@ use Illuminate\Database\Eloquent\Builder;
  * encore une seconde règle de lecture d'une leçon (l'accès aux chapitres) ;
  * leur unification relève d'un lot ultérieur.
  *
- * Deux axes, et rien d'autre : ni chargement, ni filtre de requête, ni
+ * Trois axes, et rien d'autre : ni chargement, ni filtre de requête, ni
  * pagination, qui restent à l'appelant.
  *
  * ## Le tenant
@@ -33,10 +34,31 @@ use Illuminate\Database\Eloquent\Builder;
  *
  * Hors personnel reconnu ({@see User::isLearnerAudience()}, #941) : les leçons
  * publiées de SES classes, par le composite (#482).
+ *
+ * ## L'auteur
+ *
+ * Une LISTE ne porte, pour un enseignant, que ses leçons (décisions de
+ * l'utilisateur D72 pour « Mes leçons », D73 pour la page d'une matière) :
+ * {@see limitToAuthor()}, dans les deux types d'école. La gestion lit toute son
+ * école. La lecture DIRECTE d'une leçon ({@see denies()}, `ChapterReadGate`)
+ * n'est pas bornée à l'auteur : D72 ne porte que sur les listes.
+ *
+ * Appelants : les deux listes de `LessonListService` et la recherche de leçons
+ * (`GlobalSearchService`, `SearchSuggestionsService`) passent par
+ * {@see apply()} ; la page d'une matière
+ * (`MatiereLessonsAndStatsBuilder::lessonsForLocalMatiere`) appelle directement
+ * {@see limitToAudience()} et {@see limitToAuthor()}.
+ *
+ * Dette déclarée : le tableau de bord enseignant et les compteurs de « Mes
+ * matières » écrivent encore la règle d'auteur eux-mêmes, sans passer par ces
+ * méthodes.
  */
 final class LessonReadScope
 {
-    public function __construct(private readonly EnrollmentSource $inscriptions) {}
+    public function __construct(
+        private readonly EnrollmentSource $inscriptions,
+        private readonly TeacherOwnershipScope $ownership,
+    ) {}
 
     /**
      * Restreint une requête de liste à ce que le compte lit.
@@ -53,10 +75,50 @@ final class LessonReadScope
             $query->whereRaw('1 = 0');
         }
 
-        if ($user->isLearnerAudience()) {
-            $query->published()
-                ->whereIn($query->qualifyColumn('classe_id'), $this->inscriptions->localClasseIdsFor($user));
+        $this->limitToAudience($query, $user);
+        $this->limitToAuthor($query, $user);
+    }
+
+    /**
+     * Restreint une LISTE à l'audience d'un apprenant : les leçons publiées de
+     * SES classes, par la source d'inscriptions (le pivot actif, sinon le cache
+     * KLASSCI `user_classes`, #482). Sans classe, aucune leçon. Le personnel
+     * reconnu n'est pas restreint.
+     *
+     * @param  Builder<Lesson>  $query
+     */
+    public function limitToAudience(Builder $query, User $user): void
+    {
+        if (! $user->isLearnerAudience()) {
+            return;
         }
+
+        $query->published()
+            ->whereIn($query->qualifyColumn('classe_id'), $this->inscriptions->localClasseIdsFor($user));
+    }
+
+    /**
+     * Restreint une LISTE aux leçons de son auteur, pour un enseignant. La
+     * gestion est lue d'abord : un compte qui en relèverait garde toute son
+     * école, même s'il se dit aussi enseignant.
+     *
+     * @param  Builder<Lesson>  $query
+     */
+    public function limitToAuthor(Builder $query, User $user): void
+    {
+        if ($user->isManager() || ! $user->isTeacher()) {
+            return;
+        }
+
+        // Sans identifiant, `where(…, null)` deviendrait `IS NULL` et rendrait
+        // les leçons sans auteur : la liste est fermée.
+        if (! is_int($user->getKey())) {
+            $query->whereRaw('1 = 0');
+
+            return;
+        }
+
+        $this->ownership->applyToLessons($query, $user);
     }
 
     /**

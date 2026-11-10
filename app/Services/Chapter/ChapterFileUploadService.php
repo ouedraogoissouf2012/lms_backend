@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Chapter;
 
 use App\Models\Chapter;
+use App\Support\Logging\CaughtExceptionLog;
 use Illuminate\Http\UploadedFile;
 use LogicException;
 use Psr\Log\LoggerInterface;
@@ -31,6 +32,7 @@ final class ChapterFileUploadService
         private readonly AsyncChapterConversionDispatcher $asyncDispatcher,
         private readonly AsyncChapterConversionStore $asyncStore,
         private readonly LoggerInterface $logger,
+        private readonly CaughtExceptionLog $journal,
     ) {}
 
     /**
@@ -60,9 +62,8 @@ final class ChapterFileUploadService
                 ],
             ];
         } catch (Throwable $e) {
-            $this->logger->error('Erreur upload fichier', [
+            $this->journal->error('Erreur upload fichier', $e, [
                 'chapter_id' => $chapterId,
-                'error' => $e->getMessage(),
             ]);
 
             return [
@@ -95,9 +96,8 @@ final class ChapterFileUploadService
                 ],
             ];
         } catch (Throwable $e) {
-            $this->logger->error('Erreur planification conversion fichier', [
+            $this->journal->error('Erreur planification conversion fichier', $e, [
                 'chapter_id' => $chapterId,
-                'error' => $e->getMessage(),
             ]);
 
             return [

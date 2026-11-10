@@ -11,6 +11,7 @@ use App\Services\Seances\KlassciEmploiTempsSeances;
 use App\Services\Seances\KlassciPayload;
 use App\Services\Seances\LocalSeanceLookup;
 use App\Services\Seances\SeancesWindow;
+use App\Support\Logging\CaughtExceptionLog;
 use Psr\Log\LoggerInterface;
 use Throwable;
 
@@ -39,6 +40,7 @@ final class MatiereSeancesFetcher
         private readonly LoggerInterface $logger,
         private readonly LocalSeanceLookup $localLookup,
         private readonly KlassciEmploiTempsSeances $emploiTemps,
+        private readonly CaughtExceptionLog $journal,
     ) {}
 
     /**
@@ -117,10 +119,9 @@ final class MatiereSeancesFetcher
             // `seances_programmees` du payload matiere ne rendait jamais rien.
             return $this->seancesFromTimetable($klassciToken, $matiereId);
         } catch (Throwable $e) {
-            $this->logger->warning('Erreur récupération séances', [
+            $this->journal->warning('Erreur récupération séances', $e, [
                 'matiere_id' => $matiereId,
                 'user_role' => $user->role,
-                'error' => $e->getMessage(),
             ]);
 
             return [];
@@ -257,9 +258,8 @@ final class MatiereSeancesFetcher
         try {
             return $this->klassciService->fetchManyClassesDetails($classeIds, $klassciToken);
         } catch (Throwable $e) {
-            $this->logger->warning('Erreur récupération effectifs de classe (batch)', [
+            $this->journal->warning('Erreur récupération effectifs de classe (batch)', $e, [
                 'classe_ids' => $classeIds,
-                'error' => $e->getMessage(),
             ]);
 
             return [];

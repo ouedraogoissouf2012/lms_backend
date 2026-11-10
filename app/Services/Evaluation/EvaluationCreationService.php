@@ -8,9 +8,9 @@ use App\Models\Evaluation;
 use App\Models\EvaluationQuestion;
 use App\Models\User;
 use App\Services\KlassciProxyService;
+use App\Support\Logging\CaughtExceptionLog;
 use Illuminate\Database\DatabaseManager;
 use Illuminate\Database\UniqueConstraintViolationException;
-use Psr\Log\LoggerInterface;
 use Throwable;
 
 /**
@@ -22,8 +22,8 @@ use Throwable;
  * ## DI strict (§1.6 D du manifeste)
  *
  * Constructeur injecte `KlassciProxyService` (lookup matière/classe) et
- * `LoggerInterface` PSR-3 (logging fail-soft). Aucun `app()`, aucune Facade
- * `Log::`.
+ * `CaughtExceptionLog` (journal fail-soft des exceptions attrapées). Aucun
+ * `app()`, aucune Facade `Log::`.
  *
  * ## Sémantique de retour
  *
@@ -67,7 +67,7 @@ final class EvaluationCreationService
     public function __construct(
         private readonly DatabaseManager $db,
         private readonly KlassciProxyService $klassciService,
-        private readonly LoggerInterface $logger,
+        private readonly CaughtExceptionLog $journal,
     ) {}
 
     /**
@@ -137,7 +137,7 @@ final class EvaluationCreationService
             );
         } catch (Throwable $e) {
             $this->db->rollBack();
-            $this->logger->error('Erreur création évaluation', ['error' => $e->getMessage()]);
+            $this->journal->error('Erreur création évaluation', $e);
 
             return [
                 'status'  => 500,
@@ -211,9 +211,7 @@ final class EvaluationCreationService
                 }
             }
         } catch (Throwable $e) {
-            $this->logger->warning('Impossible de récupérer les noms depuis KLASSCI', [
-                'error' => $e->getMessage(),
-            ]);
+            $this->journal->warning('Impossible de récupérer les noms depuis KLASSCI', $e);
         }
 
         return [$matiereNom, $classeNom];

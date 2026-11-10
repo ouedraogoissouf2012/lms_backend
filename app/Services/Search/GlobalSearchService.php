@@ -4,14 +4,13 @@ declare(strict_types=1);
 
 namespace App\Services\Search;
 
-use App\Enums\LessonStatus;
 use App\Models\Evaluation;
 use App\Models\Lesson;
 use App\Models\User;
-use Illuminate\Contracts\Cache\Repository as CacheRepository;
+use App\Services\Lesson\LessonReadScope;
+use App\Support\Logging\CaughtExceptionLog;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Str;
-use Psr\Log\LoggerInterface;
 use Throwable;
 
 /**
@@ -23,8 +22,9 @@ use Throwable;
  *
  * ## DI strict (§1.6 D)
  *
- * Aucune Facade (`Cache`, `Log`) ni `app()` : `CacheRepository`, PSR-3
- * `LoggerInterface` et {@see KlassciSearchSources} sont injectés.
+ * Aucune Facade (`Cache`, `Log`) ni `app()` : {@see SearchResultCache},
+ * {@see TeacherOwnershipScope}, {@see KlassciSearchSources},
+ * {@see LessonReadScope} et `CaughtExceptionLog` sont injectés.
  *
  * ## Comportement
  *
@@ -33,7 +33,9 @@ use Throwable;
  * SQLite et fatals (erreur 1054) sous MySQL :
  *
  *   - le filtre enseignant portait sur `teacher_id`, colonne inexistante —
- *     l'appartenance est désormais déléguée à {@see TeacherOwnershipScope} ;
+ *     l'appartenance est désormais déléguée à {@see TeacherOwnershipScope}
+ *     pour les évaluations, et à la règle des listes de leçons
+ *     ({@see LessonReadScope::apply()}) pour les leçons ;
  *   - la recherche d'évaluations portait sur `title`, alors que la colonne
  *     migrée s'appelle `titre` (la clé `title` de la réponse, elle, ne change
  *     pas : c'est le contrat client).
@@ -65,9 +67,10 @@ final class GlobalSearchService
 {
     public function __construct(
         private readonly SearchResultCache $cache,
-        private readonly LoggerInterface $logger,
         private readonly TeacherOwnershipScope $ownership,
         private readonly KlassciSearchSources $klassciSources,
+        private readonly LessonReadScope $lessonScope,
+        private readonly CaughtExceptionLog $journal,
     ) {
     }
 
@@ -176,17 +179,14 @@ final class GlobalSearchService
         } catch (Throwable $e) {
             $failedSources[] = $name;
 
-            // La classe ET l'exception sont journalisées : le `catch` est large
-            // par nécessité (il couvre toute la production de la source), donc il
-            // attrape aussi bien une panne KLASSCI qu'un défaut de code ou une
-            // institution mal configurée. Sans le type ni la trace, ces cas
-            // seraient indiscernables dans les logs — le client, lui, ne reçoit
-            // toujours que le nom de la source (§1.2).
-            $this->logger->error('Source de recherche indisponible', [
+            // La classe et la trace sont journalisées (`error` de l'aide) : le
+            // `catch` est large par nécessité (il couvre toute la production de
+            // la source), donc il attrape aussi bien une panne KLASSCI qu'un
+            // défaut de code ou une institution mal configurée. Sans le type ni
+            // la trace, ces cas seraient indiscernables dans les logs — le
+            // client, lui, ne reçoit toujours que le nom de la source (§1.2).
+            $this->journal->error('Source de recherche indisponible', $e, [
                 'source' => $name,
-                'exception_class' => $e::class,
-                'error' => $e->getMessage(),
-                'exception' => $e,
             ]);
 
             return [];
@@ -230,14 +230,10 @@ final class GlobalSearchService
                 ->orWhere('description', 'LIKE', "%{$query}%")
                 ->orWhere('content', 'LIKE', "%{$query}%");
         })
-            ->where(function (Builder $q) use ($user): void {
-                if ($user->isTeacher()) {
-                    $this->ownership->applyToLessons($q, $user);
-                }
-                if ($user->isLearnerAudience()) {
-                    $q->where('status', LessonStatus::Published->value);
-                }
-            })
+            // La règle des listes : école, audience de l'apprenant (publiées de
+            // SES classes), auteur pour l'enseignant. La recherche texte reste
+            // groupée ci-dessus : son OR ne franchit aucune de ces bornes.
+            ->tap(fn (Builder $q) => $this->lessonScope->apply($q, $user))
             ->limit($limit)
             ->get()
             ->map(fn (Lesson $lesson): array => [

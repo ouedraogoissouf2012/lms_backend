@@ -8,9 +8,9 @@ use App\Models\ESBTPAttendance;
 use App\Models\Seance;
 use App\Models\User;
 use App\Services\SeanceDetailQueryService;
+use App\Support\Logging\CaughtExceptionLog;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
-use Psr\Log\LoggerInterface;
 use Throwable;
 
 /**
@@ -31,7 +31,7 @@ final class AttendanceHistoryQueryService
 {
     public function __construct(
         private readonly SeanceDetailQueryService $seanceQuery,
-        private readonly LoggerInterface $logger,
+        private readonly CaughtExceptionLog $journal,
     ) {}
 
     /**
@@ -68,10 +68,7 @@ final class AttendanceHistoryQueryService
             ];
 
         } catch (Throwable $e) {
-            $this->logger->error('Erreur récupération historique présences', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-            ]);
+            $this->journal->error('Erreur récupération historique présences', $e);
 
             return [
                 'status' => 500,
@@ -209,9 +206,8 @@ final class AttendanceHistoryQueryService
             }
         } catch (Throwable $e) {
             // Ignorer les erreurs de récupération KLASSCI (séance peut être archivée)
-            $this->logger->debug('Impossible de récupérer détails KLASSCI pour historique', [
+            $this->journal->debug('Impossible de récupérer détails KLASSCI pour historique', $e, [
                 'seance_id' => $seance->klassci_seance_id,
-                'error' => $e->getMessage(),
             ]);
         }
     }

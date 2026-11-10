@@ -11,9 +11,9 @@ use App\Http\Requests\StartEvaluationRequest;
 use App\Http\Requests\SubmitEvaluationRequest;
 use App\Services\Evaluation\EvaluationGradingService;
 use App\Services\Evaluation\Student\EvaluationAttemptStateService;
+use App\Support\Logging\CaughtExceptionLog;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
 use PDOException;
 use RuntimeException;
 
@@ -33,6 +33,7 @@ final class EvaluationStudentAttemptController extends AuthenticatedController
     public function __construct(
         private readonly EvaluationAttemptStateService $attemptState,
         private readonly EvaluationGradingService $gradingService,
+        private readonly CaughtExceptionLog $journal,
     ) {}
 
     public function startEvaluation(int $id, StartEvaluationRequest $request): JsonResponse
@@ -63,14 +64,18 @@ final class EvaluationStudentAttemptController extends AuthenticatedController
             // `window` hors enveloppe que le trait ne reproduit pas. La déplacer
             // (sous `errors`) changerait le contrat client → conservé tel quel
             // (axe #1 « DRY-only », préservation de la sortie).
+            //
+            // Chaque refus porte un motif stable que le client traduit
+            // (`reason`, #906) ; le message reste celui du serveur.
             'window_closed' => response()->json([
                 'success' => false,
                 'message' => $result['message'],
                 'window' => $result['window'] ?? null,
+                'reason' => 'evaluation_window_closed',
             ], 403),
-            'max_attempts' => $this->errorResponse($result['message'], 403),
-            'retake_forbidden' => $this->errorResponse($result['message'] ?? 'Reprise non autorisée', 403),
-            'offline_only' => $this->errorResponse($result['message'] ?? 'Évaluation hors ligne', 403),
+            'max_attempts' => $this->errorResponse($result['message'], 403, reason: 'evaluation_max_attempts'),
+            'retake_forbidden' => $this->errorResponse($result['message'] ?? 'Reprise non autorisée', 403, reason: 'evaluation_retake_forbidden'),
+            'offline_only' => $this->errorResponse($result['message'] ?? 'Évaluation hors ligne', 403, reason: 'evaluation_offline_only'),
             // #499 : fenêtre non vérifiable (KLASSCI indisponible) → 503 transitoire
             // (fail-closed), pas 403 : ce n'est pas un refus d'accès mais une
             // indisponibilité de dépendance ; le client doit réessayer.
@@ -131,7 +136,7 @@ final class EvaluationStudentAttemptController extends AuthenticatedController
 
             return $this->successResponse($payload, 'Évaluation soumise avec succès', 201);
         } catch (\Exception $e) {
-            Log::error('Erreur soumission évaluation', ['error' => $e->getMessage()]);
+            $this->journal->error('Erreur soumission évaluation', $e);
             return $this->errorResponse('Erreur lors de la soumission', 500);
         }
     }
@@ -152,9 +157,8 @@ final class EvaluationStudentAttemptController extends AuthenticatedController
 
             return $this->renderKlassciFailure($e);
         } catch (\Exception $e) {
-            Log::error('Erreur récupération état temporel', [
+            $this->journal->error('Erreur récupération état temporel', $e, [
                 'evaluation_id' => $id,
-                'error' => $e->getMessage(),
             ]);
             return $this->errorResponse('Impossible de récupérer l\'état temporel', 500);
         }

@@ -11,6 +11,7 @@ use App\Http\Controllers\API\LMS\LMSVisioParticipantController;
 use App\Models\User;
 use App\Services\Seances\KlassciSeanceLookupService;
 use App\Services\Seances\SeanceVisioEnricher;
+use App\Support\Logging\CaughtExceptionLog;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -55,6 +56,7 @@ final class SeanceDetailQueryService
         private readonly KlassciSeanceLookupService $klassciLookup,
         private readonly SeanceVisioEnricher $visioEnricher,
         private readonly Seances\SeanceHoraireResolver $horaire,
+        private readonly CaughtExceptionLog $journal,
     ) {}
 
     /**
@@ -274,9 +276,8 @@ final class SeanceDetailQueryService
                 ->toArray();
 
         } catch (\Exception $e) {
-            $this->logger->warning('Erreur récupération étudiants', [
+            $this->journal->warning('Erreur récupération étudiants', $e, [
                 'classe_id' => $classeId,
-                'error' => $e->getMessage(),
             ]);
 
             return [];

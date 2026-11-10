@@ -8,6 +8,7 @@ use App\Models\ESBTPAttendance;
 use App\Models\Seance;
 use App\Models\User;
 use App\Services\Seances\Mutations\ParticipantValidationService;
+use App\Support\Logging\CaughtExceptionLog;
 use Illuminate\Http\Request;
 use Psr\Log\LoggerInterface;
 use Throwable;
@@ -39,6 +40,7 @@ final class VisioParticipantSessionService
         private readonly ParticipantValidationService $participantValidation,
         private readonly VisioAccessTokenIssuer $tokenIssuer,
         private readonly VisioActorAuthorization $actorAuthorization,
+        private readonly CaughtExceptionLog $journal,
     ) {}
 
     /**
@@ -107,9 +109,8 @@ final class VisioParticipantSessionService
                 ],
             ];
         } catch (Throwable $e) {
-            $this->logger->error('Erreur join visio', [
+            $this->journal->error('Erreur join visio', $e, [
                 'seance_id' => $seanceId,
-                'error' => $e->getMessage(),
             ]);
 
             return [
@@ -170,9 +171,8 @@ final class VisioParticipantSessionService
                 ],
             ];
         } catch (Throwable $e) {
-            $this->logger->error('Erreur leave visio', [
+            $this->journal->error('Erreur leave visio', $e, [
                 'seance_id' => $seanceId,
-                'error' => $e->getMessage(),
             ]);
 
             return [

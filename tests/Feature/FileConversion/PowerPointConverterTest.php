@@ -248,6 +248,7 @@ final class PowerPointConverterTest extends TestCase
             $this->pdfRendererMock,
             $this->validator,
             app(\App\Services\FileConversion\ChapterArtifactStorage::class),
+            app(\App\Support\Logging\CaughtExceptionLog::class),
         );
     }
 }

@@ -29,6 +29,10 @@ use Illuminate\Contracts\Cache\Repository as CacheRepository;
  * qu'un bucket ajouté ou renommé par un futur déploiement ne se transforme pas
  * en 500 pendant toute la durée du TTL.
  *
+ * `v3` : les leçons trouvées suivent désormais la règle des listes
+ * (`LessonReadScope::apply`). Un agrégat calculé par l'ancienne règle ne doit
+ * pas être resservi après le déploiement.
+ *
  * @phpstan-import-type SearchResults from SearchAggregate
  */
 final class SearchResultCache
@@ -39,7 +43,7 @@ final class SearchResultCache
     /** TTL d'un agrégat dégradé : assez court pour que le rétablissement se voie. */
     private const DEGRADED_TTL_SECONDS = 30;
 
-    private const PREFIX = 'global_search_v2_';
+    private const PREFIX = 'global_search_v3_';
 
     /** Buckets attendus — contrat de forme de l'entrée mémorisée. */
     private const BUCKETS = ['users', 'lessons', 'evaluations', 'classes', 'matieres'];

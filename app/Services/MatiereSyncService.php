@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Models\Matiere;
+use App\Support\Logging\CaughtExceptionLog;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -39,6 +40,7 @@ class MatiereSyncService
     public function __construct(
         private readonly KlassciProxyService $klassciService,
         private readonly LoggerInterface $logger,
+        private readonly CaughtExceptionLog $journal,
     ) {}
 
     /**
@@ -74,10 +76,9 @@ class MatiereSyncService
                     $stats['klassci_ids'][] = (int) $id;
                 }
             } catch (\Throwable $e) {
-                $this->logger->error('Erreur sync matière KLASSCI', [
+                $this->journal->error('Erreur sync matière KLASSCI', $e, [
                     'klassci_id' => is_scalar($id) ? $id : null,
                     'institution_id' => $institutionId,
-                    'error' => $e->getMessage(),
                 ]);
                 $stats['errors'][] = is_scalar($id) ? (string) $id : 'inconnue';
             }

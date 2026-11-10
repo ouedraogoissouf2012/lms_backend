@@ -7,8 +7,8 @@ namespace App\Http\Controllers\API\LMS;
 use App\Http\Controllers\AuthenticatedController;
 use App\Http\Requests\SeancesHistoryRequest;
 use App\Services\SeancesHistoryQueryService;
+use App\Support\Logging\CaughtExceptionLog;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Facades\Log;
 
 /**
  * LMSSeancesHistoryController — historical séances listing endpoint.
@@ -32,6 +32,7 @@ final class LMSSeancesHistoryController extends AuthenticatedController
 {
     public function __construct(
         private readonly SeancesHistoryQueryService $seancesHistory,
+        private readonly CaughtExceptionLog $journal,
     ) {}
 
     /**
@@ -63,10 +64,7 @@ final class LMSSeancesHistoryController extends AuthenticatedController
             ]);
 
         } catch (\Exception $e) {
-            Log::error('Erreur récupération historique séances', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-            ]);
+            $this->journal->error('Erreur récupération historique séances', $e);
 
             // NON migré : enveloppe d'erreur portant une clé sœur `error` (singulier)
             // que le trait ne reproduit pas (errorResponse n'a qu'un `errors` pluriel).

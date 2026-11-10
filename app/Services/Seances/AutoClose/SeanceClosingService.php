@@ -6,6 +6,7 @@ namespace App\Services\Seances\AutoClose;
 
 use App\Models\ESBTPAttendance;
 use App\Models\Seance;
+use App\Support\Logging\CaughtExceptionLog;
 use Carbon\Carbon;
 use Illuminate\Database\DatabaseManager;
 use Psr\Log\LoggerInterface;
@@ -34,6 +35,7 @@ final class SeanceClosingService
     public function __construct(
         private readonly DatabaseManager $db,
         private readonly LoggerInterface $logger,
+        private readonly CaughtExceptionLog $journal,
     ) {}
 
     /**
@@ -89,11 +91,9 @@ final class SeanceClosingService
         } catch (Throwable $e) {
             $this->db->rollBack();
 
-            $this->logger->error('[AutoCloseEmptySeances] Erreur lors de la fermeture de la séance', [
+            $this->journal->error('[AutoCloseEmptySeances] Erreur lors de la fermeture de la séance', $e, [
                 'seance_id' => $seance->id,
                 'reason' => $reason,
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
             ]);
 
             throw $e;

@@ -13,6 +13,7 @@ use App\Services\KlassciProxyService;
 use App\Services\Notification\AsyncVisioNotificationDispatcher;
 use App\Services\Seances\SeanceRestoreGuard;
 use App\Services\Visio\SecureVisioRoomIdGenerator;
+use App\Support\Logging\CaughtExceptionLog;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Psr\Log\LoggerInterface;
 use Throwable;
@@ -41,6 +42,7 @@ final class VisioToggleService
         private readonly ClasseSyncService $classeSyncService,
         private readonly AsyncVisioNotificationDispatcher $notifications,
         private readonly LoggerInterface $logger,
+        private readonly CaughtExceptionLog $journal,
     ) {}
 
     /**
@@ -125,9 +127,8 @@ final class VisioToggleService
                 ],
             ];
         } catch (Throwable $e) {
-            $this->logger->error('Erreur toggle visio séance', [
+            $this->journal->error('Erreur toggle visio séance', $e, [
                 'seance_id' => $seanceId,
-                'error' => $e->getMessage(),
             ]);
 
             return [
@@ -225,9 +226,8 @@ final class VisioToggleService
 
             return 0;
         } catch (Throwable $e) {
-            $this->logger->error('Erreur envoi notifications via toggleVisio', [
+            $this->journal->error('Erreur envoi notifications via toggleVisio', $e, [
                 'seance_id' => $seanceId,
-                'error' => $e->getMessage(),
             ]);
 
             return 0;

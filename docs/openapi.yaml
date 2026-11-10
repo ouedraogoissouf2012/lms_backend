@@ -970,6 +970,20 @@ components:
             last_page:
               type: integer
 
+    AuditLogRefus:
+      type: object
+      additionalProperties: false
+      required:
+        - success
+        - message
+      properties:
+        success:
+          type: boolean
+          enum:
+            - false
+        message:
+          type: string
+
     AuditLogEntry:
       type: object
       description: |
@@ -983,6 +997,12 @@ components:
         - user_id
         - institution_id
         - action
+        - auditable_type
+        - auditable_id
+        - before
+        - after
+        - ip_address
+        - user_agent
         - created_at
         - user
         - institution
@@ -997,10 +1017,27 @@ components:
           nullable: true
         action:
           type: string
-          enum: [create, update, delete, view, export, import, login, logout, login_failed]
+          description: |
+            Chaine libre (`string(32)`). Valeurs ecrites par le serveur :
+            - modeles audites (`Evaluation`, `EvaluationSubmission`, `QuizAttempt`) :
+              `create`, `update`, `delete` ;
+            - authentification : `login`, `logout`, `login_failed` ;
+            - enregistrements visio : `visio_recording_start`,
+              `visio_recording_stop`, `visio_recording_read` ;
+            - ecoles : `institution.mode_changed`, `institution.soft_deleted`,
+              `institution.purged` ;
+            - comptes : `user.soft_deleted`, `user.purged` ;
+            - retention : `recording.purged`, `chapter.purged`,
+              `audit-logs.purged.bulk`.
+            Un client traite toute autre valeur comme inconnue.
         auditable_type:
           type: string
           nullable: true
+          description: |
+            Le modele vise, par son nom de classe complet (`App\Models\Evaluation`,
+            `EvaluationSubmission`, `QuizAttempt`, `Institution`, `User`,
+            `SeanceRecording`, `Chapter`). `null` pour une connexion ou une purge
+            groupee.
         auditable_id:
           type: integer
           nullable: true
@@ -1024,7 +1061,16 @@ components:
         user:
           type: object
           nullable: true
-          description: "L'auteur de l'action, null pour un job systeme ou un echec de connexion"
+          description: |
+            L'auteur de l'action. `null` pour un job systeme, un echec de
+            connexion, ou un auteur supprime depuis (la relation ne lit pas les
+            comptes supprimes).
+          additionalProperties: false
+          required:
+            - id
+            - name
+            - email
+            - role
           properties:
             id:
               type: integer
@@ -1032,12 +1078,13 @@ components:
               type: string
             email:
               type: string
+              nullable: true
             role:
               type: string
         institution:
           type: object
           nullable: true
-          description: "L'ecole de l'entree, supprimee ou non ; null pour une entree sans ecole (D127)"
+          description: "L'ecole de l'entree, supprimee logiquement ou non ; null sans ecole ou apres une purge physique (D127)"
           additionalProperties: false
           required:
             - id
@@ -3385,8 +3432,14 @@ paths:
         acces. Lecture seule, triee de la plus recente a la plus ancienne.
 
         Chaque entree porte son ecole, `institution: {id, name}` (D127), y compris
-        une ecole supprimee depuis. Une entree sans ecole (job systeme, echec de
-        connexion) porte `institution: null`.
+        une ecole supprimee depuis (suppression logique). `institution` vaut
+        `null` quand l'entree n'a pas d'ecole (`institution_id` nul), ou quand
+        l'ecole a ete purgee physiquement depuis. L'ecole d'une entree est celle
+        de l'utilisateur authentifie AU MOMENT de l'ecriture : les connexions
+        (`login`, `login_failed`) et les actions du supradmin n'en ont pas.
+
+        Le filtre `action` n'accepte que les neuf valeurs historiques ; les
+        actions plus recentes (voir `AuditLogEntry.action`) se lisent sans filtre.
       security:
         - sanctum: []
       parameters:
@@ -3427,13 +3480,19 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: '#/components/schemas/AuditLogRefus'
         '403':
-          description: "Reserve au supradmin plateforme"
+          description: "Reserve au supradmin plateforme (le superAdmin d'une ecole est refuse)"
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: '#/components/schemas/AuditLogRefus'
+        '422':
+          description: "Filtre invalide (`per_page` hors de 1-100, `action` hors liste, `user_id` inconnu)"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationFailed'
 
   /admin/school-requests:
     get:

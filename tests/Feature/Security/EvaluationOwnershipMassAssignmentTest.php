@@ -53,9 +53,15 @@ final class EvaluationOwnershipMassAssignmentTest extends TestCase
         ]);
     }
 
+    private int $programmation = 900;
+
     private function basePayload(array $overrides = []): array
     {
+        // D72, Q1 : dans une école créée depuis KLASSCI, la création exige la
+        // programmation KLASSCI. Un id distinct par appel, pour ne pas croiser
+        // le 409 de l'évaluation déjà en ligne.
         return array_merge([
+            'klassci_evaluation_id' => ++$this->programmation,
             'klassci_matiere_id' => 10,
             'klassci_classe_id'  => 20,
             'titre'              => 'Examen test',

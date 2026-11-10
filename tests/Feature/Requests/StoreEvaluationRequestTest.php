@@ -57,6 +57,7 @@ class StoreEvaluationRequestTest extends TestCase
         Sanctum::actingAs($this->teacher);
 
         $response = $this->postJson('/api/evaluations', [
+            'klassci_evaluation_id' => 901,
             'klassci_matiere_id' => 1,
             'klassci_classe_id' => 1,
             'titre' => 'Math Quiz',
@@ -75,6 +76,7 @@ class StoreEvaluationRequestTest extends TestCase
         Sanctum::actingAs($this->teacher);
 
         $response = $this->postJson('/api/evaluations', [
+            'klassci_evaluation_id' => 902,
             'klassci_matiere_id' => 1,
             'klassci_classe_id' => 1,
             'titre' => 'History Test',
@@ -94,6 +96,7 @@ class StoreEvaluationRequestTest extends TestCase
         Sanctum::actingAs($this->teacher);
 
         $response = $this->postJson('/api/evaluations', [
+            'klassci_evaluation_id' => 903,
             'klassci_matiere_id' => 1,
             'klassci_classe_id' => 1,
             'titre' => 'Quiz',
@@ -121,6 +124,7 @@ class StoreEvaluationRequestTest extends TestCase
         Sanctum::actingAs($this->teacher);
 
         $response = $this->postJson('/api/evaluations', [
+            'klassci_evaluation_id' => 904,
             'klassci_matiere_id' => 1,
             'klassci_classe_id' => 1,
             'titre' => '   Trimmed Titre   ',
@@ -139,6 +143,7 @@ class StoreEvaluationRequestTest extends TestCase
         Sanctum::actingAs($this->coordinator);
 
         $response = $this->postJson('/api/evaluations', [
+            'klassci_evaluation_id' => 905,
             'klassci_matiere_id' => 1,
             'klassci_classe_id' => 1,
             'titre' => 'Coordinator Attempt',
@@ -157,6 +162,7 @@ class StoreEvaluationRequestTest extends TestCase
         Sanctum::actingAs($this->student);
 
         $response = $this->postJson('/api/evaluations', [
+            'klassci_evaluation_id' => 906,
             'klassci_matiere_id' => 1,
             'klassci_classe_id' => 1,
             'titre' => 'Student Attempt',
@@ -173,6 +179,7 @@ class StoreEvaluationRequestTest extends TestCase
     public function test_unauthenticated_cannot_create(): void
     {
         $response = $this->postJson('/api/evaluations', [
+            'klassci_evaluation_id' => 907,
             'klassci_matiere_id' => 1,
             'klassci_classe_id' => 1,
             'titre' => 'No Token',
@@ -191,6 +198,7 @@ class StoreEvaluationRequestTest extends TestCase
         Sanctum::actingAs($this->teacher);
 
         $response = $this->postJson('/api/evaluations', [
+            'klassci_evaluation_id' => 908,
             'klassci_matiere_id' => 1,
             'klassci_classe_id' => 1,
             'type' => 'qcm',
@@ -209,6 +217,7 @@ class StoreEvaluationRequestTest extends TestCase
         Sanctum::actingAs($this->teacher);
 
         $response = $this->postJson('/api/evaluations', [
+            'klassci_evaluation_id' => 909,
             'klassci_matiere_id' => 1,
             'klassci_classe_id' => 1,
             'titre' => 'No Type',
@@ -227,6 +236,7 @@ class StoreEvaluationRequestTest extends TestCase
         Sanctum::actingAs($this->teacher);
 
         $response = $this->postJson('/api/evaluations', [
+            'klassci_evaluation_id' => 910,
             'klassci_matiere_id' => 1,
             'klassci_classe_id' => 1,
             'titre' => 'No Duration',
@@ -245,6 +255,7 @@ class StoreEvaluationRequestTest extends TestCase
         Sanctum::actingAs($this->teacher);
 
         $response = $this->postJson('/api/evaluations', [
+            'klassci_evaluation_id' => 911,
             'klassci_matiere_id' => 1,
             'klassci_classe_id' => 1,
             'titre' => 'Quiz',
@@ -264,6 +275,7 @@ class StoreEvaluationRequestTest extends TestCase
         Sanctum::actingAs($this->teacher);
 
         $response = $this->postJson('/api/evaluations', [
+            'klassci_evaluation_id' => 912,
             'klassci_matiere_id' => 1,
             'klassci_classe_id' => 1,
             'titre' => 'ab',
@@ -283,6 +295,7 @@ class StoreEvaluationRequestTest extends TestCase
         Sanctum::actingAs($this->teacher);
 
         $response = $this->postJson('/api/evaluations', [
+            'klassci_evaluation_id' => 913,
             'klassci_matiere_id' => 1,
             'klassci_classe_id' => 1,
             'titre' => 'Long Quiz',
@@ -302,6 +315,7 @@ class StoreEvaluationRequestTest extends TestCase
         Sanctum::actingAs($this->teacher);
 
         $response = $this->postJson('/api/evaluations', [
+            'klassci_evaluation_id' => 914,
             'klassci_matiere_id' => 1,
             'klassci_classe_id' => 1,
             'titre' => 'Quiz',
@@ -326,6 +340,7 @@ class StoreEvaluationRequestTest extends TestCase
         Sanctum::actingAs($this->teacher);
 
         $response = $this->postJson('/api/evaluations', [
+            'klassci_evaluation_id' => 915,
             'klassci_matiere_id' => 1,
             'klassci_classe_id' => 1,
             'titre' => 'Quiz',

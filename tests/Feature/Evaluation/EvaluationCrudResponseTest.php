@@ -134,6 +134,7 @@ final class EvaluationCrudResponseTest extends TestCase
             ->assertExactJson([
                 'success' => false,
                 'message' => 'Vous devez être un enseignant KLASSCI synchronisé pour créer une évaluation.',
+                'reason'  => 'enseignant_klassci_requis',
             ]);
     }
 }

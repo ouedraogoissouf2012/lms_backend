@@ -1107,11 +1107,21 @@ components:
             Ecole creee depuis KLASSCI : un objet ou un identifiant. Toujours
             `null` dans une ecole creee depuis le LMS, ou basculee : aucune
             filiere n'est lue en local.
+          nullable: true
+          oneOf:
+            - type: object
+            - type: integer
+            - type: string
         niveau:
           description: |
             Ecole creee depuis KLASSCI : un objet ou un identifiant. Toujours
             `null` dans une ecole creee depuis le LMS, ou basculee : aucun
             niveau n'est lu en local.
+          nullable: true
+          oneOf:
+            - type: object
+            - type: integer
+            - type: string
         is_active:
           type: boolean
           nullable: true

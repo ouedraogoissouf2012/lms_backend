@@ -65,6 +65,14 @@ final class OpenApiSchemaValidatorTest extends TestCase
         yield '$ref' => [['$ref' => '#/components/schemas/Entier'], '1', '"1"'];
         yield '$ref vers un schéma nullable' => [['$ref' => '#/components/schemas/EntierOuNul'], 'null', '"x"'];
         yield '$ref vers un schéma non nullable' => [['$ref' => '#/components/schemas/Entier'], '7', 'null'];
+
+        $entierOuTexte = ['oneOf' => [['type' => 'integer'], ['type' => 'string']]];
+        yield 'oneOf, la première branche' => [$entierOuTexte, '12', 'true'];
+        yield 'oneOf, la seconde branche' => [$entierOuTexte, '"12"', '1.5'];
+        yield 'oneOf nullable' => [$entierOuTexte + ['nullable' => true], 'null', '[1]'];
+        yield 'oneOf non nullable' => [$entierOuTexte, '"x"', 'null'];
+        yield 'oneOf, deux branches qui concordent' => [['oneOf' => [['type' => 'integer'], ['type' => 'number']]], '1.5', '2'];
+        yield 'oneOf, une branche par $ref' => [['oneOf' => [['$ref' => '#/components/schemas/Entier'], ['type' => 'object']]], '{}', '"x"'];
     }
 
     /** @param  array<mixed>  $schema */
@@ -86,7 +94,11 @@ final class OpenApiSchemaValidatorTest extends TestCase
     public static function echecFerme(): iterable
     {
         yield 'mot-clé allOf' => [['type' => 'string', 'allOf' => [['type' => 'string']]], '"x"', 'mot-clé non pris en charge « allOf »'];
-        yield 'mot-clé oneOf' => [['type' => 'string', 'oneOf' => []], '"x"', 'mot-clé non pris en charge « oneOf »'];
+        yield 'mot-clé anyOf' => [['type' => 'string', 'anyOf' => [['type' => 'string']]], '"x"', 'mot-clé non pris en charge « anyOf »'];
+        yield 'oneOf vide' => [['oneOf' => []], '"x"', 'valeur malformée pour « oneOf »'];
+        yield 'type à côté de oneOf' => [['type' => 'string', 'oneOf' => [['type' => 'string']]], '"x"', '« type » à côté de « oneOf »'];
+        yield 'branche de oneOf mal formée' => [['oneOf' => [['type' => 'integer'], ['type' => 'tuple']]], '1', 'type non pris en charge'];
+        yield 'branche de oneOf introuvable' => [['oneOf' => [['type' => 'integer'], ['$ref' => '#/components/schemas/Absent']]], '1', 'référence introuvable'];
         yield 'type absent' => [['properties' => ['a' => ['type' => 'integer']]], '{"a":1}', '« type » absent'];
         yield 'type inconnu' => [['type' => 'tuple'], '[1]', 'type non pris en charge'];
         yield 'format inconnu' => [['type' => 'string', 'format' => 'ipv4'], '"10.0.0.1"', 'format non pris en charge'];
@@ -125,6 +137,20 @@ final class OpenApiSchemaValidatorTest extends TestCase
         self::assertSame(
             ['$.data[1].id : attendu "integer", reçu string'],
             self::validateur()->erreurs(self::json('{"data":[{"id":1},{"id":"2"}]}'), $schema),
+        );
+    }
+
+    public function test_oneof_dit_combien_de_branches_concordent(): void
+    {
+        $validateur = self::validateur();
+
+        self::assertSame(
+            ['$.id : aucune branche de « oneOf » ne concorde'],
+            $validateur->erreurs(self::json('{"id":true}'), ['type' => 'object', 'properties' => ['id' => ['oneOf' => [['type' => 'integer'], ['type' => 'string']]]]]),
+        );
+        self::assertSame(
+            ['$ : 2 branches de « oneOf » concordent, il en faut une seule'],
+            $validateur->erreurs(self::json('2'), ['oneOf' => [['type' => 'integer'], ['type' => 'number']]]),
         );
     }
 

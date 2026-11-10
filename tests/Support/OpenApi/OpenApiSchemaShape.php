@@ -36,7 +36,11 @@ final class OpenApiSchemaShape
         'minimum' => 'nombre',
         'maximum' => 'nombre',
         'pattern' => 'texte',
+        'oneOf' => 'liste non vide de schemas',
     ];
+
+    /** Seuls voisins admis d'un `oneOf` : le reste vit dans ses branches. */
+    private const VOISINS_DE_ONE_OF = ['oneOf', 'nullable'];
 
     /** Les types connus. */
     private const TYPES = ['object', 'array', 'string', 'integer', 'number', 'boolean'];
@@ -86,6 +90,10 @@ final class OpenApiSchemaShape
             }
         }
 
+        if (array_key_exists('oneOf', $schema)) {
+            return [...$erreurs, ...self::voisinsDeOneOf($schema, $ou)];
+        }
+
         if (! array_key_exists('type', $schema)) {
             $erreurs[] = "$ou : « type » absent";
 
@@ -116,6 +124,25 @@ final class OpenApiSchemaShape
         return $erreurs;
     }
 
+    /**
+     * Un nœud `oneOf` n'a pas de `type` : ses branches portent chacune le leur.
+     * Un mot-clé posé à côté ne s'appliquerait à aucune d'elles.
+     *
+     * @param  array<mixed>  $schema
+     * @return list<string>
+     */
+    private static function voisinsDeOneOf(array $schema, string $ou): array
+    {
+        $erreurs = [];
+        foreach (array_keys($schema) as $cle) {
+            if (! in_array($cle, self::VOISINS_DE_ONE_OF, true) && ! in_array($cle, self::ANNOTATIONS, true)) {
+                $erreurs[] = "$ou : « $cle » à côté de « oneOf », il ne s'appliquerait à rien";
+            }
+        }
+
+        return $erreurs;
+    }
+
     private static function aLaForme(mixed $valeur, string $forme): bool
     {
         return match ($forme) {
@@ -128,6 +155,8 @@ final class OpenApiSchemaShape
             'schema' => self::estUnSchema($valeur),
             'booleen ou schema' => is_bool($valeur) || self::estUnSchema($valeur),
             'table de schemas' => is_array($valeur) && ($valeur === [] || ! array_is_list($valeur))
+                && $valeur === array_filter($valeur, static fn (mixed $sous): bool => self::estUnSchema($sous)),
+            'liste non vide de schemas' => is_array($valeur) && $valeur !== [] && array_is_list($valeur)
                 && $valeur === array_filter($valeur, static fn (mixed $sous): bool => self::estUnSchema($sous)),
             default => false,
         };

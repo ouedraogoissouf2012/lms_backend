@@ -17,9 +17,14 @@ use Symfony\Component\Yaml\Yaml;
  *
  * Elle ne connaît QUE les mots-clés que la spec emploie : `type`, `nullable`,
  * `required`, `properties`, `additionalProperties`, `items`, `enum`, `format`,
- * `minLength`, `maxLength`, `minimum`, `maximum`, `pattern` et `$ref`. Les
- * annotations (`description`, `example`, `default`, `title`, `deprecated`)
+ * `minLength`, `maxLength`, `minimum`, `maximum`, `pattern`, `oneOf` et `$ref`.
+ * Les annotations (`description`, `example`, `default`, `title`, `deprecated`)
  * sont sans effet.
+ *
+ * `oneOf` sert une valeur dont le type dépend de sa source, comme un id
+ * entier dans une école créée depuis le LMS et relayé tel que KLASSCI le rend
+ * dans une école créée depuis KLASSCI. Le nœud ne porte que `nullable` et des
+ * annotations ; la valeur doit concorder avec EXACTEMENT une branche.
  *
  * ## Elle échoue FERMÉ
  *
@@ -30,10 +35,10 @@ use Symfony\Component\Yaml\Yaml;
  * - un `type` absent ;
  * - un format inconnu, ou un format sur une valeur non textuelle ;
  * - une référence introuvable ou circulaire.
- * Un `allOf`, `oneOf` ou `anyOf` ajouté à la spec fera donc rougir le test de
- * contrat qui atteint ce nœud. Ces mots-clés imposent alors de revoir cette
- * aide, ou d'adopter une bibliothèque de validation. Un nœud qu'aucun test ne
- * parcourt n'est pas inspecté.
+ * Un `allOf` ou `anyOf` ajouté à la spec fera donc rougir le test de contrat
+ * qui atteint ce nœud. Ces mots-clés imposent alors de revoir cette aide, ou
+ * d'adopter une bibliothèque de validation. Un nœud qu'aucun test ne parcourt
+ * n'est pas inspecté.
  *
  * Sémantique d'OpenAPI 3.0 : une propriété non décrite est admise, sauf si le
  * schéma pose `additionalProperties: false` ; les voisins d'un `$ref` sont
@@ -112,6 +117,12 @@ final class OpenApiSchemaValidator
             return;
         }
 
+        if (array_key_exists('oneOf', $schema)) {
+            $this->uneSeuleBranche($valeur, $schema['oneOf'], $ou, $references);
+
+            return;
+        }
+
         if (! $this->type($valeur, $schema, $ou)) {
             return;
         }
@@ -121,13 +132,95 @@ final class OpenApiSchemaValidator
         $this->liste($valeur, $schema, $ou, $references);
     }
 
-    /** @param  list<string>  $references */
-    private function viaReference(mixed $valeur, mixed $reference, string $ou, array $references): void
+    /**
+     * `oneOf` : la valeur suit EXACTEMENT une branche. Aucune est un écart ; deux
+     * aussi, car deux branches qui se recouvrent (`integer` et `number`) rendent
+     * le schéma ambigu.
+     *
+     * La forme de chaque branche est vérifiée AVANT la comparaison : une branche
+     * mal formée, ou une référence introuvable, est une erreur. Sinon elle ne
+     * serait qu'une branche qui ne concorde pas, en silence dès qu'une autre
+     * concorde.
+     *
+     * @param  list<array<mixed>>  $branches  forme vérifiée par OpenApiSchemaShape
+     * @param  list<string>  $references
+     */
+    private function uneSeuleBranche(mixed $valeur, array $branches, string $ou, array $references): void
+    {
+        $forme = [];
+        foreach ($branches as $i => $branche) {
+            array_push($forme, ...$this->formeDeBranche($branche, "$ou.oneOf[$i]"));
+        }
+        if ($forme !== []) {
+            array_push($this->erreurs, ...$forme);
+
+            return;
+        }
+
+        $concordantes = count(array_filter(
+            $branches,
+            fn (array $branche): bool => $this->ecartsDansBranche($valeur, $branche, $ou, $references) === [],
+        ));
+
+        if ($concordantes === 0) {
+            $this->erreurs[] = "$ou : aucune branche de « oneOf » ne concorde";
+        } elseif ($concordantes > 1) {
+            $this->erreurs[] = "$ou : $concordantes branches de « oneOf » concordent, il en faut une seule";
+        }
+    }
+
+    /**
+     * @param  array<mixed>  $branche
+     * @return list<string>
+     */
+    private function formeDeBranche(array $branche, string $ou): array
+    {
+        if (array_key_exists('$ref', $branche)) {
+            $cible = $this->cible($branche['$ref']);
+            if ($cible === null) {
+                return ["$ou : référence introuvable ".json_encode($branche['$ref'])];
+            }
+            $branche = $cible;
+        }
+
+        // Une référence vers une autre référence est lue à la comparaison.
+        return array_key_exists('$ref', $branche) ? [] : OpenApiSchemaShape::erreurs($branche, $ou);
+    }
+
+    /**
+     * Les écarts de la valeur face à UNE branche, sans toucher à ceux déjà relevés.
+     *
+     * @param  array<mixed>  $branche
+     * @param  list<string>  $references
+     * @return list<string>
+     */
+    private function ecartsDansBranche(mixed $valeur, array $branche, string $ou, array $references): array
+    {
+        $releves = $this->erreurs;
+        $this->erreurs = [];
+        $this->valider($valeur, $branche, $ou, $references);
+        $ecarts = $this->erreurs;
+        $this->erreurs = $releves;
+
+        return $ecarts;
+    }
+
+    /** @return array<mixed>|null */
+    private function cible(mixed $reference): ?array
     {
         $nom = is_string($reference) && str_starts_with($reference, self::PREFIXE) ? substr($reference, strlen(self::PREFIXE)) : null;
         $cible = $nom !== null ? ($this->spec['components']['schemas'][$nom] ?? null) : null;
 
-        if (! is_array($cible)) {
+        return is_array($cible) ? $cible : null;
+    }
+
+    /** @param  list<string>  $references */
+    private function viaReference(mixed $valeur, mixed $reference, string $ou, array $references): void
+    {
+        $nom = is_string($reference) && str_starts_with($reference, self::PREFIXE) ? substr($reference, strlen(self::PREFIXE)) : null;
+        $cible = $this->cible($reference);
+
+        if ($cible === null) {
             $this->erreurs[] = "$ou : référence introuvable ".json_encode($reference);
         } elseif (in_array($nom, $references, true)) {
             $this->erreurs[] = "$ou : référence circulaire ".json_encode($reference);

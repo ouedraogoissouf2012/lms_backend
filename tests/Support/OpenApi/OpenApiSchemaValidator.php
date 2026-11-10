@@ -6,6 +6,7 @@ namespace Tests\Support\OpenApi;
 
 use stdClass;
 use Symfony\Component\Yaml\Yaml;
+use UnexpectedValueException;
 
 /**
  * Valide une valeur JSON décodée contre un schéma de `docs/openapi.yaml`
@@ -61,6 +62,8 @@ final class OpenApiSchemaValidator
 {
     private const PREFIXE = '#/components/schemas/';
 
+    private const PREFIXE_REPONSES = '#/components/responses/';
+
     /** @var list<string> */
     private array $erreurs = [];
 
@@ -91,9 +94,33 @@ final class OpenApiSchemaValidator
      */
     public function schemaDeReponse(string $chemin, string $methode, int $statut): ?array
     {
-        $schema = $this->spec['paths'][$chemin][strtolower($methode)]['responses'][(string) $statut]['content']['application/json']['schema'] ?? null;
+        $reponse = $this->spec['paths'][$chemin][strtolower($methode)]['responses'][(string) $statut] ?? null;
+        if (is_array($reponse) && array_key_exists('$ref', $reponse)) {
+            $reponse = $this->reponsePartagee($reponse['$ref']);
+        }
+        $schema = is_array($reponse) ? ($reponse['content']['application/json']['schema'] ?? null) : null;
 
         return is_array($schema) ? $schema : null;
+    }
+
+    /**
+     * Une réponse décrite une fois sous `components/responses` et citée par
+     * `$ref`. Introuvable, c'est une spec cassée, pas un statut non décrit.
+     *
+     * @return array<mixed>
+     */
+    private function reponsePartagee(mixed $reference): array
+    {
+        $nom = is_string($reference) && str_starts_with($reference, self::PREFIXE_REPONSES)
+            ? substr($reference, strlen(self::PREFIXE_REPONSES))
+            : null;
+        $reponse = $nom !== null ? ($this->spec['components']['responses'][$nom] ?? null) : null;
+
+        if (! is_array($reponse)) {
+            throw new UnexpectedValueException('Réponse partagée introuvable : '.json_encode($reference));
+        }
+
+        return $reponse;
     }
 
     /**

@@ -173,6 +173,25 @@ final class OpenApiSchemaValidatorTest extends TestCase
         self::assertNull($validateur->schemaDeReponse('/x', 'GET', 201), 'une méthode non décrite');
     }
 
+    public function test_une_reponse_partagee_est_lue_par_sa_reference(): void
+    {
+        $validateur = new OpenApiSchemaValidator([
+            'paths' => ['/x' => ['get' => ['responses' => [
+                '401' => ['$ref' => '#/components/responses/Refus'],
+                '403' => ['$ref' => '#/components/responses/Absente'],
+            ]]]],
+            'components' => ['responses' => [
+                'Refus' => ['description' => 'refus', 'content' => ['application/json' => ['schema' => ['type' => 'object']]]],
+            ]],
+        ]);
+
+        self::assertSame(['type' => 'object'], $validateur->schemaDeReponse('/x', 'GET', 401));
+
+        $this->expectException(\UnexpectedValueException::class);
+        $this->expectExceptionMessage('Réponse partagée introuvable');
+        $validateur->schemaDeReponse('/x', 'GET', 403);
+    }
+
     private static function json(string $json): mixed
     {
         return json_decode($json, false, 512, JSON_THROW_ON_ERROR);

@@ -1205,8 +1205,11 @@ components:
           type: string
           nullable: true
         coefficient:
-          type: number
+          description: "Ecole creee depuis le LMS : un nombre. Ecole creee depuis KLASSCI : tel que KLASSCI le rend, parfois en chaine."
           nullable: true
+          oneOf:
+            - type: number
+            - type: string
         classes:
           type: array
           description: "Ecole creee depuis le LMS : les classes ou l'appelant atteint la matiere, triees par libelle puis par identifiant."

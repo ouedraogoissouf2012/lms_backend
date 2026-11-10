@@ -2032,6 +2032,18 @@ components:
         klassci_enseignant_id:
           type: integer
           nullable: true
+        classe_id:
+          type: integer
+          nullable: true
+          description: "D72 : classe LOCALE (ecole creee depuis le LMS). Nulle pour une evaluation KLASSCI."
+        matiere_id:
+          type: integer
+          nullable: true
+          description: "D72 : matiere LOCALE (ecole creee depuis le LMS). Nulle pour une evaluation KLASSCI."
+        enseignant_id:
+          type: integer
+          nullable: true
+          description: "D72 : l'auteur (users.id), ecrit a chaque creation. Nul pour une ligne d'avant D72."
         titre:
           type: string
         description:
@@ -5963,6 +5975,15 @@ paths:
       tags:
         - Evaluations
       summary: "Create evaluation"
+      description: |
+        D72. Le rattachement depend du type d'ecole (meme route, autre source, ADR-EI-01) :
+        - ecole creee depuis KLASSCI : mise en ligne d'une evaluation PROGRAMMEE dans KLASSCI,
+          designee par `klassci_evaluation_id` (exige), `klassci_classe_id`, `klassci_matiere_id` ;
+        - ecole creee depuis le LMS : programmation dans le LMS, sur `classe_id` et `matiere_id`
+          LOCAUX (exiges), couple programme dans l'ecole ou l'auteur est designe (la gestion :
+          tout couple programme).
+        Jamais d'id local sous un nom `klassci_*` (D132) : chaque source refuse la famille de
+        l'autre (422 `identifiant_hors_espace`). L'auteur (`enseignant_id`) vient du jeton.
       security:
         - sanctum: []
       requestBody:
@@ -5971,16 +5992,121 @@ paths:
           application/json:
             schema:
               type: object
+              required:
+                - titre
+                - type
+                - duree_minutes
               properties:
-                title:
+                klassci_evaluation_id:
+                  type: integer
+                  nullable: true
+                  description: "Ecole creee depuis KLASSCI seulement : l'evaluation programmee a mettre en ligne."
+                klassci_classe_id:
+                  type: integer
+                  nullable: true
+                  description: "Ecole creee depuis KLASSCI seulement."
+                klassci_matiere_id:
+                  type: integer
+                  nullable: true
+                  description: "Ecole creee depuis KLASSCI seulement."
+                classe_id:
+                  type: integer
+                  nullable: true
+                  description: "Ecole creee depuis le LMS seulement : la classe locale."
+                matiere_id:
+                  type: integer
+                  nullable: true
+                  description: "Ecole creee depuis le LMS seulement : la matiere locale."
+                titre:
                   type: string
+                  minLength: 3
+                  maxLength: 255
                 description:
                   type: string
+                  nullable: true
+                type:
+                  type: string
+                  enum: [qcm, reponse_courte, dissertation, mixte]
+                date_evaluation:
+                  type: string
+                  format: date-time
+                  nullable: true
+                duree_minutes:
+                  type: integer
+                  minimum: 1
+                  maximum: 1440
+                questions:
+                  type: array
+                  items:
+                    type: object
       responses:
         '201':
           description: "Evaluation created"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  data:
+                    $ref: '#/components/schemas/EvaluationRecord'
+        '403':
+          description: |
+            Refus de programmation : compte sans identite enseignant KLASSCI (ecole creee depuis
+            KLASSCI), ou auteur non designe pour ce couple classe x matiere (ecole creee depuis le LMS).
+            Un 403 du role (coordinateur, apprenant) ne porte pas de `reason`.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - success
+                  - message
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  message:
+                    type: string
+                  reason:
+                    type: string
+                    enum:
+                      - enseignant_klassci_requis
+                      - non_designe
+        '409':
+          description: "Une version en ligne existe deja pour cette evaluation KLASSCI."
         '422':
-          description: "Validation error"
+          description: |
+            Erreur de validation (`errors`), classe ou matiere hors de l'ecole (`errors`), ou refus
+            motive : programmation KLASSCI absente dans une ecole creee depuis KLASSCI
+            (`programmation_klassci_requise`), identifiant de l'autre famille (`identifiant_hors_espace`).
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - success
+                  - message
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  message:
+                    type: string
+                  errors:
+                    type: object
+                    additionalProperties:
+                      type: array
+                      items:
+                        type: string
+                  reason:
+                    type: string
+                    enum:
+                      - programmation_klassci_requise
+                      - identifiant_hors_espace
 
   /evaluations/{id}:
     get:

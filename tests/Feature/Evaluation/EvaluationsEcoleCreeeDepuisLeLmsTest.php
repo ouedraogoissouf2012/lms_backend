@@ -13,6 +13,7 @@ use App\Models\Matiere;
 use App\Models\User;
 use App\Services\KlassciProxyService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Mockery\MockInterface;
 use Tests\Concerns\ActsAsTenantUser;
@@ -68,7 +69,7 @@ final class EvaluationsEcoleCreeeDepuisLeLmsTest extends TestCase
             ->assertJsonPath('data.klassci_classe_id', null)
             ->assertJsonPath('data.klassci_matiere_id', null);
 
-        $evaluation = Evaluation::query()->sole();
+        $evaluation = Evaluation::withoutGlobalScopes()->sole();
         self::assertSame($ecole->getKey(), $evaluation->institution_id);
         self::assertSame($classe->getKey(), $evaluation->classe_id);
         self::assertSame($maths->getKey(), $evaluation->matiere_id);
@@ -98,7 +99,7 @@ final class EvaluationsEcoleCreeeDepuisLeLmsTest extends TestCase
             ->assertJsonPath('success', false)
             ->assertJsonPath('reason', 'non_designe');
 
-        self::assertSame(0, Evaluation::query()->count());
+        self::assertSame(0, $this->lignes());
     }
 
     public function test_une_classe_d_une_autre_ecole_rend_422(): void
@@ -113,7 +114,7 @@ final class EvaluationsEcoleCreeeDepuisLeLmsTest extends TestCase
             ->assertUnprocessable()
             ->assertJsonValidationErrors(['classe_id']);
 
-        self::assertSame(0, Evaluation::query()->count());
+        self::assertSame(0, $this->lignes());
     }
 
     public function test_sans_classe_ni_matiere_rend_422(): void
@@ -125,7 +126,7 @@ final class EvaluationsEcoleCreeeDepuisLeLmsTest extends TestCase
             ->assertUnprocessable()
             ->assertJsonValidationErrors(['classe_id', 'matiere_id']);
 
-        self::assertSame(0, Evaluation::query()->count());
+        self::assertSame(0, $this->lignes());
     }
 
     public function test_un_identifiant_klassci_est_refuse_dans_une_ecole_creee_depuis_le_lms(): void
@@ -145,7 +146,7 @@ final class EvaluationsEcoleCreeeDepuisLeLmsTest extends TestCase
                 ->assertJsonPath('reason', 'identifiant_hors_espace');
         }
 
-        self::assertSame(0, Evaluation::query()->count());
+        self::assertSame(0, $this->lignes());
     }
 
     public function test_la_gestion_cree_sur_un_couple_programme_de_son_ecole(): void
@@ -171,7 +172,7 @@ final class EvaluationsEcoleCreeeDepuisLeLmsTest extends TestCase
             ->assertForbidden()
             ->assertJsonPath('reason', 'non_designe');
 
-        self::assertSame(0, Evaluation::query()->count());
+        self::assertSame(0, $this->lignes());
     }
 
     public function test_un_jeton_klassci_perime_ne_fait_partir_aucun_appel(): void
@@ -261,7 +262,7 @@ final class EvaluationsEcoleCreeeDepuisLeLmsTest extends TestCase
             ->assertForbidden()
             ->assertJsonPath('reason', 'enseignant_klassci_requis');
 
-        self::assertSame(1, Evaluation::query()->count());
+        self::assertSame(1, $this->lignes());
     }
 
     // ───────────────────────── harnais
@@ -311,5 +312,15 @@ final class EvaluationsEcoleCreeeDepuisLeLmsTest extends TestCase
     private function de(Evaluation $evaluation): string
     {
         return '/api/evaluations/'.$evaluation->getKey();
+    }
+
+    /**
+     * Les lignes de la table, toutes écoles confondues : la portée
+     * d'établissement du modèle suit le DERNIER tenant servi, et un décompte
+     * scopé pourrait rendre 0 pour une ligne écrite dans une autre école.
+     */
+    private function lignes(): int
+    {
+        return DB::table('evaluations')->count();
     }
 }

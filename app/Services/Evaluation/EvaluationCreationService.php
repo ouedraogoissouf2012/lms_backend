@@ -7,23 +7,25 @@ namespace App\Services\Evaluation;
 use App\Models\Evaluation;
 use App\Models\EvaluationQuestion;
 use App\Models\User;
-use App\Services\KlassciProxyService;
+use App\Services\Evaluation\Programming\ProgrammedEvaluation;
 use App\Support\Logging\CaughtExceptionLog;
 use Illuminate\Database\DatabaseManager;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Throwable;
 
 /**
- * Création d'une évaluation : insertion en base, lookup des libellés
- * matière/classe via KLASSCI, persistance des questions associées.
+ * Création d'une évaluation : insertion en base et persistance des questions
+ * associées.
  *
- * Extrait de `EvaluationCrudController::store` (split §5).
+ * Extrait de `EvaluationCrudController::store` (split §5). Le rattachement
+ * (classe, matière, libellés) est établi AVANT, par la source de programmation
+ * de l'école (`EvaluationProgramming`, D72) : ce service n'interroge plus
+ * KLASSCI.
  *
  * ## DI strict (§1.6 D du manifeste)
  *
- * Constructeur injecte `KlassciProxyService` (lookup matière/classe) et
- * `CaughtExceptionLog` (journal fail-soft des exceptions attrapées). Aucun
- * `app()`, aucune Facade `Log::`.
+ * Constructeur injecte `DatabaseManager` et `CaughtExceptionLog` (journal
+ * fail-soft des exceptions attrapées). Aucun `app()`, aucune Facade `Log::`.
  *
  * ## Sémantique de retour
  *
@@ -36,8 +38,9 @@ use Throwable;
  *
  * ## Sécurité (issue #124)
  *
- * `klassci_enseignant_id` est dérivé du token Sanctum côté caller et passé
- * via `$teacher`. Jamais lu du body utilisateur — empêche un enseignant de
+ * L'auteur (`enseignant_id`, et `klassci_enseignant_id` dans une école créée
+ * depuis KLASSCI) est dérivé du token Sanctum, passé via `$teacher` et la
+ * programmation. Jamais lu du body utilisateur — empêche un enseignant de
  * créer une évaluation au nom d'un collègue (mass-assignment).
  *
  * @see app/Http/Controllers/API/Evaluation/EvaluationCrudController.php
@@ -46,9 +49,6 @@ final class EvaluationCreationService
 {
     /** Champs autorisés depuis le payload utilisateur (whitelist). */
     private const FILLABLE_FROM_REQUEST = [
-        'klassci_matiere_id',
-        'klassci_classe_id',
-        'klassci_evaluation_id',
         'titre',
         'description',
         'type',
@@ -66,7 +66,6 @@ final class EvaluationCreationService
 
     public function __construct(
         private readonly DatabaseManager $db,
-        private readonly KlassciProxyService $klassciService,
         private readonly CaughtExceptionLog $journal,
     ) {}
 
@@ -75,12 +74,13 @@ final class EvaluationCreationService
      *
      * @param  array<string, mixed>  $data  Payload validé par `StoreEvaluationRequest`.
      *                                       Peut contenir une clé `questions` (array).
+     * @param  ProgrammedEvaluation  $programme  Rattachement établi par la source de l'école.
      * @return array{status: int, payload: array<string, mixed>}
      */
-    public function create(array $data, User $teacher): array
+    public function create(array $data, User $teacher, ProgrammedEvaluation $programme): array
     {
         // Conflit : une évaluation LMS existe déjà pour cette KLASSCI evaluation.
-        $klassciEvaluationId = $data['klassci_evaluation_id'] ?? null;
+        $klassciEvaluationId = $programme->attributs['klassci_evaluation_id'] ?? null;
         if ($klassciEvaluationId) {
             $existing = Evaluation::where('klassci_evaluation_id', $klassciEvaluationId)->first();
             if ($existing) {
@@ -91,20 +91,14 @@ final class EvaluationCreationService
         try {
             $this->db->beginTransaction();
 
-            [$matiereNom, $classeNom] = $this->resolveKlassciLabels(
-                $teacher,
-                is_numeric($data['klassci_matiere_id'] ?? null) ? (int) $data['klassci_matiere_id'] : null,
-                is_numeric($data['klassci_classe_id'] ?? null) ? (int) $data['klassci_classe_id'] : null,
-            );
-
             $evaluation = Evaluation::create(array_merge(
                 array_intersect_key($data, array_flip(self::FILLABLE_FROM_REQUEST)),
+                $programme->attributs,
                 [
-                    'matiere_nom'           => $matiereNom,
-                    'classe_nom'            => $classeNom,
-                    'klassci_enseignant_id' => $teacher->klassci_enseignant_id,
+                    // L'auteur, dans les deux types d'école (D72).
+                    'enseignant_id'  => $teacher->getKey(),
                     // Scope tenant explicite (fix E2E #211 flow 2).
-                    'institution_id'        => $teacher->institution_id,
+                    'institution_id' => $teacher->institution_id,
                 ],
             ));
 
@@ -166,55 +160,6 @@ final class EvaluationCreationService
                 'data'    => $existing,
             ],
         ];
-    }
-
-    /**
-     * Résout les libellés matière/classe via KLASSCI (fail-soft : warn-log
-     * + valeurs nulles si l'API échoue).
-     *
-     * @return array{0: ?string, 1: ?string}  [matiereNom, classeNom]
-     */
-    private function resolveKlassciLabels(User $teacher, ?int $matiereId, ?int $classeId): array
-    {
-        $matiereNom = null;
-        $classeNom = null;
-        $teacherToken = $teacher->klassci_token;
-        $teacherToken = is_string($teacherToken) && $teacherToken !== '' ? $teacherToken : null;
-
-        try {
-            if ($matiereId && $teacherToken !== null) {
-                $matieres = $this->klassciService->getMatieres($teacherToken);
-                if (isset($matieres['data']) && is_array($matieres['data'])) {
-                    foreach ($matieres['data'] as $matiere) {
-                        if ((int) ($matiere['id'] ?? 0) === $matiereId) {
-                            $matiereNom = $matiere['nom'] ?? $matiere['libelle'] ?? null;
-                            break;
-                        }
-                    }
-                }
-            }
-
-            if ($classeId) {
-                $classes = $this->klassciService->getClasses();
-                if (isset($classes['data']) && is_array($classes['data'])) {
-                    foreach ($classes['data'] as $classe) {
-                        if ((int) ($classe['id'] ?? 0) === $classeId) {
-                            $classeNom = $classe['libelle'] ?? $classe['nom'] ?? null;
-                            if (! $classeNom && isset($classe['niveau']['code'])) {
-                                $classeNom = $classe['niveau']['code'];
-                            } elseif (! $classeNom && isset($classe['niveau']['libelle'])) {
-                                $classeNom = $classe['niveau']['libelle'];
-                            }
-                            break;
-                        }
-                    }
-                }
-            }
-        } catch (Throwable $e) {
-            $this->journal->warning('Impossible de récupérer les noms depuis KLASSCI', $e);
-        }
-
-        return [$matiereNom, $classeNom];
     }
 
     /**

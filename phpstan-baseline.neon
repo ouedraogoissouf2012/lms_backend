@@ -607,48 +607,6 @@ parameters:
 			path: app/Services/Dashboard/StudentDashboardService.php
 
 		-
-			message: '#^Cannot access offset ''code'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 1
-			path: app/Services/Evaluation/EvaluationCreationService.php
-
-		-
-			message: '#^Cannot access offset ''id'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 2
-			path: app/Services/Evaluation/EvaluationCreationService.php
-
-		-
-			message: '#^Cannot access offset ''libelle'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 3
-			path: app/Services/Evaluation/EvaluationCreationService.php
-
-		-
-			message: '#^Cannot access offset ''niveau'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 2
-			path: app/Services/Evaluation/EvaluationCreationService.php
-
-		-
-			message: '#^Cannot access offset ''nom'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 2
-			path: app/Services/Evaluation/EvaluationCreationService.php
-
-		-
-			message: '#^Cannot cast mixed to int\.$#'
-			identifier: cast.int
-			count: 2
-			path: app/Services/Evaluation/EvaluationCreationService.php
-
-		-
-			message: '#^Method App\\Services\\Evaluation\\EvaluationCreationService\:\:resolveKlassciLabels\(\) should return array\{string\|null, string\|null\} but returns array\{mixed, mixed\}\.$#'
-			identifier: return.type
-			count: 1
-			path: app/Services/Evaluation/EvaluationCreationService.php
-
-		-
 			message: '#^Parameter \#2 \$questions of method App\\Services\\Evaluation\\EvaluationCreationService\:\:createQuestions\(\) expects array\<int, array\<string, mixed\>\>, array\<mixed, mixed\> given\.$#'
 			identifier: argument.type
 			count: 1

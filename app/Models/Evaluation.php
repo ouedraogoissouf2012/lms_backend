@@ -17,10 +17,13 @@ class Evaluation extends Model
     protected $fillable = [
         'klassci_evaluation_id',
         'klassci_matiere_id',
+        'matiere_id',
         'matiere_nom',
         'klassci_classe_id',
+        'classe_id',
         'classe_nom',
         'klassci_enseignant_id',
+        'enseignant_id',
         'titre',
         'description',
         'type',

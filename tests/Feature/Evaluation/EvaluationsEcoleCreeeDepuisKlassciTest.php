@@ -10,6 +10,7 @@ use App\Models\Institution;
 use App\Models\User;
 use App\Services\KlassciProxyService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Mockery\MockInterface;
 use Tests\Concerns\ActsAsTenantUser;
 use Tests\Concerns\BuildsEcoleIndependante;
@@ -62,7 +63,7 @@ final class EvaluationsEcoleCreeeDepuisKlassciTest extends TestCase
                 'reason' => 'enseignant_klassci_requis',
             ]);
 
-        self::assertSame(0, Evaluation::query()->count());
+        self::assertSame(0, $this->lignes());
     }
 
     public function test_l_enseignant_met_en_ligne_une_evaluation_programmee_dans_klassci(): void
@@ -79,7 +80,7 @@ final class EvaluationsEcoleCreeeDepuisKlassciTest extends TestCase
             ->assertJsonPath('data.classe_id', null)
             ->assertJsonPath('data.matiere_id', null);
 
-        $evaluation = Evaluation::query()->sole();
+        $evaluation = Evaluation::withoutGlobalScopes()->sole();
         self::assertSame(900, $evaluation->klassci_evaluation_id);
         self::assertSame(42, $evaluation->klassci_enseignant_id);
         self::assertSame($moi->getKey(), $evaluation->enseignant_id);
@@ -100,7 +101,7 @@ final class EvaluationsEcoleCreeeDepuisKlassciTest extends TestCase
             ->assertJsonPath('success', false)
             ->assertJsonPath('reason', 'programmation_klassci_requise');
 
-        self::assertSame(0, Evaluation::query()->count());
+        self::assertSame(0, $this->lignes());
     }
 
     public function test_un_identifiant_local_est_refuse_dans_une_ecole_creee_depuis_klassci(): void
@@ -116,7 +117,7 @@ final class EvaluationsEcoleCreeeDepuisKlassciTest extends TestCase
                 ->assertJsonPath('reason', 'identifiant_hors_espace');
         }
 
-        self::assertSame(0, Evaluation::query()->count());
+        self::assertSame(0, $this->lignes());
     }
 
     public function test_la_propriete_par_klassci_enseignant_id_reste_celle_des_evaluations_existantes(): void
@@ -179,5 +180,15 @@ final class EvaluationsEcoleCreeeDepuisKlassciTest extends TestCase
             'date_evaluation' => now()->addDay()->toIso8601String(),
             'duree_minutes' => 30,
         ], $surcharges);
+    }
+
+    /**
+     * Les lignes de la table, toutes écoles confondues : la portée
+     * d'établissement du modèle suit le DERNIER tenant servi, et un décompte
+     * scopé pourrait rendre 0 pour une ligne écrite dans une autre école.
+     */
+    private function lignes(): int
+    {
+        return DB::table('evaluations')->count();
     }
 }

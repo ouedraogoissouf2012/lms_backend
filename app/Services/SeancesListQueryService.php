@@ -7,6 +7,7 @@ namespace App\Services;
 use App\Exceptions\MissingKlassciTokenException;
 use App\Http\Controllers\API\LMS\LMSSeancesListController;
 use App\Models\User;
+use App\Services\Seances\SeancesListReader;
 use App\Services\Seances\SeancesWindow;
 use App\Services\Seances\StudentClassesSeancesFetcher;
 use App\Services\Seances\TeachingSeancesFetcher;
@@ -50,9 +51,11 @@ use Psr\Log\LoggerInterface;
  *   (caller renders 200 with empty data + informational message).
  * - Unexpected errors propagate up (caller logs and renders 500).
  *
+ * Source KLASSCI du port {@see SeancesListReader} (ADR-EI-01, lot 3d).
+ *
  * @see LMSSeancesListController (route handler)
  */
-final class SeancesListQueryService
+final class SeancesListQueryService implements SeancesListReader
 {
     public function __construct(
         private readonly LoggerInterface $logger,

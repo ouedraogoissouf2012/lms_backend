@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Matiere;
 
+use App\Models\Classe;
 use App\Models\Matiere;
 use App\Models\User;
 use App\Services\Classe\ClassesAtteintes;
@@ -40,6 +41,7 @@ final class MatieresAtteintes
         }
 
         return $matieres->whereHas('classes', static function ($classes) use ($user, $institution): void {
+            /** @var Builder<Classe> $classes */
             self::classesAtteintes($classes, $user, $institution);
         });
     }
@@ -49,7 +51,7 @@ final class MatieresAtteintes
      * `classe_matiere`) à celles où ce compte l'atteint, bornées explicitement
      * à l'établissement : le scope global est fail-open sans tenant.
      *
-     * @param  Builder<\App\Models\Classe>  $classes
+     * @param  Builder<Classe>  $classes
      */
     public static function classesAtteintes(Builder $classes, User $user, int $institution): void
     {

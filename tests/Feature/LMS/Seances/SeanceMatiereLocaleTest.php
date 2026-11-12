@@ -118,7 +118,7 @@ final class SeanceMatiereLocaleTest extends TestCase
         $this->asTenant($this->membre($ecole, 'enseignant'))
             ->postJson(self::CREATION, $this->corps(['matiere_id' => $ailleurs->id]))
             ->assertNotFound()
-            ->assertExactJson(['success' => false, 'message' => 'Matière introuvable dans cet établissement.']);
+            ->assertExactJson(['success' => false, 'message' => 'Matière introuvable dans cet établissement.', 'reason' => 'subject_out_of_scope']);
         self::assertSame(0, Seance::query()->withoutGlobalScopes()->count());
     }
 
@@ -141,6 +141,6 @@ final class SeanceMatiereLocaleTest extends TestCase
      */
     private function corps(array $champs): array
     {
-        return ['titre' => 'Cours de mardi', 'date_seance' => '2026-11-12 09:00:00'] + $champs;
+        return ['titre' => 'Cours de mardi', 'date_seance' => '2026-11-12T09:00:00+00:00'] + $champs;
     }
 }

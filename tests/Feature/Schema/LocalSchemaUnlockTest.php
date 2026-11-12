@@ -109,7 +109,7 @@ final class LocalSchemaUnlockTest extends TestCase
         $this->asTenant($teacher)
             ->postJson('/api/lms/seances', [
                 'titre' => 'Cours local autonome',
-                'date_seance' => now()->addDay()->toDateString(),
+                'date_seance' => now()->addDay()->toIso8601String(),
             ])
             ->assertCreated()
             ->assertJsonPath('data.klassci_seance_id', null);

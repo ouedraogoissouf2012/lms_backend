@@ -55,7 +55,7 @@ final class SeanceCalendarProjection
                 'nom' => $seance->matiere_nom ?? 'N/A',
                 'code' => null,
             ],
-            'classe' => $this->classeBlock($seance, $identite),
+            'classe' => $this->classeBlock($identite),
             'enseignant' => [
                 'id' => $identite->enseignantId,
                 'nom' => $identite->enseignantNom,
@@ -87,16 +87,14 @@ final class SeanceCalendarProjection
     }
 
     /** @return array<string, mixed> */
-    private function classeBlock(Seance $seance, SeanceIdentite $identite): array
+    private function classeBlock(SeanceIdentite $identite): array
     {
-        $nom = $seance->classe_nom ?? 'N/A';
-
         return [
             'id' => $identite->classeId,
-            'libelle' => $nom,
-            'nom' => $nom,
-            'name' => $nom,
-            'effectif' => $seance->classe_effectif ?? 0,
+            'libelle' => $identite->classeNom,
+            'nom' => $identite->classeNom,
+            'name' => $identite->classeNom,
+            'effectif' => $identite->classeEffectif,
         ];
     }
 

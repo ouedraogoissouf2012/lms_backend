@@ -20,12 +20,16 @@ final readonly class SeanceIdentite
 {
     private const SANS_ENSEIGNANT = 'Non assigné';
 
+    private const SANS_CLASSE = 'N/A';
+
     private function __construct(
         public int $id,
         public ?int $classeId,
         public ?int $matiereId,
         public ?int $enseignantId,
         public string $enseignantNom,
+        public string $classeNom,
+        public int $classeEffectif,
     ) {}
 
     public static function klassci(Seance $seance): self
@@ -36,17 +40,29 @@ final readonly class SeanceIdentite
             $seance->klassci_matiere_id,
             $seance->klassci_enseignant_id,
             $seance->enseignant_nom ?? self::SANS_ENSEIGNANT,
+            $seance->classe_nom ?? self::SANS_CLASSE,
+            $seance->classe_effectif ?? 0,
         );
     }
 
-    public static function locale(Seance $seance, ?string $auteur): self
+    /**
+     * La classe est celle que désigne `classe_id`, lue dans l'établissement :
+     * son libellé et ses inscriptions actives, jamais le `classe_nom` libre de
+     * la séance. L'auteur tient lieu d'enseignant ; à défaut (séance miroir d'une
+     * école basculée, sans auteur local), le nom que la séance porte.
+     *
+     * @param  array{nom: string, effectif: int}|null  $classe
+     */
+    public static function locale(Seance $seance, ?string $auteur, ?array $classe): self
     {
         return new self(
             $seance->id,
             $seance->classe_id,
             null,
             $seance->created_by,
-            $auteur ?? self::SANS_ENSEIGNANT,
+            $auteur ?? $seance->enseignant_nom ?? self::SANS_ENSEIGNANT,
+            $classe['nom'] ?? $seance->classe_nom ?? self::SANS_CLASSE,
+            $classe['effectif'] ?? 0,
         );
     }
 }

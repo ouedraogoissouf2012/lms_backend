@@ -156,10 +156,42 @@ final class LocalSeancesListReader implements SeancesListReader
             ->whereIn('id', $lues->pluck('created_by')->filter()->unique()->values()->all())
             ->pluck('name', 'id');
 
-        return array_values($lues->map(function (Seance $seance) use ($auteurs): array {
-            $auteur = $seance->created_by !== null ? $auteurs->get($seance->created_by) : null;
+        $classes = $this->classesDe($lues->pluck('classe_id')->filter()->unique()->values()->all(), $institution);
 
-            return $this->projection->project($seance, SeanceIdentite::locale($seance, is_string($auteur) ? $auteur : null));
+        return array_values($lues->map(function (Seance $seance) use ($auteurs, $classes): array {
+            $auteur = $seance->created_by !== null ? $auteurs->get($seance->created_by) : null;
+            $classe = $seance->classe_id !== null ? ($classes[$seance->classe_id] ?? null) : null;
+
+            return $this->projection->project($seance, SeanceIdentite::locale($seance, is_string($auteur) ? $auteur : null, $classe));
         })->all());
+    }
+
+    /**
+     * Les classes des séances lues, dans l'établissement : leur libellé et leurs
+     * inscriptions actives d'élèves de l'établissement, comme `/proxy/classes`.
+     * Une requête pour toutes.
+     *
+     * @param  array<int, mixed>  $ids
+     * @return array<int, array{nom: string, effectif: int}>
+     */
+    private function classesDe(array $ids, int $institution): array
+    {
+        if ($ids === []) {
+            return [];
+        }
+
+        $classes = [];
+        foreach (Classe::query()
+            ->where('institution_id', $institution)
+            ->whereIn('id', $ids)
+            ->withCount(['etudiantsActifs as effectif' => static function ($inscrits) use ($institution): void {
+                $inscrits->whereIn('users.id', User::query()->where('institution_id', $institution)->select('id'));
+            }])
+            ->get() as $classe) {
+            $effectif = $classe->getAttribute('effectif');
+            $classes[$classe->id] = ['nom' => $classe->libelle, 'effectif' => is_numeric($effectif) ? (int) $effectif : 0];
+        }
+
+        return $classes;
     }
 }

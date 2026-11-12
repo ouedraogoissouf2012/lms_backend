@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Services\Evaluation;
 
 use App\Models\Evaluation;
-use App\Models\User;
 use App\Services\KlassciProxyService;
 use App\Support\Logging\CaughtExceptionLog;
 use Illuminate\Support\Collection;
@@ -45,6 +44,7 @@ class EvaluationEnrichmentService
         private readonly KlassciProxyService $klassciService,
         private readonly EvaluationStateService $state,
         private readonly CaughtExceptionLog $journal,
+        private readonly EnseignantsDesEvaluations $enseignants,
     ) {}
 
     /**
@@ -114,12 +114,14 @@ class EvaluationEnrichmentService
      */
     private function present(Collection $evaluations, array $classesMap, array $matieresMap): array
     {
-        return $evaluations->map(function ($evaluation) use ($classesMap, $matieresMap): array {
+        $enseignant = $this->enseignants->de($evaluations);
+
+        return $evaluations->map(function ($evaluation) use ($classesMap, $matieresMap, $enseignant): array {
             $evalArray = $evaluation->toArray();
 
             $this->attachClasse($evalArray, $evaluation, $classesMap);
             $this->attachMatiere($evalArray, $evaluation, $matieresMap);
-            $this->attachEnseignant($evalArray, $evaluation);
+            $evalArray = array_merge($evalArray, $enseignant($evaluation));
             $this->attachDateFormats($evalArray, $evaluation);
             $this->preserveDynamicFields($evalArray, $evaluation);
             $this->attachComputedMetadata($evalArray, $evaluation);
@@ -197,49 +199,6 @@ class EvaluationEnrichmentService
         } else {
             $evalArray['matiere'] = null;
         }
-    }
-
-    /**
-     * Attache les informations de l'enseignant depuis la table users locale.
-     *
-     * @param  array<string, mixed>  $evalArray  Modifié par référence.
-     */
-    private function attachEnseignant(array &$evalArray, Evaluation $evaluation): void
-    {
-        if ($evaluation->klassci_enseignant_id) {
-            $enseignant = User::where('klassci_id', $evaluation->klassci_enseignant_id)->first();
-            if ($enseignant) {
-                $evalArray['enseignant'] = [
-                    'id'    => $enseignant->klassci_id,
-                    'nom'   => $enseignant->name,
-                    'email' => $enseignant->email,
-                ];
-                $evalArray['enseignant_nom'] = $enseignant->name;
-            } else {
-                $evalArray['enseignant'] = null;
-                $evalArray['enseignant_nom'] = 'Enseignant #' . $evaluation->klassci_enseignant_id;
-            }
-        } else {
-            $this->attachAuteurLocal($evalArray, $evaluation);
-        }
-    }
-
-    /**
-     * Sans identité KLASSCI : l'auteur local (`enseignant_id`, D72), borné à
-     * l'établissement de l'évaluation. Sans auteur, rien.
-     *
-     * @param  array<string, mixed>  $evalArray  Modifié par référence.
-     */
-    private function attachAuteurLocal(array &$evalArray, Evaluation $evaluation): void
-    {
-        $auteur = $evaluation->enseignant_id === null ? null : User::query()
-            ->where('institution_id', $evaluation->institution_id)
-            ->find($evaluation->enseignant_id);
-
-        $evalArray['enseignant'] = $auteur === null
-            ? null
-            : ['id' => $auteur->id, 'nom' => $auteur->name, 'email' => $auteur->email];
-        $evalArray['enseignant_nom'] = $auteur?->name;
     }
 
     /**

@@ -160,6 +160,7 @@ final class TeacherEvaluationResultsService implements EvaluationResultsReader
         // par email (1 requête), et copies depuis la collection DÉJÀ
         // eager-loaded (0 requête, cf. `Evaluation::with('submissions')`).
         $usersByEmail = $this->preloadUsersByEmail($etudiants);
+        $usersByKlassci = $this->preloadUsersByKlassciId($etudiants, $evaluation->institution_id);
         $copies = DernieresCopies::de($evaluation);
 
         $resultats = [];
@@ -167,7 +168,10 @@ final class TeacherEvaluationResultsService implements EvaluationResultsReader
 
         foreach ($etudiants as $etudiant) {
             $email     = KlassciPayload::toStringOrNull($etudiant['email'] ?? null) ?? '';
-            $userLocal = $email !== '' ? $usersByEmail->get($email) : null;
+            // Le compte local par l'email ; sinon par l'identité KLASSCI, quand
+            // KLASSCI ne porte pas le même email (revue d'E3).
+            $userLocal = ($email !== '' ? $usersByEmail->get($email) : null)
+                ?? $usersByKlassci->get(KlassciPayload::toInt($etudiant['id'] ?? null) ?? 0);
 
             // L'auteur local (`student_id`) ; à défaut, le `klassci_id` du
             // compte local, puis l'ID KLASSCI direct (C26).
@@ -209,6 +213,38 @@ final class TeacherEvaluationResultsService implements EvaluationResultsReader
 
         /** @var \Illuminate\Support\Collection<string, User> $users */
         $users = User::query()->whereIn('email', $emails)->get()->keyBy('email');
+
+        return $users;
+    }
+
+    /**
+     * Users locaux indexés par identité KLASSCI, en une seule requête, bornés à
+     * l'établissement de l'évaluation : l'identité KLASSCI n'est unique qu'au
+     * sein d'une école. Sans établissement, personne.
+     *
+     * Sans ce repli, un élève dont KLASSCI ne porte pas l'email local perdait
+     * sa copie : elle a un auteur, et seul ce compte peut la réclamer.
+     *
+     * @param  array<int, array<string, mixed>>  $etudiants
+     * @return \Illuminate\Support\Collection<int, User>
+     */
+    private function preloadUsersByKlassciId(array $etudiants, ?int $etablissement): \Illuminate\Support\Collection
+    {
+        $ids = array_values(array_filter(
+            array_map(static fn (array $e): ?int => KlassciPayload::toInt($e['id'] ?? null), $etudiants),
+            static fn (?int $id): bool => $id !== null,
+        ));
+
+        if ($etablissement === null || $ids === []) {
+            return collect();
+        }
+
+        /** @var \Illuminate\Support\Collection<int, User> $users */
+        $users = User::query()
+            ->where('institution_id', $etablissement)
+            ->whereIn('klassci_id', $ids)
+            ->get()
+            ->keyBy('klassci_id');
 
         return $users;
     }

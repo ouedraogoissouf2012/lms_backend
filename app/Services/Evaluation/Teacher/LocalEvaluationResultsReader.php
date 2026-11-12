@@ -54,8 +54,10 @@ final class LocalEvaluationResultsReader implements EvaluationResultsReader
     public function getResultsByClass(int $evaluationId, User $teacher): array
     {
         try {
-            // Bornage EXPLICITE : le scope global est fail-open sans tenant.
-            $evaluation = Evaluation::with(['questions', 'submissions'])
+            // Bornage EXPLICITE : le scope global est fail-open sans tenant. Et
+            // `where(col, null)` deviendrait `IS NULL` : sans établissement,
+            // rien (revue d'E3).
+            $evaluation = $teacher->institution_id === null ? null : Evaluation::with(['questions', 'submissions'])
                 ->where('institution_id', $teacher->institution_id)
                 ->find($evaluationId);
 

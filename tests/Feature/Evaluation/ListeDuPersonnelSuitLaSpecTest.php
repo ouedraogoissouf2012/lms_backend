@@ -7,7 +7,9 @@ namespace Tests\Feature\Evaluation;
 use App\Enums\InstitutionMode;
 use App\Models\Evaluation;
 use App\Models\EvaluationQuestion;
+use App\Services\Evaluation\EvaluationEnrichmentService;
 use App\Services\KlassciProxyService;
+use App\Services\TenantManager;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Mockery\MockInterface;
@@ -118,6 +120,23 @@ final class ListeDuPersonnelSuitLaSpecTest extends TestCase
         $une();
 
         self::assertSame($avecUne, $requetesSurUsers());
+    }
+
+    public function test_sans_tenant_un_auteur_d_une_autre_ecole_ne_nomme_pas_l_evaluation(): void
+    {
+        // Le préchargement des auteurs couvre toutes les écoles de la liste, et
+        // le scope global de `User` s'ouvre sans tenant : le bornage à
+        // l'établissement de l'évaluation est fait en mémoire, et prouvé ici.
+        $ailleurs = $this->membre($this->ecole(), 'enseignant');
+        $evaluation = Evaluation::factory()->create([
+            'institution_id' => $this->ecole()->getKey(), 'enseignant_id' => $ailleurs->getKey(), 'klassci_enseignant_id' => null,
+        ]);
+        app(TenantManager::class)->reset();
+
+        $presentee = app(EvaluationEnrichmentService::class)->enrichWithoutCatalogue(collect([$evaluation]))[0];
+
+        self::assertNull($presentee['enseignant']);
+        self::assertNull($presentee['enseignant_nom']);
     }
 
     public function test_un_eleve_recoit_403(): void

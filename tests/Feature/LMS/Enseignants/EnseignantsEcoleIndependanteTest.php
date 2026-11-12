@@ -130,6 +130,50 @@ final class EnseignantsEcoleIndependanteTest extends TestCase
         self::assertDatabaseCount('lms_enseignants_cache', 0);
     }
 
+    /**
+     * Les tris que la spec affirme : les enseignants par nom, leurs matières
+     * par libellé, les classes par libellé. Créés à l'envers de l'alphabet,
+     * pour qu'un ordre d'insertion ne passe pas pour un tri.
+     */
+    public function test_les_enseignants_et_leurs_details_sont_tries(): void
+    {
+        $ecole = $this->ecole();
+        $this->enseignant($ecole, 'Zoé Traoré', null);
+        $awa = $this->enseignant($ecole, 'Awa Koné', null);
+        $b = $this->classe($ecole, '6e B');
+        $a = $this->classe($ecole, '6e A');
+        $svt = $this->matiere($ecole, 'SVT');
+        $maths = $this->matiere($ecole, 'Maths');
+        $this->programme($b, $svt, $awa);
+        $this->programme($b, $maths, $awa);
+        $this->programme($a, $maths, $awa);
+
+        $reponse = $this->asTenant($this->membre($ecole, 'coordinateur'))->getJson(self::DETAILS)->assertOk();
+
+        self::assertSame(['Awa Koné', 'Zoé Traoré'], array_column($reponse->json('data'), 'nom'));
+        self::assertSame(['Maths', 'SVT'], array_column($reponse->json('data.0.matieres'), 'nom'));
+        self::assertSame(['6e A', '6e B'], array_column($reponse->json('data.0.matieres.0.classes'), 'nom'));
+        self::assertSame(['6e A', '6e B'], array_column($reponse->json('data.0.classes'), 'nom'));
+    }
+
+    /**
+     * Les classes d'un enseignant suivent l'ordre de la base, comme celles
+     * d'une matière : la casse et les accents se classent selon la collation
+     * (MySQL), pas octet par octet.
+     */
+    public function test_les_classes_d_un_enseignant_suivent_l_ordre_de_ses_matieres(): void
+    {
+        $ecole = $this->ecole();
+        $awa = $this->enseignant($ecole, 'Awa Koné', null);
+        $maths = $this->matiere($ecole, 'Maths');
+        $this->programme($this->classe($ecole, '6e a'), $maths, $awa);
+        $this->programme($this->classe($ecole, '6e B'), $maths, $awa);
+
+        $ligne = $this->asTenant($this->membre($ecole, 'coordinateur'))->getJson(self::DETAILS)->assertOk()->json('data.0');
+
+        self::assertSame(array_column($ligne['matieres'][0]['classes'], 'nom'), array_column($ligne['classes'], 'nom'));
+    }
+
     /** @return iterable<string, array{0: string}> */
     public static function routes(): iterable
     {
@@ -234,6 +278,29 @@ final class EnseignantsEcoleIndependanteTest extends TestCase
             ->getJson(self::LISTE)
             ->assertStatus(500)
             ->assertExactJson(['success' => false, 'message' => 'Erreur KLASSCI', 'data' => []]);
+    }
+
+    /**
+     * Le cache des détails, réécrit par le lot : seuls les ids KLASSCI
+     * numériques y entrent, entiers ou en chaîne (écart déclaré : un id non
+     * numérique n'y entre pas).
+     */
+    public function test_l_ecole_creee_depuis_klassci_met_en_cache_les_ids_numeriques(): void
+    {
+        $this->mock(KlassciProxyService::class, function (MockInterface $mock): void {
+            $mock->shouldReceive('getEnseignantsEnrichis')->once()->with(true)->andReturn(['success' => true, 'data' => [
+                ['id' => 12, 'nom' => 'Entier'],
+                ['id' => '13', 'nom' => 'Chaîne numérique'],
+                ['id' => 'abc', 'nom' => 'Non numérique'],
+            ]]);
+        });
+
+        $this->asTenant($this->membre($this->ecole(InstitutionMode::Klassci), 'coordinateur'))
+            ->getJson(self::DETAILS)
+            ->assertOk()
+            ->assertJsonCount(3, 'data');
+
+        self::assertSame([12, 13], DB::table('lms_enseignants_cache')->orderBy('enseignant_id')->pluck('enseignant_id')->map(static fn (mixed $id): int => (int) $id)->all());
     }
 
     // ───────────────────────── la panne

@@ -62,7 +62,11 @@ final class EnseignantsEcoleIndependanteContractTest extends TestCase
         $this->assertOpenApiSchemaRefuseSans($liste, self::LISTE, 'get', 'meta');
     }
 
-    /** Hors de la gestion et de l'enseignant : la liste vide d'aujourd'hui, sans lecture. */
+    /**
+     * Hors de la gestion et de l'enseignant : la liste vide, dans la forme que
+     * la spec décrit. L'absence de lecture est prouvée ailleurs
+     * (`LectureDesEnseignantsTest`, aucun appel à KLASSCI).
+     */
     public function test_200_un_eleve_recoit_une_liste_vide(): void
     {
         $eleve = $this->membre($this->ecole(), 'etudiant');
@@ -119,5 +123,23 @@ final class EnseignantsEcoleIndependanteContractTest extends TestCase
 
         $this->assertMatchesOpenApiResponse($reponse, self::ANNUAIRE, 'get');
         $reponse->assertJsonPath('data.0.id', '77');
+    }
+
+    /** UN `Http::fake` : la liste enrichie de KLASSCI, servie avec son `meta` et celui du LMS. */
+    public function test_200_la_liste_dans_une_ecole_creee_depuis_klassci(): void
+    {
+        Http::fake(static fn () => Http::response(['success' => true, 'data' => [
+            ['id' => 77, 'nom' => 'Diallo', 'statistiques' => ['nb_classes' => 3]],
+        ], 'meta' => ['count' => 1]], 200));
+        $ecole = Institution::factory()->create([
+            'mode' => InstitutionMode::Klassci,
+            'klassci_api_url' => 'https://ecole.klassci.test/api/lms',
+            'is_active' => true,
+        ]);
+
+        $reponse = $this->asTenant($this->membre($ecole, 'coordinateur'))->getJson('/api'.self::LISTE)->assertOk();
+
+        $this->assertMatchesOpenApiResponse($reponse, self::LISTE, 'get');
+        $reponse->assertJsonPath('meta.source', 'klassci_externe');
     }
 }

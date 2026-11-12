@@ -107,6 +107,21 @@ class TrainingSession extends Model
     }
 
     /**
+     * « Active » : publiée, et pas terminée (D124). C'est la seule règle qui dit
+     * si une classe d'une école créée depuis le LMS est « active cette année »
+     * (lot 3a) : un fait daté, jamais une valeur inventée.
+     *
+     * « Pas terminée » couvre la phase « à venir », y compris entre la clôture
+     * des inscriptions et le début : une classe complète qui démarre dans quinze
+     * jours n'est pas inactive pour un gestionnaire.
+     */
+    public function estActive(): bool
+    {
+        return $this->status === TrainingSessionStatus::Publiee
+            && $this->phase !== TrainingSessionPhase::Terminee;
+    }
+
+    /**
      * La phase, LUE des dates — jamais écrite.
      *
      * @return Attribute<TrainingSessionPhase, never>

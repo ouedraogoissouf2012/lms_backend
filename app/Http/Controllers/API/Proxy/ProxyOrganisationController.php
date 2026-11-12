@@ -8,9 +8,11 @@ use App\Http\Controllers\API\Proxy\Concerns\RendersKlassciProxyErrors;
 use App\Http\Controllers\API\Proxy\Concerns\ResolvesPersonalKlassciToken;
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Services\Classe\InstitutionClassesReader;
 use App\Services\Klassci\TeacherDirectory\LocalTeacherDirectory;
 use App\Services\Klassci\TeacherDirectory\TeacherDirectoryVisibility;
 use App\Services\KlassciProxyService;
+use Illuminate\Auth\AuthenticationException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -46,14 +48,26 @@ final class ProxyOrganisationController extends Controller
     }
 
     /**
-     * GET /api/proxy/classes — Liste des classes actives.
+     * GET /api/proxy/classes — les classes de l'établissement.
+     *
+     * Même route, autre source (ADR-EI-01, lot 3a) : KLASSCI relayé dans une
+     * école créée depuis KLASSCI, les classes locales dans une école créée
+     * depuis le LMS. La source est reçue par la MÉTHODE : Laravel garde le
+     * contrôleur sur l'objet Route, et une source reçue par le constructeur
+     * resterait celle de la première école servie.
      */
-    public function classes(Request $request): JsonResponse
+    public function classes(Request $request, InstitutionClassesReader $classes): JsonResponse
     {
+        $user = $request->user();
+
+        if (! $user instanceof User) {
+            throw new AuthenticationException;
+        }
+
         try {
             $filters = $request->only(['filiere_id', 'niveau_id', 'annee_id']);
-            $data = $this->klassciService->getClasses($filters);
-            return response()->json($data);
+
+            return response()->json($classes->list($user, $filters));
         } catch (\Exception $e) {
             return $this->proxyErrorResponse($e);
         }

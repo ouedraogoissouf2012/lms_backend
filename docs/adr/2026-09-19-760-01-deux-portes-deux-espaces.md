@@ -17,11 +17,9 @@
 >   locales, pour l'id LOCAL, sans 409. La prémisse de cet ADR, « une ressource désignée dans deux
 >   espaces », n'y vaut pas : `klassci_id` y est NULL partout.
 > - **École basculée** (créée depuis KLASSCI, passée en mode autonome) : elle suit son mode déclaré,
->   comme une école créée depuis le LMS. Mais ses classes gardent leur `klassci_id`, et la liste
->   d'administration (`/proxy/classes`) lui donne encore des identifiants KLASSCI. Ouvert par la
->   porte historique, un tel identifiant est lu comme local : la fiche d'une autre classe, ou 404.
->   **Dette tracée**, fermée par le lot des écrans d'administration (la liste suivra le mode) ; voir
->   ADR-EI-01.
+>   comme une école créée depuis le LMS, mais ses classes gardent leur `klassci_id`. Depuis le lot 3a, la liste d'administration
+>   (`/proxy/classes`) suit le mode, et donne les identifiants LOCAUX que lisent les deux portes.
+>   La dette tracée au lot 2 est fermée ; voir ADR-EI-01.
 >
 > La règle de cet ADR, « on n'arbitre pas à l'entrée », tient dans tous les cas : rien n'est deviné.
 > Garder KLASSCI sur la porte historique d'une école basculée lirait le mode hors du point de

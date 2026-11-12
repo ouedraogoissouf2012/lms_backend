@@ -11,7 +11,10 @@ use App\Services\Classe\ClasseEtudiantsQueryService;
 use App\Services\Classe\ClasseEtudiantsReader;
 use App\Services\Classe\ClasseLocalDetailsService;
 use App\Services\Classe\ClasseLocalDoorReader;
+use App\Services\Classe\InstitutionClassesReader;
+use App\Services\Classe\KlassciInstitutionClassesReader;
 use App\Services\Classe\LocalClasseDetailsReader;
+use App\Services\Classe\LocalInstitutionClassesReader;
 use App\Services\Classe\LocalTeacherClassesReader;
 use App\Services\Classe\TeacherClassesQueryService;
 use App\Services\Classe\TeacherClassesReader;
@@ -41,6 +44,28 @@ use Illuminate\Support\ServiceProvider;
 final class CatalogueServiceProvider extends ServiceProvider
 {
     /**
+     * Les sources de lecture, port par port : `[source KLASSCI, source locale]`.
+     *
+     * Une table plutôt qu'une liaison écrite par port : chaque lot y ajoute une
+     * ligne, et la règle de liaison (ci-dessous) reste écrite une fois.
+     *
+     * @var array<class-string, array{class-string, class-string}>
+     */
+    private const SOURCES = [
+        // Lot 1 : les matières de l'enseignant et la fiche matière.
+        TeacherMatieresReader::class => [MyMatieresQueryService::class, LocalTeacherMatieresReader::class],
+        MatiereDetailsReader::class => [MatiereDetailsQueryService::class, LocalMatiereDetailsReader::class],
+        // Lot 2 : les classes. Une seule source locale sert la fiche par ses
+        // deux portes et le roster ; elle applique une seule grille d'accès.
+        TeacherClassesReader::class => [TeacherClassesQueryService::class, LocalTeacherClassesReader::class],
+        ClasseDetailsReader::class => [ClasseDetailsQueryService::class, LocalClasseDetailsReader::class],
+        ClasseLocalDoorReader::class => [ClasseLocalDetailsService::class, LocalClasseDetailsReader::class],
+        ClasseEtudiantsReader::class => [ClasseEtudiantsQueryService::class, LocalClasseDetailsReader::class],
+        // Lot 3a : les classes de l'établissement, pour les écrans de gestion.
+        InstitutionClassesReader::class => [KlassciInstitutionClassesReader::class, LocalInstitutionClassesReader::class],
+    ];
+
+    /**
      * `bind()` et JAMAIS `singleton()`.
      *
      * La closure est évaluée À LA RÉSOLUTION, donc après `ResolveInstitution`.
@@ -61,38 +86,11 @@ final class CatalogueServiceProvider extends ServiceProvider
         // contrôleur les reçoit par sa MÉTHODE, pas par son constructeur —
         // Laravel garde le contrôleur sur l'objet Route, et une source reçue à
         // la construction resterait celle de la première école servie.
-        $this->app->bind(
-            TeacherMatieresReader::class,
-            static fn ($app) => $app->make(RosterAuthorityFactory::class)
-                ->sourceForCurrentTenant(MyMatieresQueryService::class, LocalTeacherMatieresReader::class),
-        );
-        $this->app->bind(
-            MatiereDetailsReader::class,
-            static fn ($app) => $app->make(RosterAuthorityFactory::class)
-                ->sourceForCurrentTenant(MatiereDetailsQueryService::class, LocalMatiereDetailsReader::class),
-        );
-
-        // Lot 2 : les classes. Une seule source locale sert la fiche par ses
-        // deux portes et le roster ; elle applique une seule grille d'accès.
-        $this->app->bind(
-            TeacherClassesReader::class,
-            static fn ($app) => $app->make(RosterAuthorityFactory::class)
-                ->sourceForCurrentTenant(TeacherClassesQueryService::class, LocalTeacherClassesReader::class),
-        );
-        $this->app->bind(
-            ClasseDetailsReader::class,
-            static fn ($app) => $app->make(RosterAuthorityFactory::class)
-                ->sourceForCurrentTenant(ClasseDetailsQueryService::class, LocalClasseDetailsReader::class),
-        );
-        $this->app->bind(
-            ClasseLocalDoorReader::class,
-            static fn ($app) => $app->make(RosterAuthorityFactory::class)
-                ->sourceForCurrentTenant(ClasseLocalDetailsService::class, LocalClasseDetailsReader::class),
-        );
-        $this->app->bind(
-            ClasseEtudiantsReader::class,
-            static fn ($app) => $app->make(RosterAuthorityFactory::class)
-                ->sourceForCurrentTenant(ClasseEtudiantsQueryService::class, LocalClasseDetailsReader::class),
-        );
+        foreach (self::SOURCES as $port => [$klassci, $local]) {
+            $this->app->bind(
+                $port,
+                static fn ($app) => $app->make(RosterAuthorityFactory::class)->sourceForCurrentTenant($klassci, $local),
+            );
+        }
     }
 }

@@ -8,7 +8,6 @@ use App\Http\Controllers\API\Proxy\Concerns\RendersKlassciProxyErrors;
 use App\Http\Controllers\API\Proxy\Concerns\ResolvesPersonalKlassciToken;
 use App\Http\Controllers\Controller;
 use App\Services\KlassciProxyService;
-use App\Support\Logging\CaughtExceptionLog;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -32,7 +31,6 @@ final class ProxyDashboardController extends Controller
 
     public function __construct(
         private readonly KlassciProxyService $klassciService,
-        private readonly CaughtExceptionLog $journal,
     ) {
     }
 
@@ -69,7 +67,6 @@ final class ProxyDashboardController extends Controller
 
             return response()->json($data);
         } catch (\Exception $e) {
-            $this->journal->error('Student Dashboard error', $e);
             return $this->proxyErrorResponse($e);
         }
     }
@@ -106,7 +103,6 @@ final class ProxyDashboardController extends Controller
 
             return response()->json($data);
         } catch (\Exception $e) {
-            $this->journal->error('Teacher Dashboard error', $e);
             return $this->proxyErrorResponse($e);
         }
     }

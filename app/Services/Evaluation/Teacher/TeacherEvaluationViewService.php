@@ -65,7 +65,7 @@ final class TeacherEvaluationViewService
                 ->orderBy('submitted_at', 'desc')
                 ->get();
 
-            $noms = $this->nomsDesAuteurs($submissions, $evaluation->institution_id);
+            $noms = NomsDesAuteurs::de($submissions, $evaluation->institution_id);
 
             $enrichedSubmissions = $submissions->map(static function (EvaluationSubmission $submission) use ($noms): array {
                 return [
@@ -115,45 +115,6 @@ final class TeacherEvaluationViewService
                 ],
             ];
         }
-    }
-
-    /**
-     * Le nom de l'élève de chaque copie, en deux requêtes pour toute la liste
-     * (et non une par copie) : par son auteur (`student_id`, seul présent dans
-     * une école créée depuis le LMS), puis, pour une ligne d'avant D72, par son
-     * identité KLASSCI. Même ordre que `EvaluationSubmission::scopeOwnedBy()`.
-     *
-     * Les deux recherches sont bornées à l'établissement de l'évaluation : une
-     * identité KLASSCI n'est unique qu'au sein d'une école, et le nom d'un
-     * compte d'une autre école serait celui d'un tiers. Sans nom, « Étudiant #id ».
-     *
-     * @param  \Illuminate\Database\Eloquent\Collection<int, EvaluationSubmission>  $copies
-     * @return \Closure(EvaluationSubmission): string
-     */
-    private function nomsDesAuteurs(\Illuminate\Database\Eloquent\Collection $copies, ?int $etablissement): \Closure
-    {
-        [$parAuteur, $parKlassci] = [[], []];
-
-        // `where(col, null)` deviendrait `IS NULL` : un établissement inconnu
-        // ne nomme personne.
-        if ($etablissement !== null) {
-            $parAuteur = User::query()
-                ->where('institution_id', $etablissement)
-                ->whereIn('id', $copies->pluck('student_id')->filter()->unique()->values())
-                ->pluck('name', 'id')
-                ->all();
-            $parKlassci = User::query()
-                ->where('institution_id', $etablissement)
-                ->whereIn('klassci_id', $copies->pluck('klassci_etudiant_id')->filter()->unique()->values())
-                ->pluck('name', 'klassci_id')
-                ->all();
-        }
-
-        return static function (EvaluationSubmission $copie) use ($parAuteur, $parKlassci): string {
-            $nom = $parAuteur[$copie->student_id ?? ''] ?? $parKlassci[$copie->klassci_etudiant_id ?? ''] ?? null;
-
-            return is_string($nom) ? $nom : 'Étudiant #' . ($copie->klassci_etudiant_id ?? $copie->student_id);
-        };
     }
 
     /**

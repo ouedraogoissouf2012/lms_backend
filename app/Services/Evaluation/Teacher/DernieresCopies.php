@@ -53,11 +53,51 @@ final class DernieresCopies
      */
     public function pour(?int $auteur, ?int ...$identitesKlassci): ?EvaluationSubmission
     {
+        return $this->copies->first(static fn (EvaluationSubmission $copie): bool
+            => self::appartient($copie, $auteur, $identitesKlassci));
+    }
+
+    /**
+     * Les copies qu'aucun élève du roster ne réclame : la dernière de chaque
+     * auteur, dans l'établissement de l'évaluation.
+     *
+     * Règle : aucune copie remise n'est jamais invisible pour l'enseignant. Un
+     * élève peut avoir passé l'évaluation sans figurer au roster : admis par le
+     * repli `user_classes` de l'audience (C24), désinscrit après sa remise, ou
+     * sorti du roster KLASSCI. Sa ligne apparaît, marquée hors roster.
+     *
+     * L'auteur est désigné par `student_id`, sinon par son identité KLASSCI ;
+     * une copie sans l'un ni l'autre reste seule.
+     *
+     * @param  list<array{0: ?int, 1: list<?int>}>  $roster  pour chaque élève, son compte et ses identités KLASSCI
+     * @return list<EvaluationSubmission>
+     */
+    public function horsRoster(array $roster, ?int $etablissement): array
+    {
+        return array_values($this->copies
+            ->filter(static fn (EvaluationSubmission $copie): bool
+                => $etablissement !== null && self::entier($copie->institution_id) === $etablissement)
+            ->reject(static fn (EvaluationSubmission $copie): bool => collect($roster)
+                ->contains(static fn (array $eleve): bool => self::appartient($copie, $eleve[0], $eleve[1])))
+            ->unique(static fn (EvaluationSubmission $copie): string => match (true) {
+                self::entier($copie->student_id) !== null => 'auteur:'.$copie->student_id,
+                self::entier($copie->klassci_etudiant_id) !== null => 'klassci:'.$copie->klassci_etudiant_id,
+                default => 'copie:'.$copie->id,
+            })
+            ->all());
+    }
+
+    /**
+     * La règle de `ownedBy` : par l'auteur, ou par une identité KLASSCI.
+     *
+     * @param  array<int|string, ?int>  $identitesKlassci
+     */
+    private static function appartient(EvaluationSubmission $copie, ?int $auteur, array $identitesKlassci): bool
+    {
         $identites = array_values(array_filter($identitesKlassci, static fn (?int $id): bool => $id !== null));
 
-        return $this->copies->first(static fn (EvaluationSubmission $copie): bool
-            => ($auteur !== null && self::entier($copie->student_id) === $auteur)
-            || in_array(self::entier($copie->klassci_etudiant_id), $identites, true));
+        return ($auteur !== null && self::entier($copie->student_id) === $auteur)
+            || in_array(self::entier($copie->klassci_etudiant_id), $identites, true);
     }
 
     /**

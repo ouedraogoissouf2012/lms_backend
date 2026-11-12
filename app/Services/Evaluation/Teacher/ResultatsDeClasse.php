@@ -16,12 +16,18 @@ use App\Models\EvaluationSubmission;
  */
 final class ResultatsDeClasse
 {
+    /** L'élève figure au roster de la classe. */
+    public const INSCRIT = 'active';
+
     /**
      * La ligne d'un élève, avec sa dernière copie officielle s'il en a une.
      *
+     * `inscription` : {@see self::INSCRIT} pour un élève du roster, `null` pour
+     * l'auteur d'une copie hors du roster ({@see self::horsRoster()}).
+     *
      * @return array<string, mixed>
      */
-    public static function ligne(mixed $etudiantId, mixed $nom, mixed $prenom, string $nomComplet, ?EvaluationSubmission $copie): array
+    public static function ligne(mixed $etudiantId, mixed $nom, mixed $prenom, string $nomComplet, ?EvaluationSubmission $copie, ?string $inscription): array
     {
         return [
             'etudiant_id'          => $etudiantId,
@@ -34,7 +40,27 @@ final class ResultatsDeClasse
             'submitted_at'         => $copie?->submitted_at,
             'attempt'              => $copie?->attempt,
             'feedback'             => $copie?->feedback,
+            'inscription'          => $inscription,
         ];
+    }
+
+    /**
+     * Les lignes des copies qu'aucun élève du roster ne réclame
+     * ({@see DernieresCopies::horsRoster()}) : aucune copie remise n'est jamais
+     * invisible pour l'enseignant. Nommées comme dans la liste des copies.
+     *
+     * @param  list<EvaluationSubmission>  $copies
+     * @param  \Closure(EvaluationSubmission): mixed  $identifiant  l'`etudiant_id` de la ligne, dans l'espace d'ids du roster
+     * @return list<array<string, mixed>>
+     */
+    public static function horsRoster(array $copies, ?int $etablissement, \Closure $identifiant): array
+    {
+        $nom = NomsDesAuteurs::de(collect($copies), $etablissement);
+
+        return array_map(
+            static fn (EvaluationSubmission $copie): array => self::ligne($identifiant($copie), $nom($copie), '', $nom($copie), $copie, null),
+            $copies,
+        );
     }
 
     /**
@@ -42,6 +68,10 @@ final class ResultatsDeClasse
      *
      * Les statuts `soumis` ET `corrige` comptent comme "soumis" (le
      * corrigé reste une participation valide).
+     *
+     * `total_etudiants` compte toutes les lignes : le roster et les auteurs hors
+     * roster. Un auteur hors roster a toujours une copie : il n'est jamais
+     * compté parmi les absents.
      *
      * @param  array<int, array<string, mixed>>  $resultats
      * @return array<string, mixed>

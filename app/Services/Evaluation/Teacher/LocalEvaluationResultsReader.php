@@ -6,6 +6,7 @@ namespace App\Services\Evaluation\Teacher;
 
 use App\Models\Classe;
 use App\Models\Evaluation;
+use App\Models\EvaluationSubmission;
 use App\Models\User;
 use App\Services\Evaluation\EvaluationEnrichmentService;
 use App\Support\Logging\CaughtExceptionLog;
@@ -32,6 +33,13 @@ use Throwable;
  *
  * Un élève n'a qu'un nom (`users.name`) : `etudiant_nom` et
  * `etudiant_nom_complet` le portent, `etudiant_prenom` est vide.
+ *
+ * ## Le roster, plus les auteurs des copies
+ *
+ * Aucune copie remise n'est jamais invisible pour l'enseignant : un auteur hors
+ * du roster (admis par le repli `user_classes` de l'audience, C24, ou désinscrit
+ * après sa remise) a sa ligne, marquée `inscription: null`. La convergence de
+ * l'audience et du roster reste C24.
  */
 final class LocalEvaluationResultsReader implements EvaluationResultsReader
 {
@@ -55,20 +63,12 @@ final class LocalEvaluationResultsReader implements EvaluationResultsReader
                 return ResultatsDeClasse::introuvable();
             }
 
-            $inscrits = $this->inscritsActifs($evaluation);
-            $copies = DernieresCopies::de($evaluation);
-            $resultats = array_values($inscrits->map(static fn (User $eleve): array => ResultatsDeClasse::ligne(
-                $eleve->id,
-                $eleve->name,
-                '',
-                (string) $eleve->name,
-                $copies->pour($eleve->id, $eleve->klassci_id),
-            ))->all());
+            $resultats = $this->lignes($evaluation);
 
             return ResultatsDeClasse::reponse(
                 $this->presentation->enrichWithoutCatalogue(collect([$evaluation]))[0],
                 $resultats,
-                ResultatsDeClasse::statistiques($resultats, $inscrits->count()),
+                ResultatsDeClasse::statistiques($resultats, count($resultats)),
             );
         } catch (Throwable $e) {
             $this->journal->error('❌ Erreur récupération résultats évaluation', $e, [
@@ -77,6 +77,36 @@ final class LocalEvaluationResultsReader implements EvaluationResultsReader
 
             return ResultatsDeClasse::echec();
         }
+    }
+
+    /**
+     * Une ligne par inscrit actif, puis une par auteur d'une copie hors du
+     * roster : aucune copie remise n'est jamais invisible pour l'enseignant.
+     *
+     * @return list<array<string, mixed>>
+     */
+    private function lignes(Evaluation $evaluation): array
+    {
+        $inscrits = $this->inscritsActifs($evaluation);
+        $copies = DernieresCopies::de($evaluation);
+        $roster = array_values($inscrits->map(static fn (User $eleve): array => ResultatsDeClasse::ligne(
+            $eleve->id,
+            $eleve->name,
+            '',
+            (string) $eleve->name,
+            $copies->pour($eleve->id, $eleve->klassci_id),
+            ResultatsDeClasse::INSCRIT,
+        ))->all());
+        $horsRoster = $copies->horsRoster(
+            array_values($inscrits->map(static fn (User $eleve): array => [$eleve->id, [$eleve->klassci_id]])->all()),
+            $evaluation->institution_id,
+        );
+
+        return [...$roster, ...ResultatsDeClasse::horsRoster(
+            $horsRoster,
+            $evaluation->institution_id,
+            static fn (EvaluationSubmission $copie): mixed => $copie->student_id,
+        )];
     }
 
     /**

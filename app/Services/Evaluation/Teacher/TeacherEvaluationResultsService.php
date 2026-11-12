@@ -6,6 +6,7 @@ namespace App\Services\Evaluation\Teacher;
 
 use App\Exceptions\MissingKlassciTokenException;
 use App\Models\Evaluation;
+use App\Models\EvaluationSubmission;
 use App\Models\User;
 use App\Services\Classe\ClasseEnvelope;
 use App\Services\Classe\ClasseRoster;
@@ -135,7 +136,7 @@ final class TeacherEvaluationResultsService implements EvaluationResultsReader
         $evaluationEnrichie = $this->enrichmentService->enrich(collect([$evaluation]), $teacherToken)[0];
 
         $resultats = $this->buildResultats($evaluation, $etudiants);
-        $statistiques = ResultatsDeClasse::statistiques($resultats, count($etudiants));
+        $statistiques = ResultatsDeClasse::statistiques($resultats, count($resultats));
 
         $this->logger->info('✅ Résultats calculés', [
             'total_etudiants' => $statistiques['total_etudiants'],
@@ -162,6 +163,7 @@ final class TeacherEvaluationResultsService implements EvaluationResultsReader
         $copies = DernieresCopies::de($evaluation);
 
         $resultats = [];
+        $roster = [];
 
         foreach ($etudiants as $etudiant) {
             $email     = KlassciPayload::toStringOrNull($etudiant['email'] ?? null) ?? '';
@@ -169,11 +171,9 @@ final class TeacherEvaluationResultsService implements EvaluationResultsReader
 
             // L'auteur local (`student_id`) ; à défaut, le `klassci_id` du
             // compte local, puis l'ID KLASSCI direct (C26).
-            $copie = $copies->pour(
-                $userLocal?->id,
-                $userLocal?->klassci_id,
-                KlassciPayload::toInt($etudiant['id'] ?? null),
-            );
+            $identites = [$userLocal?->klassci_id, KlassciPayload::toInt($etudiant['id'] ?? null)];
+            $roster[] = [$userLocal?->id, $identites];
+            $copie = $copies->pour($userLocal?->id, ...$identites);
 
             $resultats[] = ResultatsDeClasse::ligne(
                 $etudiant['id'],
@@ -181,10 +181,17 @@ final class TeacherEvaluationResultsService implements EvaluationResultsReader
                 $etudiant['prenom'] ?? '',
                 ClasseEnvelope::identiteAffichable($etudiant),
                 $copie,
+                ResultatsDeClasse::INSCRIT,
             );
         }
 
-        return $resultats;
+        // Aucune copie remise n'est jamais invisible : un élève sorti du roster
+        // KLASSCI après sa remise garde sa ligne, sous son identité KLASSCI.
+        return [...$resultats, ...ResultatsDeClasse::horsRoster(
+            $copies->horsRoster($roster, $evaluation->institution_id),
+            $evaluation->institution_id,
+            static fn (EvaluationSubmission $copie): mixed => $copie->klassci_etudiant_id,
+        )];
     }
 
     /**

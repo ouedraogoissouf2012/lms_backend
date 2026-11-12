@@ -8618,6 +8618,12 @@ paths:
         KLASSCI. `etudiant_id` est le compte local ; `etudiant_nom` et
         `etudiant_nom_complet` portent son nom, `etudiant_prenom` est vide.
 
+        Aucune copie remise n est jamais invisible : l auteur d une copie hors
+        du roster (admis par le repli `user_classes`, desinscrit apres sa remise,
+        sorti du roster KLASSCI) a sa ligne, marquee `inscription: null`, dans
+        l etablissement de l evaluation. Il est compte dans `total_etudiants`,
+        jamais parmi les absents.
+
         `data.evaluation` est l evaluation enrichie : ses questions (sans
         corrige), toutes ses copies, et des champs de presentation.
 
@@ -8744,6 +8750,11 @@ paths:
                           properties:
                             etudiant_id:
                               type: integer
+                              nullable: true
+                              description: |
+                                L identite KLASSCI (ecole creee depuis KLASSCI) ou le compte
+                                local (ecole creee depuis le LMS). Nul pour une copie hors
+                                roster sans identite dans cet espace.
                             etudiant_nom:
                               type: string
                             etudiant_prenom:
@@ -8772,11 +8783,19 @@ paths:
                             feedback:
                               type: string
                               nullable: true
+                            inscription:
+                              type: string
+                              nullable: true
+                              enum: [active, null]
+                              description: |
+                                `active` : l eleve est au roster de la classe. `null` :
+                                l auteur d une copie hors du roster.
                       statistiques:
                         type: object
                         properties:
                           total_etudiants:
                             type: integer
+                            description: "Toutes les lignes : le roster et les auteurs hors roster"
                           etudiants_soumis:
                             type: integer
                             description: "Copies `soumis` ou `corrige`"

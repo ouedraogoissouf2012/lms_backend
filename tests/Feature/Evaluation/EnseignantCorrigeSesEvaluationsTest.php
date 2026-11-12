@@ -71,21 +71,27 @@ final class EnseignantCorrigeSesEvaluationsTest extends TestCase
         ], $this->lignes($reponse->json('data.resultats')));
     }
 
-    public function test_un_inscrit_sans_copie_est_non_passee_et_un_inactif_ou_un_autre_n_apparait_pas(): void
+    public function test_un_inscrit_sans_copie_est_non_passee_et_un_inactif_sans_copie_n_apparait_pas(): void
     {
         [$ecole, $enseignant, $classe, $maths] = $this->enseignantEtSaClasse();
         $awa = $this->eleve($ecole, $classe, 'Awa Koné');
-        $inactif = $this->eleve($ecole, $classe, 'Ina Ctif', 'inactif');
+        $this->eleve($ecole, $classe, 'Ina Ctif', 'inactif');
         $ailleurs = $this->eleve($ecole, $this->classe($ecole, '5e B'), 'Ali Leurs');
+        // Désinscrite APRÈS avoir remis : hors du roster, mais sa copie reste
+        // visible, marquée `inscription: null` (aucune copie remise n'est
+        // invisible). Un inactif sans copie, lui, n'apparaît pas.
+        $partie = $this->eleve($ecole, $classe, 'Pia Partie', 'inactif');
         $evaluation = $this->evaluation($classe, $maths, $enseignant);
-        // Même une copie ne fait pas entrer dans le roster un élève inactif.
-        $this->copie($evaluation, $inactif, 'soumis', '19.00');
+        $this->copie($evaluation, $partie, 'soumis', '19.00');
 
         $resultats = $this->asTenant($enseignant)->getJson($this->de($evaluation).'/results-by-class')
             ->assertOk()
             ->json('data.resultats');
 
-        self::assertSame([$awa->getKey() => ['Awa Koné', null, 'non_passee']], $this->lignes($resultats));
+        self::assertSame([
+            $awa->getKey() => ['Awa Koné', 'non_passee', 'active'],
+            $partie->getKey() => ['Pia Partie', 'soumis', null],
+        ], $this->lignesEtInscription($resultats));
         self::assertNotContains($ailleurs->getKey(), array_column($resultats, 'etudiant_id'));
     }
 

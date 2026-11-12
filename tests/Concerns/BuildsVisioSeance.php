@@ -10,6 +10,7 @@ use App\Models\Institution;
 use App\Models\Seance;
 use App\Models\User;
 use App\Services\Audience\ClasseAudienceSource;
+use Illuminate\Support\Collection;
 use RuntimeException;
 
 /**
@@ -77,6 +78,11 @@ trait BuildsVisioSeance
             }
 
             public function containsStudent(Seance $seance, User $student): bool
+            {
+                throw new RuntimeException('panne provoquée par le test');
+            }
+
+            public function studentsOf(Seance $seance): Collection
             {
                 throw new RuntimeException('panne provoquée par le test');
             }

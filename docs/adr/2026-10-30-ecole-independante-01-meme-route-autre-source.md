@@ -181,6 +181,32 @@ lot de #949.
   SQL (#1008) ; les tests du lot la fixent pour les deux sources. Le corps du 500 ne change pas. Un refus 4xx de
   KLASSCI y rend toujours 500 : c'est préexistant, et hors de ce lot.
 
+## Cinquième cas appliqué (lot 3d, 2026-11-12)
+
+| Route | Port | Source KLASSCI | Source locale |
+|---|---|---|---|
+| `GET /lms/seances/upcoming` | `SeancesListReader::getUpcomingForUser` | `SeancesListQueryService`, inchangé | `LocalSeancesListReader` |
+| `GET /lms/seances/my-teaching` | `SeancesListReader::getMyTeachingForUser` | idem | idem |
+| `GET /lms/seances/my-classes` | `SeancesListReader::getMyClassesForUser` | idem | idem |
+
+- **Le jeton KLASSCI est exigé par la source KLASSCI seule.** Il l'était avant tout le reste, y compris pour le chemin
+  du gestionnaire, pourtant local : l'école créée depuis le LMS recevait partout le 401 `klassci_token_missing`.
+- **La grille (D119)** : la gestion lit toutes les séances de l'école ; un enseignant, les siennes (`created_by`, la
+  règle de l'historique), car une séance locale n'a pas de colonne « enseignant » ; un apprenant, et tout rôle non
+  reconnu, celles de ses classes à inscription active, moins celles qu'il a masquées. La règle de l'inscription active
+  est extraite dans `ClassesAtteintes::inscrites`, écrite une fois.
+- **La forme du calendrier est écrite une fois** (`SeanceCalendarProjection`), pour le chemin du gestionnaire de l'école
+  créée depuis KLASSCI et pour la source locale. Seuls les ids diffèrent, par `SeanceIdentite` : ids KLASSCI du miroir
+  d'un côté, ids LOCAUX de l'autre (la séance, la classe de `/proxy/classes`, le compte auteur ; `matiere.id` vaut
+  `null`, une séance locale ne porte que le nom de sa matière).
+- **La fin d'une séance locale est SUPPOSÉE** : 2 h après son début, une constante nommée en un lieu. La table ne tient
+  aucune heure de fin, et le calendrier en exige une ; la spec la déclare supposée, non mesurée.
+- **L'école créée depuis KLASSCI ne change pas** : sa source est le service d'avant, le chemin du gestionnaire garde son
+  exclusion des séances locales et ses ids KLASSCI. Le contrôleur ne reçoit plus la source par son constructeur, mais
+  par sa méthode ; le journal des pannes (`CaughtExceptionLog`), sans état et sans école, y reste.
+- **Hors de ce lot, dans la file** : les actions du calendrier sur une séance locale (`/details`, `activate-visio`, le
+  basculement de la visio) exigent encore le jeton.
+
 ## Conséquences
 
 - **Lot 1 : l'école créée depuis KLASSCI ne change pas dans ce qu'elle rend.** Il est prouvé par ses tests existants, lancés sans

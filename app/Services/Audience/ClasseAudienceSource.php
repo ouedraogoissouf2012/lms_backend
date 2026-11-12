@@ -14,5 +14,8 @@ use App\Models\User;
  */
 interface ClasseAudienceSource
 {
+    /** La séance désigne-t-elle une classe dont l'audience peut répondre ? */
+    public function designatesClasse(Seance $seance): bool;
+
     public function containsStudent(Seance $seance, User $student): bool;
 }

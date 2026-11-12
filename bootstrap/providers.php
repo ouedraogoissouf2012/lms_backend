@@ -10,6 +10,7 @@ use App\Providers\RateLimitServiceProvider;
 use App\Providers\RetentionServiceProvider;
 use App\Providers\RosterServiceProvider;
 use App\Providers\SSLVerificationProvider;
+use App\Providers\VisioServiceProvider;
 
 return [
     AppServiceProvider::class,
@@ -22,4 +23,5 @@ return [
     RosterServiceProvider::class,
     RetentionServiceProvider::class,
     SSLVerificationProvider::class,
+    VisioServiceProvider::class,
 ];

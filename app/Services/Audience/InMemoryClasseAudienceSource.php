@@ -16,6 +16,12 @@ final class InMemoryClasseAudienceSource implements ClasseAudienceSource
     /** @param array<int, list<int>> $studentIdsBySeanceId */
     public function __construct(private array $studentIdsBySeanceId = []) {}
 
+    /** Le double n'a pas d'avis sur la classe : l'inscription enregistrée décide. */
+    public function designatesClasse(Seance $seance): bool
+    {
+        return true;
+    }
+
     public function containsStudent(Seance $seance, User $student): bool
     {
         $ids = $this->studentIdsBySeanceId[$seance->id] ?? [];

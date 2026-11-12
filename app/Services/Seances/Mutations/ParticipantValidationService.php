@@ -167,7 +167,7 @@ final class ParticipantValidationService
      */
     private function authorizeStudent(Seance $visioData, User $userToValidate): array
     {
-        if (! is_numeric($visioData->klassci_classe_id)) {
+        if (! $this->audience->designatesClasse($visioData)) {
             return $this->fail(403, 'no_classe_id', 'Classe non définie pour cette séance');
         }
 

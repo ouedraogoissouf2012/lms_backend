@@ -2755,6 +2755,127 @@ components:
           format: date-time
           nullable: true
 
+    EvaluationEnrichie:
+      type: object
+      description: |
+        Une evaluation enrichie pour le personnel (`EvaluationEnrichmentService`) :
+        les champs de `EvaluationRecord` (portes par `additionalProperties`), et les
+        cles ci-dessous. Les identifiants a plat suivent le type d ecole : les
+        `klassci_*` dans une ecole creee depuis KLASSCI, `classe_id`, `matiere_id` et
+        `enseignant_id` dans une ecole creee depuis le LMS (D72) ; jamais un id local
+        sous un nom `klassci_*` (D132).
+
+        Si le catalogue KLASSCI est injoignable, l enrichissement est fail-soft :
+        l evaluation est rendue SANS ses cles calculees. Seul `id` est donc garanti.
+      required:
+        - id
+      additionalProperties: true
+      properties:
+        id:
+          type: integer
+        institution_id:
+          type: integer
+        titre:
+          type: string
+        klassci_evaluation_id:
+          type: integer
+          nullable: true
+        klassci_classe_id:
+          type: integer
+          nullable: true
+        klassci_matiere_id:
+          type: integer
+          nullable: true
+        klassci_enseignant_id:
+          type: integer
+          nullable: true
+        classe_id:
+          type: integer
+          nullable: true
+        matiere_id:
+          type: integer
+          nullable: true
+        enseignant_id:
+          type: integer
+          nullable: true
+        questions:
+          type: array
+          items:
+            $ref: '#/components/schemas/EvaluationQuestionPublic'
+        submissions:
+          type: array
+          items:
+            $ref: '#/components/schemas/EvaluationSubmissionRecord'
+        classe:
+          type: object
+          nullable: true
+          description: |
+            Relayee depuis le catalogue KLASSCI, ou, sans lui, faite du
+            libelle pose a la creation (`classe_nom`) : `id` est alors
+            celui de KLASSCI s il existe, sinon la classe locale.
+          additionalProperties: true
+          properties:
+            id:
+              type: integer
+              nullable: true
+            nom:
+              type: string
+              nullable: true
+        matiere:
+          type: object
+          nullable: true
+          description: "Meme regle que `classe`, avec `matiere_nom`."
+          additionalProperties: true
+          properties:
+            id:
+              type: integer
+              nullable: true
+            nom:
+              type: string
+              nullable: true
+        enseignant:
+          type: object
+          nullable: true
+          description: |
+            L enseignant designe par son identite KLASSCI, sinon l auteur
+            local (`enseignant_id`, dans l etablissement de l evaluation).
+          properties:
+            id:
+              type: integer
+            nom:
+              type: string
+            email:
+              type: string
+              nullable: true
+        enseignant_nom:
+          type: string
+          nullable: true
+        date_evaluation_formatted:
+          type: string
+          nullable: true
+          example: "28/09/2026 à 16:44"
+        date_evaluation_short:
+          type: string
+          nullable: true
+          example: "28/09/2026"
+        is_locked:
+          type: boolean
+        can_be_edited:
+          type: boolean
+        submissions_count:
+          type: integer
+        questions_count:
+          type: integer
+        effective_status:
+          type: string
+        student_submission:
+          nullable: true
+          description: |
+            Liste du personnel : la derniere copie du compte appelant quand il porte
+            une identite KLASSCI, sinon absente.
+          oneOf:
+            - $ref: '#/components/schemas/EvaluationSubmissionRecord'
+
     EvaluationQuestionPublic:
       type: object
       description: "Une question SANS son corrige (`correct_answers` et `explanation` sont masques sur le modele)."
@@ -7103,23 +7224,72 @@ paths:
     get:
       tags:
         - Evaluations
-      summary: "List evaluations"
+      operationId: listEvaluations
+      summary: "Evaluations de l etablissement, pour le personnel"
+      description: |
+        Reservee au personnel (`ListEvaluationsRequest`). Triees par date
+        decroissante, `limit` au plus 100. Chaque element est une
+        `EvaluationEnrichie` : `submissions_count` (compte par la requete, il
+        survit a un enrichissement fail-soft) et les questions sans corrige ; les
+        copies ne sont PAS livrees.
+
+        Les filtres `classe_id` et `matiere_id` portent sur `klassci_classe_id` et
+        `klassci_matiere_id` (ecole creee depuis KLASSCI).
       security:
         - sanctum: []
       parameters:
-        - name: page
+        - name: classe_id
           in: query
           schema:
             type: integer
-        - name: per_page
+            minimum: 1
+        - name: matiere_id
           in: query
           schema:
             type: integer
+            minimum: 1
+        - name: status
+          in: query
+          schema:
+            type: string
+        - name: is_published
+          in: query
+          schema:
+            type: boolean
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
       responses:
         '200':
-          description: "List of evaluations"
+          description: "Evaluations (eventuellement aucune)"
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - success
+                  - data
+                additionalProperties: false
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/EvaluationEnrichie'
         '401':
           description: "Unauthenticated"
+        '403':
+          description: "Role hors du personnel"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageOnly'
 
     post:
       tags:
@@ -8651,98 +8821,7 @@ paths:
                     type: object
                     properties:
                       evaluation:
-                        type: object
-                        description: |
-                          Une evaluation (champs de `EvaluationRecord`, portes par
-                          `additionalProperties`), enrichie des cles ci-dessous.
-                        required:
-                          - id
-                          - questions_count
-                        additionalProperties: true
-                        properties:
-                          id:
-                            type: integer
-                          titre:
-                            type: string
-                          classe_id:
-                            type: integer
-                            nullable: true
-                          matiere_id:
-                            type: integer
-                            nullable: true
-                          enseignant_id:
-                            type: integer
-                            nullable: true
-                          questions:
-                            type: array
-                            items:
-                              $ref: '#/components/schemas/EvaluationQuestionPublic'
-                          submissions:
-                            type: array
-                            items:
-                              $ref: '#/components/schemas/EvaluationSubmissionRecord'
-                          classe:
-                            type: object
-                            nullable: true
-                            description: |
-                              Relayee depuis le catalogue KLASSCI, ou, sans lui, faite du
-                              libelle pose a la creation (`classe_nom`) : `id` est alors
-                              celui de KLASSCI s il existe, sinon la classe locale.
-                            additionalProperties: true
-                            properties:
-                              id:
-                                type: integer
-                                nullable: true
-                              nom:
-                                type: string
-                                nullable: true
-                          matiere:
-                            type: object
-                            nullable: true
-                            description: "Meme regle que `classe`, avec `matiere_nom`."
-                            additionalProperties: true
-                            properties:
-                              id:
-                                type: integer
-                                nullable: true
-                              nom:
-                                type: string
-                                nullable: true
-                          enseignant:
-                            type: object
-                            nullable: true
-                            description: |
-                              L enseignant designe par son identite KLASSCI, sinon l auteur
-                              local (`enseignant_id`, dans l etablissement de l evaluation).
-                            properties:
-                              id:
-                                type: integer
-                              nom:
-                                type: string
-                              email:
-                                type: string
-                                nullable: true
-                          enseignant_nom:
-                            type: string
-                            nullable: true
-                          date_evaluation_formatted:
-                            type: string
-                            nullable: true
-                            example: "28/09/2026 à 16:44"
-                          date_evaluation_short:
-                            type: string
-                            nullable: true
-                            example: "28/09/2026"
-                          is_locked:
-                            type: boolean
-                          can_be_edited:
-                            type: boolean
-                          submissions_count:
-                            type: integer
-                          questions_count:
-                            type: integer
-                          effective_status:
-                            type: string
+                        $ref: '#/components/schemas/EvaluationEnrichie'
                       resultats:
                         type: array
                         items:

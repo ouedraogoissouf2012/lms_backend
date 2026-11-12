@@ -4,16 +4,15 @@ namespace App\Http\Controllers\API\LMS;
 
 use App\Exceptions\KlassciUnavailableException;
 use App\Http\Controllers\AuthenticatedController;
-use App\Models\LmsEnseignantCache;
+use App\Services\Enseignant\InstitutionTeachersReader;
 use App\Services\Klassci\TeacherDirectory\TeacherDirectoryVisibility;
-use App\Services\KlassciProxyService;
 use App\Support\Logging\CaughtExceptionLog;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
 
 /**
- * LMS Enseignants — liste enrichie depuis KLASSCI avec cache local.
+ * LMS Enseignants — la liste des enseignants de l'établissement, pour
+ * l'administration.
  *
  * Extracted from `LMSDataController` as part of the god-object refactor
  * (spec: `.claude/specs/lms-data-controller-split/`).
@@ -21,71 +20,47 @@ use Illuminate\Support\Facades\Log;
  * Responsibility:
  *   - GET /api/lms/enseignants    → getEnseignantsFromKlassci()
  *
- * Note on the cleanup of `getEnseignants()` and `getMatieresEnrichiesForEnseignant()`:
- * The legacy `LMSDataController` also had a public `getEnseignants()` method that
- * read directly from local DB tables (`esbtp_teachers`, etc.). Investigation
- * confirmed it had no route declaration in `routes/api.php` and no internal caller
- * — pure dead code. The only consumer of the local `getMatieresEnrichiesForEnseignant()`
- * helper was that dead `getEnseignants()` method. Both are removed in this PR.
- *
- * The active method `getEnseignantsFromKlassci()` reaches the upstream KLASSCI
- * API via `KlassciProxyService::getEnseignantsEnrichis()` and caches per-enseignant
- * via `LmsEnseignantCache::store()` (10-minute TTL).
+ * Même route, autre source (ADR-EI-01, lot 3b) : la source est reçue par la
+ * MÉTHODE. Dans une école créée depuis KLASSCI, la liste enrichie de KLASSCI et
+ * son cache local (`KlassciInstitutionTeachersReader`) ; dans une école créée
+ * depuis le LMS, les comptes enseignants de l'école
+ * (`LocalInstitutionTeachersReader`). Chaque source applique la grille
+ * (`TeacherDirectoryVisibility`) à sa lecture ; le contrôleur garde le seul
+ * court-circuit : un lecteur qui n'en verrait aucune ligne ne déclenche aucune
+ * lecture.
  */
 final class LMSEnseignantsController extends AuthenticatedController
 {
     public function __construct(
-        private readonly KlassciProxyService $klassciService,
         private readonly CaughtExceptionLog $journal,
         private readonly TeacherDirectoryVisibility $visibility,
     ) {}
 
     /**
      * GET /api/lms/enseignants
-     * Retourne la liste des enseignants depuis KLASSCI externe avec cache local 10 min.
      *
      * Paramètres acceptés:
      *   - with_details (boolean): activer le format enrichi (classes/matières/stats)
      */
-    public function getEnseignantsFromKlassci(Request $request): JsonResponse
+    public function getEnseignantsFromKlassci(Request $request, InstitutionTeachersReader $enseignants): JsonResponse
     {
         try {
-            // La liste suit la grille des rôles (`TeacherDirectoryVisibility`),
-            // appliquée après le cache de KLASSCI, commun à l'établissement. Un
-            // lecteur qui n'en verrait aucune ligne ne déclenche aucun appel.
             $lecteur = $this->authenticatedUser($request);
-            $startTime = microtime(true);
             if (! $this->visibility->readsAnything($lecteur)) {
                 return $this->successResponse([], '', 200, ['total' => 0]);
             }
 
-            $withDetails = $request->boolean('with_details', false);
+            $liste = $enseignants->listeEnrichie($lecteur, $request->boolean('with_details', false));
 
-            Log::info('[LMS Enseignants KLASSCI] Récupération depuis API externe', [
-                'with_details' => $withDetails
-            ]);
-
-            // Appeler KLASSCI externe via le service
-            $response = $this->klassciService->getEnseignantsEnrichis($withDetails);
-
-            if (!isset($response['success']) || !$response['success']) {
+            if (! $liste['success']) {
                 return response()->json([
                     'success' => false,
-                    'message' => $response['message'] ?? 'Erreur KLASSCI',
-                    'data' => []
+                    'message' => $liste['message'] ?? 'Erreur KLASSCI',
+                    'data' => [],
                 ], 500);
             }
 
-            /** @var array<int, array<string, mixed>> $enseignants */
-            $enseignants = $response['data'] ?? [];
-
-            if ($withDetails) {
-                $this->warmEnseignantCache($enseignants);
-            }
-
-            $servie = $this->visibility->envelopeFor($lecteur, $response);
-
-            return $this->successResponse($servie['data'] ?? [], '', 200, $this->buildMeta($servie, $startTime));
+            return $this->successResponse($liste['data'], '', 200, $liste['meta']);
 
         } catch (KlassciUnavailableException $e) {
             // Panne KLASSCI : 503 retryable, jamais le 500 generique ci-dessous.
@@ -103,52 +78,5 @@ final class LMSEnseignantsController extends AuthenticatedController
                 'data'    => [],
             ], 500);
         }
-    }
-
-    /**
-     * Rechauffe le cache local des enseignants — opportuniste par nature : un
-     * echec d'ecriture ne doit jamais faire echouer la requete qui, elle, a
-     * deja obtenu sa donnee de KLASSCI.
-     *
-     * Extrait de {@see self::getEnseignantsFromKlassci()} : la mise en cache est
-     * une responsabilite distincte de la reponse HTTP, et une methode longue
-     * n'est pas testable unitairement (§5).
-     *
-     * @param  array<int, array<string, mixed>>  $enseignants
-     */
-    private function warmEnseignantCache(array $enseignants): void
-    {
-        foreach ($enseignants as $enseignant) {
-            if (! isset($enseignant['id'])) {
-                continue;
-            }
-
-            try {
-                LmsEnseignantCache::store($enseignant['id'], $enseignant, 10);
-            } catch (\Exception $cacheErr) {
-                $this->journal->warning('[LMS Enseignants KLASSCI] Cache store failed', $cacheErr, [
-                    'enseignant_id' => $enseignant['id'],
-                ]);
-            }
-        }
-    }
-
-    /**
-     * Fusionne le `meta` renvoye par KLASSCI avec les indicateurs propres au LMS.
-     *
-     * @param  array<string, mixed>  $response
-     * @return array<string, mixed>
-     */
-    private function buildMeta(array $response, float $startTime): array
-    {
-        $klassciMeta = $response['meta'] ?? [];
-
-        return array_merge(is_array($klassciMeta) ? $klassciMeta : [], [
-            'source' => 'klassci_externe',
-            'lms_cache_enabled' => true,
-            'lms_performance' => [
-                'total_time_ms' => round((microtime(true) - $startTime) * 1000, 2),
-            ],
-        ]);
     }
 }

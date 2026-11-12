@@ -21,6 +21,9 @@ use App\Services\Classe\LocalInstitutionClassesReader;
 use App\Services\Classe\LocalTeacherClassesReader;
 use App\Services\Classe\TeacherClassesQueryService;
 use App\Services\Classe\TeacherClassesReader;
+use App\Services\Enseignant\InstitutionTeachersReader;
+use App\Services\Enseignant\KlassciInstitutionTeachersReader;
+use App\Services\Enseignant\LocalInstitutionTeachersReader;
 use App\Services\Matiere\InstitutionMatieresReader;
 use App\Services\Matiere\KlassciInstitutionMatieresReader;
 use App\Services\Matiere\LocalInstitutionMatieresReader;
@@ -77,6 +80,8 @@ final class CatalogueServiceProvider extends ServiceProvider
         InstitutionStructureReader::class => [KlassciInstitutionStructureReader::class, LocalInstitutionStructureReader::class],
         // Lot 3d : les séances de l'utilisateur, et son emploi du temps.
         SeancesListReader::class => [SeancesListQueryService::class, LocalSeancesListReader::class],
+        // Lot 3b : les enseignants de l'établissement.
+        InstitutionTeachersReader::class => [KlassciInstitutionTeachersReader::class, LocalInstitutionTeachersReader::class],
     ];
 
     /**

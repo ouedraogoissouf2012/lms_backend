@@ -73,12 +73,6 @@ parameters:
 			path: app/Http/Controllers/API/KnowledgeCheckAttemptController.php
 
 		-
-			message: '#^Parameter \#1 \$enseignantId of static method App\\Models\\LmsEnseignantCache\:\:store\(\) expects int, mixed given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Controllers/API/LMS/LMSEnseignantsController.php
-
-		-
 			message: '#^Cannot cast mixed to int\.$#'
 			identifier: cast.int
 			count: 1

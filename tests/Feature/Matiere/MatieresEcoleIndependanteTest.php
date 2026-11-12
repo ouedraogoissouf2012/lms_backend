@@ -66,6 +66,7 @@ final class MatieresEcoleIndependanteTest extends TestCase
                 'nombre_seances' => null,
                 'nombre_evaluations' => 0,
             ],
+            'source' => 'lms_local',
         ]], $reponse->json('data'));
     }
 

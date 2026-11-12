@@ -57,7 +57,7 @@ final class MatieresContractTest extends TestCase
         $this->assertMatchesOpenApiResponse($reponse, self::MES_MATIERES, 'get');
         $this->assertOpenApiSchemaRefuseSans($reponse, self::MES_MATIERES, 'get', 'data');
         self::assertSame(
-            ['id', 'nom', 'coefficient', 'classes', 'statistiques'],
+            ['id', 'nom', 'coefficient', 'classes', 'statistiques', 'source'],
             array_keys((array) $reponse->json('data.0')),
             'La source locale émet exactement les clés que la carte lit.',
         );

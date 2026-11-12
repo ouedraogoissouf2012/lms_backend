@@ -73,6 +73,7 @@ final class OpenApiSchemaValidatorTest extends TestCase
         yield 'oneOf non nullable' => [$entierOuTexte, '"x"', 'null'];
         yield 'oneOf, deux branches qui concordent' => [['oneOf' => [['type' => 'integer'], ['type' => 'number']]], '1.5', '2'];
         yield 'oneOf, une branche par $ref' => [['oneOf' => [['$ref' => '#/components/schemas/Entier'], ['type' => 'object']]], '{}', '"x"'];
+        yield 'oneOf, une description à côté' => [$entierOuTexte + ['description' => 'un id'], '1', 'true'];
     }
 
     /** @param  array<mixed>  $schema */
@@ -99,6 +100,13 @@ final class OpenApiSchemaValidatorTest extends TestCase
         yield 'type à côté de oneOf' => [['type' => 'string', 'oneOf' => [['type' => 'string']]], '"x"', '« type » à côté de « oneOf »'];
         yield 'branche de oneOf mal formée' => [['oneOf' => [['type' => 'integer'], ['type' => 'tuple']]], '1', 'type non pris en charge'];
         yield 'branche de oneOf introuvable' => [['oneOf' => [['type' => 'integer'], ['$ref' => '#/components/schemas/Absent']]], '1', 'référence introuvable'];
+        // Les défauts de spec d'une branche remontent, même quand une autre concorde.
+        yield 'branche de oneOf : $ref vers $ref introuvable' => [['oneOf' => [['$ref' => '#/components/schemas/Alias'], ['type' => 'integer']]], '1', 'référence introuvable'];
+        yield 'branche de oneOf : nœud mal formé plus bas' => [['oneOf' => [['type' => 'object', 'properties' => ['x' => ['type' => 'strin']]], ['type' => 'object']]], '{"x":"a"}', 'type non pris en charge'];
+        yield 'branche de oneOf : oneOf imbriqué mal formé' => [['oneOf' => [['oneOf' => [['type' => 'tuple']]], ['type' => 'integer']]], '1', 'type non pris en charge'];
+        yield 'branche de oneOf : référence circulaire' => [['$ref' => '#/components/schemas/Noeud'], '1', 'référence circulaire'];
+        yield 'branche de oneOf mal formée, valeur nulle' => [['nullable' => true, 'oneOf' => [['type' => 'integer'], ['$ref' => '#/components/schemas/Absent']]], 'null', 'référence introuvable'];
+        yield 'nullable sur une branche de oneOf' => [['oneOf' => [['type' => 'string', 'nullable' => true], ['type' => 'integer']]], '"x"', '« nullable » sur une branche'];
         yield 'type absent' => [['properties' => ['a' => ['type' => 'integer']]], '{"a":1}', '« type » absent'];
         yield 'type inconnu' => [['type' => 'tuple'], '[1]', 'type non pris en charge'];
         yield 'format inconnu' => [['type' => 'string', 'format' => 'ipv4'], '"10.0.0.1"', 'format non pris en charge'];
@@ -177,6 +185,8 @@ final class OpenApiSchemaValidatorTest extends TestCase
             'EntierOuNul' => ['type' => 'integer', 'nullable' => true],
             'Boucle' => ['$ref' => '#/components/schemas/Boucle2'],
             'Boucle2' => ['$ref' => '#/components/schemas/Boucle'],
+            'Alias' => ['$ref' => '#/components/schemas/Absent'],
+            'Noeud' => ['oneOf' => [['$ref' => '#/components/schemas/Noeud'], ['type' => 'integer']]],
         ]]]);
     }
 }

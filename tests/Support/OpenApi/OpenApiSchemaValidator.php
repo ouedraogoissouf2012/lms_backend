@@ -26,6 +26,13 @@ use Symfony\Component\Yaml\Yaml;
  * dans une école créée depuis KLASSCI. Le nœud ne porte que `nullable` et des
  * annotations ; la valeur doit concorder avec EXACTEMENT une branche.
  *
+ * `nullable` se lit sur le nœud `oneOf`, à l'écart de la lecture stricte
+ * d'OpenAPI 3.0.3 (qui ne le fait agir qu'à côté d'un `type`) : en 3.0, c'est
+ * la seule façon de dire qu'une valeur à plusieurs types peut être nulle. Posé
+ * sur une branche, il ne s'appliquerait à rien : il y est refusé. Les défauts
+ * de la spec trouvés dans une branche remontent toujours, même pour une valeur
+ * nulle et même quand une autre branche concorde.
+ *
  * ## Elle échoue FERMÉ
  *
  * Sur chaque nœud qu'elle PARCOURT, elle signale comme une ERREUR, jamais comme
@@ -57,6 +64,15 @@ final class OpenApiSchemaValidator
     /** @var list<string> */
     private array $erreurs = [];
 
+    /**
+     * Les défauts de la SPEC relevés depuis le début de la validation. Ils ne
+     * sont jamais effacés par la comparaison d'une branche de `oneOf` : ce n'est
+     * pas un écart de la valeur, et il remonte quoi que concordent les branches.
+     *
+     * @var list<string>
+     */
+    private array $defautsDeSpec = [];
+
     /** @param  array<mixed>  $spec */
     public function __construct(private readonly array $spec) {}
 
@@ -87,6 +103,7 @@ final class OpenApiSchemaValidator
     public function erreurs(mixed $valeur, array $schema, string $ou = '$'): array
     {
         $this->erreurs = [];
+        $this->defautsDeSpec = [];
         $this->valider($valeur, $schema, $ou, []);
 
         return $this->erreurs;
@@ -106,8 +123,14 @@ final class OpenApiSchemaValidator
 
         $forme = OpenApiSchemaShape::erreurs($schema, $ou);
         if ($forme !== []) {
-            array_push($this->erreurs, ...$forme);
+            $this->defautDeSpec(...$forme);
 
+            return;
+        }
+
+        // Avant `null` : une valeur nulle ne parcourt aucune branche, leur forme
+        // est pourtant vérifiée, comme celle d'un nœud simple.
+        if (array_key_exists('oneOf', $schema) && ! $this->branchesBienFormees($schema['oneOf'], $ou)) {
             return;
         }
 
@@ -137,30 +160,30 @@ final class OpenApiSchemaValidator
      * aussi, car deux branches qui se recouvrent (`integer` et `number`) rendent
      * le schéma ambigu.
      *
-     * La forme de chaque branche est vérifiée AVANT la comparaison : une branche
-     * mal formée, ou une référence introuvable, est une erreur. Sinon elle ne
-     * serait qu'une branche qui ne concorde pas, en silence dès qu'une autre
-     * concorde.
+     * La forme de chaque branche est vérifiée AVANT la comparaison (par
+     * `valider`), et un défaut de spec trouvé plus bas PENDANT la comparaison
+     * remonte aussi : sinon il ne serait qu'une branche qui ne concorde pas, en
+     * silence dès qu'une autre concorde.
      *
      * @param  list<array<mixed>>  $branches  forme vérifiée par OpenApiSchemaShape
      * @param  list<string>  $references
      */
     private function uneSeuleBranche(mixed $valeur, array $branches, string $ou, array $references): void
     {
-        $forme = [];
-        foreach ($branches as $i => $branche) {
-            array_push($forme, ...$this->formeDeBranche($branche, "$ou.oneOf[$i]"));
-        }
-        if ($forme !== []) {
-            array_push($this->erreurs, ...$forme);
-
-            return;
-        }
-
+        $dejaRelevees = count($this->defautsDeSpec);
         $concordantes = count(array_filter(
             $branches,
             fn (array $branche): bool => $this->ecartsDansBranche($valeur, $branche, $ou, $references) === [],
         ));
+
+        // Un défaut de spec trouvé PLUS BAS dans une branche n'est pas une branche
+        // qui ne concorde pas : il remonte, même si une autre branche concorde.
+        $decouverts = array_values(array_unique(array_slice($this->defautsDeSpec, $dejaRelevees)));
+        if ($decouverts !== []) {
+            array_push($this->erreurs, ...$decouverts);
+
+            return;
+        }
 
         if ($concordantes === 0) {
             $this->erreurs[] = "$ou : aucune branche de « oneOf » ne concorde";
@@ -175,16 +198,49 @@ final class OpenApiSchemaValidator
      */
     private function formeDeBranche(array $branche, string $ou): array
     {
-        if (array_key_exists('$ref', $branche)) {
-            $cible = $this->cible($branche['$ref']);
+        $suivies = [];
+        while (array_key_exists('$ref', $branche)) {
+            $reference = $branche['$ref'];
+            if (in_array($reference, $suivies, true)) {
+                return ["$ou : référence circulaire ".json_encode($reference)];
+            }
+            $suivies[] = $reference;
+            $cible = $this->cible($reference);
             if ($cible === null) {
-                return ["$ou : référence introuvable ".json_encode($branche['$ref'])];
+                return ["$ou : référence introuvable ".json_encode($reference)];
             }
             $branche = $cible;
         }
 
-        // Une référence vers une autre référence est lue à la comparaison.
-        return array_key_exists('$ref', $branche) ? [] : OpenApiSchemaShape::erreurs($branche, $ou);
+        if (array_key_exists('nullable', $branche)) {
+            return ["$ou : « nullable » sur une branche de « oneOf », il ne s'appliquerait à rien : il se pose sur le nœud"];
+        }
+
+        return OpenApiSchemaShape::erreurs($branche, $ou);
+    }
+
+    /**
+     * La forme de chaque branche, vérifiée avant toute comparaison, et même pour
+     * une valeur nulle.
+     *
+     * @param  list<array<mixed>>  $branches  forme vérifiée par OpenApiSchemaShape
+     */
+    private function branchesBienFormees(array $branches, string $ou): bool
+    {
+        $forme = [];
+        foreach ($branches as $i => $branche) {
+            array_push($forme, ...$this->formeDeBranche($branche, "$ou.oneOf[$i]"));
+        }
+        $this->defautDeSpec(...$forme);
+
+        return $forme === [];
+    }
+
+    /** Un défaut de la spec : relevé ici, et gardé à l'abri des comparaisons de branches. */
+    private function defautDeSpec(string ...$defauts): void
+    {
+        array_push($this->erreurs, ...$defauts);
+        array_push($this->defautsDeSpec, ...$defauts);
     }
 
     /**
@@ -221,9 +277,9 @@ final class OpenApiSchemaValidator
         $cible = $this->cible($reference);
 
         if ($cible === null) {
-            $this->erreurs[] = "$ou : référence introuvable ".json_encode($reference);
+            $this->defautDeSpec("$ou : référence introuvable ".json_encode($reference));
         } elseif (in_array($nom, $references, true)) {
-            $this->erreurs[] = "$ou : référence circulaire ".json_encode($reference);
+            $this->defautDeSpec("$ou : référence circulaire ".json_encode($reference));
         } else {
             $this->valider($valeur, $cible, $ou, [...$references, (string) $nom]);
         }
@@ -302,7 +358,7 @@ final class OpenApiSchemaValidator
             return;
         }
         if (! isset($schema['items'])) {
-            $this->erreurs[] = "$ou : liste sans « items » (OpenAPI 3.0 l'exige)";
+            $this->defautDeSpec("$ou : liste sans « items » (OpenAPI 3.0 l'exige)");
 
             return;
         }

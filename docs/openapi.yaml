@@ -4337,7 +4337,9 @@ paths:
         n'est lu, aucun appel KLASSCI n'est fait, et rien n'est ecrit sous un nom
         `klassci_*`. La seance est activee par qui la gere : son auteur, ou un
         coordinateur de l'etablissement ; tout autre enseignant recoit le 403
-        `actor_not_authorized`.
+        `actor_not_authorized`. Les eleves actifs de la classe de la seance sont
+        avertis par une notification mise en file, comme a son demarrage ; une
+        seance sans classe n'avertit personne.
       security:
         - sanctum: []
       parameters:

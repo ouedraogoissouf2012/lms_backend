@@ -308,6 +308,10 @@ L'élève (E2), la correction (E3) et les pages qui comptent les évaluations (E
   séance miroitée suit son chemin d'avant. Le port gagne `designatesClasse`.
 - **Ce qui change AUSSI dans l'école en mode KLASSCI, voulu et déclaré** : une séance créée dans le LMS qui porte sa
   classe locale admet désormais les élèves de cette classe. Elle était refusée en `no_classe_id`.
+- **Les élèves sont avertis (élargit #929, décision de l'utilisateur)** : l'activation et le démarrage d'une séance
+  sans classe KLASSCI avertissent les élèves de la même audience que l'admission (`ClasseAudienceSource::studentsOf`),
+  lue sur la séance désignée par son id local (`seance_locale_id`) ; sans cet id, rien n'est deviné. Dette : le
+  composite d'inscriptions ne liste pas les élèves d'une classe, `studentsOf` lit le pivot de sa jambe locale.
 - **Reste ouvert** : le basculement de la visio (`toggle-visio`) garde son 401 sans jeton ; la liste des participants et
   le rattachement d'un enregistrement d'une séance locale (#929, « hors périmètre ») ; le côté enseignant de #917
   (« Mes classes », `classes_concernees`).

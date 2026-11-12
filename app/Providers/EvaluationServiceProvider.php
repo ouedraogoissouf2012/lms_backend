@@ -10,6 +10,9 @@ use App\Services\Evaluation\Programming\LocalEvaluationProgramming;
 use App\Services\Evaluation\Student\LocalStudentEvaluationsReader;
 use App\Services\Evaluation\Student\StudentEvaluationsListService;
 use App\Services\Evaluation\Student\StudentEvaluationsReader;
+use App\Services\Evaluation\Teacher\EvaluationResultsReader;
+use App\Services\Evaluation\Teacher\LocalEvaluationResultsReader;
+use App\Services\Evaluation\Teacher\TeacherEvaluationResultsService;
 use App\Services\Roster\RosterAuthorityFactory;
 use Illuminate\Support\ServiceProvider;
 
@@ -40,6 +43,13 @@ final class EvaluationServiceProvider extends ServiceProvider
             StudentEvaluationsReader::class,
             static fn ($app) => $app->make(RosterAuthorityFactory::class)
                 ->sourceForCurrentTenant(StudentEvaluationsListService::class, LocalStudentEvaluationsReader::class),
+        );
+
+        // D72, E3 : les résultats de l'enseignant, par élève de la classe.
+        $this->app->bind(
+            EvaluationResultsReader::class,
+            static fn ($app) => $app->make(RosterAuthorityFactory::class)
+                ->sourceForCurrentTenant(TeacherEvaluationResultsService::class, LocalEvaluationResultsReader::class),
         );
     }
 }

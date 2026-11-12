@@ -18,8 +18,7 @@ declare(strict_types=1);
  */
 return [
     'app/Console/Commands/PurgeSeanceRecordings.php::handle' => 49,
-    'app/Http/Controllers/API/Evaluation/EvaluationKlassciSyncController.php::syncNotesToKlassci' => 50,
-    'app/Http/Controllers/API/Evaluation/EvaluationKlassciSyncController.php::syncToKlassci' => 42,
+    'app/Http/Controllers/API/Evaluation/EvaluationKlassciSyncController.php::syncNotesToKlassci' => 47,
     'app/Http/Controllers/API/Evaluation/Student/EvaluationStudentSubmissionController.php::getMySubmission' => 52,
     'app/Http/Requests/StoreLessonRequest.php::rules' => 49,
     'app/Jobs/CleanOldEvaluations.php::handle' => 49,
@@ -35,9 +34,8 @@ return [
     'app/Services/ConvertApiService.php::convertPowerPointToImages' => 52,
     'app/Services/ConvertApiService.php::convertWordToImages' => 52,
     'app/Services/Evaluation/EvaluationCreationService.php::create' => 43,
-    'app/Services/Evaluation/Teacher/TeacherEvaluationResultsService.php::getResultsByClass' => 42,
-    'app/Services/Evaluation/Teacher/TeacherEvaluationViewService.php::getSubmissions' => 56,
-    'app/Services/Evaluation/Teacher/TeacherEvaluationViewService.php::preview' => 62,
+    'app/Services/Evaluation/Teacher/TeacherEvaluationViewService.php::getSubmissions' => 51,
+    'app/Services/Evaluation/Teacher/TeacherEvaluationViewService.php::preview' => 61,
     'app/Services/Institution/InstitutionConnectionTester.php::test' => 43,
     'app/Services/KnowledgeCheck/KnowledgeCheckAttemptService.php::submitAttempt' => 42,
     'app/Services/Matiere/MatiereEvaluationsFetcher.php::fetchLmsOnlyEvaluations' => 41,

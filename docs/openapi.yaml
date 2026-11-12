@@ -2774,7 +2774,10 @@ components:
           $ref: '#/components/schemas/Decimal2'
         options:
           nullable: true
-          description: "Choix proposes (qcm) ; `null` pour les autres types."
+          type: array
+          description: "Choix proposes (qcm), une liste de libelles ; `null` pour les autres types."
+          items:
+            type: string
         is_required:
           type: boolean
         institution_id:
@@ -8392,6 +8395,10 @@ paths:
         Toutes les tentatives, entrainements compris, triees par remise
         decroissante. Lecture : enseignant proprietaire, coordinateur de
         l etablissement, administrateur.
+
+        L eleve est nomme par l auteur de la copie (`student_id`), puis, pour une
+        ligne d avant D72, par son identite KLASSCI : deux recherches bornees a
+        l etablissement de l evaluation (D72, E3).
       security:
         - sanctum: []
       parameters:
@@ -8419,11 +8426,19 @@ paths:
                           type: integer
                         evaluation_id:
                           type: integer
+                        student_id:
+                          type: integer
+                          nullable: true
+                          description: "L auteur (compte local). Nul pour une ligne d avant D72 non rattrapee."
                         klassci_etudiant_id:
                           type: integer
+                          nullable: true
+                          description: "Nul pour une copie d une ecole creee depuis le LMS (D72)."
                         student_name:
                           type: string
-                          description: "`Etudiant #<id>` quand aucun compte local ne correspond"
+                          description: |
+                            `Etudiant #<id>` quand aucun compte de l etablissement ne
+                            correspond (l identite KLASSCI, sinon l auteur).
                         attempt:
                           type: integer
                         status:
@@ -8587,10 +8602,21 @@ paths:
       operationId: getEvaluationResultsByClass
       summary: "Resultats par eleve de la classe, et statistiques"
       description: |
-        Une ligne par eleve de la classe (liste lue sur KLASSCI), qu il ait
-        passe l evaluation ou non (`status: non_passee`). Les tentatives
-        d entrainement sont ignorees. Lecture : enseignant proprietaire,
-        coordinateur de l etablissement, admin d etablissement (`superAdmin`).
+        Une ligne par eleve de la classe, qu il ait passe l evaluation ou non
+        (`status: non_passee`). Les tentatives d entrainement sont ignorees ; la
+        ligne porte la derniere copie de l eleve, rattachee par son auteur
+        (`student_id`), puis, pour une ligne d avant D72, par son identite
+        KLASSCI. Lecture : enseignant proprietaire, coordinateur de
+        l etablissement, admin d etablissement (`superAdmin`).
+
+        Ecole creee depuis KLASSCI : la liste des eleves est lue sur KLASSCI, et
+        l evaluation est presentee avec le catalogue KLASSCI. `etudiant_id` est
+        l identite KLASSCI de l eleve.
+
+        Ecole creee depuis le LMS (D72, E3) : les eleves dont l inscription a la
+        classe de l evaluation (`classe_id`) est ACTIVE, sans jeton ni appel a
+        KLASSCI. `etudiant_id` est le compte local ; `etudiant_nom` et
+        `etudiant_nom_complet` portent son nom, `etudiant_prenom` est vide.
 
         `data.evaluation` est l evaluation enrichie : ses questions (sans
         corrige), toutes ses copies, et des champs de presentation.
@@ -8619,40 +8645,98 @@ paths:
                     type: object
                     properties:
                       evaluation:
-                        allOf:
-                          - $ref: '#/components/schemas/EvaluationRecord'
-                          - type: object
+                        type: object
+                        description: |
+                          Une evaluation (champs de `EvaluationRecord`, portes par
+                          `additionalProperties`), enrichie des cles ci-dessous.
+                        required:
+                          - id
+                          - questions_count
+                        additionalProperties: true
+                        properties:
+                          id:
+                            type: integer
+                          titre:
+                            type: string
+                          classe_id:
+                            type: integer
+                            nullable: true
+                          matiere_id:
+                            type: integer
+                            nullable: true
+                          enseignant_id:
+                            type: integer
+                            nullable: true
+                          questions:
+                            type: array
+                            items:
+                              $ref: '#/components/schemas/EvaluationQuestionPublic'
+                          submissions:
+                            type: array
+                            items:
+                              $ref: '#/components/schemas/EvaluationSubmissionRecord'
+                          classe:
+                            type: object
+                            nullable: true
+                            description: |
+                              Relayee depuis le catalogue KLASSCI, ou, sans lui, faite du
+                              libelle pose a la creation (`classe_nom`) : `id` est alors
+                              celui de KLASSCI s il existe, sinon la classe locale.
+                            additionalProperties: true
                             properties:
-                              questions:
-                                type: array
-                                items:
-                                  $ref: '#/components/schemas/EvaluationQuestionPublic'
-                              submissions:
-                                type: array
-                                items:
-                                  $ref: '#/components/schemas/EvaluationSubmissionRecord'
-                              classe:
-                                nullable: true
-                              matiere:
-                                nullable: true
-                              enseignant:
-                                nullable: true
-                              date_evaluation_formatted:
-                                type: string
-                                nullable: true
-                                example: "28/09/2026 à 16:44"
-                              date_evaluation_short:
-                                type: string
-                                nullable: true
-                                example: "28/09/2026"
-                              can_be_edited:
-                                type: boolean
-                              submissions_count:
+                              id:
                                 type: integer
-                              questions_count:
-                                type: integer
-                              effective_status:
+                                nullable: true
+                              nom:
                                 type: string
+                                nullable: true
+                          matiere:
+                            type: object
+                            nullable: true
+                            description: "Meme regle que `classe`, avec `matiere_nom`."
+                            additionalProperties: true
+                            properties:
+                              id:
+                                type: integer
+                                nullable: true
+                              nom:
+                                type: string
+                                nullable: true
+                          enseignant:
+                            type: object
+                            nullable: true
+                            description: |
+                              L enseignant designe par son identite KLASSCI, sinon l auteur
+                              local (`enseignant_id`, dans l etablissement de l evaluation).
+                            properties:
+                              id:
+                                type: integer
+                              nom:
+                                type: string
+                              email:
+                                type: string
+                                nullable: true
+                          enseignant_nom:
+                            type: string
+                            nullable: true
+                          date_evaluation_formatted:
+                            type: string
+                            nullable: true
+                            example: "28/09/2026 à 16:44"
+                          date_evaluation_short:
+                            type: string
+                            nullable: true
+                            example: "28/09/2026"
+                          is_locked:
+                            type: boolean
+                          can_be_edited:
+                            type: boolean
+                          submissions_count:
+                            type: integer
+                          questions_count:
+                            type: integer
+                          effective_status:
+                            type: string
                       resultats:
                         type: array
                         items:
@@ -8713,6 +8797,7 @@ paths:
                             type: number
                             nullable: true
         '401':
+          # Ecole creee depuis KLASSCI seulement : sans jeton KLASSCI.
           $ref: '#/components/responses/KlassciUnauthorized'
         '403':
           description: |
@@ -8773,12 +8858,6 @@ paths:
                     type: string
                   data:
                     description: "Reponse de KLASSCI, forme non garantie par le LMS"
-        '400':
-          description: "L evaluation n est liee a aucune evaluation KLASSCI"
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/MessageOnly'
         '401':
           $ref: '#/components/responses/KlassciUnauthorized'
         '403':
@@ -8789,6 +8868,30 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/MessageOnly'
+        '422':
+          description: |
+            L evaluation n est liee a aucune evaluation KLASSCI
+            (`klassci_evaluation_id` nul) : celle d une ecole creee depuis le LMS,
+            ou une ligne jamais liee. Refus motive, avant tout traitement : rien
+            n est envoye ni marque (D72, E3).
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - success
+                  - message
+                  - reason
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  message:
+                    type: string
+                  reason:
+                    type: string
+                    enum:
+                      - evaluation_not_linked_to_klassci
         '409':
           description: "Une copie a dissertation n est pas encore notee"
           content:
@@ -8867,6 +8970,30 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/MessageOnly'
+        '422':
+          description: |
+            L evaluation n est liee a aucune evaluation KLASSCI
+            (`klassci_evaluation_id` nul) : celle d une ecole creee depuis le LMS,
+            ou une ligne jamais liee. Refus motive, avant tout traitement : rien
+            n est envoye ni marque (D72, E3).
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - success
+                  - message
+                  - reason
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  message:
+                    type: string
+                  reason:
+                    type: string
+                    enum:
+                      - evaluation_not_linked_to_klassci
         '409':
           description: "Une copie a dissertation n est pas encore notee"
           content:

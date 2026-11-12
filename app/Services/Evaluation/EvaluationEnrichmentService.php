@@ -79,24 +79,53 @@ class EvaluationEnrichmentService
                 }
             }
 
-            return $evaluations->map(function ($evaluation) use ($classesMap, $matieresMap): array {
-                $evalArray = $evaluation->toArray();
-
-                $this->attachClasse($evalArray, $evaluation, $classesMap);
-                $this->attachMatiere($evalArray, $evaluation, $matieresMap);
-                $this->attachEnseignant($evalArray, $evaluation);
-                $this->attachDateFormats($evalArray, $evaluation);
-                $this->preserveDynamicFields($evalArray, $evaluation);
-                $this->attachComputedMetadata($evalArray, $evaluation);
-
-                return $evalArray;
-            })->toArray();
+            return $this->present($evaluations, $classesMap, $matieresMap);
         } catch (\Exception $e) {
             $this->journal->error('Erreur enrichissement évaluations', $e);
 
             // Fail-soft : retourner les évaluations sans enrichissement plutôt que de casser la page.
             return $evaluations->toArray();
         }
+    }
+
+    /**
+     * La même présentation, sans catalogue KLASSCI : aucun appel à KLASSCI
+     * (D72, E3). Une évaluation d'une école créée depuis le LMS porte ses
+     * libellés (`classe_nom`, `matiere_nom`, posés à la création) et son auteur
+     * local (`enseignant_id`) ; les branches « sans KLASSCI » ci-dessous les
+     * lisent.
+     *
+     * Sert les résultats de l'enseignant. La fiche et la liste y passeront
+     * avec C27 (E4).
+     *
+     * @param  Collection<int, \App\Models\Evaluation>  $evaluations
+     * @return array<int, array<string, mixed>>
+     */
+    public function enrichWithoutCatalogue(Collection $evaluations): array
+    {
+        return $this->present($evaluations, [], []);
+    }
+
+    /**
+     * @param  Collection<int, \App\Models\Evaluation>  $evaluations
+     * @param  array<int, mixed>  $classesMap
+     * @param  array<int, mixed>  $matieresMap
+     * @return array<int, array<string, mixed>>
+     */
+    private function present(Collection $evaluations, array $classesMap, array $matieresMap): array
+    {
+        return $evaluations->map(function ($evaluation) use ($classesMap, $matieresMap): array {
+            $evalArray = $evaluation->toArray();
+
+            $this->attachClasse($evalArray, $evaluation, $classesMap);
+            $this->attachMatiere($evalArray, $evaluation, $matieresMap);
+            $this->attachEnseignant($evalArray, $evaluation);
+            $this->attachDateFormats($evalArray, $evaluation);
+            $this->preserveDynamicFields($evalArray, $evaluation);
+            $this->attachComputedMetadata($evalArray, $evaluation);
+
+            return $evalArray;
+        })->all();
     }
 
     /**
@@ -127,8 +156,9 @@ class EvaluationEnrichmentService
             }
         } elseif ($evaluation->classe_nom) {
             // Évaluation standalone : pas de KLASSCI, utiliser le nom local.
+            // L'id : celui de KLASSCI s'il existe, sinon la classe locale (D72).
             $evalArray['classe'] = [
-                'id'      => $evaluation->klassci_classe_id,
+                'id'      => $evaluation->klassci_classe_id ?? $evaluation->classe_id,
                 'name'    => $evaluation->classe_nom,
                 'libelle' => $evaluation->classe_nom,
                 'nom'     => $evaluation->classe_nom,
@@ -160,7 +190,7 @@ class EvaluationEnrichmentService
             }
         } elseif ($evaluation->matiere_nom) {
             $evalArray['matiere'] = [
-                'id'      => $evaluation->klassci_matiere_id,
+                'id'      => $evaluation->klassci_matiere_id ?? $evaluation->matiere_id,
                 'nom'     => $evaluation->matiere_nom,
                 'libelle' => $evaluation->matiere_nom,
             ];
@@ -190,9 +220,26 @@ class EvaluationEnrichmentService
                 $evalArray['enseignant_nom'] = 'Enseignant #' . $evaluation->klassci_enseignant_id;
             }
         } else {
-            $evalArray['enseignant'] = null;
-            $evalArray['enseignant_nom'] = null;
+            $this->attachAuteurLocal($evalArray, $evaluation);
         }
+    }
+
+    /**
+     * Sans identité KLASSCI : l'auteur local (`enseignant_id`, D72), borné à
+     * l'établissement de l'évaluation. Sans auteur, rien.
+     *
+     * @param  array<string, mixed>  $evalArray  Modifié par référence.
+     */
+    private function attachAuteurLocal(array &$evalArray, Evaluation $evaluation): void
+    {
+        $auteur = $evaluation->enseignant_id === null ? null : User::query()
+            ->where('institution_id', $evaluation->institution_id)
+            ->find($evaluation->enseignant_id);
+
+        $evalArray['enseignant'] = $auteur === null
+            ? null
+            : ['id' => $auteur->id, 'nom' => $auteur->name, 'email' => $auteur->email];
+        $evalArray['enseignant_nom'] = $auteur?->name;
     }
 
     /**

@@ -33,7 +33,8 @@ use Tests\TestCase;
  *
  * - Chaque POINT DE RENDU (11 sites, cinq familles ; « ma copie » n'en est plus
  *   un depuis D72, E2a, voir son test ; le démarrage n'en est un que dans
- *   l'école créée depuis KLASSCI depuis E2b) rend 401 et
+ *   l'école créée depuis KLASSCI depuis E2b, les résultats par classe depuis
+ *   E3) rend 401 et
  *   `klassci_token_missing`, avec un message qui nomme KLASSCI et ne demande pas
  *   de se reconnecter.
  * - Le jeton EXPIRÉ (KLASSCI répond 401) garde `klassci_session_expired`, sur le
@@ -133,7 +134,12 @@ final class KlassciTokenMissingReasonTest extends TestCase
         $this->assertJetonAbsent($this->asTenant($compte)->getJson('/api/lms/classes/42/etudiants'));
     }
 
-    #[DataProvider('volets')]
+    /**
+     * Depuis D72 (E3), les résultats d'une école indépendante lisent le roster
+     * local, sans jeton (`EnseignantCorrigeSesEvaluationsTest`) : le point de
+     * rendu n'est plus sur leur chemin.
+     */
+    #[DataProvider('voletKlassciSeul')]
     public function test_resultats_par_classe_dit_le_jeton_absent(InstitutionMode $mode): void
     {
         // `authorize()` exige le propriétaire : l'enseignant porte son identité.

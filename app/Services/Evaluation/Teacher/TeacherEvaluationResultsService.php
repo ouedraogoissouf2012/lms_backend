@@ -6,7 +6,6 @@ namespace App\Services\Evaluation\Teacher;
 
 use App\Exceptions\MissingKlassciTokenException;
 use App\Models\Evaluation;
-use App\Models\EvaluationSubmission;
 use App\Models\User;
 use App\Services\Classe\ClasseEnvelope;
 use App\Services\Classe\ClasseRoster;
@@ -41,9 +40,16 @@ use Throwable;
  * Le caller (`EvaluationTeacherController`) se contente de `response()
  * ->json($result['payload'], $result['status'])`.
  *
+ * ## Source de l'école créée depuis KLASSCI (D72, E3)
+ *
+ * Le roster et la présentation de l'évaluation viennent de KLASSCI. La forme de
+ * la réponse ({@see ResultatsDeClasse}) et le rattachement d'une copie à son
+ * élève ({@see DernieresCopies}) sont partagés avec la source locale
+ * ({@see LocalEvaluationResultsReader}).
+ *
  * @see app/Http/Controllers/API/Evaluation/EvaluationTeacherController.php
  */
-final class TeacherEvaluationResultsService
+final class TeacherEvaluationResultsService implements EvaluationResultsReader
 {
     public function __construct(
         private readonly ClasseRoster $roster,
@@ -66,13 +72,7 @@ final class TeacherEvaluationResultsService
             $evaluation = Evaluation::with(['questions', 'submissions'])->find($evaluationId);
 
             if ($evaluation === null) {
-                return [
-                    'status'  => 404,
-                    'payload' => [
-                        'success' => false,
-                        'message' => 'Évaluation non trouvée',
-                    ],
-                ];
+                return ResultatsDeClasse::introuvable();
             }
 
             $this->logger->info('📊 Récupération résultats évaluation', [
@@ -113,14 +113,7 @@ final class TeacherEvaluationResultsService
                 'evaluation_id' => $evaluationId,
             ]);
 
-            return [
-                'status'  => 500,
-                'payload' => [
-                    'success' => false,
-                    'message' => 'Erreur lors de la récupération des résultats',
-                    'error'   => 'Une erreur est survenue.',
-                ],
-            ];
+            return ResultatsDeClasse::echec();
         }
     }
 
@@ -142,12 +135,7 @@ final class TeacherEvaluationResultsService
         $evaluationEnrichie = $this->enrichmentService->enrich(collect([$evaluation]), $teacherToken)[0];
 
         $resultats = $this->buildResultats($evaluation, $etudiants);
-
-        // Tri alphabétique par nom complet — préserve l'ordre que le frontend attend.
-        usort($resultats, static fn (array $a, array $b): int
-            => strcmp($a['etudiant_nom_complet'], $b['etudiant_nom_complet']));
-
-        $statistiques = $this->buildStatistiques($resultats, count($etudiants));
+        $statistiques = ResultatsDeClasse::statistiques($resultats, count($etudiants));
 
         $this->logger->info('✅ Résultats calculés', [
             'total_etudiants' => $statistiques['total_etudiants'],
@@ -155,17 +143,7 @@ final class TeacherEvaluationResultsService
             'moyenne'         => $statistiques['moyenne_classe'],
         ]);
 
-        return [
-            'status'  => 200,
-            'payload' => [
-                'success' => true,
-                'data'    => [
-                    'evaluation'   => $evaluationEnrichie,
-                    'resultats'    => $resultats,
-                    'statistiques' => $statistiques,
-                ],
-            ],
-        ];
+        return ResultatsDeClasse::reponse($evaluationEnrichie, $resultats, $statistiques);
     }
 
     /**
@@ -177,12 +155,11 @@ final class TeacherEvaluationResultsService
      */
     private function buildResultats(Evaluation $evaluation, array $etudiants): array
     {
-        // #503 — préchargements en amont pour éliminer le N+1 :
-        // users locaux par email (1 requête), et submissions "live" groupées par
-        // klassci_etudiant_id depuis la collection DÉJÀ eager-loaded (0 requête,
-        // cf. `Evaluation::with('submissions')` dans getResultsByClass).
+        // #503 — préchargements en amont pour éliminer le N+1 : users locaux
+        // par email (1 requête), et copies depuis la collection DÉJÀ
+        // eager-loaded (0 requête, cf. `Evaluation::with('submissions')`).
         $usersByEmail = $this->preloadUsersByEmail($etudiants);
-        $submissionsByKlassci = $this->liveSubmissionsByKlassciId($evaluation);
+        $copies = DernieresCopies::de($evaluation);
 
         $resultats = [];
 
@@ -190,28 +167,21 @@ final class TeacherEvaluationResultsService
             $email     = KlassciPayload::toStringOrNull($etudiant['email'] ?? null) ?? '';
             $userLocal = $email !== '' ? $usersByEmail->get($email) : null;
 
-            // 1) Via klassci_id du user local synchronisé ; 2) fallback ID KLASSCI
-            // direct. La plus récente par groupe (collection déjà triée desc).
-            $submission = null;
-            if ($userLocal !== null && $userLocal->klassci_id !== null) {
-                $submission = $submissionsByKlassci->get($userLocal->klassci_id)?->first();
-            }
-            if ($submission === null) {
-                $submission = $submissionsByKlassci->get(KlassciPayload::toInt($etudiant['id'] ?? null))?->first();
-            }
+            // L'auteur local (`student_id`) ; à défaut, le `klassci_id` du
+            // compte local, puis l'ID KLASSCI direct (C26).
+            $copie = $copies->pour(
+                $userLocal?->id,
+                $userLocal?->klassci_id,
+                KlassciPayload::toInt($etudiant['id'] ?? null),
+            );
 
-            $resultats[] = [
-                'etudiant_id'           => $etudiant['id'],
-                'etudiant_nom'          => $etudiant['nom'] ?? '',
-                'etudiant_prenom'       => $etudiant['prenom'] ?? '',
-                'etudiant_nom_complet'  => ClasseEnvelope::identiteAffichable($etudiant),
-                'note'                  => $submission?->note_sur_20,
-                'score'                 => $submission?->score,
-                'status'                => $submission?->status ?? 'non_passee',
-                'submitted_at'          => $submission?->submitted_at,
-                'attempt'               => $submission?->attempt,
-                'feedback'              => $submission?->feedback,
-            ];
+            $resultats[] = ResultatsDeClasse::ligne(
+                $etudiant['id'],
+                $etudiant['nom'] ?? '',
+                $etudiant['prenom'] ?? '',
+                ClasseEnvelope::identiteAffichable($etudiant),
+                $copie,
+            );
         }
 
         return $resultats;
@@ -234,49 +204,5 @@ final class TeacherEvaluationResultsService
         $users = User::query()->whereIn('email', $emails)->get()->keyBy('email');
 
         return $users;
-    }
-
-    /**
-     * Submissions "live" (hors `[PRACTICE]`) groupées par `klassci_etudiant_id`,
-     * la plus récente en tête de chaque groupe. Utilise la collection DÉJÀ
-     * eager-loaded sur l'évaluation → aucune requête supplémentaire (#503).
-     *
-     * @return \Illuminate\Support\Collection<int|string, \Illuminate\Database\Eloquent\Collection<int, EvaluationSubmission>>
-     */
-    private function liveSubmissionsByKlassciId(Evaluation $evaluation): \Illuminate\Support\Collection
-    {
-        return $evaluation->submissions
-            ->filter(fn (EvaluationSubmission $s): bool =>
-                $s->feedback === null || ! str_starts_with((string) $s->feedback, '[PRACTICE]'))
-            ->sortByDesc('created_at')
-            ->groupBy('klassci_etudiant_id');
-    }
-
-    /**
-     * Agrège les stats de classe à partir des résultats individuels.
-     *
-     * Les statuts `soumis` ET `corrige` comptent comme "soumis" (le
-     * corrigé reste une participation valide).
-     *
-     * @param  array<int, array<string, mixed>>  $resultats
-     * @return array<string, mixed>
-     */
-    private function buildStatistiques(array $resultats, int $totalEtudiants): array
-    {
-        $soumissions = collect($resultats)->whereIn('status', ['soumis', 'corrige']);
-        $notes       = $soumissions->pluck('note')->filter();
-
-        return [
-            'total_etudiants'      => $totalEtudiants,
-            'etudiants_soumis'     => $soumissions->count(),
-            'etudiants_en_cours'   => collect($resultats)->where('status', 'en_cours')->count(),
-            'etudiants_non_passes' => collect($resultats)->where('status', 'non_passee')->count(),
-            'taux_participation'   => $totalEtudiants > 0
-                ? round(($soumissions->count() / $totalEtudiants) * 100, 2)
-                : 0,
-            'moyenne_classe'       => $notes->count() > 0 ? round((float) $notes->avg(), 2) : null,
-            'note_max'             => $notes->count() > 0 ? round((float) $notes->max(), 2) : null,
-            'note_min'             => $notes->count() > 0 ? round((float) $notes->min(), 2) : null,
-        ];
     }
 }

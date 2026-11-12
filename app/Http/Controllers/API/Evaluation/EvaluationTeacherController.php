@@ -11,6 +11,7 @@ use App\Http\Requests\PreviewEvaluationRequest;
 use App\Http\Requests\ViewEvaluationResultsRequest;
 use App\Models\Evaluation;
 use App\Models\EvaluationSubmission;
+use App\Services\Evaluation\Teacher\EvaluationResultsReader;
 use App\Services\Evaluation\Teacher\EvaluationTeacherGradeService;
 use App\Services\Evaluation\Teacher\TeacherEvaluationResultsService;
 use App\Services\Evaluation\Teacher\TeacherEvaluationViewService;
@@ -28,8 +29,14 @@ use RuntimeException;
  *
  * ## DI strict (§1.6 D du manifeste)
  *
- * Les 2 services sont injectés par constructor, jamais via `app()`. Eux-mêmes
+ * Les services sont injectés par constructor, jamais via `app()`. Eux-mêmes
  * dépendent de PSR-3 `LoggerInterface` plutôt que de la Facade `Log::`.
+ *
+ * Les résultats par classe font exception : leur source dépend du type de
+ * l'école ({@see EvaluationResultsReader}, D72 E3). Elle est reçue par la
+ * MÉTHODE, résolue à chaque requête : Laravel mémoïse le contrôleur sur l'objet
+ * Route, et une source reçue par le constructeur servirait la première école à
+ * toutes les suivantes (ADR-EI-01, règle 3).
  *
  * ## Endpoints (préservés à l'identique)
  *
@@ -48,17 +55,16 @@ final class EvaluationTeacherController extends AuthenticatedController
     use RendersKlassciBackedErrors;
 
     public function __construct(
-        private readonly TeacherEvaluationResultsService $resultsService,
         private readonly TeacherEvaluationViewService $viewService,
         private readonly EvaluationTeacherGradeService $gradeService,
     ) {}
 
-    public function getResultsByClass(ViewEvaluationResultsRequest $request, int $id): JsonResponse
+    public function getResultsByClass(ViewEvaluationResultsRequest $request, int $id, EvaluationResultsReader $resultats): JsonResponse
     {
         $teacher = $this->authenticatedUser($request);
 
         try {
-            return $this->relayResponse($this->resultsService->getResultsByClass($id, $teacher));
+            return $this->relayResponse($resultats->getResultsByClass($id, $teacher));
         } catch (RuntimeException $e) {
             return $this->renderKlassciFailure($e);
         }

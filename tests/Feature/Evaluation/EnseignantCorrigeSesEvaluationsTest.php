@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Evaluation;
 
+use App\Enums\ClasseEtudiantStatut;
 use App\Enums\InstitutionMode;
 use App\Models\Classe;
 use App\Models\Evaluation;
@@ -12,7 +13,9 @@ use App\Models\EvaluationSubmission;
 use App\Models\Institution;
 use App\Models\Matiere;
 use App\Models\User;
+use App\Services\Evaluation\Student\LearnerEvaluationScope;
 use App\Services\KlassciProxyService;
+use App\Services\TenantManager;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Mockery\MockInterface;
@@ -120,11 +123,38 @@ final class EnseignantCorrigeSesEvaluationsTest extends TestCase
                 'etudiants_soumis' => 2,
                 'etudiants_en_cours' => 1,
                 'etudiants_non_passes' => 1,
-                'taux_participation' => 50.0,
+                // JSON rend `50.0` en `50` : un entier au décodage.
+                'taux_participation' => 50,
                 'moyenne_classe' => 11.5,
-                'note_max' => 15.0,
-                'note_min' => 8.0,
+                'note_max' => 15,
+                'note_min' => 8,
             ]);
+    }
+
+    public function test_le_roster_des_resultats_est_l_audience_de_l_eleve(): void
+    {
+        // Une seule règle des inscriptions actives : pour chaque statut
+        // d'inscription, l'élève figure dans les résultats SI ET SEULEMENT SI
+        // il voit l'évaluation (l'audience d'E2a).
+        [$ecole, $enseignant, $classe, $maths] = $this->enseignantEtSaClasse();
+        $evaluation = $this->evaluation($classe, $maths, $enseignant);
+        $eleves = [];
+        foreach (ClasseEtudiantStatut::cases() as $statut) {
+            $eleves[$statut->value] = $this->eleve($ecole, $classe, 'Élève '.$statut->value, $statut->value);
+        }
+
+        $roster = array_column($this->asTenant($enseignant)->getJson($this->de($evaluation).'/results-by-class')
+            ->assertOk()
+            ->json('data.resultats'), 'etudiant_id');
+
+        $tenants = app(TenantManager::class);
+        $tenants->set($ecole);
+        $audience = app(LearnerEvaluationScope::class);
+        $voient = array_keys(array_filter($eleves, static fn (User $eleve): bool => $audience->includes($eleve, $evaluation)));
+        $tenants->reset();
+
+        self::assertSame([ClasseEtudiantStatut::Actif->value], $voient);
+        self::assertSame([$eleves[ClasseEtudiantStatut::Actif->value]->getKey()], $roster);
     }
 
     public function test_un_collegue_ne_lit_pas_les_resultats(): void

@@ -1986,8 +1986,13 @@ components:
           maxLength: 255
         date_seance:
           type: string
-          description: "Toute date lisible : `2026-11-03`, `2026-11-03 08:30:00`."
-          example: "2026-11-03 08:30:00"
+          format: date-time
+          pattern: '^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\.[0-9]+)?(Z|[+-][0-9]{2}:[0-9]{2})$'
+          description: |
+            Le debut de la seance, en ISO 8601 AVEC decalage (`Z` ou `+01:00`).
+            Une heure seule, une date sans decalage ou une date seule rendent
+            422. L'instant est range dans le fuseau de l'application.
+          example: "2026-11-03T08:30:00+00:00"
         matiere_nom:
           type: string
           maxLength: 191
@@ -2108,6 +2113,26 @@ components:
     # Les refus de POST /lms/seances, SERRES : propres a la route, pour que le
     # test de contrat garde aussi les erreurs (MessageOnly et ValidationFailed,
     # partages, restent laches).
+    SeanceLocaleHorsEtablissement:
+      type: object
+      additionalProperties: false
+      required:
+        - success
+        - message
+        - reason
+      properties:
+        success:
+          type: boolean
+          enum:
+            - false
+        message:
+          type: string
+        reason:
+          type: string
+          enum:
+            - class_out_of_scope
+            - subject_out_of_scope
+
     SeanceLocaleHorsProgramme:
       type: object
       additionalProperties: false
@@ -3589,11 +3614,11 @@ paths:
               schema:
                 $ref: '#/components/schemas/SeanceLocaleInterdite'
         '404':
-          description: "Classe introuvable dans l'etablissement de l'auteur (inexistante, ou d'une autre ecole)"
+          description: "Classe ou matiere introuvable dans l'etablissement de l'auteur (inexistante, ou d'une autre ecole) : le meme refus, son motif dit laquelle."
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/SeanceLocaleRefus'
+                $ref: '#/components/schemas/SeanceLocaleHorsEtablissement'
         '422':
           description: "Charge invalide (`errors`), ou matiere hors du programme de la classe (`reason` `subject_not_in_class_program`)."
           content:

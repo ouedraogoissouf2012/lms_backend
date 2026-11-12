@@ -5983,7 +5983,7 @@ paths:
           LOCAUX (exiges), couple programme dans l'ecole ou l'auteur est designe (la gestion :
           tout couple programme).
         Jamais d'id local sous un nom `klassci_*` (D132) : chaque source refuse la famille de
-        l'autre (422 `identifiant_hors_espace`). L'auteur (`enseignant_id`) vient du jeton.
+        l'autre (422 `identifier_out_of_scope`). L'auteur (`enseignant_id`) vient du jeton.
       security:
         - sanctum: []
       requestBody:
@@ -6102,8 +6102,8 @@ paths:
                   reason:
                     type: string
                     enum:
-                      - enseignant_klassci_requis
-                      - non_designe
+                      - klassci_teacher_identity_missing
+                      - teacher_not_assigned
                       - no_institution
         '409':
           description: "Une version en ligne existe deja pour cette evaluation KLASSCI."
@@ -6128,7 +6128,7 @@ paths:
           description: |
             Erreur de validation (`errors`), classe ou matiere hors de l'ecole (`errors`), ou refus
             motive : programmation KLASSCI absente dans une ecole creee depuis KLASSCI
-            (`programmation_klassci_requise`), identifiant de l'autre famille (`identifiant_hors_espace`).
+            (`klassci_scheduling_required`), identifiant de l'autre famille (`identifier_out_of_scope`).
           content:
             application/json:
               schema:
@@ -6151,8 +6151,8 @@ paths:
                   reason:
                     type: string
                     enum:
-                      - programmation_klassci_requise
-                      - identifiant_hors_espace
+                      - klassci_scheduling_required
+                      - identifier_out_of_scope
         '500':
           description: "Echec transactionnel de la creation (rollback, journalise)."
           content:

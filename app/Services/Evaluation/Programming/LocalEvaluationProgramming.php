@@ -18,7 +18,7 @@ use Illuminate\Database\ConnectionInterface;
  * - Le couple doit être programmé dans `classe_matiere`, le pivot local que lit
  *   déjà la page matière (`LocalMatiereDetailsReader`). Un enseignant doit y
  *   être LE formateur désigné ; la gestion crée sur tout couple programmé de
- *   son école. Sinon 403 `non_designe`.
+ *   son école. Sinon 403 `teacher_not_assigned`.
  * - L'auteur (`enseignant_id`) est le formateur désigné du couple, même quand
  *   la gestion crée : c'est lui qui modifie, publie et corrige (D136). La
  *   gestion n'est l'auteur que si personne n'est désigné ; elle garde ses
@@ -58,7 +58,7 @@ final class LocalEvaluationProgramming implements EvaluationProgramming
             return new EvaluationProgrammingRefusal(
                 403,
                 'Vous n\'êtes pas désigné pour enseigner cette matière dans cette classe.',
-                'non_designe',
+                'teacher_not_assigned',
             );
         }
 

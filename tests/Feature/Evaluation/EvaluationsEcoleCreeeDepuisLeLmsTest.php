@@ -84,7 +84,7 @@ final class EvaluationsEcoleCreeeDepuisLeLmsTest extends TestCase
         self::assertSame(1, EvaluationQuestion::query()->where('evaluation_id', $evaluation->getKey())->count());
     }
 
-    public function test_un_enseignant_non_designe_pour_ce_couple_recoit_403_non_designe(): void
+    public function test_un_enseignant_non_designe_pour_ce_couple_recoit_403_teacher_not_assigned(): void
     {
         // Désigné pour Maths en 5e B, pas en 6e A : le couple compte, pas la
         // matière seule, ni la classe seule.
@@ -98,7 +98,7 @@ final class EvaluationsEcoleCreeeDepuisLeLmsTest extends TestCase
         $this->asTenant($moi)->postJson(self::CREER, $this->corps($sixieme, $maths))
             ->assertForbidden()
             ->assertJsonPath('success', false)
-            ->assertJsonPath('reason', 'non_designe');
+            ->assertJsonPath('reason', 'teacher_not_assigned');
 
         self::assertSame(0, $this->lignes());
     }
@@ -144,7 +144,7 @@ final class EvaluationsEcoleCreeeDepuisLeLmsTest extends TestCase
             $this->asTenant($moi)
                 ->postJson(self::CREER, $this->corps($classe, $maths, [$champ => $classe->getKey()]))
                 ->assertUnprocessable()
-                ->assertJsonPath('reason', 'identifiant_hors_espace');
+                ->assertJsonPath('reason', 'identifier_out_of_scope');
         }
 
         self::assertSame(0, $this->lignes());
@@ -263,7 +263,7 @@ final class EvaluationsEcoleCreeeDepuisLeLmsTest extends TestCase
         $this->asTenant($gestion)
             ->postJson(self::CREER, $this->corps($this->classe($ecole, '6e A'), $this->matiere($ecole, 'Maths')))
             ->assertForbidden()
-            ->assertJsonPath('reason', 'non_designe');
+            ->assertJsonPath('reason', 'teacher_not_assigned');
 
         self::assertSame(0, $this->lignes());
     }
@@ -349,11 +349,11 @@ final class EvaluationsEcoleCreeeDepuisLeLmsTest extends TestCase
 
         $this->asTenant($sansIdentite)->postJson(self::CREER, $programmationKlassci)
             ->assertForbidden()
-            ->assertJsonPath('reason', 'enseignant_klassci_requis');
+            ->assertJsonPath('reason', 'klassci_teacher_identity_missing');
         $this->asTenant($moi)->postJson(self::CREER, $this->corps($classe, $maths))->assertCreated();
         $this->asTenant($sansIdentite)->postJson(self::CREER, $programmationKlassci)
             ->assertForbidden()
-            ->assertJsonPath('reason', 'enseignant_klassci_requis');
+            ->assertJsonPath('reason', 'klassci_teacher_identity_missing');
 
         self::assertSame(1, $this->lignes());
     }

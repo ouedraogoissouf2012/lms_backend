@@ -33,7 +33,7 @@ final readonly class EvaluationProgrammingRefusal
                 return new self(
                     422,
                     'Cet identifiant n\'appartient pas à l\'espace de votre établissement.',
-                    'identifiant_hors_espace',
+                    'identifier_out_of_scope',
                 );
             }
         }

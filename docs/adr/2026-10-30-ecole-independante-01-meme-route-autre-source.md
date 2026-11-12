@@ -200,13 +200,13 @@ L'élève (E2), la correction (E3) et les pages qui comptent les évaluations (E
   La propriété accepte `enseignant_id`, ou, pour une ligne d'avant D72, `klassci_enseignant_id`. Elle ne compare
   jamais le mode.
 - **Deux familles d'identifiants, jamais mêlées (D132).** Un id local ne vit jamais sous un nom `klassci_*`, même dans
-  une requête. Chaque source refuse la famille de l'autre (422 `identifiant_hors_espace`).
+  une requête. Chaque source refuse la famille de l'autre (422 `identifier_out_of_scope`).
 - **L'auteur est le formateur désigné du couple (D136),** même quand la gestion crée. La gestion n'en est l'autrice
   que si personne n'est désigné. Elle garde ses droits par son rôle, et l'acteur réel reste au journal d'audit.
 - **Ce qui change AUSSI dans l'école créée depuis KLASSCI, voulu et déclaré :**
-  - sans `klassci_evaluation_id`, la création est refusée (422 `programmation_klassci_requise`). Les deux appelants
+  - sans `klassci_evaluation_id`, la création est refusée (422 `klassci_scheduling_required`). Les deux appelants
     du front envoient toujours la programmation ;
-  - le 403 d'un compte sans identité KLASSCI porte `reason: enseignant_klassci_requis`, avec le même message ;
+  - le 403 d'un compte sans identité KLASSCI porte `reason: klassci_teacher_identity_missing`, avec le même message ;
   - `enseignant_id` est écrit ;
   - les deux libellés sont lus séparément, chacun en fail-soft, et un libellé vide est sauté. Les ids sont typés en
     entiers ;

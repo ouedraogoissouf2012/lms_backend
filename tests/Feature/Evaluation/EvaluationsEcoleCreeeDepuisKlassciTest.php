@@ -27,7 +27,7 @@ use Tests\TestCase;
  * - l'auteur est aussi écrit dans `enseignant_id` (le même fait dans les deux
  *   types d'école) ;
  * - sans `klassci_evaluation_id`, la création est refusée (422,
- *   `programmation_klassci_requise`) : la saisie libre n'appartient qu'à l'école
+ *   `klassci_scheduling_required`) : la saisie libre n'appartient qu'à l'école
  *   créée depuis le LMS. Les deux appelants du front envoient toujours la
  *   programmation (`useCreateQuestions.js:198`,
  *   `useTeacherEvaluationActions.js:65`).
@@ -60,7 +60,7 @@ final class EvaluationsEcoleCreeeDepuisKlassciTest extends TestCase
             ->assertExactJson([
                 'success' => false,
                 'message' => 'Vous devez être un enseignant KLASSCI synchronisé pour créer une évaluation.',
-                'reason' => 'enseignant_klassci_requis',
+                'reason' => 'klassci_teacher_identity_missing',
             ]);
 
         self::assertSame(0, $this->lignes());
@@ -99,7 +99,7 @@ final class EvaluationsEcoleCreeeDepuisKlassciTest extends TestCase
         $this->asTenant($this->enseignantKlassci($ecole, 42))->postJson(self::CREER, $programmation)
             ->assertUnprocessable()
             ->assertJsonPath('success', false)
-            ->assertJsonPath('reason', 'programmation_klassci_requise');
+            ->assertJsonPath('reason', 'klassci_scheduling_required');
 
         self::assertSame(0, $this->lignes());
     }
@@ -114,7 +114,7 @@ final class EvaluationsEcoleCreeeDepuisKlassciTest extends TestCase
         foreach (['classe_id', 'matiere_id'] as $champ) {
             $this->asTenant($moi)->postJson(self::CREER, $this->programmation([$champ => 7]))
                 ->assertUnprocessable()
-                ->assertJsonPath('reason', 'identifiant_hors_espace');
+                ->assertJsonPath('reason', 'identifier_out_of_scope');
         }
 
         self::assertSame(0, $this->lignes());

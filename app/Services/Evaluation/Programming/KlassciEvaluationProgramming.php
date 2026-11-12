@@ -37,7 +37,7 @@ final class KlassciEvaluationProgramming implements EvaluationProgramming
             return new EvaluationProgrammingRefusal(
                 403,
                 'Vous devez être un enseignant KLASSCI synchronisé pour créer une évaluation.',
-                'enseignant_klassci_requis',
+                'klassci_teacher_identity_missing',
             );
         }
 
@@ -50,7 +50,7 @@ final class KlassciEvaluationProgramming implements EvaluationProgramming
             return new EvaluationProgrammingRefusal(
                 422,
                 'Une évaluation se programme dans KLASSCI avant d\'être mise en ligne.',
-                'programmation_klassci_requise',
+                'klassci_scheduling_required',
             );
         }
 

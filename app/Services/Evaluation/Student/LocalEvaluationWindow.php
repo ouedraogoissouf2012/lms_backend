@@ -14,7 +14,9 @@ use Illuminate\Support\Carbon;
  * - ouverture : `date_evaluation` ;
  * - fermeture : `deadline_at` s'il est posé, sinon `date_evaluation +
  *   duree_minutes` ;
- * - sans date : fermée (fail-closed, comme #499).
+ * - sans date : fermée (fail-closed, comme #499) ;
+ * - une fermeture antérieure à l'ouverture est ramenée à l'ouverture : la
+ *   fenêtre est vide, jamais « terminée sans avoir commencé ».
  *
  * Même forme que la fenêtre KLASSCI (`programmation.window`), que le front lit :
  * `{is_open, has_started, has_ended, start_at, end_at}`.
@@ -35,6 +37,7 @@ final class LocalEvaluationWindow
         $fin = $evaluation->deadline_at instanceof CarbonInterface
             ? $evaluation->deadline_at
             : $debut->copy()->addMinutes((int) $evaluation->duree_minutes);
+        $fin = $fin->lessThan($debut) ? $debut : $fin;
         $commencee = $maintenant->greaterThanOrEqualTo($debut);
         $terminee = $maintenant->greaterThanOrEqualTo($fin);
 

@@ -31,7 +31,8 @@ use Tests\TestCase;
  *
  * ## Ce que ces tests figent
  *
- * - Chaque POINT DE RENDU (12 sites, cinq familles) rend 401 et
+ * - Chaque POINT DE RENDU (11 sites, cinq familles ; « ma copie » n'en est plus
+ *   un depuis D72, E2a, voir son test) rend 401 et
  *   `klassci_token_missing`, avec un message qui nomme KLASSCI et ne demande pas
  *   de se reconnecter.
  * - Le jeton EXPIRÉ (KLASSCI répond 401) garde `klassci_session_expired`, sur le
@@ -178,7 +179,12 @@ final class KlassciTokenMissingReasonTest extends TestCase
 
     // ───────────────────────── élève sans identité KLASSCI
 
-    #[DataProvider('volets')]
+    /**
+     * Depuis D72 (E2a), la liste d'une école indépendante lit sa source locale
+     * (`EleveVoitSesEvaluationsTest`) : le point de rendu n'est plus sur son
+     * chemin.
+     */
+    #[DataProvider('voletKlassciSeul')]
     public function test_mes_evaluations_sans_identite_klassci(InstitutionMode $mode): void
     {
         $eleve = $this->compteLocal($mode, 'etudiant');
@@ -186,7 +192,7 @@ final class KlassciTokenMissingReasonTest extends TestCase
         $this->assertJetonAbsent($this->asTenant($eleve)->getJson('/api/evaluations/student'));
     }
 
-    #[DataProvider('volets')]
+    #[DataProvider('voletKlassciSeul')]
     public function test_mes_evaluations_identite_sans_jeton(InstitutionMode $mode): void
     {
         // L'identité passe la garde du contrôleur ; c'est le SERVICE qui lève.
@@ -204,13 +210,19 @@ final class KlassciTokenMissingReasonTest extends TestCase
         $this->assertJetonAbsent($this->asTenant($eleve)->getJson('/api/my-grades'));
     }
 
+    /**
+     * D72 (E2a), déclaré : « ma copie » n'est plus un point de rendu du 401. La
+     * copie appartient à son auteur par `student_id` ; sans copie à soi, 404,
+     * dans les deux volets.
+     */
     #[DataProvider('volets')]
-    public function test_ma_copie_sans_identite_klassci(InstitutionMode $mode): void
+    public function test_ma_copie_sans_identite_klassci_rend_404_sans_copie(InstitutionMode $mode): void
     {
-        // Même garde, elle aussi DANS un `try`.
         $eleve = $this->compteLocal($mode, 'etudiant');
 
-        $this->assertJetonAbsent($this->asTenant($eleve)->getJson('/api/evaluations/1/my-submission'));
+        $this->asTenant($eleve)->getJson('/api/evaluations/1/my-submission')
+            ->assertNotFound()
+            ->assertJsonMissingPath('reason');
     }
 
     // ───────────────────────── le jeton EXPIRÉ reste distinct

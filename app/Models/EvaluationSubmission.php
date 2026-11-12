@@ -69,38 +69,25 @@ class EvaluationSubmission extends Model
     /**
      * Les copies de cet élève — l'UNIQUE définition de la propriété d'une copie.
      *
-     * ## Pourquoi `klassci_etudiant_id`, et non la colonne locale
+     * ## Pourquoi les deux clés, en OU
      *
-     * Parce que c'est la colonne que l'index unique contraint :
-     * `eval_sub_unique (evaluation_id, klassci_etudiant_id, attempt)`
-     * (`2025_10_19_181127:42`). **La clé par laquelle on RETROUVE une copie doit
-     * s'accorder avec celle par laquelle la base juge si l'on peut en INSÉRER
-     * une.** Sinon « je n'en trouve pas » et « il en existe déjà une » se
-     * contredisent : on croit devoir créer, la base refuse, et le démarrage
-     * échoue en 500.
-     *
-     * La recherche ajoute l'établissement (ci-dessous), que l'index ne porte
-     * pas. Les deux s'accordent tant que chaque copie porte l'établissement de
-     * son évaluation. `/start` l'écrit ainsi, et la migration `2026_10_29_200000`
-     * y a ramené les copies plus anciennes.
-     *
-     * C'est exactement le défaut d'origine, et une première version de ce
-     * correctif l'a reproduit en keyant la propriété sur `student_id` : les
-     * copies semées par les tests, qui ne portent que l'identifiant KLASSCI,
-     * redevenaient invisibles — et `/start` rejouait la collision.
-     *
-     * `student_id` est désormais écrit à chaque création, mais comme **miroir
-     * local** : il rend la ligne lisible sans jointure et prépare #798. Il ne
-     * devient la clé de propriété que le jour où l'index unique le suivra.
+     * **La clé par laquelle on RETROUVE une copie doit s'accorder avec celles
+     * par lesquelles la base juge si l'on peut en INSÉRER une.** Sinon « je
+     * n'en trouve pas » et « il en existe déjà une » se contredisent, et
+     * `/start` échoue en 500. Depuis D72 (E2a), deux uniques existent :
+     * `eval_sub_unique` sur `klassci_etudiant_id` (les copies KLASSCI) et
+     * `eval_sub_student_unique` sur `student_id`. La recherche couvre donc les
+     * deux : `student_id`, l'auteur, écrit à chaque création (seul présent dans
+     * une école créée depuis le LMS) ; `klassci_etudiant_id` pour une ligne
+     * d'avant, que le rattrapage `2026_09_20` a pu laisser sans `student_id`.
      *
      * ## Pourquoi jamais de requête avec un identifiant nul
      *
      * Laravel traduit `where($colonne, null)` en `whereNull($colonne)`
      * (`Query/Builder.php:936-937`). Un élève sans identité KLASSCI se verrait
-     * alors attribuer toutes les copies sans propriétaire KLASSCI. La colonne
-     * est `NOT NULL`, donc l'ensemble est vide aujourd'hui — mais se reposer
-     * là-dessus, c'est faire dépendre une règle de propriété d'un détail de
-     * schéma. On refuse explicitement.
+     * alors attribuer toutes les copies sans auteur de son établissement : les
+     * deux colonnes sont nullables depuis E2a. Un id ou un établissement nul
+     * ne ramène rien, et un `klassci_id` nul saute la branche KLASSCI.
      *
      * ## Pourquoi une portée, et pas la même condition recopiée
      *
@@ -120,18 +107,14 @@ class EvaluationSubmission extends Model
      * filtré ICI, explicitement, et un établissement nul ne ramène rien, comme
      * un identifiant nul.
      *
-     * D72, E2a : l'auteur est `student_id` (une copie d'une école créée depuis
-     * le LMS n'a pas de `klassci_etudiant_id`) ; une ligne d'avant reste à son
-     * auteur par `klassci_etudiant_id`. Une identité nulle ne vaut jamais.
-     *
      * @param  Builder<EvaluationSubmission>  $query
      * @return Builder<EvaluationSubmission>
      */
     public function scopeOwnedBy(Builder $query, User $student): Builder
     {
-        [$auteur, $klassci, $etablissement] = [$student->id, $student->klassci_id, $student->institution_id];
+        [$auteur, $klassci, $etablissement] = [$student->getKey(), $student->klassci_id, $student->institution_id];
 
-        if ($etablissement === null) {
+        if ($etablissement === null || ! is_int($auteur)) {
             return $query->whereRaw('1 = 0');
         }
 

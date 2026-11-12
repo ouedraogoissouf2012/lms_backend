@@ -38,10 +38,14 @@ final class SubmissionsOwnedByStudentMigrationTest extends TestCase
         $this->copie($evaluation, $eleve, klassci: 1);
         $this->copie($evaluation, $eleve, klassci: 2);
 
-        $this->expectException(RuntimeException::class);
-        $this->expectExceptionMessage("évaluation {$evaluation->getKey()}, élève {$eleve->getKey()}, tentative 1 (2 fois)");
-
-        $this->migration()->up();
+        try {
+            $this->migration()->up();
+            self::fail('La migration aurait dû échouer sur les doublons.');
+        } catch (RuntimeException $e) {
+            self::assertStringContainsString("évaluation {$evaluation->getKey()}, élève {$eleve->getKey()}, tentative 1 (2 fois)", $e->getMessage());
+        }
+        // Rien n'a été touché : l'unique n'est pas recréé.
+        self::assertFalse(Schema::hasIndex('evaluation_submissions', self::UNIQUE));
     }
 
     public function test_down_puis_up_est_reversible_sans_copie_locale(): void
@@ -55,6 +59,19 @@ final class SubmissionsOwnedByStudentMigrationTest extends TestCase
         $this->migration()->up();
         self::assertTrue(Schema::hasIndex('evaluation_submissions', self::UNIQUE));
         self::assertSame(1, DB::table('evaluation_submissions')->count());
+    }
+
+    public function test_l_ancien_unique_survit_a_la_migration(): void
+    {
+        // `change()` reconstruit la table sous SQLite : l'ancien unique doit
+        // en sortir intact, il protège encore les copies KLASSCI.
+        self::assertTrue(Schema::hasIndex('evaluation_submissions', 'eval_sub_unique'));
+
+        $this->migration()->down();
+        $this->migration()->up();
+
+        self::assertTrue(Schema::hasIndex('evaluation_submissions', 'eval_sub_unique'));
+        self::assertTrue(Schema::hasIndex('evaluation_submissions', self::UNIQUE));
     }
 
     public function test_down_refuse_une_copie_sans_identite_klassci(): void

@@ -7548,36 +7548,48 @@ paths:
                           oneOf:
                             - $ref: '#/components/schemas/EvaluationSubmissionRecord'
                         programmation:
-                          type: object
                           nullable: true
-                          additionalProperties: true
-                          properties:
-                            window:
-                              type: object
-                              nullable: true
-                              description: |
-                                La fenetre de passage. Ecole creee depuis KLASSCI : relayee
-                                depuis KLASSCI. Ecole creee depuis le LMS : ouverture a
-                                `date_evaluation`, fermeture a `deadline_at`, sinon a
-                                `date_evaluation + duree_minutes` ; fermee sans date.
+                          description: |
+                            Objet, ou tableau vide quand KLASSCI relaie un objet vide (un `{}`
+                            decode puis reencode ressort en `[]`).
+                          oneOf:
+                            - type: array
+                              items: {}
+                            - type: object
                               additionalProperties: true
                               properties:
-                                is_open:
-                                  type: boolean
-                                has_started:
-                                  type: boolean
-                                has_ended:
-                                  type: boolean
-                                start_at:
-                                  type: string
+                                window:
                                   nullable: true
-                                end_at:
-                                  type: string
-                                  nullable: true
+                                  description: |
+                                    La fenetre de passage. Ecole creee depuis KLASSCI : relayee
+                                    depuis KLASSCI. Ecole creee depuis le LMS : ouverture a
+                                    `date_evaluation`, fermeture a `deadline_at`, sinon a
+                                    `date_evaluation + duree_minutes` ; fermee sans date.
+                                  oneOf:
+                                    - type: array
+                                      items: {}
+                                    - type: object
+                                      additionalProperties: true
+                                      properties:
+                                        is_open:
+                                          type: boolean
+                                        has_started:
+                                          type: boolean
+                                        has_ended:
+                                          type: boolean
+                                        start_at:
+                                          type: string
+                                          nullable: true
+                                        end_at:
+                                          type: string
+                                          nullable: true
                         lms_integration:
-                          type: object
                           nullable: true
-                          additionalProperties: true
+                          oneOf:
+                            - type: array
+                              items: {}
+                            - type: object
+                              additionalProperties: true
                         classe:
                           type: object
                           nullable: true
@@ -7587,25 +7599,32 @@ paths:
                             portait la liste des eleves.
                           properties:
                             id:
-                              type: integer
+                              oneOf:
+                                - type: integer
+                                - type: string
                             nom:
                               type: string
                               nullable: true
                         matiere:
-                          type: object
                           nullable: true
-                          additionalProperties: true
                           description: |
                             Ecole creee depuis KLASSCI : relaye depuis KLASSCI, d autres cles
-                            possibles. Ecole creee depuis le LMS : `{id, nom}` de la matiere
-                            locale de l evaluation.
-                          properties:
-                            id:
-                              type: integer
-                              nullable: true
-                            nom:
-                              type: string
-                              nullable: true
+                            possibles (ou tableau vide pour un objet vide). Ecole creee depuis le
+                            LMS : `{id, nom}` de la matiere locale de l evaluation.
+                          oneOf:
+                            - type: array
+                              items: {}
+                            - type: object
+                              additionalProperties: true
+                              properties:
+                                id:
+                                  nullable: true
+                                  oneOf:
+                                    - type: integer
+                                    - type: string
+                                nom:
+                                  type: string
+                                  nullable: true
         '401':
           $ref: '#/components/responses/KlassciUnauthorized'
         '404':

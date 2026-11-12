@@ -146,10 +146,10 @@ final class EvaluationAttemptStateService
         $submission = EvaluationSubmission::create([
             'evaluation_id' => $evaluation->id,
             // Les DEUX espaces sont écrits, et chacun pour sa raison :
-            // `klassci_etudiant_id` porte la propriété (avec l'établissement,
-            // EvaluationSubmission::scopeOwnedBy), l'index unique
-            // `eval_sub_unique` et le renvoi des notes vers KLASSCI ;
-            // `student_id` en est le miroir local.
+            // `student_id` porte la propriété (EvaluationSubmission::
+            // scopeOwnedBy, unique `eval_sub_student_unique`, D72) ;
+            // `klassci_etudiant_id`, nul dans une école créée depuis le LMS,
+            // sert l'unique `eval_sub_unique` et le renvoi des notes vers KLASSCI.
             'student_id' => $user->id,
             'klassci_etudiant_id' => $user->klassci_id,
             'attempt' => $attemptsCount + 1,

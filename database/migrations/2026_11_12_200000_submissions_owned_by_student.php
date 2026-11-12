@@ -20,8 +20,11 @@ use Illuminate\Support\Facades\Schema;
  *   copies par leur auteur. L'ancien unique reste : il protège encore les
  *   lignes KLASSCI, et plusieurs NULL n'y entrent pas en collision (MySQL,
  *   SQLite).
- * - Avant de créer l'unique, la migration cherche les doublons existants et
- *   échoue avec leur liste, au lieu d'un 1062 opaque en production.
+ * - AVANT toute modification, la migration cherche les doublons existants et
+ *   échoue avec leur liste, au lieu d'un 1062 opaque en production : rien
+ *   n'est touché (le DDL de MySQL n'est pas transactionnel).
+ * - `change()` redéclare tous les modificateurs (Laravel 11+) : le commentaire
+ *   de colonne est conservé.
  */
 return new class extends Migration
 {
@@ -29,10 +32,6 @@ return new class extends Migration
 
     public function up(): void
     {
-        Schema::table('evaluation_submissions', function (Blueprint $table): void {
-            $table->unsignedBigInteger('klassci_etudiant_id')->nullable()->change();
-        });
-
         $doublons = $this->doublons();
         if ($doublons !== []) {
             throw new RuntimeException(
@@ -40,6 +39,10 @@ return new class extends Migration
                 .implode(' ; ', $doublons).'.'
             );
         }
+
+        Schema::table('evaluation_submissions', function (Blueprint $table): void {
+            $table->unsignedBigInteger('klassci_etudiant_id')->nullable()->comment('ID de l\'étudiant dans KLASSCI')->change();
+        });
 
         if (! Schema::hasIndex('evaluation_submissions', self::UNIQUE)) {
             Schema::table('evaluation_submissions', function (Blueprint $table): void {
@@ -65,7 +68,7 @@ return new class extends Migration
         }
 
         Schema::table('evaluation_submissions', function (Blueprint $table): void {
-            $table->unsignedBigInteger('klassci_etudiant_id')->nullable(false)->change();
+            $table->unsignedBigInteger('klassci_etudiant_id')->nullable(false)->comment('ID de l\'étudiant dans KLASSCI')->change();
         });
     }
 

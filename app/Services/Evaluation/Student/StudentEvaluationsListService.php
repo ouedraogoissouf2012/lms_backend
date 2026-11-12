@@ -65,7 +65,9 @@ final class StudentEvaluationsListService implements StudentEvaluationsReader
         ]);
 
         // Même source et même filtre que la lecture d'une évaluation par
-        // l'élève (EvaluationListService::findOne) : LearnerEvaluationScope.
+        // l'élève dans une école créée depuis KLASSCI (EvaluationListService::
+        // findOne, via la façade LearnerEvaluationScope) :
+        // KlassciLearnerEvaluationAudience.
         $classe = $this->scope->classeOf($user);
         if ($classe === null || !is_numeric($classe['id'] ?? null)) {
             return null;

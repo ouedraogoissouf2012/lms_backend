@@ -19,6 +19,7 @@ use Mockery\MockInterface;
 use Tests\Concerns\ActsAsTenantUser;
 use Tests\Concerns\BuildsEcoleIndependante;
 use Tests\Concerns\ValidatesAgainstOpenApi;
+use Tests\Support\OpenApi\OpenApiSchemaValidator;
 use Tests\TestCase;
 
 /**
@@ -64,18 +65,20 @@ final class EleveVoitSesEvaluationsTest extends TestCase
     {
         [$ecole, $eleve, $classe, $maths] = $this->eleveInscrit();
         $visible = $this->evaluationPubliee($classe, $maths, now()->addDay(), 60);
-        $brouillon = $this->evaluationPubliee($classe, $maths, now()->addDay(), 60, ['is_published' => false, 'status' => 'brouillon']);
-        $vide = $this->evaluationPubliee($classe, $maths, now()->addDay(), 60, [], questions: 0);
-        $autreClasse = $this->classe($ecole, '5e B');
-        $this->evaluationPubliee($autreClasse, $maths, now()->addDay(), 60);
+        // Chaque clause du filtre, prouvée SEULE (revue d'E2a) :
+        // non publiée mais d'un statut visible ; publiée mais en brouillon.
+        $this->evaluationPubliee($classe, $maths, now()->addDay(), 60, ['is_published' => false]);
+        $this->evaluationPubliee($classe, $maths, now()->addDay(), 60, ['status' => 'brouillon']);
+        $this->evaluationPubliee($classe, $maths, now()->addDay(), 60, [], questions: 0);
+        $this->evaluationPubliee($this->classe($ecole, '5e B'), $maths, now()->addDay(), 60);
+        // Une autre école, avec le MÊME `classe_id` que la classe de l'élève :
+        // seul le filtre d'établissement l'écarte.
         $ailleurs = $this->ecole();
-        $this->evaluationPubliee($this->classe($ailleurs, '6e A'), $this->matiere($ailleurs, 'Maths'), now()->addDay(), 60);
+        $this->evaluationPubliee($classe, $this->matiere($ailleurs, 'Maths'), now()->addDay(), 60, ['institution_id' => $ailleurs->getKey()]);
 
         $ids = array_column((array) $this->asTenant($eleve)->getJson(self::LISTE)->assertOk()->json('data'), 'id');
 
         self::assertSame([$visible->getKey()], $ids);
-        self::assertNotContains($brouillon->getKey(), $ids);
-        self::assertNotContains($vide->getKey(), $ids);
     }
 
     public function test_l_eleve_inscrit_dans_deux_classes_voit_les_evaluations_des_deux(): void
@@ -198,6 +201,60 @@ final class EleveVoitSesEvaluationsTest extends TestCase
 
         $this->disableKlassciMiddleware();
         $this->asTenant($eleve)->getJson($this->copieDe($evaluation))->assertOk()->assertJsonPath('data.id', $copie->getKey());
+    }
+
+    public function test_le_schema_des_elements_mord(): void
+    {
+        // Sans cette preuve, un schéma trop lâche passerait tout en silence.
+        [$ecole, $eleve, $classe, $maths] = $this->eleveInscrit();
+        $this->evaluationPubliee($classe, $maths, now()->addDay(), 60);
+        $reponse = $this->asTenant($eleve)->getJson(self::LISTE)->assertOk();
+        $spec = OpenApiSchemaValidator::depuisFichier(base_path('docs/openapi.yaml'));
+        $schema = $spec->schemaDeReponse('/evaluations/student', 'get', 200);
+        self::assertNotNull($schema);
+
+        $sansCompte = json_decode((string) $reponse->getContent(), false, 512, JSON_THROW_ON_ERROR);
+        unset($sansCompte->data[0]->questions_count);
+        self::assertNotSame([], $spec->erreurs($sansCompte, $schema), 'le schéma admet un élément sans questions_count');
+
+        $fenetreFausse = json_decode((string) $reponse->getContent(), false, 512, JSON_THROW_ON_ERROR);
+        $fenetreFausse->data[0]->programmation->window->is_open = 'oui';
+        self::assertNotSame([], $spec->erreurs($fenetreFausse, $schema), 'le schéma admet une fenêtre au booléen faux');
+    }
+
+    public function test_dans_une_ecole_klassci_la_liste_relayee_suit_la_spec(): void
+    {
+        // La réponse de l'école créée depuis KLASSCI, avec ce que KLASSCI
+        // relaie réellement : des ids en chaîne, et un objet vide (`{}`) qui
+        // ressort en tableau vide après décodage.
+        $ecole = $this->ecole(InstitutionMode::Klassci);
+        $eleve = $this->membre($ecole, 'etudiant');
+        $eleve->forceFill(['klassci_id' => 501, 'klassci_token' => 'jeton'])->save();
+        $evaluation = Evaluation::factory()->create([
+            'institution_id' => $ecole->getKey(), 'klassci_classe_id' => 77, 'klassci_evaluation_id' => 900,
+            'is_published' => true, 'status' => 'planifiee',
+        ]);
+        EvaluationQuestion::factory()->create(['evaluation_id' => $evaluation->getKey()]);
+        $this->mock(KlassciProxyService::class, function (MockInterface $mock): void {
+            $mock->shouldReceive('requestWithUserToken')->with('jeton', 'me/dashboard', 'GET')
+                ->andReturn(['data' => ['classe' => ['id' => 77, 'nom' => 'Terminale D']]]);
+            $mock->shouldReceive('requestWithUserToken')->with('jeton', 'evaluations', 'GET')
+                ->andReturn(['data' => [[
+                    'id' => 900,
+                    'programmation' => ['date_evaluation' => '2026-11-20', 'window' => [
+                        'is_open' => false, 'has_started' => false, 'has_ended' => false,
+                        'start_at' => '2026-11-20T08:00:00+00:00', 'end_at' => '2026-11-20T10:00:00+00:00',
+                    ]],
+                    'lms_integration' => [],
+                    'classe' => ['id' => '77', 'nom' => 'Terminale D'],
+                    'matiere' => ['id' => '10', 'nom' => 'Maths'],
+                ]]]);
+        });
+        $this->disableKlassciMiddleware();
+
+        $reponse = $this->asTenant($eleve)->getJson(self::LISTE)->assertOk()->assertJsonPath('data.0.id', $evaluation->getKey());
+
+        $this->assertMatchesOpenApiResponse($reponse, '/evaluations/student', 'get');
     }
 
     // ───────────────────────── harnais

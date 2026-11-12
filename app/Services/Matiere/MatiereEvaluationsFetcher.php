@@ -169,7 +169,9 @@ final class MatiereEvaluationsFetcher
             ];
 
             // Sa copie, par l'UNIQUE définition de la propriété d'une copie
-            // (sans identité KLASSCI ou sans établissement : aucune).
+            // (EvaluationSubmission::ownedBy : par `student_id`, ou par
+            // l'identité KLASSCI pour une ligne d'avant ; sans établissement :
+            // aucune).
             $evalArray['student_submission'] = $quizLMS->submissions()->ownedBy($user)->latest()->first();
         } else {
             $evalArray['online_version'] = null;

@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace App\Services\Evaluation\Student;
 
 use App\Models\Evaluation;
+use App\Models\EvaluationSubmission;
 use App\Models\User;
+use Illuminate\Support\Collection;
 
 /**
  * École créée depuis le LMS : la liste de l'élève (D72, E2a).
@@ -27,19 +29,40 @@ final class LocalStudentEvaluationsReader implements StudentEvaluationsReader
      */
     public function evaluationsFor(User $user): array
     {
-        return $this->audience->visibleFor($user)
+        $evaluations = $this->audience->visibleFor($user)
             ->withCount('questions')
             ->orderBy('date_evaluation', 'desc')
-            ->get()
-            ->map(fn (Evaluation $evaluation): array => $this->enrichie($evaluation, $user))
+            ->get();
+        $copies = $this->dernieresCopies($evaluations->modelKeys(), $user);
+
+        return $evaluations
+            ->map(fn (Evaluation $evaluation): array => $this->enrichie($evaluation, $copies->get($evaluation->getKey())))
             ->values()
             ->all();
     }
 
     /**
+     * La dernière copie de l'élève pour chaque évaluation, en une requête
+     * (et non une par évaluation).
+     *
+     * @param  array<int, mixed>  $evaluations
+     * @return Collection<int|string, EvaluationSubmission>
+     */
+    private function dernieresCopies(array $evaluations, User $eleve): Collection
+    {
+        return EvaluationSubmission::query()
+            ->whereIn('evaluation_id', $evaluations)
+            ->ownedBy($eleve)
+            ->orderByDesc('id')
+            ->get()
+            ->unique('evaluation_id')
+            ->keyBy('evaluation_id');
+    }
+
+    /**
      * @return array<string, mixed>
      */
-    private function enrichie(Evaluation $evaluation, User $eleve): array
+    private function enrichie(Evaluation $evaluation, ?EvaluationSubmission $copie): array
     {
         return array_merge($evaluation->toArray(), [
             'classe' => ['id' => $evaluation->classe_id, 'nom' => $evaluation->classe_nom],
@@ -49,7 +72,7 @@ final class LocalStudentEvaluationsReader implements StudentEvaluationsReader
                 'window' => LocalEvaluationWindow::of($evaluation),
             ],
             'questions_count' => is_numeric($nombre = $evaluation->getAttribute('questions_count')) ? (int) $nombre : 0,
-            'student_submission' => $evaluation->submissions()->ownedBy($eleve)->latest()->first(),
+            'student_submission' => $copie,
         ]);
     }
 }

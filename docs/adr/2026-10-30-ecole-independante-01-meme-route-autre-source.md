@@ -204,6 +204,10 @@ lot de #949.
 - **L'école créée depuis KLASSCI ne change pas** : sa source est le service d'avant, le chemin du gestionnaire garde son
   exclusion des séances locales et ses ids KLASSCI. Le contrôleur ne reçoit plus la source par son constructeur, mais
   par sa méthode ; le journal des pannes (`CaughtExceptionLog`), sans état et sans école, y reste.
+- **La classe d'une ligne locale** est celle que désigne `classe_id` : son libellé et ses inscriptions actives, lus en
+  une requête bornée, jamais le `classe_nom` libre de la séance (revue indépendante du lot).
+- **Limite déclarée, école basculée** : une séance miroir de KLASSCI n'a ni auteur ni classe locaux. Seule la gestion la
+  lit, avec le nom d'enseignant qu'elle porte ; ni l'enseignant ni l'élève ne la lisent, faute de lien local.
 - **Hors de ce lot, dans la file** : les actions du calendrier sur une séance locale (`/details`, `activate-visio`, le
   basculement de la visio) exigent encore le jeton.
 

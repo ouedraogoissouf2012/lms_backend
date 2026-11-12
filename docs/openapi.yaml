@@ -1400,6 +1400,9 @@ components:
       type: object
       description: |
         Une seance dans la forme du calendrier et des ecrans Seances et Visio :
+        Dans une ecole basculee, une seance miroir de KLASSCI n'a ni auteur ni
+        classe locaux : seule la gestion la lit, avec le nom d'enseignant
+        qu'elle porte, et ses ids d'enseignant et de classe valent `null`.
         structures plate ET imbriquee. Ecole creee depuis KLASSCI : selon le
         role et la route, une partie de ces cles, avec les ids KLASSCI (schema
         ouvert). Ecole creee depuis le LMS : exactement ces cles, avec les ids
@@ -1444,7 +1447,7 @@ components:
           description: "Ecole creee depuis le LMS : `id` vaut `null`, une seance locale ne porte que le nom de sa matiere."
         classe:
           type: object
-          description: "Ecole creee depuis le LMS : `id` est l'id de `/proxy/classes`, `null` pour une seance sans classe."
+          description: "Ecole creee depuis le LMS : la classe designee par la seance. `id` est l'id de `/proxy/classes` (`null` sans classe) ; `nom` est son libelle et `effectif` ses inscriptions actives."
         enseignant:
           type: object
           description: "Ecole creee depuis le LMS : l'auteur de la seance ; `id` est l'id de son compte, celui du filtre `teacher_id`."

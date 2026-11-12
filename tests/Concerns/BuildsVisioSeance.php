@@ -18,9 +18,9 @@ use RuntimeException;
  * École créée depuis KLASSCI : la séance porte la classe et l'enseignant KLASSCI,
  * l'élève est inscrit au pivot local de cette classe (vérité de #712). École
  * créée depuis le LMS (`standalone()`, sans URL KLASSCI) : la séance n'a ni classe
- * ni enseignant KLASSCI, son auteur en est l'enseignant. Une telle séance à visio
- * ACTIVE est un état fabriqué : rien ne peut aujourd'hui activer la visio d'une
- * séance sans identifiant KLASSCI. Il fige le refus que l'élève y recevrait.
+ * ni enseignant KLASSCI, son auteur en est l'enseignant, et elle n'a pas de
+ * classe (`classe_id` nul) : l'élève y est refusé, motif `no_classe_id`.
+ * L'admission par la classe locale est couverte par `VisioSeanceLocaleTest`.
  */
 trait BuildsVisioSeance
 {
@@ -71,6 +71,11 @@ trait BuildsVisioSeance
     {
         $this->app->bind(ClasseAudienceSource::class, static fn (): ClasseAudienceSource => new class implements ClasseAudienceSource
         {
+            public function designatesClasse(Seance $seance): bool
+            {
+                return true;
+            }
+
             public function containsStudent(Seance $seance, User $student): bool
             {
                 throw new RuntimeException('panne provoquée par le test');

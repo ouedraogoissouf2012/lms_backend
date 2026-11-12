@@ -122,7 +122,9 @@ final class EvaluationCrudController extends AuthenticatedController
         $evaluation = Evaluation::findOrFail($id);
         $user = $this->authenticatedUser($request);
 
-        $result = $this->updateService->update($evaluation, $request->all(), $user);
+        // C14 : seuls les champs validés sont écrits (liste blanche). Le
+        // service garde sa liste d'immuables comme seconde barrière.
+        $result = $this->updateService->update($evaluation, $request->validated(), $user);
 
         // Enveloppe construite par le service (cf. store) — forwardée verbatim.
         return $this->relayResponse($result);

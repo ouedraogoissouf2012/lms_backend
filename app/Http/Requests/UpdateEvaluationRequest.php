@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace App\Http\Requests;
 
 use App\Http\Requests\Concerns\ChecksEvaluationOwnership;
+use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Http\Exceptions\HttpResponseException;
 
 /**
  * Validates evaluation update request (PATCH /api/evaluations/{id}).
@@ -24,6 +26,15 @@ use Illuminate\Foundation\Http\FormRequest;
  * Questions can be modified via separate endpoint if needed.
  * canBeEdited() prevents data loss (students already submitted).
  * Multi-tenant enforced via institution_id (handled inside the trait).
+ *
+ * ## C14 — la liste blanche, c'est la validation
+ *
+ * Le contrôleur ne transmet que `validated()` : un champ sans règle ici n'est
+ * jamais écrit (`notes_published`, `is_locked`, `deadline_at`, les libellés…).
+ * `is_published` est INTERDIT : la publication passe par `POST /publish`, qui
+ * refuse une évaluation sans question ou terminée. Le refus porte son motif
+ * (`publication_par_route_dediee`, ADR-906-01) : un client qui l'envoyait
+ * croyait publier, et un silence lui mentirait.
  */
 final class UpdateEvaluationRequest extends FormRequest
 {
@@ -42,12 +53,16 @@ final class UpdateEvaluationRequest extends FormRequest
             'status' => 'sometimes|in:brouillon,planifiee,en_cours,terminee,annulee',
             'date_evaluation' => 'nullable|date',
             'duree_minutes' => 'sometimes|integer|min:1|max:1440',
-            'is_published' => 'sometimes|boolean',
+            'is_published' => 'prohibited',
             'max_attempts' => 'sometimes|integer|min:1',
             'allow_retake' => 'sometimes|boolean',
             'is_online' => 'sometimes|boolean',
             'shuffle_questions' => 'sometimes|boolean',
             'show_results' => 'sometimes|boolean',
+            // Mêmes règles qu'à la création (StoreEvaluationRequest).
+            'type' => 'sometimes|in:qcm,reponse_courte,dissertation,mixte',
+            'coefficient' => 'nullable|numeric|min:0',
+            'bareme' => 'nullable|numeric|min:0',
             'questions' => 'sometimes|array',
             'questions.*.question' => 'required|string|max:1000',
             'questions.*.type' => 'required|in:qcm,qcm_multiple,vrai_faux,reponse_courte,dissertation',
@@ -66,6 +81,25 @@ final class UpdateEvaluationRequest extends FormRequest
             'status.in' => 'Le statut est invalide',
             'duree_minutes.max' => 'La durée ne doit pas dépasser 1440 minutes',
         ];
+    }
+
+    /**
+     * Le refus de `is_published` porte son motif ; les autres erreurs gardent
+     * le rendu 422 commun (`bootstrap/app.php`), qui rend une
+     * `HttpResponseException` telle quelle (#906).
+     */
+    protected function failedValidation(Validator $validator): void
+    {
+        if ($validator->errors()->has('is_published')) {
+            throw new HttpResponseException(response()->json([
+                'success' => false,
+                'message' => 'La publication passe par POST /evaluations/{id}/publish.',
+                'reason' => 'publication_par_route_dediee',
+                'errors' => $validator->errors()->toArray(),
+            ], 422));
+        }
+
+        parent::failedValidation($validator);
     }
 
     protected function prepareForValidation(): void

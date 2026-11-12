@@ -32,7 +32,8 @@ use Tests\TestCase;
  * ## Ce que ces tests figent
  *
  * - Chaque POINT DE RENDU (11 sites, cinq familles ; « ma copie » n'en est plus
- *   un depuis D72, E2a, voir son test) rend 401 et
+ *   un depuis D72, E2a, voir son test ; le démarrage n'en est un que dans
+ *   l'école créée depuis KLASSCI depuis E2b) rend 401 et
  *   `klassci_token_missing`, avec un message qui nomme KLASSCI et ne demande pas
  *   de se reconnecter.
  * - Le jeton EXPIRÉ (KLASSCI répond 401) garde `klassci_session_expired`, sur le
@@ -157,7 +158,12 @@ final class KlassciTokenMissingReasonTest extends TestCase
         );
     }
 
-    #[DataProvider('volets')]
+    /**
+     * Depuis D72 (E2b), le démarrage d'une école indépendante lit sa fenêtre
+     * sur la ligne, sans jeton (`ElevePasseSonEvaluationTest`) : le point de
+     * rendu n'est plus sur son chemin.
+     */
+    #[DataProvider('voletKlassciSeul')]
     public function test_demarrer_une_evaluation_dit_le_jeton_absent(InstitutionMode $mode): void
     {
         $eleve = $this->compteIdentifieSansJeton($mode, 'etudiant');

@@ -143,11 +143,12 @@ final class StudentEvaluationsListService implements StudentEvaluationsReader
         // `withCount` a déjà posé le compte : plus besoin de charger les
         // questions elles-mêmes pour les dénombrer.
         $evalArray['questions_count'] = (int) $evalLMS->questions_count;
-        // Sa copie, par l'UNIQUE définition de la propriété d'une copie.
-        $evalArray['student_submission'] = $evalLMS->submissions()
-            ->ownedBy($student)
-            ->latest()
-            ->first();
+        // Sa copie, par l'UNIQUE définition de la propriété d'une copie, sans
+        // sa note si les résultats ne sont pas visibles (C25).
+        $evalArray['student_submission'] = ResultatsVisibles::masquer(
+            $evalLMS->submissions()->ownedBy($student)->latest()->first(),
+            $evalLMS,
+        );
 
         return $evalArray;
     }

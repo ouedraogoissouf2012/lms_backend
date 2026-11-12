@@ -72,7 +72,8 @@ final class LocalStudentEvaluationsReader implements StudentEvaluationsReader
                 'window' => LocalEvaluationWindow::of($evaluation),
             ],
             'questions_count' => is_numeric($nombre = $evaluation->getAttribute('questions_count')) ? (int) $nombre : 0,
-            'student_submission' => $copie,
+            // Sans sa note si les résultats ne sont pas visibles (C25).
+            'student_submission' => ResultatsVisibles::masquer($copie, $evaluation),
         ]);
     }
 }

@@ -7744,7 +7744,16 @@ paths:
         Reservee aux eleves. Aucun corps de requete : l identite vient du jeton.
 
         Si une tentative `en_cours` existe, elle est REPRISE (meme `id`) ;
-        sinon une nouvelle copie est creee. Une evaluation terminee se passe
+        sinon une nouvelle copie est creee. Deux demarrages simultanes : l unique
+        des copies arbitre, et le perdant REPREND la tentative de la requete
+        gagnante (D72, E2b) ; si elle est deja remise, 409.
+
+        Fenetre : ecole creee depuis KLASSCI, la programmation KLASSCI (jeton de
+        l eleve exige, sinon 401) ; ecole creee depuis le LMS, calculee sur la
+        ligne (ouverture a `date_evaluation`, fermeture a `deadline_at`, sinon a
+        `date_evaluation + duree_minutes` ; fermee sans date), sans jeton.
+
+        Une evaluation terminee se passe
         en mode entrainement (`is_practice: true`) : fenetre, quota et reprise
         n y sont pas appliques, et la note n est pas officielle.
 
@@ -7834,6 +7843,28 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/MessageOnly'
+        '409':
+          description: |
+            Course perdue entre deux demarrages simultanes, et la tentative de la
+            requete gagnante est deja remise : rien n est cree ni repris.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - success
+                  - message
+                  - reason
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  message:
+                    type: string
+                  reason:
+                    type: string
+                    enum:
+                      - evaluation_attempt_conflict
         '429':
           $ref: '#/components/responses/TooManyRequests'
         '503':

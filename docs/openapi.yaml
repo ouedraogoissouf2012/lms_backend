@@ -6619,7 +6619,7 @@ paths:
           description: |
             Erreur de validation (`errors`), `is_published` envoye (`publish_via_dedicated_route`, la
             publication passe par sa route), ou remplacement qui viderait une evaluation publiee
-            (`evaluation_without_questions`, C16 : publiee se lit avant la mise a jour).
+            (`evaluation_without_questions`, C16 : publiee est relu sur la ligne verrouillee, avant toute ecriture).
           content:
             application/json:
               schema:

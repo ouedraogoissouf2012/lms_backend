@@ -1140,6 +1140,195 @@ components:
           type: integer
           description: "Ecole creee depuis le LMS : le programme de la classe, en matieres de l'etablissement."
 
+    # La structure, les matieres et l'administration des matieres (lot 3c).
+    StructureEtablissement:
+      type: object
+      description: |
+        Ecole creee depuis KLASSCI : la reponse de KLASSCI (schema ouvert).
+        Ecole creee depuis le LMS : `{filieres: [], niveaux_etudes: []}`.
+      required:
+        - success
+        - data
+      properties:
+        success:
+          type: boolean
+          enum:
+            - true
+        data:
+          type: object
+          properties:
+            filieres:
+              type: array
+              items:
+                type: object
+            niveaux_etudes:
+              type: array
+              items:
+                type: object
+
+    MatieresEtablissement:
+      type: object
+      required:
+        - success
+        - data
+      properties:
+        success:
+          type: boolean
+          enum:
+            - true
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/MatiereEtablissement'
+
+    MatiereEtablissement:
+      type: object
+      description: |
+        Ecole creee depuis KLASSCI : la matiere telle que KLASSCI la decrit
+        (schema ouvert, types non garantis). Ecole creee depuis le LMS :
+        exactement les cles ci-dessous. Ce sont les tests de la source qui
+        fixent cette exactitude : le schema reste ouvert, puisqu'il decrit
+        aussi la forme de KLASSCI.
+      required:
+        - id
+      properties:
+        id:
+          description: "Ecole creee depuis le LMS : l'identifiant LOCAL, un entier."
+          oneOf:
+            - type: integer
+            - type: string
+        nom:
+          type: string
+          nullable: true
+        code:
+          type: string
+          nullable: true
+        description:
+          type: string
+          nullable: true
+        coefficient:
+          description: "Ecole creee depuis le LMS : un nombre. Ecole creee depuis KLASSCI : tel que KLASSCI le rend, parfois en chaine."
+          nullable: true
+          oneOf:
+            - type: number
+            - type: string
+        classes:
+          type: array
+          description: "Ecole creee depuis le LMS : les classes ou l'appelant atteint la matiere, triees par libelle puis par identifiant."
+          items:
+            type: object
+            properties:
+              id:
+                oneOf:
+                  - type: integer
+                  - type: string
+              nom:
+                type: string
+                nullable: true
+
+    MatieresAdministration:
+      type: object
+      required:
+        - success
+        - data
+      properties:
+        success:
+          type: boolean
+          enum:
+            - true
+        message:
+          type: string
+          example: "2 matiere(s) recuperee(s)"
+        data:
+          type: object
+          additionalProperties: false
+          required:
+            - matieres
+            - statistiques
+          properties:
+            matieres:
+              type: array
+              items:
+                $ref: '#/components/schemas/MatiereAdministration'
+            statistiques:
+              type: object
+              additionalProperties: false
+              required:
+                - total
+                - total_heures
+                - total_seances
+              properties:
+                total:
+                  type: integer
+                total_heures:
+                  type: integer
+                  nullable: true
+                  description: "`null` si aucune matiere ne porte d'heures ; 0 sans matiere."
+                total_seances:
+                  type: integer
+                  nullable: true
+                  description: "Toujours `null` : aucune des deux sources ne porte cette donnee."
+
+    MatiereAdministration:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - nom
+        - code
+        - couleur
+        - heures_total
+        - nb_evaluations
+        - nb_seances_programmees
+        - nb_lecons
+        - combinaisons
+      properties:
+        id:
+          description: "Ecole creee depuis le LMS : l'identifiant LOCAL. Ecole creee depuis KLASSCI : celui de KLASSCI, tel quel."
+          nullable: true
+          oneOf:
+            - type: integer
+            - type: string
+        nom:
+          type: string
+          description: "`N/A` si absent."
+        code:
+          type: string
+          description: "`N/A` si absent."
+        description:
+          type: string
+          nullable: true
+        coefficient:
+          description: "Tel que la source le porte."
+          nullable: true
+          oneOf:
+            - type: number
+            - type: string
+        couleur:
+          type: string
+          example: "#6366f1"
+        heures_total:
+          type: integer
+          nullable: true
+          description: "Toujours `null` dans une ecole creee depuis le LMS : aucune heure n'est tenue."
+        nb_evaluations:
+          type: integer
+          nullable: true
+          description: "0 dans une ecole creee depuis le LMS (provisoire, D72)."
+        nb_seances_programmees:
+          type: integer
+          nullable: true
+          description: "Toujours `null` : la donnee n'est pas connue."
+        nb_lecons:
+          type: integer
+          nullable: true
+          description: "Ecole creee depuis le LMS : les lecons de la matiere, tous statuts. Ecole creee depuis KLASSCI : `null`."
+        combinaisons:
+          type: array
+          description: "Toujours vide dans une ecole creee depuis le LMS : aucune filiere ni aucun niveau local."
+          items:
+            type: object
+
     MessageOnly:
       type: object
       properties:
@@ -5696,17 +5885,48 @@ paths:
     get:
       tags:
         - Proxy / KLASSCI
-      summary: "Get organizational structure"
-      description: "Retrieve organizational structure (branches, levels). Rate limit : 100 req/min/utilisateur (#214)."
+      operationId: getInstitutionStructure
+      summary: "Les filieres et les niveaux d'etudes de l'etablissement"
+      description: |
+        Lue par AdminMatieres, avec les matieres. Rate limit : 100 req/min/utilisateur (#214).
+        La source est choisie par le mode DECLARE de l'ecole, au point de liaison.
+
+        **Ecole creee depuis KLASSCI.** La reponse de KLASSCI, relayee telle
+        quelle, avec le jeton de l'etablissement.
+
+        **Ecole creee depuis le LMS**, ou basculee. Aucune filiere ni aucun
+        niveau d'etudes n'existe en local : deux listes vides, sans aucun appel
+        a KLASSCI. La cle des niveaux est `niveaux_etudes`, celle de la
+        documentation KLASSCI.
       security:
         - sanctum: []
       responses:
         '200':
-          description: "Structure data"
+          description: "La structure de l'etablissement"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StructureEtablissement'
         '401':
           $ref: '#/components/responses/KlassciUnauthorized'
         '429':
           $ref: '#/components/responses/TooManyRequests'
+        '500':
+          description: "Defaillance interne, rapportee une fois au journal, sans le message ni les valeurs d'une requete."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VisioErreurInterne'
+        '503':
+          description: "Ecole creee depuis KLASSCI : KLASSCI indisponible."
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/KlassciIndisponible'
 
   /proxy/classes:
     get:
@@ -5830,7 +6050,27 @@ paths:
     get:
       tags:
         - Proxy / KLASSCI
-      summary: "Get subjects"
+      operationId: listInstitutionMatieres
+      summary: "Les matieres de l'etablissement"
+      description: |
+        Les filtres par matiere de l'enseignant (lecons, seances, evaluations),
+        le nombre de matieres par classe, le tableau de bord et les resultats
+        d'evaluations. Sans garde de role. La source est choisie par le mode
+        DECLARE de l'ecole, au point de liaison.
+
+        **Ecole creee depuis KLASSCI.** La reponse de KLASSCI, relayee telle
+        quelle, avec le jeton KLASSCI PERSONNEL : KLASSCI scope les matieres
+        selon le porteur. Sans jeton personnel : 401 `klassci_token_missing`.
+
+        **Ecole creee depuis le LMS**, ou basculee. Le catalogue local, avec les
+        identifiants LOCAUX (ceux de `lessons.matiere_id` et de
+        `/lms/matieres/{matiereId}`), trie par libelle puis par identifiant, sans
+        aucun appel a KLASSCI. La gestion lit tout le catalogue, meme les
+        matieres hors programme ; un enseignant celles ou il est designe
+        formateur ; un eleve, et tout role non reconnu, celles de ses classes a
+        inscription active. `classes` donne, pour chaque matiere, les classes ou
+        l'appelant l'atteint, avec les identifiants de `/proxy/classes`. Les
+        filtres `filiere_id` et `niveau_id` y sont sans effet.
       security:
         - sanctum: []
       parameters:
@@ -5844,9 +6084,95 @@ paths:
             type: integer
       responses:
         '200':
-          description: "List of subjects"
+          description: "Les matieres de l'etablissement"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MatieresEtablissement'
         '401':
           $ref: '#/components/responses/KlassciUnauthorized'
+        '403':
+          description: |
+            Sans `reason` : etablissement desactive, ou refus de KLASSCI relaye.
+            `no_institution` : compte sans etablissement.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefusClasseEleves'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          description: "Defaillance interne, rapportee une fois au journal, sans le message ni les valeurs d'une requete."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VisioErreurInterne'
+        '503':
+          description: "Ecole creee depuis KLASSCI : KLASSCI indisponible."
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/KlassciIndisponible'
+
+  /admin/matieres:
+    get:
+      tags:
+        - Matieres
+      operationId: listAdminMatieres
+      summary: "Les matieres de l'etablissement, pour l'ecran d'administration"
+      description: |
+        Reservee a la gestion (`role:admin,coordinateur`, superAdmin compris).
+        La source est choisie par le mode DECLARE de l'ecole, au point de
+        liaison.
+
+        **Ecole creee depuis KLASSCI.** Un seul appel a KLASSCI, avec le jeton
+        KLASSCI PERSONNEL, projete vers les cles ci-dessous. Sans jeton
+        personnel : 401 `klassci_token_missing`.
+
+        **Ecole creee depuis le LMS**, ou basculee. Tout le catalogue local,
+        meme hors programme, en identifiants LOCAUX, sans aucun appel a
+        KLASSCI. Ni heures, ni seances, ni filieres, ni niveaux n'existent en
+        local : `heures_total` et `nb_seances_programmees` valent `null`,
+        `combinaisons` est vide ; `nb_evaluations` vaut 0, aucune evaluation
+        n'existant encore (provisoire, D72) ; `nb_lecons` compte les lecons de
+        la matiere, tous statuts ; `couleur` est la couleur par defaut.
+      security:
+        - sanctum: []
+      responses:
+        '200':
+          description: "Les matieres, et leurs totaux"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MatieresAdministration'
+        '401':
+          $ref: '#/components/responses/KlassciUnauthorized'
+        '403':
+          description: "Role hors de la gestion, etablissement desactive, ou compte sans etablissement (`no_institution`)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefusClasseEleves'
+        '500':
+          description: "Defaillance interne, rapportee une fois au journal, sans le message ni les valeurs d'une requete."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VisioErreurInterne'
+        '503':
+          description: "Ecole creee depuis KLASSCI : KLASSCI indisponible."
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/KlassciIndisponible'
 
   /proxy/matieres/{id}:
     get:

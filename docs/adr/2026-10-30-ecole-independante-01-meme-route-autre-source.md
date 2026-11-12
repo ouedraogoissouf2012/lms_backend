@@ -160,6 +160,27 @@ lot de #949.
   journalisaient aussi l'exception avant de la rendre (`CaughtExceptionLog`, #1008) : la panne aurait été écrite
   deux fois. Ce sont les deux seuls des 16 sites de `proxyErrorResponse` à le faire ; leur écriture est retirée.
 
+## Quatrième cas appliqué (lot 3c, 2026-11-09)
+
+| Route | Port | Source KLASSCI | Source locale |
+|---|---|---|---|
+| `GET /proxy/matieres` | `InstitutionMatieresReader::list` | `KlassciInstitutionMatieresReader` (l'appel `getMatieres` d'avant) | `LocalInstitutionMatieresReader` |
+| `GET /admin/matieres` | `InstitutionMatieresReader::listForAdmin` | `KlassciInstitutionMatieresReader` (`AdminMatieresQueryService`, inchangé) | `LocalInstitutionMatieresReader` |
+| `GET /proxy/structure` | `InstitutionStructureReader` | `KlassciInstitutionStructureReader` (l'appel `getStructure` d'avant) | `LocalInstitutionStructureReader` : deux listes vides |
+
+- **Le jeton KLASSCI personnel est exigé par la source KLASSCI**, et non plus par les contrôleurs : vérifié avant le
+  choix de source, il refusait l'école créée depuis le LMS. La réponse d'un jeton absent ne change pas (401
+  `klassci_token_missing`).
+- **Sur `/admin/matieres`, la garde de rôle du contrôleur passe désormais avant le jeton.** Le middleware
+  `role:admin,coordinateur` n'admet que des comptes que `isManager()` accepte : l'ordre ne change aucun refus
+  atteignable.
+- La grille des matières est `MatieresAtteintes`. Elle réutilise `ClassesAtteintes`, et y ajoute, pour l'enseignant, la
+  désignation sur CETTE matière. Les règles d'affichage de l'écran d'administration (couleur par défaut, `N/A`, totaux)
+  sont écrites une fois, dans `AdminMatierePresentation`, pour les deux sources.
+- Une défaillance interne de `/admin/matieres` reste écrite une fois par `CaughtExceptionLog`, sans les valeurs du
+  SQL (#1008) ; les tests du lot la fixent pour les deux sources. Le corps du 500 ne change pas. Un refus 4xx de
+  KLASSCI y rend toujours 500 : c'est préexistant, et hors de ce lot.
+
 ## Conséquences
 
 - **Lot 1 : l'école créée depuis KLASSCI ne change pas dans ce qu'elle rend.** Il est prouvé par ses tests existants, lancés sans

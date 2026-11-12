@@ -56,7 +56,7 @@ final class AdminMatieresQueryService
 
         return [
             'matieres' => $matieres,
-            'statistiques' => $this->statistics($matieres),
+            'statistiques' => AdminMatierePresentation::statistiques($matieres),
         ];
     }
 
@@ -73,11 +73,11 @@ final class AdminMatieresQueryService
 
         return [
             'id' => $matiere['id'] ?? null,
-            'nom' => $matiere['nom'] ?? 'N/A',
-            'code' => $matiere['code'] ?? 'N/A',
+            'nom' => $matiere['nom'] ?? AdminMatierePresentation::SANS_VALEUR,
+            'code' => $matiere['code'] ?? AdminMatierePresentation::SANS_VALEUR,
             'description' => $matiere['description'] ?? null,
             'coefficient' => $matiere['coefficient'] ?? null,
-            'couleur' => $matiere['couleur'] ?? '#6366f1',
+            'couleur' => $matiere['couleur'] ?? AdminMatierePresentation::COULEUR_PAR_DEFAUT,
             'heures_total' => $this->intOrNull($heures['total'] ?? null),
             'nb_evaluations' => $this->intOrNull($metadata['total_evaluations'] ?? null),
             // Absents de la liste : la valeur n'est pas connue, elle n'est pas nulle.
@@ -107,32 +107,6 @@ final class AdminMatieresQueryService
         }
 
         return $combinaisons;
-    }
-
-    /**
-     * Totaux : on ne somme que ce qui a été réellement mesuré.
-     *
-     * `total_heures` vaut `null` si AUCUNE matière ne porte d'heures — sommer des
-     * absences donnerait `0`, indiscernable d'un vrai « zéro heure ». `total_seances`
-     * est toujours `null` : la liste ne porte pas cette donnée (cf. en-tête).
-     *
-     * @param  array<int, array<string, mixed>>  $matieres
-     * @return array<string, mixed>
-     */
-    private function statistics(array $matieres): array
-    {
-        $heures = [];
-        foreach ($matieres as $matiere) {
-            if (is_int($matiere['heures_total'])) {
-                $heures[] = $matiere['heures_total'];
-            }
-        }
-
-        return [
-            'total' => count($matieres),
-            'total_heures' => $matieres === [] ? 0 : ($heures === [] ? null : array_sum($heures)),
-            'total_seances' => null,
-        ];
     }
 
     /** Entier KLASSCI, ou `null` si la valeur est absente ou non numérique. */

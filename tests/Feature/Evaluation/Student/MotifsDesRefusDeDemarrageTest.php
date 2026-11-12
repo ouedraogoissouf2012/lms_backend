@@ -200,8 +200,8 @@ final class MotifsDesRefusDeDemarrageTest extends TestCase
         $this->mock(KlassciProxyService::class, fn (MockInterface $mock) => $mock->shouldNotReceive('requestWithUserToken'));
 
         // Le 401 du jeton KLASSCI absent, et non celui d'une session morte. Sa
-        // forme est prouvée exacte : la spec le décrit par une réponse partagée
-        // (`$ref` vers `KlassciUnauthorized`), que l'aide de contrat ne résout pas.
+        // forme est prouvée exacte, plus étroitement que par la spec, qui le
+        // décrit par une réponse partagée (`$ref` vers `KlassciUnauthorized`).
         $this->demarrer($evaluation)->assertStatus(401)->assertExactJson(MissingKlassciTokenException::payload());
     }
 

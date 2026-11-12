@@ -3,9 +3,10 @@
 namespace App\Http\Controllers\API\LMS;
 
 use App\Exceptions\KlassciUnavailableException;
-use App\Http\Controllers\API\Proxy\Concerns\ResolvesPersonalKlassciToken;
+use App\Exceptions\MissingKlassciTokenException;
 use App\Http\Controllers\AuthenticatedController;
 use App\Services\Matiere\AdminMatieresQueryService;
+use App\Services\Matiere\InstitutionMatieresReader;
 use App\Support\Logging\CaughtExceptionLog;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -18,13 +19,16 @@ use Psr\Log\LoggerInterface;
  * sérialisation. La construction du payload vit dans
  * {@see AdminMatieresQueryService}, qui porte aussi la raison du geste
  * (suppression d'un N+1 de 453 appels KLASSCI).
+ *
+ * Même route, autre source (ADR-EI-01, lot 3c) : la source est reçue par la
+ * MÉTHODE — Laravel garde le contrôleur sur l'objet Route, et une source reçue
+ * par le constructeur resterait celle de la première école servie. Le jeton
+ * KLASSCI personnel est exigé par la source KLASSCI : vérifié ici, il
+ * refuserait l'école créée depuis le LMS.
  */
 final class LMSMatieresAdminController extends AuthenticatedController
 {
-    use ResolvesPersonalKlassciToken;
-
     public function __construct(
-        private readonly AdminMatieresQueryService $matieresQuery,
         private readonly LoggerInterface $logger,
         private readonly CaughtExceptionLog $journal,
     ) {}
@@ -33,23 +37,21 @@ final class LMSMatieresAdminController extends AuthenticatedController
      * GET /api/admin/matieres
      * Liste toutes les matières avec leurs combinaisons (admin/coordinateur).
      */
-    public function adminMatieresList(Request $request): JsonResponse
+    public function adminMatieresList(Request $request, InstitutionMatieresReader $matieres): JsonResponse
     {
+        $user = $this->authenticatedUser($request);
+
+        // Defense in depth: la route middleware `role:admin,coordinateur` filtre
+        // déjà, mais on garde le check controller comme garde supplémentaire.
+        // Note: `superAdmin` accepté car role intra-tenant admin (cf. EnsureRole.php).
+        // Il passe AVANT la lecture : la source locale ne lit rien pour un
+        // appelant que la gestion n'admet pas.
+        if (! $user->isManager()) {
+            return $this->errorResponse('Accès non autorisé. Réservé aux administrateurs et coordinateurs.', 403);
+        }
+
         try {
-            $user = $this->authenticatedUser($request);
-            $klassciToken = $this->personalKlassciToken($request);
-            if ($klassciToken === null) {
-                return $this->missingKlassciTokenResponse();
-            }
-
-            // Defense in depth: la route middleware `role:admin,coordinateur` filtre
-            // déjà, mais on garde le check controller comme garde supplémentaire.
-            // Note: `superAdmin` accepté car role intra-tenant admin (cf. EnsureRole.php).
-            if (! $user->isManager()) {
-                return $this->errorResponse('Accès non autorisé. Réservé aux administrateurs et coordinateurs.', 403);
-            }
-
-            $result = $this->matieresQuery->listForAdmin($klassciToken);
+            $result = $matieres->listForAdmin($user);
             $count = count($result['matieres']);
 
             // Une ligne par requête. Avant, l'enrichissement journalisait CHAQUE
@@ -65,6 +67,8 @@ final class LMSMatieresAdminController extends AuthenticatedController
             }
 
             return $this->successResponse($result, $count . ' matière(s) récupérée(s)');
+        } catch (MissingKlassciTokenException) {
+            return MissingKlassciTokenException::jsonResponse();
         } catch (KlassciUnavailableException) {
             // Panne KLASSCI : 503 retryable, jamais le 500 generique ci-dessous.
             // Un 500 est definitif pour le client ; il transformerait une coupure

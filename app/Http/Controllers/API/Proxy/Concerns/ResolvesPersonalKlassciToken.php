@@ -6,6 +6,7 @@ namespace App\Http\Controllers\API\Proxy\Concerns;
 
 use App\Exceptions\MissingKlassciTokenException;
 use App\Models\User;
+use App\Support\Klassci\KlassciPersonalToken;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -21,13 +22,8 @@ trait ResolvesPersonalKlassciToken
     protected function personalKlassciToken(Request $request): ?string
     {
         $user = $request->user();
-        if (! $user instanceof User) {
-            return null;
-        }
 
-        $token = $user->klassci_token;
-
-        return is_string($token) && $token !== '' ? $token : null;
+        return $user instanceof User ? KlassciPersonalToken::de($user) : null;
     }
 
     protected function missingKlassciTokenResponse(): JsonResponse

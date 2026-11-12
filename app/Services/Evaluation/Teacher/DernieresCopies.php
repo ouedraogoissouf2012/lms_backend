@@ -15,8 +15,8 @@ use Illuminate\Support\Collection;
  * ## La même règle que `ownedBy`
  *
  * Une copie appartient à un élève par son auteur (`student_id`, écrit à chaque
- * création, seul présent dans une école créée depuis le LMS) OU par son
- * identité KLASSCI (`klassci_etudiant_id`, pour une ligne d'avant D72). C'est
+ * création, seul présent dans une école créée depuis le LMS) OU, pour une ligne
+ * sans auteur (d'avant D72), par son identité KLASSCI (`klassci_etudiant_id`). C'est
  * la règle de {@see EvaluationSubmission::scopeOwnedBy()}, appliquée ici en
  * mémoire : la requête servirait un élève à la fois, et l'écran en sert une
  * classe (#503, aucune requête par élève).
@@ -88,7 +88,9 @@ final class DernieresCopies
     }
 
     /**
-     * La règle de `ownedBy` : par l'auteur, ou par une identité KLASSCI.
+     * La règle de `ownedBy` : par l'auteur, ou, pour une ligne SANS auteur
+     * seulement, par une identité KLASSCI. Une copie qui a un auteur n'est
+     * jamais rattachée à un autre élève qui porterait son identité KLASSCI.
      *
      * @param  array<int|string, ?int>  $identitesKlassci
      */
@@ -96,8 +98,11 @@ final class DernieresCopies
     {
         $identites = array_values(array_filter($identitesKlassci, static fn (?int $id): bool => $id !== null));
 
-        return ($auteur !== null && self::entier($copie->student_id) === $auteur)
-            || in_array(self::entier($copie->klassci_etudiant_id), $identites, true);
+        $auteurDeLaCopie = self::entier($copie->student_id);
+
+        return $auteurDeLaCopie === null
+            ? in_array(self::entier($copie->klassci_etudiant_id), $identites, true)
+            : $auteur !== null && $auteurDeLaCopie === $auteur;
     }
 
     /**

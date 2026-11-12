@@ -166,7 +166,7 @@ final class EvaluationAttemptStateService
      * ne voit pas (copie héritée sans établissement, avant le rattrapage
      * `2026_10_29_200000`) est une anomalie de données, et l'exception remonte
      * pour être rapportée. Toute autre erreur de base remonte, comme la
-     * violation d'un AUTRE unique ({@see self::surUnUniqueDesCopies()}).
+     * violation d'un AUTRE unique ({@see ConflitDeCopie}).
      *
      * ## Hypothèse : aucune transaction autour de `/start`
      *
@@ -200,7 +200,7 @@ final class EvaluationAttemptStateService
                 'feedback' => $isPracticeMode ? '[PRACTICE] Entraînement - note non officielle' : null,
             ]);
         } catch (UniqueConstraintViolationException $conflit) {
-            if (! self::surUnUniqueDesCopies($conflit)) {
+            if (! ConflitDeCopie::estUneCourse($conflit)) {
                 throw $conflit;
             }
 
@@ -229,24 +229,6 @@ final class EvaluationAttemptStateService
         }
 
         return $this->okResponse($submission, $window, false, $isPracticeMode);
-    }
-
-    /**
-     * Le conflit porte-t-il sur l'un des deux uniques des copies
-     * (`eval_sub_unique`, `eval_sub_student_unique`) ? Seul celui-là est une
-     * course (D188). MySQL et PostgreSQL nomment la contrainte ; SQLite cite ses
-     * colonnes.
-     */
-    private static function surUnUniqueDesCopies(UniqueConstraintViolationException $conflit): bool
-    {
-        $message = $conflit->getMessage();
-
-        return str_contains($message, 'eval_sub_unique')
-            || str_contains($message, 'eval_sub_student_unique')
-            || preg_match(
-                '/evaluation_submissions\.evaluation_id, evaluation_submissions\.(klassci_etudiant_id|student_id), evaluation_submissions\.attempt/',
-                $message,
-            ) === 1;
     }
 
     /**

@@ -14,6 +14,7 @@ use App\Models\Institution;
 use App\Models\Matiere;
 use App\Models\User;
 use App\Services\Evaluation\Student\LearnerEvaluationScope;
+use App\Services\Evaluation\Teacher\NomsDesAuteurs;
 use App\Services\KlassciProxyService;
 use App\Services\TenantManager;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -319,6 +320,23 @@ final class EnseignantCorrigeSesEvaluationsTest extends TestCase
             [[$awa->getKey(), 'Awa Koné'], [null, 'Yao Kouassi'], [null, 'Étudiant #702']],
             array_map(static fn (array $c): array => [$c['student_id'], $c['student_name']], $copies),
         );
+    }
+
+    public function test_les_noms_sont_bornes_a_l_etablissement_meme_sans_tenant(): void
+    {
+        // Le scope global de `User` borne la requête HTTP au tenant : il cache
+        // le bornage explicite. Sans tenant (une tâche de fond), il s'ouvre ;
+        // seul le `where` de `NomsDesAuteurs` empêche alors de nommer la copie
+        // du nom d'un compte d'une autre école qui porte la même identité.
+        [, $evaluation] = $this->enseignantKlassci();
+        $ailleurs = $this->membre($this->ecole(InstitutionMode::Klassci), 'etudiant');
+        $ailleurs->forceFill(['klassci_id' => 702, 'name' => 'Compte Tiers'])->save();
+        $copie = $this->copie($evaluation, null, 'soumis', '10.00', ['klassci_etudiant_id' => 702, 'student_id' => null]);
+        app(TenantManager::class)->reset();
+
+        $nom = NomsDesAuteurs::de(collect([$copie]), $evaluation->institution_id);
+
+        self::assertSame('Étudiant #702', $nom($copie));
     }
 
     // ───────────────────────── noter et prévisualiser

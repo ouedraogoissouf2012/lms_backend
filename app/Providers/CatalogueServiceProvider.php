@@ -5,6 +5,9 @@ declare(strict_types=1);
 namespace App\Providers;
 
 use App\Services\Catalogue\CatalogueAuthority;
+use App\Services\Catalogue\InstitutionStructureReader;
+use App\Services\Catalogue\KlassciInstitutionStructureReader;
+use App\Services\Catalogue\LocalInstitutionStructureReader;
 use App\Services\Classe\ClasseDetailsQueryService;
 use App\Services\Classe\ClasseDetailsReader;
 use App\Services\Classe\ClasseEtudiantsQueryService;
@@ -18,6 +21,9 @@ use App\Services\Classe\LocalInstitutionClassesReader;
 use App\Services\Classe\LocalTeacherClassesReader;
 use App\Services\Classe\TeacherClassesQueryService;
 use App\Services\Classe\TeacherClassesReader;
+use App\Services\Matiere\InstitutionMatieresReader;
+use App\Services\Matiere\KlassciInstitutionMatieresReader;
+use App\Services\Matiere\LocalInstitutionMatieresReader;
 use App\Services\Matiere\LocalMatiereDetailsReader;
 use App\Services\Matiere\LocalTeacherMatieresReader;
 use App\Services\Matiere\MatiereDetailsQueryService;
@@ -63,6 +69,9 @@ final class CatalogueServiceProvider extends ServiceProvider
         ClasseEtudiantsReader::class => [ClasseEtudiantsQueryService::class, LocalClasseDetailsReader::class],
         // Lot 3a : les classes de l'établissement, pour les écrans de gestion.
         InstitutionClassesReader::class => [KlassciInstitutionClassesReader::class, LocalInstitutionClassesReader::class],
+        // Lot 3c : les matières et la structure de l'établissement.
+        InstitutionMatieresReader::class => [KlassciInstitutionMatieresReader::class, LocalInstitutionMatieresReader::class],
+        InstitutionStructureReader::class => [KlassciInstitutionStructureReader::class, LocalInstitutionStructureReader::class],
     ];
 
     /**

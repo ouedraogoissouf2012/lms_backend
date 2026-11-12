@@ -84,6 +84,8 @@ final class StudentGradesZeroDataTest extends TestCase
         EvaluationSubmission::factory()->create([
             'evaluation_id' => $evaluation->id,
             'klassci_etudiant_id' => self::KLASSCI_STUDENT_ID,
+            // L'auteur, comme `/start` l'écrit : sans lui, la fabrique en crée un autre.
+            'student_id' => $this->student->id,
             'status' => 'corrige',
             'note_sur_20' => 15,
             'feedback' => null,
@@ -125,6 +127,8 @@ final class StudentGradesZeroDataTest extends TestCase
         EvaluationSubmission::factory()->create([
             'evaluation_id' => $evaluationB->id,
             'klassci_etudiant_id' => self::KLASSCI_STUDENT_ID,
+            // L'auteur, comme `/start` l'écrit : sans lui, la fabrique en crée un autre.
+            'student_id' => $this->student->id,
             'status' => 'corrige',
             'note_sur_20' => 20,
             'feedback' => null,

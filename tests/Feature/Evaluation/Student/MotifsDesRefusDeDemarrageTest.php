@@ -232,6 +232,8 @@ final class MotifsDesRefusDeDemarrageTest extends TestCase
             'evaluation_id' => $evaluation->id,
             'institution_id' => $this->ecole->id,
             'klassci_etudiant_id' => $this->eleve->klassci_id,
+            // L'auteur, comme `/start` l'écrit : sans lui, la fabrique en crée un autre.
+            'student_id' => $this->eleve->id,
             'status' => 'soumis',
         ]);
     }

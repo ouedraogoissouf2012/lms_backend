@@ -81,6 +81,13 @@ class EvaluationSubmission extends Model
      * une école créée depuis le LMS) ; `klassci_etudiant_id` pour une ligne
      * d'avant, que le rattrapage `2026_09_20` a pu laisser sans `student_id`.
      *
+     * La branche KLASSCI ne vaut QUE pour une ligne sans auteur
+     * (`student_id IS NULL`) : une copie qui a un auteur n'est jamais rendue à
+     * un autre élève par l'identité KLASSCI, même si elle la porte (rattrapage
+     * mal apparié, écriture incohérente). Revue croisée d'E2a. Une telle ligne
+     * bloque encore l'insertion par `eval_sub_unique` sans être vue : `/start`
+     * la traite en anomalie, et l'exception remonte.
+     *
      * ## Pourquoi jamais de requête avec un identifiant nul
      *
      * Laravel traduit `where($colonne, null)` en `whereNull($colonne)`
@@ -121,6 +128,8 @@ class EvaluationSubmission extends Model
         return $query
             ->where($query->qualifyColumn('institution_id'), $etablissement)
             ->where(fn (Builder $q) => $q->where($query->qualifyColumn('student_id'), $auteur)
-                ->when($klassci !== null, fn (Builder $k) => $k->orWhere($query->qualifyColumn('klassci_etudiant_id'), $klassci)));
+                ->when($klassci !== null, fn (Builder $k) => $k->orWhere(fn (Builder $davant) => $davant
+                    ->whereNull($query->qualifyColumn('student_id'))
+                    ->where($query->qualifyColumn('klassci_etudiant_id'), $klassci))));
     }
 }

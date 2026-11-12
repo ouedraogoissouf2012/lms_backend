@@ -119,6 +119,8 @@ final class EvaluationStudentSubmissionResponseTest extends TestCase
             'evaluation_id' => $evaluation->id,
             'institution_id' => $this->institution->id,
             'klassci_etudiant_id' => $this->student->klassci_id,
+            // L'auteur, comme `/start` l'écrit : sans lui, la fabrique en crée un autre.
+            'student_id' => $this->student->id,
             'status' => 'corrige',
             'submitted_at' => null,
         ]);

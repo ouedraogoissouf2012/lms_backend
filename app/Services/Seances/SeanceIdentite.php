@@ -20,12 +20,13 @@ final readonly class SeanceIdentite
 {
     private const SANS_ENSEIGNANT = 'Non assigné';
 
-    private const SANS_CLASSE = 'N/A';
+    private const SANS_VALEUR = 'N/A';
 
     private function __construct(
         public int $id,
         public ?int $classeId,
         public ?int $matiereId,
+        public string $matiereNom,
         public ?int $enseignantId,
         public string $enseignantNom,
         public string $classeNom,
@@ -38,9 +39,10 @@ final readonly class SeanceIdentite
             $seance->klassci_seance_id ?? $seance->id,
             $seance->klassci_classe_id,
             $seance->klassci_matiere_id,
+            $seance->matiere_nom ?? self::SANS_VALEUR,
             $seance->klassci_enseignant_id,
             $seance->enseignant_nom ?? self::SANS_ENSEIGNANT,
-            $seance->classe_nom ?? self::SANS_CLASSE,
+            $seance->classe_nom ?? self::SANS_VALEUR,
             $seance->classe_effectif ?? 0,
         );
     }
@@ -51,17 +53,21 @@ final readonly class SeanceIdentite
      * la séance. L'auteur tient lieu d'enseignant ; à défaut (séance miroir d'une
      * école basculée, sans auteur local), le nom que la séance porte.
      *
+     * La matière, de même, est celle que désigne `matiere_id` : son libellé
+     * actuel ; à défaut, le nom libre que la séance porte.
+     *
      * @param  array{nom: string, effectif: int}|null  $classe
      */
-    public static function locale(Seance $seance, ?string $auteur, ?array $classe): self
+    public static function locale(Seance $seance, ?string $auteur, ?array $classe, ?string $matiere): self
     {
         return new self(
             $seance->id,
             $seance->classe_id,
-            null,
+            $seance->matiere_id,
+            $matiere ?? $seance->matiere_nom ?? self::SANS_VALEUR,
             $seance->created_by,
             $auteur ?? $seance->enseignant_nom ?? self::SANS_ENSEIGNANT,
-            $classe['nom'] ?? $seance->classe_nom ?? self::SANS_CLASSE,
+            $classe['nom'] ?? $seance->classe_nom ?? self::SANS_VALEUR,
             $classe['effectif'] ?? 0,
         );
     }

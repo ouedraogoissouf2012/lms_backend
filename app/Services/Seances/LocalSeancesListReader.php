@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Seances;
 
 use App\Models\Classe;
+use App\Models\Matiere;
 use App\Models\Seance;
 use App\Models\SeanceUserHidden;
 use App\Models\User;
@@ -157,13 +158,36 @@ final class LocalSeancesListReader implements SeancesListReader
             ->pluck('name', 'id');
 
         $classes = $this->classesDe($lues->pluck('classe_id')->filter()->unique()->values()->all(), $institution);
+        $matieres = $this->matieresDe($lues->pluck('matiere_id')->filter()->unique()->values()->all(), $institution);
 
-        return array_values($lues->map(function (Seance $seance) use ($auteurs, $classes): array {
+        return array_values($lues->map(function (Seance $seance) use ($auteurs, $classes, $matieres): array {
             $auteur = $seance->created_by !== null ? $auteurs->get($seance->created_by) : null;
             $classe = $seance->classe_id !== null ? ($classes[$seance->classe_id] ?? null) : null;
+            $matiere = $seance->matiere_id !== null ? ($matieres[$seance->matiere_id] ?? null) : null;
 
-            return $this->projection->project($seance, SeanceIdentite::locale($seance, is_string($auteur) ? $auteur : null, $classe));
+            return $this->projection->project($seance, SeanceIdentite::locale($seance, is_string($auteur) ? $auteur : null, $classe, $matiere));
         })->all());
+    }
+
+    /**
+     * Le libellé actuel des matières des séances lues, dans l'établissement.
+     * Une requête pour toutes.
+     *
+     * @param  array<int, mixed>  $ids
+     * @return array<int, string>
+     */
+    private function matieresDe(array $ids, int $institution): array
+    {
+        if ($ids === []) {
+            return [];
+        }
+
+        $matieres = [];
+        foreach (Matiere::query()->where('institution_id', $institution)->whereIn('id', $ids)->get(['id', 'libelle']) as $matiere) {
+            $matieres[$matiere->id] = $matiere->libelle;
+        }
+
+        return $matieres;
     }
 
     /**

@@ -54,8 +54,8 @@ final class SeanceCalendarProjection
             ],
             'matiere' => [
                 'id' => $identite->matiereId,
-                'libelle' => $seance->matiere_nom ?? 'N/A',
-                'nom' => $seance->matiere_nom ?? 'N/A',
+                'libelle' => $identite->matiereNom,
+                'nom' => $identite->matiereNom,
                 'code' => null,
             ],
             'classe' => $this->classeBlock($identite),

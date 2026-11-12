@@ -30,6 +30,8 @@ final class StoreLocalSeanceRequest extends FormRequest
             // laisserait passer la classe d une AUTRE ecole. L appartenance est
             // verifiee par LocalSeanceCreator, qui borne sur institution_id.
             'classe_id' => 'sometimes|nullable|integer|min:1',
+            // Même motif : l'appartenance et le programme sont vérifiés par LocalSeanceCreator.
+            'matiere_id' => 'sometimes|nullable|integer|min:1',
         ];
     }
 }

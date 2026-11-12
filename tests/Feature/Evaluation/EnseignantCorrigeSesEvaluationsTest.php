@@ -17,6 +17,7 @@ use App\Services\Evaluation\Student\LearnerEvaluationScope;
 use App\Services\KlassciProxyService;
 use App\Services\TenantManager;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Mockery\MockInterface;
 use Tests\Concerns\ActsAsTenantUser;
@@ -155,6 +156,60 @@ final class EnseignantCorrigeSesEvaluationsTest extends TestCase
 
         self::assertSame([ClasseEtudiantStatut::Actif->value], $voient);
         self::assertSame([$eleves[ClasseEtudiantStatut::Actif->value]->getKey()], $roster);
+    }
+
+    public function test_un_eleve_admis_par_le_repli_qui_remet_apparait_dans_les_resultats(): void
+    {
+        // Règle : aucune copie remise n'est invisible pour l'enseignant. Awa
+        // n'a aucune inscription active : l'audience l'admet par le repli
+        // `user_classes` (C24). Elle démarre et remet par les VRAIES routes,
+        // puis apparaît dans les résultats, marquée hors roster
+        // (`inscription: null`) et jamais comptée parmi les absents.
+        [$ecole, $enseignant, $classe, $maths] = $this->enseignantEtSaClasse();
+        $classe->forceFill(['klassci_id' => 77])->save();
+        $yao = $this->eleve($ecole, $classe, 'Yao Kouassi');
+        $awa = $this->membre($ecole, 'etudiant');
+        $awa->forceFill(['name' => 'Awa Koné'])->save();
+        DB::table('user_classes')->insert([
+            'user_id' => $awa->getKey(), 'klassci_classe_id' => 77, 'institution_id' => $ecole->getKey(),
+            'created_at' => now(), 'updated_at' => now(),
+        ]);
+        $evaluation = $this->evaluation($classe, $maths, $enseignant, ['date_evaluation' => now()->subMinutes(10)]);
+        $question = EvaluationQuestion::query()->where('evaluation_id', $evaluation->getKey())->firstOrFail();
+        $this->asTenant($awa)->postJson($this->de($evaluation).'/start')->assertSuccessful();
+        $this->asTenant($awa)->postJson($this->de($evaluation).'/submit', ['answers' => [(string) $question->getKey() => 'a']])
+            ->assertSuccessful();
+
+        $reponse = $this->asTenant($enseignant)->getJson($this->de($evaluation).'/results-by-class');
+        $this->assertMatchesOpenApiResponse($reponse, '/evaluations/{id}/results-by-class', 'get');
+        $resultats = $reponse->assertOk()->json('data.resultats');
+
+        self::assertSame([
+            $yao->getKey() => ['Yao Kouassi', 'non_passee', 'active'],
+            $awa->getKey() => ['Awa Koné', 'soumis', null],
+        ], $this->lignesEtInscription($resultats));
+        $reponse->assertJsonPath('data.statistiques.total_etudiants', 2)
+            ->assertJsonPath('data.statistiques.etudiants_soumis', 1)
+            ->assertJsonPath('data.statistiques.etudiants_non_passes', 1);
+    }
+
+    public function test_dans_une_ecole_klassci_une_copie_hors_du_roster_apparait_dans_les_resultats(): void
+    {
+        // Même règle : un élève sorti du roster KLASSCI après avoir remis
+        // garde sa ligne, identifiée par son identité KLASSCI.
+        [$enseignant, $evaluation] = $this->enseignantKlassci();
+        $parti = $this->eleveKlassci($enseignant, 702, 'parti@ecole.test', 'Paul Parti');
+        $this->copie($evaluation, $parti, 'soumis', '13.00');
+        $this->rosterKlassci([['id' => 700, 'email' => 'awa@ecole.test', 'nom' => 'Koné', 'prenom' => 'Awa']]);
+
+        $resultats = $this->asTenant($enseignant)->getJson($this->de($evaluation).'/results-by-class')
+            ->assertOk()
+            ->json('data.resultats');
+
+        self::assertSame([
+            700 => ['Koné Awa', 'non_passee', 'active'],
+            702 => ['Paul Parti', 'soumis', null],
+        ], $this->lignesEtInscription($resultats));
     }
 
     public function test_un_collegue_ne_lit_pas_les_resultats(): void
@@ -362,6 +417,8 @@ final class EnseignantCorrigeSesEvaluationsTest extends TestCase
             'klassci_matiere_id' => null,
             'klassci_enseignant_id' => null,
             'is_published' => true,
+            // Fixé : la fabrique le tire au hasard, et hors ligne `/start` refuse.
+            'is_online' => true,
             'status' => 'planifiee',
             'date_evaluation' => now()->subDay(),
             'duree_minutes' => 60,
@@ -469,6 +526,22 @@ final class EnseignantCorrigeSesEvaluationsTest extends TestCase
         foreach ($resultats as $ligne) {
             self::assertIsArray($ligne);
             $lignes[$ligne['etudiant_id']] = [$ligne['etudiant_nom_complet'], $ligne['note'], $ligne['status']];
+        }
+        ksort($lignes);
+
+        return $lignes;
+    }
+
+    /**
+     * @return array<int|string, array{mixed, mixed, mixed}>
+     */
+    private function lignesEtInscription(mixed $resultats): array
+    {
+        self::assertIsArray($resultats);
+        $lignes = [];
+        foreach ($resultats as $ligne) {
+            self::assertIsArray($ligne);
+            $lignes[$ligne['etudiant_id']] = [$ligne['etudiant_nom_complet'], $ligne['status'], $ligne['inscription']];
         }
         ksort($lignes);
 

@@ -71,8 +71,9 @@ final class EleveVoitSesEvaluationsTest extends TestCase
         $this->evaluationPubliee($classe, $maths, now()->addDay(), 60, ['status' => 'brouillon']);
         $this->evaluationPubliee($classe, $maths, now()->addDay(), 60, [], questions: 0);
         $this->evaluationPubliee($this->classe($ecole, '5e B'), $maths, now()->addDay(), 60);
-        // Une autre école, avec le MÊME `classe_id` que la classe de l'élève :
-        // seul le filtre d'établissement l'écarte.
+        // Une autre école, avec le MÊME `classe_id` que la classe de l'élève.
+        // Par la route, le scope du tenant l'écarte aussi : le filtre explicite
+        // seul est prouvé sans tenant, plus bas.
         $ailleurs = $this->ecole();
         $this->evaluationPubliee($classe, $this->matiere($ailleurs, 'Maths'), now()->addDay(), 60, ['institution_id' => $ailleurs->getKey()]);
 
@@ -201,6 +202,23 @@ final class EleveVoitSesEvaluationsTest extends TestCase
 
         $this->disableKlassciMiddleware();
         $this->asTenant($eleve)->getJson($this->copieDe($evaluation))->assertOk()->assertJsonPath('data.id', $copie->getKey());
+    }
+
+    public function test_sans_tenant_resolu_le_filtre_d_etablissement_ecarte_seul_l_autre_ecole(): void
+    {
+        // Le scope global s'efface sans tenant (BelongsToInstitution, il
+        // journalise et laisse passer) : c'est le cas d'un job ou d'une
+        // commande. Le filtre explicite d'EvaluationsOuvertesAuxEleves est
+        // alors seul à tenir l'établissement.
+        [$ecole, $eleve, $classe, $maths] = $this->eleveInscrit();
+        $sienne = $this->evaluationPubliee($classe, $maths, now()->addDay(), 60);
+        $ailleurs = $this->ecole();
+        $this->evaluationPubliee($classe, $this->matiere($ailleurs, 'Maths'), now()->addDay(), 60, ['institution_id' => $ailleurs->getKey()]);
+        app(\App\Services\TenantManager::class)->reset();
+
+        $ids = app(\App\Services\Evaluation\Student\LocalLearnerEvaluationAudience::class)->visibleFor($eleve)->pluck('id')->all();
+
+        self::assertSame([$sienne->getKey()], $ids);
     }
 
     public function test_le_schema_des_elements_mord(): void

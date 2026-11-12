@@ -36,7 +36,7 @@ final class LocalStudentEvaluationsReader implements StudentEvaluationsReader
         $copies = $this->dernieresCopies($evaluations->modelKeys(), $user);
 
         return $evaluations
-            ->map(fn (Evaluation $evaluation): array => $this->enrichie($evaluation, $copies->get($evaluation->getKey())))
+            ->map(fn (Evaluation $evaluation): array => $this->enrichie($evaluation, $copies->get($evaluation->id)))
             ->values()
             ->all();
     }

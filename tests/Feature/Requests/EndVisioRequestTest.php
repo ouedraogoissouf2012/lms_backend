@@ -29,7 +29,7 @@ class EndVisioRequestTest extends TestCase
         $this->teacher = User::factory()
             ->teacher()
             ->for($this->institution)
-            ->create();
+            ->create(['klassci_enseignant_id' => 777]);
         $this->otherTeacher = User::factory()
             ->teacher()
             ->for($this->institution)
@@ -41,6 +41,7 @@ class EndVisioRequestTest extends TestCase
         $this->seance = Seance::factory()
             ->forInstitution($this->institution)
             ->visioActive()
+            ->forTeacher(777)
             ->create();
     }
 
@@ -68,13 +69,12 @@ class EndVisioRequestTest extends TestCase
         $this->assertNotEquals(403, $response->status());
     }
 
-    public function test_other_teacher_can_attempt_end(): void
+    public function test_teacher_ends_only_a_seance_they_manage(): void
     {
         Sanctum::actingAs($this->otherTeacher);
         $response = $this->postJson("/api/lms/seances/{$this->seance->id}/end-visio");
 
-        $this->assertNotEquals(401, $response->status());
-        $this->assertNotEquals(403, $response->status());
+        $response->assertStatus(403);
     }
 
     public function test_coordinator_can_attempt_end(): void

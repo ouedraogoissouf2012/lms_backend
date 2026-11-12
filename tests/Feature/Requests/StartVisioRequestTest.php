@@ -28,7 +28,7 @@ class StartVisioRequestTest extends TestCase
         $this->teacher = User::factory()
             ->teacher()
             ->for($this->institution)
-            ->create();
+            ->create(['klassci_enseignant_id' => 777]);
         $this->coordinator = User::factory()
             ->coordinator()
             ->for($this->institution)
@@ -36,6 +36,7 @@ class StartVisioRequestTest extends TestCase
         $this->seance = Seance::factory()
             ->forInstitution($this->institution)
             ->withVisio()
+            ->forTeacher(777)
             ->create();
     }
 
@@ -63,7 +64,7 @@ class StartVisioRequestTest extends TestCase
         $this->assertNotEquals(403, $response->status());
     }
 
-    public function test_teacher_can_start_any_seance(): void
+    public function test_teacher_starts_only_a_seance_they_manage(): void
     {
         $otherSeance = Seance::factory()
             ->forInstitution($this->institution)
@@ -73,8 +74,7 @@ class StartVisioRequestTest extends TestCase
         Sanctum::actingAs($this->teacher);
         $response = $this->postJson("/api/lms/seances/{$otherSeance->id}/start-visio");
 
-        $this->assertNotEquals(401, $response->status());
-        $this->assertNotEquals(403, $response->status());
+        $response->assertStatus(403);
     }
 
     public function test_coordinator_can_attempt_start(): void

@@ -211,8 +211,8 @@ lot de #949.
   une requête bornée, jamais le `classe_nom` libre de la séance (revue indépendante du lot).
 - **Limite déclarée, école basculée** : une séance miroir de KLASSCI n'a ni auteur ni classe locaux. Seule la gestion la
   lit, avec le nom d'enseignant qu'elle porte ; ni l'enseignant ni l'élève ne la lisent, faute de lien local.
-- **Hors de ce lot, dans la file** : les actions du calendrier sur une séance locale (`/details`, `activate-visio`, le
-  basculement de la visio) exigent encore le jeton.
+- **Hors de ce lot, dans la file** : les actions du calendrier sur une séance locale (`/details`, le basculement de la
+  visio) exigent encore le jeton. L'activation de la visio suit (« La visio d'une séance », plus bas).
 ## Cas appliqué : les enseignants (lot 3b, 2026-11-12)
 
 | Route | Port | Source KLASSCI | Source locale |
@@ -290,3 +290,24 @@ L'élève (E2), la correction (E3) et les pages qui comptent les évaluations (E
 - **Dette déclarée** : `TeacherOwnershipScope::applyToEvaluations`, dans la recherche globale, ne lit encore que
   `klassci_enseignant_id`. Dans une école créée depuis le LMS, la recherche ne rend donc aucune évaluation à son
   auteur. Elle ferme, et rien ne fuit. L'alignement vient avec la PR « listForTeacher » (D136).
+
+## La visio d'une séance (2026-11-12, #926, Refs #917, #929)
+
+| Route | Port | Source KLASSCI | Source locale |
+|---|---|---|---|
+| `POST /lms/seances/{seanceId}/activate-visio` | `VisioActivationSource` | `VisioActivationService`, inchangé | `LocalVisioActivation` |
+
+- **L'identifiant suit le mode, comme le calendrier du lot 3d** : identifiant KLASSCI dans une école en mode KLASSCI,
+  id LOCAL dans une école en mode autonome. La séance locale est cherchée dans l'établissement du compte, sans jeton ni
+  appel KLASSCI, et rien n'est écrit sous un nom `klassci_*` (D132). Un salon déjà attribué est gardé (`??=`).
+- **Qui active** : qui gère la séance, `VisioActorAuthorization::canManage` (son auteur `created_by`, ou le personnel de
+  gestion de l'établissement). Le refus a une seule forme, `managementRefusal` : 403 `actor_not_authorized`.
+- **L'admission des élèves n'est pas une source, c'est un fait de la séance** : elle déclare sa classe, locale
+  (`classe_id`) ou KLASSCI (`klassci_classe_id`). `LocalClasseAudienceSource` lit la classe locale d'abord, comme
+  l'accès aux enregistrements, bornée à l'établissement, et l'inscription par `EnrollmentSource` (ADR-803-03). Une
+  séance miroitée suit son chemin d'avant. Le port gagne `designatesClasse`.
+- **Ce qui change AUSSI dans l'école en mode KLASSCI, voulu et déclaré** : une séance créée dans le LMS qui porte sa
+  classe locale admet désormais les élèves de cette classe. Elle était refusée en `no_classe_id`.
+- **Reste ouvert** : le basculement de la visio (`toggle-visio`) garde son 401 sans jeton ; la liste des participants et
+  le rattachement d'un enregistrement d'une séance locale (#929, « hors périmètre ») ; le côté enseignant de #917
+  (« Mes classes », `classes_concernees`).

@@ -68,7 +68,9 @@ class UpdateEvaluationRequestTest extends TestCase
             'titre' => 'New Title',
             'description' => 'New description',
             'duree_minutes' => 90,
-            'is_published' => true,
+            // C14 : `is_published` n'est plus accepté par un PUT (422,
+            // `publish_via_dedicated_route`) ; la publication passe par
+            // POST /publish. Voir MiseAJourParListeBlancheTest.
         ]);
 
         $this->assertTrue(in_array($response->status(), [200, 201]));

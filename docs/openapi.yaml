@@ -6517,6 +6517,11 @@ paths:
       tags:
         - Evaluations
       summary: "Update evaluation"
+      description: |
+        C14 : seuls les champs ci-dessous sont ecrits (liste blanche = validation). Un champ hors de
+        cette liste est ignore (`notes_published`, `is_locked`, `locked_at`, `deadline_at`, les
+        libelles, les identifiants). `is_published` est refuse quelle que soit sa valeur (`true`,
+        `false`, `null`) : la publication passe par `POST /evaluations/{id}/publish`.
       security:
         - sanctum: []
       parameters:
@@ -6525,6 +6530,84 @@ paths:
           required: true
           schema:
             type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                titre:
+                  type: string
+                  minLength: 3
+                  maxLength: 255
+                description:
+                  type: string
+                  nullable: true
+                status:
+                  type: string
+                  enum: [brouillon, planifiee, en_cours, terminee, annulee]
+                date_evaluation:
+                  type: string
+                  description: "Une date lisible par la regle `date` de Laravel."
+                  nullable: true
+                duree_minutes:
+                  type: integer
+                  minimum: 1
+                  maximum: 1440
+                type:
+                  type: string
+                  enum: [qcm, reponse_courte, dissertation, mixte]
+                coefficient:
+                  type: number
+                  minimum: 0
+                  nullable: true
+                bareme:
+                  type: number
+                  minimum: 0
+                  nullable: true
+                max_attempts:
+                  type: integer
+                  minimum: 1
+                allow_retake:
+                  type: boolean
+                is_online:
+                  type: boolean
+                shuffle_questions:
+                  type: boolean
+                show_results:
+                  type: boolean
+                questions:
+                  type: array
+                  description: "Remplacement complet des questions."
+                  items:
+                    type: object
+                    required:
+                      - question
+                      - type
+                    properties:
+                      question:
+                        type: string
+                        maxLength: 1000
+                      type:
+                        type: string
+                        enum: [qcm, qcm_multiple, vrai_faux, reponse_courte, dissertation]
+                      points:
+                        type: number
+                        minimum: 0
+                        nullable: true
+                      options:
+                        type: array
+                        nullable: true
+                        items: {}
+                      correct_answers:
+                        type: array
+                        nullable: true
+                        items: {}
+                      explanation:
+                        type: string
+                        maxLength: 2000
+                        nullable: true
       responses:
         '200':
           description: "Evaluation updated"
@@ -6532,6 +6615,33 @@ paths:
           description: "Permission denied"
         '404':
           description: "Not found"
+        '422':
+          description: |
+            Erreur de validation (`errors`), ou `is_published` envoye : refus motive
+            (`publish_via_dedicated_route`), la publication passe par sa route.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - success
+                  - message
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  message:
+                    type: string
+                  errors:
+                    type: object
+                    additionalProperties:
+                      type: array
+                      items:
+                        type: string
+                  reason:
+                    type: string
+                    enum:
+                      - publish_via_dedicated_route
 
     delete:
       tags:

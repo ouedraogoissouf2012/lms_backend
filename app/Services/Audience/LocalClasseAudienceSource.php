@@ -8,6 +8,8 @@ use App\Models\Classe;
 use App\Models\Seance;
 use App\Models\User;
 use App\Services\Enrollment\EnrollmentSource;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Collection;
 
 /**
  * Vérité locale (#712) : zéro appel HTTP, fail-secure si la séance n'a pas de
@@ -25,6 +27,9 @@ use App\Services\Enrollment\EnrollmentSource;
  *   par `EnrollmentSource` (le composite), comme l'exige ADR-803-03.
  * - Classe KLASSCI : le miroir local dont `klassci_id` vaut `klassci_classe_id`,
  *   et son pivot `classe_etudiant`.
+ *
+ * La classe est désignée en UN endroit ({@see classeDe()}) : l'admission et les
+ * notifications lisent la même.
  */
 final class LocalClasseAudienceSource implements ClasseAudienceSource
 {
@@ -32,7 +37,7 @@ final class LocalClasseAudienceSource implements ClasseAudienceSource
 
     public function designatesClasse(Seance $seance): bool
     {
-        return is_numeric($seance->classe_id) || is_numeric($seance->klassci_classe_id);
+        return $this->classeDe($seance) !== null;
     }
 
     public function containsStudent(Seance $seance, User $student): bool
@@ -41,17 +46,18 @@ final class LocalClasseAudienceSource implements ClasseAudienceSource
             return false;
         }
 
-        if (is_numeric($seance->classe_id)) {
-            return $this->parLaClasseLocale((int) $seance->classe_id, $seance, $student);
-        }
+        $laClasse = $this->classeDe($seance);
 
-        if (! is_numeric($seance->klassci_classe_id)) {
+        if ($laClasse === null) {
             return false;
         }
 
-        return Classe::query()
-            ->where('institution_id', $student->institution_id)
-            ->where('klassci_id', (int) $seance->klassci_classe_id)
+        if (is_numeric($seance->classe_id)) {
+            return $laClasse->exists()
+                && in_array((int) $seance->classe_id, $this->inscriptions->localClasseIdsFor($student), true);
+        }
+
+        return $laClasse
             ->whereHas(
                 'etudiantsActifs',
                 static fn ($query) => $query->where('users.id', $student->id),
@@ -59,13 +65,41 @@ final class LocalClasseAudienceSource implements ClasseAudienceSource
             ->exists();
     }
 
-    private function parLaClasseLocale(int $classeId, Seance $seance, User $student): bool
+    /**
+     * Les élèves actifs de la classe de la séance.
+     *
+     * Le composite d'inscriptions répond « quelles classes pour cet élève », pas
+     * « quels élèves pour cette classe » : la liste est lue sur le pivot
+     * `classe_etudiant`, celui que sa jambe locale lit (dette déclarée).
+     */
+    public function studentsOf(Seance $seance): Collection
     {
-        $deLEtablissement = Classe::query()
-            ->whereKey($classeId)
-            ->where('institution_id', $seance->institution_id)
-            ->exists();
+        $classe = $this->classeDe($seance)?->first();
 
-        return $deLEtablissement && in_array($classeId, $this->inscriptions->localClasseIdsFor($student), true);
+        return $classe === null
+            ? collect()
+            : $classe->etudiantsActifs()->where('users.role', 'etudiant')->get();
+    }
+
+    /**
+     * La classe que la séance désigne, bornée explicitement à l'établissement de
+     * la séance : le scope multi-tenant est inerte dans un job, où les
+     * notifications sont envoyées.
+     *
+     * @return Builder<Classe>|null
+     */
+    private function classeDe(Seance $seance): ?Builder
+    {
+        $classes = Classe::query()->where('institution_id', $seance->institution_id);
+
+        if (is_numeric($seance->classe_id)) {
+            return $classes->whereKey((int) $seance->classe_id);
+        }
+
+        if (is_numeric($seance->klassci_classe_id)) {
+            return $classes->where('klassci_id', (int) $seance->klassci_classe_id);
+        }
+
+        return null;
     }
 }

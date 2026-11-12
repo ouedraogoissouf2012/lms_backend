@@ -113,6 +113,8 @@ final class LocalVisioActivation implements VisioActivationSource
     {
         try {
             $this->notifications->queueScheduled($seance->id, [
+                // La séance, désignée par son id local : ses élèves sont ceux de l'admission.
+                'seance_locale_id' => $seance->id,
                 'klassci_classe_id' => $seance->klassci_classe_id,
                 'klassci_enseignant_id' => $seance->klassci_enseignant_id,
                 'matiere_nom' => $seance->matiere_nom,

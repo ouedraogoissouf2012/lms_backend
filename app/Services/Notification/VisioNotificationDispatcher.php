@@ -6,7 +6,9 @@ namespace App\Services\Notification;
 
 use App\Models\Classe;
 use App\Models\Notification;
+use App\Models\Seance;
 use App\Models\User;
+use App\Services\Audience\ClasseAudienceSource;
 use Illuminate\Support\Collection;
 use Psr\Log\LoggerInterface;
 
@@ -19,6 +21,8 @@ use Psr\Log\LoggerInterface;
  *
  * - `NotificationDispatcher` injecté pour l'envoi bas niveau.
  * - `LoggerInterface` PSR-3 injecté (remplace Facade `Log` de l'origine).
+ * - `ClasseAudienceSource` injecté : les élèves d'une séance sans classe KLASSCI
+ *   sont ceux de l'admission ({@see elevesDeLaSeanceLocale()}).
  *
  * @see app/Services/NotificationService.php  Facade orchestrateur
  */
@@ -28,6 +32,7 @@ final class VisioNotificationDispatcher
         private readonly NotificationDispatcher $dispatcher,
         private readonly LoggerInterface $logger,
         private readonly VisioNotificationIdempotencyGuard $idempotency,
+        private readonly ClasseAudienceSource $audience,
     ) {}
 
     /**
@@ -135,7 +140,7 @@ final class VisioNotificationDispatcher
         $students = collect();
 
         if (! isset($seanceData['klassci_classe_id'])) {
-            return $students;
+            return $this->elevesDeLaSeanceLocale($seanceData);
         }
 
         $classe = $this->resolveClasse($seanceData);
@@ -173,7 +178,7 @@ final class VisioNotificationDispatcher
     private function resolveStudentsForStarting(array $seanceData): Collection
     {
         if (! isset($seanceData['klassci_classe_id'])) {
-            return collect();
+            return $this->elevesDeLaSeanceLocale($seanceData);
         }
 
         $classe = $this->resolveClasse($seanceData);
@@ -189,6 +194,29 @@ final class VisioNotificationDispatcher
             })
             ->where('role', 'etudiant')
             ->get();
+    }
+
+    /**
+     * Une séance sans classe KLASSCI : ses élèves sont ceux de l'audience de
+     * l'admission, lue sur la séance que l'appelant désigne par son id LOCAL
+     * (`seance_locale_id`). Sans cet id, rien n'est deviné : l'identifiant du job
+     * peut être un identifiant KLASSCI, qui désignerait une autre séance.
+     *
+     * @param  array<string, mixed>  $seanceData
+     * @return Collection<int, User>
+     */
+    private function elevesDeLaSeanceLocale(array $seanceData): Collection
+    {
+        $id = $seanceData['seance_locale_id'] ?? null;
+
+        if (! is_numeric($id)) {
+            return collect();
+        }
+
+        // Hors contexte HTTP le scope est inerte ; l'audience borne la classe à l'établissement de la séance.
+        $seance = Seance::query()->withoutGlobalScope('institution')->find((int) $id);
+
+        return $seance === null ? collect() : $this->audience->studentsOf($seance);
     }
 
     /**

@@ -6,6 +6,7 @@ namespace App\Services\Audience;
 
 use App\Models\Seance;
 use App\Models\User;
+use Illuminate\Support\Collection;
 
 /**
  * Fake en mémoire (#712 art. 5). Les tests prouvent la substituabilité
@@ -27,6 +28,11 @@ final class InMemoryClasseAudienceSource implements ClasseAudienceSource
         $ids = $this->studentIdsBySeanceId[$seance->id] ?? [];
 
         return in_array($student->id, $ids, true);
+    }
+
+    public function studentsOf(Seance $seance): Collection
+    {
+        return User::query()->whereKey($this->studentIdsBySeanceId[$seance->id] ?? [])->get();
     }
 
     public function enroll(int $seanceId, int $studentId): void

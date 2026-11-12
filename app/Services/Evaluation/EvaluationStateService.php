@@ -84,14 +84,9 @@ final class EvaluationStateService
      */
     public function publish(Evaluation $evaluation, User $user): array
     {
-        if ($evaluation->questions()->count() === 0) {
-            return [
-                'status'  => 422,
-                'payload' => [
-                    'success' => false,
-                    'message' => 'Impossible de publier: l\'évaluation n\'a aucune question. Ajoutez des questions avant de publier.',
-                ],
-            ];
+        $sansQuestion = $this->refusDePublicationSansQuestion($evaluation->questions()->count());
+        if ($sansQuestion !== null) {
+            return $sansQuestion;
         }
 
         if ($evaluation->isTerminee()) {
@@ -137,6 +132,29 @@ final class EvaluationStateService
     /**
      * L'enseignant peut-il encore modifier l'évaluation ?
      */
+    /**
+     * L'invariant « une évaluation publiée a au moins une question » (C16),
+     * en un seul lieu : `publish` l'applique au compte actuel, `update` au
+     * remplacement des questions d'une évaluation déjà publiée.
+     *
+     * @return array{status: int, payload: array<string, mixed>}|null
+     */
+    public function refusDePublicationSansQuestion(int $questions): ?array
+    {
+        if ($questions > 0) {
+            return null;
+        }
+
+        return [
+            'status'  => 422,
+            'payload' => [
+                'success' => false,
+                'message' => 'Impossible de publier: l\'évaluation n\'a aucune question. Ajoutez des questions avant de publier.',
+                'reason'  => 'evaluation_without_questions',
+            ],
+        ];
+    }
+
     public function canBeEdited(Evaluation $evaluation): bool
     {
         return ! $this->isLocked($evaluation);

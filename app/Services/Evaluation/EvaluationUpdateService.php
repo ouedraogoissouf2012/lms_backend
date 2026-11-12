@@ -88,6 +88,15 @@ final class EvaluationUpdateService
             ];
         }
 
+        // C16 : une évaluation publiée garde au moins une question. « Publiée »
+        // se lit AVANT la mise à jour, et le refus tombe avant toute écriture.
+        if ($evaluation->is_published && array_key_exists('questions', $data) && is_array($data['questions'])) {
+            $sansQuestion = $this->state->refusDePublicationSansQuestion(count($data['questions']));
+            if ($sansQuestion !== null) {
+                return $sansQuestion;
+            }
+        }
+
         try {
             $this->db->beginTransaction();
 

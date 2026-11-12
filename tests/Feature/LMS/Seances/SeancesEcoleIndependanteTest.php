@@ -432,7 +432,50 @@ final class SeancesEcoleIndependanteTest extends TestCase
             ->assertJsonPath('data.0.classe.id', 41)
             ->assertJsonPath('data.0.enseignant.id', $miroir->klassci_enseignant_id)
             ->assertJsonPath('data.0.matiere.id', $miroir->klassci_matiere_id)
-            ->assertJsonPath('data.0.enseignant.nom', $miroir->enseignant_nom);
+            ->assertJsonPath('data.0.enseignant.nom', $miroir->enseignant_nom)
+            // Ce chemin non plus ne tient aucune heure de fin : elle est estimée, et le dit.
+            ->assertJsonPath('data.0.heure_fin_estimee', true)
+            ->assertJsonPath('data.0.programmation.heure_fin_estimee', true);
+    }
+
+    /** @return iterable<string, array{0: string, 1: string, 2: bool}> */
+    public static function finsReelles(): iterable
+    {
+        yield 'à venir, enseignant' => [self::A_VENIR, 'enseignant', false];
+        yield 'emploi du temps enseignant' => [self::ENSEIGNEMENT, 'enseignant', true];
+        yield 'emploi du temps élève' => [self::MES_CLASSES, 'etudiant', false];
+    }
+
+    /**
+     * Une fin RÉELLE, rendue par KLASSCI, le dit : `heure_fin_estimee` vaut
+     * `false`, dans `programmation` et, quand la ligne en porte une, à la racine.
+     */
+    #[DataProvider('finsReelles')]
+    public function test_une_fin_rendue_par_klassci_n_est_pas_estimee(string $route, string $role, bool $finALaRacine): void
+    {
+        $date = '2026-11-12';
+        $this->mock(KlassciProxyService::class, function (MockInterface $mock) use ($date): void {
+            $mock->shouldReceive('requestWithUserToken')->andReturnUsing(static fn (string $jeton, string $chemin): array => match ($chemin) {
+                'me/teacher-dashboard' => ['data' => ['matieres' => [['id' => 11, 'nom' => 'Maths', 'code' => 'MAT']]]],
+                'me/dashboard' => ['data' => ['classe' => ['id' => 44], 'cours' => [['id' => 11, 'nom' => 'Maths']]]],
+                default => ['data' => []],
+            });
+            $mock->shouldReceive('fetchManyClassesDetails')->andReturn([]);
+            $mock->shouldReceive('getEmploiTemps')->andReturn(['data' => [[
+                'id' => 900,
+                'matiere' => ['id' => 11],
+                'programmation' => ['date' => $date, 'heure_debut' => $date.'T08:00:00', 'heure_fin' => $date.'T09:30:00'],
+                'classe' => ['id' => 44, 'nom' => 'Classe 44'],
+            ]]]);
+        });
+        $compte = $this->membre($this->ecole(InstitutionMode::Klassci), $role);
+        $compte->forceFill(['klassci_token' => 'jeton-personnel', 'klassci_id' => 555])->save();
+
+        $reponse = $this->asTenant($compte)->getJson($route)->assertOk()->assertJsonPath('data.0.programmation.heure_fin_estimee', false);
+
+        if ($finALaRacine) {
+            $reponse->assertJsonPath('data.0.heure_fin_estimee', false);
+        }
     }
 
     public function test_deux_ecoles_dans_la_meme_methode_recoivent_chacune_leur_source(): void
@@ -568,11 +611,13 @@ final class SeancesEcoleIndependanteTest extends TestCase
             'date_fin' => $fin->toISOString(),
             'heure_debut' => $debut->format('H:i'),
             'heure_fin' => $fin->format('H:i'),
+            'heure_fin_estimee' => true,
             'salle' => null,
             'programmation' => [
                 'date' => $debut->format('Y-m-d'),
                 'heure_debut' => $debut->toISOString(),
                 'heure_fin' => $fin->toISOString(),
+                'heure_fin_estimee' => true,
                 'salle' => null,
             ],
             'matiere' => ['id' => null, 'libelle' => 'Maths', 'nom' => 'Maths', 'code' => null],

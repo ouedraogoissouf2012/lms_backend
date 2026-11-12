@@ -1186,7 +1186,9 @@ components:
       description: |
         Ecole creee depuis KLASSCI : la matiere telle que KLASSCI la decrit
         (schema ouvert, types non garantis). Ecole creee depuis le LMS :
-        exactement les cles ci-dessous.
+        exactement les cles ci-dessous. Ce sont les tests de la source qui
+        fixent cette exactitude : le schema reste ouvert, puisqu'il decrit
+        aussi la forme de KLASSCI.
       required:
         - id
       properties:

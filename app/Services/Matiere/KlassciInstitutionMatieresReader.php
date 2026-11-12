@@ -7,6 +7,7 @@ namespace App\Services\Matiere;
 use App\Exceptions\MissingKlassciTokenException;
 use App\Models\User;
 use App\Services\KlassciProxyService;
+use App\Support\Klassci\KlassciPersonalToken;
 
 /**
  * Les matières de l'établissement, dans une école créée depuis KLASSCI : les
@@ -48,12 +49,6 @@ final class KlassciInstitutionMatieresReader implements InstitutionMatieresReade
      */
     private function jeton(User $user): string
     {
-        $jeton = $user->klassci_token;
-
-        if (! is_string($jeton) || $jeton === '') {
-            throw MissingKlassciTokenException::forUser($user->id);
-        }
-
-        return $jeton;
+        return KlassciPersonalToken::de($user) ?? throw MissingKlassciTokenException::forUser($user->id);
     }
 }

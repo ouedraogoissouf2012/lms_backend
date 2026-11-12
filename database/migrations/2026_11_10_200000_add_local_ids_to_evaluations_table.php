@@ -30,11 +30,7 @@ use Illuminate\Support\Facades\Schema;
  */
 return new class extends Migration
 {
-    private const COLONNES = [
-        'classe_id' => ['après' => 'klassci_classe_id', 'note' => 'classe LOCALE (école créée depuis le LMS). Nulle pour une évaluation KLASSCI.'],
-        'matiere_id' => ['après' => 'klassci_matiere_id', 'note' => 'matière LOCALE (école créée depuis le LMS). Nulle pour une évaluation KLASSCI.'],
-        'enseignant_id' => ['après' => 'klassci_enseignant_id', 'note' => 'auteur (users.id), écrit à chaque création. Nul pour une ligne d\'avant D72.'],
-    ];
+    private const COLONNES = ['classe_id', 'matiere_id', 'enseignant_id'];
 
     private const INDEX = [
         'evaluations_institution_classe_index' => ['institution_id', 'classe_id'],
@@ -43,16 +39,23 @@ return new class extends Migration
 
     public function up(): void
     {
-        foreach (self::COLONNES as $colonne => $definition) {
-            if (! Schema::hasColumn('evaluations', $colonne)) {
-                Schema::table('evaluations', function (Blueprint $table) use ($colonne, $definition): void {
-                    $table->unsignedBigInteger($colonne)
-                        ->nullable()
-                        ->after($definition['après'])
-                        ->comment('D72 — '.$definition['note']);
-                });
+        // Colonnes écrites une à une, noms littéraux : Larastan lit les
+        // migrations pour connaître les propriétés du modèle, et ne suit pas
+        // un nom de colonne venu d'une variable.
+        Schema::table('evaluations', function (Blueprint $table): void {
+            if (! Schema::hasColumn('evaluations', 'classe_id')) {
+                $table->unsignedBigInteger('classe_id')->nullable()->after('klassci_classe_id')
+                    ->comment('D72 — classe LOCALE (école créée depuis le LMS). Nulle pour une évaluation KLASSCI.');
             }
-        }
+            if (! Schema::hasColumn('evaluations', 'matiere_id')) {
+                $table->unsignedBigInteger('matiere_id')->nullable()->after('klassci_matiere_id')
+                    ->comment('D72 — matière LOCALE (école créée depuis le LMS). Nulle pour une évaluation KLASSCI.');
+            }
+            if (! Schema::hasColumn('evaluations', 'enseignant_id')) {
+                $table->unsignedBigInteger('enseignant_id')->nullable()->after('klassci_enseignant_id')
+                    ->comment('D72 — auteur (users.id), écrit à chaque création. Nul pour une ligne d\'avant D72.');
+            }
+        });
 
         foreach (self::INDEX as $nom => $colonnes) {
             if (! Schema::hasIndex('evaluations', $nom)) {
@@ -84,7 +87,7 @@ return new class extends Migration
             }
         }
 
-        foreach (array_keys(self::COLONNES) as $colonne) {
+        foreach (self::COLONNES as $colonne) {
             if (Schema::hasColumn('evaluations', $colonne)) {
                 Schema::table('evaluations', function (Blueprint $table) use ($colonne): void {
                     $table->dropColumn($colonne);

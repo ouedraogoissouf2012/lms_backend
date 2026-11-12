@@ -10,6 +10,7 @@ use App\Models\Matiere;
 use App\Models\Seance;
 use App\Models\User;
 use App\Services\Catalogue\CoupleDuProgramme;
+use Carbon\Carbon;
 
 /**
  * #710 — création locale. Jamais d'identifiant local dans klassci_*.
@@ -41,7 +42,7 @@ final class LocalSeanceCreator
     public function create(User $author, array $payload): Seance
     {
         $titre = is_string($payload['titre'] ?? null) ? $payload['titre'] : '';
-        $dateSeance = is_string($payload['date_seance'] ?? null) ? $payload['date_seance'] : '';
+        $dateSeance = $this->instant($payload['date_seance'] ?? null);
         $classeId = $this->classeDeLEtablissement($payload, $author);
         $matiere = $this->matiereDuProgramme($payload, $author, $classeId);
         $nomLibre = is_string($payload['matiere_nom'] ?? null) ? $payload['matiere_nom'] : null;
@@ -62,6 +63,17 @@ final class LocalSeanceCreator
             'is_active' => true,
             'institution_id' => $author->institution_id,
         ]);
+    }
+
+    /**
+     * L'instant de la séance, rangé dans le fuseau de l'application : un
+     * décalage fait foi (D4), il n'est pas ignoré par le format de la base.
+     */
+    private function instant(mixed $date): string
+    {
+        return is_string($date) && $date !== ''
+            ? Carbon::parse($date)->setTimezone(date_default_timezone_get())->format('Y-m-d H:i:s')
+            : '';
     }
 
     /**
@@ -93,7 +105,7 @@ final class LocalSeanceCreator
             ->exists();
 
         if (! $existe) {
-            throw new BusinessException('Classe introuvable dans cet établissement.', 404);
+            throw new BusinessException('Classe introuvable dans cet établissement.', 404, null, 'class_out_of_scope');
         }
 
         return (int) $classeId;
@@ -123,7 +135,7 @@ final class LocalSeanceCreator
             ->first();
 
         if ($matiere === null) {
-            throw new BusinessException('Matière introuvable dans cet établissement.', 404);
+            throw new BusinessException('Matière introuvable dans cet établissement.', 404, null, 'subject_out_of_scope');
         }
 
         if ($classeId !== null && ! $this->couple->estProgramme($classeId, $matiere->id)) {

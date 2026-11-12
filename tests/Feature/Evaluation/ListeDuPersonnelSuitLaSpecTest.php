@@ -9,6 +9,7 @@ use App\Models\Evaluation;
 use App\Models\EvaluationQuestion;
 use App\Services\KlassciProxyService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Mockery\MockInterface;
 use Tests\Concerns\ActsAsTenantUser;
 use Tests\Concerns\BuildsEcoleIndependante;
@@ -86,6 +87,37 @@ final class ListeDuPersonnelSuitLaSpecTest extends TestCase
             ->assertJsonPath('data.0.classe_id', null)
             ->assertJsonPath('data.0.classe.nom', 'B2 COM')
             ->assertJsonPath('data.0.matiere.nom', 'Maths');
+    }
+
+    public function test_les_auteurs_locaux_sont_lus_en_une_requete_et_non_une_par_evaluation(): void
+    {
+        // Revue d'E3 : l'auteur local était cherché évaluation par évaluation.
+        // La liste en rend jusqu'à 100 : 100 requêtes sur `users`.
+        $ecole = $this->ecole();
+        $enseignant = $this->membre($ecole, 'enseignant');
+        $this->catalogueKlassci([], []);
+        $requetesSurUsers = function () use ($enseignant): int {
+            DB::flushQueryLog();
+            DB::enableQueryLog();
+            $this->asTenant($enseignant)->getJson('/api/evaluations')->assertOk();
+            $journal = DB::getQueryLog();
+            DB::disableQueryLog();
+
+            return count(array_filter($journal, static fn (array $q): bool
+                => preg_match('/from [`"]users[`"]/i', (string) $q['query']) === 1));
+        };
+        $une = fn () => Evaluation::factory()->create([
+            'institution_id' => $ecole->getKey(), 'enseignant_id' => $this->membre($ecole, 'enseignant')->getKey(),
+            'klassci_enseignant_id' => null,
+        ]);
+
+        $une();
+        $avecUne = $requetesSurUsers();
+        $une();
+        $une();
+        $une();
+
+        self::assertSame($avecUne, $requetesSurUsers());
     }
 
     public function test_un_eleve_recoit_403(): void

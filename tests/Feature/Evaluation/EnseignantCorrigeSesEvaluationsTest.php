@@ -14,6 +14,7 @@ use App\Models\Institution;
 use App\Models\Matiere;
 use App\Models\User;
 use App\Services\Evaluation\Student\LearnerEvaluationScope;
+use App\Services\Evaluation\Teacher\LocalEvaluationResultsReader;
 use App\Services\Evaluation\Teacher\NomsDesAuteurs;
 use App\Services\KlassciProxyService;
 use App\Services\TenantManager;
@@ -298,6 +299,39 @@ final class EnseignantCorrigeSesEvaluationsTest extends TestCase
             700 => ['Koné Awa', null, 'non_passee'],
             701 => ['Kouassi Yao', '12.00', 'soumis'],
         ], $this->lignes($resultats));
+    }
+
+    public function test_dans_une_ecole_klassci_le_compte_est_retrouve_par_l_identite_quand_l_email_differe(): void
+    {
+        // Revue d'E3 : KLASSCI n'a pas le même email que le compte local. Sans
+        // compte retrouvé, la copie d'Awa (qui a un auteur) ne se rattachait
+        // plus, et Awa avait deux lignes : « non passée » au roster, « soumis »
+        // hors roster. Le compte est retrouvé par son identité KLASSCI.
+        [$enseignant, $evaluation] = $this->enseignantKlassci();
+        $awa = $this->eleveKlassci($enseignant, 700, 'awa@ecole.test', 'Awa Koné');
+        $this->copie($evaluation, $awa, 'soumis', '14.00');
+        $this->rosterKlassci([['id' => 700, 'email' => 'a.kone@klassci.test', 'nom' => 'Koné', 'prenom' => 'Awa']]);
+
+        $resultats = $this->asTenant($enseignant)->getJson($this->de($evaluation).'/results-by-class')
+            ->assertOk()
+            ->json('data.resultats');
+
+        self::assertSame([700 => ['Koné Awa', 'soumis', 'active']], $this->lignesEtInscription($resultats));
+    }
+
+    public function test_sans_etablissement_la_source_locale_ne_trouve_aucune_evaluation(): void
+    {
+        // Revue d'E3 : `where('institution_id', null)` deviendrait `IS NULL` et
+        // viserait les évaluations sans établissement. Un compte sans
+        // établissement ne trouve rien.
+        $sansEcole = $this->membre($this->ecole(), 'enseignant');
+        $sansEcole->forceFill(['institution_id' => null])->save();
+        $orpheline = Evaluation::factory()->create(['institution_id' => null, 'enseignant_id' => $sansEcole->getKey()]);
+        app(TenantManager::class)->reset();
+
+        $reponse = app(LocalEvaluationResultsReader::class)->getResultsByClass((int) $orpheline->getKey(), $sansEcole);
+
+        self::assertSame(404, $reponse['status']);
     }
 
     public function test_la_meme_route_sert_une_ecole_klassci_puis_une_ecole_du_lms(): void

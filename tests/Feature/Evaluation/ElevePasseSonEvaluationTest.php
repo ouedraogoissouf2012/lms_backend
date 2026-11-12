@@ -278,6 +278,49 @@ final class ElevePasseSonEvaluationTest extends TestCase
         $this->assertAucuneNote($copie);
     }
 
+    public function test_show_results_faux_la_remise_ne_rend_aucune_note_ecole_du_lms(): void
+    {
+        // Revue croisée : la remise avec `show_results = false` n'avait aucun
+        // test. Les clés `score` et `note_sur_20` sont RETIRÉES de la réponse et
+        // de la copie (forme de la liste), là où « ma copie » les rend `null`.
+        [, $eleve, $classe, $maths] = $this->eleveInscrit();
+        $evaluation = $this->evaluation($classe, $maths, now()->subMinutes(10), 60, ['show_results' => false]);
+        $this->asTenant($eleve)->postJson($this->de($evaluation).'/start')->assertOk();
+
+        $donnees = $this->asTenant($eleve)->postJson($this->de($evaluation).'/submit', $this->reponses($evaluation))
+            ->assertCreated()
+            ->json('data');
+
+        $this->assertAucuneNote($donnees);
+        $this->assertAucuneNote($donnees['submission']);
+    }
+
+    public function test_show_results_faux_la_remise_ne_rend_aucune_note_ecole_klassci(): void
+    {
+        [$eleve, $evaluation] = $this->eleveKlassciEtEvaluationOuverte(['show_results' => false]);
+        $this->asTenant($eleve)->postJson($this->de($evaluation).'/start')->assertOk();
+
+        $donnees = $this->asTenant($eleve)->postJson($this->de($evaluation).'/submit', $this->reponses($evaluation))
+            ->assertCreated()
+            ->json('data');
+
+        $this->assertAucuneNote($donnees);
+        $this->assertAucuneNote($donnees['submission']);
+    }
+
+    public function test_show_results_vrai_la_remise_rend_la_note(): void
+    {
+        // Contraste : sans lui, une remise qui masquerait toujours passerait
+        // les deux tests ci-dessus.
+        [, $eleve, $classe, $maths] = $this->eleveInscrit();
+        $evaluation = $this->evaluation($classe, $maths, now()->subMinutes(10), 60, ['show_results' => true]);
+        $this->asTenant($eleve)->postJson($this->de($evaluation).'/start')->assertOk();
+
+        $this->asTenant($eleve)->postJson($this->de($evaluation).'/submit', $this->reponses($evaluation))
+            ->assertCreated()
+            ->assertJsonPath('data.note_sur_20', '20.00');
+    }
+
     // ───────────────────────── harnais
 
     /**

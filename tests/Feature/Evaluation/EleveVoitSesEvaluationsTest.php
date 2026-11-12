@@ -204,6 +204,101 @@ final class EleveVoitSesEvaluationsTest extends TestCase
         $this->asTenant($eleve)->getJson($this->copieDe($evaluation))->assertOk()->assertJsonPath('data.id', $copie->getKey());
     }
 
+    public function test_dans_une_ecole_klassci_la_copie_d_un_autre_auteur_n_est_pas_rendue_par_l_identite_klassci(): void
+    {
+        // Revue croisée d'E2a : la branche KLASSCI de `ownedBy` ne vaut que
+        // pour une ligne SANS auteur. Une copie de Yao (`student_id`) qui porte
+        // l'identité KLASSCI d'Awa (rattrapage mal apparié) reste à Yao.
+        $ecole = $this->ecole(InstitutionMode::Klassci);
+        $awa = $this->membre($ecole, 'etudiant');
+        $awa->forceFill(['klassci_id' => 501, 'klassci_token' => 'jeton'])->save();
+        $yao = $this->membre($ecole, 'etudiant');
+        $evaluation = Evaluation::factory()->create(['institution_id' => $ecole->getKey(), 'is_published' => true, 'status' => 'planifiee']);
+        $deYao = $this->copie($evaluation, $yao, ['klassci_etudiant_id' => 501]);
+
+        $this->disableKlassciMiddleware();
+        $this->asTenant($awa)->getJson($this->copieDe($evaluation))->assertNotFound();
+        $this->asTenant($yao)->getJson($this->copieDe($evaluation))->assertOk()->assertJsonPath('data.id', $deYao->getKey());
+    }
+
+    public function test_dans_l_ecole_du_lms_la_copie_d_un_autre_auteur_n_est_pas_rendue_par_l_identite_klassci(): void
+    {
+        // Même règle dans une école basculée depuis KLASSCI, où les comptes
+        // gardent leur identité KLASSCI.
+        [$ecole, $awa, $classe, $maths] = $this->eleveInscrit();
+        $awa->forceFill(['klassci_id' => 501])->save();
+        $yao = $this->membre($ecole, 'etudiant');
+        $this->inscrire($yao, $classe, 'actif');
+        $evaluation = $this->evaluationPubliee($classe, $maths, now()->subHour(), 120);
+        $this->copie($evaluation, $yao, ['klassci_etudiant_id' => 501]);
+
+        $this->asTenant($awa)->getJson($this->copieDe($evaluation))->assertNotFound();
+    }
+
+    public function test_sans_tenant_ownedby_rend_la_ligne_sans_auteur_et_pas_celle_d_un_autre(): void
+    {
+        // Au niveau de la portée, sans tenant (le scope global s'efface) : la
+        // ligne d'avant (sans `student_id`) est à Awa par son identité KLASSCI ;
+        // la ligne de Yao, même avec cette identité, ne l'est pas.
+        $ecole = $this->ecole(InstitutionMode::Klassci);
+        $awa = $this->membre($ecole, 'etudiant');
+        $awa->forceFill(['klassci_id' => 501])->save();
+        $yao = $this->membre($ecole, 'etudiant');
+        $evaluation = Evaluation::factory()->create(['institution_id' => $ecole->getKey()]);
+        $davant = $this->copie($evaluation, $awa, ['student_id' => null, 'klassci_etudiant_id' => 501, 'attempt' => 1]);
+        $this->copie($evaluation, $yao, ['klassci_etudiant_id' => 501, 'attempt' => 2]);
+        $sienne = $this->copie($evaluation, $awa, ['klassci_etudiant_id' => 501, 'attempt' => 3]);
+        app(\App\Services\TenantManager::class)->reset();
+
+        $ids = EvaluationSubmission::query()->ownedBy($awa)->orderBy('id')->pluck('id')->all();
+
+        self::assertSame([$davant->getKey(), $sienne->getKey()], $ids);
+    }
+
+    public function test_ma_copie_masque_la_note_quand_les_resultats_sont_caches_ecole_du_lms(): void
+    {
+        // Revue croisée : « ma copie » avec `show_results = false` n'avait aucun
+        // test. La note et le score sont rendus `null` (la clé reste).
+        [, $eleve, $classe, $maths] = $this->eleveInscrit();
+        $evaluation = $this->evaluationPubliee($classe, $maths, now()->subHour(), 120, ['show_results' => false]);
+        $this->copie($evaluation, $eleve, ['score' => 15, 'note_sur_20' => 15]);
+
+        $this->asTenant($eleve)->getJson($this->copieDe($evaluation))
+            ->assertOk()
+            ->assertJsonPath('data.score', null)
+            ->assertJsonPath('data.note_sur_20', null);
+    }
+
+    public function test_ma_copie_masque_la_note_quand_les_resultats_sont_caches_ecole_klassci(): void
+    {
+        $ecole = $this->ecole(InstitutionMode::Klassci);
+        $eleve = $this->membre($ecole, 'etudiant');
+        $eleve->forceFill(['klassci_id' => 501, 'klassci_token' => 'jeton'])->save();
+        $evaluation = Evaluation::factory()->create([
+            'institution_id' => $ecole->getKey(), 'is_published' => true, 'status' => 'planifiee', 'show_results' => false,
+        ]);
+        $this->copie($evaluation, $eleve, ['klassci_etudiant_id' => 501, 'score' => 15, 'note_sur_20' => 15]);
+
+        $this->disableKlassciMiddleware();
+        $this->asTenant($eleve)->getJson($this->copieDe($evaluation))
+            ->assertOk()
+            ->assertJsonPath('data.score', null)
+            ->assertJsonPath('data.note_sur_20', null);
+    }
+
+    public function test_ma_copie_montre_la_note_quand_les_resultats_sont_visibles(): void
+    {
+        // Contraste : sans lui, un masquage permanent passerait les deux tests
+        // ci-dessus.
+        [, $eleve, $classe, $maths] = $this->eleveInscrit();
+        $evaluation = $this->evaluationPubliee($classe, $maths, now()->subHour(), 120, ['show_results' => true]);
+        $this->copie($evaluation, $eleve, ['score' => 15, 'note_sur_20' => 15]);
+
+        $this->asTenant($eleve)->getJson($this->copieDe($evaluation))
+            ->assertOk()
+            ->assertJsonPath('data.note_sur_20', '15.00');
+    }
+
     public function test_sans_tenant_resolu_le_filtre_d_etablissement_ecarte_seul_l_autre_ecole(): void
     {
         // Le scope global s'efface sans tenant (BelongsToInstitution, il

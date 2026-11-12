@@ -472,6 +472,34 @@ final class EvaluationLearnerReachTest extends TestCase
         self::assertSame([$fiche['lmsSienne']->id], array_values(array_filter(array_column((array) $evaluations, 'lms_id'))));
     }
 
+    /**
+     * C25 (D72, E2b) : la règle « résultats visibles » vaut aussi sur la fiche
+     * de la matière, pour ses deux sites (version en ligne d'une évaluation
+     * KLASSCI, et évaluation LMS seule). Avec `show_results = false`, ni la note
+     * ni le score ni les points par question.
+     */
+    public function test_la_fiche_matiere_ne_montre_pas_la_note_quand_les_resultats_sont_caches(): void
+    {
+        $eleve = $this->eleveConnecte();
+        $fiche = $this->ficheMatiere(self::CLASSE);
+        foreach (['versionSienne', 'lmsSienne'] as $cle) {
+            $fiche[$cle]->forceFill(['show_results' => false])->save();
+            $this->copieRendue($fiche[$cle], $eleve, now())
+                ->forceFill(['score' => 80, 'note_sur_20' => 16, 'manual_points' => ['1' => 4]])->save();
+        }
+
+        $evaluations = (array) $this->asTenant($eleve)->getJson('/api/lms/matieres/' . self::MATIERE)->assertOk()->json('data.evaluations_programmees');
+        $parId = array_column($evaluations, null, 'id');
+        $parLms = array_column(array_filter($evaluations, static fn ($e) => ($e['lms_id'] ?? null) !== null), null, 'lms_id');
+
+        foreach ([$parId[5001]['student_submission'] ?? null, $parLms[$fiche['lmsSienne']->id]['student_submission'] ?? null] as $copie) {
+            self::assertIsArray($copie, 'la copie de l eleve a disparu de la fiche');
+            foreach (['score', 'note_sur_20', 'manual_points'] as $champ) {
+                self::assertArrayNotHasKey($champ, $copie, "la fiche livre « {$champ} » malgre show_results = false");
+            }
+        }
+    }
+
     /** Le personnel garde sa vue de la fiche, inchangée. */
     public function test_l_enseignant_garde_toute_la_fiche_matiere(): void
     {

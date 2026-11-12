@@ -17,8 +17,12 @@ use App\Models\EvaluationSubmission;
  */
 final class ResultatsVisibles
 {
-    /** Les champs que la règle masque. */
-    public const CHAMPS = ['score', 'note_sur_20'];
+    /**
+     * Les champs que la règle masque : la note, le score, et les points par
+     * question d'une correction manuelle, qui suffiraient à reconstituer la
+     * note.
+     */
+    public const CHAMPS = ['score', 'note_sur_20', 'manual_points'];
 
     public static function pour(Evaluation $evaluation): bool
     {

@@ -21,6 +21,7 @@ use Mockery\MockInterface;
 use PDOException;
 use Tests\Concerns\ActsAsTenantUser;
 use Tests\Concerns\BuildsEcoleIndependante;
+use Tests\Concerns\ValidatesAgainstOpenApi;
 use Tests\TestCase;
 
 /**
@@ -38,6 +39,7 @@ final class ElevePasseSonEvaluationTest extends TestCase
     use ActsAsTenantUser;
     use BuildsEcoleIndependante;
     use RefreshDatabase;
+    use ValidatesAgainstOpenApi;
 
     // ───────────────────────── démarrer, école créée depuis le LMS
 
@@ -47,7 +49,9 @@ final class ElevePasseSonEvaluationTest extends TestCase
         $evaluation = $this->evaluation($classe, $maths, now()->subMinutes(10), 60);
         Http::preventStrayRequests();
 
-        $this->asTenant($eleve)->postJson($this->de($evaluation).'/start')
+        $reponse = $this->asTenant($eleve)->postJson($this->de($evaluation).'/start');
+        $this->assertMatchesOpenApiResponse($reponse, '/evaluations/{id}/start', 'post');
+        $reponse
             ->assertOk()
             ->assertJsonPath('message', 'Évaluation démarrée')
             ->assertJsonPath('data.student_id', $eleve->getKey())
@@ -63,9 +67,10 @@ final class ElevePasseSonEvaluationTest extends TestCase
         $sansDate = $this->evaluation($classe, $maths, null, 60);
 
         foreach ([$avenir, $sansDate] as $evaluation) {
-            $this->asTenant($eleve)->postJson($this->de($evaluation).'/start')
+            $reponse = $this->asTenant($eleve)->postJson($this->de($evaluation).'/start')
                 ->assertForbidden()
                 ->assertJsonPath('reason', 'evaluation_window_closed');
+            $this->assertMatchesOpenApiResponse($reponse, '/evaluations/{id}/start', 'post');
         }
 
         self::assertSame(0, $this->copies());
@@ -197,9 +202,39 @@ final class ElevePasseSonEvaluationTest extends TestCase
         $evaluation = $this->evaluation($classe, $maths, now()->subMinutes(10), 60, ['allow_retake' => true, 'max_attempts' => 3]);
         $this->courseAvant($evaluation, $eleve, klassci: null, statut: 'soumis');
 
+        $reponse = $this->asTenant($eleve)->postJson($this->de($evaluation).'/start')
+            ->assertStatus(409)
+            ->assertJsonPath('reason', 'evaluation_attempt_conflict');
+        $this->assertMatchesOpenApiResponse($reponse, '/evaluations/{id}/start', 'post');
+    }
+
+    public function test_dans_une_ecole_klassci_le_perdant_d_une_course_deja_remise_recoit_409(): void
+    {
+        [$eleve, $evaluation] = $this->eleveKlassciEtEvaluationOuverte(['allow_retake' => true, 'max_attempts' => 3]);
+        $this->courseAvant($evaluation, $eleve, klassci: 501, statut: 'soumis');
+
         $this->asTenant($eleve)->postJson($this->de($evaluation).'/start')
             ->assertStatus(409)
             ->assertJsonPath('reason', 'evaluation_attempt_conflict');
+    }
+
+    public function test_une_copie_heritee_invisible_fait_remonter_l_erreur_au_lieu_d_un_409(): void
+    {
+        // Scénario de la revue d'E2b : une copie héritée `attempt = 1` sans
+        // établissement (invisible pour `ownedBy`), et une copie visible
+        // `attempt = 2` déjà remise. Le compte vaut 1, la tentative créée porte
+        // le numéro 2 et entre en conflit avec la copie visible : ce n'est PAS
+        // une course gagnée par une autre requête, mais une anomalie de
+        // données. Elle doit remonter (500), jamais un 409 silencieux.
+        [$eleve, $evaluation] = $this->eleveKlassciEtEvaluationOuverte(['allow_retake' => true, 'max_attempts' => 5]);
+        DB::table('evaluation_submissions')->insert([
+            'evaluation_id' => $evaluation->getKey(), 'student_id' => null, 'klassci_etudiant_id' => 501,
+            'attempt' => 1, 'status' => 'soumis', 'institution_id' => null,
+            'created_at' => now(), 'updated_at' => now(),
+        ]);
+        $this->copie($evaluation, $eleve, 'soumis', ['attempt' => 2, 'klassci_etudiant_id' => 501]);
+
+        $this->asTenant($eleve)->postJson($this->de($evaluation).'/start')->assertStatus(500);
     }
 
     public function test_une_autre_erreur_de_base_au_demarrage_n_est_pas_prise_pour_une_course(): void

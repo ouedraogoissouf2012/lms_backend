@@ -9,17 +9,18 @@ use App\Models\Evaluation;
 use App\Models\EvaluationSubmission;
 use App\Models\User;
 use Illuminate\Database\UniqueConstraintViolationException;
+use Psr\Log\LoggerInterface;
 use RuntimeException;
 
 /**
- * Logique de démarrage d'une tentative d'évaluation et lecture de la
- * fenêtre temporelle KLASSCI — extrait de `EvaluationStudentController`
+ * Logique de démarrage d'une tentative d'évaluation et lecture de sa
+ * fenêtre temporelle — extrait de `EvaluationStudentController`
  * (startEvaluation + getTimeStatus) lors du split §5.
  *
  * Toutes les vérifications business (portée de l'élève, fenêtre, tentatives
  * max, mode entraînement) sont centralisées ici. Le caller map les `status`
- * en codes HTTP. La fenêtre KLASSCI elle-même est lue par
- * {@see EvaluationWindowGate}.
+ * en codes HTTP. La fenêtre est lue par {@see EvaluationWindowGate}, depuis la
+ * source du type d'école (KLASSCI, ou calculée sur la ligne : D72, E2b).
  *
  * L'élève n'atteint que ce que SA liste lui propose : la portée
  * ({@see LearnerEvaluationScope}) est résolue AVANT la lecture. La remise
@@ -32,6 +33,7 @@ final class EvaluationAttemptStateService
     public function __construct(
         private readonly EvaluationWindowGate $windowGate,
         private readonly LearnerEvaluationScope $scope,
+        private readonly LoggerInterface $logger,
     ) {}
 
     /**
@@ -42,12 +44,15 @@ final class EvaluationAttemptStateService
      *   - not_found          → hors de la liste de l'élève : absente, d'une autre
      *                          classe ou d'une autre école, non publiée, ou sans
      *                          question (404, sans distinction)
-     *   - no_token           → user sans klassci_token (401)
+     *   - no_token           → école créée depuis KLASSCI seulement : user sans
+     *                          klassci_token (401)
      *   - window_closed      → fenêtre temporelle fermée hors mode entraînement (403)
      *   - window_check_failed → fenêtre non vérifiable (KLASSCI indisponible) hors entraînement (503)
      *   - max_attempts       → quota de tentatives atteint hors entraînement (403)
      *   - retake_forbidden   → allow_retake=false et une tentative déjà consommée (403)
      *   - offline_only       → is_online=false, pas de passage LMS (403)
+     *   - attempt_conflict   → course perdue entre deux démarrages, et la
+     *                          tentative gagnante est déjà remise (409)
      *
      * @return array{status: string, submission?: EvaluationSubmission, window?: ?array<string, mixed>, message?: string, is_practice?: bool, resumed?: bool}
      *
@@ -190,13 +195,21 @@ final class EvaluationAttemptStateService
                 return $this->okResponse($concurrente, $window, true, $isPracticeMode);
             }
 
-            // Le 409 seulement si la ligne en conflit est bien une copie remise
-            // de CET élève ; sinon c'est une anomalie de données, qui remonte.
-            $remise = EvaluationSubmission::query()->where('evaluation_id', $evaluation->id)
-                ->ownedBy($user)->where('attempt', $tentative)->exists();
-            if (! $remise) {
+            // Le 409 seulement si la requête gagnante a réellement remis entre-temps :
+            // les copies remises de CET élève atteignent le numéro disputé. Sinon
+            // le conflit porte sur une ligne que `ownedBy` ne voit pas (anomalie de
+            // données), et l'exception remonte pour être rapportée.
+            $remises = EvaluationSubmission::query()->where('evaluation_id', $evaluation->id)
+                ->ownedBy($user)->whereIn('status', ['soumis', 'corrige'])->count();
+            if ($remises < $tentative) {
                 throw $conflit;
             }
+
+            $this->logger->warning('Démarrage perdu dans une course : la tentative concurrente est déjà remise', [
+                'evaluation_id' => $evaluation->id,
+                'student_id' => $user->id,
+                'attempt' => $tentative,
+            ]);
 
             return ['status' => 'attempt_conflict', 'message' => 'Une autre tentative vient d\'être remise. Rechargez l\'évaluation.'];
         }

@@ -18,6 +18,12 @@ use Illuminate\Support\Carbon;
  * - une fermeture antérieure à l'ouverture est ramenée à l'ouverture : la
  *   fenêtre est vide, jamais « terminée sans avoir commencé ».
  *
+ * DETTE TRACÉE (C29) : le mode entraînement (`Evaluation::isTerminee`, via
+ * `getEffectiveStatus`) calcule sa fin sur `date + duree_minutes` et ignore
+ * `deadline_at`. Les deux notions de fin divergent dès que `deadline_at` est
+ * posée. C'est latent : aucune route n'écrit `deadline_at` (C14). Une seule
+ * notion de fin, partagée, est à écrire avec C28.
+ *
  * Même forme que la fenêtre KLASSCI (`programmation.window`), que le front lit :
  * `{is_open, has_started, has_ended, start_at, end_at}`.
  */

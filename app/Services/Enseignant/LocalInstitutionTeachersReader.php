@@ -6,6 +6,7 @@ namespace App\Services\Enseignant;
 
 use App\Models\User;
 use App\Services\Klassci\TeacherDirectory\TeacherDirectoryVisibility;
+use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -64,12 +65,13 @@ final class LocalInstitutionTeachersReader implements InstitutionTeachersReader
             ->orderBy('id')
             ->get();
 
-        $parEnseignant = $details && $enseignants->isNotEmpty() && is_int($lecteur->institution_id)
-            ? $this->designationsParEnseignant($enseignants->modelKeys(), $lecteur->institution_id)
-            : [];
+        $institution = self::entier($lecteur->institution_id);
+        $lireDetails = $details && $enseignants->isNotEmpty() && $institution !== null;
+        $parEnseignant = $lireDetails ? $this->designationsParEnseignant($enseignants->modelKeys(), $institution) : [];
+        $ordreDesClasses = $lireDetails ? $this->ordreDesClasses($enseignants->modelKeys(), $institution) : [];
 
         return array_values($enseignants->map(fn (User $enseignant): array => $details
-            ? $this->ligne($enseignant) + $this->details($parEnseignant[$enseignant->id] ?? [])
+            ? $this->ligne($enseignant) + $this->details($parEnseignant[$enseignant->id] ?? [], $ordreDesClasses[$enseignant->id] ?? [])
             : $this->ligne($enseignant))->all());
     }
 
@@ -100,12 +102,7 @@ final class LocalInstitutionTeachersReader implements InstitutionTeachersReader
      */
     private function designationsParEnseignant(array $enseignantIds, int $institution): array
     {
-        $lignes = DB::table('classe_matiere')
-            ->join('classes', 'classes.id', '=', 'classe_matiere.classe_id')
-            ->join('matieres', 'matieres.id', '=', 'classe_matiere.matiere_id')
-            ->where('classes.institution_id', $institution)
-            ->where('matieres.institution_id', $institution)
-            ->whereIn('classe_matiere.enseignant_id', $enseignantIds)
+        $lignes = $this->designations($enseignantIds, $institution)
             ->orderBy('matieres.libelle')->orderBy('matieres.id')
             ->orderBy('classes.libelle')->orderBy('classes.id')
             ->get([
@@ -136,9 +133,10 @@ final class LocalInstitutionTeachersReader implements InstitutionTeachersReader
 
     /**
      * @param  list<array{matiere_id: int, matiere_nom: ?string, matiere_code: ?string, classe_id: int, classe_nom: ?string}>  $designations  celles d'UN enseignant
+     * @param  list<int>  $ordreDesClasses  ses classes, dans l'ordre de la base
      * @return array{matieres: list<array<string, mixed>>, classes: list<array<string, mixed>>}
      */
-    private function details(array $designations): array
+    private function details(array $designations, array $ordreDesClasses): array
     {
         $matieres = [];
         $classes = [];
@@ -159,10 +157,55 @@ final class LocalInstitutionTeachersReader implements InstitutionTeachersReader
             $classes[$d['classe_id']] ??= ['id' => $d['classe_id'], 'nom' => $d['classe_nom'], 'filiere' => null, 'niveau' => null];
         }
 
-        // Les classes de l'enseignant, triées comme celles d'une matière.
-        usort($classes, static fn (array $a, array $b): int => [$a['nom'], $a['id']] <=> [$b['nom'], $b['id']]);
+        // Les classes de l'enseignant dans l'ordre de la base, comme celles d'une
+        // matière : la collation classe la casse et les accents, pas l'octet.
+        $ordonnees = [];
+        foreach ($ordreDesClasses as $classeId) {
+            if (isset($classes[$classeId])) {
+                $ordonnees[] = $classes[$classeId];
+            }
+        }
 
-        return ['matieres' => array_values($matieres), 'classes' => $classes];
+        return ['matieres' => array_values($matieres), 'classes' => $ordonnees];
+    }
+
+    /**
+     * Les désignations des enseignants lus, bornées à l'établissement par la
+     * classe ET par la matière. Écrite une fois, pour les deux lectures.
+     *
+     * @param  array<int, int|string>  $enseignantIds
+     */
+    private function designations(array $enseignantIds, int $institution): QueryBuilder
+    {
+        return DB::table('classe_matiere')
+            ->join('classes', 'classes.id', '=', 'classe_matiere.classe_id')
+            ->join('matieres', 'matieres.id', '=', 'classe_matiere.matiere_id')
+            ->where('classes.institution_id', $institution)
+            ->where('matieres.institution_id', $institution)
+            ->whereIn('classe_matiere.enseignant_id', $enseignantIds);
+    }
+
+    /**
+     * Les classes de chaque enseignant, dans l'ordre de la base (libellé, puis
+     * id) : celui que suivent aussi les classes d'une matière.
+     *
+     * @param  array<int, int|string>  $enseignantIds
+     * @return array<int, list<int>>
+     */
+    private function ordreDesClasses(array $enseignantIds, int $institution): array
+    {
+        $ordre = [];
+        foreach ($this->designations($enseignantIds, $institution)
+            ->orderBy('classes.libelle')->orderBy('classes.id')
+            ->get(['classe_matiere.enseignant_id', 'classes.id as classe_id']) as $ligne) {
+            $enseignant = self::entier($ligne->enseignant_id ?? null);
+            $classe = self::entier($ligne->classe_id ?? null);
+            if ($enseignant !== null && $classe !== null && ! in_array($classe, $ordre[$enseignant] ?? [], true)) {
+                $ordre[$enseignant][] = $classe;
+            }
+        }
+
+        return $ordre;
     }
 
     private static function entier(mixed $valeur): ?int

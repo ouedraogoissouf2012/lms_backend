@@ -19,6 +19,10 @@ use Illuminate\Database\ConnectionInterface;
  *   déjà la page matière (`LocalMatiereDetailsReader`). Un enseignant doit y
  *   être LE formateur désigné ; la gestion crée sur tout couple programmé de
  *   son école. Sinon 403 `non_designe`.
+ * - L'auteur (`enseignant_id`) est le formateur désigné du couple, même quand
+ *   la gestion crée : c'est lui qui modifie, publie et corrige (D136). La
+ *   gestion n'est l'auteur que si personne n'est désigné ; elle garde ses
+ *   droits par son rôle, et l'acteur réel reste au journal d'audit.
  * - Les libellés viennent des tables locales : aucun appel à KLASSCI, même
  *   pour un compte porteur d'un jeton.
  * - `klassci_*` est refusé : un id local n'y a pas sa place (D132).
@@ -48,7 +52,9 @@ final class LocalEvaluationProgramming implements EvaluationProgramming
             ]));
         }
 
-        if (! $this->estProgramme($classeId, $matiereId, $auteur)) {
+        $formateur = $this->formateurDuCouple($classeId, $matiereId);
+        $designe = $formateur !== false && ($auteur->isAdmin() || $formateur === $auteur->id);
+        if (! $designe) {
             return new EvaluationProgrammingRefusal(
                 403,
                 'Vous n\'êtes pas désigné pour enseigner cette matière dans cette classe.',
@@ -57,8 +63,9 @@ final class LocalEvaluationProgramming implements EvaluationProgramming
         }
 
         return new ProgrammedEvaluation([
-            'classe_id'   => $classeId,
-            'matiere_id'  => $matiereId,
+            'classe_id'     => $classeId,
+            'matiere_id'    => $matiereId,
+            'enseignant_id' => $formateur ?? $auteur->id,
             'classe_nom'  => $classe->libelle,
             'matiere_nom' => $matiere->libelle,
         ]);
@@ -84,16 +91,22 @@ final class LocalEvaluationProgramming implements EvaluationProgramming
         return Matiere::query()->whereKey($id)->where('institution_id', $auteur->institution_id)->first();
     }
 
-    private function estProgramme(int $classeId, int $matiereId, User $auteur): bool
+    /**
+     * Le formateur désigné du couple (`users.id`), `null` si le couple est
+     * programmé sans formateur, `false` s'il n'est pas programmé. Le couple
+     * est unique (`LocalClasseMatiereLinker`).
+     */
+    private function formateurDuCouple(int $classeId, int $matiereId): int|false|null
     {
         $couple = $this->db->table('classe_matiere')
             ->where('classe_id', $classeId)
-            ->where('matiere_id', $matiereId);
+            ->where('matiere_id', $matiereId)
+            ->first(['enseignant_id']);
 
-        if (! $auteur->isAdmin()) {
-            $couple->where('enseignant_id', $auteur->getKey());
+        if ($couple === null) {
+            return false;
         }
 
-        return $couple->exists();
+        return is_numeric($couple->enseignant_id) ? (int) $couple->enseignant_id : null;
     }
 }

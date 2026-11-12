@@ -6035,6 +6035,33 @@ paths:
                   type: integer
                   minimum: 1
                   maximum: 1440
+                coefficient:
+                  type: number
+                  minimum: 0
+                  nullable: true
+                bareme:
+                  type: number
+                  minimum: 0
+                  nullable: true
+                status:
+                  type: string
+                  nullable: true
+                max_attempts:
+                  type: integer
+                  minimum: 1
+                  nullable: true
+                allow_retake:
+                  type: boolean
+                  nullable: true
+                is_online:
+                  type: boolean
+                  nullable: true
+                shuffle_questions:
+                  type: boolean
+                  nullable: true
+                show_results:
+                  type: boolean
+                  nullable: true
                 questions:
                   type: array
                   items:
@@ -6057,7 +6084,8 @@ paths:
           description: |
             Refus de programmation : compte sans identite enseignant KLASSCI (ecole creee depuis
             KLASSCI), ou auteur non designe pour ce couple classe x matiere (ecole creee depuis le LMS).
-            Un 403 du role (coordinateur, apprenant) ne porte pas de `reason`.
+            Un 403 du role (coordinateur, apprenant) ne porte pas de `reason` ; un compte sans
+            etablissement recoit `no_institution` (middleware d'appartenance).
           content:
             application/json:
               schema:
@@ -6076,8 +6104,26 @@ paths:
                     enum:
                       - enseignant_klassci_requis
                       - non_designe
+                      - no_institution
         '409':
           description: "Une version en ligne existe deja pour cette evaluation KLASSCI."
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - success
+                  - message
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  message:
+                    type: string
+                  data:
+                    allOf:
+                      - $ref: '#/components/schemas/EvaluationRecord'
+                    nullable: true
         '422':
           description: |
             Erreur de validation (`errors`), classe ou matiere hors de l'ecole (`errors`), ou refus
@@ -6107,6 +6153,20 @@ paths:
                     enum:
                       - programmation_klassci_requise
                       - identifiant_hors_espace
+        '500':
+          description: "Echec transactionnel de la creation (rollback, journalise)."
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  message:
+                    type: string
+                  error:
+                    type: string
 
   /evaluations/{id}:
     get:

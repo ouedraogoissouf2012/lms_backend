@@ -95,8 +95,10 @@ final class EvaluationCreationService
                 array_intersect_key($data, array_flip(self::FILLABLE_FROM_REQUEST)),
                 $programme->attributs,
                 [
-                    // L'auteur, dans les deux types d'école (D72).
-                    'enseignant_id'  => $teacher->getKey(),
+                    // L'auteur, dans les deux types d'école (D72) : celui que
+                    // la source établit (le formateur désigné, D136), sinon
+                    // l'appelant.
+                    'enseignant_id'  => $programme->attributs['enseignant_id'] ?? $teacher->getKey(),
                     // Scope tenant explicite (fix E2E #211 flow 2).
                     'institution_id' => $teacher->institution_id,
                 ],

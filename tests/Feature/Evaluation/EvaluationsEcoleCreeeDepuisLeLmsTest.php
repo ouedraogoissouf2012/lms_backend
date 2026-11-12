@@ -8,6 +8,7 @@ use App\Enums\InstitutionMode;
 use App\Models\Classe;
 use App\Models\Evaluation;
 use App\Models\EvaluationQuestion;
+use App\Models\EvaluationSubmission;
 use App\Models\Institution;
 use App\Models\Matiere;
 use App\Models\User;
@@ -149,17 +150,109 @@ final class EvaluationsEcoleCreeeDepuisLeLmsTest extends TestCase
         self::assertSame(0, $this->lignes());
     }
 
-    public function test_la_gestion_cree_sur_un_couple_programme_de_son_ecole(): void
+    public function test_la_gestion_cree_pour_le_formateur_designe_qui_modifie_publie_et_note(): void
+    {
+        // D136 : l'auteur est le formateur désigné du couple, même quand la
+        // gestion crée. Sans cela, T recevrait 403 sur sa propre évaluation.
+        $ecole = $this->ecole();
+        $gestion = $this->membre($ecole, 'superAdmin');
+        $formateur = $this->membre($ecole, 'enseignant');
+        $classe = $this->classe($ecole, '6e A');
+        $maths = $this->matiere($ecole, 'Maths');
+        $this->programme($classe, $maths, $formateur);
+
+        $this->asTenant($gestion)->postJson(self::CREER, $this->corps($classe, $maths, [
+            'questions' => [['question' => 'Expliquez.', 'type' => 'dissertation', 'points' => 5]],
+        ]))->assertCreated()->assertJsonPath('data.enseignant_id', $formateur->getKey());
+        $evaluation = Evaluation::withoutGlobalScopes()->sole();
+
+        $this->asTenant($formateur)->putJson($this->de($evaluation), ['titre' => 'Contrôle du formateur'])->assertOk();
+        $this->asTenant($formateur)->postJson($this->de($evaluation).'/publish')->assertOk();
+
+        $question = EvaluationQuestion::query()->where('evaluation_id', $evaluation->getKey())->sole();
+        $copie = EvaluationSubmission::factory()->create([
+            'evaluation_id' => $evaluation->getKey(),
+            'institution_id' => $ecole->getKey(),
+            'status' => 'soumis',
+            'answers' => [(string) $question->getKey() => 'Une réponse.'],
+        ]);
+        $this->asTenant($formateur)
+            ->postJson($this->de($evaluation).'/submissions/'.$copie->getKey().'/grade', ['points' => [$question->getKey() => 4]])
+            ->assertOk();
+    }
+
+    public function test_la_gestion_qui_cree_sur_un_couple_sans_formateur_en_est_l_autrice(): void
     {
         $ecole = $this->ecole();
         $gestion = $this->membre($ecole, 'superAdmin');
         $classe = $this->classe($ecole, '6e A');
         $maths = $this->matiere($ecole, 'Maths');
-        $this->programme($classe, $maths, $this->membre($ecole, 'enseignant'));
+        $this->programme($classe, $maths, null);
 
         $this->asTenant($gestion)->postJson(self::CREER, $this->corps($classe, $maths))
             ->assertCreated()
             ->assertJsonPath('data.enseignant_id', $gestion->getKey());
+    }
+
+    public function test_une_matiere_d_une_autre_ecole_rend_422(): void
+    {
+        $ecole = $this->ecole();
+        $moi = $this->membre($ecole, 'enseignant');
+        $classe = $this->classe($ecole, '6e A');
+        $this->programme($classe, $this->matiere($ecole, 'Maths'), $moi);
+        $ailleurs = $this->matiere($this->ecole(), 'Maths');
+
+        $this->asTenant($moi)->postJson(self::CREER, $this->corps($classe, $ailleurs))
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['matiere_id']);
+
+        self::assertSame(0, $this->lignes());
+    }
+
+    public function test_un_corps_forge_ne_choisit_ni_l_auteur_ni_l_ecole(): void
+    {
+        $ecole = $this->ecole();
+        $moi = $this->membre($ecole, 'enseignant');
+        $collegue = $this->membre($ecole, 'enseignant');
+        $autre = $this->ecole();
+        $classe = $this->classe($ecole, '6e A');
+        $maths = $this->matiere($ecole, 'Maths');
+        $this->programme($classe, $maths, $moi);
+
+        $this->asTenant($moi)->postJson(self::CREER, $this->corps($classe, $maths, [
+            'enseignant_id' => $collegue->getKey(),
+            'institution_id' => $autre->getKey(),
+        ]))->assertCreated();
+
+        $evaluation = Evaluation::withoutGlobalScopes()->sole();
+        self::assertSame($moi->getKey(), $evaluation->enseignant_id);
+        self::assertSame($ecole->getKey(), $evaluation->institution_id);
+    }
+
+    public function test_une_mise_a_jour_ne_change_ni_l_auteur_ni_la_classe_ni_la_matiere(): void
+    {
+        // Les jumeaux locaux de `klassci_*` sont des champs d'identité : un PUT
+        // qui transférerait `enseignant_id` donnerait l'évaluation à un collègue.
+        $ecole = $this->ecole();
+        $moi = $this->membre($ecole, 'enseignant');
+        $collegue = $this->membre($ecole, 'enseignant');
+        $evaluation = $this->evaluationDe($moi, $ecole);
+        $autreClasse = $this->classe($ecole, '5e B');
+        $autreMatiere = $this->matiere($ecole, 'SVT');
+        [$classeAvant, $matiereAvant] = [$evaluation->classe_id, $evaluation->matiere_id];
+
+        $this->asTenant($moi)->putJson($this->de($evaluation), [
+            'titre' => 'Contrôle corrigé',
+            'enseignant_id' => $collegue->getKey(),
+            'classe_id' => $autreClasse->getKey(),
+            'matiere_id' => $autreMatiere->getKey(),
+        ])->assertOk();
+
+        $evaluation->refresh();
+        self::assertSame('Contrôle corrigé', $evaluation->titre);
+        self::assertSame($moi->getKey(), $evaluation->enseignant_id);
+        self::assertSame($classeAvant, $evaluation->classe_id);
+        self::assertSame($matiereAvant, $evaluation->matiere_id);
     }
 
     public function test_la_gestion_ne_cree_pas_sur_un_couple_non_programme(): void

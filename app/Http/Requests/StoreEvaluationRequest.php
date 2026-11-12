@@ -55,8 +55,8 @@ final class StoreEvaluationRequest extends FormRequest
     public function rules(): array
     {
         // Issue #124 : `klassci_enseignant_id` retiré de la validation —
-        // désormais dérivé du token Sanctum côté controller (`$user->klassci_enseignant_id`)
-        // et jamais lu du body. Empêche un enseignant de créer une évaluation
+        // l'auteur est dérivé du token Sanctum par la source de programmation
+        // (`EvaluationProgramming`) et le service de création, jamais lu du body. Empêche un enseignant de créer une évaluation
         // au nom d'un autre via mass-assignment.
         //
         // D72 : deux familles d'identifiants, jamais mêlées (D132). La

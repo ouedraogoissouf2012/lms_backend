@@ -30,7 +30,7 @@ use UnexpectedValueException;
  * ## L'enveloppe KLASSCI est enfin déballée
  *
  * Le code d'origine itérait la réponse BRUTE du proxy. Or KLASSCI enveloppe ses
- * collections — `EvaluationCreationService:161,173`, `EvaluationEnrichmentService:64`
+ * collections — `KlassciEvaluationProgramming::ligne`, `EvaluationEnrichmentService:64`
  * et `StudentGradesAggregator:59` lisent tous `['data']`. La recherche parcourait
  * donc `['success' => true, 'data' => [...]]` et ne trouvait jamais la moindre
  * classe. Corrigé ici : sans cela, le drapeau de dégradation introduit par cette

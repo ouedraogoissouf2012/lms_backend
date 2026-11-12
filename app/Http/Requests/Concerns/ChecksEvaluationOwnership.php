@@ -50,8 +50,8 @@ use App\Models\User;
  * Ce trait charge une évaluation EXISTANTE via `$this->route('id')`. Il est
  * INADAPTÉ au POST de création (`StoreEvaluationRequest`) — au moment du POST
  * il n'y a pas d'éval et pas de route id. `StoreEvaluationRequest` a sa propre
- * logique d'autorisation (admin/teacher only ; `klassci_enseignant_id` assigné
- * par le controller post-#124).
+ * logique d'autorisation (admin/teacher only) ; l'auteur est établi par la
+ * source de programmation de l'école (`EvaluationProgramming`, D72).
  *
  * @see \App\Http\Requests\DeleteEvaluationRequest
  * @see \App\Http\Requests\PublishEvaluationRequest

@@ -7668,6 +7668,10 @@ paths:
         `moyenne` est ponderee par `coefficient` ; `moyenne_generale` est la
         moyenne simple des moyennes de matiere. Toutes deux valent `0` (entier)
         quand il n y a rien a moyenner.
+
+        ECART CONNU (C30, ouvert) : `show_results` n est PAS applique ici. La
+        note est livree meme quand l evaluation cache ses resultats, alors que
+        la liste, « ma copie », la remise et la page matiere la masquent (C25).
       security:
         - sanctum: []
       responses:

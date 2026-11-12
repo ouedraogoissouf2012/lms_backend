@@ -120,20 +120,24 @@ class EvaluationSubmission extends Model
      * filtré ICI, explicitement, et un établissement nul ne ramène rien, comme
      * un identifiant nul.
      *
+     * D72, E2a : l'auteur est `student_id` (une copie d'une école créée depuis
+     * le LMS n'a pas de `klassci_etudiant_id`) ; une ligne d'avant reste à son
+     * auteur par `klassci_etudiant_id`. Une identité nulle ne vaut jamais.
+     *
      * @param  Builder<EvaluationSubmission>  $query
      * @return Builder<EvaluationSubmission>
      */
     public function scopeOwnedBy(Builder $query, User $student): Builder
     {
-        $proprietaireKlassci = $student->klassci_id;
-        $etablissement = $student->institution_id;
+        [$auteur, $klassci, $etablissement] = [$student->id, $student->klassci_id, $student->institution_id];
 
-        if ($proprietaireKlassci === null || $etablissement === null) {
+        if ($etablissement === null) {
             return $query->whereRaw('1 = 0');
         }
 
         return $query
-            ->where($query->qualifyColumn('klassci_etudiant_id'), $proprietaireKlassci)
-            ->where($query->qualifyColumn('institution_id'), $etablissement);
+            ->where($query->qualifyColumn('institution_id'), $etablissement)
+            ->where(fn (Builder $q) => $q->where($query->qualifyColumn('student_id'), $auteur)
+                ->when($klassci !== null, fn (Builder $k) => $k->orWhere($query->qualifyColumn('klassci_etudiant_id'), $klassci)));
     }
 }

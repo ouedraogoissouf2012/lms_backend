@@ -23,14 +23,28 @@ use Psr\Log\LoggerInterface;
  * (caller render 404). Throws `MissingKlassciTokenException` si pas de klassci_token
  * (caller render 401).
  */
-final class StudentEvaluationsListService
+final class StudentEvaluationsListService implements StudentEvaluationsReader
 {
     public function __construct(
         private readonly LoggerInterface $logger,
         private readonly KlassciProxyService $klassciService,
-        private readonly LearnerEvaluationScope $scope,
+        private readonly KlassciLearnerEvaluationAudience $scope,
         private readonly CaughtExceptionLog $journal,
     ) {}
+
+    /**
+     * École créée depuis KLASSCI : l'identité KLASSCI de l'élève est exigée
+     * (garde reprise du contrôleur, D72, E2a). Sans elle, 401
+     * `klassci_token_missing`, comme avant.
+     */
+    public function evaluationsFor(User $user): ?array
+    {
+        if (! $user->klassci_id) {
+            throw MissingKlassciTokenException::forUser($user->id);
+        }
+
+        return $this->getEnrichedEvaluationsForStudent($user);
+    }
 
     /**
      * @return array<int, array<string, mixed>>|null  null = classe non trouvée

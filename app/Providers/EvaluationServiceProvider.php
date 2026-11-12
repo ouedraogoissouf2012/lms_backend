@@ -7,6 +7,9 @@ namespace App\Providers;
 use App\Services\Evaluation\Programming\EvaluationProgramming;
 use App\Services\Evaluation\Programming\KlassciEvaluationProgramming;
 use App\Services\Evaluation\Programming\LocalEvaluationProgramming;
+use App\Services\Evaluation\Student\LocalStudentEvaluationsReader;
+use App\Services\Evaluation\Student\StudentEvaluationsListService;
+use App\Services\Evaluation\Student\StudentEvaluationsReader;
 use App\Services\Roster\RosterAuthorityFactory;
 use Illuminate\Support\ServiceProvider;
 
@@ -30,6 +33,13 @@ final class EvaluationServiceProvider extends ServiceProvider
             EvaluationProgramming::class,
             static fn ($app) => $app->make(RosterAuthorityFactory::class)
                 ->sourceForCurrentTenant(KlassciEvaluationProgramming::class, LocalEvaluationProgramming::class),
+        );
+
+        // D72, E2a : la liste de l'élève.
+        $this->app->bind(
+            StudentEvaluationsReader::class,
+            static fn ($app) => $app->make(RosterAuthorityFactory::class)
+                ->sourceForCurrentTenant(StudentEvaluationsListService::class, LocalStudentEvaluationsReader::class),
         );
     }
 }

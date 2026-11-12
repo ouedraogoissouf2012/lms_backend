@@ -165,7 +165,17 @@ final class EvaluationAttemptStateService
      * la ligne en conflit est une copie de CET élève : une ligne que `ownedBy`
      * ne voit pas (copie héritée sans établissement, avant le rattrapage
      * `2026_10_29_200000`) est une anomalie de données, et l'exception remonte
-     * pour être rapportée. Toute autre erreur de base remonte.
+     * pour être rapportée. Toute autre erreur de base remonte, comme la
+     * violation d'un AUTRE unique ({@see self::surUnUniqueDesCopies()}).
+     *
+     * ## Hypothèse : aucune transaction autour de `/start`
+     *
+     * La relecture de la copie gagnante suppose qu'AUCUNE transaction
+     * n'englobe ce chemin (c'est le cas : aucun `DB::transaction` sur `/start`).
+     * Sous REPEATABLE READ (le défaut d'InnoDB), une transaction ouverte avant le
+     * conflit relirait l'instantané pris avant lui et ne verrait pas la ligne
+     * gagnante : le perdant tomberait dans la branche « anomalie », en 500. Ne
+     * pas ajouter de transaction ici sans revoir cette reprise.
      *
      * @param  ?array<string, mixed>  $window
      * @return array{status: string, submission?: EvaluationSubmission, window?: ?array<string, mixed>, message?: string, is_practice?: bool, resumed?: bool}
@@ -190,6 +200,10 @@ final class EvaluationAttemptStateService
                 'feedback' => $isPracticeMode ? '[PRACTICE] Entraînement - note non officielle' : null,
             ]);
         } catch (UniqueConstraintViolationException $conflit) {
+            if (! self::surUnUniqueDesCopies($conflit)) {
+                throw $conflit;
+            }
+
             $concurrente = $this->findOpenAttempt($evaluation->id, $user);
             if ($concurrente !== null) {
                 return $this->okResponse($concurrente, $window, true, $isPracticeMode);
@@ -215,6 +229,24 @@ final class EvaluationAttemptStateService
         }
 
         return $this->okResponse($submission, $window, false, $isPracticeMode);
+    }
+
+    /**
+     * Le conflit porte-t-il sur l'un des deux uniques des copies
+     * (`eval_sub_unique`, `eval_sub_student_unique`) ? Seul celui-là est une
+     * course (D188). MySQL et PostgreSQL nomment la contrainte ; SQLite cite ses
+     * colonnes.
+     */
+    private static function surUnUniqueDesCopies(UniqueConstraintViolationException $conflit): bool
+    {
+        $message = $conflit->getMessage();
+
+        return str_contains($message, 'eval_sub_unique')
+            || str_contains($message, 'eval_sub_student_unique')
+            || preg_match(
+                '/evaluation_submissions\.evaluation_id, evaluation_submissions\.(klassci_etudiant_id|student_id), evaluation_submissions\.attempt/',
+                $message,
+            ) === 1;
     }
 
     /**

@@ -6773,6 +6773,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/EnseignantsListe'
+        '401':
+          $ref: '#/components/responses/KlassciUnauthorized'
         '500':
           description: "Refus de KLASSCI, ou defaillance interne rapportee une fois au journal."
           content:

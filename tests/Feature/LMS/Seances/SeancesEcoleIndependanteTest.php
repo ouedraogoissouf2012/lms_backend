@@ -93,6 +93,8 @@ final class SeancesEcoleIndependanteTest extends TestCase
         $classe = $this->classe($ecole, '6e A');
         $auteur = $this->membre($ecole, 'enseignant');
         $seance = $this->seance($classe, $auteur, '2026-11-12 09:30:00');
+        // Deux valeurs distinctes : une inversion des champs visio se verrait.
+        $seance->forceFill(['visio_enabled' => true, 'visio_active' => false])->save();
 
         $reponse = $this->asTenant($this->membre($ecole, $role))
             ->getJson(self::A_VENIR)
@@ -200,6 +202,50 @@ final class SeancesEcoleIndependanteTest extends TestCase
         self::assertSame($this->ligne($prochaine, $classe, $lui), $reponse->json('data.1'));
     }
 
+    /**
+     * La classe d'une ligne est celle que désigne `classe_id` : son libellé et
+     * ses inscriptions actives, jamais le `classe_nom` libre de la séance.
+     */
+    public function test_la_classe_d_une_seance_est_lue_dans_la_classe(): void
+    {
+        $ecole = $this->ecole();
+        $classe = $this->classe($ecole, '6e A');
+        $this->inscrire($this->membre($ecole, 'etudiant'), $classe, 'actif');
+        $this->inscrire($this->membre($ecole, 'etudiant'), $classe, 'inactif');
+        $auteur = $this->membre($ecole, 'enseignant');
+        app(LocalSeanceCreator::class)->create($auteur, [
+            'titre' => 'Cours', 'date_seance' => '2026-11-12 08:00:00', 'matiere_nom' => 'Maths',
+            'classe_nom' => '6e B', 'classe_id' => $classe->id,
+        ]);
+
+        $this->asTenant($this->membre($ecole, 'coordinateur'))
+            ->getJson(self::A_VENIR)
+            ->assertOk()
+            ->assertJsonPath('data.0.classe', ['id' => $classe->id, 'libelle' => '6e A', 'nom' => '6e A', 'name' => '6e A', 'effectif' => 1]);
+    }
+
+    /**
+     * Une école basculée garde des séances miroirs sans auteur ni classe
+     * locaux. La gestion les lit avec le nom d'enseignant qu'elles portent ;
+     * aucun id n'est inventé (limite déclarée : enseignant et élève ne les
+     * lisent pas, faute de lien local).
+     */
+    public function test_une_seance_miroir_d_une_ecole_basculee_garde_le_nom_de_son_enseignant(): void
+    {
+        $basculee = $this->ecole();
+        Seance::factory()->create([
+            'institution_id' => $basculee->id,
+            'enseignant_nom' => 'Awa Koné',
+            'date_seance' => '2026-11-12 08:00:00',
+        ]);
+
+        $this->asTenant($this->membre($basculee, 'coordinateur'))
+            ->getJson(self::A_VENIR)
+            ->assertOk()
+            ->assertJsonPath('data.0.enseignant', ['id' => null, 'nom' => 'Awa Koné', 'prenom' => ''])
+            ->assertJsonPath('data.0.classe.id', null);
+    }
+
     // ───────────────────────── l'élève, et tout rôle non reconnu
 
     /** @return iterable<string, array{0: string}> */
@@ -245,6 +291,25 @@ final class SeancesEcoleIndependanteTest extends TestCase
             ->getJson(self::A_VENIR.'?classe_id='.$autre->id)
             ->assertOk()
             ->assertJsonPath('data', []);
+    }
+
+    /** Le filtre de classe vaut aussi hors de la gestion, dans ce que l'élève voit déjà. */
+    public function test_un_eleve_inscrit_dans_deux_classes_filtre_sur_l_une(): void
+    {
+        $ecole = $this->ecole();
+        $a = $this->classe($ecole, '6e A');
+        $b = $this->classe($ecole, '6e B');
+        $eleve = $this->membre($ecole, 'etudiant');
+        $this->inscrire($eleve, $a, 'actif');
+        $this->inscrire($eleve, $b, 'actif');
+        $auteur = $this->membre($ecole, 'enseignant');
+        $deA = $this->seance($a, $auteur, '2026-11-12 08:00:00');
+        $this->seance($b, $auteur, '2026-11-12 10:00:00');
+
+        $this->asTenant($eleve)
+            ->getJson(self::A_VENIR.'?classe_id='.$a->id)
+            ->assertOk()
+            ->assertJsonPath('data.*.id', [$deA->id]);
     }
 
     public function test_un_eleve_sans_classe_active_recoit_le_404_d_aujourd_hui(): void
@@ -365,7 +430,9 @@ final class SeancesEcoleIndependanteTest extends TestCase
             ->assertOk()
             ->assertJsonPath('data.*.id', [7001])
             ->assertJsonPath('data.0.classe.id', 41)
-            ->assertJsonPath('data.0.enseignant.id', $miroir->klassci_enseignant_id);
+            ->assertJsonPath('data.0.enseignant.id', $miroir->klassci_enseignant_id)
+            ->assertJsonPath('data.0.matiere.id', $miroir->klassci_matiere_id)
+            ->assertJsonPath('data.0.enseignant.nom', $miroir->enseignant_nom);
     }
 
     public function test_deux_ecoles_dans_la_meme_methode_recoivent_chacune_leur_source(): void

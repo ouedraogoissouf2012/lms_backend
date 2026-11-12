@@ -23,7 +23,7 @@ use Illuminate\Http\Exceptions\HttpResponseException;
  * UpdateEvaluationRequest (issue #125 refactor).
  *
  * ## 10-year perspective
- * Questions can be modified via separate endpoint if needed.
+ * Les questions sont remplacées en bloc par ce même PUT (`questions`).
  * canBeEdited() prevents data loss (students already submitted).
  * Multi-tenant enforced via institution_id (handled inside the trait).
  *
@@ -31,10 +31,11 @@ use Illuminate\Http\Exceptions\HttpResponseException;
  *
  * Le contrôleur ne transmet que `validated()` : un champ sans règle ici n'est
  * jamais écrit (`notes_published`, `is_locked`, `deadline_at`, les libellés…).
- * `is_published` est INTERDIT : la publication passe par `POST /publish`, qui
- * refuse une évaluation sans question ou terminée. Le refus porte son motif
- * (`publication_par_route_dediee`, ADR-906-01) : un client qui l'envoyait
- * croyait publier, et un silence lui mentirait.
+ * `is_published` est INTERDIT, quelle que soit sa valeur (`missing` : même
+ * `false` ou `null`, qu'aucune route ne sait appliquer) : la publication passe
+ * par `POST /publish`, qui refuse une évaluation sans question ou terminée. Le
+ * refus porte son motif (`publish_via_dedicated_route`, ADR-906-01) : un
+ * client qui l'envoyait croyait publier, et un silence lui mentirait.
  */
 final class UpdateEvaluationRequest extends FormRequest
 {
@@ -53,7 +54,7 @@ final class UpdateEvaluationRequest extends FormRequest
             'status' => 'sometimes|in:brouillon,planifiee,en_cours,terminee,annulee',
             'date_evaluation' => 'nullable|date',
             'duree_minutes' => 'sometimes|integer|min:1|max:1440',
-            'is_published' => 'prohibited',
+            'is_published' => 'missing',
             'max_attempts' => 'sometimes|integer|min:1',
             'allow_retake' => 'sometimes|boolean',
             'is_online' => 'sometimes|boolean',
@@ -61,6 +62,9 @@ final class UpdateEvaluationRequest extends FormRequest
             'show_results' => 'sometimes|boolean',
             // Mêmes règles qu'à la création (StoreEvaluationRequest).
             'type' => 'sometimes|in:qcm,reponse_courte,dissertation,mixte',
+            // Exactement les règles de la création (StoreEvaluationRequest).
+            // Leur `nullable` sur une colonne NOT NULL, et le barème nul, sont
+            // traités ensemble dans les deux voies (C18).
             'coefficient' => 'nullable|numeric|min:0',
             'bareme' => 'nullable|numeric|min:0',
             'questions' => 'sometimes|array',
@@ -69,6 +73,8 @@ final class UpdateEvaluationRequest extends FormRequest
             'questions.*.points' => 'nullable|numeric|min:0',
             'questions.*.options' => 'nullable|array',
             'questions.*.correct_answers' => 'nullable|array',
+            // Lue par le service : sans règle, `validated()` la retirerait.
+            'questions.*.explanation' => 'nullable|string|max:2000',
         ];
     }
 
@@ -79,6 +85,7 @@ final class UpdateEvaluationRequest extends FormRequest
             'titre.max' => 'Le titre ne doit pas dépasser 255 caractères',
             'description.max' => 'La description ne doit pas dépasser 1000 caractères',
             'status.in' => 'Le statut est invalide',
+            'is_published.missing' => 'Une évaluation se publie par l\'action « Publier », pas par sa modification.',
             'duree_minutes.max' => 'La durée ne doit pas dépasser 1440 minutes',
         ];
     }
@@ -93,8 +100,8 @@ final class UpdateEvaluationRequest extends FormRequest
         if ($validator->errors()->has('is_published')) {
             throw new HttpResponseException(response()->json([
                 'success' => false,
-                'message' => 'La publication passe par POST /evaluations/{id}/publish.',
-                'reason' => 'publication_par_route_dediee',
+                'message' => 'Une évaluation se publie par l\'action « Publier », pas par sa modification.',
+                'reason' => 'publish_via_dedicated_route',
                 'errors' => $validator->errors()->toArray(),
             ], 422));
         }

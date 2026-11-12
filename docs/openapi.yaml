@@ -6520,8 +6520,8 @@ paths:
       description: |
         C14 : seuls les champs ci-dessous sont ecrits (liste blanche = validation). Un champ hors de
         cette liste est ignore (`notes_published`, `is_locked`, `locked_at`, `deadline_at`, les
-        libelles, les identifiants). `is_published` est refuse : la publication passe par
-        `POST /evaluations/{id}/publish`.
+        libelles, les identifiants). `is_published` est refuse quelle que soit sa valeur (`true`,
+        `false`, `null`) : la publication passe par `POST /evaluations/{id}/publish`.
       security:
         - sanctum: []
       parameters:
@@ -6549,7 +6549,7 @@ paths:
                   enum: [brouillon, planifiee, en_cours, terminee, annulee]
                 date_evaluation:
                   type: string
-                  format: date-time
+                  description: "Une date lisible par la regle `date` de Laravel."
                   nullable: true
                 duree_minutes:
                   type: integer
@@ -6582,6 +6582,32 @@ paths:
                   description: "Remplacement complet des questions."
                   items:
                     type: object
+                    required:
+                      - question
+                      - type
+                    properties:
+                      question:
+                        type: string
+                        maxLength: 1000
+                      type:
+                        type: string
+                        enum: [qcm, qcm_multiple, vrai_faux, reponse_courte, dissertation]
+                      points:
+                        type: number
+                        minimum: 0
+                        nullable: true
+                      options:
+                        type: array
+                        nullable: true
+                        items: {}
+                      correct_answers:
+                        type: array
+                        nullable: true
+                        items: {}
+                      explanation:
+                        type: string
+                        maxLength: 2000
+                        nullable: true
       responses:
         '200':
           description: "Evaluation updated"
@@ -6592,7 +6618,7 @@ paths:
         '422':
           description: |
             Erreur de validation (`errors`), ou `is_published` envoye : refus motive
-            (`publication_par_route_dediee`), la publication passe par sa route.
+            (`publish_via_dedicated_route`), la publication passe par sa route.
           content:
             application/json:
               schema:
@@ -6615,7 +6641,7 @@ paths:
                   reason:
                     type: string
                     enum:
-                      - publication_par_route_dediee
+                      - publish_via_dedicated_route
 
     delete:
       tags:

@@ -69,7 +69,7 @@ class UpdateEvaluationRequestTest extends TestCase
             'description' => 'New description',
             'duree_minutes' => 90,
             // C14 : `is_published` n'est plus accepté par un PUT (422,
-            // `publication_par_route_dediee`) ; la publication passe par
+            // `publish_via_dedicated_route`) ; la publication passe par
             // POST /publish. Voir MiseAJourParListeBlancheTest.
         ]);
 

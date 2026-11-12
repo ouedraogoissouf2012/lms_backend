@@ -73,14 +73,21 @@ final class MiseAJourParListeBlancheTest extends TestCase
     #[DataProvider('typesDEcole')]
     public function test_is_published_dans_un_put_est_refuse_avec_son_motif_et_ne_publie_pas(InstitutionMode $mode): void
     {
+        // `true`, mais aussi `false` et `null` : aucune route ne sait les
+        // appliquer, et `null` finissait en 500 (colonne NOT NULL) avec la
+        // règle `prohibited`, qui laisse passer une valeur vide (revue de C14).
         [$auteur, $evaluation] = $this->evaluationEn($mode);
 
-        $this->asTenant($auteur)->putJson($this->de($evaluation), ['is_published' => true])
-            ->assertUnprocessable()
-            ->assertJsonPath('success', false)
-            ->assertJsonPath('reason', 'publication_par_route_dediee');
+        foreach ([true, false, null] as $valeur) {
+            $this->asTenant($auteur)->putJson($this->de($evaluation), ['titre' => 'Volée', 'is_published' => $valeur])
+                ->assertUnprocessable()
+                ->assertJsonPath('success', false)
+                ->assertJsonPath('reason', 'publish_via_dedicated_route');
+        }
 
-        self::assertFalse($evaluation->refresh()->is_published);
+        $evaluation->refresh();
+        self::assertFalse($evaluation->is_published);
+        self::assertSame('Contrôle 1', $evaluation->titre);
     }
 
     #[DataProvider('typesDEcole')]
@@ -88,6 +95,8 @@ final class MiseAJourParListeBlancheTest extends TestCase
     {
         [$auteur, $evaluation] = $this->evaluationEn($mode);
 
+        // Les règles de la création, à l'identique. `null` (colonne NOT NULL)
+        // est traité avec la création, dans C18.
         foreach ([['coefficient' => 'abc'], ['coefficient' => -1], ['bareme' => 'abc'], ['bareme' => -1], ['type' => 'inconnu']] as $corps) {
             $this->asTenant($auteur)->putJson($this->de($evaluation), $corps)
                 ->assertUnprocessable()
@@ -116,7 +125,7 @@ final class MiseAJourParListeBlancheTest extends TestCase
             'show_results' => true,
             'questions' => [
                 ['question' => 'Première', 'type' => 'qcm', 'points' => 1, 'options' => ['a', 'b'], 'correct_answers' => ['a']],
-                ['question' => 'Seconde', 'type' => 'dissertation', 'points' => 4],
+                ['question' => 'Seconde', 'type' => 'dissertation', 'points' => 4, 'explanation' => 'Parce que.'],
             ],
         ])->assertOk();
 
@@ -126,6 +135,11 @@ final class MiseAJourParListeBlancheTest extends TestCase
         self::assertSame(
             ['Première', 'Seconde'],
             EvaluationQuestion::query()->where('evaluation_id', $evaluation->getKey())->orderBy('ordre')->pluck('question')->all(),
+        );
+        // `explanation` a sa règle : sans elle, `validated()` la retirait.
+        self::assertSame(
+            [null, 'Parce que.'],
+            EvaluationQuestion::query()->where('evaluation_id', $evaluation->getKey())->orderBy('ordre')->pluck('explanation')->all(),
         );
     }
 

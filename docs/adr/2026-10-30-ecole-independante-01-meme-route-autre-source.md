@@ -213,6 +213,28 @@ lot de #949.
   lit, avec le nom d'enseignant qu'elle porte ; ni l'enseignant ni l'élève ne la lisent, faute de lien local.
 - **Hors de ce lot, dans la file** : les actions du calendrier sur une séance locale (`/details`, `activate-visio`, le
   basculement de la visio) exigent encore le jeton.
+## Cas appliqué : les enseignants (lot 3b, 2026-11-12)
+
+| Route | Port | Source KLASSCI | Source locale |
+|---|---|---|---|
+| `GET /proxy/enseignants` | `InstitutionTeachersReader::annuaire` | `KlassciInstitutionTeachersReader` (la logique d'avant, repli local compris) | `LocalInstitutionTeachersReader` |
+| `GET /lms/enseignants` | `InstitutionTeachersReader::listeEnrichie` | `KlassciInstitutionTeachersReader` (liste enrichie, cache, `meta`) | `LocalInstitutionTeachersReader` |
+
+- **Une seule règle de visibilité**, celle de #1009 : `TeacherDirectoryVisibility` (D120). La gestion lit tous les
+  enseignants, un enseignant sa ligne, tout autre rôle aucune. Elle DESCEND dans chaque source. La source KLASSCI
+  l'applique après le cache de KLASSCI (`envelopeFor`), la source locale à sa requête (`restrictLocal`, seule règle
+  locale, sans copie). Les contrôleurs gardent le seul court-circuit : un lecteur qui ne verrait aucune ligne ne
+  déclenche aucune lecture.
+- **Les ids de la source locale sont LOCAUX** (`users.id`). Aucune clé `klassci_*`, et aucun id KLASSCI n'est rendu,
+  même pour le compte d'une école basculée qui garde le sien (D132 Q3). Le repli local de l'école créée depuis
+  KLASSCI (`LocalTeacherDirectory`, quand KLASSCI rend 0) mêle encore les deux espaces : relevé à part, hors du lot.
+- **Les détails** : les matières où l'enseignant est désigné, avec leurs classes, et ses classes. C'est la règle de
+  `ClassesEnseignees` (désignation sur `classe_matiere`, classe et matière de l'établissement), lue en une requête
+  pour toute la liste. Ce que le LMS ne tient pas vaut `null` (heures, taux, séances, filière, niveau), et aucun bloc
+  `statistiques` n'est rendu (D120).
+- **L'école créée depuis KLASSCI ne change pas** : sa logique est déplacée des contrôleurs vers sa source, avec les
+  mêmes appels, le même repli, le même cache et le même `meta`. Ses tests existants, et ceux de #1009, passent sans
+  modification.
 
 ## Conséquences
 

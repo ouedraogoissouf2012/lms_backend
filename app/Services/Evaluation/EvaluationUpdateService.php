@@ -56,6 +56,10 @@ final class EvaluationUpdateService
         'klassci_classe_id',
         'klassci_matiere_id',
         'klassci_evaluation_id',
+        // D72 : les jumeaux locaux, champs d'identité eux aussi.
+        'enseignant_id',
+        'classe_id',
+        'matiere_id',
     ];
 
     public function __construct(

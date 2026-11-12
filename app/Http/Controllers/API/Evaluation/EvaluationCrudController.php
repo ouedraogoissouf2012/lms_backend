@@ -14,6 +14,8 @@ use App\Http\Requests\UpdateEvaluationRequest;
 use App\Models\Evaluation;
 use App\Services\Evaluation\EvaluationCreationService;
 use App\Services\Evaluation\EvaluationListService;
+use App\Services\Evaluation\Programming\EvaluationProgramming;
+use App\Services\Evaluation\Programming\EvaluationProgrammingRefusal;
 use App\Services\Evaluation\EvaluationStateService;
 use App\Services\Evaluation\EvaluationUpdateService;
 use Illuminate\Http\JsonResponse;
@@ -83,28 +85,28 @@ final class EvaluationCrudController extends AuthenticatedController
         return $this->successResponse($enriched);
     }
 
-    public function store(StoreEvaluationRequest $request): JsonResponse
+    public function store(StoreEvaluationRequest $request, EvaluationProgramming $programmation): JsonResponse
     {
         // FormRequest handles authorization (role check).
 
-        // Issue #124 — sécurité : l'identité enseignant est dérivée du token
-        // Sanctum, jamais du body. Un utilisateur sans `klassci_enseignant_id`
-        // synchronisé (admin LMS local, compte service) n'a pas vocation à
-        // créer d'évaluation — refus explicite ici plutôt qu'un check
-        // d'ownership qui échouerait plus tard.
+        // Issue #124 — sécurité : l'identité de l'auteur est dérivée du token
+        // Sanctum, jamais du body. Le rattachement (classe, matière, libellés)
+        // est établi par la source de l'école (D72) : programmation KLASSCI
+        // dans une école créée depuis KLASSCI, classe et matière locales dans
+        // une école créée depuis le LMS. Le port arrive par la MÉTHODE : reçu
+        // au constructeur, il resterait celui de la première école servie.
         $user = $this->authenticatedUser($request);
-        if ($user->klassci_enseignant_id === null) {
-            return $this->errorResponse(
-                'Vous devez être un enseignant KLASSCI synchronisé pour créer une évaluation.',
-                403,
-            );
+        $programme = $programmation->programmer($request->validated(), $user);
+
+        if ($programme instanceof EvaluationProgrammingRefusal) {
+            return $this->errorResponse($programme->message, $programme->statut, $programme->errors, $programme->reason);
         }
 
         // Le service applique sa propre whitelist (FILLABLE_FROM_REQUEST) — on
         // passe `all()` pour préserver les champs hors validation rules
         // (status, is_online, allow_retake, etc.) que l'original lisait via
         // `$request->only([...])`.
-        $result = $this->creationService->create($request->all(), $user);
+        $result = $this->creationService->create($request->all(), $user, $programme);
 
         // Non migré vers successResponse()/errorResponse() : l'enveloppe est
         // déjà construite PAR LE SERVICE (`$result['payload']` = {success, …}

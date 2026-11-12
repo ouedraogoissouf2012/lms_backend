@@ -3,6 +3,7 @@
 use App\Providers\AppServiceProvider;
 use App\Providers\AuthPasswordServiceProvider;
 use App\Providers\CatalogueServiceProvider;
+use App\Providers\EvaluationServiceProvider;
 use App\Providers\FileConversionServiceProvider;
 use App\Providers\QueueFailureServiceProvider;
 use App\Providers\RateLimitServiceProvider;
@@ -14,6 +15,7 @@ return [
     AppServiceProvider::class,
     AuthPasswordServiceProvider::class,
     CatalogueServiceProvider::class,
+    EvaluationServiceProvider::class,
     FileConversionServiceProvider::class,
     QueueFailureServiceProvider::class,
     RateLimitServiceProvider::class,

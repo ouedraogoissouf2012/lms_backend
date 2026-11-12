@@ -50,8 +50,8 @@ use App\Models\User;
  * Ce trait charge une évaluation EXISTANTE via `$this->route('id')`. Il est
  * INADAPTÉ au POST de création (`StoreEvaluationRequest`) — au moment du POST
  * il n'y a pas d'éval et pas de route id. `StoreEvaluationRequest` a sa propre
- * logique d'autorisation (admin/teacher only ; `klassci_enseignant_id` assigné
- * par le controller post-#124).
+ * logique d'autorisation (admin/teacher only) ; l'auteur est établi par la
+ * source de programmation de l'école (`EvaluationProgramming`, D72).
  *
  * @see \App\Http\Requests\DeleteEvaluationRequest
  * @see \App\Http\Requests\PublishEvaluationRequest
@@ -125,6 +125,10 @@ trait ChecksEvaluationOwnership
     /**
      * Propriete, invariants #119 inclus — le seul endroit ou ils sont ecrits.
      *
+     * Deux preuves, sans comparaison de mode (D72) : l'auteur local
+     * (`evaluations.enseignant_id`, ecrit par les deux sources a la creation),
+     * ou l'identite KLASSCI pour les lignes d'avant D72.
+     *
      * Lecture depuis la colonne dediee write-once `users.klassci_enseignant_id`,
      * JAMAIS depuis le blob `klassci_data` qu'un re-sync compromis pourrait
      * reecrire. Une identite enseignant absente ne vaut pas propriete : elle
@@ -143,6 +147,13 @@ trait ChecksEvaluationOwnership
         }
 
         if ($user->isAdmin()) {
+            return true;
+        }
+
+        // L'auteur local (`enseignant_id`, écrit à chaque création depuis D72),
+        // ou, pour une ligne d'avant D72, l'identité KLASSCI. Une identité
+        // NULL ne vaut jamais propriété, d'un côté comme de l'autre.
+        if (is_int($user->getKey()) && $evaluation->enseignant_id === $user->getKey()) {
             return true;
         }
 

@@ -1,7 +1,7 @@
 # ADR-EI-01 — Même route, autre source : les lectures d'une école créée depuis le LMS
 
 **Date :** 2026-10-30  
-**Statut :** accepté (lot 1 ; lot 2, les classes, ajouté le 2026-11-09)  
+**Statut :** accepté (lot 1 ; lot 2, les classes, ajouté le 2026-11-09 ; les évaluations, E1, ajouté le 2026-11-12)  
 **Issue :** aucune encore · prolonge [ADR-848-01](2026-09-18-848-01-catalogue-pedagogique-local.md),
 [ADR-805-01](2026-09-19-805-01-resolution-des-identifiants.md) et
 [ADR-760-01](2026-09-19-760-01-deux-portes-deux-espaces.md)
@@ -35,8 +35,9 @@ Trois règles de câblage :
    seul endroit qui compare le mode. Il n'y a qu'UNE méthode générique, et pas une par port : chaque méthode
    recopierait la comparaison, et ce fichier existe pour qu'elle n'ait lieu qu'une fois. La liste d'exemption OCP ne
    change pas. Sans établissement, la source est KLASSCI, comme avant ce choix.
-2. **La liaison se fait par `bind()`, jamais par `singleton()`**, dans `CatalogueServiceProvider`. C'est la même raison
-   que pour `CatalogueAuthority` : un singleton rejouerait le premier tenant pour tous les suivants.
+2. **La liaison se fait par `bind()`, jamais par `singleton()`**, dans le fournisseur du domaine du port :
+   `CatalogueServiceProvider` pour le catalogue, `EvaluationServiceProvider` pour les évaluations (amendé par D72, E1).
+   C'est la même raison que pour `CatalogueAuthority` : un singleton rejouerait le premier tenant pour tous les suivants.
 3. **Le contrôleur reçoit le port par sa MÉTHODE, jamais par son constructeur.** Laravel garde l'instance du contrôleur
    sur l'objet `Route`, et seul Octane la vide. Une source reçue à la construction resterait celle de la première école
    servie, sous Octane comme dans une suite de tests. `MatieresEcoleIndependanteTest` le prouve : deux écoles appelées
@@ -204,3 +205,33 @@ lot de #949.
   `MatieresContractTest` le vérifie pour les deux sources.
 - Les lots suivants (classes de l'enseignant, catalogue d'administration, séances, tableaux de bord) suivent cette
   forme. Ils ajoutent des ports, jamais une seconde comparaison au mode.
+
+## Les évaluations (D72, E1, 2026-11-12)
+
+L'utilisateur a décidé que l'école créée depuis le LMS a ses évaluations (D72). E1 couvre la création et la propriété.
+L'élève (E2), la correction (E3) et les pages qui comptent les évaluations (E4) suivent.
+
+| Route | Port | Source KLASSCI | Source locale |
+|---|---|---|---|
+| `POST /evaluations` | `EvaluationProgramming` | `KlassciEvaluationProgramming` : mise en ligne d'une évaluation programmée dans KLASSCI | `LocalEvaluationProgramming` : programmation dans le LMS, sur une classe et une matière locales |
+
+- **Un fait du modèle, pas une source.** `evaluations` porte trois colonnes locales :
+  - `classe_id` et `matiere_id`, remplies par la source locale ;
+  - `enseignant_id`, l'auteur, écrit par les deux sources.
+  La propriété accepte `enseignant_id`, ou, pour une ligne d'avant D72, `klassci_enseignant_id`. Elle ne compare
+  jamais le mode.
+- **Deux familles d'identifiants, jamais mêlées (D132).** Un id local ne vit jamais sous un nom `klassci_*`, même dans
+  une requête. Chaque source refuse la famille de l'autre (422 `identifier_out_of_scope`).
+- **L'auteur est le formateur désigné du couple (D136),** même quand la gestion crée. La gestion n'en est l'autrice
+  que si personne n'est désigné. Elle garde ses droits par son rôle, et l'acteur réel reste au journal d'audit.
+- **Ce qui change AUSSI dans l'école créée depuis KLASSCI, voulu et déclaré :**
+  - sans `klassci_evaluation_id`, la création est refusée (422 `klassci_scheduling_required`). Les deux appelants
+    du front envoient toujours la programmation ;
+  - le 403 d'un compte sans identité KLASSCI porte `reason: klassci_teacher_identity_missing`, avec le même message ;
+  - `enseignant_id` est écrit ;
+  - les deux libellés sont lus séparément, chacun en fail-soft, et un libellé vide est sauté. Les ids sont typés en
+    entiers ;
+  - ces deux lectures partent avant le garde du 409 : un doublon coûte deux appels KLASSCI avant de recevoir son 409.
+- **Dette déclarée** : `TeacherOwnershipScope::applyToEvaluations`, dans la recherche globale, ne lit encore que
+  `klassci_enseignant_id`. Dans une école créée depuis le LMS, la recherche ne rend donc aucune évaluation à son
+  auteur. Elle ferme, et rien ne fuit. L'alignement vient avec la PR « listForTeacher » (D136).

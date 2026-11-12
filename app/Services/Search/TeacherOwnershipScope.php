@@ -27,7 +27,7 @@ use Illuminate\Database\Eloquent\Builder;
  * | Modèle | Colonne | Valeur comparée | Autorité |
  * |---|---|---|---|
  * | `Lesson` | `enseignant_id` | `$teacher->id` (id LOCAL) | écrivain `LessonCrudOperationsService.php:43` |
- * | `Evaluation` | `klassci_enseignant_id` | `$teacher->klassci_enseignant_id` | écrivain `EvaluationCreationService.php:110` |
+ * | `Evaluation` | `klassci_enseignant_id` | `$teacher->klassci_enseignant_id` | écrivain `KlassciEvaluationProgramming::programmer` (école créée depuis KLASSCI) |
  *
  * - **`lessons.enseignant_id`** est commentée « ID enseignant KLASSCI » dans sa
  *   migration (`2025_10_14_160000_create_lessons_table.php:20`) : c'est faux.
@@ -50,9 +50,14 @@ use Illuminate\Database\Eloquent\Builder;
  * `Illuminate\Database\Query\Builder::where()` réécrit `where($col, null)` en
  * `whereNull($col)`. Pour un enseignant sans `klassci_enseignant_id`, le filtre
  * naïf remonterait donc TOUTES les évaluations orphelines du tenant — pire que
- * le bug corrigé. Un tel utilisateur ne peut posséder aucune évaluation
- * (`EvaluationCrudController.php:84` refuse la création sans cette identité), on
- * ferme donc explicitement.
+ * le bug corrigé. On ferme donc explicitement.
+ *
+ * DETTE DÉCLARÉE (D72, D136) : depuis E1, une évaluation porte aussi son
+ * auteur local `enseignant_id`, et la propriété en écriture
+ * (`ChecksEvaluationOwnership`) l'accepte. Ce scope ne lit encore que
+ * `klassci_enseignant_id` : dans une école créée depuis le LMS, la recherche
+ * ne rend donc aucune évaluation à son auteur (elle ferme, rien ne fuit).
+ * L'alignement vient avec la PR « listForTeacher ».
  *
  * ## Périmètre (SRP §1.6)
  *

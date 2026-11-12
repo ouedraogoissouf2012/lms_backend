@@ -7,6 +7,7 @@ namespace Tests\Feature\Evaluation;
 use App\Models\Institution;
 use App\Models\User;
 use App\Services\Evaluation\EvaluationCreationService;
+use App\Services\Evaluation\Programming\ProgrammedEvaluation;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use PHPUnit\Framework\Attributes\CoversClass;
@@ -58,12 +59,18 @@ final class EvaluationCreationRaceTest extends TestCase
             ]);
         });
 
-        $result = app(EvaluationCreationService::class)->create([
-            'klassci_evaluation_id' => 4242,
-            'klassci_matiere_id' => 1,
-            'klassci_classe_id' => 1,
-            'titre' => 'Perdante de la course',
-        ], $teacher);
+        // D72 : le rattachement vient de la programmation de l'école, pas du
+        // corps. Le garde du 409 lit donc `klassci_evaluation_id` ici.
+        $result = app(EvaluationCreationService::class)->create(
+            ['titre' => 'Perdante de la course'],
+            $teacher,
+            new ProgrammedEvaluation([
+                'klassci_evaluation_id' => 4242,
+                'klassci_matiere_id' => 1,
+                'klassci_classe_id' => 1,
+                'klassci_enseignant_id' => 77,
+            ]),
+        );
 
         self::assertTrue($raced, 'La course doit avoir été déclenchée.');
         self::assertSame(409, $result['status']);

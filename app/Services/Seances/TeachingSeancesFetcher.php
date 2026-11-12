@@ -241,15 +241,11 @@ final class TeachingSeancesFetcher
             'date_seance' => $date,
             'heure_debut' => $heureDebut !== null ? substr($heureDebut, 11, 5) : null,
             'heure_fin' => $heureFin !== null ? substr($heureFin, 11, 5) : null,
+            'heure_fin_estimee' => false,
             'salle' => $prog['salle'] ?? null,
             // Ajouter structure programmation pour cohérence avec autres endpoints
-            'programmation' => [
-                'date' => $date,
-                // KLASSCI date heure_debut/heure_fin au jour courant → on réaligne sur la date de la séance.
-                'heure_debut' => SeanceProgrammationNormalizer::alignDate($heureDebut, $date),
-                'heure_fin' => SeanceProgrammationNormalizer::alignDate($heureFin, $date),
-                'salle' => $prog['salle'] ?? null,
-            ],
+            // Heures réalignées sur la date de la séance ; fin rendue par KLASSCI.
+            'programmation' => SeanceProgrammationNormalizer::blocKlassci($prog),
             'matiere' => [
                 'id' => $matiere['id'] ?? null,
                 'nom' => $matiere['nom'] ?? $matiere['libelle'] ?? 'N/A',

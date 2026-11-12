@@ -45,24 +45,11 @@ final class UpcomingSeanceMapper
     {
         $prog = KlassciPayload::asArray($seance['programmation'] ?? null);
         $classe = KlassciPayload::asArray($seance['classe'] ?? null);
-        $date = KlassciPayload::toStringOrNull($prog['date'] ?? null);
 
         return [
             'id' => $seance['id'] ?? null,
-            'programmation' => [
-                'date' => $date,
-                // KLASSCI date heure_debut/heure_fin au jour courant → réaligner
-                // sur la date réelle de la séance.
-                'heure_debut' => SeanceProgrammationNormalizer::alignDate(
-                    KlassciPayload::toStringOrNull($prog['heure_debut'] ?? null),
-                    $date
-                ),
-                'heure_fin' => SeanceProgrammationNormalizer::alignDate(
-                    KlassciPayload::toStringOrNull($prog['heure_fin'] ?? null),
-                    $date
-                ),
-                'salle' => $prog['salle'] ?? null,
-            ],
+            // Heures réalignées sur la date de la séance ; fin rendue par KLASSCI.
+            'programmation' => SeanceProgrammationNormalizer::blocKlassci($prog),
             'salle' => $prog['salle'] ?? null, // Aussi en racine pour compatibilité
             'matiere' => [
                 'id' => $matiere['id'] ?? null,

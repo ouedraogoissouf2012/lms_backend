@@ -42,11 +42,14 @@ final class SeanceCalendarProjection
             'date_fin' => $endIso,
             'heure_debut' => $start?->format('H:i'),
             'heure_fin' => $end?->format('H:i'),
+            // Le seul lieu qui pose une fin ESTIMÉE : elle le dit, au client.
+            'heure_fin_estimee' => $end !== null,
             'salle' => null,
             'programmation' => [
                 'date' => $start?->format('Y-m-d'),
                 'heure_debut' => $startIso,
                 'heure_fin' => $endIso,
+                'heure_fin_estimee' => $end !== null,
                 'salle' => null,
             ],
             'matiere' => [

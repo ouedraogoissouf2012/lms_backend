@@ -119,6 +119,11 @@ final class OpenApiSchemaValidator
         if (! is_array($reponse)) {
             throw new UnexpectedValueException('Réponse partagée introuvable : '.json_encode($reference));
         }
+        // Une seule indirection est lue : une chaîne passerait sinon pour un
+        // statut non décrit, un message qui tromperait.
+        if (array_key_exists('$ref', $reponse)) {
+            throw new UnexpectedValueException('Réponse partagée en chaîne, non suivie : '.json_encode($reference));
+        }
 
         return $reponse;
     }

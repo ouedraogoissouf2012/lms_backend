@@ -192,6 +192,21 @@ final class OpenApiSchemaValidatorTest extends TestCase
         $validateur->schemaDeReponse('/x', 'GET', 403);
     }
 
+    public function test_une_reponse_partagee_en_chaine_est_une_erreur_explicite(): void
+    {
+        $validateur = new OpenApiSchemaValidator([
+            'paths' => ['/x' => ['get' => ['responses' => ['401' => ['$ref' => '#/components/responses/Relais']]]]],
+            'components' => ['responses' => [
+                'Relais' => ['$ref' => '#/components/responses/Refus'],
+                'Refus' => ['content' => ['application/json' => ['schema' => ['type' => 'object']]]],
+            ]],
+        ]);
+
+        $this->expectException(\UnexpectedValueException::class);
+        $this->expectExceptionMessage('Réponse partagée en chaîne');
+        $validateur->schemaDeReponse('/x', 'GET', 401);
+    }
+
     private static function json(string $json): mixed
     {
         return json_decode($json, false, 512, JSON_THROW_ON_ERROR);

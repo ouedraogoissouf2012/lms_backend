@@ -256,6 +256,50 @@ final class EnseignantCorrigeSesEvaluationsTest extends TestCase
         ], $this->lignes($resultats));
     }
 
+    public function test_une_copie_qui_a_un_auteur_ne_va_pas_a_un_autre_par_l_identite_klassci_ecole_du_lms(): void
+    {
+        // La règle de `ownedBy` (revue croisée d'E2a) : la branche KLASSCI ne
+        // vaut que pour une ligne SANS auteur. La copie de Yao porte
+        // l'identité KLASSCI d'Awa (école basculée, rattrapage mal apparié) :
+        // elle reste à Yao, et Awa n'a rien passé.
+        [$ecole, $enseignant, $classe, $maths] = $this->enseignantEtSaClasse();
+        $awa = $this->eleve($ecole, $classe, 'Awa Koné');
+        $awa->forceFill(['klassci_id' => 501])->save();
+        $yao = $this->eleve($ecole, $classe, 'Yao Kouassi');
+        $evaluation = $this->evaluation($classe, $maths, $enseignant);
+        $this->copie($evaluation, $yao, 'soumis', '12.00', ['klassci_etudiant_id' => 501]);
+
+        $resultats = $this->asTenant($enseignant)->getJson($this->de($evaluation).'/results-by-class')
+            ->assertOk()
+            ->json('data.resultats');
+
+        self::assertSame([
+            $awa->getKey() => ['Awa Koné', null, 'non_passee'],
+            $yao->getKey() => ['Yao Kouassi', '12.00', 'soumis'],
+        ], $this->lignes($resultats));
+    }
+
+    public function test_une_copie_qui_a_un_auteur_ne_va_pas_a_un_autre_par_l_identite_klassci_ecole_klassci(): void
+    {
+        [$enseignant, $evaluation] = $this->enseignantKlassci();
+        $this->eleveKlassci($enseignant, 700, 'awa@ecole.test', 'Awa Koné');
+        $yao = $this->eleveKlassci($enseignant, 701, 'yao@ecole.test', 'Yao Kouassi');
+        $this->copie($evaluation, $yao, 'soumis', '12.00', ['klassci_etudiant_id' => 700]);
+        $this->rosterKlassci([
+            ['id' => 700, 'email' => 'awa@ecole.test', 'nom' => 'Koné', 'prenom' => 'Awa'],
+            ['id' => 701, 'email' => 'yao@ecole.test', 'nom' => 'Kouassi', 'prenom' => 'Yao'],
+        ]);
+
+        $resultats = $this->asTenant($enseignant)->getJson($this->de($evaluation).'/results-by-class')
+            ->assertOk()
+            ->json('data.resultats');
+
+        self::assertSame([
+            700 => ['Koné Awa', null, 'non_passee'],
+            701 => ['Kouassi Yao', '12.00', 'soumis'],
+        ], $this->lignes($resultats));
+    }
+
     public function test_la_meme_route_sert_une_ecole_klassci_puis_une_ecole_du_lms(): void
     {
         // ADR-EI-01, règle 3 : le contrôleur est mémoïsé sur l'objet Route.

@@ -9,6 +9,7 @@ use App\Models\Classe;
 use App\Models\Lesson;
 use App\Models\Matiere;
 use App\Models\User;
+use App\Support\Catalogue\SourceLocale;
 use Illuminate\Database\Eloquent\Builder;
 
 /**
@@ -46,7 +47,7 @@ use Illuminate\Database\Eloquent\Builder;
 final class LocalTeacherMatieresReader implements TeacherMatieresReader
 {
     /**
-     * @return list<array{id: int, nom: string, coefficient: int, classes: list<array{id: int, nom: string}>, statistiques: array{nombre_lessons_publiees: int, nombre_lessons_brouillons: int, nombre_seances: null, nombre_evaluations: int}}>
+     * @return list<array{id: int, nom: string, coefficient: int, classes: list<array{id: int, nom: string}>, statistiques: array{nombre_lessons_publiees: int, nombre_lessons_brouillons: int, nombre_seances: null, nombre_evaluations: int}, source: string}>
      */
     public function getMatieresForUser(User $user): array
     {
@@ -83,6 +84,7 @@ final class LocalTeacherMatieresReader implements TeacherMatieresReader
                 'nombre_seances' => null,
                 'nombre_evaluations' => 0,
             ],
+            'source' => SourceLocale::LMS_LOCAL,
         ], $matieres);
     }
 

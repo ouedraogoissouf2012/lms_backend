@@ -1425,23 +1425,57 @@ components:
           nullable: true
         date_debut:
           type: string
+          format: date-time
           nullable: true
+          description: "ISO 8601, avec fuseau."
         date_fin:
           type: string
+          format: date-time
           nullable: true
-          description: "Ecole creee depuis le LMS : le debut plus une duree SUPPOSEE de 2 h, non mesuree."
+          description: "ISO 8601, avec fuseau. Estimee quand `heure_fin_estimee` vaut `true`."
         heure_debut:
           type: string
           nullable: true
+          pattern: '^[0-9]{2}:[0-9]{2}$'
+          description: "Heure locale, au format `H:i`."
         heure_fin:
           type: string
           nullable: true
-          description: "Ecole creee depuis le LMS : supposee, voir `date_fin`."
+          pattern: '^[0-9]{2}:[0-9]{2}$'
+          description: "Heure locale, au format `H:i`. Estimee quand `heure_fin_estimee` vaut `true`."
+        heure_fin_estimee:
+          type: boolean
+          description: |
+            `true` : la fin n'est pas tenue, elle est ESTIMEE (debut plus une duree
+            supposee de 2 h, non mesuree). C'est le cas de toute seance lue dans la
+            table du LMS : celles d'une ecole creee depuis le LMS, et celles du
+            chemin de la gestion d'une ecole creee depuis KLASSCI. `false` : la fin
+            est celle que KLASSCI rend. Absente quand la ligne ne porte aucune fin
+            a sa racine.
         salle:
           type: string
           nullable: true
         programmation:
           type: object
+          properties:
+            date:
+              type: string
+              nullable: true
+              description: "Le jour de la seance, au format `Y-m-d`."
+            heure_debut:
+              type: string
+              nullable: true
+              description: "Datetime ISO 8601, realigne sur le jour de la seance. Avec fuseau quand la seance est lue dans le LMS ; tel que KLASSCI le rend sinon."
+            heure_fin:
+              type: string
+              nullable: true
+              description: "Datetime ISO 8601, comme `heure_debut`. Estimee quand `heure_fin_estimee` vaut `true`."
+            heure_fin_estimee:
+              type: boolean
+              description: "Meme sens qu'a la racine : `true` pour une fin estimee, `false` pour une fin rendue par KLASSCI."
+            salle:
+              type: string
+              nullable: true
         matiere:
           type: object
           description: "Ecole creee depuis le LMS : `id` vaut `null`, une seance locale ne porte que le nom de sa matiere."

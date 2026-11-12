@@ -200,7 +200,10 @@ lot de #949.
   d'un côté, ids LOCAUX de l'autre (la séance, la classe de `/proxy/classes`, le compte auteur ; `matiere.id` vaut
   `null`, une séance locale ne porte que le nom de sa matière).
 - **La fin d'une séance locale est SUPPOSÉE** : 2 h après son début, une constante nommée en un lieu. La table ne tient
-  aucune heure de fin, et le calendrier en exige une ; la spec la déclare supposée, non mesurée.
+  aucune heure de fin, et le calendrier en exige une. Le CLIENT le lit sur la ligne : `heure_fin_estimee` vaut `true`,
+  à la racine et dans `programmation`, pour toute fin posée par la projection (y compris le chemin de la gestion d'une
+  école créée depuis KLASSCI), et `false` pour une fin rendue par KLASSCI. Une déclaration que le client ne lit pas ne
+  suffisait pas (décision de la superviseure, relevé de Fille 2).
 - **L'école créée depuis KLASSCI ne change pas** : sa source est le service d'avant, le chemin du gestionnaire garde son
   exclusion des séances locales et ses ids KLASSCI. Le contrôleur ne reçoit plus la source par son constructeur, mais
   par sa méthode ; le journal des pannes (`CaughtExceptionLog`), sans état et sans école, y reste.

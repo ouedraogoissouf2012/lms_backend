@@ -143,6 +143,14 @@ final class EvaluationStateService
      * (`publish`, et le remplacement des questions dans `update`) passent
      * par ce verrou : elles ne se chevauchent plus. Sans effet hors
      * transaction, et sans effet sous SQLite.
+     *
+     * Sans scopes, parce que la ligne a déjà été résolue et autorisée par
+     * l'appelant (la route la charge sous le scope de l'établissement, puis
+     * `ChecksEvaluationOwnership` la borne à cet établissement) et que seule
+     * cette même clé est relue : le contournement n'élargit aucun périmètre.
+     * Avec les scopes, une suppression logique survenue entre ce chargement
+     * et le verrou rendrait la ligne invisible ; le résultat `null` ferait
+     * alors sauter le contrôle de C16 en silence.
      */
     public function verrouiller(Evaluation $evaluation): ?Evaluation
     {

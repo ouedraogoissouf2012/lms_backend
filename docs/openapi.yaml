@@ -1565,7 +1565,7 @@ components:
               nullable: true
         matiere:
           type: object
-          description: "Ecole creee depuis le LMS : `id` vaut `null`, une seance locale ne porte que le nom de sa matiere."
+          description: "Ecole creee depuis le LMS : la matiere designee par la seance. `id` est l'id local de la matiere (`null` sans matiere choisie) ; `nom` est son libelle actuel, ou le nom libre de la seance sans matiere."
         classe:
           type: object
           description: "Ecole creee depuis le LMS : la classe designee par la seance. `id` est l'id de `/proxy/classes` (`null` sans classe) ; `nom` est son libelle et `effectif` ses inscriptions actives."
@@ -2005,6 +2005,16 @@ components:
             Classe de l'etablissement de l'auteur, facultative (une classe locale
             ou le miroir d'une classe KLASSCI). Une classe inexistante ou d'une
             autre ecole rend 404.
+        matiere_id:
+          type: integer
+          minimum: 1
+          nullable: true
+          description: |
+            Matiere LOCALE de l'etablissement de l'auteur, facultative. Une
+            matiere inexistante ou d'une autre ecole rend 404. Avec `classe_id`,
+            elle doit etre au programme de la classe, sinon 422
+            `subject_not_in_class_program`. Donnee, son libelle remplace
+            `matiere_nom`.
 
     SeanceLocaleCreated:
       type: object
@@ -2029,6 +2039,7 @@ components:
             - titre
             - date_seance
             - matiere_nom
+            - matiere_id
             - classe_nom
             - classe_id
             - created_by
@@ -2042,6 +2053,10 @@ components:
             - created_at
             - updated_at
           properties:
+            matiere_id:
+              type: integer
+              nullable: true
+              description: "La matiere LOCALE choisie, nulle sans matiere."
             id:
               type: integer
             titre:
@@ -2093,6 +2108,25 @@ components:
     # Les refus de POST /lms/seances, SERRES : propres a la route, pour que le
     # test de contrat garde aussi les erreurs (MessageOnly et ValidationFailed,
     # partages, restent laches).
+    SeanceLocaleHorsProgramme:
+      type: object
+      additionalProperties: false
+      required:
+        - success
+        - message
+        - reason
+      properties:
+        success:
+          type: boolean
+          enum:
+            - false
+        message:
+          type: string
+        reason:
+          type: string
+          enum:
+            - subject_not_in_class_program
+
     SeanceLocaleRefus:
       type: object
       additionalProperties: false
@@ -3561,11 +3595,13 @@ paths:
               schema:
                 $ref: '#/components/schemas/SeanceLocaleRefus'
         '422':
-          description: "Charge invalide"
+          description: "Charge invalide (`errors`), ou matiere hors du programme de la classe (`reason` `subject_not_in_class_program`)."
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/SeanceLocaleInvalide'
+                oneOf:
+                  - $ref: '#/components/schemas/SeanceLocaleInvalide'
+                  - $ref: '#/components/schemas/SeanceLocaleHorsProgramme'
 
   /admin/reports/attendance:
     post:

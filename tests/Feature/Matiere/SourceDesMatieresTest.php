@@ -11,6 +11,7 @@ use App\Services\KlassciProxyService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Testing\TestResponse;
 use Mockery\MockInterface;
+use Symfony\Component\HttpFoundation\Response;
 use Tests\Concerns\ActsAsTenantUser;
 use Tests\Concerns\BuildsEcoleIndependante;
 use Tests\Concerns\ValidatesAgainstOpenApi;
@@ -96,7 +97,7 @@ final class SourceDesMatieresTest extends TestCase
         return $compte;
     }
 
-    /** @param  TestResponse<\Symfony\Component\HttpFoundation\Response>  $reponse */
+    /** @param  TestResponse<Response>  $reponse */
     private function assertSansSource(TestResponse $reponse): void
     {
         $cartes = (array) $reponse->json('data');

@@ -14,6 +14,7 @@ use App\Models\Matiere;
 use App\Models\User;
 use App\Services\KlassciProxyService;
 use Illuminate\Database\QueryException;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
@@ -247,6 +248,31 @@ final class ElevePasseSonEvaluationTest extends TestCase
             if (preg_match('/insert into [`"]evaluation_submissions[`"]/i', $query) === 1) {
                 throw new QueryException('sqlite', $query, [], new PDOException('NOT NULL constraint failed: evaluation_submissions.status'));
             }
+        });
+
+        $this->asTenant($eleve)->postJson($this->de($evaluation).'/start')->assertStatus(500);
+    }
+
+    public function test_la_violation_d_un_autre_unique_n_est_pas_prise_pour_une_course(): void
+    {
+        // D188 à la lettre : seul le conflit sur l'un des deux uniques des
+        // copies est une course. Ici une copie ouverte apparaît pendant
+        // l'insertion (une course la reprendrait en 200), mais la violation
+        // porte sur un autre unique : elle remonte, en 500.
+        [, $eleve, $classe, $maths] = $this->eleveInscrit();
+        $evaluation = $this->evaluation($classe, $maths, now()->subMinutes(10), 60);
+        $fait = false;
+        DB::beforeExecuting(function (string $query) use (&$fait, $evaluation, $eleve): void {
+            if ($fait || preg_match('/insert into [`"]evaluation_submissions[`"]/i', $query) !== 1) {
+                return;
+            }
+            $fait = true;
+            DB::table('evaluation_submissions')->insert([
+                'evaluation_id' => $evaluation->getKey(), 'student_id' => $eleve->getKey(), 'klassci_etudiant_id' => null,
+                'attempt' => 1, 'status' => 'en_cours', 'started_at' => now(),
+                'institution_id' => $evaluation->institution_id, 'created_at' => now(), 'updated_at' => now(),
+            ]);
+            throw new UniqueConstraintViolationException('sqlite', $query, [], new PDOException('UNIQUE constraint failed: evaluation_submissions.jeton_de_reprise'));
         });
 
         $this->asTenant($eleve)->postJson($this->de($evaluation).'/start')->assertStatus(500);

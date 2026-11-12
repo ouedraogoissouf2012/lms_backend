@@ -423,8 +423,14 @@ final class EnseignantCorrigeSesEvaluationsTest extends TestCase
             'klassci_matiere_id' => null,
             'klassci_enseignant_id' => null,
             'is_published' => true,
-            // Fixé : la fabrique le tire au hasard, et hors ligne `/start` refuse.
+            // Fixés : la fabrique les tire au hasard. Hors ligne, `/start`
+            // refuse ; et la synchronisation vérifie que `notes_published`
+            // reste faux.
             'is_online' => true,
+            'allow_retake' => false,
+            'max_attempts' => 1,
+            'show_results' => true,
+            'notes_published' => false,
             'status' => 'planifiee',
             'date_evaluation' => now()->subDay(),
             'duree_minutes' => 60,
@@ -531,6 +537,9 @@ final class EnseignantCorrigeSesEvaluationsTest extends TestCase
         $lignes = [];
         foreach ($resultats as $ligne) {
             self::assertIsArray($ligne);
+            // Une ligne par élève : un doublon (roster ET hors roster) ne doit
+            // pas s'écraser en silence.
+            self::assertArrayNotHasKey($ligne['etudiant_id'], $lignes, 'deux lignes pour le même élève');
             $lignes[$ligne['etudiant_id']] = [$ligne['etudiant_nom_complet'], $ligne['note'], $ligne['status']];
         }
         ksort($lignes);
@@ -547,6 +556,7 @@ final class EnseignantCorrigeSesEvaluationsTest extends TestCase
         $lignes = [];
         foreach ($resultats as $ligne) {
             self::assertIsArray($ligne);
+            self::assertArrayNotHasKey($ligne['etudiant_id'], $lignes, 'deux lignes pour le même élève');
             $lignes[$ligne['etudiant_id']] = [$ligne['etudiant_nom_complet'], $ligne['status'], $ligne['inscription']];
         }
         ksort($lignes);

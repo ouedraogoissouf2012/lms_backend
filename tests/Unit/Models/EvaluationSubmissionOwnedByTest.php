@@ -29,6 +29,13 @@ use Tests\TestCase;
  * `klassci_etudiant_id` est nullable, et `student_id` l'était déjà. La forme
  * non gardée attribuerait à un compte sans id, ou sans identité KLASSCI,
  * TOUTES les copies sans auteur de son établissement.
+ *
+ * ## Le SQL est lu sans les guillemets du moteur
+ *
+ * SQLite cite un identifiant entre guillemets doubles, MySQL entre accents
+ * graves. Une assertion écrite avec l'une des deux formes rougissait sur
+ * l'autre jambe de la CI, ou pire, pour une assertion NÉGATIVE, y passait
+ * sans rien prouver. {@see self::sql()} retire les deux.
  */
 final class EvaluationSubmissionOwnedByTest extends TestCase
 {
@@ -40,11 +47,11 @@ final class EvaluationSubmissionOwnedByTest extends TestCase
         $sansKlassci->klassci_id = null;
         $sansKlassci->institution_id = 7;
 
-        $sql = EvaluationSubmission::query()->ownedBy($sansKlassci)->toSql();
+        $sql = self::sql($sansKlassci);
 
-        self::assertStringNotContainsString('student_id" is null', $sql, 'Un id nul ne doit jamais devenir un whereNull.');
+        self::assertStringNotContainsString('student_id is null', $sql, 'Un id nul ne doit jamais devenir un whereNull.');
         self::assertStringNotContainsString(
-            'klassci_etudiant_id" is null',
+            'klassci_etudiant_id is null',
             $sql,
             'La portee interroge avec un identifiant nul : Laravel en fait un whereNull, '
             .'et les copies sans proprietaire KLASSCI deviendraient celles de cet eleve.',
@@ -64,7 +71,7 @@ final class EvaluationSubmissionOwnedByTest extends TestCase
         $avecKlassci->klassci_id = 4242;
         $avecKlassci->institution_id = 7;
 
-        $sql = EvaluationSubmission::query()->ownedBy($avecKlassci)->toSql();
+        $sql = self::sql($avecKlassci);
 
         self::assertStringContainsString('klassci_etudiant_id', $sql);
         self::assertStringContainsString('institution_id', $sql, 'L identifiant KLASSCI n est unique qu au sein d un etablissement.');
@@ -81,9 +88,9 @@ final class EvaluationSubmissionOwnedByTest extends TestCase
         $eleve->klassci_id = null;
         $eleve->institution_id = 7;
 
-        $sql = EvaluationSubmission::query()->ownedBy($eleve)->toSql();
+        $sql = self::sql($eleve);
 
-        self::assertStringContainsString('"student_id" = ?', $sql);
+        self::assertStringContainsString('student_id = ?', $sql);
         self::assertStringNotContainsString('klassci_etudiant_id', $sql);
         self::assertStringNotContainsString('1 = 0', $sql);
     }
@@ -97,9 +104,15 @@ final class EvaluationSubmissionOwnedByTest extends TestCase
         $sansEtablissement->klassci_id = 4242;
         $sansEtablissement->institution_id = null;
 
-        $sql = EvaluationSubmission::query()->ownedBy($sansEtablissement)->toSql();
+        $sql = self::sql($sansEtablissement);
 
-        self::assertStringNotContainsString('institution_id" is null', $sql);
+        self::assertStringNotContainsString('institution_id is null', $sql);
         self::assertStringContainsString('1 = 0', $sql, 'La portee doit ne rien ramener, explicitement.');
+    }
+
+    /** La requête de la portée, sans les guillemets d'identifiant de SQLite ni de MySQL. */
+    private static function sql(User $compte): string
+    {
+        return str_replace(['"', '`'], '', EvaluationSubmission::query()->ownedBy($compte)->toSql());
     }
 }

@@ -8,6 +8,7 @@ use App\Models\Seance;
 use App\Models\User;
 use App\Services\ClasseSyncService;
 use App\Services\Notification\AsyncVisioNotificationDispatcher;
+use App\Services\Visio\VisioActorAuthorization;
 use App\Support\Logging\CaughtExceptionLog;
 use Psr\Log\LoggerInterface;
 use Throwable;
@@ -36,6 +37,7 @@ final class VisioSessionService
     public function __construct(
         private readonly ClasseSyncService $classeSyncService,
         private readonly AsyncVisioNotificationDispatcher $notifications,
+        private readonly VisioActorAuthorization $authorization,
         private readonly LoggerInterface $logger,
         private readonly CaughtExceptionLog $journal,
     ) {}
@@ -49,16 +51,10 @@ final class VisioSessionService
     public function start(int $seanceId, User $user, array $params = []): array
     {
         try {
-            $visio = $this->resolveSeance($seanceId);
+            $visio = $this->seanceGeree($seanceId, $user, 'Visio non activée pour cette séance');
 
-            if ($visio === null) {
-                return [
-                    'status' => 404,
-                    'payload' => [
-                        'success' => false,
-                        'message' => 'Visio non activée pour cette séance',
-                    ],
-                ];
+            if (is_array($visio)) {
+                return $visio;
             }
 
             if (! $visio->visio_enabled) {
@@ -127,16 +123,10 @@ final class VisioSessionService
     public function end(int $seanceId, User $user): array
     {
         try {
-            $visio = $this->resolveSeance($seanceId);
+            $visio = $this->seanceGeree($seanceId, $user, 'Visio non trouvée');
 
-            if ($visio === null) {
-                return [
-                    'status' => 404,
-                    'payload' => [
-                        'success' => false,
-                        'message' => 'Visio non trouvée',
-                    ],
-                ];
+            if (is_array($visio)) {
+                return $visio;
             }
 
             if ($visio->visio_status !== 'active') {
@@ -189,6 +179,39 @@ final class VisioSessionService
                 ],
             ];
         }
+    }
+
+    /**
+     * La séance, si l'acteur la gère ; sinon le refus à relayer.
+     *
+     * La règle est celle de la gestion de la visio
+     * ({@see VisioActorAuthorization::canManage()}) : l'enseignant propriétaire,
+     * ou le personnel de gestion de l'établissement. Elle porte sur la séance
+     * déjà résolue, avant tout contrôle d'état, toute écriture et toute
+     * notification.
+     *
+     * @return Seance|array{status:int, payload: array<string, mixed>}
+     */
+    private function seanceGeree(int $seanceId, User $user, string $absente): Seance|array
+    {
+        $visio = $this->resolveSeance($seanceId);
+
+        if ($visio === null) {
+            return ['status' => 404, 'payload' => ['success' => false, 'message' => $absente]];
+        }
+
+        if (! $this->authorization->canManage($visio, $user)) {
+            return [
+                'status' => 403,
+                'payload' => [
+                    'success' => false,
+                    'message' => 'Vous ne pouvez pas gérer cette visio',
+                    'reason' => 'actor_not_authorized',
+                ],
+            ];
+        }
+
+        return $visio;
     }
 
     /**

@@ -77,6 +77,8 @@ final class StudentGradesZeroDataTest extends TestCase
         $evaluation = Evaluation::factory()->create([
             'institution_id' => $this->institution->id,
             'is_published' => true,
+            // Fixé : la fabrique le tire au hasard, et C30 (E4a) écarte une note cachée.
+            'show_results' => true,
             'coefficient' => 0,
             'klassci_matiere_id' => 42,
             'matiere_nom' => 'Mathématiques',

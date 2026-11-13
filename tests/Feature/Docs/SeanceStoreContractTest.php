@@ -72,6 +72,8 @@ final class SeanceStoreContractTest extends TestCase
             yield "alias coordinator, $volet" => [$autonome, 'coordinator'];
             yield "alias teacher, $volet" => [$autonome, 'teacher'];
             yield "superAdmin, $volet" => [$autonome, 'superAdmin'];
+            // D1 : la route garde seule les rôles, et compare sans la casse.
+            yield "variante de casse (garde de la route), $volet" => [$autonome, 'Enseignant'];
         }
     }
 
@@ -90,7 +92,6 @@ final class SeanceStoreContractTest extends TestCase
         foreach (self::volets() as $volet => [$autonome]) {
             yield "étudiant (rôle de la route), $volet" => [$autonome, 'etudiant'];
             yield "admin (rôle de la route), $volet" => [$autonome, 'admin'];
-            yield "variante de casse (autorisation de la requête), $volet" => [$autonome, 'Enseignant'];
         }
     }
 

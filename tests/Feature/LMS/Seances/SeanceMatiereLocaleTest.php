@@ -5,9 +5,13 @@ declare(strict_types=1);
 namespace Tests\Feature\LMS\Seances;
 
 use App\Enums\InstitutionMode;
+use App\Models\Classe;
+use App\Models\Matiere;
 use App\Models\Seance;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\Concerns\ActsAsTenantUser;
 use Tests\Concerns\BuildsEcoleIndependante;
@@ -59,7 +63,7 @@ final class SeanceMatiereLocaleTest extends TestCase
         $enseignant = $this->membre($ecole, 'enseignant');
         $classe = $this->classe($ecole, '6e A');
         $maths = $this->matiere($ecole, 'Maths');
-        $this->programme($classe, $maths, $enseignant);
+        $this->programmeSelon($mode, $classe, $maths, $enseignant);
 
         $this->asTenant($enseignant)
             ->postJson(self::CREATION, $this->corps(['classe_id' => $classe->id, 'matiere_id' => $maths->id, 'matiere_nom' => 'Nom libre']))
@@ -142,5 +146,29 @@ final class SeanceMatiereLocaleTest extends TestCase
     private function corps(array $champs): array
     {
         return ['titre' => 'Cours de mardi', 'date_seance' => '2026-11-12T09:00:00+00:00'] + $champs;
+    }
+
+    /**
+     * Le programme de la classe, écrit par son vrai auteur dans chaque type
+     * d'école : le service de gestion dans l'école créée depuis le LMS ; la
+     * synchronisation dans l'école créée depuis KLASSCI, où le service local
+     * refuse de composer un programme qui vient de KLASSCI. La ligne est celle
+     * qu'écrit `ClasseMatieresSynchronizer::link()`.
+     */
+    private function programmeSelon(InstitutionMode $mode, Classe $classe, Matiere $matiere, User $enseignant): void
+    {
+        if ($mode === InstitutionMode::Standalone) {
+            $this->programme($classe, $matiere, $enseignant);
+
+            return;
+        }
+
+        DB::table('classe_matiere')->insert([
+            'classe_id' => $classe->id,
+            'matiere_id' => $matiere->id,
+            'institution_id' => $classe->institution_id,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
     }
 }

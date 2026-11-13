@@ -7852,12 +7852,13 @@ paths:
         publiees sont exclues.
 
         `moyenne` est ponderee par `coefficient` ; `moyenne_generale` est la
-        moyenne simple des moyennes de matiere. Toutes deux valent `0` (entier)
-        quand il n y a rien a moyenner.
+        moyenne simple des moyennes de matiere MESUREES. Regle unique des agregats
+        sans mesure : toutes deux valent `null` quand il n y a rien a moyenner
+        (aucune note visible, ou un coefficient total nul), jamais un 0 fabrique.
 
         `show_results` (C30, regle A de l utilisateur) : une evaluation qui cache
-        ses resultats n apporte AUCUNE note ici, ni dans la liste ni dans les
-        moyennes, comme une note qui n est pas finale. Meme regle que la liste,
+        ses resultats GARDE sa ligne, mais SANS la cle `note` (la forme de la
+        liste), et n entre dans aucune moyenne. Meme regle que la liste,
         « ma copie », la remise et la page matiere (C25).
 
         Par type d ecole (D72, E4a) :
@@ -7896,6 +7897,8 @@ paths:
                               type: string
                             moyenne:
                               type: number
+                              nullable: true
+                              description: "`null` quand la matiere n a aucune note a moyenner"
                             total_evaluations:
                               type: integer
                             evaluations:
@@ -7913,7 +7916,7 @@ paths:
                                     type: string
                                     pattern: '^-?\d+\.\d{2}$'
                                     nullable: true
-                                    description: "Note sur 20, decimal en chaine"
+                                    description: "Note sur 20, decimal en chaine. ABSENTE quand l evaluation cache ses resultats (C30)."
                                   coefficient:
                                     description: "Decimal en chaine ; l entier `1` quand l evaluation n en a pas"
                                     oneOf:
@@ -7935,6 +7938,8 @@ paths:
                                     description: "Toujours `null` aujourd hui : aucune donnee ne l alimente."
                       moyenne_generale:
                         type: number
+                        nullable: true
+                        description: "`null` quand aucune matiere n a de moyenne"
                       total_matieres:
                         type: integer
                       total_evaluations:

@@ -722,21 +722,9 @@ parameters:
 			path: app/Services/Evaluation/Student/StudentGradesAggregator.php
 
 		-
-			message: '#^Binary operation "\*" between mixed and mixed results in an error\.$#'
-			identifier: binaryOp.invalid
-			count: 1
-			path: app/Services/Evaluation/Student/StudentGradesAggregator.php
-
-		-
-			message: '#^Binary operation "\+\=" between \(float\|int\) and mixed results in an error\.$#'
-			identifier: assignOp.invalid
-			count: 2
-			path: app/Services/Evaluation/Student/StudentGradesAggregator.php
-
-		-
 			message: '#^Cannot access offset ''coefficient'' on mixed\.$#'
 			identifier: offsetAccess.nonOffsetAccessible
-			count: 2
+			count: 1
 			path: app/Services/Evaluation/Student/StudentGradesAggregator.php
 
 		-

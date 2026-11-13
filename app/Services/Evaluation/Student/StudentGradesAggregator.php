@@ -21,7 +21,9 @@ use App\Services\Evaluation\EvaluationGradingService;
  * D72, E4a : les matières viennent de la source de l'école
  * ({@see MatieresDesNotes}) : la clé de regroupement et le nom, dans l'espace de
  * l'école. C30 (règle A de l'utilisateur) : une évaluation aux résultats cachés
- * n'apporte aucune note, par la règle unique {@see ResultatsVisibles}.
+ * garde sa ligne, SANS la clé `note` (la forme de {@see ResultatsVisibles} sur la
+ * liste), et n'entre dans aucune moyenne. Les moyennes suivent la règle unique des
+ * agrégats sans mesure ({@see Moyennes}) : rien à moyenner, `null`.
  */
 final class StudentGradesAggregator
 {
@@ -30,7 +32,7 @@ final class StudentGradesAggregator
     ) {}
 
     /**
-     * @return array{matieres: array<int, array<string, mixed>>, moyenne_generale: float, total_matieres: int, total_evaluations: int}
+     * @return array{matieres: array<int, array<string, mixed>>, moyenne_generale: float|null, total_matieres: int, total_evaluations: int}
      */
     public function getGradesAggregatedByMatiere(User $user, MatieresDesNotes $matieres): array
     {
@@ -77,9 +79,7 @@ final class StudentGradesAggregator
             ->orderBy('submitted_at', 'desc')
             ->get();
 
-        return $soumissions->filter(fn (EvaluationSubmission $s): bool => $this->noteEstFinale($s)
-            && $s->evaluation instanceof Evaluation
-            && ResultatsVisibles::pour($s->evaluation));
+        return $soumissions->filter(fn (EvaluationSubmission $s): bool => $this->noteEstFinale($s));
     }
 
     /**
@@ -129,12 +129,12 @@ final class StudentGradesAggregator
                     'matiere_id' => $matiereId,
                     'matiere_nom' => $matiereNom,
                     'evaluations' => [],
-                    'moyenne' => 0,
+                    'moyenne' => null,
                     'total_evaluations' => 0,
                 ];
             }
 
-            $gradesByMatiere[$matiereId]['evaluations'][] = [
+            $ligne = [
                 'evaluation_id' => $evaluation->id,
                 'titre' => $evaluation->titre,
                 'type' => $evaluation->type,
@@ -144,6 +144,11 @@ final class StudentGradesAggregator
                 'date_soumission' => $submission->submitted_at,
                 'temps_passe' => $submission->temps_passe_minutes,
             ];
+            // C30 : la ligne reste, la clé de la note est RETIRÉE (forme de la liste).
+            if (! ResultatsVisibles::pour($evaluation)) {
+                unset($ligne['note']);
+            }
+            $gradesByMatiere[$matiereId]['evaluations'][] = $ligne;
         }
         return $gradesByMatiere;
     }
@@ -154,32 +159,33 @@ final class StudentGradesAggregator
     private function computeMatiereAverages(array &$gradesByMatiere): void
     {
         foreach ($gradesByMatiere as &$matiere) {
-            $totalPoints = 0;
-            $totalCoef = 0;
+            $comptees = [];
             foreach ($matiere['evaluations'] as $eval) {
-                $totalPoints += $eval['note'] * $eval['coefficient'];
-                $totalCoef += $eval['coefficient'];
+                // Une note cachée (sans clé) ou absente n'entre dans aucune moyenne.
+                if (isset($eval['note']) && is_numeric($eval['note']) && is_numeric($eval['coefficient'])) {
+                    $comptees[] = [$eval['note'], $eval['coefficient']];
+                }
             }
-            $matiere['moyenne'] = $totalCoef > 0 ? round($totalPoints / $totalCoef, 2) : 0;
+            $matiere['moyenne'] = Moyennes::ponderee($comptees);
             $matiere['total_evaluations'] = count($matiere['evaluations']);
         }
     }
 
     /**
      * @param  array<int, array<string, mixed>>  $gradesList
-     * @return array{0: float, 1: int}  [moyenne_generale, count_matieres]
+     * @return array{0: float|null, 1: int}  [moyenne_generale, count_matieres]
      */
     private function computeOverallAverage(array $gradesList): array
     {
-        $totalMoyenne = 0;
+        $moyennes = [];
         $countMatieres = 0;
         foreach ($gradesList as $matiere) {
             if ($matiere['total_evaluations'] > 0) {
-                $totalMoyenne += $matiere['moyenne'];
+                $moyennes[] = is_float($matiere['moyenne']) ? $matiere['moyenne'] : null;
                 $countMatieres++;
             }
         }
-        $moyenneGenerale = $countMatieres > 0 ? round($totalMoyenne / $countMatieres, 2) : 0;
-        return [$moyenneGenerale, $countMatieres];
+
+        return [Moyennes::simple($moyennes), $countMatieres];
     }
 }

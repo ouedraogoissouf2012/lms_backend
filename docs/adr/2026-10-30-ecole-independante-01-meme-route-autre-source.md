@@ -296,6 +296,7 @@ L'élève (E2), la correction (E3) et les pages qui comptent les évaluations (E
 | Route | Port | Source KLASSCI | Source locale |
 |---|---|---|---|
 | `POST /lms/seances/{seanceId}/activate-visio` | `VisioActivationSource` | `VisioActivationService`, inchangé | `LocalVisioActivation` |
+| `POST /lms/seances/{seanceId}/toggle-visio` | `VisioToggleSource` | `VisioToggleService`, inchangé | `LocalVisioToggle` (délègue à `LocalVisioActivation` et à `VisioDeactivation`) |
 
 - **L'identifiant suit le mode, comme le calendrier du lot 3d** : identifiant KLASSCI dans une école en mode KLASSCI,
   id LOCAL dans une école en mode autonome. La séance locale est cherchée dans l'établissement du compte, sans jeton ni

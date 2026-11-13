@@ -127,24 +127,32 @@ final class VisioNotificationTargets
     }
 
     /**
-     * L'enseignant KLASSCI à avertir (`klassci_enseignant_id`), cherché dans
-     * l'établissement de la séance.
+     * L'enseignant à avertir, cherché dans l'établissement de la séance : son
+     * enseignant KLASSCI (`klassci_enseignant_id`), sinon l'AUTEUR de la séance
+     * désignée par son id local (`created_by`), s'il est enseignant.
      *
      * @param  array<string, mixed>  $seanceData
      */
     public function enseignant(array $seanceData): ?User
     {
-        if (! isset($seanceData['klassci_enseignant_id'])) {
+        $klassci = $seanceData['klassci_enseignant_id'] ?? null;
+        $id = self::idLocal($seanceData);
+        $etablissement = $klassci === null && $id === null ? null : $this->etablissementDe($seanceData);
+
+        if ($etablissement === null) {
             return null;
         }
 
-        $etablissement = $this->etablissementDe($seanceData);
+        $comptes = User::query()->withoutGlobalScope('institution')->where('institution_id', $etablissement);
 
-        return $etablissement === null ? null : User::query()->withoutGlobalScope('institution')
-            ->where('institution_id', $etablissement)
-            ->where('klassci_id', $seanceData['klassci_enseignant_id'])
-            ->where('role', 'enseignant')
-            ->first();
+        if ($klassci !== null) {
+            return $comptes->where('klassci_id', $klassci)->where('role', 'enseignant')->first();
+        }
+
+        $auteur = Seance::query()->withoutGlobalScope('institution')->whereKey($id)->value('created_by');
+        $compte = is_numeric($auteur) ? $comptes->whereKey((int) $auteur)->first() : null;
+
+        return $compte?->isTeacher() === true ? $compte : null;
     }
 
     /**

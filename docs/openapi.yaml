@@ -6988,8 +6988,9 @@ paths:
           description: "Not found"
         '422':
           description: |
-            Erreur de validation (`errors`), ou `is_published` envoye : refus motive
-            (`publish_via_dedicated_route`), la publication passe par sa route.
+            Erreur de validation (`errors`), `is_published` envoye (`publish_via_dedicated_route`, la
+            publication passe par sa route), ou remplacement qui viderait une evaluation publiee
+            (`evaluation_without_questions`, C16 : publiee est relu sur la ligne verrouillee, avant toute ecriture).
           content:
             application/json:
               schema:
@@ -7013,6 +7014,7 @@ paths:
                     type: string
                     enum:
                       - publish_via_dedicated_route
+                      - evaluation_without_questions
 
     delete:
       tags:
@@ -7694,11 +7696,26 @@ paths:
               schema:
                 $ref: '#/components/schemas/MessageOnly'
         '422':
-          description: "Aucune question, ou evaluation deja terminee"
+          description: |
+            Aucune question (`reason: evaluation_without_questions`, C16, le meme refus que la mise
+            a jour d une evaluation publiee), ou evaluation deja terminee (sans `reason`).
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/MessageOnly'
+                type: object
+                required:
+                  - success
+                  - message
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  message:
+                    type: string
+                  reason:
+                    type: string
+                    enum:
+                      - evaluation_without_questions
 
   /evaluations/{id}/preview:
     get:

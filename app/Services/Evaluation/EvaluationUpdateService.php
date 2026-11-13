@@ -32,6 +32,8 @@ use Throwable;
  *
  * - `403` — Évaluation verrouillée (soumissions étudiantes existantes).
  * - `500` — Échec transactionnel (rollback + log).
+ * - `422` — Le remplacement viderait une évaluation publiée (C16,
+ *   `evaluation_without_questions`).
  * - `200` — Update OK, questions rechargées.
  *
  * ## Sécurité (issue #124)
@@ -79,26 +81,30 @@ final class EvaluationUpdateService
     public function update(Evaluation $evaluation, array $data, User $user): array
     {
         if (! $this->state->canBeEdited($evaluation)) {
-            return [
-                'status'  => 403,
-                'payload' => [
-                    'success' => false,
-                    'message' => 'Impossible de modifier: des étudiants ont déjà soumis leurs réponses',
-                ],
-            ];
+            return $this->refusVerrouillee();
         }
+
+        $questions = array_key_exists('questions', $data) && is_array($data['questions']) ? $data['questions'] : null;
 
         try {
             $this->db->beginTransaction();
+
+            // C16 : le refus annule la transaction avant toute écriture.
+            $sansQuestion = $this->refusSurLaLigneVerrouillee($evaluation, $questions);
+            if ($sansQuestion !== null) {
+                $this->db->rollBack();
+
+                return $sansQuestion;
+            }
 
             // Filtre les champs immuables (sécurité issue #124).
             $updatePayload = array_diff_key($data, array_flip(self::IMMUTABLE_FIELDS));
             $evaluation->update($updatePayload);
 
             // Remplacement complet des questions si fournies.
-            if (array_key_exists('questions', $data) && is_array($data['questions'])) {
+            if ($questions !== null) {
                 $evaluation->questions()->delete();
-                $this->createQuestions($evaluation, $data['questions']);
+                $this->createQuestions($evaluation, $questions);
             }
 
             $this->db->commit();
@@ -126,6 +132,39 @@ final class EvaluationUpdateService
                 ],
             ];
         }
+    }
+
+    /**
+     * @return array{status: int, payload: array<string, mixed>}
+     */
+    private function refusVerrouillee(): array
+    {
+        return [
+            'status'  => 403,
+            'payload' => [
+                'success' => false,
+                'message' => 'Impossible de modifier: des étudiants ont déjà soumis leurs réponses',
+            ],
+        ];
+    }
+
+    /**
+     * C16 : une évaluation publiée garde au moins une question. La ligne est
+     * verrouillée EN PREMIER dans la transaction, et « publiée » est relu sur
+     * elle, pas sur le modèle chargé avant : une publication concurrente est
+     * vue (`EvaluationStateService::verrouiller`, le même verrou que
+     * `publish`).
+     *
+     * @param  array<mixed>|null  $questions  Le remplacement demandé, ou `null`.
+     * @return array{status: int, payload: array<string, mixed>}|null
+     */
+    private function refusSurLaLigneVerrouillee(Evaluation $evaluation, ?array $questions): ?array
+    {
+        if ($questions === null || ! $this->state->verrouiller($evaluation)?->is_published) {
+            return null;
+        }
+
+        return $this->state->refusSansQuestion(count($questions));
     }
 
     /**

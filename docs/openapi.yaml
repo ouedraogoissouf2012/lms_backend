@@ -877,6 +877,76 @@ components:
           enum:
             - no_institution
 
+    TableauDeBordEnseignant:
+      type: object
+      description: |
+        Ecole en mode KLASSCI : la charge de `me/teacher-dashboard`, relayee
+        telle quelle ; ses cles ne sont pas fermees ici, et elle ne porte pas
+        `meta`. Ecole en mode autonome : la meme forme, lue en local, avec
+        `meta.source: lms_local`.
+      required:
+        - success
+        - data
+      properties:
+        success:
+          type: boolean
+          enum:
+            - true
+        data:
+          type: object
+          required:
+            - matieres
+            - classes
+            - prochaines_seances
+            - statistiques
+          properties:
+            matieres:
+              type: array
+              items:
+                type: object
+            classes:
+              type: array
+              items:
+                type: object
+            evaluations:
+              type: array
+              description: "Ecole en mode KLASSCI seulement. ABSENT en mode autonome : non mesure, et non vide."
+              items:
+                type: object
+            prochaines_seances:
+              type: array
+              items:
+                type: object
+            statistiques:
+              type: object
+              properties:
+                heures:
+                  type: object
+                  properties:
+                    total_seances:
+                      type: integer
+                      minimum: 0
+                    seances_effectuees:
+                      type: integer
+                      minimum: 0
+                    fin_estimee:
+                      type: boolean
+                      description: "Ecole en mode autonome : `true`, une seance est effectuee apres sa fin ESTIMEE (deux heures apres son debut)."
+                evaluations:
+                  type: object
+                  description: "Ecole en mode KLASSCI seulement."
+        meta:
+          type: object
+          description: "Ecole en mode autonome seulement : les identifiants de `data` sont LOCAUX."
+          additionalProperties: false
+          required:
+            - source
+          properties:
+            source:
+              type: string
+              enum:
+                - lms_local
+
     KlassciIndisponible:
       type: object
       description: |
@@ -6409,6 +6479,90 @@ paths:
                 $ref: '#/components/schemas/VisioErreurInterne'
         '503':
           description: "Ecole creee depuis KLASSCI : KLASSCI indisponible."
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/KlassciIndisponible'
+
+  /proxy/me/teacher-dashboard:
+    get:
+      tags:
+        - Proxy / KLASSCI
+      operationId: teacherDashboard
+      summary: "Le tableau de bord de l'enseignant"
+      description: |
+        Reserve aux roles enseignant et coordinateur. La source est choisie par
+        le mode DECLARE de l'ecole, au point de liaison, jamais par le client.
+
+        **Ecole en mode KLASSCI.** La reponse de `me/teacher-dashboard`, relayee
+        telle quelle avec le jeton KLASSCI du compte, et ses identifiants
+        KLASSCI. Sans ce jeton : 401 `klassci_token_missing`. Une panne ou un
+        circuit ouvert rendent le 503 avec `Retry-After` ; un refus de KLASSCI
+        est relaye. La charge ne porte pas `meta`.
+
+        **Ecole en mode autonome** (creee depuis le LMS, ou creee depuis KLASSCI
+        puis passee en mode autonome). La meme forme, lue en local, sans jeton ni
+        appel KLASSCI, avec les identifiants LOCAUX, marquee
+        `meta.source: lms_local` :
+        - `matieres` : les matieres de l'enseignant, comme `/lms/teacher/my-matieres` ;
+        - `classes` : ses classes, avec leur effectif actif (`effectif_actuel`),
+          comme `/lms/teacher/classes` ;
+        - `prochaines_seances` : ses seances des 30 prochains jours, comme
+          `/lms/seances/upcoming` (le coordinateur lit aussi les siennes) ;
+        - `statistiques.heures` : `total_seances` et `seances_effectuees`,
+          comptees sur l'auteur de la seance. Une seance locale n'a pas d'heure
+          de fin : elle n'est comptee effectuee qu'apres sa fin ESTIMEE (deux
+          heures apres son debut), et `fin_estimee` vaut `true`.
+        `evaluations` et `statistiques.evaluations` sont ABSENTS : la fenetre
+        d'une evaluation locale n'est pas encore lue ici. Absent veut dire non
+        mesure, et non « aucune evaluation ».
+      security:
+        - sanctum: []
+      responses:
+        '200':
+          description: "Le tableau de bord de l'enseignant"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TableauDeBordEnseignant'
+        '401':
+          description: |
+            Jeton porteur absent ou invalide (sans `reason`). Ecole en mode
+            KLASSCI : compte sans jeton KLASSCI (`reason: klassci_token_missing`),
+            ou session refusee par KLASSCI (`reason: klassci_session_expired`).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefusKlassci'
+        '403':
+          description: |
+            Sans `reason` : role non admis, etablissement desactive, ou refus de
+            KLASSCI relaye. `no_institution` : compte sans etablissement.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefusClasseEleves'
+        '4XX':
+          description: "Ecole en mode KLASSCI : tout autre refus de KLASSCI de 400 a 499, relaye avec le message par defaut du catalogue."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefusClasseEleves'
+        '500':
+          description: |
+            Defaillance interne, base de donnees comprise : « Service
+            indisponible. Veuillez reessayer. », rapportee une fois au journal,
+            sans le message ni les valeurs d'une requete.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VisioErreurInterne'
+        '503':
+          description: "Ecole en mode KLASSCI : KLASSCI indisponible (panne, circuit ouvert, configuration absente)."
           headers:
             Retry-After:
               schema:

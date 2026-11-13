@@ -8,8 +8,6 @@ use App\Models\Evaluation;
 use App\Models\EvaluationSubmission;
 use App\Models\User;
 use App\Services\Evaluation\EvaluationGradingService;
-use App\Services\KlassciProxyService;
-use App\Support\Logging\CaughtExceptionLog;
 
 /**
  * Agrégation des notes étudiantes par matière — extrait de
@@ -19,23 +17,28 @@ use App\Support\Logging\CaughtExceptionLog;
  * et la moyenne générale across toutes les matières.
  *
  * Exclut les soumissions d'entraînement (feedback préfixé `[PRACTICE]`).
+ *
+ * D72, E4a : les matières viennent de la source de l'école
+ * ({@see MatieresDesNotes}) : la clé de regroupement et le nom, dans l'espace de
+ * l'école. C30 (règle A de l'utilisateur) : une évaluation aux résultats cachés
+ * n'apporte aucune note, par la règle unique {@see ResultatsVisibles}.
  */
 final class StudentGradesAggregator
 {
     public function __construct(
-        private readonly KlassciProxyService $klassciService,
         private readonly EvaluationGradingService $grading,
-        private readonly CaughtExceptionLog $journal,
     ) {}
 
     /**
      * @return array{matieres: array<int, array<string, mixed>>, moyenne_generale: float, total_matieres: int, total_evaluations: int}
      */
-    public function getGradesAggregatedByMatiere(User $user): array
+    public function getGradesAggregatedByMatiere(User $user, MatieresDesNotes $matieres): array
     {
-        $matieresData = $this->fetchMatieresNames($user);
         $submissions = $this->fetchFinalSubmissions($user);
-        $gradesByMatiere = $this->groupByMatiere($submissions, $matieresData);
+        $cles = array_values(array_unique($submissions
+            ->map(static fn (EvaluationSubmission $s): int => $s->evaluation instanceof Evaluation ? $matieres->cleDe($s->evaluation) : 0)
+            ->all()));
+        $gradesByMatiere = $this->groupByMatiere($submissions, $matieres, $matieres->noms($user, $cles));
         $this->computeMatiereAverages($gradesByMatiere);
 
         $gradesList = array_values($gradesByMatiere);
@@ -49,30 +52,6 @@ final class StudentGradesAggregator
             'total_matieres' => $countMatieres,
             'total_evaluations' => $submissions->count(),
         ];
-    }
-
-    /**
-     * @return array<int, string>  Map matiere_id → nom KLASSCI
-     */
-    private function fetchMatieresNames(User $user): array
-    {
-        $token = $user->klassci_token;
-        if (! is_string($token) || $token === '') {
-            return [];
-        }
-
-        $matieresData = [];
-        try {
-            $matieresResponse = $this->klassciService->getMatieres($token);
-            if (($matieresResponse['success'] ?? false) && isset($matieresResponse['data'])) {
-                foreach ($matieresResponse['data'] as $matiere) {
-                    $matieresData[$matiere['id']] = $matiere['nom'];
-                }
-            }
-        } catch (\Exception $e) {
-            $this->journal->warning('Impossible de récupérer les matières depuis KLASSCI', $e);
-        }
-        return $matieresData;
     }
 
     /**
@@ -98,7 +77,9 @@ final class StudentGradesAggregator
             ->orderBy('submitted_at', 'desc')
             ->get();
 
-        return $soumissions->filter(fn (EvaluationSubmission $s): bool => $this->noteEstFinale($s));
+        return $soumissions->filter(fn (EvaluationSubmission $s): bool => $this->noteEstFinale($s)
+            && $s->evaluation instanceof Evaluation
+            && ResultatsVisibles::pour($s->evaluation));
     }
 
     /**
@@ -128,10 +109,10 @@ final class StudentGradesAggregator
 
     /**
      * @param  \Illuminate\Database\Eloquent\Collection<int, EvaluationSubmission>  $submissions
-     * @param  array<int, string>  $matieresData
-     * @return array<int, array<string, mixed>>  Indexé par matiere_id
+     * @param  array<int, string>  $matieresData  clé de la source => nom
+     * @return array<int, array<string, mixed>>  Indexé par la clé de la source
      */
-    private function groupByMatiere(\Illuminate\Database\Eloquent\Collection $submissions, array $matieresData): array
+    private function groupByMatiere(\Illuminate\Database\Eloquent\Collection $submissions, MatieresDesNotes $matieres, array $matieresData): array
     {
         $gradesByMatiere = [];
         foreach ($submissions as $submission) {
@@ -140,7 +121,7 @@ final class StudentGradesAggregator
                 continue;
             }
 
-            $matiereId = $evaluation->klassci_matiere_id ?? 0;
+            $matiereId = $matieres->cleDe($evaluation);
             $matiereNom = $matieresData[$matiereId] ?? $evaluation->matiere_nom ?? 'Matière inconnue';
 
             if (!isset($gradesByMatiere[$matiereId])) {

@@ -31,7 +31,7 @@ use UnexpectedValueException;
  *
  * Le code d'origine itérait la réponse BRUTE du proxy. Or KLASSCI enveloppe ses
  * collections — `KlassciEvaluationProgramming::ligne`, `EvaluationEnrichmentService:64`
- * et `StudentGradesAggregator:59` lisent tous `['data']`. La recherche parcourait
+ * et `KlassciMatieresDesNotes::noms` lisent tous `['data']`. La recherche parcourait
  * donc `['success' => true, 'data' => [...]]` et ne trouvait jamais la moindre
  * classe. Corrigé ici : sans cela, le drapeau de dégradation introduit par cette
  * issue serait allumé en PERMANENCE sur un KLASSCI parfaitement sain — une

@@ -7,7 +7,10 @@ namespace App\Providers;
 use App\Services\Evaluation\Programming\EvaluationProgramming;
 use App\Services\Evaluation\Programming\KlassciEvaluationProgramming;
 use App\Services\Evaluation\Programming\LocalEvaluationProgramming;
+use App\Services\Evaluation\Student\KlassciMatieresDesNotes;
+use App\Services\Evaluation\Student\LocalMatieresDesNotes;
 use App\Services\Evaluation\Student\LocalStudentEvaluationsReader;
+use App\Services\Evaluation\Student\MatieresDesNotes;
 use App\Services\Evaluation\Student\StudentEvaluationsListService;
 use App\Services\Evaluation\Student\StudentEvaluationsReader;
 use App\Services\Evaluation\Teacher\EvaluationResultsReader;
@@ -50,6 +53,13 @@ final class EvaluationServiceProvider extends ServiceProvider
             EvaluationResultsReader::class,
             static fn ($app) => $app->make(RosterAuthorityFactory::class)
                 ->sourceForCurrentTenant(TeacherEvaluationResultsService::class, LocalEvaluationResultsReader::class),
+        );
+
+        // D72, E4a : les matières de « Mes notes ».
+        $this->app->bind(
+            MatieresDesNotes::class,
+            static fn ($app) => $app->make(RosterAuthorityFactory::class)
+                ->sourceForCurrentTenant(KlassciMatieresDesNotes::class, LocalMatieresDesNotes::class),
         );
     }
 }

@@ -7855,9 +7855,17 @@ paths:
         moyenne simple des moyennes de matiere. Toutes deux valent `0` (entier)
         quand il n y a rien a moyenner.
 
-        ECART CONNU (C30, ouvert) : `show_results` n est PAS applique ici. La
-        note est livree meme quand l evaluation cache ses resultats, alors que
-        la liste, « ma copie », la remise et la page matiere la masquent (C25).
+        `show_results` (C30, regle A de l utilisateur) : une evaluation qui cache
+        ses resultats n apporte AUCUNE note ici, ni dans la liste ni dans les
+        moyennes, comme une note qui n est pas finale. Meme regle que la liste,
+        « ma copie », la remise et la page matiere (C25).
+
+        Par type d ecole (D72, E4a) :
+        - ecole creee depuis KLASSCI : identite KLASSCI exigee (sinon 401) ;
+          matieres regroupees par leur identite KLASSCI, nommees par KLASSCI ;
+        - ecole creee depuis le LMS : aucune identite ni aucun appel KLASSCI ;
+          matieres regroupees par leur id local, nommees par leur libelle dans
+          l etablissement.
       security:
         - sanctum: []
       responses:
@@ -7880,7 +7888,10 @@ paths:
                           properties:
                             matiere_id:
                               type: integer
-                              description: "`0` quand l evaluation n a pas de matiere KLASSCI"
+                              description: |
+                                L id de la matiere dans l espace de l ecole : l identite
+                                KLASSCI dans une ecole KLASSCI, l id local dans une ecole
+                                creee depuis le LMS. `0` quand l evaluation n a pas de matiere.
                             matiere_nom:
                               type: string
                             moyenne:
@@ -7905,6 +7916,11 @@ paths:
                                     description: "Note sur 20, decimal en chaine"
                                   coefficient:
                                     description: "Decimal en chaine ; l entier `1` quand l evaluation n en a pas"
+                                    oneOf:
+                                      - type: string
+                                        pattern: '^-?\d+\.\d{2}$'
+                                      - type: integer
+                                        enum: [1]
                                   date_evaluation:
                                     type: string
                                     format: date-time
@@ -7914,6 +7930,7 @@ paths:
                                     format: date-time
                                     nullable: true
                                   temps_passe:
+                                    type: number
                                     nullable: true
                                     description: "Toujours `null` aujourd hui : aucune donnee ne l alimente."
                       moyenne_generale:

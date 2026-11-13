@@ -85,9 +85,9 @@ final class LocalClasseAudienceSource implements ClasseAudienceSource
         }
 
         return $classe->etudiantsActifs()
-            ->where('users.institution_id', $seance->institution_id)
             ->get()
-            ->filter(static fn (User $eleve): bool => $eleve->isStudent())
+            ->filter(static fn (User $eleve): bool => $eleve->institution_id === $seance->institution_id
+                && $eleve->isStudent())
             ->values();
     }
 

@@ -204,7 +204,7 @@ final class VisioJoinContractTest extends TestCase
         $this->assertRefus($this->entrer($compte, $seance->id)->assertForbidden(), $motif);
     }
 
-    /** Séance sans identifiant KLASSCI (état fabriqué) : la séance n'a pas de classe KLASSCI, l'élève est refusé (défaut G, décrit tel quel). */
+    /** Séance d'école autonome sans classe : l'élève est refusé, motif `no_classe_id`. */
     public function test_403_un_eleve_d_une_seance_sans_klassci(): void
     {
         $ecole = $this->ecole(true);

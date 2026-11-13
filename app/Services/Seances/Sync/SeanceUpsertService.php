@@ -107,7 +107,7 @@ final class SeanceUpsertService
         $classeId = KlassciPayload::toInt(KlassciPayload::asArray($seanceArr['classe'] ?? null)['id'] ?? null);
         $matiereNom = $matiere['nom'] ?? $matiere['libelle'] ?? null;
 
-        Seance::create($cacheData + [
+        $seance = Seance::create($cacheData + [
             'klassci_seance_id' => $klassciSeanceId,
             'visio_enabled' => true,
             'visio_type' => 'jitsi',
@@ -122,6 +122,8 @@ final class SeanceUpsertService
         }
 
         $count = $this->notificationService->notifyVisioScheduled($klassciSeanceId, [
+            // L'id LOCAL de la séance : la clé de la garde d'idempotence (V1).
+            'seance_locale_id' => $seance->id,
             'institution_id' => $institutionId,
             'klassci_classe_id' => $classeId,
             'klassci_enseignant_id' => $teacher->klassci_id,

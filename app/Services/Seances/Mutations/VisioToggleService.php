@@ -214,6 +214,8 @@ final class VisioToggleService
             }
 
             $this->notifications->queueScheduled($seanceId, [
+                // L'id LOCAL de la séance : la clé de la garde d'idempotence (V1).
+                'seance_locale_id' => $visio->id,
                 'klassci_classe_id' => $seanceData['classe_id'] ?? null,
                 'klassci_enseignant_id' => $seanceData['enseignant_id'] ?? null,
                 'matiere_nom' => $seanceData['matiere_nom'] ?? 'Matière',

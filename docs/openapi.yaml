@@ -2166,6 +2166,26 @@ components:
         message:
           type: string
 
+    VisioGestionRefusee:
+      type: object
+      additionalProperties: false
+      description: "Le compte ne gere pas la visio de cette seance : ni son auteur, ni le personnel de gestion de l'etablissement."
+      required:
+        - success
+        - message
+        - reason
+      properties:
+        success:
+          type: boolean
+          enum:
+            - false
+        message:
+          type: string
+        reason:
+          type: string
+          enum:
+            - actor_not_authorized
+
     SeanceLocaleInterdite:
       type: object
       additionalProperties: false
@@ -3129,7 +3149,7 @@ components:
               description: "Toujours vrai, meme si la planification a echoue (l'echec est journalise, pas rendu)."
             classe_synced:
               type: boolean
-              description: "La classe et ses eleves ont ete relus dans KLASSCI pour les notifications."
+              description: "La classe et ses eleves ont ete relus dans KLASSCI pour les notifications. Toujours faux dans une ecole en mode autonome : rien n'y est relu dans KLASSCI."
 
     VisioBasculeInput:
       type: object
@@ -4295,33 +4315,38 @@ paths:
     post:
       tags:
         - Visio
-      summary: "Activer la visio d'une seance KLASSCI"
+      summary: "Activer la visio d'une seance"
       description: |
-        Reserve aux roles enseignant et coordinateur.
+        Reserve aux roles enseignant et coordinateur. Un salon deja attribue est
+        conserve. La source suit le mode de l'etablissement, le client ne le lit
+        pas.
 
-        La seance est cherchee dans l'emploi du temps KLASSCI, parmi des
-        matieres : celles du tableau de bord pour un enseignant, le catalogue des
-        matieres pour un coordinateur. `seanceId` est l'identifiant KLASSCI de la
-        seance. Un salon deja attribue est conserve.
+        Ecole en mode KLASSCI : la seance est cherchee dans l'emploi du temps
+        KLASSCI, parmi des matieres : celles du tableau de bord pour un
+        enseignant, le catalogue des matieres pour un coordinateur. `seanceId`
+        est l'identifiant KLASSCI de la seance. La route lit KLASSCI avec le
+        jeton KLASSCI du compte. Sans ce jeton, elle rend le 401
+        `klassci_token_missing` avant toute ecriture. Une panne de KLASSCI
+        pendant la recherche (jeton refuse, service indisponible) rend le 500,
+        sans motif ni `Retry-After`. Une reponse de KLASSCI qui ne livre aucune
+        matiere, echec declare (`success: false`) compris, rend le 404.
 
-        La route lit KLASSCI avec le jeton KLASSCI du compte. Sans ce jeton, elle
-        rend le 401 `klassci_token_missing` avant toute ecriture. Le refus porte
-        sur le jeton du compte, pas sur le type ni le mode de l'ecole. Un compte
-        d'une ecole creee depuis le LMS n'a jamais de jeton KLASSCI : il recoit
-        ce 401. Une ecole creee depuis KLASSCI passee en mode autonome garde les
-        jetons de ses comptes : ils ne sont pas refuses.
-
-        Une panne de KLASSCI pendant la recherche (jeton refuse, service
-        indisponible) rend le 500, sans motif ni `Retry-After`. Une reponse de
-        KLASSCI qui ne livre aucune matiere, echec declare (`success: false`)
-        compris, rend le 404.
+        Ecole en mode autonome (creee depuis le LMS, ou creee depuis KLASSCI
+        puis passee en mode autonome) : `seanceId` est l'identifiant LOCAL de la
+        seance, cherchee dans l'etablissement du compte. Aucun jeton KLASSCI
+        n'est lu, aucun appel KLASSCI n'est fait, et rien n'est ecrit sous un nom
+        `klassci_*`. La seance est activee par qui la gere : son auteur, ou un
+        coordinateur de l'etablissement ; tout autre enseignant recoit le 403
+        `actor_not_authorized`. Les eleves actifs de la classe de la seance sont
+        avertis par une notification mise en file, comme a son demarrage ; une
+        seance sans classe n'avertit personne.
       security:
         - sanctum: []
       parameters:
         - name: seanceId
           in: path
           required: true
-          description: "Identifiant KLASSCI de la seance."
+          description: "Identifiant KLASSCI de la seance (ecole en mode KLASSCI), ou son identifiant local (ecole en mode autonome)."
           schema:
             type: integer
       responses:
@@ -4345,15 +4370,21 @@ paths:
             Sans `reason` : role non admis (refuse par la garde de role ; un
             superAdmin, que cette garde laisse passer, est refuse par la requete
             avec un message generique), ou etablissement desactive. Avec
-            `reason: no_institution` : compte sans etablissement.
+            `reason: no_institution` : compte sans etablissement. Avec
+            `reason: actor_not_authorized` (ecole en mode autonome) : un
+            enseignant qui ne gere pas la seance.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/SeanceLocaleInterdite'
+                oneOf:
+                  - $ref: '#/components/schemas/SeanceLocaleInterdite'
+                  - $ref: '#/components/schemas/VisioGestionRefusee'
         '404':
           description: |
-            Aucune seance de cet identifiant dans l'emploi du temps KLASSCI des
-            matieres lues, ou aucune matiere lue.
+            Ecole en mode KLASSCI : aucune seance de cet identifiant dans l'emploi
+            du temps KLASSCI des matieres lues, ou aucune matiere lue. Ecole en
+            mode autonome : aucune seance de cet identifiant dans l'etablissement
+            du compte.
           content:
             application/json:
               schema:
@@ -4507,11 +4538,15 @@ paths:
         Decision : une visio `active` ou `programmee` se valide ; l'acteur doit
         etre coordinateur, administrateur, ou l'enseignant de la seance ; un
         enseignant cible doit etre celui de la seance ; un eleve cible doit etre
-        inscrit dans la classe KLASSCI de la seance.
+        inscrit dans la classe de la seance.
 
-        Une seance sans classe KLASSCI refuse l'eleve (`no_classe_id`) : une
-        seance activee par `toggle-visio`, qui efface sa classe, ou une seance
-        creee dans le LMS (`POST /lms/seances`), quel que soit le type d'ecole.
+        La classe de la seance : sa classe locale (`classe_id`) pour une seance
+        creee dans le LMS (`POST /lms/seances`), quel que soit le type d'ecole,
+        l'inscription etant lue dans l'etablissement de la seance ; sinon sa
+        classe KLASSCI (`klassci_classe_id`) pour une seance miroitee. Une seance
+        sans classe refuse l'eleve (`no_classe_id`) : une seance creee dans le
+        LMS sans classe, ou une seance activee par `toggle-visio`, qui efface sa
+        classe KLASSCI.
 
         Un compte dont le role n'est ni du personnel ni un eleve recoit un REFUS
         rendu en 200 (`authorized: false`, `reason: invalid_role`).
@@ -4598,11 +4633,12 @@ paths:
         cible. La decision ne lit que des donnees locales : aucun jeton KLASSCI
         n'est exige.
 
-        Rien ne peut activer la visio d'une seance creee dans le LMS, quel que
-        soit le type d'ecole : elle rend le 400 `visio_not_enabled`.
-        Une seance sans classe KLASSCI refuse l'eleve (`no_classe_id`) : une
-        seance activee par `toggle-visio`, qui efface sa classe, ou une seance
-        creee dans le LMS (`POST /lms/seances`), quel que soit le type d'ecole.
+        Une ecole en mode autonome active la visio de ses seances par
+        `activate-visio`. Dans une ecole en mode KLASSCI, rien ne peut activer
+        celle d'une seance creee dans le LMS : elle rend le 400
+        `visio_not_enabled`. L'eleve entre s'il est inscrit dans la classe de
+        la seance, telle que la validation d'un participant la decrit ; une
+        seance sans classe le refuse (`no_classe_id`).
       security:
         - sanctum: []
       parameters:

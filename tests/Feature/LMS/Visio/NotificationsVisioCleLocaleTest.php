@@ -160,7 +160,7 @@ final class NotificationsVisioCleLocaleTest extends TestCase
     /** @param  list<User>  $eleves */
     private function assertAvertis(string $type, array $eleves, ?Seance $seance = null): void
     {
-        $avertis = Notification::query()->where('type', $type)->get()
+        $avertis = Notification::withoutGlobalScope('institution')->where('type', $type)->get()
             ->filter(static fn (Notification $n): bool => $seance === null
                 || (((array) $n->data)['seance_locale_id'] ?? null) === $seance->id)
             ->pluck('user_id')->map(static fn ($id): int => (int) $id)->sort()->values()->all();

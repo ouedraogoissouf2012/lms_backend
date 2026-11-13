@@ -56,7 +56,7 @@ final class VisioSeanceLocaleNotificationsTest extends TestCase
         self::assertSame([$inscrit->id], $this->destinataires(Notification::TYPE_VISIO_SCHEDULED));
         self::assertSame(
             $seance->id,
-            (int) (Notification::query()->sole()->data['seance_id'] ?? null),
+            (int) (Notification::withoutGlobalScope('institution')->sole()->data['seance_id'] ?? null),
             'la notification désigne la séance par son id local',
         );
     }
@@ -83,7 +83,7 @@ final class VisioSeanceLocaleNotificationsTest extends TestCase
         $this->asTenant($auteur)->postJson("/api/lms/seances/{$seance->id}/activate-visio")->assertOk();
         $this->executerLesNotifications();
 
-        self::assertSame(0, Notification::query()->count());
+        self::assertSame(0, Notification::withoutGlobalScope('institution')->count());
     }
 
     /**
@@ -101,7 +101,7 @@ final class VisioSeanceLocaleNotificationsTest extends TestCase
         ]);
 
         self::assertSame(0, $envoyes);
-        self::assertSame(0, Notification::query()->count());
+        self::assertSame(0, Notification::withoutGlobalScope('institution')->count());
     }
 
     /**
@@ -155,7 +155,7 @@ final class VisioSeanceLocaleNotificationsTest extends TestCase
     private function destinataires(string $type): array
     {
         /** @var list<int> $ids */
-        $ids = Notification::query()->where('type', $type)->pluck('user_id')->map(static fn ($id): int => (int) $id)->all();
+        $ids = Notification::withoutGlobalScope('institution')->where('type', $type)->pluck('user_id')->map(static fn ($id): int => (int) $id)->all();
 
         return $ids;
     }

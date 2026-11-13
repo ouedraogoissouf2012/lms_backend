@@ -12,17 +12,10 @@ use Illuminate\Support\Carbon;
  * La fenêtre d'une évaluation d'une école créée depuis le LMS, calculée sur sa
  * ligne (D72, Q2 décidée en D132) :
  * - ouverture : `date_evaluation` ;
- * - fermeture : `deadline_at` s'il est posé, sinon `date_evaluation +
- *   duree_minutes` ;
- * - sans date : fermée (fail-closed, comme #499) ;
- * - une fermeture antérieure à l'ouverture est ramenée à l'ouverture : la
- *   fenêtre est vide, jamais « terminée sans avoir commencé ».
- *
- * DETTE TRACÉE (C29) : le mode entraînement (`Evaluation::isTerminee`, via
- * `getEffectiveStatus`) calcule sa fin sur `date + duree_minutes` et ignore
- * `deadline_at`. Les deux notions de fin divergent dès que `deadline_at` est
- * posée. C'est latent : aucune route n'écrit `deadline_at` (C14). Une seule
- * notion de fin, partagée, est à écrire avec C28.
+ * - fermeture : la fin de l'évaluation, UNE règle partagée avec le statut
+ *   effectif et l'entraînement ({@see \App\Models\Concerns\FinDeLEvaluation},
+ *   C29) ;
+ * - sans date : fermée (fail-closed, comme #499).
  *
  * Même forme que la fenêtre KLASSCI (`programmation.window`), que le front lit :
  * `{is_open, has_started, has_ended, start_at, end_at}`.
@@ -40,12 +33,9 @@ final class LocalEvaluationWindow
         }
 
         $maintenant ??= Carbon::now();
-        $fin = $evaluation->deadline_at instanceof CarbonInterface
-            ? $evaluation->deadline_at
-            : $debut->copy()->addMinutes((int) $evaluation->duree_minutes);
-        $fin = $fin->lessThan($debut) ? $debut : $fin;
+        $fin = $evaluation->finPrevue() ?? $debut;
         $commencee = $maintenant->greaterThanOrEqualTo($debut);
-        $terminee = $maintenant->greaterThanOrEqualTo($fin);
+        $terminee = $evaluation->estTermineeA($maintenant);
 
         return [
             'is_open' => $commencee && ! $terminee,

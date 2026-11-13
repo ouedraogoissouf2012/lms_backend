@@ -8,11 +8,12 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use App\Models\Traits\BelongsToInstitution;
 use App\Models\Concerns\Auditable;
+use App\Models\Concerns\FinDeLEvaluation;
 
 class Evaluation extends Model
 {
     /** @use HasFactory<\Database\Factories\EvaluationFactory> */
-    use HasFactory, SoftDeletes, BelongsToInstitution, Auditable;
+    use HasFactory, SoftDeletes, BelongsToInstitution, Auditable, FinDeLEvaluation;
 
     protected $fillable = [
         'klassci_evaluation_id',
@@ -98,49 +99,4 @@ class Evaluation extends Model
     {
         return $this->hasMany(EvaluationSubmission::class);
     }
-
-    /**
-     * Retourne le statut EFFECTIF de l'évaluation
-     * Logique centralisée et réutilisable
-     *
-     * Règles métier:
-     * - Si date passée ET (date + durée) passée → 'terminee'
-     * - Si date_evaluation est null (brouillon non daté) → status stocké
-     * - Sinon, retourne le status actuel de la BDD
-     */
-    public function getEffectiveStatus(): string
-    {
-        // Si le status est déjà 'terminee', on garde
-        if ($this->status === 'terminee') {
-            return 'terminee';
-        }
-
-        // `date_evaluation` est nullable (brouillon non daté) : sans échéance,
-        // impossible de déduire "terminée" → on garde le status stocké.
-        // Évite un fatal `copy() on null` qui cassait tout le listing (#268).
-        if ($this->date_evaluation === null) {
-            return $this->status;
-        }
-
-        // Calculer la date de fin (date_evaluation + durée)
-        $dateFin = $this->date_evaluation->copy()->addMinutes($this->duree_minutes);
-
-        // Si la date de fin est passée, l'évaluation est terminée
-        if (now()->greaterThan($dateFin)) {
-            return 'terminee';
-        }
-
-        // Sinon, retourner le status actuel
-        return $this->status;
-    }
-
-    /**
-     * Vérifie si l'évaluation est réellement terminée
-     * Utilise getEffectiveStatus() pour la logique
-     */
-    public function isTerminee(): bool
-    {
-        return $this->getEffectiveStatus() === 'terminee';
-    }
-
 }

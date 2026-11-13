@@ -85,6 +85,8 @@ final class ResultatsDeClasse
             'total_etudiants'      => $totalEtudiants,
             'etudiants_soumis'     => $soumissions->count(),
             'etudiants_en_cours'   => collect($resultats)->where('status', 'en_cours')->count(),
+            // C28 : copies remises hors délai, ou échues sans remise (statut lu).
+            'etudiants_hors_delai' => collect($resultats)->where('status', 'verrouille')->count(),
             'etudiants_non_passes' => collect($resultats)->where('status', 'non_passee')->count(),
             'taux_participation'   => $totalEtudiants > 0
                 ? round(($soumissions->count() / $totalEtudiants) * 100, 2)

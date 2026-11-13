@@ -24,9 +24,9 @@ use RuntimeException;
  *
  * L'élève n'atteint que ce que SA liste lui propose : la portée
  * ({@see LearnerEvaluationScope}) est résolue AVANT la lecture. La remise
- * (`findOpenAttempt`) ne la relit pas : elle ne clôt qu'une tentative que le
- * démarrage a admise, et ne dépend ainsi d'aucun appel KLASSCI au moment où
- * l'élève rend sa copie.
+ * ({@see RemiseDeCopie}) ne la relit pas : elle ne clôt qu'une tentative que le
+ * démarrage a admise, et compare l'échéance que le démarrage a écrite (C28). Elle
+ * ne dépend ainsi d'aucun appel KLASSCI au moment où l'élève rend sa copie.
  */
 final class EvaluationAttemptStateService
 {
@@ -105,13 +105,16 @@ final class EvaluationAttemptStateService
      * ici que `/submit` retrouve ce que `/start` a créé — par la même portée de
      * propriété, ce qui rend impossible la divergence d'espaces qui faisait
      * échouer toute remise de copie.
+     *
+     * Une tentative échue n'est plus ouverte (C28) : elle ne se reprend pas, et
+     * elle compte comme une tentative ({@see \App\Models\Concerns\EcheanceDeLaCopie}).
      */
     public function findOpenAttempt(int $evaluationId, User $student): ?EvaluationSubmission
     {
         return EvaluationSubmission::query()
             ->where('evaluation_id', $evaluationId)
             ->ownedBy($student)
-            ->where('status', 'en_cours')
+            ->ouverte()
             ->first();
     }
 
@@ -134,7 +137,7 @@ final class EvaluationAttemptStateService
         $attemptsCount = EvaluationSubmission::query()
             ->where('evaluation_id', $evaluation->id)
             ->ownedBy($user)
-            ->whereIn('status', ['soumis', 'corrige'])
+            ->tentativeComptee()
             ->count();
 
         if (! $isPracticeMode && $attemptsCount > 0 && $evaluation->allow_retake === false) {
@@ -182,6 +185,8 @@ final class EvaluationAttemptStateService
      */
     private function creer(Evaluation $evaluation, User $user, int $tentative, bool $isPracticeMode, ?array $window): array
     {
+        $debut = now();
+
         try {
             $submission = EvaluationSubmission::create([
                 'evaluation_id' => $evaluation->id,
@@ -194,7 +199,9 @@ final class EvaluationAttemptStateService
                 'klassci_etudiant_id' => $user->klassci_id,
                 'attempt' => $tentative,
                 'status' => 'en_cours',
-                'started_at' => now(),
+                'started_at' => $debut,
+                // C28 : l'échéance, figée au démarrage ; la remise la compare sans KLASSCI.
+                'ends_at' => EcheanceDeTentative::pour($evaluation, $window, $debut, $isPracticeMode),
                 // Scope tenant explicite herite de l'evaluation (fix E2E #211).
                 'institution_id' => $evaluation->institution_id,
                 'feedback' => $isPracticeMode ? '[PRACTICE] Entraînement - note non officielle' : null,

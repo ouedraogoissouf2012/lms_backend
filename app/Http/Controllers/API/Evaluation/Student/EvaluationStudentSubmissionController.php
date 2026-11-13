@@ -13,6 +13,7 @@ use App\Support\Logging\CaughtExceptionLog;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 
 /**
  * Lecture de la dernière soumission étudiant pour une évaluation, avec
@@ -57,22 +58,7 @@ final class EvaluationStudentSubmissionController extends AuthenticatedControlle
                 ? $submittedAt->copy()->addDays(self::CORRECTION_DELAY_DAYS)->toIso8601String()
                 : null;
 
-            $questions = $evaluation->questions()->get();
-            if ($evaluation->shuffle_questions) {
-                $questions = $questions->shuffle()->values();
-            }
-            // Le corrigé est masqué par défaut sur le modèle ({@see
-            // \App\Models\EvaluationQuestion}). Ce chemin — la copie de l'élève
-            // lui-même, après le délai — est le seul à le révéler, et il le
-            // fait explicitement. L'ancien `unset` faisait l'inverse : il
-            // retirait ce que tous les autres chemins laissaient passer.
-            $questionsData = $questions->map(static function ($question) use ($correctionAvailable) {
-                if ($correctionAvailable) {
-                    $question = (clone $question)->makeVisible(['correct_answers', 'explanation']);
-                }
-
-                return $question->toArray();
-            });
+            $questionsData = $this->questionsDe($evaluation, $correctionAvailable);
 
             $score = $submission->score;
             $note = $submission->note_sur_20;
@@ -89,6 +75,7 @@ final class EvaluationStudentSubmissionController extends AuthenticatedControlle
                 'attempt' => $submission->attempt,
                 'status' => $submission->status,
                 'started_at' => $submission->started_at,
+                'ends_at' => $submission->ends_at,
                 'submitted_at' => $submission->submitted_at,
                 'score' => $score,
                 'note_sur_20' => $note,
@@ -111,6 +98,34 @@ final class EvaluationStudentSubmissionController extends AuthenticatedControlle
             ]);
             return $this->errorResponse('Erreur lors de la récupération de la soumission', 500);
         }
+    }
+
+    /**
+     * Les questions de la copie, dans l'ordre de l'évaluation (mélangées si elle le
+     * demande).
+     *
+     * Le corrigé est masqué par défaut sur le modèle ({@see
+     * \App\Models\EvaluationQuestion}). Ce chemin — la copie de l'élève lui-même,
+     * après le délai — est le seul à le révéler, et il le fait explicitement.
+     * L'ancien `unset` faisait l'inverse : il retirait ce que tous les autres
+     * chemins laissaient passer.
+     *
+     * @return Collection<int, array<string, mixed>>
+     */
+    private function questionsDe(Evaluation $evaluation, bool $correctionAvailable): Collection
+    {
+        $questions = $evaluation->questions()->get();
+        if ($evaluation->shuffle_questions) {
+            $questions = $questions->shuffle()->values();
+        }
+
+        return $questions->map(static function ($question) use ($correctionAvailable) {
+            if ($correctionAvailable) {
+                $question = (clone $question)->makeVisible(['correct_answers', 'explanation']);
+            }
+
+            return $question->toArray();
+        });
     }
 
     /**

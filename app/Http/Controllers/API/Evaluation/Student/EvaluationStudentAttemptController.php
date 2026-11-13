@@ -10,8 +10,8 @@ use App\Exceptions\MissingKlassciTokenException;
 use App\Http\Controllers\AuthenticatedController;
 use App\Http\Requests\StartEvaluationRequest;
 use App\Http\Requests\SubmitEvaluationRequest;
-use App\Services\Evaluation\EvaluationGradingService;
 use App\Services\Evaluation\Student\EvaluationAttemptStateService;
+use App\Services\Evaluation\Student\RemiseDeCopie;
 use App\Services\Evaluation\Student\ResultatsVisibles;
 use App\Support\Logging\CaughtExceptionLog;
 use Illuminate\Http\JsonResponse;
@@ -34,7 +34,7 @@ final class EvaluationStudentAttemptController extends AuthenticatedController
 
     public function __construct(
         private readonly EvaluationAttemptStateService $attemptState,
-        private readonly EvaluationGradingService $gradingService,
+        private readonly RemiseDeCopie $remise,
         private readonly CaughtExceptionLog $journal,
     ) {}
 
@@ -115,21 +115,26 @@ final class EvaluationStudentAttemptController extends AuthenticatedController
             // Rendre une copie, c'est clore une tentative OUVERTE — jamais en
             // fabriquer une. Le contrôleur créait ici une seconde ligne avec
             // `attempt` codé en dur à 1, qui violait l'index unique
-            // `eval_sub_unique` et ressortait en 500 : aucun élève ne pouvait
-            // rendre son travail. Au passage, cette création sautait la
-            // fenêtre, le quota et la publication — toutes vérifications que
-            // le service de démarrage déclare centraliser.
-            $submission = $this->attemptState->findOpenAttempt($id, $user);
+            // `eval_sub_unique` et ressortait en 500. Après l'échéance, la copie
+            // est refusée et verrouillée (C28, `RemiseDeCopie`).
+            $resultat = $this->remise->remettre($id, $user, (array) $request->validated('answers'));
 
-            if (!$submission) {
+            if ($resultat['status'] === RemiseDeCopie::VERROUILLEE) {
+                return $this->errorResponse(
+                    'Le temps de cette évaluation est écoulé : votre copie est gardée, mais elle ne peut plus être remise ni modifiée.',
+                    409,
+                    reason: 'evaluation_attempt_locked',
+                );
+            }
+
+            if ($resultat['status'] === RemiseDeCopie::AUCUNE_TENTATIVE) {
                 return $this->errorResponse(
                     'Aucune tentative en cours pour cette évaluation. Démarrez-la avant de la rendre.',
                     409
                 );
             }
 
-            $submission->answers = $request->validated('answers');
-            $this->gradingService->submit($submission);
+            $submission = $resultat['submission'];
 
             $payload = [
                 'submission' => $submission,

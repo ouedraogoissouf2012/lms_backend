@@ -56,7 +56,7 @@ final class VisioSeanceLocaleNotificationsTest extends TestCase
         self::assertSame([$inscrit->id], $this->destinataires(Notification::TYPE_VISIO_SCHEDULED));
         self::assertSame(
             $seance->id,
-            (int) json_decode((string) Notification::query()->value('data'), true)['seance_id'],
+            (int) (Notification::query()->sole()->data['seance_id'] ?? null),
             'la notification désigne la séance par son id local',
         );
     }

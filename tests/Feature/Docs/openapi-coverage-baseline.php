@@ -77,7 +77,6 @@ return [
     '/lessons/{lessonId}/chapters/reorder',
     '/lms/attendance/history',
     '/lms/attendances/from-video-session',
-    '/lms/enseignants',
     '/lms/imports/preview',
     '/lms/imports/{id}',
     '/lms/imports/{id}/confirm',

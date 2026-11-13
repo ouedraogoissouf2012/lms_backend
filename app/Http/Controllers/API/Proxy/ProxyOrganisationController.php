@@ -10,14 +10,13 @@ use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Services\Catalogue\InstitutionStructureReader;
 use App\Services\Classe\InstitutionClassesReader;
-use App\Services\Klassci\TeacherDirectory\LocalTeacherDirectory;
+use App\Services\Enseignant\InstitutionTeachersReader;
 use App\Services\Klassci\TeacherDirectory\TeacherDirectoryVisibility;
 use App\Services\KlassciProxyService;
 use App\Services\Matiere\InstitutionMatieresReader;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
 
 /**
  * Proxy KLASSCI — Lecture organisationnelle (GET only).
@@ -32,7 +31,6 @@ final class ProxyOrganisationController extends Controller
     public function __construct(
         private readonly KlassciProxyService $klassciService,
         private readonly TeacherDirectoryVisibility $visibility,
-        private readonly LocalTeacherDirectory $localDirectory,
     ) {
     }
 
@@ -143,13 +141,15 @@ final class ProxyOrganisationController extends Controller
     }
 
     /**
-     * GET /api/proxy/enseignants — fallback BDD si KLASSCI renvoie 0.
+     * GET /api/proxy/enseignants — l'annuaire des enseignants.
      *
-     * La liste suit la grille des rôles (`TeacherDirectoryVisibility`), appliquée
-     * après le cache de KLASSCI, qui est commun à l'établissement. Un lecteur qui
-     * n'en verrait aucune ligne ne déclenche aucun appel.
+     * Même route, autre source (ADR-EI-01, lot 3b) : KLASSCI, avec son repli
+     * local quand il n'en rend aucun, ou les comptes de l'école créée depuis le
+     * LMS. Chaque source applique la grille des rôles (`TeacherDirectoryVisibility`)
+     * à sa lecture. Un lecteur qui n'en verrait aucune ligne ne déclenche aucune
+     * lecture.
      */
-    public function enseignants(Request $request): JsonResponse
+    public function enseignants(Request $request, InstitutionTeachersReader $enseignants): JsonResponse
     {
         $lecteur = $request->user();
         if (! $lecteur instanceof User || ! $this->visibility->readsAnything($lecteur)) {
@@ -157,15 +157,7 @@ final class ProxyOrganisationController extends Controller
         }
 
         try {
-            $data = $this->klassciService->getEnseignants();
-
-            if (empty($data['data'])) {
-                Log::info('KLASSCI retourne 0 enseignants, utilisation BDD locale');
-
-                return response()->json($this->localDirectory->forReader($lecteur));
-            }
-
-            return response()->json($this->visibility->envelopeFor($lecteur, $data));
+            return response()->json($enseignants->annuaire($lecteur));
         } catch (\Exception $e) {
             return $this->proxyErrorResponse($e);
         }

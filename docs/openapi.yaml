@@ -1514,6 +1514,125 @@ components:
         visio_participants_count:
           type: integer
 
+    # Les enseignants de l'etablissement (lot 3b).
+    EnseignantsAnnuaire:
+      type: object
+      required:
+        - success
+        - data
+      properties:
+        success:
+          type: boolean
+          enum:
+            - true
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/EnseignantEtablissement'
+        meta:
+          type: object
+
+    EnseignantsListe:
+      type: object
+      additionalProperties: false
+      required:
+        - success
+        - data
+        - meta
+      properties:
+        success:
+          type: boolean
+          enum:
+            - true
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/EnseignantEtablissement'
+        meta:
+          type: object
+          description: "Sans `source` quand l'appelant ne lit aucune ligne (`{total: 0}`, sans aucune lecture)."
+          properties:
+            total:
+              type: integer
+            source:
+              type: string
+              enum:
+                - klassci_externe
+                - lms_local
+
+    EnseignantsErreur:
+      type: object
+      additionalProperties: false
+      required:
+        - success
+        - message
+        - data
+      properties:
+        success:
+          type: boolean
+          enum:
+            - false
+        message:
+          type: string
+        data:
+          type: array
+          items:
+            type: object
+
+    EnseignantEtablissement:
+      type: object
+      description: |
+        Ecole creee depuis KLASSCI : l'enseignant tel que KLASSCI le decrit
+        (schema ouvert). Ecole creee depuis le LMS : exactement les cles
+        ci-dessous, sans `statistiques`, et sans aucun id KLASSCI. Ce sont les
+        tests de la source qui fixent cette exactitude : le schema reste
+        ouvert, puisqu'il decrit aussi la forme de KLASSCI.
+      required:
+        - id
+      properties:
+        id:
+          description: "Ecole creee depuis le LMS : l'id du compte (`users.id`)."
+          oneOf:
+            - type: integer
+            - type: string
+        nom:
+          type: string
+          nullable: true
+        name:
+          type: string
+          nullable: true
+        prenom:
+          type: string
+          nullable: true
+        email:
+          type: string
+          nullable: true
+        telephone:
+          type: string
+          nullable: true
+        matricule:
+          type: string
+          nullable: true
+        specialization:
+          type: string
+          nullable: true
+        status:
+          type: string
+          nullable: true
+        matieres:
+          type: array
+          description: "Avec `with_details`. Ecole creee depuis le LMS : les matieres ou l'enseignant est designe, avec leurs classes ; heures, taux et seances valent `null`."
+          items:
+            type: object
+        classes:
+          type: array
+          description: "Avec `with_details`. Ecole creee depuis le LMS : ses classes, aux ids de `/proxy/classes` ; filiere et niveau valent `null`."
+          items:
+            type: object
+        statistiques:
+          type: object
+          description: "Ecole creee depuis KLASSCI seulement."
+
     MessageOnly:
       type: object
       properties:
@@ -6568,14 +6687,110 @@ paths:
     get:
       tags:
         - Proxy / KLASSCI
-      summary: "Get teachers"
+      operationId: getInstitutionTeachersDirectory
+      summary: "L'annuaire des enseignants de l'etablissement"
+      description: |
+        Les filtres d'enseignant (seances, evaluations) et le repli du tableau
+        de bord de l'enseignant. La source est choisie par le mode DECLARE de
+        l'ecole, au point de liaison.
+        La grille (D120) : la gestion lit tous les enseignants ; un enseignant,
+        sa ligne ; un eleve, et tout role non reconnu, une liste vide, sans
+        aucune lecture.
+
+        **Ecole creee depuis KLASSCI.** La liste de KLASSCI ; quand KLASSCI n'en
+        rend aucun, les comptes enseignants de l'ecole (`meta.source`
+        `lms_local`).
+
+        **Ecole creee depuis le LMS**, ou basculee. Les comptes enseignants de
+        l'ecole, avec les ids LOCAUX (`users.id`), tries par nom puis par id,
+        sans aucun appel a KLASSCI. Aucun id KLASSCI n'est rendu.
       security:
         - sanctum: []
       responses:
         '200':
-          description: "List of teachers"
+          description: "Les enseignants lisibles par l'appelant"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnseignantsAnnuaire'
         '401':
           $ref: '#/components/responses/KlassciUnauthorized'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          description: "Defaillance interne, rapportee une fois au journal, sans le message ni les valeurs d'une requete."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VisioErreurInterne'
+        '503':
+          description: "Ecole creee depuis KLASSCI : KLASSCI indisponible."
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/KlassciIndisponible'
+
+  /lms/enseignants:
+    get:
+      tags:
+        - Enseignants
+      operationId: listInstitutionTeachers
+      summary: "La liste des enseignants, pour l'ecran d'administration"
+      description: |
+        L'ecran Enseignants, l'annuaire des Utilisateurs et les compteurs. La
+        source est choisie par le mode DECLARE de l'ecole, au point de liaison.
+        La grille (D120) : la gestion lit tous les enseignants ; un enseignant,
+        sa ligne ; un eleve, et tout role non reconnu, une liste vide, sans
+        aucune lecture.
+
+        **Ecole creee depuis KLASSCI.** La liste enrichie de KLASSCI, avec son
+        `meta` (`source` `klassci_externe`) ; avec `with_details`, les details
+        sont aussi mis en cache.
+
+        **Ecole creee depuis le LMS**, ou basculee. Les comptes enseignants de
+        l'ecole, avec les ids LOCAUX, sans aucun appel a KLASSCI ni ecriture de
+        cache (`meta.source` `lms_local`). Avec `with_details` : les matieres ou
+        l'enseignant est designe, avec leurs classes, et ses classes, aux ids de
+        `/proxy/classes`. Les heures, le taux, les seances, la filiere et le
+        niveau valent `null`, et aucun bloc `statistiques` n'est rendu : le LMS
+        ne les tient pas.
+      security:
+        - sanctum: []
+      parameters:
+        - name: with_details
+          in: query
+          schema:
+            type: boolean
+            default: false
+      responses:
+        '200':
+          description: "Les enseignants lisibles par l'appelant"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnseignantsListe'
+        '401':
+          $ref: '#/components/responses/KlassciUnauthorized'
+        '500':
+          description: "Refus de KLASSCI, ou defaillance interne rapportee une fois au journal."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnseignantsErreur'
+        '503':
+          description: "Ecole creee depuis KLASSCI : KLASSCI indisponible."
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/KlassciIndisponible'
 
   /proxy/filieres:
     get:

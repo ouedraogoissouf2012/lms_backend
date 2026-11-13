@@ -39,6 +39,18 @@ final class ClassesAtteintes
             return ClassesEnseignees::par($classes, $user->id, $institution);
         }
 
+        return self::inscrites($classes, $user);
+    }
+
+    /**
+     * Les classes où ce compte est inscrit, inscription ACTIVE (D57) : celles
+     * d'un apprenant, quel que soit son rôle.
+     *
+     * @param  Builder<Classe>  $classes  déjà bornée EXPLICITEMENT à l'établissement
+     * @return Builder<Classe>
+     */
+    public static function inscrites(Builder $classes, User $user): Builder
+    {
         return $classes->whereHas('etudiants', static function ($inscrits) use ($user): void {
             $inscrits->where('users.id', $user->id)->where('classe_etudiant.statut', 'actif');
         });

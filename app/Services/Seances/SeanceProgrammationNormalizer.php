@@ -43,4 +43,26 @@ final class SeanceProgrammationNormalizer
 
         return $date.substr($datetime, 10);
     }
+
+    /**
+     * Le bloc `programmation` d'une séance rendue par KLASSCI : sa date, ses
+     * heures réalignées sur cette date, sa salle. Sa fin est celle de KLASSCI,
+     * jamais estimée : `heure_fin_estimee` vaut `false`. Une fin estimée ne vient
+     * que de `SeanceCalendarProjection`.
+     *
+     * @param  array<mixed, mixed>  $prog
+     * @return array<string, mixed>
+     */
+    public static function blocKlassci(array $prog): array
+    {
+        $date = KlassciPayload::toStringOrNull($prog['date'] ?? null);
+
+        return [
+            'date' => $date,
+            'heure_debut' => self::alignDate(KlassciPayload::toStringOrNull($prog['heure_debut'] ?? null), $date),
+            'heure_fin' => self::alignDate(KlassciPayload::toStringOrNull($prog['heure_fin'] ?? null), $date),
+            'heure_fin_estimee' => false,
+            'salle' => $prog['salle'] ?? null,
+        ];
+    }
 }

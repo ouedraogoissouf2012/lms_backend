@@ -1329,6 +1329,191 @@ components:
           items:
             type: object
 
+    # Les listes de seances de l'utilisateur (lot 3d).
+    SeancesAVenir:
+      type: object
+      additionalProperties: false
+      required:
+        - success
+        - data
+        - meta
+      properties:
+        success:
+          type: boolean
+          enum:
+            - true
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/SeanceCalendrier'
+        meta:
+          type: object
+          additionalProperties: false
+          required:
+            - total_seances
+            - date_debut
+            - date_fin
+            - filtres
+          properties:
+            total_seances:
+              type: integer
+            date_debut:
+              type: string
+              format: date
+            date_fin:
+              type: string
+              format: date
+            filtres:
+              type: object
+              additionalProperties: false
+              required:
+                - teacher_id
+                - classe_id
+              properties:
+                teacher_id:
+                  type: integer
+                  nullable: true
+                classe_id:
+                  type: integer
+                  nullable: true
+
+    SeancesListe:
+      type: object
+      additionalProperties: false
+      required:
+        - success
+        - data
+      properties:
+        success:
+          type: boolean
+          enum:
+            - true
+        message:
+          type: string
+          description: "Ecole creee depuis KLASSCI, classe sans matiere : `Aucune matiere trouvee pour cet etudiant`."
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/SeanceCalendrier'
+
+    SeanceCalendrier:
+      type: object
+      description: |
+        Une seance dans la forme du calendrier et des ecrans Seances et Visio :
+        Dans une ecole basculee, une seance miroir de KLASSCI n'a ni auteur ni
+        classe locaux : seule la gestion la lit, avec le nom d'enseignant
+        qu'elle porte, et ses ids d'enseignant et de classe valent `null`.
+        structures plate ET imbriquee. Ecole creee depuis KLASSCI : selon le
+        role et la route, une partie de ces cles, avec les ids KLASSCI (schema
+        ouvert). Ecole creee depuis le LMS : exactement ces cles, avec les ids
+        LOCAUX. Une seance locale n'a ni heure de fin, ni salle, ni identifiant
+        de matiere.
+      required:
+        - id
+      properties:
+        id:
+          description: "Ecole creee depuis le LMS : l'id de `/lms/seances/{seanceId}`."
+          nullable: true
+          oneOf:
+            - type: integer
+            - type: string
+        klassci_seance_id:
+          type: integer
+          nullable: true
+        date_seance:
+          type: string
+          nullable: true
+        date_debut:
+          type: string
+          format: date-time
+          nullable: true
+          description: "ISO 8601, avec fuseau."
+        date_fin:
+          type: string
+          format: date-time
+          nullable: true
+          description: "ISO 8601, avec fuseau. Estimee quand `heure_fin_estimee` vaut `true`."
+        heure_debut:
+          type: string
+          nullable: true
+          pattern: '^[0-9]{2}:[0-9]{2}$'
+          description: "Heure locale, au format `H:i`."
+        heure_fin:
+          type: string
+          nullable: true
+          pattern: '^[0-9]{2}:[0-9]{2}$'
+          description: "Heure locale, au format `H:i`. Estimee quand `heure_fin_estimee` vaut `true`."
+        heure_fin_estimee:
+          type: boolean
+          description: |
+            `true` : la fin n'est pas tenue, elle est ESTIMEE (debut plus une duree
+            supposee de 2 h, non mesuree). C'est le cas de toute seance lue dans la
+            table du LMS : celles d'une ecole creee depuis le LMS, et celles du
+            chemin de la gestion d'une ecole creee depuis KLASSCI. `false` : la fin
+            est celle que KLASSCI rend. Absente quand la ligne ne porte aucune fin
+            a sa racine.
+        salle:
+          type: string
+          nullable: true
+        programmation:
+          type: object
+          properties:
+            date:
+              type: string
+              nullable: true
+              description: "Le jour de la seance, au format `Y-m-d`."
+            heure_debut:
+              type: string
+              nullable: true
+              description: "Datetime ISO 8601, realigne sur le jour de la seance. Avec fuseau quand la seance est lue dans le LMS ; tel que KLASSCI le rend sinon."
+            heure_fin:
+              type: string
+              nullable: true
+              description: "Datetime ISO 8601, comme `heure_debut`. Estimee quand `heure_fin_estimee` vaut `true`."
+            heure_fin_estimee:
+              type: boolean
+              description: "Meme sens qu'a la racine : `true` pour une fin estimee, `false` pour une fin rendue par KLASSCI."
+            salle:
+              type: string
+              nullable: true
+        matiere:
+          type: object
+          description: "Ecole creee depuis le LMS : `id` vaut `null`, une seance locale ne porte que le nom de sa matiere."
+        classe:
+          type: object
+          description: "Ecole creee depuis le LMS : la classe designee par la seance. `id` est l'id de `/proxy/classes` (`null` sans classe) ; `nom` est son libelle et `effectif` ses inscriptions actives."
+        enseignant:
+          type: object
+          description: "Ecole creee depuis le LMS : l'auteur de la seance ; `id` est l'id de son compte, celui du filtre `teacher_id`."
+        visio:
+          type: object
+          nullable: true
+        statut:
+          type: string
+        visio_enabled:
+          type: boolean
+          nullable: true
+        visio_type:
+          type: string
+          nullable: true
+        visio_room_id:
+          type: string
+          nullable: true
+        visio_active:
+          type: boolean
+          nullable: true
+        visio_status:
+          type: string
+          nullable: true
+        visio_started_at:
+          type: string
+          nullable: true
+        visio_ended_at:
+          type: string
+          nullable: true
+        visio_participants_count:
+          type: integer
+
     MessageOnly:
       type: object
       properties:
@@ -3655,6 +3840,192 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+
+  /lms/seances/upcoming:
+    get:
+      tags:
+        - Visio
+      operationId: listUpcomingSeances
+      summary: "Les seances a venir de l'utilisateur"
+      description: |
+        Les ecrans Seances et Visio, et le calendrier de la gestion. Sans garde
+        de role. La source est choisie par le mode DECLARE de l'ecole, au point
+        de liaison.
+
+        **Ecole creee depuis KLASSCI.** Le jeton KLASSCI PERSONNEL est exige
+        (sinon 401 `klassci_token_missing`). La gestion lit les seances miroirs
+        du LMS, avec les ids KLASSCI ; les autres roles, l'emploi du temps
+        KLASSCI de leurs matieres.
+
+        **Ecole creee depuis le LMS**, ou basculee. Les seances locales, avec
+        les ids LOCAUX, sans jeton et sans aucun appel a KLASSCI. La gestion lit
+        toutes les seances de l'ecole ; un enseignant les siennes (son compte en
+        est l'auteur) ; un eleve, et tout role non reconnu, celles de ses classes
+        a inscription active, moins celles qu'il a masquees. Une seance sans
+        classe n'est montree a aucun eleve.
+
+        Dans les deux ecoles : seances actives, du jour a `days` jours, triees
+        par date. `teacher_id` ne filtre que pour la gestion (l'auteur, en ecole
+        creee depuis le LMS) ; `classe_id` filtre pour tous, dans ce qu'ils
+        voient deja.
+      security:
+        - sanctum: []
+      parameters:
+        - name: days
+          in: query
+          schema:
+            type: integer
+            default: 30
+        - name: teacher_id
+          in: query
+          schema:
+            type: integer
+        - name: classe_id
+          in: query
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: "Les seances, et la fenetre lue"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SeancesAVenir'
+        '401':
+          $ref: '#/components/responses/KlassciUnauthorized'
+        '403':
+          description: "Etablissement desactive, compte sans etablissement (`no_institution`), ou refus de KLASSCI relaye."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefusClasseEleves'
+        '500':
+          description: "Defaillance interne, rapportee une fois au journal, sans le message ni les valeurs d'une requete."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VisioErreurInterne'
+        '503':
+          description: "Ecole creee depuis KLASSCI : KLASSCI indisponible."
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/KlassciIndisponible'
+
+  /lms/seances/my-teaching:
+    get:
+      tags:
+        - Visio
+      operationId: listMyTeachingSeances
+      summary: "L'emploi du temps de l'enseignant"
+      description: |
+        Reservee a `enseignant` et `coordinateur`. Fenetre glissante de six mois
+        de part et d'autre du jour.
+
+        **Ecole creee depuis KLASSCI.** Les seances KLASSCI des matieres de
+        l'enseignant, avec le jeton KLASSCI PERSONNEL (sinon 401
+        `klassci_token_missing`).
+
+        **Ecole creee depuis le LMS**, ou basculee. Les seances locales actives
+        dont ce compte est l'auteur, avec les ids LOCAUX, sans aucun appel a
+        KLASSCI.
+      security:
+        - sanctum: []
+      responses:
+        '200':
+          description: "Les seances de l'enseignant"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SeancesListe'
+        '401':
+          $ref: '#/components/responses/KlassciUnauthorized'
+        '403':
+          description: "Role hors de `enseignant` et `coordinateur`, etablissement desactive, compte sans etablissement (`no_institution`), ou refus de KLASSCI relaye."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefusClasseEleves'
+        '500':
+          description: "Defaillance interne, rapportee une fois au journal, sans le message ni les valeurs d'une requete."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VisioErreurInterne'
+        '503':
+          description: "Ecole creee depuis KLASSCI : KLASSCI indisponible."
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/KlassciIndisponible'
+
+  /lms/seances/my-classes:
+    get:
+      tags:
+        - Visio
+      operationId: listMyClassesSeances
+      summary: "L'emploi du temps de l'eleve"
+      description: |
+        Sans garde de role. Fenetre glissante de six mois de part et d'autre du
+        jour.
+
+        **Ecole creee depuis KLASSCI.** Les seances KLASSCI de la classe de
+        l'eleve, avec le jeton KLASSCI PERSONNEL (sinon 401
+        `klassci_token_missing`). Une classe sans matiere rend 200, une liste
+        vide et un message.
+
+        **Ecole creee depuis le LMS**, ou basculee. Les seances locales actives
+        des classes ou ce compte est inscrit (inscription active), moins celles
+        qu'il a masquees, avec les ids LOCAUX, sans aucun appel a KLASSCI.
+
+        Sans classe : 404.
+      security:
+        - sanctum: []
+      responses:
+        '200':
+          description: "Les seances de l'eleve"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SeancesListe'
+        '401':
+          $ref: '#/components/responses/KlassciUnauthorized'
+        '403':
+          description: "Etablissement desactive, compte sans etablissement (`no_institution`), ou refus de KLASSCI relaye."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefusClasseEleves'
+        '404':
+          description: "Aucune classe : `Aucune classe trouvee pour cet etudiant`."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefusClasseEleves'
+        '500':
+          description: "Defaillance interne, rapportee une fois au journal, sans le message ni les valeurs d'une requete."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VisioErreurInterne'
+        '503':
+          description: "Ecole creee depuis KLASSCI : KLASSCI indisponible."
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/KlassciIndisponible'
 
   /lms/seances/{seanceId}/activate-visio:
     post:

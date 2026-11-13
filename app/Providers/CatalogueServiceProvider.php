@@ -31,13 +31,16 @@ use App\Services\Matiere\MatiereDetailsReader;
 use App\Services\Matiere\MyMatieresQueryService;
 use App\Services\Matiere\TeacherMatieresReader;
 use App\Services\Roster\RosterAuthorityFactory;
+use App\Services\Seances\LocalSeancesListReader;
+use App\Services\Seances\SeancesListReader;
+use App\Services\SeancesListQueryService;
 use Illuminate\Support\ServiceProvider;
 
 /**
  * Liaison de l'autorité sur le catalogue pédagogique (#848), et des sources
- * qui le LISENT (école créée depuis le LMS : lot 1, les matières ; lot 2, les
- * classes) : la même route sert les deux types d'école, la fabrique choisit la
- * source.
+ * qui LISENT l'école (école créée depuis le LMS : lot 1, les matières ; lot 2,
+ * les classes ; lot 3, les listes de l'établissement et les séances) : la même
+ * route sert les deux types d'école, la fabrique choisit la source.
  *
  * Fournisseur dédié, comme `RosterServiceProvider` et `RetentionServiceProvider`
  * avant lui. Ce n'est pas un choix de style : `AppServiceProvider` mesure 299
@@ -72,6 +75,8 @@ final class CatalogueServiceProvider extends ServiceProvider
         // Lot 3c : les matières et la structure de l'établissement.
         InstitutionMatieresReader::class => [KlassciInstitutionMatieresReader::class, LocalInstitutionMatieresReader::class],
         InstitutionStructureReader::class => [KlassciInstitutionStructureReader::class, LocalInstitutionStructureReader::class],
+        // Lot 3d : les séances de l'utilisateur, et son emploi du temps.
+        SeancesListReader::class => [SeancesListQueryService::class, LocalSeancesListReader::class],
     ];
 
     /**

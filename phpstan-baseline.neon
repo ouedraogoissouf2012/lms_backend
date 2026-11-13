@@ -1434,12 +1434,6 @@ parameters:
 			path: app/Services/Seances/StudentClassesSeancesFetcher.php
 
 		-
-			message: '#^Method App\\Services\\Seances\\StudentClassesSeancesFetcher\:\:mapStudentSeances\(\) should return Illuminate\\Support\\Collection\<int, array\<string, mixed\>\> but returns Illuminate\\Support\\Collection\<int, array\{id\: mixed, programmation\: array\{date\: string\|null, heure_debut\: string\|null, heure_fin\: string\|null, salle\: mixed\}, salle\: mixed, matiere\: array\{id\: int, nom\: mixed, code\: mixed\}, classe\: array\{id\: mixed, nom\: mixed\}, enseignant\: array\{nom\: string\}, visio\: array\{enabled\: bool, status\: string\|null, room_id\: string\|null, started_at\: Carbon\\Carbon\|null, participants_count\: int\}\|null\}\>\.$#'
-			identifier: return.type
-			count: 1
-			path: app/Services/Seances/StudentClassesSeancesFetcher.php
-
-		-
 			message: '#^Method App\\Services\\Seances\\StudentClassesSeancesFetcher\:\:resolveEnseignantNom\(\) should return string but returns string\|null\.$#'
 			identifier: return.type
 			count: 1

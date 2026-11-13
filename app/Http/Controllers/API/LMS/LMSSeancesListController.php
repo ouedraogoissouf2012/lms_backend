@@ -6,7 +6,7 @@ namespace App\Http\Controllers\API\LMS;
 
 use App\Http\Controllers\API\Concerns\RendersKlassciBackedErrors;
 use App\Http\Controllers\AuthenticatedController;
-use App\Services\SeancesListQueryService;
+use App\Services\Seances\SeancesListReader;
 use App\Support\Logging\CaughtExceptionLog;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -29,21 +29,25 @@ use RuntimeException;
  *   - GET /api/lms/seances/my-teaching  → myTeachingSeances()  (role:enseignant,coordinateur)
  *   - GET /api/lms/seances/my-classes   → myClassesSeances()
  *
- * @see \App\Services\SeancesListQueryService
+ * Même route, autre source (ADR-EI-01, lot 3d) : la source est reçue par la
+ * MÉTHODE. Laravel garde le contrôleur sur l'objet Route : une source reçue par
+ * le constructeur resterait celle de la première école servie. Le journal, sans
+ * état et sans école, reste au constructeur.
+ *
+ * @see \App\Services\Seances\SeancesListReader
  */
 final class LMSSeancesListController extends AuthenticatedController
 {
     use RendersKlassciBackedErrors;
 
     public function __construct(
-        private readonly SeancesListQueryService $seancesList,
         private readonly CaughtExceptionLog $journal,
     ) {}
 
     /**
      * GET /api/lms/seances/upcoming
      */
-    public function upcomingSeances(Request $request): JsonResponse
+    public function upcomingSeances(Request $request, SeancesListReader $seances): JsonResponse
     {
         try {
             $user = $this->authenticatedUser($request);
@@ -55,7 +59,7 @@ final class LMSSeancesListController extends AuthenticatedController
             $classeId = $request->input('classe_id');
             $classeId = $classeId !== null ? (int) $classeId : null;
 
-            $payload = $this->seancesList->getUpcomingForUser($user, $days, $teacherId, $classeId);
+            $payload = $seances->getUpcomingForUser($user, $days, $teacherId, $classeId);
 
             // NON migré vers successResponse() : cette réponse expose une clé sœur
             // `meta` à la racine. Le trait (DRY-only) OMET `meta` quand il est vide,
@@ -88,13 +92,11 @@ final class LMSSeancesListController extends AuthenticatedController
      * GET /api/lms/seances/my-teaching
      * Séances de l'enseignant connecté.
      */
-    public function myTeachingSeances(Request $request): JsonResponse
+    public function myTeachingSeances(Request $request, SeancesListReader $seances): JsonResponse
     {
         try {
             $user = $this->authenticatedUser($request);
-            $seances = $this->seancesList->getMyTeachingForUser($user);
-
-            return $this->successResponse($seances);
+            return $this->successResponse($seances->getMyTeachingForUser($user));
 
         } catch (RuntimeException $e) {
             // §1.2 — le STATUT de KLASSCI est relayé, jamais son corps de réponse :
@@ -117,11 +119,11 @@ final class LMSSeancesListController extends AuthenticatedController
      * GET /api/lms/seances/my-classes
      * Séances de l'étudiant connecté (sa classe).
      */
-    public function myClassesSeances(Request $request): JsonResponse
+    public function myClassesSeances(Request $request, SeancesListReader $seances): JsonResponse
     {
         try {
             $user = $this->authenticatedUser($request);
-            $result = $this->seancesList->getMyClassesForUser($user);
+            $result = $seances->getMyClassesForUser($user);
 
             // Cas particulier : étudiant sans classe résoluble
             if (isset($result['classe_missing']) && $result['classe_missing'] === true) {

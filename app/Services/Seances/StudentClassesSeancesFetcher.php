@@ -174,62 +174,73 @@ final class StudentClassesSeancesFetcher
      */
     private function mapStudentSeances(Collection $seancesClasse, array $matiere, int $matiereId): Collection
     {
-        return $seancesClasse->map(function (array $seance) use ($matiere, $matiereId) {
-            // Chercher la séance dans la BDD locale par klassci_seance_id
-            // IMPORTANT: Les étudiants ne voient que les séances actives (is_active = true)
-            $visioData = Seance::where('klassci_seance_id', $seance['id'] ?? null)
-                ->withConnectedParticipantsCount()
-                ->where('is_active', true)
-                ->first();
+        return $seancesClasse->map(fn (array $seance): array => $this->ligneEleve($seance, $matiere, $matiereId));
+    }
 
-            $enseignantNom = $this->resolveEnseignantNom($seance, $matiere, $visioData);
+    /**
+     * Une séance KLASSCI de la classe de l'élève, dans la forme de son emploi
+     * du temps, avec l'état visio de sa copie locale active.
+     *
+     * @param  array<string, mixed>  $seance
+     * @param  array<string, mixed>  $matiere
+     * @return array<string, mixed>
+     */
+    private function ligneEleve(array $seance, array $matiere, int $matiereId): array
+    {
+        // Chercher la séance dans la BDD locale par klassci_seance_id
+        // IMPORTANT: Les étudiants ne voient que les séances actives (is_active = true)
+        $visioData = Seance::where('klassci_seance_id', $seance['id'] ?? null)
+            ->withConnectedParticipantsCount()
+            ->where('is_active', true)
+            ->first();
 
-            $prog = KlassciPayload::asArray($seance['programmation'] ?? null);
-            $classe = KlassciPayload::asArray($seance['classe'] ?? null);
-            $date = KlassciPayload::toStringOrNull($prog['date'] ?? null);
+        $prog = KlassciPayload::asArray($seance['programmation'] ?? null);
+        $classe = KlassciPayload::asArray($seance['classe'] ?? null);
 
-            // IMPORTANT: Utiliser la structure programmation comme les autres endpoints
-            return [
-                'id' => $seance['id'] ?? null,
-                'programmation' => [
-                    'date' => $date,
-                    // KLASSCI date heure_debut/heure_fin au jour courant → réaligner sur la date de la séance.
-                    'heure_debut' => SeanceProgrammationNormalizer::alignDate(
-                        KlassciPayload::toStringOrNull($prog['heure_debut'] ?? null),
-                        $date
-                    ),
-                    'heure_fin' => SeanceProgrammationNormalizer::alignDate(
-                        KlassciPayload::toStringOrNull($prog['heure_fin'] ?? null),
-                        $date
-                    ),
-                    'salle' => $prog['salle'] ?? null,
-                ],
-                'salle' => $prog['salle'] ?? null, // Aussi en racine pour compatibilité
-                'matiere' => [
-                    'id' => $matiereId,
-                    'nom' => $matiere['nom'] ?? $matiere['name'] ?? $matiere['libelle'] ?? 'N/A',
-                    'code' => $matiere['code'] ?? null,
-                ],
-                'classe' => [
-                    'id' => $classe['id'] ?? null,
-                    'nom' => $classe['nom'] ?? 'N/A',
-                ],
-                'enseignant' => [
-                    'nom' => $enseignantNom,
-                ],
-                'visio' => $visioData ? [
-                    // Une séance est considérée "avec visio" si:
-                    // 1. visio_enabled = true OU
-                    // 2. Elle a un statut actif (programmee, active)
-                    'enabled' => $visioData->visio_enabled ||
-                                in_array($visioData->visio_status, ['programmee', 'active']),
-                    'status' => $visioData->visio_status,
-                    'room_id' => $visioData->visio_room_id,
-                    'started_at' => $visioData->visio_started_at,
-                    'participants_count' => $visioData->current_participants_count ?? 0,
-                ] : null,
-            ];
-        });
+        // IMPORTANT: Utiliser la structure programmation comme les autres endpoints
+        return [
+            'id' => $seance['id'] ?? null,
+            // Heures réalignées sur la date de la séance ; fin rendue par KLASSCI.
+            'programmation' => SeanceProgrammationNormalizer::blocKlassci($prog),
+            'salle' => $prog['salle'] ?? null, // Aussi en racine pour compatibilité
+            'matiere' => [
+                'id' => $matiereId,
+                'nom' => $matiere['nom'] ?? $matiere['name'] ?? $matiere['libelle'] ?? 'N/A',
+                'code' => $matiere['code'] ?? null,
+            ],
+            'classe' => [
+                'id' => $classe['id'] ?? null,
+                'nom' => $classe['nom'] ?? 'N/A',
+            ],
+            'enseignant' => [
+                'nom' => $this->resolveEnseignantNom($seance, $matiere, $visioData),
+            ],
+            'visio' => $this->visioEleve($visioData),
+        ];
+    }
+
+    /**
+     * L'état visio de la copie locale, ou null sans copie active.
+     *
+     * @return array<string, mixed>|null
+     */
+    private function visioEleve(?Seance $visioData): ?array
+    {
+        if ($visioData === null) {
+            return null;
+        }
+
+        return [
+            // Une séance est considérée "avec visio" si:
+            // 1. visio_enabled = true OU
+            // 2. Elle a un statut actif (programmee, active)
+            'enabled' => $visioData->visio_enabled ||
+                        in_array($visioData->visio_status, ['programmee', 'active']),
+            'status' => $visioData->visio_status,
+            'room_id' => $visioData->visio_room_id,
+            'started_at' => $visioData->visio_started_at,
+            'participants_count' => $visioData->current_participants_count ?? 0,
+        ];
     }
 
     /**

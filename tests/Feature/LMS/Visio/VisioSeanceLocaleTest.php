@@ -153,6 +153,28 @@ final class VisioSeanceLocaleTest extends TestCase
         Http::assertNothingSent();
     }
 
+    /**
+     * Laravel garde le contrôleur sur l'objet Route : une source reçue par le
+     * constructeur resterait celle de la première école servie (règle 3).
+     */
+    public function test_deux_ecoles_dans_la_meme_methode_recoivent_chacune_leur_source(): void
+    {
+        $sansJeton = User::factory()->teacher()->for(Institution::factory()->create())->create(['klassci_token' => null]);
+        $auteur = $this->compte('teacher');
+        $seance = $this->seanceLocale($auteur);
+
+        $this->asTenant($sansJeton)
+            ->postJson('/api/lms/seances/4242/activate-visio')
+            ->assertUnauthorized()
+            ->assertJsonPath('reason', 'klassci_token_missing');
+        $this->asTenant($auteur)
+            ->postJson("/api/lms/seances/{$seance->id}/activate-visio")
+            ->assertOk()
+            ->assertJsonPath('data.classe_synced', false);
+
+        Http::assertNothingSent();
+    }
+
     // --- Admettre ------------------------------------------------------------
 
     public function test_un_eleve_actif_de_la_classe_rejoint_la_visio_de_la_seance_locale(): void

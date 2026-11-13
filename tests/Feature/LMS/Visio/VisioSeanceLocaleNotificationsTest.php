@@ -6,6 +6,7 @@ namespace Tests\Feature\LMS\Visio;
 
 use App\Jobs\DispatchVisioNotification;
 use App\Models\Classe;
+use App\Models\Institution;
 use App\Models\Notification;
 use App\Services\Notification\VisioNotificationDispatcher;
 use App\Services\NotificationService;
@@ -101,6 +102,42 @@ final class VisioSeanceLocaleNotificationsTest extends TestCase
 
         self::assertSame(0, $envoyes);
         self::assertSame(0, Notification::query()->count());
+    }
+
+    /**
+     * L'avertissement suit EXACTEMENT l'audience de l'admission (V3) : un compte
+     * d'une autre école, présent dans le pivot de la classe (donnée anormale), est
+     * refusé à l'entrée, il n'est donc pas averti non plus.
+     */
+    public function test_un_compte_d_une_autre_ecole_dans_le_pivot_n_est_pas_averti(): void
+    {
+        $auteur = $this->compte('teacher');
+        $seance = $this->seanceLocale($auteur);
+        $inscrit = $this->eleveDe($this->classe);
+        $etranger = $this->compte('student', Institution::factory()->standalone()->create());
+        $this->classe->etudiants()->attach($etranger->id, ['statut' => 'actif']);
+
+        $this->asTenant($auteur)->postJson("/api/lms/seances/{$seance->id}/activate-visio")->assertOk();
+        $this->executerLesNotifications();
+
+        self::assertSame([$inscrit->id], $this->destinataires(Notification::TYPE_VISIO_SCHEDULED));
+    }
+
+    /**
+     * Un élève dont le rôle s'écrit `student` (alias reconnu par le prédicat de
+     * rôle) est admis en salle : il est aussi averti. Pas de rôle écrit en dur.
+     */
+    public function test_un_eleve_au_role_alias_est_averti_comme_il_est_admis(): void
+    {
+        $auteur = $this->compte('teacher');
+        $seance = $this->seanceLocale($auteur);
+        $alias = $this->eleveDe($this->classe);
+        $alias->forceFill(['role' => 'student'])->save();
+
+        $this->asTenant($auteur)->postJson("/api/lms/seances/{$seance->id}/activate-visio")->assertOk();
+        $this->executerLesNotifications();
+
+        self::assertSame([$alias->id], $this->destinataires(Notification::TYPE_VISIO_SCHEDULED));
     }
 
     /** Les jobs mis en file par la requête, exécutés comme le ferait le worker. */

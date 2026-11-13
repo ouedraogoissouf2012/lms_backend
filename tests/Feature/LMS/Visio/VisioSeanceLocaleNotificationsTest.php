@@ -140,11 +140,16 @@ final class VisioSeanceLocaleNotificationsTest extends TestCase
         self::assertSame([$alias->id], $this->destinataires(Notification::TYPE_VISIO_SCHEDULED));
     }
 
-    /** Les jobs mis en file par la requête, exécutés comme le ferait le worker. */
+    /**
+     * Les jobs mis en file par la requête, exécutés comme le ferait le worker :
+     * il oublie les instances de la requête, dont le tenant. Sans cela, le scope
+     * de l'école de l'auteur filtrerait les comptes à la place du code testé.
+     */
     private function executerLesNotifications(): void
     {
         $jobs = Queue::pushed(DispatchVisioNotification::class);
         self::assertNotEmpty($jobs, 'une notification est mise en file');
+        $this->app->forgetScopedInstances();
 
         foreach ($jobs as $job) {
             $job->handle(app(NotificationService::class), app(LoggerInterface::class));

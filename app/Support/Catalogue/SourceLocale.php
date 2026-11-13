@@ -11,9 +11,10 @@ namespace App\Support\Catalogue;
  * d'école n'est exposé (D132 Q1). Dans une école créée depuis KLASSCI, la clé est
  * absente.
  *
- * Dette tracée : `LocalTeacherDirectory` et `LocalInstitutionTeachersReader`
- * écrivent encore cette valeur en clair. Leur migration vient après la fusion de
- * #1027.
+ * La même marque sert, au niveau de la réponse (`meta.source`), la liste des
+ * enseignants (`LocalInstitutionTeachersReader`), le repli local de l'annuaire
+ * (`LocalTeacherDirectory`) et le tableau de bord de l'enseignant
+ * (`LocalTeacherDashboardReader`). Une seule valeur, écrite ici.
  */
 final class SourceLocale
 {

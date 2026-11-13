@@ -10,6 +10,7 @@ use App\Services\Classe\LocalTeacherClassesReader;
 use App\Services\Matiere\LocalTeacherMatieresReader;
 use App\Services\Seances\LocalSeancesListReader;
 use App\Services\Seances\SeanceCalendarProjection;
+use App\Support\Catalogue\SourceLocale;
 use Illuminate\Support\Carbon;
 
 /**
@@ -37,13 +38,6 @@ final class LocalTeacherDashboardReader implements TeacherDashboardReader
     /** Les séances à venir du tableau de bord, sur 30 jours. */
     public const JOURS = 30;
 
-    /**
-     * Dette déclarée : le même littéral que la constante commune des sources
-     * locales (`SourceLocale::LMS_LOCAL`, lot B-source), qui n'est pas encore
-     * fusionnée. À unifier à sa fusion.
-     */
-    private const SOURCE = 'lms_local';
-
     public function __construct(
         private readonly LocalTeacherMatieresReader $matieres,
         private readonly LocalTeacherClassesReader $classes,
@@ -62,7 +56,7 @@ final class LocalTeacherDashboardReader implements TeacherDashboardReader
                 'prochaines_seances' => $this->seances->getUpcomingForUser($teacher, self::JOURS, $teacher->id, null)['data'],
                 'statistiques' => ['heures' => $this->heures($teacher)],
             ],
-            'meta' => ['source' => self::SOURCE],
+            'meta' => ['source' => SourceLocale::LMS_LOCAL],
         ];
     }
 

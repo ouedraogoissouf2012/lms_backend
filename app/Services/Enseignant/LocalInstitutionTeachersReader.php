@@ -6,6 +6,7 @@ namespace App\Services\Enseignant;
 
 use App\Models\User;
 use App\Services\Klassci\TeacherDirectory\TeacherDirectoryVisibility;
+use App\Support\Catalogue\SourceLocale;
 use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Support\Facades\DB;
 
@@ -28,8 +29,6 @@ use Illuminate\Support\Facades\DB;
  */
 final class LocalInstitutionTeachersReader implements InstitutionTeachersReader
 {
-    private const SOURCE = 'lms_local';
-
     /** Les rôles d'un enseignant, ceux du repli local d'avant le lot. */
     private const ROLES = ['enseignant', 'teacher'];
 
@@ -53,7 +52,7 @@ final class LocalInstitutionTeachersReader implements InstitutionTeachersReader
      */
     private function reponse(array $lignes): array
     {
-        return ['success' => true, 'data' => $lignes, 'meta' => ['total' => count($lignes), 'source' => self::SOURCE]];
+        return ['success' => true, 'data' => $lignes, 'meta' => ['total' => count($lignes), 'source' => SourceLocale::LMS_LOCAL]];
     }
 
     /** @return list<array<string, mixed>> */

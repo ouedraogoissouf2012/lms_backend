@@ -49,12 +49,6 @@ parameters:
 			path: app/Http/Controllers/API/Evaluation/Student/EvaluationStudentAttemptController.php
 
 		-
-			message: '#^Property App\\Models\\EvaluationSubmission\:\:\$answers \(array\|null\) does not accept mixed\.$#'
-			identifier: assign.propertyType
-			count: 1
-			path: app/Http/Controllers/API/Evaluation/Student/EvaluationStudentAttemptController.php
-
-		-
 			message: '#^Parameter \#1 \$string of function substr expects string, mixed given\.$#'
 			identifier: argument.type
 			count: 1

@@ -47,9 +47,10 @@ trait EcheanceDeLaCopie
 
     /**
      * Le statut LU : une tentative ouverte échue se lit `verrouille`. L'écriture
-     * et les requêtes gardent le statut stocké (`getRawOriginal`).
+     * reste libre et porte le statut STOCKÉ (aucun mutateur) ; les requêtes et
+     * `getRawOriginal` le lisent tel quel.
      *
-     * @return Attribute<string|null, never>
+     * @return Attribute<string|null, string>
      */
     protected function status(): Attribute
     {

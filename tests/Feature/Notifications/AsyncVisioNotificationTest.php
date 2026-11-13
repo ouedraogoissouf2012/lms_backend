@@ -77,8 +77,10 @@ final class AsyncVisioNotificationTest extends TestCase
 
     public function test_replayed_jobs_create_one_logical_notification(): void
     {
-        $this->enrolledStudent();
+        $student = $this->enrolledStudent();
         $job = new DispatchVisioNotification(DispatchVisioNotification::STARTING, 42, [
+            // Le worker tourne sans tenant : le job désigne son établissement.
+            'institution_id' => $student->institution_id,
             'klassci_classe_id' => 10,
         ]);
 

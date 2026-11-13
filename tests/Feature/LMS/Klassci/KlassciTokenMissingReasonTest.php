@@ -213,7 +213,12 @@ final class KlassciTokenMissingReasonTest extends TestCase
         $this->assertJetonAbsent($this->asTenant($eleve)->getJson('/api/evaluations/student'));
     }
 
-    #[DataProvider('volets')]
+    /**
+     * D72 (E4a), déclaré : dans une école créée depuis le LMS, « Mes notes » ne
+     * demande plus d'identité KLASSCI (`EleveVoitSesNotesTest`). Le 401 ne vaut que
+     * pour l'école KLASSCI.
+     */
+    #[DataProvider('voletKlassciSeul')]
     public function test_mes_notes_sans_identite_klassci(InstitutionMode $mode): void
     {
         // Le refus est rendu DANS le `try` : il doit sortir tel quel, pas en 500.

@@ -57,6 +57,8 @@ final class LocalTeacherDashboardReader implements TeacherDashboardReader
             'data' => [
                 'matieres' => $this->matieres->getMatieresForUser($teacher),
                 'classes' => $this->classes->listFor($teacher),
+                // L'auteur passé ramène aussi le coordinateur à SES séances : la
+                // lecture rend toute l'école à la gestion, puis filtre sur cet auteur.
                 'prochaines_seances' => $this->seances->getUpcomingForUser($teacher, self::JOURS, $teacher->id, null)['data'],
                 'statistiques' => ['heures' => $this->heures($teacher)],
             ],

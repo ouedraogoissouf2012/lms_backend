@@ -926,6 +926,7 @@ components:
                     total_seances:
                       type: integer
                       minimum: 0
+                      description: "Ecole en mode autonome : toutes les seances actives et datees de l'enseignant dans l'etablissement, SANS fenetre de dates (passees et a venir)."
                     seances_effectuees:
                       type: integer
                       minimum: 0
@@ -6514,7 +6515,7 @@ paths:
         - `prochaines_seances` : ses seances des 30 prochains jours, comme
           `/lms/seances/upcoming` (le coordinateur lit aussi les siennes) ;
         - `statistiques.heures` : `total_seances` et `seances_effectuees`,
-          comptees sur l'auteur de la seance. Une seance locale n'a pas d'heure
+          comptees sur l'auteur de la seance, sans fenetre de dates. Une seance locale n'a pas d'heure
           de fin : elle n'est comptee effectuee qu'apres sa fin ESTIMEE (deux
           heures apres son debut), et `fin_estimee` vaut `true`.
         `evaluations` et `statistiques.evaluations` sont ABSENTS : la fenetre

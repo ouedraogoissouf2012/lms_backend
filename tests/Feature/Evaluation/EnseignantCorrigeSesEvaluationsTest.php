@@ -131,6 +131,8 @@ final class EnseignantCorrigeSesEvaluationsTest extends TestCase
                 'total_etudiants' => 4,
                 'etudiants_soumis' => 2,
                 'etudiants_en_cours' => 1,
+                // C28 : aucune copie hors délai ici.
+                'etudiants_hors_delai' => 0,
                 'etudiants_non_passes' => 1,
                 // JSON rend `50.0` en `50` : un entier au décodage.
                 'taux_participation' => 50,
@@ -477,6 +479,73 @@ final class EnseignantCorrigeSesEvaluationsTest extends TestCase
 
         self::assertFalse((bool) $copie->fresh()?->synced_to_klassci);
         self::assertFalse((bool) $evaluation->fresh()?->notes_published);
+    }
+
+    // ───────────────────────── C28 : la copie hors délai
+
+    /**
+     * L'enseignant VOIT la copie verrouillée, qu'elle ait été refusée à la remise
+     * (statut écrit) ou jamais remise après son échéance (statut dérivé de
+     * `ends_at`), mais ne la note pas : l'utilisateur l'a dite « refusée ».
+     */
+    public function test_c28_l_enseignant_voit_la_copie_hors_delai_et_ne_la_note_pas_ecole_du_lms(): void
+    {
+        [$ecole, $enseignant, $classe, $maths] = $this->enseignantEtSaClasse();
+        $evaluation = $this->evaluation($classe, $maths, $enseignant);
+        $dissertation = EvaluationQuestion::factory()->create([
+            'evaluation_id' => $evaluation->getKey(), 'type' => 'dissertation', 'points' => 10,
+        ]);
+        $awa = $this->eleve($ecole, $classe, 'Awa Refusée');
+        $yao = $this->eleve($ecole, $classe, 'Yao Échu');
+        $refusee = $this->copie($evaluation, $awa, 'verrouille', null, ['ends_at' => now()->subMinutes(5)]);
+        $echue = $this->copie($evaluation, $yao, 'en_cours', null, ['ends_at' => now()->subMinutes(5)]);
+        $this->aucunAppelKlassci();
+
+        $this->assertHorsDelaiVisibleEtNonNotee($enseignant, $evaluation, [$refusee, $echue], $dissertation);
+    }
+
+    public function test_c28_l_enseignant_voit_la_copie_hors_delai_et_ne_la_note_pas_ecole_klassci(): void
+    {
+        [$enseignant, $evaluation] = $this->enseignantKlassci();
+        $dissertation = EvaluationQuestion::factory()->create([
+            'evaluation_id' => $evaluation->getKey(), 'type' => 'dissertation', 'points' => 10,
+        ]);
+        $awa = $this->eleveKlassci($enseignant, 701, 'awa@ecole.test', 'Awa Refusée');
+        $yao = $this->eleveKlassci($enseignant, 702, 'yao@ecole.test', 'Yao Échu');
+        $this->rosterKlassci([
+            ['id' => 701, 'nom' => 'Refusée', 'prenom' => 'Awa', 'email' => 'awa@ecole.test'],
+            ['id' => 702, 'nom' => 'Échu', 'prenom' => 'Yao', 'email' => 'yao@ecole.test'],
+        ]);
+        $refusee = $this->copie($evaluation, $awa, 'verrouille', null, ['ends_at' => now()->subMinutes(5)]);
+        $echue = $this->copie($evaluation, $yao, 'en_cours', null, ['ends_at' => now()->subMinutes(5)]);
+
+        $this->assertHorsDelaiVisibleEtNonNotee($enseignant, $evaluation, [$refusee, $echue], $dissertation);
+    }
+
+    /** @param  list<EvaluationSubmission>  $copies */
+    private function assertHorsDelaiVisibleEtNonNotee(User $enseignant, Evaluation $evaluation, array $copies, EvaluationQuestion $dissertation): void
+    {
+        $resultats = $this->asTenant($enseignant)->getJson($this->de($evaluation).'/results-by-class');
+        $this->assertMatchesOpenApiResponse($resultats, '/evaluations/{id}/results-by-class', 'get');
+        $resultats->assertOk()
+            ->assertJsonPath('data.statistiques.etudiants_hors_delai', 2)
+            ->assertJsonPath('data.statistiques.etudiants_en_cours', 0);
+        $statuts = array_column((array) $resultats->json('data.resultats'), 'status');
+        self::assertSame(['verrouille', 'verrouille'], $statuts);
+
+        $liste = $this->asTenant($enseignant)->getJson($this->de($evaluation).'/submissions');
+        $this->assertMatchesOpenApiResponse($liste, '/evaluations/{id}/submissions', 'get');
+        self::assertSame(['verrouille', 'verrouille'], array_column((array) $liste->assertOk()->json('data'), 'status'));
+
+        foreach ($copies as $copie) {
+            $note = $this->asTenant($enseignant)->postJson(
+                $this->de($evaluation).'/submissions/'.$copie->getKey().'/grade',
+                ['points' => [(string) $dissertation->getKey() => 8]],
+            );
+            $this->assertMatchesOpenApiResponse($note, '/evaluations/{id}/submissions/{submission}/grade', 'post');
+            $note->assertStatus(409)->assertJsonPath('reason', 'evaluation_attempt_locked');
+            self::assertNull($copie->fresh()?->note_sur_20);
+        }
     }
 
     // ───────────────────────── harnais

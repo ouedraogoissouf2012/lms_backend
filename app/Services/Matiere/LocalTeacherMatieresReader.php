@@ -9,6 +9,7 @@ use App\Models\Classe;
 use App\Models\Lesson;
 use App\Models\Matiere;
 use App\Models\User;
+use App\Services\Evaluation\EvaluationsDeLaPage;
 use App\Support\Catalogue\SourceLocale;
 use Illuminate\Database\Eloquent\Builder;
 
@@ -39,8 +40,9 @@ use Illuminate\Database\Eloquent\Builder;
  * - `nombre_seances` vaut `null` : une séance locale ne porte que le NOM de sa
  *   matière, en texte (`LocalSeanceCreator`). Compter par ce texte devinerait ;
  *   rendre 0 affirmerait. On dit « inconnu ».
- * - `nombre_evaluations` vaut 0, et c'est un fait : aucune évaluation n'existe
- *   encore dans un établissement sans KLASSCI (provisoire, D72).
+ * - `nombre_evaluations` compte les évaluations de L'APPELANT dans la matière,
+ *   brouillons compris, comme sa fiche matière les lui montre (D72, E4c), en une
+ *   requête groupée ({@see EvaluationsDeLaPage::compteParMatiere()}).
  *
  * @see docs/adr/2026-10-30-ecole-independante-01-meme-route-autre-source.md
  */
@@ -69,6 +71,7 @@ final class LocalTeacherMatieresReader implements TeacherMatieresReader
             $ids,
             $institution,
         );
+        $evaluations = EvaluationsDeLaPage::compteParMatiere($institution, $ids, $user->id);
 
         return array_map(static fn (Matiere $matiere): array => [
             'id' => $matiere->id,
@@ -82,7 +85,7 @@ final class LocalTeacherMatieresReader implements TeacherMatieresReader
                 'nombre_lessons_publiees' => $publiees[$matiere->id] ?? 0,
                 'nombre_lessons_brouillons' => $brouillons[$matiere->id] ?? 0,
                 'nombre_seances' => null,
-                'nombre_evaluations' => 0,
+                'nombre_evaluations' => $evaluations[$matiere->id] ?? 0,
             ],
             'source' => SourceLocale::LMS_LOCAL,
         ], $matieres);

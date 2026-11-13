@@ -38,7 +38,6 @@ return [
     'app/Services/Evaluation/Teacher/TeacherEvaluationViewService.php::preview' => 61,
     'app/Services/Institution/InstitutionConnectionTester.php::test' => 43,
     'app/Services/KnowledgeCheck/KnowledgeCheckAttemptService.php::submitAttempt' => 42,
-    'app/Services/Matiere/MatiereEvaluationsFetcher.php::fetchLmsOnlyEvaluations' => 41,
     'app/Services/Quiz/QuizAttemptStateService.php::checkTimeRemaining' => 42,
     'app/Services/Report/AttendanceReportContextBuilder.php::build' => 44,
     'app/Services/Report/ReportGenerationService.php::generateGrades' => 49,

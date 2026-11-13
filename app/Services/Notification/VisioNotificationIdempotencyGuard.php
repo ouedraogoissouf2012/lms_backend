@@ -23,8 +23,15 @@ use RuntimeException;
  * l'établissement (le job tourne sans tenant). Elle se clé donc sur `seances.id`,
  * que chaque source déclare (`seance_locale_id`) et que la notification porte.
  *
- * Un job mis en file avant ce changement n'a pas cet id : il garde l'ancienne clé,
- * l'identifiant de la route (repli déclaré, le temps que la file se vide).
+ * ## La transition, dans les deux sens (déclarée)
+ *
+ * - Un job mis en file avant ce changement n'a pas cet id : il garde l'ancienne
+ *   clé, l'identifiant de la route, le temps que la file se vide.
+ * - Un job mis en file après ne compare que `seance_locale_id`, que les
+ *   notifications écrites avant ne portent pas : une séance avertie juste avant
+ *   le déploiement peut l'être une seconde fois dans les 24 h. C'est le sens
+ *   d'échec voulu, un doublon plutôt qu'un avertissement avalé. Aucun repli sur
+ *   `seance_id` ici : il rouvrirait la collision des identifiants de route.
  */
 final class VisioNotificationIdempotencyGuard
 {

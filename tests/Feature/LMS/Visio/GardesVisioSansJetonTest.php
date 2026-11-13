@@ -116,10 +116,13 @@ final class GardesVisioSansJetonTest extends TestCase
         ];
     }
 
-    #[DataProvider('volets')]
-    public function test_activer_la_visio_sans_jeton_rend_le_401_motive_sans_rien_ecrire(string $volet): void
+    /**
+     * École KLASSCI seulement : son activation lit l'emploi du temps KLASSCI. Une
+     * école autonome active par sa source locale, sans jeton (`VisioSeanceLocaleTest`).
+     */
+    public function test_activer_la_visio_sans_jeton_rend_le_401_motive_sans_rien_ecrire(): void
     {
-        $this->ecole($volet);
+        $this->ecole('klassci');
         $avant = DB::table('seances')->count();
 
         $this->asTenant($this->sansJeton('teacher'))

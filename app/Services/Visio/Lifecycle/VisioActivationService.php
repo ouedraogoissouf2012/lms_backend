@@ -24,9 +24,12 @@ use Throwable;
  * Extrait verbatim de `LMSVisioLifecycleController::activateVisio` &
  * `deactivateVisio` (split du controller 434l → thin + 2 services SRP).
  *
+ * Source KLASSCI de {@see VisioActivationSource} : une école en mode autonome
+ * active par {@see LocalVisioActivation}. La désactivation reste ici, commune.
+ *
  * @see PRODUCTION_STANDARDS.md §1.1 (≤300l), §1.6 D (DI strict), PSR-3 logger
  */
-final class VisioActivationService
+final class VisioActivationService implements VisioActivationSource
 {
     public function __construct(
         private readonly EmploiTempsSeanceLocator $seanceLocator,
@@ -269,6 +272,8 @@ final class VisioActivationService
         $notificationsSent = 0;
         try {
             $this->notifications->queueScheduled($seanceId, [
+                // L'id LOCAL de la séance : la clé de la garde d'idempotence (V1).
+                'seance_locale_id' => $visio->id,
                 'klassci_classe_id' => $visio->klassci_classe_id,
                 'klassci_enseignant_id' => $visio->klassci_enseignant_id,
                 'matiere_nom' => $visio->matiere_nom,

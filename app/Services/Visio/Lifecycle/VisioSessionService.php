@@ -259,6 +259,9 @@ final class VisioSessionService
     {
         try {
             $this->notifications->queueStarting($seanceId, [
+                // La séance résolue, par son id local : sans classe KLASSCI, ses
+                // élèves sont ceux de l'admission. Une séance miroitée ne change pas.
+                'seance_locale_id' => $visio->id,
                 'klassci_classe_id' => $visio->klassci_classe_id,
                 'klassci_enseignant_id' => $visio->klassci_enseignant_id,
                 'matiere_nom' => $visio->matiere_nom,

@@ -10,6 +10,7 @@ use App\Http\Requests\DeactivateVisioRequest;
 use App\Http\Requests\EndVisioRequest;
 use App\Http\Requests\StartVisioRequest;
 use App\Services\Visio\Lifecycle\VisioActivationService;
+use App\Services\Visio\Lifecycle\VisioActivationSource;
 use App\Services\Visio\Lifecycle\VisioSessionService;
 use Illuminate\Http\JsonResponse;
 
@@ -23,7 +24,8 @@ use Illuminate\Http\JsonResponse;
  * délègue à son service dédié.
  *
  * Découpage SRP par machine d'état :
- *  - {@see VisioActivationService} : configuration (activate/deactivate)
+ *  - {@see VisioActivationSource}  : activation, par la source de l'établissement
+ *  - {@see VisioActivationService} : désactivation (et activation KLASSCI)
  *  - {@see VisioSessionService}    : session BBB live (start/end)
  *
  * IMPORTANT : la classe et les noms de méthodes (`activateVisio`,
@@ -44,11 +46,15 @@ final class LMSVisioLifecycleController extends AuthenticatedController
     /**
      * POST /api/lms/seances/{seanceId}/activate-visio
      * Active la visioconférence pour une séance (enseignant/coordinateur).
+     *
+     * La source est celle de l'établissement (ADR-EI-01), reçue par la MÉTHODE :
+     * Laravel garde le contrôleur sur l'objet Route, et une source reçue à la
+     * construction resterait celle de la première école servie.
      */
-    public function activateVisio(int $seanceId, ActivateVisioRequest $request): JsonResponse
+    public function activateVisio(int $seanceId, ActivateVisioRequest $request, VisioActivationSource $activation): JsonResponse
     {
         $user = $this->authenticatedUser($request);
-        $result = $this->activationService->activate(
+        $result = $activation->activate(
             $seanceId,
             $user,
             $request->validated(),

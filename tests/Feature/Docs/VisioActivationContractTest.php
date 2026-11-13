@@ -21,16 +21,20 @@ use Tests\TestCase;
  * Contrat de `POST /lms/seances/{seanceId}/activate-visio` : chaque réponse
  * RÉELLE suit ce que `docs/openapi.yaml` en dit, statut et corps.
  *
- * Les refus tournent pour les DEUX types d'école : créée depuis KLASSCI,
- * créée depuis le LMS. Le 200, le 404 et le 500 de panne KLASSCI ne tournent
- * que pour une école créée depuis KLASSCI : ils supposent un jeton KLASSCI.
- * Pour une école créée depuis le LMS, le compte est créé SANS jeton, comme
- * tout compte d'une telle école (`UserFactory` en donne un à tout compte).
- * La route ne lit ni le type ni le mode de l'école : une école créée depuis
- * KLASSCI passée en mode autonome garde les jetons de ses comptes, qui ne
- * sont pas refusés, ce que la spec dit. Vrai jeton porteur (`asTenant`).
+ * Même route, autre source (ADR-EI-01) : le mode de l'établissement choisit la
+ * source. Une école en mode KLASSCI cherche la séance dans l'emploi du temps
+ * KLASSCI, sous son identifiant KLASSCI, avec le jeton du compte : son 200, son
+ * 401, son 404 et son 500 de panne KLASSCI tournent ici avec un jeton. Une école
+ * en mode autonome cherche la séance sous son id local, dans l'établissement,
+ * sans jeton ni appel KLASSCI : son 200, son 403 de gestion et son 404 tournent
+ * avec un compte SANS jeton, comme tout compte d'une telle école (`UserFactory`
+ * en donne un à tout compte), et le jeton d'un compte n'y change rien.
+ *
+ * Les refus de rôle tournent pour les DEUX types d'école. Vrai jeton porteur
+ * (`asTenant`).
  *
  * @see app/Services/Visio/Lifecycle/VisioActivationService.php
+ * @see app/Services/Visio/Lifecycle/LocalVisioActivation.php
  */
 final class VisioActivationContractTest extends TestCase
 {
@@ -97,16 +101,70 @@ final class VisioActivationContractTest extends TestCase
         $reponse->assertJsonPath('data.visio_room_id', 'salon-deja-attribue');
     }
 
-    /** Un compte sans jeton KLASSCI : le 401 motivé de #806, et rien n'est écrit. */
-    #[DataProvider('typesDEcole')]
-    public function test_401_sans_jeton_klassci(bool $depuisLeLms): void
+    /** École KLASSCI, compte sans jeton KLASSCI : le 401 motivé de #806, et rien n'est écrit. */
+    public function test_401_sans_jeton_klassci(): void
     {
-        $compte = $this->compte($this->ecole($depuisLeLms), 'enseignant', null);
+        $compte = $this->compte($this->ecole(false), 'enseignant', null);
 
         $reponse = $this->asTenant($compte)->postJson($this->url(self::SEANCE_KLASSCI))->assertUnauthorized();
 
         $this->assertMatchesOpenApiResponse($reponse, self::CHEMIN, 'post');
         $reponse->assertExactJson(MissingKlassciTokenException::payload());
+        self::assertSame(0, Seance::query()->withoutGlobalScopes()->count());
+    }
+
+    /** École autonome : la séance locale, sous son id local, par son auteur. */
+    #[DataProvider('rolesAdmis')]
+    public function test_200_ecole_autonome_la_seance_locale_de_l_etablissement(string $role): void
+    {
+        $ecole = $this->ecole(true);
+        $auteur = $this->compte($ecole, 'enseignant', null);
+        $seance = $this->seanceLocale($ecole, $auteur);
+        $compte = $role === 'enseignant' ? $auteur : $this->compte($ecole, $role, null);
+
+        $reponse = $this->asTenant($compte)->postJson($this->url($seance->id))->assertOk();
+
+        $this->assertMatchesOpenApiResponse($reponse, self::CHEMIN, 'post');
+        $this->assertOpenApiSchemaRefuseSans($reponse, self::CHEMIN, 'post', 'data');
+        $reponse->assertJsonPath('data.classe_synced', false);
+        $this->assertDatabaseHas('seances', ['id' => $seance->id, 'visio_enabled' => true, 'klassci_seance_id' => null]);
+    }
+
+    /** École autonome : un enseignant qui ne gère pas la séance reçoit le refus motivé. */
+    public function test_403_ecole_autonome_un_enseignant_qui_ne_gere_pas_la_seance(): void
+    {
+        $ecole = $this->ecole(true);
+        $seance = $this->seanceLocale($ecole, $this->compte($ecole, 'enseignant', null));
+
+        $reponse = $this->asTenant($this->compte($ecole, 'enseignant', null))
+            ->postJson($this->url($seance->id))
+            ->assertForbidden();
+
+        $this->assertMatchesOpenApiResponse($reponse, self::CHEMIN, 'post');
+        $reponse->assertExactJson([
+            'success' => false,
+            'message' => 'Vous ne pouvez pas gérer cette visio',
+            'reason' => 'actor_not_authorized',
+        ]);
+        $this->assertDatabaseHas('seances', ['id' => $seance->id, 'visio_enabled' => false]);
+    }
+
+    /**
+     * École autonome : l'identifiant est lu comme un id local, même par un compte
+     * qui garde un jeton KLASSCI (école passée en mode autonome). Aucun appel KLASSCI.
+     */
+    public function test_404_ecole_autonome_une_seance_absente_de_l_etablissement(): void
+    {
+        $this->mock(KlassciProxyService::class, function (MockInterface $mock): void {
+            $mock->shouldNotReceive('requestWithUserToken');
+            $mock->shouldNotReceive('getEmploiTemps');
+        });
+        $compte = $this->compte($this->ecole(true), 'enseignant', self::JETON_KLASSCI);
+
+        $reponse = $this->asTenant($compte)->postJson($this->url(self::SEANCE_KLASSCI))->assertNotFound();
+
+        $this->assertMatchesOpenApiResponse($reponse, self::CHEMIN, 'post');
+        $reponse->assertExactJson(['success' => false, 'message' => 'Séance non trouvée']);
         self::assertSame(0, Seance::query()->withoutGlobalScopes()->count());
     }
 
@@ -250,5 +308,20 @@ final class VisioActivationContractTest extends TestCase
     private function compte(Institution $ecole, string $role, ?string $jetonKlassci): User
     {
         return User::factory()->create(['institution_id' => $ecole->id, 'role' => $role, 'klassci_token' => $jetonKlassci]);
+    }
+
+    /** Une séance locale, telle que `LocalSeanceCreator` l'écrit : aucun identifiant KLASSCI. */
+    private function seanceLocale(Institution $ecole, User $auteur): Seance
+    {
+        return Seance::factory()->for($ecole)->create([
+            'created_by' => $auteur->id,
+            'klassci_seance_id' => null,
+            'klassci_enseignant_id' => null,
+            'klassci_classe_id' => null,
+            'klassci_matiere_id' => null,
+            'visio_enabled' => false,
+            'visio_status' => null,
+            'visio_room_id' => null,
+        ]);
     }
 }

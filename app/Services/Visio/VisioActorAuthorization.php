@@ -9,6 +9,23 @@ use App\Models\User;
 
 final class VisioActorAuthorization
 {
+    public const NOT_AUTHORIZED = 'actor_not_authorized';
+
+    /**
+     * Le refus rendu quand {@see canManage()} dit non : une seule forme pour les
+     * routes qui gèrent une visio.
+     *
+     * @return array{success: false, message: string, reason: string}
+     */
+    public static function managementRefusal(): array
+    {
+        return [
+            'success' => false,
+            'message' => 'Vous ne pouvez pas gérer cette visio',
+            'reason' => self::NOT_AUTHORIZED,
+        ];
+    }
+
     public function canManage(Seance $seance, User $actor): bool
     {
         if ($seance->institution_id !== $actor->institution_id) {

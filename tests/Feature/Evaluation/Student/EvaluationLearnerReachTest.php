@@ -500,6 +500,42 @@ final class EvaluationLearnerReachTest extends TestCase
         }
     }
 
+    /**
+     * D72, E4c, C32 : la garde `klassci_id` de la fiche matière tombe ; la copie
+     * appartient à son auteur (`ownedBy`, E2a). Un élève d'une école KLASSCI sans
+     * identité KLASSCI voit sa copie d'une évaluation LMS seule.
+     */
+    public function test_c32_l_eleve_sans_identite_klassci_voit_sa_copie_sur_la_fiche_matiere(): void
+    {
+        $eleve = $this->eleveConnecte();
+        $eleve->forceFill(['klassci_id' => null])->save();
+        $fiche = $this->ficheMatiere(self::CLASSE);
+        $this->copieRendue($fiche['lmsSienne'], $eleve, now());
+
+        $evaluations = (array) $this->asTenant($eleve)->getJson('/api/lms/matieres/' . self::MATIERE)->assertOk()->json('data.evaluations_programmees');
+        $parLms = array_column(array_filter($evaluations, static fn ($e) => ($e['lms_id'] ?? null) !== null), null, 'lms_id');
+
+        self::assertIsArray($parLms[$fiche['lmsSienne']->id]['student_submission'] ?? null, 'la copie de l eleve sans identite KLASSCI a disparu');
+    }
+
+    /**
+     * D72, E4c : l'origine est dite côté local (`source: lms_local`), jamais côté
+     * KLASSCI. Aucun élément de la fiche matière d'une école KLASSCI ne porte la clé.
+     */
+    public function test_la_fiche_matiere_klassci_ne_porte_aucune_source(): void
+    {
+        $enseignant = $this->eleveConnecte('enseignant');
+        $this->ficheMatiere(self::CLASSE);
+
+        $evaluations = (array) $this->asTenant($enseignant)->getJson('/api/lms/matieres/' . self::MATIERE)->assertOk()->json('data.evaluations_programmees');
+
+        self::assertNotEmpty($evaluations);
+        foreach ($evaluations as $evaluation) {
+            self::assertIsArray($evaluation);
+            self::assertArrayNotHasKey('source', $evaluation);
+        }
+    }
+
     /** Le personnel garde sa vue de la fiche, inchangée. */
     public function test_l_enseignant_garde_toute_la_fiche_matiere(): void
     {

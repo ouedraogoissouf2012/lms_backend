@@ -91,7 +91,9 @@ final class EleveVoitSesNotesTest extends TestCase
         self::assertEqualsCanonicalizing(['Visible', 'Cachée'], array_keys($lignes), 'la ligne cachée a disparu');
         self::assertSame('10.00', $lignes['Visible']['note'] ?? null);
         self::assertArrayNotHasKey('note', $lignes['Cachée']);
-        self::assertStringNotContainsString('20.00', (string) $reponse->getContent());
+        // La note cachée ne sort sous aucune ligne. Chercher « 20.00 » dans le texte
+        // dépendrait de l'heure : une date « …:20.000000Z » le contient.
+        self::assertNotContains('20.00', array_column((array) $reponse->json('data.matieres.0.evaluations'), 'note'));
     }
 
     /**

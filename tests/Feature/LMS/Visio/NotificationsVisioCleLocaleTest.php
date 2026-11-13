@@ -145,12 +145,16 @@ final class NotificationsVisioCleLocaleTest extends TestCase
         app(VisioNotificationDispatcher::class)->notifyVisioScheduled($idRoute, $this->donnees($seance));
     }
 
-    /** @return array<string, mixed> */
+    /**
+     * La charge des sources HTTP, sans `institution_id` : seule la synchronisation
+     * le passe, et le harnais ne doit pas être plus favorable que la production.
+     *
+     * @return array<string, mixed>
+     */
     private function donnees(Seance $seance): array
     {
         return [
             'seance_locale_id' => $seance->id,
-            'institution_id' => $seance->institution_id,
             'klassci_classe_id' => $seance->klassci_classe_id,
             'matiere_nom' => 'Maths',
             'enseignant_nom' => 'Enseignant',

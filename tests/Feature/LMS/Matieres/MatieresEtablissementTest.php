@@ -421,6 +421,7 @@ final class MatieresEtablissementTest extends TestCase
             'description' => $matiere->description,
             'coefficient' => $matiere->coefficient,
             'classes' => array_map(static fn (Classe $classe): array => ['id' => $classe->id, 'nom' => $classe->libelle], $classes),
+            'source' => 'lms_local',
         ];
     }
 

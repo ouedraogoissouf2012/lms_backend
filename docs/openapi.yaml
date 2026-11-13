@@ -243,6 +243,14 @@ components:
         - id
         - statistiques
       properties:
+        source:
+          type: string
+          enum:
+            - lms_local
+          description: |
+            Ecole creee depuis le LMS : `lms_local`, sur chaque carte. Ses ids sont
+            LOCAUX, a envoyer tels quels (`classe_id`, `matiere_id`). Ecole creee
+            depuis KLASSCI : cle absente. Aucun mode d'ecole n'est expose.
         id:
           type: integer
           description: |
@@ -1263,6 +1271,14 @@ components:
       required:
         - id
       properties:
+        source:
+          type: string
+          enum:
+            - lms_local
+          description: |
+            Ecole creee depuis le LMS : `lms_local`, sur chaque carte. Ses ids sont
+            LOCAUX, a envoyer tels quels (`classe_id`, `matiere_id`). Ecole creee
+            depuis KLASSCI : cle absente. Aucun mode d'ecole n'est expose.
         id:
           description: "Ecole creee depuis le LMS : l'identifiant LOCAL, un entier."
           oneOf:

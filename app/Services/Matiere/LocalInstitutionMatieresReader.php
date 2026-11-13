@@ -8,6 +8,7 @@ use App\Models\Classe;
 use App\Models\Lesson;
 use App\Models\Matiere;
 use App\Models\User;
+use App\Support\Catalogue\SourceLocale;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
@@ -48,7 +49,7 @@ final class LocalInstitutionMatieresReader implements InstitutionMatieresReader
 {
     /**
      * @param  array<string, mixed>  $filtres
-     * @return array{success: true, data: list<array{id: int, nom: string, code: string|null, description: string|null, coefficient: int, classes: list<array{id: int, nom: string}>}>}
+     * @return array{success: true, data: list<array{id: int, nom: string, code: string|null, description: string|null, coefficient: int, classes: list<array{id: int, nom: string}>, source: string}>}
      */
     public function list(User $user, array $filtres): array
     {
@@ -78,6 +79,7 @@ final class LocalInstitutionMatieresReader implements InstitutionMatieresReader
                     'id' => $classe->id,
                     'nom' => $classe->libelle,
                 ], $matiere->classes->all())),
+                'source' => SourceLocale::LMS_LOCAL,
             ], $matieres)),
         ];
     }

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Klassci\TeacherDirectory;
 
 use App\Models\User;
+use App\Support\Catalogue\SourceLocale;
 
 /**
  * La liste des enseignants lue dans la base locale, quand KLASSCI n'en rend
@@ -31,7 +32,7 @@ final class LocalTeacherDirectory
                 'prenom' => '',
                 'email' => $user->email,
                 'role' => $user->role,
-                'source' => 'lms_local',
+                'source' => SourceLocale::LMS_LOCAL,
             ])
             ->values()
             ->all();
@@ -41,7 +42,7 @@ final class LocalTeacherDirectory
             'data' => $lignes,
             'meta' => [
                 'total' => count($lignes),
-                'source' => 'lms_local',
+                'source' => SourceLocale::LMS_LOCAL,
                 'note' => 'Données provenant de la BDD locale car KLASSCI retourne 0',
             ],
         ];

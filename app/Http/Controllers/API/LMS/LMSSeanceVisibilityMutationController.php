@@ -11,7 +11,7 @@ use App\Http\Requests\ToggleVisioSeanceRequest;
 use App\Http\Requests\UnhideSeanceRequest;
 use App\Services\Seances\Mutations\SeanceDeleteService;
 use App\Services\Seances\Mutations\SeanceHideService;
-use App\Services\Seances\Mutations\VisioToggleService;
+use App\Services\Visio\Lifecycle\VisioToggleSource;
 use Illuminate\Http\JsonResponse;
 
 /**
@@ -32,19 +32,18 @@ final class LMSSeanceVisibilityMutationController extends AuthenticatedControlle
     public function __construct(
         private readonly SeanceHideService $seanceHide,
         private readonly SeanceDeleteService $seanceDelete,
-        private readonly VisioToggleService $visioToggle,
     ) {}
 
     /**
      * POST /api/lms/seances/{seanceId}/toggle-visio
      */
-    public function toggleVisioSeance(int $seanceId, ToggleVisioSeanceRequest $request): JsonResponse
+    public function toggleVisioSeance(int $seanceId, ToggleVisioSeanceRequest $request, VisioToggleSource $bascule): JsonResponse
     {
         $user = $this->authenticatedUser($request);
         $enabled = (bool) $request->validated('enabled');
         $visioType = $request->validated('visio_type');
 
-        $result = $this->visioToggle->toggle(
+        $result = $bascule->toggle(
             $seanceId,
             $enabled,
             is_string($visioType) ? $visioType : null,

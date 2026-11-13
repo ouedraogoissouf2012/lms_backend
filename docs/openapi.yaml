@@ -3573,15 +3573,12 @@ paths:
         quels identifiants existent ailleurs.
 
         Reserve aux roles `enseignant` (alias `teacher`), `coordinateur` (alias
-        `coordinator`) et `superAdmin`, ecrits exactement ainsi. Le 403 a
-        plusieurs sources, et le client ne doit pas lire le message :
-        - le role de la route, qui compare sans la casse et refuse tout autre
-          role, `admin` compris (« Accès refusé - Permissions insuffisantes ») ;
-        - l'autorisation de la requete, qui compare strictement : une variante
-          de casse (`Enseignant`) passe la route et est refusee ici. Son message
-          passe par le rendu generique des exceptions : « This action is
-          unauthorized. » si `APP_DEBUG` est vrai, « Une erreur est survenue. »
-          sinon, ce qui est le cas en production ;
+        `coordinator`) et `superAdmin`. Le role est garde une seule fois, par la
+        route, qui compare sans la casse : une variante (`Enseignant`) est
+        admise. Le 403 a plusieurs sources, et le client ne doit pas lire le
+        message :
+        - le role de la route, qui refuse tout autre role, `admin` compris
+          (« Accès refusé - Permissions insuffisantes ») ;
         - un etablissement desactive ou introuvable (« Établissement désactivé.
           Accès suspendu, contactez votre administration. ») ;
         - un compte sans etablissement, refuse par la porte des comptes sans

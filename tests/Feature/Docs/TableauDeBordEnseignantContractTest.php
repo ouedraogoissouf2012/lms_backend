@@ -10,7 +10,9 @@ use App\Models\Classe;
 use App\Models\Institution;
 use App\Models\Seance;
 use App\Models\User;
+use App\Services\Dashboard\LocalTeacherDashboardReader;
 use App\Services\KlassciProxyService;
+use App\Services\TenantManager;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Mockery\MockInterface;
@@ -191,6 +193,55 @@ final class TableauDeBordEnseignantContractTest extends TestCase
         $reponse->assertJsonPath('data.statistiques.heures.total_seances', 1);
     }
 
+    /**
+     * Les heures ne comptent que ce que le tableau de bord lit : les séances de
+     * l'enseignant dans SON établissement, actives, datées, non supprimées.
+     *
+     * Lu sans tenant résolu, en appelant la source : le scope multi-tenant est
+     * alors inerte (fail-open), et seul le bornage explicite écarte l'autre
+     * école. Par la route, le scope masquerait son absence.
+     */
+    public function test_ecole_autonome_les_heures_ne_comptent_que_ses_seances_actives_datees_de_son_etablissement(): void
+    {
+        $ecole = $this->ecole();
+        $enseignant = $this->membre($ecole, 'enseignant');
+        $this->seance($ecole, $enseignant, '2026-11-07 08:00:00');
+        $this->seance($this->ecole(), $enseignant, '2026-11-07 08:00:00');
+        $this->seance($ecole, $enseignant, '2026-11-07 08:00:00', null, ['is_active' => false]);
+        $this->seance($ecole, $enseignant, null);
+        $this->seance($ecole, $enseignant, '2026-11-07 08:00:00')->delete();
+        app(TenantManager::class)->reset();
+
+        $tableau = app(LocalTeacherDashboardReader::class)->dashboardFor($enseignant);
+
+        self::assertSame(
+            ['total_seances' => 1, 'seances_effectuees' => 1, 'fin_estimee' => true],
+            $tableau['data']['statistiques']['heures'],
+        );
+    }
+
+    /**
+     * Laravel garde le contrôleur sur l'objet Route : une source reçue par le
+     * constructeur resterait celle de la première école servie (règle 3).
+     */
+    public function test_deux_ecoles_dans_la_meme_methode_recoivent_chacune_leur_source(): void
+    {
+        $this->aucunAppelKlassci();
+        $locale = $this->ecole();
+        $auteur = $this->membre($locale, 'enseignant');
+        $seance = $this->seance($locale, $auteur, '2026-11-11 08:00:00');
+
+        $this->asTenant($this->membre($this->ecole(InstitutionMode::Klassci), 'enseignant'))
+            ->getJson(self::URL)
+            ->assertUnauthorized()
+            ->assertExactJson(MissingKlassciTokenException::payload());
+        $this->asTenant($auteur)
+            ->getJson(self::URL)
+            ->assertOk()
+            ->assertJsonPath('meta.source', 'lms_local')
+            ->assertJsonPath('data.prochaines_seances.*.id', [$seance->id]);
+    }
+
     private function aucunAppelKlassci(): void
     {
         $this->mock(KlassciProxyService::class, function (MockInterface $mock): void {
@@ -198,10 +249,14 @@ final class TableauDeBordEnseignantContractTest extends TestCase
         });
     }
 
-    /** Une séance locale, telle que `LocalSeanceCreator` l'écrit. */
-    private function seance(Institution $ecole, User $auteur, string $debut, ?Classe $classe = null): Seance
+    /**
+     * Une séance locale, telle que `LocalSeanceCreator` l'écrit.
+     *
+     * @param  array<string, mixed>  $attributs
+     */
+    private function seance(Institution $ecole, User $auteur, ?string $debut, ?Classe $classe = null, array $attributs = []): Seance
     {
-        return Seance::factory()->for($ecole)->create([
+        return Seance::factory()->for($ecole)->create($attributs + [
             'created_by' => $auteur->id,
             'classe_id' => $classe?->id,
             'date_seance' => $debut,

@@ -33,6 +33,7 @@ class Seance extends Model implements MirroredFromKlassci
     protected $fillable = [
         'klassci_seance_id',
         'klassci_matiere_id',
+        'matiere_id',
         'klassci_classe_id',
         'classe_id',
         'klassci_enseignant_id',

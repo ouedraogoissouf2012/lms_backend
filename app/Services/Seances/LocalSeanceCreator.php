@@ -6,8 +6,11 @@ namespace App\Services\Seances;
 
 use App\Exceptions\BusinessException;
 use App\Models\Classe;
+use App\Models\Matiere;
 use App\Models\Seance;
 use App\Models\User;
+use App\Services\Catalogue\CoupleDuProgramme;
+use Carbon\Carbon;
 
 /**
  * #710 — création locale. Jamais d'identifiant local dans klassci_*.
@@ -27,22 +30,31 @@ use App\Models\User;
  */
 final class LocalSeanceCreator
 {
+    public function __construct(private readonly CoupleDuProgramme $couple) {}
+
     /**
      * @param  array<string, mixed>  $payload
      *
-     * @throws BusinessException si la classe n'est pas celle de l'établissement
+     * @throws BusinessException si la classe ou la matière n'est pas celle de
+     *                           l'établissement (404), ou si la matière n'est
+     *                           pas au programme de la classe (422)
      */
     public function create(User $author, array $payload): Seance
     {
         $titre = is_string($payload['titre'] ?? null) ? $payload['titre'] : '';
-        $dateSeance = is_string($payload['date_seance'] ?? null) ? $payload['date_seance'] : '';
+        $dateSeance = $this->instant($payload['date_seance'] ?? null);
+        $classeId = $this->classeDeLEtablissement($payload, $author);
+        $matiere = $this->matiereDuProgramme($payload, $author, $classeId);
+        $nomLibre = is_string($payload['matiere_nom'] ?? null) ? $payload['matiere_nom'] : null;
 
         return Seance::query()->create([
             'titre' => $titre,
             'date_seance' => $dateSeance,
-            'matiere_nom' => is_string($payload['matiere_nom'] ?? null) ? $payload['matiere_nom'] : null,
+            // Avec un id, le libellé de la matière fait foi : le nom libre est ignoré.
+            'matiere_id' => $matiere?->id,
+            'matiere_nom' => $matiere !== null ? $matiere->libelle : $nomLibre,
             'classe_nom' => is_string($payload['classe_nom'] ?? null) ? $payload['classe_nom'] : null,
-            'classe_id' => $this->classeDeLEtablissement($payload, $author),
+            'classe_id' => $classeId,
             'created_by' => $author->id,
             'klassci_seance_id' => null,
             'klassci_enseignant_id' => null,
@@ -51,6 +63,17 @@ final class LocalSeanceCreator
             'is_active' => true,
             'institution_id' => $author->institution_id,
         ]);
+    }
+
+    /**
+     * L'instant de la séance, rangé dans le fuseau de l'application : un
+     * décalage fait foi (D4), il n'est pas ignoré par le format de la base.
+     */
+    private function instant(mixed $date): string
+    {
+        return is_string($date) && $date !== ''
+            ? Carbon::parse($date)->setTimezone(date_default_timezone_get())->format('Y-m-d H:i:s')
+            : '';
     }
 
     /**
@@ -82,9 +105,48 @@ final class LocalSeanceCreator
             ->exists();
 
         if (! $existe) {
-            throw new BusinessException('Classe introuvable dans cet établissement.', 404);
+            throw new BusinessException('Classe introuvable dans cet établissement.', 404, null, 'class_out_of_scope');
         }
 
         return (int) $classeId;
+    }
+
+    /**
+     * La matière, bornée à l'établissement de l'auteur comme la classe, et le
+     * même refus pour « n'existe pas » et « d'une autre école ». Avec une
+     * classe, elle doit être au programme de cette classe : la règle du couple,
+     * partagée avec la programmation d'une évaluation (`CoupleDuProgramme`).
+     *
+     * @param  array<string, mixed>  $payload
+     *
+     * @throws BusinessException
+     */
+    private function matiereDuProgramme(array $payload, User $author, ?int $classeId): ?Matiere
+    {
+        $matiereId = $payload['matiere_id'] ?? null;
+
+        if (! is_numeric($matiereId)) {
+            return null;
+        }
+
+        $matiere = Matiere::query()->withoutGlobalScopes()
+            ->whereKey((int) $matiereId)
+            ->where('institution_id', $author->institution_id)
+            ->first();
+
+        if ($matiere === null) {
+            throw new BusinessException('Matière introuvable dans cet établissement.', 404, null, 'subject_out_of_scope');
+        }
+
+        if ($classeId !== null && ! $this->couple->estProgramme($classeId, $matiere->id)) {
+            throw new BusinessException(
+                'Cette matière n\'est pas au programme de cette classe.',
+                422,
+                null,
+                'subject_not_in_class_program',
+            );
+        }
+
+        return $matiere;
     }
 }

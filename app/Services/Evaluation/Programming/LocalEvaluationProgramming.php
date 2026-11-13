@@ -7,7 +7,7 @@ namespace App\Services\Evaluation\Programming;
 use App\Models\Classe;
 use App\Models\Matiere;
 use App\Models\User;
-use Illuminate\Database\ConnectionInterface;
+use App\Services\Catalogue\CoupleDuProgramme;
 
 /**
  * École créée depuis le LMS : l'évaluation se programme dans le LMS, sur une
@@ -31,7 +31,7 @@ final class LocalEvaluationProgramming implements EvaluationProgramming
 {
     private const CHAMPS_KLASSCI = ['klassci_evaluation_id', 'klassci_classe_id', 'klassci_matiere_id'];
 
-    public function __construct(private readonly ConnectionInterface $db) {}
+    public function __construct(private readonly CoupleDuProgramme $couple) {}
 
     public function programmer(array $donnees, User $auteur): ProgrammedEvaluation|EvaluationProgrammingRefusal
     {
@@ -52,7 +52,7 @@ final class LocalEvaluationProgramming implements EvaluationProgramming
             ]));
         }
 
-        $formateur = $this->formateurDuCouple($classeId, $matiereId);
+        $formateur = $this->couple->formateur($classeId, $matiereId);
         $designe = $formateur !== false && ($auteur->isAdmin() || $formateur === $auteur->id);
         if (! $designe) {
             return new EvaluationProgrammingRefusal(
@@ -89,24 +89,5 @@ final class LocalEvaluationProgramming implements EvaluationProgramming
     private function matiere(int $id, User $auteur): ?Matiere
     {
         return Matiere::query()->whereKey($id)->where('institution_id', $auteur->institution_id)->first();
-    }
-
-    /**
-     * Le formateur désigné du couple (`users.id`), `null` si le couple est
-     * programmé sans formateur, `false` s'il n'est pas programmé. Le couple
-     * est unique (`LocalClasseMatiereLinker`).
-     */
-    private function formateurDuCouple(int $classeId, int $matiereId): int|false|null
-    {
-        $couple = $this->db->table('classe_matiere')
-            ->where('classe_id', $classeId)
-            ->where('matiere_id', $matiereId)
-            ->first(['enseignant_id']);
-
-        if ($couple === null) {
-            return false;
-        }
-
-        return is_numeric($couple->enseignant_id) ? (int) $couple->enseignant_id : null;
     }
 }

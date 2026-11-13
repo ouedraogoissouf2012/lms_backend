@@ -32,7 +32,7 @@ final class SeanceStoreContractTest extends TestCase
 
     private const URL = '/api/lms/seances';
 
-    private const MINIMAL = ['titre' => 'Séance minimale', 'date_seance' => '2026-11-04'];
+    private const MINIMAL = ['titre' => 'Séance minimale', 'date_seance' => '2026-11-04T09:00:00+00:00'];
 
     protected function setUp(): void
     {
@@ -54,7 +54,7 @@ final class SeanceStoreContractTest extends TestCase
         $classe = Classe::factory()->create(['institution_id' => $ecole->id, 'klassci_id' => $autonome ? null : 7001]);
 
         $reponse = $this->asTenant($this->compte($ecole, 'enseignant'))->postJson(self::URL, [
-            'titre' => 'Comptabilité générale, séance 3', 'date_seance' => '2026-11-03 08:30:00',
+            'titre' => 'Comptabilité générale, séance 3', 'date_seance' => '2026-11-03T08:30:00+00:00',
             'matiere_nom' => 'Comptabilité générale', 'classe_nom' => 'BTS Comptabilité', 'classe_id' => $classe->id,
         ])->assertCreated();
 
@@ -72,6 +72,8 @@ final class SeanceStoreContractTest extends TestCase
             yield "alias coordinator, $volet" => [$autonome, 'coordinator'];
             yield "alias teacher, $volet" => [$autonome, 'teacher'];
             yield "superAdmin, $volet" => [$autonome, 'superAdmin'];
+            // D1 : la route garde seule les rôles, et compare sans la casse.
+            yield "variante de casse (garde de la route), $volet" => [$autonome, 'Enseignant'];
         }
     }
 
@@ -90,7 +92,6 @@ final class SeanceStoreContractTest extends TestCase
         foreach (self::volets() as $volet => [$autonome]) {
             yield "étudiant (rôle de la route), $volet" => [$autonome, 'etudiant'];
             yield "admin (rôle de la route), $volet" => [$autonome, 'admin'];
-            yield "variante de casse (autorisation de la requête), $volet" => [$autonome, 'Enseignant'];
         }
     }
 
@@ -144,7 +145,7 @@ final class SeanceStoreContractTest extends TestCase
 
         $this->assertMatchesOpenApiResponse($autreEcole, self::CHEMIN, 'post');
         $this->assertOpenApiSchemaRefuseSans($autreEcole, self::CHEMIN, 'post', 'message');
-        $autreEcole->assertExactJson(['success' => false, 'message' => 'Classe introuvable dans cet établissement.']);
+        $autreEcole->assertExactJson(['success' => false, 'message' => 'Classe introuvable dans cet établissement.', 'reason' => 'class_out_of_scope']);
         self::assertSame($autreEcole->getContent(), $absente->getContent(), 'le refus ne dit pas quelle classe existe ailleurs');
         self::assertSame(0, Seance::query()->withoutGlobalScopes()->count());
     }
@@ -155,6 +156,10 @@ final class SeanceStoreContractTest extends TestCase
         foreach (self::volets() as $volet => [$autonome]) {
             yield "corps vide, $volet" => [$autonome, []];
             yield "titre trop court, date illisible, classe 0, $volet" => [$autonome, ['titre' => 'ab', 'date_seance' => 'pas une date', 'classe_id' => 0]];
+            // D4 : ISO 8601 avec décalage, rien d'autre.
+            yield "heure seule, $volet" => [$autonome, ['titre' => 'Séance', 'date_seance' => '9h30']];
+            yield "date et heure sans décalage, $volet" => [$autonome, ['titre' => 'Séance', 'date_seance' => '2026-11-04 09:00:00']];
+            yield "date seule, $volet" => [$autonome, ['titre' => 'Séance', 'date_seance' => '2026-11-04']];
         }
     }
 
@@ -167,6 +172,18 @@ final class SeanceStoreContractTest extends TestCase
 
         $this->assertMatchesOpenApiResponse($reponse, self::CHEMIN, 'post');
         $this->assertOpenApiSchemaRefuseSans($reponse, self::CHEMIN, 'post', 'errors');
+    }
+
+    /** Le décalage fait foi : l'instant est rangé dans le fuseau de l'application (UTC). */
+    #[DataProvider('volets')]
+    public function test_201_un_decalage_est_converti_dans_le_fuseau_de_l_application(bool $autonome): void
+    {
+        $reponse = $this->asTenant($this->compte($this->ecole($autonome), 'enseignant'))
+            ->postJson(self::URL, ['titre' => 'Séance du matin', 'date_seance' => '2026-11-04T10:00:00+01:00'])
+            ->assertCreated();
+
+        $this->assertMatchesOpenApiResponse($reponse, self::CHEMIN, 'post');
+        $this->assertDatabaseHas('seances', ['id' => $reponse->json('data.id'), 'date_seance' => '2026-11-04 09:00:00']);
     }
 
     private function ecole(bool $autonome): Institution

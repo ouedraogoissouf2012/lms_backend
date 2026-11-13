@@ -8,6 +8,7 @@ use App\Models\Evaluation;
 use App\Models\EvaluationSubmission;
 use App\Models\User;
 use App\Services\Evaluation\Student\LearnerEvaluationScope;
+use App\Services\Roster\RosterAuthorityFactory;
 
 /**
  * Liste (personnel) + détail des évaluations. Le détail sert aussi l'élève qui
@@ -32,9 +33,9 @@ use App\Services\Evaluation\Student\LearnerEvaluationScope;
 final class EvaluationListService
 {
     public function __construct(
-        private readonly EvaluationEnrichmentService $enrichmentService,
         private readonly AnswerKeyAudience $answerKeyAudience,
         private readonly LearnerEvaluationScope $learnerScope,
+        private readonly RosterAuthorityFactory $sources,
     ) {}
 
     /**
@@ -73,12 +74,15 @@ final class EvaluationListService
         // Porté par le modèle, il survit aux deux modes.
         $query = Evaluation::withCount('submissions')->with(['questions']);
 
+        // D72, E4b (C27) : les identifiants des filtres sont dans l'espace de l'école.
+        $catalogue = $this->catalogue();
+
         if (array_key_exists('classe_id', $filters)) {
-            $query->where('klassci_classe_id', $filters['classe_id']);
+            $query->where($catalogue->colonne(FiltreDeListe::Classe), $filters['classe_id']);
         }
 
         if (array_key_exists('matiere_id', $filters)) {
-            $query->where('klassci_matiere_id', $filters['matiere_id']);
+            $query->where($catalogue->colonne(FiltreDeListe::Matiere), $filters['matiere_id']);
         }
 
         if (array_key_exists('status', $filters)) {
@@ -97,7 +101,7 @@ final class EvaluationListService
             ->limit($limit)
             ->get();
 
-        $enrichedEvaluations = $this->enrichmentService->enrich($evaluations, $this->personalToken($user));
+        $enrichedEvaluations = $catalogue->presenter($evaluations, $user);
 
         // PERF-03 batch 2 — pour un étudiant KLASSCI sync, attacher sa dernière
         // soumission par évaluation via une seule query batched.
@@ -149,13 +153,16 @@ final class EvaluationListService
             $evaluation->questions->each->makeVisible(['correct_answers', 'explanation']);
         }
 
-        return $this->enrichmentService->enrich(collect([$evaluation]), $this->personalToken($user))[0];
+        return $this->catalogue()->presenter(collect([$evaluation]), $user)[0];
     }
 
-    private function personalToken(User $user): string
+    /**
+     * Le catalogue de l'école de l'appelant (D72, E4b), résolu À CHAQUE APPEL : ce
+     * service est reçu par le constructeur d'un contrôleur que Laravel garde sur
+     * l'objet Route (règle 3 d'ADR-EI-01). Aucun mode n'est comparé ici.
+     */
+    private function catalogue(): CatalogueDesEvaluations
     {
-        $token = $user->klassci_token;
-
-        return is_string($token) ? $token : '';
+        return $this->sources->sourceForCurrentTenant(KlassciCatalogueDesEvaluations::class, LocalCatalogueDesEvaluations::class);
     }
 }

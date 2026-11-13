@@ -70,6 +70,9 @@ final class SeanceMatiereLocaleTest extends TestCase
             ->assertCreated()
             ->assertJsonPath('data.matiere_id', $maths->id)
             ->assertJsonPath('data.matiere_nom', 'Maths');
+
+        // L'id LOCAL vit sous `matiere_id`, jamais sous un nom `klassci_*` (D132).
+        $this->assertDatabaseHas('seances', ['matiere_id' => $maths->id, 'klassci_matiere_id' => null]);
     }
 
     public function test_la_liste_sert_l_id_et_le_libelle_de_la_matiere(): void

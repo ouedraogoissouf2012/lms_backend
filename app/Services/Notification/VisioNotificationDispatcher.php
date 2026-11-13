@@ -49,6 +49,7 @@ final class VisioNotificationDispatcher
             Notification::TYPE_VISIO_SCHEDULED,
             $seanceId,
             fn (): int => $this->dispatchScheduled($seanceId, $seanceData),
+            self::idLocal($seanceData),
         );
     }
 
@@ -75,7 +76,7 @@ final class VisioNotificationDispatcher
             'seance_id' => $seanceId,
             'matiere' => $matiere,
             'enseignant' => $enseignant,
-        ];
+        ] + self::marqueLocale($seanceData);
 
         return $this->dispatcher->sendToMany($students, Notification::TYPE_VISIO_SCHEDULED, $title, $message, $data);
     }
@@ -91,6 +92,7 @@ final class VisioNotificationDispatcher
             Notification::TYPE_VISIO_STARTING,
             $seanceId,
             fn (): int => $this->dispatchStarting($seanceId, $seanceData),
+            self::idLocal($seanceData),
         );
     }
 
@@ -106,10 +108,7 @@ final class VisioNotificationDispatcher
         if ($students->isNotEmpty()) {
             $title = 'Visioconférence en cours';
             $message = "La visioconférence de {$matiere} a démarré. Rejoignez maintenant !";
-            $data = [
-                'seance_id' => $seanceId,
-                'matiere' => $matiere,
-            ];
+            $data = ['seance_id' => $seanceId, 'matiere' => $matiere] + self::marqueLocale($seanceData);
 
             $count += $this->dispatcher->sendToMany($students, Notification::TYPE_VISIO_STARTING, $title, $message, $data);
         }
@@ -117,10 +116,7 @@ final class VisioNotificationDispatcher
         if ($teacher) {
             $title = 'Votre visioconférence a démarré';
             $message = "Votre visioconférence de {$matiere} est maintenant active.";
-            $data = [
-                'seance_id' => $seanceId,
-                'matiere' => $matiere,
-            ];
+            $data = ['seance_id' => $seanceId, 'matiere' => $matiere] + self::marqueLocale($seanceData);
 
             $this->dispatcher->send($teacher, Notification::TYPE_VISIO_STARTING, $title, $message, $data);
             $count++;
@@ -207,16 +203,37 @@ final class VisioNotificationDispatcher
      */
     private function elevesDeLaSeanceLocale(array $seanceData): Collection
     {
-        $id = $seanceData['seance_locale_id'] ?? null;
-
-        if (! is_numeric($id)) {
-            return collect();
-        }
+        $id = self::idLocal($seanceData);
 
         // Hors contexte HTTP le scope est inerte ; l'audience borne la classe à l'établissement de la séance.
-        $seance = Seance::query()->withoutGlobalScope('institution')->find((int) $id);
+        $seance = $id === null ? null : Seance::query()->withoutGlobalScope('institution')->find($id);
 
         return $seance === null ? collect() : $this->audience->studentsOf($seance);
+    }
+
+    /**
+     * L'id LOCAL de la séance (`seances.id`), que chaque source déclare : la clé de
+     * la garde d'idempotence, et la marque des notifications. Null pour un job mis
+     * en file avant que la source ne le déclare.
+     *
+     * @param  array<string, mixed>  $seanceData
+     */
+    private static function idLocal(array $seanceData): ?int
+    {
+        $id = $seanceData['seance_locale_id'] ?? null;
+
+        return is_numeric($id) ? (int) $id : null;
+    }
+
+    /**
+     * @param  array<string, mixed>  $seanceData
+     * @return array{seance_locale_id?: int}
+     */
+    private static function marqueLocale(array $seanceData): array
+    {
+        $id = self::idLocal($seanceData);
+
+        return $id === null ? [] : ['seance_locale_id' => $id];
     }
 
     /**

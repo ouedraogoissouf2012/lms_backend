@@ -66,7 +66,11 @@ final class LocalClasseAudienceSource implements ClasseAudienceSource
     }
 
     /**
-     * Les élèves actifs de la classe de la séance.
+     * Les élèves actifs de la classe de la séance, selon la règle de l'admission :
+     * de l'établissement de la séance, et élèves au sens du prédicat de rôle
+     * (`isStudent()`, comme `ParticipantValidationService`), jamais un rôle écrit
+     * en dur. Un élève admis est donc toujours averti, et un compte refusé à
+     * l'entrée ne l'est pas.
      *
      * Le composite d'inscriptions répond « quelles classes pour cet élève », pas
      * « quels élèves pour cette classe » : la liste est lue sur le pivot
@@ -76,9 +80,15 @@ final class LocalClasseAudienceSource implements ClasseAudienceSource
     {
         $classe = $this->classeDe($seance)?->first();
 
-        return $classe === null
-            ? collect()
-            : $classe->etudiantsActifs()->where('users.role', 'etudiant')->get();
+        if ($classe === null) {
+            return collect();
+        }
+
+        return $classe->etudiantsActifs()
+            ->where('users.institution_id', $seance->institution_id)
+            ->get()
+            ->filter(static fn (User $eleve): bool => $eleve->isStudent())
+            ->values();
     }
 
     /**

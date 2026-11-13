@@ -272,6 +272,8 @@ final class VisioActivationService implements VisioActivationSource
         $notificationsSent = 0;
         try {
             $this->notifications->queueScheduled($seanceId, [
+                // L'id LOCAL de la séance : la clé de la garde d'idempotence (V1).
+                'seance_locale_id' => $visio->id,
                 'klassci_classe_id' => $visio->klassci_classe_id,
                 'klassci_enseignant_id' => $visio->klassci_enseignant_id,
                 'matiere_nom' => $visio->matiere_nom,

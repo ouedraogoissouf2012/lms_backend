@@ -886,12 +886,21 @@ components:
             - no_institution
 
     TableauDeBordEnseignant:
+      description: |
+        Le tableau de bord de l'enseignant, selon la source de son etablissement :
+        la charge KLASSCI relayee telle quelle, ou la charge locale, marquee
+        `meta.source: lms_local`. La marque departage les deux formes.
+      oneOf:
+        - $ref: '#/components/schemas/TableauDeBordKlassci'
+        - $ref: '#/components/schemas/TableauDeBordLocal'
+
+    TableauDeBordKlassci:
       type: object
       description: |
         Ecole en mode KLASSCI : la charge de `me/teacher-dashboard`, relayee
-        telle quelle ; ses cles ne sont pas fermees ici, et elle ne porte pas
-        `meta`. Ecole en mode autonome : la meme forme, lue en local, avec
-        `meta.source: lms_local`.
+        telle quelle ; ses cles ne sont pas fermees ici. Elle ne porte pas
+        `meta` : la propriete n'admet qu'un objet vide, ce qui refuse la marque
+        locale (OpenAPI 3.0 n'a pas d'autre facon de dire « absent » ici).
       required:
         - success
         - data
@@ -918,7 +927,6 @@ components:
                 type: object
             evaluations:
               type: array
-              description: "Ecole en mode KLASSCI seulement. ABSENT en mode autonome : non mesure, et non vide."
               items:
                 type: object
             prochaines_seances:
@@ -934,19 +942,79 @@ components:
                     total_seances:
                       type: integer
                       minimum: 0
-                      description: "Ecole en mode autonome : toutes les seances actives et datees de l'enseignant dans l'etablissement, SANS fenetre de dates (passees et a venir)."
+                    seances_effectuees:
+                      type: integer
+                      minimum: 0
+                evaluations:
+                  type: object
+        meta:
+          type: object
+          description: "Absent de la charge KLASSCI."
+          additionalProperties: false
+
+    TableauDeBordLocal:
+      type: object
+      description: |
+        Ecole en mode autonome : la meme forme, lue en local, fermee. Les
+        identifiants de `data` sont LOCAUX. Pas d'`evaluations` : non mesure, et
+        non vide.
+      additionalProperties: false
+      required:
+        - success
+        - data
+        - meta
+      properties:
+        success:
+          type: boolean
+          enum:
+            - true
+        data:
+          type: object
+          additionalProperties: false
+          required:
+            - matieres
+            - classes
+            - prochaines_seances
+            - statistiques
+          properties:
+            matieres:
+              type: array
+              items:
+                $ref: '#/components/schemas/MesMatieresCarte'
+            classes:
+              type: array
+              items:
+                $ref: '#/components/schemas/MesClassesCarte'
+            prochaines_seances:
+              type: array
+              items:
+                $ref: '#/components/schemas/SeanceCalendrier'
+            statistiques:
+              type: object
+              additionalProperties: false
+              required:
+                - heures
+              properties:
+                heures:
+                  type: object
+                  additionalProperties: false
+                  required:
+                    - total_seances
+                    - seances_effectuees
+                    - fin_estimee
+                  properties:
+                    total_seances:
+                      type: integer
+                      minimum: 0
+                      description: "Toutes les seances actives et datees de l'enseignant dans l'etablissement, SANS fenetre de dates (passees et a venir)."
                     seances_effectuees:
                       type: integer
                       minimum: 0
                     fin_estimee:
                       type: boolean
-                      description: "Ecole en mode autonome : `true`, une seance est effectuee apres sa fin ESTIMEE (deux heures apres son debut)."
-                evaluations:
-                  type: object
-                  description: "Ecole en mode KLASSCI seulement."
+                      description: "`true` : une seance est effectuee apres sa fin ESTIMEE (deux heures apres son debut)."
         meta:
           type: object
-          description: "Ecole en mode autonome seulement : les identifiants de `data` sont LOCAUX."
           additionalProperties: false
           required:
             - source

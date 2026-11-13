@@ -237,7 +237,8 @@ final class VisioNotificationDispatcher
     }
 
     /**
-     * Résout l'enseignant à notifier (si présent dans `klassci_enseignant_id`).
+     * L'enseignant KLASSCI à avertir (`klassci_enseignant_id`), cherché dans
+     * l'établissement de la séance.
      *
      * @param  array<string, mixed>  $seanceData
      */
@@ -247,49 +248,52 @@ final class VisioNotificationDispatcher
             return null;
         }
 
-        $query = User::where('klassci_id', $seanceData['klassci_enseignant_id'])
-            ->where('role', 'enseignant');
+        $etablissement = $this->etablissementDe($seanceData);
 
-        $institutionId = $this->institutionId($seanceData);
-        if ($institutionId !== null) {
-            $query->withoutGlobalScope('institution')->where('institution_id', $institutionId);
-        }
-
-        return $query->first();
+        return $etablissement === null ? null : User::query()->withoutGlobalScope('institution')
+            ->where('institution_id', $etablissement)
+            ->where('klassci_id', $seanceData['klassci_enseignant_id'])
+            ->where('role', 'enseignant')
+            ->first();
     }
 
     /**
-     * Résout la classe cible en la scopant à l'institution de la séance (#473).
-     *
-     * Appelée depuis le job SyncKlassciSeances, hors contexte HTTP : le scope
-     * global `institution` de {@see Classe} est alors inerte. Sans ce filtre
-     * explicite, `klassci_id` — non unique entre tenants — matcherait la classe
-     * d'une autre institution et notifierait les mauvais étudiants.
+     * La classe KLASSCI de la séance, cherchée dans l'établissement de la séance
+     * (#473) : `klassci_id` n'est unique que par établissement.
      *
      * @param  array<string, mixed>  $seanceData
      */
     private function resolveClasse(array $seanceData): ?Classe
     {
-        $query = Classe::where('klassci_id', $seanceData['klassci_classe_id']);
+        $etablissement = $this->etablissementDe($seanceData);
 
-        $institutionId = $this->institutionId($seanceData);
-        if ($institutionId !== null) {
-            $query->withoutGlobalScope('institution')->where('institution_id', $institutionId);
-        }
-
-        return $query->first();
+        return $etablissement === null ? null : Classe::query()->withoutGlobalScope('institution')
+            ->where('institution_id', $etablissement)
+            ->where('klassci_id', $seanceData['klassci_classe_id'])
+            ->first();
     }
 
     /**
-     * Institution de la séance si présente dans le payload (cas du job tenant-less).
-     * En contexte HTTP, absente — le scope global suffit alors et ce filtre est ignoré.
+     * L'établissement de la séance, lu sur la SÉANCE désignée par son id local, jamais
+     * sur la charge : le job tourne sans tenant (le worker oublie celui de la requête).
+     * Sans id local (job mis en file avant), repli sur `institution_id` de la charge ;
+     * sans l'un ni l'autre, null : rien n'est envoyé plutôt que deviné.
      *
      * @param  array<string, mixed>  $seanceData
      */
-    private function institutionId(array $seanceData): ?int
+    private function etablissementDe(array $seanceData): ?int
     {
-        $institutionId = $seanceData['institution_id'] ?? null;
+        $id = self::idLocal($seanceData);
+        $etablissement = $id === null
+            ? $seanceData['institution_id'] ?? null
+            : Seance::query()->withoutGlobalScope('institution')->whereKey($id)->value('institution_id');
 
-        return is_int($institutionId) ? $institutionId : null;
+        if (! is_numeric($etablissement)) {
+            $this->logger->warning('Avertissement visio sans établissement : aucun envoi');
+
+            return null;
+        }
+
+        return (int) $etablissement;
     }
 }

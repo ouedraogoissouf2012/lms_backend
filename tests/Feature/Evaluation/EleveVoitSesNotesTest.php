@@ -31,9 +31,9 @@ use Tests\TestCase;
  * la clé 0, avec le nom de la première venue.
  *
  * C30, décision de l'utilisateur (règle A) : `show_results` décide, comme sur les
- * autres routes. Une évaluation qui cache ses résultats n'apporte aucune note à
- * « Mes notes », ni dans la liste ni dans les moyennes : la même exclusion que pour
- * une note qui n'est pas finale.
+ * autres routes. Une évaluation qui cache ses résultats GARDE sa ligne dans « Mes
+ * notes », mais SANS la clé `note` (la forme de `ResultatsVisibles` sur la liste),
+ * et elle est exclue des moyennes. L'élève sait qu'elle existe sans en voir la note.
  *
  * Vraie route, vrai jeton (`asTenant`).
  */
@@ -70,8 +70,8 @@ final class EleveVoitSesNotesTest extends TestCase
         ], $this->matieres($reponse->json('data.matieres')));
     }
 
-    /** C30 : `show_results` à faux, aucune note ne sort de « Mes notes ». */
-    public function test_ecole_du_lms_une_evaluation_aux_resultats_caches_n_apporte_aucune_note(): void
+    /** C30 : `show_results` à faux, la ligne reste, sans sa note, et hors des moyennes. */
+    public function test_ecole_du_lms_une_evaluation_aux_resultats_caches_garde_sa_ligne_sans_note(): void
     {
         [$ecole, $eleve, $classe] = $this->eleveInscrit();
         $maths = $this->matiere($ecole, 'Maths');
@@ -79,10 +79,18 @@ final class EleveVoitSesNotesTest extends TestCase
         $this->note($this->evaluation($classe, $maths, 'Cachée', '1.00', ['show_results' => false]), $eleve, '20.00');
         $this->aucunAppelKlassci();
 
-        $reponse = $this->asTenant($eleve)->getJson('/api/my-grades')->assertOk();
+        $reponse = $this->asTenant($eleve)->getJson('/api/my-grades');
 
-        $reponse->assertJsonPath('data.total_evaluations', 1)->assertJsonPath('data.moyenne_generale', 10);
-        self::assertSame(['Visible'], array_column((array) $reponse->json('data.matieres.0.evaluations'), 'titre'));
+        $this->assertMatchesOpenApiResponse($reponse, '/my-grades', 'get');
+        $reponse->assertOk()
+            ->assertJsonPath('data.total_evaluations', 2)
+            ->assertJsonPath('data.matieres.0.total_evaluations', 2)
+            ->assertJsonPath('data.matieres.0.moyenne', 10)
+            ->assertJsonPath('data.moyenne_generale', 10);
+        $lignes = array_column((array) $reponse->json('data.matieres.0.evaluations'), null, 'titre');
+        self::assertEqualsCanonicalizing(['Visible', 'Cachée'], array_keys($lignes), 'la ligne cachée a disparu');
+        self::assertSame('10.00', $lignes['Visible']['note'] ?? null);
+        self::assertArrayNotHasKey('note', $lignes['Cachée']);
         self::assertStringNotContainsString('20.00', (string) $reponse->getContent());
     }
 
@@ -119,16 +127,27 @@ final class EleveVoitSesNotesTest extends TestCase
         self::assertSame([[31, 'Mathématiques KLASSCI', 15, 2]], $this->matieres($reponse->json('data.matieres')));
     }
 
-    public function test_ecole_klassci_une_evaluation_aux_resultats_caches_n_apporte_aucune_note(): void
+    /**
+     * C30, école KLASSCI : une matière dont la seule note est cachée garde sa ligne,
+     * sans note. Sa moyenne n'a aucune mesure : `null`, jamais un 0 fabriqué ; elle
+     * n'entre pas dans la moyenne générale.
+     */
+    public function test_ecole_klassci_une_evaluation_aux_resultats_caches_garde_sa_ligne_hors_des_moyennes(): void
     {
         $ecole = $this->ecole(InstitutionMode::Klassci);
         $eleve = $this->eleveKlassci($ecole);
-        $this->klassciNomme([['id' => 31, 'nom' => 'Maths']]);
+        $this->klassciNomme([['id' => 31, 'nom' => 'Maths'], ['id' => 32, 'nom' => 'Physique']]);
         $this->note($this->evaluationKlassci($ecole, 31, 'Cachée', ['show_results' => false]), $eleve, '20.00');
+        $this->note($this->evaluationKlassci($ecole, 32, 'Visible'), $eleve, '12.00');
 
-        $this->asTenant($eleve)->getJson('/api/my-grades')->assertOk()
-            ->assertJsonPath('data.total_evaluations', 0)
-            ->assertJsonPath('data.matieres', []);
+        $reponse = $this->asTenant($eleve)->getJson('/api/my-grades');
+
+        $this->assertMatchesOpenApiResponse($reponse, '/my-grades', 'get');
+        $reponse->assertOk()
+            ->assertJsonPath('data.total_evaluations', 2)
+            ->assertJsonPath('data.moyenne_generale', 12);
+        self::assertSame([[31, 'Maths', null, 1], [32, 'Physique', 12, 1]], $this->matieres($reponse->json('data.matieres')));
+        self::assertArrayNotHasKey('note', (array) $reponse->json('data.matieres.0.evaluations.0'));
     }
 
     public function test_ecole_klassci_sans_identite_klassci_reste_un_401(): void

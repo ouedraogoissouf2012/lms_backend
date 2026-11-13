@@ -7,6 +7,8 @@ namespace App\Http\Controllers\API\Proxy;
 use App\Http\Controllers\API\Proxy\Concerns\RendersKlassciProxyErrors;
 use App\Http\Controllers\API\Proxy\Concerns\ResolvesPersonalKlassciToken;
 use App\Http\Controllers\Controller;
+use App\Models\User;
+use App\Services\Dashboard\TeacherDashboardReader;
 use App\Services\KlassciProxyService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -74,34 +76,21 @@ final class ProxyDashboardController extends Controller
     /**
      * GET /api/proxy/me/teacher-dashboard — Dashboard enseignant.
      *
-     * Retourne : matieres, classes, evaluations, seances, statistiques.
+     * Même route, autre source (R4, ADR-EI-01) : la charge KLASSCI relayée telle
+     * quelle, ou la même forme lue en local dans une école en mode autonome. La
+     * source est reçue par la MÉTHODE : Laravel garde le contrôleur sur l'objet
+     * Route, et une source reçue à la construction resterait celle de la
+     * première école servie.
      */
-    public function teacherDashboard(Request $request): JsonResponse
+    public function teacherDashboard(Request $request, TeacherDashboardReader $tableau): JsonResponse
     {
         try {
             $user = $request->user();
-            if ($user === null) {
+            if (! $user instanceof User) {
                 return $this->errorResponse('Utilisateur non authentifié', 401);
             }
 
-            $klassciToken = $this->personalKlassciToken($request);
-            if ($klassciToken === null) {
-                return $this->missingKlassciTokenResponse();
-            }
-
-            Log::info('Teacher Dashboard request', [
-                'user_id' => $user->id,
-                'klassci_id' => $user->klassci_id,
-                'has_klassci_token' => ! empty($klassciToken),
-            ]);
-
-            $data = $this->klassciService->requestWithUserToken(
-                $klassciToken,
-                'me/teacher-dashboard',
-                'GET',
-            );
-
-            return response()->json($data);
+            return response()->json($tableau->dashboardFor($user));
         } catch (\Exception $e) {
             return $this->proxyErrorResponse($e);
         }

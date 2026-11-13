@@ -21,6 +21,9 @@ use App\Services\Classe\LocalInstitutionClassesReader;
 use App\Services\Classe\LocalTeacherClassesReader;
 use App\Services\Classe\TeacherClassesQueryService;
 use App\Services\Classe\TeacherClassesReader;
+use App\Services\Dashboard\KlassciTeacherDashboardReader;
+use App\Services\Dashboard\LocalTeacherDashboardReader;
+use App\Services\Dashboard\TeacherDashboardReader;
 use App\Services\Enseignant\InstitutionTeachersReader;
 use App\Services\Enseignant\KlassciInstitutionTeachersReader;
 use App\Services\Enseignant\LocalInstitutionTeachersReader;
@@ -42,7 +45,8 @@ use Illuminate\Support\ServiceProvider;
 /**
  * Liaison de l'autorité sur le catalogue pédagogique (#848), et des sources
  * qui LISENT l'école (école créée depuis le LMS : lot 1, les matières ; lot 2,
- * les classes ; lot 3, les listes de l'établissement et les séances) : la même
+ * les classes ; lot 3, les listes de l'établissement et les séances ; R4, le
+ * tableau de bord de l'enseignant) : la même
  * route sert les deux types d'école, la fabrique choisit la source.
  *
  * Fournisseur dédié, comme `RosterServiceProvider` et `RetentionServiceProvider`
@@ -82,6 +86,8 @@ final class CatalogueServiceProvider extends ServiceProvider
         SeancesListReader::class => [SeancesListQueryService::class, LocalSeancesListReader::class],
         // Lot 3b : les enseignants de l'établissement.
         InstitutionTeachersReader::class => [KlassciInstitutionTeachersReader::class, LocalInstitutionTeachersReader::class],
+        // R4 : le tableau de bord de l'enseignant, composé des sources ci-dessus.
+        TeacherDashboardReader::class => [KlassciTeacherDashboardReader::class, LocalTeacherDashboardReader::class],
     ];
 
     /**

@@ -8,6 +8,7 @@ use App\Models\Classe;
 use App\Models\Matiere;
 use App\Models\User;
 use App\Models\UserClass;
+use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -76,6 +77,36 @@ final class KlassciEnrollmentSource implements EnrollmentSource
      *
      * @return list<int>
      */
+    /**
+     * L'inverse de {@see localClasseIdsFor()} : les comptes dont une ligne
+     * `user_classes` désigne la classe KLASSCI de `$classe`. Comme le sens direct :
+     * la ligne porte l'établissement du compte, et la classe est de cet
+     * établissement ; un compte sans établissement n'est borné à aucun.
+     */
+    public function localStudentIdsOf(Classe $classe): array
+    {
+        if (! is_numeric($classe->klassci_id)) {
+            return [];
+        }
+
+        /** @var list<int> $ids */
+        $ids = DB::table('user_classes')
+            ->join('users', 'users.id', '=', 'user_classes.user_id')
+            ->where('user_classes.klassci_classe_id', (int) $classe->klassci_id)
+            ->where(static fn (Builder $compte): Builder => $compte
+                ->whereNull('users.institution_id')
+                ->orWhere(static fn (Builder $borne): Builder => $borne
+                    ->whereColumn('user_classes.institution_id', 'users.institution_id')
+                    ->where('users.institution_id', $classe->institution_id)))
+            ->distinct()
+            ->orderBy('user_classes.user_id')
+            ->pluck('user_classes.user_id')
+            ->map(static fn (mixed $id): int => (int) $id)
+            ->all();
+
+        return $ids;
+    }
+
     public function classeIdsForTeacher(User $teacher): array
     {
         $klassciEnseignantId = $teacher->klassci_enseignant_id;

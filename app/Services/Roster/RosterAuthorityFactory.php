@@ -129,8 +129,25 @@ final class RosterAuthorityFactory
      */
     public function sourceForCurrentTenant(string $klassci, string $local): object
     {
+        return $this->sourceForInstitution($this->tenants->get(), $klassci, $local);
+    }
+
+    /**
+     * La même source, pour un établissement NOMMÉ plutôt que pour le tenant
+     * courant : là où le tenant manque (un job qui ne l'entre pas), la question
+     * porte sur une entité qui désigne elle-même son école (une classe, une
+     * séance). Sans établissement, la source KLASSCI, comme sans tenant.
+     *
+     * @template TSource of object
+     *
+     * @param  class-string<TSource>  $klassci
+     * @param  class-string<TSource>  $local
+     * @return TSource
+     */
+    public function sourceForInstitution(?Institution $institution, string $klassci, string $local): object
+    {
         return $this->container->make(
-            $this->tenants->get()?->mode === InstitutionMode::Standalone ? $local : $klassci,
+            $institution?->mode === InstitutionMode::Standalone ? $local : $klassci,
         );
     }
 }

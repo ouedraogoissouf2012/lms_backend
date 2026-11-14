@@ -12,6 +12,7 @@ use App\Models\EvaluationQuestion;
 use App\Models\EvaluationSubmission;
 use App\Models\Matiere;
 use App\Models\User;
+use App\Services\Dashboard\LocalStudentDashboardReader;
 use App\Services\KlassciProxyService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
@@ -140,6 +141,28 @@ final class TableauDeBordEleveLocalTest extends TestCase
         $this->asTenant($eleve)->getJson(self::URL)->assertOk()
             ->assertJsonPath('data.classe', null)
             ->assertJsonPath('data.cours', []);
+    }
+
+    /**
+     * Sans tenant, le scope global est inerte : seule la borne EXPLICITE de la
+     * source tient l'élève à son établissement. Prouvé sur la source, appelée
+     * directement, comme une lecture hors requête.
+     */
+    public function test_sans_tenant_la_source_borne_encore_a_l_etablissement(): void
+    {
+        $this->aucunAppelKlassci();
+        $ecole = $this->ecole();
+        $eleve = $this->membre($ecole, 'etudiant');
+        $autreEcole = $this->ecole();
+        $ailleurs = $this->classe($autreEcole, 'Ailleurs');
+        $this->programme($ailleurs, $this->matiere($autreEcole, 'Grec'), null);
+        $this->inscrire($eleve, $ailleurs, 'actif');
+        $this->app->forgetScopedInstances();
+
+        $tableau = app(LocalStudentDashboardReader::class)->dashboardFor($eleve);
+
+        self::assertNull($tableau['data']['classe'] ?? 'absente');
+        self::assertSame([], $tableau['data']['cours'] ?? null);
     }
 
     public function test_ecole_klassci_la_charge_de_klassci_est_relayee_telle_quelle(): void

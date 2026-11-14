@@ -98,6 +98,24 @@ final class VisioBasculeLocaleTest extends TestCase
         self::assertSame(0, DB::table('seances')->count());
     }
 
+    /**
+     * La désactivation désigne la séance comme l'activation : par son id LOCAL
+     * seulement. Une école passée de KLASSCI au mode autonome garde des
+     * `klassci_seance_id` ; un id sans séance locale ne désactive pas, par ce
+     * second identifiant, la visio d'une AUTRE séance (revue croisée, A3).
+     */
+    public function test_desactiver_un_id_sans_seance_locale_ne_touche_aucune_autre_seance(): void
+    {
+        $miroir = $this->seanceLocale(['klassci_seance_id' => 987654, 'visio_enabled' => true, 'visio_type' => 'jitsi', 'visio_room_id' => 'salon-miroir']);
+        $avant = self::ligne($miroir);
+
+        $this->asTenant($this->coordinateur())
+            ->postJson('/api/lms/seances/987654/toggle-visio', ['enabled' => false])
+            ->assertNotFound();
+
+        self::assertSame($avant, self::ligne($miroir));
+    }
+
     public function test_la_seance_d_un_autre_etablissement_est_introuvable(): void
     {
         $seance = $this->seanceLocale();

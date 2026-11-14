@@ -49,12 +49,6 @@ parameters:
 			path: app/Http/Controllers/API/Evaluation/Student/EvaluationStudentAttemptController.php
 
 		-
-			message: '#^Property App\\Models\\EvaluationSubmission\:\:\$answers \(array\|null\) does not accept mixed\.$#'
-			identifier: assign.propertyType
-			count: 1
-			path: app/Http/Controllers/API/Evaluation/Student/EvaluationStudentAttemptController.php
-
-		-
 			message: '#^Parameter \#1 \$string of function substr expects string, mixed given\.$#'
 			identifier: argument.type
 			count: 1
@@ -633,7 +627,7 @@ parameters:
 		-
 			message: '#^Method App\\Services\\Evaluation\\EvaluationEnrichmentService\:\:enrich\(\) should return array\<int, array\<string, mixed\>\> but returns array\<mixed\>\.$#'
 			identifier: return.type
-			count: 2
+			count: 1
 			path: app/Services/Evaluation/EvaluationEnrichmentService.php
 
 		-
@@ -724,35 +718,11 @@ parameters:
 		-
 			message: '#^Argument of an invalid type mixed supplied for foreach, only iterables are supported\.$#'
 			identifier: foreach.nonIterable
-			count: 2
-			path: app/Services/Evaluation/Student/StudentGradesAggregator.php
-
-		-
-			message: '#^Binary operation "\*" between mixed and mixed results in an error\.$#'
-			identifier: binaryOp.invalid
 			count: 1
-			path: app/Services/Evaluation/Student/StudentGradesAggregator.php
-
-		-
-			message: '#^Binary operation "\+\=" between \(float\|int\) and mixed results in an error\.$#'
-			identifier: assignOp.invalid
-			count: 2
 			path: app/Services/Evaluation/Student/StudentGradesAggregator.php
 
 		-
 			message: '#^Cannot access offset ''coefficient'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 2
-			path: app/Services/Evaluation/Student/StudentGradesAggregator.php
-
-		-
-			message: '#^Cannot access offset ''id'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 1
-			path: app/Services/Evaluation/Student/StudentGradesAggregator.php
-
-		-
-			message: '#^Cannot access offset ''nom'' on mixed\.$#'
 			identifier: offsetAccess.nonOffsetAccessible
 			count: 1
 			path: app/Services/Evaluation/Student/StudentGradesAggregator.php
@@ -760,12 +730,6 @@ parameters:
 		-
 			message: '#^Cannot access offset ''note'' on mixed\.$#'
 			identifier: offsetAccess.nonOffsetAccessible
-			count: 1
-			path: app/Services/Evaluation/Student/StudentGradesAggregator.php
-
-		-
-			message: '#^Method App\\Services\\Evaluation\\Student\\StudentGradesAggregator\:\:fetchMatieresNames\(\) should return array\<int, string\> but returns array\<mixed\>\.$#'
-			identifier: return.type
 			count: 1
 			path: app/Services/Evaluation/Student/StudentGradesAggregator.php
 
@@ -792,42 +756,6 @@ parameters:
 			identifier: argument.type
 			count: 1
 			path: app/Services/Evaluation/Student/StudentGradesAggregator.php
-
-		-
-			message: '#^Possibly invalid array key type mixed\.$#'
-			identifier: offsetAccess.invalidOffset
-			count: 1
-			path: app/Services/Evaluation/Student/StudentGradesAggregator.php
-
-		-
-			message: '#^Cannot cast mixed to float\.$#'
-			identifier: cast.double
-			count: 2
-			path: app/Services/Evaluation/Teacher/TeacherEvaluationResultsService.php
-
-		-
-			message: '#^Parameter \#1 \$string1 of function strcmp expects string, mixed given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Services/Evaluation/Teacher/TeacherEvaluationResultsService.php
-
-		-
-			message: '#^Parameter \#2 \$string2 of function strcmp expects string, mixed given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Services/Evaluation/Teacher/TeacherEvaluationResultsService.php
-
-		-
-			message: '#^Using nullsafe property access "\?\-\>status" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
-			identifier: nullsafe.neverNull
-			count: 1
-			path: app/Services/Evaluation/Teacher/TeacherEvaluationResultsService.php
-
-		-
-			message: '#^Called ''pluck'' on Laravel collection, but could have been retrieved as a query\.$#'
-			identifier: larastan.noUnnecessaryCollectionCall
-			count: 1
-			path: app/Services/Evaluation/Teacher/TeacherEvaluationViewService.php
 
 		-
 			message: '#^Parameter \#1 \$category of method Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\File\>\:\:ofCategory\(\) expects string, mixed given\.$#'

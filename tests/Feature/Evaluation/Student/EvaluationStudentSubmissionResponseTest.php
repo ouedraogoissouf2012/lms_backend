@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Evaluation\Student;
 
-use App\Exceptions\MissingKlassciTokenException;
 use App\Models\Evaluation;
 use App\Models\EvaluationQuestion;
 use App\Models\EvaluationSubmission;
@@ -66,18 +65,22 @@ final class EvaluationStudentSubmissionResponseTest extends TestCase
         return $evaluation;
     }
 
-    public function test_my_submission_without_klassci_id_returns_401_error_envelope(): void
+    /**
+     * D72 (E2a), déclaré : la copie appartient à son auteur par `student_id`,
+     * l'identité KLASSCI n'est plus exigée. Sans copie à soi, le même 404 que
+     * pour une évaluation absente (il répondait 401 `klassci_token_missing`).
+     */
+    public function test_my_submission_without_klassci_id_and_without_copy_returns_404_error_envelope(): void
     {
         $this->student->forceFill(['klassci_id' => null])->save();
         Sanctum::actingAs($this->student->fresh());
 
         $response = $this->getJson('/api/evaluations/1/my-submission');
 
-        $response->assertStatus(401)
+        $response->assertStatus(404)
             ->assertExactJson([
                 'success' => false,
-                'message' => MissingKlassciTokenException::CLIENT_MESSAGE,
-                'reason' => 'klassci_token_missing',
+                'message' => 'Aucune soumission trouvée pour cette évaluation',
             ]);
     }
 
@@ -116,6 +119,8 @@ final class EvaluationStudentSubmissionResponseTest extends TestCase
             'evaluation_id' => $evaluation->id,
             'institution_id' => $this->institution->id,
             'klassci_etudiant_id' => $this->student->klassci_id,
+            // L'auteur, comme `/start` l'écrit : sans lui, la fabrique en crée un autre.
+            'student_id' => $this->student->id,
             'status' => 'corrige',
             'submitted_at' => null,
         ]);

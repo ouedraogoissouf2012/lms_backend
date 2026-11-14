@@ -321,7 +321,8 @@ final class SeancesEcoleIndependanteTest extends TestCase
         $this->asTenant($eleve)
             ->getJson(self::MES_CLASSES)
             ->assertNotFound()
-            ->assertExactJson(['success' => false, 'message' => 'Aucune classe trouvée pour cet étudiant']);
+            // Le motif distingue ce 404 d'un 404 relayé de KLASSCI (déclaré).
+            ->assertExactJson(['success' => false, 'message' => 'Aucune classe trouvée pour cet étudiant', 'reason' => 'student_without_active_class']);
     }
 
     // ───────────────────────── sans KLASSCI, et bornée
@@ -606,6 +607,8 @@ final class SeancesEcoleIndependanteTest extends TestCase
         return [
             'id' => $seance->id,
             'klassci_seance_id' => null,
+            // Le titre de la ligne (`TitreDeLaSeanceTest` en fixe les deux volets).
+            'titre' => $seance->titre,
             'date_seance' => $debut->format('Y-m-d'),
             'date_debut' => $debut->toISOString(),
             'date_fin' => $fin->toISOString(),

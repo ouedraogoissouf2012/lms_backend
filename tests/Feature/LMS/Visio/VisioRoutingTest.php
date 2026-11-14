@@ -67,12 +67,13 @@ final class VisioRoutingTest extends TestCase
         $this->postJson('/api/lms/seances/42/deactivate-visio')->assertStatus(401);
     }
 
-    public function test_deactivate_visio_blocked_for_coordinateur_by_role_middleware(): void
+    public function test_deactivate_visio_admits_coordinateur_through_role_middleware(): void
     {
-        // deactivateVisio is `role:enseignant` only (coordinateurs not allowed)
+        // deactivateVisio is `role:enseignant,coordinateur`, like activate/start/end :
+        // the coordinator passes the middleware and reaches the unknown seance (404).
         Sanctum::actingAs($this->userInInstitution('coordinateur'));
 
-        $this->postJson('/api/lms/seances/42/deactivate-visio')->assertStatus(403);
+        $this->postJson('/api/lms/seances/42/deactivate-visio')->assertNotFound();
     }
 
     public function test_start_visio_requires_auth(): void

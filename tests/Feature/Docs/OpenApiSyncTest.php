@@ -16,6 +16,9 @@ use Tests\TestCase;
  *   1. Tout endpoint documenté DOIT exister réellement en route (#213).
  *   2. Toute route réelle DOIT être documentée, ou figurer dans la dette
  *      nommée `openapi-coverage-baseline.php` (#809).
+ *   3. La dette ne garde que des dettes : une route documentée, ou disparue,
+ *      sort de la baseline. Sans cela, une route documentée puis privée de sa
+ *      description redeviendrait non documentée sans rien faire échouer.
  *
  * ## Pourquoi le second invariant a été ajouté
  *
@@ -248,6 +251,27 @@ final class OpenApiSyncTest extends TestCase
         );
     }
 
+    /**
+     * Le cliquet dans l'autre sens : une entrée de la baseline qui n'est plus une
+     * dette (route documentée, ou disparue) doit en sortir. Avant, elle n'était que
+     * signalée : la laisser ne faisait rien échouer.
+     */
+    public function test_no_settled_route_left_in_baseline(): void
+    {
+        $reglees = array_values(array_diff($this->baseline(), $this->undocumentedPaths()));
+
+        $this->assertSame(
+            [],
+            $reglees,
+            sprintf(
+                "%d entrée(s) de openapi-coverage-baseline.php ne sont plus une dette (route documentée ou disparue) :\n"
+                ."  - %s\n\n→ Retire-les de la baseline.\n",
+                count($reglees),
+                implode("\n  - ", $reglees)
+            )
+        );
+    }
+
     public function test_documentation_coverage_is_reported(): void
     {
         $total = count($this->realApiPaths());
@@ -261,16 +285,6 @@ final class OpenApiSyncTest extends TestCase
             $total > 0 ? ($covered / $total) * 100 : 0,
             count($undocumented),
         ));
-
-        // Dette remboursée : on le signale, comme scripts/check-method-sizes.php.
-        $reglees = array_values(array_diff($this->baseline(), $undocumented));
-        if ($reglees !== []) {
-            fwrite(STDOUT, sprintf(
-                "\n✅ %d route(s) désormais documentée(s) — retire-les de la baseline :\n   - %s\n",
-                count($reglees),
-                implode("\n   - ", $reglees)
-            ));
-        }
 
         $this->assertGreaterThan(0, $covered, 'Au moins quelques routes doivent être documentées.');
     }

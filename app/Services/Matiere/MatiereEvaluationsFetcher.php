@@ -7,7 +7,9 @@ namespace App\Services\Matiere;
 use App\Models\Evaluation;
 use App\Models\EvaluationSubmission;
 use App\Models\User;
+use App\Services\Evaluation\EvaluationProgrammeeLocale;
 use App\Services\Evaluation\Student\LearnerEvaluationScope;
+use App\Services\Evaluation\Student\ResultatsVisibles;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 
@@ -53,6 +55,7 @@ final class MatiereEvaluationsFetcher
     public function __construct(
         private readonly \App\Services\Evaluation\EvaluationStateService $evaluationState,
         private readonly LearnerEvaluationScope $learnerScope,
+        private readonly EvaluationProgrammeeLocale $forme,
     ) {}
 
     /**
@@ -169,8 +172,13 @@ final class MatiereEvaluationsFetcher
             ];
 
             // Sa copie, par l'UNIQUE définition de la propriété d'une copie
-            // (sans identité KLASSCI ou sans établissement : aucune).
-            $evalArray['student_submission'] = $quizLMS->submissions()->ownedBy($user)->latest()->first();
+            // (EvaluationSubmission::ownedBy : par `student_id`, ou par
+            // l'identité KLASSCI pour une ligne d'avant ; sans établissement :
+            // aucune). Sans sa note si les résultats ne sont pas visibles (C25).
+            $evalArray['student_submission'] = ResultatsVisibles::masquer(
+                $quizLMS->submissions()->ownedBy($user)->latest()->first(),
+                $quizLMS,
+            );
         } else {
             $evalArray['online_version'] = null;
             $evalArray['student_submission'] = null;
@@ -193,7 +201,9 @@ final class MatiereEvaluationsFetcher
         /** @var Collection<int, EvaluationSubmission> $userLatestSubmissions */
         $userLatestSubmissions = collect();
 
-        if ($user->klassci_id && $evaluationsLMSPuresModels->isNotEmpty()) {
+        // C32 (D72, E4c) : la copie appartient à son auteur (`ownedBy`, E2a) ; un
+        // élève sans identité KLASSCI voit aussi la sienne.
+        if ($evaluationsLMSPuresModels->isNotEmpty()) {
             $userLatestSubmissions = EvaluationSubmission::query()
                 ->whereIn('evaluation_id', $evaluationsLMSPuresModels->pluck('id'))
                 ->ownedBy($user)
@@ -203,33 +213,10 @@ final class MatiereEvaluationsFetcher
                 ->map(fn ($subs) => $subs->first()); // latest per eval
         }
 
-        return $evaluationsLMSPuresModels->map(function (Evaluation $eval) use ($userLatestSubmissions): array {
-            return [
-                'id' => 'lms_' . $eval->id,
-                'lms_id' => $eval->id,
-                'titre' => $eval->titre,
-                'description' => $eval->description,
-                'type' => 'lms_pure',
-                'matiere' => null,
-                'classe' => null,
-                'programmation' => [
-                    'date_evaluation' => $eval->date_evaluation,
-                    'duree_minutes' => $eval->duree_minutes,
-                    'coefficient' => $eval->coefficient,
-                    'bareme' => $eval->bareme,
-                ],
-                'has_online' => true,
-                'online_version' => [
-                    'id' => $eval->id,
-                    'status' => $eval->status,
-                    'is_published' => $eval->is_published,
-                    'is_locked' => $this->evaluationState->isLocked($eval),
-                    'can_be_edited' => $this->evaluationState->canBeEdited($eval),
-                    'questions_count' => $eval->questions_count,
-                    'submissions_count' => $eval->submissions_count,
-                ],
-                'student_submission' => $userLatestSubmissions->get($eval->id),
-            ];
-        })->all();
+        // La forme partagée avec les fiches de l'école créée depuis le LMS (E4c), inchangée ici.
+        return $evaluationsLMSPuresModels->map(fn (Evaluation $eval): array => $this->forme->noyau(
+            $eval,
+            $userLatestSubmissions->get($eval->id),
+        ))->all();
     }
 }

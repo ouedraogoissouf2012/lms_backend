@@ -7,6 +7,7 @@ namespace App\Services\Matiere;
 use App\Models\Classe;
 use App\Models\Matiere;
 use App\Models\User;
+use App\Services\Evaluation\EvaluationsDeLaPage;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -41,13 +42,16 @@ use Illuminate\Support\Facades\DB;
  *
  * Séances : `null`. Une séance locale ne porte que le NOM de sa matière, en
  * texte (`LocalSeanceCreator`) ; compter par ce texte devinerait. Évaluations :
- * vides, provisoirement — jusqu'à la fonction qui les construit (D72).
+ * celles de {@see EvaluationsDeLaPage} (D72, E4c), comptées telles que rendues.
  *
  * @see docs/adr/2026-10-30-ecole-independante-01-meme-route-autre-source.md
  */
 final class LocalMatiereDetailsReader implements MatiereDetailsReader
 {
-    public function __construct(private readonly MatiereLessonsAndStatsBuilder $lessons) {}
+    public function __construct(
+        private readonly MatiereLessonsAndStatsBuilder $lessons,
+        private readonly EvaluationsDeLaPage $evaluations,
+    ) {}
 
     /**
      * @return array{matiere: array<string, mixed>, matiere_id_local: int|null, combinaisons: array<int, array<string, mixed>>, enseignants: array<int, array<string, mixed>>, lessons: array<int, array<string, mixed>>, seances_programmees: array<int, array<string, mixed>>, evaluations_programmees: array<int, array<string, mixed>>, classes_concernees: array<int, array{id: int, nom: string}>, statistiques: array<string, mixed>}|null
@@ -76,6 +80,7 @@ final class LocalMatiereDetailsReader implements MatiereDetailsReader
             institutionId: $institution,
         );
         $enseignants = $this->enseignants($matiere, $classeIds, $institution);
+        $evaluations = $this->evaluations->deLaMatiere($matiere, $user);
 
         return [
             'matiere' => [
@@ -88,8 +93,8 @@ final class LocalMatiereDetailsReader implements MatiereDetailsReader
             'enseignants' => $enseignants,
             'lessons' => $lessons,
             'seances_programmees' => [],
-            'evaluations_programmees' => [],
-            'statistiques' => $this->statistiques(count($lessons), count($enseignants), $matiere->coefficient),
+            'evaluations_programmees' => $evaluations,
+            'statistiques' => $this->statistiques(count($lessons), count($enseignants), $matiere->coefficient, count($evaluations)),
             'matiere_id_local' => $matiere->id,
             'classes_concernees' => array_map(static fn (Classe $classe): array => [
                 'id' => $classe->id,
@@ -169,13 +174,13 @@ final class LocalMatiereDetailsReader implements MatiereDetailsReader
      *
      * @return array<string, int|null>
      */
-    private function statistiques(int $lessons, int $enseignants, int $coefficient): array
+    private function statistiques(int $lessons, int $enseignants, int $coefficient, int $evaluations): array
     {
         return [
             'nombre_seances_programmees' => null,
             'nombre_seances_realisees' => null,
             'taux_realisation' => null,
-            'nombre_evaluations' => 0,
+            'nombre_evaluations' => $evaluations,
             'nombre_enseignants' => $enseignants,
             'nombre_combinaisons' => 0,
             'nombre_lessons' => $lessons,

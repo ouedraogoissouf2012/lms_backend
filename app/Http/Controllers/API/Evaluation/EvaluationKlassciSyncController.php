@@ -47,12 +47,8 @@ class EvaluationKlassciSyncController extends AuthenticatedController
             return $this->errorResponse('Évaluation non trouvée', 404);
         }
 
-        // #588 : une dissertation n'est finale qu'en statut `corrige`.
-        if ($this->hasUngradedManualSubmission($evaluation)) {
-            return $this->errorResponse(
-                'Synchronisation bloquée : cette évaluation contient des questions à correction manuelle (dissertation) non encore notées.',
-                409
-            );
+        if (($refus = $this->refusAvantSynchronisation($evaluation)) !== null) {
+            return $refus;
         }
 
         try {
@@ -70,31 +66,26 @@ class EvaluationKlassciSyncController extends AuthenticatedController
                 }
             }
 
-            // Envoyer vers KLASSCI si une évaluation KLASSCI existe
-            if ($evaluation->klassci_evaluation_id) {
-                $teacherToken = $this->authenticatedUser($request)->klassci_token;
-                if (! is_string($teacherToken) || $teacherToken === '') {
-                    return MissingKlassciTokenException::jsonResponse();
-                }
-
-                $result = $this->klassciService->saveNotes(
-                    $teacherToken,
-                    $evaluation->klassci_evaluation_id,
-                    $notes
-                );
-
-                // Marquer comme synchronisé
-                $evaluation->update(['notes_published' => true]);
-                $evaluation->submissions()->update([
-                    'synced_to_klassci' => true,
-                    'synced_at' => now()
-                ]);
-
-                return $this->successResponse($result, 'Notes synchronisées vers KLASSCI');
+            // Le lien KLASSCI est acquis : refusé plus haut sinon.
+            $teacherToken = $this->authenticatedUser($request)->klassci_token;
+            if (! is_string($teacherToken) || $teacherToken === '') {
+                return MissingKlassciTokenException::jsonResponse();
             }
 
-            return $this->errorResponse('Aucune évaluation KLASSCI liée', 400);
+            $result = $this->klassciService->saveNotes(
+                $teacherToken,
+                (int) $evaluation->klassci_evaluation_id,
+                $notes
+            );
 
+            // Marquer comme synchronisé
+            $evaluation->update(['notes_published' => true]);
+            $evaluation->submissions()->update([
+                'synced_to_klassci' => true,
+                'synced_at' => now()
+            ]);
+
+            return $this->successResponse($result, 'Notes synchronisées vers KLASSCI');
         } catch (\Exception $e) {
             $this->journal->error('Erreur synchronisation KLASSCI', $e);
 
@@ -115,11 +106,8 @@ class EvaluationKlassciSyncController extends AuthenticatedController
         try {
             $evaluation = Evaluation::with('questions')->findOrFail($id);
 
-            if ($this->hasUngradedManualSubmission($evaluation)) {
-                return $this->errorResponse(
-                    'Synchronisation bloquée : cette évaluation contient des questions à correction manuelle (dissertation) non encore notées.',
-                    409
-                );
+            if (($refus = $this->refusAvantSynchronisation($evaluation)) !== null) {
+                return $refus;
             }
 
             // Récupérer toutes les soumissions non synchronisées
@@ -198,6 +186,37 @@ class EvaluationKlassciSyncController extends AuthenticatedController
                 'error' => 'Une erreur est survenue.'
             ], 500);
         }
+    }
+
+    /**
+     * Les refus communs aux deux routes de synchronisation, dans cet ordre.
+     *
+     * 1. Une évaluation sans lien KLASSCI (`klassci_evaluation_id` nul) n'a nulle
+     *    part où envoyer ses notes : celle d'une école créée depuis le LMS, ou une
+     *    ligne jamais liée. Refus motivé, en 422 (D72, E3). C'est un fait de la
+     *    donnée, pas une comparaison de mode. Avant : `sync-klassci` répondait
+     *    400 sans motif, et `sync-notes` marquait les copies synchronisées sans
+     *    rien envoyer.
+     * 2. #588 : une dissertation n'est finale qu'en statut `corrige` (409).
+     */
+    private function refusAvantSynchronisation(Evaluation $evaluation): ?JsonResponse
+    {
+        if ($evaluation->klassci_evaluation_id === null) {
+            return $this->errorResponse(
+                'Cette évaluation n\'est liée à aucune évaluation KLASSCI : ses notes restent dans le LMS.',
+                422,
+                reason: 'evaluation_not_linked_to_klassci',
+            );
+        }
+
+        if ($this->hasUngradedManualSubmission($evaluation)) {
+            return $this->errorResponse(
+                'Synchronisation bloquée : cette évaluation contient des questions à correction manuelle (dissertation) non encore notées.',
+                409
+            );
+        }
+
+        return null;
     }
 
     /**

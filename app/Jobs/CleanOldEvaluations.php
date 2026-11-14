@@ -130,6 +130,8 @@ class CleanOldEvaluations implements ShouldQueue
                 EvaluationSubmissionStatus::EnCours->value,
                 EvaluationSubmissionStatus::Soumis->value,
                 EvaluationSubmissionStatus::Corrige->value,
+                // C28 : la copie refusée hors délai est « gardée en brouillon ».
+                EvaluationSubmissionStatus::Verrouille->value,
             ])
             ->exists();
     }

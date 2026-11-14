@@ -4,15 +4,16 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\API\Evaluation\Student;
 
-use App\Exceptions\MissingKlassciTokenException;
 use App\Http\Controllers\AuthenticatedController;
 use App\Models\Evaluation;
 use App\Models\EvaluationSubmission;
 use App\Models\User;
+use App\Services\Evaluation\Student\ResultatsVisibles;
 use App\Support\Logging\CaughtExceptionLog;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 
 /**
  * Lecture de la dernière soumission étudiant pour une évaluation, avec
@@ -36,10 +37,9 @@ final class EvaluationStudentSubmissionController extends AuthenticatedControlle
     {
         try {
             $user = $this->authenticatedUser($request);
-            // #806 : même refus, même motif que le jeton absent.
-            if (!$user->klassci_id) {
-                return MissingKlassciTokenException::jsonResponse();
-            }
+            // D72, E2a : la copie appartient à son auteur par `student_id`
+            // (EvaluationSubmission::ownedBy) ; l'identité KLASSCI n'est plus
+            // exigée. Sans copie à soi : 404.
 
             $submission = $this->ownLatestCopy($id, $user);
             $evaluation = $submission?->evaluation;
@@ -58,26 +58,13 @@ final class EvaluationStudentSubmissionController extends AuthenticatedControlle
                 ? $submittedAt->copy()->addDays(self::CORRECTION_DELAY_DAYS)->toIso8601String()
                 : null;
 
-            $questions = $evaluation->questions()->get();
-            if ($evaluation->shuffle_questions) {
-                $questions = $questions->shuffle()->values();
-            }
-            // Le corrigé est masqué par défaut sur le modèle ({@see
-            // \App\Models\EvaluationQuestion}). Ce chemin — la copie de l'élève
-            // lui-même, après le délai — est le seul à le révéler, et il le
-            // fait explicitement. L'ancien `unset` faisait l'inverse : il
-            // retirait ce que tous les autres chemins laissaient passer.
-            $questionsData = $questions->map(static function ($question) use ($correctionAvailable) {
-                if ($correctionAvailable) {
-                    $question = (clone $question)->makeVisible(['correct_answers', 'explanation']);
-                }
-
-                return $question->toArray();
-            });
+            $questionsData = $this->questionsDe($evaluation, $correctionAvailable);
 
             $score = $submission->score;
             $note = $submission->note_sur_20;
-            if ($evaluation->show_results === false) {
+            // La règle « résultats visibles » (C25), partagée avec la liste et
+            // la remise.
+            if (! ResultatsVisibles::pour($evaluation)) {
                 $score = null;
                 $note = null;
             }
@@ -88,12 +75,15 @@ final class EvaluationStudentSubmissionController extends AuthenticatedControlle
                 'attempt' => $submission->attempt,
                 'status' => $submission->status,
                 'started_at' => $submission->started_at,
+                'ends_at' => $submission->ends_at,
                 'submitted_at' => $submission->submitted_at,
                 'score' => $score,
                 'note_sur_20' => $note,
                 'feedback' => $submission->feedback,
                 'questions' => $questionsData,
-                'answers' => $submission->answers ?? [],
+                // Toujours un objet JSON, `{}` quand la copie est vide : un tableau vide
+                // s'encoderait `[]`, contre la spec et la prop `Object` du front.
+                'answers' => (object) ($submission->answers ?? []),
                 'correction_available' => $correctionAvailable,
                 'correction_available_at' => $correctionAvailableAt,
                 'correction_delay_days' => self::CORRECTION_DELAY_DAYS,
@@ -110,6 +100,34 @@ final class EvaluationStudentSubmissionController extends AuthenticatedControlle
             ]);
             return $this->errorResponse('Erreur lors de la récupération de la soumission', 500);
         }
+    }
+
+    /**
+     * Les questions de la copie, dans l'ordre de l'évaluation (mélangées si elle le
+     * demande).
+     *
+     * Le corrigé est masqué par défaut sur le modèle ({@see
+     * \App\Models\EvaluationQuestion}). Ce chemin — la copie de l'élève lui-même,
+     * après le délai — est le seul à le révéler, et il le fait explicitement.
+     * L'ancien `unset` faisait l'inverse : il retirait ce que tous les autres
+     * chemins laissaient passer.
+     *
+     * @return Collection<int, array<string, mixed>>
+     */
+    private function questionsDe(Evaluation $evaluation, bool $correctionAvailable): Collection
+    {
+        $questions = $evaluation->questions()->get();
+        if ($evaluation->shuffle_questions) {
+            $questions = $questions->shuffle()->values();
+        }
+
+        return $questions->map(static function ($question) use ($correctionAvailable) {
+            if ($correctionAvailable) {
+                $question = (clone $question)->makeVisible(['correct_answers', 'explanation']);
+            }
+
+            return $question->toArray();
+        });
     }
 
     /**

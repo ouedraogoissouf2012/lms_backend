@@ -18,14 +18,15 @@ use Psr\Log\LoggerInterface;
 use Throwable;
 
 /**
- * VisioActivationService — bornes d'état "configuration" du cycle de vie visio
- * (activate / deactivate). Voir {@see VisioSessionService} pour la session live.
+ * VisioActivationService — l'activation de la visio d'une séance KLASSCI. Voir
+ * {@see VisioSessionService} pour la session live, {@see VisioDeactivation} pour
+ * la désactivation, commune aux deux types d'école.
  *
- * Extrait verbatim de `LMSVisioLifecycleController::activateVisio` &
- * `deactivateVisio` (split du controller 434l → thin + 2 services SRP).
+ * Extrait de `LMSVisioLifecycleController::activateVisio` (split du controller
+ * 434l → thin + services SRP).
  *
  * Source KLASSCI de {@see VisioActivationSource} : une école en mode autonome
- * active par {@see LocalVisioActivation}. La désactivation reste ici, commune.
+ * active par {@see LocalVisioActivation}.
  *
  * @see PRODUCTION_STANDARDS.md §1.1 (≤300l), §1.6 D (DI strict), PSR-3 logger
  */
@@ -118,67 +119,6 @@ final class VisioActivationService implements VisioActivationSource
     }
 
     /**
-     * Désactive la visio sur une séance.
-     *
-     * @return array{status:int, payload: array<string, mixed>}
-     */
-    public function deactivate(int $seanceId, User $user): array
-    {
-        try {
-            $visio = $this->resolveSeance($seanceId);
-
-            if ($visio === null || ! $visio->visio_enabled) {
-                return [
-                    'status' => 404,
-                    'payload' => [
-                        'success' => false,
-                        'message' => 'Visio non activée pour cette séance',
-                    ],
-                ];
-            }
-
-            $visio->update([
-                'visio_enabled' => false,
-                'visio_type' => null,
-                'visio_status' => null,
-                'visio_room_id' => null,
-                'visio_active' => false,
-                'visio_started_at' => null,
-                'updated_by' => $user->id,
-            ]);
-
-            $this->logger->info('Visio désactivée', [
-                'seance_id' => $seanceId,
-                'user_id' => $user->id,
-            ]);
-
-            return [
-                'status' => 200,
-                'payload' => [
-                    'success' => true,
-                    'message' => 'Visioconférence désactivée',
-                    'data' => [
-                        'visio_enabled' => false,
-                    ],
-                ],
-            ];
-        } catch (Throwable $e) {
-            $this->journal->error('Erreur désactivation visio', $e, [
-                'seance_id' => $seanceId,
-            ]);
-
-            return [
-                'status' => 500,
-                'payload' => [
-                    'success' => false,
-                    'message' => 'Erreur lors de la désactivation',
-                    'error' => 'Une erreur est survenue.',
-                ],
-            ];
-        }
-    }
-
-    /**
      * Pose l'entrée visio de la séance, SANS jamais réattribuer un salon.
      *
      * ## Un salon se frappe une fois
@@ -222,13 +162,6 @@ final class VisioActivationService implements VisioActivationSource
         ])->save();
 
         return $visio;
-    }
-
-    /** Résolution dual-ID : ID local d'abord, puis klassci_seance_id. */
-    private function resolveSeance(int $seanceId): ?Seance
-    {
-        return Seance::find($seanceId)
-            ?? Seance::where('klassci_seance_id', $seanceId)->first();
     }
 
     /** Sync classe Klassci pour rendre les notifications possibles. Échec silencieux. */

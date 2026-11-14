@@ -863,6 +863,27 @@ components:
               type: integer
               minimum: 0
 
+    RefusEleveSansClasseActive:
+      type: object
+      description: |
+        Le 404 de `/lms/seances/my-classes`. Le motif ferme `student_without_active_class`
+        dit que l eleve n a aucune classe active ; un 404 relaye de KLASSCI n en porte pas.
+      additionalProperties: false
+      required:
+        - success
+        - message
+      properties:
+        success:
+          type: boolean
+          enum:
+            - false
+        message:
+          type: string
+        reason:
+          type: string
+          enum:
+            - student_without_active_class
+
     RefusClasseEleves:
       type: object
       description: |
@@ -885,13 +906,201 @@ components:
           enum:
             - no_institution
 
+    TableauDeBordEleve:
+      description: |
+        Le tableau de bord de l'eleve, selon la source de son etablissement : la
+        charge KLASSCI relayee telle quelle, ou la charge locale, marquee
+        `meta.source: lms_local`. La marque departage les deux formes.
+      oneOf:
+        - $ref: '#/components/schemas/TableauDeBordEleveKlassci'
+        - $ref: '#/components/schemas/TableauDeBordEleveLocal'
+
+    TableauDeBordEleveKlassci:
+      type: object
+      description: |
+        Ecole en mode KLASSCI : la charge de `me/dashboard`, relayee telle quelle ;
+        ses cles ne sont pas fermees ici. Elle ne porte pas `meta` : la propriete
+        n'admet qu'un objet vide, ce qui refuse la marque locale.
+      required:
+        - success
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+        meta:
+          type: object
+          description: "Absent de la charge KLASSCI."
+          additionalProperties: false
+
+    TableauDeBordEleveLocal:
+      type: object
+      description: "Ecole en mode autonome : la meme forme, lue en local, fermee. Les identifiants sont LOCAUX."
+      additionalProperties: false
+      required:
+        - success
+        - data
+        - meta
+      properties:
+        success:
+          type: boolean
+          enum:
+            - true
+        data:
+          type: object
+          additionalProperties: false
+          required:
+            - classe
+            - cours
+            - quiz
+            - notes
+            - statistiques
+          properties:
+            classe:
+              type: object
+              nullable: true
+              additionalProperties: false
+              required:
+                - id
+                - name
+                - libelle
+                - code
+                - filiere
+                - niveau
+              properties:
+                id:
+                  type: integer
+                name:
+                  type: string
+                libelle:
+                  type: string
+                code:
+                  type: string
+                  nullable: true
+                filiere:
+                  type: object
+                  nullable: true
+                  description: "Toujours null : le LMS ne tient pas la filiere."
+                niveau:
+                  type: object
+                  nullable: true
+                  description: "Toujours null : le LMS ne tient pas le niveau."
+            cours:
+              type: array
+              items:
+                type: object
+                additionalProperties: false
+                required:
+                  - id
+                  - nom
+                  - libelle
+                properties:
+                  id:
+                    type: integer
+                  nom:
+                    type: string
+                  libelle:
+                    type: string
+            quiz:
+              type: array
+              items:
+                type: object
+                additionalProperties: false
+                required:
+                  - id
+                  - titre
+                  - type
+                  - date_evaluation
+                properties:
+                  id:
+                    type: integer
+                  titre:
+                    type: string
+                  type:
+                    type: string
+                    nullable: true
+                  date_evaluation:
+                    type: string
+                    format: date-time
+                    nullable: true
+            notes:
+              type: array
+              items:
+                type: object
+                additionalProperties: false
+                required:
+                  - id
+                  - evaluation
+                  - matiere
+                  - note
+                properties:
+                  id:
+                    type: integer
+                  evaluation:
+                    type: object
+                    additionalProperties: false
+                    required:
+                      - id
+                      - titre
+                    properties:
+                      id:
+                        type: integer
+                      titre:
+                        type: string
+                  matiere:
+                    type: object
+                    additionalProperties: false
+                    required:
+                      - id
+                      - name
+                    properties:
+                      id:
+                        type: integer
+                      name:
+                        type: string
+                  note:
+                    type: number
+            statistiques:
+              type: object
+              additionalProperties: false
+              required:
+                - moyenne_generale
+                - taux_presence
+              properties:
+                moyenne_generale:
+                  type: number
+                  nullable: true
+                taux_presence:
+                  type: number
+                  nullable: true
+                  description: "Toujours null : non mesure en local, et non 0."
+        meta:
+          type: object
+          additionalProperties: false
+          required:
+            - source
+          properties:
+            source:
+              type: string
+              enum:
+                - lms_local
+
     TableauDeBordEnseignant:
+      description: |
+        Le tableau de bord de l'enseignant, selon la source de son etablissement :
+        la charge KLASSCI relayee telle quelle, ou la charge locale, marquee
+        `meta.source: lms_local`. La marque departage les deux formes.
+      oneOf:
+        - $ref: '#/components/schemas/TableauDeBordKlassci'
+        - $ref: '#/components/schemas/TableauDeBordLocal'
+
+    TableauDeBordKlassci:
       type: object
       description: |
         Ecole en mode KLASSCI : la charge de `me/teacher-dashboard`, relayee
-        telle quelle ; ses cles ne sont pas fermees ici, et elle ne porte pas
-        `meta`. Ecole en mode autonome : la meme forme, lue en local, avec
-        `meta.source: lms_local`.
+        telle quelle ; ses cles ne sont pas fermees ici. Elle ne porte pas
+        `meta` : la propriete n'admet qu'un objet vide, ce qui refuse la marque
+        locale (OpenAPI 3.0 n'a pas d'autre facon de dire « absent » ici).
       required:
         - success
         - data
@@ -918,7 +1127,6 @@ components:
                 type: object
             evaluations:
               type: array
-              description: "Ecole en mode KLASSCI seulement. ABSENT en mode autonome : non mesure, et non vide."
               items:
                 type: object
             prochaines_seances:
@@ -934,19 +1142,79 @@ components:
                     total_seances:
                       type: integer
                       minimum: 0
-                      description: "Ecole en mode autonome : toutes les seances actives et datees de l'enseignant dans l'etablissement, SANS fenetre de dates (passees et a venir)."
+                    seances_effectuees:
+                      type: integer
+                      minimum: 0
+                evaluations:
+                  type: object
+        meta:
+          type: object
+          description: "Absent de la charge KLASSCI."
+          additionalProperties: false
+
+    TableauDeBordLocal:
+      type: object
+      description: |
+        Ecole en mode autonome : la meme forme, lue en local, fermee. Les
+        identifiants de `data` sont LOCAUX. Pas d'`evaluations` : non mesure, et
+        non vide.
+      additionalProperties: false
+      required:
+        - success
+        - data
+        - meta
+      properties:
+        success:
+          type: boolean
+          enum:
+            - true
+        data:
+          type: object
+          additionalProperties: false
+          required:
+            - matieres
+            - classes
+            - prochaines_seances
+            - statistiques
+          properties:
+            matieres:
+              type: array
+              items:
+                $ref: '#/components/schemas/MesMatieresCarte'
+            classes:
+              type: array
+              items:
+                $ref: '#/components/schemas/MesClassesCarte'
+            prochaines_seances:
+              type: array
+              items:
+                $ref: '#/components/schemas/SeanceCalendrier'
+            statistiques:
+              type: object
+              additionalProperties: false
+              required:
+                - heures
+              properties:
+                heures:
+                  type: object
+                  additionalProperties: false
+                  required:
+                    - total_seances
+                    - seances_effectuees
+                    - fin_estimee
+                  properties:
+                    total_seances:
+                      type: integer
+                      minimum: 0
+                      description: "Toutes les seances actives et datees de l'enseignant dans l'etablissement, SANS fenetre de dates (passees et a venir)."
                     seances_effectuees:
                       type: integer
                       minimum: 0
                     fin_estimee:
                       type: boolean
-                      description: "Ecole en mode autonome : `true`, une seance est effectuee apres sa fin ESTIMEE (deux heures apres son debut)."
-                evaluations:
-                  type: object
-                  description: "Ecole en mode KLASSCI seulement."
+                      description: "`true` : une seance est effectuee apres sa fin ESTIMEE (deux heures apres son debut)."
         meta:
           type: object
-          description: "Ecole en mode autonome seulement : les identifiants de `data` sont LOCAUX."
           additionalProperties: false
           required:
             - source
@@ -1103,7 +1371,14 @@ components:
                 type: object
             evaluations_programmees:
               type: array
-              description: "Toujours `[]` dans une ecole creee depuis le LMS, en attendant ses evaluations."
+              description: |
+                Ecole creee depuis le LMS (D72, E4c) : les evaluations de la classe,
+                selon l appelant (l eleve sa liste, l enseignant les siennes brouillons
+                compris, la gestion toutes). Chaque element porte `id` (l id LMS, que
+                la fiche ouvre), `lms_id`, `duree_minutes`, `matiere {id, nom}`,
+                `programmation.window`, `has_online: true`, `online_version.id` et
+                `source: lms_local` ; la copie de l eleve est masquee si les resultats
+                sont caches (C25).
               items:
                 type: object
             statistiques:
@@ -1128,6 +1403,7 @@ components:
                   nullable: true
                 nombre_evaluations_programmees:
                   type: integer
+                  description: "Le nombre d elements de `evaluations_programmees`."
                 nombre_matieres:
                   type: integer
                   nullable: true
@@ -1401,7 +1677,7 @@ components:
         nb_evaluations:
           type: integer
           nullable: true
-          description: "0 dans une ecole creee depuis le LMS (provisoire, D72)."
+          description: "Ecole creee depuis le LMS : toutes les evaluations de l etablissement dans la matiere (D72, E4c)."
         nb_seances_programmees:
           type: integer
           nullable: true
@@ -1507,6 +1783,10 @@ components:
         klassci_seance_id:
           type: integer
           nullable: true
+        titre:
+          type: string
+          nullable: true
+          description: "Le titre de la seance, lu sur la ligne dans les deux types d'ecole. `null` sans titre (absent ou vide) : jamais remplace par le nom de la matiere."
         date_seance:
           type: string
           nullable: true
@@ -1719,6 +1999,28 @@ components:
         statistiques:
           type: object
           description: "Ecole creee depuis KLASSCI seulement."
+
+    RefusApercuEvaluation:
+      type: object
+      description: |
+        Le 403 de `/evaluations/{id}/preview`. Le motif ferme
+        `preview_requires_finished_evaluation` dit qu un coordinateur ne previsualise
+        que les evaluations terminees ; le refus d acces de la requete n en porte pas.
+      additionalProperties: false
+      required:
+        - success
+        - message
+      properties:
+        success:
+          type: boolean
+          enum:
+            - false
+        message:
+          type: string
+        reason:
+          type: string
+          enum:
+            - preview_requires_finished_evaluation
 
     MessageOnly:
       type: object
@@ -2166,6 +2468,113 @@ components:
         message:
           type: string
 
+    VisioDemarree:
+      type: object
+      additionalProperties: false
+      required:
+        - success
+        - message
+        - data
+      properties:
+        success:
+          type: boolean
+          enum:
+            - true
+        message:
+          type: string
+        data:
+          type: object
+          additionalProperties: false
+          required:
+            - visio_status
+            - visio_started_at
+            - visio_room_id
+          properties:
+            visio_status:
+              type: string
+              enum:
+                - active
+            visio_started_at:
+              type: string
+              format: date-time
+            visio_room_id:
+              type: string
+              nullable: true
+
+    VisioTerminee:
+      type: object
+      additionalProperties: false
+      required:
+        - success
+        - message
+        - data
+      properties:
+        success:
+          type: boolean
+          enum:
+            - true
+        message:
+          type: string
+        data:
+          type: object
+          additionalProperties: false
+          required:
+            - visio_status
+            - visio_ended_at
+            - participants_count
+          properties:
+            visio_status:
+              type: string
+              enum:
+                - terminee
+            visio_ended_at:
+              type: string
+              format: date-time
+            participants_count:
+              type: integer
+              minimum: 0
+              description: "Les participants encore connectes au moment de terminer."
+
+    VisioDesactivee:
+      type: object
+      additionalProperties: false
+      required:
+        - success
+        - message
+        - data
+      properties:
+        success:
+          type: boolean
+          enum:
+            - true
+        message:
+          type: string
+        data:
+          type: object
+          additionalProperties: false
+          required:
+            - visio_enabled
+          properties:
+            visio_enabled:
+              type: boolean
+              enum:
+                - false
+
+    VisioEtatRefuse:
+      type: object
+      additionalProperties: false
+      description: "L'etat de la visio ne permet pas le geste : la demarrer sans qu'elle soit activee, la terminer sans qu'elle soit active."
+      required:
+        - success
+        - message
+      properties:
+        success:
+          type: boolean
+          enum:
+            - false
+        message:
+          type: string
+
     VisioGestionRefusee:
       type: object
       additionalProperties: false
@@ -2572,10 +2981,12 @@ components:
       type: object
       nullable: true
       description: |
-        Fenetre de passage relayee depuis KLASSCI (`programmation.window`).
-        `null` quand l evaluation n en a pas, ou quand KLASSCI n a pas pu etre
-        joint. Le LMS ne lit que les cles ci-dessous ; les autres passent telles
-        quelles.
+        Fenetre de passage. Ecole creee depuis KLASSCI : relayee depuis KLASSCI
+        (`programmation.window`), `null` quand l evaluation n en a pas, ou quand
+        KLASSCI n a pas pu etre joint. Ecole creee depuis le LMS (D72, E2b) :
+        calculee sur la ligne ; `start_at` et `end_at` sont `null` quand
+        l evaluation n a pas de date (fenetre fermee). Le LMS ne lit que les
+        cles ci-dessous ; les autres passent telles quelles.
       additionalProperties: true
       properties:
         is_open:
@@ -2587,9 +2998,11 @@ components:
         start_at:
           type: string
           format: date-time
+          nullable: true
         end_at:
           type: string
           format: date-time
+          nullable: true
 
     EvaluationSubmissionRecord:
       type: object
@@ -2610,15 +3023,30 @@ components:
           nullable: true
         klassci_etudiant_id:
           type: integer
+          nullable: true
+          description: "Nul pour une copie d une ecole creee depuis le LMS (D72) : l auteur est `student_id`."
         attempt:
           type: integer
         status:
           type: string
-          enum: [en_cours, soumis, corrige]
+          enum: [en_cours, soumis, corrige, verrouille]
+          description: |
+            `verrouille` (C28) : remise refusee apres l echeance. La copie garde ses
+            reponses, n est pas notee et compte comme une tentative. Une tentative
+            `en_cours` dont l echeance est depassee (marge comprise) se LIT
+            `verrouille`.
         started_at:
           type: string
           format: date-time
           nullable: true
+        ends_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: |
+            Echeance de la tentative (C28), ecrite au demarrage et figee : la plus
+            proche de la fin de la fenetre et de `started_at + duree_minutes`. Nulle
+            pour l entrainement et pour une copie d avant C28 : pas d echeance.
         submitted_at:
           type: string
           format: date-time
@@ -2669,6 +3097,12 @@ components:
         updated_at:
           type: string
           format: date-time
+        evaluation:
+          description: "La relation chargee, presente seulement quand la route la charge (la remise)."
+          $ref: '#/components/schemas/EvaluationRecord'
+        student:
+          description: "L auteur de la copie, relation chargee, presente seulement quand la route la charge (la notation)."
+          $ref: '#/components/schemas/User'
 
     EvaluationRecord:
       type: object
@@ -2769,6 +3203,176 @@ components:
           format: date-time
           nullable: true
 
+    EvaluationEnrichie:
+      type: object
+      description: |
+        Une evaluation enrichie pour le personnel (`EvaluationEnrichmentService`) :
+        les champs de `EvaluationRecord` (portes par `additionalProperties`), et les
+        cles ci-dessous. Les identifiants a plat suivent le type d ecole : les
+        `klassci_*` dans une ecole creee depuis KLASSCI, `classe_id`, `matiere_id` et
+        `enseignant_id` dans une ecole creee depuis le LMS (D72) ; jamais un id local
+        sous un nom `klassci_*` (D132).
+
+        Si le catalogue KLASSCI est injoignable, l enrichissement est fail-soft :
+        l evaluation est rendue SANS ses cles calculees. Seul `id` est donc garanti.
+      required:
+        - id
+      additionalProperties: true
+      properties:
+        id:
+          type: integer
+        institution_id:
+          type: integer
+        titre:
+          type: string
+        klassci_evaluation_id:
+          type: integer
+          nullable: true
+        klassci_classe_id:
+          type: integer
+          nullable: true
+        klassci_matiere_id:
+          type: integer
+          nullable: true
+        klassci_enseignant_id:
+          type: integer
+          nullable: true
+        classe_id:
+          type: integer
+          nullable: true
+        matiere_id:
+          type: integer
+          nullable: true
+        enseignant_id:
+          type: integer
+          nullable: true
+        questions:
+          type: array
+          items:
+            $ref: '#/components/schemas/EvaluationQuestionPublic'
+        submissions:
+          type: array
+          items:
+            $ref: '#/components/schemas/EvaluationSubmissionRecord'
+        classe:
+          type: object
+          nullable: true
+          description: |
+            Relayee depuis le catalogue KLASSCI, ou, sans lui, faite du
+            libelle pose a la creation (`classe_nom`) : `id` est alors
+            celui de KLASSCI s il existe, sinon la classe locale.
+          additionalProperties: true
+          properties:
+            id:
+              type: integer
+              nullable: true
+            nom:
+              type: string
+              nullable: true
+        matiere:
+          type: object
+          nullable: true
+          description: "Meme regle que `classe`, avec `matiere_nom`."
+          additionalProperties: true
+          properties:
+            id:
+              type: integer
+              nullable: true
+            nom:
+              type: string
+              nullable: true
+        enseignant:
+          type: object
+          nullable: true
+          description: |
+            L enseignant designe par son identite KLASSCI, sinon l auteur
+            local (`enseignant_id`, dans l etablissement de l evaluation).
+          properties:
+            id:
+              type: integer
+            nom:
+              type: string
+            email:
+              type: string
+              nullable: true
+        enseignant_nom:
+          type: string
+          nullable: true
+        date_evaluation_formatted:
+          type: string
+          nullable: true
+          example: "28/09/2026 à 16:44"
+        date_evaluation_short:
+          type: string
+          nullable: true
+          example: "28/09/2026"
+        is_locked:
+          type: boolean
+        can_be_edited:
+          type: boolean
+        submissions_count:
+          type: integer
+        questions_count:
+          type: integer
+        effective_status:
+          type: string
+        student_submission:
+          nullable: true
+          description: |
+            Liste du personnel : la derniere copie du compte appelant quand il porte
+            une identite KLASSCI, sinon absente.
+          oneOf:
+            - $ref: '#/components/schemas/EvaluationSubmissionRecord'
+
+    EvaluationQuestionDeLaCopie:
+      type: object
+      additionalProperties: false
+      description: |
+        Une question vue dans « ma copie ». Le corrige (`correct_answers`, `explanation`)
+        n est present qu une fois `correction_available` vrai. Schema FERME : il remplace
+        un `allOf` que le validateur du depot refuse.
+      properties:
+        id:
+          type: integer
+        evaluation_id:
+          type: integer
+        question:
+          type: string
+        type:
+          type: string
+          enum: [qcm, qcm_multiple, vrai_faux, reponse_courte, dissertation]
+        ordre:
+          type: integer
+        points:
+          $ref: '#/components/schemas/Decimal2'
+        options:
+          nullable: true
+          type: array
+          items:
+            type: string
+        is_required:
+          type: boolean
+        institution_id:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        correct_answers:
+          type: array
+          nullable: true
+          description: "Present seulement une fois `correction_available` vrai : des libelles, ou des indices d option."
+          items:
+            oneOf:
+              - type: string
+              - type: integer
+        explanation:
+          type: string
+          nullable: true
+          description: "Present seulement une fois `correction_available` vrai"
+
     EvaluationQuestionPublic:
       type: object
       description: "Une question SANS son corrige (`correct_answers` et `explanation` sont masques sur le modele)."
@@ -2788,7 +3392,10 @@ components:
           $ref: '#/components/schemas/Decimal2'
         options:
           nullable: true
-          description: "Choix proposes (qcm) ; `null` pour les autres types."
+          type: array
+          description: "Choix proposes (qcm), une liste de libelles ; `null` pour les autres types."
+          items:
+            type: string
         is_required:
           type: boolean
         institution_id:
@@ -3195,7 +3802,7 @@ components:
           properties:
             seance_id:
               type: integer
-              description: "L'identifiant KLASSCI recu dans le chemin."
+              description: "L'identifiant recu dans le chemin : KLASSCI en mode KLASSCI, local en mode autonome."
             visio_enabled:
               type: boolean
             visio_type:
@@ -3208,7 +3815,7 @@ components:
             visio_room_id:
               type: string
               nullable: true
-              description: "Un salon neuf a chaque activation, y compris d'une seance deja activee ; null a la desactivation."
+              description: "Mode KLASSCI : un salon neuf a chaque activation, y compris d'une seance deja activee. Mode autonome : le salon deja attribue est garde. Null a la desactivation."
             visio_active:
               type: boolean
             notifications_sent:
@@ -4289,11 +4896,14 @@ paths:
               schema:
                 $ref: '#/components/schemas/RefusClasseEleves'
         '404':
-          description: "Aucune classe : `Aucune classe trouvee pour cet etudiant`."
+          description: |
+            - `reason: student_without_active_class` : l eleve n a aucune classe active
+              (« Aucune classe trouvee pour cet etudiant »), dans les deux types d ecole ;
+            - sans ce motif : un 404 relaye de KLASSCI.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/RefusClasseEleves'
+                $ref: '#/components/schemas/RefusEleveSansClasseActive'
         '500':
           description: "Defaillance interne, rapportee une fois au journal, sans le message ni les valeurs d'une requete."
           content:
@@ -4399,33 +5009,239 @@ paths:
               schema:
                 $ref: '#/components/schemas/VisioErreurInterne'
 
-  /lms/seances/{seanceId}/toggle-visio:
+  /lms/seances/{seanceId}/start-visio:
     post:
       tags:
         - Visio
-      summary: "Activer ou desactiver la visio d'une seance KLASSCI"
+      summary: "Demarrer la visio d'une seance"
       description: |
-        Reserve aux roles coordinateur et superAdmin.
+        Reserve aux roles enseignant et coordinateur. Seul qui gere la seance
+        agit : son enseignant (`klassci_enseignant_id` en mode KLASSCI,
+        `created_by` pour une seance locale) ou le personnel de gestion de
+        l'etablissement (`VisioActorAuthorization::canManage`). La seance se lit
+        en local, dans les deux types d'ecole, sans appel KLASSCI.
 
-        `seanceId` est l'identifiant KLASSCI de la seance. La bascule ne verifie
-        pas que KLASSCI connait cette seance : un identifiant inconnu cree une
-        seance locale sous cet identifiant, et la reponse est 200. Chaque
-        activation tire un salon neuf, y compris sur une seance deja activee :
-        l'adresse precedente cesse de valoir.
-
-        Sans jeton KLASSCI, la route rend le 401 `klassci_token_missing` avant
-        toute ecriture. Le refus porte sur le jeton du compte, pas sur le type
-        ni le mode de l'ecole. Un compte d'une ecole creee depuis le LMS n'a
-        jamais de jeton KLASSCI : il recoit ce 401. Une ecole creee depuis
-        KLASSCI passee en mode autonome garde les jetons de ses comptes : ils
-        ne sont pas refuses.
+        La visio passe de `programmee` a `active` ; les eleves de la classe et
+        l'enseignant sont avertis (planifie, jamais pendant la requete).
       security:
         - sanctum: []
       parameters:
         - name: seanceId
           in: path
           required: true
-          description: "Identifiant KLASSCI de la seance."
+          description: "Identifiant KLASSCI de la seance (ecole en mode KLASSCI), ou son identifiant local (ecole en mode autonome). L'id local est lu d'abord."
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: "Visio demarree."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VisioDemarree'
+        '400':
+          description: "La visio de la seance n'est pas activee."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VisioEtatRefuse'
+        '401':
+          description: "Jeton porteur absent ou invalide. Aucune garde de jeton KLASSCI sur cette route."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefusKlassci'
+        '403':
+          description: |
+            Sans `reason` : role non admis (garde de role), ou etablissement
+            desactive. Avec `reason: no_institution` : compte sans
+            etablissement. Avec `reason: actor_not_authorized` : le compte ne
+            gere pas la seance (ni son enseignant, ni le personnel de gestion de
+            l'etablissement), refuse avant toute ecriture.
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/SeanceLocaleInterdite'
+                  - $ref: '#/components/schemas/VisioGestionRefusee'
+        '404':
+          description: "Seance introuvable dans l'etablissement du compte."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SeanceLocaleRefus'
+        '500':
+          description: |
+            Erreur interne. Rattrapee par le service : avec `error`. Non
+            rattrapee (gestionnaire global) : sans `error`.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VisioErreurInterne'
+
+  /lms/seances/{seanceId}/end-visio:
+    post:
+      tags:
+        - Visio
+      summary: "Terminer la visio d'une seance"
+      description: |
+        Reserve aux roles enseignant et coordinateur. Seul qui gere la seance
+        agit : son enseignant (`klassci_enseignant_id` en mode KLASSCI,
+        `created_by` pour une seance locale) ou le personnel de gestion de
+        l'etablissement (`VisioActorAuthorization::canManage`). La seance se lit
+        en local, dans les deux types d'ecole, sans appel KLASSCI.
+
+        La visio passe de `active` a `terminee`.
+      security:
+        - sanctum: []
+      parameters:
+        - name: seanceId
+          in: path
+          required: true
+          description: "Identifiant KLASSCI de la seance (ecole en mode KLASSCI), ou son identifiant local (ecole en mode autonome). L'id local est lu d'abord."
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: "Visio terminee."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VisioTerminee'
+        '400':
+          description: "La visio de la seance n'est pas active."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VisioEtatRefuse'
+        '401':
+          description: "Jeton porteur absent ou invalide. Aucune garde de jeton KLASSCI sur cette route."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefusKlassci'
+        '403':
+          description: |
+            Sans `reason` : role non admis (garde de role), ou etablissement
+            desactive. Avec `reason: no_institution` : compte sans
+            etablissement. Avec `reason: actor_not_authorized` : le compte ne
+            gere pas la seance (ni son enseignant, ni le personnel de gestion de
+            l'etablissement), refuse avant toute ecriture.
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/SeanceLocaleInterdite'
+                  - $ref: '#/components/schemas/VisioGestionRefusee'
+        '404':
+          description: "Seance introuvable dans l'etablissement du compte."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SeanceLocaleRefus'
+        '500':
+          description: |
+            Erreur interne. Rattrapee par le service : avec `error`. Non
+            rattrapee (gestionnaire global) : sans `error`.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VisioErreurInterne'
+
+  /lms/seances/{seanceId}/deactivate-visio:
+    post:
+      tags:
+        - Visio
+      summary: "Desactiver la visio d'une seance"
+      description: |
+        Reserve aux roles enseignant et coordinateur. Seul qui gere la seance
+        agit : son enseignant (`klassci_enseignant_id` en mode KLASSCI,
+        `created_by` pour une seance locale) ou le personnel de gestion de
+        l'etablissement (`VisioActorAuthorization::canManage`). La seance se lit
+        en local, dans les deux types d'ecole, sans appel KLASSCI.
+
+        La visio est retiree de la seance : salon, type et statut remis a nul.
+      security:
+        - sanctum: []
+      parameters:
+        - name: seanceId
+          in: path
+          required: true
+          description: "Identifiant KLASSCI de la seance (ecole en mode KLASSCI), ou son identifiant local (ecole en mode autonome). L'id local est lu d'abord."
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: "Visio desactivee."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VisioDesactivee'
+        '401':
+          description: "Jeton porteur absent ou invalide. Aucune garde de jeton KLASSCI sur cette route."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefusKlassci'
+        '403':
+          description: |
+            Sans `reason` : role non admis (garde de role), ou etablissement
+            desactive. Avec `reason: no_institution` : compte sans
+            etablissement. Avec `reason: actor_not_authorized` : le compte ne
+            gere pas la seance (ni son enseignant, ni le personnel de gestion de
+            l'etablissement), refuse avant toute ecriture.
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/SeanceLocaleInterdite'
+                  - $ref: '#/components/schemas/VisioGestionRefusee'
+        '404':
+          description: "Seance introuvable dans l'etablissement du compte, ou visio non activee."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SeanceLocaleRefus'
+        '500':
+          description: |
+            Erreur interne. Rattrapee par le service : avec `error`. Non
+            rattrapee (gestionnaire global) : sans `error`.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VisioErreurInterne'
+
+  /lms/seances/{seanceId}/toggle-visio:
+    post:
+      tags:
+        - Visio
+      summary: "Activer ou desactiver la visio d'une seance"
+      description: |
+        Reserve aux roles coordinateur et superAdmin. La source est celle du
+        MODE de l'etablissement (ADR-EI-01, « meme route, autre source »).
+
+        **Ecole en mode KLASSCI.** `seanceId` est l'identifiant KLASSCI de la
+        seance. La bascule ne verifie pas que KLASSCI connait cette seance : un
+        identifiant inconnu cree une seance locale sous cet identifiant, et la
+        reponse est 200. Chaque activation tire un salon neuf, y compris sur une
+        seance deja activee : l'adresse precedente cesse de valoir. Sans jeton
+        KLASSCI, la route rend le 401 `klassci_token_missing` avant toute
+        ecriture.
+
+        **Ecole en mode autonome.** `seanceId` est l'id LOCAL de la seance,
+        cherchee dans l'etablissement, sans jeton ni appel KLASSCI. Activer est
+        l'activation locale (`activate-visio`) : le salon deja attribue est
+        garde, et les eleves de la classe sont avertis. Desactiver est la
+        desactivation commune (`deactivate-visio`). Une seance inconnue, ou une
+        visio deja desactivee, rend 404. Une ecole creee depuis KLASSCI passee
+        en mode autonome est servie ainsi, jetons ou non.
+      security:
+        - sanctum: []
+      parameters:
+        - name: seanceId
+          in: path
+          required: true
+          description: "Identifiant KLASSCI de la seance (ecole en mode KLASSCI), ou son identifiant local (ecole en mode autonome)."
           schema:
             type: integer
       requestBody:
@@ -4443,9 +5259,9 @@ paths:
                 $ref: '#/components/schemas/VisioBasculee'
         '401':
           description: |
-            Jeton porteur absent ou invalide (sans `reason`), ou compte sans jeton
-            KLASSCI (`reason: klassci_token_missing`). Voir la reponse partagee
-            `KlassciUnauthorized`.
+            Jeton porteur absent ou invalide (sans `reason`), ou, dans une ecole
+            en mode KLASSCI, compte sans jeton KLASSCI (`reason:
+            klassci_token_missing`). Voir la reponse partagee `KlassciUnauthorized`.
           content:
             application/json:
               schema:
@@ -4458,6 +5274,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SeanceLocaleInterdite'
+        '404':
+          description: "Ecole en mode autonome : seance inconnue dans l'etablissement, ou visio deja desactivee."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SeanceLocaleRefus'
         '422':
           description: "Charge invalide"
           content:
@@ -6599,6 +7421,77 @@ paths:
               schema:
                 $ref: '#/components/schemas/KlassciIndisponible'
 
+  /proxy/me/dashboard:
+    get:
+      tags:
+        - Proxy / KLASSCI
+      operationId: studentDashboard
+      summary: "Le tableau de bord de l'eleve"
+      description: |
+        La source est choisie par le mode DECLARE de l'ecole, au point de
+        liaison, jamais par le client.
+
+        **Ecole en mode KLASSCI.** La reponse de `me/dashboard`, relayee telle
+        quelle avec le jeton KLASSCI du compte. Sans ce jeton : 401
+        `klassci_token_missing`. Une panne ou un circuit ouvert rendent le 503
+        avec `Retry-After` ; un refus de KLASSCI est relaye. La charge ne porte
+        pas `meta`.
+
+        **Ecole en mode autonome.** La meme forme, lue en local, sans jeton ni
+        appel KLASSCI, avec les identifiants LOCAUX, marquee
+        `meta.source: lms_local` :
+        - `classe` : sa classe a inscription active, dans son etablissement (la
+          plus ancienne inscription s'il en a plusieurs) ; `filiere` et
+          `niveau` valent `null` ;
+        - `cours` : les matieres au programme de ses classes actives ;
+        - `quiz` : les evaluations qu'il voit, l'audience de sa liste ;
+        - `notes` : ses notes finales visibles, la plus recente d'abord ; une
+          note aux resultats caches n'y figure pas ;
+        - `statistiques.moyenne_generale` : `null` sans note ;
+          `statistiques.taux_presence` : `null`, non mesure.
+        Toutes ses inscriptions inactives : 409 `enrolment_not_active`. Aucune
+        inscription : un tableau vide, `classe` a `null`.
+      security:
+        - sanctum: []
+      responses:
+        '200':
+          description: "Le tableau de bord de l'eleve"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TableauDeBordEleve'
+        '401':
+          description: |
+            Jeton porteur absent ou invalide (sans `reason`). Ecole en mode
+            KLASSCI : compte sans jeton KLASSCI (`reason: klassci_token_missing`),
+            ou session refusee par KLASSCI (`reason: klassci_session_expired`).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefusKlassci'
+        '409':
+          description: "Ecole en mode autonome : toutes les inscriptions de l'eleve sont inactives (`enrolment_not_active`)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefusMotive'
+        '500':
+          description: "Defaillance interne : « Service indisponible. Veuillez reessayer. »"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VisioErreurInterne'
+        '503':
+          description: "Ecole en mode KLASSCI : KLASSCI indisponible (panne, circuit ouvert, configuration absente)."
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/KlassciIndisponible'
+
   /proxy/me/teacher-dashboard:
     get:
       tags:
@@ -6892,8 +7785,8 @@ paths:
         meme hors programme, en identifiants LOCAUX, sans aucun appel a
         KLASSCI. Ni heures, ni seances, ni filieres, ni niveaux n'existent en
         local : `heures_total` et `nb_seances_programmees` valent `null`,
-        `combinaisons` est vide ; `nb_evaluations` vaut 0, aucune evaluation
-        n'existant encore (provisoire, D72) ; `nb_lecons` compte les lecons de
+        `combinaisons` est vide ; `nb_evaluations` compte toutes les evaluations
+        de l etablissement dans la matiere (D72, E4c) ; `nb_lecons` compte les lecons de
         la matiere, tous statuts ; `couleur` est la couleur par defaut.
       security:
         - sanctum: []
@@ -7088,12 +7981,20 @@ paths:
       tags:
         - Proxy / KLASSCI
       summary: "Get evaluations"
+      description: |
+        La programmation des evaluations du porteur, par type d ecole (ADR-EI-01) :
+        - ecole creee depuis KLASSCI : relayee de KLASSCI avec le jeton personnel
+          (filtres `matiere_id`, `classe_id`, `statut`) ; sans jeton, 401 ;
+        - ecole creee depuis le LMS : il n y a pas de programmation KLASSCI. La liste
+          est VIDE, `{"success": true, "data": [], "meta": {"source": "lms_local"}}`,
+          sans 401 ni appel a KLASSCI.
       security:
         - sanctum: []
       responses:
         '200':
-          description: "List of evaluations"
+          description: "List of evaluations (vide, avec `meta.source: lms_local`, dans une ecole creee depuis le LMS)"
         '401':
+          # Ecole creee depuis KLASSCI seulement.
           $ref: '#/components/responses/KlassciUnauthorized'
 
   /proxy/emploi-temps:
@@ -7130,23 +8031,76 @@ paths:
     get:
       tags:
         - Evaluations
-      summary: "List evaluations"
+      operationId: listEvaluations
+      summary: "Evaluations de l etablissement, pour le personnel"
+      description: |
+        Reservee au personnel (`ListEvaluationsRequest`). Triees par date
+        decroissante, `limit` au plus 100. Chaque element est une
+        `EvaluationEnrichie` : `submissions_count` (compte par la requete, il
+        survit a un enrichissement fail-soft) et les questions sans corrige ; les
+        copies ne sont PAS livrees.
+
+        Les filtres `classe_id` et `matiere_id` portent sur les identifiants de
+        l espace de l ecole (D72, E4b, C27) : `klassci_classe_id` et
+        `klassci_matiere_id` dans une ecole creee depuis KLASSCI, `classe_id` et
+        `matiere_id` locaux dans une ecole creee depuis le LMS. Dans cette
+        derniere, ni la liste ni la fiche n appellent KLASSCI : les libelles
+        viennent de la ligne.
       security:
         - sanctum: []
       parameters:
-        - name: page
+        - name: classe_id
           in: query
           schema:
             type: integer
-        - name: per_page
+            minimum: 1
+        - name: matiere_id
           in: query
           schema:
             type: integer
+            minimum: 1
+        - name: status
+          in: query
+          schema:
+            type: string
+        - name: is_published
+          in: query
+          schema:
+            type: boolean
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
       responses:
         '200':
-          description: "List of evaluations"
+          description: "Evaluations (eventuellement aucune)"
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - success
+                  - data
+                additionalProperties: false
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/EvaluationEnrichie'
         '401':
           description: "Unauthenticated"
+        '403':
+          description: "Role hors du personnel"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageOnly'
 
     post:
       tags:
@@ -7298,9 +8252,10 @@ paths:
                   message:
                     type: string
                   data:
-                    allOf:
-                      - $ref: '#/components/schemas/EvaluationRecord'
+                    description: "La version en ligne existante."
                     nullable: true
+                    oneOf:
+                      - $ref: '#/components/schemas/EvaluationRecord'
         '422':
           description: |
             Erreur de validation (`errors`), classe ou matiere hors de l'ecole (`errors`), ou refus
@@ -7450,7 +8405,9 @@ paths:
                       options:
                         type: array
                         nullable: true
-                        items: {}
+                        description: "Choix proposes : une liste de textes, ou `null`."
+                        items:
+                          type: string
                       correct_answers:
                         type: array
                         nullable: true
@@ -7528,12 +8485,16 @@ paths:
       operationId: listMyEvaluations
       summary: "Evaluations publiees de la classe de l eleve"
       description: |
-        La classe est lue sur KLASSCI (`me/dashboard`). Ne remonte que les
+        Ecole creee depuis KLASSCI : la classe est lue sur KLASSCI (`me/dashboard`).
+        Ecole creee depuis le LMS (D72, E2a) : les classes actives de l eleve, sans
+        appel a KLASSCI ; `classe` et `matiere` se lisent sur l evaluation, et
+        `programmation.window` est calculee sur la ligne. Ne remonte que les
         evaluations publiees, de statut `planifiee`, `en_cours` ou `terminee`,
         ayant au moins une question — triees par date decroissante.
 
         Chaque element est l evaluation enrichie : `questions_count`, la
-        derniere copie de l eleve (`student_submission`), et, relayes depuis
+        derniere copie de l eleve (`student_submission`, sans `score`, `note_sur_20`
+        ni `manual_points` quand `show_results` est faux : C25), et, relayes depuis
         KLASSCI sans garantie de forme, `programmation`, `lms_integration`,
         `classe`, `matiere`. Les questions et les copies des autres eleves ne
         sont PAS chargees.
@@ -7555,36 +8516,109 @@ paths:
                   data:
                     type: array
                     items:
-                      allOf:
-                        - $ref: '#/components/schemas/EvaluationRecord'
-                        - type: object
-                          properties:
-                            questions_count:
-                              type: integer
-                            student_submission:
-                              $ref: '#/components/schemas/EvaluationSubmissionRecord'
-                            programmation:
-                              type: object
-                              nullable: true
+                      type: object
+                      description: |
+                        Une evaluation (champs de `EvaluationRecord`, portes par
+                        `additionalProperties`), enrichie des cles ci-dessous.
+                      required:
+                        - id
+                        - questions_count
+                      additionalProperties: true
+                      properties:
+                        id:
+                          type: integer
+                        titre:
+                          type: string
+                        classe_id:
+                          type: integer
+                          nullable: true
+                        matiere_id:
+                          type: integer
+                          nullable: true
+                        questions_count:
+                          type: integer
+                        student_submission:
+                          nullable: true
+                          oneOf:
+                            - $ref: '#/components/schemas/EvaluationSubmissionRecord'
+                        programmation:
+                          nullable: true
+                          description: |
+                            Objet, ou tableau vide quand KLASSCI relaie un objet vide (un `{}`
+                            decode puis reencode ressort en `[]`).
+                          oneOf:
+                            - type: array
+                              items: {}
+                            - type: object
                               additionalProperties: true
-                            lms_integration:
+                              properties:
+                                window:
+                                  nullable: true
+                                  description: |
+                                    La fenetre de passage. Ecole creee depuis KLASSCI : relayee
+                                    depuis KLASSCI. Ecole creee depuis le LMS : ouverture a
+                                    `date_evaluation`, fermeture a `deadline_at`, sinon a
+                                    `date_evaluation + duree_minutes` ; fermee sans date.
+                                  oneOf:
+                                    - type: array
+                                      items: {}
+                                    - type: object
+                                      additionalProperties: true
+                                      properties:
+                                        is_open:
+                                          type: boolean
+                                        has_started:
+                                          type: boolean
+                                        has_ended:
+                                          type: boolean
+                                        start_at:
+                                          type: string
+                                          nullable: true
+                                        end_at:
+                                          type: string
+                                          nullable: true
+                        lms_integration:
+                          nullable: true
+                          oneOf:
+                            - type: array
+                              items: {}
+                            - type: object
+                              additionalProperties: true
+                        classe:
+                          type: object
+                          nullable: true
+                          description: |
+                            L identite de la classe de l evaluation, et rien d autre : le
+                            LMS ne relaie plus l enveloppe KLASSCI de la classe, qui
+                            portait la liste des eleves.
+                          properties:
+                            id:
+                              oneOf:
+                                - type: integer
+                                - type: string
+                            nom:
+                              type: string
                               nullable: true
-                            classe:
-                              type: object
-                              nullable: true
-                              description: |
-                                L identite de la classe de l eleve, et rien d autre : le
-                                LMS ne relaie plus l enveloppe KLASSCI de la classe, qui
-                                portait la liste des eleves.
+                        matiere:
+                          nullable: true
+                          description: |
+                            Ecole creee depuis KLASSCI : relaye depuis KLASSCI, d autres cles
+                            possibles (ou tableau vide pour un objet vide). Ecole creee depuis le
+                            LMS : `{id, nom}` de la matiere locale de l evaluation.
+                          oneOf:
+                            - type: array
+                              items: {}
+                            - type: object
+                              additionalProperties: true
                               properties:
                                 id:
-                                  type: integer
+                                  nullable: true
+                                  oneOf:
+                                    - type: integer
+                                    - type: string
                                 nom:
                                   type: string
                                   nullable: true
-                            matiere:
-                              nullable: true
-                              description: "Relaye depuis KLASSCI, forme non garantie par le LMS."
         '401':
           $ref: '#/components/responses/KlassciUnauthorized'
         '404':
@@ -7619,8 +8653,21 @@ paths:
         publiees sont exclues.
 
         `moyenne` est ponderee par `coefficient` ; `moyenne_generale` est la
-        moyenne simple des moyennes de matiere. Toutes deux valent `0` (entier)
-        quand il n y a rien a moyenner.
+        moyenne simple des moyennes de matiere MESUREES. Regle unique des agregats
+        sans mesure : toutes deux valent `null` quand il n y a rien a moyenner
+        (aucune note visible, ou un coefficient total nul), jamais un 0 fabrique.
+
+        `show_results` (C30, regle A de l utilisateur) : une evaluation qui cache
+        ses resultats GARDE sa ligne, mais SANS la cle `note` (la forme de la
+        liste), et n entre dans aucune moyenne. Meme regle que la liste,
+        « ma copie », la remise et la page matiere (C25).
+
+        Par type d ecole (D72, E4a) :
+        - ecole creee depuis KLASSCI : identite KLASSCI exigee (sinon 401) ;
+          matieres regroupees par leur identite KLASSCI, nommees par KLASSCI ;
+        - ecole creee depuis le LMS : aucune identite ni aucun appel KLASSCI ;
+          matieres regroupees par leur id local, nommees par leur libelle dans
+          l etablissement.
       security:
         - sanctum: []
       responses:
@@ -7643,11 +8690,16 @@ paths:
                           properties:
                             matiere_id:
                               type: integer
-                              description: "`0` quand l evaluation n a pas de matiere KLASSCI"
+                              description: |
+                                L id de la matiere dans l espace de l ecole : l identite
+                                KLASSCI dans une ecole KLASSCI, l id local dans une ecole
+                                creee depuis le LMS. `0` quand l evaluation n a pas de matiere.
                             matiere_nom:
                               type: string
                             moyenne:
                               type: number
+                              nullable: true
+                              description: "`null` quand la matiere n a aucune note a moyenner"
                             total_evaluations:
                               type: integer
                             evaluations:
@@ -7665,9 +8717,14 @@ paths:
                                     type: string
                                     pattern: '^-?\d+\.\d{2}$'
                                     nullable: true
-                                    description: "Note sur 20, decimal en chaine"
+                                    description: "Note sur 20, decimal en chaine. ABSENTE quand l evaluation cache ses resultats (C30)."
                                   coefficient:
                                     description: "Decimal en chaine ; l entier `1` quand l evaluation n en a pas"
+                                    oneOf:
+                                      - type: string
+                                        pattern: '^-?\d+\.\d{2}$'
+                                      - type: integer
+                                        enum: [1]
                                   date_evaluation:
                                     type: string
                                     format: date-time
@@ -7677,10 +8734,13 @@ paths:
                                     format: date-time
                                     nullable: true
                                   temps_passe:
+                                    type: number
                                     nullable: true
                                     description: "Toujours `null` aujourd hui : aucune donnee ne l alimente."
                       moyenne_generale:
                         type: number
+                        nullable: true
+                        description: "`null` quand aucune matiere n a de moyenne"
                       total_matieres:
                         type: integer
                       total_evaluations:
@@ -7704,7 +8764,16 @@ paths:
         Reservee aux eleves. Aucun corps de requete : l identite vient du jeton.
 
         Si une tentative `en_cours` existe, elle est REPRISE (meme `id`) ;
-        sinon une nouvelle copie est creee. Une evaluation terminee se passe
+        sinon une nouvelle copie est creee. Deux demarrages simultanes : l unique
+        des copies arbitre, et le perdant REPREND la tentative de la requete
+        gagnante (D72, E2b) ; si elle est deja remise, 409.
+
+        Fenetre : ecole creee depuis KLASSCI, la programmation KLASSCI (jeton de
+        l eleve exige, sinon 401) ; ecole creee depuis le LMS, calculee sur la
+        ligne (ouverture a `date_evaluation`, fermeture a `deadline_at`, sinon a
+        `date_evaluation + duree_minutes` ; fermee sans date), sans jeton.
+
+        Une evaluation terminee se passe
         en mode entrainement (`is_practice: true`) : fenetre, quota et reprise
         n y sont pas appliques, et la note n est pas officielle.
 
@@ -7757,9 +8826,10 @@ paths:
             - appelant d un etablissement qui n est pas eleve : refus generique,
               sans `reason`.
 
-            Ces quatre refus n existent que dans l ecole creee depuis KLASSCI :
-            dans l ecole creee depuis le LMS, le demarrage s arrete avant, faute
-            de jeton KLASSCI (401).
+            Ces refus valent dans les deux types d ecole. Depuis D72 (E2b), l ecole
+            creee depuis le LMS n exige plus de jeton KLASSCI : sa fenetre est
+            calculee sur la ligne. Le 401 du jeton absent n existe que dans l ecole
+            creee depuis KLASSCI.
           content:
             application/json:
               schema:
@@ -7794,6 +8864,28 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/MessageOnly'
+        '409':
+          description: |
+            Course perdue entre deux demarrages simultanes, et la tentative de la
+            requete gagnante est deja remise : rien n est cree ni repris.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - success
+                  - message
+                  - reason
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  message:
+                    type: string
+                  reason:
+                    type: string
+                    enum:
+                      - evaluation_attempt_conflict
         '429':
           $ref: '#/components/responses/TooManyRequests'
         '503':
@@ -7842,6 +8934,12 @@ paths:
         Clot la tentative `en_cours` ouverte par `/start` — n en cree jamais.
         La correction automatique s applique ; les dissertations attendent une
         notation manuelle (`/submissions/{submission}/grade`).
+
+        Echeance (C28, les deux types d ecole) : la remise est acceptee jusqu a
+        `ends_at` + 60 s (la remise automatique du front part jusqu a 30 s apres
+        la fin de la fenetre). Apres, elle est REFUSEE (409
+        `evaluation_attempt_locked`) : la copie passe `verrouille`, garde les
+        reponses recues, n est pas notee. Aucun appel a KLASSCI a la remise.
 
         Quand `show_results` est faux, `score` et `note_sur_20` sont RETIRES
         de la reponse (a la racine de `data` comme dans `data.submission`).
@@ -7905,12 +9003,7 @@ paths:
                     type: object
                     properties:
                       submission:
-                        allOf:
-                          - $ref: '#/components/schemas/EvaluationSubmissionRecord'
-                          - type: object
-                            properties:
-                              evaluation:
-                                $ref: '#/components/schemas/EvaluationRecord'
+                        $ref: '#/components/schemas/EvaluationSubmissionRecord'
                       score:
                         type: string
                         pattern: '^-?\d+\.\d{2}$'
@@ -7937,11 +9030,33 @@ paths:
               schema:
                 $ref: '#/components/schemas/MessageOnly'
         '409':
-          description: "Aucune tentative en cours : la demarrer avec `/start` avant de la rendre"
+          description: |
+            - Aucune tentative en cours : la demarrer avec `/start` avant de la
+              rendre (sans `reason`).
+            - `reason: evaluation_attempt_locked` : l echeance est depassee (C28).
+              La copie est verrouillee, gardee avec ses reponses, et ne sera pas
+              notee ; toute nouvelle remise rend le meme refus, sans rien ecrire.
+            - `reason: evaluation_attempt_conflict` : remise tardive perdue contre une
+              remise dans le delai d une requete concurrente ; la copie est remise,
+              rien n est ecrit.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/MessageOnly'
+                type: object
+                required:
+                  - success
+                  - message
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  message:
+                    type: string
+                  reason:
+                    type: string
+                    enum:
+                      - evaluation_attempt_locked
+                      - evaluation_attempt_conflict
         '422':
           description: "`answers` absent, vide, ou d un type refuse"
           content:
@@ -7966,6 +9081,10 @@ paths:
       description: |
         Informatif : si KLASSCI est injoignable, `window` vaut `null` et la
         reponse reste 200. C est `/start` qui refuse, pas cette route.
+
+        Ecole creee depuis KLASSCI : la fenetre KLASSCI, jeton de l eleve exige
+        (sinon 401). Ecole creee depuis le LMS (D72, E2b) : la fenetre calculee
+        sur la ligne, sans jeton ni appel a KLASSCI.
       security:
         - sanctum: []
       parameters:
@@ -8051,11 +9170,17 @@ paths:
                         type: integer
                       status:
                         type: string
-                        enum: [en_cours, soumis, corrige]
+                        enum: [en_cours, soumis, corrige, verrouille]
+                        description: "`verrouille` : remise refusee hors delai, ou tentative echue jamais remise (C28)."
                       started_at:
                         type: string
                         format: date-time
                         nullable: true
+                      ends_at:
+                        type: string
+                        format: date-time
+                        nullable: true
+                        description: "Echeance de la tentative (C28), pour le minuteur ; nulle sans echeance."
                       submitted_at:
                         type: string
                         format: date-time
@@ -8074,19 +9199,13 @@ paths:
                       questions:
                         type: array
                         items:
-                          allOf:
-                            - $ref: '#/components/schemas/EvaluationQuestionPublic'
-                            - type: object
-                              properties:
-                                correct_answers:
-                                  description: "Present seulement une fois `correction_available` vrai"
-                                explanation:
-                                  type: string
-                                  nullable: true
-                                  description: "Present seulement une fois `correction_available` vrai"
+                          $ref: '#/components/schemas/EvaluationQuestionDeLaCopie'
                       answers:
                         type: object
                         additionalProperties: true
+                        description: |
+                          MAP `{ "<question_id>": reponse }`. Toujours un objet : `{}` quand la copie
+                          n a pas de reponse (jamais un tableau).
                       correction_available:
                         type: boolean
                       correction_available_at:
@@ -8264,7 +9383,11 @@ paths:
                             ordre:
                               type: integer
                             options:
+                              type: array
                               nullable: true
+                              description: "Choix proposes : une liste de textes, ou `null`."
+                              items:
+                                type: string
                       questions_count:
                         type: integer
                       total_points:
@@ -8283,11 +9406,12 @@ paths:
           description: |
             Role insuffisant, enseignant non proprietaire, coordinateur sur une
             evaluation non terminee — ou evaluation inconnue dans cet
-            etablissement : elle rend 403, pas 404.
+            etablissement : elle rend 403, pas 404. Seul le refus du coordinateur
+            porte `reason: preview_requires_finished_evaluation`.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/MessageOnly'
+                $ref: '#/components/schemas/RefusApercuEvaluation'
         '500':
           description: "Erreur interne"
           content:
@@ -8305,6 +9429,10 @@ paths:
         Toutes les tentatives, entrainements compris, triees par remise
         decroissante. Lecture : enseignant proprietaire, coordinateur de
         l etablissement, administrateur.
+
+        L eleve est nomme par l auteur de la copie (`student_id`), puis, pour une
+        ligne d avant D72, par son identite KLASSCI : deux recherches bornees a
+        l etablissement de l evaluation (D72, E3).
       security:
         - sanctum: []
       parameters:
@@ -8332,16 +9460,25 @@ paths:
                           type: integer
                         evaluation_id:
                           type: integer
+                        student_id:
+                          type: integer
+                          nullable: true
+                          description: "L auteur (compte local). Nul pour une ligne d avant D72 non rattrapee."
                         klassci_etudiant_id:
                           type: integer
+                          nullable: true
+                          description: "Nul pour une copie d une ecole creee depuis le LMS (D72)."
                         student_name:
                           type: string
-                          description: "`Etudiant #<id>` quand aucun compte local ne correspond"
+                          description: |
+                            `Etudiant #<id>` quand aucun compte de l etablissement ne
+                            correspond (l identite KLASSCI, sinon l auteur).
                         attempt:
                           type: integer
                         status:
                           type: string
-                          enum: [en_cours, soumis, corrige]
+                          enum: [en_cours, soumis, corrige, verrouille]
+                          description: "`verrouille` : copie hors delai (C28), visible, jamais notee."
                         started_at:
                           type: string
                           format: date-time
@@ -8449,12 +9586,7 @@ paths:
                   message:
                     type: string
                   data:
-                    allOf:
-                      - $ref: '#/components/schemas/EvaluationSubmissionRecord'
-                      - type: object
-                        properties:
-                          student:
-                            $ref: '#/components/schemas/User'
+                    $ref: '#/components/schemas/EvaluationSubmissionRecord'
         '401':
           description: "Non authentifie"
           content:
@@ -8476,11 +9608,27 @@ paths:
               schema:
                 $ref: '#/components/schemas/MessageOnly'
         '409':
-          description: "Copie encore `en_cours` : elle ne peut pas etre notee"
+          description: |
+            - Copie encore `en_cours` : elle ne peut pas etre notee (sans `reason`).
+            - `reason: evaluation_attempt_locked` : copie hors delai (C28), remise
+              refusee ou tentative echue. Elle est visible, jamais notee.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/MessageOnly'
+                type: object
+                required:
+                  - success
+                  - message
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  message:
+                    type: string
+                  reason:
+                    type: string
+                    enum:
+                      - evaluation_attempt_locked
         '422':
           description: |
             `points` absent ou invalide (forme `ValidationFailed`) ; ou
@@ -8500,10 +9648,27 @@ paths:
       operationId: getEvaluationResultsByClass
       summary: "Resultats par eleve de la classe, et statistiques"
       description: |
-        Une ligne par eleve de la classe (liste lue sur KLASSCI), qu il ait
-        passe l evaluation ou non (`status: non_passee`). Les tentatives
-        d entrainement sont ignorees. Lecture : enseignant proprietaire,
-        coordinateur de l etablissement, admin d etablissement (`superAdmin`).
+        Une ligne par eleve de la classe, qu il ait passe l evaluation ou non
+        (`status: non_passee`). Les tentatives d entrainement sont ignorees ; la
+        ligne porte la derniere copie de l eleve, rattachee par son auteur
+        (`student_id`), puis, pour une ligne d avant D72, par son identite
+        KLASSCI. Lecture : enseignant proprietaire, coordinateur de
+        l etablissement, admin d etablissement (`superAdmin`).
+
+        Ecole creee depuis KLASSCI : la liste des eleves est lue sur KLASSCI, et
+        l evaluation est presentee avec le catalogue KLASSCI. `etudiant_id` est
+        l identite KLASSCI de l eleve.
+
+        Ecole creee depuis le LMS (D72, E3) : les eleves dont l inscription a la
+        classe de l evaluation (`classe_id`) est ACTIVE, sans jeton ni appel a
+        KLASSCI. `etudiant_id` est le compte local ; `etudiant_nom` et
+        `etudiant_nom_complet` portent son nom, `etudiant_prenom` est vide.
+
+        Aucune copie remise n est jamais invisible : l auteur d une copie hors
+        du roster (admis par le repli `user_classes`, desinscrit apres sa remise,
+        sorti du roster KLASSCI) a sa ligne, marquee `inscription: null`, dans
+        l etablissement de l evaluation. Il est compte dans `total_etudiants`,
+        jamais parmi les absents.
 
         `data.evaluation` est l evaluation enrichie : ses questions (sans
         corrige), toutes ses copies, et des champs de presentation.
@@ -8532,40 +9697,7 @@ paths:
                     type: object
                     properties:
                       evaluation:
-                        allOf:
-                          - $ref: '#/components/schemas/EvaluationRecord'
-                          - type: object
-                            properties:
-                              questions:
-                                type: array
-                                items:
-                                  $ref: '#/components/schemas/EvaluationQuestionPublic'
-                              submissions:
-                                type: array
-                                items:
-                                  $ref: '#/components/schemas/EvaluationSubmissionRecord'
-                              classe:
-                                nullable: true
-                              matiere:
-                                nullable: true
-                              enseignant:
-                                nullable: true
-                              date_evaluation_formatted:
-                                type: string
-                                nullable: true
-                                example: "28/09/2026 à 16:44"
-                              date_evaluation_short:
-                                type: string
-                                nullable: true
-                                example: "28/09/2026"
-                              can_be_edited:
-                                type: boolean
-                              submissions_count:
-                                type: integer
-                              questions_count:
-                                type: integer
-                              effective_status:
-                                type: string
+                        $ref: '#/components/schemas/EvaluationEnrichie'
                       resultats:
                         type: array
                         items:
@@ -8573,6 +9705,11 @@ paths:
                           properties:
                             etudiant_id:
                               type: integer
+                              nullable: true
+                              description: |
+                                L identite KLASSCI (ecole creee depuis KLASSCI) ou le compte
+                                local (ecole creee depuis le LMS). Nul pour une copie hors
+                                roster sans identite dans cet espace.
                             etudiant_nom:
                               type: string
                             etudiant_prenom:
@@ -8590,7 +9727,8 @@ paths:
                               nullable: true
                             status:
                               type: string
-                              enum: [non_passee, en_cours, soumis, corrige]
+                              enum: [non_passee, en_cours, soumis, corrige, verrouille]
+                              description: "`verrouille` : copie hors delai (C28), visible, jamais notee."
                             submitted_at:
                               type: string
                               format: date-time
@@ -8601,16 +9739,27 @@ paths:
                             feedback:
                               type: string
                               nullable: true
+                            inscription:
+                              type: string
+                              nullable: true
+                              enum: [active, null]
+                              description: |
+                                `active` : l eleve est au roster de la classe. `null` :
+                                l auteur d une copie hors du roster.
                       statistiques:
                         type: object
                         properties:
                           total_etudiants:
                             type: integer
+                            description: "Toutes les lignes : le roster et les auteurs hors roster"
                           etudiants_soumis:
                             type: integer
                             description: "Copies `soumis` ou `corrige`"
                           etudiants_en_cours:
                             type: integer
+                          etudiants_hors_delai:
+                            type: integer
+                            description: "Copies `verrouille` (C28) : remises refusees, ou tentatives echues jamais remises"
                           etudiants_non_passes:
                             type: integer
                           taux_participation:
@@ -8626,6 +9775,7 @@ paths:
                             type: number
                             nullable: true
         '401':
+          # Ecole creee depuis KLASSCI seulement : sans jeton KLASSCI.
           $ref: '#/components/responses/KlassciUnauthorized'
         '403':
           description: |
@@ -8686,12 +9836,6 @@ paths:
                     type: string
                   data:
                     description: "Reponse de KLASSCI, forme non garantie par le LMS"
-        '400':
-          description: "L evaluation n est liee a aucune evaluation KLASSCI"
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/MessageOnly'
         '401':
           $ref: '#/components/responses/KlassciUnauthorized'
         '403':
@@ -8702,6 +9846,30 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/MessageOnly'
+        '422':
+          description: |
+            L evaluation n est liee a aucune evaluation KLASSCI
+            (`klassci_evaluation_id` nul) : celle d une ecole creee depuis le LMS,
+            ou une ligne jamais liee. Refus motive, avant tout traitement : rien
+            n est envoye ni marque (D72, E3).
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - success
+                  - message
+                  - reason
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  message:
+                    type: string
+                  reason:
+                    type: string
+                    enum:
+                      - evaluation_not_linked_to_klassci
         '409':
           description: "Une copie a dissertation n est pas encore notee"
           content:
@@ -8780,6 +9948,30 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/MessageOnly'
+        '422':
+          description: |
+            L evaluation n est liee a aucune evaluation KLASSCI
+            (`klassci_evaluation_id` nul) : celle d une ecole creee depuis le LMS,
+            ou une ligne jamais liee. Refus motive, avant tout traitement : rien
+            n est envoye ni marque (D72, E3).
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - success
+                  - message
+                  - reason
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  message:
+                    type: string
+                  reason:
+                    type: string
+                    enum:
+                      - evaluation_not_linked_to_klassci
         '409':
           description: "Une copie a dissertation n est pas encore notee"
           content:

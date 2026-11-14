@@ -4,12 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Notification;
 
-use App\Models\Classe;
 use App\Models\Notification;
-use App\Models\Seance;
-use App\Models\User;
-use App\Services\Audience\ClasseAudienceSource;
-use Illuminate\Support\Collection;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -21,8 +16,8 @@ use Psr\Log\LoggerInterface;
  *
  * - `NotificationDispatcher` injecté pour l'envoi bas niveau.
  * - `LoggerInterface` PSR-3 injecté (remplace Facade `Log` de l'origine).
- * - `ClasseAudienceSource` injecté : les élèves d'une séance sans classe KLASSCI
- *   sont ceux de l'admission ({@see elevesDeLaSeanceLocale()}).
+ * - `VisioNotificationTargets` injecté : qui avertir (élèves, enseignant,
+ *   établissement de la séance).
  *
  * @see app/Services/NotificationService.php  Facade orchestrateur
  */
@@ -32,7 +27,7 @@ final class VisioNotificationDispatcher
         private readonly NotificationDispatcher $dispatcher,
         private readonly LoggerInterface $logger,
         private readonly VisioNotificationIdempotencyGuard $idempotency,
-        private readonly ClasseAudienceSource $audience,
+        private readonly VisioNotificationTargets $cibles,
     ) {}
 
     /**
@@ -49,14 +44,14 @@ final class VisioNotificationDispatcher
             Notification::TYPE_VISIO_SCHEDULED,
             $seanceId,
             fn (): int => $this->dispatchScheduled($seanceId, $seanceData),
-            self::idLocal($seanceData),
+            VisioNotificationTargets::idLocal($seanceData),
         );
     }
 
     /** @param array<string, mixed> $seanceData */
     private function dispatchScheduled(int $seanceId, array $seanceData): int
     {
-        $students = $this->resolveStudentsForScheduled($seanceId, $seanceData);
+        $students = $this->cibles->elevesProgrammation($seanceId, $seanceData);
 
         if ($students->isEmpty()) {
             $this->logger->warning('Aucun étudiant trouvé pour notification', [
@@ -92,15 +87,15 @@ final class VisioNotificationDispatcher
             Notification::TYPE_VISIO_STARTING,
             $seanceId,
             fn (): int => $this->dispatchStarting($seanceId, $seanceData),
-            self::idLocal($seanceData),
+            VisioNotificationTargets::idLocal($seanceData),
         );
     }
 
     /** @param array<string, mixed> $seanceData */
     private function dispatchStarting(int $seanceId, array $seanceData): int
     {
-        $students = $this->resolveStudentsForStarting($seanceData);
-        $teacher = $this->resolveTeacher($seanceData);
+        $students = $this->cibles->elevesDemarrage($seanceData);
+        $teacher = $this->cibles->enseignant($seanceData);
 
         $count = 0;
         $matiere = is_string($seanceData['matiere_nom'] ?? null) ? $seanceData['matiere_nom'] : 'Matière inconnue';
@@ -126,170 +121,13 @@ final class VisioNotificationDispatcher
     }
 
     /**
-     * Résout les étudiants à notifier pour la programmation (avec logs détaillés).
-     *
-     * @param  array<string, mixed>  $seanceData
-     * @return Collection<int, User>
-     */
-    private function resolveStudentsForScheduled(int $seanceId, array $seanceData): Collection
-    {
-        $students = collect();
-
-        if (! isset($seanceData['klassci_classe_id'])) {
-            return $this->elevesDeLaSeanceLocale($seanceData);
-        }
-
-        $classe = $this->resolveClasse($seanceData);
-
-        if (! $classe) {
-            $this->logger->warning('Classe non trouvée pour notification', [
-                'klassci_classe_id' => $seanceData['klassci_classe_id'],
-            ]);
-
-            return $students;
-        }
-
-        $students = User::query()
-            ->whereHas('classes', function ($query) use ($classe) {
-                $query->where('classes.id', $classe->id)
-                    ->where('classe_etudiant.statut', 'actif');
-            })
-            ->where('role', 'etudiant')
-            ->get();
-
-        $this->logger->info('Étudiants trouvés pour notification visio', [
-            'classe_id' => $classe->id,
-            'students_count' => $students->count(),
-        ]);
-
-        return $students;
-    }
-
-    /**
-     * Résout les étudiants pour le démarrage (silencieux, pas de logs détaillés).
-     *
-     * @param  array<string, mixed>  $seanceData
-     * @return Collection<int, User>
-     */
-    private function resolveStudentsForStarting(array $seanceData): Collection
-    {
-        if (! isset($seanceData['klassci_classe_id'])) {
-            return $this->elevesDeLaSeanceLocale($seanceData);
-        }
-
-        $classe = $this->resolveClasse($seanceData);
-
-        if (! $classe) {
-            return collect();
-        }
-
-        return User::query()
-            ->whereHas('classes', function ($query) use ($classe) {
-                $query->where('classes.id', $classe->id)
-                    ->where('classe_etudiant.statut', 'actif');
-            })
-            ->where('role', 'etudiant')
-            ->get();
-    }
-
-    /**
-     * Une séance sans classe KLASSCI : ses élèves sont ceux de l'audience de
-     * l'admission, lue sur la séance que l'appelant désigne par son id LOCAL
-     * (`seance_locale_id`). Sans cet id, rien n'est deviné : l'identifiant du job
-     * peut être un identifiant KLASSCI, qui désignerait une autre séance.
-     *
-     * @param  array<string, mixed>  $seanceData
-     * @return Collection<int, User>
-     */
-    private function elevesDeLaSeanceLocale(array $seanceData): Collection
-    {
-        $id = self::idLocal($seanceData);
-
-        // Hors contexte HTTP le scope est inerte ; l'audience borne la classe à l'établissement de la séance.
-        $seance = $id === null ? null : Seance::query()->withoutGlobalScope('institution')->find($id);
-
-        return $seance === null ? collect() : $this->audience->studentsOf($seance);
-    }
-
-    /**
-     * L'id LOCAL de la séance (`seances.id`), que chaque source déclare : la clé de
-     * la garde d'idempotence, et la marque des notifications. Null pour un job mis
-     * en file avant que la source ne le déclare.
-     *
-     * @param  array<string, mixed>  $seanceData
-     */
-    private static function idLocal(array $seanceData): ?int
-    {
-        $id = $seanceData['seance_locale_id'] ?? null;
-
-        return is_numeric($id) ? (int) $id : null;
-    }
-
-    /**
      * @param  array<string, mixed>  $seanceData
      * @return array{seance_locale_id?: int}
      */
     private static function marqueLocale(array $seanceData): array
     {
-        $id = self::idLocal($seanceData);
+        $id = VisioNotificationTargets::idLocal($seanceData);
 
         return $id === null ? [] : ['seance_locale_id' => $id];
-    }
-
-    /**
-     * Résout l'enseignant à notifier (si présent dans `klassci_enseignant_id`).
-     *
-     * @param  array<string, mixed>  $seanceData
-     */
-    private function resolveTeacher(array $seanceData): ?User
-    {
-        if (! isset($seanceData['klassci_enseignant_id'])) {
-            return null;
-        }
-
-        $query = User::where('klassci_id', $seanceData['klassci_enseignant_id'])
-            ->where('role', 'enseignant');
-
-        $institutionId = $this->institutionId($seanceData);
-        if ($institutionId !== null) {
-            $query->withoutGlobalScope('institution')->where('institution_id', $institutionId);
-        }
-
-        return $query->first();
-    }
-
-    /**
-     * Résout la classe cible en la scopant à l'institution de la séance (#473).
-     *
-     * Appelée depuis le job SyncKlassciSeances, hors contexte HTTP : le scope
-     * global `institution` de {@see Classe} est alors inerte. Sans ce filtre
-     * explicite, `klassci_id` — non unique entre tenants — matcherait la classe
-     * d'une autre institution et notifierait les mauvais étudiants.
-     *
-     * @param  array<string, mixed>  $seanceData
-     */
-    private function resolveClasse(array $seanceData): ?Classe
-    {
-        $query = Classe::where('klassci_id', $seanceData['klassci_classe_id']);
-
-        $institutionId = $this->institutionId($seanceData);
-        if ($institutionId !== null) {
-            $query->withoutGlobalScope('institution')->where('institution_id', $institutionId);
-        }
-
-        return $query->first();
-    }
-
-    /**
-     * Institution de la séance si présente dans le payload (cas du job tenant-less).
-     * En contexte HTTP, absente — le scope global suffit alors et ce filtre est ignoré.
-     *
-     * @param  array<string, mixed>  $seanceData
-     */
-    private function institutionId(array $seanceData): ?int
-    {
-        $institutionId = $seanceData['institution_id'] ?? null;
-
-        return is_int($institutionId) ? $institutionId : null;
     }
 }

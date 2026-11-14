@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Evaluation\Teacher;
 
+use App\Enums\EvaluationSubmissionStatus;
 use App\Models\Evaluation;
 use App\Models\EvaluationSubmission;
 use App\Models\User;
@@ -32,6 +33,12 @@ final class EvaluationTeacherGradeService
     ): array {
         if ((int) $submission->evaluation_id !== (int) $evaluation->id) {
             return $this->fail(404, 'Soumission non trouvée');
+        }
+
+        // C28 : une copie hors délai (verrouillée à la remise, ou échue sans remise :
+        // son statut LU) est visible, jamais notée. L'utilisateur l'a dite « refusée ».
+        if ($submission->status === EvaluationSubmissionStatus::Verrouille->value) {
+            return $this->fail(409, 'Cette copie a été remise hors délai : elle ne peut pas être notée.', 'evaluation_attempt_locked');
         }
 
         if (! in_array($submission->status, ['soumis', 'corrige'], true)) {
@@ -68,14 +75,14 @@ final class EvaluationTeacherGradeService
     /**
      * @return array{status:int, payload: array<string, mixed>}
      */
-    private function fail(int $status, string $message): array
+    private function fail(int $status, string $message, ?string $reason = null): array
     {
         return [
             'status' => $status,
             'payload' => [
                 'success' => false,
                 'message' => $message,
-            ],
+            ] + ($reason === null ? [] : ['reason' => $reason]),
         ];
     }
 }

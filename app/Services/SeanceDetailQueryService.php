@@ -10,6 +10,8 @@ use App\Http\Controllers\API\LMS\LMSSeanceDetailsController;
 use App\Http\Controllers\API\LMS\LMSVisioParticipantController;
 use App\Models\User;
 use App\Services\Seances\KlassciSeanceLookupService;
+use App\Services\Seances\SeanceDetailReader;
+use App\Services\Seances\SeanceParticipantsReader;
 use App\Services\Seances\SeanceVisioEnricher;
 use App\Support\Logging\CaughtExceptionLog;
 use Psr\Log\LoggerInterface;
@@ -48,7 +50,7 @@ use Psr\Log\LoggerInterface;
  * @see LMSVisioParticipantController (consumes getSeanceDetailsArray)
  * @see LMSAttendancesController (consumes getSeanceDetailsArray)
  */
-final class SeanceDetailQueryService
+final class SeanceDetailQueryService implements SeanceDetailReader, SeanceParticipantsReader
 {
     public function __construct(
         private readonly LoggerInterface $logger,
@@ -58,6 +60,14 @@ final class SeanceDetailQueryService
         private readonly Seances\SeanceHoraireResolver $horaire,
         private readonly CaughtExceptionLog $journal,
     ) {}
+
+    /** Source KLASSCI du détail : {@see getSeanceDetailsArray()}, inchangé, sans marque. */
+    public function detailFor(int $seanceId, User $user): ?array
+    {
+        $data = $this->getSeanceDetailsArray($seanceId, $user);
+
+        return $data === null ? null : ['data' => $data, 'meta' => []];
+    }
 
     /**
      * Returns the structured seance details array for an authenticated user.

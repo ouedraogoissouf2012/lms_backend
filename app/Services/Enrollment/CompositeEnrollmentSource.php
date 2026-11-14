@@ -47,12 +47,12 @@ final class CompositeEnrollmentSource implements EnrollmentSource
             return $parLePivot;
         }
 
-        $avecUneLigneActive = DB::table('classe_etudiant')
-            ->whereIn('user_id', $parLeRepli)
-            ->where('statut', 'actif')
-            ->pluck('user_id')
-            ->map(static fn (mixed $id): int => intval($id))
-            ->all();
+        $avecUneLigneActive = [];
+        foreach (DB::table('classe_etudiant')->whereIn('user_id', $parLeRepli)->where('statut', 'actif')->pluck('user_id') as $id) {
+            if (is_numeric($id)) {
+                $avecUneLigneActive[] = (int) $id;
+            }
+        }
 
         $ids = array_values(array_unique([...$parLePivot, ...array_diff($parLeRepli, $avecUneLigneActive)]));
         sort($ids);

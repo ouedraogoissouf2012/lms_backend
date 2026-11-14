@@ -82,9 +82,13 @@ final class RemiseDeCopie
      */
     private function noter(EvaluationSubmission $copie, array $reponses): bool
     {
+        // UN instant pour la remise : la base et la réponse rendent le même. Passé
+        // explicitement, `updated_at` prime sur celui qu'ajoute `Builder::update`.
+        $maintenant = Carbon::now();
         $copie->answers = $reponses;
         $copie->status = EvaluationSubmissionStatus::Soumis->value;
-        $copie->submitted_at = Carbon::now();
+        $copie->submitted_at = $maintenant;
+        $copie->updated_at = $maintenant;
         $this->notation->calculateScore($copie);
 
         $brut = $copie->getAttributes();
@@ -95,6 +99,7 @@ final class RemiseDeCopie
                 'answers' => $brut['answers'],
                 'status' => EvaluationSubmissionStatus::Soumis->value,
                 'submitted_at' => $brut['submitted_at'],
+                'updated_at' => $brut['updated_at'],
                 'score' => $brut['score'],
                 'note_sur_20' => $brut['note_sur_20'],
             ]);

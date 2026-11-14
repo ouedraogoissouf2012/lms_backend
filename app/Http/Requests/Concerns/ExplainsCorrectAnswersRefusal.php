@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Requests\Concerns;
 
 use App\Rules\CorrectAnswersAmongOptions;
+use App\Rules\TrueFalseOptions;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Http\Exceptions\HttpResponseException;
 
@@ -15,13 +16,16 @@ use Illuminate\Http\Exceptions\HttpResponseException;
  * motif `correct_answer_not_among_options` lui permet de le dire en clair, au lieu d'un 422
  * générique. Les autres erreurs gardent le rendu 422 commun. Partagé par la création et la
  * mise à jour.
+ *
+ * Un vrai_faux aux options autres que ['Vrai', 'Faux'] porte le même motif (D532) : l'écran ne
+ * propose que ces deux textes, et aucune bonne réponse ne peut désigner autre chose.
  */
 trait ExplainsCorrectAnswersRefusal
 {
     private function refuserLesBonnesReponsesHorsOptions(Validator $validator): void
     {
         foreach ($validator->failed() as $regles) {
-            if (array_key_exists(CorrectAnswersAmongOptions::class, $regles)) {
+            if (array_key_exists(CorrectAnswersAmongOptions::class, $regles) || array_key_exists(TrueFalseOptions::class, $regles)) {
                 throw new HttpResponseException(response()->json([
                     'success' => false,
                     'message' => 'Une bonne réponse doit être une des options proposées.',

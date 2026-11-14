@@ -7,7 +7,7 @@ namespace App\Http\Controllers\API\Evaluation\Student;
 use App\Exceptions\MissingKlassciTokenException;
 use App\Http\Controllers\API\Concerns\RendersKlassciBackedErrors;
 use App\Http\Controllers\AuthenticatedController;
-use App\Services\Evaluation\Student\StudentEvaluationsListService;
+use App\Services\Evaluation\Student\StudentEvaluationsReader;
 use App\Services\Evaluation\Student\StudentGradesAggregator;
 use App\Support\Logging\CaughtExceptionLog;
 use Illuminate\Http\JsonResponse;
@@ -27,22 +27,21 @@ final class EvaluationStudentListController extends AuthenticatedController
     use RendersKlassciBackedErrors;
 
     public function __construct(
-        private readonly StudentEvaluationsListService $listService,
         private readonly StudentGradesAggregator $gradesAggregator,
         private readonly CaughtExceptionLog $journal,
     ) {}
 
-    public function myEvaluations(Request $request): JsonResponse
+    /**
+     * D72, E2a : la liste vient de la source de l'école, reçue par la MÉTHODE
+     * (ADR-EI-01, règle 3). L'identité KLASSCI n'est exigée que par la source
+     * KLASSCI (#806 : même refus, même motif que le jeton absent).
+     */
+    public function myEvaluations(Request $request, StudentEvaluationsReader $lecture): JsonResponse
     {
         $user = $this->authenticatedUser($request);
-        // #806 : sans identité KLASSCI (élève local, école autonome), aucun jeton
-        // n'existe non plus. Même refus, même motif que le jeton absent.
-        if (!$user->klassci_id) {
-            return MissingKlassciTokenException::jsonResponse();
-        }
 
         try {
-            $data = $this->listService->getEnrichedEvaluationsForStudent($user);
+            $data = $lecture->evaluationsFor($user);
             if ($data === null) {
                 return $this->errorResponse('Classe non trouvée', 404);
             }

@@ -189,11 +189,10 @@ final class EvaluationLearnerReachTest extends TestCase
 
     /**
      * Volet école autonome. Un élève d'école autonome n'a ni jeton ni identité
-     * KLASSCI, et ses évaluations sont locales (sans classe KLASSCI) : il n'a
-     * aujourd'hui aucun écran d'évaluation (#805). Au-delà du 401, rien n'est
-     * atteignable. La classe se lit chez KLASSCI, et la propriété d'une copie
-     * porte l'identité KLASSCI. Les trois routes refusent donc en 401, sans
-     * rien écrire.
+     * KLASSCI. Depuis D72 (E2a), sa copie lui appartient par `student_id` :
+     * « ma copie » répond 404 tant qu'il n'en a pas (au lieu du 401 d'avant,
+     * déclaré). Le démarrage et `time-status` lisent encore la fenêtre chez
+     * KLASSCI et refusent en 401 : ils s'ouvrent avec E2b. Rien n'est écrit.
      */
     public function test_dans_une_ecole_autonome_rien_ne_se_demarre(): void
     {
@@ -203,7 +202,7 @@ final class EvaluationLearnerReachTest extends TestCase
 
         $this->asTenant($eleve)->postJson("/api/evaluations/{$locale->id}/start")->assertUnauthorized();
         $this->asTenant($eleve)->getJson("/api/evaluations/{$locale->id}/time-status")->assertUnauthorized();
-        $this->asTenant($eleve)->getJson("/api/evaluations/{$locale->id}/my-submission")->assertUnauthorized();
+        $this->asTenant($eleve)->getJson("/api/evaluations/{$locale->id}/my-submission")->assertNotFound();
         self::assertSame(0, $this->copies());
     }
 

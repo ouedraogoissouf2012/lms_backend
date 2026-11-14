@@ -7528,7 +7528,10 @@ paths:
       operationId: listMyEvaluations
       summary: "Evaluations publiees de la classe de l eleve"
       description: |
-        La classe est lue sur KLASSCI (`me/dashboard`). Ne remonte que les
+        Ecole creee depuis KLASSCI : la classe est lue sur KLASSCI (`me/dashboard`).
+        Ecole creee depuis le LMS (D72, E2a) : les classes actives de l eleve, sans
+        appel a KLASSCI ; `classe` et `matiere` se lisent sur l evaluation, et
+        `programmation.window` est calculee sur la ligne. Ne remonte que les
         evaluations publiees, de statut `planifiee`, `en_cours` ou `terminee`,
         ayant au moins une question — triees par date decroissante.
 
@@ -7555,36 +7558,109 @@ paths:
                   data:
                     type: array
                     items:
-                      allOf:
-                        - $ref: '#/components/schemas/EvaluationRecord'
-                        - type: object
-                          properties:
-                            questions_count:
-                              type: integer
-                            student_submission:
-                              $ref: '#/components/schemas/EvaluationSubmissionRecord'
-                            programmation:
-                              type: object
-                              nullable: true
+                      type: object
+                      description: |
+                        Une evaluation (champs de `EvaluationRecord`, portes par
+                        `additionalProperties`), enrichie des cles ci-dessous.
+                      required:
+                        - id
+                        - questions_count
+                      additionalProperties: true
+                      properties:
+                        id:
+                          type: integer
+                        titre:
+                          type: string
+                        classe_id:
+                          type: integer
+                          nullable: true
+                        matiere_id:
+                          type: integer
+                          nullable: true
+                        questions_count:
+                          type: integer
+                        student_submission:
+                          nullable: true
+                          oneOf:
+                            - $ref: '#/components/schemas/EvaluationSubmissionRecord'
+                        programmation:
+                          nullable: true
+                          description: |
+                            Objet, ou tableau vide quand KLASSCI relaie un objet vide (un `{}`
+                            decode puis reencode ressort en `[]`).
+                          oneOf:
+                            - type: array
+                              items: {}
+                            - type: object
                               additionalProperties: true
-                            lms_integration:
+                              properties:
+                                window:
+                                  nullable: true
+                                  description: |
+                                    La fenetre de passage. Ecole creee depuis KLASSCI : relayee
+                                    depuis KLASSCI. Ecole creee depuis le LMS : ouverture a
+                                    `date_evaluation`, fermeture a `deadline_at`, sinon a
+                                    `date_evaluation + duree_minutes` ; fermee sans date.
+                                  oneOf:
+                                    - type: array
+                                      items: {}
+                                    - type: object
+                                      additionalProperties: true
+                                      properties:
+                                        is_open:
+                                          type: boolean
+                                        has_started:
+                                          type: boolean
+                                        has_ended:
+                                          type: boolean
+                                        start_at:
+                                          type: string
+                                          nullable: true
+                                        end_at:
+                                          type: string
+                                          nullable: true
+                        lms_integration:
+                          nullable: true
+                          oneOf:
+                            - type: array
+                              items: {}
+                            - type: object
+                              additionalProperties: true
+                        classe:
+                          type: object
+                          nullable: true
+                          description: |
+                            L identite de la classe de l evaluation, et rien d autre : le
+                            LMS ne relaie plus l enveloppe KLASSCI de la classe, qui
+                            portait la liste des eleves.
+                          properties:
+                            id:
+                              oneOf:
+                                - type: integer
+                                - type: string
+                            nom:
+                              type: string
                               nullable: true
-                            classe:
-                              type: object
-                              nullable: true
-                              description: |
-                                L identite de la classe de l eleve, et rien d autre : le
-                                LMS ne relaie plus l enveloppe KLASSCI de la classe, qui
-                                portait la liste des eleves.
+                        matiere:
+                          nullable: true
+                          description: |
+                            Ecole creee depuis KLASSCI : relaye depuis KLASSCI, d autres cles
+                            possibles (ou tableau vide pour un objet vide). Ecole creee depuis le
+                            LMS : `{id, nom}` de la matiere locale de l evaluation.
+                          oneOf:
+                            - type: array
+                              items: {}
+                            - type: object
+                              additionalProperties: true
                               properties:
                                 id:
-                                  type: integer
+                                  nullable: true
+                                  oneOf:
+                                    - type: integer
+                                    - type: string
                                 nom:
                                   type: string
                                   nullable: true
-                            matiere:
-                              nullable: true
-                              description: "Relaye depuis KLASSCI, forme non garantie par le LMS."
         '401':
           $ref: '#/components/responses/KlassciUnauthorized'
         '404':

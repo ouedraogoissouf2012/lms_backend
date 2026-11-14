@@ -51,7 +51,7 @@ final class CompositeEnrollmentSource implements EnrollmentSource
             ->whereIn('user_id', $parLeRepli)
             ->where('statut', 'actif')
             ->pluck('user_id')
-            ->map(static fn (mixed $id): int => (int) $id)
+            ->map(static fn (mixed $id): int => intval($id))
             ->all();
 
         $ids = array_values(array_unique([...$parLePivot, ...array_diff($parLeRepli, $avecUneLigneActive)]));

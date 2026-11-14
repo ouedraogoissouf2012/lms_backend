@@ -22,9 +22,9 @@ use Illuminate\Support\Facades\DB;
  * `me/dashboard`, lue en local, sans aucun appel à KLASSCI, même pour un compte
  * porteur d'un jeton. Composé des lecteurs existants :
  *
- * - `classe` : sa classe active, bornée à son établissement (la plus ancienne
- *   inscription s'il en a plusieurs) ; `filiere` et `niveau` valent `null`, le
- *   LMS ne les tient pas ;
+ * - `classe` : la première des classes que lui reconnaît la source d'inscriptions,
+ *   bornée à son établissement (la plus ancienne inscription s'il en a plusieurs) ;
+ *   `filiere` et `niveau` valent `null`, le LMS ne les tient pas ;
  * - `cours` : les matières au programme de ses classes actives ;
  * - `quiz` : l'audience de ses évaluations ({@see LocalLearnerEvaluationAudience}, E2a) ;
  * - `notes` et `moyenne_generale` : {@see StudentGradesAggregator} (E4a), la note
@@ -33,6 +33,12 @@ use Illuminate\Support\Facades\DB;
  *
  * Des inscriptions, toutes inactives (D57) : refus `enrolment_not_active`, le motif
  * de l'inscription. Aucune inscription : un tableau vide, état normal (E2a).
+ *
+ * Une seule règle d'admission, celle des leçons : le port {@see EnrollmentSource},
+ * sans prédicat propre au tableau. Déclaré : ce port retombe sur le miroir
+ * `user_classes` dès qu'aucune ligne de pivot n'est ACTIVE ; un élève aux lignes
+ * toutes inactives qui garde ce miroir (école passée de KLASSCI au mode autonome)
+ * est donc admis ici comme dans ses leçons. Le correctif est à la racine, le port.
  */
 final class LocalStudentDashboardReader implements StudentDashboardReader
 {
@@ -76,7 +82,16 @@ final class LocalStudentDashboardReader implements StudentDashboardReader
     {
         $ids = $this->inscriptions->localClasseIdsFor($student);
 
-        return $ids === [] ? new Collection : $student->classes()
+        if ($ids === []) {
+            return new Collection;
+        }
+
+        // Le pivot ne sert qu'à l'ORDRE : une classe venue du miroir n'y a pas de ligne.
+        return Classe::query()
+            ->select('classes.*')
+            ->leftJoin('classe_etudiant', static fn (JoinClause $pivot): JoinClause => $pivot
+                ->on('classe_etudiant.classe_id', '=', 'classes.id')
+                ->where('classe_etudiant.user_id', $student->id))
             ->where((new Classe)->qualifyColumn('institution_id'), $student->institution_id)
             ->whereKey($ids)
             ->orderBy('classe_etudiant.date_inscription')

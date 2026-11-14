@@ -7450,7 +7450,9 @@ paths:
                       options:
                         type: array
                         nullable: true
-                        items: {}
+                        description: "Choix proposes : une liste de textes, ou `null`."
+                        items:
+                          type: string
                       correct_answers:
                         type: array
                         nullable: true

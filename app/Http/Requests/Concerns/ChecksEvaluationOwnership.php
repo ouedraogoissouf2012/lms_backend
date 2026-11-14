@@ -163,9 +163,18 @@ trait ChecksEvaluationOwnership
             && $evaluation->klassci_enseignant_id === $userKlassciEnseignantId;
     }
 
-    /** L'evaluation routee, si elle existe DANS l'institution de l'appelant. */
+    /**
+     * L'evaluation routee, si elle existe DANS l'institution de l'appelant. Sans
+     * institution, aucune : `where('institution_id', null)` s'ecrirait
+     * `IS NULL` et designerait une evaluation sans institution. La regle tient
+     * d'elle-meme, quelle que soit la garde placee devant elle.
+     */
     private function routedEvaluationForInstitution(User $user): ?Evaluation
     {
+        if (!is_int($user->institution_id)) {
+            return null;
+        }
+
         return Evaluation::where('id', $this->route('id'))
             ->where('institution_id', $user->institution_id)
             ->first();

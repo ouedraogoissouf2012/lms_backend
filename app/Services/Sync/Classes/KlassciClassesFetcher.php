@@ -139,7 +139,11 @@ final class KlassciClassesFetcher
             // séances et de la disponibilité de KLASSCI au moment où
             // l'enseignant ouvre sa page.
             if (is_array($classeDetails)) {
-                $classeDetails['etudiants'] = $data['etudiants'] ?? [];
+                // `etudiants` et `matieres` : portés SEULEMENT si le payload les
+                // contient. Un bloc absent n'est pas une liste vide.
+                if (isset($data['etudiants']) && is_array($data['etudiants'])) {
+                    $classeDetails['etudiants'] = $data['etudiants'];
+                }
 
                 // Portée SEULEMENT si le payload la contient — jamais défautée
                 // à `[]`. Un tableau vide affirmerait « cette classe n'a aucune

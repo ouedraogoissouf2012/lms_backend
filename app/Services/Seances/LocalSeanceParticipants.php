@@ -18,8 +18,15 @@ use App\Services\Visio\VisioActorAuthorization;
  * - Accès : qui gère la séance ({@see VisioActorAuthorization::canManage()}, son auteur
  *   ou la gestion), comme la source KLASSCI, où l'enseignant ne trouve que les séances
  *   de ses matières. Sinon : introuvable (404), sans dire si elle existe.
- * - Élèves : la règle de l'admission ({@see ClasseAudienceSource::studentsOf()}).
- * - `teacher` : l'auteur de la séance. Même forme que la source KLASSCI.
+ * - Élèves : les élèves ACTIFS du pivot de la classe ({@see ClasseAudienceSource::studentsOf()}).
+ *   Écart déclaré, antérieur : l'admission à la visio ({@see ClasseAudienceSource::containsStudent()})
+ *   passe par la source composite des inscriptions, qui retombe sur `user_classes` quand
+ *   l'élève n'a AUCUNE ligne de pivot. Dans une école d'origine KLASSCI passée en mode
+ *   autonome, un tel élève est admis à la visio, mais absent d'ici. Dans une école créée
+ *   depuis le LMS (pivot seul), les deux règles coïncident.
+ * - `teacher` : l'auteur de la séance, `null` s'il est introuvable dans l'établissement.
+ *   Même forme que la source KLASSCI, pas le même sens : KLASSCI y nomme l'appelant.
+ * - `titre` : `null` s'il est absent ou vide, la règle de la forme du calendrier (#1061).
  *
  * Aucun appel à KLASSCI.
  */
@@ -58,7 +65,7 @@ final class LocalSeanceParticipants implements SeanceParticipantsReader
         return [
             'seance' => [
                 'id' => $seance->id,
-                'titre' => $seance->titre,
+                'titre' => is_string($seance->titre) && $seance->titre !== '' ? $seance->titre : null,
                 'date_seance' => $seance->date_seance,
                 'matiere_nom' => $seance->matiere_nom,
                 'classe' => ['id' => $seance->classe_id, 'nom' => $seance->classe_nom],

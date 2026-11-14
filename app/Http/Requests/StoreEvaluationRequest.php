@@ -89,7 +89,9 @@ final class StoreEvaluationRequest extends FormRequest
             'is_online' => 'nullable|boolean',
             'shuffle_questions' => 'nullable|boolean',
             'show_results' => 'nullable|boolean',
-            'questions' => 'nullable|array',
+            // Une LISTE (D520) : indexées par des clés, les questions échappaient aux
+            // règles qui lisent la question voisine par son rang (questions.N.…).
+            'questions' => 'nullable|list',
             'questions.*.question' => 'required|string|max:1000',
             'questions.*.type' => 'required|in:qcm,qcm_multiple,vrai_faux,reponse_courte,dissertation',
             'questions.*.points' => 'nullable|numeric|min:0',

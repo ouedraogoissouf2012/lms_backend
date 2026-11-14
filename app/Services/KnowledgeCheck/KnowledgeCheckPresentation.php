@@ -43,16 +43,33 @@ final class KnowledgeCheckPresentation
     {
         $ordre = array_keys($questions);
         if ($melangerQuestions) {
-            $ordre = $this->hasard->shuffleArray($ordre);
+            $ordre = $this->melanger($ordre);
         }
 
         $options = [];
         foreach ($questions as $q => $question) {
             $indices = array_keys(self::options($question));
-            $options[$q] = $melangerOptions ? $this->hasard->shuffleArray($indices) : $indices;
+            $options[$q] = $melangerOptions ? $this->melanger($indices) : $indices;
         }
 
         return ['questions' => $ordre, 'options' => $options];
+    }
+
+    /**
+     * `Randomizer::shuffleArray()` rend un `array` sans type d'éléments : la
+     * permutation d'une liste est une liste des mêmes éléments.
+     *
+     * @template T
+     *
+     * @param  list<T>  $liste
+     * @return list<T>
+     */
+    private function melanger(array $liste): array
+    {
+        /** @var list<T> $melangee */
+        $melangee = array_values($this->hasard->shuffleArray($liste));
+
+        return $melangee;
     }
 
     /**

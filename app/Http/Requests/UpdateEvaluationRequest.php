@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Requests;
 
 use App\Http\Requests\Concerns\ChecksEvaluationOwnership;
+use App\Support\Evaluation\QuestionOptionLimits;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Http\Exceptions\HttpResponseException;
@@ -74,8 +75,9 @@ final class UpdateEvaluationRequest extends FormRequest
             // Une liste de textes, ou null : ce que le front envoie, et ce que la
             // spec décrit. Sans la règle sur les éléments, le serveur gardait des
             // nombres, des objets, ou un tableau associatif rendu en objet JSON.
-            'questions.*.options' => 'nullable|list',
-            'questions.*.options.*' => 'string',
+            // Bornée (B5) : 26 options, 1 000 caractères chacune (QuestionOptionLimits).
+            'questions.*.options' => QuestionOptionLimits::listRule(),
+            'questions.*.options.*' => QuestionOptionLimits::itemRule(),
             'questions.*.correct_answers' => 'nullable|array',
             // Lue par le service : sans règle, `validated()` la retirerait.
             'questions.*.explanation' => 'nullable|string|max:2000',

@@ -481,12 +481,6 @@ parameters:
 			path: app/Services/ClasseSyncService.php
 
 		-
-			message: '#^Parameter \#2 \$etudiantsData of method App\\Services\\Sync\\Classes\\ClasseStudentsSynchronizer\:\:sync\(\) expects array\<int, array\<string, mixed\>\>, array\<mixed, mixed\> given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Services/ClasseSyncService.php
-
-		-
 			message: '#^Part \$classeName \(mixed\) of encapsed string cannot be cast to string\.$#'
 			identifier: encapsedStringPart.nonString
 			count: 1

@@ -161,8 +161,10 @@ final class TableauDeBordEleveLocalTest extends TestCase
 
         $tableau = app(LocalStudentDashboardReader::class)->dashboardFor($eleve);
 
-        self::assertNull($tableau['data']['classe'] ?? 'absente');
-        self::assertSame([], $tableau['data']['cours'] ?? null);
+        self::assertIsArray($tableau['data']);
+        self::assertArrayHasKey('classe', $tableau['data']);
+        self::assertNull($tableau['data']['classe']);
+        self::assertSame([], $tableau['data']['cours']);
     }
 
     public function test_ecole_klassci_la_charge_de_klassci_est_relayee_telle_quelle(): void

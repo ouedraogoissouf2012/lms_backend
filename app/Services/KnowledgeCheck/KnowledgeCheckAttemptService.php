@@ -206,17 +206,7 @@ final class KnowledgeCheckAttemptService
             ->orderBy('created_at', 'desc')
             ->get();
 
-        $attempts = $rows->map(static function (KnowledgeCheckAttempt $attempt): array {
-            return [
-                'id' => $attempt->id,
-                'score' => $attempt->score,
-                'correct_answers' => $attempt->correct_answers,
-                'total_questions' => $attempt->total_questions,
-                'passed' => $attempt->passed,
-                'time_spent' => $attempt->formatted_duration,
-                'completed_at' => $attempt->completed_at?->format('d/m/Y H:i'),
-            ];
-        });
+        $attempts = $rows->map(self::ligneDHistorique(...));
 
         // Les seules tentatives remises (C44) : `score` n'y est jamais nul.
         $meilleur = $attempts->max('score');
@@ -227,6 +217,26 @@ final class KnowledgeCheckAttemptService
             'attempts' => $attempts,
             'best_score' => is_numeric($meilleur) ? (int) $meilleur : null,
             'has_passed' => $attempts->contains('passed', true),
+        ];
+    }
+
+    /**
+     * Une tentative remise, mise en forme pour l'historique. Le type annoncé est
+     * celui de la signature de getMyAttempts : la collection n'est pas covariante
+     * pour Larastan, une forme plus précise n'y serait pas admise.
+     *
+     * @return array<string, mixed>
+     */
+    private static function ligneDHistorique(KnowledgeCheckAttempt $attempt): array
+    {
+        return [
+            'id' => $attempt->id,
+            'score' => $attempt->score,
+            'correct_answers' => $attempt->correct_answers,
+            'total_questions' => $attempt->total_questions,
+            'passed' => $attempt->passed,
+            'time_spent' => $attempt->formatted_duration,
+            'completed_at' => $attempt->completed_at?->format('d/m/Y H:i'),
         ];
     }
 

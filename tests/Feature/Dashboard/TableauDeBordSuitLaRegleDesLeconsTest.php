@@ -18,11 +18,11 @@ use Tests\TestCase;
  * (`GET /api/lessons/my-courses`) : une seule règle d'admission, le port
  * `EnrollmentSource`, sans prédicat propre au tableau (revue croisée, A1).
  *
- * Le port retombe sur le miroir `user_classes` dès que l'élève n'a aucune ligne de
- * pivot ACTIVE. Une école passée du mode KLASSCI au mode autonome garde ce miroir.
- * Déclaré : D57 n'est donc tenu ni par les leçons ni par le tableau pour un élève
- * aux lignes toutes inactives qui garde des lignes `user_classes`. Le correctif est
- * à la racine (le port), hors de ce lot.
+ * Dans une école autonome, le port est le pivot de l'établissement SEUL (D410) : le
+ * miroir `user_classes`, gardé d'avant une bascule, n'admet personne. Un élève aux
+ * lignes toutes inactives reçoit le refus D57 au tableau (409), et aucune leçon : il
+ * n'est admis nulle part. Avant D410, le port retombait sur le miroir, et les deux
+ * l'admettaient ensemble.
  */
 final class TableauDeBordSuitLaRegleDesLeconsTest extends TestCase
 {
@@ -46,15 +46,20 @@ final class TableauDeBordSuitLaRegleDesLeconsTest extends TestCase
         $sansLigneAvecMiroir = $this->membre($ecole, 'etudiant');
         $this->miroir($sansLigneAvecMiroir, $ecole, 77);
 
+        // Le cas => [admis, statut du tableau] : la règle de l'école autonome (D410).
+        $attendus = ['actif' => [true, 200], 'inactif avec miroir' => [false, 409], 'sans ligne avec miroir' => [false, 200]];
+
         foreach (['actif' => $actif, 'inactif avec miroir' => $inactifAvecMiroir, 'sans ligne avec miroir' => $sansLigneAvecMiroir] as $cas => $eleve) {
+            [$admis, $statut] = $attendus[$cas];
             $lecons = $this->asTenant($eleve)->getJson('/api/lessons/my-courses')->assertOk()->json('data');
             $admisParLesLecons = is_array($lecons) && $lecons !== [];
+            self::assertSame($admis, $admisParLesLecons, "$cas : les leçons");
 
-            $tableau = $this->asTenant($eleve)->getJson('/api/proxy/me/dashboard')->assertOk();
+            $tableau = $this->asTenant($eleve)->getJson('/api/proxy/me/dashboard')->assertStatus($statut);
 
             self::assertSame(
                 $admisParLesLecons ? $classe->id : null,
-                $tableau->json('data.classe.id'),
+                $statut === 200 ? $tableau->json('data.classe.id') : null,
                 "$cas : le tableau n'admet pas ce que les leçons admettent",
             );
         }

@@ -23,6 +23,11 @@ trait JoueUnQuizDeLecon
 {
     protected User $eleve;
 
+    /** L'enseignant auteur de la leçon : il gère le quiz du chapitre. */
+    protected User $auteur;
+
+    protected Chapter $chapitre;
+
     protected KnowledgeCheck $quiz;
 
     /** @return iterable<string, array{0: string}> */
@@ -39,14 +44,14 @@ trait JoueUnQuizDeLecon
         $autonome = $volet === 'standalone';
         $ecole = $autonome ? Institution::factory()->standalone()->create() : Institution::factory()->create();
         $classe = Classe::factory()->create(['institution_id' => $ecole->id, 'klassci_id' => $autonome ? null : 7001]);
-        $auteur = User::factory()->create(['institution_id' => $ecole->id, 'role' => 'enseignant']);
+        $this->auteur = $auteur = User::factory()->create(['institution_id' => $ecole->id, 'role' => 'enseignant']);
         $this->eleve = User::factory()->create(['institution_id' => $ecole->id, 'role' => 'etudiant', 'klassci_id' => $autonome ? null : 910001]);
         $classe->etudiants()->attach($this->eleve->id, ['statut' => 'actif']);
 
         $lecon = Lesson::factory()->published()->create([
             'institution_id' => $ecole->id, 'enseignant_id' => $auteur->id, 'classe_id' => $classe->id,
         ]);
-        $chapitre = Chapter::factory()->create([
+        $this->chapitre = $chapitre = Chapter::factory()->create([
             'lesson_id' => $lecon->id, 'institution_id' => $ecole->id, 'enseignant_id' => $auteur->id,
             'content_type' => 'quiz', 'order' => 0,
         ]);

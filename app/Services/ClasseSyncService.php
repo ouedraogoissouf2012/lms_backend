@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Models\Classe;
+use App\Services\Classe\ClasseEnvelope;
 use App\Services\Sync\Classes\ClasseMatieresSynchronizer;
 use App\Services\Sync\Classes\ClasseStudentsSynchronizer;
 use App\Services\Sync\Classes\KlassciClassesFetcher;
@@ -152,7 +153,9 @@ final class ClasseSyncService
 
             // L'API retourne {data: {classe: {...}, etudiants: [...]}}
             $klasseData = $responseData['classe'] ?? $responseData;
-            $etudiantsData = $responseData['etudiants'] ?? [];
+            // Absent (`null`) n'est pas vide (`[]`) : « KLASSCI ne l'a pas dit »
+            // n'est pas « la classe n'a aucun élève ».
+            $etudiantsData = ClasseEnvelope::optionalList($responseData, 'etudiants');
 
             // #740 — les matières du payload étaient JETÉES ici. On les garde
             // pour le LIEN classe ↔ matière, que rien d'autre n'écrit : sans
@@ -179,8 +182,11 @@ final class ClasseSyncService
                 $this->matieresSynchronizer->sync($result['classe'], array_values($matieresData));
             }
 
-            // Synchroniser les étudiants si disponibles
-            if (! empty($etudiantsData) && is_array($etudiantsData)) {
+            if ($etudiantsData === null) {
+                $this->logger->warning('Bloc etudiants absent de la classe KLASSCI : eleves non synchronises', [
+                    'klassci_classe_id' => $klassciClasseId,
+                ]);
+            } elseif ($etudiantsData !== []) {
                 $this->studentsSynchronizer->sync(
                     $result['classe'],
                     $etudiantsData,

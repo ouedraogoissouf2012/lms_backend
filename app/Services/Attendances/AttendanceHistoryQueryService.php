@@ -8,6 +8,7 @@ use App\Models\ESBTPAttendance;
 use App\Models\Seance;
 use App\Models\User;
 use App\Services\SeanceDetailQueryService;
+use App\Services\Visio\VisioActorAuthorization;
 use App\Support\Logging\CaughtExceptionLog;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
@@ -32,6 +33,7 @@ final class AttendanceHistoryQueryService
     public function __construct(
         private readonly SeanceDetailQueryService $seanceQuery,
         private readonly CaughtExceptionLog $journal,
+        private readonly VisioActorAuthorization $autorisation,
     ) {}
 
     /**
@@ -90,9 +92,11 @@ final class AttendanceHistoryQueryService
             ->orderBy('joined_at', 'desc');
 
         if ($user->isTeacher()) {
-            // L'enseignant ne voit que les présences de ses propres séances
-            $query->whereHas('seance', function ($q) use ($user) {
-                $q->whereRaw('enseignant_id = ?', [$user->id]);
+            // L'enseignant ne voit que les présences des séances qu'il gère : la
+            // règle de la gestion de la visio, sous sa forme requête.
+            $query->whereHas('seance', function (Builder $seances) use ($user): void {
+                /** @var Builder<Seance> $seances */
+                $this->autorisation->limitToTeacherSeances($seances, $user);
             });
         } elseif ($user->isStudent()) {
             // L'étudiant ne voit que ses propres présences

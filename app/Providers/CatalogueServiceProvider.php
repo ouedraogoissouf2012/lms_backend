@@ -21,8 +21,11 @@ use App\Services\Classe\LocalInstitutionClassesReader;
 use App\Services\Classe\LocalTeacherClassesReader;
 use App\Services\Classe\TeacherClassesQueryService;
 use App\Services\Classe\TeacherClassesReader;
+use App\Services\Dashboard\KlassciStudentDashboardReader;
 use App\Services\Dashboard\KlassciTeacherDashboardReader;
+use App\Services\Dashboard\LocalStudentDashboardReader;
 use App\Services\Dashboard\LocalTeacherDashboardReader;
+use App\Services\Dashboard\StudentDashboardReader;
 use App\Services\Dashboard\TeacherDashboardReader;
 use App\Services\Enseignant\InstitutionTeachersReader;
 use App\Services\Enseignant\KlassciInstitutionTeachersReader;
@@ -93,6 +96,8 @@ final class CatalogueServiceProvider extends ServiceProvider
         ProgrammationDesEvaluationsReader::class => [KlassciProgrammationDesEvaluations::class, LocalProgrammationDesEvaluations::class],
         // R4 : le tableau de bord de l'enseignant, composé des sources ci-dessus.
         TeacherDashboardReader::class => [KlassciTeacherDashboardReader::class, LocalTeacherDashboardReader::class],
+        // Le tableau de bord de l'élève, composé des lecteurs de l'élève (E2a, E4a).
+        StudentDashboardReader::class => [KlassciStudentDashboardReader::class, LocalStudentDashboardReader::class],
     ];
 
     /**

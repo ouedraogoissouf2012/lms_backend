@@ -103,7 +103,8 @@ final class KlassciTokenMissingReasonTest extends TestCase
         $this->assertJetonAbsent($this->asTenant($compte)->getJson('/api/proxy/evaluations'));
     }
 
-    #[DataProvider('volets')]
+    /** École KLASSCI seule : dans l'école du LMS, le tableau de l'élève se lit en local (TableauDeBordEleveLocalTest). */
+    #[DataProvider('voletKlassciSeul')]
     public function test_proxy_tableau_de_bord_eleve_dit_le_jeton_absent(InstitutionMode $mode): void
     {
         $compte = $this->compteSansJeton($mode, 'etudiant');

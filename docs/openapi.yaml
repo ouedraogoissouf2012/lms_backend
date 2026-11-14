@@ -906,6 +906,185 @@ components:
           enum:
             - no_institution
 
+    TableauDeBordEleve:
+      description: |
+        Le tableau de bord de l'eleve, selon la source de son etablissement : la
+        charge KLASSCI relayee telle quelle, ou la charge locale, marquee
+        `meta.source: lms_local`. La marque departage les deux formes.
+      oneOf:
+        - $ref: '#/components/schemas/TableauDeBordEleveKlassci'
+        - $ref: '#/components/schemas/TableauDeBordEleveLocal'
+
+    TableauDeBordEleveKlassci:
+      type: object
+      description: |
+        Ecole en mode KLASSCI : la charge de `me/dashboard`, relayee telle quelle ;
+        ses cles ne sont pas fermees ici. Elle ne porte pas `meta` : la propriete
+        n'admet qu'un objet vide, ce qui refuse la marque locale.
+      required:
+        - success
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+        meta:
+          type: object
+          description: "Absent de la charge KLASSCI."
+          additionalProperties: false
+
+    TableauDeBordEleveLocal:
+      type: object
+      description: "Ecole en mode autonome : la meme forme, lue en local, fermee. Les identifiants sont LOCAUX."
+      additionalProperties: false
+      required:
+        - success
+        - data
+        - meta
+      properties:
+        success:
+          type: boolean
+          enum:
+            - true
+        data:
+          type: object
+          additionalProperties: false
+          required:
+            - classe
+            - cours
+            - quiz
+            - notes
+            - statistiques
+          properties:
+            classe:
+              type: object
+              nullable: true
+              additionalProperties: false
+              required:
+                - id
+                - name
+                - libelle
+                - code
+                - filiere
+                - niveau
+              properties:
+                id:
+                  type: integer
+                name:
+                  type: string
+                libelle:
+                  type: string
+                code:
+                  type: string
+                  nullable: true
+                filiere:
+                  type: object
+                  nullable: true
+                  description: "Toujours null : le LMS ne tient pas la filiere."
+                niveau:
+                  type: object
+                  nullable: true
+                  description: "Toujours null : le LMS ne tient pas le niveau."
+            cours:
+              type: array
+              items:
+                type: object
+                additionalProperties: false
+                required:
+                  - id
+                  - nom
+                  - libelle
+                properties:
+                  id:
+                    type: integer
+                  nom:
+                    type: string
+                  libelle:
+                    type: string
+            quiz:
+              type: array
+              items:
+                type: object
+                additionalProperties: false
+                required:
+                  - id
+                  - titre
+                  - type
+                  - date_evaluation
+                properties:
+                  id:
+                    type: integer
+                  titre:
+                    type: string
+                  type:
+                    type: string
+                    nullable: true
+                  date_evaluation:
+                    type: string
+                    format: date-time
+                    nullable: true
+            notes:
+              type: array
+              items:
+                type: object
+                additionalProperties: false
+                required:
+                  - id
+                  - evaluation
+                  - matiere
+                  - note
+                properties:
+                  id:
+                    type: integer
+                  evaluation:
+                    type: object
+                    additionalProperties: false
+                    required:
+                      - id
+                      - titre
+                    properties:
+                      id:
+                        type: integer
+                      titre:
+                        type: string
+                  matiere:
+                    type: object
+                    additionalProperties: false
+                    required:
+                      - id
+                      - name
+                    properties:
+                      id:
+                        type: integer
+                      name:
+                        type: string
+                  note:
+                    type: number
+            statistiques:
+              type: object
+              additionalProperties: false
+              required:
+                - moyenne_generale
+                - taux_presence
+              properties:
+                moyenne_generale:
+                  type: number
+                  nullable: true
+                taux_presence:
+                  type: number
+                  nullable: true
+                  description: "Toujours null : non mesure en local, et non 0."
+        meta:
+          type: object
+          additionalProperties: false
+          required:
+            - source
+          properties:
+            source:
+              type: string
+              enum:
+                - lms_local
+
     TableauDeBordEnseignant:
       description: |
         Le tableau de bord de l'enseignant, selon la source de son etablissement :
@@ -7201,6 +7380,77 @@ paths:
                 $ref: '#/components/schemas/VisioErreurInterne'
         '503':
           description: "Ecole creee depuis KLASSCI : KLASSCI indisponible."
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/KlassciIndisponible'
+
+  /proxy/me/dashboard:
+    get:
+      tags:
+        - Proxy / KLASSCI
+      operationId: studentDashboard
+      summary: "Le tableau de bord de l'eleve"
+      description: |
+        La source est choisie par le mode DECLARE de l'ecole, au point de
+        liaison, jamais par le client.
+
+        **Ecole en mode KLASSCI.** La reponse de `me/dashboard`, relayee telle
+        quelle avec le jeton KLASSCI du compte. Sans ce jeton : 401
+        `klassci_token_missing`. Une panne ou un circuit ouvert rendent le 503
+        avec `Retry-After` ; un refus de KLASSCI est relaye. La charge ne porte
+        pas `meta`.
+
+        **Ecole en mode autonome.** La meme forme, lue en local, sans jeton ni
+        appel KLASSCI, avec les identifiants LOCAUX, marquee
+        `meta.source: lms_local` :
+        - `classe` : sa classe a inscription active, dans son etablissement (la
+          plus ancienne inscription s'il en a plusieurs) ; `filiere` et
+          `niveau` valent `null` ;
+        - `cours` : les matieres au programme de ses classes actives ;
+        - `quiz` : les evaluations qu'il voit, l'audience de sa liste ;
+        - `notes` : ses notes finales visibles, la plus recente d'abord ; une
+          note aux resultats caches n'y figure pas ;
+        - `statistiques.moyenne_generale` : `null` sans note ;
+          `statistiques.taux_presence` : `null`, non mesure.
+        Toutes ses inscriptions inactives : 409 `enrolment_not_active`. Aucune
+        inscription : un tableau vide, `classe` a `null`.
+      security:
+        - sanctum: []
+      responses:
+        '200':
+          description: "Le tableau de bord de l'eleve"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TableauDeBordEleve'
+        '401':
+          description: |
+            Jeton porteur absent ou invalide (sans `reason`). Ecole en mode
+            KLASSCI : compte sans jeton KLASSCI (`reason: klassci_token_missing`),
+            ou session refusee par KLASSCI (`reason: klassci_session_expired`).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefusKlassci'
+        '409':
+          description: "Ecole en mode autonome : toutes les inscriptions de l'eleve sont inactives (`enrolment_not_active`)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefusMotive'
+        '500':
+          description: "Defaillance interne : « Service indisponible. Veuillez reessayer. »"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VisioErreurInterne'
+        '503':
+          description: "Ecole en mode KLASSCI : KLASSCI indisponible (panne, circuit ouvert, configuration absente)."
           headers:
             Retry-After:
               schema:

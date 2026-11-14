@@ -95,6 +95,28 @@ final class OptionsListeDeTextesTest extends TestCase
         self::assertSame([['3', '4']], $this->optionsDe($evaluation));
     }
 
+    /**
+     * Une chaîne JSON n'est jamais décodée : elle est refusée, pour `options` comme pour
+     * `correct_answers`. Les services n'ont donc pas à la décoder (B6, revue de Fille 1).
+     */
+    #[DataProvider('ecoles')]
+    public function test_une_chaine_json_est_refusee_pour_options_et_correct_answers(InstitutionMode $mode): void
+    {
+        $auteur = $this->auteurDans($mode);
+        $question = ['question' => 'Combien font 2 + 2 ?', 'type' => 'qcm', 'points' => 2, 'options' => '["3","4"]', 'correct_answers' => '["4"]'];
+
+        $this->asTenant($auteur)->postJson('/api/evaluations', $this->creation([$question]))
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['questions.0.options', 'questions.0.correct_answers']);
+        self::assertSame(0, DB::table('evaluations')->count());
+
+        $evaluation = $this->evaluationDe($auteur);
+        $this->asTenant($auteur)->putJson('/api/evaluations/'.$evaluation->id, ['questions' => [$question]])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['questions.0.options', 'questions.0.correct_answers']);
+        self::assertSame([['3', '4']], $this->optionsDe($evaluation));
+    }
+
     /** Le témoin : une liste de textes, et `null` pour une question sans choix, passent. */
     #[DataProvider('ecoles')]
     public function test_une_liste_de_textes_et_null_sont_acceptes_en_creation_et_en_mise_a_jour(InstitutionMode $mode): void

@@ -52,6 +52,9 @@ final class OptionsListeDeTextesTest extends TestCase
     public static function optionsRefusees(): array
     {
         $cas = [
+            // Les bornes (B5) : 26 options au plus, 1 000 caractères au plus par option.
+            '27 options' => [array_fill(0, 27, 'x'), 'questions.0.options'],
+            'une option de 1 001 caractères' => [[str_repeat('a', 1001)], 'questions.0.options.0'],
             'des nombres' => [[3, 4], 'questions.0.options.0'],
             'des objets' => [[['libelle' => '3'], ['libelle' => '4']], 'questions.0.options.0'],
             'des listes' => [[['3'], ['4']], 'questions.0.options.0'],
@@ -112,6 +115,24 @@ final class OptionsListeDeTextesTest extends TestCase
             ['question' => 'Expliquez.', 'type' => 'dissertation', 'points' => 5, 'options' => null],
         ]])->assertOk();
         self::assertSame([['Vrai', 'Faux'], null], $this->optionsDe($evaluation));
+    }
+
+    /** Le témoin des bornes : 26 options de 1 000 caractères passent, en création et en mise à jour (B5). */
+    #[DataProvider('ecoles')]
+    public function test_vingt_six_options_de_mille_caracteres_sont_acceptees(InstitutionMode $mode): void
+    {
+        $auteur = $this->auteurDans($mode);
+        $options = array_map(static fn (int $i): string => str_pad((string) $i, 1000, 'o'), range(1, 26));
+
+        $creee = $this->asTenant($auteur)
+            ->postJson('/api/evaluations', $this->creation([$this->question($options)]))
+            ->assertCreated();
+        $evaluation = Evaluation::withoutGlobalScopes()->findOrFail($creee->json('data.id'));
+        self::assertSame([$options], $this->optionsDe($evaluation));
+
+        $this->asTenant($auteur)->putJson('/api/evaluations/'.$evaluation->id, ['questions' => [$this->question($options)]])
+            ->assertOk();
+        self::assertSame([$options], $this->optionsDe($evaluation));
     }
 
     /** Un auteur à qui l'école ouvre la création : programmé localement, ou enseignant KLASSCI. */

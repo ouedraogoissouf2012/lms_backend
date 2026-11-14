@@ -1224,6 +1224,64 @@ components:
               enum:
                 - lms_local
 
+    ProgrammationDesEvaluations:
+      description: |
+        La programmation des evaluations du porteur, selon la source de son
+        etablissement : la charge KLASSCI relayee telle quelle, ou la liste locale,
+        vide et marquee `meta.source: lms_local`. La marque departage les deux formes.
+      oneOf:
+        - $ref: '#/components/schemas/ProgrammationKlassci'
+        - $ref: '#/components/schemas/ProgrammationLocale'
+
+    ProgrammationKlassci:
+      type: object
+      description: |
+        Ecole en mode KLASSCI : la charge de KLASSCI, relayee telle quelle ; ses
+        cles ne sont pas fermees ici. Elle ne porte pas `meta` : la propriete
+        n'admet qu'un objet vide, ce qui refuse la marque locale.
+      properties:
+        success:
+          type: boolean
+        data:
+          type: array
+          items:
+            type: object
+        meta:
+          type: object
+          description: "Absent de la charge KLASSCI."
+          additionalProperties: false
+
+    ProgrammationLocale:
+      type: object
+      description: |
+        Ecole en mode autonome : il n y a pas de programmation KLASSCI. La liste
+        est VIDE, sans 401 ni appel a KLASSCI.
+      additionalProperties: false
+      required:
+        - success
+        - data
+        - meta
+      properties:
+        success:
+          type: boolean
+          enum:
+            - true
+        data:
+          type: array
+          description: "Toujours vide."
+          items:
+            type: object
+        meta:
+          type: object
+          additionalProperties: false
+          required:
+            - source
+          properties:
+            source:
+              type: string
+              enum:
+                - lms_local
+
     KlassciIndisponible:
       type: object
       description: |
@@ -7992,7 +8050,11 @@ paths:
         - sanctum: []
       responses:
         '200':
-          description: "List of evaluations (vide, avec `meta.source: lms_local`, dans une ecole creee depuis le LMS)"
+          description: "La programmation : relayee de KLASSCI, ou vide et marquee `meta.source: lms_local` dans une ecole creee depuis le LMS"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProgrammationDesEvaluations'
         '401':
           # Ecole creee depuis KLASSCI seulement.
           $ref: '#/components/responses/KlassciUnauthorized'

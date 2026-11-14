@@ -8,6 +8,7 @@ use App\Http\Controllers\AuthenticatedController;
 use App\Models\Evaluation;
 use App\Models\EvaluationSubmission;
 use App\Models\User;
+use App\Services\Evaluation\Student\ResultatsVisibles;
 use App\Support\Logging\CaughtExceptionLog;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
@@ -75,7 +76,9 @@ final class EvaluationStudentSubmissionController extends AuthenticatedControlle
 
             $score = $submission->score;
             $note = $submission->note_sur_20;
-            if ($evaluation->show_results === false) {
+            // La règle « résultats visibles » (C25), partagée avec la liste et
+            // la remise.
+            if (! ResultatsVisibles::pour($evaluation)) {
                 $score = null;
                 $note = null;
             }

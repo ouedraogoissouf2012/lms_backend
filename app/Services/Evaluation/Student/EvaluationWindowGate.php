@@ -5,60 +5,56 @@ declare(strict_types=1);
 namespace App\Services\Evaluation\Student;
 
 use App\Models\Evaluation;
-use App\Services\KlassciProxyService;
-use App\Services\Seances\KlassciPayload;
-use App\Support\Logging\CaughtExceptionLog;
+use App\Models\User;
+use App\Services\Roster\RosterAuthorityFactory;
 use Carbon\Carbon;
 use Carbon\Exceptions\InvalidFormatException;
 use Psr\Log\LoggerInterface;
 
 /**
- * La fenêtre de passage d'une évaluation, telle que KLASSCI la programme.
+ * La fenêtre de passage d'une évaluation, et la décision de laisser démarrer.
  *
- * Extrait de {@see EvaluationAttemptStateService} (garde de taille §1.1) :
- * lire la fenêtre et décider si elle laisse démarrer est une responsabilité
- * à part, la seule de ce flux qui interroge `GET evaluations` chez KLASSCI.
- * Les lectures du payload y sont typées (`rawWindowOf`, `windowDate`) ; la
- * décision d'ouverture est restée telle quelle.
+ * Extrait de {@see EvaluationAttemptStateService} (garde de taille §1.1) : lire
+ * la fenêtre et décider si elle laisse démarrer est une responsabilité à part.
  *
- * La fenêtre se lit dans la liste KLASSCI DE L'ÉLÈVE, par son jeton. Elle ne
- * dit donc rien d'une évaluation qui n'y figure pas (`window = null`) : ce
- * n'est PAS un contrôle d'accès. L'accès est décidé avant, par
- * {@see LearnerEvaluationScope}.
+ * D72, E2b : la fenêtre vient d'une source qui dépend du type d'école
+ * ({@see EvaluationWindowSource}), résolue À CHAQUE APPEL par la fabrique :
+ * ce service est reçu par le constructeur d'EvaluationAttemptStateService, que
+ * le contrôleur mémoïse (ADR-EI-01, règle 3 ; même patron que
+ * {@see LearnerEvaluationScope}). La décision d'ouverture est restée telle
+ * quelle.
  */
 final class EvaluationWindowGate
 {
     public function __construct(
         private readonly LoggerInterface $logger,
-        private readonly KlassciProxyService $klassciService,
-        private readonly CaughtExceptionLog $journal,
+        private readonly RosterAuthorityFactory $sources,
     ) {}
 
     /**
-     * Récupère la fenêtre temporelle KLASSCI d'une évaluation, en distinguant
-     * « appel échoué » de « pas de fenêtre configurée » (#499) :
-     *   - fetched=false            → l'appel KLASSCI a échoué (le caller doit
+     * Un refus qui précède toute lecture (la source KLASSCI exige le jeton de
+     * l'élève : `no_token`), ou null.
+     *
+     * @return array{status: string}|null
+     */
+    public function refusAvantLecture(User $eleve): ?array
+    {
+        return $this->source()->refusAvantLecture($eleve);
+    }
+
+    /**
+     * La fenêtre de l'évaluation, en distinguant « lecture échouée » de « pas
+     * de fenêtre configurée » (#499) :
+     *   - fetched=false            → la lecture a échoué (le caller doit
      *                                fail-closed hors mode entraînement) ;
-     *   - fetched=true, window=null → appel réussi, aucune fenêtre (toujours ouverte) ;
+     *   - fetched=true, window=null → lecture réussie, aucune fenêtre (toujours ouverte) ;
      *   - fetched=true, window=[…]  → fenêtre à évaluer par {@see checkWindow}.
      *
      * @return array{fetched: bool, window: ?array<string, mixed>}
      */
-    public function fetchWindow(string $klassciToken, ?int $klassciEvaluationId): array
+    public function fetchWindow(User $eleve, Evaluation $evaluation): array
     {
-        try {
-            $response = $this->klassciService->requestWithUserToken($klassciToken, 'evaluations', 'GET');
-            $rawWindow = $this->rawWindowOf($response['data'] ?? null, $klassciEvaluationId);
-
-            return [
-                'fetched' => true,
-                'window' => is_array($rawWindow) ? KlassciPayload::asArray($rawWindow) : null,
-            ];
-        } catch (\Exception $e) {
-            $this->journal->warning('Window check failed (KLASSCI)', $e);
-
-            return ['fetched' => false, 'window' => null];
-        }
+        return $this->source()->fenetre($eleve, $evaluation);
     }
 
     /**
@@ -70,13 +66,13 @@ final class EvaluationWindowGate
      * @return array{0: ?array{status: string, window?: ?array<string, mixed>, message?: string}, 1: ?array<string, mixed>}
      */
     public function resolveWindowGate(
-        string $klassciToken,
+        User $eleve,
         Evaluation $evaluation,
         bool $isPracticeMode,
         int $evaluationId,
         ?int $klassciEtudiantId
     ): array {
-        $windowResult = $this->fetchWindow($klassciToken, $evaluation->klassci_evaluation_id);
+        $windowResult = $this->fetchWindow($eleve, $evaluation);
 
         // Fail-closed : fenêtre non vérifiable (KLASSCI indisponible) hors
         // entraînement → refus, aucune tentative créée (#499).
@@ -95,6 +91,11 @@ final class EvaluationWindowGate
         $window = $windowResult['window'];
 
         return [$this->checkWindow($window, $isPracticeMode, $evaluationId, $klassciEtudiantId), $window];
+    }
+
+    private function source(): EvaluationWindowSource
+    {
+        return $this->sources->sourceForCurrentTenant(KlassciEvaluationWindowSource::class, LocalEvaluationWindowSource::class);
     }
 
     /**
@@ -123,23 +124,6 @@ final class EvaluationWindowGate
         ]);
 
         return ['status' => 'window_closed', 'window' => $window, 'message' => $message];
-    }
-
-    /**
-     * La fenêtre brute de cette évaluation dans la liste KLASSCI de l'élève, ou
-     * null. Chaque niveau du payload est vérifié avant d'être lu : une forme
-     * inattendue donne « pas de fenêtre », comme le faisait l'accès d'origine.
-     */
-    private function rawWindowOf(mixed $evaluations, ?int $klassciEvaluationId): mixed
-    {
-        if (! is_array($evaluations)) {
-            return null;
-        }
-
-        $klassciEval = collect($evaluations)->firstWhere('id', $klassciEvaluationId);
-        $programmation = is_array($klassciEval) ? ($klassciEval['programmation'] ?? null) : null;
-
-        return is_array($programmation) ? ($programmation['window'] ?? null) : null;
     }
 
     /**

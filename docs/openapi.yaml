@@ -2572,10 +2572,12 @@ components:
       type: object
       nullable: true
       description: |
-        Fenetre de passage relayee depuis KLASSCI (`programmation.window`).
-        `null` quand l evaluation n en a pas, ou quand KLASSCI n a pas pu etre
-        joint. Le LMS ne lit que les cles ci-dessous ; les autres passent telles
-        quelles.
+        Fenetre de passage. Ecole creee depuis KLASSCI : relayee depuis KLASSCI
+        (`programmation.window`), `null` quand l evaluation n en a pas, ou quand
+        KLASSCI n a pas pu etre joint. Ecole creee depuis le LMS (D72, E2b) :
+        calculee sur la ligne ; `start_at` et `end_at` sont `null` quand
+        l evaluation n a pas de date (fenetre fermee). Le LMS ne lit que les
+        cles ci-dessous ; les autres passent telles quelles.
       additionalProperties: true
       properties:
         is_open:
@@ -2587,9 +2589,11 @@ components:
         start_at:
           type: string
           format: date-time
+          nullable: true
         end_at:
           type: string
           format: date-time
+          nullable: true
 
     EvaluationSubmissionRecord:
       type: object
@@ -2610,6 +2614,8 @@ components:
           nullable: true
         klassci_etudiant_id:
           type: integer
+          nullable: true
+          description: "Nul pour une copie d une ecole creee depuis le LMS (D72) : l auteur est `student_id`."
         attempt:
           type: integer
         status:
@@ -7536,7 +7542,8 @@ paths:
         ayant au moins une question — triees par date decroissante.
 
         Chaque element est l evaluation enrichie : `questions_count`, la
-        derniere copie de l eleve (`student_submission`), et, relayes depuis
+        derniere copie de l eleve (`student_submission`, sans `score`, `note_sur_20`
+        ni `manual_points` quand `show_results` est faux : C25), et, relayes depuis
         KLASSCI sans garantie de forme, `programmation`, `lms_integration`,
         `classe`, `matiere`. Les questions et les copies des autres eleves ne
         sont PAS chargees.
@@ -7697,6 +7704,10 @@ paths:
         `moyenne` est ponderee par `coefficient` ; `moyenne_generale` est la
         moyenne simple des moyennes de matiere. Toutes deux valent `0` (entier)
         quand il n y a rien a moyenner.
+
+        ECART CONNU (C30, ouvert) : `show_results` n est PAS applique ici. La
+        note est livree meme quand l evaluation cache ses resultats, alors que
+        la liste, « ma copie », la remise et la page matiere la masquent (C25).
       security:
         - sanctum: []
       responses:
@@ -7780,7 +7791,16 @@ paths:
         Reservee aux eleves. Aucun corps de requete : l identite vient du jeton.
 
         Si une tentative `en_cours` existe, elle est REPRISE (meme `id`) ;
-        sinon une nouvelle copie est creee. Une evaluation terminee se passe
+        sinon une nouvelle copie est creee. Deux demarrages simultanes : l unique
+        des copies arbitre, et le perdant REPREND la tentative de la requete
+        gagnante (D72, E2b) ; si elle est deja remise, 409.
+
+        Fenetre : ecole creee depuis KLASSCI, la programmation KLASSCI (jeton de
+        l eleve exige, sinon 401) ; ecole creee depuis le LMS, calculee sur la
+        ligne (ouverture a `date_evaluation`, fermeture a `deadline_at`, sinon a
+        `date_evaluation + duree_minutes` ; fermee sans date), sans jeton.
+
+        Une evaluation terminee se passe
         en mode entrainement (`is_practice: true`) : fenetre, quota et reprise
         n y sont pas appliques, et la note n est pas officielle.
 
@@ -7833,9 +7853,10 @@ paths:
             - appelant d un etablissement qui n est pas eleve : refus generique,
               sans `reason`.
 
-            Ces quatre refus n existent que dans l ecole creee depuis KLASSCI :
-            dans l ecole creee depuis le LMS, le demarrage s arrete avant, faute
-            de jeton KLASSCI (401).
+            Ces refus valent dans les deux types d ecole. Depuis D72 (E2b), l ecole
+            creee depuis le LMS n exige plus de jeton KLASSCI : sa fenetre est
+            calculee sur la ligne. Le 401 du jeton absent n existe que dans l ecole
+            creee depuis KLASSCI.
           content:
             application/json:
               schema:
@@ -7870,6 +7891,28 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/MessageOnly'
+        '409':
+          description: |
+            Course perdue entre deux demarrages simultanes, et la tentative de la
+            requete gagnante est deja remise : rien n est cree ni repris.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - success
+                  - message
+                  - reason
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  message:
+                    type: string
+                  reason:
+                    type: string
+                    enum:
+                      - evaluation_attempt_conflict
         '429':
           $ref: '#/components/responses/TooManyRequests'
         '503':
@@ -8042,6 +8085,10 @@ paths:
       description: |
         Informatif : si KLASSCI est injoignable, `window` vaut `null` et la
         reponse reste 200. C est `/start` qui refuse, pas cette route.
+
+        Ecole creee depuis KLASSCI : la fenetre KLASSCI, jeton de l eleve exige
+        (sinon 401). Ecole creee depuis le LMS (D72, E2b) : la fenetre calculee
+        sur la ligne, sans jeton ni appel a KLASSCI.
       security:
         - sanctum: []
       parameters:

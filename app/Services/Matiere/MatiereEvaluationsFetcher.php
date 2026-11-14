@@ -8,6 +8,7 @@ use App\Models\Evaluation;
 use App\Models\EvaluationSubmission;
 use App\Models\User;
 use App\Services\Evaluation\Student\LearnerEvaluationScope;
+use App\Services\Evaluation\Student\ResultatsVisibles;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 
@@ -171,8 +172,11 @@ final class MatiereEvaluationsFetcher
             // Sa copie, par l'UNIQUE définition de la propriété d'une copie
             // (EvaluationSubmission::ownedBy : par `student_id`, ou par
             // l'identité KLASSCI pour une ligne d'avant ; sans établissement :
-            // aucune).
-            $evalArray['student_submission'] = $quizLMS->submissions()->ownedBy($user)->latest()->first();
+            // aucune). Sans sa note si les résultats ne sont pas visibles (C25).
+            $evalArray['student_submission'] = ResultatsVisibles::masquer(
+                $quizLMS->submissions()->ownedBy($user)->latest()->first(),
+                $quizLMS,
+            );
         } else {
             $evalArray['online_version'] = null;
             $evalArray['student_submission'] = null;
@@ -230,7 +234,8 @@ final class MatiereEvaluationsFetcher
                     'questions_count' => $eval->questions_count,
                     'submissions_count' => $eval->submissions_count,
                 ],
-                'student_submission' => $userLatestSubmissions->get($eval->id),
+                // Sans sa note si les résultats ne sont pas visibles (C25).
+                'student_submission' => ResultatsVisibles::masquer($userLatestSubmissions->get($eval->id), $eval),
             ];
         })->all();
     }

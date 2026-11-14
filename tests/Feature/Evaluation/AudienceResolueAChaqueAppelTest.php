@@ -8,6 +8,7 @@ use App\Enums\InstitutionMode;
 use App\Models\Evaluation;
 use App\Models\EvaluationQuestion;
 use App\Models\Institution;
+use App\Services\Evaluation\Student\EvaluationWindowGate;
 use App\Services\Evaluation\Student\LearnerEvaluationScope;
 use App\Services\KlassciProxyService;
 use App\Services\TenantManager;
@@ -59,6 +60,28 @@ final class AudienceResolueAChaqueAppelTest extends TestCase
 
         $tenants->set($klassci);
         self::assertSame([$deKlassci->getKey()], $audience->visibleFor($eleveKlassci)?->pluck('id')->all());
+        $tenants->reset();
+    }
+
+    public function test_la_meme_fenetre_sert_une_ecole_klassci_puis_une_ecole_du_lms(): void
+    {
+        // Même règle pour la fenêtre (E2b) : la source KLASSCI exige le jeton
+        // (`no_token`), la source locale non. Une source figée à la
+        // construction rendrait le même verdict aux deux écoles.
+        $klassci = $this->ecole(InstitutionMode::Klassci);
+        $sansJeton = $this->membre($klassci, 'etudiant');
+        $lms = $this->ecole();
+        $eleveLms = $this->membre($lms, 'etudiant');
+
+        $fenetre = app(EvaluationWindowGate::class);
+        $tenants = app(TenantManager::class);
+
+        $tenants->set($klassci);
+        self::assertSame(['status' => 'no_token'], $fenetre->refusAvantLecture($sansJeton));
+        $tenants->set($lms);
+        self::assertNull($fenetre->refusAvantLecture($eleveLms));
+        $tenants->set($klassci);
+        self::assertSame(['status' => 'no_token'], $fenetre->refusAvantLecture($sansJeton));
         $tenants->reset();
     }
 

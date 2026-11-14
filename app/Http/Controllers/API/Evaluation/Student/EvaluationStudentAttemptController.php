@@ -12,6 +12,7 @@ use App\Http\Requests\StartEvaluationRequest;
 use App\Http\Requests\SubmitEvaluationRequest;
 use App\Services\Evaluation\EvaluationGradingService;
 use App\Services\Evaluation\Student\EvaluationAttemptStateService;
+use App\Services\Evaluation\Student\ResultatsVisibles;
 use App\Support\Logging\CaughtExceptionLog;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -77,6 +78,9 @@ final class EvaluationStudentAttemptController extends AuthenticatedController
             'max_attempts' => $this->errorResponse($result['message'], 403, reason: 'evaluation_max_attempts'),
             'retake_forbidden' => $this->errorResponse($result['message'] ?? 'Reprise non autorisée', 403, reason: 'evaluation_retake_forbidden'),
             'offline_only' => $this->errorResponse($result['message'] ?? 'Évaluation hors ligne', 403, reason: 'evaluation_offline_only'),
+            // D72, E2b : la course entre deux `/start` a été perdue, et la
+            // tentative de la requête gagnante est déjà remise.
+            'attempt_conflict' => $this->errorResponse($result['message'] ?? 'Conflit de tentative', 409, reason: 'evaluation_attempt_conflict'),
             // #499 : fenêtre non vérifiable (KLASSCI indisponible) → 503 transitoire
             // (fail-closed), pas 403 : ce n'est pas un refus d'accès mais une
             // indisponibilité de dépendance ; le client doit réessayer.
@@ -133,9 +137,11 @@ final class EvaluationStudentAttemptController extends AuthenticatedController
                 'note_sur_20' => $submission->note_sur_20,
             ];
             $evaluation = $submission->evaluation;
-            if ($evaluation !== null && $evaluation->show_results === false) {
+            // La règle « résultats visibles » (C25), partagée avec la liste et
+            // « ma copie ».
+            if ($evaluation !== null && ! ResultatsVisibles::pour($evaluation)) {
                 unset($payload['score'], $payload['note_sur_20']);
-                $payload['submission']->makeHidden(['score', 'note_sur_20']);
+                ResultatsVisibles::masquer($submission, $evaluation);
             }
 
             return $this->successResponse($payload, 'Évaluation soumise avec succès', 201);

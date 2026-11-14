@@ -5,9 +5,11 @@ declare(strict_types=1);
 namespace Tests\Feature\Audit;
 
 use App\Models\AuditLog;
+use App\Models\EvaluationSubmission;
 use App\Models\Institution;
 use App\Models\User;
 use App\Services\Audit\AuditLogger;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -44,12 +46,35 @@ final class AuditLogModelUpdateTest extends TestCase
         self::assertNull($this->derniereTrace($compte));
     }
 
-    private function derniereTrace(User $compte): ?AuditLog
+    /**
+     * D515 : la trace dit ce qui a été ÉCRIT. Une copie échue, STOCKÉE `en_cours`, se
+     * LIT `verrouille` (`EcheanceDeLaCopie::status()`, Q4) ; son verrou par `save()`
+     * se trace `en_cours` → `verrouille`, jamais `verrouille` → `verrouille`.
+     */
+    public function test_une_colonne_a_accesseur_de_lecture_se_trace_par_sa_valeur_stockee(): void
+    {
+        $copie = EvaluationSubmission::factory()->create([
+            'status' => 'en_cours', 'submitted_at' => null, 'score' => null, 'note_sur_20' => null,
+        ]);
+        $copie->forceFill(['ends_at' => now()->subHour()])->save();
+        $copie = EvaluationSubmission::query()->withoutGlobalScopes()->findOrFail($copie->getKey());
+        self::assertSame('verrouille', $copie->status, 'la lecture déduit le verrou');
+
+        $copie->status = 'verrouille';
+        $copie->save();
+
+        $trace = $this->derniereTrace($copie);
+        self::assertNotNull($trace);
+        self::assertSame('en_cours', $trace->before['status'] ?? null);
+        self::assertSame('verrouille', $trace->after['status'] ?? null);
+    }
+
+    private function derniereTrace(Model $modele): ?AuditLog
     {
         return AuditLog::query()->withoutGlobalScopes()
             ->where('action', 'update')
-            ->where('auditable_type', $compte->getMorphClass())
-            ->where('auditable_id', $compte->getKey())
+            ->where('auditable_type', $modele->getMorphClass())
+            ->where('auditable_id', $modele->getKey())
             ->latest('id')
             ->first();
     }

@@ -8,6 +8,7 @@ use App\Models\Seance;
 use App\Models\SeanceUserHidden;
 use App\Models\User;
 use App\Support\Logging\CaughtExceptionLog;
+use Illuminate\Database\Eloquent\Builder;
 use Psr\Log\LoggerInterface;
 use Throwable;
 
@@ -37,7 +38,7 @@ final class SeanceHideService
     public function hide(int $seanceId, User $user): array
     {
         try {
-            $seance = $this->resolveSeance($seanceId);
+            $seance = $this->resolveSeance($seanceId, $user);
 
             if (!$seance) {
                 return [
@@ -93,7 +94,7 @@ final class SeanceHideService
     public function unhide(int $seanceId, User $user): array
     {
         try {
-            $seance = $this->resolveSeance($seanceId);
+            $seance = $this->resolveSeance($seanceId, $user);
 
             if (!$seance) {
                 return [
@@ -150,12 +151,20 @@ final class SeanceHideService
     }
 
     /**
-     * Recherche la séance par son ID local puis, à défaut, par `klassci_seance_id`.
+     * La séance désignée par l'id local ou par `klassci_seance_id`, dans
+     * l'établissement du compte : sans établissement, aucune (le scope global est
+     * inerte sans tenant). L'ORDRE entre les deux identifiants, sur une collision,
+     * est inchangé : il attend sa décision.
      */
-    private function resolveSeance(int $seanceId): ?Seance
+    private function resolveSeance(int $seanceId, User $user): ?Seance
     {
-        return Seance::where('id', $seanceId)
-            ->orWhere('klassci_seance_id', $seanceId)
+        if (!is_int($user->institution_id)) {
+            return null;
+        }
+
+        return Seance::query()
+            ->where('institution_id', $user->institution_id)
+            ->where(static fn (Builder $designee): Builder => $designee->where('id', $seanceId)->orWhere('klassci_seance_id', $seanceId))
             ->first();
     }
 }

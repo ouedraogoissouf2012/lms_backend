@@ -9,6 +9,7 @@ use App\Models\EvaluationSubmission;
 use App\Models\User;
 use App\Services\Evaluation\Student\LearnerEvaluationScope;
 use App\Services\Roster\RosterAuthorityFactory;
+use Illuminate\Database\Eloquent\Builder;
 
 /**
  * Liste (personnel) + détail des évaluations. Le détail sert aussi l'élève qui
@@ -72,7 +73,13 @@ final class EvaluationListService
         // en même temps que la relation, et le bouton « Voir les notes » avec
         // lui — une panne KLASSCI aurait effacé les notes des enseignants.
         // Porté par le modèle, il survit aux deux modes.
-        $query = Evaluation::withCount('submissions')->with(['questions']);
+        //
+        // D540 : `submissions_to_sync_count` compte ce que l'envoi vers KLASSCI
+        // enverra, par la même règle (`EvaluationSubmission::aSynchroniser`).
+        $query = Evaluation::withCount([
+            'submissions',
+            'submissions as submissions_to_sync_count' => fn (Builder $copies) => $copies->aSynchroniser(),
+        ])->with(['questions']);
 
         // D72, E4b (C27) : les identifiants des filtres sont dans l'espace de l'école.
         $catalogue = $this->catalogue();

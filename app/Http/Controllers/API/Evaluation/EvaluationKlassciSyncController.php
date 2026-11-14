@@ -52,24 +52,29 @@ class EvaluationKlassciSyncController extends AuthenticatedController
         }
 
         try {
-            // Préparer les notes pour KLASSCI (exclure les entraînements)
-            $notes = [];
-            foreach ($evaluation->submissions as $submission) {
-                if (($submission->status === 'soumis' || $submission->status === 'corrige')
-                    && !str_starts_with($submission->feedback ?? '', '[PRACTICE]')) {
-                    $notes[] = [
-                        'etudiant_id' => $submission->klassci_etudiant_id,
-                        'note' => $submission->note_sur_20,
-                        'commentaire' => $submission->feedback,
-                        'is_absent' => false,
-                    ];
-                }
-            }
+            // Les copies à synchroniser : une seule règle, celle que compte la liste (D540).
+            $notes = $evaluation->submissions()->aSynchroniser()->get()
+                ->map(static fn (EvaluationSubmission $submission): array => [
+                    'etudiant_id' => $submission->klassci_etudiant_id,
+                    'note' => $submission->note_sur_20,
+                    'commentaire' => $submission->feedback,
+                    'is_absent' => false,
+                ])->all();
 
             // Le lien KLASSCI est acquis : refusé plus haut sinon.
             $teacherToken = $this->authenticatedUser($request)->klassci_token;
             if (! is_string($teacherToken) || $teacherToken === '') {
                 return MissingKlassciTokenException::jsonResponse();
+            }
+
+            // D539 : rien à envoyer. Refus motivé AVANT tout appel à KLASSCI, sans
+            // marquer l'évaluation publiée ni ses copies synchronisées.
+            if ($notes === []) {
+                return $this->errorResponse(
+                    'Aucune copie remise à synchroniser : rien n\'a été envoyé à KLASSCI.',
+                    422,
+                    reason: 'no_submission_to_sync',
+                );
             }
 
             $result = $this->klassciService->saveNotes(

@@ -235,7 +235,7 @@ Route::middleware(['auth:sanctum', 'klassci.sync'])->prefix('lms')->group(functi
 
     Route::post('/seances/{seanceId}/deactivate-visio', [LMSVisioLifecycleController::class, 'deactivateVisio'])
         ->name('lms.seances.deactivate-visio')
-        ->middleware('role:enseignant');
+        ->middleware('role:enseignant,coordinateur');
 
     Route::post('/seances/{seanceId}/start-visio', [LMSVisioLifecycleController::class, 'startVisio'])
         ->name('lms.seances.start-visio')

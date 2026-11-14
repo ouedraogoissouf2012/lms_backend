@@ -72,7 +72,8 @@ class DeactivateVisioRequestTest extends TestCase
         $response->assertStatus(403);
     }
 
-    public function test_coordinator_cannot_deactivate(): void
+    /** La règle de gestion de la visio : le personnel de gestion désactive, comme il active. */
+    public function test_coordinator_can_deactivate(): void
     {
         $coordinator = User::factory()
             ->coordinator()
@@ -82,15 +83,15 @@ class DeactivateVisioRequestTest extends TestCase
         Sanctum::actingAs($coordinator);
         $response = $this->postJson("/api/lms/seances/{$this->seance->id}/deactivate-visio");
 
-        $response->assertStatus(403);
+        $response->assertOk();
     }
 
-    public function test_nonexistent_seance_returns_403(): void
+    public function test_nonexistent_seance_returns_404(): void
     {
         Sanctum::actingAs($this->teacher);
         $response = $this->postJson('/api/lms/seances/99999/deactivate-visio');
 
-        $response->assertStatus(403);
+        $response->assertNotFound();
     }
 
     public function test_deactivate_by_klassci_seance_id(): void

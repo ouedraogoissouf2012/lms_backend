@@ -201,14 +201,7 @@ final class VisioSessionService
         }
 
         if (! $this->authorization->canManage($visio, $user)) {
-            return [
-                'status' => 403,
-                'payload' => [
-                    'success' => false,
-                    'message' => 'Vous ne pouvez pas gérer cette visio',
-                    'reason' => 'actor_not_authorized',
-                ],
-            ];
+            return ['status' => 403, 'payload' => VisioActorAuthorization::managementRefusal()];
         }
 
         return $visio;

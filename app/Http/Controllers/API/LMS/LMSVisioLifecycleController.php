@@ -9,8 +9,8 @@ use App\Http\Requests\ActivateVisioRequest;
 use App\Http\Requests\DeactivateVisioRequest;
 use App\Http\Requests\EndVisioRequest;
 use App\Http\Requests\StartVisioRequest;
-use App\Services\Visio\Lifecycle\VisioActivationService;
 use App\Services\Visio\Lifecycle\VisioActivationSource;
+use App\Services\Visio\Lifecycle\VisioDeactivation;
 use App\Services\Visio\Lifecycle\VisioSessionService;
 use Illuminate\Http\JsonResponse;
 
@@ -25,7 +25,7 @@ use Illuminate\Http\JsonResponse;
  *
  * Découpage SRP par machine d'état :
  *  - {@see VisioActivationSource}  : activation, par la source de l'établissement
- *  - {@see VisioActivationService} : désactivation (et activation KLASSCI)
+ *  - {@see VisioDeactivation}      : désactivation, dans les deux types d'école
  *  - {@see VisioSessionService}    : session BBB live (start/end)
  *
  * IMPORTANT : la classe et les noms de méthodes (`activateVisio`,
@@ -39,7 +39,7 @@ use Illuminate\Http\JsonResponse;
 final class LMSVisioLifecycleController extends AuthenticatedController
 {
     public function __construct(
-        private readonly VisioActivationService $activationService,
+        private readonly VisioDeactivation $deactivation,
         private readonly VisioSessionService $sessionService,
     ) {}
 
@@ -70,7 +70,7 @@ final class LMSVisioLifecycleController extends AuthenticatedController
     public function deactivateVisio(int $seanceId, DeactivateVisioRequest $request): JsonResponse
     {
         $user = $this->authenticatedUser($request);
-        $result = $this->activationService->deactivate($seanceId, $user);
+        $result = $this->deactivation->deactivate($seanceId, $user);
 
         return $this->relayResponse($result);
     }

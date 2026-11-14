@@ -8,6 +8,7 @@ use App\Exceptions\MissingKlassciTokenException;
 use App\Http\Controllers\API\Concerns\RendersKlassciBackedErrors;
 use App\Http\Controllers\AuthenticatedController;
 use App\Services\Evaluation\Student\StudentEvaluationsReader;
+use App\Services\Evaluation\Student\MatieresDesNotes;
 use App\Services\Evaluation\Student\StudentGradesAggregator;
 use App\Support\Logging\CaughtExceptionLog;
 use Illuminate\Http\JsonResponse;
@@ -54,15 +55,19 @@ final class EvaluationStudentListController extends AuthenticatedController
         }
     }
 
-    public function myGrades(Request $request): JsonResponse
+    /**
+     * Les matières viennent de la source de l'établissement (D72, E4a), reçue par
+     * la MÉTHODE : Laravel garde le contrôleur sur l'objet Route.
+     */
+    public function myGrades(Request $request, MatieresDesNotes $matieres): JsonResponse
     {
         try {
             $user = $this->authenticatedUser($request);
-            if (!$user->klassci_id) {
+            if ($matieres->refuse($user)) {
                 return MissingKlassciTokenException::jsonResponse();
             }
 
-            $data = $this->gradesAggregator->getGradesAggregatedByMatiere($user);
+            $data = $this->gradesAggregator->getGradesAggregatedByMatiere($user, $matieres);
             return $this->successResponse($data);
         } catch (\Exception $e) {
             $this->journal->error('Erreur récupération notes étudiant', $e, [

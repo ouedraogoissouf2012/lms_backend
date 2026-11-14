@@ -10,17 +10,16 @@ use App\Models\EvaluationSubmission;
 /**
  * La règle « résultats visibles » d'une évaluation (C25, D72 E2b), en un seul
  * lieu : l'élève ne voit ni sa note ni son score quand `show_results` vaut
- * false. Elle sert la liste (les deux sources), « ma copie », la remise et la
- * page matière.
+ * false. Elle sert la liste (les deux sources), « ma copie », la remise, la
+ * page matière et « Mes notes ».
  *
  * Deux formes du même masquage, chacune fixée par sa route : la liste, la
  * remise et la page matière RETIRENT les clés ({@see self::masquer()}) ;
  * « ma copie » les rend `null`.
  *
- * C25 est donc fermé sur ces quatre routes, PAS sur `/my-grades` :
- * `StudentGradesAggregator` livre encore `note_sur_20` quel que soit
- * `show_results`. C'est C30, ouvert, traité avec E4 (décision produit :
- * bulletin, ou affichage immédiat).
+ * « Mes notes » (`/my-grades`, C30 fermé par la règle A de l'utilisateur) :
+ * une évaluation aux résultats cachés n'y apporte aucune note, ni dans la liste
+ * ni dans les moyennes (`StudentGradesAggregator`).
  *
  * Avant : « ma copie » et la remise masquaient la note, mais la liste
  * l'envoyait brute dans `student_submission`.

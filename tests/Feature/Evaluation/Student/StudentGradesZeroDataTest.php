@@ -53,7 +53,7 @@ final class StudentGradesZeroDataTest extends TestCase
         ]);
     }
 
-    public function test_eleve_sans_aucune_note_recoit_des_moyennes_a_zero_pas_un_500(): void
+    public function test_eleve_sans_aucune_note_recoit_une_moyenne_generale_nulle_pas_un_500(): void
     {
         Sanctum::actingAs($this->student);
 
@@ -63,20 +63,22 @@ final class StudentGradesZeroDataTest extends TestCase
             'success' => true,
             'data' => [
                 'matieres' => [],
-                'moyenne_generale' => 0,
+                'moyenne_generale' => null,
                 'total_matieres' => 0,
                 'total_evaluations' => 0,
             ],
         ]);
     }
 
-    public function test_matiere_dont_toutes_les_evaluations_ont_coefficient_zero_donne_moyenne_zero(): void
+    public function test_matiere_dont_toutes_les_evaluations_ont_coefficient_zero_donne_une_moyenne_nulle(): void
     {
         // Chemin exact de la garde `$totalCoef > 0` : une note EXISTE (15/20)
         // mais son coefficient est 0 → sans garde, division 15*0/0 → 500.
         $evaluation = Evaluation::factory()->create([
             'institution_id' => $this->institution->id,
             'is_published' => true,
+            // Fixé : la fabrique le tire au hasard, et C30 (E4a) écarte une note cachée.
+            'show_results' => true,
             'coefficient' => 0,
             'klassci_matiere_id' => 42,
             'matiere_nom' => 'Mathématiques',
@@ -96,11 +98,12 @@ final class StudentGradesZeroDataTest extends TestCase
         $response = $this->getJson('/api/my-grades');
 
         $response->assertStatus(200)
-            ->assertJsonPath('data.matieres.0.moyenne', 0)
+            // Rien à moyenner (coefficient total nul) : `null`, jamais un 0 fabriqué (D72, E4a).
+            ->assertJsonPath('data.matieres.0.moyenne', null)
             ->assertJsonPath('data.matieres.0.total_evaluations', 1)
-            // La matière compte dans la moyenne générale (1 évaluation) mais
-            // sa moyenne gardée vaut 0 → moyenne générale 0, pas NAN ni 500.
-            ->assertJsonPath('data.moyenne_generale', 0)
+            // Sa moyenne n'a aucune mesure : elle n'entre pas dans la moyenne
+            // générale, qui n'en a donc aucune non plus. Ni 0, ni NAN, ni 500.
+            ->assertJsonPath('data.moyenne_generale', null)
             ->assertJsonPath('data.total_matieres', 1)
             ->assertJsonPath('data.total_evaluations', 1);
     }
@@ -142,6 +145,7 @@ final class StudentGradesZeroDataTest extends TestCase
         $response->assertStatus(200)
             ->assertJsonPath('data.total_evaluations', 0)
             ->assertJsonPath('data.matieres', [])
-            ->assertJsonPath('data.moyenne_generale', 0);
+            // Rien à moyenner : `null`, jamais un 0 fabriqué (D72, E4a).
+            ->assertJsonPath('data.moyenne_generale', null);
     }
 }

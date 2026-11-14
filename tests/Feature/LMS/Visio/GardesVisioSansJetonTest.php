@@ -23,8 +23,9 @@ use Tests\TestCase;
  * générique `\Throwable` (`bootstrap/app.php`), avec un `Log::error` et sa trace.
  * Or le jeton n'est une condition du TRAVAIL que pour deux routes, dont la clé est
  * KLASSCI : l'activation (l'emploi du temps KLASSCI) et la bascule (la séance sous
- * son identifiant KLASSCI). Elles rendent désormais le 401 motivé de #806, avant
- * toute écriture. Les deux autres (validation, synchronisation des présences)
+ * son identifiant KLASSCI). Dans une école en mode KLASSCI, elles rendent le 401
+ * motivé de #806, avant toute écriture ; en mode autonome, la source locale les
+ * sert (ADR-EI-01). Les deux autres (validation, synchronisation des présences)
  * n'appellent pas KLASSCI : un compte sans jeton y passe, et c'est le SERVICE qui
  * décide de l'accès (établissement, propriétaire).
  *
@@ -134,21 +135,27 @@ final class GardesVisioSansJetonTest extends TestCase
         self::assertSame($avant, DB::table('seances')->count());
     }
 
+    /**
+     * Mode KLASSCI : le 401 motivé, avant toute écriture. Mode autonome : la source
+     * locale bascule CETTE séance, sous son id local (ADR-EI-01). Dans les deux cas,
+     * aucune séance fantôme.
+     */
     #[DataProvider('volets')]
-    public function test_basculer_la_visio_sans_jeton_rend_le_401_et_ne_cree_aucune_seance_fantome(string $volet): void
+    public function test_basculer_la_visio_sans_jeton_ne_cree_aucune_seance_fantome(string $volet): void
     {
         $this->ecole($volet);
         // Une vraie séance locale : la bascule sous son identifiant créait une
         // séance fantôme `klassci_seance_id = id` et répondait « activée ».
         $locale = Seance::factory()->for($this->ecole)->create(['klassci_seance_id' => null, 'visio_enabled' => false]);
 
-        $this->asTenant($this->sansJeton('coordinator'))
-            ->postJson("/api/lms/seances/{$locale->id}/toggle-visio", ['enabled' => true])
-            ->assertUnauthorized()
-            ->assertExactJson(MissingKlassciTokenException::payload());
+        $reponse = $this->asTenant($this->sansJeton('coordinator'))
+            ->postJson("/api/lms/seances/{$locale->id}/toggle-visio", ['enabled' => true]);
 
+        $volet === 'klassci'
+            ? $reponse->assertUnauthorized()->assertExactJson(MissingKlassciTokenException::payload())
+            : $reponse->assertOk()->assertJsonPath('data.seance_id', $locale->id);
         self::assertSame(1, DB::table('seances')->count());
-        self::assertFalse((bool) DB::table('seances')->where('id', $locale->id)->value('visio_enabled'));
+        self::assertSame($volet === 'standalone', (bool) DB::table('seances')->where('id', $locale->id)->value('visio_enabled'));
         Http::assertNothingSent();
     }
 

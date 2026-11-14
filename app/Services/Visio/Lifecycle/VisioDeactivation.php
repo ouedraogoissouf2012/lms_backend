@@ -8,6 +8,7 @@ use App\Models\Seance;
 use App\Models\User;
 use App\Services\Visio\VisioActorAuthorization;
 use App\Support\Logging\CaughtExceptionLog;
+use Closure;
 use Psr\Log\LoggerInterface;
 use Throwable;
 
@@ -19,6 +20,10 @@ use Throwable;
  * toute écriture.
  *
  * Aucun appel KLASSCI : la séance se lit en local, dans les deux types d'école.
+ * Deux façons de la DÉSIGNER, un seul geste :
+ * - la route `deactivate-visio` : id local, puis `klassci_seance_id` ;
+ * - la bascule locale (mode autonome) : l'id LOCAL seulement, borné à
+ *   l'établissement, comme l'activation ({@see LocalVisioActivation}).
  * Extrait de `VisioActivationService` (§1.1, un service par geste).
  */
 final class VisioDeactivation
@@ -32,8 +37,31 @@ final class VisioDeactivation
     /** @return array{status:int, payload: array<string, mixed>} */
     public function deactivate(int $seanceId, User $user): array
     {
+        return $this->desactiver($seanceId, $user, fn (): ?Seance => $this->resolveSeance($seanceId));
+    }
+
+    /**
+     * La bascule locale : un id sans séance locale ne désigne jamais, par son
+     * `klassci_seance_id`, une AUTRE séance (école passée de KLASSCI au mode autonome).
+     *
+     * @return array{status:int, payload: array<string, mixed>}
+     */
+    public function deactivateLocal(int $seanceId, User $user): array
+    {
+        return $this->desactiver($seanceId, $user, static fn (): ?Seance => Seance::query()
+            ->whereKey($seanceId)
+            ->where('institution_id', $user->institution_id)
+            ->first());
+    }
+
+    /**
+     * @param  Closure(): ?Seance  $designer
+     * @return array{status:int, payload: array<string, mixed>}
+     */
+    private function desactiver(int $seanceId, User $user, Closure $designer): array
+    {
         try {
-            $visio = $this->resolveSeance($seanceId);
+            $visio = $designer();
 
             if ($visio === null) {
                 return self::introuvable();

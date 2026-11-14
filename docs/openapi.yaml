@@ -3395,7 +3395,7 @@ components:
           properties:
             seance_id:
               type: integer
-              description: "L'identifiant KLASSCI recu dans le chemin."
+              description: "L'identifiant recu dans le chemin : KLASSCI en mode KLASSCI, local en mode autonome."
             visio_enabled:
               type: boolean
             visio_type:
@@ -3408,7 +3408,7 @@ components:
             visio_room_id:
               type: string
               nullable: true
-              description: "Un salon neuf a chaque activation, y compris d'une seance deja activee ; null a la desactivation."
+              description: "Mode KLASSCI : un salon neuf a chaque activation, y compris d'une seance deja activee. Mode autonome : le salon deja attribue est garde. Null a la desactivation."
             visio_active:
               type: boolean
             notifications_sent:
@@ -4603,29 +4603,33 @@ paths:
     post:
       tags:
         - Visio
-      summary: "Activer ou desactiver la visio d'une seance KLASSCI"
+      summary: "Activer ou desactiver la visio d'une seance"
       description: |
-        Reserve aux roles coordinateur et superAdmin.
+        Reserve aux roles coordinateur et superAdmin. La source est celle du
+        MODE de l'etablissement (ADR-EI-01, « meme route, autre source »).
 
-        `seanceId` est l'identifiant KLASSCI de la seance. La bascule ne verifie
-        pas que KLASSCI connait cette seance : un identifiant inconnu cree une
-        seance locale sous cet identifiant, et la reponse est 200. Chaque
-        activation tire un salon neuf, y compris sur une seance deja activee :
-        l'adresse precedente cesse de valoir.
+        **Ecole en mode KLASSCI.** `seanceId` est l'identifiant KLASSCI de la
+        seance. La bascule ne verifie pas que KLASSCI connait cette seance : un
+        identifiant inconnu cree une seance locale sous cet identifiant, et la
+        reponse est 200. Chaque activation tire un salon neuf, y compris sur une
+        seance deja activee : l'adresse precedente cesse de valoir. Sans jeton
+        KLASSCI, la route rend le 401 `klassci_token_missing` avant toute
+        ecriture.
 
-        Sans jeton KLASSCI, la route rend le 401 `klassci_token_missing` avant
-        toute ecriture. Le refus porte sur le jeton du compte, pas sur le type
-        ni le mode de l'ecole. Un compte d'une ecole creee depuis le LMS n'a
-        jamais de jeton KLASSCI : il recoit ce 401. Une ecole creee depuis
-        KLASSCI passee en mode autonome garde les jetons de ses comptes : ils
-        ne sont pas refuses.
+        **Ecole en mode autonome.** `seanceId` est l'id LOCAL de la seance,
+        cherchee dans l'etablissement, sans jeton ni appel KLASSCI. Activer est
+        l'activation locale (`activate-visio`) : le salon deja attribue est
+        garde, et les eleves de la classe sont avertis. Desactiver est la
+        desactivation commune (`deactivate-visio`). Une seance inconnue, ou une
+        visio deja desactivee, rend 404. Une ecole creee depuis KLASSCI passee
+        en mode autonome est servie ainsi, jetons ou non.
       security:
         - sanctum: []
       parameters:
         - name: seanceId
           in: path
           required: true
-          description: "Identifiant KLASSCI de la seance."
+          description: "Identifiant KLASSCI de la seance (ecole en mode KLASSCI), ou son identifiant local (ecole en mode autonome)."
           schema:
             type: integer
       requestBody:
@@ -4643,9 +4647,9 @@ paths:
                 $ref: '#/components/schemas/VisioBasculee'
         '401':
           description: |
-            Jeton porteur absent ou invalide (sans `reason`), ou compte sans jeton
-            KLASSCI (`reason: klassci_token_missing`). Voir la reponse partagee
-            `KlassciUnauthorized`.
+            Jeton porteur absent ou invalide (sans `reason`), ou, dans une ecole
+            en mode KLASSCI, compte sans jeton KLASSCI (`reason:
+            klassci_token_missing`). Voir la reponse partagee `KlassciUnauthorized`.
           content:
             application/json:
               schema:
@@ -4658,6 +4662,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SeanceLocaleInterdite'
+        '404':
+          description: "Ecole en mode autonome : seance inconnue dans l'etablissement, ou visio deja desactivee."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SeanceLocaleRefus'
         '422':
           description: "Charge invalide"
           content:

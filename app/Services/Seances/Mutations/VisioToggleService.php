@@ -12,6 +12,7 @@ use App\Services\ClasseSyncService;
 use App\Services\KlassciProxyService;
 use App\Services\Notification\AsyncVisioNotificationDispatcher;
 use App\Services\Seances\SeanceRestoreGuard;
+use App\Services\Visio\Lifecycle\VisioToggleSource;
 use App\Services\Visio\SecureVisioRoomIdGenerator;
 use App\Support\Logging\CaughtExceptionLog;
 use Illuminate\Database\UniqueConstraintViolationException;
@@ -33,7 +34,7 @@ use Throwable;
  * @see PRODUCTION_STANDARDS.md §1.1 — Services ≤300 lignes
  * @see PRODUCTION_STANDARDS.md §1.6 D — DI strict
  */
-final class VisioToggleService
+final class VisioToggleService implements VisioToggleSource
 {
     use FetchesSeanceDataFromKlassci;
 

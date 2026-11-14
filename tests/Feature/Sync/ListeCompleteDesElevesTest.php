@@ -213,18 +213,26 @@ final class ListeCompleteDesElevesTest extends TestCase
         self::assertSame('actif', $this->statut($this->a, $revenu));
     }
 
-    /** 10. Une classe vidée (liste vide, effectif 0) : toutes ses lignes passent `inactif`. */
+    /**
+     * 10. Une classe vidée (liste vide, effectif 0) : les lignes de ses élèves connus de
+     * KLASSCI passent `inactif`. Celle d'un élève sans identifiant KLASSCI reste
+     * `actif` : avec une liste vide, `whereNotIn` devient `1 = 1` (Laravel), et seule
+     * la garde sur l'identifiant l'écarte.
+     */
     public function test_une_classe_videe_desactive_toutes_ses_lignes(): void
     {
         $un = $this->eleve(501, $this->a);
         $deux = $this->eleve(502, $this->a);
+        $local = $this->membre($this->ecole, 'etudiant');
+        $this->inscrire($local, $this->a, 'actif');
         $this->klassciRend([71 => [[], 0]]);
 
         $this->synchroniser(71);
 
         self::assertSame('inactif', $this->statut($this->a, $un));
         self::assertSame('inactif', $this->statut($this->a, $deux));
-        self::assertSame(2, DB::table('classe_etudiant')->where('classe_id', $this->a->id)->count(), 'jamais de suppression');
+        self::assertSame('actif', $this->statut($this->a, $local), 'un élève sans identifiant KLASSCI n\'est pas jugé par la liste');
+        self::assertSame(3, DB::table('classe_etudiant')->where('classe_id', $this->a->id)->count(), 'jamais de suppression');
     }
 
     private const SANS_EFFECTIF = 'sans effectif';

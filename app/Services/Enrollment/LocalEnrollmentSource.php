@@ -24,8 +24,9 @@ final class LocalEnrollmentSource implements EnrollmentSource
             return [];
         }
 
+        $classes = $user->classes();
         $ids = [];
-        foreach ($user->classes()->wherePivot('statut', 'actif')->where('classes.institution_id', $user->institution_id)->pluck('classes.id') as $id) {
+        foreach ($classes->wherePivot('statut', 'actif')->where($classes->getRelated()->qualifyColumn('institution_id'), $user->institution_id)->pluck('classes.id') as $id) {
             if (is_numeric($id)) {
                 $ids[] = (int) $id;
             }

@@ -6,9 +6,14 @@ namespace App\Services;
 
 use App\Models\Classe;
 use App\Services\Classe\ClasseEnvelope;
+use App\Services\Roster\RosterAuthorityFactory;
+use App\Services\Sync\Classes\AucuneReconciliation;
 use App\Services\Sync\Classes\ClasseMatieresSynchronizer;
 use App\Services\Sync\Classes\ClasseStudentsSynchronizer;
 use App\Services\Sync\Classes\KlassciClassesFetcher;
+use App\Services\Sync\Classes\ListeKlassciDesEleves;
+use App\Services\Sync\Classes\ReconciliationDesInscriptions;
+use App\Services\Sync\Classes\ReconciliationKlassci;
 use App\Support\Logging\CaughtExceptionLog;
 use Psr\Log\LoggerInterface;
 
@@ -49,6 +54,7 @@ final class ClasseSyncService
         private readonly LoggerInterface $logger,
         private readonly TenantManager $tenantManager,
         private readonly CaughtExceptionLog $journal,
+        private readonly RosterAuthorityFactory $autorites,
     ) {}
 
     /**
@@ -100,11 +106,13 @@ final class ClasseSyncService
                         $this->matieresSynchronizer->sync($result['classe'], array_values($klasseData['matieres']));
                     }
 
-                    // Synchroniser les étudiants de cette classe
-                    if (isset($klasseData['etudiants']) && is_array($klasseData['etudiants'])) {
-                        $enrollmentResult = $this->studentsSynchronizer->sync(
+                    // Les élèves de cette classe, si le bloc est PRÉSENT (vide compris).
+                    $etudiants = ClasseEnvelope::optionalList($klasseData, 'etudiants');
+                    if ($etudiants !== null) {
+                        $enrollmentResult = $this->synchroniserLesEleves(
                             $result['classe'],
-                            $klasseData['etudiants'],
+                            $etudiants,
+                            $klasseData['places_occupees'] ?? null,
                             $klassciToken
                         );
 
@@ -186,10 +194,11 @@ final class ClasseSyncService
                 $this->logger->warning('Bloc etudiants absent de la classe KLASSCI : eleves non synchronises', [
                     'klassci_classe_id' => $klassciClasseId,
                 ]);
-            } elseif ($etudiantsData !== []) {
-                $this->studentsSynchronizer->sync(
+            } else {
+                $this->synchroniserLesEleves(
                     $result['classe'],
                     $etudiantsData,
+                    is_array($klasseData) ? ($klasseData['places_occupees'] ?? null) : null,
                     $klassciToken
                 );
             }
@@ -202,6 +211,26 @@ final class ClasseSyncService
 
             return null;
         }
+    }
+
+    /**
+     * Les élèves d'une classe dont le bloc `etudiants` est PRÉSENT : l'upsert des
+     * élèves listés, puis le sort des absents selon l'autorité de l'école, choisie à
+     * CHAQUE appel ({@see ReconciliationDesInscriptions}).
+     * Les absents se jugent sur la liste REÇUE, pas sur le résultat de l'upsert.
+     *
+     * @param  array<int, array<string, mixed>>  $etudiants
+     * @return array{students_synced: int, enrollments_created: int}
+     */
+    private function synchroniserLesEleves(Classe $classe, array $etudiants, mixed $effectifAnnonce, string $klassciToken): array
+    {
+        $stats = $this->studentsSynchronizer->sync($classe, $etudiants, $klassciToken);
+
+        $this->autorites
+            ->sourceForCurrentTenant(ReconciliationKlassci::class, AucuneReconciliation::class)
+            ->reconcilier($classe, new ListeKlassciDesEleves($etudiants, $effectifAnnonce));
+
+        return $stats;
     }
 
     /**

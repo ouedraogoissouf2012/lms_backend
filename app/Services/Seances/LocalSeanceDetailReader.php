@@ -6,7 +6,6 @@ namespace App\Services\Seances;
 
 use App\Models\Seance;
 use App\Models\User;
-use App\Services\Audience\ClasseAudienceSource;
 use App\Support\Catalogue\SourceLocale;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Collection;
@@ -23,14 +22,14 @@ use Illuminate\Database\Eloquent\Collection;
  * - `visio` : la fenêtre se calcule sur le début et la fin ESTIMÉE ; pas de
  *   fenêtre sans date.
  * - `participants` : pour le personnel seulement, comme dans l'école KLASSCI ;
- *   l'auteur, et les élèves de l'audience de la séance (la règle de l'admission).
+ *   la règle de `GET …/participants` ({@see ParticipantsDeSeanceLocale}).
  */
 final class LocalSeanceDetailReader implements SeanceDetailReader
 {
     public function __construct(
         private readonly SeancesLocalesVisibles $visibles,
         private readonly SeanceVisioEnricher $visio,
-        private readonly ClasseAudienceSource $audience,
+        private readonly ParticipantsDeSeanceLocale $participantsLocaux,
     ) {}
 
     public function detailFor(int $seanceId, User $user): ?array
@@ -53,7 +52,7 @@ final class LocalSeanceDetailReader implements SeanceDetailReader
         $data = ['seance' => $seance, 'visio' => $this->visio($ligne, $seance)];
 
         if ($user->isStaff()) {
-            $data['participants'] = $this->participants($ligne, $seance);
+            $data['participants'] = $this->participants($ligne);
         }
 
         return ['data' => $data, 'meta' => ['source' => SourceLocale::LMS_LOCAL]];
@@ -82,21 +81,16 @@ final class LocalSeanceDetailReader implements SeanceDetailReader
     }
 
     /**
-     * @param  array<string, mixed>  $seance
-     * @return array{teacher: array{id: int|null, nom: mixed}, students: array<int, array{id: int, nom: string}>, total: int}
+     * @return array{teacher: array{id: int, nom: string}|null, students: list<array{id: int, nom: string}>, total: int}
      */
-    private function participants(Seance $ligne, array $seance): array
+    private function participants(Seance $ligne): array
     {
-        $enseignant = is_array($seance['enseignant'] ?? null) ? $seance['enseignant'] : [];
-        $eleves = $this->audience->studentsOf($ligne)
-            ->map(static fn (User $eleve): array => ['id' => (int) $eleve->id, 'nom' => (string) $eleve->name])
-            ->values()
-            ->all();
+        $lus = $this->participantsLocaux->de($ligne);
 
         return [
-            'teacher' => ['id' => $ligne->created_by, 'nom' => $enseignant['nom'] ?? null],
-            'students' => $eleves,
-            'total' => 1 + count($eleves),
+            'teacher' => $lus['auteur'] === null ? null : ['id' => (int) $lus['auteur']->id, 'nom' => (string) $lus['auteur']->name],
+            'students' => array_map(static fn (User $eleve): array => ['id' => (int) $eleve->id, 'nom' => (string) $eleve->name], $lus['eleves']),
+            'total' => $lus['total'],
         ];
     }
 }

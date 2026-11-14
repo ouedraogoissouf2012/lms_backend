@@ -16,9 +16,11 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use Psr\Log\AbstractLogger;
 use Psr\Log\LoggerInterface;
 use RuntimeException;
+use stdClass;
 use Stringable;
 use Tests\Concerns\ActsAsTenantUser;
 use Tests\Concerns\ValidatesAgainstOpenApi;
+use Tests\Support\OpenApi\OpenApiSchemaValidator;
 use Tests\TestCase;
 
 /**
@@ -34,6 +36,13 @@ final class VisioCycleContractTest extends TestCase
 
     /** Le geste, et l'état de fabrique de la séance qui le permet. */
     private const GESTES = ['start' => 'withVisio', 'end' => 'visioActive', 'deactivate' => 'withVisio'];
+
+    /** Un état que le geste ne produit jamais : la clé de `data`, et une valeur fausse. */
+    private const ETAT_FAUX = [
+        'start' => ['visio_status', 'programmee'],
+        'end' => ['visio_status', 'active'],
+        'deactivate' => ['visio_enabled', true],
+    ];
 
     /** L'état qui refuse le geste en 400 : désactiver n'en a pas (une visio non activée rend 404). */
     private const ETATS_REFUSES = [
@@ -87,6 +96,29 @@ final class VisioCycleContractTest extends TestCase
 
         $this->assertMatchesOpenApiResponse($reponse, self::chemin($geste), 'post');
         $this->assertOpenApiSchemaRefuseSans($reponse, self::chemin($geste), 'post', 'data');
+        $this->assertDonneesFermees($reponse->getContent(), $geste);
+    }
+
+    /**
+     * `data` MORD aussi : la réponse réelle, augmentée d'une clé dans `data` ou
+     * portant un état que le geste ne produit pas, est refusée.
+     */
+    private function assertDonneesFermees(string|false $corps, string $geste): void
+    {
+        $validateur = OpenApiSchemaValidator::depuisFichier(base_path('docs/openapi.yaml'));
+        $schema = $validateur->schemaDeReponse(self::chemin($geste), 'post', 200);
+        self::assertNotNull($schema);
+        [$cle, $faux] = self::ETAT_FAUX[$geste];
+
+        $augmentee = json_decode((string) $corps, false, 512, JSON_THROW_ON_ERROR);
+        self::assertInstanceOf(stdClass::class, $augmentee);
+        $augmentee->data->cle_non_decrite = true;
+        self::assertNotSame([], $validateur->erreurs($augmentee, $schema), 'le schéma admet une clé non décrite dans data');
+
+        $faussee = json_decode((string) $corps, false, 512, JSON_THROW_ON_ERROR);
+        self::assertInstanceOf(stdClass::class, $faussee);
+        $faussee->data->{$cle} = $faux;
+        self::assertNotSame([], $validateur->erreurs($faussee, $schema), "le schéma admet {$cle} = ".var_export($faux, true));
     }
 
     /** Démarrer une visio non activée ; terminer une visio qui n'est pas active. */

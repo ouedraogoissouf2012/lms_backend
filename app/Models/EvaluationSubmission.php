@@ -135,4 +135,16 @@ class EvaluationSubmission extends Model
                     ->whereNull($query->qualifyColumn('student_id'))
                     ->where($query->qualifyColumn('klassci_etudiant_id'), $klassci))));
     }
+
+    /**
+     * Les copies à synchroniser vers KLASSCI (D540) : remises, hors entraînement. Seul lieu du filtre.
+     *
+     * @param  Builder<EvaluationSubmission>  $query
+     * @return Builder<EvaluationSubmission>
+     */
+    public function scopeASynchroniser(Builder $query): Builder
+    {
+        return $query->whereIn($query->qualifyColumn('status'), ['soumis', 'corrige'])
+            ->where(fn (Builder $q) => $q->whereNull($query->qualifyColumn('feedback'))->orWhere($query->qualifyColumn('feedback'), 'NOT LIKE', '[PRACTICE]%'));
+    }
 }

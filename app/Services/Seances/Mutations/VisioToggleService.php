@@ -89,19 +89,15 @@ final class VisioToggleService implements VisioToggleSource
                 'note' => 'Workaround: endpoint GET /seances/{id} inexistant dans KLASSCI',
             ]);
 
-            $attributes = [
-                'klassci_matiere_id' => null,
-                'klassci_classe_id' => null,
-                'klassci_enseignant_id' => null,
+            $etat = [
                 'visio_enabled' => $enabled,
                 'visio_type' => $enabled ? $visioType : null,
                 'visio_status' => $enabled ? 'programmee' : null,
-                'visio_room_id' => $enabled ? SecureVisioRoomIdGenerator::make() : null,
                 'visio_active' => false,
                 'updated_by' => $user->id,
             ];
 
-            $visio = $this->restoreOrCreateVisio($seanceId, $attributes);
+            $visio = $this->restoreOrCreateVisio($seanceId, $etat, $enabled);
 
             if ($visio->wasRecentlyCreated) {
                 $visio->created_by = $user->id;
@@ -157,32 +153,52 @@ final class VisioToggleService implements VisioToggleSource
      * peuvent toutes deux trouver `null` puis tenter un INSERT — la
      * perdante violerait l'unique sans ce filet.
      *
-     * @param  array<string, mixed>  $attributes
+     * Une séance CRÉÉE ici n'a ni classe, ni enseignant, ni matière KLASSCI (aucun
+     * endpoint ne les donne). Une séance EXISTANTE garde les siens, que la
+     * synchronisation a écrits : la bascule n'en change que l'état de la visio.
+     *
+     * @param  array<string, mixed>  $etat
      */
-    private function restoreOrCreateVisio(int $seanceId, array $attributes): Seance
+    private function restoreOrCreateVisio(int $seanceId, array $etat, bool $enabled): Seance
     {
         $visio = Seance::withTrashed()->where('klassci_seance_id', $seanceId)->first();
 
         if ($visio) {
-            return $this->restoreThenUpdate($visio, $attributes);
+            return $this->restoreThenUpdate($visio, $etat, $enabled);
         }
 
         try {
-            return Seance::create(['klassci_seance_id' => $seanceId] + $attributes);
+            return Seance::create([
+                'klassci_seance_id' => $seanceId,
+                'klassci_matiere_id' => null,
+                'klassci_classe_id' => null,
+                'klassci_enseignant_id' => null,
+                'visio_room_id' => $enabled ? SecureVisioRoomIdGenerator::make() : null,
+            ] + $etat);
         } catch (UniqueConstraintViolationException) {
             $visio = Seance::withTrashed()->where('klassci_seance_id', $seanceId)->firstOrFail();
 
-            return $this->restoreThenUpdate($visio, $attributes);
+            return $this->restoreThenUpdate($visio, $etat, $enabled);
         }
     }
 
     /**
-     * @param  array<string, mixed>  $attributes
+     * Le salon n'est frappé que si la place est libre (`??=`, comme
+     * `VisioActivationService::upsertVisio`) : celui que la séance a déjà publié
+     * reste le sien.
+     *
+     * @param  array<string, mixed>  $etat
      */
-    private function restoreThenUpdate(Seance $visio, array $attributes): Seance
+    private function restoreThenUpdate(Seance $visio, array $etat, bool $enabled): Seance
     {
         SeanceRestoreGuard::restoreIfTrashed($visio);
-        $visio->update($attributes);
+        $visio->fill($etat);
+        if ($enabled) {
+            $visio->visio_room_id ??= SecureVisioRoomIdGenerator::make();
+        } else {
+            $visio->visio_room_id = null;
+        }
+        $visio->save();
 
         return $visio;
     }
@@ -192,6 +208,10 @@ final class VisioToggleService implements VisioToggleSource
      */
     private function dispatchNotifications(int $seanceId, Seance $visio, string $klassciToken): int
     {
+        if ($visio->klassci_classe_id !== null) {
+            return $this->avertirDApresLaSeance($seanceId, $visio);
+        }
+
         try {
             $seanceData = $this->getSeanceDataFromKlassci($seanceId, $klassciToken);
 
@@ -235,5 +255,31 @@ final class VisioToggleService implements VisioToggleSource
 
             return 0;
         }
+    }
+
+    /**
+     * Une séance qui désigne sa classe (écrite par la synchronisation) : ses
+     * élèves sont avertis d'après la séance elle-même, comme à l'activation
+     * (`VisioActivationService`). La lecture KLASSCI ne sert qu'à une séance créée
+     * par la bascule, sans classe.
+     */
+    private function avertirDApresLaSeance(int $seanceId, Seance $visio): int
+    {
+        try {
+            $this->notifications->queueScheduled($seanceId, [
+                // L'id LOCAL de la séance : la clé de la garde d'idempotence (V1).
+                'seance_locale_id' => $visio->id,
+                'klassci_classe_id' => $visio->klassci_classe_id,
+                'klassci_enseignant_id' => $visio->klassci_enseignant_id,
+                'matiere_nom' => $visio->matiere_nom ?? 'Matière',
+                'enseignant_nom' => $visio->enseignant_nom ?? 'Enseignant',
+            ]);
+        } catch (Throwable $e) {
+            $this->journal->error('Erreur envoi notifications via toggleVisio', $e, [
+                'seance_id' => $seanceId,
+            ]);
+        }
+
+        return 0;
     }
 }

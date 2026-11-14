@@ -76,10 +76,12 @@ final class EvaluationListService
         //
         // D540 : `submissions_to_sync_count` compte ce que l'envoi vers KLASSCI
         // enverra, par la même règle (`EvaluationSubmission::aSynchroniser`).
-        $query = Evaluation::withCount([
-            'submissions',
-            'submissions as submissions_to_sync_count' => fn (Builder $copies) => $copies->aSynchroniser(),
-        ])->with(['questions']);
+        $aSynchroniser = static function (Builder $copies): void {
+            /** @var Builder<EvaluationSubmission> $copies */
+            $copies->aSynchroniser();
+        };
+        $query = Evaluation::withCount(['submissions', 'submissions as submissions_to_sync_count' => $aSynchroniser])
+            ->with(['questions']);
 
         // D72, E4b (C27) : les identifiants des filtres sont dans l'espace de l'école.
         $catalogue = $this->catalogue();

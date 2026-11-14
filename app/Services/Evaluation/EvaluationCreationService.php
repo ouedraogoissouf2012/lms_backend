@@ -181,31 +181,10 @@ final class EvaluationCreationService
                 'type'            => $questionData['type'],
                 'ordre'           => $index + 1,
                 'points'          => $questionData['points'] ?? 1,
-                'options'         => $this->decodeJsonField($questionData['options'] ?? null),
-                'correct_answers' => $this->decodeJsonField($questionData['correct_answers'] ?? null),
+                'options'         => $questionData['options'] ?? null,
+                'correct_answers' => $questionData['correct_answers'] ?? null,
                 'explanation'     => $questionData['explanation'] ?? null,
             ]);
         }
-    }
-
-    /**
-     * Décode un champ qui peut être un array natif ou une string JSON.
-     * Retourne `$value` inchangée si déjà array, ou si le décodage échoue.
-     *
-     * @param  mixed  $value
-     * @return mixed
-     */
-    private function decodeJsonField($value)
-    {
-        if (! is_string($value) || $value === '') {
-            return $value;
-        }
-
-        $decoded = json_decode($value, true);
-        if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
-            return $decoded;
-        }
-
-        return $value;
     }
 }

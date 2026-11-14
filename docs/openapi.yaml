@@ -3312,6 +3312,12 @@ components:
           type: boolean
         submissions_count:
           type: integer
+        submissions_to_sync_count:
+          type: integer
+          description: |
+            Liste du personnel (`GET /evaluations`) : les copies que `sync-klassci` enverra, par la meme
+            regle (`EvaluationSubmission::aSynchroniser`) : remises (`soumis`, `corrige`), hors
+            entrainement (`[PRACTICE]`). `submissions_count`, lui, compte toutes les copies (D540).
         questions_count:
           type: integer
         effective_status:
@@ -9848,10 +9854,14 @@ paths:
                 $ref: '#/components/schemas/MessageOnly'
         '422':
           description: |
-            L evaluation n est liee a aucune evaluation KLASSCI
-            (`klassci_evaluation_id` nul) : celle d une ecole creee depuis le LMS,
-            ou une ligne jamais liee. Refus motive, avant tout traitement : rien
-            n est envoye ni marque (D72, E3).
+            `evaluation_not_linked_to_klassci` : l evaluation n est liee a aucune
+            evaluation KLASSCI (`klassci_evaluation_id` nul) : celle d une ecole creee
+            depuis le LMS, ou une ligne jamais liee. Refus motive, avant tout
+            traitement : rien n est envoye ni marque (D72, E3).
+
+            `no_submission_to_sync` : aucune copie a synchroniser (remise, hors
+            entrainement : `submissions_to_sync_count` vaut 0). Refus motive avant tout
+            appel a KLASSCI : rien n est envoye ni marque (D539).
           content:
             application/json:
               schema:
@@ -9870,6 +9880,7 @@ paths:
                     type: string
                     enum:
                       - evaluation_not_linked_to_klassci
+                      - no_submission_to_sync
         '409':
           description: "Une copie a dissertation n est pas encore notee"
           content:

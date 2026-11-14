@@ -10205,6 +10205,14 @@ paths:
         decimal est refuse (422 `answer_not_an_option_index`) avant toute
         ecriture, sans consommer d essai.
 
+        Melange (C44) : le demarrage ouvre la tentative et y ecrit l ordre
+        presente (questions et options). La remise, toujours par position
+        AFFICHEE, est retraduite vers l ordre enregistre avant la notation ;
+        `answers` de la reponse revient dans l ordre affiche. Sans tentative
+        ouverte (demarree avant ce lot, ou remise une seconde fois), la remise
+        est notee dans l ordre enregistre, comme avant, si le quiz ne melange
+        rien ; s il melange, elle est refusee (409 `attempt_not_open`, D520).
+
         Limite : 60 requetes / minute.
       security:
         - sanctum: []
@@ -10324,10 +10332,41 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/MessageOnly'
+        '409':
+          description: |
+            - `reason: quiz_changed_since_start` : une question ou une option a ete
+              ajoutee, retiree, reordonnee ou renommee depuis le demarrage (empreinte
+              du contenu presente) ; la remise ne se traduit plus. Rien n est note,
+              la tentative reste ouverte : la redemarrer.
+            - `reason: attempt_not_open` : aucune tentative ouverte (seconde remise,
+              double clic) sur un quiz qui melange ; ce que l eleve a vu est inconnu.
+              Rien n est ecrit, aucun essai consomme : redemarrer le quiz.
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required:
+                  - success
+                  - message
+                  - reason
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  message:
+                    type: string
+                  reason:
+                    type: string
+                    enum:
+                      - quiz_changed_since_start
+                      - attempt_not_open
         '422':
           description: |
             - `reason: answer_not_an_option_index` : une reponse n est pas un
-              indice d option (C45). Rien n est ecrit, aucun essai consomme.
+              indice d option (C45), designe une option qui n a pas ete
+              affichee, ou une question de trop (C44). Rien n est ecrit, aucun
+              essai consomme.
             - Sans `reason` : `answers` ou `time_spent_seconds` absent ou mal
               forme.
           content:

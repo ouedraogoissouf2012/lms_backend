@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\API;
 
+use App\Exceptions\BusinessException;
 use App\Http\Controllers\AuthenticatedController;
 use App\Http\Requests\SubmitKnowledgeCheckAttemptRequest;
 use App\Models\KnowledgeCheck;
@@ -55,6 +56,11 @@ final class KnowledgeCheckAttemptController extends AuthenticatedController
     /**
      * POST /api/knowledge-checks/{id}/submit
      * Soumettre une tentative + auto-grade.
+     *
+     * Deux refus portent leur motif, sans rien écrire (C44) : un quiz modifié
+     * depuis le démarrage (409 `quiz_changed_since_start`), une réponse hors des
+     * options affichées (422 `answer_not_an_option_index`, le motif de la forme
+     * refusée par la validation, C45).
      */
     public function submitAttempt(SubmitKnowledgeCheckAttemptRequest $request, string $id): JsonResponse
     {
@@ -63,12 +69,19 @@ final class KnowledgeCheckAttemptController extends AuthenticatedController
             return $refus;
         }
 
-        $result = $this->service->submitAttempt(
-            $id,
-            $user,
-            $request->input('answers', []),
-            (int) $request->input('time_spent_seconds', 0),
-        );
+        try {
+            $result = $this->service->submitAttempt(
+                $id,
+                $user,
+                $request->input('answers', []),
+                (int) $request->input('time_spent_seconds', 0),
+            );
+        } catch (BusinessException $e) {
+            $statut = (int) $e->getCode();
+            $erreurs = $statut === 422 ? ['answers' => [$e->getMessage()]] : [];
+
+            return $this->errorResponse($e->getMessage(), $statut, $erreurs, $e->reason);
+        }
 
         $message = $result['message'];
         unset($result['message']);

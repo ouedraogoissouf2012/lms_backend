@@ -23,6 +23,7 @@ class KnowledgeCheckAttempt extends Model
         'correct_answers',
         'total_questions',
         'answers',
+        'presentation',
         'time_spent_seconds',
         'passed',
         'started_at',
@@ -32,6 +33,7 @@ class KnowledgeCheckAttempt extends Model
 
     protected $casts = [
         'answers' => 'array',
+        'presentation' => 'array',
         'passed' => 'boolean',
         'started_at' => 'datetime',
         'completed_at' => 'datetime',
@@ -105,6 +107,29 @@ class KnowledgeCheckAttempt extends Model
     public function scopePassed($query)
     {
         return $query->where('passed', true);
+    }
+
+    /**
+     * Scope: Remises (C44). Une tentative naît OUVERTE au démarrage, sans note ;
+     * seules les remises comptent pour le quota, le meilleur score et l'historique.
+     *
+     * @param  Builder<KnowledgeCheckAttempt>  $query
+     * @return Builder<KnowledgeCheckAttempt>
+     */
+    public function scopeCompleted($query)
+    {
+        return $query->whereNotNull('completed_at');
+    }
+
+    /**
+     * Scope: Ouvertes (C44) — démarrées, pas encore remises.
+     *
+     * @param  Builder<KnowledgeCheckAttempt>  $query
+     * @return Builder<KnowledgeCheckAttempt>
+     */
+    public function scopeOpen($query)
+    {
+        return $query->whereNull('completed_at');
     }
 
     /**

@@ -27,6 +27,9 @@ use App\Services\Dashboard\TeacherDashboardReader;
 use App\Services\Enseignant\InstitutionTeachersReader;
 use App\Services\Enseignant\KlassciInstitutionTeachersReader;
 use App\Services\Enseignant\LocalInstitutionTeachersReader;
+use App\Services\Evaluation\Programming\KlassciProgrammationDesEvaluations;
+use App\Services\Evaluation\Programming\LocalProgrammationDesEvaluations;
+use App\Services\Evaluation\Programming\ProgrammationDesEvaluationsReader;
 use App\Services\Matiere\InstitutionMatieresReader;
 use App\Services\Matiere\KlassciInstitutionMatieresReader;
 use App\Services\Matiere\LocalInstitutionMatieresReader;
@@ -86,6 +89,8 @@ final class CatalogueServiceProvider extends ServiceProvider
         SeancesListReader::class => [SeancesListQueryService::class, LocalSeancesListReader::class],
         // Lot 3b : les enseignants de l'établissement.
         InstitutionTeachersReader::class => [KlassciInstitutionTeachersReader::class, LocalInstitutionTeachersReader::class],
+        // La programmation des évaluations du porteur (`/proxy/evaluations`).
+        ProgrammationDesEvaluationsReader::class => [KlassciProgrammationDesEvaluations::class, LocalProgrammationDesEvaluations::class],
         // R4 : le tableau de bord de l'enseignant, composé des sources ci-dessus.
         TeacherDashboardReader::class => [KlassciTeacherDashboardReader::class, LocalTeacherDashboardReader::class],
     ];

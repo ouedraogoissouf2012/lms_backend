@@ -7675,12 +7675,20 @@ paths:
       tags:
         - Proxy / KLASSCI
       summary: "Get evaluations"
+      description: |
+        La programmation des evaluations du porteur, par type d ecole (ADR-EI-01) :
+        - ecole creee depuis KLASSCI : relayee de KLASSCI avec le jeton personnel
+          (filtres `matiere_id`, `classe_id`, `statut`) ; sans jeton, 401 ;
+        - ecole creee depuis le LMS : il n y a pas de programmation KLASSCI. La liste
+          est VIDE, `{"success": true, "data": [], "meta": {"source": "lms_local"}}`,
+          sans 401 ni appel a KLASSCI.
       security:
         - sanctum: []
       responses:
         '200':
-          description: "List of evaluations"
+          description: "List of evaluations (vide, avec `meta.source: lms_local`, dans une ecole creee depuis le LMS)"
         '401':
+          # Ecole creee depuis KLASSCI seulement.
           $ref: '#/components/responses/KlassciUnauthorized'
 
   /proxy/emploi-temps:

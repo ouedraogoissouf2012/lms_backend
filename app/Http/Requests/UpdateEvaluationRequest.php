@@ -8,6 +8,7 @@ use App\Http\Requests\Concerns\ChecksEvaluationOwnership;
 use App\Http\Requests\Concerns\ExplainsCorrectAnswersRefusal;
 use App\Rules\CorrectAnswersAmongOptions;
 use App\Rules\CorrectAnswersCardinality;
+use App\Support\Evaluation\QuestionCountLimit;
 use App\Support\Evaluation\QuestionOptionLimits;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
@@ -74,7 +75,7 @@ final class UpdateEvaluationRequest extends FormRequest
             'bareme' => 'nullable|numeric|min:0',
             // Une LISTE (D520) : indexées par des clés, les questions échappaient aux
             // règles qui lisent la question voisine par son rang (questions.N.…).
-            'questions' => 'sometimes|list',
+            'questions' => ['sometimes', 'list', QuestionCountLimit::maxRule()],
             'questions.*.question' => 'required|string|max:1000',
             'questions.*.type' => 'required|in:qcm,qcm_multiple,vrai_faux,reponse_courte,dissertation',
             'questions.*.points' => 'nullable|numeric|min:0',

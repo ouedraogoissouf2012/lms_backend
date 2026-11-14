@@ -8387,7 +8387,8 @@ paths:
                   type: boolean
                 questions:
                   type: array
-                  description: "Remplacement complet des questions."
+                  maxItems: 200
+                  description: "Remplacement complet des questions. 200 au plus (`QuestionCountLimit`)."
                   items:
                     type: object
                     required:

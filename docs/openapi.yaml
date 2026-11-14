@@ -2219,6 +2219,7 @@ components:
           required:
             - visio_status
             - visio_ended_at
+            - participants_count
           properties:
             visio_status:
               type: string
@@ -2227,6 +2228,10 @@ components:
             visio_ended_at:
               type: string
               format: date-time
+            participants_count:
+              type: integer
+              minimum: 0
+              description: "Les participants encore connectes au moment de terminer."
 
     VisioDesactivee:
       type: object

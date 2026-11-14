@@ -11,6 +11,7 @@ use App\Http\Controllers\API\LMS\LMSVisioParticipantController;
 use App\Models\User;
 use App\Services\Seances\KlassciSeanceLookupService;
 use App\Services\Seances\SeanceDetailReader;
+use App\Services\Seances\SeanceParticipantsReader;
 use App\Services\Seances\SeanceVisioEnricher;
 use App\Support\Logging\CaughtExceptionLog;
 use Psr\Log\LoggerInterface;
@@ -49,7 +50,7 @@ use Psr\Log\LoggerInterface;
  * @see LMSVisioParticipantController (consumes getSeanceDetailsArray)
  * @see LMSAttendancesController (consumes getSeanceDetailsArray)
  */
-final class SeanceDetailQueryService implements SeanceDetailReader
+final class SeanceDetailQueryService implements SeanceDetailReader, SeanceParticipantsReader
 {
     public function __construct(
         private readonly LoggerInterface $logger,

@@ -6,15 +6,12 @@ namespace Tests\Feature\Evaluation;
 
 use App\Enums\InstitutionMode;
 use App\Models\Evaluation;
-use App\Models\EvaluationQuestion;
-use App\Models\User;
-use App\Services\KlassciProxyService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
-use Mockery\MockInterface;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\Concerns\ActsAsTenantUser;
 use Tests\Concerns\BuildsEcoleIndependante;
+use Tests\Concerns\EcritDesQuestions;
 use Tests\TestCase;
 
 /**
@@ -34,10 +31,9 @@ final class OptionsListeDeTextesTest extends TestCase
 {
     use ActsAsTenantUser;
     use BuildsEcoleIndependante;
+    use EcritDesQuestions;
     use RefreshDatabase;
 
-    /** Les champs de programmation valides de l'école en cours. @var array<string, int> */
-    private array $programmation = [];
 
     /** @return array<string, array{InstitutionMode}> */
     public static function ecoles(): array
@@ -133,78 +129,5 @@ final class OptionsListeDeTextesTest extends TestCase
         $this->asTenant($auteur)->putJson('/api/evaluations/'.$evaluation->id, ['questions' => [$this->question($options)]])
             ->assertOk();
         self::assertSame([$options], $this->optionsDe($evaluation));
-    }
-
-    /** Un auteur à qui l'école ouvre la création : programmé localement, ou enseignant KLASSCI. */
-    private function auteurDans(InstitutionMode $mode): User
-    {
-        $ecole = $this->ecole($mode);
-        $auteur = $this->membre($ecole, 'enseignant');
-
-        if ($mode === InstitutionMode::Standalone) {
-            $classe = $this->classe($ecole, '6e A');
-            $maths = $this->matiere($ecole, 'Maths');
-            $this->programme($classe, $maths, $auteur);
-            $this->programmation = ['classe_id' => $classe->id, 'matiere_id' => $maths->id];
-
-            return $auteur;
-        }
-
-        // La resynchronisation du profil (#90) n'est pas l'objet de ce test.
-        $this->disableKlassciMiddleware();
-        $auteur->forceFill(['klassci_enseignant_id' => 42, 'klassci_token' => 'jeton-enseignant'])->save();
-        $this->mock(KlassciProxyService::class, function (MockInterface $mock): void {
-            $mock->shouldReceive('getMatieres')->andReturn(['data' => [['id' => 10, 'nom' => 'Mathématiques']]]);
-            $mock->shouldReceive('getClasses')->andReturn(['data' => [['id' => 20, 'libelle' => 'Terminale D']]]);
-        });
-        $this->programmation = ['klassci_evaluation_id' => 900, 'klassci_classe_id' => 20, 'klassci_matiere_id' => 10];
-
-        return $auteur;
-    }
-
-    /**
-     * @param  list<array<string, mixed>>  $questions
-     * @return array<string, mixed>
-     */
-    private function creation(array $questions): array
-    {
-        return [
-            ...$this->programmation,
-            'titre' => 'Contrôle 1',
-            'type' => 'qcm',
-            'date_evaluation' => now()->addDay()->toIso8601String(),
-            'duree_minutes' => 30,
-            'questions' => $questions,
-        ];
-    }
-
-    /** @return array<string, mixed> */
-    private function question(mixed $options): array
-    {
-        return [
-            'question' => 'Combien font 2 + 2 ?',
-            'type' => 'qcm',
-            'points' => 2,
-            'options' => $options,
-            'correct_answers' => ['4'],
-        ];
-    }
-
-    private function evaluationDe(User $auteur): Evaluation
-    {
-        $evaluation = Evaluation::factory()->brouillon()->create([
-            'institution_id' => $auteur->institution_id,
-            'enseignant_id' => $auteur->id,
-        ]);
-        EvaluationQuestion::factory()->create(['evaluation_id' => $evaluation->id, 'options' => ['3', '4']]);
-
-        return $evaluation;
-    }
-
-    /** @return list<mixed> */
-    private function optionsDe(Evaluation $evaluation): array
-    {
-        return EvaluationQuestion::query()->where('evaluation_id', $evaluation->id)->orderBy('id')
-            ->get()->map(fn (EvaluationQuestion $question): mixed => $question->options)->all();
     }
 }

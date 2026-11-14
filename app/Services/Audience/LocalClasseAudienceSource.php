@@ -23,10 +23,11 @@ use Illuminate\Support\Collection;
  * Seul `LocalSeanceCreator` écrit `classe_id`, et jamais avec `klassci_classe_id` :
  * une séance miroitée suit donc son chemin d'avant, inchangé.
  *
- * - Classe locale : bornée à l'établissement de la séance, et l'inscription passe
- *   par `EnrollmentSource` (le composite), comme l'exige ADR-803-03.
- * - Classe KLASSCI : le miroir local dont `klassci_id` vaut `klassci_classe_id`,
- *   et son pivot `classe_etudiant`.
+ * - Classe locale : bornée à l'établissement de la séance.
+ * - Classe KLASSCI : le miroir local dont `klassci_id` vaut `klassci_classe_id`.
+ * - Dans les deux cas, l'inscription passe par `EnrollmentSource` (ADR-803-03),
+ *   dans ses deux sens : l'admission lit `localClasseIdsFor`, l'audience
+ *   `localStudentIdsOf`. Une seule règle, par l'autorité de l'école (C40).
  *
  * La classe est désignée en UN endroit ({@see classeDe()}) : l'admission et les
  * notifications lisent la même.
@@ -46,23 +47,11 @@ final class LocalClasseAudienceSource implements ClasseAudienceSource
             return false;
         }
 
-        $laClasse = $this->classeDe($seance);
+        $classe = $this->classeDe($seance)?->first();
 
-        if ($laClasse === null) {
-            return false;
-        }
+        $cle = $classe instanceof Classe ? $classe->getKey() : null;
 
-        if (is_numeric($seance->classe_id)) {
-            return $laClasse->exists()
-                && in_array((int) $seance->classe_id, $this->inscriptions->localClasseIdsFor($student), true);
-        }
-
-        return $laClasse
-            ->whereHas(
-                'etudiantsActifs',
-                static fn ($query) => $query->where('users.id', $student->id),
-            )
-            ->exists();
+        return is_numeric($cle) && in_array((int) $cle, $this->inscriptions->localClasseIdsFor($student), true);
     }
 
     /**
@@ -72,19 +61,21 @@ final class LocalClasseAudienceSource implements ClasseAudienceSource
      * en dur. Un élève admis est donc toujours averti, et un compte refusé à
      * l'entrée ne l'est pas.
      *
-     * Le composite d'inscriptions répond « quelles classes pour cet élève », pas
-     * « quels élèves pour cette classe » : la liste est lue sur le pivot
-     * `classe_etudiant`, celui que sa jambe locale lit (dette déclarée).
+     * La liste est le sens inverse du port qui décide l'admission
+     * (`localStudentIdsOf`) : un élève admis est averti, et réciproquement (C40).
      */
     public function studentsOf(Seance $seance): Collection
     {
         $classe = $this->classeDe($seance)?->first();
 
-        if ($classe === null) {
+        if (! $classe instanceof Classe) {
             return collect();
         }
 
-        return $classe->etudiantsActifs()
+        return User::query()
+            ->whereKey($this->inscriptions->localStudentIdsOf($classe))
+            ->where('institution_id', $seance->institution_id)
+            ->orderBy('id')
             ->get()
             ->filter(static fn (User $eleve): bool => $eleve->institution_id === $seance->institution_id
                 && $eleve->isStudent())

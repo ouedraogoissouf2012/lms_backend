@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Enrollment;
 
+use App\Models\Classe;
 use App\Models\User;
 
 /**
@@ -22,6 +23,24 @@ final class InMemoryEnrollmentSource implements EnrollmentSource
     public function classeIdsForTeacher(User $teacher): array
     {
         return $this->classeIdsByUserId[$teacher->id] ?? [];
+    }
+
+    public function localStudentIdsOf(Classe $classe): array
+    {
+        $cle = $classe->getKey();
+        if (! is_numeric($cle)) {
+            return [];
+        }
+
+        $cle = (int) $cle;
+        $ids = [];
+        foreach ($this->classeIdsByUserId as $userId => $classeIds) {
+            if (in_array($cle, $classeIds, true)) {
+                $ids[] = $userId;
+            }
+        }
+
+        return $ids;
     }
 
     public function assign(int $userId, int $classeId): void

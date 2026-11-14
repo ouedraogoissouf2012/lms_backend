@@ -54,6 +54,7 @@ final class OpenApiSchemaValidatorTest extends TestCase
         yield 'format double sur un nombre' => [['type' => 'number', 'format' => 'double'], '1.5', '"1.5"'];
         yield 'minLength' => [['type' => 'string', 'minLength' => 3], '"abc"', '"ab"'];
         yield 'maxLength' => [['type' => 'string', 'maxLength' => 3], '"abc"', '"abcd"'];
+        yield 'maxItems' => [['type' => 'array', 'items' => ['type' => 'integer'], 'maxItems' => 2], '[1,2]', '[1,2,3]'];
         yield 'minimum' => [['type' => 'integer', 'minimum' => 1], '1', '0'];
         yield 'maximum' => [['type' => 'integer', 'maximum' => 10], '10', '11'];
         yield 'pattern' => [['type' => 'string', 'pattern' => '^[A-Z]{3}$'], '"ABC"', '"abc"'];
@@ -114,6 +115,8 @@ final class OpenApiSchemaValidatorTest extends TestCase
         yield 'type inconnu, valeur nulle' => [['type' => 'intger', 'nullable' => true], 'null', 'type non pris en charge'];
         yield 'format inconnu, valeur nulle' => [['type' => 'string', 'nullable' => true, 'format' => 'ipv4'], 'null', 'format non pris en charge'];
         yield 'format sur un type non textuel' => [['type' => 'integer', 'format' => 'date'], '3', '« format » "date" sur un type'];
+        yield 'maxItems sur un texte' => [['type' => 'string', 'maxItems' => 1], '"x"', '« maxItems » sur un type'];
+        yield 'maxItems mal formé' => [['type' => 'array', 'items' => ['type' => 'integer'], 'maxItems' => 'deux'], '[1]', 'valeur malformée pour « maxItems »'];
         yield 'minLength sur un entier' => [['type' => 'integer', 'minLength' => 1], '3', '« minLength » sur un type'];
         yield 'minimum sur un texte' => [['type' => 'string', 'minimum' => 1], '"x"', '« minimum » sur un type'];
         yield 'properties sur un texte' => [['type' => 'string', 'properties' => ['a' => ['type' => 'string']]], '"x"', '« properties » sur un type'];

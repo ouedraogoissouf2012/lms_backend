@@ -607,6 +607,8 @@ final class SeancesEcoleIndependanteTest extends TestCase
         return [
             'id' => $seance->id,
             'klassci_seance_id' => null,
+            // Le titre de la ligne (`TitreDeLaSeanceTest` en fixe les deux volets).
+            'titre' => $seance->titre,
             'date_seance' => $debut->format('Y-m-d'),
             'date_debut' => $debut->toISOString(),
             'date_fin' => $fin->toISOString(),

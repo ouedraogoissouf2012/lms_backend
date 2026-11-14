@@ -1783,6 +1783,10 @@ components:
         klassci_seance_id:
           type: integer
           nullable: true
+        titre:
+          type: string
+          nullable: true
+          description: "Le titre de la seance, lu sur la ligne dans les deux types d'ecole. `null` sans titre (absent ou vide) : jamais remplace par le nom de la matiere."
         date_seance:
           type: string
           nullable: true

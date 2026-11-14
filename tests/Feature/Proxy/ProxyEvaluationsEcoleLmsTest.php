@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\Http;
 use Mockery\MockInterface;
 use Tests\Concerns\ActsAsTenantUser;
 use Tests\Concerns\BuildsEcoleIndependante;
+use Tests\Concerns\ValidatesAgainstOpenApi;
 use Tests\TestCase;
 
 /**
@@ -34,6 +35,7 @@ final class ProxyEvaluationsEcoleLmsTest extends TestCase
     use ActsAsTenantUser;
     use BuildsEcoleIndependante;
     use RefreshDatabase;
+    use ValidatesAgainstOpenApi;
 
     public function test_ecole_du_lms_la_liste_est_vide_sans_401_ni_appel_klassci(): void
     {
@@ -67,6 +69,27 @@ final class ProxyEvaluationsEcoleLmsTest extends TestCase
         $this->asTenant($enseignant)->getJson('/api/proxy/evaluations?classe_id=55&statut=planifiee')
             ->assertOk()
             ->assertJsonPath('data.0.id', 900);
+    }
+
+    /** La forme locale suit la spec : fermée, marquée `meta.source` (B8, revue de Fille 1). */
+    public function test_ecole_du_lms_la_reponse_suit_la_spec(): void
+    {
+        $this->aucunAppelKlassci();
+
+        $reponse = $this->asTenant($this->membre($this->ecole(), 'enseignant'))->getJson('/api/proxy/evaluations')->assertOk();
+
+        $this->assertMatchesOpenApiResponse($reponse, '/proxy/evaluations', 'get');
+    }
+
+    /** La charge KLASSCI, relayée telle quelle, suit aussi la spec, sans la marque locale. */
+    public function test_ecole_klassci_la_reponse_relayee_suit_la_spec(): void
+    {
+        $enseignant = $this->enseignantKlassci();
+        $this->klassciProgramme();
+
+        $reponse = $this->asTenant($enseignant)->getJson('/api/proxy/evaluations?classe_id=55&statut=planifiee')->assertOk();
+
+        $this->assertMatchesOpenApiResponse($reponse, '/proxy/evaluations', 'get');
     }
 
     /** Laravel garde le contrôleur sur l'objet Route : la source se reçoit par la MÉTHODE. */

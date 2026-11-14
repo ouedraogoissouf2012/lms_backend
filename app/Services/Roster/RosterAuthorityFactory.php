@@ -169,7 +169,12 @@ final class RosterAuthorityFactory
     public function sourceForAccount(User $compte, string $klassci, string $local): object
     {
         $tenant = $this->tenants->get();
-        $ecole = $tenant !== null && $tenant->id === $compte->institution_id ? $tenant : $compte->institution;
+        $ecole = match (true) {
+            $tenant !== null && $tenant->id === $compte->institution_id => $tenant,
+            $compte->institution_id === null => null,
+            // Une école supprimée en douceur garde son mode : la relation l'ignorerait.
+            default => Institution::withTrashed()->find($compte->institution_id),
+        };
 
         return $this->sourceForInstitution($ecole, $klassci, $local);
     }

@@ -61,6 +61,7 @@ final class VisioSeanceLocaleNotificationsTest extends TestCase
         );
     }
 
+    /** Les élèves actifs, puis l'auteur de la séance (`AuteurAvertiAuDemarrageTest`). */
     public function test_le_demarrage_avertit_les_eleves_actifs_de_la_classe(): void
     {
         $auteur = $this->compte('teacher');
@@ -71,7 +72,7 @@ final class VisioSeanceLocaleNotificationsTest extends TestCase
         $this->asTenant($auteur)->postJson("/api/lms/seances/{$seance->id}/start-visio")->assertOk();
         $this->executerLesNotifications();
 
-        self::assertSame([$inscrit->id], $this->destinataires(Notification::TYPE_VISIO_STARTING));
+        self::assertSame([$inscrit->id, $auteur->id], $this->destinataires(Notification::TYPE_VISIO_STARTING));
     }
 
     public function test_une_seance_sans_classe_n_avertit_personne(): void

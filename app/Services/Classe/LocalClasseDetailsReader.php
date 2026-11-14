@@ -7,6 +7,7 @@ namespace App\Services\Classe;
 use App\Models\Classe;
 use App\Models\Matiere;
 use App\Models\User;
+use App\Services\Evaluation\EvaluationsDeLaPage;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -44,13 +45,19 @@ use Illuminate\Support\Facades\DB;
  *
  * Capacité, séances de la semaine, taux de remplissage : aucune table locale
  * ne les porte. Même règle que `ClasseDetailsQueryService::computeStats`,
- * « bloc non livré, null, jamais 0 ». Les évaluations sont vides : provisoire,
- * jusqu'à la fonction qui les construit (D72).
+ * « bloc non livré, null, jamais 0 ».
+ *
+ * Les évaluations de la classe et leur compteur viennent de
+ * {@see EvaluationsDeLaPage} (D72, E4c) : l'élève voit sa liste, l'enseignant les
+ * siennes, la gestion toutes. La clé reste `evaluations_programmees`, celle que la
+ * source KLASSCI émet et que le front lit.
  *
  * @see docs/adr/2026-10-30-ecole-independante-01-meme-route-autre-source.md
  */
 final class LocalClasseDetailsReader implements ClasseDetailsReader, ClasseEtudiantsReader, ClasseLocalDoorReader
 {
+    public function __construct(private readonly EvaluationsDeLaPage $evaluations) {}
+
     /**
      * @return array{status: int, payload: array<string, mixed>}
      */
@@ -99,6 +106,7 @@ final class LocalClasseDetailsReader implements ClasseDetailsReader, ClasseEtudi
 
         $actifs = $this->rosterActif($classe);
         $programme = $this->programme($classe);
+        $evaluations = $this->evaluations->deLaClasse($classe, $user);
 
         return ['status' => 200, 'payload' => [
             'success' => true,
@@ -115,11 +123,11 @@ final class LocalClasseDetailsReader implements ClasseDetailsReader, ClasseEtudi
                 'etudiants' => $user->isStaff() ? $actifs : [],
                 'matieres_disponibles' => $programme,
                 'emploi_temps_semaine' => [],
-                'evaluations_programmees' => [],
+                'evaluations_programmees' => $evaluations,
                 'statistiques' => [
                     'nombre_etudiants' => count($actifs),
                     'nombre_seances_semaine' => null,
-                    'nombre_evaluations_programmees' => 0,
+                    'nombre_evaluations_programmees' => count($evaluations),
                     'nombre_matieres' => count($programme),
                     'capacite_classe' => null,
                     'taux_remplissage' => null,

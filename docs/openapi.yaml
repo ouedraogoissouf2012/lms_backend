@@ -1103,7 +1103,14 @@ components:
                 type: object
             evaluations_programmees:
               type: array
-              description: "Toujours `[]` dans une ecole creee depuis le LMS, en attendant ses evaluations."
+              description: |
+                Ecole creee depuis le LMS (D72, E4c) : les evaluations de la classe,
+                selon l appelant (l eleve sa liste, l enseignant les siennes brouillons
+                compris, la gestion toutes). Chaque element porte `id` (l id LMS, que
+                la fiche ouvre), `lms_id`, `duree_minutes`, `matiere {id, nom}`,
+                `programmation.window`, `has_online: true`, `online_version.id` et
+                `source: lms_local` ; la copie de l eleve est masquee si les resultats
+                sont caches (C25).
               items:
                 type: object
             statistiques:
@@ -1128,6 +1135,7 @@ components:
                   nullable: true
                 nombre_evaluations_programmees:
                   type: integer
+                  description: "Le nombre d elements de `evaluations_programmees`."
                 nombre_matieres:
                   type: integer
                   nullable: true
@@ -1401,7 +1409,7 @@ components:
         nb_evaluations:
           type: integer
           nullable: true
-          description: "0 dans une ecole creee depuis le LMS (provisoire, D72)."
+          description: "Ecole creee depuis le LMS : toutes les evaluations de l etablissement dans la matiere (D72, E4c)."
         nb_seances_programmees:
           type: integer
           nullable: true
@@ -7035,8 +7043,8 @@ paths:
         meme hors programme, en identifiants LOCAUX, sans aucun appel a
         KLASSCI. Ni heures, ni seances, ni filieres, ni niveaux n'existent en
         local : `heures_total` et `nb_seances_programmees` valent `null`,
-        `combinaisons` est vide ; `nb_evaluations` vaut 0, aucune evaluation
-        n'existant encore (provisoire, D72) ; `nb_lecons` compte les lecons de
+        `combinaisons` est vide ; `nb_evaluations` compte toutes les evaluations
+        de l etablissement dans la matiere (D72, E4c) ; `nb_lecons` compte les lecons de
         la matiere, tous statuts ; `couleur` est la couleur par defaut.
       security:
         - sanctum: []

@@ -27,8 +27,9 @@ use Throwable;
  * ## Comportement préservé
  *
  * - `getSubmissions` : tri par `submitted_at desc`, enrichissement avec
- *   le nom du user local (lookup batched par `klassci_id`), fallback
- *   `'Étudiant #{id}'` si pas mappé.
+ *   le nom du user local (par l'auteur `student_id`, puis par `klassci_id`
+ *   pour une ligne d'avant D72, dans l'établissement de l'évaluation : D72 E3),
+ *   fallback `'Étudiant #{id}'` si pas mappé.
  * - `preview` : restriction coordinateur (uniquement évaluations terminées),
  *   formatage des questions SANS `correct_answers` (sécurité), métadonnées
  *   complètes (questions_count, total_points, is_preview=true).
@@ -58,26 +59,21 @@ final class TeacherEvaluationViewService
             // `findOrFail` ici uniquement pour préserver le 404 historique —
             // l'instance n'est pas réutilisée (les submissions sont récupérées
             // par evaluation_id).
-            Evaluation::findOrFail($evaluationId);
+            $evaluation = Evaluation::findOrFail($evaluationId);
 
             $submissions = EvaluationSubmission::where('evaluation_id', $evaluationId)
                 ->orderBy('submitted_at', 'desc')
                 ->get();
 
-            // Lookup batched des noms étudiants — évite N+1 sur la map.
-            $klassciIds   = $submissions->pluck('klassci_etudiant_id')->unique();
-            $studentsMap  = User::whereIn('klassci_id', $klassciIds)
-                ->get()
-                ->pluck('name', 'klassci_id')
-                ->toArray();
+            $noms = NomsDesAuteurs::de($submissions, $evaluation->institution_id);
 
-            $enrichedSubmissions = $submissions->map(static function (EvaluationSubmission $submission) use ($studentsMap): array {
+            $enrichedSubmissions = $submissions->map(static function (EvaluationSubmission $submission) use ($noms): array {
                 return [
                     'id'                    => $submission->id,
                     'evaluation_id'         => $submission->evaluation_id,
+                    'student_id'            => $submission->student_id,
                     'klassci_etudiant_id'   => $submission->klassci_etudiant_id,
-                    'student_name'          => $studentsMap[$submission->klassci_etudiant_id]
-                        ?? 'Étudiant #' . $submission->klassci_etudiant_id,
+                    'student_name'          => $noms($submission),
                     'attempt'               => $submission->attempt,
                     'status'                => $submission->status,
                     'started_at'            => $submission->started_at,

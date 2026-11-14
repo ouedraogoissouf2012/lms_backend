@@ -169,30 +169,45 @@ final class FinDeTentativeTest extends TestCase
         $this->remettre($eleve, $passee, 'a')->assertCreated();
     }
 
-    /** Course : une remise tardive n'écrase pas une copie remise entre-temps (écriture conditionnelle). */
-    public function test_une_remise_tardive_n_ecrase_pas_une_copie_remise_entre_temps(): void
+    /**
+     * Course perdue contre une remise DANS le délai (revue de Fille 1, O1) : la remise
+     * tardive n'écrase rien, et dit l'état RÉEL de la copie, déjà remise : 409
+     * `evaluation_attempt_conflict`, et non « verrouillée ». Avant (#1037, `6314d66e`),
+     * elle répondait `evaluation_attempt_locked` alors que la copie était soumise.
+     */
+    public function test_une_remise_tardive_qui_perd_contre_une_remise_dans_le_delai_dit_le_conflit(): void
     {
         [$eleve, $evaluation] = $this->eleveEtEvaluationLocale(now()->subMinutes(10), 60);
         $copie = $this->demarrer($eleve, $evaluation);
         $this->travelTo(now()->addHour());
-        $fait = false;
-        DB::beforeExecuting(function (string $requete) use (&$fait, $copie): void {
-            if ($fait || preg_match('/^update [`"]evaluation_submissions[`"]/i', $requete) !== 1) {
-                return;
-            }
-            $fait = true;
-            DB::table('evaluation_submissions')->where('id', $copie->getKey())
-                ->update(['status' => 'soumis', 'answers' => json_encode(['gagnante' => 'x'])]);
-        });
+        $fait = $this->avantLeVerrou($copie, ['status' => 'soumis', 'answers' => json_encode(['gagnante' => 'x'])]);
+
+        $this->remettre($eleve, $evaluation, 'a')
+            ->assertStatus(409)
+            ->assertJsonPath('reason', 'evaluation_attempt_conflict');
+
+        self::assertTrue($fait(), 'la remise tardive a tenté une écriture');
+        $apres = DB::table('evaluation_submissions')->where('id', $copie->getKey())->first();
+        self::assertSame('soumis', $apres?->status);
+        self::assertSame(['gagnante' => 'x'], json_decode((string) $apres?->answers, true));
+    }
+
+    /** Deux remises tardives simultanées : une seule transition ; la perdante dit « verrouillée ». */
+    public function test_deux_remises_tardives_une_seule_transition(): void
+    {
+        [$eleve, $evaluation] = $this->eleveEtEvaluationLocale(now()->subMinutes(10), 60);
+        $copie = $this->demarrer($eleve, $evaluation);
+        $this->travelTo(now()->addHour());
+        $fait = $this->avantLeVerrou($copie, ['status' => 'verrouille', 'answers' => json_encode(['premiere' => 'y'])]);
 
         $this->remettre($eleve, $evaluation, 'a')
             ->assertStatus(409)
             ->assertJsonPath('reason', 'evaluation_attempt_locked');
 
-        self::assertTrue($fait, 'la remise tardive a tenté une écriture');
+        self::assertTrue($fait());
         $apres = DB::table('evaluation_submissions')->where('id', $copie->getKey())->first();
-        self::assertSame('soumis', $apres?->status);
-        self::assertSame(['gagnante' => 'x'], json_decode((string) $apres?->answers, true));
+        self::assertSame('verrouille', $apres?->status);
+        self::assertSame(['premiere' => 'y'], json_decode((string) $apres?->answers, true));
     }
 
     // ───────────────────────── école créée depuis KLASSCI
@@ -256,6 +271,28 @@ final class FinDeTentativeTest extends TestCase
     }
 
     // ───────────────────────── harnais
+
+    /**
+     * Une requête concurrente écrit la copie juste AVANT notre écriture conditionnelle.
+     *
+     * @param  array<string, mixed>  $etat
+     * @return \Closure(): bool  vrai si l'écriture concurrente a eu lieu
+     */
+    private function avantLeVerrou(EvaluationSubmission $copie, array $etat): \Closure
+    {
+        $fait = false;
+        DB::beforeExecuting(function (string $requete) use (&$fait, $copie, $etat): void {
+            if ($fait || preg_match('/^update [`"]evaluation_submissions[`"]/i', $requete) !== 1) {
+                return;
+            }
+            $fait = true;
+            DB::table('evaluation_submissions')->where('id', $copie->getKey())->update($etat);
+        });
+
+        return static function () use (&$fait): bool {
+            return $fait;
+        };
+    }
 
     private function assertVerrouillee(\Illuminate\Testing\TestResponse $reponse, EvaluationSubmission $copie, string $reponseGardee): void
     {

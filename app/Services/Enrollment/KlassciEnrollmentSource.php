@@ -101,7 +101,7 @@ final class KlassciEnrollmentSource implements EnrollmentSource
             ->distinct()
             ->orderBy('user_classes.user_id')
             ->pluck('user_classes.user_id')
-            ->map(static fn (mixed $id): int => (int) $id)
+            ->map(static fn (mixed $id): int => intval($id))
             ->all();
 
         return $ids;

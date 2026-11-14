@@ -27,10 +27,11 @@ final class InMemoryEnrollmentSource implements EnrollmentSource
 
     public function localStudentIdsOf(Classe $classe): array
     {
+        $cle = intval($classe->getKey());
         $ids = [];
         foreach ($this->classeIdsByUserId as $userId => $classeIds) {
-            if (in_array((int) $classe->getKey(), $classeIds, true)) {
-                $ids[] = (int) $userId;
+            if (in_array($cle, $classeIds, true)) {
+                $ids[] = $userId;
             }
         }
 

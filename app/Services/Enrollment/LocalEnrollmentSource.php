@@ -37,7 +37,7 @@ final class LocalEnrollmentSource implements EnrollmentSource
             ->where('statut', 'actif')
             ->orderBy('user_id')
             ->pluck('user_id')
-            ->map(static fn (mixed $id): int => (int) $id)
+            ->map(static fn (mixed $id): int => intval($id))
             ->all();
 
         return $ids;

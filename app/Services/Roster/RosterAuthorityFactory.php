@@ -6,6 +6,7 @@ namespace App\Services\Roster;
 
 use App\Enums\InstitutionMode;
 use App\Models\Institution;
+use App\Models\User;
 use App\Services\Catalogue\CatalogueAuthority;
 use App\Services\Catalogue\KlassciCatalogueAuthority;
 use App\Services\Catalogue\LocalCatalogueAuthority;
@@ -149,5 +150,32 @@ final class RosterAuthorityFactory
         return $this->container->make(
             $institution?->mode === InstitutionMode::Standalone ? $local : $klassci,
         );
+    }
+
+    /**
+     * La même source, pour l'établissement d'un COMPTE (D496). Le tenant quand il
+     * est cet établissement : c'est toute requête authentifiée, `ResolveInstitution`
+     * le pose sur l'établissement du jeton, et aucune lecture de plus n'a lieu (le
+     * garde Sanctum recharge le compte dans une autre instance, sans sa relation).
+     * Sinon (un job, une commande, sans tenant) : l'établissement lu sur le compte.
+     * Un compte sans établissement : la source KLASSCI.
+     *
+     * @template TSource of object
+     *
+     * @param  class-string<TSource>  $klassci
+     * @param  class-string<TSource>  $local
+     * @return TSource
+     */
+    public function sourceForAccount(User $compte, string $klassci, string $local): object
+    {
+        $tenant = $this->tenants->get();
+        $ecole = match (true) {
+            $tenant !== null && $tenant->id === $compte->institution_id => $tenant,
+            $compte->institution_id === null => null,
+            // Une école supprimée en douceur garde son mode : la relation l'ignorerait.
+            default => Institution::withTrashed()->find($compte->institution_id),
+        };
+
+        return $this->sourceForInstitution($ecole, $klassci, $local);
     }
 }

@@ -7298,9 +7298,10 @@ paths:
                   message:
                     type: string
                   data:
-                    allOf:
-                      - $ref: '#/components/schemas/EvaluationRecord'
+                    description: "La version en ligne existante."
                     nullable: true
+                    oneOf:
+                      - $ref: '#/components/schemas/EvaluationRecord'
         '422':
           description: |
             Erreur de validation (`errors`), classe ou matiere hors de l'ecole (`errors`), ou refus

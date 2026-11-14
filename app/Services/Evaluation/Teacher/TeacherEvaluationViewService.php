@@ -138,17 +138,9 @@ final class TeacherEvaluationViewService
             $evaluation = Evaluation::with('questions')->findOrFail($evaluationId);
 
             // Restriction coordinateur : preview limitée aux évaluations
-            // terminées (politique métier — cf. modèle `isTerminee()`). Le motif
-            // distingue ce refus de celui de `PreviewEvaluationRequest`, qui n'en porte pas.
+            // terminées (politique métier — cf. modèle `isTerminee()`).
             if ($teacher->isCoordinator() && ! $evaluation->isTerminee()) {
-                return [
-                    'status'  => 403,
-                    'payload' => [
-                        'success' => false,
-                        'message' => 'Accès refusé. Les coordinateurs ne peuvent prévisualiser que les évaluations terminées.',
-                        'reason'  => 'preview_requires_finished_evaluation',
-                    ],
-                ];
+                return $this->refusalPreviewRequiresFinished();
             }
 
             $questionsForPreview = $evaluation->questions->map(static function ($question): array {
@@ -206,5 +198,23 @@ final class TeacherEvaluationViewService
                 ],
             ];
         }
+    }
+
+    /**
+     * Le refus du coordinateur sur une évaluation non terminée. Son motif le
+     * distingue du refus de `PreviewEvaluationRequest`, qui n'en porte pas.
+     *
+     * @return array{status:int, payload:array<string, mixed>}
+     */
+    private function refusalPreviewRequiresFinished(): array
+    {
+        return [
+            'status'  => 403,
+            'payload' => [
+                'success' => false,
+                'message' => 'Accès refusé. Les coordinateurs ne peuvent prévisualiser que les évaluations terminées.',
+                'reason'  => 'preview_requires_finished_evaluation',
+            ],
+        ];
     }
 }

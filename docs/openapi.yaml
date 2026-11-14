@@ -2174,6 +2174,113 @@ components:
         message:
           type: string
 
+    VisioDemarree:
+      type: object
+      additionalProperties: false
+      required:
+        - success
+        - message
+        - data
+      properties:
+        success:
+          type: boolean
+          enum:
+            - true
+        message:
+          type: string
+        data:
+          type: object
+          additionalProperties: false
+          required:
+            - visio_status
+            - visio_started_at
+            - visio_room_id
+          properties:
+            visio_status:
+              type: string
+              enum:
+                - active
+            visio_started_at:
+              type: string
+              format: date-time
+            visio_room_id:
+              type: string
+              nullable: true
+
+    VisioTerminee:
+      type: object
+      additionalProperties: false
+      required:
+        - success
+        - message
+        - data
+      properties:
+        success:
+          type: boolean
+          enum:
+            - true
+        message:
+          type: string
+        data:
+          type: object
+          additionalProperties: false
+          required:
+            - visio_status
+            - visio_ended_at
+            - participants_count
+          properties:
+            visio_status:
+              type: string
+              enum:
+                - terminee
+            visio_ended_at:
+              type: string
+              format: date-time
+            participants_count:
+              type: integer
+              minimum: 0
+              description: "Les participants encore connectes au moment de terminer."
+
+    VisioDesactivee:
+      type: object
+      additionalProperties: false
+      required:
+        - success
+        - message
+        - data
+      properties:
+        success:
+          type: boolean
+          enum:
+            - true
+        message:
+          type: string
+        data:
+          type: object
+          additionalProperties: false
+          required:
+            - visio_enabled
+          properties:
+            visio_enabled:
+              type: boolean
+              enum:
+                - false
+
+    VisioEtatRefuse:
+      type: object
+      additionalProperties: false
+      description: "L'etat de la visio ne permet pas le geste : la demarrer sans qu'elle soit activee, la terminer sans qu'elle soit active."
+      required:
+        - success
+        - message
+      properties:
+        success:
+          type: boolean
+          enum:
+            - false
+        message:
+          type: string
+
     VisioGestionRefusee:
       type: object
       additionalProperties: false
@@ -4594,6 +4701,208 @@ paths:
             Erreur interne, y compris une panne de KLASSCI pendant la recherche.
             Rattrapee par le service : avec `error`. Non rattrapee (gestionnaire
             global, par exemple un `seanceId` non numerique) : sans `error`.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VisioErreurInterne'
+
+  /lms/seances/{seanceId}/start-visio:
+    post:
+      tags:
+        - Visio
+      summary: "Demarrer la visio d'une seance"
+      description: |
+        Reserve aux roles enseignant et coordinateur. Seul qui gere la seance
+        agit : son enseignant (`klassci_enseignant_id` en mode KLASSCI,
+        `created_by` pour une seance locale) ou le personnel de gestion de
+        l'etablissement (`VisioActorAuthorization::canManage`). La seance se lit
+        en local, dans les deux types d'ecole, sans appel KLASSCI.
+
+        La visio passe de `programmee` a `active` ; les eleves de la classe et
+        l'enseignant sont avertis (planifie, jamais pendant la requete).
+      security:
+        - sanctum: []
+      parameters:
+        - name: seanceId
+          in: path
+          required: true
+          description: "Identifiant KLASSCI de la seance (ecole en mode KLASSCI), ou son identifiant local (ecole en mode autonome). L'id local est lu d'abord."
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: "Visio demarree."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VisioDemarree'
+        '400':
+          description: "La visio de la seance n'est pas activee."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VisioEtatRefuse'
+        '401':
+          description: "Jeton porteur absent ou invalide. Aucune garde de jeton KLASSCI sur cette route."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefusKlassci'
+        '403':
+          description: |
+            Sans `reason` : role non admis (garde de role), ou etablissement
+            desactive. Avec `reason: no_institution` : compte sans
+            etablissement. Avec `reason: actor_not_authorized` : le compte ne
+            gere pas la seance (ni son enseignant, ni le personnel de gestion de
+            l'etablissement), refuse avant toute ecriture.
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/SeanceLocaleInterdite'
+                  - $ref: '#/components/schemas/VisioGestionRefusee'
+        '404':
+          description: "Seance introuvable dans l'etablissement du compte."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SeanceLocaleRefus'
+        '500':
+          description: |
+            Erreur interne. Rattrapee par le service : avec `error`. Non
+            rattrapee (gestionnaire global) : sans `error`.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VisioErreurInterne'
+
+  /lms/seances/{seanceId}/end-visio:
+    post:
+      tags:
+        - Visio
+      summary: "Terminer la visio d'une seance"
+      description: |
+        Reserve aux roles enseignant et coordinateur. Seul qui gere la seance
+        agit : son enseignant (`klassci_enseignant_id` en mode KLASSCI,
+        `created_by` pour une seance locale) ou le personnel de gestion de
+        l'etablissement (`VisioActorAuthorization::canManage`). La seance se lit
+        en local, dans les deux types d'ecole, sans appel KLASSCI.
+
+        La visio passe de `active` a `terminee`.
+      security:
+        - sanctum: []
+      parameters:
+        - name: seanceId
+          in: path
+          required: true
+          description: "Identifiant KLASSCI de la seance (ecole en mode KLASSCI), ou son identifiant local (ecole en mode autonome). L'id local est lu d'abord."
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: "Visio terminee."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VisioTerminee'
+        '400':
+          description: "La visio de la seance n'est pas active."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VisioEtatRefuse'
+        '401':
+          description: "Jeton porteur absent ou invalide. Aucune garde de jeton KLASSCI sur cette route."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefusKlassci'
+        '403':
+          description: |
+            Sans `reason` : role non admis (garde de role), ou etablissement
+            desactive. Avec `reason: no_institution` : compte sans
+            etablissement. Avec `reason: actor_not_authorized` : le compte ne
+            gere pas la seance (ni son enseignant, ni le personnel de gestion de
+            l'etablissement), refuse avant toute ecriture.
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/SeanceLocaleInterdite'
+                  - $ref: '#/components/schemas/VisioGestionRefusee'
+        '404':
+          description: "Seance introuvable dans l'etablissement du compte."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SeanceLocaleRefus'
+        '500':
+          description: |
+            Erreur interne. Rattrapee par le service : avec `error`. Non
+            rattrapee (gestionnaire global) : sans `error`.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VisioErreurInterne'
+
+  /lms/seances/{seanceId}/deactivate-visio:
+    post:
+      tags:
+        - Visio
+      summary: "Desactiver la visio d'une seance"
+      description: |
+        Reserve aux roles enseignant et coordinateur. Seul qui gere la seance
+        agit : son enseignant (`klassci_enseignant_id` en mode KLASSCI,
+        `created_by` pour une seance locale) ou le personnel de gestion de
+        l'etablissement (`VisioActorAuthorization::canManage`). La seance se lit
+        en local, dans les deux types d'ecole, sans appel KLASSCI.
+
+        La visio est retiree de la seance : salon, type et statut remis a nul.
+      security:
+        - sanctum: []
+      parameters:
+        - name: seanceId
+          in: path
+          required: true
+          description: "Identifiant KLASSCI de la seance (ecole en mode KLASSCI), ou son identifiant local (ecole en mode autonome). L'id local est lu d'abord."
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: "Visio desactivee."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VisioDesactivee'
+        '401':
+          description: "Jeton porteur absent ou invalide. Aucune garde de jeton KLASSCI sur cette route."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefusKlassci'
+        '403':
+          description: |
+            Sans `reason` : role non admis (garde de role), ou etablissement
+            desactive. Avec `reason: no_institution` : compte sans
+            etablissement. Avec `reason: actor_not_authorized` : le compte ne
+            gere pas la seance (ni son enseignant, ni le personnel de gestion de
+            l'etablissement), refuse avant toute ecriture.
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/SeanceLocaleInterdite'
+                  - $ref: '#/components/schemas/VisioGestionRefusee'
+        '404':
+          description: "Seance introuvable dans l'etablissement du compte, ou visio non activee."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SeanceLocaleRefus'
+        '500':
+          description: |
+            Erreur interne. Rattrapee par le service : avec `error`. Non
+            rattrapee (gestionnaire global) : sans `error`.
           content:
             application/json:
               schema:

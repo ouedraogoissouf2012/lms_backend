@@ -7290,8 +7290,12 @@ paths:
         survit a un enrichissement fail-soft) et les questions sans corrige ; les
         copies ne sont PAS livrees.
 
-        Les filtres `classe_id` et `matiere_id` portent sur `klassci_classe_id` et
-        `klassci_matiere_id` (ecole creee depuis KLASSCI).
+        Les filtres `classe_id` et `matiere_id` portent sur les identifiants de
+        l espace de l ecole (D72, E4b, C27) : `klassci_classe_id` et
+        `klassci_matiere_id` dans une ecole creee depuis KLASSCI, `classe_id` et
+        `matiere_id` locaux dans une ecole creee depuis le LMS. Dans cette
+        derniere, ni la liste ni la fiche n appellent KLASSCI : les libelles
+        viennent de la ligne.
       security:
         - sanctum: []
       parameters:

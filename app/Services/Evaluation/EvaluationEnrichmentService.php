@@ -95,8 +95,8 @@ class EvaluationEnrichmentService
      * local (`enseignant_id`) ; les branches « sans KLASSCI » ci-dessous les
      * lisent.
      *
-     * Sert les résultats de l'enseignant. La fiche et la liste y passeront
-     * avec C27 (E4).
+     * Sert les résultats de l'enseignant, et la fiche et la liste d'une école créée
+     * depuis le LMS ({@see LocalCatalogueDesEvaluations}, C27, E4b).
      *
      * @param  Collection<int, \App\Models\Evaluation>  $evaluations
      * @return array<int, array<string, mixed>>

@@ -49,9 +49,9 @@ final class ListeDuPersonnelSuitLaSpecTest extends TestCase
             'klassci_matiere_id' => null, 'klassci_enseignant_id' => null,
         ]);
         EvaluationQuestion::factory()->create(['evaluation_id' => $evaluation->getKey()]);
-        // C27 (E4) : la liste appelle encore le catalogue de KLASSCI dans une
-        // école du LMS. Il ne connaît pas ces classes : les branches locales
-        // présentent l'évaluation.
+        // C27 fermé (E4b) : dans une école du LMS, la liste ne lit plus le
+        // catalogue de KLASSCI ; les branches locales présentent l'évaluation.
+        // Le faux catalogue reste, inerte, pour garder ce test indépendant de C27.
         $this->catalogueKlassci([], []);
 
         $reponse = $this->asTenant($enseignant)->getJson('/api/evaluations');

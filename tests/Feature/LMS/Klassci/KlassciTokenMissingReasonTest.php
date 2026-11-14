@@ -87,7 +87,12 @@ final class KlassciTokenMissingReasonTest extends TestCase
 
     // ───────────────────────── proxy : ResolvesPersonalKlassciToken
 
-    #[DataProvider('volets')]
+    /**
+     * Déclaré : dans une école créée depuis le LMS, `/proxy/evaluations` rend une
+     * liste vide, sans jeton (`ProxyEvaluationsEcoleLmsTest`). Le 401 ne vaut que
+     * pour l'école KLASSCI.
+     */
+    #[DataProvider('voletKlassciSeul')]
     public function test_proxy_evaluations_dit_le_jeton_absent(InstitutionMode $mode): void
     {
         $compte = $this->compteSansJeton($mode, 'enseignant');
@@ -215,7 +220,8 @@ final class KlassciTokenMissingReasonTest extends TestCase
 
     // ───────────────────────── le jeton EXPIRÉ reste distinct
 
-    #[DataProvider('volets')]
+    /** Déclaré : l'école créée depuis le LMS ne demande rien à KLASSCI sur ce proxy. */
+    #[DataProvider('voletKlassciSeul')]
     public function test_jeton_expire_sur_le_proxy_dit_session_expiree(InstitutionMode $mode): void
     {
         $compte = $this->compteAvecJeton($mode, 'enseignant');

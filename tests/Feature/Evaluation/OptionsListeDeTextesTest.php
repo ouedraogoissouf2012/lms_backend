@@ -57,6 +57,8 @@ final class OptionsListeDeTextesTest extends TestCase
             'des listes' => [[['3'], ['4']], 'questions.0.options.0'],
             'un tableau associatif' => [['a' => '3', 'b' => '4'], 'questions.0.options'],
             'un texte' => ['3, 4', 'questions.0.options'],
+            // `ConvertEmptyStringsToNull` change '' en null, que `options.*: string` refuse (B4).
+            'une option vide' => [['3', ''], 'questions.0.options.1'],
         ];
         $jeux = [];
         foreach (self::ecoles() as $ecole => [$mode]) {

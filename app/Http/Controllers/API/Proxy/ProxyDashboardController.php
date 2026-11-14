@@ -50,7 +50,7 @@ final class ProxyDashboardController extends Controller
         } catch (BusinessException $e) {
             // Avant le rendu du proxy : une RuntimeException 409 y passerait pour un
             // refus relayé de KLASSCI, sans son message ni son motif.
-            return $this->errorResponse($e->getMessage(), $e->getCode(), reason: $e->reason);
+            return $this->errorResponse($e->getMessage(), $e->statutHttp(), reason: $e->reason);
         } catch (\Exception $e) {
             return $this->proxyErrorResponse($e);
         }

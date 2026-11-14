@@ -9,7 +9,6 @@ use App\Http\Controllers\AuthenticatedController;
 use App\Http\Requests\StoreLocalSeanceRequest;
 use App\Services\Seances\LocalSeanceCreator;
 use Illuminate\Http\JsonResponse;
-use Throwable;
 
 /**
  * #710 — POST /api/lms/seances (création locale).
@@ -34,16 +33,9 @@ final class LMSSeanceCrudController extends AuthenticatedController
                 $request->validated(),
             );
         } catch (BusinessException $e) {
-            return $this->errorResponse($e->getMessage(), $this->statut($e), reason: $e->reason);
+            return $this->errorResponse($e->getMessage(), $e->statutHttp(), reason: $e->reason);
         }
 
         return $this->successResponse($seance, 'Séance créée', 201);
-    }
-
-    private function statut(Throwable $e): int
-    {
-        $code = $e->getCode();
-
-        return is_int($code) && $code >= 400 && $code < 600 ? $code : 422;
     }
 }

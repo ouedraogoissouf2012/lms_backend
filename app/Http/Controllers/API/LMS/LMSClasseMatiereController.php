@@ -10,7 +10,6 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\LinkClasseMatiereRequest;
 use App\Services\Catalogue\LocalClasseMatiereLinker;
 use Illuminate\Http\JsonResponse;
-use Throwable;
 
 /**
  * Composer le programme d'une classe (#848).
@@ -36,7 +35,7 @@ final class LMSClasseMatiereController extends Controller
                 $request->enseignantId(),
             );
         } catch (BusinessException $e) {
-            return $this->errorResponse($e->getMessage(), $this->statut($e));
+            return $this->errorResponse($e->getMessage(), $e->statutHttp());
         }
 
         return $this->successResponse([
@@ -44,12 +43,5 @@ final class LMSClasseMatiereController extends Controller
             'matiere_id' => $request->matiereId(),
             'enseignant_id' => $request->enseignantId(),
         ], 'Matière rattachée à la classe.', 201);
-    }
-
-    private function statut(Throwable $e): int
-    {
-        $code = $e->getCode();
-
-        return is_int($code) && $code >= 400 && $code < 600 ? $code : 422;
     }
 }

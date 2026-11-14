@@ -10,7 +10,6 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreMatiereRequest;
 use App\Services\Catalogue\LocalMatiereCreator;
 use Illuminate\Http\JsonResponse;
-use Throwable;
 
 /**
  * Créer une matière sans KLASSCI (#797, #848).
@@ -33,7 +32,7 @@ final class LMSMatiereWriteController extends Controller
         try {
             $matiere = $this->matieres->creer($request->donnees());
         } catch (BusinessException $e) {
-            return $this->errorResponse($e->getMessage(), $this->statut($e));
+            return $this->errorResponse($e->getMessage(), $e->statutHttp());
         }
 
         return $this->successResponse([
@@ -43,12 +42,5 @@ final class LMSMatiereWriteController extends Controller
             'coefficient' => $matiere->coefficient,
             'credit' => $matiere->credit,
         ], 'Matière créée.', 201);
-    }
-
-    private function statut(Throwable $e): int
-    {
-        $code = $e->getCode();
-
-        return is_int($code) && $code >= 400 && $code < 600 ? $code : 422;
     }
 }

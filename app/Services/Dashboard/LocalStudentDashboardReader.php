@@ -62,7 +62,7 @@ final class LocalStudentDashboardReader implements StudentDashboardReader
             'success' => true,
             'data' => [
                 'classe' => self::classe($classes->first()),
-                'cours' => $this->cours($classes),
+                'cours' => $this->cours($classes, $student),
                 'quiz' => $classes->isEmpty() ? [] : $this->quiz($student),
                 'notes' => self::notesRecentes($notes['matieres']),
                 'statistiques' => ['moyenne_generale' => $notes['moyenne_generale'], 'taux_presence' => null],
@@ -77,7 +77,7 @@ final class LocalStudentDashboardReader implements StudentDashboardReader
         $ids = $this->inscriptions->localClasseIdsFor($student);
 
         return $ids === [] ? new Collection : $student->classes()
-            ->where('classes.institution_id', $student->institution_id)
+            ->where((new Classe)->qualifyColumn('institution_id'), $student->institution_id)
             ->whereKey($ids)
             ->orderBy('classe_etudiant.date_inscription')
             ->orderBy('classes.id')
@@ -87,7 +87,7 @@ final class LocalStudentDashboardReader implements StudentDashboardReader
     /** Une inscription au pivot dans son établissement, quel que soit son statut. */
     private function aDesInscriptions(User $student): bool
     {
-        return $student->classes()->where('classes.institution_id', $student->institution_id)->exists();
+        return $student->classes()->where((new Classe)->qualifyColumn('institution_id'), $student->institution_id)->exists();
     }
 
     /** @return array<string, mixed>|null */
@@ -105,9 +105,9 @@ final class LocalStudentDashboardReader implements StudentDashboardReader
 
     /**
      * @param  Collection<int, Classe>  $classes
-     * @return list<array{id: int, nom: string, libelle: string}>
+     * @return array<int, array{id: int, nom: string, libelle: string}>
      */
-    private function cours(Collection $classes): array
+    private function cours(Collection $classes, User $student): array
     {
         if ($classes->isEmpty()) {
             return [];
@@ -116,7 +116,7 @@ final class LocalStudentDashboardReader implements StudentDashboardReader
         $programme = DB::table('classe_matiere')->whereIn('classe_id', $classes->modelKeys())->select('matiere_id');
 
         return Matiere::query()->withoutGlobalScope('institution')
-            ->where('institution_id', $classes->first()?->institution_id)
+            ->where('institution_id', $student->institution_id)
             ->whereIn('id', $programme)
             ->orderBy('libelle')
             ->get(['id', 'libelle'])
@@ -125,7 +125,7 @@ final class LocalStudentDashboardReader implements StudentDashboardReader
             ->all();
     }
 
-    /** @return list<array<string, mixed>> */
+    /** @return array<int, array<string, mixed>> */
     private function quiz(User $student): array
     {
         return $this->audience->visibleFor($student)
@@ -161,7 +161,7 @@ final class LocalStudentDashboardReader implements StudentDashboardReader
                     'evaluation' => ['id' => $ligne['evaluation_id'], 'titre' => $ligne['titre']],
                     'matiere' => ['id' => $matiere['matiere_id'], 'name' => $matiere['matiere_nom']],
                     'note' => (float) $ligne['note'],
-                    '_remise' => (string) ($ligne['date_soumission'] ?? ''),
+                    '_remise' => self::instant($ligne['date_soumission'] ?? null),
                 ];
             }
         }
@@ -172,5 +172,11 @@ final class LocalStudentDashboardReader implements StudentDashboardReader
 
             return $note;
         }, $notes);
+    }
+
+    /** Un instant comparable par chaînes (ISO 8601), vide sans date. */
+    private static function instant(mixed $valeur): string
+    {
+        return $valeur instanceof \DateTimeInterface ? $valeur->format(\DATE_ATOM) : (is_string($valeur) ? $valeur : '');
     }
 }

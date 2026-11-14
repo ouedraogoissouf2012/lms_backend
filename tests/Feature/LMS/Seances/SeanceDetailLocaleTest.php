@@ -94,6 +94,29 @@ final class SeanceDetailLocaleTest extends TestCase
             ->assertJsonPath('data.participants.teacher.id', $this->auteur->id);
     }
 
+    /**
+     * Sans auteur valide (aucun, ou d'un autre établissement), pas d'enseignant
+     * fictif : `teacher` vaut `null` et le total ne compte que les élèves. La règle
+     * même de `GET …/participants` (`ParticipantsDeSeanceLocale`).
+     */
+    public function test_sans_auteur_valide_les_participants_n_inventent_pas_d_enseignant(): void
+    {
+        $this->aucunAppelKlassci();
+        $eleve = $this->membre($this->ecole, 'etudiant');
+        $this->inscrire($eleve, $this->classe, 'actif');
+        $etranger = $this->membre($this->ecole(), 'enseignant');
+        $coordinateur = $this->membre($this->ecole, 'coordinateur');
+
+        foreach ([null, $etranger->id] as $auteur) {
+            $seance = $this->seance(['created_by' => $auteur]);
+
+            $this->asTenant($coordinateur)->getJson($this->url($seance))->assertOk()
+                ->assertJsonPath('data.participants.teacher', null)
+                ->assertJsonPath('data.participants.students', [['id' => $eleve->id, 'nom' => $eleve->name]])
+                ->assertJsonPath('data.participants.total', 1);
+        }
+    }
+
     public function test_un_eleve_inscrit_lit_le_detail_sans_les_participants(): void
     {
         $this->aucunAppelKlassci();

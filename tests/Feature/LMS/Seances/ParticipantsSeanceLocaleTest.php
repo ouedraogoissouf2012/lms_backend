@@ -101,6 +101,17 @@ final class ParticipantsSeanceLocaleTest extends TestCase
             ->assertJsonPath('data.students.*.id', [$actif->id]);
     }
 
+    /** Le titre suit la règle de la forme du calendrier (#1061) : `null` sans titre, jamais ''. */
+    public function test_le_titre_vide_sort_null_et_le_titre_tel_quel(): void
+    {
+        $auteur = $this->compte('teacher');
+        $sansTitre = $this->seanceLocale($auteur, ['titre' => '']);
+        $avecTitre = $this->seanceLocale($auteur, ['titre' => 'Cours de maths']);
+
+        $this->asTenant($auteur)->getJson($this->de($sansTitre->id))->assertOk()->assertJsonPath('data.seance.titre', null);
+        $this->asTenant($auteur)->getJson($this->de($avecTitre->id))->assertOk()->assertJsonPath('data.seance.titre', 'Cours de maths');
+    }
+
     /** Laravel garde le contrôleur sur l'objet Route : la source se reçoit par la MÉTHODE. */
     public function test_la_meme_route_sert_une_ecole_klassci_puis_une_ecole_autonome(): void
     {

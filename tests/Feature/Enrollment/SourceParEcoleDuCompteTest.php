@@ -7,11 +7,14 @@ namespace Tests\Feature\Enrollment;
 use App\Enums\InstitutionMode;
 use App\Models\Classe;
 use App\Models\Institution;
+use App\Models\Lesson;
 use App\Models\User;
 use App\Models\UserClass;
 use App\Services\Enrollment\EnrollmentSource;
+use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Tests\Concerns\ActsAsTenantUser;
 use Tests\Concerns\BuildsEcoleIndependante;
 use Tests\TestCase;
 
@@ -24,10 +27,17 @@ use Tests\TestCase;
  */
 final class SourceParEcoleDuCompteTest extends TestCase
 {
+    use ActsAsTenantUser;
     use BuildsEcoleIndependante;
     use RefreshDatabase;
 
     private const KLASSCI_CLASSE = 77;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->disableKlassciMiddleware();
+    }
 
     /** La même instance du port, sans tenant, sert un élève KLASSCI puis un élève autonome. */
     public function test_la_meme_instance_suit_l_ecole_de_chaque_compte(): void
@@ -59,6 +69,31 @@ final class SourceParEcoleDuCompteTest extends TestCase
         $this->app->forgetScopedInstances();
 
         self::assertSame([], app(EnrollmentSource::class)->classeIdsForTeacher($enseignant));
+    }
+
+    /**
+     * En requête (vrai jeton), le choix par l'école du compte ne coûte aucune
+     * lecture d'établissement de plus : `ResolveInstitution` lit l'école du jeton,
+     * et la source la reprend du tenant au lieu de la relire sur le compte, que
+     * le garde Sanctum a rechargé dans une autre instance.
+     */
+    public function test_en_requete_aucune_lecture_d_etablissement_de_plus(): void
+    {
+        [$ecole, $classe] = $this->ecoleEtClasse(InstitutionMode::Standalone);
+        $eleve = $this->membre($ecole, 'etudiant');
+        $this->inscrire($eleve, $classe, 'actif');
+        $lecon = Lesson::factory()->published()->create(['institution_id' => $ecole->id, 'classe_id' => $classe->id]);
+        $client = $this->asTenant($eleve);
+        $lectures = 0;
+        DB::listen(static function (QueryExecuted $requete) use (&$lectures): void {
+            if (preg_match('/\bfrom\s+institutions\b/i', str_replace(['"', '`'], '', $requete->sql)) === 1) {
+                $lectures++;
+            }
+        });
+
+        $client->getJson('/api/lessons/my-courses')->assertOk()->assertJsonPath('data.0.id', $lecon->id);
+
+        self::assertSame(1, $lectures, 'la seule lecture de ResolveInstitution');
     }
 
     /** @return array{0: Institution, 1: Classe} */

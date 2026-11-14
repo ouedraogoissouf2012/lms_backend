@@ -107,7 +107,6 @@ return [
     '/proxy/cours/{id}/presences',
     '/proxy/cours/{id}/statut',
     '/proxy/evaluations/{id}/notes',
-    '/proxy/me/dashboard',
     '/quiz-attempts/{id}',
     '/quiz-attempts/{id}/grade',
     '/quiz-attempts/{id}/save-progress',

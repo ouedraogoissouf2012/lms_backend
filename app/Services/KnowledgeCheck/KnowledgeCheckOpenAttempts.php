@@ -31,6 +31,8 @@ final class KnowledgeCheckOpenAttempts
 
     public const HORS_OPTIONS = 'answer_not_an_option_index';
 
+    public const PAS_OUVERTE = 'attempt_not_open';
+
     public function __construct(
         private readonly KnowledgeCheckPresentation $presentation,
         private readonly KnowledgeCheckGradingService $grader,
@@ -78,9 +80,11 @@ final class KnowledgeCheckOpenAttempts
     }
 
     /**
-     * Note la remise. Sans tentative ouverte (démarrée avant C44, ou remise une
-     * seconde fois), comme avant : dans l'ordre enregistré. Sinon, traduite
-     * depuis l'ordre affiché, et le détail rendu dans l'ordre affiché.
+     * Note la remise, traduite depuis l'ordre affiché, et rend le détail dans
+     * l'ordre affiché. Sans tentative ouverte (démarrée avant C44, ou remise une
+     * seconde fois) : sans mélange, l'ordre affiché est l'ordre enregistré, et
+     * la remise est notée comme avant ; avec un mélange, ce que l'élève a vu est
+     * inconnu, et la remise est refusée (D520) plutôt que notée de travers.
      *
      * @param  array<int|string, mixed>  $answers  dans l'ordre affiché
      * @return array{
@@ -88,11 +92,14 @@ final class KnowledgeCheckOpenAttempts
      *     affiche: list<array<string, mixed>>
      * }
      *
-     * @throws BusinessException 409 `quiz_changed_since_start`, 422 `answer_not_an_option_index`
+     * @throws BusinessException 409 `attempt_not_open` ou `quiz_changed_since_start`, 422 `answer_not_an_option_index`
      */
     public function noter(KnowledgeCheck $quiz, ?KnowledgeCheckAttempt $attempt, array $answers): array
     {
         if ($attempt === null) {
+            if ($quiz->shuffle_questions || $quiz->shuffle_options) {
+                throw new BusinessException('Cette tentative n\'est plus ouverte : recommencez le quiz.', 409, reason: self::PAS_OUVERTE);
+            }
             $result = $this->grader->gradeAttempt($quiz, $answers);
 
             return ['result' => $result, 'affiche' => array_values($result['detailed_answers'])];

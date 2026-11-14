@@ -10210,7 +10210,8 @@ paths:
         AFFICHEE, est retraduite vers l ordre enregistre avant la notation ;
         `answers` de la reponse revient dans l ordre affiche. Sans tentative
         ouverte (demarree avant ce lot, ou remise une seconde fois), la remise
-        est notee dans l ordre enregistre, comme avant.
+        est notee dans l ordre enregistre, comme avant, si le quiz ne melange
+        rien ; s il melange, elle est refusee (409 `attempt_not_open`, D520).
 
         Limite : 60 requetes / minute.
       security:
@@ -10333,9 +10334,13 @@ paths:
                 $ref: '#/components/schemas/MessageOnly'
         '409':
           description: |
-            `reason: quiz_changed_since_start` : une question ou une option a ete
-            ajoutee ou retiree depuis le demarrage ; la remise ne se traduit plus.
-            Rien n est note, la tentative reste ouverte : la redemarrer.
+            - `reason: quiz_changed_since_start` : une question ou une option a ete
+              ajoutee, retiree, reordonnee ou renommee depuis le demarrage (empreinte
+              du contenu presente) ; la remise ne se traduit plus. Rien n est note,
+              la tentative reste ouverte : la redemarrer.
+            - `reason: attempt_not_open` : aucune tentative ouverte (seconde remise,
+              double clic) sur un quiz qui melange ; ce que l eleve a vu est inconnu.
+              Rien n est ecrit, aucun essai consomme : redemarrer le quiz.
           content:
             application/json:
               schema:
@@ -10355,6 +10360,7 @@ paths:
                     type: string
                     enum:
                       - quiz_changed_since_start
+                      - attempt_not_open
         '422':
           description: |
             - `reason: answer_not_an_option_index` : une reponse n est pas un

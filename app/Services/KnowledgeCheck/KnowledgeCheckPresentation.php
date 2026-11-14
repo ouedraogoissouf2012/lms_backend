@@ -16,7 +16,8 @@ use Random\Randomizer;
  * `options[q]` liste les indices d'origine des options de la question d'origine
  * `q`, dans l'ordre affiché. Sans mélange, ce sont des identités : la
  * traduction et les bornes valent pour tout quiz. Elle est écrite sur la
- * tentative au démarrage.
+ * tentative au démarrage, avec l'`empreinte` du contenu présenté (D520) : une
+ * modification du quiz depuis le démarrage, même à nombre égal, se voit.
  *
  * ## Pourquoi traduire côté serveur
  *
@@ -27,7 +28,7 @@ use Random\Randomizer;
  *
  * Le hasard est injecté : un test fixe la graine.
  *
- * @phpstan-type Presentation array{questions: list<int|string>, options: array<int|string, list<int>>}
+ * @phpstan-type Presentation array{questions: list<int|string>, options: array<int|string, list<int>>, empreinte: string}
  */
 final class KnowledgeCheckPresentation
 {
@@ -52,7 +53,28 @@ final class KnowledgeCheckPresentation
             $options[$q] = $melangerOptions ? $this->melanger($indices) : $indices;
         }
 
-        return ['questions' => $ordre, 'options' => $options];
+        return ['questions' => $ordre, 'options' => $options, 'empreinte' => $this->empreinte($questions)];
+    }
+
+    /**
+     * L'empreinte de ce que l'élève voit : pour chaque question, dans l'ordre
+     * enregistré, son texte, son type et le texte de ses options (D520). Les
+     * questions n'ont pas d'identifiant : leur texte en tient lieu. La bonne
+     * réponse, l'explication et les points n'y entrent pas : ils ne sont pas
+     * présentés, et l'enseignant peut corriger une bonne réponse en cours de route.
+     *
+     * @param  array<int|string, mixed>  $questions
+     */
+    public function empreinte(array $questions): string
+    {
+        $presente = [];
+        foreach ($questions as $q => $question) {
+            $presente[$q] = is_array($question)
+                ? [$question['question'] ?? null, $question['type'] ?? null, self::options($question)]
+                : null;
+        }
+
+        return hash('sha256', json_encode($presente, JSON_THROW_ON_ERROR));
     }
 
     /**
@@ -97,26 +119,16 @@ final class KnowledgeCheckPresentation
 
     /**
      * La présentation désigne-t-elle encore le quiz tel qu'il est enregistré ?
-     * Non, dès que l'enseignant a ajouté ou retiré une question ou une option
-     * depuis le démarrage : la remise ne se traduit plus.
+     * Non, dès que l'enseignant a ajouté, retiré, réordonné ou renommé une
+     * question ou une option depuis le démarrage : la remise ne se traduit plus.
+     * Une même empreinte implique les mêmes nombres de questions et d'options.
      *
      * @param  array<int|string, mixed>  $questions
      * @param  Presentation  $presentation
      */
     public function concorde(array $questions, array $presentation): bool
     {
-        if (count($presentation['questions']) !== count($questions)) {
-            return false;
-        }
-
-        foreach ($presentation['questions'] as $q) {
-            if (! array_key_exists($q, $questions)
-                || count(self::options($questions[$q])) !== count($presentation['options'][$q] ?? [])) {
-                return false;
-            }
-        }
-
-        return true;
+        return hash_equals($presentation['empreinte'], $this->empreinte($questions));
     }
 
     /**
@@ -132,7 +144,8 @@ final class KnowledgeCheckPresentation
         }
         $questionsBrutes = $brute['questions'] ?? null;
         $optionsBrutes = $brute['options'] ?? null;
-        if (! is_array($questionsBrutes) || ! is_array($optionsBrutes)) {
+        $empreinte = $brute['empreinte'] ?? null;
+        if (! is_array($questionsBrutes) || ! is_array($optionsBrutes) || ! is_string($empreinte)) {
             return null;
         }
 
@@ -159,7 +172,7 @@ final class KnowledgeCheckPresentation
             $options[$q] = $liste;
         }
 
-        return ['questions' => $questions, 'options' => $options];
+        return ['questions' => $questions, 'options' => $options, 'empreinte' => $empreinte];
     }
 
     /**

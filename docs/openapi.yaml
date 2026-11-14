@@ -2676,6 +2676,9 @@ components:
         updated_at:
           type: string
           format: date-time
+        evaluation:
+          description: "La relation chargee, presente seulement quand la route la charge (la remise)."
+          $ref: '#/components/schemas/EvaluationRecord'
 
     EvaluationRecord:
       type: object
@@ -8263,12 +8266,7 @@ paths:
                     type: object
                     properties:
                       submission:
-                        allOf:
-                          - $ref: '#/components/schemas/EvaluationSubmissionRecord'
-                          - type: object
-                            properties:
-                              evaluation:
-                                $ref: '#/components/schemas/EvaluationRecord'
+                        $ref: '#/components/schemas/EvaluationSubmissionRecord'
                       score:
                         type: string
                         pattern: '^-?\d+\.\d{2}$'

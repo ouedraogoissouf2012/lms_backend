@@ -101,17 +101,49 @@ final class MelangePersisteParTentativeTest extends TestCase
     }
 
     #[DataProvider('volets')]
-    public function test_une_remise_sans_tentative_ouverte_est_notee_dans_l_ordre_enregistre(string $volet): void
+    public function test_sans_melange_une_remise_sans_tentative_ouverte_est_notee_dans_l_ordre_enregistre(string $volet): void
     {
-        // Une tentative démarrée avant ce lot n'a aucune ligne : elle est notée
-        // comme avant, dans l'ordre enregistré, et ne garde aucune présentation.
-        $this->ecoleEtQuiz($volet, ['shuffle_questions' => true, 'shuffle_options' => true, 'questions' => self::questions()]);
+        // Sans mélange, l'ordre affiché EST l'ordre enregistré : une remise sans
+        // tentative ouverte (démarrée avant ce lot) est notée comme avant.
+        $this->ecoleEtQuiz($volet, ['questions' => self::questions()]);
 
         $this->soumettre(array_column(self::questions(), 'correct_answer'))->assertOk()->assertJsonPath('data.score', 100);
 
         $tentative = KnowledgeCheckAttempt::query()->where('user_id', $this->eleve->id)->sole();
         self::assertNull($tentative->presentation);
         self::assertNotNull($tentative->completed_at);
+    }
+
+    /**
+     * D520 : avec un mélange, une remise sans tentative ouverte ne sait pas ce que
+     * l'élève a vu. Notée dans l'ordre enregistré, elle pouvait valider un chapitre
+     * sur une note fausse et consommer un essai. Refusée avant toute écriture.
+     */
+    #[DataProvider('volets')]
+    public function test_avec_melange_une_remise_sans_tentative_ouverte_est_refusee(string $volet): void
+    {
+        $this->ecoleEtQuiz($volet, ['shuffle_questions' => true, 'shuffle_options' => true, 'questions' => self::questions()]);
+
+        $refus = $this->soumettre(array_fill(0, self::NB_QUESTIONS, 0));
+
+        $refus->assertStatus(409)->assertJsonPath('reason', 'attempt_not_open');
+        $this->assertMatchesOpenApiResponse($refus, self::CHEMIN, 'post');
+        self::assertSame(0, KnowledgeCheckAttempt::query()->where('user_id', $this->eleve->id)->count(), 'aucune tentative écrite');
+    }
+
+    /** D520 : la seconde remise d'un quiz mélangé (double clic, réessai) ne note rien de plus. */
+    #[DataProvider('volets')]
+    public function test_avec_melange_une_seconde_remise_est_refusee_sans_consommer_d_essai(string $volet): void
+    {
+        $this->ecoleEtQuiz($volet, ['shuffle_questions' => true, 'shuffle_options' => true, 'questions' => self::questions()]);
+        $affichees = $this->demarrer()->json('data.questions');
+        $this->soumettre($this->bonnesReponsesAffichees($affichees))->assertOk();
+
+        $this->soumettre(array_fill(0, self::NB_QUESTIONS, 0))
+            ->assertStatus(409)->assertJsonPath('reason', 'attempt_not_open');
+
+        self::assertSame(1, KnowledgeCheckAttempt::query()->where('user_id', $this->eleve->id)->count(), 'une seule tentative');
+        self::assertSame(100, KnowledgeCheckAttempt::query()->where('user_id', $this->eleve->id)->sole()->score);
     }
 
     /** @return iterable<string, array{0: string, 1: mixed}> */
@@ -147,13 +179,30 @@ final class MelangePersisteParTentativeTest extends TestCase
         $this->assertAucuneRemise();
     }
 
-    #[DataProvider('volets')]
-    public function test_un_quiz_modifie_depuis_le_demarrage_est_refuse_sans_rien_noter(string $volet): void
+    /** @return iterable<string, array{0: string, 1: string}> */
+    public static function modifications(): iterable
+    {
+        foreach (self::volets() as $volet => [$mode]) {
+            yield "$volet : une option retirée" => [$mode, 'retirer'];
+            // D520 : à nombre égal, seule l'empreinte du contenu voit la modification.
+            yield "$volet : deux questions échangées" => [$mode, 'echanger'];
+            yield "$volet : une option renommée" => [$mode, 'renommer'];
+        }
+    }
+
+    #[DataProvider('modifications')]
+    public function test_un_quiz_modifie_depuis_le_demarrage_est_refuse_sans_rien_noter(string $volet, string $modification): void
     {
         $this->ecoleEtQuiz($volet, ['shuffle_options' => true, 'questions' => self::questions()]);
         $this->demarrer();
         $modifiees = self::questions();
-        array_pop($modifiees[0]['options']);
+        if ($modification === 'retirer') {
+            array_pop($modifiees[0]['options']);
+        } elseif ($modification === 'echanger') {
+            [$modifiees[0], $modifiees[1]] = [$modifiees[1], $modifiees[0]];
+        } else {
+            $modifiees[2]['options'][1] = 'Une autre option';
+        }
         $this->quiz->forceFill(['questions' => $modifiees])->save();
 
         $refus = $this->soumettre(array_fill(0, self::NB_QUESTIONS, 0));

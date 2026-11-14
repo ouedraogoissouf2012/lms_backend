@@ -86,6 +86,20 @@ final class KnowledgeCheckPresentationTest extends TestCase
         self::assertFalse($this->presentation->concorde($uneOptionDeMoins, $tirage));
 
         self::assertFalse($this->presentation->concorde(array_slice($this->questions, 0, 4), $tirage));
+
+        // D520 : à nombre égal, l'empreinte du contenu voit l'ordre et les textes.
+        $reordonnees = $this->questions;
+        [$reordonnees[0], $reordonnees[1]] = [$reordonnees[1], $reordonnees[0]];
+        self::assertFalse($this->presentation->concorde($reordonnees, $tirage));
+
+        $renommee = $this->questions;
+        $renommee[2]['options'][0] = 'Une autre option';
+        self::assertFalse($this->presentation->concorde($renommee, $tirage));
+
+        // La bonne réponse n'est pas présentée : la corriger après le démarrage ne bloque pas la remise.
+        $corrigee = $this->questions;
+        $corrigee[4]['correct_answer'] = [1];
+        self::assertTrue($this->presentation->concorde($corrigee, $tirage));
     }
 
     public function test_le_detail_revient_dans_l_ordre_affiche(): void

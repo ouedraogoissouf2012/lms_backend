@@ -8261,7 +8261,8 @@ paths:
             Erreur de validation (`errors`), classe ou matiere hors de l'ecole (`errors`), ou refus
             motive : programmation KLASSCI absente dans une ecole creee depuis KLASSCI
             (`klassci_scheduling_required`), identifiant de l'autre famille (`identifier_out_of_scope`), bonne
-            reponse absente des options d'une question a options (`correct_answer_not_among_options`).
+            reponse absente des options d'une question a options, ou `vrai_faux` dont les options ne sont pas
+            exactement `["Vrai", "Faux"]`, ordre compris (`correct_answer_not_among_options`, D532).
           content:
             application/json:
               schema:
@@ -8440,7 +8441,8 @@ paths:
             Erreur de validation (`errors`), `is_published` envoye (`publish_via_dedicated_route`, la
             publication passe par sa route), ou remplacement qui viderait une evaluation publiee
             (`evaluation_without_questions`, C16 : publiee est relu sur la ligne verrouillee, avant toute ecriture),
-            ou bonne reponse absente des options d'une question a options (`correct_answer_not_among_options`).
+            ou bonne reponse absente des options d'une question a options, ou `vrai_faux` dont les options ne
+            sont pas exactement `["Vrai", "Faux"]`, ordre compris (`correct_answer_not_among_options`, D532).
           content:
             application/json:
               schema:

@@ -14,7 +14,8 @@ use App\Models\User;
  * - Activer : {@see LocalVisioActivation} — séance désignée par son id local et
  *   bornée à l'établissement, règle de gestion, salon déjà attribué gardé,
  *   élèves avertis.
- * - Désactiver : {@see VisioDeactivation}, commune aux deux types d'école.
+ * - Désactiver : {@see VisioDeactivation::deactivateLocal()}, le geste commun aux deux
+ *   types d'école, la séance désignée par son id LOCAL seulement, comme pour activer.
  *
  * Seule la forme de la réponse est propre à la bascule (`VisioBasculee`) : elle
  * se relit sur la ligne, après le geste. `visio_type` n'a qu'une valeur, `jitsi`.
@@ -30,7 +31,7 @@ final class LocalVisioToggle implements VisioToggleSource
     {
         $resultat = $enabled
             ? $this->activation->activate($seanceId, $user)
-            : $this->deactivation->deactivate($seanceId, $user);
+            : $this->deactivation->deactivateLocal($seanceId, $user);
 
         if ($resultat['status'] !== 200) {
             return $resultat;

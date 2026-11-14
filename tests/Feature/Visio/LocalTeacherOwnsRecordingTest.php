@@ -26,13 +26,11 @@ use Tests\TestCase;
  *
  * ## Le critère n'est pas inventé ici
  *
- * Le dépôt a déjà tranché la propriété d'une séance, dans
- * `ManagerSeancesLocalFetcher:47-50` :
- *
- *     $query->where('klassci_enseignant_id', $teacherId)
- *         ->orWhere('created_by', $teacherId);
- *
- * Propriétaire par l'identité KLASSCI **ou** par `created_by`.
+ * Propriétaire par l'identité KLASSCI **ou**, pour une séance sans identité
+ * KLASSCI, par `created_by` : la règle de `VisioActorAuthorization::teacherOwns`,
+ * dont `limitToTeacherSeances` est la forme requête. (`ManagerSeancesLocalFetcher`
+ * la citait sous la forme `klassci_enseignant_id = X OR created_by = X`, un même
+ * entier dans deux espaces ; il applique désormais cette règle.)
  * `TeachingSeancesFetcher` écrit d'ailleurs les deux (lignes 207 et 212). Ce
  * service était le seul à ne connaître que la moitié KLASSCI : ce n'est pas un
  * manque d'architecture, c'est une incohérence entre deux services sur la même

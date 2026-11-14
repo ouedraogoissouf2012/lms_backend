@@ -54,7 +54,7 @@ final class UpcomingSeancesFetcher
     public function fetch(User $user, string $klassciToken, string $dateDebut, string $dateFin, ?int $teacherId, ?int $classeId): Collection
     {
         if ($user->isManager()) {
-            return $this->fetchForManager($dateDebut, $dateFin, $teacherId, $classeId);
+            return $this->fetchForManager($user, $dateDebut, $dateFin, $teacherId, $classeId);
         }
 
         /** @var Collection<int, array<string, mixed>> $seances */
@@ -85,9 +85,9 @@ final class UpcomingSeancesFetcher
      *
      * @return Collection<int, array<string, mixed>>
      */
-    private function fetchForManager(string $dateDebut, string $dateFin, ?int $teacherId, ?int $classeId): Collection
+    private function fetchForManager(User $gestion, string $dateDebut, string $dateFin, ?int $teacherId, ?int $classeId): Collection
     {
-        $localSeances = $this->managerFetcher->fetch($dateDebut, $dateFin, $teacherId, $classeId);
+        $localSeances = $this->managerFetcher->fetch($gestion, $dateDebut, $dateFin, $teacherId, $classeId);
 
         $this->logger->info('Séances à venir servies depuis la BDD locale', [
             'count' => $localSeances->count(),

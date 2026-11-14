@@ -94,7 +94,10 @@ final class AttendanceHistoryQueryService
         if ($user->isTeacher()) {
             // L'enseignant ne voit que les présences des séances qu'il gère : la
             // règle de la gestion de la visio, sous sa forme requête.
-            $query->whereHas('seance', fn (Builder $seances) => $this->autorisation->limitToTeacherSeances($seances, $user));
+            $query->whereHas('seance', function (Builder $seances) use ($user): void {
+                /** @var Builder<Seance> $seances */
+                $this->autorisation->limitToTeacherSeances($seances, $user);
+            });
         } elseif ($user->isStudent()) {
             // L'étudiant ne voit que ses propres présences
             $query->where('user_id', $user->id);

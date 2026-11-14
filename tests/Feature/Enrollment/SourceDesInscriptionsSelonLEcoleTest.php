@@ -26,7 +26,7 @@ use Tests\TestCase;
  *   (inchangé) ;
  * - école autonome : le pivot de l'établissement SEUL. Le miroir KLASSCI, gardé
  *   d'avant une bascule, n'admet plus personne (D57).
- * - sans tenant : la source KLASSCI, comme aujourd'hui.
+ * - sans tenant (un job) : la source de l'école du compte.
  *
  * Chaque cas d'accès se lit sur deux lecteurs du port : la liste des leçons
  * (`LessonReadScope`, contrôleur mémoïsé) et les chapitres d'une leçon
@@ -123,15 +123,24 @@ final class SourceDesInscriptionsSelonLEcoleTest extends TestCase
         self::assertNotContains($leconA->id, $this->leconsDe($eleveA));
     }
 
-    /** 7. Sans tenant (un job) : la source KLASSCI, repli compris, comme aujourd'hui. */
-    public function test_sans_tenant_la_source_klassci(): void
+    /**
+     * 7. Sans tenant (un job) : la source de l'ÉCOLE DU COMPTE. Un élève d'une école
+     * autonome connu du seul miroir n'a aucune classe ; en école KLASSCI, le repli
+     * s'applique. (Avant le choix par l'école du compte, ce test attendait la source
+     * KLASSCI pour tous, sans tenant.)
+     */
+    public function test_sans_tenant_la_source_de_l_ecole_du_compte(): void
     {
-        [$ecole, $classe] = $this->ecoleAvecLecon(InstitutionMode::Standalone);
-        $eleve = $this->eleve($ecole);
-        $this->miroir($eleve, $ecole);
+        [$autonome] = $this->ecoleAvecLecon(InstitutionMode::Standalone);
+        $eleveAutonome = $this->eleve($autonome);
+        $this->miroir($eleveAutonome, $autonome);
+        [$klassci, $classeKlassci] = $this->ecoleAvecLecon(InstitutionMode::Klassci);
+        $eleveKlassci = $this->eleve($klassci);
+        $this->miroir($eleveKlassci, $klassci);
         $this->app->forgetScopedInstances();
 
-        self::assertSame([$classe->id], app(EnrollmentSource::class)->localClasseIdsFor($eleve));
+        self::assertSame([], app(EnrollmentSource::class)->localClasseIdsFor($eleveAutonome), 'école autonome : le pivot seul');
+        self::assertSame([$classeKlassci->id], app(EnrollmentSource::class)->localClasseIdsFor($eleveKlassci), 'école KLASSCI : le repli');
     }
 
     /**

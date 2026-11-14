@@ -12,6 +12,7 @@ use App\Models\Seance;
 use App\Models\SeanceUserHidden;
 use App\Models\User;
 use App\Services\KlassciProxyService;
+use App\Services\Seances\LocalSeanceDetailReader;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Mockery\MockInterface;
@@ -130,6 +131,21 @@ final class SeanceDetailLocaleTest extends TestCase
         $ailleurs = $this->membre($this->ecole(), 'coordinateur');
 
         $this->asTenant($ailleurs)->getJson($this->url($seance))->assertNotFound();
+    }
+
+    /**
+     * Sans tenant, le scope global est inerte : seule la borne EXPLICITE de la
+     * source tient la lecture à l'établissement du compte. Prouvé sur la source,
+     * appelée directement, comme une lecture hors requête.
+     */
+    public function test_sans_tenant_la_source_borne_encore_a_l_etablissement(): void
+    {
+        $this->aucunAppelKlassci();
+        $seance = $this->seance();
+        $ailleurs = $this->membre($this->ecole(), 'coordinateur');
+        $this->app->forgetScopedInstances();
+
+        self::assertNull(app(LocalSeanceDetailReader::class)->detailFor($seance->id, $ailleurs));
     }
 
     /**

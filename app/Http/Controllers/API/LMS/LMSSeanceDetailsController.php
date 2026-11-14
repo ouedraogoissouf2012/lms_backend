@@ -22,8 +22,8 @@ use RuntimeException;
  *
  * ## Cohesion (SRP)
  *
- * Both endpoints query a SPECIFIC séance by id, so they share the same
- * `SeanceDetailQueryService` dependency. Listing endpoints live in
+ * Both endpoints query a SPECIFIC séance by id, each through the port of the
+ * institution's source (ADR-EI-01), received by the METHOD. Listing endpoints live in
  * `LMSSeancesListController`; historical endpoints in `LMSSeancesHistoryController`.
  *
  * ## Endpoints
@@ -37,7 +37,6 @@ final class LMSSeanceDetailsController extends AuthenticatedController
     use RendersKlassciBackedErrors;
 
     public function __construct(
-        private readonly SeanceDetailQueryService $seanceDetailQuery,
         private readonly CaughtExceptionLog $journal,
     ) {}
 

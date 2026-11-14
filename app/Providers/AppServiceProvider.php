@@ -9,8 +9,8 @@ use App\Services\Cache\Purge\TenantCachePurgerFactory;
 use App\Services\Cache\Purge\TenantCachePurgerInterface;
 use App\Services\Cache\TenantScopedCache;
 use App\Services\Cache\TenantScopedCacheInterface;
-use App\Services\Enrollment\CompositeEnrollmentSource;
 use App\Services\Enrollment\EnrollmentSource;
+use App\Services\Enrollment\EnrollmentSourceDeLEcole;
 use App\Services\Integrity\ArchivedRowWriter;
 use App\Services\Integrity\ArchivedRowWriterInterface;
 use App\Services\Klassci\Health\HttpKlassciCheckUserProof;
@@ -294,6 +294,7 @@ class AppServiceProvider extends ServiceProvider
 
     private function bindEnrollmentSource(): void
     {
-        $this->app->bind(EnrollmentSource::class, CompositeEnrollmentSource::class);
+        // La source suit l'autorité de l'école, choisie à chaque appel (D410).
+        $this->app->bind(EnrollmentSource::class, EnrollmentSourceDeLEcole::class);
     }
 }

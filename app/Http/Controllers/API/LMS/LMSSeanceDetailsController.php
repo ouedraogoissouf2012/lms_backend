@@ -8,6 +8,7 @@ use App\Http\Controllers\API\Concerns\RendersKlassciBackedErrors;
 use App\Http\Controllers\AuthenticatedController;
 use App\Services\SeanceDetailQueryService;
 use App\Services\Seances\SeanceDetailReader;
+use App\Services\Seances\SeanceParticipantsReader;
 use App\Support\Logging\CaughtExceptionLog;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -77,11 +78,13 @@ final class LMSSeanceDetailsController extends AuthenticatedController
     /**
      * GET /api/lms/seances/{id}/participants
      */
-    public function seanceParticipants(int $seanceId, Request $request): JsonResponse
+    public function seanceParticipants(int $seanceId, Request $request, SeanceParticipantsReader $participants): JsonResponse
     {
         try {
             $user = $this->authenticatedUser($request);
-            $data = $this->seanceDetailQuery->getSeanceParticipantsArray($seanceId, $user);
+            // La source de l'établissement (ADR-EI-01), reçue par la MÉTHODE : en mode
+            // autonome, les participants se lisent sans jeton KLASSCI.
+            $data = $participants->getSeanceParticipantsArray($seanceId, $user);
 
             if ($data === null) {
                 return $this->errorResponse('Séance non trouvée', 404);

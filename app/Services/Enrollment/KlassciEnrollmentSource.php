@@ -89,8 +89,7 @@ final class KlassciEnrollmentSource implements EnrollmentSource
             return [];
         }
 
-        /** @var list<int> $ids */
-        $ids = DB::table('user_classes')
+        $lignes = DB::table('user_classes')
             ->join('users', 'users.id', '=', 'user_classes.user_id')
             ->where('user_classes.klassci_classe_id', (int) $classe->klassci_id)
             ->where(static fn (Builder $compte): Builder => $compte
@@ -100,9 +99,14 @@ final class KlassciEnrollmentSource implements EnrollmentSource
                     ->where('users.institution_id', $classe->institution_id)))
             ->distinct()
             ->orderBy('user_classes.user_id')
-            ->pluck('user_classes.user_id')
-            ->map(static fn (mixed $id): int => intval($id))
-            ->all();
+            ->pluck('user_classes.user_id');
+
+        $ids = [];
+        foreach ($lignes as $id) {
+            if (is_numeric($id)) {
+                $ids[] = (int) $id;
+            }
+        }
 
         return $ids;
     }

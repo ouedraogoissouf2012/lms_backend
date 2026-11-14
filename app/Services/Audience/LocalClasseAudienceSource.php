@@ -49,8 +49,9 @@ final class LocalClasseAudienceSource implements ClasseAudienceSource
 
         $classe = $this->classeDe($seance)?->first();
 
-        return $classe instanceof Classe
-            && in_array(intval($classe->getKey()), $this->inscriptions->localClasseIdsFor($student), true);
+        $cle = $classe instanceof Classe ? $classe->getKey() : null;
+
+        return is_numeric($cle) && in_array((int) $cle, $this->inscriptions->localClasseIdsFor($student), true);
     }
 
     /**

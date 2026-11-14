@@ -31,14 +31,12 @@ final class LocalEnrollmentSource implements EnrollmentSource
      */
     public function localStudentIdsOf(Classe $classe): array
     {
-        /** @var list<int> $ids */
-        $ids = DB::table('classe_etudiant')
-            ->where('classe_id', $classe->getKey())
-            ->where('statut', 'actif')
-            ->orderBy('user_id')
-            ->pluck('user_id')
-            ->map(static fn (mixed $id): int => intval($id))
-            ->all();
+        $ids = [];
+        foreach (DB::table('classe_etudiant')->where('classe_id', $classe->getKey())->where('statut', 'actif')->orderBy('user_id')->pluck('user_id') as $id) {
+            if (is_numeric($id)) {
+                $ids[] = (int) $id;
+            }
+        }
 
         return $ids;
     }

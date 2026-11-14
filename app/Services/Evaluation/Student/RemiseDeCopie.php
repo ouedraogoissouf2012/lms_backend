@@ -7,6 +7,7 @@ namespace App\Services\Evaluation\Student;
 use App\Enums\EvaluationSubmissionStatus;
 use App\Models\EvaluationSubmission;
 use App\Models\User;
+use App\Services\Audit\AuditLogger;
 use App\Services\Evaluation\EvaluationGradingService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
@@ -31,8 +32,10 @@ use Illuminate\Support\Carbon;
  * seule transition a lieu, et une copie remise n'est jamais écrasée. La perdante
  * relit la copie et dit son état RÉEL (revue de Fille 1, O1) : déjà remise, un
  * conflit ; déjà verrouillée, le verrou. Ces écritures
- * passent par la requête, pas par le modèle : le journal d'audit (`Auditable`), qui
- * écoute les événements du modèle, ne la voit pas (dette déclarée).
+ * passent par la requête, pas par le modèle : l'observateur d'audit (`Auditable`) ne
+ * les voit pas. Une transition GAGNÉE se trace donc elle-même, par la même forme
+ * (`AuditLogger::logModelUpdate`, B3) ; une transition perdue n'a rien écrit et ne
+ * trace rien.
  */
 final class RemiseDeCopie
 {
@@ -45,7 +48,10 @@ final class RemiseDeCopie
     /** La copie vient d'être remise, dans le délai, par une requête concurrente. */
     public const CONFLIT = 'conflit';
 
-    public function __construct(private readonly EvaluationGradingService $notation) {}
+    public function __construct(
+        private readonly EvaluationGradingService $notation,
+        private readonly AuditLogger $audit,
+    ) {}
 
     /**
      * @param  array<int|string, mixed>  $reponses
@@ -92,23 +98,24 @@ final class RemiseDeCopie
         $this->notation->calculateScore($copie);
 
         $brut = $copie->getAttributes();
+        $ecrit = [
+            'answers' => $brut['answers'],
+            'status' => EvaluationSubmissionStatus::Soumis->value,
+            'submitted_at' => $brut['submitted_at'],
+            'updated_at' => $brut['updated_at'],
+            'score' => $brut['score'],
+            'note_sur_20' => $brut['note_sur_20'],
+        ];
         $gagnee = EvaluationSubmission::query()
             ->whereKey($copie->getKey())
             ->where('status', EvaluationSubmissionStatus::EnCours->value)
-            ->update([
-                'answers' => $brut['answers'],
-                'status' => EvaluationSubmissionStatus::Soumis->value,
-                'submitted_at' => $brut['submitted_at'],
-                'updated_at' => $brut['updated_at'],
-                'score' => $brut['score'],
-                'note_sur_20' => $brut['note_sur_20'],
-            ]);
+            ->update($ecrit);
 
         if ($gagnee !== 1) {
             return false;
         }
 
-        $copie->syncOriginal();
+        $this->tracer($copie, array_keys($ecrit));
 
         return true;
     }
@@ -119,14 +126,38 @@ final class RemiseDeCopie
      */
     private function verrouiller(EvaluationSubmission $copie, array $reponses): int
     {
-        // Même encodage que le cast `array` du modèle (`Model::asJson`).
-        return EvaluationSubmission::query()
+        // Posé en mémoire d'abord : le même encodage que le cast `array` du modèle, et
+        // l'avant (`getOriginal()`) reste disponible pour la trace.
+        $copie->status = EvaluationSubmissionStatus::Verrouille->value;
+        $copie->answers = $reponses;
+
+        $ecrit = [
+            'status' => EvaluationSubmissionStatus::Verrouille->value,
+            'answers' => $copie->getAttributes()['answers'],
+        ];
+        $verrouillees = EvaluationSubmission::query()
             ->whereKey($copie->getKey())
             ->where('status', EvaluationSubmissionStatus::EnCours->value)
-            ->update([
-                'status' => EvaluationSubmissionStatus::Verrouille->value,
-                'answers' => json_encode($reponses),
-            ]);
+            ->update($ecrit);
+
+        if ($verrouillees === 1) {
+            $this->tracer($copie, array_keys($ecrit));
+        }
+
+        return $verrouillees;
+    }
+
+    /**
+     * La transition gagnée, tracée dans le journal d'audit (B3) sur les seules
+     * colonnes ÉCRITES, puis l'original synchronisé : l'avant n'est lisible
+     * qu'avant `syncOriginal()`.
+     *
+     * @param  list<string>  $ecrites
+     */
+    private function tracer(EvaluationSubmission $copie, array $ecrites): void
+    {
+        $this->audit->logModelUpdate($copie, $ecrites);
+        $copie->syncOriginal();
     }
 
     /**

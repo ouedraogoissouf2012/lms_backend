@@ -30,26 +30,8 @@ final class AuditableObserver
 
     public function updated(Model $model): void
     {
-        // before = valeurs d'origine des seuls attributs modifiés ; after = nouvelles.
-        $changed = array_keys($model->getChanges());
-        $hidden = $model->getHidden();
-
-        $before = [];
-        $after = [];
-        foreach ($changed as $key) {
-            if (in_array($key, $hidden, true)) {
-                continue;
-            }
-            $before[$key] = $model->getOriginal($key);
-            $after[$key] = $model->getAttribute($key);
-        }
-
-        // Rien de significatif (ex. seul un champ hidden a changé) → pas de log.
-        if ($after === []) {
-            return;
-        }
-
-        $this->auditLogger->logModelEvent('update', $model, $before, $after);
+        // À `updated`, l'original n'est pas encore synchronisé : il porte l'avant.
+        $this->auditLogger->logModelUpdate($model, array_keys($model->getChanges()));
     }
 
     public function deleted(Model $model): void

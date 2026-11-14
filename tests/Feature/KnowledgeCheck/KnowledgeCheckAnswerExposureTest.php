@@ -64,7 +64,7 @@ final class KnowledgeCheckAnswerExposureTest extends TestCase
                     'question' => 'Capitale du Burkina ?',
                     'type' => 'single',
                     'options' => ['Bobo', 'Ouaga'],
-                    'correct_answer' => 'Ouaga',
+                    'correct_answer' => 1,
                     'explanation' => 'Ouagadougou est la capitale.',
                     'points' => 1,
                 ],
@@ -120,7 +120,7 @@ final class KnowledgeCheckAnswerExposureTest extends TestCase
             ->assertStatus(200)
             ->json('data.questions.0');
 
-        $this->assertSame('Ouaga', $question['correct_answer']);
+        $this->assertSame(1, $question['correct_answer']);
         $this->assertSame('Ouagadougou est la capitale.', $question['explanation']);
     }
 }

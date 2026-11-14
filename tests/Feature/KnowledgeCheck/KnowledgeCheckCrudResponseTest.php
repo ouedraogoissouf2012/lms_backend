@@ -89,7 +89,7 @@ final class KnowledgeCheckCrudResponseTest extends TestCase
                     'question' => 'Capitale ?',
                     'type' => 'single',
                     'options' => ['Ouaga', 'Bobo'],
-                    'correct_answer' => 'Ouaga',
+                    'correct_answer' => 0,
                 ],
             ],
         ];

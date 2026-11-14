@@ -37,7 +37,9 @@ final class StoreKnowledgeCheckRequest extends FormRequest
             'chapter_id' => 'required|exists:chapters,id',
             'title' => 'required|string|max:255',
             'description' => 'nullable|string',
-            'questions' => 'required|array|min:1',
+            // Une LISTE (D520) : indexées par des clés, les questions échappaient à la
+            // règle qui lit la question voisine par son rang (questions.N.correct_answer).
+            'questions' => 'required|list|min:1',
             'questions.*.question' => 'required|string',
             'questions.*.type' => 'required|in:single,multiple,true_false',
             'questions.*.options' => 'required|list|min:2',

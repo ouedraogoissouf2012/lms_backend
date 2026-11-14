@@ -131,9 +131,9 @@ final class FinDeTentativeTest extends TestCase
         $copie = $this->demarrer($eleve, $evaluation);
         $this->travelTo(now()->addMinutes(32));
 
-        // « Ma copie » n'est pas validée contre la spec : écart préexistant, hors C28
-        // (`questions` en `allOf`, que le validateur refuse ; `answers` vide rendu `[]`).
-        $this->asTenant($eleve)->getJson($this->de($evaluation).'/my-submission')->assertOk()
+        $maCopie = $this->asTenant($eleve)->getJson($this->de($evaluation).'/my-submission');
+        $this->assertMatchesOpenApiResponse($maCopie, '/evaluations/{id}/my-submission', 'get');
+        $maCopie->assertOk()
             ->assertJsonPath('data.status', 'verrouille')
             ->assertJsonPath('data.ends_at', now()->subMinutes(2)->toIso8601ZuluString('microsecond'));
         $this->asTenant($eleve)->getJson('/api/evaluations/student')->assertOk()

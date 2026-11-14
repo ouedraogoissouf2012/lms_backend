@@ -45,7 +45,7 @@ return [
     'app/Services/Seances/Mutations/SeanceDeleteService.php::delete' => 48,
     'app/Services/Seances/Mutations/SeanceHideService.php::unhide' => 46,
     'app/Services/Seances/Mutations/VisioToggleService.php::toggle' => 61,
-    'app/Services/Seances/SeanceVisioEnricher.php::loadFromLocalDbFallback' => 47,
+    'app/Services/Seances/SeanceVisioEnricher.php::loadFromLocalDbFallback' => 42,
     'app/Services/Seances/StudentClassesSeancesFetcher.php::fetch' => 44,
     'app/Services/Seances/TeachingSeancesFetcher.php::mapSeance' => 41,
     'app/Services/SeancesHistoryQueryService.php::enrichWithStats' => 42,

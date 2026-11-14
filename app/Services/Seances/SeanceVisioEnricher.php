@@ -11,6 +11,7 @@ use App\Services\KlassciProxyService;
 use App\Services\SeanceDetailQueryService;
 use App\Support\Logging\CaughtExceptionLog;
 use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Builder;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -36,6 +37,7 @@ final class SeanceVisioEnricher
         private readonly LoggerInterface $logger,
         private readonly KlassciProxyService $klassciService,
         private readonly CaughtExceptionLog $journal,
+        private readonly LigneDuRepliLocal $regle,
     ) {}
 
     /**
@@ -51,17 +53,9 @@ final class SeanceVisioEnricher
             'seance_id' => $seanceId,
         ]);
 
-        $visioData = Seance::where('klassci_seance_id', $seanceId)
-            ->orWhere('id', $seanceId)
-            ->withConnectedParticipantsCount()
-            ->first();
+        $visioData = $this->ligneLocale($seanceId, $user);
 
-        if (! $visioData) {
-            return null;
-        }
-
-        // IMPORTANT: Bloquer l'accès aux séances archivées pour les étudiants
-        if ($user->isStudent() && ! $visioData->is_active) {
+        if ($visioData === null || ! $this->regle->retient($visioData, $seanceId, $user)) {
             return null;
         }
 
@@ -127,6 +121,24 @@ final class SeanceVisioEnricher
         ]);
 
         return [$seance, $matiereInfo];
+    }
+
+    /**
+     * La ligne locale du repli, cherchée dans l'établissement du compte : sans
+     * établissement, aucune (le scope global est inerte sans tenant). L'ORDRE entre
+     * les deux identifiants reste celui d'avant, en attente d'une décision.
+     */
+    private function ligneLocale(int $seanceId, User $user): ?Seance
+    {
+        if (! is_int($user->institution_id)) {
+            return null;
+        }
+
+        return Seance::query()
+            ->where('institution_id', $user->institution_id)
+            ->where(static fn (Builder $designee): Builder => $designee->where('klassci_seance_id', $seanceId)->orWhere('id', $seanceId))
+            ->withConnectedParticipantsCount()
+            ->first();
     }
 
     /**

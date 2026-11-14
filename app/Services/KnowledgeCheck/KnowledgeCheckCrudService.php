@@ -82,7 +82,7 @@ final class KnowledgeCheckCrudService
         $quiz->user_passed = $this->access->isPassedByUser($quiz, $userId);
         $quiz->user_best_score = $this->access->bestScore($quiz, $userId);
         $quiz->can_attempt = $this->access->canAttempt($quiz, $userId);
-        $quiz->attempts_count = $quiz->attempts()->where('user_id', $userId)->count();
+        $quiz->attempts_count = $quiz->attempts()->where('user_id', $userId)->completed()->count();
 
         return $quiz;
     }

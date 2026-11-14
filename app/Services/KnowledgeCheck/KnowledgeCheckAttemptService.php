@@ -11,7 +11,6 @@ use App\Services\Chapter\ChapterTimeRecorder;
 use App\Services\Lesson\LessonProgressGate;
 use Illuminate\Database\ConnectionInterface;
 use Illuminate\Database\Eloquent\Collection;
-use RuntimeException;
 
 /**
  * Service de la « state machine » des tentatives étudiant pour les quiz
@@ -22,19 +21,21 @@ use RuntimeException;
  *
  * ## Responsabilités
  *
- * - **`startAttempt`** : valider le quota (`canAttempt`), préparer les
- *   questions (shuffle conditionnel des questions ET des options), masquer
- *   les bonnes réponses, retourner le payload « in progress ».
- * - **`submitAttempt`** : déléguer au {@see KnowledgeCheckGradingService}
- *   pour le calcul du score, persister le `KnowledgeCheckAttempt`, mettre à
+ * - **`startAttempt`** : valider le quota (`canAttempt`), OUVRIR la tentative
+ *   avec sa présentation (le mélange conditionnel des questions ET des
+ *   options, C44), masquer les bonnes réponses, retourner le payload
+ *   « in progress ».
+ * - **`submitAttempt`** : noter la remise dans l'ordre que l'élève a vu
+ *   ({@see KnowledgeCheckOpenAttempts}), COMPLÉTER la tentative, mettre à
  *   jour `ChapterProgress` (best score + complétion + temps cumulé). Sauf pour
  *   le personnel (aperçu depuis l'écran de gestion des chapitres) : sa
  *   tentative est persistée, sa progression JAMAIS (#934, LessonProgressGate).
- * - **`getMyAttempts`** : historique des tentatives d'un user pour un quiz.
+ * - **`getMyAttempts`** : historique des tentatives REMISES d'un user pour un
+ *   quiz (une tentative ouverte n'a pas de note).
  *
  * ## DI strict (§1.6 D)
  *
- * Le grader est injecté par constructeur — jamais `app()`.
+ * Les collaborateurs sont injectés par constructeur — jamais `app()`.
  *
  * @see app/Http/Controllers/API/KnowledgeCheckAttemptController.php
  */
@@ -52,7 +53,7 @@ final class KnowledgeCheckAttemptService
     private const TRANSACTION_ATTEMPTS = 3;
 
     public function __construct(
-        private readonly KnowledgeCheckGradingService $grader,
+        private readonly KnowledgeCheckOpenAttempts $openAttempts,
         private readonly KnowledgeCheckAccessService $access,
         private readonly ConnectionInterface $db,
         private readonly ChapterTimeRecorder $timeRecorder,
@@ -61,14 +62,16 @@ final class KnowledgeCheckAttemptService
     }
 
     /**
-     * Démarre une tentative : vérifie le quota, prépare la version « élève »
-     * des questions (shuffle + masquage des réponses correctes) et retourne
-     * le payload destiné au frontend.
+     * Démarre une tentative : vérifie le quota, ouvre la tentative avec sa
+     * présentation (mélange conditionnel, C44), prépare la version « élève »
+     * des questions (masquage des réponses correctes) et retourne le payload
+     * destiné au frontend.
      *
      * Retourne `null` si l'utilisateur a atteint son quota de tentatives —
      * le controller traduit en réponse 400.
      *
      * @return array{
+     *     attempt_id: int|string,
      *     quiz_id: int|string,
      *     title: string,
      *     description: ?string,
@@ -85,21 +88,13 @@ final class KnowledgeCheckAttemptService
             return null;
         }
 
-        /** @var array<int, array<string, mixed>> $questions */
-        $questions = $quiz->questions ?? [];
-
-        if ($quiz->shuffle_questions) {
-            shuffle($questions);
-        }
-
-        if ($quiz->shuffle_options) {
-            foreach ($questions as &$q) {
-                if (isset($q['options']) && is_array($q['options'])) {
-                    shuffle($q['options']);
-                }
-            }
-            unset($q);
-        }
+        // La présentation est écrite sur la tentative OUVERTE (C44) : la remise
+        // sera notée dans l'ordre que l'élève voit.
+        /** @var array{attempt: KnowledgeCheckAttempt, questions: list<array<string, mixed>>} $ouverte */
+        $ouverte = $this->db->transaction(
+            fn (): array => $this->openAttempts->ouvrir($quiz, $user),
+            self::TRANSACTION_ATTEMPTS,
+        );
 
         $questionsForStudent = array_map(static function (array $q): array {
             return [
@@ -108,9 +103,10 @@ final class KnowledgeCheckAttemptService
                 'options' => $q['options'] ?? [],
                 'points' => $q['points'] ?? 1,
             ];
-        }, $questions);
+        }, $ouverte['questions']);
 
         return [
+            'attempt_id' => $ouverte['attempt']->id,
             'quiz_id' => $quiz->id,
             'title' => $quiz->title,
             'description' => $quiz->description,
@@ -150,47 +146,36 @@ final class KnowledgeCheckAttemptService
     ): array {
         $quiz = KnowledgeCheck::findOrFail($quizId);
 
-        $result = $this->grader->gradeAttempt($quiz, $answers);
-
-        $attempt = $this->db->transaction(function () use ($quiz, $user, $result, $timeSpentSeconds): KnowledgeCheckAttempt {
-            $attempt = KnowledgeCheckAttempt::create([
-                'knowledge_check_id' => $quiz->id,
-                'user_id' => $user->id,
-                'score' => $result['score'],
-                'correct_answers' => $result['correct_answers'],
-                'total_questions' => $result['total_questions'],
-                'answers' => $result['detailed_answers'],
-                'time_spent_seconds' => $timeSpentSeconds,
-                'passed' => $result['passed'],
-                'started_at' => now()->subSeconds($timeSpentSeconds),
-                'completed_at' => now(),
-                'institution_id' => $user->institution_id,
-            ]);
+        // Notée et complétée sous le verrou de la tentative ouverte (C44) : un
+        // refus (409, 422) annule la transaction, et rien n'est écrit.
+        /** @var array{attempt: KnowledgeCheckAttempt, result: array{correct_answers: int, total_questions: int, score: int, passed: bool, detailed_answers: array<int, array<string, mixed>>}, affiche: list<array<string, mixed>>} $remise */
+        $remise = $this->db->transaction(function () use ($quiz, $user, $answers, $timeSpentSeconds): array {
+            $ouverte = $this->openAttempts->verrouiller($quiz, $user);
+            $notee = $this->openAttempts->noter($quiz, $ouverte, $answers);
+            $attempt = $this->openAttempts->completer($ouverte, $quiz, $user, $notee['result'], $timeSpentSeconds);
 
             $this->updateChapterProgress(
                 $user,
                 (int) $quiz->chapter_id,
-                $result['score'],
-                $result['passed'],
+                $notee['result']['score'],
+                $notee['result']['passed'],
                 $timeSpentSeconds,
             );
 
-            return $attempt;
+            return ['attempt' => $attempt] + $notee;
         }, self::TRANSACTION_ATTEMPTS);
-
-        if (! $attempt instanceof KnowledgeCheckAttempt) {
-            throw new RuntimeException('Enregistrement de la tentative interrompu.');
-        }
+        $result = $remise['result'];
 
         return [
-            'attempt_id' => $attempt->id,
+            'attempt_id' => $remise['attempt']->id,
             'score' => $result['score'],
             'correct_answers' => $result['correct_answers'],
             'total_questions' => $result['total_questions'],
             'passed' => $result['passed'],
             'passing_score' => (int) $quiz->passing_score,
-            'time_spent' => $attempt->formatted_duration,
-            'answers' => $quiz->show_correct_answers ? $result['detailed_answers'] : null,
+            'time_spent' => $remise['attempt']->formatted_duration,
+            // Dans l'ordre affiché : l'écran de correction le lit sur les questions reçues au démarrage.
+            'answers' => $quiz->show_correct_answers ? $remise['affiche'] : null,
             'can_retry' => $this->access->canAttempt($quiz, $user->id),
             'message' => $result['passed']
                 ? 'Felicitations! Vous avez reussi!'
@@ -217,6 +202,7 @@ final class KnowledgeCheckAttemptService
         /** @var Collection<int, KnowledgeCheckAttempt> $rows */
         $rows = KnowledgeCheckAttempt::where('knowledge_check_id', $quizId)
             ->where('user_id', $user->id)
+            ->completed()
             ->orderBy('created_at', 'desc')
             ->get();
 

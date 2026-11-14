@@ -115,6 +115,27 @@ final class BonnesReponsesParmiLesOptionsTest extends TestCase
     }
 
     /**
+     * D520 : `questions` est une LISTE. Indexée par des clés (`{"a": {…}}`), elle échappait à la
+     * règle, qui lit la question voisine par son rang (`questions.N.correct_answers`) : une bonne
+     * réponse hors des options passait. Refusée, à la création comme à la mise à jour.
+     */
+    #[DataProvider('ecoles')]
+    public function test_des_questions_indexees_par_des_cles_sont_refusees(InstitutionMode $mode): void
+    {
+        $auteur = $this->auteurDans($mode);
+        $questions = ['a' => $this->question(['Paris (France)', 'Lyon'], ['Paris'])];
+
+        $this->asTenant($auteur)->postJson('/api/evaluations', $this->creation($questions))
+            ->assertUnprocessable()->assertJsonValidationErrors(['questions']);
+        self::assertSame(0, DB::table('evaluations')->count());
+
+        $evaluation = $this->evaluationDe($auteur);
+        $this->asTenant($auteur)->putJson('/api/evaluations/'.$evaluation->id, ['questions' => $questions])
+            ->assertUnprocessable()->assertJsonValidationErrors(['questions']);
+        self::assertSame([['3', '4']], $this->optionsDe($evaluation), 'la question d avant est intacte');
+    }
+
+    /**
      * Les témoins : chaque type valide passe, et une question SANS bonne réponse aussi. Ce lot
      * n'impose aucune bonne réponse à l'enregistrement (réserve B de D466).
      */

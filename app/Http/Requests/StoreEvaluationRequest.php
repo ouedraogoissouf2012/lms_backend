@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Support\Evaluation\QuestionOptionLimits;
 use Illuminate\Foundation\Http\FormRequest;
 
 /**
@@ -23,7 +24,7 @@ use Illuminate\Foundation\Http\FormRequest;
  * - question: text
  * - type: qcm, qcm_multiple, vrai_faux, reponse_courte, dissertation
  * - points: numeric
- * - options: list of strings, or null
+ * - options: list of strings, or null (at most 26, of 1 000 characters each)
  * - correct_answers: array
  */
 final class StoreEvaluationRequest extends FormRequest
@@ -88,8 +89,9 @@ final class StoreEvaluationRequest extends FormRequest
             // Une liste de textes, ou null : ce que le front envoie, et ce que la
             // spec décrit. Sans la règle sur les éléments, le serveur gardait des
             // nombres, des objets, ou un tableau associatif rendu en objet JSON.
-            'questions.*.options' => 'nullable|list',
-            'questions.*.options.*' => 'string',
+            // Bornée (B5) : 26 options, 1 000 caractères chacune (QuestionOptionLimits).
+            'questions.*.options' => QuestionOptionLimits::listRule(),
+            'questions.*.options.*' => QuestionOptionLimits::itemRule(),
             'questions.*.correct_answers' => 'nullable|array',
         ];
     }

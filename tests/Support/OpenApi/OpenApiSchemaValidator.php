@@ -17,8 +17,9 @@ use UnexpectedValueException;
  * pas.
  *
  * Elle ne connaît QUE les mots-clés que la spec emploie : `type`, `nullable`,
- * `required`, `properties`, `additionalProperties`, `items`, `enum`, `format`,
- * `minLength`, `maxLength`, `minimum`, `maximum`, `pattern`, `oneOf` et `$ref`.
+ * `required`, `properties`, `additionalProperties`, `items`, `maxItems`, `enum`,
+ * `format`, `minLength`, `maxLength`, `minimum`, `maximum`, `pattern`, `oneOf` et
+ * `$ref`.
  * Les annotations (`description`, `example`, `default`, `title`, `deprecated`)
  * sont sans effet.
  *
@@ -393,6 +394,10 @@ final class OpenApiSchemaValidator
             $this->defautDeSpec("$ou : liste sans « items » (OpenAPI 3.0 l'exige)");
 
             return;
+        }
+
+        if (isset($schema['maxItems']) && count($valeur) > $schema['maxItems']) {
+            $this->erreurs[] = "$ou : ".count($valeur)." éléments, plus que maxItems {$schema['maxItems']}";
         }
 
         foreach ($valeur as $i => $element) {

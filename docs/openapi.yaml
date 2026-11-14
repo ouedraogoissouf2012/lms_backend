@@ -8405,9 +8405,11 @@ paths:
                       options:
                         type: array
                         nullable: true
-                        description: "Choix proposes : une liste de textes, ou `null`."
+                        maxItems: 26
+                        description: "Choix proposes : une liste de textes, ou `null`. 26 options au plus, de 1 000 caracteres chacune (`QuestionOptionLimits`)."
                         items:
                           type: string
+                          maxLength: 1000
                       correct_answers:
                         type: array
                         nullable: true

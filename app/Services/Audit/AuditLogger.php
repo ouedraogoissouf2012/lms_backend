@@ -56,6 +56,36 @@ final class AuditLogger
     }
 
     /**
+     * Trace une mise à jour : l'avant et l'après des seuls attributs modifiés,
+     * hors `hidden` (aucun secret journalisé). Rien si seuls des `hidden` ont
+     * changé. C'est la SEULE source de cette forme (B3) : l'observateur l'appelle
+     * à l'événement `updated`, et une écriture conditionnelle qui ne passe pas par
+     * le modèle (RemiseDeCopie) l'appelle après une transition gagnée.
+     *
+     * @param  list<string>  $cles  les attributs modifiés ; `getOriginal()` y porte
+     *                               encore l'avant (avant `syncOriginal()`)
+     */
+    public function logModelUpdate(Model $model, array $cles): void
+    {
+        $caches = $model->getHidden();
+        $before = [];
+        $after = [];
+        foreach ($cles as $cle) {
+            if (in_array($cle, $caches, true)) {
+                continue;
+            }
+            $before[$cle] = $model->getOriginal($cle);
+            $after[$cle] = $model->getAttribute($cle);
+        }
+
+        if ($after === []) {
+            return;
+        }
+
+        $this->logModelEvent('update', $model, $before, $after);
+    }
+
+    /**
      * Enregistre un événement d'authentification (login/logout/login_failed).
      *
      * @param  User|null  $acteur  Le compte qui se connecte ou se déconnecte.

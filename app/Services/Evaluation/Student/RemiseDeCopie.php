@@ -131,13 +131,18 @@ final class RemiseDeCopie
 
     /**
      * L'état RÉEL d'une copie que la course a fait perdre : remise par la gagnante
-     * (conflit), ou verrouillée par une autre remise tardive.
+     * (conflit), verrouillée par une autre remise tardive, ou disparue (purgée entre la
+     * lecture et l'écriture) : il n'y a alors plus de tentative en cours.
      *
-     * @return self::CONFLIT|self::VERROUILLEE
+     * @return self::CONFLIT|self::VERROUILLEE|self::AUCUNE_TENTATIVE
      */
     private function etatReel(EvaluationSubmission $copie): string
     {
         $statut = EvaluationSubmission::query()->whereKey($copie->getKey())->value('status');
+
+        if ($statut === null) {
+            return self::AUCUNE_TENTATIVE;
+        }
 
         return in_array($statut, [EvaluationSubmissionStatus::Soumis->value, EvaluationSubmissionStatus::Corrige->value], true)
             ? self::CONFLIT

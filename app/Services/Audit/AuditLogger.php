@@ -62,6 +62,11 @@ final class AuditLogger
      * à l'événement `updated`, et une écriture conditionnelle qui ne passe pas par
      * le modèle (RemiseDeCopie) l'appelle après une transition gagnée.
      *
+     * La trace dit ce qui a été ÉCRIT (D515). Une colonne dotée d'un accesseur de
+     * lecture s'y lit donc par sa valeur STOCKÉE : `EvaluationSubmission::status`
+     * déduit `verrouille` d'une copie échue encore stockée `en_cours`, et la trace
+     * mentirait sinon. Les casts restent appliqués à toutes les autres colonnes.
+     *
      * @param  list<string>  $cles  les attributs modifiés ; `getOriginal()` y porte
      *                               encore l'avant (avant `syncOriginal()`)
      */
@@ -74,8 +79,9 @@ final class AuditLogger
             if (in_array($cle, $caches, true)) {
                 continue;
             }
-            $before[$cle] = $model->getOriginal($cle);
-            $after[$cle] = $model->getAttribute($cle);
+            $stockee = $model->hasAttributeGetMutator($cle) || $model->hasGetMutator($cle);
+            $before[$cle] = $stockee ? $model->getRawOriginal($cle) : $model->getOriginal($cle);
+            $after[$cle] = $stockee ? ($model->getAttributes()[$cle] ?? null) : $model->getAttribute($cle);
         }
 
         if ($after === []) {

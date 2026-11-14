@@ -92,14 +92,14 @@ final class ChapterTimeSpentAggregateTest extends TestCase
                 'question' => 'Capitale du Burkina Faso ?',
                 'type' => 'single',
                 'options' => ['Bobo-Dioulasso', 'Ouagadougou'],
-                'correct_answer' => 'Ouagadougou',
+                'correct_answer' => 1,
                 'points' => 1,
             ]],
         ]);
 
         $this->asTenant($this->apprenant)->postJson("/api/knowledge-checks/{$quiz->id}/start")->assertOk();
         $this->asTenant($this->apprenant)->postJson("/api/knowledge-checks/{$quiz->id}/submit", [
-            'answers' => [0 => 'Ouagadougou'],
+            'answers' => [0 => 1],
             'time_spent_seconds' => 180,
         ])->assertOk()->assertJsonPath('data.passed', true);
 

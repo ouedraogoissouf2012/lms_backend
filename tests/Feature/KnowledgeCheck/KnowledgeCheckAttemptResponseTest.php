@@ -136,7 +136,7 @@ final class KnowledgeCheckAttemptResponseTest extends TestCase
         Sanctum::actingAs($this->student);
 
         $response = $this->postJson("/api/knowledge-checks/{$quiz->id}/submit", [
-            'answers' => ['0' => '4', '1' => 'True'],
+            'answers' => [1, 0],
             'time_spent_seconds' => 120,
         ]);
 

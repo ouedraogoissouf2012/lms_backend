@@ -26,12 +26,14 @@ class KnowledgeCheckFactory extends Factory
             'institution_id' => Institution::factory(),
             'title' => $this->faker->sentence(),
             'description' => $this->faker->paragraph(),
+            // La bonne réponse est l'INDICE de l'option, comme l'éditeur du front
+            // l'écrit et comme l'élève la remet (C45).
             'questions' => [
                 [
                     'question' => 'What is 2 + 2?',
                     'type' => 'single',
                     'options' => ['3', '4', '5'],
-                    'correct_answer' => '4',
+                    'correct_answer' => 1,
                     'explanation' => 'The answer is 4',
                     'points' => 1,
                 ],
@@ -39,7 +41,7 @@ class KnowledgeCheckFactory extends Factory
                     'question' => 'Is the sky blue?',
                     'type' => 'true_false',
                     'options' => ['True', 'False'],
-                    'correct_answer' => 'True',
+                    'correct_answer' => 0,
                     'explanation' => 'Yes, the sky is blue',
                     'points' => 1,
                 ],

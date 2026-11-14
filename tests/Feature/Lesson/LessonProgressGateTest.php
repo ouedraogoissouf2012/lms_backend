@@ -132,7 +132,7 @@ final class LessonProgressGateTest extends TestCase
     {
         $this->ecole($volet);
         $quiz = $this->quiz['sienne'];
-        $soumission = ['answers' => ['4', 'True'], 'time_spent_seconds' => 20];
+        $soumission = ['answers' => [1, 0], 'time_spent_seconds' => 20];
 
         $this->asTenant($this->auteur)->postJson("/api/knowledge-checks/{$quiz->id}/start")->assertOk();
         $this->asTenant($this->auteur)->postJson("/api/knowledge-checks/{$quiz->id}/submit", $soumission)->assertOk();
@@ -298,7 +298,7 @@ final class LessonProgressGateTest extends TestCase
         foreach ($this->ecritures('sienne') as $chemin => [$url, $corps]) {
             self::assertSame(403, $this->asTenant($supradmin)->postJson($url, $corps)->status(), $chemin);
         }
-        $this->asTenant($supradmin)->postJson("/api/knowledge-checks/{$quizAilleurs->id}/submit", ['answers' => ['4', 'True'], 'time_spent_seconds' => 5])
+        $this->asTenant($supradmin)->postJson("/api/knowledge-checks/{$quizAilleurs->id}/submit", ['answers' => [1, 0], 'time_spent_seconds' => 5])
             ->assertForbidden()->assertJsonPath('message', EnsureSchoolMemberOrPlatformRoute::MESSAGE);
         $this->asTenant($supradmin)->getJson("/api/lessons/{$this->sienne->id}/progress")->assertForbidden()->assertJsonMissingPath('data');
 
@@ -418,7 +418,7 @@ final class LessonProgressGateTest extends TestCase
             'temps du chapitre' => ["/api/chapters/{$chapitre->id}/time", ['time_spent_seconds' => 60]],
             'complétion du chapitre' => ["/api/chapters/{$chapitre->id}/complete", ['time_spent_seconds' => 30]],
             'quiz : démarrage' => ["/api/knowledge-checks/{$quiz->id}/start", []],
-            'quiz : soumission' => ["/api/knowledge-checks/{$quiz->id}/submit", ['answers' => ['4', 'True'], 'time_spent_seconds' => 20]],
+            'quiz : soumission' => ["/api/knowledge-checks/{$quiz->id}/submit", ['answers' => [1, 0], 'time_spent_seconds' => 20]],
         ];
     }
 

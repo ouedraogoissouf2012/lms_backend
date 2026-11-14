@@ -13,10 +13,19 @@ use Illuminate\Support\Facades\DB;
  */
 final class LocalEnrollmentSource implements EnrollmentSource
 {
+    /**
+     * Le pivot actif, borné EXPLICITEMENT à l'établissement du compte : hors requête
+     * (un job, une commande), la portée de tenant est inerte, et une ligne vers la
+     * classe d'une autre école serait rendue. Sans établissement, aucune classe.
+     */
     public function localClasseIdsFor(User $user): array
     {
+        if (! is_int($user->institution_id)) {
+            return [];
+        }
+
         $ids = [];
-        foreach ($user->classes()->wherePivot('statut', 'actif')->pluck('classes.id') as $id) {
+        foreach ($user->classes()->wherePivot('statut', 'actif')->where('classes.institution_id', $user->institution_id)->pluck('classes.id') as $id) {
             if (is_numeric($id)) {
                 $ids[] = (int) $id;
             }
@@ -26,8 +35,8 @@ final class LocalEnrollmentSource implements EnrollmentSource
     }
 
     /**
-     * Les élèves du pivot actif de la classe : l'inverse de la requête ci-dessus,
-     * qui ne borne pas non plus l'établissement (le lecteur le fait).
+     * Les élèves du pivot actif de la classe : l'inverse de la requête ci-dessus.
+     * Elle ne borne pas l'établissement des élèves (le lecteur le fait).
      */
     public function localStudentIdsOf(Classe $classe): array
     {

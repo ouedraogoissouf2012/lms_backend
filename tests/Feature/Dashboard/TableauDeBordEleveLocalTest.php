@@ -79,14 +79,15 @@ final class TableauDeBordEleveLocalTest extends TestCase
         ]);
         $reponse->assertJsonPath('data.cours', [['id' => $maths->id, 'nom' => 'Maths', 'libelle' => 'Maths']]);
         self::assertEqualsCanonicalizing([$notee->id, $cachee->id], array_column((array) $reponse->json('data.quiz'), 'id'));
-        // C30 : la note cachée n'apparaît pas, et n'entre pas dans la moyenne.
+        // C30 : la note cachée n'apparaît pas, et n'entre pas dans la moyenne. Le JSON
+        // ne garde pas le zéro décimal : 14.0 s'écrit 14, un nombre pour la spec.
         $reponse->assertJsonPath('data.notes', [[
             'id' => $notee->id,
             'evaluation' => ['id' => $notee->id, 'titre' => 'Contrôle 1'],
             'matiere' => ['id' => $maths->id, 'name' => 'Maths'],
-            'note' => 14.0,
+            'note' => 14,
         ]]);
-        $reponse->assertJsonPath('data.statistiques', ['moyenne_generale' => 14.0, 'taux_presence' => null]);
+        $reponse->assertJsonPath('data.statistiques', ['moyenne_generale' => 14, 'taux_presence' => null]);
     }
 
     /** D57 : des inscriptions, toutes inactives. Refus motivé, avant toute lecture. */

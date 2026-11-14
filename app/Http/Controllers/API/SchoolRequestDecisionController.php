@@ -15,7 +15,6 @@ use App\Models\User;
 use App\Services\SchoolRegistration\SchoolRequestDecisionService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Throwable;
 
 /**
  * Décision du supradmin plateforme sur une demande d'ouverture (#803).
@@ -74,7 +73,7 @@ final class SchoolRequestDecisionController extends Controller
                 $this->acteur($request),
             );
         } catch (BusinessException $e) {
-            return $this->errorResponse($e->getMessage(), $this->statut($e));
+            return $this->errorResponse($e->getMessage(), $e->statutHttp());
         }
 
         $institution = $resultat->institution;
@@ -96,7 +95,7 @@ final class SchoolRequestDecisionController extends Controller
         try {
             $this->decisions->refuser($schoolRequest, $request->motif(), $this->acteur($request));
         } catch (BusinessException $e) {
-            return $this->errorResponse($e->getMessage(), $this->statut($e));
+            return $this->errorResponse($e->getMessage(), $e->statutHttp());
         }
 
         return $this->successResponse(null, 'Demande refusée.');
@@ -113,12 +112,5 @@ final class SchoolRequestDecisionController extends Controller
         }
 
         return $acteur;
-    }
-
-    private function statut(Throwable $e): int
-    {
-        $code = $e->getCode();
-
-        return is_int($code) && $code >= 400 && $code < 600 ? $code : 422;
     }
 }

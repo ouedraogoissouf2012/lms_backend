@@ -38,4 +38,17 @@ final class BusinessException extends RuntimeException
     ) {
         parent::__construct($message, $code, $previous);
     }
+
+    /**
+     * Le statut HTTP du refus : son code s'il est un statut d'erreur (400 à 599),
+     * sinon 422. La SEULE conversion : un contrôleur qui rend ce refus l'appelle,
+     * il ne la recopie pas. Un statut invalide (le code par défaut, 0) ferait
+     * lever la réponse elle-même, hors du `try`, en 500.
+     */
+    public function statutHttp(): int
+    {
+        $code = $this->getCode();
+
+        return $code >= 400 && $code <= 599 ? $code : 422;
+    }
 }

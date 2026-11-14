@@ -105,6 +105,23 @@ final class BonneReponseDansLesBornesTest extends TestCase
         self::assertSame([2, 1, [2, 0]], array_column($gardees ?? [], 'correct_answer'));
     }
 
+    /**
+     * D520 : `questions` est une LISTE. Indexées par des clés (`{"a": {…}}`), elles échappaient
+     * à la règle, qui lit la question voisine par son rang (`questions.N.correct_answer`).
+     */
+    #[DataProvider('voies')]
+    public function test_des_questions_indexees_par_des_cles_sont_refusees(string $volet, string $voie): void
+    {
+        $this->ecoleEtQuiz($volet);
+        $avant = $this->quiz->fresh()?->questions;
+
+        $refus = $this->ecrire($voie, ['a' => self::question('single', self::TROIS, 7)]);
+
+        $refus->assertStatus(422)->assertJsonValidationErrors(['questions']);
+        self::assertSame(1, KnowledgeCheck::query()->withoutGlobalScopes()->where('chapter_id', $this->chapitre->id)->count(), 'aucun quiz créé');
+        self::assertSame($avant, $this->quiz->fresh()?->questions, 'le quiz n\'est pas modifié');
+    }
+
     #[DataProvider('voies')]
     public function test_des_options_qui_ne_sont_pas_une_liste_de_textes_sont_refusees(string $volet, string $voie): void
     {

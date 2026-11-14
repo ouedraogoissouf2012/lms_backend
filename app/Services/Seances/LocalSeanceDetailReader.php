@@ -36,12 +36,16 @@ final class LocalSeanceDetailReader implements SeanceDetailReader
     public function detailFor(int $seanceId, User $user): ?array
     {
         $institution = $user->institution_id;
-        $ligne = ! is_int($institution) ? null : $this->visibles->pour($user, $institution)
+        if (! is_int($institution)) {
+            return null;
+        }
+
+        $ligne = $this->visibles->pour($user, $institution)
             ->withConnectedParticipantsCount()
             ->whereKey($seanceId)
             ->first();
 
-        if (! $ligne instanceof Seance || ! is_int($institution)) {
+        if (! $ligne instanceof Seance) {
             return null;
         }
 
@@ -79,7 +83,7 @@ final class LocalSeanceDetailReader implements SeanceDetailReader
 
     /**
      * @param  array<string, mixed>  $seance
-     * @return array{teacher: array{id: int|null, nom: mixed}, students: list<array{id: int, nom: string}>, total: int}
+     * @return array{teacher: array{id: int|null, nom: mixed}, students: array<int, array{id: int, nom: string}>, total: int}
      */
     private function participants(Seance $ligne, array $seance): array
     {

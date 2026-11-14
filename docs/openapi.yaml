@@ -8260,7 +8260,8 @@ paths:
           description: |
             Erreur de validation (`errors`), classe ou matiere hors de l'ecole (`errors`), ou refus
             motive : programmation KLASSCI absente dans une ecole creee depuis KLASSCI
-            (`klassci_scheduling_required`), identifiant de l'autre famille (`identifier_out_of_scope`).
+            (`klassci_scheduling_required`), identifiant de l'autre famille (`identifier_out_of_scope`), bonne
+            reponse absente des options d'une question a options (`correct_answer_not_among_options`).
           content:
             application/json:
               schema:
@@ -8285,6 +8286,7 @@ paths:
                     enum:
                       - klassci_scheduling_required
                       - identifier_out_of_scope
+                      - correct_answer_not_among_options
         '500':
           description: "Echec transactionnel de la creation (rollback, journalise)."
           content:
@@ -8413,7 +8415,15 @@ paths:
                       correct_answers:
                         type: array
                         nullable: true
-                        items: {}
+                        maxItems: 26
+                        description: |
+                          Les bonnes reponses, des textes. Pour `qcm`, `qcm_multiple` et `vrai_faux`, chacune
+                          est une des `options` (sinon 422 `correct_answer_not_among_options`) ; au plus une
+                          pour `qcm` et `vrai_faux`, sans doublon pour `qcm_multiple`. Vide ou nulle est
+                          accepte a l'enregistrement (un brouillon).
+                        items:
+                          type: string
+                          maxLength: 1000
                       explanation:
                         type: string
                         maxLength: 2000
@@ -8429,7 +8439,8 @@ paths:
           description: |
             Erreur de validation (`errors`), `is_published` envoye (`publish_via_dedicated_route`, la
             publication passe par sa route), ou remplacement qui viderait une evaluation publiee
-            (`evaluation_without_questions`, C16 : publiee est relu sur la ligne verrouillee, avant toute ecriture).
+            (`evaluation_without_questions`, C16 : publiee est relu sur la ligne verrouillee, avant toute ecriture),
+            ou bonne reponse absente des options d'une question a options (`correct_answer_not_among_options`).
           content:
             application/json:
               schema:
@@ -8454,6 +8465,7 @@ paths:
                     enum:
                       - publish_via_dedicated_route
                       - evaluation_without_questions
+                      - correct_answer_not_among_options
 
     delete:
       tags:

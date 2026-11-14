@@ -127,9 +127,17 @@ class EvaluationGradingService
     /**
      * Calcule le score d'une soumission en itérant sur les questions.
      *
-     * Modifie la submission par référence (score = points bruts, note_sur_20
-     * = pourcentage × barème de l'évaluation). Le caller doit appeler `save()`
-     * après.
+     * Calcul PUR, en mémoire : il pose `score` (points bruts) et `note_sur_20`
+     * (pourcentage × barème de l'évaluation) sur le modèle, sans rien écrire en base.
+     * L'appelant persiste, chacun à sa façon :
+     *
+     * - une REMISE passe par l'écriture conditionnelle unique de
+     *   {@see \App\Services\Evaluation\Student\RemiseDeCopie} (`UPDATE … WHERE status =
+     *   'en_cours'`, C39). Un `save()` sans condition sur une copie en cours
+     *   recréerait la double notation ;
+     * - la correction manuelle ({@see manualGrade()}) et le recalcul
+     *   ({@see EvaluationScoreRecomputationService}) portent sur des copies déjà
+     *   remises, et font leur `save()`.
      */
     public function calculateScore(EvaluationSubmission $submission): void
     {

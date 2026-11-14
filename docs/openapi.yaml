@@ -3424,6 +3424,50 @@ components:
             items:
               type: string
 
+    # Detail d'une reponse a un quiz de lecon (C45).
+    KnowledgeCheckAnswerDetail:
+      type: object
+      additionalProperties: false
+      required:
+        - question_index
+        - user_answer
+        - correct_answer
+        - is_correct
+        - explanation
+      properties:
+        question_index:
+          type: integer
+          minimum: 0
+        user_answer:
+          description: "La reponse remise : un indice, une liste d indices, ou `null` (non repondue)"
+          nullable: true
+          oneOf:
+            - type: integer
+              minimum: 0
+            - type: array
+              items:
+                type: integer
+                minimum: 0
+        correct_answer:
+          description: |
+            L indice de la bonne option (une liste pour `multiple`). Un texte ne
+            peut venir que d une question ecrite hors du front avant C45 : une
+            telle question n est jamais reussie (mesure avant fusion).
+          nullable: true
+          oneOf:
+            - type: integer
+              minimum: 0
+            - type: array
+              items:
+                type: integer
+                minimum: 0
+            - type: string
+        is_correct:
+          type: boolean
+        explanation:
+          type: string
+          nullable: true
+
     # Entree en visio et validation d'un participant (lot B).
     ParticipantValide:
       type: object
@@ -10143,6 +10187,177 @@ paths:
           description: "Chapter created"
         '422':
           description: "Validation error"
+
+  /knowledge-checks/{id}/submit:
+    post:
+      tags:
+        - Chapters
+      operationId: submitKnowledgeCheckAttempt
+      summary: "Remettre un quiz de lecon (Testez vos connaissances)"
+      description: |
+        Note la remise et enregistre la tentative. La progression du chapitre
+        (meilleur score, completion, temps) n est ecrite que pour l eleve ;
+        l apercu du personnel enregistre la tentative, jamais la progression.
+
+        Les reponses suivent l ordre des questions recues au demarrage
+        (`/knowledge-checks/{id}/start`). Chaque reponse est l INDICE d une
+        option (C45), le format que le front envoie : un texte, un booleen ou un
+        decimal est refuse (422 `answer_not_an_option_index`) avant toute
+        ecriture, sans consommer d essai.
+
+        Limite : 60 requetes / minute.
+      security:
+        - sanctum: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - answers
+                - time_spent_seconds
+              properties:
+                answers:
+                  type: array
+                  description: |
+                    Une reponse par question, dans l ordre recu au demarrage.
+                    `null` (ou `[]` pour `multiple`) = non repondue. Un entier
+                    >= 0 pour `single` et `true_false` ; une liste d entiers
+                    >= 0 DISTINCTS pour `multiple`.
+                  items:
+                    oneOf:
+                      - type: integer
+                        minimum: 0
+                      - type: array
+                        items:
+                          type: integer
+                          minimum: 0
+                    nullable: true
+                  example: [1, 0, [0, 2], null]
+                time_spent_seconds:
+                  type: integer
+                  minimum: 0
+      responses:
+        '200':
+          description: "Tentative notee et enregistree"
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required:
+                  - success
+                  - message
+                  - data
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  data:
+                    type: object
+                    additionalProperties: false
+                    required:
+                      - attempt_id
+                      - score
+                      - correct_answers
+                      - total_questions
+                      - passed
+                      - passing_score
+                      - time_spent
+                      - answers
+                      - can_retry
+                    properties:
+                      attempt_id:
+                        type: integer
+                      score:
+                        type: integer
+                        minimum: 0
+                        maximum: 100
+                        description: "Pourcentage entier de bonnes reponses"
+                      correct_answers:
+                        type: integer
+                        minimum: 0
+                      total_questions:
+                        type: integer
+                        minimum: 0
+                      passed:
+                        type: boolean
+                      passing_score:
+                        type: integer
+                      time_spent:
+                        type: string
+                        example: "2min 5s"
+                      answers:
+                        type: array
+                        nullable: true
+                        description: "`null` quand le quiz n affiche pas les corrections (`show_correct_answers` faux)"
+                        items:
+                          $ref: '#/components/schemas/KnowledgeCheckAnswerDetail'
+                      can_retry:
+                        type: boolean
+        '401':
+          description: "Non authentifie"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageOnly'
+        '403':
+          description: "Compte sans ecole (supradmin plateforme)"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageOnly'
+        '404':
+          description: |
+            `Quiz introuvable` : le quiz n existe pas, ou son chapitre n est pas
+            lisible par l appelant (meme reponse dans les deux cas). Rien n est
+            ecrit.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageOnly'
+        '422':
+          description: |
+            - `reason: answer_not_an_option_index` : une reponse n est pas un
+              indice d option (C45). Rien n est ecrit, aucun essai consomme.
+            - Sans `reason` : `answers` ou `time_spent_seconds` absent ou mal
+              forme.
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required:
+                  - success
+                  - message
+                  - errors
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  message:
+                    type: string
+                  reason:
+                    type: string
+                    enum:
+                      - answer_not_an_option_index
+                  errors:
+                    type: object
+                    description: "Messages par champ."
+                    additionalProperties:
+                      type: array
+                      items:
+                        type: string
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
 
   /chapters/{chapter}/video:
     get:

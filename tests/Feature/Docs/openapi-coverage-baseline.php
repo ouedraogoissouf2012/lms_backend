@@ -65,7 +65,6 @@ return [
     '/knowledge-checks/{id}',
     '/knowledge-checks/{id}/my-attempts',
     '/knowledge-checks/{id}/start',
-    '/knowledge-checks/{id}/submit',
     '/lessons',
     '/lessons/{id}',
     '/lessons/{id}/complete',

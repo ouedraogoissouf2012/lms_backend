@@ -8,11 +8,12 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use App\Models\Traits\BelongsToInstitution;
 use App\Models\Concerns\Auditable;
+use App\Models\Concerns\EcheanceDeLaCopie;
 
 class EvaluationSubmission extends Model
 {
     /** @use HasFactory<\Database\Factories\EvaluationSubmissionFactory> */
-    use HasFactory, BelongsToInstitution, Auditable;
+    use HasFactory, BelongsToInstitution, Auditable, EcheanceDeLaCopie;
 
     protected $fillable = [
         'evaluation_id',
@@ -21,6 +22,7 @@ class EvaluationSubmission extends Model
         'attempt',
         'status',
         'started_at',
+        'ends_at',
         'submitted_at',
         'answers',
         'manual_points',
@@ -36,6 +38,7 @@ class EvaluationSubmission extends Model
 
     protected $casts = [
         'started_at' => 'datetime',
+        'ends_at' => 'datetime',
         'submitted_at' => 'datetime',
         'answers' => 'array',
         'manual_points' => 'array',

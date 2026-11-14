@@ -2620,11 +2620,24 @@ components:
           type: integer
         status:
           type: string
-          enum: [en_cours, soumis, corrige]
+          enum: [en_cours, soumis, corrige, verrouille]
+          description: |
+            `verrouille` (C28) : remise refusee apres l echeance. La copie garde ses
+            reponses, n est pas notee et compte comme une tentative. Une tentative
+            `en_cours` dont l echeance est depassee (marge comprise) se LIT
+            `verrouille`.
         started_at:
           type: string
           format: date-time
           nullable: true
+        ends_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: |
+            Echeance de la tentative (C28), ecrite au demarrage et figee : la plus
+            proche de la fin de la fenetre et de `started_at + duree_minutes`. Nulle
+            pour l entrainement et pour une copie d avant C28 : pas d echeance.
         submitted_at:
           type: string
           format: date-time
@@ -8135,6 +8148,12 @@ paths:
         La correction automatique s applique ; les dissertations attendent une
         notation manuelle (`/submissions/{submission}/grade`).
 
+        Echeance (C28, les deux types d ecole) : la remise est acceptee jusqu a
+        `ends_at` + 60 s (la remise automatique du front part jusqu a 30 s apres
+        la fin de la fenetre). Apres, elle est REFUSEE (409
+        `evaluation_attempt_locked`) : la copie passe `verrouille`, garde les
+        reponses recues, n est pas notee. Aucun appel a KLASSCI a la remise.
+
         Quand `show_results` est faux, `score` et `note_sur_20` sont RETIRES
         de la reponse (a la racine de `data` comme dans `data.submission`).
 
@@ -8229,11 +8248,33 @@ paths:
               schema:
                 $ref: '#/components/schemas/MessageOnly'
         '409':
-          description: "Aucune tentative en cours : la demarrer avec `/start` avant de la rendre"
+          description: |
+            - Aucune tentative en cours : la demarrer avec `/start` avant de la
+              rendre (sans `reason`).
+            - `reason: evaluation_attempt_locked` : l echeance est depassee (C28).
+              La copie est verrouillee, gardee avec ses reponses, et ne sera pas
+              notee ; toute nouvelle remise rend le meme refus, sans rien ecrire.
+            - `reason: evaluation_attempt_conflict` : remise tardive perdue contre une
+              remise dans le delai d une requete concurrente ; la copie est remise,
+              rien n est ecrit.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/MessageOnly'
+                type: object
+                required:
+                  - success
+                  - message
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  message:
+                    type: string
+                  reason:
+                    type: string
+                    enum:
+                      - evaluation_attempt_locked
+                      - evaluation_attempt_conflict
         '422':
           description: "`answers` absent, vide, ou d un type refuse"
           content:
@@ -8347,11 +8388,17 @@ paths:
                         type: integer
                       status:
                         type: string
-                        enum: [en_cours, soumis, corrige]
+                        enum: [en_cours, soumis, corrige, verrouille]
+                        description: "`verrouille` : remise refusee hors delai, ou tentative echue jamais remise (C28)."
                       started_at:
                         type: string
                         format: date-time
                         nullable: true
+                      ends_at:
+                        type: string
+                        format: date-time
+                        nullable: true
+                        description: "Echeance de la tentative (C28), pour le minuteur ; nulle sans echeance."
                       submitted_at:
                         type: string
                         format: date-time
@@ -8649,7 +8696,8 @@ paths:
                           type: integer
                         status:
                           type: string
-                          enum: [en_cours, soumis, corrige]
+                          enum: [en_cours, soumis, corrige, verrouille]
+                          description: "`verrouille` : copie hors delai (C28), visible, jamais notee."
                         started_at:
                           type: string
                           format: date-time
@@ -8784,11 +8832,27 @@ paths:
               schema:
                 $ref: '#/components/schemas/MessageOnly'
         '409':
-          description: "Copie encore `en_cours` : elle ne peut pas etre notee"
+          description: |
+            - Copie encore `en_cours` : elle ne peut pas etre notee (sans `reason`).
+            - `reason: evaluation_attempt_locked` : copie hors delai (C28), remise
+              refusee ou tentative echue. Elle est visible, jamais notee.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/MessageOnly'
+                type: object
+                required:
+                  - success
+                  - message
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  message:
+                    type: string
+                  reason:
+                    type: string
+                    enum:
+                      - evaluation_attempt_locked
         '422':
           description: |
             `points` absent ou invalide (forme `ValidationFailed`) ; ou
@@ -8887,7 +8951,8 @@ paths:
                               nullable: true
                             status:
                               type: string
-                              enum: [non_passee, en_cours, soumis, corrige]
+                              enum: [non_passee, en_cours, soumis, corrige, verrouille]
+                              description: "`verrouille` : copie hors delai (C28), visible, jamais notee."
                             submitted_at:
                               type: string
                               format: date-time
@@ -8916,6 +8981,9 @@ paths:
                             description: "Copies `soumis` ou `corrige`"
                           etudiants_en_cours:
                             type: integer
+                          etudiants_hors_delai:
+                            type: integer
+                            description: "Copies `verrouille` (C28) : remises refusees, ou tentatives echues jamais remises"
                           etudiants_non_passes:
                             type: integer
                           taux_participation:

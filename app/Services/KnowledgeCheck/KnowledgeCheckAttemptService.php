@@ -218,11 +218,14 @@ final class KnowledgeCheckAttemptService
             ];
         });
 
+        // Les seules tentatives remises (C44) : `score` n'y est jamais nul.
+        $meilleur = $attempts->max('score');
+
         return [
             'quiz_title' => $quiz->title,
             'passing_score' => (int) $quiz->passing_score,
             'attempts' => $attempts,
-            'best_score' => $attempts->max('score'),
+            'best_score' => is_numeric($meilleur) ? (int) $meilleur : null,
             'has_passed' => $attempts->contains('passed', true),
         ];
     }

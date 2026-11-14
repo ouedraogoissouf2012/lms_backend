@@ -6,6 +6,7 @@ namespace App\Services\Visio;
 
 use App\Models\Seance;
 use App\Models\User;
+use Illuminate\Database\Eloquent\Builder;
 
 final class VisioActorAuthorization
 {
@@ -57,5 +58,40 @@ final class VisioActorAuthorization
 
         return $seance->created_by !== null
             && (int) $seance->created_by === (int) $teacher->id;
+    }
+
+    /**
+     * La forme REQUÊTE de la même règle : les séances que `$teacher` gère, comme
+     * {@see canManage()} le dit d'une séance (son établissement, puis
+     * {@see teacherOwns()}). Une seule règle, deux formes, liées par un test
+     * d'équivalence (patron de `TeacherOwnershipScope` : `applyToLessons` et
+     * `ownsLesson`). Sans établissement, aucune séance.
+     *
+     * @param  Builder<Seance>  $seances
+     */
+    public function limitToTeacherSeances(Builder $seances, User $teacher): void
+    {
+        if (! is_int($teacher->institution_id)) {
+            $seances->whereRaw('1 = 0');
+
+            return;
+        }
+
+        $identitesKlassci = [];
+        foreach ([$teacher->klassci_enseignant_id, $teacher->klassci_id] as $id) {
+            if (is_numeric($id)) {
+                $identitesKlassci[] = (int) $id;
+            }
+        }
+
+        $seances->where($seances->qualifyColumn('institution_id'), $teacher->institution_id)
+            ->where(static function (Builder $proprietaire) use ($identitesKlassci, $teacher, $seances): void {
+                if ($identitesKlassci !== []) {
+                    $proprietaire->whereIn($seances->qualifyColumn('klassci_enseignant_id'), $identitesKlassci);
+                }
+                $proprietaire->orWhere(static fn (Builder $locale): Builder => $locale
+                    ->whereNull($seances->qualifyColumn('klassci_enseignant_id'))
+                    ->where($seances->qualifyColumn('created_by'), $teacher->id));
+            });
     }
 }

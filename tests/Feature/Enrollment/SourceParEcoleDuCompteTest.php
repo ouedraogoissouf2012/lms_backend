@@ -96,6 +96,36 @@ final class SourceParEcoleDuCompteTest extends TestCase
         self::assertSame(1, $lectures, 'la seule lecture de ResolveInstitution');
     }
 
+    /**
+     * Sans tenant, le pivot ne rend que les classes de l'établissement du compte : une ligne
+     * active vers la classe d'une autre école n'est pas une classe de l'élève.
+     */
+    public function test_sans_tenant_le_pivot_s_arrete_a_l_ecole_du_compte(): void
+    {
+        [$ecole, $sienne] = $this->ecoleEtClasse(InstitutionMode::Standalone);
+        [, $ailleurs] = $this->ecoleEtClasse(InstitutionMode::Standalone);
+        $eleve = $this->membre($ecole, 'etudiant');
+        $this->inscrire($eleve, $sienne, 'actif');
+        $this->inscrire($eleve, $ailleurs, 'actif');
+        $this->app->forgetScopedInstances();
+
+        self::assertSame([$sienne->id], app(EnrollmentSource::class)->localClasseIdsFor($eleve));
+    }
+
+    /**
+     * Sans tenant, une école autonome supprimée en douceur garde son mode : la source locale,
+     * jamais le repli KLASSCI par le miroir.
+     */
+    public function test_sans_tenant_une_ecole_autonome_supprimee_garde_sa_source(): void
+    {
+        [$ecole] = $this->ecoleEtClasse(InstitutionMode::Standalone);
+        $eleve = $this->eleveDuMiroir($ecole);
+        $ecole->delete();
+        $this->app->forgetScopedInstances();
+
+        self::assertSame([], app(EnrollmentSource::class)->localClasseIdsFor($eleve->fresh() ?? $eleve));
+    }
+
     /** @return array{0: Institution, 1: Classe} */
     private function ecoleEtClasse(InstitutionMode $mode): array
     {

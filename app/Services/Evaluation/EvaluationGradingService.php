@@ -163,21 +163,6 @@ class EvaluationGradingService
     }
 
     /**
-     * Soumet une évaluation : passe le statut à `soumis`, calcule le score,
-     * persiste. Orchestrateur utilisé par le controller à la soumission étudiant.
-     *
-     * Remplace l'ancien `EvaluationSubmission::submit()` qui mélangeait state
-     * machine et appel `app(...)` (anti-pattern Service Locator §1.6 D).
-     */
-    public function submit(EvaluationSubmission $submission): void
-    {
-        $submission->status = 'soumis';
-        $submission->submitted_at = now();
-        $this->calculateScore($submission);
-        $submission->save();
-    }
-
-    /**
      * #588 — note les dissertations, recalcule note_sur_20, passe en `corrige`.
      *
      * @param  array<int|string, float|int|string>  $manualPoints

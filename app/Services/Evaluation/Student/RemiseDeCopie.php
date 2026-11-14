@@ -9,6 +9,7 @@ use App\Models\EvaluationSubmission;
 use App\Models\User;
 use App\Services\Evaluation\EvaluationGradingService;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Carbon;
 
 /**
  * La remise d'une copie par l'élève, dans les deux types d'école (C28).
@@ -17,17 +18,20 @@ use Illuminate\Database\Eloquent\Builder;
  * Décision de l'utilisateur : après l'échéance, la copie « est refusée mais gardée
  * en brouillon et verrouillée pour toute modification ».
  *
- * - Dans le délai (échéance + marge) : la copie est notée et passe `soumis`.
+ * - Dans le délai (échéance + marge) : la note est calculée en mémoire, puis la copie
+ *   passe `soumis` avec ses réponses et sa note en UNE écriture conditionnelle (C39) :
+ *   deux remises simultanées ne la notent qu'une fois, et aucune copie ne reste
+ *   `soumis` sans note.
  * - Après : elle passe `verrouille`, garde les réponses REÇUES avec la remise
  *   refusée (Q1 ; elles peuvent dater de la marge), et n'est pas notée.
  * - Une copie déjà verrouillée refuse toute nouvelle remise, sans rien écrire.
  *
- * Le verrou est une écriture CONDITIONNELLE (`where status = en_cours`) : entre deux
+ * La notation et le verrou sont des écritures CONDITIONNELLES (`where status = en_cours`) : entre deux
  * remises simultanées, ou contre une remise dans le délai qui vient de gagner, une
  * seule transition a lieu, et une copie remise n'est jamais écrasée. La perdante
  * relit la copie et dit son état RÉEL (revue de Fille 1, O1) : déjà remise, un
- * conflit ; déjà verrouillée, le verrou. Cette écriture
- * passe par la requête, pas par le modèle : le journal d'audit (`Auditable`), qui
+ * conflit ; déjà verrouillée, le verrou. Ces écritures
+ * passent par la requête, pas par le modèle : le journal d'audit (`Auditable`), qui
  * écoute les événements du modèle, ne la voit pas (dette déclarée).
  */
 final class RemiseDeCopie
@@ -61,10 +65,47 @@ final class RemiseDeCopie
             return ['status' => $this->verrouiller($copie, $reponses) === 1 ? self::VERROUILLEE : $this->etatReel($copie)];
         }
 
-        $copie->answers = $reponses;
-        $this->notation->submit($copie);
+        if (! $this->noter($copie, $reponses)) {
+            return ['status' => $this->etatReel($copie)];
+        }
 
         return ['status' => self::REMISE, 'submission' => $copie];
+    }
+
+    /**
+     * Dans le délai (C39) : la note est CALCULÉE en mémoire (calcul pur, sans écriture),
+     * puis réponses, statut, `submitted_at` et note s'écrivent en UNE instruction
+     * conditionnelle (`where status = en_cours`). Une seule transition ; jamais de copie
+     * `soumis` sans note si le calcul échoue. Faux : une requête concurrente a gagné.
+     *
+     * @param  array<int|string, mixed>  $reponses
+     */
+    private function noter(EvaluationSubmission $copie, array $reponses): bool
+    {
+        $copie->answers = $reponses;
+        $copie->status = EvaluationSubmissionStatus::Soumis->value;
+        $copie->submitted_at = Carbon::now();
+        $this->notation->calculateScore($copie);
+
+        $brut = $copie->getAttributes();
+        $gagnee = EvaluationSubmission::query()
+            ->whereKey($copie->getKey())
+            ->where('status', EvaluationSubmissionStatus::EnCours->value)
+            ->update([
+                'answers' => $brut['answers'],
+                'status' => EvaluationSubmissionStatus::Soumis->value,
+                'submitted_at' => $brut['submitted_at'],
+                'score' => $brut['score'],
+                'note_sur_20' => $brut['note_sur_20'],
+            ]);
+
+        if ($gagnee !== 1) {
+            return false;
+        }
+
+        $copie->syncOriginal();
+
+        return true;
     }
 
     /**

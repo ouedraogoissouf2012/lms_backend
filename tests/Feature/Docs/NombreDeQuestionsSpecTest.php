@@ -28,10 +28,19 @@ final class NombreDeQuestionsSpecTest extends TestCase
         self::assertStringContainsString('maxItems 200', $erreurs[0]);
     }
 
-    /** @return list<array<string, mixed>> */
+    /**
+     * Décodée comme le validateur lit une charge JSON (`json_decode($json, false)`) : chaque
+     * question est un objet, pas un tableau associatif.
+     *
+     * @return list<mixed>
+     */
     private function questions(int $nombre): array
     {
-        return array_fill(0, $nombre, ['question' => 'Combien font 2 + 2 ?', 'type' => 'qcm', 'options' => ['3', '4'], 'correct_answers' => ['4']]);
+        $json = json_encode(array_fill(0, $nombre, ['question' => 'Combien font 2 + 2 ?', 'type' => 'qcm', 'options' => ['3', '4'], 'correct_answers' => ['4']]), JSON_THROW_ON_ERROR);
+        $questions = json_decode($json, false, 512, JSON_THROW_ON_ERROR);
+        self::assertIsArray($questions);
+
+        return array_values($questions);
     }
 
     private function validateur(): OpenApiSchemaValidator

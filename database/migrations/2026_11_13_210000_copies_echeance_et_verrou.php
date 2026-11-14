@@ -19,13 +19,21 @@ use Illuminate\Support\Facades\Schema;
  *
  * Retour arrière : une copie verrouillée redevient `en_cours` (le verrou se perd,
  * ses réponses restent), puis la colonne reprend ses trois valeurs.
+ *
+ * Idempotente dans les deux sens (revue de Fille 1, O2) : la colonne n'est ajoutée
+ * ou retirée que si besoin ; redéclarer l'enum est sans effet quand il l'est déjà.
  */
 return new class extends Migration
 {
     public function up(): void
     {
+        if (! Schema::hasColumn('evaluation_submissions', 'ends_at')) {
+            Schema::table('evaluation_submissions', function (Blueprint $table): void {
+                $table->dateTime('ends_at')->nullable()->after('started_at');
+            });
+        }
+
         Schema::table('evaluation_submissions', function (Blueprint $table): void {
-            $table->dateTime('ends_at')->nullable()->after('started_at');
             $table->enum('status', ['en_cours', 'soumis', 'corrige', 'verrouille'])->default('en_cours')->change();
         });
     }
@@ -36,7 +44,12 @@ return new class extends Migration
 
         Schema::table('evaluation_submissions', function (Blueprint $table): void {
             $table->enum('status', ['en_cours', 'soumis', 'corrige'])->default('en_cours')->change();
-            $table->dropColumn('ends_at');
         });
+
+        if (Schema::hasColumn('evaluation_submissions', 'ends_at')) {
+            Schema::table('evaluation_submissions', function (Blueprint $table): void {
+                $table->dropColumn('ends_at');
+            });
+        }
     }
 };

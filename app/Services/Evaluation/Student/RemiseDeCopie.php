@@ -24,7 +24,9 @@ use Illuminate\Database\Eloquent\Builder;
  *
  * Le verrou est une écriture CONDITIONNELLE (`where status = en_cours`) : entre deux
  * remises simultanées, ou contre une remise dans le délai qui vient de gagner, une
- * seule transition a lieu, et une copie remise n'est jamais écrasée. Cette écriture
+ * seule transition a lieu, et une copie remise n'est jamais écrasée. La perdante
+ * relit la copie et dit son état RÉEL (revue de Fille 1, O1) : déjà remise, un
+ * conflit ; déjà verrouillée, le verrou. Cette écriture
  * passe par la requête, pas par le modèle : le journal d'audit (`Auditable`), qui
  * écoute les événements du modèle, ne la voit pas (dette déclarée).
  */
@@ -36,11 +38,14 @@ final class RemiseDeCopie
 
     public const VERROUILLEE = 'verrouillee';
 
+    /** La copie vient d'être remise, dans le délai, par une requête concurrente. */
+    public const CONFLIT = 'conflit';
+
     public function __construct(private readonly EvaluationGradingService $notation) {}
 
     /**
      * @param  array<int|string, mixed>  $reponses
-     * @return array{status: self::REMISE, submission: EvaluationSubmission}|array{status: self::AUCUNE_TENTATIVE|self::VERROUILLEE}
+     * @return array{status: self::REMISE, submission: EvaluationSubmission}|array{status: self::AUCUNE_TENTATIVE|self::VERROUILLEE|self::CONFLIT}
      */
     public function remettre(int $evaluationId, User $eleve, array $reponses): array
     {
@@ -53,9 +58,7 @@ final class RemiseDeCopie
         }
 
         if ($copie->estEchue()) {
-            $this->verrouiller($copie, $reponses);
-
-            return ['status' => self::VERROUILLEE];
+            return ['status' => $this->verrouiller($copie, $reponses) === 1 ? self::VERROUILLEE : $this->etatReel($copie)];
         }
 
         $copie->answers = $reponses;
@@ -64,17 +67,35 @@ final class RemiseDeCopie
         return ['status' => self::REMISE, 'submission' => $copie];
     }
 
-    /** @param  array<int|string, mixed>  $reponses */
-    private function verrouiller(EvaluationSubmission $copie, array $reponses): void
+    /**
+     * @param  array<int|string, mixed>  $reponses
+     * @return int le nombre de copies verrouillées : 1, ou 0 si une requête concurrente a gagné
+     */
+    private function verrouiller(EvaluationSubmission $copie, array $reponses): int
     {
         // Même encodage que le cast `array` du modèle (`Model::asJson`).
-        EvaluationSubmission::query()
+        return EvaluationSubmission::query()
             ->whereKey($copie->getKey())
             ->where('status', EvaluationSubmissionStatus::EnCours->value)
             ->update([
                 'status' => EvaluationSubmissionStatus::Verrouille->value,
                 'answers' => json_encode($reponses),
             ]);
+    }
+
+    /**
+     * L'état RÉEL d'une copie que la course a fait perdre : remise par la gagnante
+     * (conflit), ou verrouillée par une autre remise tardive.
+     *
+     * @return self::CONFLIT|self::VERROUILLEE
+     */
+    private function etatReel(EvaluationSubmission $copie): string
+    {
+        $statut = EvaluationSubmission::query()->whereKey($copie->getKey())->value('status');
+
+        return in_array($statut, [EvaluationSubmissionStatus::Soumis->value, EvaluationSubmissionStatus::Corrige->value], true)
+            ? self::CONFLIT
+            : self::VERROUILLEE;
     }
 
     private function derniereEstVerrouillee(int $evaluationId, User $eleve): bool

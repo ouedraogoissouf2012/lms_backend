@@ -8218,6 +8218,9 @@ paths:
             - `reason: evaluation_attempt_locked` : l echeance est depassee (C28).
               La copie est verrouillee, gardee avec ses reponses, et ne sera pas
               notee ; toute nouvelle remise rend le meme refus, sans rien ecrire.
+            - `reason: evaluation_attempt_conflict` : remise tardive perdue contre une
+              remise dans le delai d une requete concurrente ; la copie est remise,
+              rien n est ecrit.
           content:
             application/json:
               schema:
@@ -8235,6 +8238,7 @@ paths:
                     type: string
                     enum:
                       - evaluation_attempt_locked
+                      - evaluation_attempt_conflict
         '422':
           description: "`answers` absent, vide, ou d un type refuse"
           content:

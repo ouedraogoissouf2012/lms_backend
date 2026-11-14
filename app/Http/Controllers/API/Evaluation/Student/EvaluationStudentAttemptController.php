@@ -127,6 +127,14 @@ final class EvaluationStudentAttemptController extends AuthenticatedController
                 );
             }
 
+            if ($resultat['status'] === RemiseDeCopie::CONFLIT) {
+                return $this->errorResponse(
+                    'Votre copie vient d\'être remise par une autre requête. Rechargez l\'évaluation.',
+                    409,
+                    reason: 'evaluation_attempt_conflict',
+                );
+            }
+
             if ($resultat['status'] === RemiseDeCopie::AUCUNE_TENTATIVE) {
                 return $this->errorResponse(
                     'Aucune tentative en cours pour cette évaluation. Démarrez-la avant de la rendre.',

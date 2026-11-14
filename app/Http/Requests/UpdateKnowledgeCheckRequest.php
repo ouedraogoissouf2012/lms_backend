@@ -36,7 +36,9 @@ final class UpdateKnowledgeCheckRequest extends FormRequest
         return [
             'title' => 'sometimes|required|string|max:255',
             'description' => 'nullable|string',
-            'questions' => 'sometimes|required|array|min:1',
+            // Une LISTE (D520) : indexées par des clés, les questions échappaient à la
+            // règle qui lit la question voisine par son rang (questions.N.correct_answer).
+            'questions' => 'sometimes|required|list|min:1',
             'questions.*.question' => 'required_with:questions|string',
             'questions.*.type' => 'required_with:questions|in:single,multiple,true_false',
             'questions.*.options' => 'required_with:questions|list|min:2',

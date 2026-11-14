@@ -2679,6 +2679,9 @@ components:
         evaluation:
           description: "La relation chargee, presente seulement quand la route la charge (la remise)."
           $ref: '#/components/schemas/EvaluationRecord'
+        student:
+          description: "L auteur de la copie, relation chargee, presente seulement quand la route la charge (la notation)."
+          $ref: '#/components/schemas/User'
 
     EvaluationRecord:
       type: object
@@ -8844,12 +8847,7 @@ paths:
                   message:
                     type: string
                   data:
-                    allOf:
-                      - $ref: '#/components/schemas/EvaluationSubmissionRecord'
-                      - type: object
-                        properties:
-                          student:
-                            $ref: '#/components/schemas/User'
+                    $ref: '#/components/schemas/EvaluationSubmissionRecord'
         '401':
           description: "Non authentifie"
           content:

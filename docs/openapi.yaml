@@ -2897,6 +2897,55 @@ components:
           oneOf:
             - $ref: '#/components/schemas/EvaluationSubmissionRecord'
 
+    EvaluationQuestionDeLaCopie:
+      type: object
+      additionalProperties: false
+      description: |
+        Une question vue dans « ma copie ». Le corrige (`correct_answers`, `explanation`)
+        n est present qu une fois `correction_available` vrai. Schema FERME : il remplace
+        un `allOf` que le validateur du depot refuse.
+      properties:
+        id:
+          type: integer
+        evaluation_id:
+          type: integer
+        question:
+          type: string
+        type:
+          type: string
+          enum: [qcm, qcm_multiple, vrai_faux, reponse_courte, dissertation]
+        ordre:
+          type: integer
+        points:
+          $ref: '#/components/schemas/Decimal2'
+        options:
+          nullable: true
+          type: array
+          items:
+            type: string
+        is_required:
+          type: boolean
+        institution_id:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        correct_answers:
+          type: array
+          nullable: true
+          description: "Present seulement une fois `correction_available` vrai : des libelles, ou des indices d option."
+          items:
+            oneOf:
+              - type: string
+              - type: integer
+        explanation:
+          type: string
+          nullable: true
+          description: "Present seulement une fois `correction_available` vrai"
+
     EvaluationQuestionPublic:
       type: object
       description: "Une question SANS son corrige (`correct_answers` et `explanation` sont masques sur le modele)."
@@ -8415,19 +8464,13 @@ paths:
                       questions:
                         type: array
                         items:
-                          allOf:
-                            - $ref: '#/components/schemas/EvaluationQuestionPublic'
-                            - type: object
-                              properties:
-                                correct_answers:
-                                  description: "Present seulement une fois `correction_available` vrai"
-                                explanation:
-                                  type: string
-                                  nullable: true
-                                  description: "Present seulement une fois `correction_available` vrai"
+                          $ref: '#/components/schemas/EvaluationQuestionDeLaCopie'
                       answers:
                         type: object
                         additionalProperties: true
+                        description: |
+                          MAP `{ "<question_id>": reponse }`. Toujours un objet : `{}` quand la copie
+                          n a pas de reponse (jamais un tableau).
                       correction_available:
                         type: boolean
                       correction_available_at:

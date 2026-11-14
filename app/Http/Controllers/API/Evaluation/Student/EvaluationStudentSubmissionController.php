@@ -81,7 +81,9 @@ final class EvaluationStudentSubmissionController extends AuthenticatedControlle
                 'note_sur_20' => $note,
                 'feedback' => $submission->feedback,
                 'questions' => $questionsData,
-                'answers' => $submission->answers ?? [],
+                // Toujours un objet JSON, `{}` quand la copie est vide : un tableau vide
+                // s'encoderait `[]`, contre la spec et la prop `Object` du front.
+                'answers' => (object) ($submission->answers ?? []),
                 'correction_available' => $correctionAvailable,
                 'correction_available_at' => $correctionAvailableAt,
                 'correction_delay_days' => self::CORRECTION_DELAY_DAYS,

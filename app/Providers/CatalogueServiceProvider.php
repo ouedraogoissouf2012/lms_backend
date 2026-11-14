@@ -37,7 +37,10 @@ use App\Services\Matiere\MatiereDetailsReader;
 use App\Services\Matiere\MyMatieresQueryService;
 use App\Services\Matiere\TeacherMatieresReader;
 use App\Services\Roster\RosterAuthorityFactory;
+use App\Services\SeanceDetailQueryService;
+use App\Services\Seances\LocalSeanceDetailReader;
 use App\Services\Seances\LocalSeancesListReader;
+use App\Services\Seances\SeanceDetailReader;
 use App\Services\Seances\SeancesListReader;
 use App\Services\SeancesListQueryService;
 use Illuminate\Support\ServiceProvider;
@@ -88,6 +91,8 @@ final class CatalogueServiceProvider extends ServiceProvider
         InstitutionTeachersReader::class => [KlassciInstitutionTeachersReader::class, LocalInstitutionTeachersReader::class],
         // R4 : le tableau de bord de l'enseignant, composé des sources ci-dessus.
         TeacherDashboardReader::class => [KlassciTeacherDashboardReader::class, LocalTeacherDashboardReader::class],
+        // Le détail d'une séance, sous la règle de la liste du lot 3d.
+        SeanceDetailReader::class => [SeanceDetailQueryService::class, LocalSeanceDetailReader::class],
     ];
 
     /**

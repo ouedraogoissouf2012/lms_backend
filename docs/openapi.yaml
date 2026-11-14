@@ -1996,6 +1996,28 @@ components:
           type: object
           description: "Ecole creee depuis KLASSCI seulement."
 
+    RefusApercuEvaluation:
+      type: object
+      description: |
+        Le 403 de `/evaluations/{id}/preview`. Le motif ferme
+        `preview_requires_finished_evaluation` dit qu un coordinateur ne previsualise
+        que les evaluations terminees ; le refus d acces de la requete n en porte pas.
+      additionalProperties: false
+      required:
+        - success
+        - message
+      properties:
+        success:
+          type: boolean
+          enum:
+            - false
+        message:
+          type: string
+        reason:
+          type: string
+          enum:
+            - preview_requires_finished_evaluation
+
     MessageOnly:
       type: object
       properties:
@@ -9357,7 +9379,11 @@ paths:
                             ordre:
                               type: integer
                             options:
+                              type: array
                               nullable: true
+                              description: "Choix proposes : une liste de textes, ou `null`."
+                              items:
+                                type: string
                       questions_count:
                         type: integer
                       total_points:
@@ -9376,11 +9402,12 @@ paths:
           description: |
             Role insuffisant, enseignant non proprietaire, coordinateur sur une
             evaluation non terminee — ou evaluation inconnue dans cet
-            etablissement : elle rend 403, pas 404.
+            etablissement : elle rend 403, pas 404. Seul le refus du coordinateur
+            porte `reason: preview_requires_finished_evaluation`.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/MessageOnly'
+                $ref: '#/components/schemas/RefusApercuEvaluation'
         '500':
           description: "Erreur interne"
           content:

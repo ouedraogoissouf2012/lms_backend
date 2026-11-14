@@ -15,6 +15,7 @@ use App\Services\Evaluation\Student\LocalMatieresDesNotes;
 use App\Services\Evaluation\Student\StudentGradesAggregator;
 use App\Support\Catalogue\SourceLocale;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Database\Query\JoinClause;
 use Illuminate\Support\Facades\DB;
 
 /**

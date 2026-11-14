@@ -76,6 +76,9 @@ final class StudentGradesVisibilityTest extends TestCase
             'institution_id' => $this->institution->id,
             'titre' => $titre,
             'is_published' => true,
+            // La fabrique tire `show_results` au hasard ; depuis C30 (E4a), une
+            // évaluation aux résultats cachés n'apporte aucune note ici.
+            'show_results' => true,
             'coefficient' => 1,
         ]);
 

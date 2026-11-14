@@ -54,6 +54,7 @@ final class NoRawExceptionMessageTest extends TestCase
     /** @var array<string, array{0: int, 1: string}> fichier => [compte, motif] */
     private const SITES_NOMMES = [
         'app/Http/Controllers/API/Evaluation/Student/EvaluationStudentAttemptController.php' => [1, 'comparaison avec le message d\'un service métier ; rien n\'est écrit'],
+        'app/Services/Evaluation/Student/ConflitDeCopie.php' => [1, 'nom de la contrainte d\'unicité comparé, course entre deux /start ; rien n\'est écrit'],
         'app/Exceptions/KlassciUnavailableException.php' => [1, 'transport KLASSCI : le message d\'une ConnectionException (hôte, URL)'],
         'app/Services/Klassci/Auth/KlassciAuthClient.php' => [1, 'transport KLASSCI : message d\'une ConnectionException'],
         'app/Services/Klassci/Health/HttpKlassciReachability.php' => [1, 'mesure de joignabilité : message d\'une ConnectionException'],

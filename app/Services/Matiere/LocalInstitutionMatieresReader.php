@@ -8,6 +8,7 @@ use App\Models\Classe;
 use App\Models\Lesson;
 use App\Models\Matiere;
 use App\Models\User;
+use App\Services\Evaluation\EvaluationsDeLaPage;
 use App\Support\Catalogue\SourceLocale;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -34,8 +35,9 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
  * Ni heures, ni séances par matière, ni filière, ni niveau, ni couleur :
  * - `heures_total` et `nb_seances_programmees` valent `null`, « inconnu »,
  *   jamais 0 (une séance locale ne porte que le NOM de sa matière) ;
- * - `nb_evaluations` vaut 0, et c'est un fait : aucune évaluation n'existe
- *   encore dans une école créée depuis le LMS (provisoire, D72) ;
+ * - `nb_evaluations` compte toutes les évaluations de l'établissement dans la
+ *   matière, en une requête groupée ({@see EvaluationsDeLaPage::compteParMatiere()},
+ *   D72, E4c) ;
  * - `combinaisons` est vide : aucune filière ni aucun niveau local ;
  * - `couleur` est la couleur par défaut de l'écran, un réglage d'affichage.
  *
@@ -92,6 +94,9 @@ final class LocalInstitutionMatieresReader implements InstitutionMatieresReader
         $institution = $user->institution_id;
         $matieres = is_int($institution) ? $this->atteintes($user, $institution)->get()->all() : [];
         $lecons = is_int($institution) ? $this->leconsParMatiere($matieres, $institution) : [];
+        $evaluations = is_int($institution)
+            ? EvaluationsDeLaPage::compteParMatiere($institution, array_values(array_map(static fn (Matiere $m): int => $m->id, $matieres)), null)
+            : [];
 
         $lignes = array_values(array_map(static fn (Matiere $matiere): array => [
             'id' => $matiere->id,
@@ -101,7 +106,7 @@ final class LocalInstitutionMatieresReader implements InstitutionMatieresReader
             'coefficient' => $matiere->coefficient,
             'couleur' => AdminMatierePresentation::COULEUR_PAR_DEFAUT,
             'heures_total' => null,
-            'nb_evaluations' => 0,
+            'nb_evaluations' => $evaluations[$matiere->id] ?? 0,
             'nb_seances_programmees' => null,
             'nb_lecons' => $lecons[$matiere->id] ?? 0,
             'combinaisons' => [],

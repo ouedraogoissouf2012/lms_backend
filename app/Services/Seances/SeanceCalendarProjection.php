@@ -37,6 +37,9 @@ final class SeanceCalendarProjection
         return [
             'id' => $identite->id,
             'klassci_seance_id' => $seance->klassci_seance_id,
+            // Le titre de la LIGNE, dans les deux types d'école ; null s'il est absent
+            // ou vide : rien n'est inventé, pas même le nom de la matière.
+            'titre' => is_string($seance->titre) && $seance->titre !== '' ? $seance->titre : null,
             'date_seance' => $start?->format('Y-m-d'),
             'date_debut' => $startIso,
             'date_fin' => $endIso,

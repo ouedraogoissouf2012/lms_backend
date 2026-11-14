@@ -7,7 +7,10 @@ namespace App\Http\Controllers\API\Proxy;
 use App\Http\Controllers\API\Proxy\Concerns\RendersKlassciProxyErrors;
 use App\Http\Controllers\API\Proxy\Concerns\ResolvesPersonalKlassciToken;
 use App\Http\Controllers\Controller;
+use App\Models\User;
+use App\Services\Evaluation\Programming\ProgrammationDesEvaluationsReader;
 use App\Services\KlassciProxyService;
+use Illuminate\Auth\AuthenticationException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -34,19 +37,22 @@ final class ProxyAcademicController extends Controller
     }
 
     /**
-     * GET /api/proxy/evaluations — Évaluations du porteur authentifié.
+     * GET /api/proxy/evaluations — la programmation des évaluations du porteur.
+     *
+     * Même route, autre source (ADR-EI-01), reçue par la MÉTHODE : le jeton KLASSCI
+     * personnel est exigé par la source KLASSCI, plus ici. Vérifié avant le choix de
+     * la source, il refusait l'école créée depuis le LMS (401 relevé par l'E2E).
      */
-    public function evaluations(Request $request): JsonResponse
+    public function evaluations(Request $request, ProgrammationDesEvaluationsReader $programmation): JsonResponse
     {
-        try {
-            $klassciToken = $this->personalKlassciToken($request);
-            if ($klassciToken === null) {
-                return $this->missingKlassciTokenResponse();
-            }
+        $user = $request->user();
 
-            $filters = $request->only(['matiere_id', 'classe_id', 'statut']);
-            $data = $this->klassciService->getEvaluations($klassciToken, $filters);
-            return response()->json($data);
+        if (! $user instanceof User) {
+            throw new AuthenticationException;
+        }
+
+        try {
+            return response()->json($programmation->list($user, $request->only(['matiere_id', 'classe_id', 'statut'])));
         } catch (\Exception $e) {
             return $this->proxyErrorResponse($e);
         }

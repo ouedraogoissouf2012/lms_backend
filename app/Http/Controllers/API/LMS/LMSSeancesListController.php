@@ -125,9 +125,10 @@ final class LMSSeancesListController extends AuthenticatedController
             $user = $this->authenticatedUser($request);
             $result = $seances->getMyClassesForUser($user);
 
-            // Cas particulier : étudiant sans classe résoluble
+            // Cas particulier : étudiant sans classe résoluble. Le motif distingue ce
+            // 404 d'un 404 relayé de KLASSCI, que la même route rend aussi.
             if (isset($result['classe_missing']) && $result['classe_missing'] === true) {
-                return $this->errorResponse('Aucune classe trouvée pour cet étudiant', 404);
+                return $this->errorResponse('Aucune classe trouvée pour cet étudiant', 404, reason: 'student_without_active_class');
             }
 
             // Cas particulier : étudiant avec classe mais aucune matière (200 + message)

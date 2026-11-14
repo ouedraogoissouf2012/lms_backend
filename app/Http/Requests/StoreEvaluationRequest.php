@@ -23,7 +23,7 @@ use Illuminate\Foundation\Http\FormRequest;
  * - question: text
  * - type: qcm, qcm_multiple, vrai_faux, reponse_courte, dissertation
  * - points: numeric
- * - options: array
+ * - options: list of strings, or null
  * - correct_answers: array
  */
 final class StoreEvaluationRequest extends FormRequest
@@ -85,7 +85,11 @@ final class StoreEvaluationRequest extends FormRequest
             'questions.*.question' => 'required|string|max:1000',
             'questions.*.type' => 'required|in:qcm,qcm_multiple,vrai_faux,reponse_courte,dissertation',
             'questions.*.points' => 'nullable|numeric|min:0',
-            'questions.*.options' => 'nullable|array',
+            // Une liste de textes, ou null : ce que le front envoie, et ce que la
+            // spec décrit. Sans la règle sur les éléments, le serveur gardait des
+            // nombres, des objets, ou un tableau associatif rendu en objet JSON.
+            'questions.*.options' => 'nullable|list',
+            'questions.*.options.*' => 'string',
             'questions.*.correct_answers' => 'nullable|array',
         ];
     }

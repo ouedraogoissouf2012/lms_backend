@@ -31,7 +31,10 @@ use Tests\TestCase;
  *
  * ## Ce que ces tests figent
  *
- * - Chaque POINT DE RENDU (12 sites, cinq familles) rend 401 et
+ * - Chaque POINT DE RENDU (11 sites, cinq familles ; « ma copie » n'en est plus
+ *   un depuis D72, E2a, voir son test ; le démarrage n'en est un que dans
+ *   l'école créée depuis KLASSCI depuis E2b, les résultats par classe depuis
+ *   E3) rend 401 et
  *   `klassci_token_missing`, avec un message qui nomme KLASSCI et ne demande pas
  *   de se reconnecter.
  * - Le jeton EXPIRÉ (KLASSCI répond 401) garde `klassci_session_expired`, sur le
@@ -87,7 +90,12 @@ final class KlassciTokenMissingReasonTest extends TestCase
 
     // ───────────────────────── proxy : ResolvesPersonalKlassciToken
 
-    #[DataProvider('volets')]
+    /**
+     * Déclaré : dans une école créée depuis le LMS, `/proxy/evaluations` rend une
+     * liste vide, sans jeton (`ProxyEvaluationsEcoleLmsTest`). Le 401 ne vaut que
+     * pour l'école KLASSCI.
+     */
+    #[DataProvider('voletKlassciSeul')]
     public function test_proxy_evaluations_dit_le_jeton_absent(InstitutionMode $mode): void
     {
         $compte = $this->compteSansJeton($mode, 'enseignant');
@@ -95,7 +103,8 @@ final class KlassciTokenMissingReasonTest extends TestCase
         $this->assertJetonAbsent($this->asTenant($compte)->getJson('/api/proxy/evaluations'));
     }
 
-    #[DataProvider('volets')]
+    /** École KLASSCI seule : dans l'école du LMS, le tableau de l'élève se lit en local (TableauDeBordEleveLocalTest). */
+    #[DataProvider('voletKlassciSeul')]
     public function test_proxy_tableau_de_bord_eleve_dit_le_jeton_absent(InstitutionMode $mode): void
     {
         $compte = $this->compteSansJeton($mode, 'etudiant');
@@ -131,7 +140,12 @@ final class KlassciTokenMissingReasonTest extends TestCase
         $this->assertJetonAbsent($this->asTenant($compte)->getJson('/api/lms/classes/42/etudiants'));
     }
 
-    #[DataProvider('volets')]
+    /**
+     * Depuis D72 (E3), les résultats d'une école indépendante lisent le roster
+     * local, sans jeton (`EnseignantCorrigeSesEvaluationsTest`) : le point de
+     * rendu n'est plus sur leur chemin.
+     */
+    #[DataProvider('voletKlassciSeul')]
     public function test_resultats_par_classe_dit_le_jeton_absent(InstitutionMode $mode): void
     {
         // `authorize()` exige le propriétaire : l'enseignant porte son identité.
@@ -156,7 +170,12 @@ final class KlassciTokenMissingReasonTest extends TestCase
         );
     }
 
-    #[DataProvider('volets')]
+    /**
+     * Depuis D72 (E2b), le démarrage d'une école indépendante lit sa fenêtre
+     * sur la ligne, sans jeton (`ElevePasseSonEvaluationTest`) : le point de
+     * rendu n'est plus sur son chemin.
+     */
+    #[DataProvider('voletKlassciSeul')]
     public function test_demarrer_une_evaluation_dit_le_jeton_absent(InstitutionMode $mode): void
     {
         $eleve = $this->compteIdentifieSansJeton($mode, 'etudiant');
@@ -178,7 +197,12 @@ final class KlassciTokenMissingReasonTest extends TestCase
 
     // ───────────────────────── élève sans identité KLASSCI
 
-    #[DataProvider('volets')]
+    /**
+     * Depuis D72 (E2a), la liste d'une école indépendante lit sa source locale
+     * (`EleveVoitSesEvaluationsTest`) : le point de rendu n'est plus sur son
+     * chemin.
+     */
+    #[DataProvider('voletKlassciSeul')]
     public function test_mes_evaluations_sans_identite_klassci(InstitutionMode $mode): void
     {
         $eleve = $this->compteLocal($mode, 'etudiant');
@@ -186,7 +210,7 @@ final class KlassciTokenMissingReasonTest extends TestCase
         $this->assertJetonAbsent($this->asTenant($eleve)->getJson('/api/evaluations/student'));
     }
 
-    #[DataProvider('volets')]
+    #[DataProvider('voletKlassciSeul')]
     public function test_mes_evaluations_identite_sans_jeton(InstitutionMode $mode): void
     {
         // L'identité passe la garde du contrôleur ; c'est le SERVICE qui lève.
@@ -195,7 +219,12 @@ final class KlassciTokenMissingReasonTest extends TestCase
         $this->assertJetonAbsent($this->asTenant($eleve)->getJson('/api/evaluations/student'));
     }
 
-    #[DataProvider('volets')]
+    /**
+     * D72 (E4a), déclaré : dans une école créée depuis le LMS, « Mes notes » ne
+     * demande plus d'identité KLASSCI (`EleveVoitSesNotesTest`). Le 401 ne vaut que
+     * pour l'école KLASSCI.
+     */
+    #[DataProvider('voletKlassciSeul')]
     public function test_mes_notes_sans_identite_klassci(InstitutionMode $mode): void
     {
         // Le refus est rendu DANS le `try` : il doit sortir tel quel, pas en 500.
@@ -204,18 +233,25 @@ final class KlassciTokenMissingReasonTest extends TestCase
         $this->assertJetonAbsent($this->asTenant($eleve)->getJson('/api/my-grades'));
     }
 
+    /**
+     * D72 (E2a), déclaré : « ma copie » n'est plus un point de rendu du 401. La
+     * copie appartient à son auteur par `student_id` ; sans copie à soi, 404,
+     * dans les deux volets.
+     */
     #[DataProvider('volets')]
-    public function test_ma_copie_sans_identite_klassci(InstitutionMode $mode): void
+    public function test_ma_copie_sans_identite_klassci_rend_404_sans_copie(InstitutionMode $mode): void
     {
-        // Même garde, elle aussi DANS un `try`.
         $eleve = $this->compteLocal($mode, 'etudiant');
 
-        $this->assertJetonAbsent($this->asTenant($eleve)->getJson('/api/evaluations/1/my-submission'));
+        $this->asTenant($eleve)->getJson('/api/evaluations/1/my-submission')
+            ->assertNotFound()
+            ->assertJsonMissingPath('reason');
     }
 
     // ───────────────────────── le jeton EXPIRÉ reste distinct
 
-    #[DataProvider('volets')]
+    /** Déclaré : l'école créée depuis le LMS ne demande rien à KLASSCI sur ce proxy. */
+    #[DataProvider('voletKlassciSeul')]
     public function test_jeton_expire_sur_le_proxy_dit_session_expiree(InstitutionMode $mode): void
     {
         $compte = $this->compteAvecJeton($mode, 'enseignant');

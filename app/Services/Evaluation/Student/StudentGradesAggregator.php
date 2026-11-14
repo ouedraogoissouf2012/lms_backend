@@ -8,8 +8,6 @@ use App\Models\Evaluation;
 use App\Models\EvaluationSubmission;
 use App\Models\User;
 use App\Services\Evaluation\EvaluationGradingService;
-use App\Services\KlassciProxyService;
-use App\Support\Logging\CaughtExceptionLog;
 
 /**
  * Agrégation des notes étudiantes par matière — extrait de
@@ -19,23 +17,30 @@ use App\Support\Logging\CaughtExceptionLog;
  * et la moyenne générale across toutes les matières.
  *
  * Exclut les soumissions d'entraînement (feedback préfixé `[PRACTICE]`).
+ *
+ * D72, E4a : les matières viennent de la source de l'école
+ * ({@see MatieresDesNotes}) : la clé de regroupement et le nom, dans l'espace de
+ * l'école. C30 (règle A de l'utilisateur) : une évaluation aux résultats cachés
+ * garde sa ligne, SANS la clé `note` (la forme de {@see ResultatsVisibles} sur la
+ * liste), et n'entre dans aucune moyenne. Les moyennes suivent la règle unique des
+ * agrégats sans mesure ({@see Moyennes}) : rien à moyenner, `null`.
  */
 final class StudentGradesAggregator
 {
     public function __construct(
-        private readonly KlassciProxyService $klassciService,
         private readonly EvaluationGradingService $grading,
-        private readonly CaughtExceptionLog $journal,
     ) {}
 
     /**
-     * @return array{matieres: array<int, array<string, mixed>>, moyenne_generale: float, total_matieres: int, total_evaluations: int}
+     * @return array{matieres: array<int, array<string, mixed>>, moyenne_generale: float|null, total_matieres: int, total_evaluations: int}
      */
-    public function getGradesAggregatedByMatiere(User $user): array
+    public function getGradesAggregatedByMatiere(User $user, MatieresDesNotes $matieres): array
     {
-        $matieresData = $this->fetchMatieresNames($user);
         $submissions = $this->fetchFinalSubmissions($user);
-        $gradesByMatiere = $this->groupByMatiere($submissions, $matieresData);
+        $cles = array_values(array_unique($submissions
+            ->map(static fn (EvaluationSubmission $s): int => $s->evaluation instanceof Evaluation ? $matieres->cleDe($s->evaluation) : 0)
+            ->all()));
+        $gradesByMatiere = $this->groupByMatiere($submissions, $matieres, $matieres->noms($user, $cles));
         $this->computeMatiereAverages($gradesByMatiere);
 
         $gradesList = array_values($gradesByMatiere);
@@ -49,30 +54,6 @@ final class StudentGradesAggregator
             'total_matieres' => $countMatieres,
             'total_evaluations' => $submissions->count(),
         ];
-    }
-
-    /**
-     * @return array<int, string>  Map matiere_id → nom KLASSCI
-     */
-    private function fetchMatieresNames(User $user): array
-    {
-        $token = $user->klassci_token;
-        if (! is_string($token) || $token === '') {
-            return [];
-        }
-
-        $matieresData = [];
-        try {
-            $matieresResponse = $this->klassciService->getMatieres($token);
-            if (($matieresResponse['success'] ?? false) && isset($matieresResponse['data'])) {
-                foreach ($matieresResponse['data'] as $matiere) {
-                    $matieresData[$matiere['id']] = $matiere['nom'];
-                }
-            }
-        } catch (\Exception $e) {
-            $this->journal->warning('Impossible de récupérer les matières depuis KLASSCI', $e);
-        }
-        return $matieresData;
     }
 
     /**
@@ -128,10 +109,10 @@ final class StudentGradesAggregator
 
     /**
      * @param  \Illuminate\Database\Eloquent\Collection<int, EvaluationSubmission>  $submissions
-     * @param  array<int, string>  $matieresData
-     * @return array<int, array<string, mixed>>  Indexé par matiere_id
+     * @param  array<int, string>  $matieresData  clé de la source => nom
+     * @return array<int, array<string, mixed>>  Indexé par la clé de la source
      */
-    private function groupByMatiere(\Illuminate\Database\Eloquent\Collection $submissions, array $matieresData): array
+    private function groupByMatiere(\Illuminate\Database\Eloquent\Collection $submissions, MatieresDesNotes $matieres, array $matieresData): array
     {
         $gradesByMatiere = [];
         foreach ($submissions as $submission) {
@@ -140,7 +121,7 @@ final class StudentGradesAggregator
                 continue;
             }
 
-            $matiereId = $evaluation->klassci_matiere_id ?? 0;
+            $matiereId = $matieres->cleDe($evaluation);
             $matiereNom = $matieresData[$matiereId] ?? $evaluation->matiere_nom ?? 'Matière inconnue';
 
             if (!isset($gradesByMatiere[$matiereId])) {
@@ -148,12 +129,12 @@ final class StudentGradesAggregator
                     'matiere_id' => $matiereId,
                     'matiere_nom' => $matiereNom,
                     'evaluations' => [],
-                    'moyenne' => 0,
+                    'moyenne' => null,
                     'total_evaluations' => 0,
                 ];
             }
 
-            $gradesByMatiere[$matiereId]['evaluations'][] = [
+            $ligne = [
                 'evaluation_id' => $evaluation->id,
                 'titre' => $evaluation->titre,
                 'type' => $evaluation->type,
@@ -163,6 +144,11 @@ final class StudentGradesAggregator
                 'date_soumission' => $submission->submitted_at,
                 'temps_passe' => $submission->temps_passe_minutes,
             ];
+            // C30 : la ligne reste, la clé de la note est RETIRÉE (forme de la liste).
+            if (! ResultatsVisibles::pour($evaluation)) {
+                unset($ligne['note']);
+            }
+            $gradesByMatiere[$matiereId]['evaluations'][] = $ligne;
         }
         return $gradesByMatiere;
     }
@@ -173,32 +159,33 @@ final class StudentGradesAggregator
     private function computeMatiereAverages(array &$gradesByMatiere): void
     {
         foreach ($gradesByMatiere as &$matiere) {
-            $totalPoints = 0;
-            $totalCoef = 0;
+            $comptees = [];
             foreach ($matiere['evaluations'] as $eval) {
-                $totalPoints += $eval['note'] * $eval['coefficient'];
-                $totalCoef += $eval['coefficient'];
+                // Une note cachée (sans clé) ou absente n'entre dans aucune moyenne.
+                if (isset($eval['note']) && is_numeric($eval['note']) && is_numeric($eval['coefficient'])) {
+                    $comptees[] = [$eval['note'], $eval['coefficient']];
+                }
             }
-            $matiere['moyenne'] = $totalCoef > 0 ? round($totalPoints / $totalCoef, 2) : 0;
+            $matiere['moyenne'] = Moyennes::ponderee($comptees);
             $matiere['total_evaluations'] = count($matiere['evaluations']);
         }
     }
 
     /**
      * @param  array<int, array<string, mixed>>  $gradesList
-     * @return array{0: float, 1: int}  [moyenne_generale, count_matieres]
+     * @return array{0: float|null, 1: int}  [moyenne_generale, count_matieres]
      */
     private function computeOverallAverage(array $gradesList): array
     {
-        $totalMoyenne = 0;
+        $moyennes = [];
         $countMatieres = 0;
         foreach ($gradesList as $matiere) {
             if ($matiere['total_evaluations'] > 0) {
-                $totalMoyenne += $matiere['moyenne'];
+                $moyennes[] = is_float($matiere['moyenne']) ? $matiere['moyenne'] : null;
                 $countMatieres++;
             }
         }
-        $moyenneGenerale = $countMatieres > 0 ? round($totalMoyenne / $countMatieres, 2) : 0;
-        return [$moyenneGenerale, $countMatieres];
+
+        return [Moyennes::simple($moyennes), $countMatieres];
     }
 }

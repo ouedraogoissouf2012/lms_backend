@@ -189,11 +189,11 @@ final class EvaluationLearnerReachTest extends TestCase
 
     /**
      * Volet école autonome. Un élève d'école autonome n'a ni jeton ni identité
-     * KLASSCI, et ses évaluations sont locales (sans classe KLASSCI) : il n'a
-     * aujourd'hui aucun écran d'évaluation (#805). Au-delà du 401, rien n'est
-     * atteignable. La classe se lit chez KLASSCI, et la propriété d'une copie
-     * porte l'identité KLASSCI. Les trois routes refusent donc en 401, sans
-     * rien écrire.
+     * KLASSCI. Depuis D72 (E2a), sa copie lui appartient par `student_id` :
+     * « ma copie » répond 404 tant qu'il n'en a pas (au lieu du 401 d'avant,
+     * déclaré). Depuis E2b, le démarrage et `time-status` n'exigent plus de
+     * jeton : une évaluation hors de ses classes actives (ici, sans classe
+     * locale) rend 404, comme sa liste. Rien n'est écrit.
      */
     public function test_dans_une_ecole_autonome_rien_ne_se_demarre(): void
     {
@@ -201,9 +201,9 @@ final class EvaluationLearnerReachTest extends TestCase
         $this->klassciRend(self::CLASSE);
         $locale = $this->evaluation(null);
 
-        $this->asTenant($eleve)->postJson("/api/evaluations/{$locale->id}/start")->assertUnauthorized();
-        $this->asTenant($eleve)->getJson("/api/evaluations/{$locale->id}/time-status")->assertUnauthorized();
-        $this->asTenant($eleve)->getJson("/api/evaluations/{$locale->id}/my-submission")->assertUnauthorized();
+        $this->asTenant($eleve)->postJson("/api/evaluations/{$locale->id}/start")->assertNotFound();
+        $this->asTenant($eleve)->getJson("/api/evaluations/{$locale->id}/time-status")->assertNotFound();
+        $this->asTenant($eleve)->getJson("/api/evaluations/{$locale->id}/my-submission")->assertNotFound();
         self::assertSame(0, $this->copies());
     }
 
@@ -470,6 +470,70 @@ final class EvaluationLearnerReachTest extends TestCase
         self::assertFalse($parId[5002]['has_online'], 'une version d une autre classe mene a l ecran de passage');
         self::assertNull($parId[5002]['online_version']);
         self::assertSame([$fiche['lmsSienne']->id], array_values(array_filter(array_column((array) $evaluations, 'lms_id'))));
+    }
+
+    /**
+     * C25 (D72, E2b) : la règle « résultats visibles » vaut aussi sur la fiche
+     * de la matière, pour ses deux sites (version en ligne d'une évaluation
+     * KLASSCI, et évaluation LMS seule). Avec `show_results = false`, ni la note
+     * ni le score ni les points par question.
+     */
+    public function test_la_fiche_matiere_ne_montre_pas_la_note_quand_les_resultats_sont_caches(): void
+    {
+        $eleve = $this->eleveConnecte();
+        $fiche = $this->ficheMatiere(self::CLASSE);
+        foreach (['versionSienne', 'lmsSienne'] as $cle) {
+            $fiche[$cle]->forceFill(['show_results' => false])->save();
+            $this->copieRendue($fiche[$cle], $eleve, now())
+                ->forceFill(['score' => 80, 'note_sur_20' => 16, 'manual_points' => ['1' => 4]])->save();
+        }
+
+        $evaluations = (array) $this->asTenant($eleve)->getJson('/api/lms/matieres/' . self::MATIERE)->assertOk()->json('data.evaluations_programmees');
+        $parId = array_column($evaluations, null, 'id');
+        $parLms = array_column(array_filter($evaluations, static fn ($e) => ($e['lms_id'] ?? null) !== null), null, 'lms_id');
+
+        foreach ([$parId[5001]['student_submission'] ?? null, $parLms[$fiche['lmsSienne']->id]['student_submission'] ?? null] as $copie) {
+            self::assertIsArray($copie, 'la copie de l eleve a disparu de la fiche');
+            foreach (['score', 'note_sur_20', 'manual_points'] as $champ) {
+                self::assertArrayNotHasKey($champ, $copie, "la fiche livre « {$champ} » malgre show_results = false");
+            }
+        }
+    }
+
+    /**
+     * D72, E4c, C32 : la garde `klassci_id` de la fiche matière tombe ; la copie
+     * appartient à son auteur (`ownedBy`, E2a). Un élève d'une école KLASSCI sans
+     * identité KLASSCI voit sa copie d'une évaluation LMS seule.
+     */
+    public function test_c32_l_eleve_sans_identite_klassci_voit_sa_copie_sur_la_fiche_matiere(): void
+    {
+        $eleve = $this->eleveConnecte();
+        $eleve->forceFill(['klassci_id' => null])->save();
+        $fiche = $this->ficheMatiere(self::CLASSE);
+        $this->copieRendue($fiche['lmsSienne'], $eleve, now());
+
+        $evaluations = (array) $this->asTenant($eleve)->getJson('/api/lms/matieres/' . self::MATIERE)->assertOk()->json('data.evaluations_programmees');
+        $parLms = array_column(array_filter($evaluations, static fn ($e) => ($e['lms_id'] ?? null) !== null), null, 'lms_id');
+
+        self::assertIsArray($parLms[$fiche['lmsSienne']->id]['student_submission'] ?? null, 'la copie de l eleve sans identite KLASSCI a disparu');
+    }
+
+    /**
+     * D72, E4c : l'origine est dite côté local (`source: lms_local`), jamais côté
+     * KLASSCI. Aucun élément de la fiche matière d'une école KLASSCI ne porte la clé.
+     */
+    public function test_la_fiche_matiere_klassci_ne_porte_aucune_source(): void
+    {
+        $enseignant = $this->eleveConnecte('enseignant');
+        $this->ficheMatiere(self::CLASSE);
+
+        $evaluations = (array) $this->asTenant($enseignant)->getJson('/api/lms/matieres/' . self::MATIERE)->assertOk()->json('data.evaluations_programmees');
+
+        self::assertNotEmpty($evaluations);
+        foreach ($evaluations as $evaluation) {
+            self::assertIsArray($evaluation);
+            self::assertArrayNotHasKey('source', $evaluation);
+        }
     }
 
     /** Le personnel garde sa vue de la fiche, inchangée. */

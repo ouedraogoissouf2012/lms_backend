@@ -90,7 +90,7 @@ final class SearchDegradationTest extends TestCase
     public function test_the_klassci_envelope_is_unwrapped_instead_of_being_taken_for_an_outage(): void
     {
         // Forme RÉELLE du proxy — celle que lisent EvaluationCreationService:161,
-        // EvaluationEnrichmentService:64 et StudentGradesAggregator:59. Le code
+        // EvaluationEnrichmentService:64 et KlassciMatieresDesNotes::noms. Le code
         // d'origine parcourait l'enveloppe elle-même et ne trouvait jamais rien.
         $this->fakeKlassci(
             classes: ['success' => true, 'data' => $this->klassciClasses()],

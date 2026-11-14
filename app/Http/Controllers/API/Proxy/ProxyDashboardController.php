@@ -4,21 +4,21 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\API\Proxy;
 
+use App\Exceptions\BusinessException;
 use App\Http\Controllers\API\Proxy\Concerns\RendersKlassciProxyErrors;
-use App\Http\Controllers\API\Proxy\Concerns\ResolvesPersonalKlassciToken;
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Services\Dashboard\StudentDashboardReader;
 use App\Services\Dashboard\TeacherDashboardReader;
-use App\Services\KlassciProxyService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
 
 /**
  * Proxy KLASSCI — Dashboards utilisateur.
  *
- * Dashboards étudiant et enseignant : récupère le token KLASSCI stocké
- * en BDD pour l'utilisateur Sanctum authentifié et proxifie la requête.
+ * Dashboards étudiant et enseignant : même route, autre source (ADR-EI-01).
+ * Chaque tableau est un port reçu par la MÉTHODE ; la source KLASSCI relaie la
+ * charge de KLASSCI avec le jeton du compte, la source locale la lit en local.
  *
  * Extrait verbatim de ProxyController (395 lignes, 16 méthodes) splitté
  * en 3 controllers SRP par concern.
@@ -29,45 +29,28 @@ use Illuminate\Support\Facades\Log;
 final class ProxyDashboardController extends Controller
 {
     use RendersKlassciProxyErrors;
-    use ResolvesPersonalKlassciToken;
-
-    public function __construct(
-        private readonly KlassciProxyService $klassciService,
-    ) {
-    }
 
     /**
      * GET /api/proxy/me/dashboard — Dashboard étudiant.
      *
      * Retourne : classe, cours (matières), quiz (évaluations), notes,
-     * statistiques.
+     * statistiques. Même route, autre source, comme le tableau de l'enseignant :
+     * la source est reçue par la MÉTHODE. Un refus métier de la source locale
+     * (D57, inscription inactive) sort avec son statut et son motif.
      */
-    public function studentDashboard(Request $request): JsonResponse
+    public function studentDashboard(Request $request, StudentDashboardReader $tableau): JsonResponse
     {
         try {
             $user = $request->user();
-            if ($user === null) {
+            if (! $user instanceof User) {
                 return $this->errorResponse('Utilisateur non authentifié', 401);
             }
 
-            $klassciToken = $this->personalKlassciToken($request);
-            if ($klassciToken === null) {
-                return $this->missingKlassciTokenResponse();
-            }
-
-            Log::info('Student Dashboard request', [
-                'user_id' => $user->id,
-                'klassci_id' => $user->klassci_id,
-                'has_klassci_token' => ! empty($klassciToken),
-            ]);
-
-            $data = $this->klassciService->requestWithUserToken(
-                $klassciToken,
-                'me/dashboard',
-                'GET',
-            );
-
-            return response()->json($data);
+            return response()->json($tableau->dashboardFor($user));
+        } catch (BusinessException $e) {
+            // Avant le rendu du proxy : une RuntimeException 409 y passerait pour un
+            // refus relayé de KLASSCI, sans son message ni son motif.
+            return $this->errorResponse($e->getMessage(), $e->getCode(), reason: $e->reason);
         } catch (\Exception $e) {
             return $this->proxyErrorResponse($e);
         }

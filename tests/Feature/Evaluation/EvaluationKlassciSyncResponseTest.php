@@ -27,7 +27,8 @@ use Tests\TestCase;
  *    désormais INATTEIGNABLE : depuis que la route exige d'être propriétaire
  *    (SyncEvaluationNotesRequest), une évaluation inconnue est refusée en 403
  *    par `authorize()`, AVANT le contrôleur — comme `publish` et `submissions`.
- *  - 400 `{success, message}`                  (aucune évaluation KLASSCI liée)
+ *  - 422 `{success, message, reason}`          (aucune évaluation KLASSCI liée ;
+ *    400 sans motif avant D72, E3)
  *  - 200 `{success, message, data}`            (notes synchronisées)
  *
  * NON migrées (clés racine hors contrat que le trait n'émet pas → migrer
@@ -80,9 +81,10 @@ final class EvaluationKlassciSyncResponseTest extends TestCase
             ->assertJsonPath('success', false);
     }
 
-    public function test_sync_to_klassci_without_linked_evaluation_returns_400_error_envelope(): void
+    public function test_sync_to_klassci_without_linked_evaluation_returns_422_with_reason(): void
     {
-        // Pas d'évaluation KLASSCI liée → la branche d'envoi est sautée → 400.
+        // Pas d'évaluation KLASSCI liée → refus motivé avant tout traitement
+        // (D72, E3 ; c'était un 400 sans motif).
         $evaluation = Evaluation::factory()->create([
             'institution_id'        => $this->institution->id,
             // Possédée par l'enseignant du test : synchroniser exige d'être propriétaire.
@@ -94,8 +96,12 @@ final class EvaluationKlassciSyncResponseTest extends TestCase
 
         $response = $this->postJson("/api/evaluations/{$evaluation->id}/sync-klassci");
 
-        $response->assertStatus(400)
-            ->assertExactJson(['success' => false, 'message' => 'Aucune évaluation KLASSCI liée']);
+        $response->assertStatus(422)
+            ->assertExactJson([
+                'success' => false,
+                'message' => "Cette évaluation n'est liée à aucune évaluation KLASSCI : ses notes restent dans le LMS.",
+                'reason' => 'evaluation_not_linked_to_klassci',
+            ]);
     }
 
     public function test_sync_to_klassci_success_returns_success_envelope_with_message_and_data(): void

@@ -6,7 +6,6 @@ namespace Tests\Feature\Evaluation\Student;
 
 use App\Enums\InstitutionMode;
 use App\Exceptions\KlassciUnavailableException;
-use App\Exceptions\MissingKlassciTokenException;
 use App\Models\Evaluation;
 use App\Models\EvaluationQuestion;
 use App\Models\EvaluationSubmission;
@@ -184,9 +183,12 @@ final class MotifsDesRefusDeDemarrageTest extends TestCase
     }
 
     /**
-     * École créée depuis le LMS : aucun jeton KLASSCI, le démarrage s'arrête au
-     * 401 avant tout refus de démarrage. L'évaluation est hors ligne : si le
-     * démarrage allait plus loin, il rendrait `evaluation_offline_only`.
+     * École créée depuis le LMS : depuis D72 (E2b), le démarrage n'exige plus
+     * de jeton KLASSCI (il répondait 401). L'élève n'est inscrit dans aucune
+     * classe : l'évaluation n'est pas dans sa liste, et le démarrage s'arrête
+     * au 404, avant tout refus de démarrage. L'évaluation est hors ligne : si
+     * le démarrage allait plus loin, il rendrait `evaluation_offline_only`.
+     * Aucun appel ne part vers KLASSCI.
      */
     public function test_dans_l_ecole_creee_depuis_le_lms_aucun_de_ces_motifs_n_est_atteint(): void
     {
@@ -199,10 +201,7 @@ final class MotifsDesRefusDeDemarrageTest extends TestCase
         $evaluation = $this->evaluation(['is_online' => false]);
         $this->mock(KlassciProxyService::class, fn (MockInterface $mock) => $mock->shouldNotReceive('requestWithUserToken'));
 
-        // Le 401 du jeton KLASSCI absent, et non celui d'une session morte. Sa
-        // forme est prouvée exacte, plus étroitement que par la spec, qui le
-        // décrit par une réponse partagée (`$ref` vers `KlassciUnauthorized`).
-        $this->demarrer($evaluation)->assertStatus(401)->assertExactJson(MissingKlassciTokenException::payload());
+        $this->demarrer($evaluation)->assertNotFound()->assertJsonMissingPath('reason');
     }
 
     /** @param  array<string, mixed>  $attributs */
@@ -232,6 +231,8 @@ final class MotifsDesRefusDeDemarrageTest extends TestCase
             'evaluation_id' => $evaluation->id,
             'institution_id' => $this->ecole->id,
             'klassci_etudiant_id' => $this->eleve->klassci_id,
+            // L'auteur, comme `/start` l'écrit : sans lui, la fabrique en crée un autre.
+            'student_id' => $this->eleve->id,
             'status' => 'soumis',
         ]);
     }

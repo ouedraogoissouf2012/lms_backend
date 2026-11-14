@@ -24,15 +24,11 @@ use Tests\TestCase;
  * Contrat de `POST /lms/seances/{seanceId}/toggle-visio` : chaque réponse
  * RÉELLE suit ce que `docs/openapi.yaml` en dit, statut et corps.
  *
- * Les refus tournent pour les DEUX types d'école : créée depuis KLASSCI,
- * créée depuis le LMS. Le 200, le 422 et le 500 ne tournent que pour une
- * école créée depuis KLASSCI : la route rend le 401 à tout compte sans jeton
- * KLASSCI. Pour une école créée depuis le LMS, le compte est créé SANS jeton,
- * comme tout compte d'une telle école (`UserFactory` en donne un à tout
- * compte). La route ne lit ni le type ni le mode de l'école : une école créée
- * depuis KLASSCI passée en mode autonome garde les jetons de ses comptes, qui
- * ne sont pas refusés, ce que la spec dit. Vrai jeton porteur (`asTenant`). KLASSCI est simulé vide : les
- * notifications ne partent pas, la bascule aboutit.
+ * La source KLASSCI : une école en mode KLASSCI. Les refus de rôle tournent
+ * pour les DEUX types d'école ; la source locale d'une école en mode autonome
+ * (sans jeton, séance désignée par son id local) est contractée par
+ * `VisioBasculeLocaleTest`. Vrai jeton porteur (`asTenant`). KLASSCI est simulé
+ * vide : les notifications ne partent pas, la bascule aboutit.
  *
  * @see app/Services/Seances/Mutations/VisioToggleService.php
  */
@@ -104,11 +100,10 @@ final class VisioBasculeContractTest extends TestCase
         self::assertSame(1, Seance::query()->withoutGlobalScopes()->count());
     }
 
-    /** Un compte sans jeton KLASSCI : le 401 motivé de #806, et aucune séance n'est créée. */
-    #[DataProvider('typesDEcole')]
-    public function test_401_sans_jeton_klassci(bool $depuisLeLms): void
+    /** École en mode KLASSCI, compte sans jeton KLASSCI : le 401 motivé de #806, et aucune séance n'est créée. */
+    public function test_401_sans_jeton_klassci(): void
     {
-        $compte = $this->compte($this->ecole($depuisLeLms), 'coordinateur', null);
+        $compte = $this->compte($this->ecole(false), 'coordinateur', null);
 
         $reponse = $this->asTenant($compte)->postJson(self::URL, ['enabled' => true])->assertUnauthorized();
 

@@ -21,12 +21,18 @@ use App\Services\Classe\LocalInstitutionClassesReader;
 use App\Services\Classe\LocalTeacherClassesReader;
 use App\Services\Classe\TeacherClassesQueryService;
 use App\Services\Classe\TeacherClassesReader;
+use App\Services\Dashboard\KlassciStudentDashboardReader;
 use App\Services\Dashboard\KlassciTeacherDashboardReader;
+use App\Services\Dashboard\LocalStudentDashboardReader;
 use App\Services\Dashboard\LocalTeacherDashboardReader;
+use App\Services\Dashboard\StudentDashboardReader;
 use App\Services\Dashboard\TeacherDashboardReader;
 use App\Services\Enseignant\InstitutionTeachersReader;
 use App\Services\Enseignant\KlassciInstitutionTeachersReader;
 use App\Services\Enseignant\LocalInstitutionTeachersReader;
+use App\Services\Evaluation\Programming\KlassciProgrammationDesEvaluations;
+use App\Services\Evaluation\Programming\LocalProgrammationDesEvaluations;
+use App\Services\Evaluation\Programming\ProgrammationDesEvaluationsReader;
 use App\Services\Matiere\InstitutionMatieresReader;
 use App\Services\Matiere\KlassciInstitutionMatieresReader;
 use App\Services\Matiere\LocalInstitutionMatieresReader;
@@ -37,8 +43,13 @@ use App\Services\Matiere\MatiereDetailsReader;
 use App\Services\Matiere\MyMatieresQueryService;
 use App\Services\Matiere\TeacherMatieresReader;
 use App\Services\Roster\RosterAuthorityFactory;
+use App\Services\Seances\LocalSeanceDetailReader;
+use App\Services\Seances\LocalSeanceParticipants;
 use App\Services\Seances\LocalSeancesListReader;
+use App\Services\Seances\SeanceDetailReader;
+use App\Services\Seances\SeanceParticipantsReader;
 use App\Services\Seances\SeancesListReader;
+use App\Services\SeanceDetailQueryService;
 use App\Services\SeancesListQueryService;
 use Illuminate\Support\ServiceProvider;
 
@@ -86,8 +97,16 @@ final class CatalogueServiceProvider extends ServiceProvider
         SeancesListReader::class => [SeancesListQueryService::class, LocalSeancesListReader::class],
         // Lot 3b : les enseignants de l'établissement.
         InstitutionTeachersReader::class => [KlassciInstitutionTeachersReader::class, LocalInstitutionTeachersReader::class],
+        // La programmation des évaluations du porteur (`/proxy/evaluations`).
+        ProgrammationDesEvaluationsReader::class => [KlassciProgrammationDesEvaluations::class, LocalProgrammationDesEvaluations::class],
+        // Les participants autorisés d'une séance (parcours des présences).
+        SeanceParticipantsReader::class => [SeanceDetailQueryService::class, LocalSeanceParticipants::class],
         // R4 : le tableau de bord de l'enseignant, composé des sources ci-dessus.
         TeacherDashboardReader::class => [KlassciTeacherDashboardReader::class, LocalTeacherDashboardReader::class],
+        // Le tableau de bord de l'élève, composé des lecteurs de l'élève (E2a, E4a).
+        StudentDashboardReader::class => [KlassciStudentDashboardReader::class, LocalStudentDashboardReader::class],
+        // Le détail d'une séance, sous la règle de la liste du lot 3d.
+        SeanceDetailReader::class => [SeanceDetailQueryService::class, LocalSeanceDetailReader::class],
     ];
 
     /**

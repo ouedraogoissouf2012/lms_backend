@@ -7,6 +7,15 @@ namespace App\Providers;
 use App\Services\Evaluation\Programming\EvaluationProgramming;
 use App\Services\Evaluation\Programming\KlassciEvaluationProgramming;
 use App\Services\Evaluation\Programming\LocalEvaluationProgramming;
+use App\Services\Evaluation\Student\KlassciMatieresDesNotes;
+use App\Services\Evaluation\Student\LocalMatieresDesNotes;
+use App\Services\Evaluation\Student\LocalStudentEvaluationsReader;
+use App\Services\Evaluation\Student\MatieresDesNotes;
+use App\Services\Evaluation\Student\StudentEvaluationsListService;
+use App\Services\Evaluation\Student\StudentEvaluationsReader;
+use App\Services\Evaluation\Teacher\EvaluationResultsReader;
+use App\Services\Evaluation\Teacher\LocalEvaluationResultsReader;
+use App\Services\Evaluation\Teacher\TeacherEvaluationResultsService;
 use App\Services\Roster\RosterAuthorityFactory;
 use Illuminate\Support\ServiceProvider;
 
@@ -30,6 +39,27 @@ final class EvaluationServiceProvider extends ServiceProvider
             EvaluationProgramming::class,
             static fn ($app) => $app->make(RosterAuthorityFactory::class)
                 ->sourceForCurrentTenant(KlassciEvaluationProgramming::class, LocalEvaluationProgramming::class),
+        );
+
+        // D72, E2a : la liste de l'élève.
+        $this->app->bind(
+            StudentEvaluationsReader::class,
+            static fn ($app) => $app->make(RosterAuthorityFactory::class)
+                ->sourceForCurrentTenant(StudentEvaluationsListService::class, LocalStudentEvaluationsReader::class),
+        );
+
+        // D72, E3 : les résultats de l'enseignant, par élève de la classe.
+        $this->app->bind(
+            EvaluationResultsReader::class,
+            static fn ($app) => $app->make(RosterAuthorityFactory::class)
+                ->sourceForCurrentTenant(TeacherEvaluationResultsService::class, LocalEvaluationResultsReader::class),
+        );
+
+        // D72, E4a : les matières de « Mes notes ».
+        $this->app->bind(
+            MatieresDesNotes::class,
+            static fn ($app) => $app->make(RosterAuthorityFactory::class)
+                ->sourceForCurrentTenant(KlassciMatieresDesNotes::class, LocalMatieresDesNotes::class),
         );
     }
 }

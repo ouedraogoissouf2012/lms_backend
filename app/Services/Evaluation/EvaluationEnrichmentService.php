@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Services\Evaluation;
 
 use App\Models\Evaluation;
-use App\Models\User;
 use App\Services\KlassciProxyService;
 use App\Support\Logging\CaughtExceptionLog;
 use Illuminate\Support\Collection;
@@ -45,6 +44,7 @@ class EvaluationEnrichmentService
         private readonly KlassciProxyService $klassciService,
         private readonly EvaluationStateService $state,
         private readonly CaughtExceptionLog $journal,
+        private readonly EnseignantsDesEvaluations $enseignants,
     ) {}
 
     /**
@@ -79,24 +79,55 @@ class EvaluationEnrichmentService
                 }
             }
 
-            return $evaluations->map(function ($evaluation) use ($classesMap, $matieresMap): array {
-                $evalArray = $evaluation->toArray();
-
-                $this->attachClasse($evalArray, $evaluation, $classesMap);
-                $this->attachMatiere($evalArray, $evaluation, $matieresMap);
-                $this->attachEnseignant($evalArray, $evaluation);
-                $this->attachDateFormats($evalArray, $evaluation);
-                $this->preserveDynamicFields($evalArray, $evaluation);
-                $this->attachComputedMetadata($evalArray, $evaluation);
-
-                return $evalArray;
-            })->toArray();
+            return $this->present($evaluations, $classesMap, $matieresMap);
         } catch (\Exception $e) {
             $this->journal->error('Erreur enrichissement évaluations', $e);
 
             // Fail-soft : retourner les évaluations sans enrichissement plutôt que de casser la page.
             return $evaluations->toArray();
         }
+    }
+
+    /**
+     * La même présentation, sans catalogue KLASSCI : aucun appel à KLASSCI
+     * (D72, E3). Une évaluation d'une école créée depuis le LMS porte ses
+     * libellés (`classe_nom`, `matiere_nom`, posés à la création) et son auteur
+     * local (`enseignant_id`) ; les branches « sans KLASSCI » ci-dessous les
+     * lisent.
+     *
+     * Sert les résultats de l'enseignant, et la fiche et la liste d'une école créée
+     * depuis le LMS ({@see LocalCatalogueDesEvaluations}, C27, E4b).
+     *
+     * @param  Collection<int, \App\Models\Evaluation>  $evaluations
+     * @return array<int, array<string, mixed>>
+     */
+    public function enrichWithoutCatalogue(Collection $evaluations): array
+    {
+        return $this->present($evaluations, [], []);
+    }
+
+    /**
+     * @param  Collection<int, \App\Models\Evaluation>  $evaluations
+     * @param  array<int, mixed>  $classesMap
+     * @param  array<int, mixed>  $matieresMap
+     * @return array<int, array<string, mixed>>
+     */
+    private function present(Collection $evaluations, array $classesMap, array $matieresMap): array
+    {
+        $enseignant = $this->enseignants->de($evaluations);
+
+        return $evaluations->map(function ($evaluation) use ($classesMap, $matieresMap, $enseignant): array {
+            $evalArray = $evaluation->toArray();
+
+            $this->attachClasse($evalArray, $evaluation, $classesMap);
+            $this->attachMatiere($evalArray, $evaluation, $matieresMap);
+            $evalArray = array_merge($evalArray, $enseignant($evaluation));
+            $this->attachDateFormats($evalArray, $evaluation);
+            $this->preserveDynamicFields($evalArray, $evaluation);
+            $this->attachComputedMetadata($evalArray, $evaluation);
+
+            return $evalArray;
+        })->all();
     }
 
     /**
@@ -127,8 +158,9 @@ class EvaluationEnrichmentService
             }
         } elseif ($evaluation->classe_nom) {
             // Évaluation standalone : pas de KLASSCI, utiliser le nom local.
+            // L'id : celui de KLASSCI s'il existe, sinon la classe locale (D72).
             $evalArray['classe'] = [
-                'id'      => $evaluation->klassci_classe_id,
+                'id'      => $evaluation->klassci_classe_id ?? $evaluation->classe_id,
                 'name'    => $evaluation->classe_nom,
                 'libelle' => $evaluation->classe_nom,
                 'nom'     => $evaluation->classe_nom,
@@ -160,38 +192,12 @@ class EvaluationEnrichmentService
             }
         } elseif ($evaluation->matiere_nom) {
             $evalArray['matiere'] = [
-                'id'      => $evaluation->klassci_matiere_id,
+                'id'      => $evaluation->klassci_matiere_id ?? $evaluation->matiere_id,
                 'nom'     => $evaluation->matiere_nom,
                 'libelle' => $evaluation->matiere_nom,
             ];
         } else {
             $evalArray['matiere'] = null;
-        }
-    }
-
-    /**
-     * Attache les informations de l'enseignant depuis la table users locale.
-     *
-     * @param  array<string, mixed>  $evalArray  Modifié par référence.
-     */
-    private function attachEnseignant(array &$evalArray, Evaluation $evaluation): void
-    {
-        if ($evaluation->klassci_enseignant_id) {
-            $enseignant = User::where('klassci_id', $evaluation->klassci_enseignant_id)->first();
-            if ($enseignant) {
-                $evalArray['enseignant'] = [
-                    'id'    => $enseignant->klassci_id,
-                    'nom'   => $enseignant->name,
-                    'email' => $enseignant->email,
-                ];
-                $evalArray['enseignant_nom'] = $enseignant->name;
-            } else {
-                $evalArray['enseignant'] = null;
-                $evalArray['enseignant_nom'] = 'Enseignant #' . $evaluation->klassci_enseignant_id;
-            }
-        } else {
-            $evalArray['enseignant'] = null;
-            $evalArray['enseignant_nom'] = null;
         }
     }
 

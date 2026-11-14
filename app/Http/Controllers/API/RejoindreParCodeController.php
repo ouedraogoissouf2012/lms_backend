@@ -11,7 +11,6 @@ use App\Http\Requests\RejoindreParCodeRequest;
 use App\Services\Enrollment\Adhesion;
 use App\Services\Enrollment\RejoindreParCodeService;
 use Illuminate\Http\JsonResponse;
-use Throwable;
 
 /**
  * Rejoindre une classe avec son code, en étant déjà connecté (#885, ADR-803-03).
@@ -32,7 +31,7 @@ final class RejoindreParCodeController extends AuthenticatedController
             $rejointe = $this->adhesions->rejoindre($this->authenticatedUser($request), $request->code());
         } catch (BusinessException $e) {
             // Le motif départage les 409 et les 429 de cette porte (#906, ADR-906-01).
-            return $this->errorResponse($e->getMessage(), $this->statut($e), reason: $e->reason);
+            return $this->errorResponse($e->getMessage(), $e->statutHttp(), reason: $e->reason);
         }
 
         $nouvelle = $rejointe->adhesion === Adhesion::Nouvelle;
@@ -42,12 +41,5 @@ final class RejoindreParCodeController extends AuthenticatedController
             $nouvelle ? 'Vous avez rejoint la classe.' : 'Vous êtes déjà inscrit dans cette classe.',
             $nouvelle ? 201 : 200
         );
-    }
-
-    private function statut(Throwable $e): int
-    {
-        $code = $e->getCode();
-
-        return is_int($code) && $code >= 400 && $code < 600 ? $code : 422;
     }
 }

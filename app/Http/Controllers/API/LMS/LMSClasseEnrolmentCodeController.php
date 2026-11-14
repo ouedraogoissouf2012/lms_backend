@@ -9,7 +9,6 @@ use App\Http\Controllers\Concerns\RespondsWithJson;
 use App\Http\Controllers\Controller;
 use App\Services\Enrollment\ClasseEnrolmentCodeService;
 use Illuminate\Http\JsonResponse;
-use Throwable;
 
 /**
  * Émettre et retirer le code d'inscription d'une classe (#846, lot B).
@@ -33,7 +32,7 @@ final class LMSClasseEnrolmentCodeController extends Controller
         try {
             $code = $this->codes->generer($classe);
         } catch (BusinessException $e) {
-            return $this->errorResponse($e->getMessage(), $this->statut($e));
+            return $this->errorResponse($e->getMessage(), $e->statutHttp());
         }
 
         return $this->successResponse(
@@ -48,19 +47,12 @@ final class LMSClasseEnrolmentCodeController extends Controller
         try {
             $this->codes->revoquer($classe);
         } catch (BusinessException $e) {
-            return $this->errorResponse($e->getMessage(), $this->statut($e));
+            return $this->errorResponse($e->getMessage(), $e->statutHttp());
         }
 
         return $this->successResponse(
             null,
             'Code retiré. Les inscriptions déjà faites sont conservées.'
         );
-    }
-
-    private function statut(Throwable $e): int
-    {
-        $code = $e->getCode();
-
-        return is_int($code) && $code >= 400 && $code < 600 ? $code : 422;
     }
 }

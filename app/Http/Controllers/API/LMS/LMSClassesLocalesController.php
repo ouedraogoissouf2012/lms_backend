@@ -12,7 +12,6 @@ use App\Http\Requests\ListerClassesLocalesRequest;
 use App\Models\Classe;
 use App\Services\Catalogue\ClassesLocalesQuery;
 use Illuminate\Http\JsonResponse;
-use Throwable;
 
 /**
  * Lire les classes locales et leur code d'inscription (#905, ADR-905-01).
@@ -36,7 +35,7 @@ final class LMSClassesLocalesController extends Controller
         try {
             $page = $this->classes->lister($request->parPage());
         } catch (BusinessException $e) {
-            return $this->errorResponse($e->getMessage(), $this->statut($e), reason: $e->reason);
+            return $this->errorResponse($e->getMessage(), $e->statutHttp(), reason: $e->reason);
         }
 
         return $this->successResponse(
@@ -74,12 +73,5 @@ final class LMSClassesLocalesController extends Controller
         $etat = EtatCodeInscription::depuis($classe->code_inscription, $classe->code_inscription_revoque_le);
 
         return ['etat' => $etat->value, 'valeur' => $etat->valeurVisible($classe->code_inscription)];
-    }
-
-    private function statut(Throwable $e): int
-    {
-        $code = $e->getCode();
-
-        return is_int($code) && $code >= 400 && $code < 600 ? $code : 422;
     }
 }

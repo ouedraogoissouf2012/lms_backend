@@ -11,7 +11,6 @@ use App\Models\User;
 use App\Services\Session\TrainingSessionTransitionService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Throwable;
 
 /**
  * Faire avancer une Periode dans son cycle de vie (#845, ADR-845-01).
@@ -55,7 +54,7 @@ final class TrainingSessionTransitionController extends AuthenticatedController
         try {
             $periode = $operation($this->authenticatedUser($request));
         } catch (BusinessException $e) {
-            return $this->errorResponse($e->getMessage(), $this->statut($e));
+            return $this->errorResponse($e->getMessage(), $e->statutHttp());
         }
 
         return $this->successResponse([
@@ -64,12 +63,5 @@ final class TrainingSessionTransitionController extends AuthenticatedController
             'status' => $periode->status->value,
             'phase' => $periode->phase->value,
         ], $message);
-    }
-
-    private function statut(Throwable $e): int
-    {
-        $code = $e->getCode();
-
-        return is_int($code) && $code >= 400 && $code < 600 ? $code : 422;
     }
 }

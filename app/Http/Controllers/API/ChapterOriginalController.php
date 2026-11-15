@@ -50,6 +50,8 @@ final class ChapterOriginalController extends AuthenticatedController
      *     d'énumération), et c'est déjà ce que renvoie `GET /api/chapters/{id}`.
      *     Distinguer les deux exigerait de requêter HORS scope tenant, donc
      *     d'affaiblir l'isolation pour améliorer un message d'erreur.
+     *   - **409** `enrolment_not_active` : l'élève de la classe de la leçon, dont
+     *     l'inscription n'est pas active (D57, #1095) : ni accès, ni « introuvable ».
      *   - **403** : chapitre visible dans le tenant, mais l'appelant n'a pas le
      *     droit d'en télécharger la source (`allow_download` désactivé).
      *   - **404** : chapitre sans document source, ou artefact purgé.
@@ -62,8 +64,9 @@ final class ChapterOriginalController extends AuthenticatedController
     {
         $user = $this->authenticatedUser($request);
 
-        if (! $this->reads->canRead($chapter, $user)) {
-            return $this->errorResponse('Chapitre non trouvé', 404);
+        $refus = $this->reads->lecture($chapter, $user)->refus('Chapitre non trouvé');
+        if ($refus !== null) {
+            return $this->errorResponse($refus['message'], $refus['status'], reason: $refus['reason'] ?? null);
         }
 
         if (! $this->canDownloadChapterOriginal($chapter, $user)) {

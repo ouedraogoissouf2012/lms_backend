@@ -147,7 +147,11 @@ final class SeanceDetailLocaleTest extends TestCase
             ->assertJsonMissingPath('data.participants');
     }
 
-    /** Ce que la liste cache, le détail le cache : 404, comme une séance inexistante. */
+    /**
+     * Ce que la liste cache, le détail le cache : 404, comme une séance inexistante.
+     * L'élève INACTIF de la classe n'y lit rien non plus, mais son refus dit son
+     * motif (#1095) : 409 `enrolment_not_active`, celui du tableau de bord.
+     */
     public function test_ce_que_la_liste_cache_le_detail_le_cache(): void
     {
         $this->aucunAppelKlassci();
@@ -160,9 +164,13 @@ final class SeanceDetailLocaleTest extends TestCase
         $this->inscrire($masquant, $this->classe, 'actif');
         SeanceUserHidden::query()->create(['seance_id' => $seance->id, 'user_id' => $masquant->id, 'hidden_at' => now(), 'institution_id' => $this->ecole->id]);
 
-        foreach ([$autreClasse, $inactif, $masquant, $this->membre($this->ecole, 'enseignant')] as $lecteur) {
+        foreach ([$autreClasse, $masquant, $this->membre($this->ecole, 'enseignant')] as $lecteur) {
             $this->asTenant($lecteur)->getJson($this->url($seance))->assertNotFound();
         }
+        $this->asTenant($inactif)->getJson($this->url($seance))
+            ->assertStatus(409)
+            ->assertJsonPath('reason', 'enrolment_not_active')
+            ->assertJsonMissingPath('data');
     }
 
     public function test_la_seance_d_un_autre_etablissement_est_introuvable(): void

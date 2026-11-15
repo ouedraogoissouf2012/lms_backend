@@ -7,7 +7,9 @@ namespace App\Services\Matiere;
 use App\Models\Classe;
 use App\Models\Matiere;
 use App\Models\User;
+use App\Services\Enrollment\InscriptionNonActive;
 use App\Services\Evaluation\EvaluationsDeLaPage;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -29,7 +31,9 @@ use Illuminate\Support\Facades\DB;
  * | apprenant | celle d'une classe où son inscription est ACTIVE | ces classes-là | publiées, de ces classes-là |
  *
  * Hors de ces cas, `null`, rendu en 404 : le refus ne dit pas si la matière
- * existe, ni dans quelle école.
+ * existe, ni dans quelle école. Seule exception : l'apprenant qu'une inscription
+ * ACTIVE dans une classe de ce programme aurait admis reçoit le 409
+ * `enrolment_not_active` du tableau de bord ({@see InscriptionNonActive}, #1095).
  *
  * Les bornes d'audience et d'auteur sont celles des listes de
  * `LessonListService`, dans les deux types d'école
@@ -69,6 +73,10 @@ final class LocalMatiereDetailsReader implements MatiereDetailsReader
         $classes = $matiere === null ? null : $this->classesVisibles($matiere, $user, $institution);
 
         if ($matiere === null || $classes === null) {
+            if ($matiere !== null && $this->inscriptionNonActive($matiere, $user, $institution)) {
+                throw InscriptionNonActive::exception();
+            }
+
             return null;
         }
 
@@ -112,21 +120,11 @@ final class LocalMatiereDetailsReader implements MatiereDetailsReader
      */
     private function classesVisibles(Matiere $matiere, User $user, int $institution): ?array
     {
-        $designe = $user->isTeacher() ? $user->id : null;
-
-        $classes = Classe::query()
-            ->where('institution_id', $institution)
-            ->whereHas('matieres', static function ($programme) use ($matiere, $designe): void {
-                $programme->where('matieres.id', $matiere->id);
-
-                if ($designe !== null) {
-                    $programme->where('classe_matiere.enseignant_id', $designe);
-                }
-            })
+        $classes = $this->programme($matiere, $user->isTeacher() ? $user->id : null, $institution)
             ->orderBy('libelle')
             ->orderBy('id');
 
-        if (! $user->isManager() && ! $user->isTeacher()) {
+        if (self::apprenant($user)) {
             // Portée d'apprenant, celle de tout rôle non reconnu (#941) : une
             // inscription ACTIVE, et rien d'autre (D57).
             $classes->whereHas('etudiants', static function ($inscrits) use ($user): void {
@@ -137,6 +135,41 @@ final class LocalMatiereDetailsReader implements MatiereDetailsReader
         $visibles = array_values($classes->get()->all());
 
         return $visibles === [] && ! $user->isManager() ? null : $visibles;
+    }
+
+    /**
+     * Les classes de l'établissement qui ont cette matière au programme ; pour un
+     * formateur désigné (`$designe`), celles où il l'enseigne.
+     *
+     * @return Builder<Classe>
+     */
+    private function programme(Matiere $matiere, ?int $designe, int $institution): Builder
+    {
+        return Classe::query()
+            ->where('institution_id', $institution)
+            ->whereHas('matieres', static function ($programme) use ($matiere, $designe): void {
+                $programme->where('matieres.id', $matiere->id);
+
+                if ($designe !== null) {
+                    $programme->where('classe_matiere.enseignant_id', $designe);
+                }
+            });
+    }
+
+    /**
+     * L'apprenant qu'une inscription ACTIVE dans une classe de ce programme aurait
+     * admis : la règle de {@see classesVisibles()}, rejouée sur ses lignes non actives.
+     */
+    private function inscriptionNonActive(Matiere $matiere, User $user, int $institution): bool
+    {
+        return self::apprenant($user)
+            && InscriptionNonActive::classes($this->programme($matiere, null, $institution), $user)->exists();
+    }
+
+    /** Portée d'apprenant, celle de tout rôle non reconnu (#941). */
+    private static function apprenant(User $user): bool
+    {
+        return ! $user->isManager() && ! $user->isTeacher();
     }
 
     /**

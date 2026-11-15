@@ -4,12 +4,12 @@ declare(strict_types=1);
 
 namespace App\Services\Dashboard;
 
-use App\Exceptions\BusinessException;
 use App\Models\Classe;
 use App\Models\Evaluation;
 use App\Models\Matiere;
 use App\Models\User;
 use App\Services\Enrollment\EnrollmentSource;
+use App\Services\Enrollment\InscriptionNonActive;
 use App\Services\Evaluation\Student\LocalLearnerEvaluationAudience;
 use App\Services\Evaluation\Student\LocalMatieresDesNotes;
 use App\Services\Evaluation\Student\StudentGradesAggregator;
@@ -33,7 +33,8 @@ use Illuminate\Support\Facades\DB;
  * - `taux_presence` : `null`, non mesuré : il n'est pas fabriqué à 0.
  *
  * Des inscriptions, toutes inactives (D57) : refus `enrolment_not_active`, le motif
- * de l'inscription. Aucune inscription : un tableau vide, état normal (E2a).
+ * de l'inscription ({@see InscriptionNonActive}, le même que les chapitres, #1095).
+ * Aucune inscription : un tableau vide, état normal (E2a).
  *
  * Une seule règle d'admission, celle des leçons : le port {@see EnrollmentSource},
  * sans prédicat propre au tableau. Dans une école autonome, ce port est le pivot de
@@ -55,11 +56,7 @@ final class LocalStudentDashboardReader implements StudentDashboardReader
         $classes = $this->classesActives($student);
 
         if ($classes->isEmpty() && $this->aDesInscriptions($student)) {
-            throw new BusinessException(
-                'Votre inscription n\'est pas active. Adressez-vous à votre établissement.',
-                409,
-                reason: 'enrolment_not_active',
-            );
+            throw InscriptionNonActive::exception();
         }
 
         $notes = $classes->isEmpty() ? ['matieres' => [], 'moyenne_generale' => null]

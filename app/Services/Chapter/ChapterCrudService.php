@@ -38,9 +38,16 @@ final class ChapterCrudService
     public function listByLesson(int $lessonId, User $user): array
     {
         try {
-            $lesson = Lesson::findOrFail($lessonId);
-            if (! $this->reads->canReadLesson($lesson, $user)) {
+            // `find` et non `findOrFail` : une leçon absente, ou d'une autre école (masquée
+            // par la portée de l'établissement), est le même 404 qu'une leçon illisible.
+            // L'exception tombait dans le `catch` ci-dessous, et rendait 500 (#1095).
+            $lesson = Lesson::find($lessonId);
+            if ($lesson === null) {
                 return $this->notFound('Chapitres introuvables');
+            }
+            $refus = $this->reads->lectureLecon($lesson, $user)->refus('Chapitres introuvables');
+            if ($refus !== null) {
+                return LectureDeLecon::enReponse($refus);
             }
             $chapters = $lesson->chapters()->ordered()->get();
 
@@ -76,8 +83,9 @@ final class ChapterCrudService
     {
         try {
             $chapter = Chapter::with('lesson')->findOrFail($id);
-            if (! $this->reads->canRead($chapter, $user)) {
-                return $this->notFound('Chapitre non trouvé');
+            $refus = $this->reads->lecture($chapter, $user)->refus('Chapitre non trouvé');
+            if ($refus !== null) {
+                return LectureDeLecon::enReponse($refus);
             }
 
             return [

@@ -905,6 +905,7 @@ components:
           type: string
           enum:
             - no_institution
+            - enrolment_not_active
 
     TableauDeBordEleve:
       description: |
@@ -1323,9 +1324,13 @@ components:
           type: string
         reason:
           type: string
-          description: "Present sur le 409 seulement : la classe a ete creee dans le LMS."
+          description: |
+            Present sur le 409 seulement : `classe_local_only` (la classe a ete
+            creee dans le LMS), ou `enrolment_not_active` (inscription non active,
+            #1095).
           enum:
             - classe_local_only
+            - enrolment_not_active
 
     # Les classes de l'enseignant et la fiche d'une classe (lot 2).
     MesClassesListe:
@@ -4111,7 +4116,9 @@ paths:
             Ecole creee depuis KLASSCI seulement. La classe existe mais a ete
             creee dans le LMS : elle n'a aucune fiche KLASSCI a afficher. Un 404
             mentirait, la classe est bien la. Motif `classe_local_only`. Sans
-            motif : conflit signale par KLASSCI, relaye.
+            motif : conflit signale par KLASSCI, relaye. Ecole creee depuis le
+            LMS : eleve de cette classe, inscription non active (D57, #1095),
+            motif `enrolment_not_active`.
           content:
             application/json:
               schema:
@@ -4242,7 +4249,10 @@ paths:
               schema:
                 $ref: '#/components/schemas/RefusClasseEleves'
         '409':
-          description: "Conflit signale par KLASSCI, relaye."
+          description: |
+            Conflit signale par KLASSCI, relaye. Ou, dans une ecole creee depuis le
+            LMS : eleve de cette classe, inscription non active (D57, #1095), motif
+            `enrolment_not_active`.
           content:
             application/json:
               schema:
@@ -6987,6 +6997,15 @@ paths:
           description: |
             Matiere introuvable pour cet appelant, ou identifiant non numerique
             (la route n accepte que des chiffres).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PageMatiereRefus'
+        '409':
+          description: |
+            Ecole creee depuis le LMS : eleve d une classe qui a cette matiere au
+            programme, inscription non active (D57, #1095). Motif
+            `enrolment_not_active`, celui du tableau de bord.
           content:
             application/json:
               schema:
@@ -10180,6 +10199,18 @@ paths:
       responses:
         '200':
           description: "List of chapters"
+        '404':
+          description: "`Chapitres introuvables` : la lecon n existe pas, ou l appelant ne la lit pas (meme reponse)."
+        '409':
+          description: |
+            Eleve de la classe de la lecon, inscription non active (D57, #1095) :
+            aucun acces, et le refus dit son motif, celui du tableau de bord
+            (`enrolment_not_active`). Une inscription active l aurait admis ;
+            tout autre refus reste le 404.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefusMotive'
 
     post:
       tags:
@@ -10361,6 +10392,8 @@ paths:
             - `reason: attempt_not_open` : aucune tentative ouverte (seconde remise,
               double clic) sur un quiz qui melange ; ce que l eleve a vu est inconnu.
               Rien n est ecrit, aucun essai consomme : redemarrer le quiz.
+            - `reason: enrolment_not_active` : eleve de la classe de la lecon,
+              inscription non active (D57, #1095). Rien n est ecrit.
           content:
             application/json:
               schema:
@@ -10381,6 +10414,7 @@ paths:
                     enum:
                       - quiz_changed_since_start
                       - attempt_not_open
+                      - enrolment_not_active
         '422':
           description: |
             - `reason: answer_not_an_option_index` : une reponse n est pas un
@@ -10480,6 +10514,12 @@ paths:
           description: "Chapter details"
         '404':
           description: "Chapter not found"
+        '409':
+          description: "Eleve de la classe de la lecon, inscription non active (`enrolment_not_active`, #1095)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefusMotive'
 
     put:
       tags:

@@ -43,7 +43,7 @@ final class ChapterProgressAccess
             $refus = ['status' => 403, 'message' => 'Vous devez d\'abord completer le chapitre precedent'];
         }
 
-        return self::reponse($refus ?? ['status' => 404, 'message' => 'Chapitre introuvable']);
+        return LectureDeLecon::enReponse($refus ?? ['status' => 404, 'message' => 'Chapitre introuvable']);
     }
 
     /** @return array{status:int, payload: array<string, mixed>}|null  null : lecture permise. */
@@ -51,15 +51,6 @@ final class ChapterProgressAccess
     {
         $refus = $this->gate->refusLectureLecon(Lesson::find($lessonId), $user);
 
-        return $refus === null ? null : self::reponse($refus);
-    }
-
-    /**
-     * @param  array{status: int, message: string}  $refus
-     * @return array{status:int, payload: array<string, mixed>}
-     */
-    private static function reponse(array $refus): array
-    {
-        return ['status' => $refus['status'], 'payload' => ['success' => false, 'message' => $refus['message']]];
+        return $refus === null ? null : LectureDeLecon::enReponse($refus);
     }
 }

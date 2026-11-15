@@ -193,9 +193,10 @@ final class MatieresEcoleIndependanteTest extends TestCase
         $reponse->assertJsonPath('data.classes_concernees', [['id' => $sixieme->getKey(), 'nom' => '6e A']]);
     }
 
-    public function test_l_apprenant_INACTIF_ne_lit_pas_la_matiere(): void
+    public function test_l_apprenant_INACTIF_ne_lit_pas_la_matiere_et_lit_son_refus(): void
     {
-        // D57 : une inscription inactive n'ouvre aucun contenu.
+        // D57 : une inscription inactive n'ouvre aucun contenu. #1095 : le refus
+        // dit son motif, celui du tableau de bord, et non « introuvable ».
         $ecole = $this->ecole();
         $enseignant = $this->membre($ecole, 'enseignant');
         $classe = $this->classe($ecole, '5e B');
@@ -205,7 +206,10 @@ final class MatieresEcoleIndependanteTest extends TestCase
         $eleve = $this->membre($ecole, 'etudiant');
         $this->inscrire($eleve, $classe, 'inactif');
 
-        $this->asTenant($eleve)->getJson($this->page($maths))->assertNotFound();
+        $this->asTenant($eleve)->getJson($this->page($maths))
+            ->assertStatus(409)
+            ->assertJsonPath('reason', 'enrolment_not_active')
+            ->assertJsonMissingPath('data');
     }
 
     public function test_sans_tenant_resolu_les_sources_locales_bornent_quand_meme_a_l_ecole(): void

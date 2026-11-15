@@ -10,6 +10,7 @@ use App\Models\Seance;
 use App\Models\SeanceUserHidden;
 use App\Models\User;
 use App\Services\Classe\ClassesAtteintes;
+use App\Services\Enrollment\InscriptionNonActive;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 
@@ -65,8 +66,34 @@ final class SeancesLocalesVisibles
      */
     public function deSesClasses(Builder $seances, User $user, int $institution): Builder
     {
+        return self::parClasses($seances, $this->sesClasses($user, $institution), $user);
+    }
+
+    /**
+     * Les séances qu'une inscription ACTIVE lui ouvrirait, là où sa ligne n'est pas
+     * active (D57) : la règle de l'apprenant, rejouée sur ses lignes non actives. Le
+     * détail en tire son 409 `enrolment_not_active` (#1095) ; rien n'y est lu.
+     *
+     * @return Builder<Seance>
+     */
+    public function deSesInscriptionsNonActives(User $user, int $institution): Builder
+    {
+        return self::parClasses(
+            $this->bornees($institution),
+            InscriptionNonActive::classes(Classe::query()->where('institution_id', $institution), $user),
+            $user,
+        );
+    }
+
+    /**
+     * @param  Builder<Seance>  $seances
+     * @param  Builder<Classe>  $classes
+     * @return Builder<Seance>
+     */
+    private static function parClasses(Builder $seances, Builder $classes, User $user): Builder
+    {
         return $seances
-            ->whereIn('classe_id', $this->sesClasses($user, $institution)->select('classes.id'))
+            ->whereIn('classe_id', $classes->select('classes.id'))
             ->whereNotIn($seances->qualifyColumn('id'), SeanceUserHidden::query()->where('user_id', $user->id)->select('seance_id'));
     }
 

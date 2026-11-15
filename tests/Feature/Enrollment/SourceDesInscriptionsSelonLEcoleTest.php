@@ -54,7 +54,11 @@ final class SourceDesInscriptionsSelonLEcoleTest extends TestCase
         $this->inscrire($eleve, $classe, 'inactif');
         $this->miroir($eleve, $ecole);
 
-        $this->assertAucunAcces($eleve, $lecon);
+        // #1095 : aucun accès, et les chapitres disent le même motif que le tableau.
+        self::assertSame([], $this->leconsDe($eleve), 'la liste des leçons');
+        $this->asTenant($eleve)->getJson("/api/lessons/{$lecon->id}/chapters")
+            ->assertStatus(409)
+            ->assertJsonPath('reason', 'enrolment_not_active');
         $this->asTenant($eleve)->getJson('/api/proxy/me/dashboard')
             ->assertStatus(409)
             ->assertJsonPath('reason', 'enrolment_not_active');

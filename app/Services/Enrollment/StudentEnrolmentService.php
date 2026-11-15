@@ -158,7 +158,7 @@ final class StudentEnrolmentService
             409,
             // Une décision de l'établissement, pas une panne (#906) : le front
             // ne doit pas l'afficher en erreur technique.
-            reason: 'enrolment_not_active',
+            reason: InscriptionNonActive::REASON,
         );
     }
 

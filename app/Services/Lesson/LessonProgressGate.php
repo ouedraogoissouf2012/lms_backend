@@ -9,6 +9,7 @@ use App\Models\KnowledgeCheck;
 use App\Models\Lesson;
 use App\Models\User;
 use App\Services\Chapter\ChapterReadGate;
+use App\Services\Chapter\LectureDeLecon;
 use App\Services\Search\TeacherOwnershipScope;
 
 /**
@@ -25,14 +26,16 @@ use App\Services\Search\TeacherOwnershipScope;
  *    corps, qui ne révèle pas l'existence de la ressource ;
  * 2. le personnel n'écrit pas de progression : 403, sauf l'aperçu d'un quiz
  *    (qui ne persiste que la tentative, jamais la progression) ;
- * 3. un apprenant qui ne lit pas la leçon : 404.
+ * 3. un apprenant qui ne lit pas la leçon : 404 ; mais 409
+ *    `enrolment_not_active` si une inscription ACTIVE l'aurait admis (#1095,
+ *    {@see LectureDeLecon::InscriptionNonActive}).
  * Le refus vient AVANT toute écriture : aucune ligne n'est créée, et une
  * tentative de quiz refusée ne consomme aucun essai.
  *
  * ## Lire
  *
  * - La progression d'une leçon ou d'un chapitre, la sienne : la règle de
- *   lecture de la leçon ou du chapitre, sinon 404.
+ *   lecture de la leçon ou du chapitre, sinon 404 (ou le 409 de #1095).
  * - La liste des progressions des élèves d'une leçon : son auteur
  *   ({@see TeacherOwnershipScope::ownsLesson()}) et les gestionnaires, dans
  *   leur établissement. Effet voulu : un co-enseignant ne la lit pas.
@@ -58,7 +61,7 @@ final class LessonProgressGate
         return ! $user->isStaff();
     }
 
-    /** @return array{status: int, message: string}|null  null : l'écriture est permise. */
+    /** @return array{status: int, message: string, reason?: string}|null  null : l'écriture est permise. */
     public function refusEcriture(?Lesson $lesson, User $user): ?array
     {
         if ($lesson === null || ! $this->dansSonEtablissement($lesson->institution_id, $user)) {
@@ -68,10 +71,10 @@ final class LessonProgressGate
             return self::refusPersonnel();
         }
 
-        return $this->reads->canReadLesson($lesson, $user) ? null : self::introuvable('Cours non trouvé');
+        return $this->reads->lectureLecon($lesson, $user)->refus('Cours non trouvé');
     }
 
-    /** @return array{status: int, message: string}|null */
+    /** @return array{status: int, message: string, reason?: string}|null */
     public function refusEcritureChapitre(?Chapter $chapter, User $user): ?array
     {
         if ($chapter === null || ! $this->dansSonEtablissement($chapter->institution_id, $user)) {
@@ -81,7 +84,7 @@ final class LessonProgressGate
             return self::refusPersonnel();
         }
 
-        return $this->reads->canRead($chapter, $user) ? null : self::introuvable('Chapitre introuvable');
+        return $this->reads->lecture($chapter, $user)->refus('Chapitre introuvable');
     }
 
     /**
@@ -91,27 +94,27 @@ final class LessonProgressGate
      * score depuis les tentatives. La progression, elle, n'est jamais écrite
      * pour le personnel ({@see ecritLaProgression()}).
      *
-     * @return array{status: int, message: string}|null
+     * @return array{status: int, message: string, reason?: string}|null
      */
     public function refusEcritureQuiz(?KnowledgeCheck $quiz, User $user): ?array
     {
         $chapter = $quiz?->chapter;
 
-        return $chapter instanceof Chapter && $this->reads->canRead($chapter, $user)
-            ? null
+        return $chapter instanceof Chapter
+            ? $this->reads->lecture($chapter, $user)->refus('Quiz introuvable')
             : self::introuvable('Quiz introuvable');
     }
 
-    /** @return array{status: int, message: string}|null  Lire SA progression d'une leçon. */
+    /** @return array{status: int, message: string, reason?: string}|null  Lire SA progression d'une leçon. */
     public function refusLectureLecon(?Lesson $lesson, User $user): ?array
     {
-        return $lesson !== null && $this->reads->canReadLesson($lesson, $user) ? null : self::introuvable('Cours non trouvé');
+        return $this->reads->lectureLecon($lesson, $user)->refus('Cours non trouvé');
     }
 
-    /** @return array{status: int, message: string}|null  Lire SA progression d'un chapitre. */
+    /** @return array{status: int, message: string, reason?: string}|null  Lire SA progression d'un chapitre. */
     public function refusLectureChapitre(?Chapter $chapter, User $user): ?array
     {
-        return $chapter !== null && $this->reads->canRead($chapter, $user) ? null : self::introuvable('Chapitre introuvable');
+        return $this->reads->lecture($chapter, $user)->refus('Chapitre introuvable');
     }
 
     /**

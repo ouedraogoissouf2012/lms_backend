@@ -6,6 +6,7 @@ namespace App\Services\Seances;
 
 use App\Models\Seance;
 use App\Models\User;
+use App\Services\Enrollment\InscriptionNonActive;
 use App\Support\Catalogue\SourceLocale;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Collection;
@@ -16,7 +17,9 @@ use Illuminate\Database\Eloquent\Collection;
  *
  * - La séance est désignée par son id LOCAL, sous la règle de la liste
  *   ({@see SeancesLocalesVisibles}) : le détail ne montre jamais ce que la liste
- *   cache (404, comme une séance inexistante).
+ *   cache (404, comme une séance inexistante). Seule exception : l'apprenant
+ *   qu'une inscription ACTIVE aurait admis reçoit le 409 `enrolment_not_active`
+ *   du tableau de bord ({@see InscriptionNonActive}, #1095).
  * - `seance` : sa forme de calendrier (classe, matière, auteur comme enseignant,
  *   horaires avec `heure_fin_estimee`).
  * - `visio` : la fenêtre se calcule sur le début et la fin ESTIMÉE ; pas de
@@ -45,6 +48,11 @@ final class LocalSeanceDetailReader implements SeanceDetailReader
             ->first();
 
         if (! $ligne instanceof Seance) {
+            if (! $user->isManager() && ! $user->isTeacher()
+                && $this->visibles->deSesInscriptionsNonActives($user, $institution)->whereKey($seanceId)->exists()) {
+                throw InscriptionNonActive::exception();
+            }
+
             return null;
         }
 

@@ -118,17 +118,24 @@ final class SourcesKlassciDeclarentIdLocalTest extends TestCase
         return Seance::query()->withoutGlobalScopes()->where('klassci_seance_id', self::SEANCE_KLASSCI)->sole();
     }
 
-    /** Les matières de l'enseignant listent la séance (lecture de la bascule, `FetchesSeanceDataFromKlassci`). */
+    /**
+     * KLASSCI connaît la séance dans l'emploi du temps, la lecture de la bascule
+     * (`SeanceDeLEmploiDuTemps`, D610). L'ancienne simulation
+     * la plaçait dans `matieres/{id}.seances_programmees`, une clé que KLASSCI laisse
+     * toujours vide : une forme qu'il ne renvoie jamais.
+     */
     private function klassciConnaitLaSeance(): void
     {
         $this->mock(KlassciProxyService::class, function (MockInterface $mock): void {
             $mock->shouldReceive('requestWithUserToken')->with(self::JETON, 'matieres', 'GET')
                 ->andReturn(['data' => [['id' => 3, 'nom' => 'Anglais']]]);
-            $mock->shouldReceive('requestWithUserToken')->with(self::JETON, 'matieres/3', 'GET')
-                ->andReturn(['data' => [
-                    'seances_programmees' => [['id' => self::SEANCE_KLASSCI, 'classe' => ['id' => self::CLASSE_KLASSCI]]],
-                    'enseignant' => ['id' => 9, 'nom_complet' => 'Enseignant'],
-                ]]);
+            $mock->shouldReceive('getEmploiTemps')->andReturn(['data' => [[
+                'id' => self::SEANCE_KLASSCI,
+                'matiere' => ['id' => 3, 'nom' => 'Anglais'],
+                'classe' => ['id' => self::CLASSE_KLASSCI, 'nom' => 'Classe'],
+                'enseignant' => ['id' => 77, 'teacher_id' => 88, 'nom' => 'Enseignant'],
+                'programmation' => ['date_seance' => now()->addDay()->format('Y-m-d'), 'heure_debut' => '08:00', 'heure_fin' => '10:00'],
+            ]]]);
             $mock->shouldReceive('requestWithUserToken')->andReturn(['data' => []]);
             $mock->shouldReceive('fetchManyClassesDetails')->andReturn([]);
         });

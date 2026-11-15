@@ -18,7 +18,6 @@ declare(strict_types=1);
  */
 return [
     'app/Console/Commands/PurgeSeanceRecordings.php::handle' => 49,
-    'app/Http/Controllers/API/Evaluation/EvaluationKlassciSyncController.php::syncNotesToKlassci' => 47,
     'app/Http/Controllers/API/Evaluation/Student/EvaluationStudentSubmissionController.php::getMySubmission' => 46,
     'app/Http/Requests/StoreLessonRequest.php::rules' => 49,
     'app/Jobs/CleanOldEvaluations.php::handle' => 49,

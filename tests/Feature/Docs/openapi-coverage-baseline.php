@@ -87,7 +87,6 @@ return [
     '/lms/seances/{seanceId}/heartbeat',
     '/lms/seances/{seanceId}/hide',
     '/lms/seances/{seanceId}/leave',
-    '/lms/seances/{seanceId}/participants',
     '/lms/seances/{seanceId}/recording',
     '/lms/seances/{seanceId}/recording/start',
     '/lms/seances/{seanceId}/recording/stop',

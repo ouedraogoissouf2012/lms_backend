@@ -1057,36 +1057,6 @@ parameters:
 		-
 			message: '#^Cannot access offset ''id'' on mixed\.$#'
 			identifier: offsetAccess.nonOffsetAccessible
-			count: 3
-			path: app/Services/SeanceDetailQueryService.php
-
-		-
-			message: '#^Cannot access offset ''matieres'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 1
-			path: app/Services/SeanceDetailQueryService.php
-
-		-
-			message: '#^Cannot access offset ''seances_programmees'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 1
-			path: app/Services/SeanceDetailQueryService.php
-
-		-
-			message: '#^Cannot access offset ''statut'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 1
-			path: app/Services/SeanceDetailQueryService.php
-
-		-
-			message: '#^Method App\\Services\\SeanceDetailQueryService\:\:fetchActiveStudents\(\) should return array\<int, array\<string, mixed\>\> but returns array\<mixed\>\.$#'
-			identifier: return.type
-			count: 1
-			path: app/Services/SeanceDetailQueryService.php
-
-		-
-			message: '#^Method App\\Services\\SeanceDetailQueryService\:\:findSeanceForParticipants\(\) should return array\<string, mixed\>\|null but returns mixed\.$#'
-			identifier: return.type
 			count: 1
 			path: app/Services/SeanceDetailQueryService.php
 
@@ -1097,41 +1067,11 @@ parameters:
 			path: app/Services/SeanceDetailQueryService.php
 
 		-
-			message: '#^Parameter \#1 \$classeId of method App\\Services\\SeanceDetailQueryService\:\:fetchActiveStudents\(\) expects int\|null, mixed given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Services/SeanceDetailQueryService.php
-
-		-
 			message: '#^Parameter \#1 \$classeId of method App\\Services\\Seances\\SeanceVisioEnricher\:\:resolveParticipants\(\) expects int\|null, mixed given\.$#'
 			identifier: argument.type
 			count: 1
 			path: app/Services/SeanceDetailQueryService.php
 
-
-		-
-			message: '#^Parameter \#1 \$value of function collect expects Illuminate\\Contracts\\Support\\Arrayable\<\(int\|string\), mixed\>\|iterable\<\(int\|string\), mixed\>\|null, mixed given\.$#'
-			identifier: argument.type
-			count: 4
-			path: app/Services/SeanceDetailQueryService.php
-
-		-
-			message: '#^Part \$matiere\[''id''\] \(mixed\) of encapsed string cannot be cast to string\.$#'
-			identifier: encapsedStringPart.nonString
-			count: 1
-			path: app/Services/SeanceDetailQueryService.php
-
-		-
-			message: '#^Unable to resolve the template type TKey in call to function collect$#'
-			identifier: argument.templateType
-			count: 4
-			path: app/Services/SeanceDetailQueryService.php
-
-		-
-			message: '#^Unable to resolve the template type TValue in call to function collect$#'
-			identifier: argument.templateType
-			count: 4
-			path: app/Services/SeanceDetailQueryService.php
 
 		-
 			message: '#^Cannot call method diffInMinutes\(\) on Carbon\\Carbon\|null\.$#'

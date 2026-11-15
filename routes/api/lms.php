@@ -29,9 +29,9 @@ Route::middleware(['auth:sanctum', 'klassci.sync'])->prefix('dashboard')->group(
     Route::get('/teacher', [DashboardTeacherController::class, 'teacher'])
         ->middleware('role:enseignant,coordinateur');
 
-    // Statistiques globales (coordinateurs et admin uniquement)
+    // Statistiques globales (garde `gestion`)
     Route::get('/stats', [DashboardAdminController::class, 'stats'])
-        ->middleware('role:coordinateur,admin');
+        ->middleware('gestion');
 });
 
 // ============================================
@@ -74,9 +74,9 @@ use App\Http\Controllers\API\LMS\VisioRecordingWebhookController;
 // le contrat OCP (#697 art. 1) veut que les appelants recoivent une capacite,
 // jamais un mode.
 //
-// `role:coordinateur,admin,superAdmin` : organiser une formation est un acte de
+// La garde `gestion` (`isManager()`) : organiser une formation est un acte de
 // gestion. Un enseignant anime, il ne date pas la session ; un etudiant la suit.
-Route::middleware(['auth:sanctum', 'klassci.sync', 'role:coordinateur,admin,superAdmin'])
+Route::middleware(['auth:sanctum', 'klassci.sync', 'gestion'])
     ->group(function () {
         Route::post('/programs', [TrainingSessionController::class, 'storeProgram']);
         Route::get('/training-sessions', [TrainingSessionController::class, 'index']);
@@ -143,8 +143,8 @@ Route::middleware(['auth:sanctum', 'klassci.sync'])->prefix('lms')->group(functi
         ->name('lms.enseignants.list');
 });
 
-// Routes admin/coordinateur uniquement
-Route::middleware(['auth:sanctum', 'klassci.sync', 'role:admin,coordinateur'])->prefix('admin')->group(function () {
+// Routes de gestion (garde `gestion` : coordinateur, admin, superAdmin)
+Route::middleware(['auth:sanctum', 'klassci.sync', 'gestion'])->prefix('admin')->group(function () {
     // Liste toutes les matières avec combinaisons complètes
     Route::get('/matieres', [LMSMatieresAdminController::class, 'adminMatieresList'])
         ->name('admin.matieres.list');
@@ -161,7 +161,7 @@ Route::middleware(['auth:sanctum', 'klassci.sync'])->prefix('lms')->group(functi
 
     Route::post('/seances', [LMSSeanceCrudController::class, 'store'])
         ->name('lms.seances.store')
-        ->middleware('role:enseignant,coordinateur,superAdmin');
+        ->middleware('personnel');
 
     // Séances à venir (pré-création rooms)
     Route::get('/seances/upcoming', [LMSSeancesListController::class, 'upcomingSeances'])
@@ -170,7 +170,7 @@ Route::middleware(['auth:sanctum', 'klassci.sync'])->prefix('lms')->group(functi
     // Historique des séances (séances ayant eu une visio) - DOIT être AVANT {seanceId}
     Route::get('/seances/history', [LMSSeancesHistoryController::class, 'getSeancesHistory'])
         ->name('lms.seances.history')
-        ->middleware('role:enseignant,coordinateur,superAdmin');
+        ->middleware('personnel');
 
     // Présences détaillées d'une séance
     Route::get('/seances/{seanceId}/attendances', [LMSAttendancesController::class, 'getSeanceAttendances'])
@@ -178,12 +178,12 @@ Route::middleware(['auth:sanctum', 'klassci.sync'])->prefix('lms')->group(functi
         // Sécurité : liste les emails des participants -> réservé au staff (comme
         // la voisine /seances/history). Sans ce garde, un étudiant listait les
         // emails de toute séance (checkAccess ne bloque que l'enseignant non-owner).
-        ->middleware('role:enseignant,coordinateur,superAdmin');
+        ->middleware('personnel');
 
     // Suppression d'une séance (soft delete)
     Route::delete('/seances/{seanceId}', [LMSSeanceVisibilityMutationController::class, 'deleteSeance'])
         ->name('lms.seances.delete')
-        ->middleware('role:enseignant,coordinateur,superAdmin');
+        ->middleware('personnel');
 
     // Détails complets d'une séance (avec infos visio)
     Route::get('/seances/{seanceId}/details', [LMSSeanceDetailsController::class, 'seanceDetails'])
@@ -192,17 +192,17 @@ Route::middleware(['auth:sanctum', 'klassci.sync'])->prefix('lms')->group(functi
     // Valider l'accès d'un participant
     Route::post('/seances/{seanceId}/validate-participant', [LMSSeanceParticipantMutationController::class, 'validateParticipant'])
         ->name('lms.seances.validate-participant')
-        ->middleware('role:enseignant,coordinateur,admin,superAdmin');
+        ->middleware('personnel');
 
     // Toggle visio pour séance (coordinateurs uniquement)
     Route::post('/seances/{seanceId}/toggle-visio', [LMSSeanceVisibilityMutationController::class, 'toggleVisioSeance'])
         ->name('lms.seances.toggle-visio')
-        ->middleware('role:coordinateur,superAdmin');
+        ->middleware('gestion');
 
     // Synchroniser les attendances depuis une session vidéo
     Route::post('/attendances/from-video-session', [LMSAttendancesController::class, 'syncAttendancesFromVideoSession'])
         ->name('lms.attendances.from-video-session')
-        ->middleware('role:enseignant,coordinateur,admin,superAdmin');
+        ->middleware('personnel');
 
     // Historique des présences (accessible même si séances archivées)
     Route::get('/attendance/history', [LMSAttendancesController::class, 'getAttendanceHistory'])
@@ -295,7 +295,7 @@ Route::middleware(['auth:sanctum', 'klassci.sync'])->prefix('lms')->group(functi
     // ne la protège. Le bouton qui l'ouvre est déjà réservé côté front
     // (VisioManager.vue) ; la route l'est désormais aussi.
     Route::get('/seances/{seanceId}/visio-participants', [LMSVisioParticipantController::class, 'getVisioParticipants'])
-        ->middleware('role:enseignant,coordinateur,admin')
+        ->middleware('personnel')
         ->name('lms.seances.visio-participants');
 
     // Masquer une séance (étudiant uniquement)

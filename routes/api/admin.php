@@ -23,20 +23,20 @@ Route::middleware(['auth:sanctum', 'plateforme'])->prefix('admin')->group(functi
 // ============================================
 // ADMIN - Liste des comptes LMS du tenant.
 // Hors `klassci.sync` : cet ecran ne lit QUE la base LMS, aucun appel amont.
-// Meme allow-list de roles que le CRUD `users` (routes/api/core.php).
+// Meme garde `gestion` que le CRUD `users` (routes/api/core.php) : `isManager()` (D499/D502).
 // Le supradmin plateforme est refuse par ListUsersRequest::authorize() :
 // sans institution_id, le scope tenant serait fail-open.
 // ============================================
-Route::middleware(['auth:sanctum', 'role:coordinateur,superAdmin'])->prefix('admin')->group(function () {
+Route::middleware(['auth:sanctum', 'gestion'])->prefix('admin')->group(function () {
     Route::get('/users', [AdminController::class, 'listUsers'])
         ->middleware('throttle:60,1')
         ->name('admin.users.index');
 });
 
 // ============================================
-// ADMIN ANALYTICS - Routes protégées (admin/coordinateur uniquement)
+// ADMIN ANALYTICS - Routes protégées (garde `gestion` : coordinateur, admin, superAdmin)
 // ============================================
-Route::middleware(['auth:sanctum', 'role:coordinateur,superAdmin'])->prefix('admin/analytics')->group(function () {
+Route::middleware(['auth:sanctum', 'gestion'])->prefix('admin/analytics')->group(function () {
     // Tendances d'activité (graphes)
     Route::get('/activity-trends', [AdminAnalyticsController::class, 'getActivityTrends']);
 
@@ -51,14 +51,14 @@ Route::middleware(['auth:sanctum', 'role:coordinateur,superAdmin'])->prefix('adm
 });
 
 // ============================================
-// REPORTS - Génération PDF (admin/coordinateur uniquement)
+// REPORTS - Génération PDF (le rapport de présence : `personnel` ; les autres : `gestion`)
 // ============================================
-Route::middleware(['auth:sanctum', 'role:coordinateur,superAdmin,enseignant'])->prefix('admin/reports')->group(function () {
+Route::middleware(['auth:sanctum', 'personnel'])->prefix('admin/reports')->group(function () {
     Route::post('/attendance', [ReportController::class, 'generateAttendanceReport'])
         ->middleware('throttle:30,1');
 });
 
-Route::middleware(['auth:sanctum', 'role:coordinateur,superAdmin'])->prefix('admin/reports')->group(function () {
+Route::middleware(['auth:sanctum', 'gestion'])->prefix('admin/reports')->group(function () {
     Route::post('/grades', [ReportController::class, 'generateGradesReport'])
         ->middleware('throttle:30,1');
 

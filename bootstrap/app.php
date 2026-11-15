@@ -52,6 +52,9 @@ $app = Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'klassci.sync' => \App\Http\Middleware\EnsureKlassciSync::class,
             'role' => \App\Http\Middleware\EnsureRole::class,
+            // D499/D502 : une garde par prédicat de rôle, au lieu de listes recopiées.
+            \App\Http\Middleware\EnsureGestion::ALIAS => \App\Http\Middleware\EnsureGestion::class,
+            \App\Http\Middleware\EnsurePersonnel::ALIAS => \App\Http\Middleware\EnsurePersonnel::class,
             'institution' => \App\Http\Middleware\ResolveInstitution::class,
             'institution.header' => \App\Http\Middleware\RequireInstitutionHeader::class,
             // #511 : garde plateforme STRICTE (défense en profondeur cross-tenant).

@@ -45,7 +45,7 @@ Route::get('chapters/{chapter}/video', [ChapterVideoController::class, 'show'])
     ->name('chapters.video.show');
 
 // Routes enseignants/coordinateurs/admins
-Route::middleware(['auth:sanctum', 'klassci.sync', 'role:enseignant,coordinateur,admin'])->group(function () {
+Route::middleware(['auth:sanctum', 'klassci.sync', 'personnel'])->group(function () {
     // CRUD des chapitres
     Route::post('lessons/{lessonId}/chapters', [ChapterController::class, 'store'])
         ->middleware('throttle:60,1');
@@ -121,7 +121,7 @@ Route::middleware(['auth:sanctum', 'klassci.sync'])->group(function () {
 });
 
 // Routes enseignants/coordinateurs/admins
-Route::middleware(['auth:sanctum', 'klassci.sync', 'role:enseignant,coordinateur,admin'])->group(function () {
+Route::middleware(['auth:sanctum', 'klassci.sync', 'personnel'])->group(function () {
     // CRUD des cours
     Route::post('lessons', [LessonCrudController::class, 'store'])
         ->middleware('throttle:60,1');
@@ -168,7 +168,7 @@ Route::middleware(['auth:sanctum', 'klassci.sync'])->prefix('forum')->group(func
 });
 
 // Routes pour clôturer et épingler des topics (formateurs/coordinateurs/admins)
-Route::middleware(['auth:sanctum', 'klassci.sync', 'role:enseignant,coordinateur,admin'])->prefix('forum')->group(function () {
+Route::middleware(['auth:sanctum', 'klassci.sync', 'personnel'])->prefix('forum')->group(function () {
     Route::post('topics/{topic}/close', [ForumController::class, 'closeTopic']);
     Route::post('topics/{topic}/pin', [ForumController::class, 'pinTopic']);
 });
@@ -232,7 +232,7 @@ Route::middleware(['auth:sanctum', 'klassci.sync'])->group(function () {
 });
 
 // Routes enseignants/coordinateurs/admins
-Route::middleware(['auth:sanctum', 'klassci.sync', 'role:enseignant,coordinateur,admin'])->group(function () {
+Route::middleware(['auth:sanctum', 'klassci.sync', 'personnel'])->group(function () {
     // CRUD des quiz
     Route::post('quizzes', [QuizCrudController::class, 'store']);
     Route::put('quizzes/{quiz}', [QuizCrudController::class, 'update']);

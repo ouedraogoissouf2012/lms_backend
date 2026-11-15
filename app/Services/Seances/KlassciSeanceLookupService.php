@@ -26,8 +26,9 @@ use App\Support\Logging\CaughtExceptionLog;
  *
  * ## Les trois branches ne lisent plus la meme source (#740)
  *
- * L'ENSEIGNANT passe par {@see EmploiTempsSeanceLocator}, le remplacant
- * canonique. Les deux autres lisent encore le scanner, donc la cle
+ * L'ENSEIGNANT et la GESTION (D610, temps 1) passent par
+ * {@see EmploiTempsSeanceLocator}, le remplacant canonique, chacun avec la
+ * liste de matieres qu'il lisait deja. L'ELEVE seul lit encore le scanner, donc la cle
  * `seances_programmees` -- **systematiquement vide chez KLASSCI**, mesure du
  * 2026-09-14 : `total_programmees = 47` annonce dans le meme corps que
  * `seances_programmees = 0`.
@@ -70,8 +71,8 @@ final class KlassciSeanceLookupService
             return $this->lookupForStudent($seanceId, $klassciToken);
         }
 
-        // Coordinateur ou supradmin: parcourir toutes les matières
-        return $this->lookupForCoordinator($seanceId, $klassciToken);
+        // La gestion (coordinateur, admin) : l'emploi du temps, filtré par le catalogue.
+        return $this->lookupForCoordinator($seanceId, $user, $klassciToken);
     }
 
     /**
@@ -149,24 +150,12 @@ final class KlassciSeanceLookupService
     /**
      * @return array{0: array<string, mixed>|null, 1: array<string, mixed>|null}
      */
-    private function lookupForCoordinator(int $seanceId, string $klassciToken): array
+    private function lookupForCoordinator(int $seanceId, User $user, string $klassciToken): array
     {
-        $matieresResponse = $this->klassciService->requestWithUserToken(
-            $klassciToken,
-            'matieres',
-            'GET'
-        );
-
-        $matieres = KlassciPayload::listOfArrays($matieresResponse['data'] ?? null);
-        $matieresById = $this->keyByMatiereId($matieres, fn (array $m): ?int => KlassciPayload::toInt($m['id'] ?? null));
-
-        [$seanceTrouvee, $matiereDetails, $matiereFallback] = $this->scanner->scan($matieresById, $seanceId, $klassciToken);
-
-        if ($seanceTrouvee === null) {
-            return [null, null];
-        }
-
-        return [$seanceTrouvee, $this->matiereInfo($matiereDetails, $matiereFallback)];
+        // Le localisateur lit pour la gestion le catalogue `matieres`, la liste qu'elle
+        // lisait déjà : aucun élargissement (D610, temps 1). La séance garde son
+        // `enseignant`, tel que l'emploi du temps le porte.
+        return $this->emploiTempsLocator->locate($seanceId, $user, $klassciToken);
     }
 
     /**

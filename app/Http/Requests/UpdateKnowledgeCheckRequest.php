@@ -6,6 +6,7 @@ namespace App\Http\Requests;
 
 use App\Http\Requests\Concerns\ExplainsKnowledgeCheckAnswerRefusal;
 use App\Rules\KnowledgeCheckCorrectAnswerAmongOptions;
+use App\Support\Evaluation\QuestionOptionLimits;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
 
@@ -15,9 +16,8 @@ use Illuminate\Foundation\Http\FormRequest;
  *
  * Partie 3 : les options sont une liste de textes, et la bonne réponse désigne
  * une d'elles par son indice ({@see KnowledgeCheckCorrectAnswerAmongOptions},
- * 422 `correct_answer_not_among_options`). Les bornes de nombre et de longueur
- * des options suivront celles des évaluations quand QuestionOptionLimits
- * (#1069) sera fusionnée : dette tracée.
+ * 422 `correct_answer_not_among_options`). Les options sont bornées comme celles
+ * des évaluations, depuis la même source ({@see QuestionOptionLimits}, D602).
  */
 final class UpdateKnowledgeCheckRequest extends FormRequest
 {
@@ -41,8 +41,8 @@ final class UpdateKnowledgeCheckRequest extends FormRequest
             'questions' => 'sometimes|required|list|min:1',
             'questions.*.question' => 'required_with:questions|string',
             'questions.*.type' => 'required_with:questions|in:single,multiple,true_false',
-            'questions.*.options' => 'required_with:questions|list|min:2',
-            'questions.*.options.*' => 'string',
+            'questions.*.options' => 'required_with:questions|list|min:2|max:'.QuestionOptionLimits::MAX_OPTIONS,
+            'questions.*.options.*' => QuestionOptionLimits::itemRule(),
             'questions.*.correct_answer' => ['required_with:questions', new KnowledgeCheckCorrectAnswerAmongOptions],
             'passing_score' => 'nullable|integer|min:0|max:100',
             'max_attempts' => 'nullable|integer|min:1',

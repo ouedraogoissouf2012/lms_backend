@@ -6,6 +6,7 @@ namespace Tests\Feature\Auth;
 
 use App\Models\Institution;
 use App\Models\User;
+use Illuminate\Cache\RedisStore;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Factory as HttpFactory;
 use Illuminate\Http\Client\Request as ClientRequest;
@@ -57,6 +58,12 @@ final class AuthMeFormeReelleTest extends TestCase
 
     public function test_un_compte_resynchronise_n_appelle_plus_auth_me_apres_le_cache(): void
     {
+        // Sous redis, le store expire sur l'horloge réelle, pas sur `travel()` : la
+        // seconde requête lirait le cache, et le compte d'appels ne prouverait rien.
+        if (app('cache')->store()->getStore() instanceof RedisStore) {
+            self::markTestSkipped('TTL redis suit l horloge réelle, pas le time-travel Carbon.');
+        }
+
         $compte = $this->comptePerime();
         $this->klassciRepond(fn () => $this->formeReelle($compte));
 

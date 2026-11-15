@@ -44,6 +44,7 @@
 | `KLASSCI_CIRCUIT_BREAKER_FAILURES` | Nombre d'échecs 5xx/transport avant ouverture du circuit |
 | `KLASSCI_CIRCUIT_BREAKER_COOLDOWN` | Durée d'ouverture du circuit en secondes |
 | `KLASSCI_CIRCUIT_BREAKER_WINDOW` | Fenêtre de comptage des échecs en secondes |
+| `KLASSCI_RESYNC_BACKOFF` | Recul d'un compte, en secondes, après l'échec de sa re-synchronisation `auth/me` (défaut 3600) |
 | `KLASSCI_SSL_VERIFY` | `true` en prod (cf. `SSLVerificationProvider`) — `false` uniquement en local explicitement |
 
 ## 4. Cache / Queue / Session

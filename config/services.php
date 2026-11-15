@@ -61,6 +61,8 @@ return [
         // Voir .claude/specs/perf-02-klassci-batch-cache/design.md §2-4.
         'pool_size' => env('KLASSCI_POOL_SIZE', 4),
         'user_token_cache_default_ttl' => env('KLASSCI_USER_TOKEN_TTL', 300),
+        // Recul d'un compte après l'échec de sa re-synchronisation auth/me (TokenPresentSyncGate).
+        'resync_backoff_seconds' => env('KLASSCI_RESYNC_BACKOFF', 3600),
         'memoize_enabled' => env('KLASSCI_MEMOIZE_ENABLED', true),
     ],
 

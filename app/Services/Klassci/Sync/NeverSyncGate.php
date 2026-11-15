@@ -13,4 +13,9 @@ final class NeverSyncGate implements KlassciSyncGate
     {
         return false;
     }
+
+    public function refreshFailed(User $user): void
+    {
+        // Jamais de relance : aucun échec à retenir.
+    }
 }

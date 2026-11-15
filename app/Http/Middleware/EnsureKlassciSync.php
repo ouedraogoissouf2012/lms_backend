@@ -88,7 +88,9 @@ class EnsureKlassciSync
 
             $klassciUser = ProfilAuthMe::utilisateur($klassciMe, $user);
 
-            if ($klassciUser !== null) {
+            if ($klassciUser === null) {
+                $this->syncGate->refreshFailed($user);
+            } else {
                 $this->detectAndLogRoleDivergence($user, $klassciUser);
 
                 // SÉCURITÉ — champs EXCLUS volontairement du re-sync passif :
@@ -119,6 +121,9 @@ class EnsureKlassciSync
             // Les données locales (même obsolètes) restent utilisables — `role`,
             // `email`, `klassci_role` sont tous préservés en l'état.
             $this->journal->warning("Échec re-synchronisation KLASSCI pour user {$user->id}", $e);
+            // Un 401 ou un 429 n'est ni mis en cache ni compté par le disjoncteur :
+            // sans ce recul, la requête suivante du compte relancerait auth/me.
+            $this->syncGate->refreshFailed($user);
         }
 
         return $next($request);

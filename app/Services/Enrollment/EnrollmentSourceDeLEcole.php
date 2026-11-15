@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Enrollment;
 
+use App\Models\Classe;
 use App\Models\User;
 use App\Services\Roster\RosterAuthorityFactory;
 
@@ -36,6 +37,22 @@ final class EnrollmentSourceDeLEcole implements EnrollmentSource
     public function classeIdsForTeacher(User $teacher): array
     {
         return $this->source()->classeIdsForTeacher($teacher);
+    }
+
+    /**
+     * Par l'établissement de la CLASSE, et non par le tenant : les avertissements
+     * visio lisent ce sens depuis un job qui n'entre pas le tenant (C40, D454).
+     * Une classe sans établissement : la source KLASSCI, comme sans tenant.
+     */
+    public function localStudentIdsOf(Classe $classe): array
+    {
+        $source = $this->autorites->sourceForInstitution(
+            $classe->institution,
+            CompositeEnrollmentSource::class,
+            LocalEnrollmentSource::class,
+        );
+
+        return $source->localStudentIdsOf($classe);
     }
 
     private function source(): EnrollmentSource

@@ -74,9 +74,11 @@ final class DeadKlassciKeyRatchetTest extends TestCase
         // `App\Services\Seances\EmploiTempsSeanceLocator`. Le cliquet est
         // descendu de 4 à 3 — c'est bien ce qu'on attend de lui.
 
+        // D610 RÉSOLU le 2026-11-15 : la route `…/participants`, seul lecteur de la
+        // clé dans `SeanceDetailQueryService`, est retirée. Le cliquet descend de 3 à 2.
+
         // #740 — les lecteurs restants du chemin détail / page matière.
         'app/Http/Controllers/API/LMS/Concerns/FetchesSeanceDataFromKlassci.php',
-        'app/Services/SeanceDetailQueryService.php',
         'app/Services/Seances/KlassciSeanceMatiereScanner.php',
     ];
 

@@ -3,10 +3,14 @@
 namespace App\Http\Requests;
 
 use App\Enums\LessonStatus;
+use App\Http\Requests\Concerns\ExigeUneClasseDeLaMatiere;
 use App\Models\Classe;
 use App\Models\Matiere;
+use App\Models\User;
 use App\Rules\MirroredIdentifierExists;
 use App\Rules\PositiveInteger;
+use App\Services\Matiere\ClassesDeLaMatiere;
+use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
 
 /**
@@ -46,6 +50,8 @@ use Illuminate\Foundation\Http\FormRequest;
  */
 final class StoreLessonRequest extends FormRequest
 {
+    use ExigeUneClasseDeLaMatiere;
+
     /**
      * Determine if the user is authorized to make this request.
      */
@@ -141,6 +147,34 @@ final class StoreLessonRequest extends FormRequest
                 'in:'.implode(',', LessonStatus::values()),
             ],
         ];
+    }
+
+    /**
+     * La classe est une classe de la matière (#1103), quand la matière est
+     * donnée. Le port est reçu ici, à l'appel, et non au constructeur : la
+     * source dépend de l'école servie (ADR-EI-01).
+     *
+     * @return list<callable(Validator): void>
+     */
+    public function after(ClassesDeLaMatiere $classes): array
+    {
+        return [function (Validator $validator) use ($classes): void {
+            $user = auth()->user();
+            if ($validator->errors()->isNotEmpty() || ! $user instanceof User) {
+                return;
+            }
+
+            // Sans matière, la règle reste celle de l'établissement : on ne sait
+            // pas de quelle matière la classe devrait être.
+            $matiereId = Matiere::localIdFor($this->input('matiere_id'), $user->institution_id);
+            $matiere = $matiereId === null ? null : Matiere::query()->whereKey($matiereId)->first();
+            if (! $matiere instanceof Matiere) {
+                return;
+            }
+
+            $classeId = Classe::localIdFor($this->input('classe_id'), $user->institution_id);
+            $this->exigerUneClasseDeLaMatiere($validator, $classes, $classeId, $matiere, $user);
+        }];
     }
 
     /**

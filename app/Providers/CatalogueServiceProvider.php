@@ -33,8 +33,11 @@ use App\Services\Enseignant\LocalInstitutionTeachersReader;
 use App\Services\Evaluation\Programming\KlassciProgrammationDesEvaluations;
 use App\Services\Evaluation\Programming\LocalProgrammationDesEvaluations;
 use App\Services\Evaluation\Programming\ProgrammationDesEvaluationsReader;
+use App\Services\Matiere\ClassesDeLaMatiere;
 use App\Services\Matiere\InstitutionMatieresReader;
+use App\Services\Matiere\KlassciClassesDeLaMatiere;
 use App\Services\Matiere\KlassciInstitutionMatieresReader;
+use App\Services\Matiere\LocalClassesDeLaMatiere;
 use App\Services\Matiere\LocalInstitutionMatieresReader;
 use App\Services\Matiere\LocalMatiereDetailsReader;
 use App\Services\Matiere\LocalTeacherMatieresReader;
@@ -80,6 +83,8 @@ final class CatalogueServiceProvider extends ServiceProvider
         // Lot 1 : les matières de l'enseignant et la fiche matière.
         TeacherMatieresReader::class => [MyMatieresQueryService::class, LocalTeacherMatieresReader::class],
         MatiereDetailsReader::class => [MatiereDetailsQueryService::class, LocalMatiereDetailsReader::class],
+        // #1103 : les classes que la page d'une matière propose, seules admises pour une leçon.
+        ClassesDeLaMatiere::class => [KlassciClassesDeLaMatiere::class, LocalClassesDeLaMatiere::class],
         // Lot 2 : les classes. Une seule source locale sert la fiche par ses
         // deux portes et le roster ; elle applique une seule grille d'accès.
         TeacherClassesReader::class => [TeacherClassesQueryService::class, LocalTeacherClassesReader::class],

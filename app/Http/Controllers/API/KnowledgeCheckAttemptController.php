@@ -111,6 +111,6 @@ final class KnowledgeCheckAttemptController extends AuthenticatedController
         $quiz = KnowledgeCheck::query()->with('chapter')->find($id);
         $refus = $this->gate->refusEcritureQuiz($quiz instanceof KnowledgeCheck ? $quiz : null, $user);
 
-        return $refus === null ? null : $this->errorResponse($refus['message'], $refus['status']);
+        return $refus === null ? null : $this->errorResponse($refus['message'], $refus['status'], reason: $refus['reason'] ?? null);
     }
 }

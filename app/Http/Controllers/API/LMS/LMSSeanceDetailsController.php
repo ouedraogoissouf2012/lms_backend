@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\API\LMS;
 
+use App\Exceptions\BusinessException;
 use App\Http\Controllers\API\Concerns\RendersKlassciBackedErrors;
 use App\Http\Controllers\AuthenticatedController;
 use App\Services\SeanceDetailQueryService;
@@ -56,6 +57,10 @@ final class LMSSeanceDetailsController extends AuthenticatedController
 
             return $this->successResponse($lu['data'], meta: $lu['meta']);
 
+        } catch (BusinessException $e) {
+            // AVANT `RuntimeException`, dont elle hérite : un refus métier (le 409
+            // `enrolment_not_active`, #1095) n'est pas une panne de KLASSCI.
+            return $this->errorResponse($e->getMessage(), $e->statutHttp(), reason: $e->reason);
         } catch (RuntimeException $e) {
             return $this->renderKlassciFailure($e);
         } catch (\Exception $e) {

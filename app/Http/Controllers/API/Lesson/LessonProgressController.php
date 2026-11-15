@@ -180,6 +180,6 @@ class LessonProgressController extends AuthenticatedController
     {
         $refus = $this->gate->refusEcriture($lesson, $user);
 
-        return $refus === null ? null : $this->errorResponse($refus['message'], $refus['status']);
+        return $refus === null ? null : $this->errorResponse($refus['message'], $refus['status'], reason: $refus['reason'] ?? null);
     }
 }

@@ -7,6 +7,7 @@ namespace App\Services\Classe;
 use App\Models\Classe;
 use App\Models\Matiere;
 use App\Models\User;
+use App\Services\Enrollment\InscriptionNonActive;
 use App\Services\Evaluation\EvaluationsDeLaPage;
 use Illuminate\Support\Facades\DB;
 
@@ -31,7 +32,10 @@ use Illuminate\Support\Facades\DB;
  * | apprenant, et tout rôle non reconnu (#941) | une classe où son inscription est ACTIVE (D57) | `[]` (GHSA-gg7j) |
  *
  * Hors de ces cas, 404 « Classe non trouvée » — le corps de la source KLASSCI,
- * qui ne dit pas si la classe existe ailleurs. La grille est écrite une fois,
+ * qui ne dit pas si la classe existe ailleurs. Seule exception, sur la fiche :
+ * l'apprenant inscrit dans CETTE classe, inscription non active, reçoit le 409
+ * `enrolment_not_active` du tableau de bord ({@see InscriptionNonActive}, #1095).
+ * La grille est écrite une fois,
  * dans {@see ClassesAtteintes}, qui sert aussi la liste des classes de
  * l'établissement.
  *
@@ -101,7 +105,7 @@ final class LocalClasseDetailsReader implements ClasseDetailsReader, ClasseEtudi
         $classe = $this->classeAtteinte($classeId, $user);
 
         if ($classe === null) {
-            return $this->introuvable();
+            return $this->refusDeLaFiche($classeId, $user);
         }
 
         $actifs = $this->rosterActif($classe);
@@ -220,6 +224,27 @@ final class LocalClasseDetailsReader implements ClasseDetailsReader, ClasseEtudi
                 'enseignants' => $formateur instanceof User ? [['id' => $formateur->id, 'nom' => $formateur->name]] : [],
             ];
         })->all());
+    }
+
+    /**
+     * La classe n'est pas atteinte. L'apprenant qu'une inscription ACTIVE y aurait
+     * admis ({@see ClassesAtteintes::inscrites()}) lit son motif ; tout autre, le 404.
+     *
+     * @return array{status: int, payload: array<string, mixed>}
+     */
+    private function refusDeLaFiche(int $classeId, User $user): array
+    {
+        $institution = $user->institution_id;
+        $apprenant = ! $user->isManager() && ! $user->isTeacher();
+
+        if (! $apprenant || ! is_int($institution) || ! InscriptionNonActive::classes(
+            Classe::query()->where('institution_id', $institution)->whereKey($classeId),
+            $user,
+        )->exists()) {
+            return $this->introuvable();
+        }
+
+        return InscriptionNonActive::reponse();
     }
 
     /**

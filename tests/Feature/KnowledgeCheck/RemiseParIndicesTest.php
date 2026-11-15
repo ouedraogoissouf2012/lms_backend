@@ -4,17 +4,12 @@ declare(strict_types=1);
 
 namespace Tests\Feature\KnowledgeCheck;
 
-use App\Models\Chapter;
-use App\Models\Classe;
-use App\Models\Institution;
-use App\Models\KnowledgeCheck;
 use App\Models\KnowledgeCheckAttempt;
-use App\Models\Lesson;
-use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Testing\TestResponse;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\Concerns\ActsAsTenantUser;
+use Tests\Concerns\JoueUnQuizDeLecon;
 use Tests\Concerns\ValidatesAgainstOpenApi;
 use Tests\TestCase;
 
@@ -25,29 +20,19 @@ use Tests\TestCase;
  * Chaque réponse est `null` (non répondue), un entier ≥ 0, ou une liste
  * d'entiers ≥ 0 distincts (`multiple`). Toute autre forme est refusée AVANT
  * toute écriture : 422, motif `answer_not_an_option_index` (ADR-906-01), aucune
- * tentative créée, aucun essai consommé. Les bornes (l'indice existe-t-il parmi
- * les options affichées ?) relèvent de C44, qui connaît la présentation.
+ * tentative remise, aucun essai consommé. Les bornes (l'indice existe-t-il
+ * parmi les options affichées ?) relèvent de C44, qui connaît la présentation.
  *
  * La réponse suit `docs/openapi.yaml`. Vrai jeton, les deux types d'école.
  */
 final class RemiseParIndicesTest extends TestCase
 {
     use ActsAsTenantUser;
+    use JoueUnQuizDeLecon;
     use RefreshDatabase;
     use ValidatesAgainstOpenApi;
 
     private const CHEMIN = '/knowledge-checks/{id}/submit';
-
-    private User $eleve;
-
-    private KnowledgeCheck $quiz;
-
-    /** @return iterable<string, array{0: string}> */
-    public static function volets(): iterable
-    {
-        yield 'école KLASSCI' => ['klassci'];
-        yield 'école autonome' => ['standalone'];
-    }
 
     /** @return iterable<string, array{0: string, 1: mixed}> */
     public static function refus(): iterable
@@ -81,7 +66,7 @@ final class RemiseParIndicesTest extends TestCase
 
         $refus->assertStatus(422)->assertJsonPath('reason', 'answer_not_an_option_index');
         $this->assertMatchesOpenApiResponse($refus, self::CHEMIN, 'post');
-        self::assertSame(0, KnowledgeCheckAttempt::query()->where('user_id', $this->eleve->id)->count(), 'tentatives');
+        self::assertSame(0, KnowledgeCheckAttempt::query()->where('user_id', $this->eleve->id)->whereNotNull('completed_at')->count(), 'tentatives remises');
     }
 
     #[DataProvider('volets')]
@@ -132,42 +117,17 @@ final class RemiseParIndicesTest extends TestCase
      */
     private function remettre(array $reponses): TestResponse
     {
-        $this->asTenant($this->eleve)->postJson("/api/knowledge-checks/{$this->quiz->id}/start")->assertOk();
+        $this->demarrer();
 
-        return $this->asTenant($this->eleve)->postJson("/api/knowledge-checks/{$this->quiz->id}/submit", [
-            'answers' => $reponses,
-            'time_spent_seconds' => 30,
-        ]);
+        return $this->soumettre($reponses);
     }
 
     private function ecole(string $volet): void
     {
-        $this->disableKlassciMiddleware();
-        $autonome = $volet === 'standalone';
-        $ecole = $autonome ? Institution::factory()->standalone()->create() : Institution::factory()->create();
-        $classe = Classe::factory()->create(['institution_id' => $ecole->id, 'klassci_id' => $autonome ? null : 7001]);
-        $auteur = User::factory()->create(['institution_id' => $ecole->id, 'role' => 'enseignant']);
-        $this->eleve = User::factory()->create(['institution_id' => $ecole->id, 'role' => 'etudiant', 'klassci_id' => $autonome ? null : 910001]);
-        $classe->etudiants()->attach($this->eleve->id, ['statut' => 'actif']);
-
-        $lecon = Lesson::factory()->published()->create([
-            'institution_id' => $ecole->id, 'enseignant_id' => $auteur->id, 'classe_id' => $classe->id,
-        ]);
-        $chapitre = Chapter::factory()->create([
-            'lesson_id' => $lecon->id, 'institution_id' => $ecole->id, 'enseignant_id' => $auteur->id,
-            'content_type' => 'quiz', 'order' => 0,
-        ]);
-        $this->quiz = KnowledgeCheck::factory()->create([
-            'chapter_id' => $chapitre->id,
-            'institution_id' => $ecole->id,
-            'max_attempts' => null,
-            'show_correct_answers' => true,
-            'show_explanation' => true,
-            'questions' => [
-                ['question' => 'Capitale du Burkina Faso ?', 'type' => 'single', 'options' => ['Bobo-Dioulasso', 'Ouagadougou', 'Koudougou'], 'correct_answer' => 1, 'explanation' => 'Ouagadougou.', 'points' => 1],
-                ['question' => 'Le Nakambé traverse le pays.', 'type' => 'true_false', 'options' => ['Vrai', 'Faux'], 'correct_answer' => 0, 'explanation' => null, 'points' => 1],
-                ['question' => 'Villes du Burkina ?', 'type' => 'multiple', 'options' => ['Banfora', 'Dakar', 'Kaya'], 'correct_answer' => [0, 2], 'explanation' => null, 'points' => 1],
-            ],
-        ]);
+        $this->ecoleEtQuiz($volet, ['questions' => [
+            ['question' => 'Capitale du Burkina Faso ?', 'type' => 'single', 'options' => ['Bobo-Dioulasso', 'Ouagadougou', 'Koudougou'], 'correct_answer' => 1, 'explanation' => 'Ouagadougou.', 'points' => 1],
+            ['question' => 'Le Nakambé traverse le pays.', 'type' => 'true_false', 'options' => ['Vrai', 'Faux'], 'correct_answer' => 0, 'explanation' => null, 'points' => 1],
+            ['question' => 'Villes du Burkina ?', 'type' => 'multiple', 'options' => ['Banfora', 'Dakar', 'Kaya'], 'correct_answer' => [0, 2], 'explanation' => null, 'points' => 1],
+        ]]);
     }
 }

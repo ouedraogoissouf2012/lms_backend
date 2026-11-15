@@ -168,27 +168,23 @@ final class EnseignantCorrigeSesEvaluationsTest extends TestCase
         self::assertSame([$eleves[ClasseEtudiantStatut::Actif->value]->getKey()], $roster);
     }
 
-    public function test_un_eleve_admis_par_le_repli_qui_remet_apparait_dans_les_resultats(): void
+    public function test_un_eleve_sorti_du_roster_apres_avoir_remis_apparait_dans_les_resultats(): void
     {
-        // Règle : aucune copie remise n'est invisible pour l'enseignant. Awa
-        // n'a aucune inscription active : l'audience l'admet par le repli
-        // `user_classes` (C24). Elle démarre et remet par les VRAIES routes,
-        // puis apparaît dans les résultats, marquée hors roster
-        // (`inscription: null`) et jamais comptée parmi les absents.
+        // Règle : aucune copie remise n'est invisible pour l'enseignant. Awa,
+        // inscrite, démarre et remet par les VRAIES routes, puis sort du roster
+        // (sa ligne d'inscription disparaît). Elle apparaît dans les résultats,
+        // marquée hors roster (`inscription: null`), et jamais comptée parmi les
+        // absents. Avant D410, ce test l'admettait par le repli `user_classes`
+        // (C24), que l'école autonome n'a plus : le pivot y fait foi seul.
         [$ecole, $enseignant, $classe, $maths] = $this->enseignantEtSaClasse();
-        $classe->forceFill(['klassci_id' => 77])->save();
         $yao = $this->eleve($ecole, $classe, 'Yao Kouassi');
-        $awa = $this->membre($ecole, 'etudiant');
-        $awa->forceFill(['name' => 'Awa Koné'])->save();
-        DB::table('user_classes')->insert([
-            'user_id' => $awa->getKey(), 'klassci_classe_id' => 77, 'institution_id' => $ecole->getKey(),
-            'created_at' => now(), 'updated_at' => now(),
-        ]);
+        $awa = $this->eleve($ecole, $classe, 'Awa Koné');
         $evaluation = $this->evaluation($classe, $maths, $enseignant, ['date_evaluation' => now()->subMinutes(10)]);
         $question = EvaluationQuestion::query()->where('evaluation_id', $evaluation->getKey())->firstOrFail();
         $this->asTenant($awa)->postJson($this->de($evaluation).'/start')->assertSuccessful();
         $this->asTenant($awa)->postJson($this->de($evaluation).'/submit', ['answers' => [(string) $question->getKey() => 'a']])
             ->assertSuccessful();
+        DB::table('classe_etudiant')->where('user_id', $awa->getKey())->where('classe_id', $classe->getKey())->delete();
 
         $reponse = $this->asTenant($enseignant)->getJson($this->de($evaluation).'/results-by-class');
         $this->assertMatchesOpenApiResponse($reponse, '/evaluations/{id}/results-by-class', 'get');

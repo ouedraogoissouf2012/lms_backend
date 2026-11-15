@@ -109,7 +109,7 @@ final class StudentChapterProgressionFlowTest extends TestCase
                     'question' => 'Quelle est la capitale du Burkina Faso ?',
                     'type' => 'single',
                     'options' => ['Bobo-Dioulasso', 'Ouagadougou', 'Koudougou'],
-                    'correct_answer' => 'Ouagadougou',
+                    'correct_answer' => 1,
                     'explanation' => 'Ouagadougou est la capitale.',
                     'points' => 1,
                 ],
@@ -168,7 +168,7 @@ final class StudentChapterProgressionFlowTest extends TestCase
         }
 
         $fail = $this->postJson("/api/knowledge-checks/{$this->quiz->id}/submit", [
-            'answers' => [0 => 'Bobo-Dioulasso'],
+            'answers' => [0 => 0],
             'time_spent_seconds' => 30,
         ]);
         $fail->assertStatus(200)
@@ -180,7 +180,7 @@ final class StudentChapterProgressionFlowTest extends TestCase
 
         // ── Étape 6 : réussite au quiz → ch2 auto-complété ──────────────────
         $pass = $this->postJson("/api/knowledge-checks/{$this->quiz->id}/submit", [
-            'answers' => [0 => 'Ouagadougou'],
+            'answers' => [0 => 1],
             'time_spent_seconds' => 45,
         ]);
         $pass->assertStatus(200)

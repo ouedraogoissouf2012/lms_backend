@@ -2,6 +2,13 @@
 
 namespace App\Http\Requests;
 
+use App\Http\Requests\Concerns\ExplainsCorrectAnswersRefusal;
+use App\Rules\CorrectAnswersAmongOptions;
+use App\Rules\CorrectAnswersCardinality;
+use App\Rules\TrueFalseOptions;
+use App\Support\Evaluation\QuestionCountLimit;
+use App\Support\Evaluation\QuestionOptionLimits;
+use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
 
 /**
@@ -23,11 +30,14 @@ use Illuminate\Foundation\Http\FormRequest;
  * - question: text
  * - type: qcm, qcm_multiple, vrai_faux, reponse_courte, dissertation
  * - points: numeric
- * - options: list of strings, or null
- * - correct_answers: array
+ * - options: list of strings, or null (at most 26, of 1 000 characters each)
+ * - correct_answers: list of strings, or null; for qcm, qcm_multiple and vrai_faux, each one of
+ *   the options (422 `correct_answer_not_among_options`), at most one for qcm and vrai_faux
  */
 final class StoreEvaluationRequest extends FormRequest
 {
+    use ExplainsCorrectAnswersRefusal;
+
     public function authorize(): bool
     {
         $user = auth()->user();
@@ -81,16 +91,23 @@ final class StoreEvaluationRequest extends FormRequest
             'is_online' => 'nullable|boolean',
             'shuffle_questions' => 'nullable|boolean',
             'show_results' => 'nullable|boolean',
-            'questions' => 'nullable|array',
+            // Une LISTE (D520) : indexées par des clés, les questions échappaient aux
+            // règles qui lisent la question voisine par son rang (questions.N.…).
+            'questions' => ['nullable', 'list', QuestionCountLimit::maxRule()],
             'questions.*.question' => 'required|string|max:1000',
             'questions.*.type' => 'required|in:qcm,qcm_multiple,vrai_faux,reponse_courte,dissertation',
             'questions.*.points' => 'nullable|numeric|min:0',
             // Une liste de textes, ou null : ce que le front envoie, et ce que la
             // spec décrit. Sans la règle sur les éléments, le serveur gardait des
             // nombres, des objets, ou un tableau associatif rendu en objet JSON.
-            'questions.*.options' => 'nullable|list',
-            'questions.*.options.*' => 'string',
-            'questions.*.correct_answers' => 'nullable|array',
+            // Bornée (B5) : 26 options, 1 000 caractères chacune (QuestionOptionLimits).
+            // Un vrai_faux : exactement ['Vrai', 'Faux'], ce que l'écran propose (D532).
+            'questions.*.options' => ['nullable', 'list', 'max:'.QuestionOptionLimits::MAX_OPTIONS, new TrueFalseOptions],
+            'questions.*.options.*' => QuestionOptionLimits::itemRule(),
+            // Des textes, bornés comme les options ; parmi les options d'une question à
+            // options, au plus un pour une réponse unique (D466). Aucune obligation ici.
+            'questions.*.correct_answers' => ['nullable', 'list', 'max:'.QuestionOptionLimits::MAX_OPTIONS, new CorrectAnswersCardinality, new CorrectAnswersAmongOptions],
+            'questions.*.correct_answers.*' => QuestionOptionLimits::itemRule(),
         ];
     }
 
@@ -110,6 +127,14 @@ final class StoreEvaluationRequest extends FormRequest
             'questions.*.question.required' => 'Le texte de la question est requis',
             'questions.*.type.required' => 'Le type de question est requis',
         ];
+    }
+
+    /** Une bonne réponse hors des options porte son motif ; le reste, le rendu 422 commun. */
+    protected function failedValidation(Validator $validator): void
+    {
+        $this->refuserLesBonnesReponsesHorsOptions($validator);
+
+        parent::failedValidation($validator);
     }
 
     protected function prepareForValidation(): void

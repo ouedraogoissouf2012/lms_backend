@@ -10,6 +10,9 @@ use App\Models\KnowledgeCheck;
  * Règles d'accès par utilisateur à un knowledge check — ex-méthodes du modèle
  * `KnowledgeCheck` (H2 audit, §5 : jamais de requêtes DB dans un modèle).
  * Pattern identique à QuizAccessService.
+ *
+ * Seules les tentatives REMISES comptent (C44) : une tentative naît ouverte au
+ * démarrage, sans note, et un démarrage abandonné ne consomme aucun essai.
  */
 final class KnowledgeCheckAccessService
 {
@@ -20,6 +23,7 @@ final class KnowledgeCheckAccessService
     {
         return $quiz->attempts()
             ->where('user_id', $userId)
+            ->completed()
             ->where('passed', true)
             ->exists();
     }
@@ -31,6 +35,7 @@ final class KnowledgeCheckAccessService
     {
         return $quiz->attempts()
             ->where('user_id', $userId)
+            ->completed()
             ->max('score');
     }
 
@@ -45,6 +50,7 @@ final class KnowledgeCheckAccessService
 
         $attemptCount = $quiz->attempts()
             ->where('user_id', $userId)
+            ->completed()
             ->count();
 
         return $attemptCount < $quiz->max_attempts;

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Seances;
 
+use App\Models\Classe;
 use App\Models\Institution;
 use App\Models\Seance;
 use App\Models\User;
@@ -11,6 +12,7 @@ use App\Services\KlassciProxyService;
 use App\Services\TenantManager;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Laravel\Sanctum\Sanctum;
 use Mockery;
 use Mockery\MockInterface;
@@ -68,6 +70,9 @@ final class SeanceDetailSourceTest extends TestCase
 
     /** La classe RÉELLE de la séance — ni `'B2 COM'`, ni rien d'inventé. */
     private const CLASSE_REELLE = 'BTS Genie Civil';
+
+    /** La classe KLASSCI de la séance, dont l'élève du repli est inscrit. */
+    private const KLASSCI_CLASSE_ID = 501;
 
     private Institution $institution;
 
@@ -173,8 +178,8 @@ final class SeanceDetailSourceTest extends TestCase
      */
     public function test_le_repli_sert_les_valeurs_de_la_ligne_et_non_des_litteraux(): void
     {
-        $locale = $this->seanceLocale();
-        $etudiant = $this->etudiant();
+        $locale = $this->seanceLocale(['klassci_classe_id' => self::KLASSCI_CLASSE_ID]);
+        $etudiant = $this->etudiantDeLaClasse();
         $this->fakeKlassciSansRienTrouver();
 
         $seance = $this->detailPour($etudiant)['seance'] ?? [];
@@ -201,8 +206,8 @@ final class SeanceDetailSourceTest extends TestCase
      */
     public function test_le_repli_n_invente_pas_de_salle(): void
     {
-        $this->seanceLocale();
-        $etudiant = $this->etudiant();
+        $this->seanceLocale(['klassci_classe_id' => self::KLASSCI_CLASSE_ID]);
+        $etudiant = $this->etudiantDeLaClasse();
         $this->fakeKlassciSansRienTrouver();
 
         $seance = $this->detailPour($etudiant)['seance'] ?? [];
@@ -224,8 +229,8 @@ final class SeanceDetailSourceTest extends TestCase
      */
     public function test_une_duree_inconnue_n_est_pas_fabriquee(): void
     {
-        $this->seanceLocale();
-        $etudiant = $this->etudiant();
+        $this->seanceLocale(['klassci_classe_id' => self::KLASSCI_CLASSE_ID]);
+        $etudiant = $this->etudiantDeLaClasse();
         $this->fakeKlassciSansRienTrouver();
 
         $detail = $this->detailPour($etudiant);
@@ -263,6 +268,22 @@ final class SeanceDetailSourceTest extends TestCase
             'role' => 'etudiant',
             'klassci_token' => self::TOKEN,
         ]);
+    }
+
+    /**
+     * Un élève de la classe de la séance : le repli ne décrit la séance qu'à un
+     * élève de sa classe, ou à qui la gère.
+     */
+    private function etudiantDeLaClasse(): User
+    {
+        $etudiant = $this->etudiant();
+        $classe = Classe::factory()->create(['institution_id' => $this->institution->id, 'klassci_id' => self::KLASSCI_CLASSE_ID]);
+        DB::table('classe_etudiant')->insert([
+            'classe_id' => $classe->id, 'user_id' => $etudiant->id, 'institution_id' => $this->institution->id,
+            'statut' => 'actif', 'date_inscription' => now(), 'created_at' => now(), 'updated_at' => now(),
+        ]);
+
+        return $etudiant;
     }
 
     /** KLASSCI ne trouve rien : le repli local s execute. */

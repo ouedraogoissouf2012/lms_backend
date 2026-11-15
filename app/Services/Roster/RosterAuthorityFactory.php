@@ -6,6 +6,7 @@ namespace App\Services\Roster;
 
 use App\Enums\InstitutionMode;
 use App\Models\Institution;
+use App\Models\User;
 use App\Services\Catalogue\CatalogueAuthority;
 use App\Services\Catalogue\KlassciCatalogueAuthority;
 use App\Services\Catalogue\LocalCatalogueAuthority;
@@ -129,8 +130,52 @@ final class RosterAuthorityFactory
      */
     public function sourceForCurrentTenant(string $klassci, string $local): object
     {
+        return $this->sourceForInstitution($this->tenants->get(), $klassci, $local);
+    }
+
+    /**
+     * La même source, pour un établissement NOMMÉ plutôt que pour le tenant
+     * courant : là où le tenant manque (un job qui ne l'entre pas), la question
+     * porte sur une entité qui désigne elle-même son école (une classe, une
+     * séance). Sans établissement, la source KLASSCI, comme sans tenant.
+     *
+     * @template TSource of object
+     *
+     * @param  class-string<TSource>  $klassci
+     * @param  class-string<TSource>  $local
+     * @return TSource
+     */
+    public function sourceForInstitution(?Institution $institution, string $klassci, string $local): object
+    {
         return $this->container->make(
-            $this->tenants->get()?->mode === InstitutionMode::Standalone ? $local : $klassci,
+            $institution?->mode === InstitutionMode::Standalone ? $local : $klassci,
         );
+    }
+
+    /**
+     * La même source, pour l'établissement d'un COMPTE (D496). Le tenant quand il
+     * est cet établissement : c'est toute requête authentifiée, `ResolveInstitution`
+     * le pose sur l'établissement du jeton, et aucune lecture de plus n'a lieu (le
+     * garde Sanctum recharge le compte dans une autre instance, sans sa relation).
+     * Sinon (un job, une commande, sans tenant) : l'établissement lu sur le compte.
+     * Un compte sans établissement : la source KLASSCI.
+     *
+     * @template TSource of object
+     *
+     * @param  class-string<TSource>  $klassci
+     * @param  class-string<TSource>  $local
+     * @return TSource
+     */
+    public function sourceForAccount(User $compte, string $klassci, string $local): object
+    {
+        $tenant = $this->tenants->get();
+        $ecole = match (true) {
+            $tenant !== null && $tenant->id === $compte->institution_id => $tenant,
+            $compte->institution_id === null => null,
+            // Une école supprimée en douceur garde son mode : la relation l'ignorerait.
+            default => Institution::withTrashed()->find($compte->institution_id),
+        };
+
+        return $this->sourceForInstitution($ecole, $klassci, $local);
     }
 }

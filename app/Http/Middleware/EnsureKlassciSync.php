@@ -6,6 +6,7 @@ namespace App\Http\Middleware;
 
 use App\Enums\Role;
 use App\Models\User;
+use App\Services\Klassci\Auth\ProfilAuthMe;
 use App\Services\Klassci\Data\KlassciDataWhitelist;
 use App\Services\Klassci\Sync\KlassciSyncGate;
 use App\Services\KlassciProxyService;
@@ -85,10 +86,9 @@ class EnsureKlassciSync
                 'GET',
             );
 
-            if (is_array($klassciMe['data']['user'] ?? null)) {
-                /** @var array<string, mixed> $klassciUser */
-                $klassciUser = $klassciMe['data']['user'];
+            $klassciUser = ProfilAuthMe::utilisateur($klassciMe, $user);
 
+            if ($klassciUser !== null) {
                 $this->detectAndLogRoleDivergence($user, $klassciUser);
 
                 // SÉCURITÉ — champs EXCLUS volontairement du re-sync passif :
@@ -134,7 +134,7 @@ class EnsureKlassciSync
      * `is_escalation_attempt` filters out benign cases (KLASSCI < LMS) from
      * suspicious ones (KLASSCI > LMS).
      *
-     * @param  array<string, mixed>  $klassciUser  Payload `data.user` from auth/me.
+     * @param  array<string, mixed>  $klassciUser  The user read from auth/me ({@see ProfilAuthMe}).
      */
     private function detectAndLogRoleDivergence(User $user, array $klassciUser): void
     {

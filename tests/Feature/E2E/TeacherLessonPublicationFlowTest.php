@@ -161,8 +161,9 @@ final class TeacherLessonPublicationFlowTest extends TestCase
             array_column($listFinal->json('data.data') ?? $listFinal->json('data'), 'id'),
             'Un cours dépublié doit redevenir invisible pour les étudiants'
         );
+        // Dépublié, il redevient introuvable pour l'élève, comme un brouillon.
         $this->getJson("/api/lessons/{$lessonId}")
-            ->assertStatus(403);
+            ->assertStatus(404);
     }
 
     /**

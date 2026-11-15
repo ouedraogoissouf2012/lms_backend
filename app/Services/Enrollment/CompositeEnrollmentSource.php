@@ -9,6 +9,9 @@ use App\Models\User;
 /**
  * Pivot local d'abord ; repli cache KLASSCI si le backfill n'a pas tourné.
  * Aucune conditionnelle de mode.
+ *
+ * La source d'une école KLASSCI seulement : une école autonome lit le pivot seul
+ * ({@see EnrollmentSourceDeLEcole}, D410).
  */
 final class CompositeEnrollmentSource implements EnrollmentSource
 {

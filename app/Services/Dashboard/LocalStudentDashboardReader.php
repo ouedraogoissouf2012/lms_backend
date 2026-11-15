@@ -36,10 +36,10 @@ use Illuminate\Support\Facades\DB;
  * de l'inscription. Aucune inscription : un tableau vide, état normal (E2a).
  *
  * Une seule règle d'admission, celle des leçons : le port {@see EnrollmentSource},
- * sans prédicat propre au tableau. Déclaré : ce port retombe sur le miroir
- * `user_classes` dès qu'aucune ligne de pivot n'est ACTIVE ; un élève aux lignes
- * toutes inactives qui garde ce miroir (école passée de KLASSCI au mode autonome)
- * est donc admis ici comme dans ses leçons. Le correctif est à la racine, le port.
+ * sans prédicat propre au tableau. Dans une école autonome, ce port est le pivot de
+ * l'établissement seul (D410, `EnrollmentSourceDeLEcole`) : un élève aux lignes
+ * toutes inactives qui garde le miroir `user_classes` d'avant une bascule reçoit le
+ * refus D57, ici comme dans ses leçons.
  */
 final class LocalStudentDashboardReader implements StudentDashboardReader
 {

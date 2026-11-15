@@ -129,11 +129,13 @@ final class InstitutionCrudService
      * consommateurs sont l'analyse d'import, sa confirmation, et la capacité
      * publiée à la connexion.
      *
-     * Elle ne touche donc NI les inscriptions déjà écrites, NI l'accès des
-     * élèves à leurs cours : `CompositeEnrollmentSource` lit le pivot local puis
-     * se replie sur le cache KLASSCI, sans jamais consulter le mode. Et un
-     * import analysé avant la bascule ne peut pas aboutir après, sa confirmation
-     * revérifiant la capacité. La bascule est réversible, et le test le dit.
+     * Elle ne touche pas les inscriptions déjà écrites. Elle change en revanche
+     * la SOURCE qui les lit (D410, `EnrollmentSourceDeLEcole`) : en école KLASSCI,
+     * le pivot local puis le repli sur le cache KLASSCI ; en école autonome, le
+     * pivot seul, le cache KLASSCI gardé d'avant la bascule n'admettant plus
+     * personne. Un import analysé avant la bascule ne peut pas aboutir après, sa
+     * confirmation revérifiant la capacité. La bascule est réversible, et le test
+     * le dit.
      *
      * ## Pourquoi une trace d'audit et pas seulement un log
      *

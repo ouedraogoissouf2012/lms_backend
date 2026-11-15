@@ -121,102 +121,15 @@ class EvaluationKlassciSyncController extends AuthenticatedController
         }
     }
 
-    public function syncNotesToKlassci(SyncEvaluationNotesRequest $request, int $id): JsonResponse
-    {
-        try {
-            $evaluation = Evaluation::with('questions')->findOrFail($id);
-
-            if (($refus = $this->refusAvantSynchronisation($evaluation)) !== null) {
-                return $refus;
-            }
-
-            // Récupérer toutes les soumissions non synchronisées
-            $submissions = EvaluationSubmission::where('evaluation_id', $id)
-                ->where('status', 'soumis')
-                ->where('synced_to_klassci', false)
-                ->get();
-
-            if ($submissions->isEmpty()) {
-                // Non migré vers successResponse() : clé racine `synced_count` hors
-                // contrat du trait ({success, message, data?, meta?}). La déplacer
-                // (sous `data`/`meta`) changerait le JSON client. Conservée inline.
-                return response()->json([
-                    'success' => true,
-                    'message' => 'Toutes les notes sont déjà synchronisées',
-                    'synced_count' => 0
-                ]);
-            }
-
-            $syncedCount = 0;
-            $errors = [];
-
-            // STUB DOCUMENTÉ — l'appel POST KLASSCI `/api/notes` n'est pas encore implémenté.
-            // En attendant, on marque les soumissions comme synced_to_klassci pour ne pas les
-            // re-tenter en boucle, mais on log un warning à chaque appel pour rendre la dette
-            // visible dans les dashboards. À fixer dans une issue follow-up dédiée.
-            \Log::warning('syncNotesToKlassci is stubbed — submissions marked synced without KLASSCI POST', [
-                'evaluation_id'        => $id,
-                'submissions_affected' => $submissions->count(),
-            ]);
-
-            foreach ($submissions as $submission) {
-                try {
-                    $submission->update([
-                        'synced_to_klassci' => true,
-                        'synced_at'         => now(),
-                    ]);
-
-                    $syncedCount++;
-                } catch (\Exception $e) {
-                    $errors[] = [
-                        'submission_id' => $submission->id,
-                        'student_id' => $submission->klassci_etudiant_id,
-                        'error' => 'Une erreur est survenue.'
-                    ];
-                }
-            }
-
-            \Log::info('Synchronisation notes vers KLASSCI', [
-                'evaluation_id' => $id,
-                'evaluation_titre' => $evaluation->titre,
-                'total_submissions' => $submissions->count(),
-                'synced_count' => $syncedCount,
-                'errors_count' => count($errors)
-            ]);
-
-            // Non migré vers successResponse() : clés racine `synced_count` et
-            // `errors` (sur un succès) hors contrat du trait. Les déplacer
-            // changerait le JSON client (axe #1 « DRY-only »). Conservée inline.
-            return response()->json([
-                'success' => true,
-                'message' => "Synchronisation terminée : {$syncedCount} note(s) synchronisée(s)",
-                'synced_count' => $syncedCount,
-                'errors' => $errors
-            ]);
-        } catch (\Exception $e) {
-            $this->journal->error('Erreur synchronisation notes', $e, [
-                'evaluation_id' => $id,
-            ]);
-
-            // Non migré : clé racine `error` (singulier) hors contrat du trait
-            // (cf. syncToKlassci). Conservée inline pour préserver le JSON client.
-            return response()->json([
-                'success' => false,
-                'message' => 'Erreur lors de la synchronisation des notes',
-                'error' => 'Une erreur est survenue.'
-            ], 500);
-        }
-    }
-
     /**
-     * Les refus communs aux deux routes de synchronisation, dans cet ordre.
+     * Les refus de la synchronisation, dans cet ordre.
      *
      * 1. Une évaluation sans lien KLASSCI (`klassci_evaluation_id` nul) n'a nulle
      *    part où envoyer ses notes : celle d'une école créée depuis le LMS, ou une
      *    ligne jamais liée. Refus motivé, en 422 (D72, E3). C'est un fait de la
      *    donnée, pas une comparaison de mode. Avant : `sync-klassci` répondait
-     *    400 sans motif, et `sync-notes` marquait les copies synchronisées sans
-     *    rien envoyer.
+     *    400 sans motif. (`sync-notes`, qui marquait les copies synchronisées
+     *    sans rien envoyer, est retirée : D606.)
      * 2. #588 : une dissertation n'est finale qu'en statut `corrige` (409).
      */
     private function refusAvantSynchronisation(Evaluation $evaluation): ?JsonResponse

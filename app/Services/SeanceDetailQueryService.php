@@ -11,9 +11,7 @@ use App\Http\Controllers\API\LMS\LMSVisioParticipantController;
 use App\Models\User;
 use App\Services\Seances\KlassciSeanceLookupService;
 use App\Services\Seances\SeanceDetailReader;
-use App\Services\Seances\SeanceParticipantsReader;
 use App\Services\Seances\SeanceVisioEnricher;
-use App\Support\Logging\CaughtExceptionLog;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -28,7 +26,6 @@ use Psr\Log\LoggerInterface;
  * Queries scoped to **ONE specific séance**:
  *   - `getSeanceDetailsArray()` — full details payload (seance + visio + participants).
  *   - `getProgrammation()` — convenience accessor for the programmation block.
- *   - `getSeanceParticipantsArray()` — participants-only payload (teacher + students).
  *
  * Listing queries (upcoming, my-teaching, my-classes) live in
  * `SeancesListQueryService`. History queries live in `SeancesHistoryQueryService`.
@@ -50,15 +47,13 @@ use Psr\Log\LoggerInterface;
  * @see LMSVisioParticipantController (consumes getSeanceDetailsArray)
  * @see LMSAttendancesController (consumes getSeanceDetailsArray)
  */
-final class SeanceDetailQueryService implements SeanceDetailReader, SeanceParticipantsReader
+final class SeanceDetailQueryService implements SeanceDetailReader
 {
     public function __construct(
         private readonly LoggerInterface $logger,
-        private readonly KlassciProxyService $klassciService,
         private readonly KlassciSeanceLookupService $klassciLookup,
         private readonly SeanceVisioEnricher $visioEnricher,
         private readonly Seances\SeanceHoraireResolver $horaire,
-        private readonly CaughtExceptionLog $journal,
     ) {}
 
     /** Source KLASSCI du détail : {@see getSeanceDetailsArray()}, inchangé, sans marque. */
@@ -174,123 +169,5 @@ final class SeanceDetailQueryService implements SeanceDetailReader, SeancePartic
         $programmation = $details['seance']['programmation'] ?? null;
 
         return is_array($programmation) ? $programmation : null;
-    }
-
-    /**
-     * Returns the participants payload (teacher + students) for a séance.
-     *
-     * Extracted verbatim from the legacy
-     * `LMSSeancesQueryController::seanceParticipants()` inline block. The
-     * KLASSCI lookup path is intentionally NOT shared with `getSeanceDetailsArray`
-     * because the legacy code did not inject the enseignant on the teacher branch
-     * here (only the dashboard matieres are walked, no enseignant attachment).
-     * Preserving that for behavioral parity.
-     *
-     * @return array{seance: array<string, mixed>, teacher: array<string, mixed>, students: array<int, array<string, mixed>>, total_participants: int}|null
-     *
-     * @throws MissingKlassciTokenException If the user has no `klassci_token`.
-     */
-    public function getSeanceParticipantsArray(int $seanceId, User $user): ?array
-    {
-        $klassciToken = $user->klassci_token;
-
-        if (! $klassciToken) {
-            throw MissingKlassciTokenException::forUser($user->id);
-        }
-
-        $this->logger->info('Récupération participants séance', ['seance_id' => $seanceId]);
-
-        $seance = $this->findSeanceForParticipants($seanceId, $user, $klassciToken);
-        if (! $seance) {
-            return null;
-        }
-
-        $teacher = [
-            'id' => $user->klassci_id,
-            'nom' => $user->name,
-        ];
-        $classeId = $seance['classe']['id'] ?? null;
-        $students = $this->fetchActiveStudents($classeId, $klassciToken);
-
-        return [
-            'seance' => $seance,
-            'teacher' => $teacher,
-            'students' => $students,
-            'total_participants' => 1 + count($students),
-        ];
-    }
-
-    /**
-     * Walks the role-appropriate matières list and returns the matching séance
-     * (without enseignant injection — legacy parity).
-     *
-     * @return array<string, mixed>|null
-     */
-    private function findSeanceForParticipants(int $seanceId, User $user, string $klassciToken): ?array
-    {
-        if ($user->isTeacher()) {
-            $dashboard = $this->klassciService->requestWithUserToken(
-                $klassciToken,
-                'me/teacher-dashboard',
-                'GET'
-            );
-            $matieres = collect($dashboard['data']['matieres'] ?? []);
-        } else {
-            $matieresResponse = $this->klassciService->requestWithUserToken(
-                $klassciToken,
-                'matieres',
-                'GET'
-            );
-            $matieres = collect($matieresResponse['data'] ?? []);
-        }
-
-        foreach ($matieres as $matiere) {
-            $matiereDetails = $this->klassciService->requestWithUserToken(
-                $klassciToken,
-                "matieres/{$matiere['id']}",
-                'GET'
-            );
-
-            $seanceTrouvee = collect($matiereDetails['data']['seances_programmees'] ?? [])
-                ->firstWhere('id', $seanceId);
-
-            if ($seanceTrouvee) {
-                return $seanceTrouvee;
-            }
-        }
-
-        return null;
-    }
-
-    /**
-     * @return array<int, array<string, mixed>>
-     */
-    private function fetchActiveStudents(?int $classeId, string $klassciToken): array
-    {
-        if (! $classeId) {
-            return [];
-        }
-
-        try {
-            $etudiantsResponse = $this->klassciService->requestWithUserToken(
-                $klassciToken,
-                "classes/{$classeId}/etudiants",
-                'GET'
-            );
-
-            return collect($etudiantsResponse['data'] ?? [])
-                ->filter(function ($etudiant) {
-                    return isset($etudiant['statut']) && $etudiant['statut'] === 'actif';
-                })
-                ->values()
-                ->toArray();
-
-        } catch (\Exception $e) {
-            $this->journal->warning('Erreur récupération étudiants', $e, [
-                'classe_id' => $classeId,
-            ]);
-
-            return [];
-        }
     }
 }

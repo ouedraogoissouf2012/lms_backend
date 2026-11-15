@@ -22,7 +22,7 @@ use Illuminate\Database\Eloquent\Collection;
  * - `visio` : la fenêtre se calcule sur le début et la fin ESTIMÉE ; pas de
  *   fenêtre sans date.
  * - `participants` : pour le personnel seulement, comme dans l'école KLASSCI ;
- *   la règle de `GET …/participants` ({@see ParticipantsDeSeanceLocale}).
+ *   la règle de {@see ParticipantsDeSeanceLocale}.
  */
 final class LocalSeanceDetailReader implements SeanceDetailReader
 {

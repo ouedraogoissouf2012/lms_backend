@@ -68,17 +68,4 @@ final class LMSSeanceDetailsResponseTest extends TestCase
                 'reason' => 'klassci_token_missing',
             ]);
     }
-
-    public function test_participants_without_klassci_token_returns_401_envelope(): void
-    {
-        Sanctum::actingAs($this->userWithoutToken());
-
-        $this->getJson('/api/lms/seances/42/participants')
-            ->assertStatus(401)
-            ->assertExactJson([
-                'success' => false,
-                'message' => MissingKlassciTokenException::CLIENT_MESSAGE,
-                'reason' => 'klassci_token_missing',
-            ]);
-    }
 }

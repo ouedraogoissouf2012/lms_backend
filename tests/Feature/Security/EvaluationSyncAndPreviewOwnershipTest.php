@@ -102,12 +102,16 @@ final class EvaluationSyncAndPreviewOwnershipTest extends TestCase
         ]);
     }
 
-    /** @return array<string, TestResponse> Les deux écritures, pour le même acteur. */
-    private function lesDeuxSynchronisations(User $acteur): array
+    /**
+     * La synchronisation, pour un acteur. `sync-notes`, qui marquait les copies sans
+     * rien envoyer, est retirée (D606) : seule `sync-klassci` écrit.
+     *
+     * @return array<string, TestResponse>
+     */
+    private function laSynchronisation(User $acteur): array
     {
         return [
             'sync-klassci' => $this->asTenant($acteur)->postJson("/api/evaluations/{$this->evaluation->id}/sync-klassci"),
-            'sync-notes' => $this->asTenant($acteur)->postJson("/api/evaluations/{$this->evaluation->id}/sync-notes"),
         ];
     }
 
@@ -133,8 +137,8 @@ final class EvaluationSyncAndPreviewOwnershipTest extends TestCase
         $tiers = $this->utilisateur('enseignant', self::ENSEIGNANT_TIERS);
 
         self::assertSame(
-            ['sync-klassci' => 403, 'sync-notes' => 403],
-            $this->statuts($this->lesDeuxSynchronisations($tiers)),
+            ['sync-klassci' => 403],
+            $this->statuts($this->laSynchronisation($tiers)),
         );
         $this->assertRienNABouge();
     }
@@ -144,8 +148,8 @@ final class EvaluationSyncAndPreviewOwnershipTest extends TestCase
         $coordinateur = $this->utilisateur('coordinateur', null);
 
         self::assertSame(
-            ['sync-klassci' => 403, 'sync-notes' => 403],
-            $this->statuts($this->lesDeuxSynchronisations($coordinateur)),
+            ['sync-klassci' => 403],
+            $this->statuts($this->laSynchronisation($coordinateur)),
         );
         $this->assertRienNABouge();
     }
@@ -158,8 +162,8 @@ final class EvaluationSyncAndPreviewOwnershipTest extends TestCase
         $sansIdentite = $this->utilisateur('enseignant', null);
 
         self::assertSame(
-            ['sync-klassci' => 403, 'sync-notes' => 403],
-            $this->statuts($this->lesDeuxSynchronisations($sansIdentite)),
+            ['sync-klassci' => 403],
+            $this->statuts($this->laSynchronisation($sansIdentite)),
         );
         $this->assertRienNABouge();
     }
@@ -169,8 +173,8 @@ final class EvaluationSyncAndPreviewOwnershipTest extends TestCase
         $proprietaire = $this->utilisateur('enseignant', self::ENSEIGNANT_PROPRIETAIRE);
 
         self::assertSame(
-            ['sync-klassci' => 200, 'sync-notes' => 200],
-            $this->statuts($this->lesDeuxSynchronisations($proprietaire)),
+            ['sync-klassci' => 200],
+            $this->statuts($this->laSynchronisation($proprietaire)),
         );
     }
 
@@ -179,8 +183,8 @@ final class EvaluationSyncAndPreviewOwnershipTest extends TestCase
         $admin = $this->utilisateur('superAdmin', null);
 
         self::assertSame(
-            ['sync-klassci' => 200, 'sync-notes' => 200],
-            $this->statuts($this->lesDeuxSynchronisations($admin)),
+            ['sync-klassci' => 200],
+            $this->statuts($this->laSynchronisation($admin)),
         );
     }
 
@@ -188,17 +192,16 @@ final class EvaluationSyncAndPreviewOwnershipTest extends TestCase
      * Une évaluation inconnue n'a pas de propriétaire : refusée en 403 avant le
      * contrôleur, comme sur `publish`. La spec OpenAPI l'écrit ; ce test le tient.
      */
-    public function test_une_evaluation_inconnue_est_refusee_en_403_sur_les_trois_routes(): void
+    public function test_une_evaluation_inconnue_est_refusee_en_403_sur_les_deux_routes(): void
     {
         $proprietaire = $this->utilisateur('enseignant', self::ENSEIGNANT_PROPRIETAIRE);
 
         $statuts = [
             'sync-klassci' => $this->asTenant($proprietaire)->postJson('/api/evaluations/999999/sync-klassci')->status(),
-            'sync-notes' => $this->asTenant($proprietaire)->postJson('/api/evaluations/999999/sync-notes')->status(),
             'preview' => $this->asTenant($proprietaire)->getJson('/api/evaluations/999999/preview')->status(),
         ];
 
-        self::assertSame(['sync-klassci' => 403, 'sync-notes' => 403, 'preview' => 403], $statuts);
+        self::assertSame(['sync-klassci' => 403, 'preview' => 403], $statuts);
     }
 
     public function test_un_enseignant_ne_previsualise_pas_l_evaluation_d_un_collegue(): void

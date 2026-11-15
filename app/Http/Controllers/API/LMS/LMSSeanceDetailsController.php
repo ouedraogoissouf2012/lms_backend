@@ -8,7 +8,6 @@ use App\Http\Controllers\API\Concerns\RendersKlassciBackedErrors;
 use App\Http\Controllers\AuthenticatedController;
 use App\Services\SeanceDetailQueryService;
 use App\Services\Seances\SeanceDetailReader;
-use App\Services\Seances\SeanceParticipantsReader;
 use App\Support\Logging\CaughtExceptionLog;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -22,13 +21,13 @@ use RuntimeException;
  *
  * ## Cohesion (SRP)
  *
- * Both endpoints query a SPECIFIC séance by id, each through the port of the
+ * The endpoint queries a SPECIFIC séance by id, through the port of the
  * institution's source (ADR-EI-01), received by the METHOD. Listing endpoints live in
  * `LMSSeancesListController`; historical endpoints in `LMSSeancesHistoryController`.
  *
  * ## Endpoints
- *   - GET /api/lms/seances/{seanceId}/details      → seanceDetails()
- *   - GET /api/lms/seances/{seanceId}/participants → seanceParticipants()
+ *   - GET /api/lms/seances/{seanceId}/details → seanceDetails()
+ *   (`/participants`, sans écran, est retirée : D610.)
  *
  * @see SeanceDetailQueryService
  */
@@ -69,40 +68,6 @@ final class LMSSeanceDetailsController extends AuthenticatedController
             return response()->json([
                 'success' => false,
                 'message' => 'Erreur lors de la récupération des détails de la séance',
-                'error' => 'Une erreur est survenue.',
-            ], 500);
-        }
-    }
-
-    /**
-     * GET /api/lms/seances/{id}/participants
-     */
-    public function seanceParticipants(int $seanceId, Request $request, SeanceParticipantsReader $participants): JsonResponse
-    {
-        try {
-            $user = $this->authenticatedUser($request);
-            // La source de l'établissement (ADR-EI-01), reçue par la MÉTHODE : en mode
-            // autonome, les participants se lisent sans jeton KLASSCI.
-            $data = $participants->getSeanceParticipantsArray($seanceId, $user);
-
-            if ($data === null) {
-                return $this->errorResponse('Séance non trouvée', 404);
-            }
-
-            return $this->successResponse($data);
-
-        } catch (RuntimeException $e) {
-            return $this->renderKlassciFailure($e);
-        } catch (\Exception $e) {
-            $this->journal->error('Erreur récupération participants séance', $e, [
-                'seance_id' => $seanceId,
-            ]);
-
-            // NON migré : enveloppe d'erreur portant une clé sœur `error` (singulier)
-            // que le trait ne reproduit pas (errorResponse n'a qu'un `errors` pluriel).
-            return response()->json([
-                'success' => false,
-                'message' => 'Erreur lors de la récupération des participants',
                 'error' => 'Une erreur est survenue.',
             ], 500);
         }

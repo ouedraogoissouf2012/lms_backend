@@ -466,12 +466,10 @@ final class EnseignantCorrigeSesEvaluationsTest extends TestCase
         $copie = $this->copie($evaluation, $this->eleve($ecole, $classe, 'Awa Koné'), 'soumis', '15.00');
         $this->aucunAppelKlassci();
 
-        foreach (['/sync-klassci', '/sync-notes'] as $route) {
-            $reponse = $this->asTenant($enseignant)->postJson($this->de($evaluation).$route)
-                ->assertStatus(422)
-                ->assertJsonPath('reason', 'evaluation_not_linked_to_klassci');
-            $this->assertMatchesOpenApiResponse($reponse, '/evaluations/{id}'.$route, 'post');
-        }
+        $reponse = $this->asTenant($enseignant)->postJson($this->de($evaluation).'/sync-klassci')
+            ->assertStatus(422)
+            ->assertJsonPath('reason', 'evaluation_not_linked_to_klassci');
+        $this->assertMatchesOpenApiResponse($reponse, '/evaluations/{id}/sync-klassci', 'post');
 
         self::assertFalse((bool) $copie->fresh()?->synced_to_klassci);
         self::assertFalse((bool) $evaluation->fresh()?->notes_published);

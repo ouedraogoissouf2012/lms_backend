@@ -125,7 +125,7 @@ final class VisioRoutingTest extends TestCase
 
     /**
      * REQ-4 — Sanity check: the renamed visio route resolves to the visio controller,
-     * NOT to `LMSSeancesController::seanceParticipants` (which keeps the legacy URI).
+     * NOT to the former `seanceParticipants` (its `/participants` URI was removed, D610).
      */
     public function test_visio_participants_route_uses_lms_visio_controller(): void
     {
@@ -134,23 +134,6 @@ final class VisioRoutingTest extends TestCase
         self::assertNotNull($route, 'Route lms.seances.visio-participants should be registered.');
         self::assertSame(
             \App\Http\Controllers\API\LMS\LMSVisioParticipantController::class . '@getVisioParticipants',
-            $route->getActionName(),
-        );
-    }
-
-    /**
-     * REQ-4 — Sanity check: the `/seances/{id}/participants` route points to
-     * the seance details controller (post split TIER 2 — méthode déplacée de
-     * `LMSSeancesQueryController` vers `LMSSeanceDetailsController` lors du
-     * découpage §5 du god-controller 922l en 3 SRPs ≤200l).
-     */
-    public function test_legacy_participants_route_still_uses_lms_seances_controller(): void
-    {
-        $route = \Illuminate\Support\Facades\Route::getRoutes()->getByName('lms.seances.participants');
-
-        self::assertNotNull($route, 'Route lms.seances.participants should be registered.');
-        self::assertSame(
-            \App\Http\Controllers\API\LMS\LMSSeanceDetailsController::class . '@seanceParticipants',
             $route->getActionName(),
         );
     }

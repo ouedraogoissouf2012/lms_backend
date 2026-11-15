@@ -9,7 +9,7 @@ use Illuminate\Foundation\Http\FormRequest;
 
 /**
  * Authorizes pushing an evaluation's grades to KLASSCI
- * (POST /api/evaluations/{id}/sync-klassci and /sync-notes).
+ * (POST /api/evaluations/{id}/sync-klassci ; /sync-notes was removed, D606).
  *
  * ## Authorization
  * Synchronising declares the grades published (`notes_published`) and marks

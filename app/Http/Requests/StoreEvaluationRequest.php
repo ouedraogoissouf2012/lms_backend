@@ -6,6 +6,7 @@ use App\Http\Requests\Concerns\ExplainsCorrectAnswersRefusal;
 use App\Rules\CorrectAnswersAmongOptions;
 use App\Rules\CorrectAnswersCardinality;
 use App\Rules\TrueFalseOptions;
+use App\Support\Evaluation\QuestionCountLimit;
 use App\Support\Evaluation\QuestionOptionLimits;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
@@ -92,7 +93,7 @@ final class StoreEvaluationRequest extends FormRequest
             'show_results' => 'nullable|boolean',
             // Une LISTE (D520) : indexées par des clés, les questions échappaient aux
             // règles qui lisent la question voisine par son rang (questions.N.…).
-            'questions' => 'nullable|list',
+            'questions' => ['nullable', 'list', QuestionCountLimit::maxRule()],
             'questions.*.question' => 'required|string|max:1000',
             'questions.*.type' => 'required|in:qcm,qcm_multiple,vrai_faux,reponse_courte,dissertation',
             'questions.*.points' => 'nullable|numeric|min:0',

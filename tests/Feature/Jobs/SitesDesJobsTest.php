@@ -80,7 +80,8 @@ final class SitesDesJobsTest extends TestCase
     public function test_le_fan_out_des_publications_journalise_en_warning_sans_relancer(): void
     {
         $ecole = Institution::factory()->create();
-        $this->klassciEchoue();
+        // D614 : le fan-out ne lit plus KLASSCI ; sa première lecture est la leçon.
+        $this->faireEchouerLaPremiereRequeteSur('lessons');
 
         $this->app->call([new DispatchLessonPublishedNotifications(77, 500, 'Leçon', (int) $ecole->id), 'handle']);
 

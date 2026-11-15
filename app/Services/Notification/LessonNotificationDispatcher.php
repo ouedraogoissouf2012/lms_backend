@@ -9,7 +9,12 @@ use App\Models\Notification;
 use App\Models\User;
 
 /**
- * Notifications liées aux leçons (publication, mise à jour).
+ * Notifications liées aux leçons (mise à jour).
+ *
+ * La publication n'est PLUS ici (D614) : `DispatchLessonPublishedNotifications`
+ * avertit les élèves de la classe par la règle partagée (`ElevesDeLaClasse`). La
+ * méthode d'ici n'avait aucun appelant et portait une seconde règle (le pivot sans
+ * le filtre `actif`, un rôle écrit en dur) : elle est retirée.
  *
  * Extrait de `NotificationService` (split notification-service, §1.1 ≤300 l).
  *
@@ -24,33 +29,6 @@ final class LessonNotificationDispatcher
     public function __construct(
         private readonly NotificationDispatcher $dispatcher,
     ) {
-    }
-
-    /**
-     * Notifier la publication d'un nouveau cours aux étudiants de la classe.
-     */
-    public function notifyLessonPublished(Lesson $lesson): int
-    {
-        $students = User::query()
-            ->whereHas('classes', function ($query) use ($lesson) {
-                $query->where('classes.id', $lesson->classe_id);
-            })
-            ->where('role', 'etudiant')
-            ->get();
-
-        if ($students->isEmpty()) {
-            return 0;
-        }
-
-        $title = "Nouveau cours disponible";
-        $message = "Le cours \"{$lesson->title}\" a été publié dans {$lesson->matiere->libelle}.";
-        $data = [
-            'lesson_id' => $lesson->id,
-            'lesson_title' => $lesson->title,
-            'matiere' => $lesson->matiere->libelle ?? null,
-        ];
-
-        return $this->dispatcher->sendToMany($students, Notification::TYPE_LESSON_PUBLISHED, $title, $message, $data);
     }
 
     /**

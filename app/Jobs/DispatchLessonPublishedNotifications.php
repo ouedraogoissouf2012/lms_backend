@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace App\Jobs;
 
+use App\Models\Classe;
 use App\Models\Institution;
+use App\Models\Lesson;
 use App\Models\Notification;
 use App\Models\User;
-use App\Services\KlassciProxyService;
+use App\Services\Audience\ElevesDeLaClasse;
 use App\Services\TenantManager;
 use App\Support\Logging\CaughtExceptionLog;
 use Illuminate\Bus\Queueable;
@@ -21,26 +23,30 @@ use Throwable;
 /**
  * #538 — Fan-out ASYNCHRONE des notifications de publication d'une leçon.
  *
- * Avant : `LessonCrudOperationsService::dispatchPublicationNotifications`
- * exécutait 1+N GET HTTP KLASSCI (5 s de timeout chacun), puis N `->first()`
- * et N INSERT, **de façon synchrone dans la requête** `POST /lessons/{id}/publish`.
- * Sur une grosse promo, le worker PHP-FPM restait bloqué plusieurs dizaines de
- * secondes (KLASSCI 5 s × N classes).
- *
- * Désormais la requête ne fait que dispatcher ce job. Le job :
- *  - repose le tenant du demandeur (le worker n'exécute PAS ResolveInstitution :
+ * La requête `POST /lessons/{id}/publish` ne fait que dispatcher ce job. Le job :
+ *  - repose le tenant de la leçon (le worker n'exécute PAS ResolveInstitution :
  *    sans `set()`, le global scope BelongsToInstitution devient no-op → fuite ou
  *    écriture cross-tenant — même cause-racine que #536) ;
- *  - parallélise les N GET classes via {@see \App\Services\Klassci\KlassciBatchFetcher}
- *    (Http::pool) au lieu de N appels séquentiels bloquants ;
- *  - résout les étudiants locaux en UNE requête (`whereIn`) au lieu de N `first()` ;
+ *  - avertit les élèves inscrits dans la classe de la leçon ;
  *  - insère les notifications en lot.
  *
- * Best-effort (comme le comportement pré-#538) : toute erreur KLASSCI/DB est
- * logguée sans être relancée, et `$tries = 1` évite les doublons qu'un retry
- * après insertion partielle produirait. DETTE tracée : sur échec transitoire,
- * certains étudiants peuvent ne pas être notifiés (choix assumé vs risque de
- * doublons ; une version idempotente reste possible ultérieurement).
+ * ## Les destinataires (D614)
+ *
+ * Les élèves de la classe LOCALE de la leçon, par la règle d'inscription de l'école
+ * ({@see ElevesDeLaClasse}, partagée avec l'audience des séances) : un élève qui peut
+ * lire la leçon est averti. Aucun appel KLASSCI. Avant, le job interrogeait KLASSCI
+ * `/matieres/{id}` avec l'id LOCAL de la matière, puis lisait `classe_ids` et
+ * `etudiant_ids`, deux clés absentes de la forme réelle : personne n'était averti, et
+ * jamais en école autonome. Une leçon ancienne sans classe n'avertit personne.
+ *
+ * La signature est GARDÉE (`matiereId` compris, désormais nullable) : un job déjà en
+ * file au déploiement se désérialise. `matiereId` ne sert plus qu'aux données de la
+ * notification.
+ *
+ * Best-effort (comme le comportement pré-#538) : toute erreur est logguée sans être
+ * relancée, et `$tries = 1` évite les doublons qu'un retry après insertion partielle
+ * produirait. DETTE tracée : sur échec transitoire, certains étudiants peuvent ne pas
+ * être notifiés (choix assumé vs risque de doublons).
  *
  * @see app/Services/Lesson/LessonCrudOperationsService.php (dispatcher)
  * @see app/Jobs/GenerateReportPdf.php (#536 — même pattern tenant en job)
@@ -60,21 +66,20 @@ final class DispatchLessonPublishedNotifications implements ShouldQueue
 
     public function __construct(
         public readonly int $lessonId,
-        public readonly int $matiereId,
+        public readonly ?int $matiereId,
         public readonly string $lessonTitle,
         public readonly int $institutionId,
     ) {
     }
 
     public function handle(
-        KlassciProxyService $klassci,
+        ElevesDeLaClasse $eleves,
         TenantManager $tenantManager,
         LoggerInterface $logger,
         CaughtExceptionLog $journal,
     ): void {
         // Purge un tenant résiduel d'un job précédent (worker persistant), puis
-        // repose le tenant du demandeur — sinon les requêtes ci-dessous ne sont
-        // pas scopées (cf. #536).
+        // repose le tenant de la leçon.
         $tenantManager->reset();
 
         try {
@@ -89,22 +94,16 @@ final class DispatchLessonPublishedNotifications implements ShouldQueue
             }
             $tenantManager->set($institution);
 
-            $classeIds = $this->resolveClasseIds($klassci);
-            if ($classeIds === []) {
+            $classe = $this->classeDeLaLecon();
+            if ($classe === null) {
+                $logger->info('Fan-out publication : leçon sans classe, personne à avertir', [
+                    'lesson_id' => $this->lessonId,
+                ]);
+
                 return;
             }
 
-            $klassciStudentIds = $this->resolveStudentKlassciIds($klassci, $classeIds);
-            if ($klassciStudentIds === []) {
-                return;
-            }
-
-            // UNE requête DB (`whereIn`) au lieu de N `->first()`. Scopée tenant par
-            // le global scope actif (`set()` ci-dessus).
-            $userIds = $this->toIntIds(
-                User::whereIn('klassci_id', $klassciStudentIds)->pluck('id')->all(),
-            );
-
+            $userIds = $eleves->de($classe, $this->institutionId)->map(static fn (User $eleve): int => $eleve->id)->all();
             if ($userIds === []) {
                 return;
             }
@@ -123,45 +122,17 @@ final class DispatchLessonPublishedNotifications implements ShouldQueue
         }
     }
 
-    /**
-     * 1 GET matière (token système, caché) → liste des `classe_ids`.
-     *
-     * @return array<int, int>
-     */
-    private function resolveClasseIds(KlassciProxyService $klassci): array
+    /** La classe LOCALE de la leçon, bornée explicitement à son établissement. */
+    private function classeDeLaLecon(): ?Classe
     {
-        $matiereData = $klassci->get("/matieres/{$this->matiereId}");
-        $data = $matiereData['data'] ?? null;
-        $classeIds = is_array($data) ? ($data['classe_ids'] ?? null) : null;
-
-        if (! is_array($classeIds)) {
-            return [];
+        $lecon = Lesson::query()->where('institution_id', $this->institutionId)->find($this->lessonId);
+        if (! $lecon instanceof Lesson || ! is_numeric($lecon->classe_id)) {
+            return null;
         }
 
-        return $this->toIntIds($classeIds);
-    }
+        $classe = Classe::query()->where('institution_id', $this->institutionId)->find((int) $lecon->classe_id);
 
-    /**
-     * N GET classes EN PARALLÈLE (Http::pool via batch fetcher, token système)
-     * → union dédupliquée des `etudiant_ids`.
-     *
-     * @param  array<int, int>  $classeIds
-     * @return array<int, int>
-     */
-    private function resolveStudentKlassciIds(KlassciProxyService $klassci, array $classeIds): array
-    {
-        $classesMap = $klassci->fetchManyByEndpoint($classeIds, 'classes/{id}');
-
-        $studentIds = [];
-        foreach ($classesMap as $classe) {
-            $data = $classe['data'] ?? null;
-            $ids = is_array($data) ? ($data['etudiant_ids'] ?? null) : null;
-            if (is_array($ids)) {
-                $studentIds = array_merge($studentIds, $this->toIntIds($ids));
-            }
-        }
-
-        return array_values(array_unique($studentIds));
+        return $classe instanceof Classe ? $classe : null;
     }
 
     /**
@@ -193,25 +164,6 @@ final class DispatchLessonPublishedNotifications implements ShouldQueue
         }
 
         Notification::insert($rows);
-    }
-
-    /**
-     * Convertit une liste de valeurs (JSON KLASSCI / colonnes DB) en IDs entiers,
-     * en ignorant toute valeur non numérique (robustesse type mixte).
-     *
-     * @param  array<int|string, mixed>  $values
-     * @return array<int, int>
-     */
-    private function toIntIds(array $values): array
-    {
-        $ids = [];
-        foreach ($values as $value) {
-            if (is_numeric($value)) {
-                $ids[] = (int) $value;
-            }
-        }
-
-        return $ids;
     }
 
     public function failed(Throwable $exception): void

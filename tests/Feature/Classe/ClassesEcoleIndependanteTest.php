@@ -159,14 +159,18 @@ final class ClassesEcoleIndependanteTest extends TestCase
     }
 
     #[DataProvider('portes')]
-    public function test_l_apprenant_INACTIF_ne_lit_pas_la_classe(string $porte): void
+    public function test_l_apprenant_INACTIF_ne_lit_pas_la_classe_et_lit_son_refus(string $porte): void
     {
-        // D57 : une inscription inactive n'ouvre rien.
+        // D57 : une inscription inactive n'ouvre rien. #1095 : le refus dit son
+        // motif, celui du tableau de bord, et non « introuvable ».
         [$ecole, $classe] = $this->classeEnseignee();
         $eleve = $this->membre($ecole, 'etudiant');
         $this->inscrire($eleve, $classe, 'inactif');
 
-        $this->asTenant($eleve)->getJson($porte.$classe->getKey())->assertNotFound();
+        $this->asTenant($eleve)->getJson($porte.$classe->getKey())
+            ->assertStatus(409)
+            ->assertJsonPath('reason', 'enrolment_not_active')
+            ->assertJsonMissingPath('data');
     }
 
     #[DataProvider('portes')]

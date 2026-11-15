@@ -62,6 +62,11 @@ Puis `AuthResponsePresenter::profile()` (`AuthResponsePresenter.php:155-167`) pl
 
 Clés observées dans les payloads KLASSCI (`data.user` de `auth/login` et `auth/me`) et dans `UserFactory` (`database/factories/UserFactory.php:40-45`), avec la décision retenue et le consommateur qui la justifie.
 
+> **Correctif du 2026-11-15 (#1087).** `auth/me` rend l'utilisateur dans `data`, pas dans `data.user` : c'est la forme de
+> `docs/INTEGRATION_KLASSCI.md` (« GET /auth/me ») et celle relevée dans le cache de développement. `data.user` n'est vrai
+> que pour `auth/login`. Les « observations » ci-dessus venaient du code, qui supposait `data.user` ; la même hypothèse est
+> dans `design.md` (diagramme, § 4.3). La forme est désormais lue en un seul point : `ProfilAuthMe`.
+
 | Clé | Source | Whitelist ? | Consommateur / justification (vérifié) |
 |-----|--------|:-----------:|----------------------------------------|
 | `id` | payload KLASSCI | ✅ conserver | Identifiant KLASSCI de l'utilisateur, affiché ; présent dans `UserFactory:41`. Attention : ce n'est **pas** `enseignant_id`. |

@@ -4,8 +4,9 @@ declare(strict_types=1);
 
 namespace App\Http\Requests;
 
-use App\Http\Requests\Concerns\ExplainsKnowledgeCheckAnswerRefusal;
+use App\Http\Requests\Concerns\ExplainsCorrectAnswersRefusal;
 use App\Rules\KnowledgeCheckCorrectAnswerAmongOptions;
+use App\Support\Evaluation\QuestionOptionLimits;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
 
@@ -15,13 +16,12 @@ use Illuminate\Foundation\Http\FormRequest;
  *
  * Partie 3 : les options sont une liste de textes, et la bonne réponse désigne
  * une d'elles par son indice ({@see KnowledgeCheckCorrectAnswerAmongOptions},
- * 422 `correct_answer_not_among_options`). Les bornes de nombre et de longueur
- * des options suivront celles des évaluations quand QuestionOptionLimits
- * (#1069) sera fusionnée : dette tracée.
+ * 422 `correct_answer_not_among_options`). Les options sont bornées comme celles
+ * des évaluations, depuis la même source ({@see QuestionOptionLimits}, D602).
  */
 final class StoreKnowledgeCheckRequest extends FormRequest
 {
-    use ExplainsKnowledgeCheckAnswerRefusal;
+    use ExplainsCorrectAnswersRefusal;
 
     public function authorize(): bool
     {
@@ -42,8 +42,8 @@ final class StoreKnowledgeCheckRequest extends FormRequest
             'questions' => 'required|list|min:1',
             'questions.*.question' => 'required|string',
             'questions.*.type' => 'required|in:single,multiple,true_false',
-            'questions.*.options' => 'required|list|min:2',
-            'questions.*.options.*' => 'string',
+            'questions.*.options' => 'required|list|min:2|max:'.QuestionOptionLimits::MAX_OPTIONS,
+            'questions.*.options.*' => QuestionOptionLimits::itemRule(),
             'questions.*.correct_answer' => ['required', new KnowledgeCheckCorrectAnswerAmongOptions],
             'questions.*.explanation' => 'nullable|string',
             'questions.*.points' => 'nullable|integer|min:1',
@@ -61,7 +61,7 @@ final class StoreKnowledgeCheckRequest extends FormRequest
     /** Une bonne réponse hors des options porte son motif ; le reste, le rendu 422 commun. */
     protected function failedValidation(Validator $validator): void
     {
-        $this->refuserLaBonneReponseHorsOptions($validator);
+        $this->refuserLesBonnesReponsesHorsOptions($validator);
 
         parent::failedValidation($validator);
     }

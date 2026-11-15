@@ -149,14 +149,13 @@ function klassci_stub_payload_auth_me(): array
 {
     return [
         'success' => true,
+        // La forme réelle de `auth/me` : l'utilisateur dans `data` (pas `data.user`, qui est `auth/login`).
         'data' => [
-            'user' => [
-                'id' => 9001,
-                'nom' => 'Utilisateur Stub KLASSCI',
-                'name' => 'Utilisateur Stub KLASSCI',
-                'email' => 'stub.klassci@loadtest.local',
-                'role' => 'etudiant',
-            ],
+            'id' => 9001,
+            'nom' => 'Utilisateur Stub KLASSCI',
+            'name' => 'Utilisateur Stub KLASSCI',
+            'email' => 'stub.klassci@loadtest.local',
+            'role' => 'etudiant',
         ],
     ];
 }

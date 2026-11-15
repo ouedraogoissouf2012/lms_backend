@@ -49,7 +49,7 @@ final class KlassciRoleSeparationTest extends TestCase
         $mock = Mockery::mock(KlassciProxyService::class);
         $mock->shouldReceive('requestWithUserToken')
             ->with('fake-klassci-token', 'auth/me', 'GET')
-            ->andReturn(['data' => ['user' => $klassciUser]]);
+            ->andReturn(['success' => true, 'data' => $klassciUser]);
         $mock->shouldReceive('requestWithUserToken')->byDefault()->andReturn([]);
 
         $this->app->instance(KlassciProxyService::class, $mock);

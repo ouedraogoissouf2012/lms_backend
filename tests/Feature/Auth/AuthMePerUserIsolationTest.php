@@ -156,7 +156,7 @@ final class AuthMePerUserIsolationTest extends TestCase
             $bearer = $request->header('Authorization')[0] ?? '';
             $token = str_replace('Bearer ', '', $bearer);
 
-            return Http::response(['data' => ['user' => self::PROFILES[$token] ?? []]]);
+            return Http::response(['success' => true, 'data' => self::PROFILES[$token] ?? []]);
         });
 
         $this->app->instance(HttpFactory::class, $factory);

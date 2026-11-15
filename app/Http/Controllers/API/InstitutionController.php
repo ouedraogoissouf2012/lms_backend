@@ -133,7 +133,7 @@ final class InstitutionController extends Controller
         } catch (ModelNotFoundException) {
             return $this->notFound();
         } catch (BusinessException $e) {
-            return $this->businessError($e->getMessage());
+            return $this->businessError($e);
         } catch (Throwable $e) {
             return $this->internalError('toggle', $e, 'Erreur lors du changement de statut', $id);
         }
@@ -174,9 +174,9 @@ final class InstitutionController extends Controller
         } catch (ModelNotFoundException) {
             return $this->notFound();
         } catch (BusinessException $e) {
-            // #567 : refus de supprimer une institution encore active (422),
-            // message métier safe par contrat.
-            return $this->businessError($e->getMessage());
+            // #567 : refus de supprimer une institution encore active (422 : le
+            // refus ne porte pas de code), message métier safe par contrat.
+            return $this->businessError($e);
         } catch (Throwable $e) {
             return $this->internalError('destroy', $e, 'Erreur lors de la suppression', $id);
         }
@@ -205,7 +205,7 @@ final class InstitutionController extends Controller
         } catch (ModelNotFoundException) {
             return $this->notFound();
         } catch (BusinessException $e) {
-            return $this->businessError($e->getMessage());
+            return $this->businessError($e);
         } catch (ConnectionException) {
             // Non migré vers errorResponse() : porte une clé `data` sur une réponse
             // d'erreur, que le trait ne reproduit pas (il n'émet que `errors`).
@@ -225,9 +225,13 @@ final class InstitutionController extends Controller
         return $this->errorResponse('Institution non trouvée', 404);
     }
 
-    private function businessError(string $message): JsonResponse
+    /**
+     * Un refus métier suit la règle unique : son statut ({@see BusinessException::statutHttp()},
+     * 422 sans code d'erreur) et son motif. Un 409 n'est pas écrasé en 422.
+     */
+    private function businessError(BusinessException $e): JsonResponse
     {
-        return $this->errorResponse($message, 422);
+        return $this->errorResponse($e->getMessage(), $e->statutHttp(), reason: $e->reason);
     }
 
     private function validationError(ValidationException $e): JsonResponse

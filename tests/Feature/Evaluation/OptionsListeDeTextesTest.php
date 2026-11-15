@@ -6,15 +6,12 @@ namespace Tests\Feature\Evaluation;
 
 use App\Enums\InstitutionMode;
 use App\Models\Evaluation;
-use App\Models\EvaluationQuestion;
-use App\Models\User;
-use App\Services\KlassciProxyService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
-use Mockery\MockInterface;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\Concerns\ActsAsTenantUser;
 use Tests\Concerns\BuildsEcoleIndependante;
+use Tests\Concerns\EcritDesQuestions;
 use Tests\TestCase;
 
 /**
@@ -34,10 +31,9 @@ final class OptionsListeDeTextesTest extends TestCase
 {
     use ActsAsTenantUser;
     use BuildsEcoleIndependante;
+    use EcritDesQuestions;
     use RefreshDatabase;
 
-    /** Les champs de programmation valides de l'école en cours. @var array<string, int> */
-    private array $programmation = [];
 
     /** @return array<string, array{InstitutionMode}> */
     public static function ecoles(): array
@@ -52,6 +48,9 @@ final class OptionsListeDeTextesTest extends TestCase
     public static function optionsRefusees(): array
     {
         $cas = [
+            // Les bornes (B5) : 26 options au plus, 1 000 caractères au plus par option.
+            '27 options' => [array_fill(0, 27, 'x'), 'questions.0.options'],
+            'une option de 1 001 caractères' => [[str_repeat('a', 1001)], 'questions.0.options.0'],
             'des nombres' => [[3, 4], 'questions.0.options.0'],
             'des objets' => [[['libelle' => '3'], ['libelle' => '4']], 'questions.0.options.0'],
             'des listes' => [[['3'], ['4']], 'questions.0.options.0'],
@@ -138,76 +137,21 @@ final class OptionsListeDeTextesTest extends TestCase
         self::assertSame([['Vrai', 'Faux'], null], $this->optionsDe($evaluation));
     }
 
-    /** Un auteur à qui l'école ouvre la création : programmé localement, ou enseignant KLASSCI. */
-    private function auteurDans(InstitutionMode $mode): User
+    /** Le témoin des bornes : 26 options de 1 000 caractères passent, en création et en mise à jour (B5). */
+    #[DataProvider('ecoles')]
+    public function test_vingt_six_options_de_mille_caracteres_sont_acceptees(InstitutionMode $mode): void
     {
-        $ecole = $this->ecole($mode);
-        $auteur = $this->membre($ecole, 'enseignant');
+        $auteur = $this->auteurDans($mode);
+        $options = array_map(static fn (int $i): string => str_pad((string) $i, 1000, 'o'), range(1, 26));
 
-        if ($mode === InstitutionMode::Standalone) {
-            $classe = $this->classe($ecole, '6e A');
-            $maths = $this->matiere($ecole, 'Maths');
-            $this->programme($classe, $maths, $auteur);
-            $this->programmation = ['classe_id' => $classe->id, 'matiere_id' => $maths->id];
+        $creee = $this->asTenant($auteur)
+            ->postJson('/api/evaluations', $this->creation([$this->question($options)]))
+            ->assertCreated();
+        $evaluation = Evaluation::withoutGlobalScopes()->findOrFail($creee->json('data.id'));
+        self::assertSame([$options], $this->optionsDe($evaluation));
 
-            return $auteur;
-        }
-
-        // La resynchronisation du profil (#90) n'est pas l'objet de ce test.
-        $this->disableKlassciMiddleware();
-        $auteur->forceFill(['klassci_enseignant_id' => 42, 'klassci_token' => 'jeton-enseignant'])->save();
-        $this->mock(KlassciProxyService::class, function (MockInterface $mock): void {
-            $mock->shouldReceive('getMatieres')->andReturn(['data' => [['id' => 10, 'nom' => 'Mathématiques']]]);
-            $mock->shouldReceive('getClasses')->andReturn(['data' => [['id' => 20, 'libelle' => 'Terminale D']]]);
-        });
-        $this->programmation = ['klassci_evaluation_id' => 900, 'klassci_classe_id' => 20, 'klassci_matiere_id' => 10];
-
-        return $auteur;
-    }
-
-    /**
-     * @param  list<array<string, mixed>>  $questions
-     * @return array<string, mixed>
-     */
-    private function creation(array $questions): array
-    {
-        return [
-            ...$this->programmation,
-            'titre' => 'Contrôle 1',
-            'type' => 'qcm',
-            'date_evaluation' => now()->addDay()->toIso8601String(),
-            'duree_minutes' => 30,
-            'questions' => $questions,
-        ];
-    }
-
-    /** @return array<string, mixed> */
-    private function question(mixed $options): array
-    {
-        return [
-            'question' => 'Combien font 2 + 2 ?',
-            'type' => 'qcm',
-            'points' => 2,
-            'options' => $options,
-            'correct_answers' => ['4'],
-        ];
-    }
-
-    private function evaluationDe(User $auteur): Evaluation
-    {
-        $evaluation = Evaluation::factory()->brouillon()->create([
-            'institution_id' => $auteur->institution_id,
-            'enseignant_id' => $auteur->id,
-        ]);
-        EvaluationQuestion::factory()->create(['evaluation_id' => $evaluation->id, 'options' => ['3', '4']]);
-
-        return $evaluation;
-    }
-
-    /** @return list<mixed> */
-    private function optionsDe(Evaluation $evaluation): array
-    {
-        return EvaluationQuestion::query()->where('evaluation_id', $evaluation->id)->orderBy('id')
-            ->get()->map(fn (EvaluationQuestion $question): mixed => $question->options)->all();
+        $this->asTenant($auteur)->putJson('/api/evaluations/'.$evaluation->id, ['questions' => [$this->question($options)]])
+            ->assertOk();
+        self::assertSame([$options], $this->optionsDe($evaluation));
     }
 }

@@ -45,7 +45,9 @@ final class ChapterTimeSingleWriterTest extends TestCase
      * Fichiers qui écrivent une colonne HOMONYME d'une autre table, avec la SEULE
      * forme tolérée pour chacun. Toute autre forme reste refusée dans ces mêmes
      * fichiers : KnowledgeCheckAttemptService est précisément l'ancien écrivain
-     * fautif (`increment` à :259), il ne doit pas sortir de la garde.
+     * fautif (`increment` à :259), il ne doit pas sortir de la garde. Depuis C44,
+     * il n'écrit plus la tentative : il n'a plus AUCUNE forme tolérée, et c'est
+     * KnowledgeCheckOpenAttempts qui la complète à la remise.
      *
      * @var array<string, array{forme: string, table: string}>
      */
@@ -54,9 +56,9 @@ final class ChapterTimeSingleWriterTest extends TestCase
             'forme' => 'affectation de propriété',
             'table' => 'quiz_attempts.time_spent_seconds ($attempt->time_spent_seconds = …)',
         ],
-        'app/Services/KnowledgeCheck/KnowledgeCheckAttemptService.php' => [
+        'app/Services/KnowledgeCheck/KnowledgeCheckOpenAttempts.php' => [
             'forme' => 'écriture Eloquent',
-            'table' => 'knowledge_check_attempts.time_spent_seconds (KnowledgeCheckAttempt::create)',
+            'table' => 'knowledge_check_attempts.time_spent_seconds ($attempt->fill, à la remise)',
         ],
     ];
 

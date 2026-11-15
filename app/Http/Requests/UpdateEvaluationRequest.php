@@ -5,6 +5,12 @@ declare(strict_types=1);
 namespace App\Http\Requests;
 
 use App\Http\Requests\Concerns\ChecksEvaluationOwnership;
+use App\Http\Requests\Concerns\ExplainsCorrectAnswersRefusal;
+use App\Rules\CorrectAnswersAmongOptions;
+use App\Rules\CorrectAnswersCardinality;
+use App\Rules\TrueFalseOptions;
+use App\Support\Evaluation\QuestionCountLimit;
+use App\Support\Evaluation\QuestionOptionLimits;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Http\Exceptions\HttpResponseException;
@@ -40,6 +46,7 @@ use Illuminate\Http\Exceptions\HttpResponseException;
 final class UpdateEvaluationRequest extends FormRequest
 {
     use ChecksEvaluationOwnership;
+    use ExplainsCorrectAnswersRefusal;
 
     public function authorize(): bool
     {
@@ -67,16 +74,22 @@ final class UpdateEvaluationRequest extends FormRequest
             // traités ensemble dans les deux voies (C18).
             'coefficient' => 'nullable|numeric|min:0',
             'bareme' => 'nullable|numeric|min:0',
-            'questions' => 'sometimes|array',
+            // Une LISTE (D520) : indexées par des clés, les questions échappaient aux
+            // règles qui lisent la question voisine par son rang (questions.N.…).
+            'questions' => ['sometimes', 'list', QuestionCountLimit::maxRule()],
             'questions.*.question' => 'required|string|max:1000',
             'questions.*.type' => 'required|in:qcm,qcm_multiple,vrai_faux,reponse_courte,dissertation',
             'questions.*.points' => 'nullable|numeric|min:0',
             // Une liste de textes, ou null : ce que le front envoie, et ce que la
             // spec décrit. Sans la règle sur les éléments, le serveur gardait des
             // nombres, des objets, ou un tableau associatif rendu en objet JSON.
-            'questions.*.options' => 'nullable|list',
-            'questions.*.options.*' => 'string',
-            'questions.*.correct_answers' => 'nullable|array',
+            // Bornée (B5) : 26 options, 1 000 caractères chacune (QuestionOptionLimits).
+            // Un vrai_faux : exactement ['Vrai', 'Faux'], ce que l'écran propose (D532).
+            'questions.*.options' => ['nullable', 'list', 'max:'.QuestionOptionLimits::MAX_OPTIONS, new TrueFalseOptions],
+            'questions.*.options.*' => QuestionOptionLimits::itemRule(),
+            // Mêmes règles qu'à la création (D466).
+            'questions.*.correct_answers' => ['nullable', 'list', 'max:'.QuestionOptionLimits::MAX_OPTIONS, new CorrectAnswersCardinality, new CorrectAnswersAmongOptions],
+            'questions.*.correct_answers.*' => QuestionOptionLimits::itemRule(),
             // Lue par le service : sans règle, `validated()` la retirerait.
             'questions.*.explanation' => 'nullable|string|max:2000',
         ];
@@ -95,7 +108,8 @@ final class UpdateEvaluationRequest extends FormRequest
     }
 
     /**
-     * Le refus de `is_published` porte son motif ; les autres erreurs gardent
+     * Le refus de `is_published` porte son motif, puis celui d'une bonne réponse
+     * hors des options (D466) ; les autres erreurs gardent
      * le rendu 422 commun (`bootstrap/app.php`), qui rend une
      * `HttpResponseException` telle quelle (#906).
      */
@@ -109,6 +123,8 @@ final class UpdateEvaluationRequest extends FormRequest
                 'errors' => $validator->errors()->toArray(),
             ], 422));
         }
+
+        $this->refuserLesBonnesReponsesHorsOptions($validator);
 
         parent::failedValidation($validator);
     }

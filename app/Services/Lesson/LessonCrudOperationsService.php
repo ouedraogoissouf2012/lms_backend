@@ -126,10 +126,10 @@ final class LessonCrudOperationsService
     }
 
     /**
-     * Publie une leçon. Si elle était en `draft`, fan-out notifications
-     * aux étudiants des classes liées à la matière via KLASSCI.
+     * Publie une leçon. Si elle était en `draft`, fan-out des notifications aux
+     * élèves inscrits dans SA classe (D614), quelle que soit sa matière.
      *
-     * Les erreurs KLASSCI sont logguées (warning) mais ne propagent pas :
+     * Les erreurs du fan-out sont logguées (warning) mais ne propagent pas :
      * la publication est considérée réussie même si le fan-out échoue.
      */
     public function publish(Lesson $lesson): Lesson
@@ -141,7 +141,7 @@ final class LessonCrudOperationsService
         ]);
 
         // Créer des notifications pour les étudiants concernés si le cours vient d'être publié
-        if ($wasUnpublished && $lesson->matiere_id) {
+        if ($wasUnpublished) {
             $this->dispatchPublicationNotifications($lesson);
         }
 
@@ -164,14 +164,16 @@ final class LessonCrudOperationsService
     /**
      * Dispatche le fan-out ASYNCHRONE des notifications de publication (#538).
      *
-     * Le travail lourd (résolution matière → classes → étudiants via KLASSCI +
-     * création des notifications) est effectué hors requête par
-     * {@see DispatchLessonPublishedNotifications}, qui repose le tenant du
-     * demandeur (le worker n'exécute pas le middleware ResolveInstitution).
+     * Le travail (les élèves de la classe de la leçon, puis les notifications)
+     * est effectué hors requête par {@see DispatchLessonPublishedNotifications},
+     * qui repose le tenant de la leçon (le worker n'exécute pas le middleware
+     * ResolveInstitution). C'est la CLASSE qui désigne les destinataires (D614) :
+     * une leçon sans classe n'avertit personne, une leçon sans matière avertit sa
+     * classe.
      */
     private function dispatchPublicationNotifications(Lesson $lesson): void
     {
-        if ($lesson->matiere_id === null || $lesson->institution_id === null) {
+        if ($lesson->classe_id === null || $lesson->institution_id === null) {
             return;
         }
 
@@ -179,7 +181,7 @@ final class LessonCrudOperationsService
         // (attribut inexistant → null), d'où un titre VIDE dans la notification.
         DispatchLessonPublishedNotifications::dispatch(
             (int) $lesson->id,
-            (int) $lesson->matiere_id,
+            $lesson->matiere_id === null ? null : (int) $lesson->matiere_id,
             (string) $lesson->title,
             (int) $lesson->institution_id,
         );

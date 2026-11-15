@@ -914,12 +914,6 @@ parameters:
 			path: app/Services/Notification/ForumNotificationDispatcher.php
 
 		-
-			message: '#^Cannot access property \$libelle on App\\Models\\Matiere\|null\.$#'
-			identifier: property.nonObject
-			count: 1
-			path: app/Services/Notification/LessonNotificationDispatcher.php
-
-		-
 			message: '#^Parameter \#1 \$column of method Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\:\:where\(\) expects array\<int\|model property of Illuminate\\Database\\Eloquent\\Model, mixed\>\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\: Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\)\: void\)\|Illuminate\\Contracts\\Database\\Query\\Expression\|model property of Illuminate\\Database\\Eloquent\\Model, ''lesson_id'' given\.$#'
 			identifier: argument.type
 			count: 1

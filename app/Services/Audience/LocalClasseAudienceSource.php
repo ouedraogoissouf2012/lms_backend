@@ -34,7 +34,10 @@ use Illuminate\Support\Collection;
  */
 final class LocalClasseAudienceSource implements ClasseAudienceSource
 {
-    public function __construct(private readonly EnrollmentSource $inscriptions) {}
+    public function __construct(
+        private readonly EnrollmentSource $inscriptions,
+        private readonly ElevesDeLaClasse $eleves,
+    ) {}
 
     public function designatesClasse(Seance $seance): bool
     {
@@ -63,6 +66,8 @@ final class LocalClasseAudienceSource implements ClasseAudienceSource
      *
      * La liste est le sens inverse du port qui décide l'admission
      * (`localStudentIdsOf`) : un élève admis est averti, et réciproquement (C40).
+     * La sélection vit dans {@see ElevesDeLaClasse}, que la publication d'une leçon
+     * partage (D614).
      */
     public function studentsOf(Seance $seance): Collection
     {
@@ -72,14 +77,7 @@ final class LocalClasseAudienceSource implements ClasseAudienceSource
             return collect();
         }
 
-        return User::query()
-            ->whereKey($this->inscriptions->localStudentIdsOf($classe))
-            ->where('institution_id', $seance->institution_id)
-            ->orderBy('id')
-            ->get()
-            ->filter(static fn (User $eleve): bool => $eleve->institution_id === $seance->institution_id
-                && $eleve->isStudent())
-            ->values();
+        return $this->eleves->de($classe, is_numeric($seance->institution_id) ? (int) $seance->institution_id : null);
     }
 
     /**

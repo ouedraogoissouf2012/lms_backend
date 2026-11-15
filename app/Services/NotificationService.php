@@ -72,14 +72,6 @@ final class NotificationService
     }
 
     /**
-     * Notifier la publication d'un nouveau cours.
-     */
-    public function notifyLessonPublished(Lesson $lesson): int
-    {
-        return $this->lessonDispatcher->notifyLessonPublished($lesson);
-    }
-
-    /**
      * Notifier la mise à jour d'un cours.
      */
     public function notifyLessonUpdated(Lesson $lesson): int

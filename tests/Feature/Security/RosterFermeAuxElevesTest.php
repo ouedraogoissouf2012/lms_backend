@@ -30,7 +30,7 @@ use Tests\TestCase;
  *
  * ## La règle, en un lieu par ressource
  *
- * - Les quatre routes qui n'existent que pour lister des élèves sont réservées
+ * - Les trois routes qui n'existent que pour lister des élèves sont réservées
  *   au personnel (garde de rôle, comme `/seances/{id}/attendances`).
  * - La fiche de classe reste ouverte à l'élève (matières, planning), mais son
  *   roster est vide pour qui n'est pas du personnel — décidé dans
@@ -153,7 +153,12 @@ final class RosterFermeAuxElevesTest extends TestCase
         }
     }
 
-    /** @return array<string, string> Les quatre routes qui n'existent que pour lister des élèves. */
+    /**
+     * Les trois routes qui n'existent que pour lister des élèves. `seances/participants`,
+     * sans écran, est retirée (D610).
+     *
+     * @return array<string, string>
+     */
     private function listesDEleves(): array
     {
         $c = self::CLASSE_KLASSCI;
@@ -162,7 +167,6 @@ final class RosterFermeAuxElevesTest extends TestCase
         return [
             'lms/classes/etudiants' => "/api/lms/classes/{$c}/etudiants",
             'proxy/classes/etudiants' => "/api/proxy/classes/{$c}/etudiants",
-            'seances/participants' => "/api/lms/seances/{$s}/participants",
             'seances/visio-participants' => "/api/lms/seances/{$s}/visio-participants",
         ];
     }
@@ -224,7 +228,7 @@ final class RosterFermeAuxElevesTest extends TestCase
         self::assertSame([], $reponse->json('data.etudiants'));
     }
 
-    public function test_les_quatre_listes_d_eleves_sont_refusees_a_un_eleve(): void
+    public function test_les_trois_listes_d_eleves_sont_refusees_a_un_eleve(): void
     {
         $this->seanceAvecRosterLocal();
 
@@ -266,7 +270,7 @@ final class RosterFermeAuxElevesTest extends TestCase
         }
     }
 
-    public function test_le_personnel_garde_les_quatre_listes(): void
+    public function test_le_personnel_garde_les_trois_listes(): void
     {
         $this->seanceAvecRosterLocal();
 

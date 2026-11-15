@@ -117,6 +117,24 @@ final class SeanceDetailLocaleTest extends TestCase
         }
     }
 
+    /**
+     * Un compte d'une AUTRE école inscrit au pivot de la classe n'est pas un participant.
+     * Repris de la route retirée `…/participants` (D610) : la règle
+     * (`ParticipantsDeSeanceLocale`) reste, servie par le détail.
+     */
+    public function test_un_compte_d_une_autre_ecole_dans_le_pivot_n_est_pas_un_participant(): void
+    {
+        $this->aucunAppelKlassci();
+        $eleve = $this->membre($this->ecole, 'etudiant');
+        $this->inscrire($eleve, $this->classe, 'actif');
+        $this->inscrire($this->membre($this->ecole(), 'etudiant'), $this->classe, 'actif');
+        $seance = $this->seance();
+
+        $this->asTenant($this->auteur)->getJson($this->url($seance))->assertOk()
+            ->assertJsonPath('data.participants.students', [['id' => $eleve->id, 'nom' => $eleve->name]])
+            ->assertJsonPath('data.participants.total', 2);
+    }
+
     public function test_un_eleve_inscrit_lit_le_detail_sans_les_participants(): void
     {
         $this->aucunAppelKlassci();

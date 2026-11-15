@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers\API\Evaluation;
 
+use App\Exceptions\KlassciUnavailableException;
 use App\Exceptions\MissingKlassciTokenException;
+use App\Http\Controllers\API\Concerns\RendersKlassciBackedErrors;
 use App\Http\Controllers\AuthenticatedController;
 use App\Http\Requests\DeleteEvaluationRequest;
 use App\Http\Requests\PublishEvaluationRequest;
@@ -21,6 +23,7 @@ use App\Services\KlassciProxyService;
 use App\Support\Logging\CaughtExceptionLog;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
+use RuntimeException;
 
 /**
  * EvaluationKlassciSyncController — extrait verbatim de EvaluationController
@@ -32,6 +35,8 @@ use Illuminate\Support\Facades\DB;
  */
 class EvaluationKlassciSyncController extends AuthenticatedController
 {
+    use RendersKlassciBackedErrors;
+
     public function __construct(
         private KlassciProxyService $klassciService,
         private EvaluationEnrichmentService $enrichmentService,
@@ -83,6 +88,13 @@ class EvaluationKlassciSyncController extends AuthenticatedController
                 $notes
             );
 
+            // Un échec que KLASSCI DÉCLARE en 2xx n'est pas un enregistrement : rien
+            // n'est marqué. Seule `success === false` est lue : le corps réel de
+            // cette route n'est pas capturé, aucune autre forme n'est interprétée.
+            if (($result['success'] ?? null) === false) {
+                throw KlassciUnavailableException::invalidPayload("evaluations/{$evaluation->klassci_evaluation_id}/notes");
+            }
+
             // Marquer comme synchronisé
             $evaluation->update(['notes_published' => true]);
             $evaluation->submissions()->update([
@@ -91,6 +103,9 @@ class EvaluationKlassciSyncController extends AuthenticatedController
             ]);
 
             return $this->successResponse($result, 'Notes synchronisées vers KLASSCI');
+        } catch (RuntimeException $e) {
+            // La règle du dépôt : 401 motivé, 4xx relayé, panne en 503 + Retry-After.
+            return $this->renderKlassciFailure($e);
         } catch (\Exception $e) {
             $this->journal->error('Erreur synchronisation KLASSCI', $e);
 

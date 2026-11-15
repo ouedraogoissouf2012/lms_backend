@@ -9940,6 +9940,11 @@ paths:
         Bloque (409) tant qu une copie a dissertation n est pas notee.
         `data` est la reponse de KLASSCI, relayee telle quelle.
 
+        Un echec de KLASSCI suit la regle commune des routes adossees a
+        KLASSCI : jeton refuse en 401 motive, refus 4xx relaye avec son statut,
+        panne en 503 avec `Retry-After`. Un echec que KLASSCI declare en 2xx
+        (`success: false`) rend 503. Dans tous ces cas, rien n est marque.
+
         Enseignant proprietaire de l evaluation ou administrateur. Les
         coordinateurs ne synchronisent pas, comme ils ne publient pas.
       security:
@@ -9974,8 +9979,17 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/MessageOnly'
+        '404':
+          description: "KLASSCI ne connait pas cette evaluation, relaye. Rien n est marque."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageOnly'
         '422':
           description: |
+            Sans `reason` : KLASSCI refuse les notes, relaye, sans detail par champ.
+            Rien n est marque.
+
             `evaluation_not_linked_to_klassci` : l evaluation n est liee a aucune
             evaluation KLASSCI (`klassci_evaluation_id` nul) : celle d une ecole creee
             depuis le LMS, ou une ligne jamais liee. Refus motive, avant tout
@@ -9991,7 +10005,6 @@ paths:
                 required:
                   - success
                   - message
-                  - reason
                 properties:
                   success:
                     type: boolean
@@ -10004,13 +10017,33 @@ paths:
                       - evaluation_not_linked_to_klassci
                       - no_submission_to_sync
         '409':
-          description: "Une copie a dissertation n est pas encore notee"
+          description: |
+            Une copie a dissertation n est pas encore notee, ou KLASSCI signale un
+            conflit (relaye).
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/MessageOnly'
+        '429':
+          description: "KLASSCI limite les requetes, relaye, SANS son en-tete `Retry-After`. Rien n est marque."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageOnly'
+        '503':
+          description: |
+            KLASSCI est indisponible (panne, reseau, circuit ouvert), ou il declare
+            un echec en 2xx (`success: false`). Avec `Retry-After`. Rien n est marque.
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/KlassciIndisponible'
         '500':
-          description: "Echec, y compris une panne de KLASSCI (rendue en 500, pas en 503)"
+          description: "Panne interne du LMS"
           content:
             application/json:
               schema:

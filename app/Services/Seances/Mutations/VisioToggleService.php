@@ -5,12 +5,11 @@ declare(strict_types=1);
 namespace App\Services\Seances\Mutations;
 
 use App\Exceptions\MissingKlassciTokenException;
-use App\Http\Controllers\API\LMS\Concerns\FetchesSeanceDataFromKlassci;
 use App\Models\Seance;
 use App\Models\User;
 use App\Services\ClasseSyncService;
-use App\Services\KlassciProxyService;
 use App\Services\Notification\AsyncVisioNotificationDispatcher;
+use App\Services\Seances\SeanceDeLEmploiDuTemps;
 use App\Services\Seances\SeanceRestoreGuard;
 use App\Services\Visio\Lifecycle\VisioToggleSource;
 use App\Services\Visio\SecureVisioRoomIdGenerator;
@@ -27,19 +26,16 @@ use Throwable;
  * l'entrée locale `seances` et — quand l'activation a lieu — envoie les
  * notifications aux étudiants concernés via `NotificationService`.
  *
- * Workaround historique préservé : pas d'endpoint KLASSCI `GET /seances/{id}`,
- * donc les IDs de matière/classe/enseignant sont initialement null puis
- * éventuellement complétés par `getSeanceDataFromKlassci()`.
+ * Pas d'endpoint KLASSCI `GET /seances/{id}` : une séance créée par la bascule
+ * est complétée d'après l'emploi du temps ({@see SeanceDeLEmploiDuTemps}).
  *
  * @see PRODUCTION_STANDARDS.md §1.1 — Services ≤300 lignes
  * @see PRODUCTION_STANDARDS.md §1.6 D — DI strict
  */
 final class VisioToggleService implements VisioToggleSource
 {
-    use FetchesSeanceDataFromKlassci;
-
     public function __construct(
-        private readonly KlassciProxyService $klassciService,
+        private readonly SeanceDeLEmploiDuTemps $seances,
         private readonly ClasseSyncService $classeSyncService,
         private readonly AsyncVisioNotificationDispatcher $notifications,
         private readonly LoggerInterface $logger,
@@ -81,9 +77,8 @@ final class VisioToggleService implements VisioToggleSource
 
             // WORKAROUND: pas d'endpoint GET /seances/{id} dans KLASSCI.
             // On crée/met à jour directement l'entrée locale ; les IDs
-            // matière/classe/enseignant restent null tant que `getSeanceDataFromKlassci`
-            // ne les complète pas, mais cela ne casse rien : les données réelles
-            // viennent toujours de KLASSCI via /matieres/{id}.
+            // matière/classe/enseignant restent null tant que l'emploi du temps ne
+            // les complète pas (à l'activation, {@see SeanceDeLEmploiDuTemps}).
             $this->logger->info('Création/MAJ entrée visio locale sans vérification KLASSCI', [
                 'klassci_seance_id' => $seanceId,
                 'note' => 'Workaround: endpoint GET /seances/{id} inexistant dans KLASSCI',
@@ -104,7 +99,7 @@ final class VisioToggleService implements VisioToggleSource
                 $visio->save();
             }
 
-            $notificationsSent = $enabled ? $this->dispatchNotifications($seanceId, $visio, $klassciToken) : 0;
+            $notificationsSent = $enabled ? $this->dispatchNotifications($seanceId, $visio, $user, $klassciToken) : 0;
 
             return [
                 'status' => 200,
@@ -206,14 +201,14 @@ final class VisioToggleService implements VisioToggleSource
     /**
      * Synchronise la classe puis envoie les notifications aux étudiants.
      */
-    private function dispatchNotifications(int $seanceId, Seance $visio, string $klassciToken): int
+    private function dispatchNotifications(int $seanceId, Seance $visio, User $user, string $klassciToken): int
     {
         if ($visio->klassci_classe_id !== null) {
             return $this->avertirDApresLaSeance($seanceId, $visio);
         }
 
         try {
-            $seanceData = $this->getSeanceDataFromKlassci($seanceId, $klassciToken);
+            $seanceData = $this->seances->identite($seanceId, $user, $klassciToken);
 
             if (! $seanceData) {
                 return 0;
@@ -222,7 +217,8 @@ final class VisioToggleService implements VisioToggleSource
             $visio->update([
                 'klassci_matiere_id' => $seanceData['matiere_id'] ?? null,
                 'klassci_classe_id' => $seanceData['classe_id'] ?? null,
-                'klassci_enseignant_id' => $seanceData['enseignant_id'] ?? null,
+                // `klassci_enseignant_id` n'est pas écrit : l'emploi du temps ne dit pas
+                // lequel de ses identifiants c'est ({@see SeanceDeLEmploiDuTemps}).
                 'matiere_nom' => $seanceData['matiere_nom'] ?? null,
                 'enseignant_nom' => $seanceData['enseignant_nom'] ?? null,
             ]);
@@ -238,7 +234,7 @@ final class VisioToggleService implements VisioToggleSource
                 // L'id LOCAL de la séance : la clé de la garde d'idempotence (V1).
                 'seance_locale_id' => $visio->id,
                 'klassci_classe_id' => $seanceData['classe_id'] ?? null,
-                'klassci_enseignant_id' => $seanceData['enseignant_id'] ?? null,
+                'klassci_enseignant_id' => $visio->klassci_enseignant_id,
                 'matiere_nom' => $seanceData['matiere_nom'] ?? 'Matière',
                 'enseignant_nom' => $seanceData['enseignant_nom'] ?? 'Enseignant',
             ]);

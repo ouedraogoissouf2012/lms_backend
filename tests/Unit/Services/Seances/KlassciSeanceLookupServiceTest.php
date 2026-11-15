@@ -51,8 +51,10 @@ final class KlassciSeanceLookupServiceTest extends TestCase
      * l'identique — une matiere malformee reste ecartee, et l'identite de
      * l'enseignant reste attachee a la seance trouvee.
      *
-     * Les branches etudiant et coordinateur, plus bas, lisent toujours le
-     * scanner : leur migration est une decision d'autorisation, pas de source.
+     * La branche etudiant, plus bas, lit toujours le scanner : sa migration est
+     * une decision d'autorisation, pas de source (D610, temps 2, en attente de la
+     * mesure du user). La gestion a converge (D610, temps 1) : voir
+     * `GestionTrouveLaSeanceDansLEmploiDuTempsTest`.
      */
     public function test_teacher_lookup_ignores_malformed_matieres_and_returns_matching_seance(): void
     {

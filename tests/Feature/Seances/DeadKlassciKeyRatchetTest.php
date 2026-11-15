@@ -77,8 +77,11 @@ final class DeadKlassciKeyRatchetTest extends TestCase
         // D610 RÉSOLU le 2026-11-15 : la route `…/participants`, seul lecteur de la
         // clé dans `SeanceDetailQueryService`, est retirée. Le cliquet descend de 3 à 2.
 
-        // #740 — les lecteurs restants du chemin détail / page matière.
-        'app/Http/Controllers/API/LMS/Concerns/FetchesSeanceDataFromKlassci.php',
+        // D610, temps 1, le 2026-11-15 : la bascule visio lit l'emploi du temps, le
+        // trait `FetchesSeanceDataFromKlassci` est supprimé. Le cliquet descend de 2 à 1.
+
+        // #740 — le dernier lecteur : la branche ÉLÈVE du détail, en attente de la
+        // mesure du user sur `emploi-temps` avec un jeton d'élève (D610, temps 2).
         'app/Services/Seances/KlassciSeanceMatiereScanner.php',
     ];
 

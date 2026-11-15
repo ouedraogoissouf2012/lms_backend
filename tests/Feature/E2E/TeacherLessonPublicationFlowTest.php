@@ -117,8 +117,9 @@ final class TeacherLessonPublicationFlowTest extends TestCase
             'Un brouillon ne doit JAMAIS apparaître dans le catalogue étudiant'
         );
 
+        // Un brouillon est introuvable pour l'élève, comme ses chapitres.
         $this->getJson("/api/lessons/{$lessonId}")
-            ->assertStatus(403);
+            ->assertStatus(404);
 
         // ── Étape 4 : l'enseignant publie ──────────────────────────────────
         Sanctum::actingAs($this->teacher);

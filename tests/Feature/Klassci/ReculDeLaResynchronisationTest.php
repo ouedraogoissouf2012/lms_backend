@@ -7,6 +7,7 @@ namespace Tests\Feature\Klassci;
 use App\Models\Institution;
 use App\Models\User;
 use GuzzleHttp\Promise\PromiseInterface;
+use Illuminate\Cache\RedisStore;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Factory as HttpFactory;
 use Illuminate\Http\Client\Request as ClientRequest;
@@ -26,6 +27,11 @@ use Tests\TestCase;
  * Seule la frontière réseau est feinte (une closure par requête, routée par le
  * jeton porteur) ; le proxy, son cache, le disjoncteur et le middleware sont
  * réels, derrière un vrai jeton Sanctum.
+ *
+ * L'expiration est simulée par `travel()` : sous la jambe CI redis, le store expire
+ * sur l'horloge réelle. Les cas qui en dépendent (la fin du recul, et la réponse
+ * illisible, gardée 300 s en cache) y sont sautés ; les jambes `database` les
+ * portent (précédent : EchecKlassciEnCacheTest, SearchDegradationTest).
  */
 final class ReculDeLaResynchronisationTest extends TestCase
 {
@@ -57,8 +63,11 @@ final class ReculDeLaResynchronisationTest extends TestCase
      * @param  \Closure(): PromiseInterface  $echec
      */
     #[DataProvider('echecs')]
-    public function test_un_echec_retient_la_relance_du_compte(\Closure $echec): void
+    public function test_un_echec_retient_la_relance_du_compte(\Closure $echec, bool $misEnCache): void
     {
+        if ($misEnCache) {
+            $this->sauterSiLeStoreSuitLHorlogeReelle();
+        }
         $compte = $this->comptePerime('jeton-a');
         $this->reponses['jeton-a'] = $echec;
 
@@ -72,20 +81,21 @@ final class ReculDeLaResynchronisationTest extends TestCase
         self::assertFalse($compte->refresh()->isKlassciDataFresh());
     }
 
-    /** @return array<string, array{0: \Closure(): PromiseInterface}> */
+    /** @return array<string, array{0: \Closure(): PromiseInterface, 1: bool}> */
     public static function echecs(): array
     {
         return [
-            'jeton révoqué (401)' => [fn () => Http::response(['message' => 'Unauthenticated.'], 401)],
-            'filtre de volume (429)' => [fn () => Http::response(['message' => 'Too Many Attempts.'], 429)],
-            'panne (503)' => [fn () => Http::response(['message' => 'Service Unavailable'], 503)],
-            // La forme de auth/login, jamais celle de auth/me : illisible (#1087).
-            'réponse illisible' => [fn () => Http::response(['success' => true, 'data' => ['user' => ['id' => 1]]])],
+            'jeton révoqué (401)' => [fn () => Http::response(['message' => 'Unauthenticated.'], 401), false],
+            'filtre de volume (429)' => [fn () => Http::response(['message' => 'Too Many Attempts.'], 429), false],
+            'panne (503)' => [fn () => Http::response(['message' => 'Service Unavailable'], 503), false],
+            // La forme de auth/login, jamais celle de auth/me : illisible (#1087), gardée 300 s en cache.
+            'réponse illisible' => [fn () => Http::response(['success' => true, 'data' => ['user' => ['id' => 1]]]), true],
         ];
     }
 
     public function test_a_la_fin_du_recul_une_nouvelle_tentative_date_le_compte(): void
     {
+        $this->sauterSiLeStoreSuitLHorlogeReelle();
         $compte = $this->comptePerime('jeton-a');
         $this->reponses['jeton-a'] = fn () => Http::response(['message' => 'Unauthenticated.'], 401);
         $this->requeteDe($compte);
@@ -118,15 +128,22 @@ final class ReculDeLaResynchronisationTest extends TestCase
         $this->reponses['jeton-a'] = fn () => $this->formeReelle($compte);
         $this->requeteDe($compte);
 
-        // Périmé de nouveau, sans attendre : seul un recul ouvert à tort empêcherait l'appel.
+        // Périmé de nouveau, sans attendre : seul un recul ouvert à tort empêcherait de
+        // le re-dater. La réponse peut venir du cache (redis) : la date seule fait foi.
         // Relu d'abord : l'instance garde la date de sa création, et la même date
         // remise à l'identique ne serait pas écrite.
         $compte->refresh()->forceFill(['last_klassci_sync' => now()->subHours(25)])->save();
         self::assertFalse($compte->refresh()->isKlassciDataFresh());
-        $this->travel(6)->minutes();
         $this->requeteDe($compte);
 
-        self::assertSame(2, $this->appels['jeton-a'] ?? 0);
+        self::assertTrue($compte->refresh()->isKlassciDataFresh(), 'Un succès ne retient pas la relance suivante.');
+    }
+
+    private function sauterSiLeStoreSuitLHorlogeReelle(): void
+    {
+        if (app('cache')->store()->getStore() instanceof RedisStore) {
+            self::markTestSkipped('TTL redis suit l horloge réelle, pas le time-travel Carbon.');
+        }
     }
 
     private function comptePerime(string $jeton): User

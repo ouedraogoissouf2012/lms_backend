@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Requests;
 
-use App\Http\Requests\Concerns\ExplainsKnowledgeCheckAnswerRefusal;
+use App\Http\Requests\Concerns\ExplainsCorrectAnswersRefusal;
 use App\Rules\KnowledgeCheckCorrectAnswerAmongOptions;
 use App\Support\Evaluation\QuestionOptionLimits;
 use Illuminate\Contracts\Validation\Validator;
@@ -21,7 +21,7 @@ use Illuminate\Foundation\Http\FormRequest;
  */
 final class StoreKnowledgeCheckRequest extends FormRequest
 {
-    use ExplainsKnowledgeCheckAnswerRefusal;
+    use ExplainsCorrectAnswersRefusal;
 
     public function authorize(): bool
     {
@@ -61,7 +61,7 @@ final class StoreKnowledgeCheckRequest extends FormRequest
     /** Une bonne réponse hors des options porte son motif ; le reste, le rendu 422 commun. */
     protected function failedValidation(Validator $validator): void
     {
-        $this->refuserLaBonneReponseHorsOptions($validator);
+        $this->refuserLesBonnesReponsesHorsOptions($validator);
 
         parent::failedValidation($validator);
     }

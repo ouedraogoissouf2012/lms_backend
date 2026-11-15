@@ -25,7 +25,7 @@ use Illuminate\Translation\PotentiallyTranslatedString;
  * La règle lit la question voisine (`DataAwareRule`). Elle laisse les options mal
  * formées et le type inconnu à leurs propres règles, et l'obligation à
  * `required`. Son échec porte un motif, posé par la requête
- * (`ExplainsKnowledgeCheckAnswerRefusal`).
+ * (`ExplainsCorrectAnswersRefusal`, la seule source de ce refus).
  */
 final class KnowledgeCheckCorrectAnswerAmongOptions implements DataAwareRule, ValidationRule
 {

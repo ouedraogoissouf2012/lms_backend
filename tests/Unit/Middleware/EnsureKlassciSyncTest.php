@@ -146,7 +146,7 @@ final class EnsureKlassciSyncTest extends EnsureKlassciSyncTestCase
         $request = Request::create('/api/dummy', 'GET');
         $request->setUserResolver(fn () => $user);
 
-        $middleware = new EnsureKlassciSync($klassciService, new KlassciDataWhitelist(), new TokenPresentSyncGate(), app(CaughtExceptionLog::class));
+        $middleware = new EnsureKlassciSync($klassciService, new KlassciDataWhitelist(), app(TokenPresentSyncGate::class), app(CaughtExceptionLog::class));
         $middleware->handle($request, fn ($req) => new Response('ok', 200));
 
         $user->refresh();
@@ -198,7 +198,7 @@ final class EnsureKlassciSyncTest extends EnsureKlassciSyncTestCase
         $request = Request::create('/api/dummy', 'GET');
         $request->setUserResolver(fn () => $user);
 
-        $middleware = new EnsureKlassciSync($klassciService, new KlassciDataWhitelist(), new TokenPresentSyncGate(), app(CaughtExceptionLog::class));
+        $middleware = new EnsureKlassciSync($klassciService, new KlassciDataWhitelist(), app(TokenPresentSyncGate::class), app(CaughtExceptionLog::class));
         $response = $middleware->handle($request, fn ($req) => new Response('ok', 200));
 
         self::assertSame(200, $response->getStatusCode());

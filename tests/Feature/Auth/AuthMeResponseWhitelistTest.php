@@ -43,14 +43,14 @@ final class AuthMeResponseWhitelistTest extends TestCase
         $mock = Mockery::mock(KlassciProxyService::class);
         $mock->shouldReceive('requestWithUserToken')
             ->with('fake-token', 'auth/me', 'GET')
-            ->andReturn(['data' => ['user' => [
+            ->andReturn(['success' => true, 'data' => [
                 'id' => 123,
                 'nom' => 'Dupont',
                 'role' => 'enseignant',
                 'is_admin' => true,
                 'permissions' => ['*'],
                 'scopes' => ['god-mode'],
-            ]]]);
+            ]]);
         $this->app->instance(KlassciProxyService::class, $mock);
 
         Sanctum::actingAs($user);

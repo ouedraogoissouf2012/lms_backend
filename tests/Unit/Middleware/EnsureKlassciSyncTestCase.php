@@ -93,7 +93,8 @@ abstract class EnsureKlassciSyncTestCase extends TestCase
         $klassciService = Mockery::mock(KlassciProxyService::class);
         $klassciService->shouldReceive('requestWithUserToken')
             ->with($user->klassci_token, 'auth/me', 'GET')
-            ->andReturn(['data' => ['user' => $klassciUser]]);
+            // La forme réelle de `auth/me` : l'utilisateur dans `data`, avec son `id`.
+            ->andReturn(['success' => true, 'data' => ['id' => $user->klassci_id] + $klassciUser]);
 
         $request = Request::create('/api/dummy', 'GET');
         $request->setUserResolver(fn () => $user);

@@ -7,6 +7,7 @@ use App\Http\Presenters\AuthResponsePresenter;
 use App\Http\Requests\LoginRequest;
 use App\Models\User;
 use App\Services\Auth\LoginOrchestrator;
+use App\Services\Klassci\Auth\ProfilAuthMe;
 use App\Services\Klassci\Data\KlassciDataWhitelist;
 use App\Services\Audit\AuditLogger;
 use App\Services\KlassciProxyService;
@@ -114,7 +115,7 @@ class AuthController extends AuthenticatedController
      * (clé cache dérivée du hash du token). L'ancien `get('auth/me')` cachait sous
      * une clé tenant-globale → le profil du 1er appelant fuitait à tout le tenant.
      *
-     * @return array<string, mixed>  Payload `data.user`, ou [] si indisponible.
+     * @return array<string, mixed>  L'utilisateur lu par {@see ProfilAuthMe}, ou [] si indisponible.
      */
     private function fetchLiveKlassciProfile(User $user): array
     {
@@ -126,7 +127,7 @@ class AuthController extends AuthenticatedController
         try {
             $klassciMe = $this->klassciService->requestWithUserToken($klassciToken, 'auth/me', 'GET');
 
-            return is_array($klassciMe['data']['user'] ?? null) ? $klassciMe['data']['user'] : [];
+            return ProfilAuthMe::utilisateur($klassciMe, $user) ?? [];
         } catch (\Exception) {
             return [];
         }

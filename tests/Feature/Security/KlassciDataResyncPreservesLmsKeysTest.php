@@ -47,13 +47,13 @@ final class KlassciDataResyncPreservesLmsKeysTest extends TestCase
         $mock = Mockery::mock(KlassciProxyService::class);
         $mock->shouldReceive('requestWithUserToken')
             ->with('fake-klassci-token', 'auth/me', 'GET')
-            ->andReturn(['data' => ['user' => [
+            ->andReturn(['success' => true, 'data' => [
                 'id' => $user->klassci_id,
                 'nom' => 'Nouveau',
                 'role' => 'etudiant',
                 'is_admin' => true,
                 'permissions' => ['*'],
-            ]]]);
+            ]]);
         $mock->shouldReceive('requestWithUserToken')->byDefault()->andReturn([]);
         $this->app->instance(KlassciProxyService::class, $mock);
 

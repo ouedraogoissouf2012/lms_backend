@@ -77,7 +77,8 @@ final class KnowledgeCheckAttemptController extends AuthenticatedController
                 (int) $request->input('time_spent_seconds', 0),
             );
         } catch (BusinessException $e) {
-            $statut = (int) $e->getCode();
+            // La seule conversion d'un refus métier en statut HTTP (#1064).
+            $statut = $e->statutHttp();
             $erreurs = $statut === 422 ? ['answers' => [$e->getMessage()]] : [];
 
             return $this->errorResponse($e->getMessage(), $statut, $erreurs, $e->reason);

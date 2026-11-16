@@ -5,6 +5,7 @@ namespace App\Http\Requests;
 use App\Models\User;
 use App\Rules\AssignableRole;
 use App\Rules\UniqueEmailInInstitution;
+use App\Services\User\GestionDeCompte;
 use Illuminate\Foundation\Http\FormRequest;
 
 /**
@@ -12,6 +13,10 @@ use Illuminate\Foundation\Http\FormRequest;
  * La règle {@see AssignableRole} empêche un acteur de promouvoir un utilisateur
  * (y compris lui-même) vers un rôle égal ou supérieur au sien. Sans elle, un
  * coordinateur pouvait s'auto-promouvoir `superAdmin` via `PUT /api/users/{id}`.
+ *
+ * ## Compte cible borné (#932)
+ * L'acteur ne modifie qu'un compte de rang strictement inférieur au sien, jamais le
+ * sien : la règle de cible {@see GestionDeCompte}, la même que la suppression.
  *
  * ## Unicité de l'email bornée au tenant (#580, P1 de #563)
  * `'unique:users,email,' . $this->route('user')` cumulait DEUX défauts :
@@ -29,7 +34,10 @@ final class UpdateUserRequest extends FormRequest
     public function authorize(): bool
     {
         $user = auth()->user();
-        return $user !== null && ($user->isCoordinator() || $user->isAdmin());
+        $cible = $this->route('user');
+
+        return $user instanceof User && ($user->isCoordinator() || $user->isAdmin())
+            && $cible instanceof User && GestionDeCompte::admet($user, $cible);
     }
 
     /**

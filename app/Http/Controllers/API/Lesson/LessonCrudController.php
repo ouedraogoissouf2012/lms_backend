@@ -82,7 +82,7 @@ final class LessonCrudController extends AuthenticatedController
         $result = $this->listService->show($user, $id);
 
         if (isset($result['error'])) {
-            return $this->errorResponse($result['error'], (int) $result['status']);
+            return $this->errorResponse($result['error'], (int) $result['status'], reason: $result['reason'] ?? null);
         }
 
         return $this->successResponse($result['lesson']);

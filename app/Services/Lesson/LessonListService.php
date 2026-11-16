@@ -179,7 +179,7 @@ final class LessonListService
      * Détails d'un cours par id + enrichissement (progression user et
      * statistiques enseignant si rôle pertinent).
      *
-     * @return array{lesson: Lesson}|array{error: string, status: int}
+     * @return array{lesson: Lesson}|array{error: string, status: int, reason?: string}
      */
     public function show(User $user, int $id): array
     {

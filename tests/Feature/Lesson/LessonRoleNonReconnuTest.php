@@ -81,8 +81,9 @@ final class LessonRoleNonReconnuTest extends TestCase
         // GET /lessons (:92) : la progression de l'apprenant est jointe.
         self::assertArrayHasKey('user_progress', $liste->json('data.data.0'), 'progression de l\'apprenant');
 
-        // GET /lessons/{id} (:216) : une leçon non publiée est refusée.
-        $this->asTenant($compte)->getJson("/api/lessons/{$this->brouillonA->id}")->assertStatus(403);
+        // GET /lessons/{id} : une leçon non publiée est introuvable, comme ses chapitres
+        // (la fiche suit `ChapterReadGate::lectureLecon`).
+        $this->asTenant($compte)->getJson("/api/lessons/{$this->brouillonA->id}")->assertNotFound();
     }
 
     /** @return iterable<string, array{0: string}> */

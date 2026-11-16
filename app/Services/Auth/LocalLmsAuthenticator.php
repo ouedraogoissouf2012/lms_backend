@@ -36,14 +36,24 @@ use Psr\Log\LoggerInterface;
  *
  * Mockable trivialement en test unit via `Mockery::mock(Hasher::class)`.
  *
+ * ## Un échec coûte une vérification, que le compte existe ou non (#687)
+ *
+ * Un identifiant inconnu ne coûtait aucun calcul, un compte connu avec un
+ * mauvais mot de passe un bcrypt : le chronomètre disait si le compte existait.
+ * Quand aucune vraie vérification n'a eu lieu (aucun candidat, candidats sans
+ * empreinte, plafond dépassé), une vérification est faite contre l'empreinte
+ * leurre ({@see EmpreinteLeurre}), et son résultat ignoré.
+ *
  * @see app/Http/Controllers/API/AuthController.php (avant refactor) lignes 110-141
  * @see .claude/specs/auth-controller-refactor/design.md §2.1
+ * @see docs/adr/2026-11-16-687-01-empreinte-leurre-du-login.md
  */
 class LocalLmsAuthenticator
 {
     public function __construct(
         private readonly Hasher $hasher,
         private readonly LoggerInterface $logger,
+        private readonly EmpreinteLeurre $leurre,
     ) {}
 
     /**
@@ -74,10 +84,12 @@ class LocalLmsAuthenticator
         $candidates = $this->candidatesFor($identifier);
 
         if (count($candidates) > self::MAX_CANDIDATES) {
-            // Refus AVANT tout calcul : c'est là qu'est la protection.
+            // Refus AVANT toute vérification des candidats : c'est là qu'est la
+            // protection. Une seule contre le leurre, quel que soit leur nombre (#687).
             $this->logger->warning('Login local refusé : trop de comptes partagent cet identifiant', [
                 'candidats' => count($candidates),
             ]);
+            $this->verifierLeLeurre($password);
 
             return null;
         }
@@ -160,6 +172,7 @@ class LocalLmsAuthenticator
     private function matching(array $candidates, string $password): array
     {
         $matches = [];
+        $verifications = 0;
 
         foreach ($candidates as $candidate) {
             // Les users créés depuis KLASSCI ont password = Hash::make(uniqid())
@@ -169,11 +182,27 @@ class LocalLmsAuthenticator
                 continue;
             }
 
+            $verifications++;
             if ($this->hasher->check($password, $candidate->password)) {
                 $matches[] = $candidate;
             }
         }
 
+        // Aucun candidat, ou aucun avec une empreinte : sans le leurre, cet échec
+        // ne coûterait rien, et se reconnaîtrait au chronomètre (#687).
+        if ($verifications === 0) {
+            $this->verifierLeLeurre($password);
+        }
+
         return $matches;
+    }
+
+    /**
+     * Une vérification contre l'empreinte leurre, dont le résultat est ignoré :
+     * elle ne sert qu'à donner à cet échec le coût d'une vraie (#687).
+     */
+    private function verifierLeLeurre(string $password): void
+    {
+        $this->hasher->check($password, $this->leurre->empreinte());
     }
 }

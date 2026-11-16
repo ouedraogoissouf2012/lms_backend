@@ -49,8 +49,11 @@ use App\Services\Matiere\MatiereDetailsReader;
 use App\Services\Matiere\MyMatieresQueryService;
 use App\Services\Matiere\TeacherMatieresReader;
 use App\Services\Roster\RosterAuthorityFactory;
+use App\Services\Seances\KlassciSeanceDesignee;
+use App\Services\Seances\LocalSeanceDesignee;
 use App\Services\Seances\LocalSeanceDetailReader;
 use App\Services\Seances\LocalSeancesListReader;
+use App\Services\Seances\SeanceDesignee;
 use App\Services\Seances\SeanceDetailReader;
 use App\Services\Seances\SeancesListReader;
 use App\Services\SeanceDetailQueryService;
@@ -111,6 +114,8 @@ final class CatalogueServiceProvider extends ServiceProvider
         StudentDashboardReader::class => [KlassciStudentDashboardReader::class, LocalStudentDashboardReader::class],
         // Le détail d'une séance, sous la règle de la liste du lot 3d.
         SeanceDetailReader::class => [SeanceDetailQueryService::class, LocalSeanceDetailReader::class],
+        // La séance que désignent la suppression et la désactivation (#933).
+        SeanceDesignee::class => [KlassciSeanceDesignee::class, LocalSeanceDesignee::class],
         // Les présences d'une séance KLASSCI sans ligne locale (#1098).
         SeanceSansLigneLocale::class => [KlassciSeanceSansLigneLocale::class, LocalSeanceSansLigneLocale::class],
     ];

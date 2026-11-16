@@ -6,6 +6,8 @@ namespace App\Services\Visio\Lifecycle;
 
 use App\Models\Seance;
 use App\Models\User;
+use App\Services\Seances\LocalSeanceDesignee;
+use App\Services\Seances\SeanceDesignee;
 use App\Services\Visio\VisioActorAuthorization;
 use App\Support\Logging\CaughtExceptionLog;
 use Closure;
@@ -21,23 +23,24 @@ use Throwable;
  *
  * Aucun appel KLASSCI : la séance se lit en local, dans les deux types d'école.
  * Deux façons de la DÉSIGNER, un seul geste :
- * - la route `deactivate-visio` : id local, puis `klassci_seance_id` ;
+ * - la route `deactivate-visio` : dans l'espace de l'école ({@see SeanceDesignee}, #933) ;
  * - la bascule locale (mode autonome) : l'id LOCAL seulement, borné à
- *   l'établissement, comme l'activation ({@see LocalVisioActivation}).
+ *   l'établissement ({@see LocalSeanceDesignee}), comme l'activation.
  * Extrait de `VisioActivationService` (§1.1, un service par geste).
  */
 final class VisioDeactivation
 {
     public function __construct(
         private readonly VisioActorAuthorization $authorization,
+        private readonly LocalSeanceDesignee $locale,
         private readonly LoggerInterface $logger,
         private readonly CaughtExceptionLog $journal,
     ) {}
 
     /** @return array{status:int, payload: array<string, mixed>} */
-    public function deactivate(int $seanceId, User $user): array
+    public function deactivate(int $seanceId, User $user, SeanceDesignee $designee): array
     {
-        return $this->desactiver($seanceId, $user, fn (): ?Seance => $this->resolveSeance($seanceId));
+        return $this->desactiver($seanceId, $user, static fn (): ?Seance => $designee->pour($seanceId, $user));
     }
 
     /**
@@ -48,10 +51,7 @@ final class VisioDeactivation
      */
     public function deactivateLocal(int $seanceId, User $user): array
     {
-        return $this->desactiver($seanceId, $user, static fn (): ?Seance => Seance::query()
-            ->whereKey($seanceId)
-            ->where('institution_id', $user->institution_id)
-            ->first());
+        return $this->desactiver($seanceId, $user, fn (): ?Seance => $this->locale->pour($seanceId, $user));
     }
 
     /**
@@ -95,13 +95,6 @@ final class VisioDeactivation
 
             return self::erreur();
         }
-    }
-
-    /** Résolution dual-ID : ID local d'abord, puis klassci_seance_id (scope de l'établissement en HTTP). */
-    private function resolveSeance(int $seanceId): ?Seance
-    {
-        return Seance::find($seanceId)
-            ?? Seance::where('klassci_seance_id', $seanceId)->first();
     }
 
     /** @return array{status:int, payload: array<string, mixed>} */

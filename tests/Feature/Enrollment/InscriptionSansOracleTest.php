@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Enrollment;
 
 use App\Models\User;
+use Illuminate\Contracts\Hashing\Hasher;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -61,15 +62,61 @@ final class InscriptionSansOracleTest extends TestCase
         self::assertSame(0, DB::table('classe_etudiant')->count());
     }
 
-    /** Le cas existant calcule une empreinte, comme la création : pas d'écart de hachage. */
+    /**
+     * Le cas existant calcule une empreinte, comme la création : pas d'écart de hachage.
+     *
+     * Le service reçoit le contrat `Hasher`, alias de `hash.driver` (pas de `hash`) :
+     * un hacheur témoin, lié à ce contrat, délègue au vrai et compte ses calculs.
+     */
     public function test_le_compte_existant_paie_le_meme_cout_de_hachage(): void
     {
         [$ecole, $code] = $this->classeAvecCode();
         User::factory()->create(['institution_id' => $ecole->getKey(), 'email' => 'moussa@test.ci']);
-        Hash::partialMock()->shouldReceive('make')->once()->passthru();
+        $temoin = $this->hacheurTemoin();
 
         $this->postJson(self::URL, $this->charge($code, email: 'moussa@test.ci'), ['X-Institution' => (string) $ecole->slug])
             ->assertStatus(202);
+
+        self::assertSame(1, $temoin->empreintes, 'Le cas existant n\'a pas payé le hachage de la création.');
+    }
+
+    private function hacheurTemoin(): object
+    {
+        $temoin = new class(app(Hasher::class)) implements Hasher
+        {
+            public int $empreintes = 0;
+
+            public function __construct(private readonly Hasher $vrai) {}
+
+            /** @param  string  $hashedValue */
+            public function info($hashedValue): array
+            {
+                return $this->vrai->info($hashedValue);
+            }
+
+            /** @param  array<string, mixed>  $options */
+            public function make(#[\SensitiveParameter] $value, array $options = []): string
+            {
+                $this->empreintes++;
+
+                return $this->vrai->make($value, $options);
+            }
+
+            /** @param  array<string, mixed>  $options */
+            public function check(#[\SensitiveParameter] $value, $hashedValue, array $options = []): bool
+            {
+                return $this->vrai->check($value, $hashedValue, $options);
+            }
+
+            /** @param  array<string, mixed>  $options */
+            public function needsRehash($hashedValue, array $options = []): bool
+            {
+                return $this->vrai->needsRehash($hashedValue, $options);
+            }
+        };
+        $this->app->instance(Hasher::class, $temoin);
+
+        return $temoin;
     }
 
     /** @return array<string, string> */

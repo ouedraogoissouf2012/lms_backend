@@ -113,7 +113,7 @@ final class KlassciMatiereClassesSource
      */
     private function lit(User $user): bool
     {
-        return $user->isTeacher() || $user->isManager();
+        return $user->isTeacher();
     }
 
     /**

@@ -145,7 +145,7 @@ final class KlassciMatiereClassesSource
      * (`data`, une liste) ; toute autre forme lève, et la jambe rend « aucune
      * classe » au lieu de deviner.
      *
-     * @return list<array<string, mixed>>
+     * @return array<int, array<string, mixed>>
      */
     private function classesDeLEtablissement(): array
     {

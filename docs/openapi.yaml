@@ -8936,9 +8936,9 @@ paths:
                                     format: date-time
                                     nullable: true
                                   temps_passe:
-                                    type: number
+                                    type: integer
                                     nullable: true
-                                    description: "Toujours `null` aujourd hui : aucune donnee ne l alimente."
+                                    description: "Duree de la copie en minutes, remise moins debut, la minute entamee comptee (#901) ; `null` sans debut, sans remise, ou si les dates se contredisent."
                       moyenne_generale:
                         type: number
                         nullable: true

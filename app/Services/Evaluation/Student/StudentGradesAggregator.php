@@ -7,6 +7,7 @@ namespace App\Services\Evaluation\Student;
 use App\Models\Evaluation;
 use App\Models\EvaluationSubmission;
 use App\Models\User;
+use App\Services\Evaluation\DureeDeLaCopie;
 use App\Services\Evaluation\EvaluationGradingService;
 
 /**
@@ -142,7 +143,8 @@ final class StudentGradesAggregator
                 'coefficient' => $evaluation->coefficient ?? 1,
                 'date_evaluation' => $evaluation->date_evaluation,
                 'date_soumission' => $submission->submitted_at,
-                'temps_passe' => $submission->temps_passe_minutes,
+                // La durée de la copie (#901) : `temps_passe_minutes` n'existait pas.
+                'temps_passe' => DureeDeLaCopie::enMinutes($submission->started_at, $submission->submitted_at),
             ];
             // C30 : la ligne reste, la clé de la note est RETIRÉE (forme de la liste).
             if (! ResultatsVisibles::pour($evaluation)) {

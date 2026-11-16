@@ -251,8 +251,8 @@ final class KnowledgeCheckAttemptService
      * écrit ensuite dans la même transaction. Écrire le chapitre d'abord
      * croiserait les verrous d'un autre écrivain et ouvrirait un interblocage.
      *
-     * Le score et la complétion restent ici, inchangés : leur divergence avec
-     * ChapterProgressService::recordQuizScore est suivie par #955.
+     * Le meilleur score n'a que cet écrivain. La complétion passe par
+     * ChapterProgress::terminer() : la date de la PREMIÈRE réussite (#955).
      */
     private function updateChapterProgress(
         User $user,
@@ -275,9 +275,7 @@ final class KnowledgeCheckAttemptService
 
         if ($passed) {
             $progress->quiz_passed = true;
-            if (! $progress->completed_at) {
-                $progress->completed_at = now();
-            }
+            $progress->terminer();
         }
 
         $progress->save();

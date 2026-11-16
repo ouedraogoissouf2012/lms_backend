@@ -14,7 +14,8 @@ use Throwable;
 /**
  * Progression user sur les chapitres d'une leçon. Extrait verbatim de
  * `ChapterProgressController` (split-24). Regroupe lecture, mutation
- * (markAsCompleted, updateTimeSpent, recordQuizScore) et reset.
+ * (markAsCompleted, updateTimeSpent) et reset. Le score d'un quiz n'a qu'un
+ * écrivain, la soumission d'une tentative (KnowledgeCheckAttemptService, #955).
  * Retourne `{status, payload}` consommé par le controller thin.
  */
 final class ChapterProgressService
@@ -131,7 +132,8 @@ final class ChapterProgressService
         // dans toute transaction englobante (voir la docblock de ChapterTimeRecorder).
         $progress = $this->timeRecorder->record($userId, $chapterId, max(0, (int) ($input['time_spent_seconds'] ?? 0)));
 
-        $progress->completed_at = now();
+        // La date de la PREMIÈRE complétion : revalider ne la déplace pas (#955).
+        $progress->terminer();
         $progress->save();
 
         $lessonProgress = $this->progressCalculator->calculate($userId, $chapter->lesson_id);
@@ -150,23 +152,6 @@ final class ChapterProgressService
                 ],
             ],
         ];
-    }
-
-    /** Enregistre score quiz (best-score wins + completed si réussi). */
-    public function recordQuizScore(int $chapterId, int $score, bool $passed, User $user): void
-    {
-        $progress = $this->getOrCreateProgress($user->id, $chapterId);
-
-        if ($progress->quiz_score === null || $score > $progress->quiz_score) {
-            $progress->quiz_score = $score;
-        }
-
-        if ($passed) {
-            $progress->quiz_passed = true;
-            $progress->completed_at = now();
-        }
-
-        $progress->save();
     }
 
     /**
@@ -259,18 +244,5 @@ final class ChapterProgressService
                 ],
             ];
         }
-    }
-
-
-    /**
-     * Récupère ou crée la progression user×chapitre —
-     * ex-`ChapterProgress::getOrCreate` (H2 §5).
-     */
-    private function getOrCreateProgress(int $userId, int $chapterId): ChapterProgress
-    {
-        return ChapterProgress::firstOrCreate(
-            ['user_id' => $userId, 'chapter_id' => $chapterId],
-            ['time_spent_seconds' => 0]
-        );
     }
 }

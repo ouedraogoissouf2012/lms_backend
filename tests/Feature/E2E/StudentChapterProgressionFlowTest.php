@@ -31,7 +31,7 @@ use Tests\TestCase;
  *
  * @see docs/IMPROVEMENT_PRIORITIES.md CRITICAL #1 (issue #211)
  * @see app/Services/Chapter/ChapterAccessGate.php
- * @see app/Services/Chapter/ChapterProgressService.php (recordQuizScore)
+ * @see app/Services/Chapter/ChapterProgressService.php (markAsCompleted)
  * @see app/Services/KnowledgeCheck/KnowledgeCheckAttemptService.php
  */
 final class StudentChapterProgressionFlowTest extends TestCase

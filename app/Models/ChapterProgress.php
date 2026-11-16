@@ -59,4 +59,17 @@ class ChapterProgress extends Model
     {
         return $this->completed_at !== null;
     }
+
+    /**
+     * Le chapitre est terminé : la date de fin est celle de la PREMIÈRE
+     * complétion, et une revalidation ne la déplace pas (#955). Seul écrivain de
+     * `completed_at` (garde : ChapterCompletionSingleWriterTest). Sans sauvegarde :
+     * l'appelant sauve la ligne avec ses autres champs.
+     */
+    public function terminer(): void
+    {
+        if ($this->completed_at === null) {
+            $this->completed_at = now();
+        }
+    }
 }

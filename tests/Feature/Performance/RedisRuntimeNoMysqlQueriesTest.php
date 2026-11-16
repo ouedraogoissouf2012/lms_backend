@@ -7,7 +7,10 @@ namespace Tests\Feature\Performance;
 use App\Models\Institution;
 use App\Models\PersonalAccessToken;
 use App\Models\User;
+use App\Providers\RateLimitServiceProvider;
+use Illuminate\Cache\RateLimiter;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Facade;
 use Illuminate\Support\Facades\Redis;
 use Tests\TestCase;
 
@@ -45,6 +48,15 @@ final class RedisRuntimeNoMysqlQueriesTest extends TestCase
 
         config()->set('cache.default', 'redis');
         config()->set('session.driver', 'redis');
+
+        // Le limiteur de débit est un singleton, construit au démarrage sur le
+        // store d'alors (`CacheServiceProvider`) : en runtime Redis réel, il naît
+        // sur Redis. Basculer la config après coup le laissait sur `database`, et
+        // le limiteur des lectures (#947) écrivait dans la table `cache`. On le
+        // reconstruit sur le store basculé, avec ses limiteurs nommés.
+        $this->app->forgetInstance(RateLimiter::class);
+        Facade::clearResolvedInstance(RateLimiter::class);
+        (new RateLimitServiceProvider($this->app))->boot();
 
         $this->disableKlassciMiddleware();
     }

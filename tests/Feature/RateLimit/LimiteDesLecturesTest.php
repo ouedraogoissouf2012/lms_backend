@@ -50,7 +50,10 @@ final class LimiteDesLecturesTest extends TestCase
         $sans = [];
 
         foreach (Route::getRoutes() as $route) {
-            if (! str_starts_with($route->uri(), 'api/') || ! in_array('GET', $route->methods(), true)) {
+            // `api/__test/*` : les sondes que `Tests\TestCase::setUp()` enregistre
+            // hors du groupe `api`. Ce ne sont pas des routes de l'application.
+            if (! str_starts_with($route->uri(), 'api/') || str_starts_with($route->uri(), 'api/__test/')
+                || ! in_array('GET', $route->methods(), true)) {
                 continue;
             }
             $middlewares = $routeur->gatherRouteMiddleware($route);

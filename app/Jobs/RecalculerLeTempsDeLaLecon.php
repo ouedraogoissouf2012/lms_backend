@@ -9,12 +9,14 @@ use App\Models\Lesson;
 use App\Models\LessonProgress;
 use App\Services\Chapter\ChapterTimeRecorder;
 use App\Services\TenantManager;
+use App\Support\Logging\CaughtExceptionLog;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Throwable;
 
 /**
  * #1146 — recalcule le temps d'une leçon quand son périmètre change.
@@ -76,10 +78,11 @@ final class RecalculerLeTempsDeLaLecon implements ShouldQueue
             }
             $tenants->set($ecole);
 
-            /** @param Collection<int, LessonProgress> $lignes */
             $recalculer = function (Collection $lignes) use ($temps): void {
                 foreach ($lignes as $ligne) {
-                    $temps->recalculateLesson((int) $ligne->user_id, $this->lessonId);
+                    if ($ligne instanceof LessonProgress) {
+                        $temps->recalculateLesson($ligne->user_id, $this->lessonId);
+                    }
                 }
             };
 
@@ -100,6 +103,16 @@ final class RecalculerLeTempsDeLaLecon implements ShouldQueue
         $institutionId = Lesson::query()->withoutGlobalScope('institution')->withTrashed()
             ->whereKey($this->lessonId)->value('institution_id');
 
-        return $institutionId === null ? null : Institution::find($institutionId);
+        return is_numeric($institutionId) ? Institution::query()->whereKey((int) $institutionId)->first() : null;
+    }
+
+    public function failed(Throwable $exception): void
+    {
+        // Le recalcul est idempotent : la prochaine écriture de temps, ou la
+        // commande de rattrapage `lessons:recompute-time-spent` (#944), remettra
+        // l'agrégat en accord.
+        app(CaughtExceptionLog::class)->error('Job RecalculerLeTempsDeLaLecon failed after all retries', $exception, [
+            'lesson_id' => $this->lessonId,
+        ]);
     }
 }

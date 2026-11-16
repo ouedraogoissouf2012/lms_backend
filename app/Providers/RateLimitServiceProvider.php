@@ -41,8 +41,9 @@ use Illuminate\Support\ServiceProvider;
  *  - `visio-heartbeat` : 12 req/min par utilisateur ET par séance.
  *  - `school-requests` : 5 req/min/IP + 200/jour global (#812, demande
  *                      d'ouverture anonyme).
- *  - `inscriptions` : 5 req/min/IP + 100/jour global (#846, porte anonyme) —
- *                      motifs `ip_quota_exceeded` / `global_cap_reached`.
+ *  - `inscriptions` : 60 req/min/IP, contre l'inondation (#846, #915, porte
+ *                      anonyme) — motif `ip_quota_exceeded`. Les codes faux
+ *                      sont bornés à part, par `EchecsDeLaPorteAnonyme`.
  *  - `rejoindre-classe` : 10 req/min + 30/jour par compte (#885, porte
  *                      authentifiée) — motifs `account_quota_exceeded` /
  *                      `account_daily_cap_reached`.
@@ -92,13 +93,12 @@ final class RateLimitServiceProvider extends ServiceProvider
     private const SCHOOL_REQUESTS_PER_DAY = 200;
 
     /**
-     * Inscription par code (#846). Plus serre que les demandes d ouverture :
-     * celle-ci teste un SECRET de six caracteres, pas une intention. L ADR-803-03
-     * la qualifie nommement d endpoint d enumeration.
+     * Inscription par code (#846, #915) : une borne contre l'inondation seulement.
+     * Une classe entiere qui s'inscrit derriere le wifi de l'ecole (une IP, NAT)
+     * doit passer ; l'enumeration du SECRET de six caracteres est bornee sur les
+     * seuls echecs (EchecsDeLaPorteAnonyme, ADR-915-01).
      */
-    private const INSCRIPTIONS_PER_MINUTE = 5;
-
-    private const INSCRIPTIONS_PER_DAY = 100;
+    private const INSCRIPTIONS_PER_MINUTE = 60;
 
     /**
      * Rejoindre une classe en étant connecté (#885). Compté PAR APPRENANT et
@@ -149,15 +149,14 @@ final class RateLimitServiceProvider extends ServiceProvider
         // cinq tentatives d inscription depuis une ecole derriere une seule IP
         // refuseraient la connexion suivante.
         //
-        // La borne JOURNALIERE globale est ce qui compte ici : la borne par IP
-        // seule ne freine pas une enumeration repartie, et un code fait six
-        // caracteres.
+        // Une seule borne ICI, contre l'inondation (#915) : elle compte toute
+        // requete, reussie ou non, et une classe entiere derriere le wifi de
+        // l'ecole doit passer. L'enumeration des codes est bornee a part, sur les
+        // seuls ECHECS, par adresse et par ecole (EchecsDeLaPorteAnonyme).
         RateLimiter::for('inscriptions', function (Request $request): array {
             return [
                 Limit::perMinute(self::INSCRIPTIONS_PER_MINUTE)->by((string) $request->ip())
                     ->response($this->refusMotive('ip_quota_exceeded')),
-                Limit::perDay(self::INSCRIPTIONS_PER_DAY)->by('inscriptions-global')
-                    ->response($this->refusMotive('global_cap_reached')),
             ];
         });
 

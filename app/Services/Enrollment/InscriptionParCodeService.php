@@ -60,14 +60,16 @@ final class InscriptionParCodeService
         private readonly DatabaseManager $db,
         private readonly LoggerInterface $logger,
         private readonly Hasher $hasher,
+        private readonly EchecsDeLaPorteAnonyme $echecs,
     ) {}
 
     /**
      * @param  array{code: string, nom: string, email: ?string, telephone: ?string, password: string}  $valide
+     * @param  string  $adresse  l'adresse IP de la demande, pour les plafonds d'échecs (#915)
      *
      * @throws BusinessException
      */
-    public function inscrire(array $valide): Classe
+    public function inscrire(array $valide, string $adresse): Classe
     {
         $ecole = $this->tenants->get();
         $institution = $this->tenants->id();
@@ -76,9 +78,19 @@ final class InscriptionParCodeService
             throw new BusinessException('Établissement non résolu.', 400);
         }
 
+        // Seuls les codes FAUX sont comptés (#915) : une inscription réussie
+        // n'est jamais un essai de trop.
+        $this->echecs->verifier($institution, $adresse);
+
         // AVANT le contrôle d'existence du compte : sans code valide, aucun
         // oracle sur les adresses connues.
-        $classe = $this->classes->resoudre($valide['code'], $ecole);
+        try {
+            $classe = $this->classes->resoudre($valide['code'], $ecole);
+        } catch (BusinessException $refus) {
+            $this->echecs->compter($institution, $adresse);
+
+            throw $refus;
+        }
 
         if ($this->compteExiste($valide, $institution)) {
             // Le compte n'est pas touché, et la réponse est celle d'un compte neuf

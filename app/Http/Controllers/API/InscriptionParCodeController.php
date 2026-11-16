@@ -30,7 +30,7 @@ final class InscriptionParCodeController extends Controller
     public function store(InscriptionParCodeRequest $request): JsonResponse
     {
         try {
-            $classe = $this->inscriptions->inscrire($request->donnees());
+            $classe = $this->inscriptions->inscrire($request->donnees(), (string) $request->ip());
         } catch (BusinessException $e) {
             // Le motif départage les 409 des deux portes (#906, ADR-906-01).
             return $this->errorResponse($e->getMessage(), $e->statutHttp(), reason: $e->reason);

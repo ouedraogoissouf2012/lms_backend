@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\LessonStatus;
+use App\Models\Concerns\ColonnesMortesDeLecon;
 use App\Models\Concerns\Publishable;
 use App\Models\Traits\BelongsToInstitution;
 use Database\Factories\LessonFactory;
@@ -25,7 +26,7 @@ use Illuminate\Support\Carbon;
 class Lesson extends Model
 {
     /** @use HasFactory<LessonFactory> */
-    use BelongsToInstitution, HasFactory, Publishable, SoftDeletes;
+    use BelongsToInstitution, ColonnesMortesDeLecon, HasFactory, Publishable, SoftDeletes;
 
     protected $fillable = [
         'matiere_id',

@@ -7,6 +7,7 @@ namespace App\Services\Attendances;
 use App\Models\ESBTPAttendance;
 use App\Models\Seance;
 use App\Models\User;
+use App\Services\Visio\VisioActorAuthorization;
 use App\Support\Logging\CaughtExceptionLog;
 use Illuminate\Support\Collection;
 use Throwable;
@@ -16,12 +17,14 @@ use Throwable;
  * `LMSAttendancesController::getSeanceAttendances()`.
  *
  * Récupère les présences d'une séance (lookup par ID local OU klassci_seance_id),
- * applique le contrôle d'accès enseignant, puis calcule :
+ * applique la règle d'accès du détail de séance (#1078, `VisioActorAuthorization`),
+ * puis calcule :
  *   - les statistiques globales (totalParticipants, averageDuration, presenceRate),
  *   - le formatage par participant (status_level, presence_status, % participation,
  *     gestion observateurs).
  *
- * Réservée aux séances ayant eu une session visio.
+ * Une séance d'école KLASSCI sans ligne locale est décrite par
+ * {@see SeanceSansLigneLocale} : elle existe, et n'a aucune présence (#1098).
  *
  * @see PRODUCTION_STANDARDS.md §1.1 — Services ≤300 lignes
  * @see PRODUCTION_STANDARDS.md §1.6 D — DI strict
@@ -30,6 +33,7 @@ final class SeanceAttendancesQueryService
 {
     public function __construct(
         private readonly CaughtExceptionLog $journal,
+        private readonly VisioActorAuthorization $acces,
     ) {}
 
     /**
@@ -37,18 +41,18 @@ final class SeanceAttendancesQueryService
      *
      * @return array{status:int, payload: array<string, mixed>}
      */
-    public function getAttendances(int $seanceId, User $user): array
+    public function getAttendances(int $seanceId, User $user, SeanceSansLigneLocale $sansLigne): array
     {
         try {
             $seance = $this->findSeance($seanceId);
             if (!$seance) {
-                return [
-                    'status' => 404,
-                    'payload' => [
-                        'success' => false,
-                        'message' => 'Séance non trouvée',
-                    ],
-                ];
+                // L'ordre de recherche des lignes est inchangé : la séance sans ligne
+                // n'est cherchée que si AUCUNE ligne ne répond (#1098).
+                $decrite = $sansLigne->decrire($seanceId, $user);
+
+                return $decrite === null
+                    ? ['status' => 404, 'payload' => ['success' => false, 'message' => 'Séance non trouvée']]
+                    : ['status' => 200, 'payload' => $this->sansPresence($decrite)];
             }
 
             $accessError = $this->checkAccess($seance, $user);
@@ -110,19 +114,45 @@ final class SeanceAttendancesQueryService
      */
     private function checkAccess(Seance $seance, User $user): ?array
     {
-        if ($user->isTeacher()) {
-            if ($seance->klassci_enseignant_id != $user->klassci_id) {
-                return [
-                    'status' => 403,
-                    'payload' => [
-                        'success' => false,
-                        'message' => 'Accès refusé. Cette séance ne vous appartient pas.',
-                    ],
-                ];
-            }
+        // La règle du détail de séance (#1078) : la gestion de l'école, ou l'auteur.
+        if (!$this->acces->canManage($seance, $user)) {
+            return [
+                'status' => 403,
+                'payload' => [
+                    'success' => false,
+                    'message' => 'Accès refusé. Cette séance ne vous appartient pas.',
+                ],
+            ];
         }
 
         return null;
+    }
+
+    /**
+     * Une séance qui existe sans ligne locale n'a, par construction, aucune présence.
+     *
+     * @param  array{klassci_seance_id: int, enseignant_nom: string|null, matiere_nom: string|null, date: string|null}  $decrite
+     * @return array<string, mixed>
+     */
+    private function sansPresence(array $decrite): array
+    {
+        return [
+            'success' => true,
+            'seance' => [
+                'id' => null,
+                'klassci_seance_id' => $decrite['klassci_seance_id'],
+                'enseignant_nom' => $decrite['enseignant_nom'],
+                'coordinateur_nom' => null,
+                'visio_started_at' => null,
+                'visio_ended_at' => null,
+                'duration_minutes' => null,
+                'is_finished' => false,
+                'matiere_nom' => $decrite['matiere_nom'] ?? 'Matière inconnue',
+                'date' => $decrite['date'],
+            ],
+            'statistics' => ['total_participants' => 0, 'average_duration' => 0, 'presence_rate' => 0],
+            'attendances' => [],
+        ];
     }
 
     private function computeSeanceDuration(Seance $seance): ?int

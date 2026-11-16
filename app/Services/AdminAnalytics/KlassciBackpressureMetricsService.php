@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Services\AdminAnalytics;
 
+use App\Services\Klassci\KlassciTransportRetry;
+
 /**
  * Exposes KLASSCI throttling/circuit-breaker settings for admin diagnostics.
  */
@@ -24,7 +26,7 @@ final class KlassciBackpressureMetricsService
     {
         return [
             'timeout_seconds' => $this->configInt('services.klassci.timeout', 5),
-            'connect_timeout_seconds' => $this->configInt('services.klassci.connect_timeout', 2),
+            'connect_timeout_seconds' => $this->configInt('services.klassci.connect_timeout', KlassciTransportRetry::CONNECT_TIMEOUT_SECONDS),
             'retry_after_seconds' => $this->configInt('services.klassci.retry_after', 30),
             'circuit_breaker_enabled' => $this->configBool('services.klassci.circuit_breaker_enabled', true),
             'circuit_breaker_failure_threshold' => $this->configInt('services.klassci.circuit_breaker_failures', 3),

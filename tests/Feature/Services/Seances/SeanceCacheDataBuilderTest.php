@@ -9,6 +9,7 @@ use App\Models\Seance;
 use App\Models\User;
 use App\Services\Seances\SeanceCacheDataBuilder;
 use Carbon\Carbon;
+use Carbon\CarbonInterface;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -80,6 +81,30 @@ final class SeanceCacheDataBuilderTest extends TestCase
 
         self::assertInstanceOf(Carbon::class, $data['date_seance']);
         self::assertSame('2026-08-01 00:00:00', $data['date_seance']->format('Y-m-d H:i:s'));
+    }
+
+    /**
+     * Le verrou des séances passées : le cache garde la fin RÉELLE de la programmation
+     * (réalignée sur la date de la séance), et jamais une fin estimée.
+     */
+    public function test_build_garde_la_fin_reelle_et_jamais_une_estimation(): void
+    {
+        $avecFin = (new SeanceCacheDataBuilder)->build(
+            ['id' => 1, 'programmation' => [
+                'date' => '2026-08-01', 'heure_debut' => '2026-07-31T08:00:00Z', 'heure_fin' => '2026-07-31T12:00:00Z',
+            ]],
+            ['id' => 10, 'nom' => 'Maths'],
+            $this->owner(),
+        );
+        $sansFin = (new SeanceCacheDataBuilder)->build(
+            ['id' => 2, 'programmation' => ['date' => '2026-08-01', 'heure_debut' => '2026-08-01T08:00:00Z']],
+            ['id' => 10, 'nom' => 'Maths'],
+            $this->owner(),
+        );
+
+        self::assertInstanceOf(CarbonInterface::class, $avecFin['fin_seance']);
+        self::assertSame('2026-08-01 12:00:00', $avecFin['fin_seance']->utc()->format('Y-m-d H:i:s'));
+        self::assertNull($sansFin['fin_seance']);
     }
 
     public function test_build_returns_null_date_when_no_date(): void

@@ -7,6 +7,7 @@ use App\Models\Institution;
 use App\Models\Matiere;
 use App\Models\User;
 use Laravel\Sanctum\Sanctum;
+use Tests\Concerns\SimuleLaMatiereKlassci;
 use Tests\TestCase;
 
 /**
@@ -22,6 +23,7 @@ use Tests\TestCase;
 class StoreLessonRequestTest extends TestCase
 {
     use \Illuminate\Foundation\Testing\RefreshDatabase;
+    use SimuleLaMatiereKlassci;
 
     private User $teacher;
     private User $student;
@@ -55,6 +57,8 @@ class StoreLessonRequestTest extends TestCase
     public function test_valid_data_creates_lesson(): void
     {
         Sanctum::actingAs($this->teacher);
+        // La classe est une classe de la matière (#1103).
+        $this->matiereKlassciProposant($this->matiere, $this->classe);
 
         $response = $this->postJson('/api/lessons', [
             'title' => 'Introduction to PHP',

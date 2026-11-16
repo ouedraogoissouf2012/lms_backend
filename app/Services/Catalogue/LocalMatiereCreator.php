@@ -6,7 +6,6 @@ namespace App\Services\Catalogue;
 
 use App\Exceptions\BusinessException;
 use App\Models\Matiere;
-use App\Services\TenantManager;
 
 /**
  * Créer une matière SANS KLASSCI (#797, #848).
@@ -24,12 +23,8 @@ use App\Services\TenantManager;
  *
  * ## La garde est ICI, au point d'écriture
  *
- * Même raison qu'en #860 : posée sur la route, elle protégerait cet appelant-là ;
- * posée ici, elle protège toute commande, job ou contrôleur à venir. Le service
- * demande un DROIT et ignore qu'un mode existe (épique #697, art. 1).
- *
- * Refuser à un établissement KLASSCI préserve une source unique — deux sources
- * écrivant la même réalité est la cause racine de #673.
+ * Par `PorteDuCatalogueLocal` (#910), la seule porte du catalogue local : elle
+ * dit pourquoi la garde vit au point d'appel, et dans quel ordre.
  *
  * ## Ce qui N'EST PAS repris de la Classe
  *
@@ -43,8 +38,7 @@ use App\Services\TenantManager;
 final class LocalMatiereCreator
 {
     public function __construct(
-        private readonly CatalogueAuthority $autorite,
-        private readonly TenantManager $tenants,
+        private readonly PorteDuCatalogueLocal $porte,
     ) {}
 
     /**
@@ -55,21 +49,7 @@ final class LocalMatiereCreator
      */
     public function creer(array $donnees): Matiere
     {
-        if (! $this->autorite->allowsLocalCatalogue()) {
-            throw new BusinessException(
-                'Les matières de cet établissement viennent de KLASSCI et ne se créent pas ici.',
-                403
-            );
-        }
-
-        $institution = $this->tenants->id();
-
-        // Fail-secure et non décoratif : une matière sans `institution_id`
-        // échapperait au scope multi-tenant. Le faire dépendre d'une seule garde
-        // en ferait une fuite dès que celle-ci bouge.
-        if ($institution === null) {
-            throw new BusinessException('Aucun établissement résolu.', 409);
-        }
+        $institution = $this->porte->etablissement();
 
         return Matiere::create([
             'libelle' => $donnees['libelle'],

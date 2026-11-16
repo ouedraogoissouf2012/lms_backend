@@ -11,6 +11,7 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Testing\TestResponse;
 use PHPUnit\Framework\Attributes\DataProvider;
+use Tests\Concerns\SimuleLaMatiereKlassci;
 use Tests\TestCase;
 
 /**
@@ -57,6 +58,7 @@ use Tests\TestCase;
 final class KlassciIdentifierDualityTest extends TestCase
 {
     use RefreshDatabase;
+    use SimuleLaMatiereKlassci;
 
     private User $teacher;
 
@@ -80,6 +82,9 @@ final class KlassciIdentifierDualityTest extends TestCase
             'institution_id' => $institution->id,
             'klassci_id' => 5001,
         ]);
+        // La classe est une classe de la matière (#1103) : la dualité porte sur
+        // l'espace des identifiants, pas sur le couple.
+        $this->matiereKlassciProposant($this->matiere, $this->classe);
     }
 
     /**

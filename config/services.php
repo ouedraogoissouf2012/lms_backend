@@ -1,5 +1,7 @@
 <?php
 
+use App\Services\Klassci\KlassciTransportRetry;
+
 return [
 
     /*
@@ -48,7 +50,8 @@ return [
         'url' => env('KLASSCI_API_URL'),
         'token' => env('KLASSCI_API_TOKEN'),
         'cache_ttl' => env('KLASSCI_CACHE_TTL', 300),
-        'connect_timeout' => env('KLASSCI_CONNECT_TIMEOUT', 2),
+        // #744 : source unique, KlassciTransportRetry::CONNECT_TIMEOUT_SECONDS.
+        'connect_timeout' => env('KLASSCI_CONNECT_TIMEOUT', KlassciTransportRetry::CONNECT_TIMEOUT_SECONDS),
         'timeout' => env('KLASSCI_TIMEOUT', 5),
         'retry_after' => env('KLASSCI_RETRY_AFTER', 30),
         'circuit_breaker_enabled' => env('KLASSCI_CIRCUIT_BREAKER_ENABLED', true),

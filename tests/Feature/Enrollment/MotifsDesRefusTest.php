@@ -54,16 +54,16 @@ final class MotifsDesRefusTest extends TestCase
     // Redis avant chaque test (#374), et `RefreshDatabase` annule la table
     // `cache` en mode database. Chaque test part de compteurs à zéro.
 
-    // ───────────────────────── les deux 409, un par porte
+    // ───────────────────────── la porte anonyme ne dit pas si un compte existe (#914)
 
-    public function test_porte_anonyme_un_compte_existant_dit_connectez_vous(): void
+    public function test_porte_anonyme_un_compte_existant_ne_porte_aucun_motif(): void
     {
         [$ecole, $code] = $this->classeAvecCode();
         User::factory()->create(['institution_id' => $ecole->getKey(), 'email' => 'awa@test.ci']);
 
         $this->postJson(self::ANONYME, $this->candidature($code), ['X-Institution' => (string) $ecole->slug])
-            ->assertStatus(409)
-            ->assertJsonPath('reason', 'account_exists');
+            ->assertStatus(202)
+            ->assertJsonMissingPath('reason');
     }
 
     public function test_porte_authentifiee_une_adhesion_close_dit_inscription_non_active(): void
@@ -98,9 +98,10 @@ final class MotifsDesRefusTest extends TestCase
             ->assertJsonPath('reason', 'no_institution');
     }
 
-    public function test_les_deux_409_ne_portent_jamais_le_meme_motif(): void
+    public function test_seule_la_porte_authentifiee_rend_un_409(): void
     {
-        // La prémisse de #906, sous forme exécutable : deux sens, deux motifs.
+        // #906 distinguait deux 409 par leur motif. Depuis #914, la porte anonyme
+        // n'en rend plus : un compte existant y reçoit la réponse d'un compte neuf.
         [$ecole, $code, $classe] = $this->classeAvecCode();
         User::factory()->create(['institution_id' => $ecole->getKey(), 'email' => 'awa@test.ci']);
         $anonyme = $this->postJson(self::ANONYME, $this->candidature($code), ['X-Institution' => (string) $ecole->slug]);
@@ -117,7 +118,7 @@ final class MotifsDesRefusTest extends TestCase
 
         // Statuts ET motifs exacts : comparer deux motifs sans les nommer
         // resterait vert si l'une des deux portes rendait un 500 sans motif.
-        $anonyme->assertStatus(409)->assertJsonPath('reason', 'account_exists');
+        $anonyme->assertStatus(202)->assertJsonMissingPath('reason');
         $authentifiee->assertStatus(409)->assertJsonPath('reason', 'enrolment_not_active');
     }
 
@@ -188,32 +189,34 @@ final class MotifsDesRefusTest extends TestCase
             ->assertHeader('X-RateLimit-Limit');
     }
 
-    public function test_porte_anonyme_le_quota_de_l_adresse(): void
+    public function test_porte_anonyme_la_borne_anti_inondation_de_l_adresse(): void
     {
-        [$ecole] = $this->classeAvecCode();
-        $entete = ['X-Institution' => (string) $ecole->slug];
-
-        for ($i = 0; $i < 5; $i++) {
-            $this->postJson(self::ANONYME, $this->candidature('ZZZZZZ'), $entete);
-        }
-
-        $this->unVrai429($this->postJson(self::ANONYME, $this->candidature('ZZZZZZ'), $entete))
-            ->assertJsonPath('reason', 'ip_quota_exceeded');
-    }
-
-    public function test_porte_anonyme_le_plafond_global_du_jour(): void
-    {
-        // Éprouver 100 inscriptions par le trafic demanderait 100 requêtes et
-        // vingt adresses : on remplit le compteur global, sous la clé que
+        // #915 : le seau de route ne garde qu'une borne contre l'inondation,
+        // 60 requêtes par minute et par adresse, sous la clé que
         // `ThrottleRequests:134` lui donne.
         [$ecole] = $this->classeAvecCode();
 
-        for ($i = 0; $i < 100; $i++) {
-            RateLimiter::hit($this->cleDeSeau('inscriptions', 'inscriptions-global'), 86_400);
+        for ($i = 0; $i < 60; $i++) {
+            RateLimiter::hit($this->cleDeSeau('inscriptions', '127.0.0.1'), 60);
         }
 
         $this->unVrai429($this->postJson(self::ANONYME, $this->candidature('ZZZZZZ'), ['X-Institution' => (string) $ecole->slug]))
-            ->assertJsonPath('reason', 'global_cap_reached');
+            ->assertJsonPath('reason', 'ip_quota_exceeded');
+    }
+
+    public function test_porte_anonyme_le_plafond_d_echecs_de_l_ecole(): void
+    {
+        // #915 : plus de plafond GLOBAL ; celui des ÉCHECS de l'école, partagé
+        // avec la porte authentifiée (un même concept, un même motif).
+        [$ecole] = $this->classeAvecCode();
+
+        for ($i = 0; $i < 200; $i++) {
+            RateLimiter::hit(RejoindreParCodeService::cleDesEchecs((int) $ecole->getKey()), 86_400);
+        }
+
+        $this->postJson(self::ANONYME, $this->candidature('ZZZZZZ'), ['X-Institution' => (string) $ecole->slug])
+            ->assertStatus(429)
+            ->assertJsonPath('reason', 'institution_cap_reached');
     }
 
     // ───────────────────────── harnais

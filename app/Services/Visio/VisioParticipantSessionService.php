@@ -7,6 +7,7 @@ namespace App\Services\Visio;
 use App\Models\ESBTPAttendance;
 use App\Models\Seance;
 use App\Models\User;
+use App\Services\Seances\FenetreVisio;
 use App\Services\Seances\Mutations\ParticipantValidationService;
 use App\Support\Logging\CaughtExceptionLog;
 use Illuminate\Http\Request;
@@ -60,10 +61,11 @@ final class VisioParticipantSessionService
             // Statut et message inchangés ; le motif dit quel état refuse.
             $refus = VisioStatusRefusal::reasonFor($visio->visio_status);
             if ($refus !== null) {
-                return [
-                    'status' => 400,
-                    'payload' => ['success' => false, 'message' => "La visio n'est pas active", 'reason' => $refus],
-                ];
+                return ['status' => 400, 'payload' => ['success' => false, 'message' => "La visio n'est pas active", 'reason' => $refus]];
+            }
+
+            if (FenetreVisio::visioInaccessible($visio, now())) {
+                return FenetreVisio::refus();
             }
 
             // La séance DÉJÀ résolue : la validation ne la relit pas.

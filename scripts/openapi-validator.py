@@ -268,37 +268,30 @@ class OpenAPIValidator:
                 self.check_schema_refs(item, context)
 
     def check_error_responses(self):
-        """Validate error response consistency (CRITICAL-02)."""
+        """Validate error response consistency (CRITICAL-02, ADR-919-01).
+
+        ErrorResponse must describe the body the API REALLY emits:
+        `success` and `message`, `errors` and `reason` optional. It must not
+        require a field the API never sends: `error_code` was required here
+        and emitted nowhere (#919) — the machine code is `reason` (ADR-906-01).
+        """
         error_response = self.spec.get('components', {}).get('schemas', {}).get('ErrorResponse')
 
         if not error_response:
             return
 
-        # Check required properties
-        required_properties = ['success', 'error_code', 'message']
         props = error_response.get('properties', {})
-
-        for prop in required_properties:
+        for prop in ['success', 'message']:
             if prop not in props:
                 self.errors.append(
                     f"ErrorResponse missing property: {prop} (required by CRITICAL-02)"
                 )
 
-        # Check error_code enum values
-        error_code_prop = props.get('error_code', {})
-        enum_values = error_code_prop.get('enum', [])
-        expected_codes = [
-            'UNAUTHENTICATED',
-            'PERMISSION_DENIED',
-            'RESOURCE_NOT_FOUND',
-            'VALIDATION_FAILED',
-            'INTERNAL_SERVER_ERROR'
-        ]
-
-        for code in expected_codes:
-            if code not in enum_values:
-                self.warnings.append(
-                    f"ErrorResponse error_code enum missing: {code}"
+        emitted = {'success', 'message', 'errors', 'reason'}
+        for prop in error_response.get('required', []):
+            if prop not in emitted:
+                self.errors.append(
+                    f"ErrorResponse requires '{prop}', which the API never emits (ADR-919-01)"
                 )
 
     def check_security(self):

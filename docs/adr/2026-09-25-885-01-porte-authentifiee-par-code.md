@@ -73,3 +73,4 @@ La course sur l'unique `(classe_id, user_id)` est provoquée de façon détermin
 - **`classe_etudiant.statut`** a désormais son énumération, mais 16 occurrences en code emploient encore la chaîne `'actif'` (mesure du 2026-09-25, commentaires exclus) — dont plusieurs lisent des charges KLASSCI et non le pivot. L'inventaire est dans #896.
 - **Une Période close** ne retire pas le code de ses classes. → #897
 - **L'import réécrit la date d'inscription** d'une ligne existante quand le fichier n'en porte pas. → #895
+- **Un second écrivain du statut** : la synchronisation KLASSCI remet à `actif` une adhésion close. Il ne contredit pas la règle de ce code, car il n'écrit que les classes KLASSCI, jamais une classe ouverte par code. → [ADR-921-01](2026-11-16-921-01-un-seul-ecrivain-du-statut-par-classe.md)

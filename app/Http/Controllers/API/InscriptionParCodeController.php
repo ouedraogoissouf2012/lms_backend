@@ -30,14 +30,17 @@ final class InscriptionParCodeController extends Controller
     public function store(InscriptionParCodeRequest $request): JsonResponse
     {
         try {
-            $classe = $this->inscriptions->inscrire($request->donnees());
+            $classe = $this->inscriptions->inscrire($request->donnees(), (string) $request->ip());
         } catch (BusinessException $e) {
             // Le motif départage les 409 des deux portes (#906, ADR-906-01).
             return $this->errorResponse($e->getMessage(), $e->statutHttp(), reason: $e->reason);
         }
 
+        // La MÊME réponse, que le compte soit créé ou qu'il existât déjà (#914) :
+        // rien ne dit lequel des deux, et le message dit à chacun quoi faire.
         return $this->successResponse([
             'classe' => ['id' => $classe->getKey(), 'libelle' => $classe->libelle],
-        ], 'Inscription enregistree. Connectez-vous avec le mot de passe choisi.', 201);
+        ], 'Demande enregistree. Si vous n aviez pas de compte, il est cree : connectez-vous avec le mot de passe choisi. '
+            .'Si vous aviez deja un compte, connectez-vous avec vos identifiants habituels, puis rejoignez la classe avec ce code.', 202);
     }
 }

@@ -97,14 +97,14 @@ final class TrainingSessionTransitionsTest extends TestCase
     {
         [$acteur, $periode] = $this->periode();
 
-        $this->agir($acteur, $periode, 'cloturer')->assertStatus(409);
+        $this->agir($acteur, $periode, 'cloturer')->assertStatus(409)->assertJsonPath('reason', 'training_session_transition_not_allowed');
     }
 
     public function test_un_brouillon_ne_s_archive_pas(): void
     {
         [$acteur, $periode] = $this->periode();
 
-        $this->agir($acteur, $periode, 'archiver')->assertStatus(409);
+        $this->agir($acteur, $periode, 'archiver')->assertStatus(409)->assertJsonPath('reason', 'training_session_transition_not_allowed');
     }
 
     public function test_une_periode_publiee_ne_se_republie_pas(): void
@@ -112,7 +112,7 @@ final class TrainingSessionTransitionsTest extends TestCase
         [$acteur, $periode] = $this->periode();
         $this->agir($acteur, $periode, 'publier')->assertOk();
 
-        $this->agir($acteur, $periode, 'publier')->assertStatus(409);
+        $this->agir($acteur, $periode, 'publier')->assertStatus(409)->assertJsonPath('reason', 'training_session_transition_not_allowed');
     }
 
     public function test_une_periode_cloturee_ne_se_publie_pas(): void
@@ -121,7 +121,7 @@ final class TrainingSessionTransitionsTest extends TestCase
         $this->agir($acteur, $periode, 'publier')->assertOk();
         $this->agir($acteur, $periode, 'cloturer')->assertOk();
 
-        $this->agir($acteur, $periode, 'publier')->assertStatus(409);
+        $this->agir($acteur, $periode, 'publier')->assertStatus(409)->assertJsonPath('reason', 'training_session_transition_not_allowed');
     }
 
     public function test_une_annulation_est_IRREVERSIBLE(): void
@@ -132,8 +132,8 @@ final class TrainingSessionTransitionsTest extends TestCase
         [$acteur, $periode] = $this->periode();
         $this->agir($acteur, $periode, 'annuler')->assertOk();
 
-        $this->agir($acteur, $periode, 'publier')->assertStatus(409);
-        $this->agir($acteur, $periode, 'cloturer')->assertStatus(409);
+        $this->agir($acteur, $periode, 'publier')->assertStatus(409)->assertJsonPath('reason', 'training_session_transition_not_allowed');
+        $this->agir($acteur, $periode, 'cloturer')->assertStatus(409)->assertJsonPath('reason', 'training_session_transition_not_allowed');
 
         self::assertSame(TrainingSessionStatus::Annulee, $this->relire($periode)->status);
     }
@@ -145,7 +145,7 @@ final class TrainingSessionTransitionsTest extends TestCase
         $this->agir($acteur, $periode, 'archiver')->assertOk();
 
         foreach (['publier', 'annuler', 'cloturer', 'archiver'] as $operation) {
-            $this->agir($acteur, $periode, $operation)->assertStatus(409);
+            $this->agir($acteur, $periode, $operation)->assertStatus(409)->assertJsonPath('reason', 'training_session_transition_not_allowed');
         }
 
         self::assertSame(TrainingSessionStatus::Archivee, $this->relire($periode)->status);

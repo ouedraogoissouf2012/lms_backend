@@ -72,8 +72,8 @@ final class SeanceStoreContractTest extends TestCase
             yield "alias coordinator, $volet" => [$autonome, 'coordinator'];
             yield "alias teacher, $volet" => [$autonome, 'teacher'];
             yield "superAdmin, $volet" => [$autonome, 'superAdmin'];
-            // D1 : la route garde seule les rôles, et compare sans la casse.
-            yield "variante de casse (garde de la route), $volet" => [$autonome, 'Enseignant'];
+            // D502 : l'admin d'école a les droits du coordinateur (garde `personnel`).
+            yield "admin (D502), $volet" => [$autonome, 'admin'];
         }
     }
 
@@ -91,7 +91,9 @@ final class SeanceStoreContractTest extends TestCase
     {
         foreach (self::volets() as $volet => [$autonome]) {
             yield "étudiant (rôle de la route), $volet" => [$autonome, 'etudiant'];
-            yield "admin (rôle de la route), $volet" => [$autonome, 'admin'];
+            // La garde `personnel` lit le rôle en correspondance EXACTE (#511) : une
+            // variante de casse n'est plus admise (elle l'était sous `role:`, D1).
+            yield "variante de casse, $volet" => [$autonome, 'Enseignant'];
         }
     }
 

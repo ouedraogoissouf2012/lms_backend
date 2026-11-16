@@ -201,28 +201,24 @@ final class SeanceVisioEnricher
      */
     public function buildVisioWindow(Carbon $heureDebut, Carbon $heureFin, array $seance, ?Seance $visioData): array
     {
+        // La règle est écrite une fois, dans FenetreVisio : les actions (démarrer,
+        // activer, rejoindre) la lisent aussi, et refusent ce que ces drapeaux disent.
         $now = Carbon::now();
-        $canStart = $now->greaterThanOrEqualTo($heureDebut->copy()->subMinutes(15));
-        $canStillStart = $now->lessThanOrEqualTo($heureFin->copy()->addMinutes(30));
-
-        // Visio active ET dans le timeout (4h max après démarrage)
-        $visioIsActive = ($seance['visio_status'] === 'active');
-        $visioAccessible = false;
-
-        if ($visioIsActive && $visioData && $visioData->visio_started_at) {
-            $visioStarted = Carbon::parse($visioData->visio_started_at);
-            $visioTimeout = $visioStarted->copy()->addHours(4);
-            $visioAccessible = $now->lessThan($visioTimeout);
-        }
+        $dansLaFenetre = FenetreVisio::dansLaFenetre($heureDebut, $heureFin, $now);
+        $visioAccessible = FenetreVisio::visioEncoreActive(
+            ($seance['visio_status'] ?? null) === 'active',
+            $visioData?->visio_started_at,
+            $now,
+        );
 
         return [
-            'can_start' => $canStart && $canStillStart,
+            'can_start' => FenetreVisio::peutDemarrer($heureDebut, $heureFin, $now),
             'has_started' => $now->greaterThanOrEqualTo($heureDebut),
             'has_ended' => $now->greaterThan($heureFin),
-            'is_in_window' => $canStart && ! $now->greaterThan($heureFin),
-            'is_accessible' => $visioAccessible || ($canStart && ! $now->greaterThan($heureFin)),
-            'start_window' => $heureDebut->copy()->subMinutes(15)->toIso8601String(),
-            'end_window' => $heureFin->copy()->addMinutes(30)->toIso8601String(),
+            'is_in_window' => $dansLaFenetre,
+            'is_accessible' => $visioAccessible || $dansLaFenetre,
+            'start_window' => $heureDebut->copy()->subMinutes(FenetreVisio::AVANT_MINUTES)->toIso8601String(),
+            'end_window' => $heureFin->copy()->addMinutes(FenetreVisio::APRES_MINUTES)->toIso8601String(),
         ];
     }
 

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Search;
 
+use App\Models\User;
 use Illuminate\Contracts\Cache\Repository as CacheRepository;
 
 /**
@@ -33,6 +34,17 @@ use Illuminate\Contracts\Cache\Repository as CacheRepository;
  * (`LessonReadScope::apply`). Un agrégat calculé par l'ancienne règle ne doit
  * pas être resservi après le déploiement.
  *
+ * `v4` (#930) : la clé était `md5($query . $userId . $limit)`, une concaténation
+ * SANS séparateur. La requête `abc9` du compte 7 et la requête `abc` du compte 97
+ * avaient la même clé : l'agrégat d'un coordinateur (comptes, courriels) était servi
+ * à un apprenant, d'une autre école au besoin. La clé hache désormais un tableau
+ * SÉRIALISÉ (chaque valeur porte sa longueur : aucune ambiguïté, et aucun échec sur
+ * une requête en UTF-8 invalide, contrairement à `json_encode`), en sha256 : la
+ * requête est saisie par l'utilisateur, une collision md5 se fabrique. Elle porte
+ * aussi l'établissement et le rôle, dont l'agrégat dépend : un compte promu ou
+ * déplacé ne relit pas un agrégat calculé sous ses anciens droits. Les entrées v3,
+ * qui ont pu se confondre, ne sont plus lues.
+ *
  * @phpstan-import-type SearchResults from SearchAggregate
  */
 final class SearchResultCache
@@ -43,7 +55,7 @@ final class SearchResultCache
     /** TTL d'un agrégat dégradé : assez court pour que le rétablissement se voie. */
     private const DEGRADED_TTL_SECONDS = 30;
 
-    private const PREFIX = 'global_search_v3_';
+    private const PREFIX = 'global_search_v4_';
 
     /** Buckets attendus — contrat de forme de l'entrée mémorisée. */
     private const BUCKETS = ['users', 'lessons', 'evaluations', 'classes', 'matieres'];
@@ -53,9 +65,9 @@ final class SearchResultCache
     ) {
     }
 
-    public function get(string $query, int $userId, int $limit): ?SearchAggregate
+    public function get(string $query, User $user, int $limit): ?SearchAggregate
     {
-        $cached = $this->cache->get($this->key($query, $userId, $limit));
+        $cached = $this->cache->get($this->key($query, $user, $limit));
 
         if (! is_array($cached) || ! is_array($cached['results'] ?? null) || ! is_array($cached['failed'] ?? null)) {
             return null;
@@ -76,17 +88,17 @@ final class SearchResultCache
         return new SearchAggregate($results, $failed);
     }
 
-    public function put(string $query, int $userId, int $limit, SearchAggregate $aggregate): void
+    public function put(string $query, User $user, int $limit, SearchAggregate $aggregate): void
     {
         $this->cache->put(
-            $this->key($query, $userId, $limit),
+            $this->key($query, $user, $limit),
             ['results' => $aggregate->results, 'failed' => $aggregate->failedSources],
             $aggregate->isComplete() ? self::COMPLETE_TTL_SECONDS : self::DEGRADED_TTL_SECONDS,
         );
     }
 
-    private function key(string $query, int $userId, int $limit): string
+    private function key(string $query, User $user, int $limit): string
     {
-        return self::PREFIX . md5($query . $userId . $limit);
+        return self::PREFIX . hash('sha256', serialize([$query, $user->id, $user->institution_id, $user->role, $limit]));
     }
 }

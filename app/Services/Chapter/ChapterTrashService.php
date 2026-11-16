@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Chapter;
 
+use App\Jobs\RecalculerLeTempsDeLaLecon;
 use App\Models\Chapter;
 use App\Services\Visio\AttendanceLifecycleService;
 use App\Support\Logging\CaughtExceptionLog;
@@ -56,6 +57,8 @@ final class ChapterTrashService
         try {
             $chapter = Chapter::findOrFail($id);
             $chapter->delete();
+            // #1146 : le chapitre sort du périmètre de la leçon, son temps aussi.
+            RecalculerLeTempsDeLaLecon::dispatch((int) $chapter->lesson_id)->afterCommit();
 
             $this->logger->info('Chapitre mis à la corbeille', ['chapter_id' => $id]);
 
@@ -81,6 +84,8 @@ final class ChapterTrashService
             // restauration est par définition introuvable.
             $chapter = Chapter::withTrashed()->findOrFail($id);
             $chapter->restore();
+            // #1146 : le chapitre revient dans le périmètre de la leçon.
+            RecalculerLeTempsDeLaLecon::dispatch((int) $chapter->lesson_id)->afterCommit();
 
             $this->logger->info('Chapitre restauré', ['chapter_id' => $id]);
 

@@ -6,6 +6,8 @@ namespace App\Services\Lesson;
 
 use App\Models\Lesson;
 use App\Models\LessonProgress;
+use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Carbon;
 
 /**
  * Progression sur une leçon : state machine de mise à jour (PERF-04 batch 3)
@@ -20,6 +22,27 @@ class LessonProgressService
     public function progressForUser(Lesson $lesson, int $userId): ?LessonProgress
     {
         return $lesson->progress()->where('user_id', $userId)->first();
+    }
+
+    /**
+     * Les progressions d'un utilisateur sur plusieurs leçons, en UNE requête,
+     * indexées par leçon (#940) ; la clé unique `(user_id, lesson_id)` en garantit
+     * une au plus. Une leçon jamais commencée est absente.
+     *
+     * @param  list<int>  $lessonIds
+     * @return Collection<int, LessonProgress>
+     */
+    public function progressionsForUser(array $lessonIds, int $userId): Collection
+    {
+        if ($lessonIds === []) {
+            return new Collection;
+        }
+
+        return LessonProgress::query()
+            ->where('user_id', $userId)
+            ->whereIn('lesson_id', $lessonIds)
+            ->get()
+            ->keyBy('lesson_id');
     }
 
     /**
@@ -76,6 +99,20 @@ class LessonProgressService
     }
 
     /**
+     * La transition de DÉBUT, écrite une fois : une ligne `not_started` passe
+     * `in_progress`, `started_at` posé. Rien pour une ligne déjà commencée ou
+     * terminée : jamais de rétrogradation. Lue par la mise à jour du pourcentage
+     * (ci-dessous) et par l'écriture du temps (`ChapterTimeRecorder`, #1147) :
+     * du temps passé commence la leçon, comme un pourcentage non nul.
+     *
+     * @return array{status?: string, started_at?: Carbon}
+     */
+    public static function debut(LessonProgress $progress): array
+    {
+        return $progress->status === 'not_started' ? ['status' => 'in_progress', 'started_at' => now()] : [];
+    }
+
+    /**
      * Met à jour la progression d'un user sur une leçon.
      *
      * Transitions auto :
@@ -97,9 +134,8 @@ class LessonProgressService
             'last_accessed_at' => now(),
         ];
 
-        if ($progress->status === 'not_started' && $percentage > 0) {
-            $data['status'] = 'in_progress';
-            $data['started_at'] = now();
+        if ($percentage > 0) {
+            $data += self::debut($progress);
         }
 
         // Auto-complétion si 100%

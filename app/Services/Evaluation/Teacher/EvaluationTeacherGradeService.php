@@ -42,7 +42,7 @@ final class EvaluationTeacherGradeService
         }
 
         if (! in_array($submission->status, ['soumis', 'corrige'], true)) {
-            return $this->fail(409, 'Cette soumission ne peut pas encore être notée.');
+            return $this->fail(409, 'Cette soumission ne peut pas encore être notée.', 'evaluation_submission_not_gradable');
         }
 
         $dissertations = $evaluation->questions->filter(

@@ -48,16 +48,26 @@ $app = Application::configure(basePath: dirname(__DIR__))
             \App\Http\Middleware\ResolveInstitution::class,
         ]);
 
+        // #947 : toute lecture authentifiée a une limite de débit, par famille et
+        // par compte (App\Support\Http\LimiteDesLectures, ADR-947-01). Posée sur le
+        // GROUPE : une route nouvelle naît limitée. La priorité de Laravel place
+        // ThrottleRequests après l'authentification de la route.
+        $middleware->api(append: ['throttle:lecture']);
+
         // Enregistrer les middlewares personnalisés
         $middleware->alias([
             'klassci.sync' => \App\Http\Middleware\EnsureKlassciSync::class,
             'role' => \App\Http\Middleware\EnsureRole::class,
+            // D499/D502 : une garde par prédicat de rôle, au lieu de listes recopiées.
+            \App\Http\Middleware\EnsureGestion::ALIAS => \App\Http\Middleware\EnsureGestion::class,
+            \App\Http\Middleware\EnsurePersonnel::ALIAS => \App\Http\Middleware\EnsurePersonnel::class,
             'institution' => \App\Http\Middleware\ResolveInstitution::class,
             'institution.header' => \App\Http\Middleware\RequireInstitutionHeader::class,
             // #511 : garde plateforme STRICTE (défense en profondeur cross-tenant).
             'platform.supradmin' => \App\Http\Middleware\EnsurePlatformSupradmin::class,
             'etablissement.requis' => \App\Http\Middleware\EnsureSchoolMemberOrPlatformRoute::class,
             \App\Http\Middleware\MarksPlatformRoute::ALIAS => \App\Http\Middleware\MarksPlatformRoute::class,
+            \App\Http\Middleware\MarksAnyAccountRoute::ALIAS => \App\Http\Middleware\MarksAnyAccountRoute::class,
         ]);
 
         // La porte des comptes sans établissement passe JUSTE APRÈS

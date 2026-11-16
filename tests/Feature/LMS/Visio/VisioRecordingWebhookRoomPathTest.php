@@ -184,7 +184,7 @@ final class VisioRecordingWebhookRoomPathTest extends TestCase
         $this->postJson('/api/webhooks/visio/recording-ready', [
             'room' => 'peu importe',
             'session' => 'malformé',
-        ])->assertStatus(401);
+        ])->assertStatus(401)->assertJsonPath('reason', 'webhook_signature_missing');
 
         Queue::assertNothingPushed();
     }
@@ -199,7 +199,30 @@ final class VisioRecordingWebhookRoomPathTest extends TestCase
         $headers = $this->sign($body, 'nonce-room-replay');
 
         $this->postJson('/api/webhooks/visio/recording-ready', $body, $headers)->assertStatus(202);
-        $this->postJson('/api/webhooks/visio/recording-ready', $body, $headers)->assertStatus(409);
+        $this->postJson('/api/webhooks/visio/recording-ready', $body, $headers)
+            ->assertStatus(409)
+            ->assertJsonPath('reason', 'webhook_already_processed');
+    }
+
+    /** #922 : les 401 du webhook ont quatre sens ; chacun dit le sien (l'appelant est un serveur, ses journaux aussi). */
+    public function test_chaque_refus_d_authentification_dit_son_motif(): void
+    {
+        Queue::fake();
+        $body = ['room' => 'peu importe', 'session' => self::SESSION];
+        $valide = $this->sign($body, 'nonce-motifs');
+
+        $cas = [
+            'webhook_timestamp_invalid' => ['X-Visio-Timestamp' => 'pas-un-nombre'] + $valide,
+            'webhook_timestamp_expired' => ['X-Visio-Timestamp' => (string) (time() - 86400)] + $valide,
+            'webhook_signature_invalid' => ['X-Visio-Signature' => 'sha256='.str_repeat('0', 64)] + $valide,
+        ];
+        foreach ($cas as $motif => $entetes) {
+            $this->postJson('/api/webhooks/visio/recording-ready', $body, $entetes)
+                ->assertStatus(401)
+                ->assertJsonPath('reason', $motif);
+        }
+
+        Queue::assertNothingPushed();
     }
 
     public function test_a_missing_secret_makes_the_room_path_unavailable(): void

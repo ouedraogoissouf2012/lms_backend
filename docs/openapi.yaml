@@ -61,15 +61,54 @@ components:
           description: "Requêtes restantes dans la fenêtre courante."
       content:
         application/json:
+          # #1134 — le corps REEL (TooManyRequestsPresenter) : `reason` n est
+          # pose que par les seaux nommes qui disent quel budget est epuise
+          # (`inscriptions`, `rejoindre-classe`, ADR-906-01).
           schema:
             type: object
+            required:
+              - success
+              - message
             properties:
               success:
                 type: boolean
-                example: false
+                enum:
+                  - false
               message:
                 type: string
                 example: "Trop de requêtes. Veuillez réessayer plus tard."
+              reason:
+                type: string
+                description: "Facultatif : le budget epuise, pour les seaux qui le disent (ADR-906-01)."
+
+    # #961 — les deux refus du middleware global `ResolveInstitution`, rendus
+    # AVANT toute route : chaque operation les cite (scripts/
+    # openapi-refus-de-la-resolution.py), un client genere ne lit que les siennes.
+    EtablissementDesactive:
+      description: |
+        Requete avec jeton : l etablissement du compte est desactive ou
+        supprime (#565). Sans `reason`.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/RefusDeLaResolution'
+          example:
+            success: false
+            message: "Établissement désactivé. Accès suspendu, contactez votre administration."
+
+    EtablissementInconnu:
+      description: |
+        Requete sans jeton, en-tete `X-Institution` d un etablissement inconnu
+        ou inactif. Rendu AVANT le 401 de l authentification. Sans `reason`.
+        Message fixe : il ne recopie pas la valeur recue, et ne distingue pas
+        un etablissement inconnu d un inactif (#1129).
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/RefusDeLaResolution'
+          example:
+            success: false
+            message: "Établissement introuvable ou inactif."
 
     # #806 — un 401 d'une route adossee a KLASSCI a TROIS sens, que seul
     # `reason` distingue. CIBLE : le client decide sur `reason`, jamais sur le
@@ -3710,6 +3749,22 @@ components:
           type: string
           example: "Une erreur est survenue."
 
+    # #961 — le corps des deux refus de `ResolveInstitution` : ni `error_code`,
+    # ni `reason`.
+    RefusDeLaResolution:
+      type: object
+      additionalProperties: false
+      required:
+        - success
+        - message
+      properties:
+        success:
+          type: boolean
+          enum:
+            - false
+        message:
+          type: string
+
     # #906 — un refus qui dit POURQUOI, pour que le front traduise par son
     # propre catalogue sans lire le message du serveur. Le motif va dans le
     # CORPS : le front de production est cross-origin, et `exposed_headers: []`
@@ -3733,14 +3788,15 @@ components:
         reason:
           type: string
           enum:
-            - account_exists
             - enrolment_not_active
             - no_institution
             - account_quota_exceeded
             - account_daily_cap_reached
             - institution_cap_reached
             - ip_quota_exceeded
-            - global_cap_reached
+            - ip_daily_cap_reached
+            - seance_past
+            - evaluation_locked
 
     # #806 — `reason` est FACULTATIF ici : un 401 Sanctum n en porte aucun.
     RefusKlassci:
@@ -3760,21 +3816,31 @@ components:
             - klassci_token_missing
             - klassci_session_expired
 
+    # #919 — le corps d'erreur que l'API emet REELLEMENT : RespondsWithJson::
+    # errorResponse() et les rendus de bootstrap/app.php. Aucun `error_code` :
+    # le code machine est `reason` (ADR-906-01, ADR-919-01).
     ErrorResponse:
       type: object
       properties:
         success:
           type: boolean
-          example: false
-        error_code:
-          type: string
-          example: "UNAUTHENTICATED"
+          enum:
+            - false
         message:
           type: string
           example: "Unauthenticated."
+        errors:
+          type: object
+          description: "Facultatif : le detail par champ d un refus de validation (422)."
+          additionalProperties:
+            type: array
+            items:
+              type: string
+        reason:
+          type: string
+          description: "Facultatif : le motif d un refus a plusieurs sens (ADR-906-01)."
       required:
         - success
-        - error_code
         - message
 
     # Auth Schemas
@@ -3984,6 +4050,7 @@ paths:
         la premiere au lieu d'en creer une seconde.
 
         Debit limite a 5 requetes par minute et par IP.
+      security: []
       requestBody:
         required: true
         content:
@@ -4009,6 +4076,10 @@ paths:
                   message:
                     type: string
                     example: "Votre demande est enregistree. Elle sera examinee par notre equipe."
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '403':
+          $ref: '#/components/responses/EtablissementDesactive'
         '422':
           description: "Validation error"
           content:
@@ -4130,7 +4201,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ClasseLocaleRefus'
         '429':
-          description: "KLASSCI limite les requetes, relaye, SANS son en-tete `Retry-After`."
+          description: "KLASSCI limite les requetes, relaye, SANS son en-tete `Retry-After`. Aussi : limite de débit des lectures, par famille et par compte (#947)."
           content:
             application/json:
               schema:
@@ -4264,7 +4335,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/RefusClasseEleves'
         '429':
-          description: "KLASSCI limite les requetes, relaye, SANS son en-tete `Retry-After`."
+          description: "KLASSCI limite les requetes, relaye, SANS son en-tete `Retry-After`. Aussi : limite de débit des lectures, par famille et par compte (#947)."
           content:
             application/json:
               schema:
@@ -4317,12 +4388,13 @@ paths:
         inexistante et pour celle d'une autre ecole : la reponse ne dit pas
         quels identifiants existent ailleurs.
 
-        Reserve aux roles `enseignant` (alias `teacher`), `coordinateur` (alias
-        `coordinator`) et `superAdmin`. Le role est garde une seule fois, par la
-        route, qui compare sans la casse : une variante (`Enseignant`) est
-        admise. Le 403 a plusieurs sources, et le client ne doit pas lire le
-        message :
-        - le role de la route, qui refuse tout autre role, `admin` compris
+        Reserve au personnel de l'etablissement : `enseignant` (alias `teacher`),
+        `coordinateur` (alias `coordinator`), `admin` et `superAdmin` (D502 : l'admin
+        d'ecole a les droits du coordinateur). Le role est garde une seule fois, par
+        la garde `personnel` de la route (`User::isStaff()`), en correspondance
+        EXACTE : une variante de casse (`Enseignant`) est refusee. Le 403 a
+        plusieurs sources, et le client ne doit pas lire le message :
+        - la garde de la route, qui refuse tout autre role, l'eleve compris
           (« Accès refusé - Permissions insuffisantes ») ;
         - un etablissement desactive ou introuvable (« Établissement désactivé.
           Accès suspendu, contactez votre administration. ») ;
@@ -4343,6 +4415,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SeanceLocaleCreated'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
         '401':
           description: "Non authentifie"
           content:
@@ -4350,7 +4424,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/SeanceLocaleRefus'
         '403':
-          description: "Role non admis a creer une seance, ou compte sans etablissement"
+          description: "Role non admis a creer une seance, ou compte sans etablissement. Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
           content:
             application/json:
               schema:
@@ -4444,6 +4518,8 @@ paths:
               schema:
                 type: string
                 format: binary
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
         '401':
           description: "Non authentifie"
           content:
@@ -4541,6 +4617,8 @@ paths:
               schema:
                 type: string
                 format: binary
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
         '401':
           description: "Non authentifie"
           content:
@@ -4638,6 +4716,8 @@ paths:
               schema:
                 type: string
                 format: binary
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
         '401':
           description: "Non authentifie"
           content:
@@ -4693,6 +4773,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/RapportSuivi'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
         '401':
           description: "Non authentifie"
           content:
@@ -4747,6 +4829,8 @@ paths:
               schema:
                 type: string
                 format: binary
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
         '401':
           description: "Non authentifie"
           content:
@@ -4810,12 +4894,16 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/VisioConsentState'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
         '401':
           description: "Non authentifie"
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          $ref: '#/components/responses/EtablissementDesactive'
         '422':
           description: |
             Charge invalide, ou compte sans etablissement — un consentement se
@@ -4843,12 +4931,18 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/VisioConsentState'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
         '401':
           description: "Non authentifie"
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          $ref: '#/components/responses/EtablissementDesactive'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
 
   /lms/seances/upcoming:
     get:
@@ -4900,6 +4994,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SeancesAVenir'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
         '401':
           $ref: '#/components/responses/KlassciUnauthorized'
         '403':
@@ -4908,6 +5004,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/RefusClasseEleves'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
         '500':
           description: "Defaillance interne, rapportee une fois au journal, sans le message ni les valeurs d'une requete."
           content:
@@ -4951,6 +5049,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SeancesListe'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
         '401':
           $ref: '#/components/responses/KlassciUnauthorized'
         '403':
@@ -4959,6 +5059,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/RefusClasseEleves'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
         '500':
           description: "Defaillance interne, rapportee une fois au journal, sans le message ni les valeurs d'une requete."
           content:
@@ -5005,6 +5107,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SeancesListe'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
         '401':
           $ref: '#/components/responses/KlassciUnauthorized'
         '403':
@@ -5022,6 +5126,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/RefusEleveSansClasseActive'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
         '500':
           description: "Defaillance interne, rapportee une fois au journal, sans le message ni les valeurs d'une requete."
           content:
@@ -5084,6 +5190,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/VisioActivee'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
         '401':
           description: |
             Jeton porteur absent ou invalide (sans `reason`), ou compte sans jeton
@@ -5117,6 +5225,15 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SeanceLocaleRefus'
+        '409':
+          description: |
+            Seance passee (`reason: seance_past`) : sa fin (programmation KLASSCI, ou
+            debut + 2 h pour une seance locale) est depassee de plus de 30 min. Rien n
+            est ecrit, rien n est notifie.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefusMotive'
         '500':
           description: |
             Erreur interne, y compris une panne de KLASSCI pendant la recherche.
@@ -5158,7 +5275,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/VisioDemarree'
         '400':
-          description: "La visio de la seance n'est pas activee."
+          description: "La visio de la seance n'est pas activee. Aussi, sans jeton : en-tete `X-Institution` d un etablissement inconnu ou inactif (ResolveInstitution, #961), avant le 401."
           content:
             application/json:
               schema:
@@ -5188,6 +5305,16 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SeanceLocaleRefus'
+        '409':
+          description: |
+            Seance passee (`reason: seance_past`) : sa fin est depassee de plus de 30
+            min. Fin reelle si connue (programmation KLASSCI, `fin_seance`), sinon
+            debut + 2 h pour une seance locale ; une ligne KLASSCI sans fin connue n
+            est pas refusee. Rien n est demarre.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefusMotive'
         '500':
           description: |
             Erreur interne. Rattrapee par le service : avec `error`. Non
@@ -5227,7 +5354,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/VisioTerminee'
         '400':
-          description: "La visio de la seance n'est pas active."
+          description: "La visio de la seance n'est pas active. Aussi, sans jeton : en-tete `X-Institution` d un etablissement inconnu ou inactif (ResolveInstitution, #961), avant le 401."
           content:
             application/json:
               schema:
@@ -5295,6 +5422,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/VisioDesactivee'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
         '401':
           description: "Jeton porteur absent ou invalide. Aucune garde de jeton KLASSCI sur cette route."
           content:
@@ -5375,6 +5504,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/VisioBasculee'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
         '401':
           description: |
             Jeton porteur absent ou invalide (sans `reason`), ou, dans une ecole
@@ -5404,6 +5535,14 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SeanceLocaleInvalide'
+        '409':
+          description: |
+            Reactiver (`enabled: true`) une seance passee (`reason: seance_past`) : sa
+            fin connue est depassee de plus de 30 min. Desactiver reste permis.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefusMotive'
         '500':
           description: |
             Erreur interne. Rattrapee par le service : avec `error`. Non
@@ -5427,6 +5566,7 @@ paths:
         (WhatsApp, SMS, de vive voix). Il est a usage unique et expirant.
 
         Debit limite a 5 requetes par minute et par IP.
+      security: []
       requestBody:
         required: true
         content:
@@ -5440,6 +5580,10 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/MessageOnly'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '403':
+          $ref: '#/components/responses/EtablissementDesactive'
         '410':
           description: |
             Jeton inconnu, deja consomme, ou perime. Les trois cas rendent le
@@ -5519,6 +5663,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ParticipantValide'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
         '401':
           description: "Jeton porteur absent ou invalide. Aucun jeton KLASSCI n'est exige ici."
           content:
@@ -5596,7 +5742,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/VisioRejointe'
         '400':
-          description: "La visio n'est pas active : programmee, terminee, ou non activee."
+          description: "La visio n'est pas active : programmee, terminee, ou non activee. Aussi, sans jeton : en-tete `X-Institution` d un etablissement inconnu ou inactif (ResolveInstitution, #961), avant le 401."
           content:
             application/json:
               schema:
@@ -5625,6 +5771,15 @@ paths:
                 $ref: '#/components/schemas/SeanceLocaleRefus'
         '429':
           $ref: '#/components/responses/TooManyRequests'
+        '409':
+          description: |
+            Seance passee (`reason: seance_past`) : la fin est depassee et la visio n
+            est plus active depuis moins de 4 h (`is_accessible`). Une visio demarree
+            a temps reste joignable 4 h.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefusMotive'
         '500':
           description: |
             Erreur interne. Rattrapee par le service : avec `error`. Non
@@ -5688,6 +5843,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/AuditLogPage'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
         '401':
           description: "Non authentifie"
           content:
@@ -5695,7 +5852,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/AuditLogRefus'
         '403':
-          description: "Reserve au supradmin plateforme (le superAdmin d'une ecole est refuse)"
+          description: "Reserve au supradmin plateforme (le superAdmin d'une ecole est refuse). Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
           content:
             application/json:
               schema:
@@ -5706,6 +5863,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
 
   /admin/school-requests:
     get:
@@ -5737,6 +5896,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SchoolRequestQueue'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
         '401':
           description: "Non authentifie"
           content:
@@ -5744,11 +5905,13 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '403':
-          description: "Reserve au supradmin plateforme"
+          description: "Reserve au supradmin plateforme. Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
 
   /admin/school-requests/{schoolRequest}/validate:
     post:
@@ -5794,6 +5957,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SchoolRequestValidated'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
         '401':
           description: "Non authentifie"
           content:
@@ -5801,7 +5966,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '403':
-          description: "Reserve au supradmin plateforme"
+          description: "Reserve au supradmin plateforme. Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
           content:
             application/json:
               schema:
@@ -5860,6 +6025,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/MessageOnly'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
         '401':
           description: "Non authentifie"
           content:
@@ -5867,7 +6034,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '403':
-          description: "Reserve au supradmin plateforme"
+          description: "Reserve au supradmin plateforme. Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
           content:
             application/json:
               schema:
@@ -5941,6 +6108,8 @@ paths:
                     type: string
                   data:
                     type: object
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
         '401':
           description: "Non authentifie"
           content:
@@ -5948,7 +6117,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '403':
-          description: "Reserve au supradmin plateforme"
+          description: "Reserve au supradmin plateforme. Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
           content:
             application/json:
               schema:
@@ -5996,6 +6165,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ProgramCreated'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
         '401':
           description: "Non authentifie"
           content:
@@ -6003,7 +6174,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '403':
-          description: "Role insuffisant"
+          description: "Role insuffisant. Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
           content:
             application/json:
               schema:
@@ -6114,7 +6285,7 @@ paths:
         '429':
           description: |
             KLASSCI limite les requetes, relaye, SANS son en-tete `Retry-After`.
-            La route elle-meme n'a pas de limite propre.
+            Aussi : limite de débit des lectures, par famille et par compte (#947).
           content:
             application/json:
               schema:
@@ -6188,6 +6359,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ClasseCreated'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
         '401':
           description: "Non authentifie"
           content:
@@ -6198,16 +6371,24 @@ paths:
           description: |
             Role insuffisant, ou etablissement dont le catalogue vient de
             KLASSCI.
+            Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961).
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '409':
-          description: "Aucun etablissement resolu"
+          description: |
+            Aucun etablissement resolu. Controle AVANT le droit du
+            catalogue (#910). Motif `no_institution`. Par HTTP, la porte
+            des comptes sans etablissement repond 403 avant.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: '#/components/schemas/RefusMotive'
+              example:
+                success: false
+                message: "Aucun établissement résolu."
+                reason: no_institution
         '422':
           description: "Libelle manquant, ou code deja employe dans cet etablissement"
           content:
@@ -6258,6 +6439,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ClassesLocalesPage'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
         '401':
           description: "Non authentifie"
           content:
@@ -6265,7 +6448,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '403':
-          description: "Role insuffisant, ou catalogue venant de KLASSCI"
+          description: "Role insuffisant, ou catalogue venant de KLASSCI. Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
           content:
             application/json:
               schema:
@@ -6290,6 +6473,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
 
   /inscriptions:
     post:
@@ -6310,11 +6495,20 @@ paths:
         etablissement, donc une requete qui ne porterait que le code serait
         ambigue entre deux ecoles.
 
-        Debit borne par un seau NOMME a deux bornes, dont une journaliere
-        globale : la borne par IP seule ne freine pas une enumeration repartie.
+        Debit (#915) : le seau NOMME de la route ne borne que l inondation
+        (60 requetes par minute et par adresse). Les codes FAUX sont bornes a
+        part, et seuls eux : 5 par minute et 30 par jour par adresse, 200 par
+        jour par etablissement (partages avec la porte authentifiee). Une
+        inscription reussie n est jamais un essai de trop.
 
         La reponse ne rend NI jeton NI session : l inscrit se connecte ensuite
         avec le mot de passe qu il vient de choisir.
+
+        Un compte qui existe deja avec ces coordonnees recoit la MEME reponse
+        qu un compte neuf (#914) : il n est PAS touche (ni mot de passe, ni role,
+        ni inscription, #812), et rien ne dit lequel des deux cas s est produit.
+        L apprenant qui a deja un compte rejoint sa classe par la porte
+        authentifiee `/me/inscriptions`.
       security: []
       parameters:
         - name: X-Institution
@@ -6357,8 +6551,8 @@ paths:
                 password_confirmation:
                   type: string
       responses:
-        '201':
-          description: "Inscription enregistree"
+        '202':
+          description: "Demande enregistree : compte cree, ou compte existant laisse intact (la meme reponse)"
           content:
             application/json:
               schema:
@@ -6394,22 +6588,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-        '409':
-          description: |
-            Un compte existe deja avec ces coordonnees. Il n est PAS touche —
-            ni mot de passe, ni role, ni inscription. Sur un endpoint anonyme,
-            une adresse n est pas une preuve de propriete (#812).
-
-            `reason: account_exists` — le front y lit « connectez-vous », puis
-            la porte authentifiee `/me/inscriptions` (#906).
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/RefusMotive'
-              example:
-                success: false
-                message: "Un compte existe deja avec ces coordonnees. Connectez-vous pour rejoindre cette classe."
-                reason: account_exists
         '422':
           description: "Charge invalide, ou ni adresse ni telephone"
           content:
@@ -6418,9 +6596,13 @@ paths:
                 $ref: '#/components/schemas/ValidationFailed'
         '429':
           description: |
-            Debit depasse. Le motif dit QUEL budget (#906), avec `Retry-After` :
-            - `ip_quota_exceeded` : 5 par minute depuis cette adresse ;
-            - `global_cap_reached` : 100 par jour pour toute la plateforme.
+            Debit depasse. Le motif dit QUEL budget (#906, #915) :
+            - `ip_quota_exceeded` : 60 requetes par minute depuis cette adresse
+              (seau de route, avec `Retry-After`), ou 5 codes faux par minute ;
+            - `ip_daily_cap_reached` : 30 codes faux par jour depuis cette adresse ;
+            - `institution_cap_reached` : 200 codes faux par jour dans cet
+              etablissement.
+            Les plafonds de codes faux sont des refus metier, sans `Retry-After`.
           headers:
             Retry-After:
               schema:
@@ -6489,6 +6671,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ClasseRejointeResponse'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
         '401':
           description: "Non authentifie"
           content:
@@ -6499,6 +6683,7 @@ paths:
           description: |
             Le compte n est pas un apprenant — y compris l administrateur
             d etablissement, que la garde de route laisserait passer.
+            Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961).
           content:
             application/json:
               schema:
@@ -6607,8 +6792,10 @@ paths:
                       code_inscription:
                         type: string
                         example: BUR7K2
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
         '403':
-          description: "Role insuffisant, ou catalogue venant de KLASSCI"
+          description: "Role insuffisant, ou catalogue venant de KLASSCI. Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
           content:
             application/json:
               schema:
@@ -6659,8 +6846,10 @@ paths:
                     type: boolean
                   message:
                     type: string
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
         '403':
-          description: "Role insuffisant, ou catalogue venant de KLASSCI"
+          description: "Role insuffisant, ou catalogue venant de KLASSCI. Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
           content:
             application/json:
               schema:
@@ -6725,6 +6914,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ClasseMatiereLinked'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
         '401':
           description: "Non authentifie"
           content:
@@ -6735,6 +6926,7 @@ paths:
           description: |
             Role insuffisant, ou etablissement dont le programme vient de
             KLASSCI.
+            Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961).
           content:
             application/json:
               schema:
@@ -6747,11 +6939,18 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '409':
-          description: "Aucun etablissement resolu"
+          description: |
+            Aucun etablissement resolu. Controle AVANT le droit du
+            catalogue (#910). Motif `no_institution`. Par HTTP, la porte
+            des comptes sans etablissement repond 403 avant.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: '#/components/schemas/RefusMotive'
+              example:
+                success: false
+                message: "Aucun établissement résolu."
+                reason: no_institution
         '422':
           description: "matiere_id manquant ou invalide"
           content:
@@ -6798,6 +6997,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/MatiereCreated'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
         '401':
           description: "Non authentifie"
           content:
@@ -6808,16 +7009,24 @@ paths:
           description: |
             Role insuffisant, ou etablissement dont le catalogue vient de
             KLASSCI.
+            Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961).
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '409':
-          description: "Aucun etablissement resolu"
+          description: |
+            Aucun etablissement resolu. Controle AVANT le droit du
+            catalogue (#910). Motif `no_institution`. Par HTTP, la porte
+            des comptes sans etablissement repond 403 avant.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: '#/components/schemas/RefusMotive'
+              example:
+                success: false
+                message: "Aucun établissement résolu."
+                reason: no_institution
         '422':
           description: "Libelle manquant ou ponderation hors bornes"
           content:
@@ -6860,6 +7069,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/MesClassesListe'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
         '401':
           description: "Non authentifie (sans `reason`)."
           content:
@@ -6874,6 +7085,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/RefusClasseEleves'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
         '500':
           description: "Erreur non rattrapee, rendue par le gestionnaire global, sans `error`."
           content:
@@ -6907,6 +7120,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/MesMatieresListe'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
         '401':
           description: |
             Non authentifie, ou, dans un etablissement relie a KLASSCI, compte
@@ -6931,6 +7146,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/PageMatiereRefus'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
         '500':
           description: |
             Defaillance interne, journalisee (base de donnees comprise). Le corps
@@ -6985,6 +7202,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/PageMatiere'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
         '401':
           description: |
             Non authentifie, ou, dans un etablissement relie a KLASSCI, compte
@@ -7019,6 +7238,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/PageMatiereRefus'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
         '500':
           description: |
             Defaillance interne, journalisee (base de donnees comprise). Le corps
@@ -7087,8 +7308,10 @@ paths:
                         type: string
                       phase:
                         type: string
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
         '403':
-          description: "Role insuffisant : organiser une formation est un acte de gestion"
+          description: "Role insuffisant : organiser une formation est un acte de gestion. Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
           content:
             application/json:
               schema:
@@ -7156,8 +7379,10 @@ paths:
                         type: string
                       phase:
                         type: string
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
         '403':
-          description: "Role insuffisant : organiser une formation est un acte de gestion"
+          description: "Role insuffisant : organiser une formation est un acte de gestion. Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
           content:
             application/json:
               schema:
@@ -7225,8 +7450,10 @@ paths:
                         type: string
                       phase:
                         type: string
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
         '403':
-          description: "Role insuffisant : organiser une formation est un acte de gestion"
+          description: "Role insuffisant : organiser une formation est un acte de gestion. Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
           content:
             application/json:
               schema:
@@ -7294,8 +7521,10 @@ paths:
                         type: string
                       phase:
                         type: string
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
         '403':
-          description: "Role insuffisant : organiser une formation est un acte de gestion"
+          description: "Role insuffisant : organiser une formation est un acte de gestion. Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
           content:
             application/json:
               schema:
@@ -7343,6 +7572,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/TrainingSessionPage'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
         '401':
           description: "Non authentifie"
           content:
@@ -7350,11 +7581,13 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '403':
-          description: "Role insuffisant"
+          description: "Role insuffisant. Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
     post:
       tags:
         - Session de formation
@@ -7392,6 +7625,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/TrainingSessionCreated'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
         '401':
           description: "Non authentifie"
           content:
@@ -7399,7 +7634,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '403':
-          description: "Role insuffisant"
+          description: "Role insuffisant. Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
           content:
             application/json:
               schema:
@@ -7418,6 +7653,7 @@ paths:
         - Authentication
       summary: "Login user"
       description: "Authenticate user with email and password, returns Sanctum token"
+      security: []
       requestBody:
         required: true
         content:
@@ -7431,12 +7667,16 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/AuthResponse'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
         '401':
           description: "Invalid credentials"
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          $ref: '#/components/responses/EtablissementDesactive'
         '422':
           description: "Validation error"
           content:
@@ -7463,12 +7703,18 @@ paths:
                     type: boolean
                   data:
                     $ref: '#/components/schemas/User'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
         '401':
           description: "Unauthenticated"
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          $ref: '#/components/responses/EtablissementDesactive'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
 
   /auth/logout:
     post:
@@ -7480,8 +7726,12 @@ paths:
       responses:
         '200':
           description: "Logout successful"
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
         '401':
           description: "Unauthenticated"
+        '403':
+          $ref: '#/components/responses/EtablissementDesactive'
 
   /auth/refresh:
     post:
@@ -7497,8 +7747,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/AuthResponse'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
         '401':
           description: "Unauthenticated"
+        '403':
+          $ref: '#/components/responses/EtablissementDesactive'
 
   # ============ PROXY ROUTES (KLASSCI) ============
   /proxy/structure:
@@ -7527,8 +7781,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/StructureEtablissement'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
         '401':
           $ref: '#/components/responses/KlassciUnauthorized'
+        '403':
+          $ref: '#/components/responses/EtablissementDesactive'
         '429':
           $ref: '#/components/responses/TooManyRequests'
         '500':
@@ -7587,6 +7845,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/TableauDeBordEleve'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
         '401':
           description: |
             Jeton porteur absent ou invalide (sans `reason`). Ecole en mode
@@ -7596,12 +7856,16 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/RefusKlassci'
+        '403':
+          $ref: '#/components/responses/EtablissementDesactive'
         '409':
           description: "Ecole en mode autonome : toutes les inscriptions de l'eleve sont inactives (`enrolment_not_active`)."
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/RefusMotive'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
         '500':
           description: "Defaillance interne : « Service indisponible. Veuillez reessayer. »"
           content:
@@ -7660,6 +7924,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/TableauDeBordEnseignant'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
         '401':
           description: |
             Jeton porteur absent ou invalide (sans `reason`). Ecole en mode
@@ -7683,6 +7949,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/RefusClasseEleves'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
         '500':
           description: |
             Defaillance interne, base de donnees comprise : « Service
@@ -7751,6 +8019,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ClassesEtablissement'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
         '401':
           description: |
             Jeton porteur absent ou invalide (sans `reason`). Dans une ecole creee
@@ -7816,10 +8086,16 @@ paths:
       responses:
         '200':
           description: "List of students"
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
         '401':
           $ref: '#/components/responses/KlassciUnauthorized'
+        '403':
+          $ref: '#/components/responses/EtablissementDesactive'
         '404':
           description: "Class not found"
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
 
   /proxy/matieres:
     get:
@@ -7864,6 +8140,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/MatieresEtablissement'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
         '401':
           $ref: '#/components/responses/KlassciUnauthorized'
         '403':
@@ -7900,7 +8178,8 @@ paths:
       operationId: listAdminMatieres
       summary: "Les matieres de l'etablissement, pour l'ecran d'administration"
       description: |
-        Reservee a la gestion (`role:admin,coordinateur`, superAdmin compris).
+        Reservee a la gestion (garde `gestion`, `User::isManager()` : coordinateur,
+        admin, superAdmin).
         La source est choisie par le mode DECLARE de l'ecole, au point de
         liaison.
 
@@ -7924,6 +8203,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/MatieresAdministration'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
         '401':
           $ref: '#/components/responses/KlassciUnauthorized'
         '403':
@@ -7932,6 +8213,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/RefusClasseEleves'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
         '500':
           description: "Defaillance interne, rapportee une fois au journal, sans le message ni les valeurs d'une requete."
           content:
@@ -7965,8 +8248,14 @@ paths:
       responses:
         '200':
           description: "Subject details"
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
         '401':
           $ref: '#/components/responses/KlassciUnauthorized'
+        '403':
+          $ref: '#/components/responses/EtablissementDesactive'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
 
   /proxy/enseignants:
     get:
@@ -7998,8 +8287,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/EnseignantsAnnuaire'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
         '401':
           $ref: '#/components/responses/KlassciUnauthorized'
+        '403':
+          $ref: '#/components/responses/EtablissementDesactive'
         '429':
           $ref: '#/components/responses/TooManyRequests'
         '500':
@@ -8058,8 +8351,14 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/EnseignantsListe'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
         '401':
           $ref: '#/components/responses/KlassciUnauthorized'
+        '403':
+          $ref: '#/components/responses/EtablissementDesactive'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
         '500':
           description: "Refus de KLASSCI, ou defaillance interne rapportee une fois au journal."
           content:
@@ -8087,8 +8386,14 @@ paths:
       responses:
         '200':
           description: "List of branches"
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
         '401':
           $ref: '#/components/responses/KlassciUnauthorized'
+        '403':
+          $ref: '#/components/responses/EtablissementDesactive'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
 
   /proxy/niveaux-etudes:
     get:
@@ -8100,8 +8405,14 @@ paths:
       responses:
         '200':
           description: "List of study levels"
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
         '401':
           $ref: '#/components/responses/KlassciUnauthorized'
+        '403':
+          $ref: '#/components/responses/EtablissementDesactive'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
 
   /proxy/evaluations:
     get:
@@ -8124,9 +8435,15 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ProgrammationDesEvaluations'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
         '401':
           # Ecole creee depuis KLASSCI seulement.
           $ref: '#/components/responses/KlassciUnauthorized'
+        '403':
+          $ref: '#/components/responses/EtablissementDesactive'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
 
   /proxy/emploi-temps:
     get:
@@ -8138,8 +8455,14 @@ paths:
       responses:
         '200':
           description: "Schedule data"
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
         '401':
           $ref: '#/components/responses/KlassciUnauthorized'
+        '403':
+          $ref: '#/components/responses/EtablissementDesactive'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
 
   /proxy/test-connection:
     get:
@@ -8152,10 +8475,14 @@ paths:
       responses:
         '200':
           description: "Connection successful"
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
         '401':
           $ref: '#/components/responses/KlassciUnauthorized'
         '403':
-          description: "Insufficient permissions (requires coordinateur or admin role)"
+          description: "Insufficient permissions (requires coordinateur or admin role). Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
 
   # ============ EVALUATIONS ============
   /evaluations:
@@ -8224,14 +8551,18 @@ paths:
                     type: array
                     items:
                       $ref: '#/components/schemas/EvaluationEnrichie'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
         '401':
           description: "Unauthenticated"
         '403':
-          description: "Role hors du personnel"
+          description: "Role hors du personnel. Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/MessageOnly'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
 
     post:
       tags:
@@ -8342,12 +8673,15 @@ paths:
                     type: string
                   data:
                     $ref: '#/components/schemas/EvaluationRecord'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
         '403':
           description: |
             Refus de programmation : compte sans identite enseignant KLASSCI (ecole creee depuis
             KLASSCI), ou auteur non designe pour ce couple classe x matiere (ecole creee depuis le LMS).
             Un 403 du role (coordinateur, apprenant) ne porte pas de `reason` ; un compte sans
             etablissement recoit `no_institution` (middleware d'appartenance).
+            Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961).
           content:
             application/json:
               schema:
@@ -8450,8 +8784,14 @@ paths:
       responses:
         '200':
           description: "Evaluation details"
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '403':
+          $ref: '#/components/responses/EtablissementDesactive'
         '404':
           description: "Evaluation not found"
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
 
     put:
       tags:
@@ -8564,8 +8904,19 @@ paths:
       responses:
         '200':
           description: "Evaluation updated"
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
         '403':
-          description: "Permission denied"
+          description: "Permission denied. Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
+        '409':
+          description: |
+            Evaluation verrouillee (`reason: evaluation_locked`, #1113) : une copie est
+            deja remise, ou le drapeau `is_locked` est pose. Elle ne peut plus etre
+            modifiee. Les droits sont acquis : c'est l'etat qui refuse (409, et non 403).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefusMotive'
         '404':
           description: "Not found"
         '422':
@@ -8616,8 +8967,19 @@ paths:
       responses:
         '200':
           description: "Evaluation deleted"
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
         '403':
-          description: "Permission denied"
+          description: "Permission denied. Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
+        '409':
+          description: |
+            Evaluation verrouillee (`reason: evaluation_locked`, #1113) : une copie est
+            deja remise, ou le drapeau `is_locked` est pose. Elle ne peut plus etre
+            supprimee. Les droits sont acquis : c'est l'etat qui refuse (409, et non 403).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefusMotive'
         '404':
           description: "Not found"
 
@@ -8767,14 +9129,20 @@ paths:
                                 nom:
                                   type: string
                                   nullable: true
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
         '401':
           $ref: '#/components/responses/KlassciUnauthorized'
+        '403':
+          $ref: '#/components/responses/EtablissementDesactive'
         '404':
           description: "KLASSCI ne rattache l eleve a aucune classe (« Classe non trouvee »)"
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/MessageOnly'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
         '503':
           description: "KLASSCI indisponible (en-tete `Retry-After`)"
           content:
@@ -8882,9 +9250,9 @@ paths:
                                     format: date-time
                                     nullable: true
                                   temps_passe:
-                                    type: number
+                                    type: integer
                                     nullable: true
-                                    description: "Toujours `null` aujourd hui : aucune donnee ne l alimente."
+                                    description: "Duree de la copie en minutes, remise moins debut, la minute entamee comptee (#901) ; `null` sans debut, sans remise, ou si les dates se contredisent."
                       moyenne_generale:
                         type: number
                         nullable: true
@@ -8893,8 +9261,14 @@ paths:
                         type: integer
                       total_evaluations:
                         type: integer
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
         '401':
           $ref: '#/components/responses/KlassciUnauthorized'
+        '403':
+          $ref: '#/components/responses/EtablissementDesactive'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
         '500':
           description: "Erreur interne"
           content:
@@ -8955,6 +9329,8 @@ paths:
                     $ref: '#/components/schemas/EvaluationWindow'
                   is_practice:
                     type: boolean
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
         '401':
           $ref: '#/components/responses/KlassciUnauthorized'
         '403':
@@ -9162,6 +9538,8 @@ paths:
                         pattern: '^-?\d+\.\d{2}$'
                         nullable: true
                         description: "Absent quand `show_results` est faux"
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
         '401':
           description: "Non authentifie"
           content:
@@ -9173,14 +9551,15 @@ paths:
             Message generique. L appelant n est pas eleve, OU l evaluation
             n existe pas / n est pas publiee, OU sa date limite est passee :
             une evaluation inconnue rend 403, pas 404.
+            Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961).
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/MessageOnly'
         '409':
           description: |
-            - Aucune tentative en cours : la demarrer avec `/start` avant de la
-              rendre (sans `reason`).
+            - `reason: evaluation_attempt_not_started` : aucune tentative en cours ; la
+              demarrer avec `/start` avant de la rendre (#922).
             - `reason: evaluation_attempt_locked` : l echeance est depassee (C28).
               La copie est verrouillee, gardee avec ses reponses, et ne sera pas
               notee ; toute nouvelle remise rend le meme refus, sans rien ecrire.
@@ -9203,6 +9582,7 @@ paths:
                   reason:
                     type: string
                     enum:
+                      - evaluation_attempt_not_started
                       - evaluation_attempt_locked
                       - evaluation_attempt_conflict
         '422':
@@ -9259,8 +9639,12 @@ paths:
                       server_time:
                         type: string
                         format: date-time
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
         '401':
           $ref: '#/components/responses/KlassciUnauthorized'
+        '403':
+          $ref: '#/components/responses/EtablissementDesactive'
         '404':
           description: |
             « Evaluation non trouvee » : l evaluation ne figure pas dans la liste
@@ -9269,6 +9653,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/MessageOnly'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
         '503':
           description: "KLASSCI injoignable : la classe de l eleve ne peut pas etre lue (en-tete `Retry-After`)."
           content:
@@ -9374,8 +9760,12 @@ paths:
                             $ref: '#/components/schemas/Decimal2'
                           coefficient:
                             $ref: '#/components/schemas/Decimal2'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
         '401':
           $ref: '#/components/responses/KlassciUnauthorized'
+        '403':
+          $ref: '#/components/responses/EtablissementDesactive'
         '404':
           description: |
             « Aucune soumission trouvee pour cette evaluation » : l eleve n a pas
@@ -9386,6 +9776,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/MessageOnly'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
         '500':
           description: "Erreur interne"
           content:
@@ -9428,6 +9820,8 @@ paths:
                     type: string
                   data:
                     $ref: '#/components/schemas/EvaluationRecord'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
         '401':
           description: "Non authentifie"
           content:
@@ -9438,6 +9832,7 @@ paths:
           description: |
             Role insuffisant, coordinateur, enseignant non proprietaire — ou
             evaluation inconnue dans cet etablissement : elle rend 403, pas 404.
+            Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961).
           content:
             application/json:
               schema:
@@ -9544,6 +9939,8 @@ paths:
                       is_preview:
                         type: boolean
                         example: true
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
         '401':
           description: "Non authentifie"
           content:
@@ -9556,10 +9953,13 @@ paths:
             evaluation non terminee — ou evaluation inconnue dans cet
             etablissement : elle rend 403, pas 404. Seul le refus du coordinateur
             porte `reason: preview_requires_finished_evaluation`.
+            Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961).
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/RefusApercuEvaluation'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
         '500':
           description: "Erreur interne"
           content:
@@ -9649,6 +10049,8 @@ paths:
                           type: string
                           format: date-time
                           nullable: true
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
         '401':
           description: "Non authentifie"
           content:
@@ -9659,10 +10061,13 @@ paths:
           description: |
             Role insuffisant, enseignant non proprietaire — ou evaluation
             inconnue dans cet etablissement : elle rend 403, pas 404.
+            Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961).
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/MessageOnly'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
         '500':
           description: "Erreur interne"
           content:
@@ -9735,6 +10140,8 @@ paths:
                     type: string
                   data:
                     $ref: '#/components/schemas/EvaluationSubmissionRecord'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
         '401':
           description: "Non authentifie"
           content:
@@ -9745,6 +10152,7 @@ paths:
           description: |
             Role insuffisant, coordinateur, enseignant non proprietaire — ou
             evaluation inconnue dans cet etablissement : elle rend 403, pas 404.
+            Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961).
           content:
             application/json:
               schema:
@@ -9757,7 +10165,8 @@ paths:
                 $ref: '#/components/schemas/MessageOnly'
         '409':
           description: |
-            - Copie encore `en_cours` : elle ne peut pas etre notee (sans `reason`).
+            - `reason: evaluation_submission_not_gradable` : copie encore `en_cours`,
+              elle ne peut pas encore etre notee (#922).
             - `reason: evaluation_attempt_locked` : copie hors delai (C28), remise
               refusee ou tentative echue. Elle est visible, jamais notee.
           content:
@@ -9776,6 +10185,7 @@ paths:
                   reason:
                     type: string
                     enum:
+                      - evaluation_submission_not_gradable
                       - evaluation_attempt_locked
         '422':
           description: |
@@ -9922,6 +10332,8 @@ paths:
                           note_min:
                             type: number
                             nullable: true
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
         '401':
           # Ecole creee depuis KLASSCI seulement : sans jeton KLASSCI.
           $ref: '#/components/responses/KlassciUnauthorized'
@@ -9929,10 +10341,13 @@ paths:
           description: |
             Role insuffisant, enseignant non proprietaire — ou evaluation
             inconnue dans cet etablissement : elle rend 403, pas 404.
+            Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961).
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/MessageOnly'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
         '503':
           description: "KLASSCI indisponible (en-tete `Retry-After`)"
           content:
@@ -9989,12 +10404,15 @@ paths:
                     type: string
                   data:
                     description: "Reponse de KLASSCI, forme non garantie par le LMS"
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
         '401':
           $ref: '#/components/responses/KlassciUnauthorized'
         '403':
           description: |
             Role insuffisant, coordinateur, enseignant non proprietaire — ou
             evaluation inconnue dans cet etablissement : elle rend 403, pas 404.
+            Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961).
           content:
             application/json:
               schema:
@@ -10079,8 +10497,14 @@ paths:
       responses:
         '200':
           description: "Student dashboard data"
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
         '401':
           description: "Unauthenticated"
+        '403':
+          $ref: '#/components/responses/EtablissementDesactive'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
 
   /dashboard/teacher:
     get:
@@ -10092,8 +10516,14 @@ paths:
       responses:
         '200':
           description: "Teacher dashboard data"
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
         '401':
           description: "Unauthenticated"
+        '403':
+          $ref: '#/components/responses/EtablissementDesactive'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
 
   # ============ LESSONS ============
   /lessons/my-courses:
@@ -10128,9 +10558,9 @@ paths:
         Au-dela de `last_page`, la reponse est 200 avec `data` vide, pas 404.
 
         401 : le corps reel est `{"success": false, "message": "Unauthenticated."}`
-        (bootstrap/app.php:72-76), sans `error_code`. Il est donc decrit par
-        `MessageOnly`, pas par `ErrorResponse`, qui exige un `error_code` que
-        l API n emet jamais (ecart suivi par #919).
+        (bootstrap/app.php:72-76). Il est decrit par `MessageOnly`, cree quand
+        `ErrorResponse` exigeait un `error_code` que l API n emet pas ; #919 l a
+        retire de `ErrorResponse`, et les deux schemas acceptent ce corps.
       security:
         - sanctum: []
       parameters:
@@ -10169,18 +10599,24 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/MyCoursesPage'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
         '401':
-          description: "Non authentifie (corps reel sans error_code, voir #919)"
+          description: "Non authentifie"
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/MessageOnly'
+        '403':
+          $ref: '#/components/responses/EtablissementDesactive'
         '422':
           description: "`page`, `per_page`, `matiere_id` ou `enseignant_id` hors bornes, ou non entier"
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
 
   # ============ CHAPTERS ============
   /lessons/{lessonId}/chapters:
@@ -10199,6 +10635,10 @@ paths:
       responses:
         '200':
           description: "List of chapters"
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '403':
+          $ref: '#/components/responses/EtablissementDesactive'
         '404':
           description: "`Chapitres introuvables` : la lecon n existe pas, ou l appelant ne la lit pas (meme reponse)."
         '409':
@@ -10211,6 +10651,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/RefusMotive'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
 
     post:
       tags:
@@ -10236,6 +10678,10 @@ paths:
       responses:
         '201':
           description: "Chapter created"
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '403':
+          $ref: '#/components/responses/EtablissementDesactive'
         '422':
           description: "Validation error"
 
@@ -10362,6 +10808,8 @@ paths:
                           $ref: '#/components/schemas/KnowledgeCheckAnswerDetail'
                       can_retry:
                         type: boolean
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
         '401':
           description: "Non authentifie"
           content:
@@ -10369,7 +10817,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/MessageOnly'
         '403':
-          description: "Compte sans ecole (supradmin plateforme)"
+          description: "Compte sans ecole (supradmin plateforme). Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
           content:
             application/json:
               schema:
@@ -10491,6 +10939,8 @@ paths:
           description: "Media complet (video/mp4)"
         '206':
           description: "Contenu partiel, en reponse a un en-tete Range"
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
         '403':
           description: "Signature absente, alteree ou expiree"
         '404':
@@ -10512,6 +10962,10 @@ paths:
       responses:
         '200':
           description: "Chapter details"
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '403':
+          $ref: '#/components/responses/EtablissementDesactive'
         '404':
           description: "Chapter not found"
         '409':
@@ -10520,6 +10974,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/RefusMotive'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
 
     put:
       tags:
@@ -10536,6 +10992,10 @@ paths:
       responses:
         '200':
           description: "Chapter updated"
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '403':
+          $ref: '#/components/responses/EtablissementDesactive'
 
     delete:
       tags:
@@ -10552,6 +11012,10 @@ paths:
       responses:
         '200':
           description: "Chapter deleted"
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '403':
+          $ref: '#/components/responses/EtablissementDesactive'
 
   # ============ NOTIFICATIONS ============
   /notifications:
@@ -10575,6 +11039,12 @@ paths:
       responses:
         '200':
           description: "List of notifications"
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '403':
+          $ref: '#/components/responses/EtablissementDesactive'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
 
   /notifications/unread-count:
     get:
@@ -10586,6 +11056,12 @@ paths:
       responses:
         '200':
           description: "Unread count"
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '403':
+          $ref: '#/components/responses/EtablissementDesactive'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
 
   /notifications/{id}/mark-as-read:
     post:
@@ -10603,6 +11079,10 @@ paths:
       responses:
         '200':
           description: "Marked as read"
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '403':
+          $ref: '#/components/responses/EtablissementDesactive'
 
   # ============ FILES ============
   /files:
@@ -10615,6 +11095,12 @@ paths:
       responses:
         '200':
           description: "List of files"
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '403':
+          $ref: '#/components/responses/EtablissementDesactive'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
 
   # L'upload vit sous /files/upload, pas sous /files (#876) : la spec le
   # documentait en `POST /files`, que le serveur refuse en 405.
@@ -10656,8 +11142,12 @@ paths:
       responses:
         '201':
           description: "File uploaded"
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
         '401':
           description: "Unauthenticated"
+        '403':
+          $ref: '#/components/responses/EtablissementDesactive'
         '422':
           description: "Validation error"
         '429':
@@ -10681,6 +11171,12 @@ paths:
       responses:
         '200':
           description: "File downloaded"
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '403':
+          $ref: '#/components/responses/EtablissementDesactive'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
 
   /webhooks/visio/recording-ready:
     post:
@@ -10691,8 +11187,15 @@ paths:
       responses:
         '202':
           description: "Accepted for processing"
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
         '401':
-          description: "Invalid signature"
+          description: |
+            Authentification du webhook refusee, chaque sens avec son motif (#922) :
+            `webhook_signature_missing`, `webhook_timestamp_invalid`,
+            `webhook_timestamp_expired`, `webhook_signature_invalid`.
+        '409':
+          description: "Webhook deja traite (rejeu du meme nonce) : `reason: webhook_already_processed` (#922)."
 
 # Security (global)
 security:

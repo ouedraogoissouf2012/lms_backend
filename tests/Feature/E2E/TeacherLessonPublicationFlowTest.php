@@ -11,6 +11,7 @@ use App\Models\User;
 use App\Models\UserClass;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
+use Tests\Concerns\SimuleLaMatiereKlassci;
 use Tests\TestCase;
 
 /**
@@ -34,6 +35,7 @@ use Tests\TestCase;
 final class TeacherLessonPublicationFlowTest extends TestCase
 {
     use RefreshDatabase;
+    use SimuleLaMatiereKlassci;
 
     private Institution $institution;
     private User $teacher;
@@ -80,6 +82,8 @@ final class TeacherLessonPublicationFlowTest extends TestCase
     public function test_complete_lesson_publication_lifecycle(): void
     {
         // ── Étape 1 : l'enseignant crée le cours (brouillon par défaut) ────
+        // dans une classe de la matière (#1103).
+        $this->matiereKlassciProposant($this->matiere, $this->classe);
         Sanctum::actingAs($this->teacher);
 
         $create = $this->postJson('/api/lessons', [
@@ -117,8 +121,9 @@ final class TeacherLessonPublicationFlowTest extends TestCase
             'Un brouillon ne doit JAMAIS apparaître dans le catalogue étudiant'
         );
 
+        // Un brouillon est introuvable pour l'élève, comme ses chapitres.
         $this->getJson("/api/lessons/{$lessonId}")
-            ->assertStatus(403);
+            ->assertStatus(404);
 
         // ── Étape 4 : l'enseignant publie ──────────────────────────────────
         Sanctum::actingAs($this->teacher);
@@ -160,8 +165,9 @@ final class TeacherLessonPublicationFlowTest extends TestCase
             array_column($listFinal->json('data.data') ?? $listFinal->json('data'), 'id'),
             'Un cours dépublié doit redevenir invisible pour les étudiants'
         );
+        // Dépublié, il redevient introuvable pour l'élève, comme un brouillon.
         $this->getJson("/api/lessons/{$lessonId}")
-            ->assertStatus(403);
+            ->assertStatus(404);
     }
 
     /**

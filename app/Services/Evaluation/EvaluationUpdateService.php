@@ -139,13 +139,7 @@ final class EvaluationUpdateService
      */
     private function refusVerrouillee(): array
     {
-        return [
-            'status'  => 403,
-            'payload' => [
-                'success' => false,
-                'message' => 'Impossible de modifier: des étudiants ont déjà soumis leurs réponses',
-            ],
-        ];
+        return $this->state->refusVerrouillee('Impossible de modifier: des étudiants ont déjà soumis leurs réponses');
     }
 
     /**

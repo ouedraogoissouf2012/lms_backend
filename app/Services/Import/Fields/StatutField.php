@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Import\Fields;
 
+use App\Enums\ClasseEtudiantStatut;
 use App\Models\Classe;
 
 /**
@@ -15,53 +16,82 @@ use App\Models\Classe;
  * {@see Classe::etudiantsActifs()} et l'audience locale des séances
  * (#712). Un abandon écrit « actif » remet un absent dans les listes d'appel.
  *
- * ## Pourquoi refuser plutôt que rabattre sur le défaut
+ * ## Ce qu'un fichier pose, et ce qu'il ne pose pas (#920)
  *
- * La colonne en base est un ENUM. Une valeur hors énumération serait refusée par
- * MySQL PENDANT l'exécution asynchrone — donc après écriture partielle, l'état
- * que l'analyse à blanc existe précisément pour éviter. Le refus a lieu avant.
+ * Les statuts sont ceux de {@see ClasseEtudiantStatut} (ADR-711-02), et la
+ * table en dérive : un statut nouveau doit être classé ici, ce que le test
+ * vérifie. Un fichier en pose trois. Il en refuse deux, pour une raison MÉTIER
+ * qu'il dit à la ligne refusée :
+ * - `expire` : l'expiration découle d'une date de fin (`ends_on`), que le
+ *   fichier ne porte pas ;
+ * - `suspendu` : aucune règle ne le distingue d'`inactif`, et l'accepter
+ *   créerait un état que rien ne gouverne.
+ *
+ * Le refus a lieu à l'analyse, avant toute écriture. Il ne tient plus à un
+ * ENUM MySQL : la colonne est un `varchar` depuis `2026_09_16_140000`.
  *
  * Classe pure, sans dépendance — testable unitairement.
  */
 final class StatutField
 {
     /**
-     * Graphie du tableur → valeur de l'ENUM `classe_etudiant.statut`.
-     *
-     * « abandonné » y figure à côté de « abandonne » : la base s'écrit sans
-     * accent, mais personne ne tape le mot ainsi. Refuser la graphie juste au
-     * profit de celle de la base ferait rejeter un fichier correct.
+     * Graphies du tableur → statut. « abandonné » à côté de « abandonne » : la
+     * base s'écrit sans accent, mais personne ne tape le mot ainsi.
      *
      * @var array<string, string>
      */
-    private const ACCEPTED = [
-        'actif' => 'actif',
+    private const GRAPHIES = [
         'active' => 'actif',
-        'inactif' => 'inactif',
         'inactive' => 'inactif',
-        'abandonne' => 'abandonne',
         'abandonné' => 'abandonne',
         'abandon' => 'abandonne',
+    ];
+
+    /**
+     * Statuts connus qu'un fichier ne pose pas, et pourquoi.
+     *
+     * @var array<string, string>
+     */
+    private const NON_IMPORTABLES = [
+        'expire' => "l'expiration découle d'une date de fin, que le fichier ne porte pas",
+        'suspendu' => "aucune règle ne le distingue d'« inactif »",
     ];
 
     public function resolve(string $raw): FieldOutcome
     {
         $declared = mb_strtolower(trim($raw));
 
-        // Défaut de la colonne en base, et comportement d'avant cette issue.
+        // Défaut de la colonne en base, et comportement d'avant #718.
         if ($declared === '') {
-            return FieldOutcome::accepted('actif');
+            return FieldOutcome::accepted(ClasseEtudiantStatut::Actif->value);
         }
 
-        $statut = self::ACCEPTED[$declared] ?? null;
+        $statut = ClasseEtudiantStatut::tryFrom(self::GRAPHIES[$declared] ?? $declared);
 
         if ($statut === null) {
             return FieldOutcome::rejected(
                 'statut_inconnu',
-                sprintf('Statut « %s » inconnu. Valeurs acceptées : actif, inactif, abandonne.', trim($raw)),
+                sprintf('Statut « %s » inconnu. Valeurs acceptées : %s.', trim($raw), implode(', ', self::importables())),
             );
         }
 
-        return FieldOutcome::accepted($statut);
+        if (isset(self::NON_IMPORTABLES[$statut->value])) {
+            return FieldOutcome::rejected(
+                'statut_non_importable',
+                sprintf('Statut « %s » non importable : %s.', trim($raw), self::NON_IMPORTABLES[$statut->value]),
+            );
+        }
+
+        return FieldOutcome::accepted($statut->value);
+    }
+
+    /**
+     * @return list<string>
+     */
+    private static function importables(): array
+    {
+        $valeurs = array_map(static fn (ClasseEtudiantStatut $cas): string => $cas->value, ClasseEtudiantStatut::cases());
+
+        return array_values(array_filter($valeurs, static fn (string $valeur): bool => ! isset(self::NON_IMPORTABLES[$valeur])));
     }
 }

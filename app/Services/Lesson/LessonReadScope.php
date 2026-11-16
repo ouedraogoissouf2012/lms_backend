@@ -6,15 +6,16 @@ namespace App\Services\Lesson;
 
 use App\Models\Lesson;
 use App\Models\User;
+use App\Services\Chapter\ChapterReadGate;
 use App\Services\Enrollment\EnrollmentSource;
 use App\Services\Search\TeacherOwnershipScope;
 use Illuminate\Database\Eloquent\Builder;
 
 /**
- * Quelles leçons un compte lit : source unique de la portée des LISTES et du
- * DÉTAIL de LessonListService (#942). `ChapterReadGate::canReadLesson` porte
- * encore une seconde règle de lecture d'une leçon (l'accès aux chapitres) ;
- * leur unification relève d'un lot ultérieur.
+ * Quelles leçons un compte lit : source unique de la portée des LISTES de
+ * LessonListService (#942). La lecture d'UNE leçon, elle, suit la règle de ses
+ * chapitres ({@see denies()}, qui délègue à `ChapterReadGate::lectureLecon`) :
+ * une seule règle pour la fiche et les chapitres.
  *
  * Trois axes, et rien d'autre : ni chargement, ni filtre de requête, ni
  * pagination, qui restent à l'appelant.
@@ -58,6 +59,7 @@ final class LessonReadScope
     public function __construct(
         private readonly EnrollmentSource $inscriptions,
         private readonly TeacherOwnershipScope $ownership,
+        private readonly ChapterReadGate $lectures,
     ) {}
 
     /**
@@ -122,30 +124,28 @@ final class LessonReadScope
     }
 
     /**
-     * Refus de lecture d'UNE leçon, dans la forme que rend déjà
-     * LessonListService::show (`{error, status}`), ou null si la lecture est
-     * permise.
+     * Refus de lecture d'UNE leçon, dans la forme que rend LessonListService::show
+     * (`{error, status, reason?}`), ou null si la lecture est permise.
      *
-     * Hors de son établissement, ou sans établissement hors supradmin : 404,
-     * qui ne révèle pas l'existence de la leçon. Une leçon non publiée, pour
-     * un apprenant : 403, comme jusqu'ici.
+     * La règle de ses chapitres ({@see ChapterReadGate::lectureLecon()}), sans copie :
+     * hors de son établissement, d'une autre classe ou non publiée, 404, qui ne
+     * révèle pas l'existence de la leçon ; une inscription non active dans sa classe,
+     * 409 `enrolment_not_active` ; le personnel de l'établissement, admis.
      *
-     * @return array{error: string, status: int}|null
+     * @return array{error: string, status: int, reason?: string}|null
      */
     public function denies(Lesson $lesson, User $user): ?array
     {
-        $horsTenant = $user->institution_id !== null
-            ? $lesson->institution_id !== $user->institution_id
-            : ! $user->isPlatformSupradmin();
-
-        if ($horsTenant) {
-            return ['error' => 'Cours non trouvé', 'status' => 404];
+        $refus = $this->lectures->lectureLecon($lesson, $user)->refus('Cours non trouvé');
+        if ($refus === null) {
+            return null;
         }
 
-        if ($user->isLearnerAudience() && ! $lesson->isPublished()) {
-            return ['error' => 'Ce cours n\'est pas encore disponible', 'status' => 403];
+        $forme = ['error' => $refus['message'], 'status' => $refus['status']];
+        if (isset($refus['reason'])) {
+            $forme['reason'] = $refus['reason'];
         }
 
-        return null;
+        return $forme;
     }
 }

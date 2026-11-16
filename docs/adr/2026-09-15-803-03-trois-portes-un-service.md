@@ -89,3 +89,4 @@ Un étudiant qui s'inscrit par code choisit son mot de passe au moment de l'insc
 - `SeanceRecordingAccessService` est routé par `CompositeEnrollmentSource`.
 - Le rejet de ligne pour code de classe inconnu devient explicite dans le rapport d'import.
 - Aucune migration n'est requise sur `classe_etudiant` : la table convient telle quelle.
+- **Hors de ces trois portes**, la synchronisation KLASSCI écrit aussi `classe_etudiant`, mais seulement sur les classes KLASSCI, où elle fait autorité. → [ADR-921-01](2026-11-16-921-01-un-seul-ecrivain-du-statut-par-classe.md)

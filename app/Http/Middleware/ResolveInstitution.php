@@ -39,6 +39,14 @@ use Symfony\Component\HttpFoundation\Response;
  */
 class ResolveInstitution
 {
+    /**
+     * Le refus d'un en-tête `X-Institution` inconnu ou inactif (#1129). Fixe :
+     * il ne recopie pas la valeur reçue (réflexion d'entrée, §1.2), et ne
+     * distingue pas « inconnu » de « inactif », ce qui dirait à un inconnu
+     * quels établissements existent.
+     */
+    public const ETABLISSEMENT_INCONNU = 'Établissement introuvable ou inactif.';
+
     public function __construct(private TenantManager $tenantManager)
     {
     }
@@ -82,7 +90,7 @@ class ResolveInstitution
             ->first();
 
         if (!$institution) {
-            return $this->deny(Response::HTTP_BAD_REQUEST, "Institution non trouvée ou inactive: {$slug}");
+            return $this->deny(Response::HTTP_BAD_REQUEST, self::ETABLISSEMENT_INCONNU);
         }
 
         $this->tenantManager->set($institution);

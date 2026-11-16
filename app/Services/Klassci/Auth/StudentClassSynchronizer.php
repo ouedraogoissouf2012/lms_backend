@@ -8,17 +8,24 @@ use App\Models\User;
 use App\Models\UserClass;
 use App\Services\KlassciProxyService;
 use App\Support\Logging\CaughtExceptionLog;
+use Illuminate\Database\ConnectionInterface;
 use Psr\Log\LoggerInterface;
 
 /**
  * Synchronise la classe KLASSCI d'un étudiant dans la base locale au login.
  *
- * Extrait de {@see KlassciUserSynchronizer} (issue #275, §1.1 ≤300 lignes) —
- * comportement inchangé. Un étudiant n'a qu'une seule classe : l'API renvoie
- * `data.classe` (singulier).
+ * Extrait de {@see KlassciUserSynchronizer} (issue #275, §1.1 ≤300 lignes). Un
+ * étudiant n'a qu'une seule classe : l'API renvoie `data.classe` (singulier).
  *
- * Robustesse : un échec de sync classe ne doit JAMAIS interrompre le login
- * (try/catch, log, pas de rethrow) — identique à la version d'origine.
+ * ## Ne jamais laisser l'élève sans sa classe précédente (#969)
+ *
+ * La nouvelle classe est ÉCRITE avant que les autres soient effacées, dans une
+ * transaction : une écriture en échec n'efface plus rien. Les sorties sont
+ * distinguées ({@see SynchroDeLaClasse}) et journalisées chacune à son niveau ;
+ * seule une classe reçue et bien formée touche à `user_classes`.
+ *
+ * Robustesse : un échec ne doit JAMAIS interrompre le login (try/catch, journal,
+ * pas de rethrow).
  */
 final class StudentClassSynchronizer
 {
@@ -26,98 +33,80 @@ final class StudentClassSynchronizer
         private readonly KlassciProxyService $klassciService,
         private readonly LoggerInterface $logger,
         private readonly CaughtExceptionLog $journal,
+        private readonly ConnectionInterface $db,
     ) {}
 
-    public function sync(User $user, string $klassciToken): void
+    public function sync(User $user, string $klassciToken): SynchroDeLaClasse
     {
         try {
-            $this->logger->info('Synchronisation des classes pour étudiant', [
-                'user_id' => $user->id,
-                'email' => $user->email,
-            ]);
+            $dashboard = $this->klassciService->requestWithUserToken($klassciToken, 'me/dashboard', 'GET');
+            $data = $dashboard['data'] ?? null;
 
-            $classe = $this->extractClasseFromDashboard($user, $klassciToken);
-            if ($classe === null) {
-                return;
+            if (is_array($data) && array_key_exists('classe', $data) && $data['classe'] === null) {
+                $this->logger->info('Élève sans classe chez KLASSCI', ['user_id' => $user->id]);
+
+                return SynchroDeLaClasse::SansClasse;
             }
 
-            $this->persistStudentClasse($user, $classe);
+            $classe = is_array($data) && is_array($data['classe'] ?? null) ? $data['classe'] : null;
+            $id = $classe['id'] ?? null;
+            if ($classe === null || ! is_numeric($id)) {
+                // Les seules CLÉS reçues : jamais les valeurs d'un payload d'élève.
+                $this->logger->warning('Réponse KLASSCI inattendue pour la classe de l\'élève', [
+                    'user_id' => $user->id,
+                    'cles' => is_array($data) ? array_keys($data) : [],
+                    'cles_classe' => $classe === null ? [] : array_keys($classe),
+                ]);
+
+                return SynchroDeLaClasse::ReponseInattendue;
+            }
+
+            $this->remplacerLaClasse($user, (int) $id, $classe);
+            $this->logger->info('Classe KLASSCI de l\'élève synchronisée', ['user_id' => $user->id, 'classe_id' => (int) $id]);
+
+            return SynchroDeLaClasse::Ecrite;
         } catch (\Exception $e) {
-            $this->journal->error('Erreur lors de la synchronisation des classes', $e, [
+            $this->journal->error('Échec de la synchronisation de la classe de l\'élève', $e, [
                 'user_id' => $user->id,
             ]);
+
+            return SynchroDeLaClasse::Echec;
         }
     }
 
     /**
-     * Extrait la classe de l'étudiant depuis `me/dashboard` KLASSCI.
+     * Écrit la classe, PUIS efface les autres lignes de l'élève, ensemble : une
+     * panne entre les deux ne lui laisse ni zéro ni deux classes.
      *
-     * IMPORTANT: L'API retourne `classe` (singulier), pas `classes` (pluriel) —
-     * un étudiant n'a qu'une seule classe.
-     *
-     * @return array<string, mixed>|null
+     * @param  array<mixed>  $classe
      */
-    private function extractClasseFromDashboard(User $user, string $klassciToken): ?array
+    private function remplacerLaClasse(User $user, int $klassciClasseId, array $classe): void
     {
-        $dashboard = $this->klassciService->requestWithUserToken($klassciToken, 'me/dashboard', 'GET');
+        $this->db->transaction(function () use ($user, $klassciClasseId, $classe): void {
+            UserClass::query()->updateOrCreate(
+                ['user_id' => $user->id, 'klassci_classe_id' => $klassciClasseId],
+                [
+                    // EXPLICITE, et non delegue au trait (#878). `BelongsToInstitution`
+                    // pose cette colonne a la creation depuis le tenant resolu — mais
+                    // ce code tourne PENDANT le login, ou l utilisateur n est pas encore
+                    // authentifie et ou aucun en-tete n a ete exige : `ResolveInstitution`
+                    // n a rien pose, et le trait passe en `log-and-no-op`.
+                    //
+                    // La colonne restait donc nulle, et le scope global de `UserClass`
+                    // — qui filtre precisement dessus — rendait AVEUGLES les cinq
+                    // lecteurs de cette table. Mesure du 21/09.
+                    //
+                    // `KlassciUserSynchronizer:157` fait deja ainsi pour le compte
+                    // lui-meme : on aligne les deux freres.
+                    'institution_id' => $user->institution_id,
+                    'classe_nom' => $classe['name'] ?? $classe['libelle'] ?? null,
+                    'classe_libelle' => $classe['libelle'] ?? $classe['name'] ?? null,
+                    'classe_data' => $classe,
+                    'synced_at' => now(),
+                ],
+            );
 
-        $data = $dashboard['data'] ?? [];
-        $classe = is_array($data) && isset($data['classe']) && is_array($data['classe'])
-            ? $data['classe']
-            : null;
-
-        if ($classe === null) {
-            $this->logger->warning("Aucune classe trouvée pour l'étudiant", ['user_id' => $user->id]);
-
-            return null;
-        }
-
-        $this->logger->info('Classe KLASSCI récupérée', [
-            'user_id' => $user->id,
-            'classe_id' => $classe['id'] ?? null,
-            'classe_nom' => $classe['name'] ?? $classe['libelle'] ?? 'N/A',
-        ]);
-
-        return $classe;
-    }
-
-    /**
-     * Persiste la classe étudiant : DELETE anciennes + CREATE nouvelle.
-     *
-     * @param  array<string, mixed>  $classe
-     */
-    private function persistStudentClasse(User $user, array $classe): void
-    {
-        $user->klassciClasses()->delete();
-
-        $classeId = $classe['id'] ?? null;
-        $classeNom = $classe['name'] ?? $classe['libelle'] ?? null;
-
-        UserClass::create([
-            'user_id' => $user->id,
-            // EXPLICITE, et non delegue au trait (#878). `BelongsToInstitution`
-            // pose cette colonne a la creation depuis le tenant resolu — mais
-            // ce code tourne PENDANT le login, ou l utilisateur n est pas encore
-            // authentifie et ou aucun en-tete n a ete exige : `ResolveInstitution`
-            // n a rien pose, et le trait passe en `log-and-no-op`.
-            //
-            // La colonne restait donc nulle, et le scope global de `UserClass`
-            // — qui filtre precisement dessus — rendait AVEUGLES les cinq
-            // lecteurs de cette table. Mesure du 21/09.
-            //
-            // `KlassciUserSynchronizer:157` fait deja ainsi pour le compte
-            // lui-meme : on aligne les deux freres.
-            'institution_id' => $user->institution_id,
-            'klassci_classe_id' => $classeId,
-            'classe_nom' => $classeNom,
-            'classe_libelle' => $classe['libelle'] ?? $classe['name'] ?? null,
-            'classe_data' => $classe,
-            'synced_at' => now(),
-        ]);
-
-        $this->logger->info('Classe synchronisée avec succès', [
-            'user_id' => $user->id,
-            'classe_id' => $classeId,
-        ]);
+            $user->klassciClasses()->where('klassci_classe_id', '!=', $klassciClasseId)->delete();
+        });
     }
 }

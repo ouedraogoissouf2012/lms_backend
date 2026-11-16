@@ -139,7 +139,7 @@ final class QuizAttemptStudentController extends AuthenticatedController
     /**
      * Transcrit le contrat normalisé du service en réponse JSON.
      *
-     * @param  array{status:int,success:bool,message:?string,data:mixed,errors:?array<string,mixed>}  $result
+     * @param  array{status:int,success:bool,message:?string,data:mixed,errors:?array<string,mixed>,reason?:string}  $result
      */
     private function toJson(array $result): JsonResponse
     {
@@ -159,6 +159,11 @@ final class QuizAttemptStudentController extends AuthenticatedController
 
         if (! empty($result['errors'])) {
             $payload['errors'] = $result['errors'];
+        }
+
+        // Le motif d'un statut à plusieurs sens (#922, ADR-906-01).
+        if (isset($result['reason'])) {
+            $payload['reason'] = $result['reason'];
         }
 
         return response()->json($payload, $result['status']);

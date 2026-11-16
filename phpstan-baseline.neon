@@ -692,12 +692,6 @@ parameters:
 			path: app/Services/Evaluation/Student/StudentEvaluationsListService.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\EvaluationSubmission\:\:\$temps_passe_minutes\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/Evaluation/Student/StudentGradesAggregator.php
-
-		-
 			message: '#^Argument of an invalid type mixed supplied for foreach, only iterables are supported\.$#'
 			identifier: foreach.nonIterable
 			count: 1

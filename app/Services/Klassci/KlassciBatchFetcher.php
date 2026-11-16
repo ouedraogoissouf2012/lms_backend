@@ -65,10 +65,10 @@ final class KlassciBatchFetcher
             ? min($poolSizeConfig, 32)
             : 4;
 
-        $connectTimeoutConfig = config('services.klassci.connect_timeout', 2);
+        $connectTimeoutConfig = config('services.klassci.connect_timeout', KlassciTransportRetry::CONNECT_TIMEOUT_SECONDS);
         $this->connectTimeout = is_numeric($connectTimeoutConfig) && (int) $connectTimeoutConfig > 0
             ? (int) $connectTimeoutConfig
-            : 2;
+            : KlassciTransportRetry::CONNECT_TIMEOUT_SECONDS;
 
         $timeoutConfig = config('services.klassci.timeout', 5);
         $this->timeout = is_numeric($timeoutConfig) && (int) $timeoutConfig > 0

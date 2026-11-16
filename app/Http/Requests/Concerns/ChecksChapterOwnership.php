@@ -11,7 +11,8 @@ use App\Models\Lesson;
 use App\Models\User;
 
 /**
- * Garde d'appartenance d'un chapitre, partagée entre suppression et restauration.
+ * Garde d'appartenance d'un chapitre, partagée entre suppression, restauration et
+ * dépôt d'un fichier (`UploadChapterFileRequest`).
  *
  * ## Pourquoi un trait plutôt qu'une seconde copie
  *
@@ -34,8 +35,9 @@ trait ChecksChapterOwnership
 {
     /**
      * @param  bool  $includeTrashed  vrai pour la restauration, faux pour la suppression
+     * @param  string  $parametre  le paramètre de route qui porte l'id du chapitre
      */
-    protected function chapterOwnershipPasses(bool $includeTrashed = false): bool
+    protected function chapterOwnershipPasses(bool $includeTrashed = false, string $parametre = 'id'): bool
     {
         $user = auth()->user();
 
@@ -47,16 +49,7 @@ trait ChecksChapterOwnership
             return false;
         }
 
-        $query = Chapter::query()->where('id', $this->route('id'));
-
-        if ($includeTrashed) {
-            $query->withTrashed();
-        }
-
-        // Le cloisonnement repose sur ce filtre EXPLICITE, jamais sur le scope
-        // global d'institution — celui-ci est fail-open quand aucun tenant
-        // n'est résolu.
-        $chapter = $query->where('institution_id', $user->institution_id)->first();
+        $chapter = $this->chapitreDeLEtablissement($user, $includeTrashed, $parametre);
 
         if (! $chapter instanceof Chapter) {
             return false;
@@ -71,5 +64,23 @@ trait ChecksChapterOwnership
         // Un administrateur agit sur toute leçon de son institution ; les autres
         // rôles seulement sur la leur.
         return $user->isAdmin() || $lesson->enseignant_id === $user->id;
+    }
+
+    /**
+     * Le chapitre désigné par la route, dans l'établissement du compte, ou `null`.
+     * Le cloisonnement repose sur ce filtre EXPLICITE, jamais sur le scope global
+     * d'institution — celui-ci est fail-open quand aucun tenant n'est résolu.
+     */
+    protected function chapitreDeLEtablissement(User $user, bool $includeTrashed, string $parametre): ?Chapter
+    {
+        $query = Chapter::query()->where('id', $this->route($parametre));
+
+        if ($includeTrashed) {
+            $query->withTrashed();
+        }
+
+        $chapter = $query->where('institution_id', $user->institution_id)->first();
+
+        return $chapter instanceof Chapter ? $chapter : null;
     }
 }

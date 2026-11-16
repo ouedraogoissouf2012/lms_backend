@@ -6,7 +6,6 @@ namespace App\Services\Catalogue;
 
 use App\Exceptions\BusinessException;
 use App\Models\Classe;
-use App\Services\TenantManager;
 
 /**
  * Créer une classe SANS KLASSCI (#848).
@@ -20,16 +19,10 @@ use App\Services\TenantManager;
  * introuvable (`:165-170`) : il produisait des apprenants qui n'appartenaient à
  * rien.
  *
- * ## La garde est ICI, pas seulement à la route
+ * ## La garde est ICI, au point d'écriture
  *
- * `CatalogueAuthority` est consultée au point d'écriture. Une garde posée
- * uniquement sur la route protégerait cet appelant-là ; posée ici, elle protège
- * tout appelant futur — commande de console, job, second contrôleur. Le service
- * demande un DROIT et ignore qu'un mode existe (épique #697, art. 1).
- *
- * Refuser à un établissement KLASSCI n'est pas une restriction commerciale :
- * c'est la préservation d'une source unique. Deux sources écrivant la même
- * réalité est la cause racine de #673, déjà payée une fois.
+ * Par `PorteDuCatalogueLocal` (#910), la seule porte du catalogue local : elle
+ * dit pourquoi la garde vit au point d'appel, et dans quel ordre.
  *
  * ## Le code vide devient nul, et ce n'est pas cosmétique
  *
@@ -42,8 +35,7 @@ use App\Services\TenantManager;
 final class LocalClasseCreator
 {
     public function __construct(
-        private readonly CatalogueAuthority $autorite,
-        private readonly TenantManager $tenants,
+        private readonly PorteDuCatalogueLocal $porte,
     ) {}
 
     /**
@@ -54,22 +46,7 @@ final class LocalClasseCreator
      */
     public function creer(array $donnees): Classe
     {
-        if (! $this->autorite->allowsLocalCatalogue()) {
-            throw new BusinessException(
-                'Les classes de cet établissement viennent de KLASSCI et ne se créent pas ici.',
-                403
-            );
-        }
-
-        $institution = $this->tenants->id();
-
-        // Fail-secure, et non une garde décorative : l'autorité rend déjà `false`
-        // hors établissement. Ce second contrôle existe parce qu'une classe sans
-        // `institution_id` échapperait au scope multi-tenant — le laisser
-        // dépendre d'une seule garde en ferait une fuite dès qu'elle bouge.
-        if ($institution === null) {
-            throw new BusinessException('Aucun établissement résolu.', 409);
-        }
+        $institution = $this->porte->etablissement();
 
         return Classe::create([
             'libelle' => $donnees['libelle'],

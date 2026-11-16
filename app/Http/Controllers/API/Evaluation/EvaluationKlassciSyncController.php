@@ -58,7 +58,9 @@ class EvaluationKlassciSyncController extends AuthenticatedController
 
         try {
             // Les copies à synchroniser : une seule règle, celle que compte la liste (D540).
-            $notes = $evaluation->submissions()->aSynchroniser()->get()
+            // Choisies UNE fois : l'envoi et le marquage lisent les mêmes (#1097).
+            $copies = $evaluation->submissions()->aSynchroniser()->get();
+            $notes = $copies
                 ->map(static fn (EvaluationSubmission $submission): array => [
                     'etudiant_id' => $submission->klassci_etudiant_id,
                     'note' => $submission->note_sur_20,
@@ -95,9 +97,10 @@ class EvaluationKlassciSyncController extends AuthenticatedController
                 throw KlassciUnavailableException::invalidPayload("evaluations/{$evaluation->klassci_evaluation_id}/notes");
             }
 
-            // Marquer comme synchronisé
+            // Marquer comme synchronisées les copies ENVOYÉES, et elles seules : une copie
+            // en cours, verrouillée ou d'entraînement n'est pas partie (#1097).
             $evaluation->update(['notes_published' => true]);
-            $evaluation->submissions()->update([
+            $evaluation->submissions()->whereKey($copies->modelKeys())->update([
                 'synced_to_klassci' => true,
                 'synced_at' => now()
             ]);

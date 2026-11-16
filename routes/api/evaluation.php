@@ -46,7 +46,7 @@ Route::middleware(['auth:sanctum', 'klassci.sync'])->group(function () {
 });
 
 // Routes enseignants/coordinateurs uniquement
-Route::middleware(['auth:sanctum', 'klassci.sync', 'role:enseignant,coordinateur,admin'])->group(function () {
+Route::middleware(['auth:sanctum', 'klassci.sync', 'personnel'])->group(function () {
     // CRUD des évaluations
     Route::post('evaluations', [EvaluationCrudController::class, 'store']);
     Route::match(['put', 'patch'], 'evaluations/{id}', [EvaluationCrudController::class, 'update']);
@@ -66,8 +66,8 @@ Route::middleware(['auth:sanctum', 'klassci.sync', 'role:enseignant,coordinateur
     Route::post('evaluations/{id}/sync-klassci', [EvaluationKlassciSyncController::class, 'syncToKlassci']);
 });
 
-// Routes admin/coordinateur/enseignant pour résultats d'évaluations
-Route::middleware(['auth:sanctum', 'klassci.sync', 'role:enseignant,coordinateur,superAdmin'])->group(function () {
+// Routes du personnel (garde `personnel`) pour les résultats d'évaluations
+Route::middleware(['auth:sanctum', 'klassci.sync', 'personnel'])->group(function () {
     // Résultats détaillés d'une évaluation avec tous les étudiants de la classe
     Route::get('evaluations/{id}/results-by-class', [EvaluationTeacherController::class, 'getResultsByClass']);
 });

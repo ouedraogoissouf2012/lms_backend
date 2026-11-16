@@ -42,6 +42,7 @@ class Seance extends Model implements MirroredFromKlassci
         'classe_nom',
         'titre',
         'date_seance',
+        'fin_seance',
         'synced_at',
         'classe_effectif',
         'visio_enabled',
@@ -68,6 +69,7 @@ class Seance extends Model implements MirroredFromKlassci
         'is_active' => 'boolean',
         'archived_at' => 'datetime',
         'date_seance' => 'datetime',
+        'fin_seance' => 'datetime',
         // #582 — dernière confirmation de la séance par KLASSCI. Sert de critère
         // d'archivage : non confirmée depuis le début du cycle courant = disparue.
         'synced_at' => 'datetime',

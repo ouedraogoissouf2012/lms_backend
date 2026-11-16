@@ -7,6 +7,7 @@ namespace Tests\Feature\Chapter;
 use App\Jobs\ConvertChapterFile;
 use App\Models\Chapter;
 use App\Models\Institution;
+use App\Models\Lesson;
 use App\Models\User;
 use App\Services\Chapter\AsyncChapterConversionStore;
 use App\Services\Chapter\ChapterFileUploadService;
@@ -35,10 +36,12 @@ final class AsyncChapterConversionTest extends TestCase
         Queue::fake();
         Storage::fake('local');
 
-        // Un enseignant appartient à son école, comme en production ; son chapitre aussi.
+        // Un enseignant appartient à son école, comme en production ; sa leçon et son
+        // chapitre aussi : le dépôt suit la règle de modification du chapitre.
         $ecole = Institution::factory()->create();
         $teacher = User::factory()->teacher()->create(['institution_id' => $ecole->id]);
-        $chapter = Chapter::factory()->forTeacher($teacher)->create(['institution_id' => $ecole->id]);
+        $lesson = Lesson::factory()->create(['institution_id' => $ecole->id, 'enseignant_id' => $teacher->id]);
+        $chapter = Chapter::factory()->forTeacher($teacher)->create(['institution_id' => $ecole->id, 'lesson_id' => $lesson->id]);
         Sanctum::actingAs($teacher);
 
         $response = $this->postJson("/api/chapters/{$chapter->id}/upload?async=1", [

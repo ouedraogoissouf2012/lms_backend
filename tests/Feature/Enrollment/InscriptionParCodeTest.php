@@ -48,7 +48,7 @@ final class InscriptionParCodeTest extends TestCase
         $this->travelTo('2026-09-25 10:00:00');
 
         $this->postJson(self::URL, $this->charge($code), $this->entete($ecole))
-            ->assertStatus(201);
+            ->assertStatus(202);
 
         $inscrit = User::query()->withoutGlobalScopes()->where('email', 'awa@test.ci')->firstOrFail();
         $ligne = DB::table('classe_etudiant')->where('user_id', $inscrit->getKey())->first();
@@ -74,7 +74,7 @@ final class InscriptionParCodeTest extends TestCase
         [$ecole, $code] = $this->classeAvecCode();
 
         $this->postJson(self::URL, $this->charge('  '.strtolower($code).' '), $this->entete($ecole))
-            ->assertStatus(201);
+            ->assertStatus(202);
     }
 
     public function test_un_numero_de_telephone_suffit(): void
@@ -86,7 +86,7 @@ final class InscriptionParCodeTest extends TestCase
         unset($charge['email']);
         $charge['telephone'] = '+22507000000';
 
-        $this->postJson(self::URL, $charge, $this->entete($ecole))->assertStatus(201);
+        $this->postJson(self::URL, $charge, $this->entete($ecole))->assertStatus(202);
     }
 
     // ───────────────────────── LA faille à ne pas refaire
@@ -104,8 +104,9 @@ final class InscriptionParCodeTest extends TestCase
             'password' => Hash::make('son-vrai-secret'),
         ]);
 
+        // #914 : la MÊME réponse qu'à un compte neuf ; le compte n'est pas touché.
         $this->postJson(self::URL, $this->charge($code), $this->entete($ecole))
-            ->assertStatus(409);
+            ->assertStatus(202);
 
         $relu = $victime->fresh();
 
@@ -121,7 +122,7 @@ final class InscriptionParCodeTest extends TestCase
         self::assertSame(0, DB::table('classe_etudiant')->count(), 'La victime a été inscrite sans son consentement.');
     }
 
-    public function test_un_numero_deja_pris_est_refuse_de_la_meme_facon(): void
+    public function test_un_numero_deja_pris_recoit_la_meme_reponse_sans_rien_creer(): void
     {
         [$ecole, $code] = $this->classeAvecCode();
         User::factory()->create([
@@ -134,7 +135,9 @@ final class InscriptionParCodeTest extends TestCase
         unset($charge['email']);
         $charge['telephone'] = '+22507000000';
 
-        $this->postJson(self::URL, $charge, $this->entete($ecole))->assertStatus(409);
+        $this->postJson(self::URL, $charge, $this->entete($ecole))->assertStatus(202);
+        self::assertSame(1, User::query()->withoutGlobalScopes()->where('phone', '+22507000000')->count());
+        self::assertSame(0, DB::table('classe_etudiant')->count());
     }
 
     // ───────────────────────── les autres refus

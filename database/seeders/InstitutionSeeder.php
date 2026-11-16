@@ -125,6 +125,8 @@ class InstitutionSeeder extends Seeder
         $attributs = self::attributsDePresentation();
         self::annoncerUnJetonAbsent($console, $attributs);
 
+        (new self)->run();
+
         return Institution::firstOrCreate(['slug' => 'presentation'], $attributs);
     }
 

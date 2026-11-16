@@ -73,6 +73,10 @@ Sans plafond, quiconque peut créer des comptes — un import suffit — transfo
 - Une ambiguïté refusée est **journalisée** (`warning`), sans l'identifiant en clair : plusieurs comptes partageant un identifiant est un signal d'exploitation autant qu'un accident.
 - Le message rendu à l'utilisateur ne change pas : `attemptLocalAuth` rend `null`, et l'orchestrateur décide. Distinguer « introuvable » de « ambigu » côté client offrirait un oracle d'énumération.
 
+## Amendement (2026-11-16, ADR-687-01)
+
+Le refus au-delà du plafond ne se fait plus « sans calcul ». Il coûte **une** vérification, contre une empreinte leurre, et jamais N : un échec sans aucune vraie vérification se reconnaissait au chronomètre, et le compte inconnu avec lui (#687). Le tableau ci-dessus reste juste pour les candidats ; le plafond ajoute une vérification par requête, soit 4,4 s de CPU par minute et par IP au plus. La protection contre l'amplification tient.
+
 ## Limite connue
 
 Un utilisateur au-delà du plafond reste bloqué, et rien dans l'interface ne le lui dit — la journalisation est côté serveur. C'est l'état d'aujourd'hui pour tout le monde sauf le premier ; ce lot le réduit sans le supprimer. Le supprimer vraiment demanderait une unicité d'identifiant à l'échelle de la plateforme, ou le passage de l'institution au login : deux changements de contrat qui dépassent ce correctif.

@@ -6,7 +6,12 @@ namespace Tests\Unit\Services\Auth;
 
 use App\Models\Institution;
 use App\Models\User;
+use App\Services\Auth\EmpreinteLeurre;
 use App\Services\Auth\LocalLmsAuthenticator;
+use App\Support\Logging\CaughtExceptionLog;
+use App\Support\Logging\ExceptionDescription;
+use Illuminate\Cache\ArrayStore;
+use Illuminate\Cache\Repository;
 use Illuminate\Contracts\Hashing\Hasher;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Mockery;
@@ -81,7 +86,15 @@ final class LocalLoginDisambiguationTest extends TestCase
 
     private function authentificateur(Hasher $hasher, ?LoggerInterface $logger = null): LocalLmsAuthenticator
     {
-        return new LocalLmsAuthenticator($hasher, $logger ?? Mockery::spy(LoggerInterface::class));
+        // Le leurre (#687) est bâti sur le MÊME hacheur : une vérification contre
+        // lui se compte comme les autres.
+        $leurre = new EmpreinteLeurre(
+            $hasher,
+            new Repository(new ArrayStore),
+            new CaughtExceptionLog(Mockery::spy(LoggerInterface::class), new ExceptionDescription),
+        );
+
+        return new LocalLmsAuthenticator($hasher, $logger ?? Mockery::spy(LoggerInterface::class), $leurre);
     }
 
     public function test_le_second_homonyme_peut_enfin_se_connecter(): void
@@ -220,18 +233,23 @@ final class LocalLoginDisambiguationTest extends TestCase
         self::assertSame($troisieme->id, $resultat?->id);
     }
 
-    public function test_au_dela_du_plafond_aucun_calcul_n_est_lance(): void
+    public function test_au_dela_du_plafond_une_seule_verification_contre_le_leurre(): void
     {
         // Mesuré : une vérification bcrypt coûte ~442 ms. Sans plafond, quelqu'un
         // qui fabrique des homonymes — un import suffit — transforme le login en
-        // amplificateur CPU. `never()` prouve que le refus a lieu AVANT tout
-        // calcul, et pas seulement que le résultat est null.
+        // amplificateur CPU. Le refus a lieu AVANT toute vérification des
+        // candidats : aucune de leurs empreintes n'est calculée.
+        //
+        // #687 : il coûte en revanche UNE vérification, contre le leurre. Zéro
+        // se reconnaissait au chronomètre ; une ne réamplifie rien, quel que
+        // soit le nombre d'homonymes (ADR-796-01, amendé par ADR-687-01).
         foreach (range(1, 4) as $i) {
             $this->compteDans(Institution::factory()->create(), 'Foule', "u{$i}@x.ci", "e{$i}");
         }
 
         $hasher = Mockery::mock(Hasher::class);
-        $hasher->shouldReceive('check')->never();
+        $hasher->shouldReceive('make')->once()->andReturn('empreinte-du-leurre');
+        $hasher->shouldReceive('check')->once()->with('mdp', 'empreinte-du-leurre')->andReturn(false);
 
         self::assertNull($this->authentificateur($hasher)->attemptLocalAuth('Foule', 'mdp'));
     }

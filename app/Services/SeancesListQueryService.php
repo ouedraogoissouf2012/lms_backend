@@ -7,6 +7,7 @@ namespace App\Services;
 use App\Exceptions\MissingKlassciTokenException;
 use App\Http\Controllers\API\LMS\LMSSeancesListController;
 use App\Models\User;
+use App\Services\Seances\FenetreVisio;
 use App\Services\Seances\SeancesListReader;
 use App\Services\Seances\SeancesWindow;
 use App\Services\Seances\StudentClassesSeancesFetcher;
@@ -85,12 +86,16 @@ final class SeancesListQueryService implements SeancesListReader
             'classe_id' => $classeId,
         ]);
 
-        $seancesEnrichies = $this->upcomingFetcher->fetch($user, $klassciToken, $dateDebut, $dateFin, $teacherId, $classeId);
+        // Depuis minuit : la séance terminée ce matin n'est plus « à venir » (FenetreVisio).
+        $seancesEnrichies = FenetreVisio::sansLesPassees(
+            $this->upcomingFetcher->fetch($user, $klassciToken, $dateDebut, $dateFin, $teacherId, $classeId),
+            Carbon::now(),
+        );
 
         return [
-            'data' => $seancesEnrichies->values()->all(),
+            'data' => $seancesEnrichies,
             'meta' => [
-                'total_seances' => $seancesEnrichies->count(),
+                'total_seances' => count($seancesEnrichies),
                 'date_debut' => $dateDebut,
                 'date_fin' => $dateFin,
                 'filtres' => [

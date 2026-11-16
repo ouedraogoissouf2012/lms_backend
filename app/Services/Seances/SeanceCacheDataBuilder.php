@@ -60,6 +60,9 @@ final class SeanceCacheDataBuilder
             'classe_nom' => KlassciPayload::toStringOrNull($classe['nom'] ?? null),
             'titre' => $matiereNom,
             'date_seance' => $this->parseSeanceStart($heureDebut, $date),
+            // La fin RÉELLE (programmation KLASSCI), ou null : jamais estimée. Le démarrage
+            // de la visio la lit pour verrouiller une séance passée (FenetreVisio).
+            'fin_seance' => FenetreVisio::bornesKlassci($seance)[1],
         ];
     }
 

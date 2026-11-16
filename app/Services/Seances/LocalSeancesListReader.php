@@ -46,7 +46,8 @@ final class LocalSeancesListReader implements SeancesListReader
             if ($classeId !== null) {
                 $visibles->where('classe_id', $classeId);
             }
-            $seances = $this->lire($visibles, $dateDebut, $dateFin, $institution);
+            // Depuis minuit : la séance terminée ce matin n'est plus « à venir » (FenetreVisio).
+            $seances = FenetreVisio::sansLesPassees($this->lire($visibles, $dateDebut, $dateFin, $institution), Carbon::now());
         }
 
         return [

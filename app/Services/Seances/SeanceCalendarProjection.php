@@ -20,8 +20,9 @@ use Carbon\Carbon;
 final class SeanceCalendarProjection
 {
     /**
-     * Durée SUPPOSÉE d'une séance, non mesurée : la table ne tient aucune heure
-     * de fin, et le calendrier en exige une (D119).
+     * Durée SUPPOSÉE d'une séance dont la fin n'est pas connue, non mesurée : une
+     * séance locale n'en a pas (`fin_seance` nulle), et le calendrier en exige une
+     * (D119). Une séance KLASSCI garde sa fin réelle dans `fin_seance`.
      */
     public const DUREE_SUPPOSEE_HEURES = 2;
 
@@ -29,7 +30,11 @@ final class SeanceCalendarProjection
     public function project(Seance $seance, SeanceIdentite $identite): array
     {
         $start = $seance->date_seance ? Carbon::parse($seance->date_seance)->copy() : null;
-        $end = $start?->copy()->addHours(self::DUREE_SUPPOSEE_HEURES);
+        // La fin RÉELLE si la ligne la garde (`fin_seance`, programmation KLASSCI),
+        // sinon la durée supposée.
+        $reelle = $seance->fin_seance ? Carbon::parse($seance->fin_seance)->copy() : null;
+        $end = $reelle ?? $start?->copy()->addHours(self::DUREE_SUPPOSEE_HEURES);
+        $estimee = $reelle === null && $end !== null;
         $participantsCount = $seance->current_participants_count ?? 0;
         $startIso = $start?->toISOString();
         $endIso = $end?->toISOString();
@@ -46,13 +51,13 @@ final class SeanceCalendarProjection
             'heure_debut' => $start?->format('H:i'),
             'heure_fin' => $end?->format('H:i'),
             // Le seul lieu qui pose une fin ESTIMÉE : elle le dit, au client.
-            'heure_fin_estimee' => $end !== null,
+            'heure_fin_estimee' => $estimee,
             'salle' => null,
             'programmation' => [
                 'date' => $start?->format('Y-m-d'),
                 'heure_debut' => $startIso,
                 'heure_fin' => $endIso,
-                'heure_fin_estimee' => $end !== null,
+                'heure_fin_estimee' => $estimee,
                 'salle' => null,
             ],
             'matiere' => [

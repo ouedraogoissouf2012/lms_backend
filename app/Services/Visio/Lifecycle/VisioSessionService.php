@@ -8,6 +8,7 @@ use App\Models\Seance;
 use App\Models\User;
 use App\Services\ClasseSyncService;
 use App\Services\Notification\AsyncVisioNotificationDispatcher;
+use App\Services\Seances\FenetreVisio;
 use App\Services\Visio\VisioActorAuthorization;
 use App\Support\Logging\CaughtExceptionLog;
 use Psr\Log\LoggerInterface;
@@ -51,7 +52,7 @@ final class VisioSessionService
     public function start(int $seanceId, User $user, array $params = []): array
     {
         try {
-            $visio = $this->seanceGeree($seanceId, $user, 'Visio non activée pour cette séance');
+            $visio = $this->seanceGeree($seanceId, $user, 'Visio non activée pour cette séance', demarrage: true);
 
             if (is_array($visio)) {
                 return $visio;
@@ -190,9 +191,12 @@ final class VisioSessionService
      * déjà résolue, avant tout contrôle d'état, toute écriture et toute
      * notification.
      *
+     * Pour le DÉMARRAGE, une séance passée est refusée ensuite (409 `seance_past`,
+     * {@see FenetreVisio}) : sa fin est dépassée de plus de 30 min. Terminer reste permis.
+     *
      * @return Seance|array{status:int, payload: array<string, mixed>}
      */
-    private function seanceGeree(int $seanceId, User $user, string $absente): Seance|array
+    private function seanceGeree(int $seanceId, User $user, string $absente, bool $demarrage = false): Seance|array
     {
         $visio = $this->resolveSeance($seanceId);
 
@@ -204,7 +208,7 @@ final class VisioSessionService
             return ['status' => 403, 'payload' => VisioActorAuthorization::managementRefusal()];
         }
 
-        return $visio;
+        return $demarrage && FenetreVisio::lignePassee($visio, now()) ? FenetreVisio::refus() : $visio;
     }
 
     /**

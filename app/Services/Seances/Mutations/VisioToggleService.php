@@ -9,6 +9,7 @@ use App\Models\Seance;
 use App\Models\User;
 use App\Services\ClasseSyncService;
 use App\Services\Notification\AsyncVisioNotificationDispatcher;
+use App\Services\Seances\FenetreVisio;
 use App\Services\Seances\SeanceDeLEmploiDuTemps;
 use App\Services\Seances\SeanceRestoreGuard;
 use App\Services\Visio\Lifecycle\VisioToggleSource;
@@ -65,24 +66,13 @@ final class VisioToggleService implements VisioToggleSource
             return ['status' => 401, 'payload' => MissingKlassciTokenException::payload()];
         }
 
+        if ($enabled && $this->seancePassee($seanceId)) {
+            return FenetreVisio::refus();
+        }
+
         try {
             $visioType = $visioType ?? 'jitsi';
-
-            $this->logger->info('Toggle visio séance', [
-                'klassci_seance_id' => $seanceId,
-                'enabled' => $enabled,
-                'visio_type' => $visioType,
-                'user_id' => $user->id,
-            ]);
-
-            // WORKAROUND: pas d'endpoint GET /seances/{id} dans KLASSCI.
-            // On crée/met à jour directement l'entrée locale ; les IDs
-            // matière/classe/enseignant restent null tant que l'emploi du temps ne
-            // les complète pas (à l'activation, {@see SeanceDeLEmploiDuTemps}).
-            $this->logger->info('Création/MAJ entrée visio locale sans vérification KLASSCI', [
-                'klassci_seance_id' => $seanceId,
-                'note' => 'Workaround: endpoint GET /seances/{id} inexistant dans KLASSCI',
-            ]);
+            $this->journaliserLaBascule($seanceId, $enabled, $visioType, $user);
 
             $etat = [
                 'visio_enabled' => $enabled,
@@ -277,5 +267,31 @@ final class VisioToggleService implements VisioToggleSource
         }
 
         return 0;
+    }
+
+    /** Réactiver une séance passée : refusé (FenetreVisio, `fin_seance` de la ligne) ; sans fin connue, échec ouvert. */
+    private function seancePassee(int $seanceId): bool
+    {
+        $ligne = Seance::withTrashed()->where('klassci_seance_id', $seanceId)->first();
+
+        return $ligne !== null && FenetreVisio::lignePassee($ligne, now());
+    }
+
+    /**
+     * Les traces de la bascule. WORKAROUND : pas d'endpoint GET /seances/{id} dans KLASSCI ; les IDs
+     * matière/classe/enseignant restent null tant que l'emploi du temps ne les complète pas ({@see SeanceDeLEmploiDuTemps}).
+     */
+    private function journaliserLaBascule(int $seanceId, bool $enabled, string $visioType, User $user): void
+    {
+        $this->logger->info('Toggle visio séance', [
+            'klassci_seance_id' => $seanceId,
+            'enabled' => $enabled,
+            'visio_type' => $visioType,
+            'user_id' => $user->id,
+        ]);
+        $this->logger->info('Création/MAJ entrée visio locale sans vérification KLASSCI', [
+            'klassci_seance_id' => $seanceId,
+            'note' => 'Workaround: endpoint GET /seances/{id} inexistant dans KLASSCI',
+        ]);
     }
 }

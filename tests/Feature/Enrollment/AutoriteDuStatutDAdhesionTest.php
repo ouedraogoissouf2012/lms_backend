@@ -66,6 +66,10 @@ final class AutoriteDuStatutDAdhesionTest extends TestCase
     public function test_la_synchronisation_ne_touche_aucune_adhesion_de_classe_locale(bool $bascule): void
     {
         $this->ecole($bascule);
+        // L'élève a DÉJÀ une adhésion close dans la classe KLASSCI : la
+        // synchronisation passe par la mise à jour, et non par l'insertion. C'est
+        // là qu'une écriture trop large atteindrait la classe locale.
+        $this->adhesion($this->classeKlassci, 'abandonne');
         $this->adhesion($this->classeLocale, 'abandonne');
 
         $this->synchroniser([$this->eleveKlassci()]);

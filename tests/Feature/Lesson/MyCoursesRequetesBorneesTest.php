@@ -12,7 +12,10 @@ use App\Models\LessonProgress;
 use App\Models\Matiere;
 use App\Models\User;
 use App\Models\UserClass;
+use Closure;
+use Illuminate\Cache\RateLimiter;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\Concerns\ActsAsTenantUser;
@@ -63,6 +66,27 @@ final class MyCoursesRequetesBorneesTest extends TestCase
         self::assertSame($parUn, $parCent, 'Une requête par cours de la page.');
     }
 
+    /**
+     * Le compte ignore la table du cache : un limiteur ACTIF pendant l'appel,
+     * sur le cache en base, ajoute des requêtes au journal sans changer le
+     * compte. Sans quoi le test précédent dépendrait de la présence d'un
+     * limiteur (#947), et de l'ordre de ses appels.
+     */
+    #[DataProvider('volets')]
+    public function test_un_limiteur_actif_ne_change_pas_le_compte(InstitutionMode $mode): void
+    {
+        $this->ecole($mode, lecons: 20);
+        $limiteur = new RateLimiter(Cache::store('database'));
+
+        $sans = $this->journal('?per_page=15');
+        $avec = $this->journal('?per_page=15', static function () use ($limiteur): void {
+            $limiteur->hit('preuve-1119', 60);
+        });
+
+        self::assertGreaterThan($sans['toutes'], $avec['toutes'], 'Le limiteur n\'a rien écrit : la preuve serait vide.');
+        self::assertSame($sans['horsCache'], $avec['horsCache']);
+    }
+
     #[DataProvider('volets')]
     public function test_les_filtres_n_hydratent_que_les_lecons_de_la_page(InstitutionMode $mode): void
     {
@@ -107,15 +131,35 @@ final class MyCoursesRequetesBorneesTest extends TestCase
 
     // ───────────────────────── fixtures
 
-    private function requetes(string $parametres): int
+    /**
+     * Les requêtes de l'appel, HORS des tables du cache : c'est le coût de la
+     * page qui est mesuré. Un limiteur de débit sur le cache en base (#947) crée
+     * ses lignes au PREMIER appel puis les met à jour : compté, il ferait varier
+     * le total selon l'ordre des appels, et non selon la taille de la page.
+     */
+    private function requetes(string $parametres, ?Closure $pendant = null): int
+    {
+        return $this->journal($parametres, $pendant)['horsCache'];
+    }
+
+    /**
+     * @return array{toutes: int, horsCache: int}
+     */
+    private function journal(string $parametres, ?Closure $pendant = null): array
     {
         $client = $this->asTenant($this->eleve);
         DB::flushQueryLog();
         DB::enableQueryLog();
+        if ($pendant !== null) {
+            $pendant();
+        }
         $client->getJson(self::URL.$parametres)->assertOk();
         DB::disableQueryLog();
 
-        return count(DB::getQueryLog());
+        $toutes = array_map(static fn (array $q): string => (string) $q['query'], DB::getQueryLog());
+        $horsCache = array_filter($toutes, static fn (string $sql): bool => preg_match('/["`\s]cache(_locks)?["`\s]/i', $sql.' ') !== 1);
+
+        return ['toutes' => count($toutes), 'horsCache' => count($horsCache)];
     }
 
     /**

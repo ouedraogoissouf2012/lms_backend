@@ -53,6 +53,15 @@ final class KlassciTransportRetry
     /**
      * Tentatives totales pour une lecture (1 appel + 2 réessais).
      */
+    /**
+     * Le délai de CONNEXION, en secondes (#744). Un SYN avalé le consomme en
+     * entier, à chaque tentative ; une connexion saine depuis la production
+     * prend 0,017 s (mesure du 2026-09-06). 1 s en garde une marge d'environ
+     * 50 fois, là où 2 s doublaient l'attente d'une lecture vouée au 503.
+     * Source unique : la configuration et ses replis s'y réfèrent.
+     */
+    public const CONNECT_TIMEOUT_SECONDS = 1;
+
     private const ATTEMPTS_FOR_READS = 3;
 
     /**

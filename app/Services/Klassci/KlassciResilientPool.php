@@ -17,8 +17,9 @@ use Illuminate\Http\Client\Factory as HttpFactory;
  *
  * Mais un réessai naïf, imbriqué dans la boucle de lots, **triple le coût d'une
  * panne**. Chiffré sur un chemin SYNCHRONE (un enseignant attend) : 40 classes,
- * lots de 4, cible injoignable à `connect_timeout` = 2 s. Sans borne, 10 lots
- * × (3 essais × 2 s + pauses) ≈ 62 s — au-delà du plafond usuel de PHP-FPM,
+ * lots de 4, cible injoignable à `connect_timeout` = 2 s (avant #744, 1 s
+ * depuis). Sans borne, 10 lots × (3 essais × 2 s + pauses) ≈ 62 s — au-delà
+ * du plafond usuel de PHP-FPM,
  * donc un 504 au lieu d'une page dégradée mais servie.
  *
  * D'où le disjoncteur, ici : trois lots épuisés l'ouvrent, et l'on rend alors

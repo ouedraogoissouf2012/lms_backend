@@ -3740,7 +3740,7 @@ components:
             - account_daily_cap_reached
             - institution_cap_reached
             - ip_quota_exceeded
-            - global_cap_reached
+            - ip_daily_cap_reached
 
     # #806 — `reason` est FACULTATIF ici : un 401 Sanctum n en porte aucun.
     RefusKlassci:
@@ -6310,8 +6310,11 @@ paths:
         etablissement, donc une requete qui ne porterait que le code serait
         ambigue entre deux ecoles.
 
-        Debit borne par un seau NOMME a deux bornes, dont une journaliere
-        globale : la borne par IP seule ne freine pas une enumeration repartie.
+        Debit (#915) : le seau NOMME de la route ne borne que l inondation
+        (60 requetes par minute et par adresse). Les codes FAUX sont bornes a
+        part, et seuls eux : 5 par minute et 30 par jour par adresse, 200 par
+        jour par etablissement (partages avec la porte authentifiee). Une
+        inscription reussie n est jamais un essai de trop.
 
         La reponse ne rend NI jeton NI session : l inscrit se connecte ensuite
         avec le mot de passe qu il vient de choisir.
@@ -6418,9 +6421,13 @@ paths:
                 $ref: '#/components/schemas/ValidationFailed'
         '429':
           description: |
-            Debit depasse. Le motif dit QUEL budget (#906), avec `Retry-After` :
-            - `ip_quota_exceeded` : 5 par minute depuis cette adresse ;
-            - `global_cap_reached` : 100 par jour pour toute la plateforme.
+            Debit depasse. Le motif dit QUEL budget (#906, #915) :
+            - `ip_quota_exceeded` : 60 requetes par minute depuis cette adresse
+              (seau de route, avec `Retry-After`), ou 5 codes faux par minute ;
+            - `ip_daily_cap_reached` : 30 codes faux par jour depuis cette adresse ;
+            - `institution_cap_reached` : 200 codes faux par jour dans cet
+              etablissement.
+            Les plafonds de codes faux sont des refus metier, sans `Retry-After`.
           headers:
             Retry-After:
               schema:

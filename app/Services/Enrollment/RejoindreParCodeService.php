@@ -46,8 +46,9 @@ use Psr\Log\LoggerInterface;
  * n'est jamais un essai de trop.
  *
  * Le prix est assumé : quelques comptes malveillants peuvent fermer cette porte
- * à leur propre école pour la journée. C'est le même arbitrage que la borne
- * globale de la porte anonyme, et il est journalisé pour qu'on le voie.
+ * à leur propre école pour la journée. Le seau est PARTAGÉ avec la porte
+ * anonyme ({@see EchecsDeLaPorteAnonyme}, #915) : un même concept, un même
+ * plafond ; il est journalisé pour qu'on le voie.
  *
  * @see docs/adr/2026-09-15-803-03-trois-portes-un-service.md
  */
@@ -57,7 +58,7 @@ final class RejoindreParCodeService
      * Avec K codes ouverts, le risque quotidien de tomber sur l'un d'eux est
      * au plus 200·K / 31⁶ — ~1,1·10⁻⁵ pour 50 classes ouvertes.
      */
-    private const ECHECS_PAR_JOUR = 200;
+    public const ECHECS_PAR_JOUR = 200;
 
     private const UN_JOUR = 86_400;
 

@@ -46,8 +46,11 @@ class RecomputeLessonTimeSpent extends Command
 
         $this->line(sprintf('Couples (utilisateur, leçon) inspectés : %d', $bilan['couples']));
         $this->line(sprintf('  • à corriger : %d', $bilan['a_corriger']));
+        $this->line(sprintf('  • refusés : %d (ligne hors établissement, leçon supprimée : jamais écrits)', $bilan['refus']));
         $this->line(sprintf('  • corrigés : %d', $bilan['corriges']));
+        $this->line(sprintf('  • erreurs : %d (journalisées, les couples suivants ont été traités)', $bilan['erreurs']));
 
-        return Command::SUCCESS;
+        // Une erreur journalisée ne doit pas passer pour un succès (#1148).
+        return $bilan['erreurs'] === 0 ? Command::SUCCESS : Command::FAILURE;
     }
 }

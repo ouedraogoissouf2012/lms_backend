@@ -75,7 +75,9 @@ final class AdminUserRoleEscalationTest extends TestCase
             'role' => 'superAdmin',
         ]);
 
-        $response->assertStatus(422)->assertJsonValidationErrors('role');
+        // #932 : la règle de cible refuse toute modification de son propre compte par
+        // cette route, AVANT la validation du rôle demandé (403, et non plus 422).
+        $response->assertForbidden();
         $this->assertSame('coordinateur', $this->coordinator->fresh()->role);
     }
 

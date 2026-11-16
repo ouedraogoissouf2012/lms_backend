@@ -8,6 +8,7 @@ use App\Models\Chapter;
 use App\Models\ChapterProgress;
 use App\Models\Lesson;
 use App\Models\LessonProgress;
+use App\Services\Lesson\LessonProgressService;
 use Illuminate\Database\ConnectionInterface;
 
 /**
@@ -178,8 +179,15 @@ final class ChapterTimeRecorder
         // Division entière : on n'affiche jamais plus que le temps mesuré.
         $minutes = intdiv($seconds, 60);
 
-        if ($parent->time_spent_minutes !== $minutes) {
-            $parent->time_spent_minutes = $minutes;
+        // Du temps passé commence la leçon (#1147) : la transition de début est celle
+        // de LessonProgressService, propriétaire du statut ; jamais de rétrogradation.
+        $debut = $seconds > 0 ? LessonProgressService::debut($parent) : [];
+
+        // `time_spent_minutes` n'est PAS fillable (#944) : assigné ici, son seul écrivain.
+        $parent->time_spent_minutes = $minutes;
+        $parent->fill($debut);
+
+        if ($parent->isDirty()) {
             $parent->save();
         }
 

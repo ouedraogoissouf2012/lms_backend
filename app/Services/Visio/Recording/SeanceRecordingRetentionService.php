@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Visio\Recording;
 
+use App\Jobs\RecalculerLeTempsDeLaLecon;
 use App\Models\Chapter;
 use App\Models\SeanceRecording;
 use App\Services\FileConversion\ChapterArtifactStorage;
@@ -81,6 +82,9 @@ final class SeanceRecordingRetentionService
                 // ultérieure puisque plus rien ne le référencerait.
                 $this->artifacts->purgeChapter($chapter->id);
                 $chapter->forceDelete();
+                // #1146 : après le commit, hors de la transaction qui verrouille
+                // l'enregistrement, le temps de la leçon perd ce chapitre.
+                RecalculerLeTempsDeLaLecon::dispatch((int) $chapter->lesson_id)->afterCommit();
             }
 
             $locked->delete();

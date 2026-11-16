@@ -7,6 +7,7 @@ namespace App\Services\Enrollment;
 use App\Exceptions\BusinessException;
 use App\Models\Classe;
 use App\Models\Institution;
+use App\Models\TrainingSession;
 use App\Services\Roster\RosterAuthorityFactory;
 
 /**
@@ -36,7 +37,7 @@ use App\Services\Roster\RosterAuthorityFactory;
  * déjà l'import (`ImportConfirmController`) — écrire la liste des apprenants —
  * et il est demandé POUR CET établissement, jamais au tenant ambiant.
  *
- * ## Inconnu, retiré ou sans droit : le MÊME refus
+ * ## Inconnu, retiré, sans droit ou d'une Période close : le MÊME refus
  *
  * Les distinguer dirait qu'un code a existé pour cette valeur — donc qu'une
  * classe l'attend. Même raisonnement qu'ADR-803-02 pour les trois états du
@@ -65,10 +66,32 @@ final class ClasseOuverteParCode
             ->whereNull('code_inscription_revoque_le')
             ->first();
 
-        if (! $classe instanceof Classe) {
+        // Une Période close ferme les codes de ses classes (#897) : la règle est
+        // LUE ici, au résolveur des deux portes, et couvre ainsi les Périodes déjà
+        // closes dont le code est resté posé. Même refus qu'un code inconnu.
+        if (! $classe instanceof Classe || $this->periodeClose($classe)) {
             throw new BusinessException(self::REFUS, 404);
         }
 
         return $classe;
+    }
+
+    /**
+     * La Période de la classe, lue explicitement dans SON établissement (le scope
+     * global est fail-open sans tenant) ; supprimée, elle ne reçoit plus personne
+     * non plus. Une classe sans Période n'est pas concernée.
+     */
+    private function periodeClose(Classe $classe): bool
+    {
+        if ($classe->training_session_id === null) {
+            return false;
+        }
+
+        $periode = TrainingSession::query()->withoutGlobalScope('institution')->withTrashed()
+            ->where('institution_id', $classe->institution_id)
+            ->whereKey($classe->training_session_id)
+            ->first();
+
+        return $periode instanceof TrainingSession && ($periode->trashed() || $periode->status->fermeLesInscriptions());
     }
 }

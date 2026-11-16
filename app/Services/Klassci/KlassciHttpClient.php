@@ -61,7 +61,7 @@ final class KlassciHttpClient
         private readonly KlassciCircuitBreaker $circuitBreaker,
         private readonly KlassciTransportRetry $retry,
     ) {
-        $this->connectTimeout = self::positiveIntConfig('services.klassci.connect_timeout', 2);
+        $this->connectTimeout = self::positiveIntConfig('services.klassci.connect_timeout', KlassciTransportRetry::CONNECT_TIMEOUT_SECONDS);
         $this->timeout = self::positiveIntConfig('services.klassci.timeout', 5);
         $this->sslVerify = (bool) config('services.klassci.ssl_verify', true);
     }

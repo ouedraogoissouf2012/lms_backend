@@ -6241,11 +6241,18 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '409':
-          description: "Aucun etablissement resolu"
+          description: |
+            Aucun etablissement resolu. Controle AVANT le droit du
+            catalogue (#910). Motif `no_institution`. Par HTTP, la porte
+            des comptes sans etablissement repond 403 avant.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: '#/components/schemas/RefusMotive'
+              example:
+                success: false
+                message: "Aucun établissement résolu."
+                reason: no_institution
         '422':
           description: "Libelle manquant, ou code deja employe dans cet etablissement"
           content:
@@ -6782,11 +6789,18 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '409':
-          description: "Aucun etablissement resolu"
+          description: |
+            Aucun etablissement resolu. Controle AVANT le droit du
+            catalogue (#910). Motif `no_institution`. Par HTTP, la porte
+            des comptes sans etablissement repond 403 avant.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: '#/components/schemas/RefusMotive'
+              example:
+                success: false
+                message: "Aucun établissement résolu."
+                reason: no_institution
         '422':
           description: "matiere_id manquant ou invalide"
           content:
@@ -6848,11 +6862,18 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '409':
-          description: "Aucun etablissement resolu"
+          description: |
+            Aucun etablissement resolu. Controle AVANT le droit du
+            catalogue (#910). Motif `no_institution`. Par HTTP, la porte
+            des comptes sans etablissement repond 403 avant.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: '#/components/schemas/RefusMotive'
+              example:
+                success: false
+                message: "Aucun établissement résolu."
+                reason: no_institution
         '422':
           description: "Libelle manquant ou ponderation hors bornes"
           content:

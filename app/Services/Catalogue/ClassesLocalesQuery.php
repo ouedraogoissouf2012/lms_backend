@@ -6,7 +6,6 @@ namespace App\Services\Catalogue;
 
 use App\Exceptions\BusinessException;
 use App\Models\Classe;
-use App\Services\TenantManager;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 
 /**
@@ -31,14 +30,13 @@ use Illuminate\Contracts\Pagination\LengthAwarePaginator;
  * ## Même droit que l'écriture
  *
  * Un établissement qui ne tient pas son catalogue n'a pas de classes locales à
- * gérer. Il reçoit le refus, mot pour mot, que `ClasseEnrolmentCodeService` lui
- * oppose à l'émission du code : lire et émettre obéissent à la même règle.
+ * gérer. Lire et émettre obéissent à la même règle, et à la même porte :
+ * `PorteDuCatalogueLocal` (#910).
  */
 final class ClassesLocalesQuery
 {
     public function __construct(
-        private readonly CatalogueAuthority $autorite,
-        private readonly TenantManager $tenants,
+        private readonly PorteDuCatalogueLocal $porte,
     ) {}
 
     /**
@@ -48,21 +46,7 @@ final class ClassesLocalesQuery
      */
     public function lister(int $parPage): LengthAwarePaginator
     {
-        $institution = $this->tenants->id();
-
-        // AVANT la capacité : sans établissement, celle-ci rend faux — et un
-        // compte de plateforme recevrait « cet établissement vient de KLASSCI »,
-        // qui est faux pour qui n'en a aucun. Le 409 dit ce qui manque.
-        if ($institution === null) {
-            throw new BusinessException('Aucun établissement résolu.', 409, reason: 'no_institution');
-        }
-
-        if (! $this->autorite->allowsLocalCatalogue()) {
-            throw new BusinessException(
-                'Les inscriptions de cet établissement viennent de KLASSCI.',
-                403
-            );
-        }
+        $institution = $this->porte->etablissement();
 
         // `id` en second critère : deux libellés égaux garderaient sinon un
         // ordre instable d'une page à l'autre, et une classe pourrait

@@ -9,7 +9,6 @@ use App\Exceptions\BusinessException;
 use App\Models\Classe;
 use App\Models\Matiere;
 use App\Models\User;
-use App\Services\TenantManager;
 
 /**
  * Rattacher une matière à une classe, et y désigner un formateur (#848).
@@ -53,8 +52,7 @@ use App\Services\TenantManager;
 final class LocalClasseMatiereLinker
 {
     public function __construct(
-        private readonly CatalogueAuthority $autorite,
-        private readonly TenantManager $tenants,
+        private readonly PorteDuCatalogueLocal $porte,
     ) {}
 
     /**
@@ -62,18 +60,7 @@ final class LocalClasseMatiereLinker
      */
     public function rattacher(int $classeId, int $matiereId, ?int $enseignantId = null): Classe
     {
-        if (! $this->autorite->allowsLocalCatalogue()) {
-            throw new BusinessException(
-                'Le programme de cet établissement vient de KLASSCI et ne se compose pas ici.',
-                403
-            );
-        }
-
-        $institution = $this->tenants->id();
-
-        if ($institution === null) {
-            throw new BusinessException('Aucun établissement résolu.', 409);
-        }
+        $institution = $this->porte->etablissement();
 
         $classe = $this->saClasse($classeId, $institution);
         $this->saMatiere($matiereId, $institution);

@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
+use App\Services\Attendances\KlassciSeanceSansLigneLocale;
+use App\Services\Attendances\LocalSeanceSansLigneLocale;
+use App\Services\Attendances\SeanceSansLigneLocale;
 use App\Services\Catalogue\CatalogueAuthority;
 use App\Services\Catalogue\InstitutionStructureReader;
 use App\Services\Catalogue\KlassciInstitutionStructureReader;
@@ -108,6 +111,8 @@ final class CatalogueServiceProvider extends ServiceProvider
         StudentDashboardReader::class => [KlassciStudentDashboardReader::class, LocalStudentDashboardReader::class],
         // Le détail d'une séance, sous la règle de la liste du lot 3d.
         SeanceDetailReader::class => [SeanceDetailQueryService::class, LocalSeanceDetailReader::class],
+        // Les présences d'une séance KLASSCI sans ligne locale (#1098).
+        SeanceSansLigneLocale::class => [KlassciSeanceSansLigneLocale::class, LocalSeanceSansLigneLocale::class],
     ];
 
     /**

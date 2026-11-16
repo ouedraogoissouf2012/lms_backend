@@ -9,6 +9,7 @@ use App\Http\Requests\AttendanceHistoryRequest;
 use App\Http\Requests\SyncAttendancesRequest;
 use App\Services\Attendances\AttendanceHistoryQueryService;
 use App\Services\Attendances\SeanceAttendancesQueryService;
+use App\Services\Attendances\SeanceSansLigneLocale;
 use App\Services\Attendances\VideoSessionAttendancesSyncer;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -77,10 +78,12 @@ final class LMSAttendancesController extends AuthenticatedController
      * Présences détaillées d'une séance (lookup local OU klassci_seance_id), avec
      * statistiques agrégées et formatage par participant.
      */
-    public function getSeanceAttendances(Request $request, int $seanceId): JsonResponse
+    public function getSeanceAttendances(Request $request, int $seanceId, SeanceSansLigneLocale $sansLigne): JsonResponse
     {
         $user = $this->authenticatedUser($request);
-        $result = $this->seanceAttendancesQuery->getAttendances($seanceId, $user);
+        // La source de l'école (ADR-EI-01), reçue par la MÉTHODE : le contrôleur est
+        // gardé sur l'objet Route.
+        $result = $this->seanceAttendancesQuery->getAttendances($seanceId, $user, $sansLigne);
 
         return $this->relayResponse($result);
     }

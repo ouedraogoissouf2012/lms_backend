@@ -50,7 +50,7 @@ final class MyCoursesPresenter
         $enseignants = $this->preloadEnseignants($enseignantIds);
         // La progression de la page en UNE requête, et non une par cours (#940).
         $progressions = $this->progressService->progressionsForUser(
-            $items->map(static fn (Lesson $lesson): int => (int) $lesson->id)->values()->all(),
+            array_values($items->map(static fn (Lesson $lesson): int => (int) $lesson->id)->all()),
             $user->id,
         );
 

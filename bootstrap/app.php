@@ -48,6 +48,12 @@ $app = Application::configure(basePath: dirname(__DIR__))
             \App\Http\Middleware\ResolveInstitution::class,
         ]);
 
+        // #947 : toute lecture authentifiée a une limite de débit, par famille et
+        // par compte (App\Support\Http\LimiteDesLectures, ADR-947-01). Posée sur le
+        // GROUPE : une route nouvelle naît limitée. La priorité de Laravel place
+        // ThrottleRequests après l'authentification de la route.
+        $middleware->api(append: ['throttle:lecture']);
+
         // Enregistrer les middlewares personnalisés
         $middleware->alias([
             'klassci.sync' => \App\Http\Middleware\EnsureKlassciSync::class,

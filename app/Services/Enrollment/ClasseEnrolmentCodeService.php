@@ -6,8 +6,7 @@ namespace App\Services\Enrollment;
 
 use App\Exceptions\BusinessException;
 use App\Models\Classe;
-use App\Services\Catalogue\CatalogueAuthority;
-use App\Services\TenantManager;
+use App\Services\Catalogue\PorteDuCatalogueLocal;
 use Illuminate\Database\QueryException;
 
 /**
@@ -23,9 +22,8 @@ use Illuminate\Database\QueryException;
  * ## Le droit vient de la capacité, jamais du mode
  *
  * Un établissement dont le catalogue vient de KLASSCI ne distribue pas de code :
- * ses classes et ses inscriptions ont une autre source, et deux sources
- * écrivant la même réalité est la cause racine de #673. L'appelant demande un
- * DROIT et ignore qu'un mode existe (épique #697, article 1).
+ * ses classes et ses inscriptions ont une autre source. La règle est celle de
+ * `PorteDuCatalogueLocal` (#910), la seule porte du catalogue local.
  *
  * ## La collision est tranchée par la base, pas par un SELECT
  *
@@ -42,8 +40,7 @@ final class ClasseEnrolmentCodeService
     private const ESSAIS = 5;
 
     public function __construct(
-        private readonly CatalogueAuthority $autorite,
-        private readonly TenantManager $tenants,
+        private readonly PorteDuCatalogueLocal $porte,
     ) {}
 
     /**
@@ -109,18 +106,7 @@ final class ClasseEnrolmentCodeService
      */
     private function saClasse(int $classeId): Classe
     {
-        if (! $this->autorite->allowsLocalCatalogue()) {
-            throw new BusinessException(
-                'Les inscriptions de cet établissement viennent de KLASSCI.',
-                403
-            );
-        }
-
-        $institution = $this->tenants->id();
-
-        if ($institution === null) {
-            throw new BusinessException('Aucun établissement résolu.', 409);
-        }
+        $institution = $this->porte->etablissement();
 
         $classe = Classe::query()->withoutGlobalScopes()
             ->where('id', $classeId)

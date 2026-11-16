@@ -235,35 +235,25 @@ class OpenAPIValidator:
                 self.check_schema_refs(item, path, method)
 
     def check_error_responses(self):
-        """Validate error response consistency (CRITICAL-02)."""
+        """Validate error response consistency (CRITICAL-02, ADR-919-01)."""
         error_response = self.spec.get('components', {}).get('schemas', {}).get('ErrorResponse')
-        
+
         if not error_response:
             return
-        
-        required_properties = ['success', 'error_code', 'message']
+
         props = error_response.get('properties', {})
-        
-        for prop in required_properties:
+        for prop in ['success', 'message']:
             if prop not in props:
                 self.errors.append(
-                    f"ErrorResponse missing property: {prop}"
+                    f"ErrorResponse missing property: {prop} (required by CRITICAL-02)"
                 )
-        
-        # Check error_code enum
-        error_code = props.get('error_code', {})
-        enum_values = error_code.get('enum', [])
-        expected = [
-            'UNAUTHENTICATED',
-            'PERMISSION_DENIED',
-            'RESOURCE_NOT_FOUND',
-            'VALIDATION_FAILED',
-            'INTERNAL_SERVER_ERROR'
-        ]
-        for code in expected:
-            if code not in enum_values:
-                self.warnings.append(
-                    f"ErrorResponse error_code missing enum value: {code}"
+
+        # No required field the API never emits (`error_code`, #919).
+        emitted = {'success', 'message', 'errors', 'reason'}
+        for prop in error_response.get('required', []):
+            if prop not in emitted:
+                self.errors.append(
+                    f"ErrorResponse requires '{prop}', which the API never emits (ADR-919-01)"
                 )
 
     def check_security(self):
@@ -362,49 +352,36 @@ grep -E '^\s+/(api/)?[a-z0-9/-]+:' docs/openapi.yaml | \
 # Should return 0 non-matching patterns
 ```
 
-### 5. Error Code Consistency
+### 5. Error Body Consistency
 
-**Standard Format** (CRITICAL-02):
+**The body the API really emits** (ADR-919-01):
 
 ```yaml
 401 Unauthenticated:
   success: false
-  error_code: "UNAUTHENTICATED"
   message: "Unauthenticated."
 
-403 Permission Denied:
+409 Refusal with several meanings:
   success: false
-  error_code: "PERMISSION_DENIED"
-  message: "Permission denied."
-
-404 Not Found:
-  success: false
-  error_code: "RESOURCE_NOT_FOUND"
-  message: "Resource not found."
+  message: "Aucun établissement résolu."
+  reason: no_institution        # ADR-906-01
 
 422 Validation Failed:
   success: false
-  error_code: "VALIDATION_FAILED"
-  message: "[Field] field is required."
-  errors: { ... }
-
-500 Internal Error:
-  success: false
-  error_code: "INTERNAL_SERVER_ERROR"
-  message: "Internal server error."
+  message: "Validation failed"
+  errors: { field: ["..."] }
 ```
 
-**Validation Script**:
-```bash
-# Check all 401 responses use correct error_code
-grep -A 5 "'401':" docs/openapi.yaml | \
-  grep -c "UNAUTHENTICATED"
-# Should match number of 401 responses
+- `message` is always present. The front's central error path translates by
+  status and does not rely on it (ADR-906-01).
+- `reason` (optional, `snake_case` English) tells apart a status with several
+  meanings. It is the ONLY machine code: there is no `error_code`, which the
+  API never emitted (ADR-919-01).
+- `errors` (optional) carries field-level errors on a 422.
 
-grep -A 5 "'403':" docs/openapi.yaml | \
-  grep -c "PERMISSION_DENIED"
-# Should match number of 403 responses
-```
+**Proof**: a contract test validates the REAL body against the spec
+(`Tests\Concerns\ValidatesAgainstOpenApi::assertMatchesOpenApiResponse`), as
+`tests/Feature/Docs/ErrorResponseCorpsReelTest.php` does for `ErrorResponse`.
 
 ## CI/CD Integration
 

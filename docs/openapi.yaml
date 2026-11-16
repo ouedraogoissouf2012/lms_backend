@@ -3760,21 +3760,31 @@ components:
             - klassci_token_missing
             - klassci_session_expired
 
+    # #919 — le corps d'erreur que l'API emet REELLEMENT : RespondsWithJson::
+    # errorResponse() et les rendus de bootstrap/app.php. Aucun `error_code` :
+    # le code machine est `reason` (ADR-906-01, ADR-919-01).
     ErrorResponse:
       type: object
       properties:
         success:
           type: boolean
-          example: false
-        error_code:
-          type: string
-          example: "UNAUTHENTICATED"
+          enum:
+            - false
         message:
           type: string
           example: "Unauthenticated."
+        errors:
+          type: object
+          description: "Facultatif : le detail par champ d un refus de validation (422)."
+          additionalProperties:
+            type: array
+            items:
+              type: string
+        reason:
+          type: string
+          description: "Facultatif : le motif d un refus a plusieurs sens (ADR-906-01)."
       required:
         - success
-        - error_code
         - message
 
     # Auth Schemas
@@ -10128,9 +10138,9 @@ paths:
         Au-dela de `last_page`, la reponse est 200 avec `data` vide, pas 404.
 
         401 : le corps reel est `{"success": false, "message": "Unauthenticated."}`
-        (bootstrap/app.php:72-76), sans `error_code`. Il est donc decrit par
-        `MessageOnly`, pas par `ErrorResponse`, qui exige un `error_code` que
-        l API n emet jamais (ecart suivi par #919).
+        (bootstrap/app.php:72-76). Il est decrit par `MessageOnly`, cree quand
+        `ErrorResponse` exigeait un `error_code` que l API n emet pas ; #919 l a
+        retire de `ErrorResponse`, et les deux schemas acceptent ce corps.
       security:
         - sanctum: []
       parameters:
@@ -10170,7 +10180,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/MyCoursesPage'
         '401':
-          description: "Non authentifie (corps reel sans error_code, voir #919)"
+          description: "Non authentifie"
           content:
             application/json:
               schema:

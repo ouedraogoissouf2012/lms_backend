@@ -163,7 +163,6 @@ Find the evaluations section under `paths:` and add:
                 missing_title:
                   value:
                     success: false
-                    error_code: "VALIDATION_FAILED"
                     message: "The title field is required."
                     errors:
                       title:
@@ -171,7 +170,6 @@ Find the evaluations section under `paths:` and add:
                 invalid_type:
                   value:
                     success: false
-                    error_code: "VALIDATION_FAILED"
                     message: "The type must be one of: qcm, reponse_courte, dissertation, mixte."
                     errors:
                       type:
@@ -301,9 +299,9 @@ Route::post('/evaluations', [EvaluationController::class, 'store'])
 
 ## Error Response Patterns
 
-### CRITICAL-02 Error Format
+### The error body (ADR-919-01)
 
-All errors follow this standard:
+Describe the body the endpoint REALLY returns:
 
 ```yaml
 ErrorResponse:
@@ -311,34 +309,28 @@ ErrorResponse:
   properties:
     success:
       type: boolean
-      example: false
-    error_code:
-      type: string
-      enum: [
-        UNAUTHENTICATED,
-        PERMISSION_DENIED,
-        RESOURCE_NOT_FOUND,
-        VALIDATION_FAILED,
-        INTERNAL_SERVER_ERROR
-      ]
+      enum: [false]
     message:
       type: string
-      example: "Unauthenticated."
+    errors:
+      type: object        # optional: field-level errors (422)
+    reason:
+      type: string        # optional: machine code (ADR-906-01)
   required:
     - success
-    - error_code
     - message
 ```
 
-### Mapping HTTP Status to Error Code
+- `message` is always present. The front's central error path translates by
+  status and does not rely on it (ADR-906-01).
+- `reason` (optional, `snake_case` English) tells apart a status with several
+  meanings. It is the ONLY machine code: there is no `error_code`, which the
+  API never emitted (ADR-919-01).
+- `errors` (optional) carries field-level errors on a 422.
 
-| Status | Error Code | When |
-|--------|-----------|------|
-| 401 | UNAUTHENTICATED | No/invalid token |
-| 403 | PERMISSION_DENIED | Role/permission check fails |
-| 404 | RESOURCE_NOT_FOUND | Resource doesn't exist |
-| 422 | VALIDATION_FAILED | Input validation error |
-| 500 | INTERNAL_SERVER_ERROR | Unhandled exception |
+A refusal with a fixed shape gets an exact schema (`additionalProperties: false`),
+as `ClasseLocaleRefus` or `RefusMotive` do, and a contract test that validates the
+real body (`assertMatchesOpenApiResponse`).
 
 Every endpoint should document all possible error responses.
 
@@ -609,7 +601,7 @@ post:
 500:
   schema:
     properties:
-      error: string  # Not standard error_code
+      error: string  # Not the standard error body
 
 # Good
 500:

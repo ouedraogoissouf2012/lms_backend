@@ -5,12 +5,12 @@ declare(strict_types=1);
 namespace App\Http\Controllers\API\LMS;
 
 use App\Http\Controllers\AuthenticatedController;
+use App\Http\Requests\ListerLesPeriodesRequest;
 use App\Http\Requests\StoreProgramRequest;
 use App\Http\Requests\StoreTrainingSessionRequest;
 use App\Models\TrainingSession;
 use App\Services\Session\TrainingSessionCrudService;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 
 /**
  * Créer une session de formation (#827).
@@ -52,11 +52,10 @@ final class TrainingSessionController extends AuthenticatedController
         return $this->successResponse($this->enVue($periode), 'Session de formation créée.', 201);
     }
 
-    public function index(Request $request): JsonResponse
+    public function index(ListerLesPeriodesRequest $request): JsonResponse
     {
-        $parPage = min(max($request->integer('per_page', 25), 1), 100);
-
-        $page = $this->sessions->listerLesPeriodes($this->authenticatedUser($request), $parPage);
+        // Validée, jamais ramenée (#911) : `?per_page=abc` rend 422.
+        $page = $this->sessions->listerLesPeriodes($this->authenticatedUser($request), $request->parPage());
 
         return $this->successResponse(
             array_map(fn (TrainingSession $p): array => $this->enVue($p), $page->items()),

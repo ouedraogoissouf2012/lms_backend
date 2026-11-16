@@ -184,7 +184,7 @@ final class MatiereClassesFromKlassciTest extends TestCase
 
         $this->mock(KlassciProxyService::class, function (MockInterface $mock): void {
             $mock->shouldNotReceive('requestWithUserToken');
-            $mock->shouldNotReceive('fetchManyClassesDetails');
+            $mock->shouldNotReceive('fetchManyClassesDetailsWithinTimeout');
         });
 
         self::assertSame([$b2->id], array_column($this->resolve(klassciMatiereId: 3), 'id'));
@@ -201,7 +201,7 @@ final class MatiereClassesFromKlassciTest extends TestCase
 
         $this->mock(KlassciProxyService::class, function (MockInterface $mock): void {
             $mock->shouldReceive('requestWithUserToken')->andThrow(new \RuntimeException('injoignable'));
-            $mock->shouldReceive('fetchManyClassesDetails')->andReturn([]);
+            $mock->shouldReceive('fetchManyClassesDetailsWithinTimeout')->andReturn([]);
         });
 
         self::assertSame([], $this->resolve(klassciMatiereId: 3));
@@ -286,7 +286,7 @@ final class MatiereClassesFromKlassciTest extends TestCase
 
         $this->mock(KlassciProxyService::class, function (MockInterface $mock): void {
             $mock->shouldNotReceive('requestWithUserToken');
-            $mock->shouldNotReceive('fetchManyClassesDetails');
+            $mock->shouldNotReceive('fetchManyClassesDetailsWithinTimeout');
         });
 
         self::assertSame([], app(MatiereClassesResolver::class)
@@ -372,7 +372,7 @@ final class MatiereClassesFromKlassciTest extends TestCase
                 ->with('jeton-enseignant', 'matieres/3', 'GET')
                 ->andReturn($matiere);
             $mock->shouldReceive('requestWithUserToken')->andReturn(['data' => []]);
-            $mock->shouldReceive('fetchManyClassesDetails')->andReturn($details);
+            $mock->shouldReceive('fetchManyClassesDetailsWithinTimeout')->andReturn($details);
         });
     }
 

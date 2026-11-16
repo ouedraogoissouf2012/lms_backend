@@ -6,6 +6,8 @@ namespace Tests\Unit\Services\Klassci;
 
 use App\Services\Klassci\KlassciBatchFetcher;
 use App\Services\TenantManager;
+use Illuminate\Http\Client\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Http;
@@ -53,6 +55,7 @@ final class KlassciBatchFetcherTest extends TestCase
 
     protected function tearDown(): void
     {
+        Carbon::setTestNow();
         Mockery::close();
         parent::tearDown();
     }
@@ -199,5 +202,58 @@ final class KlassciBatchFetcherTest extends TestCase
         self::assertSame(['data' => 'for-alice'], $alice[1]);
         self::assertSame(['data' => 'for-bob'], $bob[1]);
         Http::assertSentCount(2);
+    }
+
+    /**
+     * #757 — le lot des détails de classes a un délai GLOBAL : celui d'une
+     * lecture KLASSCI (`services.klassci.timeout`). Une fois l'échéance passée,
+     * aucun nouveau lot ne part ; ceux déjà partis finissent. Le résultat est
+     * alors PARTIEL, et dit comme tel par l'absence des identifiants.
+     *
+     * Ici : des lots d'une classe, chaque réponse avance l'horloge de 3 s, délai
+     * de 5 s. Le 1er lot part à 0 s, le 2e à 3 s, le 3e à 6 s ne part pas.
+     */
+    public function test_le_lot_des_classes_s_arrete_a_l_echeance_d_une_lecture_klassci(): void
+    {
+        $emises = $this->horlogeQuiAvanceDeTroisSecondesParReponse();
+
+        $resultat = app(KlassciBatchFetcher::class)->fetchManyClassesDetailsWithinTimeout([1, 2, 3], 'user-token');
+
+        self::assertSame([1, 2], array_keys($resultat), 'Le 3e lot ne doit pas partir après l\'échéance.');
+        self::assertCount(2, $emises);
+    }
+
+    /** Témoin : sans délai global, les mêmes trois lots partent tous. */
+    public function test_temoin_sans_delai_global_tous_les_lots_partent(): void
+    {
+        $emises = $this->horlogeQuiAvanceDeTroisSecondesParReponse();
+
+        $resultat = app(KlassciBatchFetcher::class)->fetchManyClassesDetails([1, 2, 3], 'user-token');
+
+        self::assertSame([1, 2, 3], array_keys($resultat));
+        self::assertCount(3, $emises);
+    }
+
+    /**
+     * Lots d'une seule classe, délai de lecture de 5 s ; chaque réponse avance
+     * l'horloge de 3 s.
+     *
+     * @return \ArrayObject<int, string> Les URL émises.
+     */
+    private function horlogeQuiAvanceDeTroisSecondesParReponse(): \ArrayObject
+    {
+        Config::set('services.klassci.pool_size', 1);
+        Config::set('services.klassci.timeout', 5);
+        Carbon::setTestNow('2026-11-17 00:00:00');
+
+        $emises = new \ArrayObject;
+        Http::fake(static function (Request $requete) use ($emises) {
+            $emises[] = $requete->url();
+            Carbon::setTestNow(Carbon::now()->addSeconds(3));
+
+            return Http::response(['data' => ['url' => $requete->url()]], 200);
+        });
+
+        return $emises;
     }
 }

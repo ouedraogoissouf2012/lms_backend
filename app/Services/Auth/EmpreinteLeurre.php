@@ -53,7 +53,7 @@ final class EmpreinteLeurre
 
     public function empreinte(): string
     {
-        $gardee = $this->gardee();
+        $gardee = null;
         if ($gardee !== null) {
             return $gardee;
         }

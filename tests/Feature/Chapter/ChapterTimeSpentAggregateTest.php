@@ -137,7 +137,8 @@ final class ChapterTimeSpentAggregateTest extends TestCase
         self::assertSame(2, $this->agregat());
     }
 
-    public function test_une_ligne_absente_est_creee_non_commencee(): void
+    /** #1147 : la ligne créée par l écriture du temps est COMMENCÉE (du temps est passé), à 0 %. */
+    public function test_une_ligne_absente_est_creee_commencee(): void
     {
         $this->ecoleAvecUneLecon('klassci');
         self::assertFalse(LessonProgress::query()->where('user_id', $this->apprenant->id)->exists());
@@ -145,7 +146,8 @@ final class ChapterTimeSpentAggregateTest extends TestCase
         $this->ecrire("/api/chapters/{$this->ch1->id}/time", 125);
 
         $ligne = LessonProgress::query()->where('user_id', $this->apprenant->id)->where('lesson_id', $this->lecon->id)->firstOrFail();
-        self::assertSame('not_started', $ligne->status);
+        self::assertSame('in_progress', $ligne->status);
+        self::assertNotNull($ligne->started_at);
         self::assertSame(0, $ligne->progress_percentage);
         self::assertSame(2, $ligne->time_spent_minutes);
         self::assertSame($this->ecole->id, $ligne->institution_id);

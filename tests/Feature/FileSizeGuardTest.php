@@ -96,6 +96,34 @@ final class FileSizeGuardTest extends TestCase
         $this->assertStringContainsString("rien n'a été contrôlé", $output);
     }
 
+    /** #918 : `routes/` est dans le périmètre, à 300 lignes, comme `app/`. */
+    public function test_fails_when_routes_file_exceeds_300(): void
+    {
+        [$code, $output] = $this->runGuard([$this->tmpFile('routes/api/big.php', 301)]);
+
+        $this->assertSame(1, $code);
+        $this->assertStringContainsString('routes/api/big.php', $output);
+    }
+
+    public function test_routes_file_at_300_passes(): void
+    {
+        [$code] = $this->runGuard([$this->tmpFile('routes/api/ok.php', 300)]);
+
+        $this->assertSame(0, $code);
+    }
+
+    /** Le dépôt lui-même : chaque fichier de `routes/` tient sous la limite (#918). */
+    public function test_every_route_file_of_the_repository_respects_the_limit(): void
+    {
+        $fichiers = array_merge(
+            glob(base_path('routes/*.php')) ?: [],
+            glob(base_path('routes/api/*.php')) ?: [],
+        );
+        [$code, $output] = $this->runGuard($fichiers);
+
+        $this->assertSame(0, $code, $output);
+    }
+
     public function test_refuses_without_any_argument(): void
     {
         [$code] = $this->runGuard([]);

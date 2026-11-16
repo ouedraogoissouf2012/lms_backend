@@ -3,9 +3,13 @@
 set -e
 
 files=$(git diff --cached --name-only --diff-filter=ACMR -- app || true)
+# La taille regarde aussi routes/ (#918) ; la longueur des méthodes, app/ seulement.
+tailles=$(git diff --cached --name-only --diff-filter=ACMR -- app routes || true)
 
+if [ -n "$tailles" ]; then
+    echo "$tailles" | tr '\n' '\0' | xargs -0 php scripts/check-file-sizes.php
+fi
 if [ -n "$files" ]; then
-    echo "$files" | tr '\n' '\0' | xargs -0 php scripts/check-file-sizes.php
     echo "$files" | tr '\n' '\0' | xargs -0 php scripts/check-method-sizes.php
 fi
 

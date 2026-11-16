@@ -3741,6 +3741,7 @@ components:
             - ip_quota_exceeded
             - ip_daily_cap_reached
             - seance_past
+            - evaluation_locked
 
     # #806 — `reason` est FACULTATIF ici : un 401 Sanctum n en porte aucun.
     RefusKlassci:
@@ -8601,6 +8602,15 @@ paths:
           description: "Evaluation updated"
         '403':
           description: "Permission denied"
+        '409':
+          description: |
+            Evaluation verrouillee (`reason: evaluation_locked`, #1113) : une copie est
+            deja remise, ou le drapeau `is_locked` est pose. Elle ne peut plus etre
+            modifiee. Les droits sont acquis : c'est l'etat qui refuse (409, et non 403).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefusMotive'
         '404':
           description: "Not found"
         '422':
@@ -8653,6 +8663,15 @@ paths:
           description: "Evaluation deleted"
         '403':
           description: "Permission denied"
+        '409':
+          description: |
+            Evaluation verrouillee (`reason: evaluation_locked`, #1113) : une copie est
+            deja remise, ou le drapeau `is_locked` est pose. Elle ne peut plus etre
+            supprimee. Les droits sont acquis : c'est l'etat qui refuse (409, et non 403).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefusMotive'
         '404':
           description: "Not found"
 

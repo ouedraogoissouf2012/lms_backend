@@ -135,7 +135,9 @@ final class TrainingSessionTransitionService
                     $periode->status->value,
                     $participe
                 ),
-                409
+                409,
+                // #922 : le motif d'une transition interdite depuis l'état courant.
+                reason: 'training_session_transition_not_allowed',
             );
         }
 

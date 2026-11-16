@@ -9179,8 +9179,8 @@ paths:
                 $ref: '#/components/schemas/MessageOnly'
         '409':
           description: |
-            - Aucune tentative en cours : la demarrer avec `/start` avant de la
-              rendre (sans `reason`).
+            - `reason: evaluation_attempt_not_started` : aucune tentative en cours ; la
+              demarrer avec `/start` avant de la rendre (#922).
             - `reason: evaluation_attempt_locked` : l echeance est depassee (C28).
               La copie est verrouillee, gardee avec ses reponses, et ne sera pas
               notee ; toute nouvelle remise rend le meme refus, sans rien ecrire.
@@ -9203,6 +9203,7 @@ paths:
                   reason:
                     type: string
                     enum:
+                      - evaluation_attempt_not_started
                       - evaluation_attempt_locked
                       - evaluation_attempt_conflict
         '422':
@@ -9757,7 +9758,8 @@ paths:
                 $ref: '#/components/schemas/MessageOnly'
         '409':
           description: |
-            - Copie encore `en_cours` : elle ne peut pas etre notee (sans `reason`).
+            - `reason: evaluation_submission_not_gradable` : copie encore `en_cours`,
+              elle ne peut pas encore etre notee (#922).
             - `reason: evaluation_attempt_locked` : copie hors delai (C28), remise
               refusee ou tentative echue. Elle est visible, jamais notee.
           content:
@@ -9776,6 +9778,7 @@ paths:
                   reason:
                     type: string
                     enum:
+                      - evaluation_submission_not_gradable
                       - evaluation_attempt_locked
         '422':
           description: |
@@ -10692,7 +10695,12 @@ paths:
         '202':
           description: "Accepted for processing"
         '401':
-          description: "Invalid signature"
+          description: |
+            Authentification du webhook refusee, chaque sens avec son motif (#922) :
+            `webhook_signature_missing`, `webhook_timestamp_invalid`,
+            `webhook_timestamp_expired`, `webhook_signature_invalid`.
+        '409':
+          description: "Webhook deja traite (rejeu du meme nonce) : `reason: webhook_already_processed` (#922)."
 
 # Security (global)
 security:

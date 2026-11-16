@@ -54,7 +54,7 @@ final class TrainingSessionTransitionController extends AuthenticatedController
         try {
             $periode = $operation($this->authenticatedUser($request));
         } catch (BusinessException $e) {
-            return $this->errorResponse($e->getMessage(), $e->statutHttp());
+            return $this->errorResponse($e->getMessage(), $e->statutHttp(), reason: $e->reason);
         }
 
         return $this->successResponse([

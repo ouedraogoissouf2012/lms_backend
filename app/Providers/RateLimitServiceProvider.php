@@ -139,8 +139,12 @@ final class RateLimitServiceProvider extends ServiceProvider
         // une école derrière une seule IP refusaient la connexion suivante.
         RateLimiter::for('school-requests', function (Request $request): array {
             return [
-                Limit::perMinute(self::SCHOOL_REQUESTS_PER_MINUTE)->by((string) $request->ip()),
-                Limit::perDay(self::SCHOOL_REQUESTS_PER_DAY)->by('school-requests-global'),
+                // Deux bornes, deux motifs (#922, ADR-906-01). Le plafond global du jour est
+                // PROPRE à cette route : il ne partage pas son motif avec un autre plafond.
+                Limit::perMinute(self::SCHOOL_REQUESTS_PER_MINUTE)->by((string) $request->ip())
+                    ->response($this->refusMotive('ip_quota_exceeded')),
+                Limit::perDay(self::SCHOOL_REQUESTS_PER_DAY)->by('school-requests-global')
+                    ->response($this->refusMotive('school_requests_global_cap')),
             ];
         });
 

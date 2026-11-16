@@ -49,7 +49,7 @@ use Illuminate\Foundation\Http\FormRequest;
  * Who can upload? Determined by controller/route authorization.
  * This request only validates file, not access control.
  */
-final class UploadFileRequest extends FormRequest
+class UploadFileRequest extends FormRequest
 {
     /**
      * Files are uploaded by authenticated users.

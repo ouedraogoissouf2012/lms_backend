@@ -10,7 +10,7 @@ use App\Http\Requests\ReorderChaptersRequest;
 use App\Http\Requests\RestoreChapterRequest;
 use App\Http\Requests\StoreChapterRequest;
 use App\Http\Requests\UpdateChapterRequest;
-use App\Http\Requests\UploadFileRequest;
+use App\Http\Requests\UploadChapterFileRequest;
 use App\Models\User;
 use App\Services\Chapter\ChapterCrudService;
 use App\Services\Chapter\ChapterFileUploadService;
@@ -93,7 +93,7 @@ final class ChapterController extends Controller
      * POST /api/chapters/{chapterId}/upload
      * Upload et conversion de fichier pour un chapitre (30 MB max).
      */
-    public function uploadFile(UploadFileRequest $request, int $chapterId): JsonResponse
+    public function uploadFile(UploadChapterFileRequest $request, int $chapterId): JsonResponse
     {
         $file = $request->file('file');
         if (! $file instanceof UploadedFile) {
@@ -162,7 +162,7 @@ final class ChapterController extends Controller
         return $this->relayResponse($result);
     }
 
-    private function wantsAsync(UploadFileRequest $request): bool
+    private function wantsAsync(UploadChapterFileRequest $request): bool
     {
         return $request->boolean('async')
             || str_contains(strtolower((string) $request->header('Prefer')), 'respond-async');

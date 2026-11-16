@@ -33,4 +33,18 @@ enum TrainingSessionStatus: string
     case Cloturee = 'cloturee';
     case Archivee = 'archivee';
     case Purgee = 'purgee';
+
+    /**
+     * Une Période annulée, clôturée, archivée ou purgée ne reçoit plus personne :
+     * les codes de ses classes n'ouvrent plus rien (#897), même s'ils sont restés
+     * posés. Une décision humaine, lue du statut ; la fenêtre de dates est une
+     * autre règle.
+     */
+    public function fermeLesInscriptions(): bool
+    {
+        return match ($this) {
+            self::Annulee, self::Cloturee, self::Archivee, self::Purgee => true,
+            self::Brouillon, self::Publiee => false,
+        };
+    }
 }

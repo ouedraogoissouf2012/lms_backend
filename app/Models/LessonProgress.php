@@ -21,9 +21,15 @@ class LessonProgress extends Model
 
     /**
      * `time_spent_minutes` n'y est PAS (#944) : c'est un agrégat que seul
-     * ChapterTimeRecorder écrit, par attribut. Hors de `$fillable`, aucune
-     * assignation de masse (`update`, `create`, `fill`) ne peut le réécrire,
-     * même depuis un tableau préparé à l'avance qu'aucune garde statique ne lit.
+     * ChapterTimeRecorder écrit, par attribut. Hors de `$fillable`, les
+     * assignations de masse du MODÈLE (`create`, `fill`, `$modele->update()`)
+     * ne peuvent pas le réécrire, même depuis un tableau préparé.
+     *
+     * Mais ce n'est pas une fermeture complète (#967) : `Builder::update()`
+     * (`LessonProgress::query()->where(...)->update([...])`) ne consulte PAS
+     * `$fillable`, ni `DB::table(...)`. La garde ChapterTimeSingleWriterTest
+     * couvre ces formes quand le tableau est écrit dans l'appel, pas quand il
+     * est préparé ailleurs.
      */
     protected $fillable = [
         'user_id',

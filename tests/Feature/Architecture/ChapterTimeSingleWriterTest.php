@@ -36,6 +36,16 @@ use Tests\TestCase;
  *   => 0])`) : ce n'est pas une écriture de temps ;
  * - les HOMONYMES, même nom de colonne mais une autre table, listés ci-dessous
  *   avec leur table. Cette liste ne doit pas s'allonger sans raison écrite.
+ *
+ * ## Ce que la garde ne voit pas (#967)
+ *
+ * C'est une garde par MOTIF : elle lit des formes, et non l'intention du code.
+ * - un tableau préparé dans une variable, puis passé à l'écriture
+ *   (`$data = ['time_spent_minutes' => …]; $p->update($data)`) ;
+ * - une écriture par `DB::table('lesson_progress')->update([...])` ;
+ * - une écriture dont le nom de colonne est calculé (`$colonne = 'time_…'`).
+ * `$fillable` ne ferme qu'une partie de ces trous : voir
+ * `test_l_agregat_ne_s_assigne_pas_en_masse`.
  */
 final class ChapterTimeSingleWriterTest extends TestCase
 {
@@ -104,9 +114,14 @@ final class ChapterTimeSingleWriterTest extends TestCase
 
     /**
      * Le motif statique ne lit pas un tableau préparé puis passé à `update()` :
-     * `$data = ['time_spent_minutes' => …]; $p->update($data)`. Ce trou se ferme
-     * à la source : l'agrégat est hors de `$fillable`, donc aucune assignation
-     * de masse ne peut l'écrire.
+     * `$data = ['time_spent_minutes' => …]; $p->update($data)`. L'agrégat est hors
+     * de `$fillable`, ce qui ferme ce trou pour les assignations de masse du
+     * MODÈLE (`create`, `fill`, `$modele->update()`).
+     *
+     * Pas au-delà (#967) : `Builder::update()` ne consulte pas `$fillable`, ni
+     * `DB::table()`. Et la source, `ChapterProgress::$time_spent_seconds`, est
+     * encore dans le `$fillable` de `ChapterProgress` : le même trou y reste
+     * ouvert.
      */
     public function test_l_agregat_ne_s_assigne_pas_en_masse(): void
     {

@@ -61,15 +61,25 @@ components:
           description: "Requêtes restantes dans la fenêtre courante."
       content:
         application/json:
+          # #1134 — le corps REEL (TooManyRequestsPresenter) : `reason` n est
+          # pose que par les seaux nommes qui disent quel budget est epuise
+          # (`inscriptions`, `rejoindre-classe`, ADR-906-01).
           schema:
             type: object
+            required:
+              - success
+              - message
             properties:
               success:
                 type: boolean
-                example: false
+                enum:
+                  - false
               message:
                 type: string
                 example: "Trop de requêtes. Veuillez réessayer plus tard."
+              reason:
+                type: string
+                description: "Facultatif : le budget epuise, pour les seaux qui le disent (ADR-906-01)."
 
     # #961 — les deux refus du middleware global `ResolveInstitution`, rendus
     # AVANT toute route : chaque operation les cite (scripts/
@@ -4191,7 +4201,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ClasseLocaleRefus'
         '429':
-          description: "KLASSCI limite les requetes, relaye, SANS son en-tete `Retry-After`."
+          description: "KLASSCI limite les requetes, relaye, SANS son en-tete `Retry-After`. Aussi : limite de débit des lectures, par famille et par compte (#947)."
           content:
             application/json:
               schema:
@@ -4325,7 +4335,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/RefusClasseEleves'
         '429':
-          description: "KLASSCI limite les requetes, relaye, SANS son en-tete `Retry-After`."
+          description: "KLASSCI limite les requetes, relaye, SANS son en-tete `Retry-After`. Aussi : limite de débit des lectures, par famille et par compte (#947)."
           content:
             application/json:
               schema:
@@ -4931,6 +4941,8 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
         '403':
           $ref: '#/components/responses/EtablissementDesactive'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
 
   /lms/seances/upcoming:
     get:
@@ -4992,6 +5004,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/RefusClasseEleves'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
         '500':
           description: "Defaillance interne, rapportee une fois au journal, sans le message ni les valeurs d'une requete."
           content:
@@ -5045,6 +5059,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/RefusClasseEleves'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
         '500':
           description: "Defaillance interne, rapportee une fois au journal, sans le message ni les valeurs d'une requete."
           content:
@@ -5110,6 +5126,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/RefusEleveSansClasseActive'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
         '500':
           description: "Defaillance interne, rapportee une fois au journal, sans le message ni les valeurs d'une requete."
           content:
@@ -5845,6 +5863,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
 
   /admin/school-requests:
     get:
@@ -5890,6 +5910,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
 
   /admin/school-requests/{schoolRequest}/validate:
     post:
@@ -6263,7 +6285,7 @@ paths:
         '429':
           description: |
             KLASSCI limite les requetes, relaye, SANS son en-tete `Retry-After`.
-            La route elle-meme n'a pas de limite propre.
+            Aussi : limite de débit des lectures, par famille et par compte (#947).
           content:
             application/json:
               schema:
@@ -6451,6 +6473,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
 
   /inscriptions:
     post:
@@ -7061,6 +7085,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/RefusClasseEleves'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
         '500':
           description: "Erreur non rattrapee, rendue par le gestionnaire global, sans `error`."
           content:
@@ -7120,6 +7146,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/PageMatiereRefus'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
         '500':
           description: |
             Defaillance interne, journalisee (base de donnees comprise). Le corps
@@ -7210,6 +7238,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/PageMatiereRefus'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
         '500':
           description: |
             Defaillance interne, journalisee (base de donnees comprise). Le corps
@@ -7556,6 +7586,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
     post:
       tags:
         - Session de formation
@@ -7681,6 +7713,8 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
         '403':
           $ref: '#/components/responses/EtablissementDesactive'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
 
   /auth/logout:
     post:
@@ -7830,6 +7864,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/RefusMotive'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
         '500':
           description: "Defaillance interne : « Service indisponible. Veuillez reessayer. »"
           content:
@@ -7913,6 +7949,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/RefusClasseEleves'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
         '500':
           description: |
             Defaillance interne, base de donnees comprise : « Service
@@ -8056,6 +8094,8 @@ paths:
           $ref: '#/components/responses/EtablissementDesactive'
         '404':
           description: "Class not found"
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
 
   /proxy/matieres:
     get:
@@ -8173,6 +8213,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/RefusClasseEleves'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
         '500':
           description: "Defaillance interne, rapportee une fois au journal, sans le message ni les valeurs d'une requete."
           content:
@@ -8212,6 +8254,8 @@ paths:
           $ref: '#/components/responses/KlassciUnauthorized'
         '403':
           $ref: '#/components/responses/EtablissementDesactive'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
 
   /proxy/enseignants:
     get:
@@ -8313,6 +8357,8 @@ paths:
           $ref: '#/components/responses/KlassciUnauthorized'
         '403':
           $ref: '#/components/responses/EtablissementDesactive'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
         '500':
           description: "Refus de KLASSCI, ou defaillance interne rapportee une fois au journal."
           content:
@@ -8346,6 +8392,8 @@ paths:
           $ref: '#/components/responses/KlassciUnauthorized'
         '403':
           $ref: '#/components/responses/EtablissementDesactive'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
 
   /proxy/niveaux-etudes:
     get:
@@ -8363,6 +8411,8 @@ paths:
           $ref: '#/components/responses/KlassciUnauthorized'
         '403':
           $ref: '#/components/responses/EtablissementDesactive'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
 
   /proxy/evaluations:
     get:
@@ -8392,6 +8442,8 @@ paths:
           $ref: '#/components/responses/KlassciUnauthorized'
         '403':
           $ref: '#/components/responses/EtablissementDesactive'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
 
   /proxy/emploi-temps:
     get:
@@ -8409,6 +8461,8 @@ paths:
           $ref: '#/components/responses/KlassciUnauthorized'
         '403':
           $ref: '#/components/responses/EtablissementDesactive'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
 
   /proxy/test-connection:
     get:
@@ -8427,6 +8481,8 @@ paths:
           $ref: '#/components/responses/KlassciUnauthorized'
         '403':
           description: "Insufficient permissions (requires coordinateur or admin role). Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
 
   # ============ EVALUATIONS ============
   /evaluations:
@@ -8505,6 +8561,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/MessageOnly'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
 
     post:
       tags:
@@ -8732,6 +8790,8 @@ paths:
           $ref: '#/components/responses/EtablissementDesactive'
         '404':
           description: "Evaluation not found"
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
 
     put:
       tags:
@@ -9081,6 +9141,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/MessageOnly'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
         '503':
           description: "KLASSCI indisponible (en-tete `Retry-After`)"
           content:
@@ -9205,6 +9267,8 @@ paths:
           $ref: '#/components/responses/KlassciUnauthorized'
         '403':
           $ref: '#/components/responses/EtablissementDesactive'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
         '500':
           description: "Erreur interne"
           content:
@@ -9589,6 +9653,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/MessageOnly'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
         '503':
           description: "KLASSCI injoignable : la classe de l eleve ne peut pas etre lue (en-tete `Retry-After`)."
           content:
@@ -9710,6 +9776,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/MessageOnly'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
         '500':
           description: "Erreur interne"
           content:
@@ -9890,6 +9958,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/RefusApercuEvaluation'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
         '500':
           description: "Erreur interne"
           content:
@@ -9996,6 +10066,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/MessageOnly'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
         '500':
           description: "Erreur interne"
           content:
@@ -10274,6 +10346,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/MessageOnly'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
         '503':
           description: "KLASSCI indisponible (en-tete `Retry-After`)"
           content:
@@ -10429,6 +10503,8 @@ paths:
           description: "Unauthenticated"
         '403':
           $ref: '#/components/responses/EtablissementDesactive'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
 
   /dashboard/teacher:
     get:
@@ -10446,6 +10522,8 @@ paths:
           description: "Unauthenticated"
         '403':
           $ref: '#/components/responses/EtablissementDesactive'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
 
   # ============ LESSONS ============
   /lessons/my-courses:
@@ -10537,6 +10615,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
 
   # ============ CHAPTERS ============
   /lessons/{lessonId}/chapters:
@@ -10571,6 +10651,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/RefusMotive'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
 
     post:
       tags:
@@ -10892,6 +10974,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/RefusMotive'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
 
     put:
       tags:
@@ -10959,6 +11043,8 @@ paths:
           $ref: '#/components/responses/EtablissementInconnu'
         '403':
           $ref: '#/components/responses/EtablissementDesactive'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
 
   /notifications/unread-count:
     get:
@@ -10974,6 +11060,8 @@ paths:
           $ref: '#/components/responses/EtablissementInconnu'
         '403':
           $ref: '#/components/responses/EtablissementDesactive'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
 
   /notifications/{id}/mark-as-read:
     post:
@@ -11011,6 +11099,8 @@ paths:
           $ref: '#/components/responses/EtablissementInconnu'
         '403':
           $ref: '#/components/responses/EtablissementDesactive'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
 
   # L'upload vit sous /files/upload, pas sous /files (#876) : la spec le
   # documentait en `POST /files`, que le serveur refuse en 405.
@@ -11085,6 +11175,8 @@ paths:
           $ref: '#/components/responses/EtablissementInconnu'
         '403':
           $ref: '#/components/responses/EtablissementDesactive'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
 
   /webhooks/visio/recording-ready:
     post:

@@ -46,6 +46,7 @@ final class VisioParticipantsListService
         private readonly LoggerInterface $logger,
         private readonly AttendanceLifecycleService $lifecycle,
         private readonly CaughtExceptionLog $journal,
+        private readonly ParticipantsVisioLocaux $locaux,
     ) {}
 
     /**
@@ -54,16 +55,10 @@ final class VisioParticipantsListService
     public function list(int $seanceId, User $user): array
     {
         try {
-            $visio = Seance::where('klassci_seance_id', $seanceId)->first();
+            $visio = $this->seance($seanceId, $user);
 
             if ($visio === null) {
-                return [
-                    'status' => 404,
-                    'payload' => [
-                        'success' => false,
-                        'message' => 'Séance non trouvée',
-                    ],
-                ];
+                return ['status' => 404, 'payload' => ['success' => false, 'message' => 'Séance non trouvée']];
             }
 
             // 0. Déconnecter automatiquement les participants inactifs (timeout 3 minutes)
@@ -88,11 +83,8 @@ final class VisioParticipantsListService
                 ->orderBy('joined_at', 'desc')
                 ->get();
 
-            // 2. Calculer la durée théorique de la séance (depuis programmation)
-            [$seanceDurationMinutes, $heureDebut, $heureFin] = $this->resolveSeanceTiming($seanceId, $user);
-
-            // 3. Récupérer TOUS les étudiants de la classe (pour comparaison)
-            $allClassStudents = $this->resolveAllClassStudents($seanceId, $user, $visio);
+            // 2-3. La durée théorique et TOUS les étudiants de la classe (pour comparaison)
+            [$allClassStudents, $seanceDurationMinutes, $heureDebut, $heureFin] = $this->rosterEtHoraire($seanceId, $user, $visio);
 
             // 4. Créer un index des participants réels par user_id
             $actualParticipantsById = [];
@@ -166,6 +158,30 @@ final class VisioParticipantsListService
                 ],
             ];
         }
+    }
+
+    /** La séance, par la règle UNIQUE de désignation, celle de la jonction (#1120, `Seance::localIdFor`). */
+    private function seance(int $seanceId, User $user): ?Seance
+    {
+        $localId = Seance::localIdFor($seanceId, $user->institution_id);
+
+        return $localId === null ? null : Seance::query()->whereKey($localId)->first();
+    }
+
+    /**
+     * Le roster et l'horaire : en local pour une séance LOCALE ({@see ParticipantsVisioLocaux}).
+     *
+     * @return array{0: array<int, array<string, mixed>>, 1: int|float, 2: ?string, 3: ?string}
+     */
+    private function rosterEtHoraire(int $seanceId, User $user, Seance $visio): array
+    {
+        if ($visio->klassci_seance_id === null) {
+            return $this->locaux->rosterEtHoraire($visio);
+        }
+
+        [$duree, $debut, $fin] = $this->resolveSeanceTiming($seanceId, $user);
+
+        return [$this->resolveAllClassStudents($seanceId, $user, $visio), $duree, $debut, $fin];
     }
 
     /**

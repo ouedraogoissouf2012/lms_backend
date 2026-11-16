@@ -3,12 +3,20 @@
 namespace Database\Seeders;
 
 use App\Models\Institution;
+use Illuminate\Console\Command;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 class InstitutionSeeder extends Seeder
 {
+    /** La variable d'environnement du jeton de chaque établissement, nommée quand il manque (#688). */
+    private const VARIABLES_DE_JETON = [
+        'presentation' => 'KLASSCI_PRESENTATION_TOKEN (ou KLASSCI_API_TOKEN)',
+        'esbtp-abidjan' => 'KLASSCI_ESBTP_ABIDJAN_TOKEN',
+        'esbtp-yakro' => 'KLASSCI_ESBTP_YAKRO_TOKEN',
+    ];
+
     /**
      * Tables à backfill avec institution_id
      */
@@ -49,20 +57,7 @@ class InstitutionSeeder extends Seeder
     {
         // 1. Créer les institutions
         $institutions = [
-            [
-                'slug' => 'presentation',
-                'name' => 'KLASSCI Présentation',
-                // #685 : ce defaut etait en `http://`. KLASSCI ne repond plus sur
-                // le port 80 — mesure du 2026-09-03 : code 000 apres 10 s en
-                // clair, 404 en 1,74 s en TLS. Un `db:seed` reintroduisait donc
-                // la panne que #768 venait de corriger, et la regle
-                // `App\Rules\KlassciApiUrl` refuse desormais cette forme a
-                // l'enregistrement : le seeder ecrivait une valeur que l'API
-                // elle-meme rejetterait.
-                'klassci_api_url' => env('KLASSCI_PRESENTATION_URL', 'https://presentation.klassci.com/api/lms'),
-                'klassci_api_token_encrypted' => env('KLASSCI_PRESENTATION_TOKEN', env('KLASSCI_API_TOKEN')),
-                'is_active' => true,
-            ],
+            self::attributsDePresentation(),
             [
                 'slug' => 'esbtp-abidjan',
                 'name' => 'ESBTP Abidjan',
@@ -90,23 +85,8 @@ class InstitutionSeeder extends Seeder
         // On nomme la variable manquante, comme le fait SupradminSeeder pour les
         // siennes. On n'echoue pas : un poste de developpement sans jeton reste
         // legitime, et faire echouer `db:seed` y serait plus nuisible qu'utile.
-        $variablesDeJeton = [
-            'presentation' => 'KLASSCI_PRESENTATION_TOKEN (ou KLASSCI_API_TOKEN)',
-            'esbtp-abidjan' => 'KLASSCI_ESBTP_ABIDJAN_TOKEN',
-            'esbtp-yakro' => 'KLASSCI_ESBTP_YAKRO_TOKEN',
-        ];
-
         foreach ($institutions as $institution) {
-            $jeton = $institution['klassci_api_token_encrypted'] ?? null;
-
-            if (! is_string($jeton) || $jeton === '') {
-                $this->say(
-                    'warn',
-                    "  ⚠ {$institution['slug']} : jeton KLASSCI ABSENT — variable "
-                    ."{$variablesDeJeton[$institution['slug']]} non definie. "
-                    .'Le tenant est cree mais ne pourra pas joindre KLASSCI.'
-                );
-            }
+            self::annoncerUnJetonAbsent($this->command, $institution);
 
             Institution::updateOrCreate(
                 ['slug' => $institution['slug']],
@@ -130,6 +110,65 @@ class InstitutionSeeder extends Seeder
                 }
             }
         }
+    }
+
+    /**
+     * L'établissement `presentation`, créé s'il manque : la SEULE définition, que
+     * les seeders de démonstration appellent au lieu de la recopier (#688).
+     *
+     * Seule la création est partagée. Le rattachement des lignes orphelines reste
+     * le travail de `run()`, et de lui seul : un seeder lancé seul ne réécrit
+     * aucune ligne existante, ni un établissement `presentation` déjà là.
+     */
+    public static function presentation(?Command $console = null): Institution
+    {
+        $attributs = self::attributsDePresentation();
+        self::annoncerUnJetonAbsent($console, $attributs);
+
+        return Institution::firstOrCreate(['slug' => 'presentation'], $attributs);
+    }
+
+    /**
+     * @return array{slug: string, name: string, klassci_api_url: mixed, klassci_api_token_encrypted: mixed, is_active: bool}
+     */
+    private static function attributsDePresentation(): array
+    {
+        return [
+            'slug' => 'presentation',
+            'name' => 'KLASSCI Présentation',
+            // #685 : ce defaut etait en `http://`. KLASSCI ne repond plus sur
+            // le port 80 — mesure du 2026-09-03 : code 000 apres 10 s en
+            // clair, 404 en 1,74 s en TLS. Un `db:seed` reintroduisait donc
+            // la panne que #768 venait de corriger, et la regle
+            // `App\Rules\KlassciApiUrl` refuse desormais cette forme a
+            // l'enregistrement : le seeder ecrivait une valeur que l'API
+            // elle-meme rejetterait.
+            'klassci_api_url' => env('KLASSCI_PRESENTATION_URL', 'https://presentation.klassci.com/api/lms'),
+            'klassci_api_token_encrypted' => env('KLASSCI_PRESENTATION_TOKEN', env('KLASSCI_API_TOKEN')),
+            'is_active' => true,
+        ];
+    }
+
+    /**
+     * Nomme la variable d'un jeton absent. On n'echoue pas : un poste de
+     * developpement sans jeton reste legitime.
+     *
+     * @param  array<string, mixed>  $institution
+     */
+    private static function annoncerUnJetonAbsent(?Command $console, array $institution): void
+    {
+        $jeton = $institution['klassci_api_token_encrypted'] ?? null;
+        $slug = (string) ($institution['slug'] ?? '');
+
+        if (is_string($jeton) && $jeton !== '') {
+            return;
+        }
+
+        $console?->warn(
+            "  ⚠ {$slug} : jeton KLASSCI ABSENT — variable "
+            .(self::VARIABLES_DE_JETON[$slug] ?? 'inconnue').' non definie. '
+            .'Le tenant est cree mais ne pourra pas joindre KLASSCI.'
+        );
     }
 
     /**

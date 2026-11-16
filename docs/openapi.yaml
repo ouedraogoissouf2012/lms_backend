@@ -4039,6 +4039,7 @@ paths:
         la premiere au lieu d'en creer une seconde.
 
         Debit limite a 5 requetes par minute et par IP.
+      security: []
       requestBody:
         required: true
         content:
@@ -5546,6 +5547,7 @@ paths:
         (WhatsApp, SMS, de vive voix). Il est a usage unique et expirant.
 
         Debit limite a 5 requetes par minute et par IP.
+      security: []
       requestBody:
         required: true
         content:
@@ -7618,6 +7620,7 @@ paths:
         - Authentication
       summary: "Login user"
       description: "Authenticate user with email and password, returns Sanctum token"
+      security: []
       requestBody:
         required: true
         content:

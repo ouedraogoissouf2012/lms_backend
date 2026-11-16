@@ -166,6 +166,19 @@ final class OpenApiSyncTest extends TestCase
         return is_file(self::BASELINE_PATH) ? (require self::BASELINE_PATH) : [];
     }
 
+    /**
+     * #912 : le sens « réel → documenté » compare par OPÉRATION, comme l'autre.
+     * Une méthode nouvelle sur un chemin déjà documenté pour une autre méthode
+     * (`GET /classes` à côté de `POST /classes`) est une opération non documentée.
+     */
+    public function test_une_methode_non_documentee_sur_un_chemin_documente_est_vue(): void
+    {
+        $reelles = ['/classes' => ['GET' => true, 'POST' => true], '/auth/me' => ['GET' => true]];
+        $documentees = [['POST', '/classes'], ['GET', '/auth/me']];
+
+        self::assertSame(['GET /classes'], self::undocumentedOperations($reelles, $documentees));
+    }
+
     public function test_openapi_spec_file_exists_and_is_valid_yaml(): void
     {
         $spec = Yaml::parseFile(base_path(self::SPEC_PATH));

@@ -90,14 +90,15 @@ components:
       description: |
         Requete sans jeton, en-tete `X-Institution` d un etablissement inconnu
         ou inactif. Rendu AVANT le 401 de l authentification. Sans `reason`.
-        Le message recopie la valeur recue (#1129).
+        Message fixe : il ne recopie pas la valeur recue, et ne distingue pas
+        un etablissement inconnu d un inactif (#1129).
       content:
         application/json:
           schema:
             $ref: '#/components/schemas/RefusDeLaResolution'
           example:
             success: false
-            message: "Institution non trouvée ou inactive: slug-inexistant"
+            message: "Établissement introuvable ou inactif."
 
     # #806 — un 401 d'une route adossee a KLASSCI a TROIS sens, que seul
     # `reason` distingue. CIBLE : le client decide sur `reason`, jamais sur le

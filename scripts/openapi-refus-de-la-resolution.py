@@ -56,14 +56,15 @@ COMPOSANTS_REPONSES = """\
       description: |
         Requete sans jeton, en-tete `X-Institution` d un etablissement inconnu
         ou inactif. Rendu AVANT le 401 de l authentification. Sans `reason`.
-        Le message recopie la valeur recue (#1129).
+        Message fixe : il ne recopie pas la valeur recue, et ne distingue pas
+        un etablissement inconnu d un inactif (#1129).
       content:
         application/json:
           schema:
             $ref: '#/components/schemas/RefusDeLaResolution'
           example:
             success: false
-            message: "Institution non trouvée ou inactive: slug-inexistant"
+            message: "Établissement introuvable ou inactif."
 
 """
 

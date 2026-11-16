@@ -6,6 +6,7 @@ namespace App\Services\Lesson;
 
 use App\Models\Lesson;
 use App\Models\LessonProgress;
+use Illuminate\Database\Eloquent\Collection;
 
 /**
  * Progression sur une leçon : state machine de mise à jour (PERF-04 batch 3)
@@ -20,6 +21,27 @@ class LessonProgressService
     public function progressForUser(Lesson $lesson, int $userId): ?LessonProgress
     {
         return $lesson->progress()->where('user_id', $userId)->first();
+    }
+
+    /**
+     * Les progressions d'un utilisateur sur plusieurs leçons, en UNE requête,
+     * indexées par leçon (#940) ; la clé unique `(user_id, lesson_id)` en garantit
+     * une au plus. Une leçon jamais commencée est absente.
+     *
+     * @param  list<int>  $lessonIds
+     * @return Collection<int, LessonProgress>
+     */
+    public function progressionsForUser(array $lessonIds, int $userId): Collection
+    {
+        if ($lessonIds === []) {
+            return new Collection;
+        }
+
+        return LessonProgress::query()
+            ->where('user_id', $userId)
+            ->whereIn('lesson_id', $lessonIds)
+            ->get()
+            ->keyBy('lesson_id');
     }
 
     /**

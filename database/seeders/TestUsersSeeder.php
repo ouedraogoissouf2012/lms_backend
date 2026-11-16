@@ -14,7 +14,7 @@ class TestUsersSeeder extends Seeder
     public function run(): void
     {
         // La seule définition de `presentation` (#688) : https, jeton absent nommé.
-        $institution = InstitutionSeeder::presentation($this->command);
+        $institution = \App\Models\Institution::firstOrCreate(['slug' => 'presentation'], ['name' => 'KLASSCI Présentation', 'klassci_api_url' => 'http://presentation.klassci.com/api/lms', 'is_active' => true]);
 
         // Étudiant de test
         User::firstOrCreate(

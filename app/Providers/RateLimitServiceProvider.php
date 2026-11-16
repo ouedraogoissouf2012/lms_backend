@@ -6,6 +6,7 @@ namespace App\Providers;
 
 use App\Http\Presenters\TooManyRequestsPresenter;
 use App\Models\User;
+use App\Support\Http\LimiteDesLectures;
 use Closure;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\JsonResponse;
@@ -47,6 +48,9 @@ use Illuminate\Support\ServiceProvider;
  *  - `rejoindre-classe` : 10 req/min + 30/jour par compte (#885, porte
  *                      authentifiée) — motifs `account_quota_exceeded` /
  *                      `account_daily_cap_reached`.
+ *  - `lecture`      : toute lecture authentifiée, par famille et par compte
+ *                      (#947, ADR-947-01) — posé sur le groupe `api`, voir
+ *                      `LimiteDesLectures`.
  *
  * Le `supradmin` (gestionnaire plateforme) est exempté (`Limit::none()`) —
  * cohérent avec son bypass tenant existant.
@@ -132,6 +136,8 @@ final class RateLimitServiceProvider extends ServiceProvider
         RateLimiter::for('search', function (Request $request): Limit {
             return $this->limitForUser($request, self::SEARCH_PER_MINUTE);
         });
+
+        RateLimiter::for('lecture', Closure::fromCallable(new LimiteDesLectures));
 
         // Un limiteur NOMMÉ, et non un `throttle:5,1` en ligne : la clé anonyme
         // de `ThrottleRequests` est `domaine|ip`, sans chemin ni nom de route.

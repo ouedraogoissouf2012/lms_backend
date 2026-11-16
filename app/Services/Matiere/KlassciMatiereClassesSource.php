@@ -11,10 +11,13 @@ use App\Services\KlassciProxyService;
 use App\Services\Seances\KlassciPayload;
 use App\Services\Sync\Classes\ClasseMatieresSynchronizer;
 use App\Support\Logging\CaughtExceptionLog;
+use Psr\Log\LoggerInterface;
 use Throwable;
+use UnexpectedValueException;
 
 /**
- * Les classes que KLASSCI rattache à une matière, parmi celles de l'enseignant.
+ * Les classes que KLASSCI rattache à une matière, parmi celles de l'enseignant
+ * ou, pour un gestionnaire, de l'établissement (#757).
  *
  * ## Pourquoi cette source existe
  *
@@ -58,47 +61,38 @@ final class KlassciMatiereClassesSource
         private readonly TeacherDashboardClasses $dashboardClasses,
         private readonly ClasseMatieresSynchronizer $matieresSynchronizer,
         private readonly CaughtExceptionLog $journal,
+        private readonly LoggerInterface $logger,
     ) {}
 
     /**
-     * Les classes de l'enseignant qui portent cette matière, en identifiants
-     * LOCAUX.
+     * Les classes de l'enseignant (ou, pour un gestionnaire, de l'établissement)
+     * qui portent cette matière, en identifiants LOCAUX.
      *
-     * Coût : 1 appel (tableau de bord) + N détails de classe groupés. C'est la
-     * raison pour laquelle le résolveur ne l'appelle qu'en dernier recours.
+     * Coût : 1 appel (tableau de bord, ou liste de l'établissement) + N détails de
+     * classe groupés, sous le délai global d'une lecture KLASSCI. C'est la raison
+     * pour laquelle le résolveur ne l'appelle qu'en dernier recours. Un
+     * gestionnaire n'en paie le coût qu'une fois : le miroir répond ensuite.
      *
      * @return array<int, array{id: int, nom: string}>
      */
-    public function classesFor(User $teacher, int $klassciMatiereId, int $institutionId): array
+    public function classesFor(User $user, int $klassciMatiereId, int $institutionId): array
     {
-        // Cette source lit le tableau de bord ENSEIGNANT. La demander pour un
-        // autre role n'a pas de sens, et coute cher pour rien : le 4xx que
-        // KLASSCI renverrait est leve DEPUIS l'interieur de
-        // `tenantCache->remember()` (KlassciProxyService), donc rien n'est mis
-        // en cache et l'appel repartirait a CHAQUE affichage.
-        //
-        // Le coordinateur est deliberement exclu : il a droit de creer des
-        // lecons (StoreLessonRequest), mais ses classes ne se lisent pas sur
-        // `me/teacher-dashboard`. Sa source lui est propre — dette tracee, hors
-        // perimetre de #755.
-        if (! $teacher->isTeacher()) {
-            return [];
-        }
+        $klassciToken = $user->klassci_token;
 
-        $klassciToken = $teacher->klassci_token;
-
-        if (! is_string($klassciToken) || $klassciToken === '') {
+        if (! $this->lit($user) || ! is_string($klassciToken) || $klassciToken === '') {
             return [];
         }
 
         try {
-            $klassciClasseIds = $this->klassciClasseIdsOf($klassciToken);
+            $klassciClasseIds = $this->klassciClasseIdsOf($user, $klassciToken);
 
             if ($klassciClasseIds === []) {
                 return [];
             }
 
-            $details = $this->klassciService->fetchManyClassesDetails($klassciClasseIds, $klassciToken);
+            // Sous le délai GLOBAL d'une lecture KLASSCI : pour un gestionnaire,
+            // N vaut les classes de l'établissement entier (#757).
+            $details = $this->klassciService->fetchManyClassesDetailsWithinTimeout($klassciClasseIds, $klassciToken);
         } catch (Throwable $e) {
             // Jamais une erreur remontée : l'écran affiche « aucune classe »,
             // pas une page en 500.
@@ -109,21 +103,86 @@ final class KlassciMatiereClassesSource
             return [];
         }
 
-        return $this->classesPortantLaMatiere($details, $klassciMatiereId, $institutionId);
+        return $this->classesPortantLaMatiere($details, $klassciMatiereId, $institutionId, $this->complet($details, $klassciClasseIds, $klassciMatiereId));
     }
 
     /**
-     * Les identifiants KLASSCI des classes de l'enseignant, depuis son tableau
-     * de bord — un seul appel.
+     * Qui a une source de classes : l'enseignant, et le gestionnaire (coordinateur,
+     * admin d'école), qui a le droit de créer une leçon (`StoreLessonRequest`,
+     * `isManager()`, #757). Pas l'apprenant : la page ne lui propose pas de créer.
+     */
+    private function lit(User $user): bool
+    {
+        return $user->isTeacher() || $user->isManager();
+    }
+
+    /**
+     * Les identifiants KLASSCI des classes à interroger — un seul appel.
+     *
+     * - l'enseignant : celles de son tableau de bord ;
+     * - le gestionnaire : celles de l'établissement (`classes`, jeton
+     *   d'établissement, l'appel de l'écran de gestion des classes). JAMAIS
+     *   `me/teacher-dashboard` avec son jeton : le 4xx de KLASSCI serait levé dans
+     *   `tenantCache->remember()`, rien ne serait mis en cache, et l'appel
+     *   repartirait à chaque affichage.
      *
      * @return list<int>
      */
-    private function klassciClasseIdsOf(string $klassciToken): array
+    private function klassciClasseIdsOf(User $user, string $klassciToken): array
     {
+        $classes = $user->isTeacher()
+            ? $this->dashboardClasses->forToken($klassciToken)
+            : $this->classesDeLEtablissement();
+
         return KlassciPayload::uniqueIntIds(
-            $this->dashboardClasses->forToken($klassciToken),
+            $classes,
             static fn (array $classe): ?int => KlassciPayload::toInt($classe['id'] ?? null),
         );
+    }
+
+    /**
+     * La liste des classes de l'établissement, telle que KLASSCI la rend
+     * (`data`, une liste) ; toute autre forme lève, et la jambe rend « aucune
+     * classe » au lieu de deviner.
+     *
+     * @return list<array<string, mixed>>
+     */
+    private function classesDeLEtablissement(): array
+    {
+        $donnees = $this->klassciService->getClasses()['data'] ?? null;
+
+        if (! is_array($donnees) || ! array_is_list($donnees)) {
+            throw new UnexpectedValueException('Réponse KLASSCI inattendue pour `classes` : liste attendue.');
+        }
+
+        return KlassciPayload::listOfArrays($donnees);
+    }
+
+    /**
+     * Le pool a-t-il rendu TOUTES les classes demandées ? Un identifiant absent
+     * est une classe en échec, ou non lue avant l'échéance.
+     *
+     * Un partiel est rendu (la liste est incomplète, jamais fausse) mais il
+     * n'alimente pas le miroir : la deuxième jambe répondrait alors non vide, et
+     * la troisième ne rejouerait plus jamais. Le partiel deviendrait l'état
+     * stable (#758).
+     *
+     * @param  array<int|string, mixed>  $details
+     * @param  list<int>  $demandes
+     */
+    private function complet(array $details, array $demandes, int $klassciMatiereId): bool
+    {
+        $manquantes = count(array_diff($demandes, array_map('intval', array_keys($details))));
+
+        if ($manquantes > 0) {
+            $this->logger->warning('Classes de la matière — détails partiels : miroir non alimenté', [
+                'klassci_matiere_id' => $klassciMatiereId,
+                'demandees' => count($demandes),
+                'manquantes' => $manquantes,
+            ]);
+        }
+
+        return $manquantes === 0;
     }
 
     /**
@@ -134,10 +193,12 @@ final class KlassciMatiereClassesSource
      * écartée : `StoreLessonRequest::authorize()` la refuserait de toute façon,
      * et proposer une classe inutilisable, c'est proposer une erreur.
      *
+     * Le miroir n'est alimenté que d'une réponse COMPLÈTE (#758, voir `complet()`).
+     *
      * @param  array<int|string, mixed>  $details
      * @return array<int, array{id: int, nom: string}>
      */
-    private function classesPortantLaMatiere(array $details, int $klassciMatiereId, int $institutionId): array
+    private function classesPortantLaMatiere(array $details, int $klassciMatiereId, int $institutionId, bool $alimenterLeMiroir): array
     {
         $porteuses = [];
 
@@ -157,6 +218,10 @@ final class KlassciMatiereClassesSource
         // traduction vers l'espace local est un `whereIn`, pas un N+1.
         foreach ($this->localesParKlassciId(array_keys($porteuses), $institutionId) as $klassciId => $locale) {
             $classes[] = ['id' => (int) $locale->id, 'nom' => (string) ($locale->libelle ?? 'N/A')];
+
+            if (! $alimenterLeMiroir) {
+                continue;
+            }
 
             // Le miroir est un effet de bord OPPORTUNISTE sur un chemin de
             // LECTURE, et il est le seul endroit du diff qui ecrit.

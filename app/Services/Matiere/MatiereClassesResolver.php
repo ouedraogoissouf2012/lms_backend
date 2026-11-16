@@ -81,7 +81,7 @@ final class MatiereClassesResolver
      * @param  array<int, array<string, mixed>>  $seances  Séances déjà enrichies.
      * @return array<int, array{id: int, nom: string}>
      */
-    public function resolve(array $seances, int $klassciMatiereId, ?int $institutionId, User $teacher): array
+    public function resolve(array $seances, int $klassciMatiereId, ?int $institutionId, User $user): array
     {
         $classes = [];
 
@@ -104,13 +104,14 @@ final class MatiereClassesResolver
         // Reléguée au dernier rang parce qu'elle coûte 1 + N appels : tant que
         // le local sait, on ne dérange pas KLASSCI.
         //
-        // `$teacher` est OBLIGATOIRE et non-nullable, délibérément. En optionnel,
+        // `$user` (l'enseignant, ou le gestionnaire depuis #757) est OBLIGATOIRE
+        // et non-nullable, délibérément. En optionnel,
         // l'oublier chez l'appelant rendait la jambe muette sans qu'aucun test
         // ne rougisse — donc rétablissait le 403 de #755 en silence. Mesuré :
         // 138 tests restaient verts. Une erreur fatale vaut mieux qu'un
         // correctif qu'on peut débrancher sans le savoir.
         if ($classes === [] && $institutionId !== null) {
-            foreach ($this->klassciSource->classesFor($teacher, $klassciMatiereId, $institutionId) as $classe) {
+            foreach ($this->klassciSource->classesFor($user, $klassciMatiereId, $institutionId) as $classe) {
                 $classes[$classe['id']] ??= $classe;
             }
         }

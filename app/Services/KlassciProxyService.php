@@ -273,6 +273,18 @@ class KlassciProxyService
     }
 
     /**
+     * Sous le délai GLOBAL d'une lecture KLASSCI (#757) : un résultat partiel
+     * omet les classes non lues.
+     *
+     * @param  array<int>  $classeIds
+     * @return array<int, array<string, mixed>>
+     */
+    public function fetchManyClassesDetailsWithinTimeout(array $classeIds, string $userToken, ?int $ttl = 600): array
+    {
+        return $this->batch->fetchManyClassesDetailsWithinTimeout($classeIds, $userToken, $ttl);
+    }
+
+    /**
      * @param  array<int>  $classeIds
      * @return array<int, array<string, mixed>>
      */

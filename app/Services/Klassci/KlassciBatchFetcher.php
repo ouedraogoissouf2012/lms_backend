@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Services\Klassci;
 
+use Carbon\CarbonInterface;
 use Illuminate\Contracts\Cache\Repository as CacheRepository;
+use Illuminate\Support\Carbon;
 
 /**
  * PERF-02 (issue #135) — Couche 3 : batch fetcher parallélisé via `Http::pool`.
@@ -96,6 +98,7 @@ final class KlassciBatchFetcher
      * @param  string  $endpointPattern  Pattern avec `{id}` (ex: `"matieres/{id}"`)
      * @param  string|null  $userToken  Token utilisateur ou null pour le token système
      * @param  int|null  $customTTL  Override TTL cache (secondes)
+     * @param  CarbonInterface|null  $echeance  Au-delà, aucun lot nouveau ne part (#757)
      * @return array<int, array<string, mixed>> Map [id => responseData]. IDs échoués absents.
      */
     public function fetchManyByEndpoint(
@@ -103,6 +106,7 @@ final class KlassciBatchFetcher
         string $endpointPattern,
         ?string $userToken = null,
         ?int $customTTL = null,
+        ?CarbonInterface $echeance = null,
     ): array {
         if ($ids === []) {
             return [];
@@ -131,6 +135,7 @@ final class KlassciBatchFetcher
             new PoolTarget($baseUrl, $effectiveToken, $this->connectTimeout, $this->timeout, $this->sslVerify),
             $ttl,
             $resolved,
+            $echeance,
         );
 
         return $resolved;
@@ -201,6 +206,22 @@ final class KlassciBatchFetcher
     public function fetchManyClassesDetails(array $classeIds, string $userToken, ?int $ttl = 600): array
     {
         return $this->fetchManyByEndpoint($classeIds, 'classes/{id}', $userToken, $ttl);
+    }
+
+    /**
+     * Les détails de classes, sous un délai GLOBAL : celui d'une lecture KLASSCI
+     * (`services.klassci.timeout`), et non un délai par requête (#757).
+     *
+     * Pour un chemin synchrone dont N n'est pas borné par l'appelant (les classes
+     * d'un établissement entier). Passé l'échéance, aucun lot nouveau ne part :
+     * le résultat est partiel, et l'appelant le voit à l'absence des identifiants.
+     *
+     * @param  array<int>  $classeIds
+     * @return array<int, array<string, mixed>>
+     */
+    public function fetchManyClassesDetailsWithinTimeout(array $classeIds, string $userToken, ?int $ttl = 600): array
+    {
+        return $this->fetchManyByEndpoint($classeIds, 'classes/{id}', $userToken, $ttl, Carbon::now()->addSeconds($this->timeout));
     }
 
     /**

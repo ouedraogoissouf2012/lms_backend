@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Services\Klassci;
 
+use Carbon\CarbonInterface;
 use Illuminate\Http\Client\Factory as HttpFactory;
+use Illuminate\Support\Carbon;
 
 /**
  * Exécute les lectures KLASSCI en pools parallèles, en survivant au filtrage
@@ -45,15 +47,17 @@ final class KlassciResilientPool
 
     /**
      * Parcourt les lots et remplit `$resolved`. S'arrête net si le disjoncteur
-     * s'ouvre en cours de route.
+     * s'ouvre en cours de route, ou si l'échéance est passée (#757) : aucun lot
+     * nouveau ne part alors, ceux déjà partis ont fini. Le résultat est partiel,
+     * et le dit par l'absence des identifiants non lus.
      *
      * @param  array<int, array<int, array{endpoint: string, memoKey: string, cacheKey: string}>>  $chunks
      * @param  array<int, array<string, mixed>>  $resolved
      */
-    public function run(array $chunks, PoolTarget $target, int $ttl, array &$resolved): void
+    public function run(array $chunks, PoolTarget $target, int $ttl, array &$resolved, ?CarbonInterface $echeance = null): void
     {
         foreach ($chunks as $batch) {
-            if ($this->circuitBreaker->isOpen()) {
+            if ($this->circuitBreaker->isOpen() || ($echeance !== null && Carbon::now()->greaterThanOrEqualTo($echeance))) {
                 return;
             }
 

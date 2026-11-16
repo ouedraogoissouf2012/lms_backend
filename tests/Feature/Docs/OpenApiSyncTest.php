@@ -37,7 +37,9 @@ use Tests\TestCase;
  *
  * Un plafond numérique laisserait supprimer une route non documentée pour en
  * ajouter une autre : total constant, dette déplacée, front toujours aveugle.
- * La baseline liste donc chaque chemin, comme `scripts/method-length-baseline.php`.
+ * La baseline liste donc chaque OPÉRATION (`GET /classes`), comme
+ * `scripts/method-length-baseline.php`. Une liste de chemins laissait passer une
+ * méthode nouvelle sur un chemin déjà documenté pour une autre (#912).
  *
  * ## Régénérer la baseline
  *
@@ -60,17 +62,6 @@ final class OpenApiSyncTest extends TestCase
 
     /** Clés d'un Path Item OpenAPI 3 qui désignent une opération HTTP. */
     private const HTTP_METHODS = ['get', 'put', 'post', 'delete', 'options', 'patch'];
-
-    /**
-     * Ensemble des URIs de routes API réelles, normalisées sans le préfixe
-     * `api/` ni `api/v1/`, avec un slash de tête (`/auth/login`).
-     *
-     * @return array<string, true>
-     */
-    private function realApiPaths(): array
-    {
-        return array_map(static fn (): bool => true, $this->realApiOperations());
-    }
 
     /**
      * Méthodes HTTP réellement servies, par chemin normalisé (#876).
@@ -104,6 +95,23 @@ final class OpenApiSyncTest extends TestCase
     }
 
     /**
+     * Les opérations réelles, à plat (`GET /classes`) : le dénominateur du cliquet.
+     *
+     * @return list<string>
+     */
+    private function realOperationsList(): array
+    {
+        $liste = [];
+        foreach ($this->realApiOperations() as $chemin => $methodes) {
+            foreach (array_keys($methodes) as $methode) {
+                $liste[] = $methode.' '.$chemin;
+            }
+        }
+
+        return $liste;
+    }
+
+    /**
      * Opérations déclarées par la spec, sous la forme `['METHODE', '/chemin']`.
      *
      * @return array<int, array{0: string, 1: string}>
@@ -126,34 +134,43 @@ final class OpenApiSyncTest extends TestCase
     }
 
     /**
-     * @return array<int, string> Paths déclarés dans la spec OpenAPI.
+     * Opérations réelles absentes de la spec, triées (`GET /classes`).
+     *
+     * @return list<string>
      */
-    private function documentedPaths(): array
+    private function undocumented(): array
     {
-        $spec = Yaml::parseFile(base_path(self::SPEC_PATH));
-
-        $paths = $spec['paths'] ?? [];
-
-        return is_array($paths) ? array_keys($paths) : [];
+        return self::undocumentedOperations($this->realApiOperations(), $this->documentedOperations());
     }
 
     /**
-     * Routes réelles absentes de la spec, triées.
+     * Le comparateur, pur : les opérations réelles qu'aucune opération documentée ne
+     * couvre. Par OPÉRATION et non par chemin (#912), comme le sens inverse
+     * (`test_every_documented_endpoint_exists_as_real_route`).
      *
-     * @return array<int, string>
+     * @param  array<string, array<string, true>>  $reelles  méthodes par chemin
+     * @param  array<int, array{0: string, 1: string}>  $documentees  `[METHODE, chemin]`
+     * @return list<string>
      */
-    private function undocumentedPaths(): array
+    private static function undocumentedOperations(array $reelles, array $documentees): array
     {
-        $documented = array_flip($this->documentedPaths());
+        $connues = [];
+        foreach ($documentees as [$methode, $chemin]) {
+            $connues[$methode.' '.$chemin] = true;
+        }
 
-        $undocumented = array_values(array_filter(
-            array_keys($this->realApiPaths()),
-            static fn (string $path): bool => ! isset($documented[$path])
-        ));
+        $absentes = [];
+        foreach ($reelles as $chemin => $methodes) {
+            foreach (array_keys($methodes) as $methode) {
+                if (! isset($connues[$methode.' '.$chemin])) {
+                    $absentes[] = $methode.' '.$chemin;
+                }
+            }
+        }
 
-        sort($undocumented);
+        sort($absentes);
 
-        return $undocumented;
+        return $absentes;
     }
 
     /**
@@ -232,18 +249,18 @@ final class OpenApiSyncTest extends TestCase
      */
     public function test_no_new_undocumented_route(): void
     {
-        $undocumented = $this->undocumentedPaths();
+        $undocumented = $this->undocumented();
 
         if (getenv('OPENAPI_BASELINE_WRITE') !== false) {
             $this->writeBaseline($undocumented);
-            $this->markTestSkipped('Baseline régénérée : '.count($undocumented).' routes.');
+            $this->markTestSkipped('Baseline régénérée : '.count($undocumented).' opérations.');
         }
 
         $baseline = $this->baseline();
 
         // DÉNOMINATEUR (#701) : un cliquet qui ne dit pas ce qu'il a inspecté ne
         // distingue pas « rien à redire » de « je n'ai rien regardé ».
-        $total = count($this->realApiPaths());
+        $total = count($this->realOperationsList());
         $this->assertGreaterThan(100, $total, 'Table de routes anormalement courte : le cliquet ne prouverait rien.');
 
         $nouvelles = array_values(array_diff($undocumented, $baseline));
@@ -252,7 +269,7 @@ final class OpenApiSyncTest extends TestCase
             [],
             $nouvelles,
             sprintf(
-                "%d route(s) API ajoutée(s) sans entrée dans docs/openapi.yaml.\n"
+                "%d opération(s) API ajoutée(s) sans entrée dans docs/openapi.yaml.\n"
                 ."Le front ne peut pas les connaître : il ne consomme que la spec.\n"
                 ."  - %s\n\n"
                 ."→ Documente-les dans docs/openapi.yaml.\n"
@@ -271,7 +288,7 @@ final class OpenApiSyncTest extends TestCase
      */
     public function test_no_settled_route_left_in_baseline(): void
     {
-        $reglees = array_values(array_diff($this->baseline(), $this->undocumentedPaths()));
+        $reglees = array_values(array_diff($this->baseline(), $this->undocumented()));
 
         $this->assertSame(
             [],
@@ -287,12 +304,12 @@ final class OpenApiSyncTest extends TestCase
 
     public function test_documentation_coverage_is_reported(): void
     {
-        $total = count($this->realApiPaths());
-        $undocumented = $this->undocumentedPaths();
+        $total = count($this->realOperationsList());
+        $undocumented = $this->undocumented();
         $covered = $total - count($undocumented);
 
         fwrite(STDERR, sprintf(
-            "\n[OpenAPI coverage] %d/%d routes documentées (%.0f%%). Non documentées : %d\n",
+            "\n[OpenAPI coverage] %d/%d opérations documentées (%.0f%%). Non documentées : %d\n",
             $covered,
             $total,
             $total > 0 ? ($covered / $total) * 100 : 0,
@@ -318,14 +335,15 @@ final class OpenApiSyncTest extends TestCase
 declare(strict_types=1);
 
 /**
- * Dette tracée (#809) : routes API absentes de `docs/openapi.yaml`.
+ * Dette tracée (#809, #912) : opérations API (`GET /classes`) absentes de
+ * `docs/openapi.yaml`.
  *
- * Tolérée, mais elle ne peut plus GROSSIR : toute route qui n'est ni documentée
+ * Tolérée, mais elle ne peut plus GROSSIR : toute opération qui n'est ni documentée
  * ni listée ici fait rougir le cliquet de OpenApiSyncTest (cité en prose et non
  * en {@see} : Pint transformerait la référence en import, et un fichier généré
  * doit sortir déjà conforme).
  *
- * Quand une route est documentée, RETIRER sa ligne — le test le rappelle.
+ * Quand une opération est documentée, RETIRER sa ligne — le test le rappelle.
  *
  * Régénérer :
  *     OPENAPI_BASELINE_WRITE=1 php vendor/bin/phpunit --filter OpenApiSyncTest

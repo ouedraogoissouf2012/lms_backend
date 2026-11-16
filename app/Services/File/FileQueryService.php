@@ -61,7 +61,8 @@ final class FileQueryService
     {
         $query = File::with($this->auteurVisiblePar($caller));
 
-        if ($caller->isStudent()) {
+        // La vue par défaut est celle de l'apprenant (#964, la règle de #941).
+        if ($caller->isLearnerAudience()) {
             $query->where(function ($q) use ($caller) {
                 $q->where('is_public', true)
                   ->orWhere('user_id', $caller->id);
@@ -180,7 +181,8 @@ final class FileQueryService
         // PAS asRoleEnum() qui inclurait aussi 'superAdmin' (admin d'institution)
         // → fuite cross-tenant. cf. isPlatformSupradmin().
         $isSupradmin = $caller->isPlatformSupradmin();
-        $isStudent = $caller->isStudent();
+        // La vue par défaut est celle de l'apprenant (#964) : ses propres statistiques.
+        $isStudent = $caller->isLearnerAudience();
 
         $cacheKey = $isSupradmin
             ? 'files_stats_global'

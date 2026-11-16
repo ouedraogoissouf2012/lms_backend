@@ -98,11 +98,12 @@ final class AttendanceHistoryQueryService
                 /** @var Builder<Seance> $seances */
                 $this->autorisation->limitToTeacherSeances($seances, $user);
             });
-        } elseif ($user->isStudent()) {
-            // L'étudiant ne voit que ses propres présences
+        } elseif ($user->isLearnerAudience()) {
+            // L'apprenant, et tout rôle non reconnu (#964, la règle de #941) : ses
+            // propres présences. Seul le personnel reconnu en sort.
             $query->where('user_id', $user->id);
         }
-        // Les coordinateurs/superAdmin voient tout
+        // La gestion (coordinateur, admin) voit tout
 
         return $query;
     }

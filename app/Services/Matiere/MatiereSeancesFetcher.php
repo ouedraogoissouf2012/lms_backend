@@ -60,10 +60,10 @@ final class MatiereSeancesFetcher
 
         $this->localLookup->preload(
             $this->collectKlassciSeanceIds($seances),
-            $user->isStudent() ? $user : null,
+            $user->isLearnerAudience() ? $user : null,
         );
 
-        if ($user->isStudent()) {
+        if ($user->isLearnerAudience()) {
             $seances = $this->filterHiddenAndArchivedForStudent($seances);
         }
 
@@ -95,7 +95,7 @@ final class MatiereSeancesFetcher
                 );
             }
 
-            if ($user->isStudent()) {
+            if ($user->isLearnerAudience()) {
                 // Un `[DEBUG DATES]` en `info` vivait ici et déversait
                 // `'toutes_seances' => $seances`, le payload INTÉGRAL. Il était
                 // inoffensif tant que la source était morte : `$seances !== []`

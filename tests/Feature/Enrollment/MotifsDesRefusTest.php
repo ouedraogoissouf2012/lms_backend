@@ -188,32 +188,34 @@ final class MotifsDesRefusTest extends TestCase
             ->assertHeader('X-RateLimit-Limit');
     }
 
-    public function test_porte_anonyme_le_quota_de_l_adresse(): void
+    public function test_porte_anonyme_la_borne_anti_inondation_de_l_adresse(): void
     {
-        [$ecole] = $this->classeAvecCode();
-        $entete = ['X-Institution' => (string) $ecole->slug];
-
-        for ($i = 0; $i < 5; $i++) {
-            $this->postJson(self::ANONYME, $this->candidature('ZZZZZZ'), $entete);
-        }
-
-        $this->unVrai429($this->postJson(self::ANONYME, $this->candidature('ZZZZZZ'), $entete))
-            ->assertJsonPath('reason', 'ip_quota_exceeded');
-    }
-
-    public function test_porte_anonyme_le_plafond_global_du_jour(): void
-    {
-        // Éprouver 100 inscriptions par le trafic demanderait 100 requêtes et
-        // vingt adresses : on remplit le compteur global, sous la clé que
+        // #915 : le seau de route ne garde qu'une borne contre l'inondation,
+        // 60 requêtes par minute et par adresse, sous la clé que
         // `ThrottleRequests:134` lui donne.
         [$ecole] = $this->classeAvecCode();
 
-        for ($i = 0; $i < 100; $i++) {
-            RateLimiter::hit($this->cleDeSeau('inscriptions', 'inscriptions-global'), 86_400);
+        for ($i = 0; $i < 60; $i++) {
+            RateLimiter::hit($this->cleDeSeau('inscriptions', '127.0.0.1'), 60);
         }
 
         $this->unVrai429($this->postJson(self::ANONYME, $this->candidature('ZZZZZZ'), ['X-Institution' => (string) $ecole->slug]))
-            ->assertJsonPath('reason', 'global_cap_reached');
+            ->assertJsonPath('reason', 'ip_quota_exceeded');
+    }
+
+    public function test_porte_anonyme_le_plafond_d_echecs_de_l_ecole(): void
+    {
+        // #915 : plus de plafond GLOBAL ; celui des ÉCHECS de l'école, partagé
+        // avec la porte authentifiée (un même concept, un même motif).
+        [$ecole] = $this->classeAvecCode();
+
+        for ($i = 0; $i < 200; $i++) {
+            RateLimiter::hit(RejoindreParCodeService::cleDesEchecs((int) $ecole->getKey()), 86_400);
+        }
+
+        $this->postJson(self::ANONYME, $this->candidature('ZZZZZZ'), ['X-Institution' => (string) $ecole->slug])
+            ->assertStatus(429)
+            ->assertJsonPath('reason', 'institution_cap_reached');
     }
 
     // ───────────────────────── harnais

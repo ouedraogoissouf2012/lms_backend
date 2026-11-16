@@ -120,6 +120,8 @@ final class RefusDeLaResolutionDuTenantTest extends TestCase
         $reponse = $this->getJson(self::ROUTE, ['X-Institution' => self::SLUG_INCONNU])->assertStatus(400);
 
         $reponse->assertExactJson($this->exemple('EtablissementInconnu'));
+        // #1129 : le message est fixe, il ne recopie pas la valeur reçue.
+        self::assertStringNotContainsString(self::SLUG_INCONNU, (string) $reponse->getContent());
         $this->assertMatchesOpenApiResponse($reponse, self::CHEMIN, 'get');
     }
 
@@ -130,9 +132,10 @@ final class RefusDeLaResolutionDuTenantTest extends TestCase
 
         $reponse = $this->getJson(self::ROUTE, ['X-Institution' => $ecole->slug])->assertStatus(400);
 
-        $attendu = $this->exemple('EtablissementInconnu');
-        $attendu['message'] = str_replace(self::SLUG_INCONNU, $ecole->slug, (string) $attendu['message']);
-        $reponse->assertExactJson($attendu);
+        // #1129 : le MÊME corps qu'un slug inconnu, au caractère près, et sans le
+        // slug : le refus ne dit pas que l'établissement existe.
+        $reponse->assertExactJson($this->exemple('EtablissementInconnu'));
+        self::assertStringNotContainsString($ecole->slug, (string) $reponse->getContent());
         $this->assertMatchesOpenApiResponse($reponse, self::CHEMIN, 'get');
     }
 

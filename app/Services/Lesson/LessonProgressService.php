@@ -6,6 +6,7 @@ namespace App\Services\Lesson;
 
 use App\Models\Lesson;
 use App\Models\LessonProgress;
+use Illuminate\Support\Carbon;
 
 /**
  * Progression sur une leçon : state machine de mise à jour (PERF-04 batch 3)
@@ -76,6 +77,20 @@ class LessonProgressService
     }
 
     /**
+     * La transition de DÉBUT, écrite une fois : une ligne `not_started` passe
+     * `in_progress`, `started_at` posé. Rien pour une ligne déjà commencée ou
+     * terminée : jamais de rétrogradation. Lue par la mise à jour du pourcentage
+     * (ci-dessous) et par l'écriture du temps (`ChapterTimeRecorder`, #1147) :
+     * du temps passé commence la leçon, comme un pourcentage non nul.
+     *
+     * @return array{status?: string, started_at?: Carbon}
+     */
+    public static function debut(LessonProgress $progress): array
+    {
+        return $progress->status === 'not_started' ? ['status' => 'in_progress', 'started_at' => now()] : [];
+    }
+
+    /**
      * Met à jour la progression d'un user sur une leçon.
      *
      * Transitions auto :
@@ -97,9 +112,8 @@ class LessonProgressService
             'last_accessed_at' => now(),
         ];
 
-        if ($progress->status === 'not_started' && $percentage > 0) {
-            $data['status'] = 'in_progress';
-            $data['started_at'] = now();
+        if ($percentage > 0) {
+            $data += self::debut($progress);
         }
 
         // Auto-complétion si 100%

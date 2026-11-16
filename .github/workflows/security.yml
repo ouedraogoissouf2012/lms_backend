@@ -510,17 +510,17 @@ jobs:
         run: |
           if [ "$EVENT_NAME" = "pull_request" ]; then
             git fetch --no-tags origin "$BASE_REF"
-            files=$(git diff --name-only --diff-filter=ACMR "origin/$BASE_REF...HEAD" -- app)
+            files=$(git diff --name-only --diff-filter=ACMR "origin/$BASE_REF...HEAD" -- app routes)
           elif [ "$BEFORE" = "0000000000000000000000000000000000000000" ]; then
-            files=$(git diff --name-only --diff-filter=ACMR HEAD -- app)
+            files=$(git diff --name-only --diff-filter=ACMR HEAD -- app routes)
           else
-            files=$(git diff --name-only --diff-filter=ACMR "$BEFORE...HEAD" -- app)
+            files=$(git diff --name-only --diff-filter=ACMR "$BEFORE...HEAD" -- app routes)
           fi
           if [ -z "$files" ]; then
-            echo "Aucun fichier app/ modifié — rien à contrôler."
+            echo "Aucun fichier app/ ni routes/ modifié — rien à contrôler."
             exit 0
           fi
-          echo "Fichiers app/ modifiés :"
+          echo "Fichiers app/ et routes/ modifiés :"
           echo "$files"
           php scripts/check-file-sizes.php $files
 

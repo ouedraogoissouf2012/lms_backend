@@ -8,8 +8,9 @@ declare(strict_types=1);
  * Échoue (exit 1) si un fichier source dépasse sa limite de lignes :
  *   - `app/Models/**` ............ 150 lignes (§5 : modèles = relations/casts/scopes)
  *   - `app/**` (autre) ........... 300 lignes (§1.1)
+ *   - `routes/**` ................ 300 lignes (§1.1, #918 : « Exceptions : aucune »)
  *
- * Seuls les fichiers `app/**.php` sont contrôlés. La CI lui passe la liste des
+ * Seuls les fichiers `app/**.php` et `routes/**.php` sont contrôlés. La CI lui passe la liste des
  * fichiers MODIFIÉS par la PR (git diff base...HEAD), donc le legacy non touché
  * n'est jamais bloqué — seul le code qu'on ajoute/modifie doit respecter la règle.
  *
@@ -43,7 +44,7 @@ $files = array_slice($argv, 1);
 /** @var array<int, string> $violations */
 $violations = [];
 
-/** Chemins relevant du périmètre (app/**.php), qu'ils existent encore ou non. */
+/** Chemins relevant du périmètre (app/**.php, routes/**.php), qu'ils existent encore ou non. */
 $inScope = 0;
 /** Chemins réellement lus. Un fichier supprimé par la PR est dans le périmètre sans être lu. */
 $inspected = 0;
@@ -51,8 +52,8 @@ $inspected = 0;
 foreach ($files as $file) {
     $normalized = str_replace('\\', '/', $file);
 
-    // Seul le code applicatif est contrôlé (migrations, config, specs exclus de fait).
-    if (preg_match('#(^|/)app/.+\.php$#', $normalized) !== 1) {
+    // Le code applicatif et les routes (migrations, config, specs exclus de fait).
+    if (preg_match('#(^|/)(app|routes)/.+\.php$#', $normalized) !== 1) {
         continue;
     }
 
@@ -78,7 +79,7 @@ foreach ($files as $file) {
 // succès. Distinguer ce cas d'un vrai « 0 violation » est tout l'objet de #701.
 if ($inScope === 0) {
     fwrite(STDERR, "
-❌ Garde-fou taille : aucun fichier app/**.php dans les arguments — rien n'a été contrôlé.
+❌ Garde-fou taille : aucun fichier app/**.php ni routes/**.php dans les arguments — rien n'a été contrôlé.
 ");
     fwrite(STDERR, "   Arguments reçus : " . count($files) . "
 ");

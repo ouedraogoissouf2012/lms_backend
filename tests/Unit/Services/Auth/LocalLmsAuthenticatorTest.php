@@ -6,7 +6,12 @@ namespace Tests\Unit\Services\Auth;
 
 use App\Models\Institution;
 use App\Models\User;
+use App\Services\Auth\EmpreinteLeurre;
 use App\Services\Auth\LocalLmsAuthenticator;
+use App\Support\Logging\CaughtExceptionLog;
+use App\Support\Logging\ExceptionDescription;
+use Illuminate\Cache\ArrayStore;
+use Illuminate\Cache\Repository;
 use Illuminate\Contracts\Hashing\Hasher;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Mockery;
@@ -20,9 +25,9 @@ use Tests\TestCase;
  * Couvre :
  * - Match par email + password OK
  * - Match par name + password OK
- * - User introuvable → null
+ * - User introuvable → null, après UNE vérification contre le leurre (#687)
  * - Password incorrect → null
- * - User sans password (KLASSCI user) → null
+ * - User sans password (KLASSCI user) → null, après UNE vérification contre le leurre
  * - Recherche cross-institution (supradmin)
  *
  * @see app/Services/Auth/LocalLmsAuthenticator.php
@@ -33,10 +38,28 @@ final class LocalLmsAuthenticatorTest extends TestCase
 {
     use RefreshDatabase;
 
+    /** L'empreinte que rend le hacheur feint pour le leurre (#687). */
+    private const LEURRE = 'empreinte-du-leurre';
+
     protected function tearDown(): void
     {
         Mockery::close();
         parent::tearDown();
+    }
+
+    /**
+     * L'authentificateur, avec un leurre réel bâti sur le MÊME hacheur : une
+     * vérification contre le leurre se compte donc comme les autres.
+     */
+    private function authentificateur(Hasher $hasher, LoggerInterface $logger): LocalLmsAuthenticator
+    {
+        $leurre = new EmpreinteLeurre(
+            $hasher,
+            new Repository(new ArrayStore),
+            new CaughtExceptionLog(Mockery::spy(LoggerInterface::class), new ExceptionDescription),
+        );
+
+        return new LocalLmsAuthenticator($hasher, $logger, $leurre);
     }
 
     public function test_returns_user_when_email_matches_and_password_correct(): void
@@ -53,7 +76,7 @@ final class LocalLmsAuthenticatorTest extends TestCase
             ->andReturn(true);
 
         $logger = Mockery::spy(LoggerInterface::class);
-        $auth = new LocalLmsAuthenticator($hasher, $logger);
+        $auth = $this->authentificateur($hasher, $logger);
 
         $result = $auth->attemptLocalAuth('alpha@test.com', 'plain_pwd');
 
@@ -76,7 +99,7 @@ final class LocalLmsAuthenticatorTest extends TestCase
             ->andReturn(true);
 
         $logger = Mockery::spy(LoggerInterface::class);
-        $auth = new LocalLmsAuthenticator($hasher, $logger);
+        $auth = $this->authentificateur($hasher, $logger);
 
         $result = $auth->attemptLocalAuth('SomeUsername', 'plain_pwd');
 
@@ -86,11 +109,15 @@ final class LocalLmsAuthenticatorTest extends TestCase
 
     public function test_returns_null_when_user_not_found(): void
     {
+        // #687 : un identifiant inconnu coûte UNE vérification, contre le leurre,
+        // comme un mot de passe faux. Zéro vérification se reconnaissait au
+        // chronomètre (~23 ms contre ~519 ms, mesuré le 2026-09-26).
         $hasher = Mockery::mock(Hasher::class);
-        $hasher->shouldNotReceive('check');
+        $hasher->shouldReceive('make')->once()->andReturn(self::LEURRE);
+        $hasher->shouldReceive('check')->once()->with('any_pwd', self::LEURRE)->andReturn(false);
 
         $logger = Mockery::spy(LoggerInterface::class);
-        $auth = new LocalLmsAuthenticator($hasher, $logger);
+        $auth = $this->authentificateur($hasher, $logger);
 
         $result = $auth->attemptLocalAuth('unknown@nowhere.com', 'any_pwd');
 
@@ -106,12 +133,15 @@ final class LocalLmsAuthenticatorTest extends TestCase
         ]);
 
         $hasher = Mockery::mock(Hasher::class);
+        // Une vraie vérification a eu lieu : le leurre n'est pas demandé (#687).
         $hasher->shouldReceive('check')
+            ->once()
             ->with('wrong_pwd', Mockery::type('string'))
             ->andReturn(false);
+        $hasher->shouldNotReceive('make');
 
         $logger = Mockery::spy(LoggerInterface::class);
-        $auth = new LocalLmsAuthenticator($hasher, $logger);
+        $auth = $this->authentificateur($hasher, $logger);
 
         $result = $auth->attemptLocalAuth('gamma@test.com', 'wrong_pwd');
 
@@ -127,11 +157,14 @@ final class LocalLmsAuthenticatorTest extends TestCase
             'password' => null,
         ]);
 
+        // #687 : aucune empreinte à vérifier, donc une vérification contre le
+        // leurre, pour que ce chemin coûte comme les autres.
         $hasher = Mockery::mock(Hasher::class);
-        $hasher->shouldNotReceive('check');
+        $hasher->shouldReceive('make')->once()->andReturn(self::LEURRE);
+        $hasher->shouldReceive('check')->once()->with('any_pwd', self::LEURRE)->andReturn(false);
 
         $logger = Mockery::spy(LoggerInterface::class);
-        $auth = new LocalLmsAuthenticator($hasher, $logger);
+        $auth = $this->authentificateur($hasher, $logger);
 
         $result = $auth->attemptLocalAuth('klassci-only@test.com', 'any_pwd');
 
@@ -154,7 +187,7 @@ final class LocalLmsAuthenticatorTest extends TestCase
             ->andReturn(true);
 
         $logger = Mockery::spy(LoggerInterface::class);
-        $auth = new LocalLmsAuthenticator($hasher, $logger);
+        $auth = $this->authentificateur($hasher, $logger);
 
         $result = $auth->attemptLocalAuth('super@admin.com', 'admin_pwd');
 

@@ -152,7 +152,7 @@ Route::prefix('proxy')
         // Réservé au personnel (GHSA-gg7j) : le LMS ne délègue plus à KLASSCI le
         // soin de refuser un élève — c'est le point 4 de #617, resté ouvert.
         Route::get('/classes/{id}/etudiants', [ProxyOrganisationController::class, 'etudiants'])
-            ->middleware('role:enseignant,coordinateur,admin');
+            ->middleware('personnel');
 
         // Matières et enseignants
         Route::get('/matieres', [ProxyOrganisationController::class, 'matieres']);
@@ -186,7 +186,7 @@ Route::prefix('proxy')
 // ============================================
 // ADMIN - Gestion des utilisateurs et configuration
 // ============================================
-Route::middleware(['auth:sanctum', 'klassci.sync', 'role:coordinateur,superAdmin'])->group(function () {
+Route::middleware(['auth:sanctum', 'klassci.sync', 'gestion'])->group(function () {
     Route::post('users', [AdminController::class, 'createUser'])
         ->middleware('throttle:30,1');
     Route::put('users/{user}', [AdminController::class, 'updateUser'])

@@ -4317,12 +4317,13 @@ paths:
         inexistante et pour celle d'une autre ecole : la reponse ne dit pas
         quels identifiants existent ailleurs.
 
-        Reserve aux roles `enseignant` (alias `teacher`), `coordinateur` (alias
-        `coordinator`) et `superAdmin`. Le role est garde une seule fois, par la
-        route, qui compare sans la casse : une variante (`Enseignant`) est
-        admise. Le 403 a plusieurs sources, et le client ne doit pas lire le
-        message :
-        - le role de la route, qui refuse tout autre role, `admin` compris
+        Reserve au personnel de l'etablissement : `enseignant` (alias `teacher`),
+        `coordinateur` (alias `coordinator`), `admin` et `superAdmin` (D502 : l'admin
+        d'ecole a les droits du coordinateur). Le role est garde une seule fois, par
+        la garde `personnel` de la route (`User::isStaff()`), en correspondance
+        EXACTE : une variante de casse (`Enseignant`) est refusee. Le 403 a
+        plusieurs sources, et le client ne doit pas lire le message :
+        - la garde de la route, qui refuse tout autre role, l'eleve compris
           (« Accès refusé - Permissions insuffisantes ») ;
         - un etablissement desactive ou introuvable (« Établissement désactivé.
           Accès suspendu, contactez votre administration. ») ;
@@ -7900,7 +7901,8 @@ paths:
       operationId: listAdminMatieres
       summary: "Les matieres de l'etablissement, pour l'ecran d'administration"
       description: |
-        Reservee a la gestion (`role:admin,coordinateur`, superAdmin compris).
+        Reservee a la gestion (garde `gestion`, `User::isManager()` : coordinateur,
+        admin, superAdmin).
         La source est choisie par le mode DECLARE de l'ecole, au point de
         liaison.
 

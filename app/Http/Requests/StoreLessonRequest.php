@@ -58,8 +58,9 @@ final class StoreLessonRequest extends FormRequest
             return false;
         }
 
-        // Check 2: User must be teacher or coordinator (not student)
-        if (! $user->isTeacher() && ! $user->isCoordinator()) {
+        // Check 2: l'enseignant, ou qui gère l'établissement : coordinateur et admin,
+        // mêmes droits (D502, `User::isManager()`). Pas l'élève.
+        if (! $user->isTeacher() && ! $user->isManager()) {
             return false;
         }
 

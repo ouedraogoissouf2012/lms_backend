@@ -67,12 +67,13 @@ final class KlassciSeanceLookupService
             return $this->lookupForTeacher($seanceId, $user, $klassciToken);
         }
 
-        if ($user->isStudent()) {
-            return $this->lookupForStudent($seanceId, $klassciToken);
+        // La gestion (coordinateur, admin) : l'emploi du temps, filtré par le catalogue.
+        if ($user->isManager()) {
+            return $this->lookupForCoordinator($seanceId, $user, $klassciToken);
         }
 
-        // La gestion (coordinateur, admin) : l'emploi du temps, filtré par le catalogue.
-        return $this->lookupForCoordinator($seanceId, $user, $klassciToken);
+        // La vue par défaut est celle de l'apprenant (#964, la règle de #941).
+        return $this->lookupForStudent($seanceId, $klassciToken);
     }
 
     /**

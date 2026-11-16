@@ -128,11 +128,11 @@ final class UpcomingSeancesFetcher
      */
     private function assembleVisibleSeances(array $candidates, User $user): Collection
     {
-        // Un seul pré-chargement : alimente le filtre archivé/masqué (étudiants) ET
-        // l'enrichissement visio. `null` en non-étudiant évite la requête hidden.
+        // Un seul pré-chargement : alimente le filtre archivé/masqué (vue apprenant,
+        // #964) ET l'enrichissement visio. `null` pour le personnel évite la requête hidden.
         $this->localLookup->preload(
             $this->collectKlassciSeanceIds($candidates),
-            $user->isStudent() ? $user : null,
+            $user->isLearnerAudience() ? $user : null,
         );
 
         /** @var Collection<int, array<string, mixed>> $seances */
@@ -221,7 +221,8 @@ final class UpcomingSeancesFetcher
     }
 
     /**
-     * Phase 2 (#476) — pour les étudiants, écarte les séances archivées ou masquées,
+     * Phase 2 (#476) — pour la vue apprenant (#964 : tout rôle hors personnel reconnu),
+     * écarte les séances archivées ou masquées,
      * résolues EN MÉMOIRE depuis le pré-chargement (plus aucune requête par séance).
      * Enseignants/coordinateurs/admins voient tout (comportement inchangé).
      *
@@ -230,7 +231,7 @@ final class UpcomingSeancesFetcher
      */
     private function rejectHiddenOrArchived(Collection $seances, User $user): Collection
     {
-        if (! $user->isStudent()) {
+        if (! $user->isLearnerAudience()) {
             return $seances;
         }
 

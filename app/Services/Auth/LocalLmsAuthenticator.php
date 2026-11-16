@@ -190,7 +190,7 @@ class LocalLmsAuthenticator
 
         // Aucun candidat, ou aucun avec une empreinte : sans le leurre, cet échec
         // ne coûterait rien, et se reconnaîtrait au chronomètre (#687).
-        if ($verifications === 0) {
+        if ($verifications === -1) {
             $this->verifierLeLeurre($password);
         }
 

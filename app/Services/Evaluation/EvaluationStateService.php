@@ -36,6 +36,9 @@ use Psr\Log\LoggerInterface;
  */
 final class EvaluationStateService
 {
+    /** Le motif du refus d'une évaluation verrouillée (#1113). */
+    public const REASON_VERROUILLEE = 'evaluation_locked';
+
     public function __construct(
         private readonly LoggerInterface $logger,
         private readonly DatabaseManager $db,
@@ -50,13 +53,7 @@ final class EvaluationStateService
     public function softDelete(Evaluation $evaluation, User $user): array
     {
         if (! $this->canBeEdited($evaluation)) {
-            return [
-                'status'  => 403,
-                'payload' => [
-                    'success' => false,
-                    'message' => 'Impossible de supprimer: des étudiants ont déjà soumis leurs réponses',
-                ],
-            ];
+            return $this->refusVerrouillee('Impossible de supprimer: des étudiants ont déjà soumis leurs réponses');
         }
 
         $evaluation->delete();
@@ -127,6 +124,20 @@ final class EvaluationStateService
     public function isLocked(Evaluation $evaluation): bool
     {
         return $evaluation->is_locked || $evaluation->submissions()->count() > 0;
+    }
+
+    /**
+     * Le refus d'une évaluation VERROUILLÉE ({@see isLocked()}), écrit une fois et
+     * rendu par la suppression comme par la modification (#1113) : 409, car les droits
+     * sont acquis et c'est l'ÉTAT (des copies remises) qui interdit l'action, avec le
+     * motif `evaluation_locked` que le front traduit. Un 403 nu s'y lisait « vous
+     * n'avez pas les droits », ce qui était faux.
+     *
+     * @return array{status: int, payload: array{success: false, message: string, reason: string}}
+     */
+    public function refusVerrouillee(string $message): array
+    {
+        return ['status' => 409, 'payload' => ['success' => false, 'message' => $message, 'reason' => self::REASON_VERROUILLEE]];
     }
 
     /**

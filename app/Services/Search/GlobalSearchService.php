@@ -116,7 +116,7 @@ final class GlobalSearchService
      */
     private function cachedOrFresh(string $query, User $user, int $limit): SearchAggregate
     {
-        $cached = $this->cache->get($query, $user->id, $limit);
+        $cached = $this->cache->get($query, $user, $limit);
 
         if ($cached !== null) {
             return $cached;
@@ -124,7 +124,7 @@ final class GlobalSearchService
 
         $aggregate = $this->aggregate($query, $user, $limit);
 
-        $this->cache->put($query, $user->id, $limit, $aggregate);
+        $this->cache->put($query, $user, $limit, $aggregate);
 
         return $aggregate;
     }

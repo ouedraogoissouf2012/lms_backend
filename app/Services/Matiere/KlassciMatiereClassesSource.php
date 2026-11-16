@@ -103,7 +103,7 @@ final class KlassciMatiereClassesSource
             return [];
         }
 
-        return $this->classesPortantLaMatiere($details, $klassciMatiereId, $institutionId, $this->complet($details, $klassciClasseIds, $klassciMatiereId));
+        return $this->classesPortantLaMatiere($details, $klassciMatiereId, $institutionId, true || $this->complet($details, $klassciClasseIds, $klassciMatiereId));
     }
 
     /**

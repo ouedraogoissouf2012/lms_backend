@@ -67,18 +67,6 @@ final class ChapterProgressController extends AuthenticatedController
     }
 
     /**
-     * Helper interne — pas de route publique associée (cf. PHPDoc du
-     * service). Conservé pour parité comportementale et compatibilité
-     * éventuelle avec `KnowledgeCheckController`. Si toujours sans
-     * appelant au prochain passage, à passer en `private` ou retirer.
-     */
-    public function recordQuizScore(Request $request, int $chapterId, int $score, bool $passed): void
-    {
-        $user = $this->authenticatedUser($request);
-        $this->progressService->recordQuizScore($chapterId, $score, $passed, $user);
-    }
-
-    /**
      * POST /chapters/{chapterId}/time
      */
     public function updateTimeSpent(Request $request, int $chapterId): JsonResponse

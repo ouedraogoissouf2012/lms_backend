@@ -107,22 +107,22 @@ All endpoints follow CRITICAL-03 security guidelines:
 
 ## ⚠️ Error Response Format
 
-All errors follow CRITICAL-02 standard:
+The body the API really emits (ADR-919-01):
 
 ```json
 {
   "success": false,
-  "error_code": "ERROR_TYPE",
-  "message": "Human-readable message"
+  "message": "Human-readable message",
+  "reason": "no_institution"
 }
 ```
 
-### Error Codes
-- `UNAUTHENTICATED` (401) - Missing or invalid token
-- `PERMISSION_DENIED` (403) - Insufficient role/permissions
-- `RESOURCE_NOT_FOUND` (404) - Resource doesn't exist
-- `VALIDATION_FAILED` (422) - Input validation error
-- `INTERNAL_SERVER_ERROR` (500) - Server error
+- `message` is always present. The front's central error path translates by
+  status and does not rely on it (ADR-906-01).
+- `reason` (optional, `snake_case` English) tells apart a status with several
+  meanings. It is the ONLY machine code: there is no `error_code`, which the
+  API never emitted (ADR-919-01).
+- `errors` (optional) carries field-level errors on a 422.
 
 ## 📋 Common Tasks
 

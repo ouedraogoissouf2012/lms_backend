@@ -71,29 +71,24 @@ components:
 All endpoints require authentication unless explicitly documented as public.
 
 ### Response Schemas
-Standardized error responses with error codes (CRITICAL-02):
+Error responses describe the body the API really emits (ADR-919-01):
 
 ```yaml
 ErrorResponse:
   properties:
-    success: boolean
-    error_code: string      # UNAUTHENTICATED, PERMISSION_DENIED, etc.
+    success: boolean        # always false
     message: string
-
-ValidationErrorResponse:
-  properties:
-    success: boolean
-    error_code: string      # VALIDATION_FAILED
-    message: string
-    errors: object          # Field-level errors
+    errors: object          # optional: field-level errors (422)
+    reason: string          # optional: machine code (ADR-906-01)
+  required: [success, message]
 ```
 
-Error codes:
-- `UNAUTHENTICATED` (401) - No/invalid token
-- `PERMISSION_DENIED` (403) - Insufficient role
-- `RESOURCE_NOT_FOUND` (404) - Resource doesn't exist
-- `VALIDATION_FAILED` (422) - Input validation error
-- `INTERNAL_SERVER_ERROR` (500) - Server error
+- `message` is always present. The front's central error path translates by
+  status and does not rely on it (ADR-906-01).
+- `reason` (optional, `snake_case` English) tells apart a status with several
+  meanings. It is the ONLY machine code: there is no `error_code`, which the
+  API never emitted (ADR-919-01).
+- `errors` (optional) carries field-level errors on a 422.
 
 ## Common Patterns
 
@@ -196,17 +191,18 @@ stay in the spec.
 
 ## Error Response Consistency
 
-All error responses follow CRITICAL-02 format:
+Error bodies are `{"success": false, "message": "..."}`, plus `errors` on a 422
+and `reason` when a status has several meanings (ADR-906-01, ADR-919-01):
 
 ```json
 {
   "success": false,
-  "error_code": "UNAUTHENTICATED",
   "message": "Unauthenticated."
 }
 ```
 
-When documenting errors, always include the error_code in the response schema.
+When documenting errors, describe the body the endpoint really returns, never a
+field it does not send. A contract test (`assertMatchesOpenApiResponse`) proves it.
 
 ## Testing Documentation Accuracy
 

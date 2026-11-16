@@ -154,6 +154,9 @@ def completer(lignes, debut, fin, code, ref, ajout, dit):
     if code not in presents:
         suivants = [i for c, (i, _) in presents.items() if c.isdigit() and int(c) > int(code)]
         ou = min(suivants) if suivants else fin
+        # En fin de bloc : avant la ligne vide qui sépare deux opérations.
+        while ou > debut + 1 and lignes[ou - 1].strip() == '':
+            ou -= 1
         lignes[ou:ou] = [f"        '{code}':", f"          $ref: '{ref}'"]
         return 'ref'
 

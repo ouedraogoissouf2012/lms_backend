@@ -7,6 +7,7 @@ namespace App\Http\Middleware;
 use App\Models\User;
 use Closure;
 use Illuminate\Http\Request;
+use Illuminate\Routing\Route;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
@@ -17,8 +18,11 @@ use Symfony\Component\HttpFoundation\Response;
  * - une requête sans utilisateur (l'authentification de la route, ou la route
  *   publique, décide ensuite) ;
  * - un membre d'une école ({@see User::isSchoolMember()}) ;
- * - un compte sans établissement, SEULEMENT sur une route qui porte le
- *   marqueur `plateforme` ({@see MarksPlatformRoute}).
+ * - tout compte, sur une route marquée `tout.compte` ({@see MarksAnyAccountRoute}) :
+ *   lire son compte, se déconnecter ;
+ * - le supradmin plateforme ({@see User::isPlatformSupradmin()}), SEULEMENT sur
+ *   une route qui porte le marqueur `plateforme` ({@see MarksPlatformRoute}).
+ *   Un autre compte sans établissement n'y passe pas (#972).
  * Partout ailleurs : 403, avec le motif `no_institution` (ADR-906-01), que le
  * front traduit par son catalogue. Une route nouvelle naît donc fermée à un tel
  * compte. Un utilisateur authentifié qui n'est pas un `User` n'a pas
@@ -49,7 +53,15 @@ final class EnsureSchoolMemberOrPlatformRoute
         // alors qu'un autre garde peut authentifier un autre `Authenticatable`.
         $user = ($request->getUserResolver())();
 
-        if ($user === null || ($user instanceof User && $user->isSchoolMember()) || $this->isPlatformRoute($request)) {
+        if ($user === null || ($user instanceof User && $user->isSchoolMember()) || $this->porte($request, MarksAnyAccountRoute::ALIAS)) {
+            return $next($request);
+        }
+
+        // Une route `plateforme` est au supradmin plateforme, et non à tout compte
+        // sans établissement (#972) : un coordinateur ou un admin d'école à
+        // `institution_id` nul y atteignait, sans tenant, les compteurs et l'envoi
+        // de notifications.
+        if ($user instanceof User && $user->isPlatformSupradmin() && $this->porte($request, MarksPlatformRoute::ALIAS)) {
             return $next($request);
         }
 
@@ -59,10 +71,11 @@ final class EnsureSchoolMemberOrPlatformRoute
         );
     }
 
-    private function isPlatformRoute(Request $request): bool
+    /** La route porte-t-elle ce marqueur (`plateforme`, `tout.compte`) ? */
+    private function porte(Request $request, string $marqueur): bool
     {
         $route = $request->route();
 
-        return $route !== null && in_array(MarksPlatformRoute::ALIAS, $route->gatherMiddleware(), true);
+        return $route instanceof Route && in_array($marqueur, $route->gatherMiddleware(), true);
     }
 }

@@ -58,6 +58,7 @@ $app = Application::configure(basePath: dirname(__DIR__))
             'platform.supradmin' => \App\Http\Middleware\EnsurePlatformSupradmin::class,
             'etablissement.requis' => \App\Http\Middleware\EnsureSchoolMemberOrPlatformRoute::class,
             \App\Http\Middleware\MarksPlatformRoute::ALIAS => \App\Http\Middleware\MarksPlatformRoute::class,
+            \App\Http\Middleware\MarksAnyAccountRoute::ALIAS => \App\Http\Middleware\MarksAnyAccountRoute::class,
         ]);
 
         // La porte des comptes sans établissement passe JUSTE APRÈS

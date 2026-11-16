@@ -117,8 +117,10 @@ Route::prefix('auth')->group(function () {
 // AUTHENTIFICATION - Routes protégées
 // ============================================
 Route::prefix('auth')->middleware(['auth:sanctum', 'plateforme'])->group(function () {
-    Route::get('/me', [AuthController::class, 'me']);
-    Route::post('/logout', [AuthController::class, 'logout']);
+    // Ouvertes à tout compte authentifié, même sans établissement (#972) : lire
+    // son compte, révoquer son propre jeton.
+    Route::get('/me', [AuthController::class, 'me'])->middleware('tout.compte');
+    Route::post('/logout', [AuthController::class, 'logout'])->middleware('tout.compte');
     Route::post('/refresh', [AuthController::class, 'refresh']);
     Route::get('/check', [AuthController::class, 'check']);
 });

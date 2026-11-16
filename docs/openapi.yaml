@@ -3733,7 +3733,6 @@ components:
         reason:
           type: string
           enum:
-            - account_exists
             - enrolment_not_active
             - no_institution
             - account_quota_exceeded
@@ -6316,6 +6315,12 @@ paths:
 
         La reponse ne rend NI jeton NI session : l inscrit se connecte ensuite
         avec le mot de passe qu il vient de choisir.
+
+        Un compte qui existe deja avec ces coordonnees recoit la MEME reponse
+        qu un compte neuf (#914) : il n est PAS touche (ni mot de passe, ni role,
+        ni inscription, #812), et rien ne dit lequel des deux cas s est produit.
+        L apprenant qui a deja un compte rejoint sa classe par la porte
+        authentifiee `/me/inscriptions`.
       security: []
       parameters:
         - name: X-Institution
@@ -6358,8 +6363,8 @@ paths:
                 password_confirmation:
                   type: string
       responses:
-        '201':
-          description: "Inscription enregistree"
+        '202':
+          description: "Demande enregistree : compte cree, ou compte existant laisse intact (la meme reponse)"
           content:
             application/json:
               schema:
@@ -6395,22 +6400,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-        '409':
-          description: |
-            Un compte existe deja avec ces coordonnees. Il n est PAS touche —
-            ni mot de passe, ni role, ni inscription. Sur un endpoint anonyme,
-            une adresse n est pas une preuve de propriete (#812).
-
-            `reason: account_exists` — le front y lit « connectez-vous », puis
-            la porte authentifiee `/me/inscriptions` (#906).
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/RefusMotive'
-              example:
-                success: false
-                message: "Un compte existe deja avec ces coordonnees. Connectez-vous pour rejoindre cette classe."
-                reason: account_exists
         '422':
           description: "Charge invalide, ou ni adresse ni telephone"
           content:

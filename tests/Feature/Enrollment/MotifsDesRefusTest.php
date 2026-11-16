@@ -54,16 +54,16 @@ final class MotifsDesRefusTest extends TestCase
     // Redis avant chaque test (#374), et `RefreshDatabase` annule la table
     // `cache` en mode database. Chaque test part de compteurs à zéro.
 
-    // ───────────────────────── les deux 409, un par porte
+    // ───────────────────────── la porte anonyme ne dit pas si un compte existe (#914)
 
-    public function test_porte_anonyme_un_compte_existant_dit_connectez_vous(): void
+    public function test_porte_anonyme_un_compte_existant_ne_porte_aucun_motif(): void
     {
         [$ecole, $code] = $this->classeAvecCode();
         User::factory()->create(['institution_id' => $ecole->getKey(), 'email' => 'awa@test.ci']);
 
         $this->postJson(self::ANONYME, $this->candidature($code), ['X-Institution' => (string) $ecole->slug])
-            ->assertStatus(409)
-            ->assertJsonPath('reason', 'account_exists');
+            ->assertStatus(202)
+            ->assertJsonMissingPath('reason');
     }
 
     public function test_porte_authentifiee_une_adhesion_close_dit_inscription_non_active(): void
@@ -98,9 +98,10 @@ final class MotifsDesRefusTest extends TestCase
             ->assertJsonPath('reason', 'no_institution');
     }
 
-    public function test_les_deux_409_ne_portent_jamais_le_meme_motif(): void
+    public function test_seule_la_porte_authentifiee_rend_un_409(): void
     {
-        // La prémisse de #906, sous forme exécutable : deux sens, deux motifs.
+        // #906 distinguait deux 409 par leur motif. Depuis #914, la porte anonyme
+        // n'en rend plus : un compte existant y reçoit la réponse d'un compte neuf.
         [$ecole, $code, $classe] = $this->classeAvecCode();
         User::factory()->create(['institution_id' => $ecole->getKey(), 'email' => 'awa@test.ci']);
         $anonyme = $this->postJson(self::ANONYME, $this->candidature($code), ['X-Institution' => (string) $ecole->slug]);
@@ -117,7 +118,7 @@ final class MotifsDesRefusTest extends TestCase
 
         // Statuts ET motifs exacts : comparer deux motifs sans les nommer
         // resterait vert si l'une des deux portes rendait un 500 sans motif.
-        $anonyme->assertStatus(409)->assertJsonPath('reason', 'account_exists');
+        $anonyme->assertStatus(202)->assertJsonMissingPath('reason');
         $authentifiee->assertStatus(409)->assertJsonPath('reason', 'enrolment_not_active');
     }
 

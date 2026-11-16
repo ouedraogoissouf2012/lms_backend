@@ -10,6 +10,7 @@ use App\Models\Classe;
 use App\Models\Institution;
 use App\Models\User;
 use App\Services\TenantManager;
+use Illuminate\Contracts\Hashing\Hasher;
 use Illuminate\Database\DatabaseManager;
 use Psr\Log\LoggerInterface;
 
@@ -30,11 +31,15 @@ use Psr\Log\LoggerInterface;
  * L'inscrire sans toucher ses identifiants n'est pas mieux : on rattacherait
  * quelqu'un à une classe **sans son consentement**.
  *
- * On refuse donc, explicitement. Le refus révèle qu'un compte existe, et c'est
- * assumé : la fuite est bornée — il faut déjà détenir un code valide, lui-même
- * un secret de six caractères, et le débit est limité par un seau nommé. En
- * face, le silence laisserait tout apprenant qui revient sans aucun recours :
- * le refus le renvoie vers la porte authentifiée (#885), `POST /me/inscriptions`.
+ * ## Et la réponse ne dit pas qu'il existe (#914)
+ *
+ * Un compte existant reçoit la MÊME réponse qu'un compte neuf. Le 409
+ * `account_exists` d'avant était un oracle d'énumération binaire et sans bruit,
+ * dont la seule condition était un code de classe — qui circule par WhatsApp.
+ * Le message dit à chacun quoi faire sans dire lequel des deux il est ;
+ * l'apprenant qui a déjà un compte rejoint sa classe par la porte authentifiée
+ * (#885), `POST /me/inscriptions`. Le cas existant paie le même coût de hachage
+ * que la création ; l'écart d'une insertion en base reste (#687).
  *
  * ## Résolution et écriture sont PARTAGÉES avec la porte authentifiée
  *
@@ -54,6 +59,7 @@ final class InscriptionParCodeService
         private readonly TenantManager $tenants,
         private readonly DatabaseManager $db,
         private readonly LoggerInterface $logger,
+        private readonly Hasher $hasher,
     ) {}
 
     /**
@@ -74,7 +80,16 @@ final class InscriptionParCodeService
         // oracle sur les adresses connues.
         $classe = $this->classes->resoudre($valide['code'], $ecole);
 
-        $this->refuserSiLeCompteExiste($valide, $institution);
+        if ($this->compteExiste($valide, $institution)) {
+            // Le compte n'est pas touché, et la réponse est celle d'un compte neuf
+            // (#914). L'empreinte jetée paie le coût de hachage de la création.
+            $this->hasher->make($valide['password']);
+            $this->logger->info('Inscription par code : compte déjà existant, laissé intact', [
+                'institution_id' => $institution,
+            ]);
+
+            return $classe;
+        }
 
         // Transaction : un compte créé sans son inscription laisserait un
         // apprenant qui ne peut ni entrer dans sa classe, ni recommencer —
@@ -102,13 +117,13 @@ final class InscriptionParCodeService
     }
 
     /**
-     * @param  array{email: ?string, telephone: ?string}  $valide
+     * Un compte de l'établissement porte-t-il déjà cette adresse ou ce numéro ?
      *
-     * @throws BusinessException
+     * @param  array{email: ?string, telephone: ?string}  $valide
      */
-    private function refuserSiLeCompteExiste(array $valide, int $institution): void
+    private function compteExiste(array $valide, int $institution): bool
     {
-        $existant = User::query()->withoutGlobalScopes()
+        return User::query()->withoutGlobalScopes()
             ->where('institution_id', $institution)
             ->where(function ($requete) use ($valide): void {
                 if ($valide['email'] !== null) {
@@ -119,23 +134,5 @@ final class InscriptionParCodeService
                 }
             })
             ->exists();
-
-        if (! $existant) {
-            return;
-        }
-
-        // Journalisé SANS l'adresse : le journal n'a pas à dupliquer une donnée
-        // personnelle pour signaler une tentative.
-        $this->logger->info('Inscription par code refusée : compte déjà existant', [
-            'institution_id' => $institution,
-        ]);
-
-        throw new BusinessException(
-            'Un compte existe déjà avec ces coordonnées. Connectez-vous pour rejoindre cette classe.',
-            409,
-            // Le front y lit « connectez-vous », puis la porte authentifiée
-            // (#906) — un autre sens que le 409 de celle-ci.
-            reason: 'account_exists',
-        );
     }
 }

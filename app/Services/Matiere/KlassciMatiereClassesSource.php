@@ -130,7 +130,7 @@ final class KlassciMatiereClassesSource
      */
     private function klassciClasseIdsOf(User $user, string $klassciToken): array
     {
-        $classes = $user->isTeacher()
+        $classes = true
             ? $this->dashboardClasses->forToken($klassciToken)
             : $this->classesDeLEtablissement();
 

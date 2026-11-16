@@ -516,6 +516,27 @@ final class EnseignantCorrigeSesEvaluationsTest extends TestCase
         $this->assertHorsDelaiVisibleEtNonNotee($enseignant, $evaluation, [$refusee, $echue], $dissertation);
     }
 
+    /**
+     * #922 : une copie EN COURS (son échéance n'est pas passée) n'est pas encore notable.
+     * Son 409 dit son motif, distinct de celui d'une copie verrouillée.
+     */
+    public function test_une_copie_en_cours_n_est_pas_encore_notable_et_le_dit(): void
+    {
+        [$ecole, $enseignant, $classe, $maths] = $this->enseignantEtSaClasse();
+        $evaluation = $this->evaluation($classe, $maths, $enseignant);
+        $dissertation = EvaluationQuestion::factory()->create([
+            'evaluation_id' => $evaluation->getKey(), 'type' => 'dissertation', 'points' => 10,
+        ]);
+        $copie = $this->copie($evaluation, $this->eleve($ecole, $classe, 'Ina Encours'), 'en_cours', null, ['ends_at' => now()->addHour()]);
+        $this->aucunAppelKlassci();
+
+        $this->asTenant($enseignant)->postJson(
+            $this->de($evaluation).'/submissions/'.$copie->getKey().'/grade',
+            ['points' => [(string) $dissertation->getKey() => 8]],
+        )->assertStatus(409)->assertJsonPath('reason', 'evaluation_submission_not_gradable');
+        self::assertNull($copie->fresh()?->note_sur_20);
+    }
+
     /** @param  list<EvaluationSubmission>  $copies */
     private function assertHorsDelaiVisibleEtNonNotee(User $enseignant, Evaluation $evaluation, array $copies, EvaluationQuestion $dissertation): void
     {

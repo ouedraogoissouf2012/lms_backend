@@ -88,7 +88,8 @@ final class PublicSchoolRequestHardeningTest extends TestCase
         }
 
         $this->postJson(self::ROUTE, $this->demande(['email_demandeur' => 'de-trop@ecole.ci']))
-            ->assertStatus(429);
+            ->assertStatus(429)
+            ->assertJsonPath('reason', 'ip_quota_exceeded');
 
         // Le login répond sur ses propres mérites. Peu importe lesquels : ce qui
         // compte est qu'il ne soit PAS refusé pour un budget qu'il n'a pas
@@ -117,6 +118,24 @@ final class PublicSchoolRequestHardeningTest extends TestCase
         $cles = array_map(static fn ($borne) => $borne->key, $bornes);
 
         self::assertContains('school-requests-global', $cles);
+    }
+
+    /**
+     * #922 : les deux bornes de `school-requests` disent chacune leur motif. Le plafond
+     * global du jour est propre à cette route (`school_requests_global_cap`), distinct de
+     * la borne par adresse (`ip_quota_exceeded`). Le seau global est amené à sa limite
+     * par la clé que Laravel lui donne (`md5(nom du limiteur . clé)`).
+     */
+    public function test_le_plafond_global_du_jour_dit_son_motif(): void
+    {
+        $cle = md5('school-requests'.'school-requests-global');
+        for ($i = 0; $i < 200; $i++) {
+            RateLimiter::hit($cle, 86400);
+        }
+
+        $this->postJson(self::ROUTE, $this->demande(['email_demandeur' => 'plafond@ecole.ci']))
+            ->assertStatus(429)
+            ->assertJsonPath('reason', 'school_requests_global_cap');
     }
 
     /**

@@ -58,7 +58,8 @@ final class RemiseCopiePurgeeTest extends TestCase
         self::assertTrue($fait, 'la remise a tenté une écriture');
         self::assertNotSame('evaluation_attempt_locked', $reponse->json('reason'), 'une copie disparue passe pour verrouillée');
         self::assertNotSame('evaluation_attempt_conflict', $reponse->json('reason'));
-        $reponse->assertJsonPath('message', 'Aucune tentative en cours pour cette évaluation. Démarrez-la avant de la rendre.');
+        $reponse->assertJsonPath('message', 'Aucune tentative en cours pour cette évaluation. Démarrez-la avant de la rendre.')
+            ->assertJsonPath('reason', 'evaluation_attempt_not_started');
         self::assertSame(0, DB::table('evaluation_submissions')->where('id', $copie)->count(), 'aucune copie recréée');
     }
 }

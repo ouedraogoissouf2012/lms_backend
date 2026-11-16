@@ -38,6 +38,24 @@ trait BuildsAttemptResponses
     }
 
     /**
+     * Le même refus, avec son motif (#922, ADR-906-01) : quand un même statut porte
+     * plusieurs sens, chacun dit le sien.
+     *
+     * @return array{status:int,success:bool,message:string,data:null,errors:null,reason:string}
+     */
+    protected function refusMotive(int $status, string $message, string $reason): array
+    {
+        return [
+            'status'  => $status,
+            'success' => false,
+            'message' => $message,
+            'data'    => null,
+            'errors'  => null,
+            'reason'  => $reason,
+        ];
+    }
+
+    /**
      * Assemble la grille question→résultat (extrait du god-controller #176).
      *
      * @return array<int,array{question:mixed,user_answer:mixed,is_correct:?bool,points_earned:float,correct_answers:mixed}>

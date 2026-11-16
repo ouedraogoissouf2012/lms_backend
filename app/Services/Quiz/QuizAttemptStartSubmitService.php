@@ -50,12 +50,12 @@ final class QuizAttemptStartSubmitService
      * illimité sur un quiz chronométré, ce qui viderait de son sens le quota
      * qu'on cherche à faire respecter.
      *
-     * @return array{status:int,success:bool,message:?string,data:?array<string,mixed>,errors:?array<string,mixed>}
+     * @return array{status:int,success:bool,message:?string,data:?array<string,mixed>,errors:?array<string,mixed>,reason?:string}
      */
     public function startAttempt(Quiz $quiz, User $user): array
     {
         if (! $this->access->isAvailable($quiz)) {
-            return $this->failure(403, 'Ce quiz n\'est pas disponible actuellement');
+            return $this->refusMotive(403, 'Ce quiz n\'est pas disponible actuellement', 'quiz_unavailable');
         }
 
         $resumable = $this->access->activeAttemptForUser($quiz, $user->id);
@@ -66,7 +66,7 @@ final class QuizAttemptStartSubmitService
         // `canOpenNewAttempt` et non `canUserAttempt` : l'absence de tentative
         // reprenable vient d'être établie, la relire serait une requête pour rien.
         if (! $this->access->canOpenNewAttempt($quiz, $user->id)) {
-            return $this->failure(403, 'Vous avez atteint le nombre maximum de tentatives');
+            return $this->refusMotive(403, 'Vous avez atteint le nombre maximum de tentatives', 'quiz_max_attempts');
         }
 
         return $this->openNewAttempt($quiz, $user);
@@ -79,7 +79,7 @@ final class QuizAttemptStartSubmitService
      * ouverte il la reprend (double-clic → 200), sinon le conflit est signalé
      * en 409 — jamais en 500 comme avant #581.
      *
-     * @return array{status:int,success:bool,message:?string,data:?array<string,mixed>,errors:?array<string,mixed>}
+     * @return array{status:int,success:bool,message:?string,data:?array<string,mixed>,errors:?array<string,mixed>,reason?:string}
      */
     private function openNewAttempt(Quiz $quiz, User $user): array
     {
@@ -102,9 +102,10 @@ final class QuizAttemptStartSubmitService
             // Seule l'unicité est rattrapée — toute autre QueryException traverse.
             $winner = $this->access->activeAttemptForUser($quiz, $user->id);
             if ($winner === null) {
-                return $this->failure(
+                return $this->refusMotive(
                     409,
-                    'Une autre tentative vient d\'être enregistrée pour ce quiz. Rechargez la page.'
+                    'Une autre tentative vient d\'être enregistrée pour ce quiz. Rechargez la page.',
+                    'quiz_attempt_conflict',
                 );
             }
 
@@ -122,7 +123,7 @@ final class QuizAttemptStartSubmitService
      * l'ordre d'origine à qui recharge la page. `time_remaining` est calculé
      * depuis le `started_at` d'origine : c'est tout l'intérêt de reprendre.
      *
-     * @return array{status:int,success:bool,message:?string,data:?array<string,mixed>,errors:?array<string,mixed>}
+     * @return array{status:int,success:bool,message:?string,data:?array<string,mixed>,errors:?array<string,mixed>,reason?:string}
      */
     private function attemptStarted(Quiz $quiz, QuizAttempt $attempt, bool $resumed): array
     {
@@ -159,7 +160,7 @@ final class QuizAttemptStartSubmitService
      * grading service.
      *
      * @param  array<int|string,mixed>  $answers
-     * @return array{status:int,success:bool,message:?string,data:?array<string,mixed>,errors:?array<string,mixed>}
+     * @return array{status:int,success:bool,message:?string,data:?array<string,mixed>,errors:?array<string,mixed>,reason?:string}
      */
     public function submitAttempt(QuizAttempt $attempt, User $user, array $answers): array
     {
@@ -168,7 +169,7 @@ final class QuizAttemptStartSubmitService
         }
 
         if ($attempt->status !== 'in_progress') {
-            return $this->failure(422, 'Cette tentative a déjà été soumise');
+            return $this->refusMotive(422, 'Cette tentative a déjà été soumise', 'quiz_attempt_already_submitted');
         }
 
         if ($this->timer->hasExpired($attempt)) {
@@ -178,6 +179,7 @@ final class QuizAttemptStartSubmitService
                 'status'  => 422,
                 'success' => false,
                 'message' => 'Le temps est écoulé. Votre tentative a été soumise automatiquement.',
+                'reason'  => 'quiz_time_expired',
                 'data'    => [
                     'attempt'      => $attempt,
                     'time_expired' => true,

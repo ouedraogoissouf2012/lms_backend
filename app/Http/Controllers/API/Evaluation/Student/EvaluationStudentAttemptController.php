@@ -138,7 +138,8 @@ final class EvaluationStudentAttemptController extends AuthenticatedController
             if ($resultat['status'] === RemiseDeCopie::AUCUNE_TENTATIVE) {
                 return $this->errorResponse(
                     'Aucune tentative en cours pour cette évaluation. Démarrez-la avant de la rendre.',
-                    409
+                    409,
+                    reason: 'evaluation_attempt_not_started',
                 );
             }
 

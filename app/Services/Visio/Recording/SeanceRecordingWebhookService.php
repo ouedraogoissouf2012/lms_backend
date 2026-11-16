@@ -206,11 +206,11 @@ final class SeanceRecordingWebhookService
     ): ?array {
         if ($signature === null || $timestamp === null || $nonce === null
             || $signature === '' || $timestamp === '' || $nonce === '') {
-            return $this->fail(401, 'Signature webhook manquante.');
+            return $this->fail(401, 'Signature webhook manquante.', 'webhook_signature_missing');
         }
 
         if (! ctype_digit($timestamp)) {
-            return $this->fail(401, 'Horodatage webhook invalide.');
+            return $this->fail(401, 'Horodatage webhook invalide.', 'webhook_timestamp_invalid');
         }
 
         // config() retourne mixed : on ne caste qu'une valeur réellement numérique,
@@ -222,7 +222,7 @@ final class SeanceRecordingWebhookService
             : self::DEFAULT_MAX_AGE_SECONDS;
 
         if (abs(time() - (int) $timestamp) > $maxAge) {
-            return $this->fail(401, 'Horodatage webhook expiré.');
+            return $this->fail(401, 'Horodatage webhook expiré.', 'webhook_timestamp_expired');
         }
 
         $expected = hash_hmac('sha256', $timestamp."\n".$nonce."\n".$rawBody, $secret);
@@ -230,12 +230,12 @@ final class SeanceRecordingWebhookService
             ? substr($signature, 7)
             : $signature;
         if (! hash_equals($expected, $provided)) {
-            return $this->fail(401, 'Signature webhook invalide.');
+            return $this->fail(401, 'Signature webhook invalide.', 'webhook_signature_invalid');
         }
 
         $nonceKey = 'visio_webhook_nonce_'.$nonce;
         if (! $this->cache->add($nonceKey, 1, $maxAge + 60)) {
-            return $this->fail(409, 'Webhook déjà traité.');
+            return $this->fail(409, 'Webhook déjà traité.', 'webhook_already_processed');
         }
 
         return null;
@@ -244,14 +244,15 @@ final class SeanceRecordingWebhookService
     /**
      * @return array{status:int, payload: array<string, mixed>}
      */
-    private function fail(int $status, string $message): array
+    private function fail(int $status, string $message, ?string $reason = null): array
     {
+        // Le motif d'un statut à plusieurs sens (#922, ADR-906-01) : quatre 401, un 409.
         return [
             'status' => $status,
             'payload' => [
                 'success' => false,
                 'message' => $message,
-            ],
+            ] + ($reason === null ? [] : ['reason' => $reason]),
         ];
     }
 }

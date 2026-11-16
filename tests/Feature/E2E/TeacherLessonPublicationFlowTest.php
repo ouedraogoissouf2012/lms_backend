@@ -11,6 +11,7 @@ use App\Models\User;
 use App\Models\UserClass;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
+use Tests\Concerns\SimuleLaMatiereKlassci;
 use Tests\TestCase;
 
 /**
@@ -34,6 +35,7 @@ use Tests\TestCase;
 final class TeacherLessonPublicationFlowTest extends TestCase
 {
     use RefreshDatabase;
+    use SimuleLaMatiereKlassci;
 
     private Institution $institution;
     private User $teacher;
@@ -80,6 +82,8 @@ final class TeacherLessonPublicationFlowTest extends TestCase
     public function test_complete_lesson_publication_lifecycle(): void
     {
         // ── Étape 1 : l'enseignant crée le cours (brouillon par défaut) ────
+        // dans une classe de la matière (#1103).
+        $this->matiereKlassciProposant($this->matiere, $this->classe);
         Sanctum::actingAs($this->teacher);
 
         $create = $this->postJson('/api/lessons', [

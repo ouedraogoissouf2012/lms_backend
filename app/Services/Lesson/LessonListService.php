@@ -117,10 +117,12 @@ final class LessonListService
 
         // Filtres exhaustifs (#483 REQ-5) : dérivés de TOUTE la sélection
         // filtrée, pas de la seule page — sinon les menus déroulants seraient
-        // incomplets au-delà de la 1re page.
-        $allFiltered = (clone $query)->get();
+        // incomplets au-delà de la 1re page. Ses deux SEULES colonnes, dans son
+        // ordre, sans hydrater ni charger de relation (#940).
+        $selection = (clone $query)->setEagerLoads([])->toBase()
+            ->get([$query->qualifyColumn('matiere_id'), $query->qualifyColumn('enseignant_id')]);
 
-        return $this->myCoursesPresenter->present($page, $allFiltered, $user);
+        return $this->myCoursesPresenter->present($page, $selection, $user);
     }
 
     /**

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Lesson;
 
 use App\Models\Lesson;
+use App\Models\LessonProgress;
 use App\Models\Matiere;
 use App\Models\User;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -31,8 +32,9 @@ final class MyCoursesPresenter
 
     /**
      * @param  LengthAwarePaginator<int, Lesson>  $page  Cours de la page courante.
-     * @param  Collection<int, Lesson>  $allFiltered  Toute la sélection filtrée
-     *                                                (hors pagination) — sert à bâtir des filtres exhaustifs.
+     * @param  Collection<int, \stdClass>  $selection  Toute la sélection filtrée (hors pagination),
+     *                                                réduite à `matiere_id` et `enseignant_id`, dans son
+     *                                                ordre — sert à bâtir des filtres exhaustifs (#940).
      * @return array{
      *     courses: Collection<int, array<string, mixed>>,
      *     filters: array{matieres: Collection<int, array{id: int, name: string}>, enseignants: Collection<int, array{id: int, name: string}>},
@@ -40,19 +42,25 @@ final class MyCoursesPresenter
      *     meta: array{current_page: int, last_page: int, per_page: int, total: int},
      * }
      */
-    public function present(LengthAwarePaginator $page, Collection $allFiltered, User $user): array
+    public function present(LengthAwarePaginator $page, Collection $selection, User $user): array
     {
         /** @var Collection<int, Lesson> $items */
         $items = $page->getCollection();
-        $enseignants = $this->preloadEnseignants($allFiltered);
+        $enseignantIds = self::idsDans($selection, 'enseignant_id');
+        $enseignants = $this->preloadEnseignants($enseignantIds);
+        // La progression de la page en UNE requête, et non une par cours (#940).
+        $progressions = $this->progressService->progressionsForUser(
+            $items->map(static fn (Lesson $lesson): int => (int) $lesson->id)->values()->all(),
+            $user->id,
+        );
 
         $courses = $items->map(
-            fn (Lesson $lesson): array => $this->mapCourse($lesson, $user, $enseignants)
+            fn (Lesson $lesson): array => $this->mapCourse($lesson, $progressions->get($lesson->id), $enseignants)
         );
 
         return [
             'courses' => $courses,
-            'filters' => $this->buildFilters($allFiltered, $enseignants),
+            'filters' => $this->buildFilters(self::idsDans($selection, 'matiere_id'), $enseignantIds, $enseignants),
             'total' => $page->total(),
             'meta' => [
                 'current_page' => $page->currentPage(),
@@ -67,10 +75,10 @@ final class MyCoursesPresenter
      * Précharge les enseignants par id ET par klassci_id (le rattachement
      * `lessons.enseignant_id` peut être l'un ou l'autre selon la source).
      *
-     * @param  Collection<int, Lesson>  $lessons
+     * @param  list<int>  $ids
      * @return Collection<int, User>
      */
-    private function preloadEnseignants(Collection $lessons): Collection
+    private function preloadEnseignants(array $ids): Collection
     {
         // `lessons.enseignant_id` est LOCAL par contrat : sa migration le dit
         // (`comment('users.id (LOCAL)')`, 2025_10_14_160000:35) et son unique
@@ -91,8 +99,6 @@ final class MyCoursesPresenter
         //
         // `withTrashed()` : le nom de l auteur doit survivre a la suppression de
         // son compte (#566).
-        $ids = $lessons->pluck('enseignant_id')->unique()->filter()->all();
-
         /** @var Collection<int, User> $enseignants */
         $enseignants = User::withTrashed()
             ->whereIn('id', $ids)
@@ -106,9 +112,8 @@ final class MyCoursesPresenter
      * @param  Collection<int, User>  $enseignants
      * @return array<string, mixed>
      */
-    private function mapCourse(Lesson $lesson, User $user, Collection $enseignants): array
+    private function mapCourse(Lesson $lesson, ?LessonProgress $progress, Collection $enseignants): array
     {
-        $progress = $this->progressService->progressForUser($lesson, $user->id);
         $enseignant = $enseignants->get($lesson->enseignant_id);
 
         return [
@@ -148,35 +153,49 @@ final class MyCoursesPresenter
     }
 
     /**
-     * Dictionnaires de filtres dérivés de TOUTE la sélection filtrée (#483 REQ-5).
+     * Dictionnaires de filtres dérivés de TOUTE la sélection filtrée (#483 REQ-5),
+     * dans l'ordre d'apparition, sans hydrater une seule leçon (#940).
      *
-     * @param  Collection<int, Lesson>  $allFiltered
+     * @param  list<int>  $matiereIds
+     * @param  list<int>  $enseignantIds
      * @param  Collection<int, User>  $enseignants
      * @return array{matieres: Collection<int, array{id: int, name: string}>, enseignants: Collection<int, array{id: int, name: string}>}
      */
-    private function buildFilters(Collection $allFiltered, Collection $enseignants): array
+    private function buildFilters(array $matiereIds, array $enseignantIds, Collection $enseignants): array
     {
-        /** @var Collection<int, User> $uniqueEnseignants */
-        $uniqueEnseignants = collect();
-        foreach ($allFiltered as $lesson) {
-            $ens = $enseignants->get($lesson->enseignant_id);
-            if ($ens && ! $uniqueEnseignants->contains('id', $ens->id)) {
-                $uniqueEnseignants->push($ens);
+        $matieres = Matiere::query()->whereIn('id', $matiereIds)->get()->keyBy('id');
+
+        return [
+            'matieres' => collect($matiereIds)
+                ->map(static fn (int $id): ?Matiere => $matieres->get($id))
+                ->filter()
+                ->map(static fn (Matiere $m): array => ['id' => $m->id, 'name' => $m->libelle])
+                ->values(),
+            'enseignants' => collect($enseignantIds)
+                ->map(static fn (int $id): ?User => $enseignants->get($id))
+                ->filter()
+                ->map(static fn (User $e): array => ['id' => $e->id, 'name' => (string) $e->name])
+                ->values(),
+        ];
+    }
+
+    /**
+     * Les identifiants distincts et non nuls d'une colonne, dans l'ordre
+     * d'apparition de la sélection.
+     *
+     * @param  Collection<int, \stdClass>  $selection
+     * @return list<int>
+     */
+    private static function idsDans(Collection $selection, string $colonne): array
+    {
+        $ids = [];
+        foreach ($selection as $ligne) {
+            $id = $ligne->{$colonne} ?? null;
+            if (is_numeric($id) && ! in_array((int) $id, $ids, true)) {
+                $ids[] = (int) $id;
             }
         }
 
-        /** @var Collection<int, Matiere> $uniqueMatieres */
-        $uniqueMatieres = $allFiltered->pluck('matiere')->filter()->unique('id')->values();
-
-        return [
-            'matieres' => $uniqueMatieres->map(fn (Matiere $m): array => [
-                'id' => $m->id,
-                'name' => $m->libelle,
-            ]),
-            'enseignants' => $uniqueEnseignants->map(fn (User $e): array => [
-                'id' => $e->id,
-                'name' => (string) $e->name,
-            ]),
-        ];
+        return $ids;
     }
 }

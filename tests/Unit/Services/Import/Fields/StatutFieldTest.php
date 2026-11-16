@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Services\Import\Fields;
 
+use App\Enums\ClasseEtudiantStatut;
 use App\Services\Import\Fields\StatutField;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -14,9 +16,11 @@ use PHPUnit\Framework\TestCase;
  * `Classe::etudiantsActifs()` et l'audience locale des séances (#712). Écrire
  * « actif » pour un abandon remet un absent dans les listes d'appel.
  *
- * Les valeurs permises sont celles de l'ENUM en base — `actif`, `inactif`,
- * `abandonne` — et rien d'autre : une valeur hors énumération serait refusée
- * par MySQL au milieu de l'exécution asynchrone, donc après écriture partielle.
+ * Les statuts sont ceux de `ClasseEtudiantStatut` (ADR-711-02). Un fichier en
+ * importe trois : `actif`, `inactif`, `abandonne`. Il en refuse deux, pour une
+ * raison MÉTIER, et non plus pour un ENUM MySQL disparu (#920) : `expire`
+ * découle d'une date de fin que le fichier ne porte pas, et `suspendu` ne se
+ * distingue d'`inactif` par aucune règle écrite.
  */
 final class StatutFieldTest extends TestCase
 {
@@ -57,12 +61,52 @@ final class StatutFieldTest extends TestCase
         self::assertSame('abandonne', $this->field->resolve('Abandonné')->value);
     }
 
-    public function test_une_valeur_hors_enum_est_refusee_avant_l_ecriture(): void
+    public function test_un_statut_inconnu_est_refuse_avant_l_ecriture(): void
     {
-        $issue = $this->field->resolve('suspendu');
+        $issue = $this->field->resolve('diplome');
 
         self::assertTrue($issue->isRejected());
         self::assertSame('statut_inconnu', $issue->code);
         self::assertStringContainsStringIgnoringCase('abandonne', (string) $issue->message);
+    }
+
+    /**
+     * @return array<string, array{string, string}>
+     */
+    public static function nonImportables(): array
+    {
+        return [
+            'expire : il découle d\'une date de fin' => ['expire', 'date de fin'],
+            'suspendu : aucune règle ne le distingue d\'inactif' => ['suspendu', 'inactif'],
+        ];
+    }
+
+    /** #920 : le statut est connu, mais un fichier ne le pose pas, et le refus dit pourquoi. */
+    #[DataProvider('nonImportables')]
+    public function test_un_statut_connu_mais_non_importable_dit_pourquoi(string $statut, string $raison): void
+    {
+        $issue = $this->field->resolve($statut);
+
+        self::assertTrue($issue->isRejected());
+        self::assertSame('statut_non_importable', $issue->code);
+        self::assertStringContainsString($raison, (string) $issue->message);
+    }
+
+    /**
+     * #920 : chaque cas de `ClasseEtudiantStatut` est classé, accepté ou refusé
+     * avec sa raison. Un statut nouveau fait rougir ce test : il force une
+     * décision, au lieu d'un refus silencieux par « inconnu ».
+     */
+    public function test_chaque_statut_de_l_enumeration_est_classe(): void
+    {
+        foreach (ClasseEtudiantStatut::cases() as $cas) {
+            $issue = $this->field->resolve($cas->value);
+
+            if ($issue->isRejected()) {
+                self::assertSame('statut_non_importable', $issue->code, "« {$cas->value} » est refusé comme inconnu, sans raison.");
+            } else {
+                self::assertSame($cas->value, $issue->value);
+            }
+        }
     }
 }

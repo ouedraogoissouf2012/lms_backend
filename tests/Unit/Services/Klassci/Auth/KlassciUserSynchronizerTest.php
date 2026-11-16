@@ -69,7 +69,7 @@ final class KlassciUserSynchronizerTest extends TestCase
             DB::connection(),
             Hash::driver(),
             $this->matiereSync,
-            new StudentClassSynchronizer($this->klassciService, $this->logger, app(\App\Support\Logging\CaughtExceptionLog::class)),
+            new StudentClassSynchronizer($this->klassciService, $this->logger, app(\App\Support\Logging\CaughtExceptionLog::class), DB::connection()),
             new KlassciEnseignantIdResolver,
             new KlassciEmailConflictGuard($this->logger),
             $this->logger,

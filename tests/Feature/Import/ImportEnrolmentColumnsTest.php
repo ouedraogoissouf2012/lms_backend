@@ -152,15 +152,19 @@ final class ImportEnrolmentColumnsTest extends TestCase
             ->assertJsonPath('data.rows.0.code', 'date_invalide');
     }
 
-    public function test_un_statut_hors_enum_refuse_la_ligne_avant_l_ecriture(): void
+    public function test_un_statut_connu_mais_non_importable_refuse_la_ligne_et_dit_pourquoi(): void
     {
-        // Sans ce refus, la valeur partait vers un ENUM MySQL et faisait échouer
-        // l'exécution asynchrone APRÈS écriture partielle.
+        // `suspendu` est un statut de `ClasseEtudiantStatut`, mais un fichier ne le
+        // pose pas : aucune règle ne le distingue d'`inactif` (#920). Le refus a
+        // lieu à l'analyse, avant toute écriture, et il dit sa raison.
+        // Un seul volet : l'import est réservé à l'école qui tient sa liste (#805).
         $importateur = $this->importateur('coordinator');
 
-        $this->analyser($importateur, self::HEADER."Bamba;Koffi;koffi@test.ci;;;;suspendu\n")
+        $rapport = $this->analyser($importateur, self::HEADER."Bamba;Koffi;koffi@test.ci;;;;suspendu\n")
             ->assertJsonPath('data.counts.error', 1)
-            ->assertJsonPath('data.rows.0.code', 'statut_inconnu');
+            ->assertJsonPath('data.rows.0.code', 'statut_non_importable');
+
+        self::assertStringContainsString('inactif', (string) $rapport->json('data.rows.0.message'));
     }
 
     public function test_une_retrogradation_entre_l_analyse_et_l_execution_refuse_la_ligne(): void

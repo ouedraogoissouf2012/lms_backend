@@ -3741,6 +3741,7 @@ components:
             - institution_cap_reached
             - ip_quota_exceeded
             - global_cap_reached
+            - seance_past
 
     # #806 — `reason` est FACULTATIF ici : un 401 Sanctum n en porte aucun.
     RefusKlassci:
@@ -5117,6 +5118,15 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SeanceLocaleRefus'
+        '409':
+          description: |
+            Seance passee (`reason: seance_past`) : sa fin (programmation KLASSCI, ou
+            debut + 2 h pour une seance locale) est depassee de plus de 30 min. Rien n
+            est ecrit, rien n est notifie.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefusMotive'
         '500':
           description: |
             Erreur interne, y compris une panne de KLASSCI pendant la recherche.
@@ -5188,6 +5198,16 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SeanceLocaleRefus'
+        '409':
+          description: |
+            Seance passee (`reason: seance_past`) : sa fin est depassee de plus de 30
+            min. Fin reelle si connue (programmation KLASSCI, `fin_seance`), sinon
+            debut + 2 h pour une seance locale ; une ligne KLASSCI sans fin connue n
+            est pas refusee. Rien n est demarre.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefusMotive'
         '500':
           description: |
             Erreur interne. Rattrapee par le service : avec `error`. Non
@@ -5404,6 +5424,14 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SeanceLocaleInvalide'
+        '409':
+          description: |
+            Reactiver (`enabled: true`) une seance passee (`reason: seance_past`) : sa
+            fin connue est depassee de plus de 30 min. Desactiver reste permis.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefusMotive'
         '500':
           description: |
             Erreur interne. Rattrapee par le service : avec `error`. Non
@@ -5625,6 +5653,15 @@ paths:
                 $ref: '#/components/schemas/SeanceLocaleRefus'
         '429':
           $ref: '#/components/responses/TooManyRequests'
+        '409':
+          description: |
+            Seance passee (`reason: seance_past`) : la fin est depassee et la visio n
+            est plus active depuis moins de 4 h (`is_accessible`). Une visio demarree
+            a temps reste joignable 4 h.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefusMotive'
         '500':
           description: |
             Erreur interne. Rattrapee par le service : avec `error`. Non

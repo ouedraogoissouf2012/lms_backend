@@ -11,6 +11,7 @@ use App\Models\User;
 use App\Services\ClasseSyncService;
 use App\Services\Notification\AsyncVisioNotificationDispatcher;
 use App\Services\Seances\EmploiTempsSeanceLocator;
+use App\Services\Seances\FenetreVisio;
 use App\Services\Seances\KlassciPayload;
 use App\Services\Visio\SecureVisioRoomIdGenerator;
 use App\Support\Logging\CaughtExceptionLog;
@@ -63,13 +64,12 @@ final class VisioActivationService implements VisioActivationSource
             [$seanceFound, $matiereInfo] = $this->seanceLocator->locate($seanceId, $user, $klassciToken);
 
             if (! $seanceFound) {
-                return [
-                    'status' => 404,
-                    'payload' => [
-                        'success' => false,
-                        'message' => 'Séance non trouvée',
-                    ],
-                ];
+                return ['status' => 404, 'payload' => ['success' => false, 'message' => 'Séance non trouvée']];
+            }
+
+            // Passée (fin réelle de la programmation, FenetreVisio) : rien n'est écrit ni notifié.
+            if (FenetreVisio::seanceKlassciPassee($seanceFound, now())) {
+                return FenetreVisio::refus();
             }
 
             $visio = $this->upsertVisio($seanceId, $seanceFound, $matiereInfo, $user);
@@ -144,7 +144,13 @@ final class VisioActivationService implements VisioActivationSource
 
         $visio->visio_room_id ??= SecureVisioRoomIdGenerator::make();
 
+        // Les bornes réelles de la programmation : le démarrage, qui ne lit que cette
+        // ligne, y trouve la fin de la séance (verrou des séances passées).
+        [$debut, $fin] = FenetreVisio::bornesKlassci($seanceFound);
+
         $visio->fill([
+            'date_seance' => $visio->date_seance ?? $debut,
+            'fin_seance' => $fin ?? $visio->fin_seance,
             'klassci_matiere_id' => $matiereInfo['id'] ?? null,
             'klassci_classe_id' => KlassciPayload::toInt(
                 KlassciPayload::asArray($seanceFound['classe'] ?? null)['id'] ?? null

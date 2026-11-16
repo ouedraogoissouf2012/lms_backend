@@ -7,6 +7,7 @@ namespace App\Services\Visio\Lifecycle;
 use App\Models\Seance;
 use App\Models\User;
 use App\Services\Notification\AsyncVisioNotificationDispatcher;
+use App\Services\Seances\FenetreVisio;
 use App\Services\Visio\SecureVisioRoomIdGenerator;
 use App\Services\Visio\VisioActorAuthorization;
 use App\Support\Logging\CaughtExceptionLog;
@@ -51,6 +52,11 @@ final class LocalVisioActivation implements VisioActivationSource
 
         if (! $this->authorization->canManage($seance, $user)) {
             return ['status' => 403, 'payload' => VisioActorAuthorization::managementRefusal()];
+        }
+
+        // Une séance passée ne s'active plus (FenetreVisio) : rien n'est écrit, rien n'est notifié.
+        if (FenetreVisio::lignePassee($seance, now())) {
+            return FenetreVisio::refus();
         }
 
         try {

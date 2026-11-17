@@ -90,7 +90,6 @@ final class LocalModificationDeSeance implements ModificationDeSeance
 
         if (array_key_exists('classe_id', $champs)) {
             $classeId = $this->attributs->classeDeLEtablissement($champs['classe_id'], $acteur->institution_id);
-            $this->attributs->exigerLeCouple($classeId, $seance->matiere_id);
             $attributs['classe_id'] = $classeId;
         }
 

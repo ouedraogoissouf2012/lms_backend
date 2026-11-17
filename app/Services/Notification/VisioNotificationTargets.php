@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Notification;
 
+use App\Enums\ClasseEtudiantStatut;
 use App\Models\Classe;
 use App\Models\Seance;
 use App\Models\User;
@@ -53,7 +54,7 @@ final class VisioNotificationTargets
         $students = User::query()
             ->whereHas('classes', function ($query) use ($classe) {
                 $query->where('classes.id', $classe->id)
-                    ->where('classe_etudiant.statut', 'actif');
+                    ->where('classe_etudiant.statut', ClasseEtudiantStatut::Actif->value);
             })
             ->where('role', 'etudiant')
             ->get();
@@ -87,7 +88,7 @@ final class VisioNotificationTargets
         return User::query()
             ->whereHas('classes', function ($query) use ($classe) {
                 $query->where('classes.id', $classe->id)
-                    ->where('classe_etudiant.statut', 'actif');
+                    ->where('classe_etudiant.statut', ClasseEtudiantStatut::Actif->value);
             })
             ->where('role', 'etudiant')
             ->get();

@@ -26,6 +26,12 @@ use Psr\Log\LoggerInterface;
  *
  * Robustesse : un échec ne doit JAMAIS interrompre le login (try/catch, journal,
  * pas de rethrow).
+ *
+ * ## Le miroir de la classe (#886)
+ *
+ * Une classe écrite sans miroir local dans `classes` est demandée à
+ * {@see MiroirDeLaClasseDeLEleve}, qui passe par le job existant : ce service
+ * n'écrit jamais `classes` (ADR-878-01, ADR-886-01).
  */
 final class StudentClassSynchronizer
 {
@@ -34,6 +40,7 @@ final class StudentClassSynchronizer
         private readonly LoggerInterface $logger,
         private readonly CaughtExceptionLog $journal,
         private readonly ConnectionInterface $db,
+        private readonly MiroirDeLaClasseDeLEleve $miroir,
     ) {}
 
     public function sync(User $user, string $klassciToken): SynchroDeLaClasse
@@ -63,6 +70,7 @@ final class StudentClassSynchronizer
 
             $this->remplacerLaClasse($user, (int) $id, $classe);
             $this->logger->info('Classe KLASSCI de l\'élève synchronisée', ['user_id' => $user->id, 'classe_id' => (int) $id]);
+            $this->miroir->demanderSiAbsent($user, (int) $id);
 
             return SynchroDeLaClasse::Ecrite;
         } catch (\Exception $e) {

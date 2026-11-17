@@ -18,7 +18,9 @@ use Psr\Log\LoggerInterface;
 use Throwable;
 
 /**
- * Synchronise les classes d'un enseignant en arrière-plan, à sa connexion (#712).
+ * Synchronise les classes d'un enseignant en arrière-plan, à sa connexion (#712),
+ * et la classe d'un élève dont le miroir manque (#886, demandé par
+ * {@see \App\Services\Klassci\Auth\MiroirDeLaClasseDeLEleve}).
  *
  * ## Le défaut corrigé
  *

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Classe;
 
+use App\Enums\ClasseEtudiantStatut;
 use App\Models\Classe;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
@@ -52,7 +53,7 @@ final class ClassesAtteintes
     public static function inscrites(Builder $classes, User $user): Builder
     {
         return $classes->whereHas('etudiants', static function ($inscrits) use ($user): void {
-            $inscrits->where('users.id', $user->id)->where('classe_etudiant.statut', 'actif');
+            $inscrits->where('users.id', $user->id)->where('classe_etudiant.statut', ClasseEtudiantStatut::Actif->value);
         });
     }
 }

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Import;
 
+use App\Enums\ClasseEtudiantStatut;
 use App\Enums\ImportRowStatus;
 use App\Enums\Role;
 use App\Models\Import;
@@ -48,7 +49,7 @@ use Illuminate\Support\Str;
 final class ImportApplyService
 {
     /** Défaut de l'ENUM `classe_etudiant.statut`, pour un rapport sans la colonne. */
-    private const DEFAULT_STATUT = 'actif';
+    private const DEFAULT_STATUT = ClasseEtudiantStatut::Actif->value;
 
     public function __construct(
         private readonly RoleField $roles,
@@ -140,12 +141,11 @@ final class ImportApplyService
         $date = $this->stringField($payload, 'date_inscription');
         $statut = $this->stringField($payload, 'statut');
 
-        return [
-            'statut' => $statut !== '' ? $statut : self::DEFAULT_STATUT,
-            // Le fichier ne dit rien : l'inscription date du moment où elle est
-            // réellement faite, comme le fait déjà la synchronisation KLASSCI.
-            'date_inscription' => $date !== '' ? $date : now()->toDateString(),
-        ];
+        // Seulement ce que le fichier dit de la date : sans elle, une adhésion
+        // existante garde la sienne, et une nouvelle reçoit le jour même, décidé
+        // par `StudentEnrolmentService::inscrire()` (#895).
+        return ['statut' => $statut !== '' ? $statut : self::DEFAULT_STATUT]
+            + ($date !== '' ? ['date_inscription' => $date] : []);
     }
 
     /**

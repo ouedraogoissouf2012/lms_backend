@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Sync\Classes;
 
+use App\Enums\ClasseEtudiantStatut;
 use App\Models\Classe;
 use App\Models\User;
 use App\Services\KlassciProxyService;
@@ -201,7 +202,7 @@ final class ClasseStudentsSynchronizer
                 $this->db->table('classe_etudiant')->insert($match + [
                     'institution_id' => $institutionId,
                     'annee_universitaire_id' => $classe->annee_universitaire_id,
-                    'statut' => 'actif',
+                    'statut' => ClasseEtudiantStatut::Actif->value,
                     'date_inscription' => now(),
                     'created_at' => now(),
                     'updated_at' => now(),
@@ -229,7 +230,7 @@ final class ClasseStudentsSynchronizer
             // au-dessus.
             'institution_id' => $institutionId,
             'annee_universitaire_id' => $classe->annee_universitaire_id,
-            'statut' => 'actif',
+            'statut' => ClasseEtudiantStatut::Actif->value,
             'updated_at' => now(),
         ]);
     }

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Sync\Classes;
 
+use App\Enums\ClasseEtudiantStatut;
 use App\Models\Classe;
 use App\Services\Seances\KlassciPayload;
 use App\Services\TenantManager;
@@ -54,7 +55,7 @@ final class ReconciliationKlassci implements ReconciliationDesInscriptions
         $institutionId = $this->tenantManager->getResolved();
         $desactivees = $this->db->table('classe_etudiant')
             ->where('classe_id', $classe->id)
-            ->where('statut', 'actif')
+            ->where('statut', ClasseEtudiantStatut::Actif->value)
             ->where(static fn (Builder $ligne): Builder => $ligne
                 ->where('institution_id', $institutionId)
                 ->orWhereNull('institution_id'))

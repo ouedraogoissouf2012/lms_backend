@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Attendances;
 
+use App\Enums\ClasseEtudiantStatut;
 use App\Models\Classe;
 use App\Models\ESBTPAttendance;
 use App\Models\Seance;
@@ -247,7 +248,7 @@ final class VideoSessionAttendancesSyncer
         $fromPivot = Classe::query()
             ->where('institution_id', $seance->institution_id)
             ->where('klassci_id', $klassciClasseId)
-            ->with(['etudiants' => fn ($query) => $query->where('classe_etudiant.statut', 'actif')])
+            ->with(['etudiants' => fn ($query) => $query->where('classe_etudiant.statut', ClasseEtudiantStatut::Actif->value)])
             ->get()
             ->flatMap(fn (Classe $classe): \Illuminate\Support\Collection => $classe->etudiants->pluck('id'));
 

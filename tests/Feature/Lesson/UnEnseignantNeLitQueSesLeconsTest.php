@@ -114,7 +114,7 @@ final class UnEnseignantNeLitQueSesLeconsTest extends TestCase
 
         foreach ($this->lectures($c) as $nom => $uri) {
             $reponse = $this->asTenant($eleve)->getJson($uri);
-            self::assertSame(200, $reponse->status(), "élève de la classe, $nom : {$reponse->getContent()}");
+            self::assertSame(200, $reponse->getStatusCode(), "élève de la classe, $nom : {$reponse->getContent()}");
         }
     }
 
@@ -199,7 +199,7 @@ final class UnEnseignantNeLitQueSesLeconsTest extends TestCase
     {
         foreach ($this->lectures($c) as $nom => $uri) {
             $reponse = $this->asTenant($compte)->getJson($uri);
-            self::assertSame(200, $reponse->status(), "$cas, $nom : {$reponse->getContent()}");
+            self::assertSame(200, $reponse->getStatusCode(), "$cas, $nom : {$reponse->getContent()}");
         }
 
         self::assertSame(self::SOURCE, $this->asTenant($compte)->get("/api/chapters/{$c['chapitre']->id}/original")->streamedContent(), $cas);
@@ -208,6 +208,6 @@ final class UnEnseignantNeLitQueSesLeconsTest extends TestCase
     /** @param  TestResponse<Response>  $reponse */
     private function assertIntrouvable(TestResponse $reponse, string $cas): void
     {
-        self::assertSame(404, $reponse->status(), "$cas : {$reponse->getContent()}");
+        self::assertSame(404, $reponse->getStatusCode(), "$cas : {$reponse->getContent()}");
     }
 }

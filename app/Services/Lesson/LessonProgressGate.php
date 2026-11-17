@@ -91,7 +91,8 @@ final class LessonProgressGate
      * Un quiz de chapitre suit la règle de LECTURE de son chapitre, personnel
      * compris : l'écran de gestion des chapitres de l'enseignant
      * (`/teacher/lessons/:id/chapters`) le joue en aperçu, et relit le meilleur
-     * score depuis les tentatives. La progression, elle, n'est jamais écrite
+     * score depuis les tentatives. Un enseignant ne joue ainsi que les quiz de
+     * SES leçons (#1167). La progression, elle, n'est jamais écrite
      * pour le personnel ({@see ecritLaProgression()}).
      *
      * @return array{status: int, message: string, reason?: string}|null

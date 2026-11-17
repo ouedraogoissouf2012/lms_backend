@@ -10,12 +10,16 @@ use App\Models\Lesson;
 use App\Models\User;
 use App\Services\Enrollment\EnrollmentSource;
 use App\Services\Enrollment\InscriptionNonActive;
+use App\Services\Search\TeacherOwnershipScope;
 
 /**
  * #621 — lecture d'un chapitre : même frontière que #482 (classe de l'étudiant).
  *
- * Staff et propriétaire voient tout le tenant. Un étudiant ne voit que les
- * chapitres d'une leçon publiée dont `classe_id` est dans SES classes.
+ * La gestion ({@see User::isManager()}) voit tout le tenant. Un enseignant ne voit
+ * que ses leçons (#1167, décision du user du 17/11), lues à la source unique de
+ * l'auteur ({@see TeacherOwnershipScope::ownsLesson()}) : la leçon d'un collègue
+ * lui est inexistante (404). Un étudiant ne voit que les chapitres d'une leçon
+ * publiée dont `classe_id` est dans SES classes.
  * Hors classe → inexistant (404), jamais 403 (oracle d'énumération).
  *
  * #1095 : un étudiant qu'une inscription ACTIVE dans la classe de la leçon aurait
@@ -27,8 +31,8 @@ final class ChapterReadGate
 {
     public function __construct(
         private readonly EnrollmentSource $classes,
-    ) {
-    }
+        private readonly TeacherOwnershipScope $auteurs,
+    ) {}
 
     public function canRead(?Chapter $chapter, ?User $user): bool
     {
@@ -54,10 +58,11 @@ final class ChapterReadGate
             return LectureDeLecon::Introuvable;
         }
 
-        if ($user->isStaff()) {
+        if ($user->isManager()) {
             return LectureDeLecon::Admise;
         }
 
+        // L'enseignant comme l'élève : la règle de la leçon du chapitre.
         $lesson = $chapter->relationLoaded('lesson') ? $chapter->lesson : $chapter->lesson()->first();
 
         return $this->lectureLecon($lesson, $user);
@@ -77,8 +82,14 @@ final class ChapterReadGate
             return LectureDeLecon::Introuvable;
         }
 
-        if ($user->isStaff()) {
+        if ($user->isManager()) {
             return LectureDeLecon::Admise;
+        }
+
+        // Un enseignant ne lit que ses leçons (#1167) : celle d'un collègue lui est
+        // inexistante, comme toute ressource qu'il ne lit pas.
+        if ($user->isTeacher()) {
+            return $this->auteurs->ownsLesson($lesson, $user) ? LectureDeLecon::Admise : LectureDeLecon::Introuvable;
         }
 
         if (! $user->isStudent() || ! $lesson->isPublished() || $lesson->classe_id === null) {

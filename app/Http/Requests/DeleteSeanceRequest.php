@@ -2,8 +2,7 @@
 
 namespace App\Http\Requests;
 
-use App\Models\Seance;
-use App\Models\User;
+use App\Http\Requests\Concerns\AuthorizesSeanceDeletion;
 use App\Services\Seances\SeanceDesignee;
 use App\Services\Visio\VisioActorAuthorization;
 use Illuminate\Foundation\Http\FormRequest;
@@ -27,39 +26,15 @@ use Illuminate\Foundation\Http\FormRequest;
  */
 final class DeleteSeanceRequest extends FormRequest
 {
-    public function authorize(): bool
-    {
-        // Check 1: User must be authenticated
-        $user = $this->user();
-        if (! $user instanceof User) {
-            return false;
-        }
-
-        if (! ($user->isTeacher() || $user->isCoordinator() || $user->isAdmin())) {
-            return false;
-        }
-
-        $seance = $this->resolveSeance($user);
-        if (! $seance instanceof Seance) {
-            return false;
-        }
-
-        if ($user->isTeacher() && ! app(VisioActorAuthorization::class)->teacherOwns($seance, $user)) {
-            return false;
-        }
-
-        return true;
-    }
+    use AuthorizesSeanceDeletion;
 
     /**
      * La séance dans l'espace de l'école (#933) : la même source que le service
      * qui supprime, résolue à chaque requête.
      */
-    private function resolveSeance(User $user): ?Seance
+    public function authorize(SeanceDesignee $designee, VisioActorAuthorization $auteurs): bool
     {
-        $seanceId = $this->route('seanceId');
-
-        return is_numeric($seanceId) ? app(SeanceDesignee::class)->pour((int) $seanceId, $user) : null;
+        return $this->autoriseLaSuppression($designee, $auteurs);
     }
 
     /**

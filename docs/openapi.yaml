@@ -5212,6 +5212,66 @@ paths:
         '429':
           $ref: '#/components/responses/TooManyRequests'
 
+  /lms/seances/local/{seanceId}:
+    delete:
+      tags:
+        - Visio
+      operationId: deleteLocalSeance
+      summary: "Supprimer une seance designee par son id local"
+      description: |
+        #1154, ADR-1154-01 (etape A de la pile ADR-760-01). La porte de l'espace
+        LOCAL : la seance est designee par son id local, et seulement par lui,
+        dans l'etablissement du compte, quel que soit son mode. Un identifiant
+        qui n'est qu'un `klassci_seance_id` ne designe rien.
+
+        La porte historique `DELETE /lms/seances/{seanceId}` recoit, dans une
+        ecole KLASSCI, l'id KLASSCI ou l'id local, et tranche par l'id local
+        d'abord (#933). Cette porte donne a l'historique un espace unique.
+
+        Memes regles que la porte historique : le personnel ; un enseignant, sur
+        une seance dont il est l'auteur. Suppression douce (`deleted_at`).
+      security:
+        - sanctum: []
+      parameters:
+        - name: seanceId
+          in: path
+          required: true
+          description: "Identifiant LOCAL de la seance (`seances.id`)."
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        '200':
+          description: "Seance supprimee"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '401':
+          description: "Non authentifie"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: "Role hors du personnel, enseignant qui n'est pas l'auteur, ou seance que cette porte ne designe pas (absente, ou d'un autre etablissement), comme la porte historique. Aussi : etablissement desactive."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: "Visio en cours : la seance ne se supprime pas."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /lms/seances/upcoming:
     get:
       tags:

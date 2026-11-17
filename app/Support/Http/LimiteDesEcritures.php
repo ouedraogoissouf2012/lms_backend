@@ -73,7 +73,7 @@ final class LimiteDesEcritures
     {
         $compte = $request->user();
 
-        if ($request->isMethodSafe() || ! $compte instanceof User || $compte->isPlatformSupradmin()) {
+        if (! $compte instanceof User || $compte->isPlatformSupradmin()) {
             return Limit::none();
         }
 

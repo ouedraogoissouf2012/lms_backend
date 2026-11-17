@@ -136,7 +136,7 @@ final class LoginOrchestrator
             $meta,
             $tenant,
             $this->rosterAuthorities->forInstitution($institution)->allowsLocalEnrolment(),
-            $this->catalogue->ouvertePour($institution),
+            true,
         );
     }
 }

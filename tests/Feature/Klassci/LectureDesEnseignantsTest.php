@@ -238,7 +238,7 @@ final class LectureDesEnseignantsTest extends TestCase
     {
         User::factory()->create(['institution_id' => $this->ecole->id, 'role' => 'enseignant']);
         // Un compte sans établissement : une borne `institution_id = null` le lirait.
-        User::factory()->create(['institution_id' => null, 'role' => 'enseignant']);
+        User::factory()->sansEtablissement()->createQuietly(['institution_id' => null, 'role' => 'enseignant']);
         $sansEcole = new User(['role' => 'admin']);
         app(TenantManager::class)->reset();
 

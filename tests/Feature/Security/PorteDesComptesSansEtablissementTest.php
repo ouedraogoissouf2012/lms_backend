@@ -98,7 +98,7 @@ final class PorteDesComptesSansEtablissementTest extends TestCase
 
     private function compteSansEtablissement(string $role): User
     {
-        return User::factory()->create(['institution_id' => null, 'role' => $role]);
+        return User::factory()->sansEtablissement()->createQuietly(['institution_id' => null, 'role' => $role]);
     }
 
     private function cle(Route $route): string

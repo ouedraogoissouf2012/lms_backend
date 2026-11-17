@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Models\Institution;
 use App\Models\User;
 use Database\Factories\Concerns\MintsKlassciIdentifiers;
 use Illuminate\Database\Eloquent\Factories\Factory;
@@ -37,6 +38,9 @@ class UserFactory extends Factory
             'email_verified_at' => now(),
             'password' => static::$password ??= Hash::make('password'),
             'role' => fake()->randomElement(['etudiant', 'enseignant', 'coordinateur']),
+            // #1181 : un compte d'école a une école ; seul le supradmin de plateforme
+            // vit sans. Une valeur passée à `create()` ou par `for()` l'emporte.
+            'institution_id' => static fn (array $attributs) => ($attributs['role'] ?? null) === 'supradmin' ? null : Institution::factory(),
             // Issue #119 — `klassci_enseignant_id` est la colonne dédiée d'autorité ;
             // alignée par défaut avec `klassci_data['enseignant_id']` pour que les
             // tests legacy qui peuplent la factory sans state explicite restent verts.

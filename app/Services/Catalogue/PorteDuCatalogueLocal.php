@@ -105,7 +105,7 @@ final class PorteDuCatalogueLocal
         }
 
         if (! $this->ouvertePour($ecole)) {
-            throw new BusinessException(self::REFUS, 403, reason: self::REASON);
+            throw new BusinessException(self::REFUS, 403);
         }
 
         return $ecole->id;

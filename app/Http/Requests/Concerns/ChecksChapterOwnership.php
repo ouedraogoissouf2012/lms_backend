@@ -9,10 +9,13 @@ use App\Http\Requests\RestoreChapterRequest;
 use App\Models\Chapter;
 use App\Models\Lesson;
 use App\Models\User;
+use App\Services\Search\TeacherOwnershipScope;
 
 /**
  * Garde d'appartenance d'un chapitre, partagée entre suppression, restauration et
- * dépôt d'un fichier (`UploadChapterFileRequest`).
+ * dépôt d'un fichier (`UploadChapterFileRequest`) : l'enseignant auteur de la leçon,
+ * et lui seul ; la gestion consulte, et son refus porte un motif
+ * ({@see ReservesLessonContentToTeacher}, #1167).
  *
  * ## Pourquoi un trait plutôt qu'une seconde copie
  *
@@ -33,19 +36,18 @@ use App\Models\User;
  */
 trait ChecksChapterOwnership
 {
+    use ReservesLessonContentToTeacher;
+
     /**
+     * @param  TeacherOwnershipScope  $auteurs  la source unique de l'auteur d'une leçon
      * @param  bool  $includeTrashed  vrai pour la restauration, faux pour la suppression
      * @param  string  $parametre  le paramètre de route qui porte l'id du chapitre
      */
-    protected function chapterOwnershipPasses(bool $includeTrashed = false, string $parametre = 'id'): bool
+    protected function chapterOwnershipPasses(TeacherOwnershipScope $auteurs, bool $includeTrashed = false, string $parametre = 'id'): bool
     {
         $user = auth()->user();
 
         if (! $user instanceof User) {
-            return false;
-        }
-
-        if (! $user->isTeacher() && ! $user->isCoordinator() && ! $user->isAdmin()) {
             return false;
         }
 
@@ -61,9 +63,8 @@ trait ChecksChapterOwnership
             return false;
         }
 
-        // Un administrateur agit sur toute leçon de son institution ; les autres
-        // rôles seulement sur la leur.
-        return $user->isAdmin() || $lesson->enseignant_id === $user->id;
+        // L'enseignant auteur de la leçon, et lui seul (#1167) : la gestion consulte.
+        return $this->enseignantAuteur($lesson, $user, $auteurs);
     }
 
     /**

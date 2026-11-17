@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use App\Http\Requests\Concerns\ChecksChapterOwnership;
+use App\Services\Search\TeacherOwnershipScope;
 use Illuminate\Foundation\Http\FormRequest;
 
 /**
@@ -14,19 +15,19 @@ use Illuminate\Foundation\Http\FormRequest;
  * No input fields required.
  *
  * ## Authorization Model
- * Only lesson owner or admin can delete:
+ * Only the teacher who owns the lesson can delete (#1167, the management only reads):
  * 1. User authenticated
- * 2. User is teacher/coordinator/admin
- * 3. Chapter's lesson owner == user OR is admin
+ * 2. User is a teacher
+ * 3. Chapter's lesson owner == user
  * 4. Chapter belongs to user's institution (multi-tenant)
  */
 final class DeleteChapterRequest extends FormRequest
 {
     use ChecksChapterOwnership;
 
-    public function authorize(): bool
+    public function authorize(TeacherOwnershipScope $auteurs): bool
     {
-        return $this->chapterOwnershipPasses();
+        return $this->chapterOwnershipPasses($auteurs);
     }
 
     /**

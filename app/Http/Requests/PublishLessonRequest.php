@@ -2,6 +2,8 @@
 
 namespace App\Http\Requests;
 
+use App\Http\Requests\Concerns\ReservesLessonContentToTeacher;
+use App\Services\Search\TeacherOwnershipScope;
 use Illuminate\Foundation\Http\FormRequest;
 
 /**
@@ -15,45 +17,22 @@ use Illuminate\Foundation\Http\FormRequest;
  * Triggers notifications to enrolled students.
  *
  * ## Authorization Model
- * Only lesson owner or admin can publish:
+ * Only the teacher who owns the lesson can publish (#1167, the management only reads):
  * 1. User authenticated
- * 2. User is teacher/coordinator/admin
- * 3. User owns the lesson (enseignant_id == user->id) OR is admin
+ * 2. User is a teacher
+ * 3. User owns the lesson (enseignant_id == user->id)
  * 4. Lesson belongs to user's institution (multi-tenant)
  *
  * If ANY check fails → 403 Forbidden
  */
 final class PublishLessonRequest extends FormRequest
 {
-    public function authorize(): bool
+    use ReservesLessonContentToTeacher;
+
+    public function authorize(TeacherOwnershipScope $auteurs): bool
     {
-        $user = auth()->user();
-
-        // Check 1: User must be authenticated
-        if (!$user) {
-            return false;
-        }
-
-        // Check 2: Only teachers/coordinators/admins can publish
-        if (!$user->isTeacher() && !$user->isCoordinator() && !$user->isAdmin()) {
-            return false;
-        }
-
-        // Check 3: Lesson must exist and belong to user's institution
-        $lesson = \App\Models\Lesson::where('id', $this->route('id'))
-            ->where('institution_id', $user->institution_id)
-            ->first();
-
-        if (!$lesson) {
-            return false;
-        }
-
-        // Check 4: User must be lesson owner OR admin
-        if (!$user->isAdmin() && $lesson->enseignant_id !== $user->id) {
-            return false;
-        }
-
-        return true;
+        // L'enseignant auteur de la leçon, et lui seul (#1167) : la gestion consulte.
+        return $this->enseignantAuteurDeLaLecon($this->route('id'), $auteurs);
     }
 
     /**

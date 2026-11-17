@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\AuthenticatedController;
+use App\Http\Requests\DeleteKnowledgeCheckRequest;
 use App\Http\Requests\StoreKnowledgeCheckRequest;
 use App\Http\Requests\UpdateKnowledgeCheckRequest;
 use App\Http\Resources\KnowledgeCheckResource;
@@ -39,7 +40,7 @@ final class KnowledgeCheckCrudController extends AuthenticatedController
         return $this->successResponse(KnowledgeCheckResource::collection($quizzes)->resolve($request));
     }
 
-    /** POST /api/knowledge-checks — créer un quiz (admin / enseignant propriétaire). */
+    /** POST /api/knowledge-checks — créer un quiz (enseignant auteur du chapitre, #1167). */
     public function store(StoreKnowledgeCheckRequest $request): JsonResponse
     {
         try {
@@ -73,7 +74,7 @@ final class KnowledgeCheckCrudController extends AuthenticatedController
         return $this->successResponse((new KnowledgeCheckResource($quiz))->resolve($request));
     }
 
-    /** PUT /api/knowledge-checks/{id} — update un quiz (admin / enseignant propriétaire). */
+    /** PUT /api/knowledge-checks/{id} — update un quiz (enseignant auteur du chapitre, #1167). */
     public function update(UpdateKnowledgeCheckRequest $request, string $id): JsonResponse
     {
         try {
@@ -85,8 +86,8 @@ final class KnowledgeCheckCrudController extends AuthenticatedController
         return $this->successResponse($quiz, 'Quiz mis a jour');
     }
 
-    /** DELETE /api/knowledge-checks/{id} — supprimer un quiz (admin / enseignant propriétaire). */
-    public function destroy(Request $request, string $id): JsonResponse
+    /** DELETE /api/knowledge-checks/{id} — supprimer un quiz (enseignant auteur du chapitre, #1167). */
+    public function destroy(DeleteKnowledgeCheckRequest $request, string $id): JsonResponse
     {
         try {
             $this->service->delete($id, $this->authenticatedUser($request));

@@ -2,6 +2,11 @@
 
 namespace App\Http\Requests;
 
+use App\Http\Requests\Concerns\ReservesLessonContentToTeacher;
+use App\Models\Chapter;
+use App\Models\Lesson;
+use App\Models\User;
+use App\Services\Search\TeacherOwnershipScope;
 use Illuminate\Foundation\Http\FormRequest;
 
 /**
@@ -12,50 +17,41 @@ use Illuminate\Foundation\Http\FormRequest;
  * Chapter belongs to lesson → authorize via lesson ownership.
  *
  * ## Authorization Model
- * Only lesson owner (teacher) or admin can update:
+ * Only the teacher who owns the lesson can update (#1167, the management only reads):
  * 1. User authenticated
- * 2. User is teacher/coordinator/admin
- * 3. Chapter's lesson owner == user OR is admin
+ * 2. User is a teacher
+ * 3. Chapter's lesson owner == user
  * 4. Chapter belongs to user's institution (multi-tenant)
  *
  * If ANY check fails → 403 Forbidden
  */
 final class UpdateChapterRequest extends FormRequest
 {
-    public function authorize(): bool
+    use ReservesLessonContentToTeacher;
+
+    public function authorize(TeacherOwnershipScope $auteurs): bool
     {
         $user = auth()->user();
 
-        if (!$user) {
-            return false;
-        }
-
-        // Only teachers/coordinators/admins can update
-        if (!$user->isTeacher() && !$user->isCoordinator() && !$user->isAdmin()) {
+        if (! $user instanceof User) {
             return false;
         }
 
         // Chapter must exist and belong to user's institution
-        $chapter = \App\Models\Chapter::where('id', $this->route('id'))
+        $chapter = Chapter::where('id', $this->route('id'))
             ->where('institution_id', $user->institution_id)
             ->first();
 
-        if (!$chapter) {
+        if (! $chapter) {
             return false;
         }
 
-        // Get the lesson this chapter belongs to
-        $lesson = \App\Models\Lesson::find($chapter->lesson_id);
-        if (!$lesson || $lesson->institution_id !== $user->institution_id) {
-            return false;
-        }
+        // L'enseignant auteur de sa leçon, et lui seul (#1167) : la gestion consulte.
+        $lesson = Lesson::find($chapter->lesson_id);
 
-        // User must own the lesson OR be admin
-        if (!$user->isAdmin() && $lesson->enseignant_id !== $user->id) {
-            return false;
-        }
-
-        return true;
+        return $lesson instanceof Lesson
+            && $lesson->institution_id === $user->institution_id
+            && $this->enseignantAuteur($lesson, $user, $auteurs);
     }
 
     public function rules(): array

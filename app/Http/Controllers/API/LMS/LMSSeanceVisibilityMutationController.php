@@ -5,10 +5,12 @@ declare(strict_types=1);
 namespace App\Http\Controllers\API\LMS;
 
 use App\Http\Controllers\AuthenticatedController;
+use App\Http\Requests\DeleteLocalSeanceRequest;
 use App\Http\Requests\DeleteSeanceRequest;
 use App\Http\Requests\HideSeanceRequest;
 use App\Http\Requests\ToggleVisioSeanceRequest;
 use App\Http\Requests\UnhideSeanceRequest;
+use App\Services\Seances\LocalSeanceDesignee;
 use App\Services\Seances\Mutations\SeanceDeleteService;
 use App\Services\Seances\Mutations\SeanceHideService;
 use App\Services\Seances\SeanceDesignee;
@@ -83,6 +85,20 @@ final class LMSSeanceVisibilityMutationController extends AuthenticatedControlle
      * reçue par la MÉTHODE : Laravel garde le contrôleur sur l'objet Route.
      */
     public function deleteSeance(DeleteSeanceRequest $request, int $seanceId, SeanceDesignee $designee): JsonResponse
+    {
+        $user = $this->authenticatedUser($request);
+        $result = $this->seanceDelete->delete($seanceId, $user, $designee);
+
+        return $this->relayResponse($result);
+    }
+
+    /**
+     * DELETE /api/lms/seances/local/{seanceId}
+     *
+     * La porte de l'espace local (#1154, ADR-1154-01) : la séance de son id local,
+     * dans l'école du compte, dans les deux types d'école.
+     */
+    public function deleteLocalSeance(DeleteLocalSeanceRequest $request, int $seanceId, LocalSeanceDesignee $designee): JsonResponse
     {
         $user = $this->authenticatedUser($request);
         $result = $this->seanceDelete->delete($seanceId, $user, $designee);

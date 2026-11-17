@@ -121,6 +121,12 @@ Route::middleware(['auth:sanctum', 'klassci.sync'])->prefix('lms')->group(functi
         ->name('lms.seances.delete')
         ->middleware('personnel');
 
+    // La porte de l'espace local (#1154, ADR-1154-01) : l'id local seulement.
+    Route::delete('/seances/local/{seanceId}', [LMSSeanceVisibilityMutationController::class, 'deleteLocalSeance'])
+        ->name('lms.seances.delete-local')
+        ->whereNumber('seanceId')
+        ->middleware('personnel');
+
     // Détails complets d'une séance (avec infos visio)
     Route::get('/seances/{seanceId}/details', [LMSSeanceDetailsController::class, 'seanceDetails'])
         ->name('lms.seances.details');

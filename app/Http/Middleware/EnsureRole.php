@@ -91,7 +91,7 @@ class EnsureRole
             return true;
         }
 
-        $role = Role::tryFromString($user->role);
+        $role = Role::tryFromString(strtolower(trim($user->role)));
 
         // superAdmin (admin institution) passe tous les contrôles SAUF les routes
         // réservées au gestionnaire plateforme.

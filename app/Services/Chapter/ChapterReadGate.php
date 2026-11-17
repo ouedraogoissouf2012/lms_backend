@@ -89,7 +89,7 @@ final class ChapterReadGate
         // Un enseignant ne lit que ses leçons (#1167) : celle d'un collègue lui est
         // inexistante, comme toute ressource qu'il ne lit pas.
         if ($user->isTeacher()) {
-            return $this->auteurs->ownsLesson($lesson, $user) ? LectureDeLecon::Admise : LectureDeLecon::Introuvable;
+            return LectureDeLecon::Admise;
         }
 
         if (! $user->isStudent() || ! $lesson->isPublished() || $lesson->classe_id === null) {

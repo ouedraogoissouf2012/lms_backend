@@ -79,7 +79,7 @@ final class LimiteDesEcritures
 
         $famille = self::famille($request->path());
 
-        return Limit::perMinute(self::seuil($famille))->by("ecriture|{$famille}|{$compte->id}");
+        return Limit::perMinute(self::seuil($famille))->by("ecriture|{$compte->id}");
     }
 
     /**

@@ -164,7 +164,7 @@ final class VisioParticipantValidationContractTest extends TestCase
 
     public function test_403_un_compte_sans_etablissement(): void
     {
-        $compte = User::factory()->create(['institution_id' => null, 'role' => 'coordinateur']);
+        $compte = User::factory()->sansEtablissement()->createQuietly(['institution_id' => null, 'role' => 'coordinateur']);
 
         $this->assertRefus($this->valider($compte, 1, $compte->id)->assertForbidden(), 'no_institution');
     }

@@ -52,7 +52,8 @@ final class EvaluationSansEtablissementTest extends TestCase
 
     private function compteSansEtablissement(string $role, ?int $klassciEnseignantId): User
     {
-        return User::factory()->create([
+        // #1181 : une donnée héritée que la règle du modèle interdit désormais.
+        return User::factory()->sansEtablissement()->createQuietly([
             'institution_id' => null,
             'role' => $role,
             'klassci_role' => $role,

@@ -30,10 +30,8 @@ Route::middleware(['auth:sanctum', 'klassci.sync'])->group(function () {
     Route::get('evaluations/{id}', [EvaluationCrudController::class, 'show']);
 
     // Démarrer et soumettre une évaluation
-    Route::post('evaluations/{id}/start', [EvaluationStudentAttemptController::class, 'startEvaluation'])
-        ->middleware('throttle:300,1');
-    Route::post('evaluations/{id}/submit', [EvaluationStudentAttemptController::class, 'submitEvaluation'])
-        ->middleware('throttle:60,1');
+    Route::post('evaluations/{id}/start', [EvaluationStudentAttemptController::class, 'startEvaluation']);
+    Route::post('evaluations/{id}/submit', [EvaluationStudentAttemptController::class, 'submitEvaluation']);
 
     // Récupérer la soumission de l'étudiant connecté
     Route::get('evaluations/{id}/my-submission', [EvaluationStudentSubmissionController::class, 'getMySubmission']);

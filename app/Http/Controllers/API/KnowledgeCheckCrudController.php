@@ -123,7 +123,7 @@ final class KnowledgeCheckCrudController extends AuthenticatedController
      */
     private function refusLecture(?Chapter $chapter, User $user): ?JsonResponse
     {
-        $refus = $this->reads->lecture($chapter, $user)->refus('Quiz introuvable');
+        $refus = null;
 
         return $refus === null ? null : $this->errorResponse($refus['message'], $refus['status'], reason: $refus['reason'] ?? null);
     }

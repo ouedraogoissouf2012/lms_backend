@@ -96,7 +96,8 @@ final class LimiteDesEcrituresTest extends TestCase
         yield 'modifier une leçon' => ['PUT', '/api/lessons/1', 'contenu', 100];
         yield 'modifier une séance' => ['PUT', '/api/lms/seances/1', 'contenu', 100];
         yield 'déposer un fichier' => ['POST', '/api/files/upload', 'contenu', 100];
-        yield 'une écriture non classée' => ['POST', '/api/notifications/1/read', 'contenu', 100];
+        yield 'une écriture non classée' => ['POST', '/api/lms/attendances/from-video-session', 'contenu', 100];
+        yield 'marquer ses notifications lues' => ['POST', '/api/notifications/mark-all-as-read', 'participation', 300];
         yield 'forum' => ['POST', '/api/forum/topics', 'forum', 100];
         yield 'créer un compte' => ['POST', '/api/users', 'gestion', 60];
         yield 'rapport' => ['POST', '/api/admin/reports/grades', 'gestion', 60];

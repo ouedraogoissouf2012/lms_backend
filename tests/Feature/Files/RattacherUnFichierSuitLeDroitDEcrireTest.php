@@ -171,6 +171,33 @@ final class RattacherUnFichierSuitLeDroitDEcrireTest extends TestCase
         $this->assertRienNEstEcrit();
     }
 
+    /**
+     * Le motif du refus sur une leçon tient au RÔLE seul : il ne dit pas si la leçon
+     * visée existe, ni dans quelle école.
+     */
+    #[DataProvider('volets')]
+    public function test_un_eleve_recoit_le_meme_refus_que_la_lecon_existe_ou_non(string $volet): void
+    {
+        $ecole = $this->ecole($volet);
+        $eleve = $this->compte($ecole, 'etudiant');
+        $ailleurs = $this->ecole($volet);
+        $laBas = $this->cible('lesson', $ailleurs, $this->compte($ailleurs, 'enseignant'));
+        $ici = $this->cible('lesson', $ecole, $this->compte($ecole, 'enseignant'));
+        $absente = (int) DB::table('lessons')->max('id') + 1000;
+
+        $corps = array_map(
+            fn (int $identifiant): mixed => $this->rattacher($eleve, 'lesson', $identifiant)
+                ->assertForbidden()
+                ->assertJsonPath('reason', 'lesson_content_teacher_only')
+                ->json(),
+            [$absente, (int) $laBas->getKey(), (int) $ici->getKey()],
+        );
+
+        self::assertSame($corps[0], $corps[1]);
+        self::assertSame($corps[0], $corps[2]);
+        $this->assertRienNEstEcrit();
+    }
+
     // ───────────────────────── sans cible, et paire partielle
 
     #[DataProvider('volets')]

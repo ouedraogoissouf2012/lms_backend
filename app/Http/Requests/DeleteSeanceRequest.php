@@ -4,6 +4,7 @@ namespace App\Http\Requests;
 
 use App\Models\Seance;
 use App\Models\User;
+use App\Services\Seances\SeanceDesignee;
 use App\Services\Visio\VisioActorAuthorization;
 use Illuminate\Foundation\Http\FormRequest;
 
@@ -38,7 +39,7 @@ final class DeleteSeanceRequest extends FormRequest
             return false;
         }
 
-        $seance = $this->resolveSeance();
+        $seance = $this->resolveSeance($user);
         if (! $seance instanceof Seance) {
             return false;
         }
@@ -50,17 +51,15 @@ final class DeleteSeanceRequest extends FormRequest
         return true;
     }
 
-    private function resolveSeance(): ?Seance
+    /**
+     * La séance dans l'espace de l'école (#933) : la même source que le service
+     * qui supprime, résolue à chaque requête.
+     */
+    private function resolveSeance(User $user): ?Seance
     {
         $seanceId = $this->route('seanceId');
-        $byId = Seance::query()->find($seanceId);
-        if ($byId instanceof Seance) {
-            return $byId;
-        }
 
-        $byKlassci = Seance::query()->where('klassci_seance_id', $seanceId)->first();
-
-        return $byKlassci instanceof Seance ? $byKlassci : null;
+        return is_numeric($seanceId) ? app(SeanceDesignee::class)->pour((int) $seanceId, $user) : null;
     }
 
     /**

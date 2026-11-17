@@ -65,6 +65,6 @@ final class LimitesNommees
                 : Limit::perMinute($seuil)->by("{$nom}|{$compte->id}");
         }
 
-        return Limit::perMinute($seuil)->by("{$nom}|".(string) $request->ip());
+        return Limit::perMinute($seuil)->by((string) $request->ip());
     }
 }

@@ -5,7 +5,6 @@ namespace Database\Seeders;
 use App\Models\Evaluation;
 use App\Models\EvaluationQuestion;
 use App\Models\EvaluationSubmission;
-use App\Models\Institution;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 
@@ -21,15 +20,8 @@ class EvaluationTestDataSeeder extends Seeder
         try {
             echo "🌱 Création des données de test pour Résultats Évaluations...\n\n";
 
-            $institution = Institution::firstOrCreate(
-                ['slug' => 'presentation'],
-                [
-                    'name' => 'KLASSCI Présentation',
-                    'klassci_api_url' => env('KLASSCI_PRESENTATION_URL', 'http://presentation.klassci.com/api/lms'),
-                    'klassci_api_token_encrypted' => env('KLASSCI_PRESENTATION_TOKEN', env('KLASSCI_API_TOKEN')),
-                    'is_active' => true,
-                ]
-            );
+            // La seule définition de `presentation` (#688) : https, jeton absent nommé.
+            $institution = InstitutionSeeder::presentation($this->command);
 
             // 1. Créer une évaluation de test
             echo "📝 Création de l'évaluation de test...\n";

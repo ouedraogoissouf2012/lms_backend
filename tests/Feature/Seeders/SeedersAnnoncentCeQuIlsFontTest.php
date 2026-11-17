@@ -6,11 +6,17 @@ namespace Tests\Feature\Seeders;
 
 use App\Models\Institution;
 use App\Models\User;
+use Database\Seeders\DatabaseSeeder;
+use Database\Seeders\DemoDataSeeder;
+use Database\Seeders\EvaluationTestDataSeeder;
 use Database\Seeders\InstitutionSeeder;
 use Database\Seeders\SupradminSeeder;
+use Database\Seeders\TestUsersSeeder;
 use Illuminate\Console\Command;
+use Illuminate\Database\Seeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Config;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 /**
@@ -42,6 +48,16 @@ use Tests\TestCase;
  * de #685 : un `db:seed` réintroduisait la panne que #768 venait de corriger,
  * en écrivant une valeur que `App\Rules\KlassciApiUrl` refuse désormais à
  * l'enregistrement.
+ *
+ * ## Le reste du balayage (#688, nuit du 16-17/11)
+ *
+ * `TestUsersSeeder`, `DemoDataSeeder` et `EvaluationTestDataSeeder` créaient
+ * EUX-MÊMES l'établissement `presentation` : avec l'URL `http://` de #685, et un
+ * jeton nul sans un mot. `db:seed` ne le voyait pas (`InstitutionSeeder` passe
+ * d'abord, puis `firstOrCreate`) ; lancé SEUL sur une base vide, chacun l'écrivait
+ * et annonçait un succès. La création de `presentation` n'a plus qu'une
+ * définition, `InstitutionSeeder::presentation()`, et elle seule : le
+ * rattachement des lignes orphelines reste à `InstitutionSeeder::run()`.
  *
  * @see database/seeders/SupradminSeeder.php
  * @see database/seeders/InstitutionSeeder.php
@@ -78,6 +94,37 @@ final class SeedersAnnoncentCeQuIlsFontTest extends TestCase
                 $this->lignes[] = (string) $string;
             }
         };
+    }
+
+    /**
+     * Lance UN seeder seul, comme `db:seed --class=…`, et rend tout ce qu'il a
+     * dit : la console, et les `echo` des seeders de démonstration.
+     *
+     * @param  class-string<Seeder>  $classe
+     */
+    private function lancerSeul(string $classe, Command $console): string
+    {
+        $seeder = app($classe);
+        $seeder->setCommand($console);
+
+        ob_start();
+        try {
+            $seeder->run();
+        } finally {
+            $echos = (string) ob_get_clean();
+        }
+
+        return implode("\n", $console->lignes)."\n".$echos;
+    }
+
+    /** @return array<string, array{class-string<Seeder>}> */
+    public static function seedersQuiCreentLaPresentation(): array
+    {
+        return [
+            'TestUsersSeeder' => [TestUsersSeeder::class],
+            'DemoDataSeeder' => [DemoDataSeeder::class],
+            'EvaluationTestDataSeeder' => [EvaluationTestDataSeeder::class],
+        ];
     }
 
     private function lancerSupradmin(Command $console): void
@@ -162,5 +209,66 @@ final class SeedersAnnoncentCeQuIlsFontTest extends TestCase
         foreach ($urls as $url) {
             $this->assertStringStartsNotWith('http://', (string) $url);
         }
+    }
+
+    /**
+     * Lancé SEUL sur une base vide, un seeder de démonstration crée `presentation`
+     * comme `InstitutionSeeder` : en `https`, et en nommant le jeton absent.
+     */
+    #[DataProvider('seedersQuiCreentLaPresentation')]
+    public function test_lance_seul_il_cree_la_presentation_en_https_et_nomme_le_jeton_absent(string $classe): void
+    {
+        putenv('KLASSCI_PRESENTATION_URL');
+        putenv('KLASSCI_PRESENTATION_TOKEN');
+        putenv('KLASSCI_API_TOKEN');
+
+        $sortie = $this->lancerSeul($classe, $this->consoleDEssai());
+
+        $this->assertSame(
+            'https://presentation.klassci.com/api/lms',
+            Institution::query()->where('slug', 'presentation')->value('klassci_api_url'),
+            "L'URL de la panne #685 ne doit plus être écrite.",
+        );
+        $this->assertStringContainsString('KLASSCI_PRESENTATION_TOKEN', $sortie, 'Le jeton absent doit être nommé.');
+        $this->assertStringContainsString('ABSENT', $sortie);
+    }
+
+    /**
+     * Seule la CRÉATION de `presentation` est partagée : un seeder lancé seul ne
+     * rattache aucune ligne orpheline (le travail d'`InstitutionSeeder::run()`),
+     * et ne réécrit pas un établissement `presentation` déjà là.
+     */
+    #[DataProvider('seedersQuiCreentLaPresentation')]
+    public function test_lance_seul_il_ne_reecrit_aucune_ligne_existante(string $classe): void
+    {
+        $presentation = Institution::factory()->create(['slug' => 'presentation', 'klassci_api_url' => 'https://autre.klassci.test/api/lms']);
+        $orphelin = User::factory()->create(['institution_id' => null, 'role' => 'supradmin', 'email' => 'orphelin@688.test']);
+
+        $this->lancerSeul($classe, $this->consoleDEssai());
+
+        $this->assertNull(
+            User::withoutGlobalScope('institution')->whereKey($orphelin->id)->value('institution_id'),
+            "Une ligne orpheline n'est rattachée que par InstitutionSeeder::run().",
+        );
+        $this->assertSame('https://autre.klassci.test/api/lms', $presentation->fresh()?->klassci_api_url);
+    }
+
+    /** Témoin : `db:seed` complet, inchangé. `presentation` en `https`, et les orphelins rattachés. */
+    public function test_temoin_le_seeding_complet_rattache_toujours_les_orphelins(): void
+    {
+        putenv('KLASSCI_PRESENTATION_URL');
+        $orphelin = User::factory()->create(['institution_id' => null, 'role' => 'etudiant', 'email' => 'orphelin2@688.test']);
+
+        // Sans console : `Seeder::call()` écrit sur la sortie d'une vraie commande.
+        ob_start();
+        try {
+            app(DatabaseSeeder::class)->run();
+        } finally {
+            ob_end_clean();
+        }
+
+        $presentation = Institution::query()->where('slug', 'presentation')->firstOrFail();
+        $this->assertSame('https://presentation.klassci.com/api/lms', $presentation->klassci_api_url);
+        $this->assertSame($presentation->id, User::withoutGlobalScope('institution')->whereKey($orphelin->id)->value('institution_id'));
     }
 }

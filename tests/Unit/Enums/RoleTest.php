@@ -125,4 +125,32 @@ final class RoleTest extends TestCase
         self::assertFalse(Role::Admin->isMorePermissiveThan(Role::Admin));
         self::assertFalse(Role::Supradmin->isMorePermissiveThan(Role::Supradmin));
     }
+
+    /**
+     * #949 — UNE table : `tryFromString` lit chaque alias que `aliases()` déclare,
+     * et rien d'autre. Deux tables divergeaient (`administrator`).
+     */
+    public function test_try_from_string_et_aliases_sont_une_seule_table(): void
+    {
+        foreach (Role::cases() as $role) {
+            foreach ($role->aliases() as $alias) {
+                self::assertSame($role, Role::tryFromString($alias), "alias « $alias »");
+            }
+        }
+    }
+
+    /** #949 — `administrator` n'a jamais été reconnu par les services : il n'est plus un alias. */
+    public function test_administrator_n_est_pas_un_alias(): void
+    {
+        self::assertNull(Role::tryFromString('administrator'));
+        self::assertNotContains('administrator', Role::Admin->aliases());
+    }
+
+    /** #949 — la correspondance est exacte : ni casse, ni espace. */
+    public function test_aucune_variante_de_casse_ni_d_espace_n_est_un_role(): void
+    {
+        foreach (['Enseignant', ' enseignant ', 'ENSEIGNANT', 'SuperAdmin', ' superAdmin ', 'SUPERADMIN', 'Supradmin', 'SUPRADMIN'] as $variante) {
+            self::assertNull(Role::tryFromString($variante), "variante « $variante »");
+        }
+    }
 }

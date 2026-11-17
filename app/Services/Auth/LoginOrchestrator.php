@@ -52,7 +52,7 @@ final class LoginOrchestrator
             $user,
             $token,
             $this->rosterAuthorities->forInstitution($user->institution)->allowsLocalEnrolment(),
-            $this->catalogue->ouvertePour($user->institution),
+            false,
         );
     }
 

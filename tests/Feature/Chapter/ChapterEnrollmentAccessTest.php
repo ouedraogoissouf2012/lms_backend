@@ -58,15 +58,26 @@ final class ChapterEnrollmentAccessTest extends TestCase
             ->assertStatus(404);
     }
 
-    public function test_teacher_still_sees_every_tenant_chapter(): void
+    /**
+     * Un enseignant ne lit que ses leçons (#1167) : l'auteur lit son chapitre, le
+     * collègue de la même école reçoit le 404 d'une ressource qu'il ne lit pas.
+     */
+    public function test_only_the_author_teacher_sees_the_chapter(): void
     {
         [$chapter] = $this->chapterAndStudents();
-        $teacher = $this->user($chapter->institution, 'enseignant');
+        $author = User::query()->findOrFail($chapter->enseignant_id);
+        $colleague = $this->user($chapter->institution, 'enseignant');
 
-        $this->actingWithToken($teacher)
+        $this->actingWithToken($author)
             ->getJson("/api/chapters/{$chapter->id}")
             ->assertOk()
             ->assertJsonPath('data.id', $chapter->id);
+
+        $this->app['auth']->forgetGuards();
+
+        $this->actingWithToken($colleague)
+            ->getJson("/api/chapters/{$chapter->id}")
+            ->assertNotFound();
     }
 
     private function actingWithToken(User $user): static

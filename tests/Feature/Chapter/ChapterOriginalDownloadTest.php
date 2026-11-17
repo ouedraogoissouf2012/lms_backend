@@ -272,8 +272,11 @@ final class ChapterOriginalDownloadTest extends TestCase
             $classeId = $classe->id;
         }
 
+        // Le chapitre et sa leçon ont le même auteur : un enseignant ne lit que ses
+        // leçons (#1167).
         $lesson = Lesson::factory()->create([
             'institution_id' => $institution->id,
+            'enseignant_id' => $teacher->id,
             'classe_id' => $classeId,
             'status' => LessonStatus::Published,
             'published_at' => now()->subDay(),

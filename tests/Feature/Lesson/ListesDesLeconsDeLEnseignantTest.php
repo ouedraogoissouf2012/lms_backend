@@ -144,15 +144,19 @@ final class ListesDesLeconsDeLEnseignantTest extends TestCase
         self::assertSame($this->ids($this->siennes), $this->idsDe($filtree->json('data.data')));
     }
 
-    /** D72 ne porte que sur les listes : la lecture directe reste celle du personnel. */
+    /**
+     * La lecture directe suit les listes depuis #1167 (décision du user du 17/11) : la
+     * leçon d'un collègue rend 404, sa fiche comme ses chapitres. Avant, D72 ne portait
+     * que sur les listes.
+     */
     #[DataProvider('ecoles')]
-    public function test_la_lecture_directe_de_la_lecon_d_un_collegue_reste_ouverte(InstitutionMode $mode): void
+    public function test_la_lecture_directe_de_la_lecon_d_un_collegue_est_fermee(InstitutionMode $mode): void
     {
         $this->ecoleAvecDeuxEnseignants($mode, 'enseignant');
         $sienne = $this->siennes['brouillon'];
 
-        $this->asTenant($this->moi)->getJson("/api/lessons/{$sienne->id}")->assertOk()->assertJsonPath('data.id', $sienne->id);
-        $this->asTenant($this->moi)->getJson("/api/lessons/{$sienne->id}/chapters")->assertOk()->assertJsonPath('success', true);
+        $this->asTenant($this->moi)->getJson("/api/lessons/{$sienne->id}")->assertNotFound();
+        $this->asTenant($this->moi)->getJson("/api/lessons/{$sienne->id}/chapters")->assertNotFound();
     }
 
     #[DataProvider('enseignants')]

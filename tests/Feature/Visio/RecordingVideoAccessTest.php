@@ -166,7 +166,9 @@ final class RecordingVideoAccessTest extends TestCase
     /** @param array<string, mixed> $attributes */
     private function chapter(Institution $institution, User $teacher, array $attributes): Chapter
     {
-        $lesson = Lesson::factory()->create(['institution_id' => $institution->id]);
+        // Le chapitre et sa leçon ont le même auteur : un enseignant ne lit que ses
+        // leçons (#1167).
+        $lesson = Lesson::factory()->create(['institution_id' => $institution->id, 'enseignant_id' => $teacher->id]);
 
         return Chapter::factory()->create([
             'lesson_id' => $lesson->id,

@@ -64,7 +64,7 @@ final class KlassciRoleSanitizer
             return Role::Etudiant->value;
         }
 
-        $role = Role::tryFromString($klassciRole);
+        $role = Role::tryFromString(strtolower(trim($klassciRole)));
 
         return $role === Role::Supradmin ? self::INSTITUTION_ADMIN : $role?->value;
     }

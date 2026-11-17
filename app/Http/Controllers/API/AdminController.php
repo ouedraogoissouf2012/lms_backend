@@ -40,7 +40,6 @@ class AdminController extends Controller
 
         $data = $request->validated();
         $data['password'] = bcrypt(self::validatedPassword($data));
-        $data['institution_id'] = $acteur->institution_id;
 
         $user = User::create($data);
         $user->load('institution');

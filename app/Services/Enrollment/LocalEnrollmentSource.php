@@ -43,7 +43,7 @@ final class LocalEnrollmentSource implements EnrollmentSource
     public function localStudentIdsOf(Classe $classe): array
     {
         $ids = [];
-        foreach (DB::table('classe_etudiant')->where('classe_id', $classe->getKey())->where('statut', ClasseEtudiantStatut::Actif->value)->orderBy('user_id')->pluck('user_id') as $id) {
+        foreach (DB::table('classe_etudiant')->where('classe_id', $classe->getKey())->where('statut', 'actif')->orderBy('user_id')->pluck('user_id') as $id) {
             if (is_numeric($id)) {
                 $ids[] = (int) $id;
             }

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Presenters;
 
 use App\Enums\Role;
+use App\Exceptions\KlassciRoleInconnuException;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 
@@ -151,6 +152,20 @@ class AuthResponsePresenter
             'success' => false,
             'message' => 'Conflit de compte détecté : votre adresse e-mail est déjà associée à un autre compte. Contactez l\'administrateur.',
         ], 409);
+    }
+
+    /**
+     * #949 — KLASSCI désigne, pour un compte nouveau, un rôle que le LMS ne
+     * connaît pas : aucun compte n'est créé. 403 motivé (ADR-906-01) : la
+     * correction est administrative, dans KLASSCI.
+     */
+    public function roleKlassciInconnu(): JsonResponse
+    {
+        return response()->json([
+            'success' => false,
+            'message' => "Votre rôle KLASSCI n'est pas reconnu par le LMS. Contactez l'administration de votre établissement.",
+            'reason' => KlassciRoleInconnuException::REASON,
+        ], 403);
     }
 
     /**

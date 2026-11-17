@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Klassci\Auth;
 
+use App\Exceptions\KlassciRoleInconnuException;
 use App\Models\Institution;
 use App\Models\User;
 use App\Services\Klassci\Data\KlassciDataWhitelist;
@@ -109,6 +110,7 @@ class KlassciUserSynchronizer
             $this->restoreIfTrashed($user, $klassciId, $institutionId);
 
             // SÉCURITÉ CRITICAL-05 : pour un user existant, `role` LMS reste figé.
+            $this->signalerUnRoleInconnu($klassciUser, $institutionId, 'compte existant : klassci_role inchangé');
             $user->update($commonData);
             $this->enseignantIdResolver->healIfNull($user, $klassciUser);
         } else {
@@ -220,11 +222,13 @@ class KlassciUserSynchronizer
      */
     private function buildCommonData(array $klassciUser, string $klassciToken, string $tenantUrl, ?int $institutionId): array
     {
+        // #949 : `klassci_role` canonique ; un rôle hors de la table n'est jamais écrit.
+        $klassciRole = $this->roleSanitizer->forKlassciRole(KlassciRoleSanitizer::roleRecu($klassciUser));
+
         return [
             'klassci_id' => $klassciUser['id'],
             'name' => $klassciUser['nom'] ?? $klassciUser['name'] ?? 'User',
             'email' => $klassciUser['email'],
-            'klassci_role' => $klassciUser['role'] ?? 'etudiant',
             'klassci_token' => $klassciToken,
             'klassci_tenant_url' => $tenantUrl,
             // #477 : filtré par whitelist ; _lms_tenant_url (interne LMS) passé en
@@ -232,7 +236,7 @@ class KlassciUserSynchronizer
             'klassci_data' => $this->whitelist->filter($klassciUser, ['_lms_tenant_url' => $tenantUrl]),
             'last_klassci_sync' => now(),
             'institution_id' => $institutionId,
-        ];
+        ] + array_filter(['klassci_role' => $klassciRole]);
     }
 
     /**
@@ -250,11 +254,14 @@ class KlassciUserSynchronizer
      */
     private function createNewUser(array $klassciUser, array $commonData, ?int $institutionId, string $tenantUrl): User
     {
-        // #510 : le rôle plateforme `supradmin` (cross-tenant) ne peut JAMAIS être
-        // initialisé depuis KLASSCI — ramené à l'admin d'institution par le sanitizer.
-        $klassciRole = $this->roleSanitizer->forNewUser(
-            isset($klassciUser['role']) && is_string($klassciUser['role']) ? $klassciUser['role'] : null
-        );
+        // #510 : le rôle plateforme `supradmin` n'est jamais initialisé depuis KLASSCI.
+        // #949 : un rôle hors de la table n'est jamais écrit ; aucun compte n'est créé.
+        $klassciRole = $this->roleSanitizer->forNewUser(KlassciRoleSanitizer::roleRecu($klassciUser));
+        if ($klassciRole === null) {
+            $this->signalerUnRoleInconnu($klassciUser, $institutionId, 'compte nouveau : connexion refusée');
+
+            throw new KlassciRoleInconnuException('Rôle KLASSCI hors de la table du LMS.');
+        }
 
         $user = User::withoutGlobalScope('institution')->create(array_merge($commonData, [
             'role' => $klassciRole,
@@ -271,5 +278,23 @@ class KlassciUserSynchronizer
         ]);
 
         return $user;
+    }
+
+    /**
+     * #949 : un rôle KLASSCI hors de la table du LMS laisse une ligne de journal.
+     *
+     * @param  array<string, mixed>  $klassciUser
+     */
+    private function signalerUnRoleInconnu(array $klassciUser, ?int $institutionId, string $suite): void
+    {
+        $recu = KlassciRoleSanitizer::roleRecu($klassciUser);
+        if ($recu !== null && $this->roleSanitizer->forKlassciRole($recu) === null) {
+            $this->logger->warning('Rôle KLASSCI hors de la table du LMS', [
+                'klassci_role_recu' => $recu,
+                'klassci_id' => $klassciUser['id'] ?? null,
+                'institution_id' => $institutionId,
+                'suite' => $suite,
+            ]);
+        }
     }
 }

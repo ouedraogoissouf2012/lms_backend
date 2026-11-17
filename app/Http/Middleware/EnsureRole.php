@@ -3,6 +3,7 @@
 namespace App\Http\Middleware;
 
 use App\Enums\Role;
+use App\Models\User;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -27,14 +28,14 @@ class EnsureRole
         // Vérifier si l'utilisateur est authentifié
         $user = $request->user();
 
-        if (!$user) {
+        if (! $user instanceof User) {
             return response()->json([
                 'success' => false,
                 'message' => 'Non authentifié',
             ], 401);
         }
 
-        // Normaliser les rôles autorisés (supporter les variantes FR/EN)
+        // Les rôles de la route, en Role (#949).
         $allowedRoles = $this->normalizeRoles($roles);
 
         // Vérifier si l'utilisateur a l'un des rôles autorisés
@@ -56,73 +57,50 @@ class EnsureRole
     }
 
     /**
-     * Normalise les rôles (supporter variantes FR/EN)
+     * Les rôles de la route, lus comme ceux des comptes : `Role::tryFromString`,
+     * correspondance exacte (#949). Un paramètre inconnu n'admet personne.
      *
-     * @param array $roles
-     * @return array
+     * @param  array<int, string>  $roles
+     * @return list<Role>
      */
     private function normalizeRoles(array $roles): array
     {
-        $normalized = [];
-
+        $admis = [];
         foreach ($roles as $role) {
-            $trimmed = trim((string) $role);
-            $lower = strtolower($trimmed);
-
-            // Admin intra-tenant : ne jamais passer par tryFromString
-            // (superAdmin y devient Role::Supradmin — #102).
-            if ($lower === 'superadmin') {
-                $normalized[] = 'superadmin';
-                continue;
+            $enum = Role::tryFromString($role);
+            if ($enum !== null && ! in_array($enum, $admis, true)) {
+                $admis[] = $enum;
             }
-
-            $enum = Role::tryFromString($trimmed);
-            if ($enum === Role::Supradmin) {
-                $normalized[] = 'supradmin';
-                continue;
-            }
-
-            if ($enum !== null) {
-                $normalized = array_merge($normalized, $enum->aliases());
-                continue;
-            }
-
-            $normalized[] = $lower;
         }
 
-        return array_values(array_unique($normalized));
+        return $admis;
     }
 
     /**
-     * Vérifie si l'utilisateur a l'un des rôles autorisés
+     * Le compte a-t-il l'un des rôles de la route ? Une seule lecture du rôle
+     * (#949) : celle des services. Une variante de casse ou d'espace n'est aucun
+     * rôle, ici comme ailleurs.
      *
-     * @param \App\Models\User $user
-     * @param array $allowedRoles
-     * @return bool
+     * @param  list<Role>  $allowedRoles
      */
-    private function userHasRole($user, array $allowedRoles): bool
+    private function userHasRole(User $user, array $allowedRoles): bool
     {
-        // Gestionnaire PLATEFORME (cross-tenant) : bypass total, mais comparaison
-        // STRICTE alignée sur isPlatformSupradmin() (#511) — une variante de casse
-        // ('Supradmin', 'SUPRADMIN') ne doit JAMAIS franchir cette barrière
-        // cross-tenant, cohérent avec les gardes de lecture (FileQueryService…).
+        // Gestionnaire PLATEFORME (cross-tenant) : bypass total, comparaison
+        // STRICTE (#511, `isPlatformSupradmin()`).
         if ($user->isPlatformSupradmin()) {
             return true;
         }
 
-        $userRole = strtolower(trim($user->role));
+        $role = Role::tryFromString($user->role);
 
-        // superAdmin (admin institution) bypasse tous les contrôles SAUF les routes
+        // superAdmin (admin institution) passe tous les contrôles SAUF les routes
         // réservées au gestionnaire plateforme.
-        if ($userRole === 'superadmin' && !in_array('supradmin', $allowedRoles, true)) {
+        if ($role === Role::SuperAdmin && ! in_array(Role::Supradmin, $allowedRoles, true)) {
             return true;
         }
 
-        // Match nominal insensible à la casse. Le rôle plateforme `supradmin` est
-        // EXCLU de ce match : il n'est satisfait que par un vrai platform supradmin
-        // (traité ci-dessus), jamais par une variante de casse (#511).
-        $matchableRoles = array_diff($allowedRoles, ['supradmin']);
-
-        return in_array($userRole, $matchableRoles, true);
+        // Le rôle plateforme n'est satisfait que par un vrai supradmin, traité
+        // ci-dessus (#511).
+        return $role !== null && $role !== Role::Supradmin && in_array($role, $allowedRoles, true);
     }
 }

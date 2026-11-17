@@ -101,9 +101,7 @@ final class StudentEnrolmentService
     {
         $ligne = ['institution_id' => $classe->institution_id] + $pivot;
 
-        if ($this->statutActuel($etudiant, $classe) === null) {
-            $ligne += $this->defautsALaCreation();
-        }
+        $ligne += $this->defautsALaCreation();
 
         // `->id` et non `->getKey()` : ce dernier rend `mixed`, que PHPStan n9
         // refuse comme clé de tableau — à juste titre, une clé non entière

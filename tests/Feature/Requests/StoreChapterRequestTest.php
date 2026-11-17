@@ -62,11 +62,13 @@ class StoreChapterRequestTest extends TestCase
             ->for($this->institution)
             ->create();
 
+        // La leçon est celle de l'enseignant du test : la création d'un chapitre suit
+        // la même règle d'auteur que les autres écritures (#1167).
         $this->lesson = Lesson::factory()
             ->for($classe)
             ->for($matiere)
             ->for($this->institution)
-            ->create();
+            ->create(['enseignant_id' => $this->teacher->id]);
     }
 
     /**
@@ -454,11 +456,12 @@ class StoreChapterRequestTest extends TestCase
         $other_institution = Institution::factory()->create();
         $other_classe = Classe::factory()->for($other_institution)->create();
         $other_matiere = Matiere::factory()->for($other_institution)->create();
+        // Même auteur : seul l'établissement peut refuser ici.
         $other_lesson = Lesson::factory()
             ->for($other_classe)
             ->for($other_matiere)
             ->for($other_institution)
-            ->create();
+            ->create(['enseignant_id' => $this->teacher->id]);
 
         Sanctum::actingAs($this->teacher);
 

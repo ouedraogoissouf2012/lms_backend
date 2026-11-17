@@ -71,7 +71,8 @@ final class PaginationDesPeriodesTest extends TestCase
     private function responsable(): User
     {
         return User::factory()->create([
-            'institution_id' => Institution::factory()->create()->getKey(),
+            // #1184 : les sessions de formation n'existent que dans une école autonome.
+            'institution_id' => Institution::factory()->standalone()->create()->getKey(),
             'role' => 'superAdmin',
         ]);
     }

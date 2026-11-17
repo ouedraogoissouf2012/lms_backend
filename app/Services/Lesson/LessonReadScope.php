@@ -41,8 +41,10 @@ use Illuminate\Database\Eloquent\Builder;
  * Une LISTE ne porte, pour un enseignant, que ses leçons (décisions de
  * l'utilisateur D72 pour « Mes leçons », D73 pour la page d'une matière) :
  * {@see limitToAuthor()}, dans les deux types d'école. La gestion lit toute son
- * école. La lecture DIRECTE d'une leçon ({@see denies()}, `ChapterReadGate`)
- * n'est pas bornée à l'auteur : D72 ne porte que sur les listes.
+ * école. La lecture DIRECTE d'une leçon ({@see denies()}, `ChapterReadGate`) l'est
+ * aussi, depuis #1167 (décision du user du 17/11 : un enseignant ne voit pas les
+ * leçons d'un collègue) : la leçon d'un collègue lui rend 404. Avant, elle ne
+ * l'était pas, D72 ne portant que sur les listes.
  *
  * Appelants : les deux listes de `LessonListService` et la recherche de leçons
  * (`GlobalSearchService`, `SearchSuggestionsService`) passent par

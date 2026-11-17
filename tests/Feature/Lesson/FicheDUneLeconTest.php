@@ -109,14 +109,19 @@ final class FicheDUneLeconTest extends TestCase
             ->assertJsonPath('reason', 'enrolment_not_active');
     }
 
-    /** @return array<string, array{0: string}> */
+    /**
+     * La gestion. L'enseignant ne lit que ses leçons (#1167) :
+     * `UnEnseignantNeLitQueSesLeconsTest`.
+     *
+     * @return array<string, array{0: string}>
+     */
     public static function personnel(): array
     {
-        return ['enseignant' => ['enseignant'], 'coordinateur' => ['coordinateur'], 'superAdmin' => ['superAdmin']];
+        return ['coordinateur' => ['coordinateur'], 'superAdmin' => ['superAdmin']];
     }
 
     #[DataProvider('personnel')]
-    public function test_le_personnel_de_l_etablissement_lit_toute_fiche(string $role): void
+    public function test_la_gestion_de_l_etablissement_lit_toute_fiche(string $role): void
     {
         $brouillon = $this->lecon($this->autreClasse, ['status' => LessonStatus::Draft, 'published_at' => null]);
 

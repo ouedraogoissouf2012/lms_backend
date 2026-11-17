@@ -212,7 +212,8 @@ final class KlassciClassesFetcher
     private function fetchStudentClasses(string $klassciToken): array
     {
         $response = $this->klassciService->requestWithUserToken($klassciToken, 'me/dashboard', 'GET');
-        $classe = $response['data']['classe'] ?? null;
+        $data = $response['data'] ?? null;
+        $classe = is_array($data) ? ($data['classe'] ?? null) : null;
 
         if (! is_array($classe) || ! is_numeric($classe['id'] ?? null)) {
             return [];

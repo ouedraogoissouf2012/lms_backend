@@ -70,7 +70,7 @@ Route::post('/school-requests', [SchoolRegistrationRequestController::class, 'st
 // inscrirait au mauvais endroit. `ResolveInstitution` pose le tenant depuis
 // l en-tete en priorite 2.
 //
-// Seau NOMME et non `throttle:5,1` : le seau par defaut est `domaine|ip` sans
+// Seau NOMME et non un throttle anonyme (N,M) : le seau par defaut est `domaine|ip` sans
 // chemin, donc partage avec /auth/login. Deux bornes, dont une JOURNALIERE
 // globale : la borne par IP seule ne freine pas une enumeration repartie, et un
 // code fait six caracteres. L ADR qualifie nommement cet endpoint
@@ -91,7 +91,7 @@ Route::post('/me/inscriptions', [RejoindreParCodeController::class, 'store'])
     ->middleware(['auth:sanctum', 'klassci.sync', 'role:etudiant', 'throttle:rejoindre-classe']);
 
 Route::post('/activation', [ActivationController::class, 'store'])
-    ->middleware('throttle:5,1');
+    ->middleware('throttle:activation');
 
 // ============================================
 // AUTHENTIFICATION - Routes publiques
@@ -106,11 +106,11 @@ Route::prefix('auth')->group(function () {
     // Future hardening (post-CI security pipeline): switch to a named
     // RateLimiter::for('login') with composite key (IP + username) + exponential
     // backoff to defeat credential stuffing distributed across IPs.
-    Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:10,1');
+    Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:connexion');
     Route::post('/forgot-password', [PasswordResetController::class, 'forgot'])
-        ->middleware(['institution.header', 'throttle:5,1']);
+        ->middleware(['institution.header', 'throttle:mot-de-passe']);
     Route::post('/reset-password', [PasswordResetController::class, 'reset'])
-        ->middleware(['institution.header', 'throttle:5,1']);
+        ->middleware(['institution.header', 'throttle:mot-de-passe']);
 });
 
 // ============================================
@@ -187,12 +187,9 @@ Route::prefix('proxy')
 // ADMIN - Gestion des utilisateurs et configuration
 // ============================================
 Route::middleware(['auth:sanctum', 'klassci.sync', 'gestion'])->group(function () {
-    Route::post('users', [AdminController::class, 'createUser'])
-        ->middleware('throttle:30,1');
-    Route::put('users/{user}', [AdminController::class, 'updateUser'])
-        ->middleware('throttle:30,1');
-    Route::delete('users/{user}', [AdminController::class, 'deleteUser'])
-        ->middleware('throttle:30,1');
+    Route::post('users', [AdminController::class, 'createUser']);
+    Route::put('users/{user}', [AdminController::class, 'updateUser']);
+    Route::delete('users/{user}', [AdminController::class, 'deleteUser']);
 });
 
 // ============================================
@@ -200,25 +197,19 @@ Route::middleware(['auth:sanctum', 'klassci.sync', 'gestion'])->group(function (
 // ============================================
 Route::middleware(['auth:sanctum', 'klassci.sync', 'role:superAdmin', 'plateforme'])->group(function () {
     Route::get('configuration', [ConfigurationController::class, 'get'])
-        ->middleware('throttle:60,1');
-    Route::put('configuration', [ConfigurationController::class, 'update'])
-        ->middleware('throttle:30,1');
-    Route::delete('configuration', [ConfigurationController::class, 'delete'])
-        ->middleware('throttle:30,1');
+        ->middleware('throttle:configuration-lecture');
+    Route::put('configuration', [ConfigurationController::class, 'update']);
+    Route::delete('configuration', [ConfigurationController::class, 'delete']);
 });
 
 // ============================================
 // INTEGRATIONS - Services tiers
 // ============================================
 Route::middleware(['auth:sanctum', 'klassci.sync', 'role:superAdmin', 'plateforme'])->prefix('integrations')->group(function () {
-    Route::post('connect', [IntegrationController::class, 'connect'])
-        ->middleware('throttle:30,1');
-    Route::post('authorize', [IntegrationController::class, 'authorize'])
-        ->middleware('throttle:30,1');
-    Route::post('test', [IntegrationController::class, 'testConnection'])
-        ->middleware('throttle:60,1');
-    Route::post('disconnect', [IntegrationController::class, 'disconnect'])
-        ->middleware('throttle:30,1');
+    Route::post('connect', [IntegrationController::class, 'connect']);
+    Route::post('authorize', [IntegrationController::class, 'authorize']);
+    Route::post('test', [IntegrationController::class, 'testConnection']);
+    Route::post('disconnect', [IntegrationController::class, 'disconnect']);
 });
 
 // ============================================

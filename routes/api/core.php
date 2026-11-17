@@ -108,9 +108,9 @@ Route::prefix('auth')->group(function () {
     // backoff to defeat credential stuffing distributed across IPs.
     Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:connexion');
     Route::post('/forgot-password', [PasswordResetController::class, 'forgot'])
-        ->middleware(['institution.header', 'throttle:mot-de-passe']);
+        ->middleware(['institution.header', 'throttle:connexion']);
     Route::post('/reset-password', [PasswordResetController::class, 'reset'])
-        ->middleware(['institution.header', 'throttle:mot-de-passe']);
+        ->middleware(['institution.header', 'throttle:connexion']);
 });
 
 // ============================================

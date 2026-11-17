@@ -24,7 +24,7 @@ final class KlassciCreationDeSeance implements CreationDeSeance
             'Les séances de cette école se créent et se modifient dans KLASSCI.',
             403,
             null,
-            KlassciModificationDeSeance::REASON,
+            null,
         );
     }
 }

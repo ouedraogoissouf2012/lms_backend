@@ -145,7 +145,7 @@ final class ClasseElevesContractTest extends TestCase
 
     public function test_403_un_compte_sans_etablissement(): void
     {
-        $compte = User::factory()->create(['institution_id' => null, 'role' => 'enseignant']);
+        $compte = User::factory()->sansEtablissement()->createQuietly(['institution_id' => null, 'role' => 'enseignant']);
 
         $this->assertRefus($this->lire($compte)->assertForbidden(), 'no_institution');
     }

@@ -215,9 +215,9 @@ final class TrainingSessionTransitionsTest extends TestCase
     /** @return iterable<string, array{0: InstitutionMode, 1: array<string, mixed>}> */
     public static function volets(): iterable
     {
-        // L'acteur klassci est le compte par défaut de la fabrique (issu de KLASSCI) ;
-        // l'acteur standalone est un compte local, sans aucune identité KLASSCI.
-        yield 'ecole klassci (compte issu de KLASSCI)' => [InstitutionMode::Klassci, []];
+        // #1184 : une école KLASSCI n'a pas de session de formation dans le LMS
+        // (`SessionsReserveesALEcoleAutonomeTest`) ; l'école autonome seule en fait
+        // avancer. Son acteur est un compte local, sans aucune identité KLASSCI.
         yield 'ecole standalone (compte local)' => [InstitutionMode::Standalone, [
             'klassci_id' => null,
             'klassci_enseignant_id' => null,
@@ -229,7 +229,7 @@ final class TrainingSessionTransitionsTest extends TestCase
     /**
      * #968 — l'écran de pilotage (frontend_lms#391) affiche `message` sans le
      * retoucher : il doit être écrit en français correct, accents compris.
-     * Le message ne dépend pas du mode ; les deux volets le prouvent.
+     * Seule l'école autonome a des sessions de formation (#1184).
      *
      * @param  array<string, mixed>  $compte
      */

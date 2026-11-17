@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Enrollment;
 
+use App\Enums\ClasseEtudiantStatut;
 use App\Models\Classe;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
@@ -48,7 +49,7 @@ final class CompositeEnrollmentSource implements EnrollmentSource
         }
 
         $avecUneLigneActive = [];
-        foreach (DB::table('classe_etudiant')->whereIn('user_id', $parLeRepli)->where('statut', 'actif')->pluck('user_id') as $id) {
+        foreach (DB::table('classe_etudiant')->whereIn('user_id', $parLeRepli)->where('statut', ClasseEtudiantStatut::Actif->value)->pluck('user_id') as $id) {
             if (is_numeric($id)) {
                 $avecUneLigneActive[] = (int) $id;
             }

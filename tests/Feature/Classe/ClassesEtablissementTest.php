@@ -236,7 +236,7 @@ final class ClassesEtablissementTest extends TestCase
         // Par HTTP, il est refusé avant le contrôleur (`no_institution`) : la
         // source ne doit pas en dépendre.
         $this->classe($this->ecole(), '6e A');
-        $sansEcole = User::factory()->create(['role' => 'coordinateur', 'institution_id' => null]);
+        $sansEcole = User::factory()->sansEtablissement()->createQuietly(['role' => 'coordinateur', 'institution_id' => null]);
         app(TenantManager::class)->reset();
 
         self::assertSame(['success' => true, 'data' => []], app(LocalInstitutionClassesReader::class)->list($sansEcole, []));

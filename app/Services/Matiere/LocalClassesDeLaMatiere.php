@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Matiere;
 
+use App\Enums\ClasseEtudiantStatut;
 use App\Models\Classe;
 use App\Models\Matiere;
 use App\Models\User;
@@ -49,7 +50,7 @@ final class LocalClassesDeLaMatiere implements ClassesDeLaMatiere
             // Portée d'apprenant, celle de tout rôle non reconnu (#941) : une
             // inscription ACTIVE, et rien d'autre (D57).
             $classes->whereHas('etudiants', static function ($inscrits) use ($user): void {
-                $inscrits->where('users.id', $user->id)->where('classe_etudiant.statut', 'actif');
+                $inscrits->where('users.id', $user->id)->where('classe_etudiant.statut', ClasseEtudiantStatut::Actif->value);
             });
         }
 

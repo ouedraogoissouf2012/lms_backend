@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace App\Services\Auth;
 
+use App\Exceptions\KlassciEtablissementIntrouvableException;
 use App\Http\Presenters\AuthResponsePresenter;
 use App\Models\Institution;
 use App\Models\User;
 use App\Services\Audit\AuditLogger;
+use App\Services\Catalogue\PorteDuCatalogueLocal;
 use App\Services\Klassci\Auth\KlassciAuthClient;
 use App\Services\Klassci\Auth\KlassciTenantDiscovery;
 use App\Services\Klassci\Auth\KlassciUserSynchronizer;
@@ -29,6 +31,7 @@ final class LoginOrchestrator
         private readonly AuditLogger $auditLogger,
         private readonly LoggerInterface $logger,
         private readonly RosterAuthorityFactory $rosterAuthorities,
+        private readonly PorteDuCatalogueLocal $catalogue,
     ) {}
 
     public function attemptLocal(string $username, string $password): ?JsonResponse
@@ -52,6 +55,7 @@ final class LoginOrchestrator
             $token,
             $institution,
             $this->rosterAuthorities->forInstitution($institution)->allowsLocalEnrolment(),
+            $this->catalogue->ouvertePour($institution),
         );
     }
 
@@ -119,7 +123,15 @@ final class LoginOrchestrator
         $klassciToken = is_string($data['token'] ?? null) ? $data['token'] : '';
         $meta = is_array($payload['meta'] ?? null) ? $payload['meta'] : [];
 
-        $institution = Institution::where('slug', $tenant['code'])->first();
+        // #1181 : l'établissement a pu être désactivé ou supprimé depuis la découverte
+        // des tenants. Aucun compte d'école ne se crée ni ne se restaure sans école.
+        $institution = Institution::where('slug', $tenant['code'])->where('is_active', true)->first();
+        if (! $institution instanceof Institution) {
+            $this->logger->warning('Connexion KLASSCI refusée : établissement introuvable ou inactif', ['tenant' => $tenant['code']]);
+
+            throw new KlassciEtablissementIntrouvableException('Établissement KLASSCI introuvable ou inactif.');
+        }
+
         $localUser = $this->userSync->sync($klassciUser, $klassciToken, $tenant['api_base_url'], $institution);
         $sanctumToken = $localUser->createToken('lms-backend-token', ['lms:access'])->plainTextToken;
 
@@ -135,6 +147,7 @@ final class LoginOrchestrator
             $meta,
             $tenant,
             $this->rosterAuthorities->forInstitution($institution)->allowsLocalEnrolment(),
+            $this->catalogue->ouvertePour($institution),
         );
     }
 }

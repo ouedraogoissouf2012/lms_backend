@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Enrollment;
 
+use App\Enums\ClasseEtudiantStatut;
 use App\Models\Classe;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
@@ -26,7 +27,7 @@ final class LocalEnrollmentSource implements EnrollmentSource
 
         $classes = $user->classes();
         $ids = [];
-        foreach ($classes->wherePivot('statut', 'actif')->where($classes->getRelated()->qualifyColumn('institution_id'), $user->institution_id)->pluck('classes.id') as $id) {
+        foreach ($classes->wherePivot('statut', ClasseEtudiantStatut::Actif->value)->where($classes->getRelated()->qualifyColumn('institution_id'), $user->institution_id)->pluck('classes.id') as $id) {
             if (is_numeric($id)) {
                 $ids[] = (int) $id;
             }
@@ -42,7 +43,7 @@ final class LocalEnrollmentSource implements EnrollmentSource
     public function localStudentIdsOf(Classe $classe): array
     {
         $ids = [];
-        foreach (DB::table('classe_etudiant')->where('classe_id', $classe->getKey())->where('statut', 'actif')->orderBy('user_id')->pluck('user_id') as $id) {
+        foreach (DB::table('classe_etudiant')->where('classe_id', $classe->getKey())->where('statut', ClasseEtudiantStatut::Actif->value)->orderBy('user_id')->pluck('user_id') as $id) {
             if (is_numeric($id)) {
                 $ids[] = (int) $id;
             }

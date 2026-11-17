@@ -66,15 +66,15 @@ class KlassciUserSynchronizer
      * @param  array<string, mixed>  $klassciUser  Payload `data.user` de `/auth/login`
      * @param  string  $klassciToken  Token Bearer KLASSCI à stocker
      * @param  string  $tenantUrl  URL du tenant KLASSCI
-     * @param  Institution|null  $institution  Institution résolue depuis le slug du tenant
+     * @param  Institution  $institution  Institution ACTIVE du tenant (#1181 : jamais nulle)
      */
     public function sync(
         array $klassciUser,
         string $klassciToken,
         string $tenantUrl,
-        ?Institution $institution,
+        Institution $institution,
     ): User {
-        $institutionId = $institution?->id;
+        $institutionId = $institution->id;
 
         /** @var User $synced */
         $synced = $this->db->transaction(

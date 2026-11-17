@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
+use App\Http\Middleware\EnsureSchoolMemberOrPlatformRoute;
 use App\Http\Requests\CreateUserRequest;
 use App\Http\Requests\UpdateUserRequest;
 use App\Http\Requests\DeleteUserRequest;
@@ -29,8 +30,17 @@ class AdminController extends Controller
      */
     public function createUser(CreateUserRequest $request): JsonResponse
     {
+        // #1181 : le compte naît dans l'établissement de l'ACTEUR, écrit ici et non
+        // laissé au tenant. Un acteur sans établissement reçoit un refus propre,
+        // jamais l'exception de la règle du modèle.
+        $acteur = $request->user();
+        if (! $acteur instanceof User || ! is_int($acteur->institution_id)) {
+            return $this->errorResponse(EnsureSchoolMemberOrPlatformRoute::MESSAGE, 403, reason: EnsureSchoolMemberOrPlatformRoute::REASON);
+        }
+
         $data = $request->validated();
         $data['password'] = bcrypt(self::validatedPassword($data));
+        $data['institution_id'] = $acteur->institution_id;
 
         $user = User::create($data);
         $user->load('institution');

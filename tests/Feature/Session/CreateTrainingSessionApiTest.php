@@ -53,7 +53,8 @@ final class CreateTrainingSessionApiTest extends TestCase
 
     private function responsable(?Institution $institution = null): User
     {
-        $institution ??= Institution::factory()->create();
+        // #1184 : les sessions de formation n'existent que dans une école autonome.
+        $institution ??= Institution::factory()->standalone()->create();
 
         return User::factory()->create([
             'institution_id' => $institution->getKey(),

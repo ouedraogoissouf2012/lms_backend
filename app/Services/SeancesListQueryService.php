@@ -8,6 +8,7 @@ use App\Exceptions\MissingKlassciTokenException;
 use App\Http\Controllers\API\LMS\LMSSeancesListController;
 use App\Models\User;
 use App\Services\Seances\FenetreVisio;
+use App\Services\Seances\KlassciModificationDeSeance;
 use App\Services\Seances\SeancesListReader;
 use App\Services\Seances\SeancesWindow;
 use App\Services\Seances\StudentClassesSeancesFetcher;
@@ -93,7 +94,7 @@ final class SeancesListQueryService implements SeancesListReader
         );
 
         return [
-            'data' => $seancesEnrichies,
+            'data' => self::nonModifiables($seancesEnrichies),
             'meta' => [
                 'total_seances' => count($seancesEnrichies),
                 'date_debut' => $dateDebut,
@@ -121,7 +122,7 @@ final class SeancesListQueryService implements SeancesListReader
 
         $seances = $this->teachingFetcher->fetch($user, $klassciToken, $dateDebut, $dateFin);
 
-        return $seances->all();
+        return self::nonModifiables($seances->all());
     }
 
     /**
@@ -148,7 +149,20 @@ final class SeancesListQueryService implements SeancesListReader
         }
 
         /** @var Collection<int, array<string, mixed>> $seances */
-        return $seances->all();
+        return self::nonModifiables($seances->all());
+    }
+
+    /**
+     * École KLASSCI (#1121) : une séance s'y modifie dans KLASSCI, le LMS la
+     * récupère ; aucune carte ne se modifie ici ({@see KlassciModificationDeSeance}),
+     * pas même une séance créée dans le LMS. Les clés sont gardées.
+     *
+     * @param  array<int, array<string, mixed>>  $cartes
+     * @return array<int, array<string, mixed>>
+     */
+    private static function nonModifiables(array $cartes): array
+    {
+        return array_map(static fn (array $carte): array => array_merge($carte, ['can_be_edited' => false]), $cartes);
     }
 
     /**

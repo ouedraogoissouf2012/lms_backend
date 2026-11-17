@@ -92,6 +92,13 @@ Route::middleware(['auth:sanctum', 'klassci.sync'])->prefix('lms')->group(functi
         ->name('lms.seances.store')
         ->middleware('personnel');
 
+    // #1121 : modifier une séance (école autonome) ; refus motivé dans une école
+    // KLASSCI. PUT et PATCH, la forme des leçons ; chaque champ est facultatif.
+    Route::match(['put', 'patch'], '/seances/{seanceId}', [LMSSeanceCrudController::class, 'update'])
+        ->name('lms.seances.update')
+        ->whereNumber('seanceId')
+        ->middleware(['personnel', 'throttle:30,1']);
+
     // Séances à venir (pré-création rooms)
     Route::get('/seances/upcoming', [LMSSeancesListController::class, 'upcomingSeances'])
         ->name('lms.seances.upcoming');

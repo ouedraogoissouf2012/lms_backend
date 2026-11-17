@@ -87,20 +87,41 @@ final class StudentEnrolmentService
      * sur l'unique `(classe_id, user_id)`, effectif depuis #541.
      *
      * L'établissement est posé ICI, jamais par l'appelant : c'est la forme de
-     * la ligne, et ADR-803-03 veut qu'un seul endroit en décide. La date, elle,
-     * reste à l'appelant : cette écriture MET À JOUR une ligne existante, et une
-     * date par défaut y écraserait la date d'inscription historique.
+     * la ligne, et ADR-803-03 veut qu'un seul endroit en décide.
+     *
+     * Les valeurs par défaut aussi ({@see self::defautsALaCreation()}), et elles
+     * ne valent qu'à la CRÉATION de l'adhésion (#895) : cette écriture MET À JOUR
+     * une ligne existante, où un défaut écraserait l'historique (la date
+     * d'inscription, ADR-711-02). Ce que l'appelant fournit, lui, s'écrit
+     * toujours : c'est la correction voulue par #718.
      *
      * @param  array<string, mixed>  $pivot
      */
     public function inscrire(User $etudiant, Classe $classe, array $pivot = []): void
     {
+        $ligne = ['institution_id' => $classe->institution_id] + $pivot;
+
+        if ($this->statutActuel($etudiant, $classe) === null) {
+            $ligne += $this->defautsALaCreation();
+        }
+
         // `->id` et non `->getKey()` : ce dernier rend `mixed`, que PHPStan n9
         // refuse comme clé de tableau — à juste titre, une clé non entière
         // silencieusement convertie rattacherait le mauvais compte.
-        $classe->etudiants()->syncWithoutDetaching([
-            $etudiant->id => ['institution_id' => $classe->institution_id] + $pivot,
-        ]);
+        $classe->etudiants()->syncWithoutDetaching([$etudiant->id => $ligne]);
+    }
+
+    /**
+     * Ce qu'une adhésion NOUVELLE reçoit quand l'appelant ne le dit pas, et
+     * qu'une adhésion existante garde.
+     *
+     * @return array<string, mixed>
+     */
+    private function defautsALaCreation(): array
+    {
+        // L'inscription date du moment où elle est réellement faite, comme le
+        // fait la synchronisation KLASSCI (`ClasseStudentsSynchronizer`).
+        return ['date_inscription' => now()->toDateString()];
     }
 
     /**

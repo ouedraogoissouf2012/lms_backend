@@ -1982,6 +1982,15 @@ components:
           nullable: true
         visio_participants_count:
           type: integer
+        can_be_edited:
+          type: boolean
+          description: |
+            #1121 : ce lecteur peut-il modifier cette seance (`PUT|PATCH
+            /lms/seances/{seanceId}`) ? Calcule par le serveur, a la meme source
+            que la modification. Ecole creee depuis KLASSCI : toujours `false`, y
+            compris pour une seance creee dans le LMS. Ecole creee depuis le LMS :
+            `true` si le lecteur en est l'auteur ou la gere, que la seance n'est
+            pas passee et que sa visio n'est pas en cours.
 
     # Les enseignants de l'etablissement (lot 3b).
     EnseignantsAnnuaire:
@@ -2555,6 +2564,90 @@ components:
           type: string
           enum:
             - subject_not_in_class_program
+
+    # #1121 - modifier une seance (PUT|PATCH /lms/seances/{seanceId}).
+    SeanceLocaleModification:
+      type: object
+      additionalProperties: false
+      description: "Chaque champ est facultatif : seuls les champs recus changent. La matiere ne se change pas."
+      properties:
+        titre:
+          type: string
+          minLength: 3
+          maxLength: 255
+        date_seance:
+          type: string
+          description: "ISO 8601 AVEC decalage (D4), comme a la creation ; rangee dans le fuseau de l'application."
+          example: "2026-11-20T10:30:00+02:00"
+        classe_id:
+          type: integer
+          nullable: true
+          minimum: 1
+          description: "Une classe de l'etablissement, au programme de la matiere de la seance."
+        classe_nom:
+          type: string
+          nullable: true
+          maxLength: 191
+
+    SeanceLocaleModifiee:
+      type: object
+      additionalProperties: false
+      required:
+        - success
+        - message
+        - data
+      properties:
+        success:
+          type: boolean
+          enum:
+            - true
+        message:
+          type: string
+          example: "Séance modifiée"
+        data:
+          type: object
+          description: "La seance relue."
+          required:
+            - id
+            - titre
+            - date_seance
+            - classe_id
+            - classe_nom
+          properties:
+            id:
+              type: integer
+            titre:
+              type: string
+            date_seance:
+              type: string
+              format: date-time
+            classe_id:
+              type: integer
+              nullable: true
+            classe_nom:
+              type: string
+              nullable: true
+
+    SeanceModificationRefusee:
+      type: object
+      additionalProperties: false
+      required:
+        - success
+        - message
+      properties:
+        success:
+          type: boolean
+          enum:
+            - false
+        message:
+          type: string
+        reason:
+          type: string
+          description: "Absent sur le 403 d'un compte qui n'est ni l'auteur ni la gestion, et sur le 404."
+          enum:
+            - seance_managed_by_klassci
+            - seance_past
+            - seance_visio_active
 
     SeanceLocaleRefus:
       type: object
@@ -4443,6 +4536,174 @@ paths:
                 oneOf:
                   - $ref: '#/components/schemas/SeanceLocaleInvalide'
                   - $ref: '#/components/schemas/SeanceLocaleHorsProgramme'
+
+  /lms/seances/{seanceId}:
+    put:
+      tags:
+        - Visio
+      operationId: updateSeance
+      summary: "Modifier une seance"
+      description: |
+        #1121, decision du user du 17/11. PUT et PATCH ont le meme effet :
+        chaque champ est facultatif, seuls les champs recus changent. La
+        matiere ne se change pas.
+
+        **Ecole creee depuis le LMS.** L'auteur de la seance ou la gestion de
+        l'etablissement (la regle de la suppression) modifie le titre, la date
+        (ISO 8601 avec decalage) et la classe. Les regles de la creation
+        s'appliquent : la classe de l'etablissement, au programme de la matiere
+        de la seance. Une seance passee (`seance_past`, #1107) et une seance
+        dont la visio est en cours (`seance_visio_active`) ne se modifient pas.
+        Deplacer une seance dans le passe reste permis, comme a la creation.
+
+        **Ecole creee depuis KLASSCI.** La seance se modifie dans KLASSCI ; le
+        LMS refuse (403 `seance_managed_by_klassci`), y compris pour une seance
+        creee dans le LMS. Rien n'est ecrit.
+
+        Les cartes de seance portent `can_be_edited` (`SeanceCalendrier`).
+      security:
+        - sanctum: []
+      parameters:
+        - name: seanceId
+          in: path
+          required: true
+          description: "Identifiant local de la seance (ecole en mode autonome) ; ecole en mode KLASSCI, l'identifiant KLASSCI ou local."
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SeanceLocaleModification'
+      responses:
+        '200':
+          description: "Seance modifiee, relue."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SeanceLocaleModifiee'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '401':
+          description: "Non authentifie"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SeanceLocaleRefus'
+        '403':
+          description: "Ecole KLASSCI (`seance_managed_by_klassci`) ; sans motif : compte ni auteur ni gestion, role hors du personnel, etablissement desactive."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SeanceModificationRefusee'
+        '404':
+          description: "Seance introuvable dans l'etablissement (sans motif), ou classe d'une autre ecole (`class_out_of_scope`)."
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/SeanceModificationRefusee'
+                  - $ref: '#/components/schemas/SeanceLocaleHorsEtablissement'
+        '409':
+          description: "Seance passee (`seance_past`) ou visio en cours (`seance_visio_active`)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SeanceModificationRefusee'
+        '422':
+          description: "Charge invalide (`errors`), ou classe hors du programme de la matiere (`subject_not_in_class_program`)."
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/SeanceLocaleInvalide'
+                  - $ref: '#/components/schemas/SeanceLocaleHorsProgramme'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+    patch:
+      tags:
+        - Visio
+      operationId: patchSeance
+      summary: "Modifier une seance (partiel)"
+      description: |
+        #1121, decision du user du 17/11. PUT et PATCH ont le meme effet :
+        chaque champ est facultatif, seuls les champs recus changent. La
+        matiere ne se change pas.
+
+        **Ecole creee depuis le LMS.** L'auteur de la seance ou la gestion de
+        l'etablissement (la regle de la suppression) modifie le titre, la date
+        (ISO 8601 avec decalage) et la classe. Les regles de la creation
+        s'appliquent : la classe de l'etablissement, au programme de la matiere
+        de la seance. Une seance passee (`seance_past`, #1107) et une seance
+        dont la visio est en cours (`seance_visio_active`) ne se modifient pas.
+        Deplacer une seance dans le passe reste permis, comme a la creation.
+
+        **Ecole creee depuis KLASSCI.** La seance se modifie dans KLASSCI ; le
+        LMS refuse (403 `seance_managed_by_klassci`), y compris pour une seance
+        creee dans le LMS. Rien n'est ecrit.
+
+        Les cartes de seance portent `can_be_edited` (`SeanceCalendrier`).
+      security:
+        - sanctum: []
+      parameters:
+        - name: seanceId
+          in: path
+          required: true
+          description: "Identifiant local de la seance (ecole en mode autonome) ; ecole en mode KLASSCI, l'identifiant KLASSCI ou local."
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SeanceLocaleModification'
+      responses:
+        '200':
+          description: "Seance modifiee, relue."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SeanceLocaleModifiee'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '401':
+          description: "Non authentifie"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SeanceLocaleRefus'
+        '403':
+          description: "Ecole KLASSCI (`seance_managed_by_klassci`) ; sans motif : compte ni auteur ni gestion, role hors du personnel, etablissement desactive."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SeanceModificationRefusee'
+        '404':
+          description: "Seance introuvable dans l'etablissement (sans motif), ou classe d'une autre ecole (`class_out_of_scope`)."
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/SeanceModificationRefusee'
+                  - $ref: '#/components/schemas/SeanceLocaleHorsEtablissement'
+        '409':
+          description: "Seance passee (`seance_past`) ou visio en cours (`seance_visio_active`)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SeanceModificationRefusee'
+        '422':
+          description: "Charge invalide (`errors`), ou classe hors du programme de la matiere (`subject_not_in_class_program`)."
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/SeanceLocaleInvalide'
+                  - $ref: '#/components/schemas/SeanceLocaleHorsProgramme'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
 
   /admin/reports/attendance:
     post:

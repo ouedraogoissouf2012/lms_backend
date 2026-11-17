@@ -36,6 +36,7 @@ final class SeancesLocalesVisibles
 {
     public function __construct(
         private readonly SeanceCalendarProjection $projection,
+        private readonly LocalModificationDeSeance $modification,
     ) {}
 
     /** @return Builder<Seance> */
@@ -107,10 +108,13 @@ final class SeancesLocalesVisibles
      * Les séances lues, dans la forme du calendrier. Le nom des auteurs, les
      * classes et les matières sont lus en une requête chacun.
      *
+     * Chaque carte dit si CE lecteur peut la modifier (`can_be_edited`, #1121), à
+     * la même source que la modification : le front n'a rien à déduire.
+     *
      * @param  Collection<int, Seance>  $lues
      * @return list<array<string, mixed>>
      */
-    public function projeter(Collection $lues, int $institution): array
+    public function projeter(Collection $lues, int $institution, User $lecteur): array
     {
         $auteurs = User::query()
             ->where('institution_id', $institution)
@@ -120,12 +124,13 @@ final class SeancesLocalesVisibles
         $classes = $this->classesDe($lues->pluck('classe_id')->filter()->unique()->values()->all(), $institution);
         $matieres = $this->matieresDe($lues->pluck('matiere_id')->filter()->unique()->values()->all(), $institution);
 
-        return array_values($lues->map(function (Seance $seance) use ($auteurs, $classes, $matieres): array {
+        return array_values($lues->map(function (Seance $seance) use ($auteurs, $classes, $matieres, $lecteur): array {
             $auteur = $seance->created_by !== null ? $auteurs->get($seance->created_by) : null;
             $classe = $seance->classe_id !== null ? ($classes[$seance->classe_id] ?? null) : null;
             $matiere = $seance->matiere_id !== null ? ($matieres[$seance->matiere_id] ?? null) : null;
 
-            return $this->projection->project($seance, SeanceIdentite::locale($seance, is_string($auteur) ? $auteur : null, $classe, $matiere));
+            return $this->projection->project($seance, SeanceIdentite::locale($seance, is_string($auteur) ? $auteur : null, $classe, $matiere))
+                + ['can_be_edited' => $this->modification->peutModifier($seance, $lecteur)];
         })->all());
     }
 

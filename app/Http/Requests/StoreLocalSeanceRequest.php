@@ -10,9 +10,10 @@ final class StoreLocalSeanceRequest extends FormRequest
 {
     /**
      * ISO 8601 avec décalage (D4), et rien d'autre : une heure seule, une date
-     * sans décalage ou une date seule ne disent pas l'instant de la séance.
+     * sans décalage ou une date seule ne disent pas l'instant de la séance. La
+     * modification (`UpdateLocalSeanceRequest`, #1121) reprend la même forme.
      */
-    private const DATE_ISO_AVEC_DECALAGE = '/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})$/';
+    public const DATE_ISO_AVEC_DECALAGE = '/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})$/';
 
     /**
      * Les rôles sont gardés UNE fois, par la route (`role:enseignant,

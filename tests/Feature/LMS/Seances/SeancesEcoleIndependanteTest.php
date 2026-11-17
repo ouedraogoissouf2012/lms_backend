@@ -636,6 +636,9 @@ final class SeancesEcoleIndependanteTest extends TestCase
                 'participants_count' => 0,
             ],
             'statut' => $seance->visio_status ?? 'programme',
-        ] + $visio;
+        ] + $visio + [
+            // #1121 : une séance à venir, lue par son auteur ou par la gestion.
+            'can_be_edited' => true,
+        ];
     }
 }

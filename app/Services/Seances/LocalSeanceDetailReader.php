@@ -56,7 +56,7 @@ final class LocalSeanceDetailReader implements SeanceDetailReader
             return null;
         }
 
-        $seance = $this->visibles->projeter(new Collection([$ligne]), $institution)[0];
+        $seance = $this->visibles->projeter(new Collection([$ligne]), $institution, $user)[0];
         $data = ['seance' => $seance, 'visio' => $this->visio($ligne, $seance)];
 
         if ($user->isStaff()) {

@@ -141,12 +141,11 @@ final class ImportApplyService
         $date = $this->stringField($payload, 'date_inscription');
         $statut = $this->stringField($payload, 'statut');
 
-        return [
-            'statut' => $statut !== '' ? $statut : self::DEFAULT_STATUT,
-            // Le fichier ne dit rien : l'inscription date du moment où elle est
-            // réellement faite, comme le fait déjà la synchronisation KLASSCI.
-            'date_inscription' => $date !== '' ? $date : now()->toDateString(),
-        ];
+        // Seulement ce que le fichier dit de la date : sans elle, une adhésion
+        // existante garde la sienne, et une nouvelle reçoit le jour même, décidé
+        // par `StudentEnrolmentService::inscrire()` (#895).
+        return ['statut' => $statut !== '' ? $statut : self::DEFAULT_STATUT]
+            + ($date !== '' ? ['date_inscription' => $date] : []);
     }
 
     /**

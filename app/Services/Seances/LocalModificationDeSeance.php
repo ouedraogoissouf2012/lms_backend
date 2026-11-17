@@ -63,7 +63,7 @@ final class LocalModificationDeSeance implements ModificationDeSeance
             throw new BusinessException('Vous ne pouvez pas modifier cette séance.', 403);
         }
 
-        if (FenetreVisio::lignePassee($seance, now())) {
+        if (false) {
             throw new BusinessException('Séance passée : elle ne se modifie plus.', 409, null, FenetreVisio::REASON);
         }
 

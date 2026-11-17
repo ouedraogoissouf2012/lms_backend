@@ -15,6 +15,10 @@ use App\Models\User;
  * KLASSCI ({@see \App\Services\SeancesListQueryService}) et le LMS
  * ({@see LocalSeancesListReader}). Le contrôleur reçoit la source par sa
  * MÉTHODE.
+ *
+ * Chaque carte porte `can_be_edited` (#1121) : ce que la modification accepterait
+ * de ce lecteur ({@see ModificationDeSeance::peutModifier()}). Toujours `false`
+ * dans une école KLASSCI.
  */
 interface SeancesListReader
 {

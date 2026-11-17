@@ -257,7 +257,7 @@ final class SeedersAnnoncentCeQuIlsFontTest extends TestCase
     public function test_temoin_le_seeding_complet_rattache_toujours_les_orphelins(): void
     {
         putenv('KLASSCI_PRESENTATION_URL');
-        $orphelin = User::factory()->create(['institution_id' => null, 'role' => 'etudiant', 'email' => 'orphelin2@688.test']);
+        $orphelin = User::factory()->sansEtablissement()->createQuietly(['institution_id' => null, 'role' => 'etudiant', 'email' => 'orphelin2@688.test']);
 
         // Sans console : `Seeder::call()` écrit sur la sortie d'une vraie commande.
         ob_start();

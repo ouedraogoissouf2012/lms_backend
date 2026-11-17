@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Models\Concerns;
 
 use App\Enums\Role;
+use App\Exceptions\CompteSansEtablissementException;
 
 /**
  * Helpers de rôle du modèle {@see \App\Models\User}.
@@ -20,6 +21,21 @@ use App\Enums\Role;
  */
 trait InteractsWithRoles
 {
+    /**
+     * #1181 : un compte d'école ne se crée pas sans établissement. Seul le
+     * supradmin de plateforme (rôle EXACT, {@see isPlatformSupradmin()}) en est
+     * dispensé. L'écouteur est posé après celui de `BelongsToInstitution` (ordre
+     * des traits dans `User`) : il juge l'établissement une fois le tenant appliqué.
+     */
+    public static function bootInteractsWithRoles(): void
+    {
+        static::creating(static function (self $compte): void {
+            if ($compte->getAttribute('institution_id') === null && ! $compte->isPlatformSupradmin()) {
+                throw CompteSansEtablissementException::pour($compte->role);
+            }
+        });
+    }
+
     /**
      * `$this->role` → case enum `Role` (normalise les alias EN/FR, null si
      * inconnu — fail-soft). Issue #121 : source de vérité unique des rôles.

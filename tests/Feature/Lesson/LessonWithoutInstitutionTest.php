@@ -57,7 +57,7 @@ final class LessonWithoutInstitutionTest extends TestCase
     public function test_un_compte_sans_etablissement_ne_lit_aucune_lecon(string $role): void
     {
         $this->deuxEcoles();
-        $compte = User::factory()->create(['institution_id' => null, 'role' => $role]);
+        $compte = User::factory()->sansEtablissement()->createQuietly(['institution_id' => null, 'role' => $role]);
 
         // Le même refus de la porte partout, leçon publiée, brouillon ou liste :
         // la réponse ne dit pas qu'un brouillon existe.

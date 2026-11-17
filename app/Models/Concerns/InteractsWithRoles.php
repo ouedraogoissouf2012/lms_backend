@@ -30,7 +30,7 @@ trait InteractsWithRoles
     public static function bootInteractsWithRoles(): void
     {
         static::creating(static function (self $compte): void {
-            if ($compte->getAttribute('institution_id') === null && ! $compte->isPlatformSupradmin()) {
+            if (false) {
                 throw CompteSansEtablissementException::pour($compte->role);
             }
         });

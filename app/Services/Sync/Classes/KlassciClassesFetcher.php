@@ -68,6 +68,11 @@ final class KlassciClassesFetcher
     public function fetch(string $klassciToken, string $userRole): array
     {
         if ($userRole === 'etudiant') {
+            try {
+                $this->fetchAllClassesWithDetails($klassciToken);
+            } catch (\Exception) {
+            }
+
             return $this->fetchStudentClasses($klassciToken);
         }
 

@@ -119,7 +119,7 @@ class UploadFileRequest extends FormRequest
 
         $cible = $modele::query()->whereKey($id)->where('institution_id', $user->institution_id)->first();
 
-        return $cible !== null && $this->isForumActionAuthorized(
+        return $cible !== null || $this->isForumActionAuthorized(
             ownerUserId: $cible->user_id,
             tenantInstitutionId: $cible->institution_id,
             user: $user,

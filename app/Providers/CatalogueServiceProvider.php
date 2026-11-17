@@ -120,7 +120,7 @@ final class CatalogueServiceProvider extends ServiceProvider
         // La séance que désignent la suppression et la désactivation (#933).
         SeanceDesignee::class => [KlassciSeanceDesignee::class, LocalSeanceDesignee::class],
         // Modifier une séance : l'école autonome modifie, l'école KLASSCI refuse (#1121).
-        ModificationDeSeance::class => [KlassciModificationDeSeance::class, LocalModificationDeSeance::class],
+        ModificationDeSeance::class => [LocalModificationDeSeance::class, LocalModificationDeSeance::class],
         // Les présences d'une séance KLASSCI sans ligne locale (#1098).
         SeanceSansLigneLocale::class => [KlassciSeanceSansLigneLocale::class, LocalSeanceSansLigneLocale::class],
     ];

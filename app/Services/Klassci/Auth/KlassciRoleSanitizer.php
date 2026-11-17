@@ -18,15 +18,20 @@ use App\Enums\Role;
  * PLATEFORME (cross-tenant, `institution_id=NULL` par convention), contournant
  * l'isolation multi-tenant.
  *
- * ## Politique
+ * ## Politique (#510, #949)
  *
- * Toute désignation du rôle PLATEFORME `supradmin` — y compris ses variantes de
- * casse/espacement que {@see Role::tryFromString} ne reconnaît pas — est ramenée
- * à l'admin d'INSTITUTION (`superAdmin`, intra-tenant, jamais cross-tenant). Le
- * rôle plateforme ne provient QUE du {@see \Database\Seeders\SupradminSeeder}.
- *
- * Tout autre rôle (dont `superAdmin`, l'admin d'institution légitime) est
- * préservé tel quel : aucune régression pour les rôles KLASSCI valides.
+ * Le rôle KLASSCI est lu à la SEULE table du LMS, {@see Role::tryFromString}, en
+ * correspondance exacte (#949 : une seule lecture du rôle) :
+ * - le rôle PLATEFORME exact `supradmin` est ramené à l'admin d'INSTITUTION
+ *   (`superAdmin`, intra-tenant, jamais cross-tenant) ; le rôle plateforme ne
+ *   provient QUE du {@see \Database\Seeders\SupradminSeeder} ;
+ * - tout autre rôle connu est rendu sous sa valeur CANONIQUE (`teacher` →
+ *   `enseignant`) ;
+ * - un rôle hors de la table (variante de casse ou d'espace comprise, comme
+ *   `Supradmin`) n'est RIEN : `null`. Il n'est ni promu, ni écrit en base ; le
+ *   synchroniseur refuse la connexion d'un compte nouveau, et garde le
+ *   `klassci_role` précédent d'un compte existant ;
+ * - un rôle ABSENT donne `etudiant`, le moindre privilège.
  *
  * Classe pure (aucune dépendance) → testable unitairement (§1.6).
  *
@@ -40,23 +45,37 @@ final class KlassciRoleSanitizer
     private const INSTITUTION_ADMIN = 'superAdmin';
 
     /**
-     * Rôle LMS sûr à initialiser pour un nouvel utilisateur découvert via KLASSCI.
+     * Le rôle que désigne le payload KLASSCI (`data.user.role`), ou `null`.
+     *
+     * @param  array<string, mixed>  $klassciUser
      */
-    public function forNewUser(?string $klassciRole): string
+    public static function roleRecu(array $klassciUser): ?string
     {
-        // Défaut moindre privilège quand KLASSCI ne fournit aucun rôle.
-        $role = $klassciRole ?? Role::Etudiant->value;
-
-        return $this->designatesPlatformRole($role) ? self::INSTITUTION_ADMIN : $role;
+        return isset($klassciUser['role']) && is_string($klassciUser['role']) ? $klassciUser['role'] : null;
     }
 
     /**
-     * Vrai si la chaîne désigne le rôle PLATEFORME `supradmin` (toute casse /
-     * espacement). N'inclut PAS `superAdmin` (admin d'institution, intra-tenant),
-     * qui reste un rôle légitime préservé.
+     * Le rôle LMS d'un compte NOUVEAU, ou `null` : un rôle hors de la table n'est
+     * jamais écrit, le synchroniseur refuse alors la connexion.
      */
-    private function designatesPlatformRole(string $role): bool
+    public function forNewUser(?string $klassciRole): ?string
     {
-        return strtolower(trim($role)) === Role::Supradmin->value;
+        if ($klassciRole === null) {
+            return Role::Etudiant->value;
+        }
+
+        $role = Role::tryFromString($klassciRole);
+
+        return $role === Role::Supradmin ? self::INSTITUTION_ADMIN : $role?->value;
+    }
+
+    /**
+     * La valeur de `klassci_role` (ce que KLASSCI dit du compte, à titre
+     * d'information) : canonique, `etudiant` si KLASSCI n'en donne pas, ou `null`
+     * pour un rôle hors de la table, qui n'est jamais écrit.
+     */
+    public function forKlassciRole(?string $klassciRole): ?string
+    {
+        return $klassciRole === null ? Role::Etudiant->value : Role::tryFromString($klassciRole)?->value;
     }
 }

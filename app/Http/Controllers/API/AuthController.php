@@ -69,6 +69,10 @@ class AuthController extends AuthenticatedController
             ]);
 
             return $this->presenter->accountConflict();
+        } catch (\App\Exceptions\KlassciRoleInconnuException $e) {
+            // #949 : rôle KLASSCI hors de la table, compte nouveau. Rien n'est
+            // écrit ; le synchroniseur a journalisé le rôle reçu.
+            return $this->presenter->roleKlassciInconnu();
         } catch (\App\Exceptions\KlassciUnavailableException $e) {
             // #243 : KLASSCI totalement injoignable → 503 (panne externe
             // temporaire), pas un 500 ni un 401. L'utilisateur peut réessayer.

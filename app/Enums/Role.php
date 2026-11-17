@@ -36,7 +36,8 @@ namespace App\Enums;
  * ## Migration (#121)
  *
  * Les helpers `User::isXxx()` passent par cet enum. #521 : `EnsureRole`
- * consomme `tryFromString()` / `aliases()` — plus de table FR/EN locale.
+ * consomme `tryFromString()` — plus de table FR/EN locale. #949 : `tryFromString()`
+ * lit la table d'`aliases()`, en correspondance exacte : une seule lecture du rôle.
  *
  * @see \App\Models\User::asRoleEnum
  * @see \App\Http\Middleware\EnsureKlassciSync::isEscalationAttempt
@@ -59,15 +60,16 @@ enum Role: string
      */
     public static function tryFromString(?string $value): ?self
     {
-        return match ($value) {
-            'etudiant', 'student', 'étudiant' => self::Etudiant,
-            'enseignant', 'teacher'       => self::Enseignant,
-            'coordinateur', 'coordinator' => self::Coordinateur,
-            'admin', 'administrateur'     => self::Admin,
-            'superAdmin'                  => self::SuperAdmin,
-            'supradmin'                   => self::Supradmin,
-            default                       => null,
-        };
+        // #949 : UNE table, celle d'`aliases()`, en correspondance EXACTE. Ni casse
+        // ni espace : la garde de route et les services lisent ici, et nulle part
+        // ailleurs.
+        foreach (self::cases() as $role) {
+            if (in_array($value, $role->aliases(), true)) {
+                return $role;
+            }
+        }
+
+        return null;
     }
 
     /**
@@ -83,7 +85,8 @@ enum Role: string
             self::Etudiant => ['etudiant', 'student', 'étudiant'],
             self::Enseignant => ['enseignant', 'teacher'],
             self::Coordinateur => ['coordinateur', 'coordinator'],
-            self::Admin => ['admin', 'administrateur', 'administrator'],
+            // #949 : `administrator` retiré — aucun service ne l'a jamais reconnu.
+            self::Admin => ['admin', 'administrateur'],
             self::SuperAdmin => ['superAdmin'],
             self::Supradmin => ['supradmin'],
         };

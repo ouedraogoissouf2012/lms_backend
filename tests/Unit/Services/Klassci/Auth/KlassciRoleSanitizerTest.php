@@ -12,8 +12,9 @@ use PHPUnit\Framework\TestCase;
 /**
  * Issue #510 — le rôle PLATEFORME (`supradmin`, cross-tenant) ne doit jamais
  * pouvoir être initialisé depuis un payload KLASSCI. Le sanitizer ramène toute
- * désignation du rôle plateforme (y compris variantes de casse) vers l'admin
- * d'INSTITUTION (`superAdmin`), et préserve tout autre rôle tel quel.
+ * désignation EXACTE du rôle plateforme vers l'admin d'INSTITUTION (`superAdmin`).
+ * #949 : un rôle connu de la table est écrit sous sa valeur canonique ; un rôle
+ * hors de la table, variante de casse comprise, n'est rien (`null`).
  *
  * Classe pure, aucune dépendance → test unitaire sans base ni HTTP.
  *
@@ -31,22 +32,12 @@ final class KlassciRoleSanitizerTest extends TestCase
     }
 
     /**
-     * @return array<string, array{string, string}>
+     * #510 : le rôle PLATEFORME n'est jamais initialisé depuis KLASSCI ; sa valeur
+     * exacte est ramenée à l'admin d'institution.
      */
-    public static function platformRoleProvider(): array
+    public function test_neutralise_le_role_plateforme_vers_admin_institution(): void
     {
-        return [
-            'token plateforme minuscule'   => ['supradmin', 'superAdmin'],
-            'variante capitale'            => ['Supradmin', 'superAdmin'],
-            'variante majuscules'          => ['SUPRADMIN', 'superAdmin'],
-            'entouré d\'espaces'           => ['  supradmin  ', 'superAdmin'],
-        ];
-    }
-
-    #[DataProvider('platformRoleProvider')]
-    public function test_neutralise_le_role_plateforme_vers_admin_institution(string $incoming, string $expected): void
-    {
-        self::assertSame($expected, $this->sanitizer->forNewUser($incoming));
+        self::assertSame('superAdmin', $this->sanitizer->forNewUser('supradmin'));
     }
 
     /**
@@ -60,14 +51,40 @@ final class KlassciRoleSanitizerTest extends TestCase
             'coordinateur'                 => ['coordinateur', 'coordinateur'],
             'enseignant'                   => ['enseignant', 'enseignant'],
             'etudiant'                     => ['etudiant', 'etudiant'],
+            'alias anglais, canonique'     => ['teacher', 'enseignant'],
             'null → etudiant par défaut'   => [null, 'etudiant'],
         ];
     }
 
     #[DataProvider('preservedRoleProvider')]
-    public function test_preserve_les_roles_legitimes(?string $incoming, string $expected): void
+    public function test_ecrit_la_valeur_canonique_d_un_role_connu(?string $incoming, string $expected): void
     {
         self::assertSame($expected, $this->sanitizer->forNewUser($incoming));
+    }
+
+    /**
+     * @return array<string, array{string}>
+     */
+    public static function inconnuProvider(): array
+    {
+        return [
+            'variante capitale du plateforme' => ['Supradmin'],
+            'variante majuscules'             => ['SUPRADMIN'],
+            "entouré d'espaces"             => ['  supradmin  '],
+            'variante de casse'               => ['Enseignant'],
+            'rôle hors du LMS'                => ['directeur'],
+            'ancien alias retiré'             => ['administrator'],
+        ];
+    }
+
+    /**
+     * #949 : un rôle hors de la table (`Role::tryFromString`) n'est rien : ni promu,
+     * ni écrit. `null`, et l'appelant refuse la connexion.
+     */
+    #[DataProvider('inconnuProvider')]
+    public function test_un_role_hors_de_la_table_n_est_rien(string $incoming): void
+    {
+        self::assertNull($this->sanitizer->forNewUser($incoming));
     }
 
     public function test_ne_retourne_jamais_le_role_plateforme(): void

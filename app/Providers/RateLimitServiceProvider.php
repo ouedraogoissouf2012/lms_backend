@@ -6,7 +6,9 @@ namespace App\Providers;
 
 use App\Http\Presenters\TooManyRequestsPresenter;
 use App\Models\User;
+use App\Support\Http\LimiteDesEcritures;
 use App\Support\Http\LimiteDesLectures;
+use App\Support\Http\LimitesNommees;
 use Closure;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\JsonResponse;
@@ -51,6 +53,12 @@ use Illuminate\Support\ServiceProvider;
  *  - `lecture`      : toute lecture authentifiée, par famille et par compte
  *                      (#947, ADR-947-01) — posé sur le groupe `api`, voir
  *                      `LimiteDesLectures`.
+ *  - `ecriture`     : toute écriture authentifiée, par famille et par compte
+ *                      (#1196) — posé sur le groupe `api`, voir `LimiteDesEcritures`.
+ *  - les limites propres à une route (connexion, diapositives, imports…), chacune
+ *                      sous son nom (#1196), voir `LimitesNommees`. Aucune route ne
+ *                      porte plus de `throttle:N,M` anonyme : sa clé était l'id du
+ *                      compte seul (ou `domaine|IP`), commune à TOUTES ces routes.
  *
  * Le `supradmin` (gestionnaire plateforme) est exempté (`Limit::none()`) —
  * cohérent avec son bypass tenant existant.
@@ -138,6 +146,10 @@ final class RateLimitServiceProvider extends ServiceProvider
         });
 
         RateLimiter::for('lecture', Closure::fromCallable(new LimiteDesLectures));
+
+        RateLimiter::for('ecriture', Closure::fromCallable(new LimiteDesEcritures));
+
+        LimitesNommees::enregistrer();
 
         // Un limiteur NOMMÉ, et non un `throttle:5,1` en ligne : la clé anonyme
         // de `ThrottleRequests` est `domaine|ip`, sans chemin ni nom de route.

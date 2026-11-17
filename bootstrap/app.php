@@ -52,7 +52,11 @@ $app = Application::configure(basePath: dirname(__DIR__))
         // par compte (App\Support\Http\LimiteDesLectures, ADR-947-01). Posée sur le
         // GROUPE : une route nouvelle naît limitée. La priorité de Laravel place
         // ThrottleRequests après l'authentification de la route.
-        $middleware->api(append: ['throttle:lecture']);
+        // #1196 : de même pour toute écriture authentifiée, par famille et par
+        // compte (App\Support\Http\LimiteDesEcritures). Les limites propres à une
+        // route portent un nom (App\Support\Http\LimitesNommees), jamais un
+        // `throttle:N,M` anonyme, dont la clé était commune à toutes ces routes.
+        $middleware->api(append: ['throttle:lecture', 'throttle:ecriture']);
 
         // Enregistrer les middlewares personnalisés
         $middleware->alias([

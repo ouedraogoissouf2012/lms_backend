@@ -2,6 +2,12 @@
 
 namespace App\Http\Requests;
 
+use App\Http\Requests\Concerns\ChecksForumAuthorization;
+use App\Http\Requests\Concerns\ReservesLessonContentToTeacher;
+use App\Models\ForumPost;
+use App\Models\ForumTopic;
+use App\Models\User;
+use App\Services\Search\TeacherOwnershipScope;
 use App\Support\Upload\UploadLimits;
 use Illuminate\Foundation\Http\FormRequest;
 
@@ -46,22 +52,78 @@ use Illuminate\Foundation\Http\FormRequest;
  * Changes in one place = security policy updated everywhere.
  *
  * ## Authorization
- * Who can upload? Determined by controller/route authorization.
- * This request only validates file, not access control.
+ * Sans cible, le fichier est personnel : tout compte authentifié l'envoie.
+ * Rattacher le fichier à une cible (`fileable_type` + `fileable_id`) exige le
+ * droit d'ÉCRIRE sur cette cible, lu à la règle de son domaine :
+ * - `lesson` : l'enseignant auteur, et lui seul ({@see ReservesLessonContentToTeacher}, #1167) ;
+ * - `forum_topic`, `forum_post` : la règle des gardes de modification du forum
+ *   ({@see ChecksForumAuthorization}), l'auteur ou un admin de l'école.
+ * La cible est cherchée dans l'école du compte : absente ou ailleurs, elle reçoit
+ * le refus d'une cible que le compte n'écrit pas.
  */
 class UploadFileRequest extends FormRequest
 {
+    use ChecksForumAuthorization;
+    use ReservesLessonContentToTeacher;
+
     /**
-     * Files are uploaded by authenticated users.
-     * Role-based access controlled at route/controller level.
-     *
-     * @return bool
+     * Une paire incomplète, un id invalide, ou un type hors de `config/fileables.php`,
+     * passe à la validation (422). Un type de la carte sans règle ici est refusé : fermé par
+     * défaut.
      */
     public function authorize(): bool
     {
-        // Authorization checked at route middleware level (auth:sanctum)
-        // This request only validates file content/size
-        return true;
+        $type = $this->input('fileable_type');
+        $id = filter_var($this->input('fileable_id'), FILTER_VALIDATE_INT);
+
+        $carte = (array) config('fileables.morph_map', []);
+
+        if (! is_string($type) || $id === false || $id < 1 || ! array_key_exists($type, $carte)) {
+            return true;
+        }
+
+        return match ($type) {
+            // La signature est partagée avec `UploadChapterFileRequest`, qui en hérite : le
+            // port ne peut pas y être ajouté en paramètre. Il est résolu par le conteneur de
+            // la requête, celui qui appelle `authorize()`.
+            'lesson' => $this->enseignantAuteurDeLaLecon($id, $this->container->make(TeacherOwnershipScope::class)),
+            'forum_topic' => $this->ecritSurLeForum(ForumTopic::class, $id),
+            'forum_post' => $this->ecritSurLeForum(ForumPost::class, $id),
+            default => false,
+        };
+    }
+
+    /** Sur une leçon, un compte non enseignant reçoit le motif de #1167 ; ailleurs, le refus générique. */
+    protected function failedAuthorization(): void
+    {
+        if ($this->input('fileable_type') === 'lesson') {
+            $this->refuserUnCompteNonEnseignant();
+        }
+
+        parent::failedAuthorization();
+    }
+
+    /**
+     * Le compte écrit-il sur ce sujet ou ce message de son école ? Le filtre
+     * d'établissement est explicite : le scope global est ouvert sans tenant.
+     *
+     * @param  class-string<ForumTopic|ForumPost>  $modele
+     */
+    private function ecritSurLeForum(string $modele, int $id): bool
+    {
+        $user = $this->user();
+
+        if (! $user instanceof User || ! is_int($user->institution_id)) {
+            return false;
+        }
+
+        $cible = $modele::query()->whereKey($id)->where('institution_id', $user->institution_id)->first();
+
+        return $cible !== null && $this->isForumActionAuthorized(
+            ownerUserId: $cible->user_id,
+            tenantInstitutionId: $cible->institution_id,
+            user: $user,
+        );
     }
 
     /**
@@ -88,13 +150,14 @@ class UploadFileRequest extends FormRequest
             // source of truth). Adding a fileable type → update the config,
             // both upload and listing validations adapt automatically.
             // Issue #10 (IDOR) — never accept an arbitrary class name here.
+            // La paire va ensemble : une cible partielle n'est pas vérifiable.
             'fileable_type' => [
-                'sometimes',
+                'required_with:fileable_id',
                 'string',
                 'in:' . implode(',', array_keys((array) config('fileables.morph_map', []))),
             ],
             'fileable_id' => [
-                'sometimes',
+                'required_with:fileable_type',
                 'integer',
                 'min:1',
             ],

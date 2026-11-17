@@ -120,10 +120,10 @@ final class UncaughtExceptionReportingTest extends TestCase
     }
 
     /**
-     * Le chemin réel d'un refus levé en exception : l'admin passe le middleware
-     * de rôle de la route, puis `StoreChapterRequest::authorize()` le refuse
-     * (seuls un enseignant ou un coordinateur créent un chapitre). Le rapporteur
-     * reçoit alors une `AuthorizationException` brute.
+     * Le chemin réel d'un refus levé en exception : l'enseignant passe le
+     * middleware de rôle de la route, puis `StoreChapterRequest::authorize()` le
+     * refuse (la leçon n'existe pas). Le rapporteur reçoit alors une
+     * `AuthorizationException` brute.
      */
     #[DataProvider('typesDEcole')]
     public function test_un_refus_de_formrequest_donne_un_seul_warning_sans_trace(bool $depuisLeLms): void
@@ -132,9 +132,9 @@ final class UncaughtExceptionReportingTest extends TestCase
         $ecole = $depuisLeLms
             ? Institution::factory()->standalone()->create()
             : Institution::factory()->create();
-        $admin = User::factory()->admin()->create(['institution_id' => $ecole->id]);
+        $enseignant = User::factory()->teacher()->create(['institution_id' => $ecole->id]);
 
-        $this->asTenant($admin)
+        $this->asTenant($enseignant)
             ->postJson('/api/lessons/1/chapters?token='.self::TEMOIN_REQUETE, ['title' => self::TEMOIN_CORPS])
             ->assertForbidden()
             ->assertExactJson(['success' => false, 'message' => 'Une erreur est survenue.']);

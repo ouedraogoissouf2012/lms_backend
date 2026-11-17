@@ -6,7 +6,9 @@ namespace App\Services\KnowledgeCheck;
 
 use App\Models\Chapter;
 use App\Models\KnowledgeCheck;
+use App\Models\Lesson;
 use App\Models\User;
+use App\Services\Search\TeacherOwnershipScope;
 use Illuminate\Database\Eloquent\Collection;
 
 /**
@@ -30,9 +32,10 @@ use Illuminate\Database\Eloquent\Collection;
  */
 final class KnowledgeCheckCrudService
 {
-    public function __construct(private readonly KnowledgeCheckAccessService $access)
-    {
-    }
+    public function __construct(
+        private readonly KnowledgeCheckAccessService $access,
+        private readonly TeacherOwnershipScope $auteurs,
+    ) {}
 
     /**
      * Liste les quiz d'un chapitre avec enrichissement utilisateur.
@@ -134,8 +137,9 @@ final class KnowledgeCheckCrudService
     }
 
     /**
-     * Vérifie qu'un user peut gérer le chapitre (admin OU enseignant
-     * propriétaire). Lève `\RuntimeException` sinon — le controller traduit
+     * Vérifie qu'un user peut gérer le chapitre : l'enseignant auteur de sa leçon,
+     * et lui seul (#1167 ; la gestion consulte), lu à la source unique
+     * {@see TeacherOwnershipScope::ownsLesson()}. Lève `\RuntimeException` sinon — le controller traduit
      * en réponse 403.
      */
     private function assertCanManageChapter(User $user, ?Chapter $chapter): void
@@ -144,7 +148,9 @@ final class KnowledgeCheckCrudService
             throw new \RuntimeException('Chapitre introuvable pour ce quiz');
         }
 
-        if (! $user->isAdmin() && $chapter->enseignant_id !== $user->id) {
+        $lesson = $chapter->lesson;
+
+        if (! $lesson instanceof Lesson || ! $user->isTeacher() || ! $this->auteurs->ownsLesson($lesson, $user)) {
             throw new \DomainException('Non autorise a modifier ce quiz');
         }
     }

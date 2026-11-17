@@ -6,6 +6,7 @@ namespace App\Http\Requests;
 
 use App\Http\Requests\Concerns\ChecksChapterOwnership;
 use App\Models\User;
+use App\Services\Search\TeacherOwnershipScope;
 use Illuminate\Http\Exceptions\HttpResponseException;
 
 /**
@@ -13,8 +14,8 @@ use Illuminate\Http\Exceptions\HttpResponseException;
  *
  * Le fichier suit les règles de {@see UploadFileRequest} (taille, types), héritées. Le
  * dépôt suit la règle de modification du chapitre ({@see ChecksChapterOwnership}, celle de
- * la suppression et de la restauration) : l'auteur de la leçon, ou un administrateur de
- * l'établissement.
+ * la suppression et de la restauration) : l'enseignant auteur de la leçon, et lui seul
+ * (#1167). La gestion consulte : son refus porte un motif, avant toute recherche du chapitre.
  *
  * Un chapitre absent, ou d'un autre établissement, rend 404 (« Chapitre introuvable »),
  * comme les lectures ; un chapitre de l'établissement que le compte ne peut pas modifier,
@@ -28,11 +29,16 @@ final class UploadChapterFileRequest extends UploadFileRequest
 
     public function authorize(): bool
     {
-        return $this->chapterOwnershipPasses(parametre: self::PARAMETRE);
+        // La signature est celle d'`UploadFileRequest::authorize()` : le port ne peut pas
+        // y être ajouté en paramètre. Il est résolu par le conteneur de la requête,
+        // celui qui appelle `authorize()`.
+        return $this->chapterOwnershipPasses($this->container->make(TeacherOwnershipScope::class), parametre: self::PARAMETRE);
     }
 
     protected function failedAuthorization(): void
     {
+        $this->refuserUnCompteNonEnseignant();
+
         $user = auth()->user();
 
         if ($user instanceof User && $this->chapitreDeLEtablissement($user, false, self::PARAMETRE) === null) {

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Requests;
 
 use App\Http\Requests\Concerns\ChecksChapterOwnership;
+use App\Services\Search\TeacherOwnershipScope;
 use Illuminate\Foundation\Http\FormRequest;
 
 /**
@@ -24,9 +25,9 @@ final class RestoreChapterRequest extends FormRequest
 {
     use ChecksChapterOwnership;
 
-    public function authorize(): bool
+    public function authorize(TeacherOwnershipScope $auteurs): bool
     {
-        return $this->chapterOwnershipPasses(includeTrashed: true);
+        return $this->chapterOwnershipPasses($auteurs, includeTrashed: true);
     }
 
     /**

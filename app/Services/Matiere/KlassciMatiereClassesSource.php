@@ -77,10 +77,10 @@ final class KlassciMatiereClassesSource
         // `tenantCache->remember()` (KlassciProxyService), donc rien n'est mis
         // en cache et l'appel repartirait a CHAQUE affichage.
         //
-        // Le coordinateur est deliberement exclu : il a droit de creer des
-        // lecons (StoreLessonRequest), mais ses classes ne se lisent pas sur
-        // `me/teacher-dashboard`. Sa source lui est propre — dette tracee, hors
-        // perimetre de #755.
+        // Le coordinateur est deliberement exclu : il ne cree pas de lecon
+        // (#1167, seul l'enseignant : StoreLessonRequest), et ses classes ne se
+        // lisent pas sur `me/teacher-dashboard`. L'edition d'une lecon par la
+        // gestion n'est pas tranchee (#1167, hors perimetre).
         if (! $teacher->isTeacher()) {
             return [];
         }

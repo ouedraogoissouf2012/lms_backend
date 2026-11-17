@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Http\Requests;
 
 use App\Http\Requests\Concerns\ExplainsCorrectAnswersRefusal;
+use App\Http\Requests\Concerns\ReservesLessonContentToTeacher;
+use App\Models\User;
 use App\Rules\KnowledgeCheckCorrectAnswerAmongOptions;
 use App\Support\Evaluation\QuestionOptionLimits;
 use Illuminate\Contracts\Validation\Validator;
@@ -12,7 +14,8 @@ use Illuminate\Foundation\Http\FormRequest;
 
 /**
  * Valide la création d'un knowledge check (POST /api/knowledge-checks).
- * Autorisation propriétaire chapitre vérifiée dans KnowledgeCheckCrudService.
+ * L'enseignant seul (#1167) : la gestion consulte, et son refus porte un motif.
+ * L'auteur du chapitre est vérifié dans KnowledgeCheckCrudService.
  *
  * Partie 3 : les options sont une liste de textes, et la bonne réponse désigne
  * une d'elles par son indice ({@see KnowledgeCheckCorrectAnswerAmongOptions},
@@ -22,10 +25,13 @@ use Illuminate\Foundation\Http\FormRequest;
 final class StoreKnowledgeCheckRequest extends FormRequest
 {
     use ExplainsCorrectAnswersRefusal;
+    use ReservesLessonContentToTeacher;
 
     public function authorize(): bool
     {
-        return auth()->check();
+        $user = auth()->user();
+
+        return $user instanceof User && $user->isTeacher();
     }
 
     /**

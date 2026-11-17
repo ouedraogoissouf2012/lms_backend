@@ -91,9 +91,9 @@ class UnpublishLessonRequestTest extends TestCase
     }
 
     /**
-     * ✅ HAPPY PATH: Admin can unpublish any lesson
+     * ❌ FORBIDDEN: l'admin d'école consulte, il ne dépublie pas (#1167)
      */
-    public function test_admin_can_unpublish_any_lesson(): void
+    public function test_admin_cannot_unpublish_a_lesson(): void
     {
         $admin = User::factory()
             ->admin()
@@ -104,9 +104,9 @@ class UnpublishLessonRequestTest extends TestCase
 
         $response = $this->postJson("/api/lessons/{$this->lesson->id}/unpublish");
 
-        $this->assertTrue(in_array($response->status(), [200, 201]));
+        $response->assertStatus(403)->assertJsonPath('reason', 'lesson_content_teacher_only');
         $lesson = Lesson::find($this->lesson->id);
-        $this->assertEquals(LessonStatus::Draft, $lesson->status);
+        $this->assertNotEquals(LessonStatus::Draft, $lesson->status);
     }
 
     /**

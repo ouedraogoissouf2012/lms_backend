@@ -2,7 +2,8 @@
 
 namespace App\Http\Requests;
 
-use App\Models\Lesson;
+use App\Http\Requests\Concerns\ReservesLessonContentToTeacher;
+use App\Services\Search\TeacherOwnershipScope;
 use App\Support\Upload\UploadLimits;
 use Illuminate\Foundation\Http\FormRequest;
 
@@ -35,44 +36,21 @@ use Illuminate\Foundation\Http\FormRequest;
  *
  * Authorization checks:
  * - User must be authenticated
- * - User must be teacher/coordinator
+ * - User must be a teacher, author of the lesson (#1167)
  * - Lesson must belong to user's institution
  */
 final class StoreChapterRequest extends FormRequest
 {
+    use ReservesLessonContentToTeacher;
+
     /**
      * Determine if the user is authorized to make this request.
      */
-    public function authorize(): bool
+    public function authorize(TeacherOwnershipScope $auteurs): bool
     {
-        $user = auth()->user();
-
-        // Check 1: User must be authenticated
-        if (! $user) {
-            return false;
-        }
-
-        // Check 2: l'enseignant, ou qui gère l'établissement : coordinateur et admin,
-        // mêmes droits (D502, `User::isManager()`). Pas l'élève.
-        if (! $user->isTeacher() && ! $user->isManager()) {
-            return false;
-        }
-
-        // Check 3: Multi-tenant safety - lesson must belong to user's institution
-        // Lesson ID comes from route: /api/lessons/{lessonId}/chapters
-        if (! $this->route('lessonId')) {
-            return false;
-        }
-
-        $lesson = Lesson::where('id', $this->route('lessonId'))
-            ->where('institution_id', $user->institution_id)
-            ->exists();
-
-        if (! $lesson) {
-            return false;
-        }
-
-        return true;
+        // L'enseignant auteur de la leçon (#1167) : la création d'un chapitre suit la
+        // même règle d'auteur que les autres écritures. La gestion consulte.
+        return $this->enseignantAuteurDeLaLecon($this->route('lessonId'), $auteurs);
     }
 
     /**

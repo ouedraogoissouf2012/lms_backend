@@ -4,11 +4,13 @@ namespace App\Http\Requests;
 
 use App\Enums\LessonStatus;
 use App\Http\Requests\Concerns\ExigeUneClasseDeLaMatiere;
+use App\Http\Requests\Concerns\ReservesLessonContentToTeacher;
 use App\Models\Classe;
 use App\Models\Lesson;
 use App\Models\Matiere;
 use App\Models\User;
 use App\Services\Matiere\ClassesDeLaMatiere;
+use App\Services\Search\TeacherOwnershipScope;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -24,10 +26,10 @@ use Illuminate\Validation\Rule;
  * - Status transitions (draft → published)
  *
  * ## Authorization Model
- * Only lesson owner (teacher) or admin can update:
+ * Only the teacher who owns the lesson can update (#1167, the management only reads):
  * 1. User authenticated (auth:sanctum middleware)
- * 2. User is teacher/coordinator/admin
- * 3. User owns the lesson (enseignant_id == user->id) OR is admin
+ * 2. User is a teacher
+ * 3. User owns the lesson (enseignant_id == user->id)
  * 4. Lesson belongs to user's institution (multi-tenant)
  *
  * If ANY check fails → 403 Forbidden
@@ -40,36 +42,12 @@ use Illuminate\Validation\Rule;
 final class UpdateLessonRequest extends FormRequest
 {
     use ExigeUneClasseDeLaMatiere;
+    use ReservesLessonContentToTeacher;
 
-    public function authorize(): bool
+    public function authorize(TeacherOwnershipScope $auteurs): bool
     {
-        $user = auth()->user();
-
-        // Check 1: User must be authenticated
-        if (!$user) {
-            return false;
-        }
-
-        // Check 2: Only teachers/coordinators/admins can update
-        if (!$user->isTeacher() && !$user->isCoordinator() && !$user->isAdmin()) {
-            return false;
-        }
-
-        // Check 3: Lesson must exist and belong to user's institution
-        $lesson = \App\Models\Lesson::where('id', $this->route('id'))
-            ->where('institution_id', $user->institution_id)
-            ->first();
-
-        if (!$lesson) {
-            return false;
-        }
-
-        // Check 4: User must be lesson owner OR admin
-        if (!$user->isAdmin() && $lesson->enseignant_id !== $user->id) {
-            return false;
-        }
-
-        return true;
+        // L'enseignant auteur de la leçon, et lui seul (#1167) : la gestion consulte.
+        return $this->enseignantAuteurDeLaLecon($this->route('id'), $auteurs);
     }
 
     public function rules(): array

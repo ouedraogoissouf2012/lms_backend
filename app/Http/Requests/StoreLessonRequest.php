@@ -4,6 +4,7 @@ namespace App\Http\Requests;
 
 use App\Enums\LessonStatus;
 use App\Http\Requests\Concerns\ExigeUneClasseDeLaMatiere;
+use App\Http\Requests\Concerns\ReservesLessonContentToTeacher;
 use App\Models\Classe;
 use App\Models\Matiere;
 use App\Models\User;
@@ -18,7 +19,7 @@ use Illuminate\Foundation\Http\FormRequest;
  *
  * ## Purpose
  * Validates and authorizes POST /api/lessons requests. Ensures:
- * - User is authenticated + is teacher/coordinator
+ * - User is authenticated + is a teacher (#1167 : seul l'enseignant crée une leçon)
  * - Institution ownership (multi-tenant safety)
  * - Title/description are valid and sanitized
  * - Lesson type is allowed
@@ -31,7 +32,7 @@ use Illuminate\Foundation\Http\FormRequest;
  * - Maintainable: new devs see contract (input -> output) clearly
  *
  * ## Security Checks Applied
- * 1. Authorization: only teachers/coordinators can create
+ * 1. Authorization: only teachers can create (#1167)
  * 2. Institution: classe must belong to user's institution
  * 3. Input validation: all fields type-checked (length, type, enum)
  * 4. DOS prevention: title/description/content max length enforced
@@ -51,6 +52,7 @@ use Illuminate\Foundation\Http\FormRequest;
 final class StoreLessonRequest extends FormRequest
 {
     use ExigeUneClasseDeLaMatiere;
+    use ReservesLessonContentToTeacher;
 
     /**
      * Determine if the user is authorized to make this request.
@@ -64,9 +66,11 @@ final class StoreLessonRequest extends FormRequest
             return false;
         }
 
-        // Check 2: l'enseignant, ou qui gère l'établissement : coordinateur et admin,
-        // mêmes droits (D502, `User::isManager()`). Pas l'élève.
-        if (! $user->isTeacher() && ! $user->isManager()) {
+        // Check 2: l'enseignant seul (#1167, décisions du user du 17/11). D502 (« l'admin
+        // d'école a les droits du coordinateur ») reste vrai, mais ne donne pas
+        // l'écriture du contenu : la gestion consulte. Son refus porte un motif
+        // (ReservesLessonContentToTeacher).
+        if (! $user->isTeacher()) {
             return false;
         }
 

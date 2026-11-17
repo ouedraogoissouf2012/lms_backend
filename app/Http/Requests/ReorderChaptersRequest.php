@@ -2,6 +2,8 @@
 
 namespace App\Http\Requests;
 
+use App\Http\Requests\Concerns\ReservesLessonContentToTeacher;
+use App\Services\Search\TeacherOwnershipScope;
 use Illuminate\Foundation\Http\FormRequest;
 
 /**
@@ -12,10 +14,10 @@ use Illuminate\Foundation\Http\FormRequest;
  * Input: array of chapters with id + new order.
  *
  * ## Authorization Model
- * Only lesson owner or admin can reorder:
+ * Only the teacher who owns the lesson can reorder (#1167, the management only reads):
  * 1. User authenticated
- * 2. User is teacher/coordinator/admin
- * 3. Lesson owner == user OR is admin
+ * 2. User is a teacher
+ * 3. Lesson owner == user
  * 4. Lesson belongs to user's institution (multi-tenant)
  *
  * ## Input Structure
@@ -30,31 +32,12 @@ use Illuminate\Foundation\Http\FormRequest;
  */
 final class ReorderChaptersRequest extends FormRequest
 {
-    public function authorize(): bool
+    use ReservesLessonContentToTeacher;
+
+    public function authorize(TeacherOwnershipScope $auteurs): bool
     {
-        $user = auth()->user();
-
-        if (!$user) {
-            return false;
-        }
-
-        if (!$user->isTeacher() && !$user->isCoordinator() && !$user->isAdmin()) {
-            return false;
-        }
-
-        $lesson = \App\Models\Lesson::where('id', $this->route('lessonId'))
-            ->where('institution_id', $user->institution_id)
-            ->first();
-
-        if (!$lesson) {
-            return false;
-        }
-
-        if (!$user->isAdmin() && $lesson->enseignant_id !== $user->id) {
-            return false;
-        }
-
-        return true;
+        // L'enseignant auteur de la leçon, et lui seul (#1167) : la gestion consulte.
+        return $this->enseignantAuteurDeLaLecon($this->route('lessonId'), $auteurs);
     }
 
     /**

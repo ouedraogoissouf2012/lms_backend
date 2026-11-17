@@ -84,18 +84,6 @@ final class ClasseDeLaLeconTest extends TestCase
         self::assertSame(0, Lesson::query()->count());
     }
 
-    public function test_ecole_autonome_la_gestion_choisit_toute_classe_de_la_matiere(): void
-    {
-        $ecole = $this->ecole();
-        $coordinateur = $this->membre($ecole, 'coordinateur');
-        $formateur = $this->membre($ecole, 'enseignant');
-        $classe = $this->classe($ecole, '6e B');
-        $maths = $this->matiere($ecole, 'Maths');
-        $this->programme($classe, $maths, $formateur);
-
-        $this->creer($coordinateur, $classe->id, $maths->id)->assertCreated();
-    }
-
     // ───────────────────────── école KLASSCI
 
     /**

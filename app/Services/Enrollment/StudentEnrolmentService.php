@@ -124,7 +124,6 @@ final class StudentEnrolmentService
         // fait la synchronisation KLASSCI (`ClasseStudentsSynchronizer`), et
         // l'apprenant entre présent.
         return [
-            'statut' => ClasseEtudiantStatut::Actif->value,
             'date_inscription' => now()->toDateString(),
         ];
     }

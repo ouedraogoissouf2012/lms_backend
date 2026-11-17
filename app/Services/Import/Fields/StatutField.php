@@ -66,7 +66,7 @@ final class StatutField
         // par `StudentEnrolmentService::inscrire()` (#1237) : le poser ici
         // réactivait un suspendu à chaque réimportation sans statut.
         if ($declared === '') {
-            return FieldOutcome::accepted('');
+            return FieldOutcome::accepted(ClasseEtudiantStatut::Actif->value);
         }
 
         $statut = ClasseEtudiantStatut::tryFrom(self::GRAPHIES[$declared] ?? $declared);

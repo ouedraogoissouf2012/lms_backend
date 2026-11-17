@@ -45,11 +45,13 @@ final class LoginOrchestrator
 
         $token = $user->createToken('lms-backend-token', ['lms:access'])->plainTextToken;
         $this->auditLogger->logAuthEvent('login', $user, ['method' => 'local']);
+        $institution = $user->institution;
 
         return $this->presenter->successfulLocal(
             $user,
             $token,
-            $this->rosterAuthorities->forInstitution($user->institution)->allowsLocalEnrolment(),
+            $institution,
+            $this->rosterAuthorities->forInstitution($institution)->allowsLocalEnrolment(),
         );
     }
 

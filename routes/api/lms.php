@@ -97,7 +97,7 @@ Route::middleware(['auth:sanctum', 'klassci.sync'])->prefix('lms')->group(functi
     Route::match(['put', 'patch'], '/seances/{seanceId}', [LMSSeanceCrudController::class, 'update'])
         ->name('lms.seances.update')
         ->whereNumber('seanceId')
-        ->middleware(['personnel', 'throttle:30,1']);
+        ->middleware(['personnel']);
 
     // Séances à venir (pré-création rooms)
     Route::get('/seances/upcoming', [LMSSeancesListController::class, 'upcomingSeances'])
@@ -197,26 +197,24 @@ Route::middleware(['auth:sanctum', 'klassci.sync'])->prefix('lms')->group(functi
     // grossir indefiniment une table dont on ne peut rien effacer.
     Route::post('/visio/consent', [LMSVisioConsentController::class, 'store'])
         ->name('lms.visio.consent.store')
-        ->middleware('throttle:10,1');
+        ->middleware('throttle:consentement-visio');
 
     Route::get('/visio/consent', [LMSVisioConsentController::class, 'show'])
         ->name('lms.visio.consent.show');
 
     // Étudiant rejoint visio
     Route::post('/seances/{seanceId}/join', [LMSVisioParticipantController::class, 'joinVisio'])
-        ->name('lms.seances.join')
-        ->middleware('throttle:300,1');
+        ->name('lms.seances.join');
 
     // Étudiant quitte visio
     Route::post('/seances/{seanceId}/leave', [LMSVisioParticipantController::class, 'leaveVisio'])
-        ->name('lms.seances.leave')
-        ->middleware('throttle:300,1');
+        ->name('lms.seances.leave');
 
     // Participation visio en cours de l'appelant (#673) : remonte la salle
     // embarquee apres un rechargement de page. Ne delivre AUCUN jeton.
     Route::get('/visio/active', [LMSVisioParticipantController::class, 'activeParticipation'])
         ->name('lms.visio.active')
-        ->middleware('throttle:300,1');
+        ->middleware('throttle:visio-active');
 
     // Heartbeat participant (ping d'activité) - limité par utilisateur et séance
     Route::post('/seances/{seanceId}/heartbeat', [LMSVisioParticipantController::class, 'heartbeatVisio'])
@@ -256,5 +254,5 @@ Route::middleware(['auth:sanctum', 'klassci.sync'])->prefix('lms')->group(functi
 });
 
 Route::post('/webhooks/visio/recording-ready', [VisioRecordingWebhookController::class, 'recordingReady'])
-    ->middleware('throttle:60,1')
+    ->middleware('throttle:webhook-visio')
     ->name('webhooks.visio.recording-ready');

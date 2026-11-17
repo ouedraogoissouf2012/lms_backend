@@ -29,7 +29,7 @@ Route::middleware(['auth:sanctum', 'plateforme'])->prefix('admin')->group(functi
 // ============================================
 Route::middleware(['auth:sanctum', 'gestion'])->prefix('admin')->group(function () {
     Route::get('/users', [AdminController::class, 'listUsers'])
-        ->middleware('throttle:60,1')
+        ->middleware('throttle:comptes-liste')
         ->name('admin.users.index');
 });
 
@@ -54,25 +54,22 @@ Route::middleware(['auth:sanctum', 'gestion'])->prefix('admin/analytics')->group
 // REPORTS - Génération PDF (le rapport de présence : `personnel` ; les autres : `gestion`)
 // ============================================
 Route::middleware(['auth:sanctum', 'personnel'])->prefix('admin/reports')->group(function () {
-    Route::post('/attendance', [ReportController::class, 'generateAttendanceReport'])
-        ->middleware('throttle:30,1');
+    Route::post('/attendance', [ReportController::class, 'generateAttendanceReport']);
 });
 
 Route::middleware(['auth:sanctum', 'gestion'])->prefix('admin/reports')->group(function () {
-    Route::post('/grades', [ReportController::class, 'generateGradesReport'])
-        ->middleware('throttle:30,1');
+    Route::post('/grades', [ReportController::class, 'generateGradesReport']);
 
     // Rapport d'activité système - Rate limited: 30/min (resource intensive)
-    Route::post('/activity', [ReportController::class, 'generateActivityReport'])
-        ->middleware('throttle:30,1');
+    Route::post('/activity', [ReportController::class, 'generateActivityReport']);
 
     Route::get('/async/{id}', [ReportController::class, 'asyncStatus'])
         ->name('admin.reports.async.status')
-        ->middleware('throttle:60,1');
+        ->middleware('throttle:rapports-suivi');
 
     Route::get('/async/{id}/download', [ReportController::class, 'asyncDownload'])
         ->name('admin.reports.async.download')
-        ->middleware('throttle:30,1');
+        ->middleware('throttle:rapports-telechargement');
 });
 
 // ============================================

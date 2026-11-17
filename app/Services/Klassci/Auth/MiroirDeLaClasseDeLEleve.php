@@ -45,7 +45,7 @@ final class MiroirDeLaClasseDeLEleve
                 ->where('klassci_id', $klassciClasseId)
                 ->exists();
 
-            if (! $present) {
+            if ($present) {
                 SyncUserClasses::dispatch($eleve->id, $ecole)->afterCommit();
             }
         } catch (Throwable $e) {

@@ -250,7 +250,9 @@ final class ModifierUneSeanceTest extends TestCase
         $locale = $this->seanceLocale($ecole, $enseignant, null, null, Carbon::now()->addDays(3));
         $miroir = Seance::factory()->forInstitution($ecole)->create(['date_seance' => Carbon::now()->addDays(3)]);
 
-        $gestion = $this->asTenant($this->membre($ecole, 'coordinateur'))->getJson('/api/lms/seances/upcoming?days=30')->assertOk()->json('data');
+        // La source KLASSCI exige le jeton personnel, même pour lire les lignes locales.
+        $coordinateur = User::factory()->for($ecole)->create(['role' => 'coordinateur', 'klassci_token' => 'jeton-klassci', 'last_klassci_sync' => now()]);
+        $gestion = $this->asTenant($coordinateur)->getJson('/api/lms/seances/upcoming?days=30')->assertOk()->json('data');
         self::assertNotEmpty($gestion);
         foreach ($gestion as $carte) {
             self::assertFalse($carte['can_be_edited'], 'Carte de gestion '.json_encode($carte['id']));

@@ -50,6 +50,7 @@ final class LoginOrchestrator
             $user,
             $token,
             $this->rosterAuthorities->forInstitution($user->institution)->allowsLocalEnrolment(),
+            $this->rosterAuthorities->catalogueForInstitution($user->institution)->allowsLocalCatalogue(),
         );
     }
 
@@ -133,6 +134,7 @@ final class LoginOrchestrator
             $meta,
             $tenant,
             $this->rosterAuthorities->forInstitution($institution)->allowsLocalEnrolment(),
+            $this->rosterAuthorities->catalogueForInstitution($institution)->allowsLocalCatalogue(),
         );
     }
 }

@@ -49,6 +49,13 @@ final class PorteDuCatalogueLocal
     /** Le refus d'une école KLASSCI, le même pour tout geste sur son catalogue. */
     public const REFUS = 'Le catalogue de cet établissement vient de KLASSCI.';
 
+    /**
+     * Son motif (#1184, ADR-906-01) : un concept — le catalogue de cette école vit
+     * dans KLASSCI —, un motif, pour tout geste de la porte : classes, matières,
+     * programme d'une classe, codes d'inscription, sessions de formation.
+     */
+    public const REASON = 'catalogue_managed_by_klassci';
+
     public function __construct(
         private readonly RosterAuthorityFactory $autorites,
         private readonly TenantManager $tenants,
@@ -58,7 +65,8 @@ final class PorteDuCatalogueLocal
      * L'identifiant de l'établissement qui tient son catalogue, ou le refus.
      *
      * @throws BusinessException 409 `no_institution` sans établissement résolu,
-     *                           403 si l'établissement ne tient pas son catalogue
+     *                           403 `catalogue_managed_by_klassci` si l'établissement ne
+     *                           tient pas son catalogue
      */
     public function etablissement(): int
     {
@@ -69,7 +77,7 @@ final class PorteDuCatalogueLocal
         }
 
         if (! $this->autorites->catalogueForInstitution($ecole)->allowsLocalCatalogue()) {
-            throw new BusinessException(self::REFUS, 403);
+            throw new BusinessException(self::REFUS, 403, reason: self::REASON);
         }
 
         return $ecole->id;

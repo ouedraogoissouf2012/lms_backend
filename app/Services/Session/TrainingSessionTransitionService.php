@@ -8,6 +8,7 @@ use App\Enums\TrainingSessionStatus;
 use App\Exceptions\BusinessException;
 use App\Models\TrainingSession;
 use App\Models\User;
+use App\Services\Catalogue\PorteDuCatalogueLocal;
 
 /**
  * Faire avancer une Période dans son cycle de vie (#845, ADR-845-01).
@@ -51,6 +52,8 @@ use App\Models\User;
  */
 final class TrainingSessionTransitionService
 {
+    public function __construct(private readonly PorteDuCatalogueLocal $porte) {}
+
     /**
      * Publier engage des inscriptions : la période doit avoir un calendrier.
      *
@@ -162,6 +165,9 @@ final class TrainingSessionTransitionService
      */
     private function sienne(User $acteur, int $periodeId): TrainingSession
     {
+        // #1184 : la porte du catalogue local, avant toute recherche.
+        $this->porte->etablissement();
+
         $institution = $acteur->institution_id;
 
         if (! is_int($institution)) {

@@ -10,6 +10,8 @@ use App\Models\Institution;
 use App\Models\Program;
 use App\Models\TrainingSession;
 use App\Models\User;
+use App\Services\Klassci\Auth\KlassciAuthClient;
+use App\Services\Klassci\Auth\KlassciUserSynchronizer;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Testing\TestResponse;
 use Symfony\Component\HttpFoundation\Response;
@@ -108,6 +110,38 @@ final class SessionsReserveesALEcoleAutonomeTest extends TestCase
                 ->assertOk()
                 ->assertJsonPath('meta.peut_gerer_catalogue_local', $attendu);
         }
+    }
+
+    /**
+     * La voie KLASSCI de la connexion porte la même capacité : le compte d'une école
+     * KLASSCI ne gère pas le catalogue dans le LMS.
+     */
+    public function test_la_connexion_klassci_expose_la_capacite_catalogue(): void
+    {
+        $ecole = Institution::factory()->create([
+            'mode' => InstitutionMode::Klassci,
+            'slug' => 'presentation',
+            'klassci_api_url' => 'https://presentation.klassci.test/api/lms',
+            'is_active' => true,
+        ]);
+        $compte = User::factory()->for($ecole)->create([
+            'role' => 'coordinateur',
+            'email' => 'gestion@klassci.test',
+            'password' => 'mot-de-passe-1184',
+            'klassci_id' => 200001,
+            'klassci_token' => 'jeton-expire',
+        ]);
+        $this->mock(KlassciAuthClient::class, fn ($mock) => $mock->shouldReceive('attemptLogin')->once()->andReturn([
+            'data' => ['user' => ['id' => 200001, 'email' => $compte->email, 'nom' => $compte->name, 'role' => 'coordinateur'], 'token' => 'jeton-frais'],
+            'meta' => [],
+        ]));
+        $this->mock(KlassciUserSynchronizer::class, fn ($mock) => $mock->shouldReceive('sync')->once()->andReturn($compte));
+
+        // Le chemin KLASSCI, et non le repli local.
+        $this->postJson('/api/auth/login', ['username' => 'gestion@klassci.test', 'password' => 'mot-de-passe-1184'])
+            ->assertOk()
+            ->assertJsonPath('meta.klassci_synced', true)
+            ->assertJsonPath('meta.peut_gerer_catalogue_local', false);
     }
 
     /** @return array{0: Institution, 1: User} */

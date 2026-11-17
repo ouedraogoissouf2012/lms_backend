@@ -236,7 +236,7 @@ class KlassciUserSynchronizer
             'klassci_data' => $this->whitelist->filter($klassciUser, ['_lms_tenant_url' => $tenantUrl]),
             'last_klassci_sync' => now(),
             'institution_id' => $institutionId,
-        ] + array_filter(['klassci_role' => $klassciRole]);
+        ] + ['klassci_role' => KlassciRoleSanitizer::roleRecu($klassciUser) ?? 'etudiant'];
     }
 
     /**

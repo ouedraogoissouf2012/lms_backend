@@ -47,7 +47,7 @@ final class LocalSeancesListReader implements SeancesListReader
                 $visibles->where('classe_id', $classeId);
             }
             // Depuis minuit : la séance terminée ce matin n'est plus « à venir » (FenetreVisio).
-            $seances = FenetreVisio::sansLesPassees($this->lire($visibles, $dateDebut, $dateFin, $institution), Carbon::now());
+            $seances = FenetreVisio::sansLesPassees($this->lire($user, $visibles, $dateDebut, $dateFin, $institution), Carbon::now());
         }
 
         return [
@@ -73,7 +73,7 @@ final class LocalSeancesListReader implements SeancesListReader
 
         [$dateDebut, $dateFin] = SeancesWindow::rolling();
 
-        return $this->lire($this->visibles->bornees($institution)->where('created_by', $user->id), $dateDebut, $dateFin, $institution);
+        return $this->lire($user, $this->visibles->bornees($institution)->where('created_by', $user->id), $dateDebut, $dateFin, $institution);
     }
 
     public function getMyClassesForUser(User $user): array
@@ -85,7 +85,7 @@ final class LocalSeancesListReader implements SeancesListReader
 
         [$dateDebut, $dateFin] = SeancesWindow::rolling();
 
-        return $this->lire($this->visibles->deSesClasses($this->visibles->bornees($institution), $user, $institution), $dateDebut, $dateFin, $institution);
+        return $this->lire($user, $this->visibles->deSesClasses($this->visibles->bornees($institution), $user, $institution), $dateDebut, $dateFin, $institution);
     }
 
     /**
@@ -95,7 +95,7 @@ final class LocalSeancesListReader implements SeancesListReader
      * @param  Builder<Seance>  $seances
      * @return list<array<string, mixed>>
      */
-    private function lire(Builder $seances, string $dateDebut, string $dateFin, int $institution): array
+    private function lire(User $lecteur, Builder $seances, string $dateDebut, string $dateFin, int $institution): array
     {
         $lues = $seances
             ->withConnectedParticipantsCount()
@@ -105,6 +105,6 @@ final class LocalSeancesListReader implements SeancesListReader
             ->orderBy($seances->qualifyColumn('id'))
             ->get();
 
-        return $this->visibles->projeter($lues, $institution);
+        return $this->visibles->projeter($lues, $institution, $lecteur);
     }
 }

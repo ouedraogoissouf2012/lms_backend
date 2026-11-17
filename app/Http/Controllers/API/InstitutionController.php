@@ -105,7 +105,7 @@ final class InstitutionController extends Controller
                 'name' => 'sometimes|string|max:191',
                 // Le même jeu que la création : l'écran envoie toujours la clé, `null`
                 // pour une école sans URL (#794).
-                'klassci_api_url' => ['sometimes', 'nullable', 'string', 'max:500', new KlassciApiUrl],
+                'klassci_api_url' => ['sometimes', 'nullable', 'string', 'max:500'],
                 'klassci_api_token' => 'nullable|string',
                 'logo_url' => 'nullable|string|max:500',
                 'primary_color' => ['nullable', 'string', 'max:7', 'regex:/^#[0-9A-Fa-f]{6}$/'],

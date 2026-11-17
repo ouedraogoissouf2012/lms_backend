@@ -5,7 +5,6 @@ namespace Database\Seeders;
 use App\Models\ForumCategory;
 use App\Models\ForumPost;
 use App\Models\ForumTopic;
-use App\Models\Institution;
 use App\Models\Lesson;
 use App\Models\Notification;
 use App\Models\Quiz;
@@ -20,15 +19,8 @@ class DemoDataSeeder extends Seeder
     {
         echo "🚀 Création des données de démonstration...\n\n";
 
-        $institution = Institution::firstOrCreate(
-            ['slug' => 'presentation'],
-            [
-                'name' => 'KLASSCI Présentation',
-                'klassci_api_url' => env('KLASSCI_PRESENTATION_URL', 'http://presentation.klassci.com/api/lms'),
-                'klassci_api_token_encrypted' => env('KLASSCI_PRESENTATION_TOKEN', env('KLASSCI_API_TOKEN')),
-                'is_active' => true,
-            ]
-        );
+        // La seule définition de `presentation` (#688) : https, jeton absent nommé.
+        $institution = InstitutionSeeder::presentation($this->command);
 
         // 1. Utilisateurs
         echo "👥 Création des utilisateurs...\n";

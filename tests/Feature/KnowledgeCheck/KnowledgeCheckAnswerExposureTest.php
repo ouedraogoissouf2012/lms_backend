@@ -5,11 +5,13 @@ declare(strict_types=1);
 namespace Tests\Feature\KnowledgeCheck;
 
 use App\Models\Chapter;
+use App\Models\Classe;
 use App\Models\Institution;
 use App\Models\KnowledgeCheck;
 use App\Models\Lesson;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
@@ -43,8 +45,21 @@ final class KnowledgeCheckAnswerExposureTest extends TestCase
             'role' => 'etudiant',
         ]);
 
+        // Un quiz se lit comme son chapitre (#1167) : l'élève est inscrit dans la
+        // classe de la leçon publiée.
+        $classe = Classe::factory()->create(['institution_id' => $institution->id]);
+        DB::table('classe_etudiant')->insert([
+            'classe_id' => $classe->id,
+            'user_id' => $this->student->id,
+            'statut' => 'actif',
+            'date_inscription' => now()->toDateString(),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
         $lesson = Lesson::factory()->create([
             'institution_id' => $institution->id,
+            'classe_id' => $classe->id,
             'enseignant_id' => $this->owner->id,
             'status' => 'published',
         ]);

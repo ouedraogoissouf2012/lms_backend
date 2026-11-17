@@ -125,7 +125,8 @@ final class UserClassInstitutionTest extends TestCase
     {
         // On ne devine pas : un compte hors établissement — un supradmin — ne
         // fournit aucune valeur à recopier.
-        $orphelin = User::factory()->create([
+        // #1181 : une donnée héritée que la règle du modèle interdit désormais.
+        $orphelin = User::factory()->sansEtablissement()->createQuietly([
             'institution_id' => null,
             'role' => 'etudiant',
         ]);

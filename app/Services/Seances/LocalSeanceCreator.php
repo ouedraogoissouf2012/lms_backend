@@ -11,6 +11,9 @@ use App\Models\User;
 /**
  * #710 — création locale. Jamais d'identifiant local dans klassci_*.
  *
+ * La source de l'école AUTONOME du port {@see CreationDeSeance} (#1182) : une école
+ * KLASSCI crée ses séances dans KLASSCI ({@see KlassciCreationDeSeance}).
+ *
  * ## La classe locale (#846)
  *
  * Jusqu'ici une séance locale ne gardait qu'un `classe_nom`, du texte libre.
@@ -24,7 +27,7 @@ use App\Models\User;
  *
  * @see docs/adr/2026-09-19-846-01-seance-locale-et-sa-classe.md
  */
-final class LocalSeanceCreator
+final class LocalSeanceCreator implements CreationDeSeance
 {
     public function __construct(private readonly AttributsDeSeanceLocale $attributs) {}
 

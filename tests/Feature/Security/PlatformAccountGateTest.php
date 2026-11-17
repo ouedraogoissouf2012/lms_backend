@@ -73,7 +73,7 @@ final class PlatformAccountGateTest extends TestCase
     /** Un compte orphelin (sans établissement, pas supradmin) est refusé de la même façon. */
     public function test_un_compte_orphelin_est_refuse(): void
     {
-        $orphelin = User::factory()->create(['institution_id' => null, 'role' => 'coordinateur']);
+        $orphelin = User::factory()->sansEtablissement()->createQuietly(['institution_id' => null, 'role' => 'coordinateur']);
 
         $this->asTenant($orphelin)->getJson('/api/lessons')->assertForbidden();
     }

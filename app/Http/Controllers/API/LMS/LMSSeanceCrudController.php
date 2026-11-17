@@ -8,7 +8,7 @@ use App\Exceptions\BusinessException;
 use App\Http\Controllers\AuthenticatedController;
 use App\Http\Requests\StoreLocalSeanceRequest;
 use App\Http\Requests\UpdateLocalSeanceRequest;
-use App\Services\Seances\LocalSeanceCreator;
+use App\Services\Seances\CreationDeSeance;
 use App\Services\Seances\ModificationDeSeance;
 use Illuminate\Http\JsonResponse;
 
@@ -26,15 +26,14 @@ use Illuminate\Http\JsonResponse;
  */
 final class LMSSeanceCrudController extends AuthenticatedController
 {
-    public function __construct(
-        private readonly LocalSeanceCreator $creator,
-    ) {
-    }
-
-    public function store(StoreLocalSeanceRequest $request): JsonResponse
+    /**
+     * #1182 : la source de l'école ({@see CreationDeSeance}) est reçue par la
+     * MÉTHODE : une école KLASSCI refuse, une école autonome crée.
+     */
+    public function store(StoreLocalSeanceRequest $request, CreationDeSeance $creation): JsonResponse
     {
         try {
-            $seance = $this->creator->create(
+            $seance = $creation->create(
                 $this->authenticatedUser($request),
                 $request->validated(),
             );

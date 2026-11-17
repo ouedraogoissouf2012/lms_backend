@@ -64,7 +64,7 @@ trait ChecksChapterOwnership
         }
 
         // L'enseignant auteur de la leçon, et lui seul (#1167) : la gestion consulte.
-        return $this->enseignantAuteur($lesson, $user, $auteurs);
+        return $user->isAdmin() || $this->enseignantAuteur($lesson, $user, $auteurs);
     }
 
     /**

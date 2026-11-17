@@ -6,7 +6,6 @@ namespace Tests\Feature\Admin;
 
 use App\Enums\InstitutionMode;
 use App\Http\Middleware\EnsureSchoolMemberOrPlatformRoute;
-use App\Models\Classe;
 use App\Models\Institution;
 use App\Models\Lesson;
 use App\Models\Seance;
@@ -140,34 +139,32 @@ final class GardesGestionEtPersonnelTest extends TestCase
     }
 
     /**
-     * D502 : créer une leçon et un chapitre. La route admet déjà `admin`
+     * D502 : créer un chapitre. La route admet déjà `admin`
      * (`role:enseignant,coordinateur,admin`), mais la FormRequest ne laissait passer que
-     * l'enseignant et le coordinateur : l'admin recevait 403. Le corps est vide ou
-     * réduit : la garde est jugée avant la validation, un 422 dit qu'elle a admis.
+     * l'enseignant et le coordinateur : l'admin recevait 403. Le corps est vide : la
+     * garde est jugée avant la validation, un 422 dit qu'elle a admis.
+     *
+     * Créer une LEÇON ne relève plus de D502 : seul l'enseignant la crée (#1167,
+     * `Tests\Feature\Lesson\SeulLEnseignantCreeUneLeconTest`).
      */
     #[DataProvider('ecoles')]
-    public function test_admin_cree_une_lecon_et_un_chapitre(InstitutionMode $mode): void
+    public function test_admin_cree_un_chapitre(InstitutionMode $mode): void
     {
         foreach (['admin', 'superAdmin', 'coordinateur', 'enseignant'] as $role) {
             $compte = $this->compte($mode, $role);
-            [$classe, $lecon] = $this->classeEtLecon();
 
-            $this->assertAdmis($this->asTenant($compte)->postJson('/api/lessons', ['classe_id' => $classe->getKey()]), "$role, créer une leçon");
-            $this->assertAdmis($this->asTenant($compte)->postJson("/api/lessons/{$lecon->getKey()}/chapters", []), "$role, créer un chapitre");
+            $this->assertAdmis($this->asTenant($compte)->postJson("/api/lessons/{$this->leconDeLEcole()->getKey()}/chapters", []), "$role, créer un chapitre");
         }
 
         $eleve = $this->compte($mode, 'etudiant');
-        [$classe, $lecon] = $this->classeEtLecon();
-        $this->asTenant($eleve)->postJson('/api/lessons', ['classe_id' => $classe->getKey()])->assertForbidden();
-        $this->asTenant($eleve)->postJson("/api/lessons/{$lecon->getKey()}/chapters", [])->assertForbidden();
+        $this->asTenant($eleve)->postJson("/api/lessons/{$this->leconDeLEcole()->getKey()}/chapters", [])->assertForbidden();
     }
 
-    /** @return array{0: Classe, 1: Lesson} */
-    private function classeEtLecon(): array
+    private function leconDeLEcole(): Lesson
     {
         $classe = $this->classe($this->ecole, '6e A');
 
-        return [$classe, Lesson::factory()->create(['institution_id' => $this->ecole->getKey(), 'classe_id' => $classe->getKey()])];
+        return Lesson::factory()->create(['institution_id' => $this->ecole->getKey(), 'classe_id' => $classe->getKey()]);
     }
 
     /** @return array<string, array{0: string, 1: string}> */

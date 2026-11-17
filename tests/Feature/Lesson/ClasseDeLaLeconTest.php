@@ -84,16 +84,24 @@ final class ClasseDeLaLeconTest extends TestCase
         self::assertSame(0, Lesson::query()->count());
     }
 
+    /**
+     * La gestion ne crée plus de leçon (#1167) ; elle en modifie une : l'admin
+     * d'école range la leçon d'un formateur dans toute classe de la matière.
+     */
     public function test_ecole_autonome_la_gestion_choisit_toute_classe_de_la_matiere(): void
     {
         $ecole = $this->ecole();
-        $coordinateur = $this->membre($ecole, 'coordinateur');
+        $admin = $this->membre($ecole, 'admin');
         $formateur = $this->membre($ecole, 'enseignant');
-        $classe = $this->classe($ecole, '6e B');
+        $sienne = $this->classe($ecole, '6e A');
+        $autre = $this->classe($ecole, '6e B');
         $maths = $this->matiere($ecole, 'Maths');
-        $this->programme($classe, $maths, $formateur);
+        $this->programme($sienne, $maths, $formateur);
+        $this->programme($autre, $maths, $this->membre($ecole, 'enseignant'));
+        $lecon = $this->lecon($sienne, $maths, $formateur, 'draft');
 
-        $this->creer($coordinateur, $classe->id, $maths->id)->assertCreated();
+        $this->modifier($admin, $lecon, ['classe_id' => $autre->id])->assertOk();
+        self::assertSame($autre->id, $lecon->fresh()?->classe_id);
     }
 
     // ───────────────────────── école KLASSCI

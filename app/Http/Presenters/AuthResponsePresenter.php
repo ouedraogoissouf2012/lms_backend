@@ -6,6 +6,7 @@ namespace App\Http\Presenters;
 
 use App\Enums\Role;
 use App\Exceptions\KlassciRoleInconnuException;
+use App\Http\Middleware\EnsureSchoolMemberOrPlatformRoute;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 
@@ -152,6 +153,20 @@ class AuthResponsePresenter
             'success' => false,
             'message' => 'Conflit de compte détecté : votre adresse e-mail est déjà associée à un autre compte. Contactez l\'administrateur.',
         ], 409);
+    }
+
+    /**
+     * #1181 — l'établissement du tenant KLASSCI est introuvable ou inactif au
+     * moment de synchroniser : aucun compte n'est créé. Le motif du compte sans
+     * établissement (ADR-906-01).
+     */
+    public function etablissementKlassciIntrouvable(): JsonResponse
+    {
+        return response()->json([
+            'success' => false,
+            'message' => "Votre établissement n'est pas disponible. Contactez son administration.",
+            'reason' => EnsureSchoolMemberOrPlatformRoute::REASON,
+        ], 403);
     }
 
     /**

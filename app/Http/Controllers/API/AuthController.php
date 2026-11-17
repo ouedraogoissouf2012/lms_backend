@@ -69,6 +69,9 @@ class AuthController extends AuthenticatedController
             ]);
 
             return $this->presenter->accountConflict();
+        } catch (\App\Exceptions\KlassciEtablissementIntrouvableException $e) {
+            // #1181 : aucun compte d'école sans école ; journalisé par l'orchestrateur.
+            return $this->presenter->etablissementKlassciIntrouvable();
         } catch (\App\Exceptions\KlassciRoleInconnuException $e) {
             // #949 : rôle KLASSCI hors de la table, compte nouveau. Rien n'est
             // écrit ; le synchroniseur a journalisé le rôle reçu.

@@ -56,7 +56,7 @@ $app = Application::configure(basePath: dirname(__DIR__))
         // compte (App\Support\Http\LimiteDesEcritures). Les limites propres à une
         // route portent un nom (App\Support\Http\LimitesNommees), jamais un
         // `throttle:N,M` anonyme, dont la clé était commune à toutes ces routes.
-        $middleware->api(append: ['throttle:lecture', 'throttle:ecriture']);
+        $middleware->api(append: ['throttle:lecture']);
 
         // Enregistrer les middlewares personnalisés
         $middleware->alias([

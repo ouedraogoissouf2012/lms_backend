@@ -35,7 +35,7 @@ final class LMSClasseMatiereController extends Controller
                 $request->enseignantId(),
             );
         } catch (BusinessException $e) {
-            return $this->errorResponse($e->getMessage(), $e->statutHttp());
+            return $this->errorResponse($e->getMessage(), $e->statutHttp(), reason: $e->reason);
         }
 
         return $this->successResponse([

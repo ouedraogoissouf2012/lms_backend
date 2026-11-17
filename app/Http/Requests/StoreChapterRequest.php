@@ -50,7 +50,10 @@ final class StoreChapterRequest extends FormRequest
     {
         // L'enseignant auteur de la leçon (#1167) : la création d'un chapitre suit la
         // même règle d'auteur que les autres écritures. La gestion consulte.
-        return $this->enseignantAuteurDeLaLecon($this->route('lessonId'), $auteurs);
+        $user = auth()->user();
+
+        return $user instanceof \App\Models\User && $user->isTeacher()
+            && \App\Models\Lesson::query()->whereKey($this->route('lessonId'))->where('institution_id', $user->institution_id)->exists();
     }
 
     /**

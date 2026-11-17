@@ -68,7 +68,7 @@ trait ReservesLessonContentToTeacher
     {
         $user = auth()->user();
 
-        if ($user instanceof User && ! $user->isTeacher()) {
+        if ($user instanceof User) {
             throw new HttpResponseException(LessonContentTeacherOnly::jsonResponse());
         }
     }

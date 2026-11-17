@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Services\Seances\Mutations;
 
-use App\Models\Seance;
 use App\Models\User;
+use App\Services\Seances\SeanceDesignee;
 use App\Support\Logging\CaughtExceptionLog;
 use Psr\Log\LoggerInterface;
 use Throwable;
@@ -28,17 +28,15 @@ final class SeanceDeleteService
     ) {}
 
     /**
-     * Supprime (soft delete) la séance demandée.
+     * Supprime (soft delete) la séance demandée, désignée dans l'espace de
+     * l'école ({@see SeanceDesignee}, #933).
      *
      * @return array{status:int, payload: array<string, mixed>}
      */
-    public function delete(int $seanceId, User $user): array
+    public function delete(int $seanceId, User $user, SeanceDesignee $designee): array
     {
         try {
-            $seance = Seance::find($seanceId);
-            if (!$seance) {
-                $seance = Seance::where('klassci_seance_id', $seanceId)->first();
-            }
+            $seance = $designee->pour($seanceId, $user);
 
             if (!$seance) {
                 return [

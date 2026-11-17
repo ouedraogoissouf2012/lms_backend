@@ -90,9 +90,10 @@ final class StudentEnrolmentService
      * la ligne, et ADR-803-03 veut qu'un seul endroit en décide.
      *
      * Les valeurs par défaut aussi ({@see self::defautsALaCreation()}), et elles
-     * ne valent qu'à la CRÉATION de l'adhésion (#895) : cette écriture MET À JOUR
-     * une ligne existante, où un défaut écraserait l'historique (la date
-     * d'inscription, ADR-711-02). Ce que l'appelant fournit, lui, s'écrit
+     * ne valent qu'à la CRÉATION de l'adhésion (#895, #1237) : cette écriture MET
+     * À JOUR une ligne existante, où un défaut écraserait l'historique (la date
+     * d'inscription, ADR-711-02) ou la décision de l'établissement (un statut
+     * `suspendu` redevenu `actif`). Ce que l'appelant fournit, lui, s'écrit
      * toujours : c'est la correction voulue par #718.
      *
      * @param  array<string, mixed>  $pivot
@@ -120,8 +121,12 @@ final class StudentEnrolmentService
     private function defautsALaCreation(): array
     {
         // L'inscription date du moment où elle est réellement faite, comme le
-        // fait la synchronisation KLASSCI (`ClasseStudentsSynchronizer`).
-        return ['date_inscription' => now()->toDateString()];
+        // fait la synchronisation KLASSCI (`ClasseStudentsSynchronizer`), et
+        // l'apprenant entre présent.
+        return [
+            'statut' => ClasseEtudiantStatut::Actif->value,
+            'date_inscription' => now()->toDateString(),
+        ];
     }
 
     /**
@@ -129,8 +134,9 @@ final class StudentEnrolmentService
      *
      * ## Un code fait entrer, il ne rouvre pas
      *
-     * `inscrire()` écrase le statut, et c'est juste : c'est l'établissement qui
-     * parle. Ici c'est l'apprenant, et le code de sa classe circule par
+     * `inscrire()` écrit le statut que l'établissement fournit, et c'est juste :
+     * c'est lui qui parle (sans statut fourni, l'adhésion existante garde le
+     * sien, #1237). Ici c'est l'apprenant, et le code de sa classe circule par
      * WhatsApp. Si le ressaisir réactivait une adhésion `suspendu` ou
      * `abandonne`, la décision de l'établissement ne vaudrait rien. Une
      * adhésion existante non active est donc REFUSÉE, sans être touchée.

@@ -61,9 +61,12 @@ final class StatutField
     {
         $declared = mb_strtolower(trim($raw));
 
-        // Défaut de la colonne en base, et comportement d'avant #718.
+        // Colonne absente ou cellule vide : le fichier ne dit rien, comme pour la
+        // date. Le défaut `actif` ne vaut qu'à la CRÉATION de l'adhésion, décidé
+        // par `StudentEnrolmentService::inscrire()` (#1237) : le poser ici
+        // réactivait un suspendu à chaque réimportation sans statut.
         if ($declared === '') {
-            return FieldOutcome::accepted(ClasseEtudiantStatut::Actif->value);
+            return FieldOutcome::accepted('');
         }
 
         $statut = ClasseEtudiantStatut::tryFrom(self::GRAPHIES[$declared] ?? $declared);

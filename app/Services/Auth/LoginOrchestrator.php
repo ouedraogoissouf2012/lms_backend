@@ -120,7 +120,7 @@ final class LoginOrchestrator
 
         // #1181 : l'établissement a pu être désactivé ou supprimé depuis la découverte
         // des tenants. Aucun compte d'école ne se crée ni ne se restaure sans école.
-        $institution = Institution::where('slug', $tenant['code'])->where('is_active', true)->first();
+        $institution = Institution::where('slug', $tenant['code'])->first();
         if (! $institution instanceof Institution) {
             $this->logger->warning('Connexion KLASSCI refusée : établissement introuvable ou inactif', ['tenant' => $tenant['code']]);
 

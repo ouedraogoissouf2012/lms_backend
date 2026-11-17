@@ -17,8 +17,6 @@ use Illuminate\Foundation\Http\FormRequest;
  */
 final class DeleteKnowledgeCheckRequest extends FormRequest
 {
-    use ReservesLessonContentToTeacher;
-
     public function authorize(): bool
     {
         $user = auth()->user();

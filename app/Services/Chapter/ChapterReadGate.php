@@ -58,10 +58,6 @@ final class ChapterReadGate
             return LectureDeLecon::Introuvable;
         }
 
-        if ($user->isManager()) {
-            return LectureDeLecon::Admise;
-        }
-
         // L'enseignant comme l'élève : la règle de la leçon du chapitre.
         $lesson = $chapter->relationLoaded('lesson') ? $chapter->lesson : $chapter->lesson()->first();
 
@@ -82,7 +78,7 @@ final class ChapterReadGate
             return LectureDeLecon::Introuvable;
         }
 
-        if ($user->isManager()) {
+        if ($user->isManager() && $this->auteurs->ownsLesson($lesson, $user)) {
             return LectureDeLecon::Admise;
         }
 

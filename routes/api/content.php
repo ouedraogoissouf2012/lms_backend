@@ -20,7 +20,7 @@ Route::middleware(['auth:sanctum', 'klassci.sync'])->group(function () {
     // #598 — document source : SEUL chemin d'accès depuis qu'il vit sur le
     // disque privé (avant, une URL /storage/... le servait sans authentification).
     Route::get('chapters/{chapter}/original', [ChapterOriginalController::class, 'show'])
-        ->middleware('throttle:30,1');
+        ->middleware('throttle:source-chapitre');
 
     // Progression des chapitres
     Route::get('lessons/{lessonId}/chapter-progress', [\App\Http\Controllers\API\ChapterProgressController::class, 'getLessonProgress']);
@@ -31,7 +31,7 @@ Route::middleware(['auth:sanctum', 'klassci.sync'])->group(function () {
 
 // #620 — PNG signées : pas de Bearer (balise <img>). La signature est le jeton.
 Route::get('chapters/{chapter}/slides/{slide}', [ChapterSlideController::class, 'show'])
-    ->middleware(['signed', 'throttle:120,1'])
+    ->middleware(['signed', 'throttle:diapositives'])
     ->whereNumber('chapter')
     ->whereNumber('slide')
     ->name('chapters.slides.show');
@@ -40,34 +40,28 @@ Route::get('chapters/{chapter}/slides/{slide}', [ChapterSlideController::class, 
 // est le jeton. Cadence plus haute que les diapositives : un lecteur video
 // emet une requete de plage a chaque deplacement dans le fichier.
 Route::get('chapters/{chapter}/video', [ChapterVideoController::class, 'show'])
-    ->middleware(['signed', 'throttle:240,1'])
+    ->middleware(['signed', 'throttle:video'])
     ->whereNumber('chapter')
     ->name('chapters.video.show');
 
 // Routes enseignants/coordinateurs/admins
 Route::middleware(['auth:sanctum', 'klassci.sync', 'personnel'])->group(function () {
     // CRUD des chapitres
-    Route::post('lessons/{lessonId}/chapters', [ChapterController::class, 'store'])
-        ->middleware('throttle:60,1');
-    Route::match(['put', 'patch'], 'chapters/{id}', [ChapterController::class, 'update'])
-        ->middleware('throttle:30,1');
-    Route::delete('chapters/{id}', [ChapterController::class, 'destroy'])
-        ->middleware('throttle:30,1');
+    Route::post('lessons/{lessonId}/chapters', [ChapterController::class, 'store']);
+    Route::match(['put', 'patch'], 'chapters/{id}', [ChapterController::class, 'update']);
+    Route::delete('chapters/{id}', [ChapterController::class, 'destroy']);
 
     // Sortie de corbeille (#689) : meme garde que la suppression, la cible
     // etant simplement cherchee withTrashed().
-    Route::post('chapters/{id}/restore', [ChapterController::class, 'restore'])
-        ->middleware('throttle:30,1');
+    Route::post('chapters/{id}/restore', [ChapterController::class, 'restore']);
 
     // Upload fichier PowerPoint/Word/PDF (max 30 MB) - Rate limited: 60/min
-    Route::post('chapters/{chapterId}/upload', [ChapterController::class, 'uploadFile'])
-        ->middleware('throttle:60,1');
+    Route::post('chapters/{chapterId}/upload', [ChapterController::class, 'uploadFile']);
     Route::get('chapters/uploads/{id}/status', [ChapterController::class, 'uploadStatus'])
         ->name('chapters.uploads.status');
 
     // Réorganisation (drag & drop) - Rate limited: 100/min (frequent user action)
-    Route::post('lessons/{lessonId}/chapters/reorder', [ChapterController::class, 'reorder'])
-        ->middleware('throttle:100,1');
+    Route::post('lessons/{lessonId}/chapters/reorder', [ChapterController::class, 'reorder']);
 });
 
 // ============================================
@@ -85,10 +79,8 @@ Route::middleware(['auth:sanctum', 'klassci.sync'])->group(function () {
     Route::get('knowledge-checks/{id}', [KnowledgeCheckCrudController::class, 'show']);
 
     // Tentatives (étudiants)
-    Route::post('knowledge-checks/{id}/start', [KnowledgeCheckAttemptController::class, 'startAttempt'])
-        ->middleware('throttle:300,1');
-    Route::post('knowledge-checks/{id}/submit', [KnowledgeCheckAttemptController::class, 'submitAttempt'])
-        ->middleware('throttle:60,1');
+    Route::post('knowledge-checks/{id}/start', [KnowledgeCheckAttemptController::class, 'startAttempt']);
+    Route::post('knowledge-checks/{id}/submit', [KnowledgeCheckAttemptController::class, 'submitAttempt']);
     Route::get('knowledge-checks/{id}/my-attempts', [KnowledgeCheckAttemptController::class, 'myAttempts']);
 
     // CRUD (enseignants/admins)
@@ -112,29 +104,21 @@ Route::middleware(['auth:sanctum', 'klassci.sync'])->group(function () {
 
     // Progression (Tous peuvent voir leur progression)
     Route::get('lessons/{id}/progress', [LessonProgressController::class, 'getProgress']);
-    Route::post('lessons/{id}/progress', [LessonProgressController::class, 'updateProgress'])
-        ->middleware('throttle:300,1');
-    Route::post('lessons/{id}/complete', [LessonProgressController::class, 'markComplete'])
-        ->middleware('throttle:300,1');
-    Route::post('lessons/{id}/rating', [LessonProgressController::class, 'rate'])
-        ->middleware('throttle:300,1');
+    Route::post('lessons/{id}/progress', [LessonProgressController::class, 'updateProgress']);
+    Route::post('lessons/{id}/complete', [LessonProgressController::class, 'markComplete']);
+    Route::post('lessons/{id}/rating', [LessonProgressController::class, 'rate']);
 });
 
 // Routes enseignants/coordinateurs/admins
 Route::middleware(['auth:sanctum', 'klassci.sync', 'personnel'])->group(function () {
     // CRUD des cours
-    Route::post('lessons', [LessonCrudController::class, 'store'])
-        ->middleware('throttle:60,1');
-    Route::match(['put', 'patch'], 'lessons/{id}', [LessonCrudController::class, 'update'])
-        ->middleware('throttle:30,1');
-    Route::delete('lessons/{id}', [LessonCrudController::class, 'destroy'])
-        ->middleware('throttle:30,1');
+    Route::post('lessons', [LessonCrudController::class, 'store']);
+    Route::match(['put', 'patch'], 'lessons/{id}', [LessonCrudController::class, 'update']);
+    Route::delete('lessons/{id}', [LessonCrudController::class, 'destroy']);
 
     // Actions spéciales
-    Route::post('lessons/{id}/publish', [LessonCrudController::class, 'publish'])
-        ->middleware('throttle:100,1');
-    Route::post('lessons/{id}/unpublish', [LessonCrudController::class, 'unpublish'])
-        ->middleware('throttle:100,1');
+    Route::post('lessons/{id}/publish', [LessonCrudController::class, 'publish']);
+    Route::post('lessons/{id}/unpublish', [LessonCrudController::class, 'unpublish']);
 });
 
 // ============================================
@@ -146,25 +130,18 @@ use App\Http\Controllers\API\ForumController;
 Route::middleware(['auth:sanctum', 'klassci.sync'])->prefix('forum')->group(function () {
     // Topics
     Route::get('topics', [ForumController::class, 'index']);
-    Route::post('topics', [ForumController::class, 'store'])
-        ->middleware('throttle:100,1');
+    Route::post('topics', [ForumController::class, 'store']);
     Route::get('topics/{topic}', [ForumController::class, 'show']);
-    Route::put('topics/{topic}', [ForumController::class, 'update'])
-        ->middleware('throttle:100,1');
-    Route::delete('topics/{topic}', [ForumController::class, 'destroy'])
-        ->middleware('throttle:30,1');
+    Route::put('topics/{topic}', [ForumController::class, 'update']);
+    Route::delete('topics/{topic}', [ForumController::class, 'destroy']);
 
     // Posts
-    Route::post('topics/{topic}/posts', [ForumController::class, 'storePost'])
-        ->middleware('throttle:100,1');
-    Route::put('posts/{post}', [ForumController::class, 'updatePost'])
-        ->middleware('throttle:100,1');
-    Route::delete('posts/{post}', [ForumController::class, 'destroyPost'])
-        ->middleware('throttle:30,1');
+    Route::post('topics/{topic}/posts', [ForumController::class, 'storePost']);
+    Route::put('posts/{post}', [ForumController::class, 'updatePost']);
+    Route::delete('posts/{post}', [ForumController::class, 'destroyPost']);
 
     // Marquer solution
-    Route::post('posts/{post}/solution', [ForumController::class, 'markAsSolution'])
-        ->middleware('throttle:100,1');
+    Route::post('posts/{post}/solution', [ForumController::class, 'markAsSolution']);
 });
 
 // Routes pour clôturer et épingler des topics (formateurs/coordinateurs/admins)
@@ -187,8 +164,7 @@ Route::middleware(['auth:sanctum', 'klassci.sync'])->group(function () {
     Route::get('files', [FileController::class, 'index']);
 
     // Upload de fichiers (Tous peuvent uploader) - Rate limited: 60/min (with size limit)
-    Route::post('files/upload', [FileController::class, 'upload'])
-        ->middleware('throttle:60,1');
+    Route::post('files/upload', [FileController::class, 'upload']);
 
     // Statistiques (déclarée avant `files/{id}` pour éviter le matching de `{id}=stats`)
     Route::get('files/stats', [FileController::class, 'stats']);
@@ -198,10 +174,8 @@ Route::middleware(['auth:sanctum', 'klassci.sync'])->group(function () {
     Route::get('files/{id}/download', [FileController::class, 'download'])->name('api.files.download');
 
     // Mise à jour et suppression (propriétaire ou admin)
-    Route::put('files/{file}', [FileController::class, 'update'])
-        ->middleware('throttle:60,1');
-    Route::delete('files/{file}', [FileController::class, 'destroy'])
-        ->middleware('throttle:30,1');
+    Route::put('files/{file}', [FileController::class, 'update']);
+    Route::delete('files/{file}', [FileController::class, 'destroy']);
 });
 
 // ============================================
@@ -218,10 +192,8 @@ Route::middleware(['auth:sanctum', 'klassci.sync'])->group(function () {
     Route::get('quizzes/{quiz}', [QuizCrudController::class, 'show']);
 
     // Démarrer et soumettre une tentative
-    Route::post('quizzes/{quiz}/start', [QuizAttemptStudentController::class, 'startAttempt'])
-        ->middleware('throttle:300,1');
-    Route::post('quiz-attempts/{id}/submit', [QuizAttemptStudentController::class, 'submitAttempt'])
-        ->middleware('throttle:60,1');
+    Route::post('quizzes/{quiz}/start', [QuizAttemptStudentController::class, 'startAttempt']);
+    Route::post('quiz-attempts/{id}/submit', [QuizAttemptStudentController::class, 'submitAttempt']);
 
     // NOUVEAU: Timer et sauvegarde de progression
     Route::get('quiz-attempts/{id}/time-remaining', [QuizAttemptStudentController::class, 'checkTimeRemaining']);

@@ -68,7 +68,7 @@ class AuthResponsePresenter
                 'klassci_synced' => false,
                 'is_supradmin' => $user->asRoleEnum() === Role::Supradmin,
                 'institution' => $institution?->slug,
-                'institution_name' => $institution?->name,
+                'institution_name' => $institution?->slug,
                 // Une CAPACITE, jamais le mode : le client demande ce qu'il a
                 // le droit de faire, il n'a pas a connaitre la nature de
                 // l'etablissement (#805).

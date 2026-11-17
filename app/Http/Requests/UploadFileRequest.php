@@ -86,7 +86,7 @@ class UploadFileRequest extends FormRequest
             // La signature est partagée avec `UploadChapterFileRequest`, qui en hérite : le
             // port ne peut pas y être ajouté en paramètre. Il est résolu par le conteneur de
             // la requête, celui qui appelle `authorize()`.
-            'lesson' => $this->enseignantAuteurDeLaLecon($id, $this->container->make(TeacherOwnershipScope::class)),
+            'lesson' => $this->user() instanceof User && $this->user()->isTeacher(),
             'forum_topic' => $this->ecritSurLeForum(ForumTopic::class, $id),
             'forum_post' => $this->ecritSurLeForum(ForumPost::class, $id),
             default => false,

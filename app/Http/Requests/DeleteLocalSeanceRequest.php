@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Requests;
 
 use App\Http\Requests\Concerns\AuthorizesSeanceDeletion;
-use App\Services\Seances\LocalSeanceDesignee;
+use App\Services\Seances\SeanceDesignee;
 use App\Services\Visio\VisioActorAuthorization;
 use Illuminate\Foundation\Http\FormRequest;
 
@@ -21,7 +21,7 @@ final class DeleteLocalSeanceRequest extends FormRequest
 {
     use AuthorizesSeanceDeletion;
 
-    public function authorize(LocalSeanceDesignee $designee, VisioActorAuthorization $auteurs): bool
+    public function authorize(SeanceDesignee $designee, VisioActorAuthorization $auteurs): bool
     {
         return $this->autoriseLaSuppression($designee, $auteurs);
     }

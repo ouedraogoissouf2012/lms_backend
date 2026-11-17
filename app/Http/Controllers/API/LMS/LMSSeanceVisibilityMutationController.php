@@ -98,7 +98,7 @@ final class LMSSeanceVisibilityMutationController extends AuthenticatedControlle
      * La porte de l'espace local (#1154, ADR-1154-01) : la séance de son id local,
      * dans l'école du compte, dans les deux types d'école.
      */
-    public function deleteLocalSeance(DeleteLocalSeanceRequest $request, int $seanceId, LocalSeanceDesignee $designee): JsonResponse
+    public function deleteLocalSeance(DeleteLocalSeanceRequest $request, int $seanceId, SeanceDesignee $designee): JsonResponse
     {
         $user = $this->authenticatedUser($request);
         $result = $this->seanceDelete->delete($seanceId, $user, $designee);

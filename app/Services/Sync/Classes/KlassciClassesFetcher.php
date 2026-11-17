@@ -33,7 +33,6 @@ use App\Support\Logging\CaughtExceptionLog;
  *    la classe.
  *
  * 2. Fallback selon `$userRole` :
- *    - `etudiant` -> `GET /me/student-dashboard` -> `data.classes`
  *    - `enseignant` / `teacher` -> `GET /me/teacher-dashboard` puis, en UN
  *      pool batch, `GET /matieres/{id}` pour toutes les matières, afin d'en
  *      déduire les classes (déduplique par id).
@@ -41,6 +40,16 @@ use App\Support\Logging\CaughtExceptionLog;
  * Le fallback n'est déclenché QUE si `/classes` lève une exception (typiquement
  * 403). C'est le comportement historique attendu par
  * `ClasseSyncService::syncUserClasses()`.
+ *
+ * ## L'élève : sa seule classe, par la forme mesurée (#886, ADR-886-01)
+ *
+ * `etudiant` -> `GET /me/dashboard` -> `[data.classe]`, la forme prouvée au login
+ * (#969), et rien d'autre :
+ * - pas de `GET /classes` d'abord : son effet avec le jeton d'un élève n'a jamais
+ *   été mesuré, et la liste des classes de l'école n'est pas la sienne ;
+ * - pas de `me/student-dashboard` : jamais mesuré non plus ;
+ * - le bloc `etudiants` est retiré : la liste vue par un élève ne fait pas
+ *   autorité sur l'effectif de sa classe.
  *
  * @see ClasseSyncService::syncUserClasses() — orchestrateur appelant
  */
@@ -58,6 +67,10 @@ final class KlassciClassesFetcher
      */
     public function fetch(string $klassciToken, string $userRole): array
     {
+        if ($userRole === 'etudiant') {
+            return $this->fetchStudentClasses($klassciToken);
+        }
+
         // Essayer d'abord /classes (pour coordinateurs et superAdmin)
         // Si ça échoue, essayer les autres endpoints spécifiques au rôle
         try {
@@ -183,10 +196,6 @@ final class KlassciClassesFetcher
      */
     private function fetchByRole(string $klassciToken, string $userRole): array
     {
-        if ($userRole === 'etudiant') {
-            return $this->fetchStudentClasses($klassciToken);
-        }
-
         if (in_array($userRole, ['enseignant', 'teacher'], true)) {
             return $this->fetchTeacherClasses($klassciToken);
         }
@@ -195,19 +204,24 @@ final class KlassciClassesFetcher
     }
 
     /**
-     * Récupère les classes d'un étudiant via `/me/student-dashboard`.
+     * La classe d'un étudiant, par `GET /me/dashboard` -> `data.classe`, la forme
+     * mesurée au login (#969). Sans classe identifiable : aucune.
      *
      * @return array<int, array<string, mixed>>
      */
     private function fetchStudentClasses(string $klassciToken): array
     {
-        $response = $this->klassciService->requestWithUserToken(
-            $klassciToken,
-            'me/student-dashboard',
-            'GET'
-        );
+        $response = $this->klassciService->requestWithUserToken($klassciToken, 'me/dashboard', 'GET');
+        $classe = $response['data']['classe'] ?? null;
 
-        return $response['data']['classes'] ?? [];
+        if (! is_array($classe) || ! is_numeric($classe['id'] ?? null)) {
+            return [];
+        }
+
+        unset($classe['etudiants']);
+
+        /** @var array<string, mixed> $classe */
+        return [$classe];
     }
 
     /**

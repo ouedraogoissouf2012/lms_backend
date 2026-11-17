@@ -7,7 +7,6 @@ namespace Tests\Feature\Admin;
 use App\Enums\InstitutionMode;
 use App\Http\Middleware\EnsureSchoolMemberOrPlatformRoute;
 use App\Models\Institution;
-use App\Models\Lesson;
 use App\Models\Seance;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -136,35 +135,6 @@ final class GardesGestionEtPersonnelTest extends TestCase
                 ->assertForbidden()
                 ->assertJsonPath('message', EnsureSchoolMemberOrPlatformRoute::MESSAGE);
         }
-    }
-
-    /**
-     * D502 : créer un chapitre. La route admet déjà `admin`
-     * (`role:enseignant,coordinateur,admin`), mais la FormRequest ne laissait passer que
-     * l'enseignant et le coordinateur : l'admin recevait 403. Le corps est vide : la
-     * garde est jugée avant la validation, un 422 dit qu'elle a admis.
-     *
-     * Créer une LEÇON ne relève plus de D502 : seul l'enseignant la crée (#1167,
-     * `Tests\Feature\Lesson\SeulLEnseignantCreeUneLeconTest`).
-     */
-    #[DataProvider('ecoles')]
-    public function test_admin_cree_un_chapitre(InstitutionMode $mode): void
-    {
-        foreach (['admin', 'superAdmin', 'coordinateur', 'enseignant'] as $role) {
-            $compte = $this->compte($mode, $role);
-
-            $this->assertAdmis($this->asTenant($compte)->postJson("/api/lessons/{$this->leconDeLEcole()->getKey()}/chapters", []), "$role, créer un chapitre");
-        }
-
-        $eleve = $this->compte($mode, 'etudiant');
-        $this->asTenant($eleve)->postJson("/api/lessons/{$this->leconDeLEcole()->getKey()}/chapters", [])->assertForbidden();
-    }
-
-    private function leconDeLEcole(): Lesson
-    {
-        $classe = $this->classe($this->ecole, '6e A');
-
-        return Lesson::factory()->create(['institution_id' => $this->ecole->getKey(), 'classe_id' => $classe->getKey()]);
     }
 
     /** @return array<string, array{0: string, 1: string}> */

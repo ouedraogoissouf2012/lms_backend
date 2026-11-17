@@ -85,9 +85,9 @@ class DeleteLessonRequestTest extends TestCase
     }
 
     /**
-     * ✅ HAPPY PATH: Admin can delete any lesson
+     * ❌ FORBIDDEN: l'admin d'école consulte, il ne supprime pas (#1167)
      */
-    public function test_admin_can_delete_any_lesson(): void
+    public function test_admin_cannot_delete_a_lesson(): void
     {
         $admin = User::factory()
             ->admin()
@@ -99,8 +99,8 @@ class DeleteLessonRequestTest extends TestCase
 
         $response = $this->deleteJson("/api/lessons/{$lessonId}");
 
-        $response->assertStatus(200);
-        $this->assertSoftDeleted('lessons', ['id' => $lessonId]);
+        $response->assertStatus(403)->assertJsonPath('reason', 'lesson_content_teacher_only');
+        $this->assertNotSoftDeleted('lessons', ['id' => $lessonId]);
     }
 
     /**

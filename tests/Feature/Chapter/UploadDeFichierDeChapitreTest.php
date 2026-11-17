@@ -20,9 +20,9 @@ use Tests\TestCase;
 
 /**
  * `POST /api/chapters/{chapterId}/upload` suit la règle de modification du chapitre
- * (`ChecksChapterOwnership`, celle de la suppression et de la restauration) : l'auteur de
- * la leçon, ou un administrateur de l'établissement. Un chapitre absent, ou d'un autre
- * établissement, rend 404.
+ * (`ChecksChapterOwnership`, celle de la suppression et de la restauration) : l'enseignant
+ * auteur de la leçon, et lui seul (#1167). Un chapitre absent, ou d'un autre établissement,
+ * rend 404.
  *
  * `POST /files/upload` garde sa règle (témoin) : la requête de fichier partagée n'a pas
  * changé.
@@ -57,12 +57,18 @@ final class UploadDeFichierDeChapitreTest extends TestCase
         $this->deposer($auteur, $chapitre->id)->assertAccepted();
     }
 
+    /** L'admin d'école consulte le contenu, il n'y dépose rien (#1167). */
     #[DataProvider('volets')]
-    public function test_un_administrateur_de_l_etablissement_depose_un_fichier(InstitutionMode $mode): void
+    public function test_un_administrateur_de_l_etablissement_ne_depose_pas_de_fichier(InstitutionMode $mode): void
     {
         [$ecole, , $chapitre] = $this->chapitreDeLAuteur($mode);
 
-        $this->deposer($this->membre($ecole, 'superAdmin'), $chapitre->id)->assertAccepted();
+        $this->deposer($this->membre($ecole, 'superAdmin'), $chapitre->id)
+            ->assertForbidden()
+            ->assertJsonPath('reason', 'lesson_content_teacher_only');
+
+        Queue::assertNothingPushed();
+        self::assertSame([], Storage::disk('local')->allFiles());
     }
 
     /** @return array<string, array{0: InstitutionMode, 1: string}> */
@@ -102,7 +108,7 @@ final class UploadDeFichierDeChapitreTest extends TestCase
         [, , $chapitre] = $this->chapitreDeLAuteur(InstitutionMode::Standalone);
         [$autreEcole] = $this->chapitreDeLAuteur(InstitutionMode::Standalone);
 
-        $this->deposer($this->membre($autreEcole, 'superAdmin'), $chapitre->id)->assertNotFound();
+        $this->deposer($this->membre($autreEcole, 'enseignant'), $chapitre->id)->assertNotFound();
 
         Queue::assertNothingPushed();
     }

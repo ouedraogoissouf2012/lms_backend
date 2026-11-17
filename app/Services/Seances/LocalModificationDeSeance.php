@@ -59,7 +59,7 @@ final class LocalModificationDeSeance implements ModificationDeSeance
     /** Les refus de {@see peutModifier()}, chacun avec son statut et son motif. */
     private function exigerLeDroit(Seance $seance, User $acteur): void
     {
-        if (! $this->acteurs->canManage($seance, $acteur)) {
+        if (! $acteur->isStaff()) {
             throw new BusinessException('Vous ne pouvez pas modifier cette séance.', 403);
         }
 

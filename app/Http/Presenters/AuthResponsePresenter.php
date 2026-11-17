@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Presenters;
 
 use App\Enums\Role;
+use App\Models\Institution;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 
@@ -32,8 +33,13 @@ class AuthResponsePresenter
 {
     /**
      * Réponse de succès pour un login local (sans tenant KLASSCI).
-     */
-    /**
+     *
+     * `meta.institution` porte le slug de l'école, la valeur que la voie KLASSCI
+     * y met déjà ; `meta.institution_name` son nom, lu sur la fiche de l'école
+     * (#795). Sans école (supradmin), les deux clés restent présentes, nulles.
+     *
+     * @param  Institution|null  $institution  L'école du compte, chargée par
+     *                                          l'appelant : aucune I/O ici.
      * @param  bool  $peutInscrireLocalement  Capacite resolue par l'appelant.
      *                                        Le presentateur ne decide rien
      *                                        (cf. docblock de classe).
@@ -41,6 +47,7 @@ class AuthResponsePresenter
     public function successfulLocal(
         User $user,
         string $sanctumToken,
+        ?Institution $institution,
         bool $peutInscrireLocalement = false,
     ): JsonResponse {
         return response()->json([
@@ -60,8 +67,8 @@ class AuthResponsePresenter
             'meta' => [
                 'klassci_synced' => false,
                 'is_supradmin' => $user->asRoleEnum() === Role::Supradmin,
-                'institution' => null,
-                'institution_name' => null,
+                'institution' => $institution?->slug,
+                'institution_name' => $institution?->name,
                 // Une CAPACITE, jamais le mode : le client demande ce qu'il a
                 // le droit de faire, il n'a pas a connaitre la nature de
                 // l'etablissement (#805).

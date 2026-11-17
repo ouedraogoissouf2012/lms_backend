@@ -86,7 +86,7 @@ enum Role: string
             self::Enseignant => ['enseignant', 'teacher'],
             self::Coordinateur => ['coordinateur', 'coordinator'],
             // #949 : `administrator` retiré — aucun service ne l'a jamais reconnu.
-            self::Admin => ['admin', 'administrateur'],
+            self::Admin => ['admin', 'administrateur', 'administrator'],
             self::SuperAdmin => ['superAdmin'],
             self::Supradmin => ['supradmin'],
         };

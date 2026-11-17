@@ -16,9 +16,12 @@ use Tests\TestCase;
 
 /**
  * D9 — contrat de `POST /lms/seances` : chaque réponse RÉELLE suit ce que
- * `docs/openapi.yaml` en dit, statut et corps. Chaque cas tourne dans les DEUX
- * volets (école KLASSCI et école autonome) ; le mode n'est pas lu. Vrai jeton
- * porteur.
+ * `docs/openapi.yaml` en dit, statut et corps. Vrai jeton porteur.
+ *
+ * #1182 : seule l'école AUTONOME crée une séance ; une école KLASSCI la crée dans
+ * KLASSCI, et le LMS refuse (403 `seance_managed_by_klassci`). Les cas de création
+ * tournent donc dans le volet autonome ; les refus (rôle, jeton, charge) dans les
+ * deux.
  *
  * @see app/Http/Controllers/API/LMS/LMSSeanceCrudController.php
  */
@@ -47,7 +50,13 @@ final class SeanceStoreContractTest extends TestCase
         yield 'école autonome' => [true];
     }
 
-    #[DataProvider('volets')]
+    /** @return iterable<string, array{0: bool}> */
+    public static function ecoleAutonome(): iterable
+    {
+        yield 'école autonome' => [true];
+    }
+
+    #[DataProvider('ecoleAutonome')]
     public function test_201_une_seance_locale_de_l_etablissement_de_l_auteur(bool $autonome): void
     {
         $ecole = $this->ecole($autonome);
@@ -67,7 +76,7 @@ final class SeanceStoreContractTest extends TestCase
     /** @return iterable<string, array{0: bool, 1: string}> */
     public static function rolesAdmis(): iterable
     {
-        foreach (self::volets() as $volet => [$autonome]) {
+        foreach (self::ecoleAutonome() as $volet => [$autonome]) {
             yield "coordinateur, $volet" => [$autonome, 'coordinateur'];
             yield "alias coordinator, $volet" => [$autonome, 'coordinator'];
             yield "alias teacher, $volet" => [$autonome, 'teacher'];
@@ -108,6 +117,24 @@ final class SeanceStoreContractTest extends TestCase
         self::assertSame(0, Seance::query()->withoutGlobalScopes()->count());
     }
 
+    /**
+     * #1182 : une école KLASSCI ne crée pas de séance dans le LMS. 403, le motif de
+     * la modification, conforme à la spec ; rien n'est écrit.
+     */
+    public function test_403_une_ecole_klassci_cree_ses_seances_dans_klassci(): void
+    {
+        $ecole = $this->ecole(false);
+
+        foreach (['enseignant', 'coordinateur'] as $role) {
+            $reponse = $this->asTenant($this->compte($ecole, $role))->postJson(self::URL, self::MINIMAL)->assertForbidden();
+
+            $this->assertMatchesOpenApiResponse($reponse, self::CHEMIN, 'post');
+            $reponse->assertJsonPath('reason', 'seance_managed_by_klassci');
+        }
+
+        self::assertSame(0, Seance::query()->withoutGlobalScopes()->count());
+    }
+
     public function test_401_sans_jeton(): void
     {
         $reponse = $this->postJson(self::URL, self::MINIMAL)->assertUnauthorized();
@@ -135,7 +162,7 @@ final class SeanceStoreContractTest extends TestCase
      * MÊME 404, octet pour octet, et rien n'est écrit. Avant D9, les deux
      * rendaient un 500 : le contrôleur n'attrapait pas le refus du service.
      */
-    #[DataProvider('volets')]
+    #[DataProvider('ecoleAutonome')]
     public function test_404_une_classe_hors_de_l_etablissement_meme_corps_qu_une_classe_absente(bool $autonome): void
     {
         $etrangere = Classe::factory()->create(['institution_id' => $this->ecole(! $autonome)->id]);
@@ -177,7 +204,7 @@ final class SeanceStoreContractTest extends TestCase
     }
 
     /** Le décalage fait foi : l'instant est rangé dans le fuseau de l'application (UTC). */
-    #[DataProvider('volets')]
+    #[DataProvider('ecoleAutonome')]
     public function test_201_un_decalage_est_converti_dans_le_fuseau_de_l_application(bool $autonome): void
     {
         $reponse = $this->asTenant($this->compte($this->ecole($autonome), 'enseignant'))

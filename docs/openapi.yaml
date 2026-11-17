@@ -2808,8 +2808,11 @@ components:
           description: |
             Facultatif. `no_institution` : un compte sans etablissement, refuse
             par la porte des comptes sans etablissement (ADR-906-01).
+            `seance_managed_by_klassci` : une ecole creee depuis KLASSCI, ou la
+            seance se cree dans KLASSCI (#1182).
           enum:
             - no_institution
+            - seance_managed_by_klassci
 
     SeanceLocaleInvalide:
       type: object
@@ -4471,9 +4474,13 @@ paths:
         - Visio
       summary: "Creer une seance locale"
       description: |
-        Cree une seance LOCALE, dans les deux volets (ecole KLASSCI et ecole
-        autonome) : aucun identifiant KLASSCI n'est pose, tous les `klassci_*`
-        valent nul, et `institution_id` est celui de l'auteur.
+        Cree une seance LOCALE dans une ecole AUTONOME : aucun identifiant KLASSCI
+        n'est pose, tous les `klassci_*` valent nul, et `institution_id` est celui
+        de l'auteur.
+
+        **Ecole creee depuis KLASSCI (#1182)** : la seance se cree dans KLASSCI, le
+        LMS la recupere. La creation locale est refusee, 403
+        `seance_managed_by_klassci` (le motif de la modification), rien n'est ecrit.
 
         `classe_id` est FACULTATIF : une seance peut se creer avant que la
         classe soit arretee. S'il est fourni, la classe doit etre de
@@ -4517,7 +4524,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/SeanceLocaleRefus'
         '403':
-          description: "Role non admis a creer une seance, ou compte sans etablissement. Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
+          description: "Ecole creee depuis KLASSCI (`seance_managed_by_klassci`, #1182), role non admis a creer une seance, ou compte sans etablissement. Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
           content:
             application/json:
               schema:
@@ -6435,7 +6442,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '403':
-          description: "Role insuffisant. Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
+          description: "Role insuffisant. Ecole creee depuis KLASSCI : `catalogue_managed_by_klassci` (#1184), les sessions de formation n existent que dans une ecole autonome. Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
           content:
             application/json:
               schema:
@@ -6631,7 +6638,7 @@ paths:
         '403':
           description: |
             Role insuffisant, ou etablissement dont le catalogue vient de
-            KLASSCI.
+            KLASSCI (`catalogue_managed_by_klassci`, #1184).
             Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961).
           content:
             application/json:
@@ -6709,7 +6716,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '403':
-          description: "Role insuffisant, ou catalogue venant de KLASSCI. Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
+          description: "Role insuffisant, ou catalogue venant de KLASSCI (`catalogue_managed_by_klassci`, #1184). Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
           content:
             application/json:
               schema:
@@ -7056,7 +7063,7 @@ paths:
         '400':
           $ref: '#/components/responses/EtablissementInconnu'
         '403':
-          description: "Role insuffisant, ou catalogue venant de KLASSCI. Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
+          description: "Role insuffisant, ou catalogue venant de KLASSCI (`catalogue_managed_by_klassci`, #1184). Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
           content:
             application/json:
               schema:
@@ -7110,7 +7117,7 @@ paths:
         '400':
           $ref: '#/components/responses/EtablissementInconnu'
         '403':
-          description: "Role insuffisant, ou catalogue venant de KLASSCI. Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
+          description: "Role insuffisant, ou catalogue venant de KLASSCI (`catalogue_managed_by_klassci`, #1184). Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
           content:
             application/json:
               schema:
@@ -7186,7 +7193,7 @@ paths:
         '403':
           description: |
             Role insuffisant, ou etablissement dont le programme vient de
-            KLASSCI.
+            KLASSCI (`catalogue_managed_by_klassci`, #1184).
             Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961).
           content:
             application/json:
@@ -7269,7 +7276,7 @@ paths:
         '403':
           description: |
             Role insuffisant, ou etablissement dont le catalogue vient de
-            KLASSCI.
+            KLASSCI (`catalogue_managed_by_klassci`, #1184).
             Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961).
           content:
             application/json:
@@ -7572,7 +7579,7 @@ paths:
         '400':
           $ref: '#/components/responses/EtablissementInconnu'
         '403':
-          description: "Role insuffisant : organiser une formation est un acte de gestion. Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
+          description: "Role insuffisant : organiser une formation est un acte de gestion. Ecole creee depuis KLASSCI : `catalogue_managed_by_klassci` (#1184), les sessions de formation n existent que dans une ecole autonome. Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
           content:
             application/json:
               schema:
@@ -7643,7 +7650,7 @@ paths:
         '400':
           $ref: '#/components/responses/EtablissementInconnu'
         '403':
-          description: "Role insuffisant : organiser une formation est un acte de gestion. Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
+          description: "Role insuffisant : organiser une formation est un acte de gestion. Ecole creee depuis KLASSCI : `catalogue_managed_by_klassci` (#1184), les sessions de formation n existent que dans une ecole autonome. Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
           content:
             application/json:
               schema:
@@ -7714,7 +7721,7 @@ paths:
         '400':
           $ref: '#/components/responses/EtablissementInconnu'
         '403':
-          description: "Role insuffisant : organiser une formation est un acte de gestion. Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
+          description: "Role insuffisant : organiser une formation est un acte de gestion. Ecole creee depuis KLASSCI : `catalogue_managed_by_klassci` (#1184), les sessions de formation n existent que dans une ecole autonome. Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
           content:
             application/json:
               schema:
@@ -7785,7 +7792,7 @@ paths:
         '400':
           $ref: '#/components/responses/EtablissementInconnu'
         '403':
-          description: "Role insuffisant : organiser une formation est un acte de gestion. Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
+          description: "Role insuffisant : organiser une formation est un acte de gestion. Ecole creee depuis KLASSCI : `catalogue_managed_by_klassci` (#1184), les sessions de formation n existent que dans une ecole autonome. Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
           content:
             application/json:
               schema:
@@ -7842,7 +7849,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '403':
-          description: "Role insuffisant. Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
+          description: "Role insuffisant. Ecole creee depuis KLASSCI : `catalogue_managed_by_klassci` (#1184), les sessions de formation n existent que dans une ecole autonome. Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
           content:
             application/json:
               schema:
@@ -7895,7 +7902,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '403':
-          description: "Role insuffisant. Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
+          description: "Role insuffisant. Ecole creee depuis KLASSCI : `catalogue_managed_by_klassci` (#1184), les sessions de formation n existent que dans une ecole autonome. Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
           content:
             application/json:
               schema:

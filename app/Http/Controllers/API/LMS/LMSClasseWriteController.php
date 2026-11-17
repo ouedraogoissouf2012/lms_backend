@@ -32,7 +32,7 @@ final class LMSClasseWriteController extends Controller
         try {
             $classe = $this->classes->creer($request->donnees());
         } catch (BusinessException $e) {
-            return $this->errorResponse($e->getMessage(), $e->statutHttp());
+            return $this->errorResponse($e->getMessage(), $e->statutHttp(), reason: $e->reason);
         }
 
         return $this->successResponse([

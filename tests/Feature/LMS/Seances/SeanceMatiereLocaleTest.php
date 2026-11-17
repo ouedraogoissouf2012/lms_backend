@@ -47,14 +47,15 @@ final class SeanceMatiereLocaleTest extends TestCase
     /** @return iterable<string, array{0: InstitutionMode}> */
     public static function modes(): iterable
     {
+        // #1182 : une école KLASSCI ne crée pas de séance dans le LMS
+        // (`CreationDeSeanceSelonLEcoleTest`) ; le volet autonome seul en crée.
         yield 'école créée depuis le LMS' => [InstitutionMode::Standalone];
-        yield 'école créée depuis KLASSCI' => [InstitutionMode::Klassci];
     }
 
     /**
      * La séance locale porte l'id de sa matière, et son libellé : le nom libre
-     * envoyé est ignoré quand un id est donné. C'est la même règle dans les
-     * deux types d'école, une séance locale l'étant dans les deux.
+     * envoyé est ignoré quand un id est donné. Seule l'école autonome crée une
+     * séance dans le LMS (#1182).
      */
     #[DataProvider('modes')]
     public function test_une_seance_creee_avec_sa_matiere_porte_son_id_et_son_libelle(InstitutionMode $mode): void

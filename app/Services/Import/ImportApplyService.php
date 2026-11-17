@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Import;
 
+use App\Enums\ClasseEtudiantStatut;
 use App\Enums\ImportRowStatus;
 use App\Enums\Role;
 use App\Models\Import;
@@ -48,7 +49,7 @@ use Illuminate\Support\Str;
 final class ImportApplyService
 {
     /** Défaut de l'ENUM `classe_etudiant.statut`, pour un rapport sans la colonne. */
-    private const DEFAULT_STATUT = 'actif';
+    private const DEFAULT_STATUT = ClasseEtudiantStatut::Actif->value;
 
     public function __construct(
         private readonly RoleField $roles,

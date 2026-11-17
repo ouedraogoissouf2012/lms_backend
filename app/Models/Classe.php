@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\ClasseEtudiantStatut;
 use App\Models\Contracts\MirroredFromKlassci;
 use App\Models\Traits\BelongsToInstitution;
 use App\Models\Traits\ResolvesMirroredIdentifier;
@@ -92,7 +93,7 @@ class Classe extends Model implements MirroredFromKlassci
      */
     public function etudiantsActifs(): BelongsToMany
     {
-        return $this->etudiants()->wherePivot('statut', 'actif');
+        return $this->etudiants()->wherePivot('statut', ClasseEtudiantStatut::Actif->value);
     }
 
     /**

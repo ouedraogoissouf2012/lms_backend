@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Classe;
 
+use App\Enums\ClasseEtudiantStatut;
 use App\Models\Classe;
 use App\Models\Matiere;
 use App\Models\User;
@@ -170,7 +171,7 @@ final class LocalClasseDetailsReader implements ClasseDetailsReader, ClasseEtudi
             ->where('institution_id', $classe->institution_id)
             ->whereIn('id', DB::table('classe_etudiant')
                 ->where('classe_id', $classe->id)
-                ->where('statut', 'actif')
+                ->where('statut', ClasseEtudiantStatut::Actif->value)
                 ->select('user_id'))
             ->orderBy('name')
             ->orderBy('id')
@@ -181,7 +182,7 @@ final class LocalClasseDetailsReader implements ClasseDetailsReader, ClasseEtudi
             'name' => $etudiant->name,
             'email' => $etudiant->email,
             'matricule' => null,
-            'statut' => 'actif',
+            'statut' => ClasseEtudiantStatut::Actif->value,
         ])->all());
     }
 

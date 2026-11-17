@@ -41,10 +41,10 @@ final class StatutField
      * @var array<string, string>
      */
     private const GRAPHIES = [
-        'active' => 'actif',
-        'inactive' => 'inactif',
-        'abandonné' => 'abandonne',
-        'abandon' => 'abandonne',
+        'active' => ClasseEtudiantStatut::Actif->value,
+        'inactive' => ClasseEtudiantStatut::Inactif->value,
+        'abandonné' => ClasseEtudiantStatut::Abandonne->value,
+        'abandon' => ClasseEtudiantStatut::Abandonne->value,
     ];
 
     /**

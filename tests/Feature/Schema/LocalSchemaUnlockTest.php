@@ -101,7 +101,8 @@ final class LocalSchemaUnlockTest extends TestCase
     public function test_teacher_can_create_local_seance_via_http(): void
     {
         $this->disableKlassciMiddleware();
-        $institution = Institution::factory()->create();
+        // #1182 : seule une école autonome crée une séance dans le LMS.
+        $institution = Institution::factory()->standalone()->create();
         $teacher = User::factory()->teacher()->for($institution)->create([
             'last_klassci_sync' => now(),
         ]);

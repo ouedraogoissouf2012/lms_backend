@@ -203,7 +203,7 @@ final class LessonProgressGateTest extends TestCase
     public function test_un_compte_sans_etablissement_n_ecrit_rien(string $role): void
     {
         $this->ecole('klassci');
-        $compte = User::factory()->create(['institution_id' => null, 'role' => $role]);
+        $compte = User::factory()->sansEtablissement()->createQuietly(['institution_id' => null, 'role' => $role]);
 
         $refus = ['success' => false, 'message' => EnsureSchoolMemberOrPlatformRoute::MESSAGE, 'reason' => EnsureSchoolMemberOrPlatformRoute::REASON];
         foreach ($this->ecritures('sienne') as $chemin => [$url, $corps]) {

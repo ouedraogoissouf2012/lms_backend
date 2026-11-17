@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\API\LMS;
 
+use App\Exceptions\BusinessException;
 use App\Http\Controllers\AuthenticatedController;
 use App\Http\Requests\ListerLesPeriodesRequest;
 use App\Http\Requests\StoreProgramRequest;
@@ -29,11 +30,15 @@ final class TrainingSessionController extends AuthenticatedController
 
     public function storeProgram(StoreProgramRequest $request): JsonResponse
     {
-        $programme = $this->sessions->creerProgramme(
-            $this->authenticatedUser($request),
-            $request->titre(),
-            $request->description(),
-        );
+        try {
+            $programme = $this->sessions->creerProgramme(
+                $this->authenticatedUser($request),
+                $request->titre(),
+                $request->description(),
+            );
+        } catch (BusinessException $e) {
+            return $this->refus($e);
+        }
 
         return $this->successResponse([
             'id' => $programme->getKey(),
@@ -44,10 +49,11 @@ final class TrainingSessionController extends AuthenticatedController
 
     public function store(StoreTrainingSessionRequest $request): JsonResponse
     {
-        $periode = $this->sessions->creerPeriode(
-            $this->authenticatedUser($request),
-            $request->validated(),
-        );
+        try {
+            $periode = $this->sessions->creerPeriode($this->authenticatedUser($request), $request->validated());
+        } catch (BusinessException $e) {
+            return $this->refus($e);
+        }
 
         return $this->successResponse($this->enVue($periode), 'Session de formation créée.', 201);
     }
@@ -55,7 +61,11 @@ final class TrainingSessionController extends AuthenticatedController
     public function index(ListerLesPeriodesRequest $request): JsonResponse
     {
         // Validée, jamais ramenée (#911) : `?per_page=abc` rend 422.
-        $page = $this->sessions->listerLesPeriodes($this->authenticatedUser($request), $request->parPage());
+        try {
+            $page = $this->sessions->listerLesPeriodes($this->authenticatedUser($request), $request->parPage());
+        } catch (BusinessException $e) {
+            return $this->refus($e);
+        }
 
         return $this->successResponse(
             array_map(fn (TrainingSession $p): array => $this->enVue($p), $page->items()),
@@ -93,5 +103,15 @@ final class TrainingSessionController extends AuthenticatedController
             'tarif' => $periode->tarif,
             'devise' => $periode->devise,
         ];
+    }
+
+    /**
+     * Le refus du service, avec son motif (#1184 : `catalogue_managed_by_klassci`
+     * dans une école KLASSCI). Aucun rendu global de `BusinessException` n'existe :
+     * sans ce relais, il deviendrait un 500.
+     */
+    private function refus(BusinessException $e): JsonResponse
+    {
+        return $this->errorResponse($e->getMessage(), $e->statutHttp(), reason: $e->reason);
     }
 }

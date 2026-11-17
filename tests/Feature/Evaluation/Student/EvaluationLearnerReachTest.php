@@ -375,12 +375,11 @@ final class EvaluationLearnerReachTest extends TestCase
         $this->copieRendue($copie, $victime, now()->subDays(8));
         $this->klassciRend(self::CLASSE);
 
-        $intrus = User::factory()->create([
-            'institution_id' => $cas === 'sans-etablissement' ? null : Institution::factory()->create()->id,
-            'role' => 'etudiant',
-            'klassci_id' => self::KLASSCI_ID,
-            'klassci_token' => 'jeton-intrus',
-        ]);
+        $attributs = ['role' => 'etudiant', 'klassci_id' => self::KLASSCI_ID, 'klassci_token' => 'jeton-intrus'];
+        // #1181 : sans établissement, une donnée héritée que la règle du modèle interdit.
+        $intrus = $cas === 'sans-etablissement'
+            ? User::factory()->sansEtablissement()->createQuietly($attributs)
+            : User::factory()->create($attributs + ['institution_id' => Institution::factory()->create()->id]);
         $appel = function (string $url) use ($cas, $intrus): TestResponse {
             if ($cas === 'autre-ecole-jeton') {
                 return $this->asTenant($intrus)->getJson($url);
@@ -417,7 +416,8 @@ final class EvaluationLearnerReachTest extends TestCase
             'evaluation_id' => $orpheline->id, 'klassci_etudiant_id' => self::KLASSCI_ID, 'attempt' => 1,
             'status' => 'soumis', 'submitted_at' => now()->subDays(8), 'institution_id' => null,
         ]);
-        $sansEtablissement = User::factory()->create([
+        // #1181 : une donnée héritée que la règle du modèle interdit désormais.
+        $sansEtablissement = User::factory()->sansEtablissement()->createQuietly([
             'institution_id' => null, 'role' => 'etudiant', 'klassci_id' => self::KLASSCI_ID, 'klassci_token' => 'jeton',
         ]);
         $this->klassciRend(self::CLASSE);
@@ -642,12 +642,12 @@ final class EvaluationLearnerReachTest extends TestCase
 
     private function homonyme(bool $sansEtablissement): User
     {
-        return User::factory()->create([
-            'institution_id' => $sansEtablissement ? null : Institution::factory()->create()->id,
-            'role' => 'etudiant',
-            'klassci_id' => self::KLASSCI_ID,
-            'klassci_token' => 'jeton-homonyme',
-        ]);
+        $attributs = ['role' => 'etudiant', 'klassci_id' => self::KLASSCI_ID, 'klassci_token' => 'jeton-homonyme'];
+
+        // #1181 : sans établissement, une donnée héritée que la règle du modèle interdit.
+        return $sansEtablissement
+            ? User::factory()->sansEtablissement()->createQuietly($attributs)
+            : User::factory()->create($attributs + ['institution_id' => Institution::factory()->create()->id]);
     }
 
     private function copieRendue(Evaluation $evaluation, User $auteur, \DateTimeInterface $remise): EvaluationSubmission

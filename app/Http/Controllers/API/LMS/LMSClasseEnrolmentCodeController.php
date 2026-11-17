@@ -32,7 +32,7 @@ final class LMSClasseEnrolmentCodeController extends Controller
         try {
             $code = $this->codes->generer($classe);
         } catch (BusinessException $e) {
-            return $this->errorResponse($e->getMessage(), $e->statutHttp());
+            return $this->errorResponse($e->getMessage(), $e->statutHttp(), reason: $e->reason);
         }
 
         return $this->successResponse(
@@ -47,7 +47,7 @@ final class LMSClasseEnrolmentCodeController extends Controller
         try {
             $this->codes->revoquer($classe);
         } catch (BusinessException $e) {
-            return $this->errorResponse($e->getMessage(), $e->statutHttp());
+            return $this->errorResponse($e->getMessage(), $e->statutHttp(), reason: $e->reason);
         }
 
         return $this->successResponse(

@@ -32,7 +32,7 @@ final class LMSMatiereWriteController extends Controller
         try {
             $matiere = $this->matieres->creer($request->donnees());
         } catch (BusinessException $e) {
-            return $this->errorResponse($e->getMessage(), $e->statutHttp());
+            return $this->errorResponse($e->getMessage(), $e->statutHttp(), reason: $e->reason);
         }
 
         return $this->successResponse([

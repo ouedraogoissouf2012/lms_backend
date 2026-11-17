@@ -49,9 +49,12 @@ use App\Services\Matiere\MatiereDetailsReader;
 use App\Services\Matiere\MyMatieresQueryService;
 use App\Services\Matiere\TeacherMatieresReader;
 use App\Services\Roster\RosterAuthorityFactory;
+use App\Services\Seances\CreationDeSeance;
+use App\Services\Seances\KlassciCreationDeSeance;
 use App\Services\Seances\KlassciModificationDeSeance;
 use App\Services\Seances\KlassciSeanceDesignee;
 use App\Services\Seances\LocalModificationDeSeance;
+use App\Services\Seances\LocalSeanceCreator;
 use App\Services\Seances\LocalSeanceDesignee;
 use App\Services\Seances\LocalSeanceDetailReader;
 use App\Services\Seances\LocalSeancesListReader;
@@ -121,6 +124,8 @@ final class CatalogueServiceProvider extends ServiceProvider
         SeanceDesignee::class => [KlassciSeanceDesignee::class, LocalSeanceDesignee::class],
         // Modifier une séance : l'école autonome modifie, l'école KLASSCI refuse (#1121).
         ModificationDeSeance::class => [KlassciModificationDeSeance::class, LocalModificationDeSeance::class],
+        // Créer une séance : l'école autonome crée, l'école KLASSCI refuse (#1182).
+        CreationDeSeance::class => [KlassciCreationDeSeance::class, LocalSeanceCreator::class],
         // Les présences d'une séance KLASSCI sans ligne locale (#1098).
         SeanceSansLigneLocale::class => [KlassciSeanceSansLigneLocale::class, LocalSeanceSansLigneLocale::class],
     ];

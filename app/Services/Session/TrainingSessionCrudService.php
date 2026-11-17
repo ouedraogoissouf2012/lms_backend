@@ -8,6 +8,7 @@ use App\Enums\TrainingSessionStatus;
 use App\Models\Program;
 use App\Models\TrainingSession;
 use App\Models\User;
+use App\Services\Catalogue\PorteDuCatalogueLocal;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 
 /**
@@ -30,6 +31,8 @@ use Illuminate\Contracts\Pagination\LengthAwarePaginator;
  */
 final class TrainingSessionCrudService
 {
+    public function __construct(private readonly PorteDuCatalogueLocal $porte) {}
+
     public function creerProgramme(User $acteur, string $titre, ?string $description): Program
     {
         $programme = new Program;
@@ -78,12 +81,9 @@ final class TrainingSessionCrudService
      */
     private function etablissementDe(User $acteur): int
     {
-        $institution = $acteur->institution_id;
-
-        if (! is_int($institution)) {
-            throw new \RuntimeException("L'acteur n'est rattaché à aucun établissement.");
-        }
-
-        return $institution;
+        // #1184 : une session de formation est l'offre pédagogique de l'école,
+        // tenue par le catalogue local ; une école KLASSCI la tient dans KLASSCI.
+        // L'établissement est celui de l'ACTEUR : le service borne même sans tenant.
+        return $this->porte->etablissementDe($acteur);
     }
 }

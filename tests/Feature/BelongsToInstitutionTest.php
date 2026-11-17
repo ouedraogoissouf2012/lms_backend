@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Institution;
+use App\Models\Matiere;
 use App\Models\User;
 use App\Services\TenantManager;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -144,14 +145,16 @@ class BelongsToInstitutionTest extends TestCase
 
         Log::spy();
 
-        $user = User::factory()->create();
+        // #1181 : un COMPTE ne se crée plus sans établissement (la règle de `User`
+        // refuse). Le hook générique s'éprouve donc sur un autre modèle tenant.
+        $matiere = Matiere::query()->create(['code' => 'MAT-1181', 'libelle' => 'Sans tenant']);
 
         Log::shouldHaveReceived('warning')
             ->withArgs(fn ($message) => str_contains($message, 'creating model without resolved tenant'))
             ->atLeast()->once();
 
         $this->assertNull(
-            $user->institution_id,
+            $matiere->institution_id,
             'Without tenant and without explicit assignment, institution_id stays at DB default (null).'
         );
     }

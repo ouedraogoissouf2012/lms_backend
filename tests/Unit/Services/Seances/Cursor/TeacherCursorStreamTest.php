@@ -128,7 +128,7 @@ final class TeacherCursorStreamTest extends TestCase
         User::factory()->for($institution)->create(['role' => 'enseignant', 'klassci_token' => null]);
         // institution_id est la clé de tenant : sans elle, aucune synchronisation
         // isolée n'est possible (#473).
-        User::factory()->create(['role' => 'enseignant', 'klassci_token' => 'y', 'institution_id' => null]);
+        User::factory()->sansEtablissement()->createQuietly(['role' => 'enseignant', 'klassci_token' => 'y', 'institution_id' => null]);
 
         $ids = (new TeacherCursorStream)
             ->after(SeanceSyncPosition::startOfCycle(CarbonImmutable::now()))

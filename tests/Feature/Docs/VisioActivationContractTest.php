@@ -201,7 +201,7 @@ final class VisioActivationContractTest extends TestCase
 
     public function test_403_un_compte_sans_etablissement(): void
     {
-        $compte = User::factory()->create(['institution_id' => null, 'role' => 'enseignant', 'klassci_token' => self::JETON_KLASSCI]);
+        $compte = User::factory()->sansEtablissement()->createQuietly(['institution_id' => null, 'role' => 'enseignant', 'klassci_token' => self::JETON_KLASSCI]);
 
         $reponse = $this->asTenant($compte)->postJson($this->url(self::SEANCE_KLASSCI))->assertForbidden();
 

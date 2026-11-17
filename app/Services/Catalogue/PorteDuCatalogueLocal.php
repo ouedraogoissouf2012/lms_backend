@@ -84,7 +84,7 @@ final class PorteDuCatalogueLocal
      */
     public function etablissementDe(User $acteur): int
     {
-        return $this->ouverte($acteur->institution);
+        return (int) $acteur->institution_id;
     }
 
     /**

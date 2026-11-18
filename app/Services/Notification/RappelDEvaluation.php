@@ -89,7 +89,7 @@ final class RappelDEvaluation
             return 0;
         }
 
-        $eleves = array_values($this->eleves->de($classe, $ecole->id)->map(static fn (User $eleve): int => $eleve->id)->all());
+        $eleves = app(\App\Services\Enrollment\EnrollmentSource::class)->localStudentIdsOf($classe);
         if ($eleves === []) {
             $this->logger->info('Rappel d\'évaluation : aucun élève à avertir dans la classe', [
                 'evaluation_id' => $evaluation->id,

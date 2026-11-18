@@ -40,7 +40,7 @@ final class LeRoleSEcritCanoniqueTest extends TestCase
         // `KlassciRoleSanitizer::forNewUser` rend `$role?->value`, ou `superAdmin`.
         "app/Services/Klassci/Auth/KlassciUserSynchronizer.php  'role' => \$klassciRole",
         'app/Services/SchoolRegistration/SchoolRequestDecisionService.php  ->role = Role::SuperAdmin->value',
-        "app/Services/Sync/Classes/ClasseStudentsSynchronizer.php  'role' => 'etudiant'",
+        'app/Services/Sync/Classes/ClasseStudentsSynchronizer.php  \'role\' => Role::Etudiant->value',
     ];
 
     /** Les occurrences qui n'écrivent pas de compte : réponses, journaux, règles, Jitsi. */

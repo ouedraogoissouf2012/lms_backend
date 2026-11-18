@@ -158,7 +158,6 @@ final class RappelDEvaluation
 
         return array_map(static fn (int $eleve): array => [
             'user_id' => $eleve,
-            'institution_id' => $ecole->id,
             'type' => Notification::TYPE_EVALUATION_APPROACHING,
             'title' => 'Évaluation approchante',
             'message' => $message,

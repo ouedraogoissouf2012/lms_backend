@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Klassci\TeacherDirectory;
 
+use App\Enums\Role;
 use App\Models\User;
 use App\Support\Catalogue\SourceLocale;
 
@@ -24,7 +25,7 @@ final class LocalTeacherDirectory
     public function forReader(User $lecteur): array
     {
         $lignes = $this->visibility
-            ->restrictLocal($lecteur, User::query()->whereIn('role', ['enseignant', 'teacher']))
+            ->restrictLocal($lecteur, User::query()->whereIn('role', Role::Enseignant->aliases()))
             ->get()
             ->map(static fn (User $user): array => [
                 'id' => $user->klassci_id ?? $user->id,

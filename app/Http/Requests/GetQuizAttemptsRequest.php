@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Enums\Role;
 use App\Http\Requests\Concerns\ChecksForumAuthorization;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Auth;
@@ -37,7 +38,7 @@ class GetQuizAttemptsRequest extends FormRequest
             ownerUserId: $quiz?->created_by,
             tenantInstitutionId: $quiz?->institution_id,
             user: Auth::user(),
-            moderatorRoles: ['admin', 'administrateur', 'superAdmin', 'coordinateur'],
+            moderatorRoles: [Role::Admin, Role::SuperAdmin, Role::Coordinateur],
         );
     }
 

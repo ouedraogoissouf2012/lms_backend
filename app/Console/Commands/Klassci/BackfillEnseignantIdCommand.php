@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Console\Commands\Klassci;
 
+use App\Enums\Role;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 
@@ -110,8 +111,8 @@ final class BackfillEnseignantIdCommand extends Command
                     // sans id) → pour un ENSEIGNANT, l'identité enseignant == klassci_id.
                     // Les non-enseignants restent skippés (pas de création d'éval — #119).
                     if (!is_numeric($enseignantId)) {
-                        $isTeacher = ($u->role ?? null) === 'enseignant'
-                            || ($u->klassci_role ?? null) === 'enseignant';
+                        $isTeacher = self::estEnseignant($u->role ?? null)
+                            || self::estEnseignant($u->klassci_role ?? null);
                         $enseignantId = $isTeacher ? $u->klassci_id : null;
                     }
 
@@ -136,5 +137,11 @@ final class BackfillEnseignantIdCommand extends Command
         $this->info(($dryRun ? '[dry-run] ' : '') . "Updated {$updated} / {$total} users (skipped {$skipped} — no enseignant_id in blob).");
 
         return self::SUCCESS;
+    }
+
+    /** #1198 : un alias (`teacher`) est un enseignant, lu à la table de `Role`. */
+    private static function estEnseignant(mixed $role): bool
+    {
+        return is_string($role) && Role::tryFromString($role) === Role::Enseignant;
     }
 }

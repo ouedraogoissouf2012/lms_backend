@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Visio;
 
+use App\Enums\Role;
 use App\Models\ESBTPAttendance;
 use App\Models\Seance;
 use App\Models\User;
@@ -264,7 +265,7 @@ final class VisioParticipantsListService
 
             $students = UserClass::where('klassci_classe_id', $klassciClasseId)
                 ->join('users', 'user_classes.user_id', '=', 'users.id')
-                ->where('users.role', 'etudiant')
+                ->whereIn('users.role', Role::Etudiant->aliases())
                 ->select('users.id', 'users.name', 'users.email', 'users.klassci_id')
                 ->get();
 

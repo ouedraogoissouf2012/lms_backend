@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Seances\AutoClose\Rules;
 
+use App\Enums\Role;
 use App\Models\ESBTPAttendance;
 use App\Models\Seance;
 use Carbon\Carbon;
@@ -42,7 +43,7 @@ final class TeacherDisconnectionRule
         // Trouver l'enseignant (via le rôle)
         $teacher = ESBTPAttendance::where('seance_id', $seance->id)
             ->whereHas('user', function ($query) {
-                $query->whereIn('role', ['enseignant', 'teacher']);
+                $query->whereIn('role', Role::Enseignant->aliases());
             })
             ->orderBy('joined_at', 'desc')
             ->first();

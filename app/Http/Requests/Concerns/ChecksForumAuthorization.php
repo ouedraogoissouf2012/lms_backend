@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Concerns;
 
+use App\Enums\Role;
 use App\Models\User;
 
 /**
@@ -54,7 +55,8 @@ trait ChecksForumAuthorization
      *   2. If `$user->role === 'supradmin'` (strict lowercase) → allow (platform manager bypass).
      *   3. If `$tenantInstitutionId !== $user->institution_id` → deny.
      *   4. If `$ownerUserId === $user->id` → allow (owner intra-tenant).
-     *   5. If `$user->role` is in `$moderatorRoles` → allow (moderator intra-tenant).
+     *   5. If the user's role (`asRoleEnum()`, aliases included — #1198) is in
+     *      `$moderatorRoles` → allow (moderator intra-tenant).
      *   6. Else → deny.
      *
      * @param int|null  $ownerUserId         `user_id` of the entity whose ownership
@@ -65,17 +67,18 @@ trait ChecksForumAuthorization
      * @param int|null  $tenantInstitutionId `institution_id` that defines tenant scope.
      *                                       Usually the same entity as ownership.
      * @param User|null $user                Authenticated user. Null defensively.
-     * @param string[]  $moderatorRoles      Roles authorized as moderators within
-     *                                       the same tenant. Default covers all
-     *                                       institution-admin aliases. Pass
-     *                                       `coordinateur` explicitly when the
+     * @param list<Role> $moderatorRoles    Roles authorized as moderators within
+     *                                       the same tenant, read through
+     *                                       `Role::aliases()` (#1198). Default:
+     *                                       the institution admins. Pass
+     *                                       `Role::Coordinateur` explicitly when the
      *                                       action allows coordinator moderation.
      */
     protected function isForumActionAuthorized(
         ?int $ownerUserId,
         ?int $tenantInstitutionId,
         ?User $user,
-        array $moderatorRoles = ['admin', 'administrateur', 'superAdmin'],
+        array $moderatorRoles = [Role::Admin, Role::SuperAdmin],
     ): bool {
         if ($user === null || $ownerUserId === null) {
             return false;
@@ -90,6 +93,6 @@ trait ChecksForumAuthorization
             return true;
         }
 
-        return in_array($user->role, $moderatorRoles, true);
+        return in_array($user->asRoleEnum(), $moderatorRoles, true);
     }
 }

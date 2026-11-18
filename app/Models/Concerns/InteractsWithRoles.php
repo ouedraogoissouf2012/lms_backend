@@ -83,7 +83,7 @@ trait InteractsWithRoles
      */
     public function isPlatformSupradmin(): bool
     {
-        return $this->role === 'supradmin';
+        return $this->role === Role::Supradmin->value;
     }
 
     /**

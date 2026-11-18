@@ -93,6 +93,6 @@ trait ChecksForumAuthorization
             return true;
         }
 
-        return in_array($user->asRoleEnum(), $moderatorRoles, true);
+        return in_array($user->role, array_map(static fn (Role $role): string => $role->value, $moderatorRoles), true);
     }
 }

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Visio;
 
+use App\Enums\Role;
 use App\Models\ESBTPAttendance;
 use App\Models\Seance;
 use App\Models\User;
@@ -85,9 +86,9 @@ final class VisioParticipantSessionService
             // Étudiants, enseignants et coordinateurs peuvent rejoindre la visio
             $attendance = $this->lifecycle->record($visio, $user, $request, $isObserver);
 
-            $roleLabel = match ($user->role) {
-                'coordinateur' => 'Coordinateur (observateur)',
-                'enseignant' => 'Enseignant',
+            $roleLabel = match ($user->asRoleEnum()) {
+                Role::Coordinateur => 'Coordinateur (observateur)',
+                Role::Enseignant => 'Enseignant',
                 default => 'Étudiant',
             };
 

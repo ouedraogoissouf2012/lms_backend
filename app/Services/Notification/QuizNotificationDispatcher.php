@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Notification;
 
+use App\Enums\Role;
 use App\Models\Notification;
 use App\Models\Quiz;
 use App\Models\QuizAttempt;
@@ -36,7 +37,7 @@ final class QuizNotificationDispatcher
             ->whereHas('classes', function ($query) use ($quiz) {
                 $query->where('classes.id', $quiz->classe_id);
             })
-            ->where('role', 'etudiant')
+            ->whereIn('role', Role::Etudiant->aliases())
             ->get();
 
         if ($students->isEmpty()) {
@@ -85,7 +86,7 @@ final class QuizNotificationDispatcher
             ->whereHas('classes', function ($query) use ($quiz) {
                 $query->where('classes.id', $quiz->classe_id);
             })
-            ->where('role', 'etudiant')
+            ->whereIn('role', Role::Etudiant->aliases())
             ->whereDoesntHave('quizAttempts', function ($query) use ($quiz) {
                 $query->where('quiz_id', $quiz->id)
                     ->where('status', 'completed');

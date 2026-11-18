@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Enseignant;
 
+use App\Enums\Role;
 use App\Models\User;
 use App\Services\Klassci\TeacherDirectory\TeacherDirectoryVisibility;
 use App\Support\Catalogue\SourceLocale;
@@ -29,9 +30,6 @@ use Illuminate\Support\Facades\DB;
  */
 final class LocalInstitutionTeachersReader implements InstitutionTeachersReader
 {
-    /** Les rôles d'un enseignant, ceux du repli local d'avant le lot. */
-    private const ROLES = ['enseignant', 'teacher'];
-
     public function __construct(
         private readonly TeacherDirectoryVisibility $visibility,
     ) {}
@@ -59,7 +57,7 @@ final class LocalInstitutionTeachersReader implements InstitutionTeachersReader
     private function lignes(User $lecteur, bool $details): array
     {
         $enseignants = $this->visibility
-            ->restrictLocal($lecteur, User::query()->whereIn('role', self::ROLES))
+            ->restrictLocal($lecteur, User::query()->whereIn('role', Role::Enseignant->aliases()))
             ->orderBy('name')
             ->orderBy('id')
             ->get();

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Dashboard;
 
 use App\Enums\LessonStatus;
+use App\Enums\Role;
 use App\Models\ForumPost;
 use App\Models\ForumTopic;
 use App\Models\Lesson;
@@ -151,8 +152,8 @@ final class AdminDashboardService
     {
         return [
             'total' => $this->tenantUsersQuery($tenantUrl)->count(),
-            'students' => $this->tenantUsersQuery($tenantUrl)->where('role', 'etudiant')->count(),
-            'teachers' => $this->tenantUsersQuery($tenantUrl)->where('role', 'enseignant')->count(),
+            'students' => $this->tenantUsersQuery($tenantUrl)->whereIn('role', Role::Etudiant->aliases())->count(),
+            'teachers' => $this->tenantUsersQuery($tenantUrl)->whereIn('role', Role::Enseignant->aliases())->count(),
         ];
     }
 

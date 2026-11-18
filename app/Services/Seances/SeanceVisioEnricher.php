@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Seances;
 
+use App\Enums\Role;
 use App\Models\Seance;
 use App\Models\User;
 use App\Models\UserClass;
@@ -261,7 +262,7 @@ final class SeanceVisioEnricher
             try {
                 $localStudents = UserClass::where('klassci_classe_id', $visioData->klassci_classe_id)
                     ->join('users', 'user_classes.user_id', '=', 'users.id')
-                    ->where('users.role', 'etudiant')
+                    ->whereIn('users.role', Role::Etudiant->aliases())
                     ->select('users.id', 'users.name', 'users.email', 'users.klassci_id')
                     ->get();
 

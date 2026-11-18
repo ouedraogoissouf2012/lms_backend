@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Klassci\Auth;
 
+use App\Enums\Role;
 use App\Models\User;
 
 /**
@@ -43,7 +44,7 @@ final class KlassciEnseignantIdResolver
         }
 
         $role = $klassciUser['role'] ?? null;
-        if ($role === 'enseignant' && isset($klassciUser['id']) && is_numeric($klassciUser['id'])) {
+        if (is_string($role) && Role::tryFromString($role) === Role::Enseignant && isset($klassciUser['id']) && is_numeric($klassciUser['id'])) {
             return (int) $klassciUser['id'];
         }
 

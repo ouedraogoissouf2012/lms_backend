@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Http\Requests\Concerns;
 
+use App\Enums\Role;
 use App\Http\Requests\Concerns\ChecksForumAuthorization;
 use App\Models\User;
 use PHPUnit\Framework\Attributes\CoversTrait;
@@ -187,7 +188,7 @@ final class ChecksForumAuthorizationTest extends TestCase
                 ownerUserId: 99,
                 tenantInstitutionId: 3,
                 user: $this->user(id: 5, institutionId: 3, role: 'coordinateur'),
-                moderatorRoles: ['admin', 'administrateur', 'superAdmin', 'coordinateur'],
+                moderatorRoles: [Role::Admin, Role::SuperAdmin, Role::Coordinateur],
             ),
         );
     }
@@ -203,7 +204,7 @@ final class ChecksForumAuthorizationTest extends TestCase
                 ownerUserId: 99,
                 tenantInstitutionId: 3,
                 user: $this->user(id: 5, institutionId: 3, role: 'etudiant'),
-                moderatorRoles: ['admin', 'administrateur', 'superAdmin', 'coordinateur'],
+                moderatorRoles: [Role::Admin, Role::SuperAdmin, Role::Coordinateur],
             ),
         );
     }

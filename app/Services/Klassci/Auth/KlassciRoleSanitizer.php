@@ -42,7 +42,7 @@ use App\Enums\Role;
 final class KlassciRoleSanitizer
 {
     /** Rôle d'institution le plus élevé, substitué au rôle plateforme interdit. */
-    private const INSTITUTION_ADMIN = 'superAdmin';
+    private const INSTITUTION_ADMIN = Role::SuperAdmin->value;
 
     /**
      * Le rôle que désigne le payload KLASSCI (`data.user.role`), ou `null`.

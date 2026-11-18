@@ -69,7 +69,7 @@ final class TeacherCursorStream
         // ce retrait explicite, on dépendait du fail-open de BelongsToInstitution
         // (scope inerte hors requête HTTP, doublé d'un WARNING à chaque passe).
         $query = User::withoutGlobalScope('institution')
-            ->where('role', Role::Enseignant->value)
+            ->whereIn('role', Role::Enseignant->aliases())
             // institution_id est la clé de tenant : un enseignant sans
             // institution ne peut pas être synchronisé de façon isolée (#473).
             // L'exclure ici plutôt qu'en cours de boucle garde le parcours

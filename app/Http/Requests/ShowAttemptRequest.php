@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Enums\Role;
 use App\Http\Requests\Concerns\ChecksForumAuthorization;
 use App\Models\QuizAttempt;
 use Illuminate\Foundation\Http\FormRequest;
@@ -49,7 +50,7 @@ class ShowAttemptRequest extends FormRequest
         }
 
         $user = Auth::user();
-        $moderatorRoles = ['admin', 'administrateur', 'superAdmin'];
+        $moderatorRoles = [Role::Admin, Role::SuperAdmin];
 
         // Path 1: caller owns the attempt OR is an intra-tenant admin.
         if ($this->isForumActionAuthorized(

@@ -100,6 +100,23 @@ final class RappelDEvaluationTest extends TestCase
         Http::assertNothingSent();
     }
 
+    /** Un compte d'une autre école lié par erreur à la classe, et un enseignant inscrit, ne sont pas avertis. */
+    #[DataProvider('volets')]
+    public function test_ni_un_compte_d_une_autre_ecole_ni_un_enseignant_ne_sont_avertis(InstitutionMode $mode): void
+    {
+        $this->monter($mode);
+        $eleve = $this->eleveInscrit('actif');
+        $etranger = $this->membre(Institution::factory()->create(), 'etudiant');
+        $this->inscrire($etranger, $this->classe, 'actif');
+        $enseignant = $this->membre($this->ecole, 'enseignant');
+        $this->inscrire($enseignant, $this->classe, 'actif');
+        $evaluation = $this->evaluation();
+
+        $this->rappeler();
+
+        self::assertSame([$eleve->id], $this->avertis($evaluation));
+    }
+
     /** @return iterable<string, array{0: InstitutionMode, 1: string|null}> */
     public static function detachements(): iterable
     {

@@ -105,6 +105,41 @@ jobs:
       - name: Check PHPStan baseline ratchet
         run: php scripts/check-phpstan-baseline.php --max=443
 
+  # #1231 : le style n'était contrôlé nulle part, et un écart est entré sur `lms`
+  # par une PR verte. Tout le dépôt, pas les seuls fichiers modifiés : une fusion de
+  # deux PR conformes ou une montée de version de Pint ferait sinon entrer un écart.
+  # Préréglage par défaut (`laravel`, pas de pint.json), version verrouillée par
+  # composer.lock.
+  pint:
+    name: Code style (Pint)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup PHP 8.3
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.3"
+          coverage: none
+          tools: composer:v2
+
+      - name: Cache Composer dependencies (with dev)
+        uses: actions/cache@v4
+        with:
+          path: vendor
+          key: composer-phpstan-${{ hashFiles('composer.lock') }}
+          restore-keys: composer-phpstan-
+
+      - name: Install dependencies (including dev)
+        run: composer install --no-interaction --no-progress --prefer-dist --no-scripts
+
+      # -v : le journal montre le diff attendu, l'auteur sait quoi corriger
+      # (`vendor/bin/pint <fichiers>`).
+      - name: Run Pint
+        run: vendor/bin/pint --test -v
+
   semgrep-sast:
     name: Semgrep SAST (OWASP + default)
     runs-on: ubuntu-latest

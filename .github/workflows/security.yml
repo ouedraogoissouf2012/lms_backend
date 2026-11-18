@@ -136,10 +136,11 @@ jobs:
         run: composer install --no-interaction --no-progress --prefer-dist --no-scripts
 
       # -v : le journal montre le diff attendu, l'auteur sait quoi corriger
-      # (`vendor/bin/pint <fichiers>`). --parallel : 55 s en série sur tout le dépôt,
-      # plus que PHPStan (mesuré sur #1259) ; option marquée expérimentale par Pint.
+      # (`vendor/bin/pint <fichiers>`). Pas de --parallel : 39 s au lieu de 55 s
+      # (mesuré sur #1259, même liste), mais l'option est marquée expérimentale par
+      # Pint, et cette garde est destinée à devenir obligatoire.
       - name: Run Pint
-        run: vendor/bin/pint --test -v --parallel
+        run: vendor/bin/pint --test -v
 
   semgrep-sast:
     name: Semgrep SAST (OWASP + default)

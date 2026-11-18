@@ -36,8 +36,6 @@ use Illuminate\Foundation\Http\FormRequest;
  */
 final class UpdateUserRequest extends FormRequest
 {
-    use EcritLeRoleCanonique;
-
     public function authorize(): bool
     {
         $user = auth()->user();

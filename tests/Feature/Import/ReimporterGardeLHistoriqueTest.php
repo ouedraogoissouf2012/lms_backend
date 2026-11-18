@@ -13,6 +13,7 @@ use App\Models\Institution;
 use App\Models\User;
 use App\Services\Import\ImportApplyService;
 use App\Services\TenantManager;
+use Illuminate\Database\Query\Builder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
@@ -20,14 +21,17 @@ use Tests\Concerns\ActsAsTenantUser;
 use Tests\TestCase;
 
 /**
- * #895 — réimporter un fichier garde la date d'inscription historique.
+ * #895, #1237 — réimporter un fichier garde l'historique de l'adhésion : sa date
+ * d'inscription et son statut.
  *
  * Renvoyer le fichier entier pour corriger une ligne est le geste que #718 veut
  * permettre. `StudentEnrolmentService::inscrire()` met donc à jour une adhésion
- * existante, et la date par défaut (« aujourd'hui ») ne vaut qu'à sa CRÉATION :
- * sans date dans le fichier, la date d'une adhésion existante reste intacte
- * (ADR-711-02 : la date d'inscription n'est pas `created_at`). Une date fournie
- * la corrige.
+ * existante, et les valeurs par défaut (« aujourd'hui », `actif`) ne valent qu'à
+ * sa CRÉATION. Sans date dans le fichier, la date d'une adhésion existante reste
+ * intacte (ADR-711-02 : la date d'inscription n'est pas `created_at`). Sans
+ * statut, une adhésion `suspendu` ou `inactif` le reste : la décision de
+ * l'établissement ne se défait pas par un fichier qui ne dit rien. Une colonne
+ * absente et une cellule vide ne disent rien ; une valeur fournie corrige.
  *
  * L'import n'existe que pour l'école qui tient sa liste (#805) : un seul volet.
  * Le volet KLASSCI suit déjà cette règle (`ClasseStudentsSynchronizer` ne pose la
@@ -94,6 +98,57 @@ final class ReimporterGardeLHistoriqueTest extends TestCase
         self::assertSame('2026-10-04', $this->dateDe($classe, 'ali@test.ci'));
     }
 
+    public function test_une_reimportation_sans_colonne_de_statut_laisse_le_suspendu_suspendu(): void
+    {
+        // Un fichier ne pose pas `suspendu` (#920) : c'est une décision prise
+        // ailleurs, que la réimportation ne doit pas défaire.
+        [$importateur, $classe] = $this->ecole();
+        $this->executer($importateur, "nom;prenom;email;code_classe\nYameogo;Rose;rose@test.ci;B2\n");
+        $this->poserLeStatut($classe, 'rose@test.ci', 'suspendu');
+
+        $this->executer($importateur, "nom;prenom;email;code_classe\nYameogo;Rose;rose@test.ci;B2\n");
+
+        self::assertSame('suspendu', $this->statutDe($classe, 'rose@test.ci'));
+    }
+
+    public function test_une_reimportation_a_la_cellule_de_statut_vide_laisse_l_inactif_inactif(): void
+    {
+        [$importateur, $classe] = $this->ecole();
+        $this->executer($importateur, self::ENTETE."Compaore;Jean;jean@test.ci;;B2;;inactif\n");
+
+        $this->executer($importateur, self::ENTETE."Compaore;Jean;jean@test.ci;;B2;;\n");
+
+        self::assertSame('inactif', $this->statutDe($classe, 'jean@test.ci'));
+    }
+
+    public function test_un_statut_fourni_a_la_reimportation_corrige_le_statut(): void
+    {
+        [$importateur, $classe] = $this->ecole();
+        $this->executer($importateur, self::ENTETE."Ilboudo;Marc;marc@test.ci;;B2;;inactif\n");
+
+        $this->executer($importateur, self::ENTETE."Ilboudo;Marc;marc@test.ci;;B2;;actif\n");
+
+        self::assertSame('actif', $this->statutDe($classe, 'marc@test.ci'));
+    }
+
+    public function test_un_nouvel_apprenant_d_un_fichier_sans_colonne_de_statut_est_actif(): void
+    {
+        [$importateur, $classe] = $this->ecole();
+
+        $this->executer($importateur, "nom;prenom;email;code_classe\nNikiema;Sali;sali@test.ci;B2\n");
+
+        self::assertSame('actif', $this->statutDe($classe, 'sali@test.ci'));
+    }
+
+    public function test_un_nouvel_apprenant_a_la_cellule_de_statut_vide_est_actif(): void
+    {
+        [$importateur, $classe] = $this->ecole();
+
+        $this->executer($importateur, self::ENTETE."Tapsoba;Eve;eve@test.ci;;B2;;\n");
+
+        self::assertSame('actif', $this->statutDe($classe, 'eve@test.ci'));
+    }
+
     /**
      * Le parcours complet, comme en production : analyse à blanc, confirmation,
      * puis exécution du job.
@@ -135,12 +190,25 @@ final class ReimporterGardeLHistoriqueTest extends TestCase
 
     private function dateDe(Classe $classe, string $email): string
     {
-        $eleve = User::query()->withoutGlobalScopes()->where('email', $email)->firstOrFail();
-        $date = DB::table('classe_etudiant')
-            ->where('classe_id', $classe->id)
-            ->where('user_id', $eleve->id)
-            ->value('date_inscription');
+        return substr((string) $this->adhesion($classe, $email)->value('date_inscription'), 0, 10);
+    }
 
-        return substr((string) $date, 0, 10);
+    private function statutDe(Classe $classe, string $email): string
+    {
+        return (string) $this->adhesion($classe, $email)->value('statut');
+    }
+
+    private function poserLeStatut(Classe $classe, string $email, string $statut): void
+    {
+        self::assertSame(1, $this->adhesion($classe, $email)->update(['statut' => $statut]));
+    }
+
+    private function adhesion(Classe $classe, string $email): Builder
+    {
+        $eleve = User::query()->withoutGlobalScopes()->where('email', $email)->firstOrFail();
+
+        return DB::table('classe_etudiant')
+            ->where('classe_id', $classe->id)
+            ->where('user_id', $eleve->id);
     }
 }

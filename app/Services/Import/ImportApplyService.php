@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Services\Import;
 
-use App\Enums\ClasseEtudiantStatut;
 use App\Enums\ImportRowStatus;
 use App\Enums\Role;
 use App\Models\Import;
@@ -48,9 +47,6 @@ use Illuminate\Support\Str;
  */
 final class ImportApplyService
 {
-    /** Défaut de l'ENUM `classe_etudiant.statut`, pour un rapport sans la colonne. */
-    private const DEFAULT_STATUT = ClasseEtudiantStatut::Actif->value;
-
     public function __construct(
         private readonly RoleField $roles,
         private readonly StudentEnrolmentService $enrolments,
@@ -91,9 +87,9 @@ final class ImportApplyService
         $prenom = $this->stringField($payload, 'prenom');
         $code = $this->stringField($payload, 'code_classe');
 
-        // Un rapport produit AVANT cette issue n'a pas ces trois clés : la chaîne
-        // vide y ramène le comportement d'alors (étudiant, actif, daté du jour),
-        // sans qu'un import déjà analysé ait à être rejoué.
+        // Un rapport produit AVANT #718 n'a pas ces trois clés : la chaîne vide
+        // y vaut « rien dit » (étudiant ; statut et date par défaut à la seule
+        // création de l'adhésion), sans qu'un import déjà analysé soit rejoué.
         $role = $this->roles->resolve($this->stringField($payload, 'role'), $ceiling);
 
         if ($role->isRejected()) {
@@ -141,10 +137,10 @@ final class ImportApplyService
         $date = $this->stringField($payload, 'date_inscription');
         $statut = $this->stringField($payload, 'statut');
 
-        // Seulement ce que le fichier dit de la date : sans elle, une adhésion
-        // existante garde la sienne, et une nouvelle reçoit le jour même, décidé
-        // par `StudentEnrolmentService::inscrire()` (#895).
-        return ['statut' => $statut !== '' ? $statut : self::DEFAULT_STATUT]
+        // Seulement ce que le fichier dit : sans date ni statut, une adhésion
+        // existante garde les siens, et une nouvelle reçoit le jour même et
+        // `actif`, décidés par `StudentEnrolmentService::inscrire()` (#895, #1237).
+        return ($statut !== '' ? ['statut' => $statut] : [])
             + ($date !== '' ? ['date_inscription' => $date] : []);
     }
 

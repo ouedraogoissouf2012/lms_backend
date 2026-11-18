@@ -32,13 +32,20 @@ final class StatutFieldTest extends TestCase
         $this->field = new StatutField;
     }
 
-    public function test_une_colonne_absente_inscrit_un_present(): void
+    public function test_une_colonne_absente_ne_dit_rien(): void
     {
-        // Le défaut de la colonne en base, et celui du code d'avant.
+        // #1237 : le défaut `actif` ne vaut qu'à la création de l'adhésion,
+        // décidé par `StudentEnrolmentService::inscrire()`. Le poser ici
+        // réactivait un suspendu à chaque réimportation sans statut.
         $issue = $this->field->resolve('');
 
         self::assertFalse($issue->isRejected());
-        self::assertSame('actif', $issue->value);
+        self::assertSame('', $issue->value);
+    }
+
+    public function test_une_cellule_blanche_ne_dit_rien(): void
+    {
+        self::assertSame('', $this->field->resolve('   ')->value);
     }
 
     public function test_les_trois_valeurs_de_l_enum_passent(): void

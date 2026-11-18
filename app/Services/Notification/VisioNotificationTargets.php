@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Notification;
 
 use App\Enums\ClasseEtudiantStatut;
+use App\Enums\Role;
 use App\Models\Classe;
 use App\Models\Seance;
 use App\Models\User;
@@ -56,7 +57,7 @@ final class VisioNotificationTargets
                 $query->where('classes.id', $classe->id)
                     ->where('classe_etudiant.statut', ClasseEtudiantStatut::Actif->value);
             })
-            ->where('role', 'etudiant')
+            ->whereIn('role', Role::Etudiant->aliases())
             ->get();
 
         $this->logger->info('Étudiants trouvés pour notification visio', [
@@ -90,7 +91,7 @@ final class VisioNotificationTargets
                 $query->where('classes.id', $classe->id)
                     ->where('classe_etudiant.statut', ClasseEtudiantStatut::Actif->value);
             })
-            ->where('role', 'etudiant')
+            ->whereIn('role', Role::Etudiant->aliases())
             ->get();
     }
 
@@ -147,7 +148,7 @@ final class VisioNotificationTargets
         $comptes = User::query()->withoutGlobalScope('institution')->where('institution_id', $etablissement);
 
         if ($klassci !== null) {
-            return $comptes->where('klassci_id', $klassci)->where('role', 'enseignant')->first();
+            return $comptes->where('klassci_id', $klassci)->whereIn('role', Role::Enseignant->aliases())->first();
         }
 
         $auteur = Seance::query()->withoutGlobalScope('institution')->whereKey($id)->value('created_by');

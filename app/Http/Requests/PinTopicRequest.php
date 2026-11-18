@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Enums\Role;
 use App\Http\Requests\Concerns\ChecksForumAuthorization;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Auth;
@@ -31,7 +32,7 @@ class PinTopicRequest extends FormRequest
             // Fix E2E #211 flow 4 : la route est declaree pour les formateurs
             // (role:enseignant,coordinateur,admin) mais la FormRequest les
             // excluait -> close/pin de facto inaccessibles aux enseignants.
-            moderatorRoles: ['admin', 'administrateur', 'superAdmin', 'coordinateur', 'enseignant'],
+            moderatorRoles: [Role::Admin, Role::SuperAdmin, Role::Coordinateur, Role::Enseignant],
         );
     }
 

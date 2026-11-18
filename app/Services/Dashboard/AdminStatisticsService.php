@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Dashboard;
 
+use App\Enums\Role;
 use App\Models\Classe;
 use App\Models\ESBTPAttendance;
 use App\Models\Evaluation;
@@ -53,8 +54,8 @@ final class AdminStatisticsService
             ->count();
 
         return [
-            'nb_enseignants' => User::query()->whereIn('role', ['enseignant', 'teacher'])->count(),
-            'nb_etudiants' => User::query()->whereIn('role', ['etudiant', 'student', 'étudiant'])->count(),
+            'nb_enseignants' => User::query()->whereIn('role', Role::Enseignant->aliases())->count(),
+            'nb_etudiants' => User::query()->whereIn('role', Role::Etudiant->aliases())->count(),
             'nb_classes_actives' => Classe::query()->count(),
             'nb_matieres_actives' => Matiere::query()->count(),
             'nb_filieres' => $this->distinctIds(Classe::class, Matiere::class, 'filiere_id'),

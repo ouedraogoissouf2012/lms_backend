@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Sync\Classes;
 
 use App\Enums\ClasseEtudiantStatut;
+use App\Enums\Role;
 use App\Models\Classe;
 use App\Models\User;
 use App\Services\KlassciProxyService;
@@ -136,7 +137,7 @@ final class ClasseStudentsSynchronizer
 
         // Fallback lookup par email uniquement si KLASSCI nous en a fourni un.
         if ($email !== null) {
-            $student = User::where('email', $email)->where('role', 'etudiant')->first();
+            $student = User::where('email', $email)->whereIn('role', Role::Etudiant->aliases())->first();
         }
 
         if ($student) {
@@ -159,7 +160,7 @@ final class ClasseStudentsSynchronizer
                 'klassci_id' => $etudiantData['id'],
                 'name'       => $name,
                 'email'      => $email,    // null si KLASSCI n'en a pas fourni
-                'role'       => 'etudiant',
+                'role'       => Role::Etudiant->value,
                 'password'   => bcrypt(bin2hex(random_bytes(16))), // Password aléatoire
             ]);
 

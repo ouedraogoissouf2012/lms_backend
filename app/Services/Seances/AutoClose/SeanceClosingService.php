@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Seances\AutoClose;
 
+use App\Enums\Role;
 use App\Models\ESBTPAttendance;
 use App\Models\Seance;
 use App\Support\Logging\CaughtExceptionLog;
@@ -114,7 +115,7 @@ final class SeanceClosingService
                 // Utiliser le left_at de l'enseignant
                 $teacher = ESBTPAttendance::where('seance_id', $seance->id)
                     ->whereHas('user', function ($query) {
-                        $query->whereIn('role', ['enseignant', 'teacher']);
+                        $query->whereIn('role', Role::Enseignant->aliases());
                     })
                     ->orderBy('left_at', 'desc')
                     ->first();

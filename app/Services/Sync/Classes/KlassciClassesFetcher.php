@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Sync\Classes;
 
+use App\Enums\Role;
 use App\Services\KlassciProxyService;
 use App\Services\Seances\KlassciPayload;
 use App\Support\Logging\CaughtExceptionLog;
@@ -67,7 +68,7 @@ final class KlassciClassesFetcher
      */
     public function fetch(string $klassciToken, string $userRole): array
     {
-        if ($userRole === 'etudiant') {
+        if (Role::tryFromString($userRole) === Role::Etudiant) {
             return $this->fetchStudentClasses($klassciToken);
         }
 
@@ -196,7 +197,7 @@ final class KlassciClassesFetcher
      */
     private function fetchByRole(string $klassciToken, string $userRole): array
     {
-        if (in_array($userRole, ['enseignant', 'teacher'], true)) {
+        if (Role::tryFromString($userRole) === Role::Enseignant) {
             return $this->fetchTeacherClasses($klassciToken);
         }
 

@@ -1,12 +1,6 @@
 parameters:
 	ignoreErrors:
 		-
-			message: '#^Parameter \#1 \$column of method Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Notification\>\:\:where\(\) expects array\<int\|model property of App\\Models\\Notification, mixed\>\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Notification\>\)\: Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Notification\>\)\|\(Closure\(Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Notification\>\)\: void\)\|Illuminate\\Contracts\\Database\\Query\\Expression\|model property of App\\Models\\Notification, ''data\-\>evaluation_id'' given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Console/Commands/NotifyUpcomingEvaluations.php
-
-		-
 			message: '#^Parameter \#3 \$authUserId of method App\\Services\\Chapter\\ChapterCrudService\:\:create\(\) expects int\|null, int\|string\|null given\.$#'
 			identifier: argument.type
 			count: 1

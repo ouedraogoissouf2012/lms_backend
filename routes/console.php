@@ -48,10 +48,12 @@ Schedule::job(new CleanOldEvaluations, 'low')
 
 // Planifier les notifications d'évaluations approchantes
 // Envoie un rappel aux étudiants 24h avant chaque évaluation
+// #1247 : un seul serveur, sinon deux conteneurs vérifient puis créent le même rappel.
 Schedule::command('evaluations:notify-upcoming --hours=24')
     ->dailyAt('08:00')
     ->name('notify-upcoming-evaluations')
-    ->withoutOverlapping();
+    ->withoutOverlapping()
+    ->onOneServer();
 
 // Planifier le nettoyage des anciennes notifications lues
 // Supprime les notifications lues de plus de 30 jours pour alléger la base

@@ -2,131 +2,35 @@
 
 namespace App\Console\Commands;
 
-use App\Models\Evaluation;
-use App\Models\Notification;
-use App\Services\KlassciProxyService;
-use App\Support\Logging\CaughtExceptionLog;
+use App\Services\Notification\RappelDEvaluation;
 use Carbon\Carbon;
 use Illuminate\Console\Command;
 
+/**
+ * Le rappel du matin, planifié dans `routes/console.php`. La règle vit dans
+ * {@see RappelDEvaluation} (#1247) : les élèves qui voient l'évaluation, sans KLASSCI.
+ */
 class NotifyUpcomingEvaluations extends Command
 {
     protected $signature = 'evaluations:notify-upcoming {--hours=24}';
+
     protected $description = 'Envoie des notifications aux étudiants pour les évaluations approchantes';
-    protected KlassciProxyService $klassciService;
 
-    public function __construct(KlassciProxyService $klassciService)
-    {
-        parent::__construct();
-        $this->klassciService = $klassciService;
-    }
-
-    public function handle(CaughtExceptionLog $journal): int
+    public function handle(RappelDEvaluation $rappel): int
     {
         $hoursBeforeNotification = (int) $this->option('hours');
         $this->info("Recherche des évaluations dans les prochaines {$hoursBeforeNotification} heures...");
 
-        $now = Carbon::now();
-        $targetTime = $now->copy()->addHours($hoursBeforeNotification);
+        $bilan = $rappel->rappeler(Carbon::now(), $hoursBeforeNotification);
 
-        $evaluations = Evaluation::with('institution')
-            ->where('is_published', true)
-            ->where('status', '!=', 'terminee')
-            ->whereBetween('date_evaluation', [$now, $targetTime])
-            ->get();
-
-        if ($evaluations->isEmpty()) {
-            $this->info('Aucune évaluation approchante trouvée.');
-            return Command::SUCCESS;
+        // La sortie console n'écrit que l'évaluation ; l'exception va au journal.
+        foreach ($bilan->evaluationsEnEchec as $evaluationId) {
+            $this->error("Erreur pendant le traitement de l'évaluation {$evaluationId}.");
         }
 
-        $this->info("{$evaluations->count()} évaluation(s) approchante(s) trouvée(s).");
-        $notificationsCreated = 0;
+        $this->info("{$bilan->evaluations} évaluation(s) approchante(s) trouvée(s).");
+        $this->info("{$bilan->rappels} notification(s) créée(s)!");
 
-        foreach ($evaluations as $evaluation) {
-            $this->line("Traitement: {$evaluation->titre}");
-
-            try {
-                $institutionToken = $evaluation->institution?->klassci_api_token;
-                if (! is_string($institutionToken) || $institutionToken === '') {
-                    $this->warn('Aucun jeton institution — roster ignoré');
-                    continue;
-                }
-
-                $etudiants = $this->klassciService->getClasseEtudiants(
-                    $institutionToken,
-                    (int) $evaluation->klassci_classe_id,
-                );
-
-                $students = self::extractStudents($etudiants);
-
-                if ($students === []) {
-                    $this->warn("Aucun étudiant trouvé");
-                    continue;
-                }
-
-                foreach ($students as $studentId) {
-                    $existingNotification = Notification::where('user_id', $studentId)
-                        ->where('type', 'evaluation_approaching')
-                        ->where('data->evaluation_id', $evaluation->id)
-                        ->whereDate('created_at', Carbon::today())
-                        ->first();
-
-                    if ($existingNotification) {
-                        continue;
-                    }
-
-                    Notification::create([
-                        'user_id' => $studentId,
-                        'type' => 'evaluation_approaching',
-                        'title' => 'Évaluation approchante',
-                        'message' => "L'évaluation \"{$evaluation->titre}\" aura lieu le " .
-                                    Carbon::parse($evaluation->date_evaluation)->format('d/m/Y à H:i'),
-                        'data' => [
-                            'evaluation_id' => $evaluation->id,
-                            'evaluation_titre' => $evaluation->titre,
-                            'date_evaluation' => $evaluation->date_evaluation,
-                        ],
-
-                    ]);
-
-                    $notificationsCreated++;
-                }
-
-            } catch (\Exception $e) {
-                // La sortie console n'écrit que l'évaluation ; l'exception va au journal.
-                $this->error("Erreur pendant le traitement de l'évaluation {$evaluation->id}.");
-                $journal->error('Rappel d\'évaluation interrompu', $e, ['evaluation_id' => $evaluation->id]);
-                continue;
-            }
-        }
-
-        $this->info("{$notificationsCreated} notification(s) créée(s)!");
         return Command::SUCCESS;
-    }
-
-    /**
-     * @param  array<string, mixed>  $payload
-     * @return list<int>
-     */
-    private static function extractStudents(array $payload): array
-    {
-        if (! isset($payload['data']) || ! is_array($payload['data'])) {
-            return [];
-        }
-
-        $studentIds = [];
-
-        foreach ($payload['data'] as $student) {
-            if (! is_array($student) || ! isset($student['id'])) {
-                continue;
-            }
-
-            if (is_int($student['id']) || is_string($student['id']) && ctype_digit($student['id'])) {
-                $studentIds[] = (int) $student['id'];
-            }
-        }
-
-        return $studentIds;
     }
 }

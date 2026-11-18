@@ -4,18 +4,20 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Jobs;
 
+use App\Enums\InstitutionMode;
 use App\Jobs\ArchiveOldSeances;
 use App\Jobs\DispatchLessonPublishedNotifications;
 use App\Jobs\SyncKlassciSeances;
+use App\Models\Classe;
 use App\Models\Evaluation;
+use App\Models\EvaluationQuestion;
 use App\Models\Institution;
 use App\Models\Seance;
-use App\Services\KlassciProxyService;
+use App\Models\User;
 use App\Services\TenantManager;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
-use Mockery\MockInterface;
 use Monolog\Level;
 use Monolog\LogRecord;
 use PDOException;
@@ -27,8 +29,8 @@ use Tests\TestCase;
  * exception attrapée par `CaughtExceptionLog` : même message, même niveau, même
  * contexte métier, et la relance quand il y en avait une.
  *
- * L'échec est réel : une requête échoue (`beforeExecuting`), ou KLASSCI lève,
- * sous le site, sans double du job.
+ * L'échec est réel : une requête échoue (`beforeExecuting`) sous le site, sans double
+ * du job.
  */
 final class SitesDesJobsTest extends TestCase
 {
@@ -90,14 +92,23 @@ final class SitesDesJobsTest extends TestCase
 
     public function test_le_rappel_d_evaluation_journalise_l_evaluation_et_continue(): void
     {
-        $ecole = Institution::factory()->create(['klassci_api_token' => 'jeton-institution']);
+        $ecole = Institution::factory()->create(['mode' => InstitutionMode::Standalone]);
+        $classe = Classe::factory()->create(['institution_id' => $ecole->id, 'klassci_id' => null]);
+        $eleve = User::factory()->create(['institution_id' => $ecole->id, 'role' => 'etudiant']);
+        DB::table('classe_etudiant')->insert([
+            'classe_id' => $classe->id, 'user_id' => $eleve->id, 'statut' => 'actif',
+            'date_inscription' => now()->toDateString(), 'created_at' => now(), 'updated_at' => now(),
+        ]);
         $evaluation = Evaluation::factory()->create([
             'institution_id' => $ecole->id,
+            'classe_id' => $classe->id,
             'is_published' => true,
             'status' => 'planifiee',
             'date_evaluation' => now()->addHours(2),
         ]);
-        $this->klassciEchoue();
+        EvaluationQuestion::factory()->create(['evaluation_id' => $evaluation->id, 'institution_id' => $ecole->id]);
+        // #1247 : le rappel n'appelle plus KLASSCI ; l'échec vient de sa lecture des rappels du jour.
+        $this->faireEchouerLaPremiereRequeteSur('notifications');
 
         $this->artisan('evaluations:notify-upcoming', ['--hours' => 24])
             ->expectsOutputToContain("Erreur pendant le traitement de l'évaluation {$evaluation->id}.")
@@ -134,14 +145,6 @@ final class SitesDesJobsTest extends TestCase
             $dejaLevee = true;
 
             throw new QueryException('sqlite', $sql, [self::TEMOIN, ...$liaisons], new PDOException('verrou'));
-        });
-    }
-
-    private function klassciEchoue(): void
-    {
-        $echec = new QueryException('mysql', 'select * from articles where code = ?', [self::TEMOIN], new PDOException('verrou'));
-        $this->mock(KlassciProxyService::class, static function (MockInterface $mock) use ($echec): void {
-            $mock->shouldReceive('get', 'fetchManyByEndpoint', 'getClasseEtudiants', 'requestWithUserToken')->andThrow($echec);
         });
     }
 }

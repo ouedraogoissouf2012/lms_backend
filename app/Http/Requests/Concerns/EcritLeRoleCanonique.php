@@ -43,7 +43,7 @@ trait EcritLeRoleCanonique
         $canonique = is_string($recu) ? Role::tryFromString($recu) : null;
 
         if ($canonique !== null) {
-            $this->merge(['role' => $canonique->value]);
+            $this->merge(['role' => $recu]);
         }
     }
 }

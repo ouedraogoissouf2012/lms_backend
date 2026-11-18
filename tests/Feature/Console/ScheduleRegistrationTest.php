@@ -120,6 +120,20 @@ final class ScheduleRegistrationTest extends TestCase
         $this->assertTrue($event->withoutOverlapping);
     }
 
+    /**
+     * #1247 — le rappel vérifie puis crée : sur deux conteneurs de planification,
+     * le même élève recevrait deux rappels pour la même évaluation.
+     */
+    public function test_evaluation_reminder_runs_daily_on_one_server(): void
+    {
+        $event = $this->scheduledEvents()->get('notify-upcoming-evaluations');
+
+        $this->assertNotNull($event);
+        $this->assertSame('0 8 * * *', $event->expression);
+        $this->assertTrue($event->withoutOverlapping);
+        $this->assertTrue($event->onOneServer);
+    }
+
     public function test_recording_retention_runs_daily_with_explicit_apply(): void
     {
         $event = $this->scheduledEvents()->get('purge-visio-recordings');

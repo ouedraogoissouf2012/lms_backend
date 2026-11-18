@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Http\Requests\Concerns\EcritLeRoleCanonique;
 use App\Models\User;
 use App\Rules\AssignableRole;
 use App\Rules\UniqueEmailInInstitution;
@@ -19,6 +20,10 @@ use Illuminate\Foundation\Http\FormRequest;
  * décide QUEL rôle il peut assigner (jamais égal ou supérieur au sien). Sans elle,
  * un coordinateur pouvait créer un `superAdmin` — escalade verticale.
  *
+ * ## Rôle écrit sous sa valeur canonique (#1246)
+ * Un alias reçu (`teacher`…) est remplacé par sa valeur canonique avant la validation :
+ * {@see EcritLeRoleCanonique}.
+ *
  * ## Unicité de l'email bornée au tenant (#580, P1 de #563)
  * `unique:users,email` interrogeait la table SANS scope tenant : la contrainte était
  * globale à la plateforme alors que l'index est `(email, institution_id)`. La règle
@@ -27,9 +32,12 @@ use Illuminate\Foundation\Http\FormRequest;
  */
 final class CreateUserRequest extends FormRequest
 {
+    use EcritLeRoleCanonique;
+
     public function authorize(): bool
     {
         $user = auth()->user();
+
         return $user !== null && ($user->isCoordinator() || $user->isAdmin());
     }
 

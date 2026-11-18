@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Http\Requests\Concerns\EcritLeRoleCanonique;
 use App\Models\User;
 use App\Rules\AssignableRole;
 use App\Rules\UniqueEmailInInstitution;
@@ -18,6 +19,10 @@ use Illuminate\Foundation\Http\FormRequest;
  * L'acteur ne modifie qu'un compte de rang strictement inférieur au sien, jamais le
  * sien : la règle de cible {@see GestionDeCompte}, la même que la suppression.
  *
+ * ## Rôle écrit sous sa valeur canonique (#1246)
+ * Un alias reçu (`teacher`…) est remplacé par sa valeur canonique avant la validation :
+ * {@see EcritLeRoleCanonique}. Sans `role` dans la requête, rien n'est ajouté.
+ *
  * ## Unicité de l'email bornée au tenant (#580, P1 de #563)
  * `'unique:users,email,' . $this->route('user')` cumulait DEUX défauts :
  *   1. la règle `unique:` interroge la table sans scope tenant → contrainte globale à la
@@ -31,6 +36,8 @@ use Illuminate\Foundation\Http\FormRequest;
  */
 final class UpdateUserRequest extends FormRequest
 {
+    use EcritLeRoleCanonique;
+
     public function authorize(): bool
     {
         $user = auth()->user();

@@ -37,7 +37,7 @@ final class QuizNotificationDispatcher
             ->whereHas('classes', function ($query) use ($quiz) {
                 $query->where('classes.id', $quiz->classe_id);
             })
-            ->whereIn('role', Role::Etudiant->aliases())
+            ->where('role', 'etudiant')
             ->get();
 
         if ($students->isEmpty()) {

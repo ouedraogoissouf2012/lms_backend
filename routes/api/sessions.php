@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Http\Controllers\API\LMS\LMSClasseEnrolmentCodeController;
 use App\Http\Controllers\API\LMS\LMSClasseMatiereController;
+use App\Http\Controllers\API\LMS\LMSClassePeriodeController;
 use App\Http\Controllers\API\LMS\LMSClasseWriteController;
 use App\Http\Controllers\API\LMS\LMSMatiereWriteController;
 use App\Http\Controllers\API\LMS\TrainingSessionController;
@@ -85,4 +86,10 @@ Route::middleware(['auth:sanctum', 'klassci.sync', 'gestion'])
         // SANS toucher aux inscriptions deja faites.
         Route::post('/classes/{classe}/code-inscription', [LMSClasseEnrolmentCodeController::class, 'store']);
         Route::delete('/classes/{classe}/code-inscription', [LMSClasseEnrolmentCodeController::class, 'destroy']);
+
+        // Rattacher une classe a une Periode, ou l en detacher (#1208). Un geste
+        // NOMME : il rend reelles les regles deja ecrites (une Periode close ferme
+        // les codes de ses classes, #897 ; `is_active`), sans ouvrir d autre champ.
+        Route::put('/classes/{classe}/periode', [LMSClassePeriodeController::class, 'update'])
+            ->whereNumber('classe');
     });

@@ -31,7 +31,12 @@ final class KlassciDataResyncPreservesLmsKeysTest extends TestCase
 
     public function test_resync_preserves_lms_tenant_url_and_drops_injected_keys(): void
     {
-        $institution = Institution::factory()->create(['slug' => 'school-a']);
+        // L'école porte l'adresse du compte : un jeton ne se re-synchronise que vers
+        // l'école rattachée qui l'a émis (#1248).
+        $institution = Institution::factory()->create([
+            'slug' => 'school-a',
+            'klassci_api_url' => 'https://school-a.klassci.test',
+        ]);
 
         // User avec _lms_tenant_url dans son blob (posé au sign-up) et sync périmée.
         $user = User::factory()->for($institution)->create([

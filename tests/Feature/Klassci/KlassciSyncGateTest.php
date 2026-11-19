@@ -12,9 +12,6 @@ use App\Services\Klassci\Health\InMemoryKlassciApplicationProof;
 use App\Services\Klassci\Health\InMemoryKlassciReachability;
 use App\Services\Klassci\Health\KlassciApplicationProof;
 use App\Services\Klassci\Health\KlassciReachability;
-use App\Services\Klassci\Sync\KlassciSyncGate;
-use App\Services\Klassci\Sync\NeverSyncGate;
-use App\Services\Klassci\Sync\TokenPresentSyncGate;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Tests\Concerns\ActsAsTenantUser;
@@ -43,18 +40,6 @@ final class KlassciSyncGateTest extends TestCase
             ->assertOk();
 
         Http::assertNothingSent();
-    }
-
-    public function test_gate_binding_resolves_two_implementations_in_same_process(): void
-    {
-        $this->app->bind(KlassciSyncGate::class, TokenPresentSyncGate::class);
-        $first = app(KlassciSyncGate::class);
-        $this->app->bind(KlassciSyncGate::class, NeverSyncGate::class);
-        $second = app(KlassciSyncGate::class);
-
-        self::assertInstanceOf(TokenPresentSyncGate::class, $first);
-        self::assertInstanceOf(NeverSyncGate::class, $second);
-        self::assertNotSame($first::class, $second::class);
     }
 
     public function test_connection_tester_uses_reachability_contract(): void

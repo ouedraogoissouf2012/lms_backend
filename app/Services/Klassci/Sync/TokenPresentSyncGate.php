@@ -5,11 +5,16 @@ declare(strict_types=1);
 namespace App\Services\Klassci\Sync;
 
 use App\Models\User;
+use App\Services\Klassci\KlassciConfigResolver;
 use Illuminate\Contracts\Cache\Repository as CacheRepository;
 
 /**
  * Re-sync seulement si le compte a un jeton KLASSCI et des données périmées,
- * et s'il n'est pas en recul après un échec.
+ * s'il n'est pas en recul après un échec, et si sa re-synchronisation a une
+ * cible (#1248) : une école détachée (autonome, URL vidée ou changée, inactive)
+ * n'appelle plus auth/me. La cible est définie au résolveur
+ * ({@see KlassciConfigResolver::cibleDeSynchronisation()}), qui porte aussi la
+ * règle de la priorité 1.
  *
  * Le recul est par compte : l'identifiant d'un compte est global, la clé ne
  * mêle donc jamais deux écoles. Sa durée (1 h par défaut) borne un compte en
@@ -23,7 +28,10 @@ final class TokenPresentSyncGate implements KlassciSyncGate
 {
     private const RECUL_PAR_DEFAUT = 3600;
 
-    public function __construct(private readonly CacheRepository $cache) {}
+    public function __construct(
+        private readonly CacheRepository $cache,
+        private readonly KlassciConfigResolver $cibles,
+    ) {}
 
     public function shouldRefresh(User $user): bool
     {
@@ -33,7 +41,9 @@ final class TokenPresentSyncGate implements KlassciSyncGate
 
         $token = $user->klassci_token;
 
-        return is_string($token) && $token !== '' && ! $this->cache->has($this->cleDeRecul($user));
+        return is_string($token) && $token !== ''
+            && $this->cibles->cibleDeSynchronisation($user) !== null
+            && ! $this->cache->has($this->cleDeRecul($user));
     }
 
     public function refreshFailed(User $user): void

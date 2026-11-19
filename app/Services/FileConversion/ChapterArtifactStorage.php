@@ -112,7 +112,7 @@ final class ChapterArtifactStorage
      */
     public function storeVideo(UploadedFile $file, int $chapterId): string
     {
-        $path = $file->store($this->relativeDirectory($chapterId, 'video'), self::PRIVATE_DISK);
+        $path = $file->store($this->relativeDirectory($chapterId, 'video'), self::PUBLIC_DISK);
 
         if (! is_string($path) || $path === '') {
             throw new RuntimeException('Échec sauvegarde de la vidéo');

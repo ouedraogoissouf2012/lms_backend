@@ -81,8 +81,7 @@ final class StoreLessonRequest extends FormRequest
         // la matière propose des ids locaux depuis #749, comme la modification.
         $classeId = $this->input('classe_id');
 
-        return is_numeric($classeId)
-            && Classe::query()->where('institution_id', $user->institution_id)->whereKey((int) $classeId)->exists();
+        return Classe::existsFor($classeId, $user->institution_id);
     }
 
     /**

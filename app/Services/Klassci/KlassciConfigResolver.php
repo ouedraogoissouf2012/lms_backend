@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Klassci;
 
+use App\Enums\InstitutionMode;
 use App\Exceptions\KlassciUnavailableException;
 use App\Models\Institution;
 use App\Models\User;
@@ -16,7 +17,10 @@ use Psr\Log\LoggerInterface;
  *
  * ## Priorité 3-tiers (extraite verbatim de l'ancienne `KlassciProxyService::resolveConfig()`)
  *
- *   1. **Token personnel** de l'utilisateur connecté (KLASSCI login) — `users.klassci_token`
+ *   1. **Token personnel** de l'utilisateur connecté (KLASSCI login) — `users.klassci_token`,
+ *      seulement vers SA cible : l'adresse du compte, si c'est celle de son école active et
+ *      non autonome ({@see self::cibleDuJetonPersonnel()}, #1248). Sinon le refus est
+ *      ABSORBANT : `null`, jamais une retombée en 2 ou 3 qui porterait ce jeton ailleurs.
  *   2. **Token système** de l'institution matchant `klassci_tenant_url` de l'user
  *      (pour les comptes créés via auth locale sans token personnel).
  *   3. **Configuration du tenant résolu** — ou config système globale lorsqu'il
@@ -144,6 +148,51 @@ final class KlassciConfigResolver implements KlassciTargetResolver
     }
 
     /**
+     * #1248 — « cette école parle-t-elle à KLASSCI ? » : active, pas autonome, et d'URL
+     * exploitable. Sinon `null` : une école détachée (basculée en autonome, ou URL vidée)
+     * n'a plus de cible.
+     */
+    public function cibleDeLEcole(?Institution $ecole): ?string
+    {
+        $url = $ecole?->klassci_api_url;
+
+        return $ecole instanceof Institution && $ecole->is_active
+            && $ecole->mode !== InstitutionMode::Standalone
+            && is_string($url) && self::isUsableHttpUrl($url) ? $url : null;
+    }
+
+    /**
+     * #1248 — l'adresse du compte, si et seulement si c'est la cible de SON école. Un jeton
+     * personnel ne part jamais vers une autre adresse que celle qui l'a émis.
+     */
+    public function cibleDuJetonPersonnel(User $compte): ?string
+    {
+        $adresse = self::adresseDuCompte($compte);
+
+        return $adresse !== null && $adresse === $this->cibleDeLEcole($compte->institution) ? $adresse : null;
+    }
+
+    /**
+     * #1248 — où la re-synchronisation de ce compte enverrait `auth/me`, ou `null` si nulle
+     * part : SA cible s'il porte une adresse, sinon celle de son école rattachée. Une école
+     * détachée ou inactive n'a plus de re-synchronisation, avec ou sans adresse.
+     */
+    public function cibleDeSynchronisation(User $compte): ?string
+    {
+        return self::adresseDuCompte($compte) !== null
+            ? $this->cibleDuJetonPersonnel($compte)
+            : $this->cibleDeLEcole($compte->institution);
+    }
+
+    /** `klassci_tenant_url`, ou le repli `_lms_tenant_url` des comptes d'avant #75. */
+    private static function adresseDuCompte(User $compte): ?string
+    {
+        $adresse = $compte->klassci_tenant_url ?: ($compte->klassci_data['_lms_tenant_url'] ?? null);
+
+        return is_string($adresse) && $adresse !== '' ? $adresse : null;
+    }
+
+    /**
      * Une URL est exploitable ssi elle porte un scheme http(s) ET un host non vide.
      * `parse_url` isole la cause historique du 500 (#270) : une valeur sans scheme.
      */
@@ -173,29 +222,25 @@ final class KlassciConfigResolver implements KlassciTargetResolver
 
         $user = $this->auth->guard('sanctum')->user();
 
-        // Priorité 1 : token personnel de l'utilisateur connecté.
-        if ($user instanceof User && $user->klassci_token) {
-            $tenantUrl = $user->klassci_tenant_url;
+        // Priorité 1 : token personnel de l'utilisateur connecté, vers SA cible seulement.
+        if ($user instanceof User && $user->klassci_token && self::adresseDuCompte($user) !== null) {
+            // #1248 — le refus est ABSORBANT : le jeton du compte ne retombe pas en
+            // priorité 2 ou 3, qui le porteraient vers une autre adresse que la sienne.
+            $this->baseUrl = $this->cibleDuJetonPersonnel($user);
+            $this->token = $this->baseUrl === null ? null : $user->klassci_token;
+            $this->resolved = true;
 
-            // Fallback : extraire l'URL depuis klassci_data si klassci_tenant_url est null
-            // (anciens comptes pré-#75). Le accessor `getKlassciDataAttribute` garantit
-            // un array (vide si JSON malformé) — pas de décodage manuel nécessaire.
-            if (! $tenantUrl && ! empty($user->klassci_data)) {
-                $tenantUrl = $user->klassci_data['_lms_tenant_url'] ?? null;
-            }
-
-            if (is_string($tenantUrl) && $tenantUrl !== '') {
-                $this->baseUrl = $tenantUrl;
-                $this->token = $user->klassci_token;
-                $this->resolved = true;
-
+            if ($this->baseUrl === null) {
+                $this->logger->warning('KLASSCI resolveConfig: école détachée, jeton personnel retenu (#1248)', [
+                    'user_id' => $user->id,
+                    'institution_id' => $user->institution_id,
+                ]);
+            } elseif (! $user->klassci_tenant_url) {
                 // Migration silencieuse : remplir klassci_tenant_url si manquant.
-                if (! $user->klassci_tenant_url) {
-                    $user->updateQuietly(['klassci_tenant_url' => $tenantUrl]);
-                }
-
-                return;
+                $user->updateQuietly(['klassci_tenant_url' => $this->baseUrl]);
             }
+
+            return;
         }
 
         // Priorité 2 : token système institution (compte manuel sans token personnel) —

@@ -30,7 +30,8 @@ use Psr\Log\LoggerInterface;
  *
  * Le vrai défaut du 422 « La matière n'existe pas » était ailleurs : le
  * frontend envoie un identifiant KLASSCI là où la règle n'acceptait que
- * l'espace local. Il est traité par `App\Rules\MirroredIdentifierExists`.
+ * l'espace local. Depuis #873, la page de la matière donne l'id local
+ * (`matiere_id_local`), et la création d'une leçon n'accepte plus que lui.
  *
  * ## Pourquoi ce miroir reste utile
  *

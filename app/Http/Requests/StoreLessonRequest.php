@@ -8,11 +8,11 @@ use App\Http\Requests\Concerns\ReservesLessonContentToTeacher;
 use App\Models\Classe;
 use App\Models\Matiere;
 use App\Models\User;
-use App\Rules\MirroredIdentifierExists;
 use App\Rules\PositiveInteger;
 use App\Services\Matiere\ClassesDeLaMatiere;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 /**
  * Validates lesson creation request.
@@ -74,14 +74,15 @@ final class StoreLessonRequest extends FormRequest
             return false;
         }
 
-        // Check 3: Multi-tenant safety — la classe doit appartenir à l'institution
-        // du user. #265 : le frontend envoie un id KLASSCI de classe (comme pour
-        // les évaluations), pas l'id local ; les deux espaces sont acceptés.
-        //
-        // La décision appartient au modèle lui-même (contrat MirroredFromKlassci),
-        // ici comme dans `rules()` et comme dans le service qui TRADUIT ensuite vers
-        // l'id local (#740) : c'est la même question, elle n'a qu'une seule réponse.
-        return Classe::existsFor($this->input('classe_id'), $user->institution_id);
+        // Check 3: Multi-tenant safety — la classe appartient à l'institution du
+        // user, désignée par son id LOCAL et seulement par lui (#873). Le numéro
+        // KLASSCI n'est plus accepté : les deux numérotations se recouvrent, et
+        // « le local d'abord » rangeait la leçon dans une AUTRE classe. La page de
+        // la matière propose des ids locaux depuis #749, comme la modification.
+        $classeId = $this->input('classe_id');
+
+        return is_numeric($classeId)
+            && Classe::query()->where('institution_id', $user->institution_id)->whereKey((int) $classeId)->exists();
     }
 
     /**
@@ -119,21 +120,13 @@ final class StoreLessonRequest extends FormRequest
                 'required',
                 new PositiveInteger,
             ],
-            // #740 — SYMÉTRIE avec `classe_id` : le frontend envoie un id
-            // KLASSCI de matière, pas l'id local. La règle n'acceptait que
-            // l'espace LOCAL : toute leçon portant une matière échouait en 422
-            // « La matière n'existe pas », sur une matière pourtant présente en
-            // base — MatiereSyncService l'y écrit à chaque connexion (#258).
-            // La cause n'était donc pas une table vide, mais une divergence
-            // d'espace d'identifiants.
-            //
-            // La traduction vers l'id LOCAL reste faite par
-            // LessonCrudOperationsService, car `lessons.matiere_id` est un
-            // identifiant local et ne doit jamais recevoir un id KLASSCI (#707).
+            // #873 — l'id LOCAL de la matière, comme pour `classe_id` et comme à la
+            // modification (UpdateLessonRequest) : la page de la matière le donne
+            // (`matiere_id_local`, #749). `lessons.matiere_id` le stocke tel quel.
             'matiere_id' => [
                 'nullable',
                 new PositiveInteger,
-                new MirroredIdentifierExists(Matiere::class, $user?->institution_id, 'La matière n\'existe pas'),
+                Rule::exists('matieres', 'id')->where('institution_id', $user?->institution_id),
             ],
             'niveau_difficulte' => [
                 'nullable',
@@ -170,15 +163,18 @@ final class StoreLessonRequest extends FormRequest
             }
 
             // Sans matière, la règle reste celle de l'établissement : on ne sait
-            // pas de quelle matière la classe devrait être.
-            $matiereId = Matiere::localIdFor($this->input('matiere_id'), $user->institution_id);
-            $matiere = $matiereId === null ? null : Matiere::query()->whereKey($matiereId)->first();
+            // pas de quelle matière la classe devrait être. Les deux ids sont
+            // LOCAUX (#873), déjà vérifiés par `authorize()` et `rules()`.
+            $matiereId = $this->input('matiere_id');
+            $matiere = is_numeric($matiereId)
+                ? Matiere::query()->where('institution_id', $user->institution_id)->whereKey((int) $matiereId)->first()
+                : null;
             if (! $matiere instanceof Matiere) {
                 return;
             }
 
-            $classeId = Classe::localIdFor($this->input('classe_id'), $user->institution_id);
-            $this->exigerUneClasseDeLaMatiere($validator, $classes, $classeId, $matiere, $user);
+            $classeId = $this->input('classe_id');
+            $this->exigerUneClasseDeLaMatiere($validator, $classes, is_numeric($classeId) ? (int) $classeId : null, $matiere, $user);
         }];
     }
 

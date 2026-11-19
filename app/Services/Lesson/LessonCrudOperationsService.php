@@ -6,19 +6,15 @@ namespace App\Services\Lesson;
 
 use App\Enums\LessonStatus;
 use App\Jobs\DispatchLessonPublishedNotifications;
-use App\Models\Classe;
 use App\Models\Lesson;
-use App\Models\Matiere;
-use App\Models\Traits\ResolvesMirroredIdentifier;
 use App\Models\User;
 
 /**
  * Write-side orchestration des leçons (split-15/lesson-crud).
  *
  * Extrait de `LessonCrudController` : centralise les 5 endpoints "mutation"
- * (`store`, `update`, `destroy`, `publish`, `unpublish`) — résolution
- * matière cross-source, transitions de statut, et fan-out notifications
- * lors d'une publication initiale.
+ * (`store`, `update`, `destroy`, `publish`, `unpublish`) — transitions de
+ * statut, et fan-out notifications lors d'une publication initiale.
  *
  * ## Fan-out asynchrone (#538)
  *
@@ -34,8 +30,9 @@ use App\Models\User;
 final class LessonCrudOperationsService
 {
     /**
-     * Créer une nouvelle leçon — résolution `matiere_id` (id local OU
-     * `klassci_id`) + auto-`published_at` si statut `published`.
+     * Créer une nouvelle leçon — `classe_id` et `matiere_id` sont des ids LOCAUX,
+     * vérifiés par `StoreLessonRequest` (#873) — + auto-`published_at` si statut
+     * `published`.
      *
      * @param  array<string, mixed>  $data
      */
@@ -45,54 +42,12 @@ final class LessonCrudOperationsService
         // Scope tenant explicite (defense en profondeur, fix E2E #211 flow 2).
         $data['institution_id'] = $author->institution_id;
 
-        $data = $this->resolveMirroredIdentifiers($data, $author);
-
         // Si la leçon est créée avec status "published", définir published_at automatiquement
         if (isset($data['status']) && $data['status'] === LessonStatus::Published->value && ! isset($data['published_at'])) {
             $data['published_at'] = now();
         }
 
         return Lesson::create($data);
-    }
-
-    /**
-     * Traduit vers l'espace LOCAL les identifiants d'entités miroitées que le
-     * frontend exprime, lui, dans l'espace KLASSCI (#265, #740).
-     *
-     * `lessons.classe_id` et `lessons.matiere_id` sont des clés étrangères
-     * LOCALES : y ranger un `klassci_id` mélangerait deux espaces de
-     * numérotation dans une même colonne — la faute exacte qui a produit la
-     * fuite entre enseignants de #707.
-     *
-     * La résolution est déléguée à {@see ResolvesMirroredIdentifier}, le même code
-     * qu'interroge `StoreLessonRequest` pour ACCEPTER la requête. Les deux ne
-     * peuvent donc plus diverger, et un champ dual supplémentaire s'ajoute en
-     * étendant la table ci-dessous, sans toucher à la mécanique.
-     *
-     * Un identifiant non résolu est laissé INTACT : c'est le comportement
-     * d'origine, et il est sans danger ici parce que `StoreLessonRequest` a
-     * déjà refusé la requête en amont. Dette tracée : ce service, appelé un
-     * jour hors de ce FormRequest, n'aurait plus ce garde-fou.
-     *
-     * @param  array<string, mixed>  $data
-     * @return array<string, mixed>
-     */
-    private function resolveMirroredIdentifiers(array $data, User $author): array
-    {
-        $miroitees = [
-            'matiere_id' => Matiere::class,
-            'classe_id' => Classe::class,
-        ];
-
-        foreach ($miroitees as $champ => $modele) {
-            if (! isset($data[$champ])) {
-                continue;
-            }
-
-            $data[$champ] = $modele::localIdFor($data[$champ], $author->institution_id) ?? $data[$champ];
-        }
-
-        return $data;
     }
 
     /**

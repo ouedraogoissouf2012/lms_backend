@@ -59,7 +59,34 @@ final class TrainingSessionCrudService
 
         $periode->save();
 
-        return $periode;
+        return $periode->load(self::avecSonProgramme());
+    }
+
+    /**
+     * Les Programmes de l'établissement, pour choisir celui d'une Période (#1206).
+     * Ordre stable : `titre`, puis `id` à titre égal.
+     *
+     * @return LengthAwarePaginator<int, Program>
+     */
+    public function listerLesProgrammes(User $acteur, int $parPage): LengthAwarePaginator
+    {
+        return Program::query()
+            ->where('institution_id', $this->etablissementDe($acteur))
+            ->select(['id', 'titre', 'version'])
+            ->orderBy('titre')
+            ->orderBy('id')
+            ->paginate($parPage);
+    }
+
+    /**
+     * Le Programme d'une Période, chargé en UNE requête pour toute la page (#1206).
+     * Supprimé en douceur compris : son titre reste l'histoire de la Période.
+     *
+     * @return array<string, \Closure>
+     */
+    private static function avecSonProgramme(): array
+    {
+        return ['program' => static fn ($programme) => $programme->withTrashed()->select(['id', 'titre'])];
     }
 
     /**
@@ -77,7 +104,7 @@ final class TrainingSessionCrudService
         return TrainingSession::query()
             ->where('institution_id', $this->etablissementDe($acteur))
             ->whereNotIn('status', $ecartes)
-            ->with('program:id,titre')
+            ->with(self::avecSonProgramme())
             ->orderByDesc('starts_on')
             ->paginate($parPage);
     }

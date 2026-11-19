@@ -101,7 +101,7 @@ final class FenetreVisio
             return $fin;
         }
 
-        return $fin->max($demarree->copy()->addHours(self::VISIO_ACTIVE_HEURES));
+        return $fin;
     }
 
     /**

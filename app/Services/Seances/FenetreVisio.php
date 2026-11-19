@@ -116,7 +116,7 @@ final class FenetreVisio
     {
         $fin = self::finDAcces($ligne) ?? $maintenant->copy()->addHours(self::VISIO_ACTIVE_HEURES);
 
-        return $fin->min($maintenant->copy()->addHours(self::JETON_PLAFOND_HEURES))
+        return $fin
             ->max($maintenant->copy()->addMinutes(self::JETON_PLANCHER_MINUTES));
     }
 

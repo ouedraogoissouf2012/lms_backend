@@ -53,19 +53,20 @@ final class LocalClasseCreator
     public function creer(array $donnees): Classe
     {
         $institution = $this->porte->etablissement();
-        $periode = $this->rattachement->periodeQuiRecoit($institution, $donnees['training_session_id'] ?? null);
-
-        return Classe::create([
+        $classe = Classe::create([
             'libelle' => $donnees['libelle'],
             'code' => $this->codeNormalise($donnees['code'] ?? null),
             'description' => $donnees['description'] ?? null,
             'effectif' => $donnees['effectif'] ?? 0,
             'institution_id' => $institution,
-            'training_session_id' => $periode,
+            'training_session_id' => null,
             // JAMAIS d'identifiant KLASSCI : une classe locale n'en a pas, et lui
             // en inventer un la rendrait indiscernable d'une classe miroitée.
             'klassci_id' => null,
         ]);
+        $classe->update(['training_session_id' => $this->rattachement->periodeQuiRecoit($institution, $donnees['training_session_id'] ?? null)]);
+
+        return $classe;
     }
 
     private function codeNormalise(?string $code): ?string

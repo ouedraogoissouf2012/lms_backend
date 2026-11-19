@@ -35,11 +35,14 @@ final class StoreClasseRequest extends FormRequest
             'code' => ['sometimes', 'nullable', 'string', 'max:50'],
             'description' => ['sometimes', 'nullable', 'string', 'max:2000'],
             'effectif' => ['sometimes', 'integer', 'min:0', 'max:10000'],
+            // L'existence et l'état de la Période sont vérifiés au point d'écriture,
+            // dans l'établissement (#1208) : un `exists` ici ne lirait pas l'école.
+            'training_session_id' => ['sometimes', 'nullable', 'integer', 'min:1'],
         ];
     }
 
     /**
-     * @return array{libelle: string, code: string|null, description: string|null, effectif: int}
+     * @return array{libelle: string, code: string|null, description: string|null, effectif: int, training_session_id: int|null}
      */
     public function donnees(): array
     {
@@ -48,6 +51,7 @@ final class StoreClasseRequest extends FormRequest
             'code' => $this->has('code') ? (string) $this->string('code') : null,
             'description' => $this->has('description') ? (string) $this->string('description') : null,
             'effectif' => $this->integer('effectif', 0),
+            'training_session_id' => $this->filled('training_session_id') ? $this->integer('training_session_id') : null,
         ];
     }
 }

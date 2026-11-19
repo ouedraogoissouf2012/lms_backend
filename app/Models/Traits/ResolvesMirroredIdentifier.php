@@ -42,8 +42,8 @@ use Illuminate\Database\Eloquent\Builder;
  *    le remplace : il est *fail-open* quand aucun tenant n'est résolu, ce
  *    filtre-ci ne l'est pas.
  *
- * Vérifié par tests/Unit/Models/Traits/ResolvesMirroredIdentifierTest.php
- * et tests/Feature/Lesson/KlassciIdentifierDualityTest.php.
+ * Vérifié par tests/Unit/Models/Traits/ResolvesMirroredIdentifierTest.php. Depuis #873,
+ * seules les séances s'en servent (#1154) : garde ClasseEtMatiereEnEspaceLocalTest.
  */
 trait ResolvesMirroredIdentifier
 {

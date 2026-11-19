@@ -9,7 +9,11 @@ use App\Models\User;
 use Illuminate\Contracts\Hashing\Hasher;
 
 /**
- * Réinitialisation locale scopée au tenant (#714).
+ * Réinitialisation locale scopée au tenant (#714), par un jeton.
+ *
+ * #808 : la demande de lien ne crée plus de jeton, faute de canal pour le délivrer
+ * ({@see MotDePasseOublie}). La réinitialisation par jeton reste en place pour le jour où
+ * l'envoi existera.
  */
 final class PasswordResetService
 {
@@ -17,35 +21,6 @@ final class PasswordResetService
         private readonly Hasher $hash,
         private readonly TenantAwareTokenRepository $tokens,
     ) {}
-
-    /**
-     * @return array{status: int, payload: array<string, mixed>}
-     */
-    public function requestLink(string $email): array
-    {
-        $user = User::query()->where('email', $email)->first();
-        if ($user instanceof User && ($user->getEmailForPasswordReset() === '')) {
-            return [
-                'status' => 422,
-                'payload' => [
-                    'success' => false,
-                    'message' => 'Ce compte n\'a pas d\'adresse courriel : la réinitialisation est impossible.',
-                ],
-            ];
-        }
-
-        if ($user instanceof User) {
-            $this->tokens->create($user);
-        }
-
-        return [
-            'status' => 200,
-            'payload' => [
-                'success' => true,
-                'message' => 'Si un compte existe pour cette adresse, un courriel a été envoyé.',
-            ],
-        ];
-    }
 
     /**
      * @param  array{email: string, token: string, password: string, password_confirmation: string}  $credentials

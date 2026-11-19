@@ -5,18 +5,32 @@ declare(strict_types=1);
 namespace App\Providers;
 
 use App\Auth\TenantAwareTokenRepository;
+use App\Services\Auth\KlassciMotDePasseOublie;
+use App\Services\Auth\LocalMotDePasseOublie;
+use App\Services\Auth\MotDePasseOublie;
+use App\Services\Roster\RosterAuthorityFactory;
 use App\Services\TenantManager;
 use Illuminate\Contracts\Hashing\Hasher;
 use Illuminate\Database\DatabaseManager;
 use Illuminate\Support\ServiceProvider;
 
 /**
- * Dépôt de jetons de reset scopé par tenant (#714).
+ * Dépôt de jetons de reset scopé par tenant (#714), et la réponse à « mot de passe oublié »
+ * selon l'école (#808).
  */
 final class AuthPasswordServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
+        // #808 : `bind()`, résolu à chaque demande, jamais `singleton()` (il rejouerait la
+        // première école servie). Le contrôleur la reçoit par sa MÉTHODE. Le seul endroit qui
+        // compare le mode reste `RosterAuthorityFactory`.
+        $this->app->bind(
+            MotDePasseOublie::class,
+            static fn ($app) => $app->make(RosterAuthorityFactory::class)
+                ->sourceForCurrentTenant(KlassciMotDePasseOublie::class, LocalMotDePasseOublie::class),
+        );
+
         $this->app->bind(TenantAwareTokenRepository::class, function ($app) {
             $config = $app->make('config')->get('auth.passwords.users', []);
             $table = is_array($config) && is_string($config['table'] ?? null)

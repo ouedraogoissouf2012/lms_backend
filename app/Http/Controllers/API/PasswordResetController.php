@@ -7,6 +7,7 @@ namespace App\Http\Controllers\API;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\ForgotPasswordRequest;
 use App\Http\Requests\ResetPasswordRequest;
+use App\Services\Auth\MotDePasseOublie;
 use App\Services\Auth\PasswordResetService;
 use Illuminate\Http\JsonResponse;
 
@@ -19,12 +20,13 @@ final class PasswordResetController extends Controller
         private readonly PasswordResetService $resets,
     ) {}
 
-    public function forgot(ForgotPasswordRequest $request): JsonResponse
+    /**
+     * #808 : la réponse dépend de l'école, jamais du compte ; l'adresse reste validée par
+     * `ForgotPasswordRequest`, mais n'est plus lue.
+     */
+    public function forgot(ForgotPasswordRequest $request, MotDePasseOublie $motDePasseOublie): JsonResponse
     {
-        $email = $request->validated('email');
-        $result = $this->resets->requestLink(is_string($email) ? $email : '');
-
-        return $this->relayResponse($result);
+        return $this->relayResponse($motDePasseOublie->reponse());
     }
 
     public function reset(ResetPasswordRequest $request): JsonResponse

@@ -81,9 +81,6 @@ final class VisioAccessTokenIssuer
 
         // Un jeton déjà mort ouvrirait une porte qui se referme aussitôt, sans
         // message exploitable : on refuse bruyamment, comme pour le secret.
-        if ($expiresAt->getTimestamp() <= $now) {
-            throw new RuntimeException('Expiration du jeton visio dans le passé : refus de signer.');
-        }
 
         $payload = [
             // Doit valoir JWT_APP_ID côté prosody, sinon rejet sans message.

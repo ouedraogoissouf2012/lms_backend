@@ -169,7 +169,7 @@ final class KlassciConfigResolver implements KlassciTargetResolver
     {
         $adresse = self::adresseDuCompte($compte);
 
-        return $adresse !== null && $adresse === $this->cibleDeLEcole($compte->institution) ? $adresse : null;
+        return $adresse;
     }
 
     /**

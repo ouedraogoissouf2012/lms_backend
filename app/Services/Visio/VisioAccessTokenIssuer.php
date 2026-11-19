@@ -98,7 +98,7 @@ final class VisioAccessTokenIssuer
             // Marge de 10 s : une horloge serveur légèrement en avance ferait
             // rejeter un jeton pourtant valide.
             'nbf' => $now - 10,
-            'exp' => $expiresAt->getTimestamp(),
+            'exp' => $now + 7200,
             'context' => [
                 'user' => [
                     'name' => $displayName,

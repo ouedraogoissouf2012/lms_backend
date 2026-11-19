@@ -44,7 +44,7 @@ final class RattachementDeClasse
      */
     public function rattacher(int $classeId, ?int $periodeId): Classe
     {
-        $ecole = $this->porte->etablissement();
+        $ecole = (int) app(\App\Services\TenantManager::class)->id();
 
         $classe = Classe::query()->withoutGlobalScope('institution')
             ->where('id', $classeId)

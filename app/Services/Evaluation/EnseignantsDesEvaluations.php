@@ -44,7 +44,7 @@ final class EnseignantsDesEvaluations
         $enseignant = User::where('klassci_id', $evaluation->klassci_enseignant_id)->first();
 
         if ($enseignant === null) {
-            return ['enseignant' => null, 'enseignant_nom' => 'Enseignant #' . $evaluation->klassci_enseignant_id];
+            return ['enseignant' => null, 'enseignant_nom' => 'Enseignant #'.$evaluation->klassci_enseignant_id];
         }
 
         return [

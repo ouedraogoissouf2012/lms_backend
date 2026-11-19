@@ -32,6 +32,7 @@ final class QuizListNoNPlusOneTest extends TestCase
     use RefreshDatabase;
 
     private Institution $institution;
+
     private User $student;
 
     protected function setUp(): void
@@ -74,7 +75,7 @@ final class QuizListNoNPlusOneTest extends TestCase
         }
 
         DB::enableQueryLog();
-        $this->getJson('/api/quizzes?per_page=' . $quizCount)->assertStatus(200);
+        $this->getJson('/api/quizzes?per_page='.$quizCount)->assertStatus(200);
         $queries = collect(DB::getQueryLog())->pluck('query');
         DB::disableQueryLog();
         DB::flushQueryLog();

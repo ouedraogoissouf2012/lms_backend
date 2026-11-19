@@ -14,7 +14,7 @@ final class KlassciDataTest extends TestCase
 {
     public function test_get_normalizes_native_array_keys_to_strings(): void
     {
-        $cast = new KlassciData();
+        $cast = new KlassciData;
         $model = new class extends Model {};
 
         self::assertSame(
@@ -25,7 +25,7 @@ final class KlassciDataTest extends TestCase
 
     public function test_get_decodes_json_object_as_string_keyed_array(): void
     {
-        $cast = new KlassciData();
+        $cast = new KlassciData;
         $model = new class extends Model {};
 
         self::assertSame(
@@ -36,7 +36,7 @@ final class KlassciDataTest extends TestCase
 
     public function test_get_returns_empty_array_for_invalid_payload(): void
     {
-        $cast = new KlassciData();
+        $cast = new KlassciData;
         $model = new class extends Model {};
 
         self::assertSame([], $cast->get($model, 'klassci_data', 'not-json', []));

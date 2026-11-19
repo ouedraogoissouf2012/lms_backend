@@ -59,9 +59,9 @@ class TenantManager
      */
     public function getResolved(): int
     {
-        if (!$this->current?->id) {
+        if (! $this->current?->id) {
             throw new \RuntimeException(
-                'CRITICAL: Tenant resolution failed. Institution not initialized. ' .
+                'CRITICAL: Tenant resolution failed. Institution not initialized. '.
                 'This is a security failure - cannot proceed without tenant context.'
             );
         }
@@ -87,9 +87,9 @@ class TenantManager
      */
     public function getResolvedSlug(): string
     {
-        if (!$this->current?->slug) {
+        if (! $this->current?->slug) {
             throw new \RuntimeException(
-                'CRITICAL: Tenant resolution failed. Institution slug not available. ' .
+                'CRITICAL: Tenant resolution failed. Institution slug not available. '.
                 'This is a security failure - cannot proceed without tenant context.'
             );
         }

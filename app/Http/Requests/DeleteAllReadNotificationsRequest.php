@@ -38,8 +38,6 @@ final class DeleteAllReadNotificationsRequest extends FormRequest
 {
     /**
      * Verify user is authenticated.
-     *
-     * @return bool
      */
     public function authorize(): bool
     {

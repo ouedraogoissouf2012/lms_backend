@@ -4,16 +4,16 @@ namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
 use App\Http\Middleware\EnsureSchoolMemberOrPlatformRoute;
+use App\Http\Presenters\UserListPresenter;
 use App\Http\Requests\CreateUserRequest;
-use App\Http\Requests\UpdateUserRequest;
 use App\Http\Requests\DeleteUserRequest;
 use App\Http\Requests\ListUsersRequest;
-use App\Http\Presenters\UserListPresenter;
+use App\Http\Requests\UpdateUserRequest;
 use App\Models\User;
 use App\Services\User\UserDeletionService;
 use App\Services\User\UserListService;
-use InvalidArgumentException;
 use Illuminate\Http\JsonResponse;
+use InvalidArgumentException;
 
 /**
  * AdminController — User management and administration

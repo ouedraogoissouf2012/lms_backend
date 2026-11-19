@@ -4,8 +4,14 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\Concerns;
 
+use App\Http\Requests\DeleteEvaluationRequest;
+use App\Http\Requests\PublishEvaluationRequest;
+use App\Http\Requests\StoreEvaluationRequest;
+use App\Http\Requests\UpdateEvaluationRequest;
 use App\Models\Evaluation;
 use App\Models\User;
+use App\Services\Evaluation\Teacher\TeacherEvaluationViewService;
+use App\Services\Search\TeacherOwnershipScope;
 
 /**
  * Authorization check shared by `DeleteEvaluationRequest`, `PublishEvaluationRequest`,
@@ -53,11 +59,11 @@ use App\Models\User;
  * logique d'autorisation (admin/teacher only) ; l'auteur est établi par la
  * source de programmation de l'école (`EvaluationProgramming`, D72).
  *
- * @see \App\Http\Requests\DeleteEvaluationRequest
- * @see \App\Http\Requests\PublishEvaluationRequest
- * @see \App\Http\Requests\UpdateEvaluationRequest
- * @see \App\Http\Requests\StoreEvaluationRequest (intentionally NOT using this trait)
- * @see \App\Http\Requests\Concerns\ChecksEvaluationOwnership::checkEvaluationOwnership
+ * @see DeleteEvaluationRequest
+ * @see PublishEvaluationRequest
+ * @see UpdateEvaluationRequest
+ * @see StoreEvaluationRequest (intentionally NOT using this trait)
+ * @see ChecksEvaluationOwnership::checkEvaluationOwnership
  */
 trait ChecksEvaluationOwnership
 {
@@ -73,7 +79,7 @@ trait ChecksEvaluationOwnership
     {
         $user = $this->authenticatedUserOrNull();
 
-        if (!$user) {
+        if (! $user) {
             return false;
         }
 
@@ -95,7 +101,7 @@ trait ChecksEvaluationOwnership
      * MUTATION (« un coordinateur ne modifie pas une evaluation »). La transposer
      * telle quelle a la lecture leur retirerait un acces que la route leur accorde
      * (`role:enseignant,coordinateur,superAdmin`) et pour lequel
-     * {@see \App\Services\Evaluation\Teacher\TeacherEvaluationViewService::preview()}
+     * {@see TeacherEvaluationViewService::preview()}
      * ecrit deja une politique de supervision. Ce serait une regression deguisee
      * en durcissement.
      *
@@ -111,7 +117,7 @@ trait ChecksEvaluationOwnership
     {
         $user = $this->authenticatedUserOrNull();
 
-        if (!$user) {
+        if (! $user) {
             return false;
         }
 
@@ -134,7 +140,7 @@ trait ChecksEvaluationOwnership
      * reecrire. Une identite enseignant absente ne vaut pas propriete : elle
      * ferme, faute de quoi elle correspondrait aux evaluations orphelines —
      * meme fermeture par defaut que
-     * {@see \App\Services\Search\TeacherOwnershipScope::applyToEvaluations()}.
+     * {@see TeacherOwnershipScope::applyToEvaluations()}.
      *
      * Contournement admin : admin / administrateur / superAdmin / supradmin.
      */
@@ -142,7 +148,7 @@ trait ChecksEvaluationOwnership
     {
         $evaluation = $this->routedEvaluationForInstitution($user);
 
-        if (!$evaluation) {
+        if (! $evaluation) {
             return false;
         }
 
@@ -171,7 +177,7 @@ trait ChecksEvaluationOwnership
      */
     private function routedEvaluationForInstitution(User $user): ?Evaluation
     {
-        if (!is_int($user->institution_id)) {
+        if (! is_int($user->institution_id)) {
             return null;
         }
 

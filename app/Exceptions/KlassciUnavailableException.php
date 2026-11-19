@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Exceptions;
 
+use App\Services\Klassci\KlassciConfigResolver;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\JsonResponse;
 use RuntimeException;
@@ -23,7 +24,7 @@ use RuntimeException;
  * est vide ou ne porte pas de scheme http(s) : sans URL exploitable, aucun appel
  * proxy ne peut aboutir. C'est une panne/mauvaise config EXTERNE, pas un bug du
  * serveur LMS — on dégrade donc en 503, jamais en 500. Voir
- * {@see self::missingBaseUrl()} et {@see \App\Services\Klassci\KlassciConfigResolver::requireBaseUrl()}.
+ * {@see self::missingBaseUrl()} et {@see KlassciConfigResolver::requireBaseUrl()}.
  *
  * @see app/Services/Klassci/Auth/KlassciTenantDiscovery.php
  * @see app/Http/Controllers/API/AuthController.php::login

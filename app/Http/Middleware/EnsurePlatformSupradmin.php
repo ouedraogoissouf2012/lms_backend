@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Middleware;
 
+use App\Models\Concerns\InteractsWithRoles;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -11,7 +12,7 @@ use Symfony\Component\HttpFoundation\Response;
 
 /**
  * Défense en profondeur (#511) : réserve un endpoint au gestionnaire PLATEFORME
- * (cross-tenant) via la comparaison STRICTE {@see \App\Models\Concerns\InteractsWithRoles::isPlatformSupradmin()}.
+ * (cross-tenant) via la comparaison STRICTE {@see InteractsWithRoles::isPlatformSupradmin()}.
  *
  * Deuxième couche INDÉPENDANTE, appliquée en plus de `role:supradmin`, sur les
  * surfaces cross-tenant les plus sensibles (gestion des institutions : lecture/
@@ -42,8 +43,8 @@ final class EnsurePlatformSupradmin
             // régressé — c'est précisément l'événement que cette 2ᵉ couche existe
             // pour capter. On le rend observable côté SOC (jamais exposé au client).
             Log::warning('Accès plateforme refusé (défense en profondeur #511)', [
-                'user_id'  => $user->id,
-                'role'     => $user->role,
+                'user_id' => $user->id,
+                'role' => $user->role,
                 'endpoint' => $request->path(),
             ]);
 

@@ -117,10 +117,10 @@ final class KlassciConfigResolverUrlGuardTest extends TestCase
 
         $tenant = Mockery::mock(TenantManager::class);
         $tenant->shouldReceive('klassciConfig')->andReturn([
-            'url'   => $url,
+            'url' => $url,
             'token' => 'system-token',
         ]);
 
-        return new KlassciConfigResolver($auth, $tenant, new NullLogger());
+        return new KlassciConfigResolver($auth, $tenant, new NullLogger);
     }
 }

@@ -6,13 +6,14 @@ namespace App\Services\Seances;
 
 use App\Exceptions\MissingKlassciTokenException;
 use App\Models\User;
+use App\Services\SeancesListQueryService;
 
 /**
  * Les listes de séances de l'utilisateur : les séances à venir, l'emploi du
  * temps de l'enseignant, celui de l'élève (ADR-EI-01, lot 3d).
  *
  * Deux sources, choisies par le mode DÉCLARÉ de l'école au point de liaison :
- * KLASSCI ({@see \App\Services\SeancesListQueryService}) et le LMS
+ * KLASSCI ({@see SeancesListQueryService}) et le LMS
  * ({@see LocalSeancesListReader}). Le contrôleur reçoit la source par sa
  * MÉTHODE.
  *

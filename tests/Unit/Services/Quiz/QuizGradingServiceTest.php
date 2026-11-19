@@ -31,11 +31,11 @@ final class QuizGradingServiceTest extends TestCase
     {
         parent::setUp();
 
-        $this->service = new QuizGradingService(new QuizStatisticsService());
+        $this->service = new QuizGradingService(new QuizStatisticsService);
     }
 
     /** @test */
-    public function checkAnswer_multiple_choice_returns_true_when_user_picks_correct_answer(): void
+    public function check_answer_multiple_choice_returns_true_when_user_picks_correct_answer(): void
     {
         $question = QuizQuestion::factory()->multipleChoice()->create();
         $correct = QuizAnswer::create([
@@ -56,7 +56,7 @@ final class QuizGradingServiceTest extends TestCase
     }
 
     /** @test */
-    public function checkAnswer_multiple_choice_returns_false_when_user_picks_wrong_answer(): void
+    public function check_answer_multiple_choice_returns_false_when_user_picks_wrong_answer(): void
     {
         $question = QuizQuestion::factory()->multipleChoice()->create();
         QuizAnswer::create([
@@ -82,10 +82,12 @@ final class QuizGradingServiceTest extends TestCase
      * `{"answers":{"id":true}}` notait n'importe quelle question correcte.
      *
      * @test
+     *
      * @dataProvider nonNumericAnswerProvider
+     *
      * @param  mixed  $userAnswer
      */
-    public function checkAnswer_multiple_choice_rejects_non_numeric_answers($userAnswer): void
+    public function check_answer_multiple_choice_rejects_non_numeric_answers($userAnswer): void
     {
         $question = QuizQuestion::factory()->multipleChoice()->create();
         QuizAnswer::create([
@@ -105,10 +107,12 @@ final class QuizGradingServiceTest extends TestCase
      * #498 — idem pour true_false.
      *
      * @test
+     *
      * @dataProvider nonNumericAnswerProvider
+     *
      * @param  mixed  $userAnswer
      */
-    public function checkAnswer_true_false_rejects_non_numeric_answers($userAnswer): void
+    public function check_answer_true_false_rejects_non_numeric_answers($userAnswer): void
     {
         $question = QuizQuestion::factory()->trueFalse()->create();
         QuizAnswer::create([
@@ -128,11 +132,11 @@ final class QuizGradingServiceTest extends TestCase
     public static function nonNumericAnswerProvider(): array
     {
         return [
-            'boolean true'      => [true],
-            'boolean false'     => [false],
-            'array'             => [[1, 2]],
+            'boolean true' => [true],
+            'boolean false' => [false],
+            'array' => [[1, 2]],
             'non-numeric string' => ['5abc'],
-            'null'              => [null],
+            'null' => [null],
         ];
     }
 
@@ -142,7 +146,7 @@ final class QuizGradingServiceTest extends TestCase
      *
      * @test
      */
-    public function checkAnswer_accepts_numeric_string_id_for_multiple_choice(): void
+    public function check_answer_accepts_numeric_string_id_for_multiple_choice(): void
     {
         $question = QuizQuestion::factory()->multipleChoice()->create();
         $correct = QuizAnswer::create([
@@ -158,7 +162,7 @@ final class QuizGradingServiceTest extends TestCase
     }
 
     /** @test */
-    public function checkAnswer_multiple_response_returns_true_only_on_exact_set_match(): void
+    public function check_answer_multiple_response_returns_true_only_on_exact_set_match(): void
     {
         $question = QuizQuestion::factory()->create(['type' => 'multiple_response']);
         $a = QuizAnswer::create(['question_id' => $question->id, 'answer_text' => 'A', 'is_correct' => true, 'order' => 1]);
@@ -177,7 +181,7 @@ final class QuizGradingServiceTest extends TestCase
     }
 
     /** @test */
-    public function checkAnswer_true_false_compares_against_correct_answer(): void
+    public function check_answer_true_false_compares_against_correct_answer(): void
     {
         $question = QuizQuestion::factory()->trueFalse()->create();
         $correct = QuizAnswer::create([
@@ -199,7 +203,7 @@ final class QuizGradingServiceTest extends TestCase
     }
 
     /** @test */
-    public function checkAnswer_returns_null_for_short_answer_and_essay(): void
+    public function check_answer_returns_null_for_short_answer_and_essay(): void
     {
         $shortAnswer = QuizQuestion::factory()->shortAnswer()->create();
         $shortAnswer->load('answers');
@@ -211,7 +215,7 @@ final class QuizGradingServiceTest extends TestCase
     }
 
     /** @test */
-    public function calculatePoints_returns_question_points_when_correct(): void
+    public function calculate_points_returns_question_points_when_correct(): void
     {
         $question = QuizQuestion::factory()->multipleChoice()->create(['points' => 5]);
         $correct = QuizAnswer::create([
@@ -226,7 +230,7 @@ final class QuizGradingServiceTest extends TestCase
     }
 
     /** @test */
-    public function calculatePoints_returns_zero_when_incorrect_or_requires_manual(): void
+    public function calculate_points_returns_zero_when_incorrect_or_requires_manual(): void
     {
         $mc = QuizQuestion::factory()->multipleChoice()->create(['points' => 5]);
         QuizAnswer::create(['question_id' => $mc->id, 'answer_text' => 'A', 'is_correct' => true, 'order' => 1]);
@@ -242,7 +246,7 @@ final class QuizGradingServiceTest extends TestCase
     }
 
     /** @test */
-    public function gradeAttempt_auto_grades_when_all_questions_are_auto(): void
+    public function grade_attempt_auto_grades_when_all_questions_are_auto(): void
     {
         $quiz = Quiz::factory()->create(['passing_score' => 50]);
         $q1 = QuizQuestion::factory()->multipleChoice()->create(['quiz_id' => $quiz->id, 'points' => 10]);
@@ -265,7 +269,7 @@ final class QuizGradingServiceTest extends TestCase
     }
 
     /** @test */
-    public function gradeAttempt_sets_status_submitted_when_manual_grading_required(): void
+    public function grade_attempt_sets_status_submitted_when_manual_grading_required(): void
     {
         $quiz = Quiz::factory()->create();
         QuizQuestion::factory()->multipleChoice()->create(['quiz_id' => $quiz->id, 'points' => 10]);
@@ -282,7 +286,7 @@ final class QuizGradingServiceTest extends TestCase
     }
 
     /** @test */
-    public function submitAttempt_captures_answers_time_spent_and_recomputes_quiz_stats(): void
+    public function submit_attempt_captures_answers_time_spent_and_recomputes_quiz_stats(): void
     {
         $quiz = Quiz::factory()->create(['passing_score' => 50]);
         $q1 = QuizQuestion::factory()->multipleChoice()->create(['quiz_id' => $quiz->id, 'points' => 10]);
@@ -312,7 +316,7 @@ final class QuizGradingServiceTest extends TestCase
     }
 
     /** @test */
-    public function manualGradeAttempt_sets_points_score_passed_grader_and_recomputes_stats(): void
+    public function manual_grade_attempt_sets_points_score_passed_grader_and_recomputes_stats(): void
     {
         $quiz = Quiz::factory()->create(['passing_score' => 50]);
         $teacher = User::factory()->create();

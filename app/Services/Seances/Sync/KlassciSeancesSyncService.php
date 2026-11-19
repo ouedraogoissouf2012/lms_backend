@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Services\Seances\Sync;
 
 use App\Models\User;
-use App\Services\Seances\KlassciPayload;
 use App\Services\Seances\Sync\Cursor\SeanceSyncCursorStore;
 use App\Services\Seances\Sync\Cursor\TeacherCursorStream;
 use App\Services\Seances\UserOwnMatieresResolver;

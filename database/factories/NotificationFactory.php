@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Models\Institution;
 use App\Models\Notification;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
@@ -30,7 +31,7 @@ class NotificationFactory extends Factory
             ],
             'read_at' => null,
             // institution_id requis : Notification est tenant-scoped via BelongsToInstitution.
-            'institution_id' => \App\Models\Institution::factory(),
+            'institution_id' => Institution::factory(),
         ];
     }
 

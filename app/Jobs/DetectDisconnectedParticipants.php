@@ -49,7 +49,7 @@ class DetectDisconnectedParticipants implements ShouldQueue
             ->get();
 
         $logger->info('[DetectDisconnectedParticipants] Participants à vérifier', [
-            'count' => $participantsConnectes->count()
+            'count' => $participantsConnectes->count(),
         ]);
 
         foreach ($participantsConnectes as $attendance) {
@@ -75,7 +75,7 @@ class DetectDisconnectedParticipants implements ShouldQueue
                     'seance_id' => $attendance->seance_id,
                     'last_seen_at' => $attendance->last_seen_at->format('Y-m-d H:i:s'),
                     'minutes_inactif' => $minutesSinceLastSeen,
-                    'duration_minutes' => $attendance->duration_minutes
+                    'duration_minutes' => $attendance->duration_minutes,
                 ]);
             }
         }
@@ -104,14 +104,14 @@ class DetectDisconnectedParticipants implements ShouldQueue
                         'user_id' => $attendance->user_id,
                         'seance_id' => $attendance->seance_id,
                         'joined_at' => $attendance->joined_at->format('Y-m-d H:i:s'),
-                        'minutes_depuis_join' => $minutesSinceJoined
+                        'minutes_depuis_join' => $minutesSinceJoined,
                     ]);
                 }
             }
         }
 
         $logger->info('[DetectDisconnectedParticipants] Job terminé', [
-            'participants_deconnectes' => $disconnectedCount
+            'participants_deconnectes' => $disconnectedCount,
         ]);
     }
 
@@ -120,7 +120,7 @@ class DetectDisconnectedParticipants implements ShouldQueue
      */
     public function failed(\Throwable $exception): void
     {
-                // Pattern AutoCloseEmptySeances (#209) : failed() est appelée hors
+        // Pattern AutoCloseEmptySeances (#209) : failed() est appelée hors
         // container (aucune injection possible) — résolution explicite.
         app(CaughtExceptionLog::class)->error('[DetectDisconnectedParticipants] Job échoué', $exception);
     }

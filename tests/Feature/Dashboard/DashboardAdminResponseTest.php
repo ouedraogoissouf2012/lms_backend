@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Dashboard;
 
+use App\Http\Controllers\API\Dashboard\DashboardAdminController;
 use App\Models\Institution;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -11,7 +12,7 @@ use Tests\TestCase;
 
 /**
  * Test de CARACTÉRISATION du contrat de réponse de
- * {@see \App\Http\Controllers\API\Dashboard\DashboardAdminController::stats}
+ * {@see DashboardAdminController::stats}
  * (axe #1 — issue #294 : test-first AVANT migration vers `RespondsWithJson`).
  *
  * Verrouille la forme JSON EXACTE de l'unique réponse (1 succès `{success, data}`)
@@ -53,7 +54,7 @@ final class DashboardAdminResponseTest extends TestCase
         ]);
         $token = $coordinator->createToken('dashboard-response-test')->plainTextToken;
 
-        $response = $this->withHeaders(['Authorization' => 'Bearer ' . $token])
+        $response = $this->withHeaders(['Authorization' => 'Bearer '.$token])
             ->getJson('/api/dashboard/stats');
 
         $response->assertStatus(200);

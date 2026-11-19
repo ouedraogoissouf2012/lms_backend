@@ -37,7 +37,7 @@ final class ChapterAccessGate
             ->orderBy('order', 'desc')
             ->first();
 
-        if (!$previousChapter) {
+        if (! $previousChapter) {
             return true;
         }
 

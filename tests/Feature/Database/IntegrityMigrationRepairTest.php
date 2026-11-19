@@ -122,7 +122,7 @@ final class IntegrityMigrationRepairTest extends TestCase
     private function migration(string $filename): object
     {
         /** @var object $migration */
-        $migration = require base_path('database/migrations/' . $filename);
+        $migration = require base_path('database/migrations/'.$filename);
 
         return $migration;
     }

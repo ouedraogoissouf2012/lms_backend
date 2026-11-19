@@ -33,9 +33,9 @@ final class EnsureKlassciSyncTest extends EnsureKlassciSyncTestCase
         $user = $this->staleUser('etudiant');
 
         $this->runMiddlewareWith($user, [
-            'role'  => 'supradmin',     // attaque — KLASSCI tente une escalade
+            'role' => 'supradmin',     // attaque — KLASSCI tente une escalade
             'email' => 'attacker@evil.com',
-            'nom'   => 'Renamed',
+            'nom' => 'Renamed',
         ]);
 
         $user->refresh();
@@ -47,9 +47,9 @@ final class EnsureKlassciSyncTest extends EnsureKlassciSyncTestCase
         $user = $this->staleUser('etudiant');
 
         $this->runMiddlewareWith($user, [
-            'role'  => 'supradmin',
+            'role' => 'supradmin',
             'email' => 'whatever@x.fr',
-            'nom'   => 'Renamed',
+            'nom' => 'Renamed',
         ]);
 
         $user->refresh();
@@ -61,9 +61,9 @@ final class EnsureKlassciSyncTest extends EnsureKlassciSyncTestCase
         $user = $this->staleUser('etudiant', email: 'real@school.fr');
 
         $this->runMiddlewareWith($user, [
-            'role'  => 'etudiant',
+            'role' => 'etudiant',
             'email' => 'attacker@evil.com',
-            'nom'   => 'Renamed',
+            'nom' => 'Renamed',
         ]);
 
         $user->refresh();
@@ -80,9 +80,9 @@ final class EnsureKlassciSyncTest extends EnsureKlassciSyncTestCase
         $oldSync = $user->last_klassci_sync;
 
         $this->runMiddlewareWith($user, [
-            'role'  => 'etudiant',
+            'role' => 'etudiant',
             'email' => 'real@school.fr',
-            'nom'   => 'Updated Name',
+            'nom' => 'Updated Name',
         ]);
 
         $user->refresh();
@@ -100,9 +100,9 @@ final class EnsureKlassciSyncTest extends EnsureKlassciSyncTestCase
         $capturedWarnings = $this->captureLogWarnings();
 
         $this->runMiddlewareWith($user, [
-            'role'  => 'supradmin',
+            'role' => 'supradmin',
             'email' => 'real@school.fr',
-            'nom'   => 'X',
+            'nom' => 'X',
         ]);
 
         $divergence = $this->findWarningByEvent($capturedWarnings, 'klassci_role_divergence_detected');
@@ -123,9 +123,9 @@ final class EnsureKlassciSyncTest extends EnsureKlassciSyncTestCase
         $capturedWarnings = $this->captureLogWarnings();
 
         $this->runMiddlewareWith($user, [
-            'role'  => 'enseignant',
+            'role' => 'enseignant',
             'email' => 'real@school.fr',
-            'nom'   => 'X',
+            'nom' => 'X',
         ]);
 
         $divergence = $this->findWarningByEvent($capturedWarnings, 'klassci_role_divergence_detected');
@@ -146,7 +146,7 @@ final class EnsureKlassciSyncTest extends EnsureKlassciSyncTestCase
         $request = Request::create('/api/dummy', 'GET');
         $request->setUserResolver(fn () => $user);
 
-        $middleware = new EnsureKlassciSync($klassciService, new KlassciDataWhitelist(), app(TokenPresentSyncGate::class), app(CaughtExceptionLog::class));
+        $middleware = new EnsureKlassciSync($klassciService, new KlassciDataWhitelist, app(TokenPresentSyncGate::class), app(CaughtExceptionLog::class));
         $middleware->handle($request, fn ($req) => new Response('ok', 200));
 
         $user->refresh();
@@ -170,9 +170,9 @@ final class EnsureKlassciSyncTest extends EnsureKlassciSyncTestCase
         $capturedWarnings = $this->captureLogWarnings();
 
         $this->runMiddlewareWith($user, [
-            'role'  => 'etudiant',
+            'role' => 'etudiant',
             'email' => 'real@school.fr',
-            'nom'   => 'X',
+            'nom' => 'X',
         ]);
 
         $divergence = $this->findWarningByEvent($capturedWarnings, 'klassci_role_divergence_detected');
@@ -184,11 +184,11 @@ final class EnsureKlassciSyncTest extends EnsureKlassciSyncTestCase
     {
         // User synced 1h ago — middleware should NOT call KLASSCI.
         $user = User::factory()->create([
-            'institution_id'    => $this->institution->id,
-            'role'              => 'etudiant',
-            'klassci_role'      => 'etudiant',
-            'email'             => 'real@school.fr',
-            'name'              => 'Untouched',
+            'institution_id' => $this->institution->id,
+            'role' => 'etudiant',
+            'klassci_role' => 'etudiant',
+            'email' => 'real@school.fr',
+            'name' => 'Untouched',
             'last_klassci_sync' => now()->subHour(),
         ]);
 
@@ -198,7 +198,7 @@ final class EnsureKlassciSyncTest extends EnsureKlassciSyncTestCase
         $request = Request::create('/api/dummy', 'GET');
         $request->setUserResolver(fn () => $user);
 
-        $middleware = new EnsureKlassciSync($klassciService, new KlassciDataWhitelist(), app(TokenPresentSyncGate::class), app(CaughtExceptionLog::class));
+        $middleware = new EnsureKlassciSync($klassciService, new KlassciDataWhitelist, app(TokenPresentSyncGate::class), app(CaughtExceptionLog::class));
         $response = $middleware->handle($request, fn ($req) => new Response('ok', 200));
 
         self::assertSame(200, $response->getStatusCode());
@@ -212,21 +212,21 @@ final class EnsureKlassciSyncTest extends EnsureKlassciSyncTestCase
     public function test_resync_does_not_overwrite_klassci_enseignant_id(): void
     {
         $user = User::factory()->create([
-            'institution_id'        => $this->institution->id,
-            'role'                  => 'enseignant',
-            'klassci_role'          => 'enseignant',
+            'institution_id' => $this->institution->id,
+            'role' => 'enseignant',
+            'klassci_role' => 'enseignant',
             'klassci_enseignant_id' => 42,
-            'email'                 => 'real@school.fr',
-            'name'                  => 'Original Name',
-            'klassci_data'          => json_encode(['enseignant_id' => 42]),
-            'last_klassci_sync'     => now()->subHours(25),
+            'email' => 'real@school.fr',
+            'name' => 'Original Name',
+            'klassci_data' => json_encode(['enseignant_id' => 42]),
+            'last_klassci_sync' => now()->subHours(25),
         ]);
 
         // Compromised KLASSCI returns a different enseignant_id (impersonation).
         $this->runMiddlewareWith($user, [
-            'role'          => 'enseignant',
-            'email'         => 'real@school.fr',
-            'nom'           => 'X',
+            'role' => 'enseignant',
+            'email' => 'real@school.fr',
+            'nom' => 'X',
             'enseignant_id' => 999,
         ]);
 

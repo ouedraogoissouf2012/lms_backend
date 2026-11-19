@@ -33,6 +33,7 @@ final class UserSoftDeleteTest extends TestCase
     use RefreshDatabase;
 
     private Institution $institution;
+
     private User $coordinator;
 
     protected function setUp(): void

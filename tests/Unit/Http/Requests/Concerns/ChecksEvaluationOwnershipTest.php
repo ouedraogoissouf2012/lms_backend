@@ -26,6 +26,7 @@ final class ChecksEvaluationOwnershipTest extends TestCase
     use RefreshDatabase;
 
     private Institution $institution;
+
     private Institution $otherInstitution;
 
     protected function setUp(): void
@@ -33,7 +34,7 @@ final class ChecksEvaluationOwnershipTest extends TestCase
 
         parent::setUp();
 
-        $this->institution      = Institution::factory()->create(['slug' => 'school-a']);
+        $this->institution = Institution::factory()->create(['slug' => 'school-a']);
         $this->otherInstitution = Institution::factory()->create(['slug' => 'school-b']);
     }
 
@@ -72,7 +73,7 @@ final class ChecksEvaluationOwnershipTest extends TestCase
     public function test_returns_false_when_user_is_not_authenticated(): void
     {
         $eval = Evaluation::factory()->create([
-            'institution_id'        => $this->institution->id,
+            'institution_id' => $this->institution->id,
             'klassci_enseignant_id' => 42,
         ]);
 
@@ -83,13 +84,13 @@ final class ChecksEvaluationOwnershipTest extends TestCase
     public function test_returns_false_for_coordinateur(): void
     {
         $user = User::factory()->create([
-            'institution_id'        => $this->institution->id,
-            'role'                  => 'coordinateur',
-            'klassci_role'          => 'coordinateur',
+            'institution_id' => $this->institution->id,
+            'role' => 'coordinateur',
+            'klassci_role' => 'coordinateur',
             'klassci_enseignant_id' => 42,
         ]);
         $eval = Evaluation::factory()->create([
-            'institution_id'        => $this->institution->id,
+            'institution_id' => $this->institution->id,
             'klassci_enseignant_id' => 42,
         ]);
 
@@ -100,9 +101,9 @@ final class ChecksEvaluationOwnershipTest extends TestCase
     public function test_returns_false_when_evaluation_not_found(): void
     {
         $user = User::factory()->create([
-            'institution_id'        => $this->institution->id,
-            'role'                  => 'enseignant',
-            'klassci_role'          => 'enseignant',
+            'institution_id' => $this->institution->id,
+            'role' => 'enseignant',
+            'klassci_role' => 'enseignant',
             'klassci_enseignant_id' => 42,
         ]);
 
@@ -113,13 +114,13 @@ final class ChecksEvaluationOwnershipTest extends TestCase
     public function test_returns_false_for_evaluation_in_other_institution(): void
     {
         $user = User::factory()->create([
-            'institution_id'        => $this->institution->id,
-            'role'                  => 'enseignant',
-            'klassci_role'          => 'enseignant',
+            'institution_id' => $this->institution->id,
+            'role' => 'enseignant',
+            'klassci_role' => 'enseignant',
             'klassci_enseignant_id' => 42,
         ]);
         $foreignEval = Evaluation::factory()->create([
-            'institution_id'        => $this->otherInstitution->id,
+            'institution_id' => $this->otherInstitution->id,
             'klassci_enseignant_id' => 42,    // même owner, autre tenant
         ]);
 
@@ -130,13 +131,13 @@ final class ChecksEvaluationOwnershipTest extends TestCase
     public function test_returns_true_for_owner_with_matching_klassci_enseignant_id(): void
     {
         $user = User::factory()->create([
-            'institution_id'        => $this->institution->id,
-            'role'                  => 'enseignant',
-            'klassci_role'          => 'enseignant',
+            'institution_id' => $this->institution->id,
+            'role' => 'enseignant',
+            'klassci_role' => 'enseignant',
             'klassci_enseignant_id' => 42,
         ]);
         $eval = Evaluation::factory()->create([
-            'institution_id'        => $this->institution->id,
+            'institution_id' => $this->institution->id,
             'klassci_enseignant_id' => 42,
         ]);
 
@@ -147,13 +148,13 @@ final class ChecksEvaluationOwnershipTest extends TestCase
     public function test_returns_true_for_admin_regardless_of_klassci_enseignant_id(): void
     {
         $admin = User::factory()->create([
-            'institution_id'        => $this->institution->id,
-            'role'                  => 'supradmin',
-            'klassci_role'          => 'supradmin',
+            'institution_id' => $this->institution->id,
+            'role' => 'supradmin',
+            'klassci_role' => 'supradmin',
             'klassci_enseignant_id' => null,    // admin n'a pas d'identité enseignant
         ]);
         $eval = Evaluation::factory()->create([
-            'institution_id'        => $this->institution->id,
+            'institution_id' => $this->institution->id,
             'klassci_enseignant_id' => 999,     // appartient à un autre prof
         ]);
 
@@ -164,13 +165,13 @@ final class ChecksEvaluationOwnershipTest extends TestCase
     public function test_returns_false_for_non_admin_with_null_klassci_enseignant_id(): void
     {
         $user = User::factory()->create([
-            'institution_id'        => $this->institution->id,
-            'role'                  => 'enseignant',
-            'klassci_role'          => 'enseignant',
+            'institution_id' => $this->institution->id,
+            'role' => 'enseignant',
+            'klassci_role' => 'enseignant',
             'klassci_enseignant_id' => null,
         ]);
         $eval = Evaluation::factory()->create([
-            'institution_id'        => $this->institution->id,
+            'institution_id' => $this->institution->id,
             'klassci_enseignant_id' => 42,
         ]);
 
@@ -181,13 +182,13 @@ final class ChecksEvaluationOwnershipTest extends TestCase
     public function test_returns_false_for_non_owner_with_mismatched_klassci_enseignant_id(): void
     {
         $user = User::factory()->create([
-            'institution_id'        => $this->institution->id,
-            'role'                  => 'enseignant',
-            'klassci_role'          => 'enseignant',
+            'institution_id' => $this->institution->id,
+            'role' => 'enseignant',
+            'klassci_role' => 'enseignant',
             'klassci_enseignant_id' => 42,
         ]);
         $foreignEval = Evaluation::factory()->create([
-            'institution_id'        => $this->institution->id,
+            'institution_id' => $this->institution->id,
             'klassci_enseignant_id' => 999,
         ]);
 

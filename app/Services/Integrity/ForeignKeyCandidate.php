@@ -19,8 +19,7 @@ final readonly class ForeignKeyCandidate
         public string $column,
         public string $referencedTable,
         public string $referencedColumn = 'id',
-    ) {
-    }
+    ) {}
 
     /**
      * Motif d'archivage porté en quarantaine — stable, donc rejouable.

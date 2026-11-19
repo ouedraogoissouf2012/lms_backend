@@ -24,7 +24,7 @@ use Tests\TestCase;
  */
 final class SessionSecureCookieDefaultTest extends TestCase
 {
-    private const CONFIG_PATH = __DIR__ . '/../../../config/session.php';
+    private const CONFIG_PATH = __DIR__.'/../../../config/session.php';
 
     #[RunInSeparateProcess]
     public function test_production_without_explicit_override_defaults_to_secure_true(): void

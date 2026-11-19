@@ -66,8 +66,7 @@ final class NotificationQueryService
         private readonly CacheRepository $cache,
         private readonly ConnectionInterface $db,
         private readonly NotificationPresenter $presenter,
-    ) {
-    }
+    ) {}
 
     /**
      * Paginer les notifications d'un utilisateur. `$unreadOnly` filtre sur
@@ -79,7 +78,7 @@ final class NotificationQueryService
      */
     public function paginate(User $user, int $perPage, bool $unreadOnly, int $page): LengthAwarePaginator
     {
-        $cacheKey = "notifications_user_{$user->id}_unread_" . ($unreadOnly ? '1' : '0') . "_page_{$page}";
+        $cacheKey = "notifications_user_{$user->id}_unread_".($unreadOnly ? '1' : '0')."_page_{$page}";
 
         /** @var LengthAwarePaginator<int, Notification> */
         return $this->cache->remember($cacheKey, self::CACHE_TTL_LIST, function () use ($user, $perPage, $unreadOnly) {
@@ -174,7 +173,7 @@ final class NotificationQueryService
      *     read: int,
      *     last_24h: int,
      *     last_7days: int,
-     *     by_type: \Illuminate\Support\Collection<int, object>
+     *     by_type: Collection<int, object>
      * }
      */
     public function stats(User $caller): array
@@ -194,7 +193,7 @@ final class NotificationQueryService
          *     read: int,
          *     last_24h: int,
          *     last_7days: int,
-         *     by_type: \Illuminate\Support\Collection<int, object>
+         *     by_type: Collection<int, object>
          * } */
         return $this->cache->remember($cacheKey, self::CACHE_TTL_STATS, function () use ($isSupradmin, $caller): array {
             $applyTenantFilter = static function (QueryBuilder $query) use ($isSupradmin, $caller): QueryBuilder {

@@ -12,11 +12,10 @@ final class AsyncReportStore
 
     public function __construct(
         private readonly CacheRepository $cache,
-    ) {
-    }
+    ) {}
 
     /**
-     * @param array<string, mixed> $meta
+     * @param  array<string, mixed>  $meta
      */
     public function pending(string $id, int $userId, string $type, array $meta = []): void
     {
@@ -74,7 +73,7 @@ final class AsyncReportStore
     }
 
     /**
-     * @param array<string, mixed> $patch
+     * @param  array<string, mixed>  $patch
      */
     private function patch(string $id, array $patch): void
     {
@@ -89,7 +88,7 @@ final class AsyncReportStore
     }
 
     /**
-     * @param array<string, mixed> $payload
+     * @param  array<string, mixed>  $payload
      */
     private function put(string $id, array $payload): void
     {
@@ -98,6 +97,6 @@ final class AsyncReportStore
 
     private function key(string $id): string
     {
-        return 'async_report_' . $id;
+        return 'async_report_'.$id;
     }
 }

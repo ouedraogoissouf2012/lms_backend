@@ -36,13 +36,12 @@ final class KnowledgeCheckOpenAttempts
     public function __construct(
         private readonly KnowledgeCheckPresentation $presentation,
         private readonly KnowledgeCheckGradingService $grader,
-    ) {
-    }
+    ) {}
 
     /**
      * Ouvre (ou reprend) la tentative de l'élève, et tire sa présentation.
      *
-     * @return array{attempt: KnowledgeCheckAttempt, questions: list<array<string, mixed>>}  les questions dans l'ordre affiché
+     * @return array{attempt: KnowledgeCheckAttempt, questions: list<array<string, mixed>>} les questions dans l'ordre affiché
      */
     public function ouvrir(KnowledgeCheck $quiz, User $user): array
     {

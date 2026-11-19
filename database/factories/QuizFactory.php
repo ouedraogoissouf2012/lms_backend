@@ -2,12 +2,13 @@
 
 namespace Database\Factories;
 
+use App\Models\Institution;
 use App\Models\Quiz;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
- * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\Quiz>
+ * @extends Factory<Quiz>
  */
 class QuizFactory extends Factory
 {
@@ -28,7 +29,7 @@ class QuizFactory extends Factory
             'passing_score' => $this->faker->numberBetween(50, 80),
             'max_attempts' => $this->faker->numberBetween(1, 3),
             // institution_id requis : Quiz est tenant-scoped via BelongsToInstitution.
-            'institution_id' => \App\Models\Institution::factory(),
+            'institution_id' => Institution::factory(),
         ];
     }
 

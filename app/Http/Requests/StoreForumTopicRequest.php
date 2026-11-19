@@ -63,7 +63,7 @@ class StoreForumTopicRequest extends FormRequest
             $content = $this->input('content');
             $merge['content'] = is_string($content) ? trim($content) : $content;
         }
-        if (!empty($merge)) {
+        if (! empty($merge)) {
             $this->merge($merge);
         }
     }

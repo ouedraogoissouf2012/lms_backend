@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use App\Http\Requests\Concerns\ChecksForumAuthorization;
+use App\Models\ForumTopic;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Auth;
 
@@ -21,7 +22,7 @@ class UpdateForumTopicRequest extends FormRequest
     public function authorize(): bool
     {
         $topic = $this->route('topic');
-        $topic = $topic instanceof \App\Models\ForumTopic ? $topic : null;
+        $topic = $topic instanceof ForumTopic ? $topic : null;
 
         return $this->isForumActionAuthorized(
             ownerUserId: $topic?->user_id,
@@ -58,7 +59,7 @@ class UpdateForumTopicRequest extends FormRequest
             // Fix #212 : `$this->content` = corps HTTP brut, pas l'input.
             $merge['content'] = trim((string) $this->input('content'));
         }
-        if (!empty($merge)) {
+        if (! empty($merge)) {
             $this->merge($merge);
         }
     }

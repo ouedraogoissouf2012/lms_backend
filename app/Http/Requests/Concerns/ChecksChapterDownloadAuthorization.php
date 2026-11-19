@@ -6,6 +6,7 @@ namespace App\Http\Requests\Concerns;
 
 use App\Models\Chapter;
 use App\Models\User;
+use App\Services\Chapter\ChapterReadGate;
 
 /**
  * Issue #598 — autorisation du téléchargement du **document source** d'un
@@ -27,7 +28,7 @@ use App\Models\User;
  * non publiées.
  *
  * L'inscription (classe de l'étudiant) est hors de ce trait : elle est
- * appliquée **avant** par {@see \App\Services\Chapter\ChapterReadGate}
+ * appliquée **avant** par {@see ChapterReadGate}
  * (`#621`, même règle que `#482`). Ici : seulement le droit de télécharger
  * une source déjà lisible.
  *

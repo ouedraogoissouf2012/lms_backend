@@ -2,10 +2,11 @@
 
 namespace App\Models;
 
+use App\Models\Traits\BelongsToInstitution;
+use Database\Factories\LessonProgressFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use App\Models\Traits\BelongsToInstitution;
 
 /**
  * Model LessonProgress
@@ -14,8 +15,8 @@ use App\Models\Traits\BelongsToInstitution;
  */
 class LessonProgress extends Model
 {
-    /** @use HasFactory<\Database\Factories\LessonProgressFactory> */
-    use HasFactory, BelongsToInstitution;
+    /** @use HasFactory<LessonProgressFactory> */
+    use BelongsToInstitution, HasFactory;
 
     protected $table = 'lesson_progress';
 
@@ -79,5 +80,4 @@ class LessonProgress extends Model
     {
         return $this->belongsTo(Lesson::class);
     }
-
 }

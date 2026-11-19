@@ -155,10 +155,10 @@ final class PlatformRoutesListTest extends TestCase
             }
 
             $this->app['auth']->forgetGuards();
-            $reponse = $this->withToken($jeton)->json($route->methods()[0], '/' . $this->uriConcrete($route));
+            $reponse = $this->withToken($jeton)->json($route->methods()[0], '/'.$this->uriConcrete($route));
 
             if ($reponse->status() !== 403 || $reponse->json('message') !== EnsureSchoolMemberOrPlatformRoute::MESSAGE) {
-                $ouvertes[] = $this->cle($route, 'api/') . ' -> ' . $reponse->status();
+                $ouvertes[] = $this->cle($route, 'api/').' -> '.$reponse->status();
             }
         }
 
@@ -194,7 +194,7 @@ final class PlatformRoutesListTest extends TestCase
     {
         $chemin = substr($route->uri(), strlen($prefixe));
 
-        return $route->methods()[0] . ' ' . ($chemin === false || $chemin === '' ? '' : $chemin);
+        return $route->methods()[0].' '.($chemin === false || $chemin === '' ? '' : $chemin);
     }
 
     /** Les paramètres de chemin reçoivent `1` : la porte décide avant toute résolution de modèle. */

@@ -49,6 +49,7 @@ use App\Services\Matiere\MatiereDetailsReader;
 use App\Services\Matiere\MyMatieresQueryService;
 use App\Services\Matiere\TeacherMatieresReader;
 use App\Services\Roster\RosterAuthorityFactory;
+use App\Services\SeanceDetailQueryService;
 use App\Services\Seances\CreationDeSeance;
 use App\Services\Seances\KlassciCreationDeSeance;
 use App\Services\Seances\KlassciModificationDeSeance;
@@ -62,7 +63,6 @@ use App\Services\Seances\ModificationDeSeance;
 use App\Services\Seances\SeanceDesignee;
 use App\Services\Seances\SeanceDetailReader;
 use App\Services\Seances\SeancesListReader;
-use App\Services\SeanceDetailQueryService;
 use App\Services\SeancesListQueryService;
 use Illuminate\Support\ServiceProvider;
 

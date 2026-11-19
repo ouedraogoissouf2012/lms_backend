@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use App\Http\Requests\Concerns\ChecksForumAuthorization;
+use App\Models\ForumPost;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Auth;
 
@@ -21,7 +22,7 @@ class UpdateForumPostRequest extends FormRequest
     public function authorize(): bool
     {
         $post = $this->route('post');
-        $post = $post instanceof \App\Models\ForumPost ? $post : null;
+        $post = $post instanceof ForumPost ? $post : null;
 
         return $this->isForumActionAuthorized(
             ownerUserId: $post?->user_id,

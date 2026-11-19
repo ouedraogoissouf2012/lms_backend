@@ -33,8 +33,7 @@ final class ProxyAcademicController extends Controller
 
     public function __construct(
         private readonly KlassciProxyService $klassciService,
-    ) {
-    }
+    ) {}
 
     /**
      * GET /api/proxy/evaluations — la programmation des évaluations du porteur.
@@ -71,6 +70,7 @@ final class ProxyAcademicController extends Controller
 
             $filters = $request->only(['classe_id', 'enseignant_id', 'date_debut', 'date_fin']);
             $data = $this->klassciService->getEmploiTemps($klassciToken, $filters);
+
             return response()->json($data);
         } catch (\Exception $e) {
             return $this->proxyErrorResponse($e);
@@ -101,6 +101,7 @@ final class ProxyAcademicController extends Controller
 
         try {
             $data = $this->klassciService->saveNotes($klassciToken, $id, $validated['notes']);
+
             return response()->json($data);
         } catch (\Exception $e) {
             return $this->proxyErrorResponse($e);
@@ -139,6 +140,7 @@ final class ProxyAcademicController extends Controller
 
         try {
             $data = $this->klassciService->savePresences($klassciToken, $id, $presences);
+
             return response()->json($data);
         } catch (\Exception $e) {
             return $this->proxyErrorResponse($e);
@@ -177,5 +179,4 @@ final class ProxyAcademicController extends Controller
             return $this->proxyErrorResponse($e);
         }
     }
-
 }

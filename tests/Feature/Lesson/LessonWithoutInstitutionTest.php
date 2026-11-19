@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Lesson;
 
+use App\Http\Middleware\EnsureSchoolMemberOrPlatformRoute;
 use App\Models\Classe;
 use App\Models\Institution;
 use App\Models\Lesson;
@@ -11,7 +12,6 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
 use PHPUnit\Framework\Attributes\DataProvider;
-use App\Http\Middleware\EnsureSchoolMemberOrPlatformRoute;
 use Tests\Concerns\ActsAsTenantUser;
 use Tests\TestCase;
 

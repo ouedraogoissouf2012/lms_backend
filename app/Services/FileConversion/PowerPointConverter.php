@@ -56,8 +56,7 @@ final class PowerPointConverter
         private readonly FileValidator $validator,
         private readonly ChapterArtifactStorage $artifacts,
         private readonly CaughtExceptionLog $journal,
-    ) {
-    }
+    ) {}
 
     /**
      * @return array{
@@ -104,12 +103,12 @@ final class PowerPointConverter
         $this->logger->info('✓ Conversion ConvertAPI terminée', ['count' => count($pngImages)]);
 
         return [
-            'success'             => true,
-            'slides_images'       => array_values($pngImages),
-            'slides_count'        => count($pngImages),
-            'file_original_path'  => $originalPath,
+            'success' => true,
+            'slides_images' => array_values($pngImages),
+            'slides_count' => count($pngImages),
+            'file_original_path' => $originalPath,
             'file_converted_path' => $originalPath,
-            'conversion_method'   => 'ConvertAPI',
+            'conversion_method' => 'ConvertAPI',
         ];
     }
 
@@ -118,16 +117,16 @@ final class PowerPointConverter
      */
     private function fallbackLibreOffice(string $fullOriginalPath, string $originalPath, int $chapterId): array
     {
-        $pdfPath   = $this->pptxToPdf($fullOriginalPath, $chapterId);
+        $pdfPath = $this->pptxToPdf($fullOriginalPath, $chapterId);
         $pngImages = $this->pdfRenderer->render($pdfPath, $chapterId);
 
         return [
-            'success'             => true,
-            'slides_images'       => $pngImages,
-            'slides_count'        => count($pngImages),
-            'file_original_path'  => $originalPath,
+            'success' => true,
+            'slides_images' => $pngImages,
+            'slides_count' => count($pngImages),
+            'file_original_path' => $originalPath,
             'file_converted_path' => $this->artifacts->relativePathOf($pdfPath),
-            'conversion_method'   => 'LibreOffice (fallback)',
+            'conversion_method' => 'LibreOffice (fallback)',
         ];
     }
 
@@ -158,13 +157,13 @@ final class PowerPointConverter
             ]);
         } catch (ShellExecutionException $e) {
             $this->logger->error('Erreur LibreOffice', [
-                'exit'   => $e->exitCode,
+                'exit' => $e->exitCode,
                 'stderr' => $e->stderr,
             ]);
             throw new RuntimeException('Échec de la conversion PowerPoint');
         }
 
-        $pdfPath = "{$outputDir}/" . pathinfo($pptxPath, PATHINFO_FILENAME) . '.pdf';
+        $pdfPath = "{$outputDir}/".pathinfo($pptxPath, PATHINFO_FILENAME).'.pdf';
         if (! file_exists($pdfPath)) {
             throw new RuntimeException('PDF non généré au chemin attendu');
         }

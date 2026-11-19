@@ -22,8 +22,7 @@ final class ChapterSlideController extends Controller
 {
     public function __construct(
         private readonly ChapterSlideService $slides,
-    ) {
-    }
+    ) {}
 
     public function show(int $chapter, int $slide): StreamedResponse|JsonResponse
     {

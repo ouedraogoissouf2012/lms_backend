@@ -2,9 +2,10 @@
 
 namespace Database\Factories;
 
+use App\Models\Institution;
+use App\Models\Lesson;
 use App\Models\LessonProgress;
 use App\Models\User;
-use App\Models\Lesson;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 class LessonProgressFactory extends Factory
@@ -31,7 +32,7 @@ class LessonProgressFactory extends Factory
             'feedback' => $status === 'completed' ? $this->faker->optional()->paragraph() : null,
             // institution_id hérité du parent Lesson.
             'institution_id' => fn (array $attrs) => Lesson::find($attrs['lesson_id'])?->institution_id
-                ?? \App\Models\Institution::factory(),
+                ?? Institution::factory(),
         ];
     }
 

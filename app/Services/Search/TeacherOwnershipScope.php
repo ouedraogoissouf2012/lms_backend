@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Search;
 
+use App\Models\Evaluation;
 use App\Models\Lesson;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
@@ -32,7 +33,7 @@ use Illuminate\Database\Eloquent\Builder;
  * - **`lessons.enseignant_id`** est commentée « ID enseignant KLASSCI » dans sa
  *   migration (`2025_10_14_160000_create_lessons_table.php:20`) : c'est faux.
  *   Le seul écrivain applicatif y met `$author->id`, la relation Eloquent est un
- *   `belongsTo(User::class, 'enseignant_id')` ({@see \App\Models\Lesson}), et les
+ *   `belongsTo(User::class, 'enseignant_id')` ({@see Lesson}), et les
  *   sept contrôles d'autorisation du domaine leçon/chapitre comparent tous à
  *   `$user->id` (`DeleteLessonRequest.php:49`, `UpdateLessonRequest.php:58`,
  *   `PublishLessonRequest.php:52`, `UnpublishLessonRequest.php:51`,
@@ -75,7 +76,7 @@ final class TeacherOwnershipScope
     /**
      * Restreindre aux leçons dont `$teacher` est l'auteur.
      *
-     * @param  Builder<\App\Models\Lesson>  $query
+     * @param  Builder<Lesson>  $query
      */
     public function applyToLessons(Builder $query, User $teacher): void
     {
@@ -99,7 +100,7 @@ final class TeacherOwnershipScope
      * Restreindre aux évaluations dont `$teacher` est propriétaire — aucune
      * si son identité KLASSCI enseignant n'est pas établie.
      *
-     * @param  Builder<\App\Models\Evaluation>  $query
+     * @param  Builder<Evaluation>  $query
      */
     public function applyToEvaluations(Builder $query, User $teacher): void
     {

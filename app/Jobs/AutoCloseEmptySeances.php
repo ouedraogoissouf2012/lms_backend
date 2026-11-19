@@ -15,6 +15,7 @@ use Carbon\Carbon;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
+use Illuminate\Queue\CallQueuedHandler;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Psr\Log\LoggerInterface;
@@ -96,34 +97,38 @@ final class AutoCloseEmptySeances implements ShouldQueue
             $seance->refresh();
 
             // Double vérification que la séance est toujours active
-            if (!$seance->visio_active || $seance->visio_ended_at !== null) {
+            if (! $seance->visio_active || $seance->visio_ended_at !== null) {
                 $logger->debug('[AutoCloseEmptySeances] Séance déjà fermée', [
                     'seance_id' => $seance->id,
                 ]);
+
                 continue;
             }
 
             // Règle 4 (Protection) : vérifier la santé du système de heartbeat
             // avant d'évaluer toute règle de fermeture.
-            if (!$heartbeatChecker->isHealthy($seance, $now)) {
+            if (! $heartbeatChecker->isHealthy($seance, $now)) {
                 continue;
             }
 
             // Règle 1 (Priorité 1) : Enseignant déconnecté
             if ($teacherRule->appliesTo($seance, $now)) {
                 $closingService->close($seance, 'teacher_disconnected', $now);
+
                 continue;
             }
 
             // Règle 2 (Priorité 2) : Tous déconnectés
             if ($allDisconnectedRule->appliesTo($seance, $now)) {
                 $closingService->close($seance, 'all_disconnected', $now);
+
                 continue;
             }
 
             // Règle 3 (Priorité 3) : Aucun participant
             if ($noParticipantsRule->appliesTo($seance, $now)) {
                 $closingService->close($seance, 'no_participants', $now);
+
                 continue;
             }
         }
@@ -136,7 +141,7 @@ final class AutoCloseEmptySeances implements ShouldQueue
      *
      * Contrairement à `handle()`, le worker Laravel appelle
      * `$command->failed($e)` sans pouvoir injecter de dépendances par le
-     * container (cf. {@see \Illuminate\Queue\CallQueuedHandler::failed()}).
+     * container (cf. {@see CallQueuedHandler::failed()}).
      * On résout `CaughtExceptionLog` via {@see app()} — c'est la seule
      * concession §1.6 D justifiée et tracée : Laravel ne nous laisse
      * pas le choix de la signature.

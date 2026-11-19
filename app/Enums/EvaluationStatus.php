@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace App\Enums;
 
+use App\Models\Evaluation;
+
 /**
- * Statut d'une {@see \App\Models\Evaluation} (#522, #705).
+ * Statut d'une {@see Evaluation} (#522, #705).
  */
 enum EvaluationStatus: string
 {

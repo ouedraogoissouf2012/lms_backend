@@ -116,6 +116,7 @@ final class VisioParticipantsListService
                 if ($a['is_present'] && $b['is_present']) {
                     return $b['percentage'] <=> $a['percentage'];
                 }
+
                 // Si tous deux absents, ordre alphabétique
                 return strcmp((string) $a['nom'], (string) $b['nom']);
             });
@@ -272,6 +273,7 @@ final class VisioParticipantsListService
             $allClassStudents = $students->map(function ($student): array {
                 // Parser le nom complet (format: "NOM Prenom")
                 $nameParts = explode(' ', (string) $student->name, 2);
+
                 return [
                     'id' => $student->id,
                     'nom' => $nameParts[0] ?? $student->name,
@@ -295,5 +297,4 @@ final class VisioParticipantsListService
             return [];
         }
     }
-
 }

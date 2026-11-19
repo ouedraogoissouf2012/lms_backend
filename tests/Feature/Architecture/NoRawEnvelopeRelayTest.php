@@ -87,7 +87,7 @@ final class NoRawEnvelopeRelayTest extends TestCase
             "Ces contrôleurs relaient une enveloppe à la main au lieu d'appeler "
             ."\$this->relayResponse(\$result) :\n  - ".implode("\n  - ", $coupables)
             ."\n\nLe relais direct contourne JsonPayloadGuard : une Closure dans le "
-            ."payload serait encodée en {} par json_encode, produisant un 200 avec "
+            .'payload serait encodée en {} par json_encode, produisant un 200 avec '
             ."la donnée disparue et aucun signal d'échec (#360, #693)."
         );
     }

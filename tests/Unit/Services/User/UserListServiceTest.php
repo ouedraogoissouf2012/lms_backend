@@ -30,6 +30,7 @@ final class UserListServiceTest extends TestCase
     use RefreshDatabase;
 
     private Institution $institution;
+
     private User $actor;
 
     protected function setUp(): void
@@ -47,7 +48,7 @@ final class UserListServiceTest extends TestCase
 
     private function service(): UserListService
     {
-        return new UserListService();
+        return new UserListService;
     }
 
     private function makeUser(string $email, string $role = 'etudiant', string $name = 'Compte'): User

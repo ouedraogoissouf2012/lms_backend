@@ -9,6 +9,4 @@ namespace App\Http\Requests;
  * {@see ListePagineeRequest}. `?per_page=abc` rend 422, au lieu d'une Période par
  * page en silence.
  */
-final class ListerLesPeriodesRequest extends ListePagineeRequest
-{
-}
+final class ListerLesPeriodesRequest extends ListePagineeRequest {}

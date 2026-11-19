@@ -30,6 +30,7 @@ final class AttendancesSyncNoNPlusOneTest extends TestCase
     use RefreshDatabase;
 
     private Institution $institution;
+
     private User $teacher;
 
     /**
@@ -113,8 +114,7 @@ final class AttendancesSyncNoNPlusOneTest extends TestCase
         DB::disableQueryLog();
         DB::flushQueryLog();
 
-        return $queries->filter(fn (string $q): bool =>
-            str_contains($q, '"users"') || str_contains($q, '`users`')
+        return $queries->filter(fn (string $q): bool => str_contains($q, '"users"') || str_contains($q, '`users`')
             || str_contains($q, 'user_classes')
             || str_contains($q, '"classes"') || str_contains($q, '`classes`')
         )->count();

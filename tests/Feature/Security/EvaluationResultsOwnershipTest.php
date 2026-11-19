@@ -7,6 +7,7 @@ namespace Tests\Feature\Security;
 use App\Models\Evaluation;
 use App\Models\Institution;
 use App\Models\User;
+use App\Services\Evaluation\Teacher\TeacherEvaluationViewService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Testing\TestResponse;
@@ -31,7 +32,7 @@ use Tests\TestCase;
  * ## Ce qui ne doit PAS se refermer
  *
  * Le coordinateur et l'admin gardent leur accès : la route le leur accorde
- * (`role:enseignant,coordinateur,superAdmin`) et {@see \App\Services\Evaluation\Teacher\TeacherEvaluationViewService::preview()}
+ * (`role:enseignant,coordinateur,superAdmin`) et {@see TeacherEvaluationViewService::preview()}
  * écrit déjà une politique de supervision pour le coordinateur. Une règle qui
  * les exclurait serait une régression, pas un durcissement — d'où les cas
  * verts ci-dessous, qui sont des gardes au même titre que les rouges.
@@ -50,9 +51,11 @@ final class EvaluationResultsOwnershipTest extends TestCase
     use RefreshDatabase;
 
     private const ENSEIGNANT_PROPRIETAIRE = 4242;
+
     private const ENSEIGNANT_TIERS = 9999;
 
     private Institution $institution;
+
     private Evaluation $evaluation;
 
     protected function setUp(): void

@@ -34,9 +34,7 @@ final class SchedulerHeartbeat
      */
     public const STALE_AFTER_MINUTES = 5;
 
-    public function __construct(private readonly CacheRepository $cache)
-    {
-    }
+    public function __construct(private readonly CacheRepository $cache) {}
 
     /**
      * Enregistre un battement. Stocké sans TTL : un marqueur expiré serait
@@ -55,7 +53,7 @@ final class SchedulerHeartbeat
     {
         $raw = $this->cache->get(self::CACHE_KEY);
 
-        if (!is_string($raw) || $raw === '') {
+        if (! is_string($raw) || $raw === '') {
             return null;
         }
 

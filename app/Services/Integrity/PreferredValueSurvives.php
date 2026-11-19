@@ -18,8 +18,7 @@ final class PreferredValueSurvives extends RankedSurvivorPolicy
     public function __construct(
         private readonly string $column,
         private readonly string $preferred,
-    ) {
-    }
+    ) {}
 
     protected function score(string $table, array $row): int
     {

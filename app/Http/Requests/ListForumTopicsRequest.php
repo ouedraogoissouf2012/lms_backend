@@ -4,12 +4,13 @@ declare(strict_types=1);
 
 namespace App\Http\Requests;
 
+use App\Services\Forum\ForumTopicService;
 use Illuminate\Foundation\Http\FormRequest;
 
 /**
  * Validates GET /api/forum/topics query parameters — issue #548.
  *
- * Ne valide que `per_page` : {@see \App\Services\Forum\ForumTopicService::list()}
+ * Ne valide que `per_page` : {@see ForumTopicService::list()}
  * lit les autres filtres (lesson_id, matiere_id, classe_id, status, resolved,
  * sort) directement sur la requête, non concernés par cette issue.
  */

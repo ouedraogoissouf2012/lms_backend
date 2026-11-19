@@ -6,7 +6,6 @@ declare(strict_types=1);
  * #708 — tout job de app/Jobs/ doit déclarer failed().
  * Exit 0 : tous conformes. Exit 1 : oubli. Exit 2 : rien inspecté.
  */
-
 $jobsDir = $argv[1] ?? dirname(__DIR__).'/app/Jobs';
 
 if (! is_dir($jobsDir)) {

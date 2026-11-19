@@ -60,9 +60,7 @@ final class InstitutionForeignKeyGuardTest extends TestCase
         return new class($orphans) implements InstitutionIntegrityInspectorInterface
         {
             /** @param array<string, int> $orphans */
-            public function __construct(private readonly array $orphans)
-            {
-            }
+            public function __construct(private readonly array $orphans) {}
 
             public function scopedTablesPresent(array $tables): array
             {

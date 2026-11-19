@@ -7,6 +7,7 @@ use App\Models\Institution;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
+use Symfony\Component\HttpFoundation\Response;
 use Tests\TestCase;
 
 /**
@@ -32,6 +33,7 @@ class EnsureRole403ResponseShapeTest extends TestCase
     use RefreshDatabase;
 
     private Institution $institution;
+
     private User $studentUser;
 
     protected function setUp(): void
@@ -41,21 +43,22 @@ class EnsureRole403ResponseShapeTest extends TestCase
         $this->institution = Institution::factory()->create(['slug' => 'role-test-inst']);
         $this->studentUser = User::factory()->create([
             'institution_id' => $this->institution->id,
-            'role'           => 'etudiant',
-            'name'           => 'Student',
-            'email'          => 'student@role-test.test',
+            'role' => 'etudiant',
+            'name' => 'Student',
+            'email' => 'student@role-test.test',
         ]);
     }
 
     /**
      * Helper: run the middleware with a forged authenticated request.
      */
-    private function runMiddleware(User $user, string ...$requiredRoles): \Symfony\Component\HttpFoundation\Response
+    private function runMiddleware(User $user, string ...$requiredRoles): Response
     {
         $request = Request::create('/api/dummy', 'GET');
         $request->setUserResolver(fn () => $user);
 
-        $middleware = new EnsureRole();
+        $middleware = new EnsureRole;
+
         return $middleware->handle($request, fn () => response('ok'), ...$requiredRoles);
     }
 
@@ -112,8 +115,8 @@ class EnsureRole403ResponseShapeTest extends TestCase
     {
         $teacher = User::factory()->create([
             'institution_id' => $this->institution->id,
-            'role'           => 'enseignant',
-            'email'          => 'teacher@role-test.test',
+            'role' => 'enseignant',
+            'email' => 'teacher@role-test.test',
         ]);
 
         $response = $this->runMiddleware($teacher, 'enseignant', 'coordinateur');
@@ -131,7 +134,7 @@ class EnsureRole403ResponseShapeTest extends TestCase
         $request = Request::create('/api/dummy', 'GET');
         $request->setUserResolver(fn () => null);
 
-        $middleware = new EnsureRole();
+        $middleware = new EnsureRole;
         $response = $middleware->handle($request, fn () => response('ok'), 'admin');
 
         $this->assertSame(401, $response->getStatusCode());

@@ -24,7 +24,7 @@ const LOGIN_POOL_SIZE = 5;
 const FIXTURE_RELATIVE_PATH = '/fixtures/load-test-users.json';
 
 /**
- * @param list<string> $argv
+ * @param  list<string>  $argv
  * @return array<string, string|true>
  */
 function parseCliOptions(array $argv): array
@@ -41,6 +41,7 @@ function parseCliOptions(array $argv): array
 
         if ($eqPos === false) {
             $options[$pair] = true;
+
             continue;
         }
 
@@ -51,7 +52,7 @@ function parseCliOptions(array $argv): array
 }
 
 /**
- * @param array<string, string|true> $options
+ * @param  array<string, string|true>  $options
  */
 function resolveUserCount(array $options): int
 {
@@ -71,7 +72,7 @@ function resolveUserCount(array $options): int
 }
 
 /**
- * @param array<string, string|true> $options
+ * @param  array<string, string|true>  $options
  */
 function resolveKlassciStubUrl(array $options): string
 {
@@ -110,7 +111,7 @@ function guardKlassciStubIsLoopback(string $klassciStubUrl): void
 
     fwrite(
         STDERR,
-        "[prepare-load-test-data] REFUS: --klassci-stub-url doit pointer vers un host loopback (".
+        '[prepare-load-test-data] REFUS: --klassci-stub-url doit pointer vers un host loopback ('.
         implode(', ', LOOPBACK_HOSTS)."). Aucune ecriture effectuee.\n",
     );
     exit(1);
@@ -157,7 +158,7 @@ function createTestUsers(Institution $institution, int $count, string $klassciSt
 }
 
 /**
- * @param list<array{user: User, token: string}> $createdUsers
+ * @param  list<array{user: User, token: string}>  $createdUsers
  * @return array<string, mixed>
  */
 function buildFixturePayload(
@@ -200,7 +201,7 @@ function buildFixturePayload(
 }
 
 /**
- * @param array<string, mixed> $payload
+ * @param  array<string, mixed>  $payload
  */
 function writeFixtureFile(string $absolutePath, array $payload): void
 {

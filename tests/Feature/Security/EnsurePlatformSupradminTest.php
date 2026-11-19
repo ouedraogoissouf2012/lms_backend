@@ -35,15 +35,15 @@ final class EnsurePlatformSupradminTest extends TestCase
         $request = Request::create('/api/dummy', 'GET');
         $request->setUserResolver(fn () => $user);
 
-        return (new EnsurePlatformSupradmin())->handle($request, fn () => response('ok'));
+        return (new EnsurePlatformSupradmin)->handle($request, fn () => response('ok'));
     }
 
     private function userWithRole(string $role): User
     {
         return User::factory()->create([
             'institution_id' => $this->institution->id,
-            'role'           => $role,
-            'email'          => 'u'.uniqid().'@mw511.test',
+            'role' => $role,
+            'email' => 'u'.uniqid().'@mw511.test',
         ]);
     }
 

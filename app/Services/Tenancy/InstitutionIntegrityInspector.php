@@ -33,9 +33,7 @@ use Illuminate\Database\Query\Builder;
  */
 final class InstitutionIntegrityInspector implements InstitutionIntegrityInspectorInterface
 {
-    public function __construct(private readonly DatabaseManager $db)
-    {
-    }
+    public function __construct(private readonly DatabaseManager $db) {}
 
     /**
      * Filtre les tables réellement présentes ET portant `institution_id`.

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Matiere;
 
+use App\Http\Controllers\API\LMS\LMSMatieresQueryController;
 use App\Services\KlassciProxyService;
 use App\Support\Logging\CaughtExceptionLog;
 use Carbon\Carbon;
@@ -13,7 +14,7 @@ use Throwable;
 /**
  * MatiereInfoFetcher — fetches the base matière payload from KLASSCI.
  *
- * Extracted from {@see \App\Http\Controllers\API\LMS\LMSMatieresQueryController::matiereDetails}
+ * Extracted from {@see LMSMatieresQueryController::matiereDetails}
  * (legacy lines 56-130).
  *
  * Responsibility:
@@ -52,7 +53,7 @@ final class MatiereInfoFetcher
         /** @var array<string, mixed>|null $matiereData */
         $matiereData = $matiereResponse['data'] ?? null;
 
-        if (!is_array($matiereData) || $matiereData === []) {
+        if (! is_array($matiereData) || $matiereData === []) {
             return null;
         }
 

@@ -16,6 +16,7 @@ use App\Services\Import\ImportApplyService;
 use App\Services\TenantManager;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Testing\TestResponse;
 use Tests\Concerns\ActsAsTenantUser;
 use Tests\TestCase;
@@ -135,7 +136,7 @@ final class ImportEnrolmentColumnsTest extends TestCase
         $this->executer($importateur, self::HEADER."Zongo;Lea;lea@test.ci;;B2;;\n");
 
         $eleve = User::query()->where('email', 'lea@test.ci')->firstOrFail();
-        $ligne = \Illuminate\Support\Facades\DB::table('classe_etudiant')
+        $ligne = DB::table('classe_etudiant')
             ->where('classe_id', $classe->id)
             ->where('user_id', $eleve->id)
             ->first();

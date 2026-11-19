@@ -59,20 +59,20 @@ trait ChecksForumAuthorization
      *      `$moderatorRoles` → allow (moderator intra-tenant).
      *   6. Else → deny.
      *
-     * @param int|null  $ownerUserId         `user_id` of the entity whose ownership
-     *                                       grants access. For topic actions: the
-     *                                       topic's `user_id`. For post actions where
-     *                                       the topic owner decides (e.g. markAsSolution):
-     *                                       the topic's `user_id`, not the post's.
-     * @param int|null  $tenantInstitutionId `institution_id` that defines tenant scope.
-     *                                       Usually the same entity as ownership.
-     * @param User|null $user                Authenticated user. Null defensively.
-     * @param list<Role> $moderatorRoles    Roles authorized as moderators within
-     *                                       the same tenant, read through
-     *                                       `Role::aliases()` (#1198). Default:
-     *                                       the institution admins. Pass
-     *                                       `Role::Coordinateur` explicitly when the
-     *                                       action allows coordinator moderation.
+     * @param  int|null  $ownerUserId  `user_id` of the entity whose ownership
+     *                                 grants access. For topic actions: the
+     *                                 topic's `user_id`. For post actions where
+     *                                 the topic owner decides (e.g. markAsSolution):
+     *                                 the topic's `user_id`, not the post's.
+     * @param  int|null  $tenantInstitutionId  `institution_id` that defines tenant scope.
+     *                                         Usually the same entity as ownership.
+     * @param  User|null  $user  Authenticated user. Null defensively.
+     * @param  list<Role>  $moderatorRoles  Roles authorized as moderators within
+     *                                      the same tenant, read through
+     *                                      `Role::aliases()` (#1198). Default:
+     *                                      the institution admins. Pass
+     *                                      `Role::Coordinateur` explicitly when the
+     *                                      action allows coordinator moderation.
      */
     protected function isForumActionAuthorized(
         ?int $ownerUserId,

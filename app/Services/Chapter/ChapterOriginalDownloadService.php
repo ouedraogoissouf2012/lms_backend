@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Chapter;
 
+use App\Http\Requests\Concerns\ChecksChapterDownloadAuthorization;
 use App\Models\Chapter;
 use App\Services\FileConversion\ChapterArtifactStorage;
 use Illuminate\Contracts\Filesystem\Factory as FilesystemFactory;
@@ -21,7 +22,7 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
  *
  * Responsabilité unique : transformer un chapitre **déjà autorisé** en réponse
  * streamée, ou `null` si le fichier est absent. L'autorisation n'est PAS ici
- * ({@see \App\Http\Requests\Concerns\ChecksChapterDownloadAuthorization}) : les
+ * ({@see ChecksChapterDownloadAuthorization}) : les
  * mélanger rendrait impossible de tester l'une sans l'autre.
  *
  * @see .claude/specs/598-chapter-artifacts-private/design.md §1.2
@@ -31,8 +32,7 @@ final class ChapterOriginalDownloadService
     public function __construct(
         private readonly FilesystemFactory $filesystem,
         private readonly ChapterArtifactStorage $artifacts,
-    ) {
-    }
+    ) {}
 
     /**
      * Réponse de téléchargement du document source, ou `null` si le chapitre n'a

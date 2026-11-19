@@ -17,6 +17,7 @@ class GenerateActivityReportRequest extends FormRequest
     public function authorize(): bool
     {
         $user = Auth::user();
+
         return $user !== null && ($user->isCoordinator() || $user->isAdmin());
     }
 
@@ -47,7 +48,7 @@ class GenerateActivityReportRequest extends FormRequest
     protected function prepareForValidation(): void
     {
         // Set defaults if date range not provided
-        if (!$this->has('date_start') && !$this->has('date_end')) {
+        if (! $this->has('date_start') && ! $this->has('date_end')) {
             $this->merge([
                 'date_start' => now()->subMonth()->format('Y-m-d'),
                 'date_end' => now()->format('Y-m-d'),
@@ -55,7 +56,7 @@ class GenerateActivityReportRequest extends FormRequest
         }
 
         // Default to all activity types if not specified
-        if (!$this->has('activity_type')) {
+        if (! $this->has('activity_type')) {
             $this->merge(['activity_type' => 'all']);
         }
     }

@@ -6,6 +6,7 @@ namespace App\Observers;
 
 use App\Enums\LessonStatus;
 use App\Models\Lesson;
+use App\Services\Lesson\LessonCrudOperationsService;
 
 /**
  * Garantit l'invariant #481 : `status='published' ⇒ published_at != null`, et
@@ -15,7 +16,7 @@ use App\Models\Lesson;
  *
  * Le scope {@see Lesson::scopePublished()} exige `published_at IS NOT NULL` pour
  * qu'une leçon soit visible. Les 4 chemins de
- * {@see \App\Services\Lesson\LessonCrudOperationsService} (create/update/publish/
+ * {@see LessonCrudOperationsService} (create/update/publish/
  * unpublish) posent déjà `published_at` correctement — mais une écriture qui les
  * contourne (factory, seeder, import, tinker, `Lesson::create()` direct) pouvait
  * créer une leçon `published` avec `published_at = NULL`, donc invisible.

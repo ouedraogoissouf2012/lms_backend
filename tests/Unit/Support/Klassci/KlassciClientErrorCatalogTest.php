@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Support\Klassci;
 
+use App\Http\Controllers\API\Concerns\RendersKlassciBackedErrors;
 use App\Support\Klassci\KlassciClientErrorCatalog;
 use Tests\TestCase;
 
@@ -11,7 +12,7 @@ use Tests\TestCase;
  * Classification des erreurs 4xx KLASSCI — source unique partagée par les deux
  * traits de rendu (proxy et LMS).
  *
- * Elle n'existait que dans {@see \App\Http\Controllers\API\Concerns\RendersKlassciBackedErrors}
+ * Elle n'existait que dans {@see RendersKlassciBackedErrors}
  * (dette tracée dans son docblock) ; le trait proxy, lui, écrasait TOUT échec non-401
  * en 500 — un refus d'autorisation KLASSCI (403) se présentait donc au client comme
  * une panne du serveur LMS.
@@ -24,18 +25,18 @@ final class KlassciClientErrorCatalogTest extends TestCase
     public static function statusProvider(): array
     {
         return [
-            'borne basse 400'      => [400, true],
-            'borne haute 499'      => [499, true],
-            '403 autorisation'     => [403, true],
-            '404 introuvable'      => [404, true],
-            '429 quota'            => [429, true],
-            '399 hors plage'       => [399, false],
-            '500 panne serveur'    => [500, false],
-            '503 indisponible'     => [503, false],
-            'code 0 (non HTTP)'    => [0, false],
-            'négatif'              => [-1, false],
-            'null'                 => [null, false],
-            'flottant 403.0'       => [403.0, false],
+            'borne basse 400' => [400, true],
+            'borne haute 499' => [499, true],
+            '403 autorisation' => [403, true],
+            '404 introuvable' => [404, true],
+            '429 quota' => [429, true],
+            '399 hors plage' => [399, false],
+            '500 panne serveur' => [500, false],
+            '503 indisponible' => [503, false],
+            'code 0 (non HTTP)' => [0, false],
+            'négatif' => [-1, false],
+            'null' => [null, false],
+            'flottant 403.0' => [403.0, false],
         ];
     }
 
@@ -65,8 +66,8 @@ final class KlassciClientErrorCatalogTest extends TestCase
     public static function sqlStateProvider(): array
     {
         return [
-            'table absente'   => ['42S02'],
-            'contrainte'      => ['23000'],
+            'table absente' => ['42S02'],
+            'contrainte' => ['23000'],
             'erreur generale' => ['HY000'],
         ];
     }

@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace App\Enums;
 
+use App\Http\Middleware\EnsureKlassciSync;
+use App\Models\User;
+
 /**
  * Source de vérité unique pour les rôles utilisateurs LMS.
  *
@@ -39,19 +42,19 @@ namespace App\Enums;
  * consomme `tryFromString()` — plus de table FR/EN locale. #949 : `tryFromString()`
  * lit la table d'`aliases()`, en correspondance exacte : une seule lecture du rôle.
  *
- * @see \App\Models\User::asRoleEnum
- * @see \App\Http\Middleware\EnsureKlassciSync::isEscalationAttempt
+ * @see User::asRoleEnum
+ * @see EnsureKlassciSync::isEscalationAttempt
  */
 enum Role: string
 {
-    case Etudiant     = 'etudiant';
-    case Enseignant   = 'enseignant';
+    case Etudiant = 'etudiant';
+    case Enseignant = 'enseignant';
     case Coordinateur = 'coordinateur';
-    case Admin        = 'admin';
+    case Admin = 'admin';
     /** Administrateur d'UN etablissement — strictement intra-tenant. */
-    case SuperAdmin   = 'superAdmin';
+    case SuperAdmin = 'superAdmin';
     /** Gestionnaire de la PLATEFORME — cross-tenant, institution_id NULL. */
-    case Supradmin    = 'supradmin';
+    case Supradmin = 'supradmin';
 
     /**
      * Convertit un string brut (DB ou payload KLASSCI) en case enum,
@@ -100,12 +103,12 @@ enum Role: string
     public function permissivity(): int
     {
         return match ($this) {
-            self::Etudiant     => 1,
-            self::Enseignant   => 2,
+            self::Etudiant => 1,
+            self::Enseignant => 2,
             self::Coordinateur => 3,
-            self::Admin        => 4,
-            self::SuperAdmin   => 5,
-            self::Supradmin    => 6,
+            self::Admin => 4,
+            self::SuperAdmin => 5,
+            self::Supradmin => 6,
         };
     }
 

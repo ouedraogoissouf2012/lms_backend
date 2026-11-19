@@ -97,7 +97,7 @@ final class ClassesLocalesListTest extends TestCase
 
     // ───────────────────────── LA garde de ce fichier
 
-    public function test_les_classes_d_une_AUTRE_ecole_ne_sortent_pas(): void
+    public function test_les_classes_d_une_autre_ecole_ne_sortent_pas(): void
     {
         $sienne = $this->ecole();
         $autre = $this->ecole();
@@ -112,7 +112,7 @@ final class ClassesLocalesListTest extends TestCase
         self::assertStringNotContainsString('VZN3P8', (string) $reponse->getContent(), 'Le code d\'une autre école a fuité.');
     }
 
-    public function test_une_classe_miroir_KLASSCI_n_est_pas_une_classe_locale(): void
+    public function test_une_classe_miroir_klassci_n_est_pas_une_classe_locale(): void
     {
         $ecole = $this->ecole();
         $this->classeLocale($ecole, 'Locale');
@@ -125,7 +125,7 @@ final class ClassesLocalesListTest extends TestCase
 
     // ───────────────────────── les refus
 
-    public function test_un_etablissement_KLASSCI_recoit_le_meme_refus_qu_a_l_emission(): void
+    public function test_un_etablissement_klassci_recoit_le_meme_refus_qu_a_l_emission(): void
     {
         // « Le même refus » se VÉRIFIE : on compare au message que l'émission
         // du code oppose réellement, pas à une copie écrite dans le test. Si

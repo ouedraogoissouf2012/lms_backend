@@ -23,7 +23,7 @@ namespace App\Services\Visio\Recording;
  * **aucun appelant ne change** : ni le job d'import, ni le webhook, ni les tests
  * qui, eux, utilisent un double en mémoire et ne touchent jamais au disque.
  *
- * @see \App\Services\Visio\Recording\LocalDirectoryRecordingMediaSource
+ * @see LocalDirectoryRecordingMediaSource
  * @see PRODUCTION_STANDARDS.md §1.6 (DIP — dépendre d'abstractions)
  */
 interface RecordingMediaSource

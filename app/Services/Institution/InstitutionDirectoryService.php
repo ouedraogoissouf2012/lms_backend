@@ -30,8 +30,7 @@ final class InstitutionDirectoryService
 
     public function __construct(
         private readonly TenantManager $tenantManager,
-    ) {
-    }
+    ) {}
 
     /**
      * Institutions actives, triées par nom (sélecteur public de login).

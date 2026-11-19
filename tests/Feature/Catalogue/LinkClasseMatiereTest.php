@@ -91,7 +91,7 @@ final class LinkClasseMatiereTest extends TestCase
 
     // ───────────────────────────────── les refus
 
-    public function test_la_matiere_d_une_AUTRE_ecole_est_refusee(): void
+    public function test_la_matiere_d_une_autre_ecole_est_refusee(): void
     {
         // La fuite que ce lot rend possible : la ligne écrite paraîtrait normale.
         [$classe] = $this->catalogueLocal();
@@ -105,7 +105,7 @@ final class LinkClasseMatiereTest extends TestCase
         }
     }
 
-    public function test_la_classe_d_une_AUTRE_ecole_est_refusee(): void
+    public function test_la_classe_d_une_autre_ecole_est_refusee(): void
     {
         $ailleurs = $this->catalogueLocal();
         [, $matiere] = $this->catalogueLocal();
@@ -115,7 +115,7 @@ final class LinkClasseMatiereTest extends TestCase
         $this->rattacher($ailleurs[0]->getKey(), $matiere->getKey());
     }
 
-    public function test_un_formateur_d_une_AUTRE_ecole_est_refuse(): void
+    public function test_un_formateur_d_une_autre_ecole_est_refuse(): void
     {
         [$classe, $matiere] = $this->catalogueLocal();
         $etranger = $this->formateur($this->catalogueLocal()[2]);

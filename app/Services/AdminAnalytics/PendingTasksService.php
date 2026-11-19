@@ -8,6 +8,7 @@ use App\Enums\LessonStatus;
 use App\Models\Evaluation;
 use App\Models\EvaluationSubmission;
 use App\Models\Lesson;
+use App\Models\Traits\BelongsToInstitution;
 use App\Models\User;
 use App\Services\TenantManager;
 use Carbon\Carbon;
@@ -34,7 +35,7 @@ use Psr\Log\LoggerInterface;
  * ## SECURITY — Isolation cross-tenant (issue #23)
  *
  * Toutes les requêtes Eloquent reposent sur le trait
- * {@see \App\Models\Traits\BelongsToInstitution} qui filtre **automatiquement**
+ * {@see BelongsToInstitution} qui filtre **automatiquement**
  * par `institution_id` via un global scope. La clé de cache de `getPendingTasks`
  * est en plus scopée par le **slug** retourné par
  * {@see TenantManager::getResolvedSlug()} (fail-secure) pour empêcher toute
@@ -76,8 +77,7 @@ final class PendingTasksService
         private readonly CacheRepository $cache,
         private readonly TenantManager $tenantManager,
         private readonly LoggerInterface $logger,
-    ) {
-    }
+    ) {}
 
     /**
      * Récupérer les compteurs des tâches en attente pour le widget admin.
@@ -92,7 +92,7 @@ final class PendingTasksService
     public function getPendingTasks(): array
     {
         $institution = $this->tenantManager->getResolvedSlug();
-        $cacheKey = 'admin_pending_tasks_' . $institution;
+        $cacheKey = 'admin_pending_tasks_'.$institution;
 
         $this->logger->debug('admin_analytics.pending_tasks.request', [
             'institution' => $institution,

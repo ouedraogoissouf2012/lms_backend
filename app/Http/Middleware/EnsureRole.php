@@ -6,8 +6,8 @@ use App\Enums\Role;
 use App\Models\User;
 use Closure;
 use Illuminate\Http\Request;
-use Symfony\Component\HttpFoundation\Response;
 use Illuminate\Support\Facades\Log;
+use Symfony\Component\HttpFoundation\Response;
 
 /**
  * Middleware EnsureRole
@@ -20,8 +20,8 @@ class EnsureRole
     /**
      * Handle an incoming request.
      *
-     * @param  \Closure(\Illuminate\Http\Request): (\Symfony\Component\HttpFoundation\Response)  $next
-     * @param  string  ...$roles Liste des rôles autorisés
+     * @param  Closure(Request): (Response)  $next
+     * @param  string  ...$roles  Liste des rôles autorisés
      */
     public function handle(Request $request, Closure $next, string ...$roles): Response
     {
@@ -39,8 +39,8 @@ class EnsureRole
         $allowedRoles = $this->normalizeRoles($roles);
 
         // Vérifier si l'utilisateur a l'un des rôles autorisés
-        if (!$this->userHasRole($user, $allowedRoles)) {
-            Log::warning("Accès refusé - Rôle insuffisant", [
+        if (! $this->userHasRole($user, $allowedRoles)) {
+            Log::warning('Accès refusé - Rôle insuffisant', [
                 'user_id' => $user->id,
                 'user_role' => $user->role,
                 'required_roles' => $roles,

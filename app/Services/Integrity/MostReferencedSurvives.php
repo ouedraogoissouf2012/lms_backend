@@ -25,8 +25,7 @@ final class MostReferencedSurvives extends RankedSurvivorPolicy
         private readonly DatabaseManager $db,
         private readonly string $dependentTable,
         private readonly string $foreignKey,
-    ) {
-    }
+    ) {}
 
     protected function score(string $table, array $row): int
     {

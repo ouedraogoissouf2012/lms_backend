@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace Tests\Feature\Proxy;
 
 use App\Exceptions\KlassciUnavailableException;
-use App\Services\KlassciProxyService;
 use App\Models\Institution;
 use App\Models\User;
+use App\Services\KlassciProxyService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
@@ -32,7 +32,7 @@ final class KlassciProxyUrlGuardTest extends TestCase
         // donc le comportement du contrôleur proxy lui-même.
         $user = User::factory()->create([
             'institution_id' => Institution::factory()->create()->id,
-            'role'              => 'coordinateur',
+            'role' => 'coordinateur',
             'last_klassci_sync' => now(),
         ]);
 

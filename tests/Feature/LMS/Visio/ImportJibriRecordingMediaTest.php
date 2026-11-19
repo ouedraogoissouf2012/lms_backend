@@ -32,7 +32,7 @@ use Tests\TestCase;
  * prouver que le job ne dépend pas d'un disque réel — donc que le jour où le
  * nœud visio déménage sur une autre machine, seule l'implémentation change.
  *
- * @see \App\Services\Visio\Recording\RecordingMediaSource
+ * @see RecordingMediaSource
  */
 final class ImportJibriRecordingMediaTest extends TestCase
 {
@@ -55,9 +55,7 @@ final class ImportJibriRecordingMediaTest extends TestCase
     {
         $this->app->bind(RecordingMediaSource::class, fn (): RecordingMediaSource => new class($path) implements RecordingMediaSource
         {
-            public function __construct(private readonly ?string $path)
-            {
-            }
+            public function __construct(private readonly ?string $path) {}
 
             public function locate(string $sessionId): ?string
             {

@@ -39,8 +39,8 @@ return new class extends Migration
             // Pedagogical metadata
             $table->text('prerequis')->nullable()->after('description');
             $table->enum('niveau_difficulte', ['debutant', 'intermediaire', 'avance'])
-                  ->default('debutant')
-                  ->after('prerequis');
+                ->default('debutant')
+                ->after('prerequis');
             $table->text('objectifs_pedagogiques')->nullable()->after('niveau_difficulte');
             $table->integer('duree_estimee_minutes')->nullable()->after('objectifs_pedagogiques');
         });
@@ -52,16 +52,16 @@ return new class extends Migration
             $table->foreign('lesson_id')->references('id')->on('lessons')->onDelete('cascade');
 
             // Add content type for chapters
-            if (!Schema::hasColumn('chapters', 'content_type')) {
+            if (! Schema::hasColumn('chapters', 'content_type')) {
                 $table->enum('content_type', [
                     'text', 'video', 'pdf', 'audio',
                     'presentation', 'powerpoint', 'word',
-                    'excel', 'link', 'mixed'
+                    'excel', 'link', 'mixed',
                 ])->default('text')->after('description');
             }
 
             // Content fields (moving from lessons to chapters)
-            if (!Schema::hasColumn('chapters', 'content')) {
+            if (! Schema::hasColumn('chapters', 'content')) {
                 $table->longText('content')->nullable()->after('content_type');
             }
 
@@ -75,15 +75,15 @@ return new class extends Migration
 
             // PowerPoint/File conversion fields
             $table->string('file_original_path')->nullable()->after('external_link')
-                  ->comment('Original uploaded file (.pptx, .docx, etc.)');
+                ->comment('Original uploaded file (.pptx, .docx, etc.)');
             $table->string('file_converted_path')->nullable()->after('file_original_path')
-                  ->comment('Converted PDF version');
+                ->comment('Converted PDF version');
             $table->json('slides_images')->nullable()->after('file_converted_path')
-                  ->comment('Array of PNG image URLs for slides');
+                ->comment('Array of PNG image URLs for slides');
             $table->integer('slides_count')->nullable()->after('slides_images')
-                  ->comment('Number of slides/pages');
+                ->comment('Number of slides/pages');
             $table->json('notes_enseignant')->nullable()->after('slides_count')
-                  ->comment('Teacher notes per slide');
+                ->comment('Teacher notes per slide');
 
             // Display options
             $table->boolean('allow_download')->default(true)->after('notes_enseignant');
@@ -91,7 +91,7 @@ return new class extends Migration
             $table->boolean('autoplay_video')->default(false)->after('show_slide_numbers');
 
             // Order for drag & drop reordering
-            if (!Schema::hasColumn('chapters', 'order')) {
+            if (! Schema::hasColumn('chapters', 'order')) {
                 $table->integer('order')->default(0)->after('autoplay_video');
             }
         });
@@ -111,7 +111,7 @@ return new class extends Migration
                 'presentation_url', 'external_link',
                 'file_original_path', 'file_converted_path',
                 'slides_images', 'slides_count', 'notes_enseignant',
-                'allow_download', 'show_slide_numbers', 'autoplay_video'
+                'allow_download', 'show_slide_numbers', 'autoplay_video',
             ]);
         });
 
@@ -121,7 +121,7 @@ return new class extends Migration
                 'prerequis',
                 'niveau_difficulte',
                 'objectifs_pedagogiques',
-                'duree_estimee_minutes'
+                'duree_estimee_minutes',
             ]);
 
             // Restore chapter_id

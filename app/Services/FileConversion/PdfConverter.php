@@ -6,10 +6,10 @@ namespace App\Services\FileConversion;
 
 use App\Services\ConvertApiService;
 use App\Support\Logging\CaughtExceptionLog;
+use App\Support\Shell\ShellExecutor;
 use Exception;
 use Illuminate\Http\UploadedFile;
 use Psr\Log\LoggerInterface;
-use RuntimeException;
 
 /**
  * Converts an uploaded `.pdf` to a sequence of PNG slides.
@@ -22,7 +22,7 @@ use RuntimeException;
  *  4. On ConvertAPI failure, delegate to {@see PdfToPngRenderer} which
  *     auto-selects Imagick (preferred) or Ghostscript locally.
  *
- * No {@see \App\Support\Shell\ShellExecutor} direct dependency : the shell
+ * No {@see ShellExecutor} direct dependency : the shell
  * (Ghostscript path) is reached only through `PdfToPngRenderer`. This keeps
  * `PdfConverter` decoupled from the shell layer and clarifies its single
  * responsibility (drive the ConvertAPI/local fallback decision).
@@ -40,8 +40,7 @@ final class PdfConverter
         private readonly FileValidator $validator,
         private readonly ChapterArtifactStorage $artifacts,
         private readonly CaughtExceptionLog $journal,
-    ) {
-    }
+    ) {}
 
     /**
      * @return array{
@@ -85,12 +84,12 @@ final class PdfConverter
         $this->logger->info('✓ Conversion ConvertAPI PDF terminée', ['count' => count($pngImages)]);
 
         return [
-            'success'             => true,
-            'slides_images'       => array_values($pngImages),
-            'slides_count'        => count($pngImages),
-            'file_original_path'  => $originalPath,
+            'success' => true,
+            'slides_images' => array_values($pngImages),
+            'slides_count' => count($pngImages),
+            'file_original_path' => $originalPath,
             'file_converted_path' => $originalPath,
-            'conversion_method'   => 'ConvertAPI',
+            'conversion_method' => 'ConvertAPI',
         ];
     }
 
@@ -104,12 +103,12 @@ final class PdfConverter
         $this->logger->info('✓ Conversion Imagick/GD terminée', ['count' => count($pngImages)]);
 
         return [
-            'success'             => true,
-            'slides_images'       => $pngImages,
-            'slides_count'        => count($pngImages),
-            'file_original_path'  => $originalPath,
+            'success' => true,
+            'slides_images' => $pngImages,
+            'slides_count' => count($pngImages),
+            'file_original_path' => $originalPath,
             'file_converted_path' => $originalPath,
-            'conversion_method'   => 'Imagick/GD (fallback)',
+            'conversion_method' => 'Imagick/GD (fallback)',
         ];
     }
 }

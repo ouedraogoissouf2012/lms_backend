@@ -65,7 +65,7 @@ final class FileQueryService
         if ($caller->isLearnerAudience()) {
             $query->where(function ($q) use ($caller) {
                 $q->where('is_public', true)
-                  ->orWhere('user_id', $caller->id);
+                    ->orWhere('user_id', $caller->id);
             });
         }
 
@@ -83,7 +83,7 @@ final class FileQueryService
 
         if (isset($filters['fileable_type'], $filters['fileable_id'])) {
             $query->where('fileable_type', $filters['fileable_type'])
-                  ->where('fileable_id', $filters['fileable_id']);
+                ->where('fileable_id', $filters['fileable_id']);
         }
 
         $sortBy = $filters['sort'] ?? 'recent';
@@ -107,6 +107,7 @@ final class FileQueryService
         $files->getCollection()->transform(function (File $file): File {
             $file->formatted_size = $this->presenter->formattedSize($file);
             $file->download_url = $this->presenter->downloadUrl($file);
+
             return $file;
         });
 
@@ -198,6 +199,7 @@ final class FileQueryService
             if ($isStudent) {
                 $query->where('user_id', $caller->id);
             }
+
             return $query;
         };
 
@@ -222,7 +224,7 @@ final class FileQueryService
             ];
 
             $totalSizeMB = round((float) $payload['total_size_bytes'] / (1024 * 1024), 2);
-            $payload['total_size_formatted'] = $totalSizeMB . ' MB';
+            $payload['total_size_formatted'] = $totalSizeMB.' MB';
 
             return $payload;
         });

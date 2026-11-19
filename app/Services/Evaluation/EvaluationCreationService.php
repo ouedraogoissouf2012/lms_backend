@@ -73,7 +73,7 @@ final class EvaluationCreationService
      * Crée une évaluation et ses questions (transactionnel).
      *
      * @param  array<string, mixed>  $data  Payload validé par `StoreEvaluationRequest`.
-     *                                       Peut contenir une clé `questions` (array).
+     *                                      Peut contenir une clé `questions` (array).
      * @param  ProgrammedEvaluation  $programme  Rattachement établi par la source de l'école.
      * @return array{status: int, payload: array<string, mixed>}
      */
@@ -98,7 +98,7 @@ final class EvaluationCreationService
                     // L'auteur, dans les deux types d'école (D72) : celui que
                     // la source établit (le formateur désigné, D136), sinon
                     // l'appelant.
-                    'enseignant_id'  => $programme->attributs['enseignant_id'] ?? $teacher->getKey(),
+                    'enseignant_id' => $programme->attributs['enseignant_id'] ?? $teacher->getKey(),
                     // Scope tenant explicite (fix E2E #211 flow 2).
                     'institution_id' => $teacher->institution_id,
                 ],
@@ -113,11 +113,11 @@ final class EvaluationCreationService
             $evaluation->load('questions');
 
             return [
-                'status'  => 201,
+                'status' => 201,
                 'payload' => [
                     'success' => true,
                     'message' => 'Évaluation créée avec succès',
-                    'data'    => $evaluation,
+                    'data' => $evaluation,
                 ],
             ];
         } catch (UniqueConstraintViolationException) {
@@ -136,11 +136,11 @@ final class EvaluationCreationService
             $this->journal->error('Erreur création évaluation', $e);
 
             return [
-                'status'  => 500,
+                'status' => 500,
                 'payload' => [
                     'success' => false,
                     'message' => 'Erreur lors de la création de l\'évaluation',
-                    'error'   => 'Une erreur est survenue.',
+                    'error' => 'Une erreur est survenue.',
                 ],
             ];
         }
@@ -155,11 +155,11 @@ final class EvaluationCreationService
     private function conflict(?Evaluation $existing): array
     {
         return [
-            'status'  => 409,
+            'status' => 409,
             'payload' => [
                 'success' => false,
                 'message' => 'Une version en ligne existe déjà pour cette évaluation KLASSCI.',
-                'data'    => $existing,
+                'data' => $existing,
             ],
         ];
     }
@@ -176,14 +176,14 @@ final class EvaluationCreationService
     {
         foreach ($questions as $index => $questionData) {
             EvaluationQuestion::create([
-                'evaluation_id'   => $evaluation->id,
-                'question'        => $questionData['question'],
-                'type'            => $questionData['type'],
-                'ordre'           => $index + 1,
-                'points'          => $questionData['points'] ?? 1,
-                'options'         => $questionData['options'] ?? null,
+                'evaluation_id' => $evaluation->id,
+                'question' => $questionData['question'],
+                'type' => $questionData['type'],
+                'ordre' => $index + 1,
+                'points' => $questionData['points'] ?? 1,
+                'options' => $questionData['options'] ?? null,
                 'correct_answers' => $questionData['correct_answers'] ?? null,
-                'explanation'     => $questionData['explanation'] ?? null,
+                'explanation' => $questionData['explanation'] ?? null,
             ]);
         }
     }

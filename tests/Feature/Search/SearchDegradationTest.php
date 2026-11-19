@@ -8,6 +8,7 @@ use App\Models\Institution;
 use App\Models\User;
 use App\Services\KlassciProxyService;
 use App\Services\Search\GlobalSearchService;
+use Illuminate\Cache\RedisStore;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
 use Mockery;
@@ -143,7 +144,7 @@ final class SearchDegradationTest extends TestCase
         // pas sur Carbon : sous la jambe CI redis, l'entrée dégradée ne « périme »
         // pas et le test échoue à tort. Le comportement prod reste correct (TTL
         // réel de 30 s). On restreint donc ce cas aux stores pilotés par Carbon.
-        if (app('cache')->store()->getStore() instanceof \Illuminate\Cache\RedisStore) {
+        if (app('cache')->store()->getStore() instanceof RedisStore) {
             self::markTestSkipped('TTL redis suit l\'horloge réelle, pas le time-travel Carbon.');
         }
 
@@ -204,7 +205,7 @@ final class SearchDegradationTest extends TestCase
 
         Sanctum::actingAs($this->staff);
 
-        $this->getJson('/api/search?query=' . self::QUERY)
+        $this->getJson('/api/search?query='.self::QUERY)
             ->assertOk()
             ->assertJsonPath('sources_failed', ['classes', 'matieres']);
     }

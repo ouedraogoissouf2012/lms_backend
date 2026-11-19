@@ -1,5 +1,7 @@
 <?php
 
+use App\Models\Institution;
+use App\Models\User;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
@@ -58,16 +60,16 @@ return new class extends Migration
         });
 
         // Copy encrypted data back (no decryption)
-        \DB::table('users')
+        DB::table('users')
             ->whereNotNull('klassci_token_encrypted')
             ->update([
-                'klassci_token' => \DB::raw('klassci_token_encrypted')
+                'klassci_token' => DB::raw('klassci_token_encrypted'),
             ]);
 
-        \DB::table('institutions')
+        DB::table('institutions')
             ->whereNotNull('klassci_api_token_encrypted')
             ->update([
-                'klassci_api_token' => \DB::raw('klassci_api_token_encrypted')
+                'klassci_api_token' => DB::raw('klassci_api_token_encrypted'),
             ]);
 
         // Drop encrypted columns
@@ -91,7 +93,7 @@ return new class extends Migration
         // `deleted_at is null` alors que la colonne n'existe pas encore à cette étape
         // de `migrate:fresh`. Une migration opère sur les lignes brutes, pas sur les
         // scopes du modèle courant (qui évolue indépendamment).
-        \App\Models\User::withoutGlobalScopes()->whereNotNull('klassci_token')
+        User::withoutGlobalScopes()->whereNotNull('klassci_token')
             ->chunk(100, function ($users) {
                 foreach ($users as $user) {
                     if ($user->klassci_token) {
@@ -112,7 +114,7 @@ return new class extends Migration
         // du trait SoftDeletes sur Institution ; sans ça, le SoftDeletingScope
         // injecterait `deleted_at is null` alors que la colonne n'existe pas encore à
         // cette étape de `migrate:fresh`. Une migration opère sur les lignes brutes.
-        \App\Models\Institution::withoutGlobalScopes()->whereNotNull('klassci_api_token')
+        Institution::withoutGlobalScopes()->whereNotNull('klassci_api_token')
             ->chunk(100, function ($institutions) {
                 foreach ($institutions as $institution) {
                     if ($institution->klassci_api_token) {

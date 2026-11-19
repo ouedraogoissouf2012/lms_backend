@@ -19,7 +19,7 @@ class DeleteQuizRequest extends FormRequest
         $user = Auth::user();
         $quiz = $this->route('quiz');
 
-        if (!$quiz) {
+        if (! $quiz) {
             return false;
         }
 

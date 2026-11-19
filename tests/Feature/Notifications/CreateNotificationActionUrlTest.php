@@ -64,7 +64,7 @@ final class CreateNotificationActionUrlTest extends TestCase
     {
         foreach (self::volets() as $volet => [$autonome]) {
             foreach (['/student/evaluations/3', 'https://exemple.ci/x?y=1', null] as $url) {
-                yield "$volet, " . ($url ?? 'aucun lien') => [$autonome, $url];
+                yield "$volet, ".($url ?? 'aucun lien') => [$autonome, $url];
             }
         }
     }

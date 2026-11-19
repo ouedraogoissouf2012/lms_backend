@@ -24,7 +24,7 @@ use Symfony\Component\Process\Process;
  *   duplicated `findLibreOfficeCommand()` / `findGhostscriptCommand()` logic
  *   present in the legacy `FileConversionService`.
  *
- * @see \Symfony\Component\Process\Process
+ * @see Process
  */
 final class ShellExecutor implements ShellExecutorInterface
 {
@@ -46,25 +46,24 @@ final class ShellExecutor implements ShellExecutorInterface
 
     public function __construct(
         private readonly ?LoggerInterface $logger = null,
-    ) {
-    }
+    ) {}
 
     /**
      * Execute an external command synchronously.
      *
-     * @param array<int, string> $command  Argv-style array. The first element
-     *                                     is the binary, the rest are individual
-     *                                     arguments (never a single shell line).
-     * @param string|null $cwd             Working directory. `null` keeps the
-     *                                     current PHP process directory.
-     * @param int $timeout                 Hard timeout in seconds. Process is
-     *                                     killed and a ShellExecutionException
-     *                                     is raised when reached.
+     * @param  array<int, string>  $command  Argv-style array. The first element
+     *                                       is the binary, the rest are individual
+     *                                       arguments (never a single shell line).
+     * @param  string|null  $cwd  Working directory. `null` keeps the
+     *                            current PHP process directory.
+     * @param  int  $timeout  Hard timeout in seconds. Process is
+     *                        killed and a ShellExecutionException
+     *                        is raised when reached.
      *
      * @throws ShellExecutionException If the process exits with a non-zero code
-     *                                  or times out. The exception carries the
-     *                                  command, stderr and exit code on typed
-     *                                  readonly properties for server-side logs.
+     *                                 or times out. The exception carries the
+     *                                 command, stderr and exit code on typed
+     *                                 readonly properties for server-side logs.
      */
     public function run(array $command, ?string $cwd = null, int $timeout = self::DEFAULT_TIMEOUT): ShellResult
     {
@@ -109,11 +108,10 @@ final class ShellExecutor implements ShellExecutorInterface
      * on Windows or `which` on Unix-likes, run through {@see run()} so the
      * shell stays auditable and mockable.
      *
-     * @param string $binaryName               Logical name used only for the
-     *                                          "not found" debug log line.
-     * @param array<int, string> $candidates   Ordered list of candidates. The
+     * @param  string  $binaryName  Logical name used only for the
+     *                              "not found" debug log line.
+     * @param  array<int, string>  $candidates  Ordered list of candidates. The
      *                                          first one that resolves wins.
-     *
      * @return string|null Absolute path on success ; `null` if no candidate
      *                     resolves on the host.
      */
@@ -124,6 +122,7 @@ final class ShellExecutor implements ShellExecutorInterface
                 if (is_file($candidate)) {
                     return $candidate;
                 }
+
                 continue;
             }
 

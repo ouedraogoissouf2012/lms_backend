@@ -23,8 +23,7 @@ final class ForumNotificationDispatcher
 {
     public function __construct(
         private readonly NotificationDispatcher $dispatcher,
-    ) {
-    }
+    ) {}
 
     /**
      * Notifier l'auteur du topic et les participants d'une nouvelle réponse.
@@ -39,7 +38,7 @@ final class ForumNotificationDispatcher
             return 0;
         }
 
-        $title = "Nouvelle réponse à votre topic";
+        $title = 'Nouvelle réponse à votre topic';
         $message = "{$post->user->name} a répondu à votre topic \"{$topic->title}\".";
         $data = [
             'topic_id' => $topic->id,
@@ -60,7 +59,7 @@ final class ForumNotificationDispatcher
             ->get();
 
         if ($participants->isNotEmpty()) {
-            $participantTitle = "Nouvelle réponse";
+            $participantTitle = 'Nouvelle réponse';
             $participantMessage = "{$post->user->name} a répondu au topic \"{$topic->title}\".";
 
             return 1 + $this->dispatcher->sendToMany($participants, Notification::TYPE_FORUM_REPLY, $participantTitle, $participantMessage, $data);
@@ -77,7 +76,7 @@ final class ForumNotificationDispatcher
         $topic = $post->topic;
         $postAuthor = $post->user;
 
-        $title = "Votre réponse a été marquée comme solution";
+        $title = 'Votre réponse a été marquée comme solution';
         $message = "Votre réponse au topic \"{$topic->title}\" a été acceptée comme solution !";
         $data = [
             'topic_id' => $topic->id,

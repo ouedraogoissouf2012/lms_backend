@@ -2,13 +2,13 @@
 
 namespace Database\Factories;
 
-use App\Models\KnowledgeCheck;
 use App\Models\Chapter;
 use App\Models\Institution;
+use App\Models\KnowledgeCheck;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
- * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\KnowledgeCheck>
+ * @extends Factory<KnowledgeCheck>
  */
 class KnowledgeCheckFactory extends Factory
 {

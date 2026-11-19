@@ -49,7 +49,7 @@ final class MatieresEcoleIndependanteAccesTest extends TestCase
 
     // ───────────────────────── la grille d'accès
 
-    public function test_le_superAdmin_lit_toute_la_matiere_mais_n_a_aucune_matiere_a_lui(): void
+    public function test_le_super_admin_lit_toute_la_matiere_mais_n_a_aucune_matiere_a_lui(): void
     {
         // Il passe toute garde de rôle d'établissement, mais ne peut pas être
         // désigné formateur (LocalClasseMatiereLinker n'accepte qu'un
@@ -90,7 +90,7 @@ final class MatieresEcoleIndependanteAccesTest extends TestCase
         $this->asTenant($eleve)->getJson($this->page($maths))->assertNotFound();
     }
 
-    public function test_un_apprenant_d_une_AUTRE_ecole_ne_lit_pas_la_matiere(): void
+    public function test_un_apprenant_d_une_autre_ecole_ne_lit_pas_la_matiere(): void
     {
         [, $maths] = $this->matiereEnseignee();
         $ailleurs = $this->ecole();

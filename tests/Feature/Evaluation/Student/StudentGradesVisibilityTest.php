@@ -51,6 +51,7 @@ final class StudentGradesVisibilityTest extends TestCase
     private const KLASSCI_STUDENT_ID = 7777;
 
     private Institution $institution;
+
     private User $student;
 
     protected function setUp(): void

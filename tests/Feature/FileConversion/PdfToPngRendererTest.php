@@ -178,20 +178,20 @@ final class PdfToPngRendererTest extends TestCase
         $this->shellMock->shouldNotReceive('run');
 
         // Minimal valid 1-page PDF — small enough to inline without an external fixture.
-        $pdfPath = sys_get_temp_dir() . '/imagick-test-' . uniqid() . '.pdf';
+        $pdfPath = sys_get_temp_dir().'/imagick-test-'.uniqid().'.pdf';
         file_put_contents(
             $pdfPath,
             "%PDF-1.0\n"
-            . "1 0 obj<</Pages 2 0 R>>endobj\n"
-            . "2 0 obj<</Type/Pages/Kids[3 0 R]/Count 1>>endobj\n"
-            . "3 0 obj<</Type/Page/MediaBox[0 0 3 3]/Parent 2 0 R/Resources<<>>>>endobj\n"
-            . "trailer<</Root 1 0 R/Size 4>>\n"
-            . "%%EOF\n"
+            ."1 0 obj<</Pages 2 0 R>>endobj\n"
+            ."2 0 obj<</Type/Pages/Kids[3 0 R]/Count 1>>endobj\n"
+            ."3 0 obj<</Type/Page/MediaBox[0 0 3 3]/Parent 2 0 R/Resources<<>>>>endobj\n"
+            ."trailer<</Root 1 0 R/Size 4>>\n"
+            ."%%EOF\n"
         );
 
         try {
             $renderer = new PdfToPngRenderer($this->shellMock);
-            $result   = $renderer->render($pdfPath, 99);
+            $result = $renderer->render($pdfPath, 99);
 
             $this->assertNotEmpty($result, 'Imagick should produce at least one slide.');
             $this->assertStringStartsWith('chapters/99/slides/slide_', $result[0]);

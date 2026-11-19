@@ -66,7 +66,7 @@ final class LocalLmsAuthenticatorTest extends TestCase
     {
         $institution = Institution::factory()->create();
         $user = User::factory()->for($institution)->create([
-            'email'    => 'alpha@test.com',
+            'email' => 'alpha@test.com',
             'password' => 'hashed_password_alpha',
         ]);
 
@@ -88,8 +88,8 @@ final class LocalLmsAuthenticatorTest extends TestCase
     {
         $institution = Institution::factory()->create();
         $user = User::factory()->for($institution)->create([
-            'name'     => 'SomeUsername',
-            'email'    => 'real@example.com',
+            'name' => 'SomeUsername',
+            'email' => 'real@example.com',
             'password' => 'hashed_password_beta',
         ]);
 
@@ -128,7 +128,7 @@ final class LocalLmsAuthenticatorTest extends TestCase
     {
         $institution = Institution::factory()->create();
         User::factory()->for($institution)->create([
-            'email'    => 'gamma@test.com',
+            'email' => 'gamma@test.com',
             'password' => 'hashed_password_gamma',
         ]);
 
@@ -153,7 +153,7 @@ final class LocalLmsAuthenticatorTest extends TestCase
         // User KLASSCI sans password local — ne doit pas pouvoir login en local
         $institution = Institution::factory()->create();
         User::factory()->for($institution)->create([
-            'email'    => 'klassci-only@test.com',
+            'email' => 'klassci-only@test.com',
             'password' => null,
         ]);
 
@@ -175,10 +175,10 @@ final class LocalLmsAuthenticatorTest extends TestCase
     {
         // Supradmin pattern : user sans institution_id, doit être trouvable
         $supradmin = User::factory()->create([
-            'email'          => 'super@admin.com',
-            'password'       => 'hashed_super',
+            'email' => 'super@admin.com',
+            'password' => 'hashed_super',
             'institution_id' => null,
-            'role'           => 'supradmin',
+            'role' => 'supradmin',
         ]);
 
         $hasher = Mockery::mock(Hasher::class);

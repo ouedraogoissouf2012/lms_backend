@@ -100,7 +100,7 @@ final class ProxyOrganisationRosterIsolationTest extends TestCase
             'token-bob' => ['id' => 202, 'nom' => 'Élève Bob'],
         ];
 
-        $factory = new HttpFactory();
+        $factory = new HttpFactory;
         $factory->fake(function (ClientRequest $request) use ($payloads) {
             $resource = basename((string) parse_url($request->url(), PHP_URL_PATH));
             $this->networkCalls[$resource] = ($this->networkCalls[$resource] ?? 0) + 1;

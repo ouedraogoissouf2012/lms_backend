@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Klassci\Auth;
 
 use App\Enums\Role;
+use Database\Seeders\SupradminSeeder;
 
 /**
  * Neutralise l'injection du rôle PLATEFORME (`supradmin`, cross-tenant) via le
@@ -24,7 +25,7 @@ use App\Enums\Role;
  * correspondance exacte (#949 : une seule lecture du rôle) :
  * - le rôle PLATEFORME exact `supradmin` est ramené à l'admin d'INSTITUTION
  *   (`superAdmin`, intra-tenant, jamais cross-tenant) ; le rôle plateforme ne
- *   provient QUE du {@see \Database\Seeders\SupradminSeeder} ;
+ *   provient QUE du {@see SupradminSeeder} ;
  * - tout autre rôle connu est rendu sous sa valeur CANONIQUE (`teacher` →
  *   `enseignant`) ;
  * - un rôle hors de la table (variante de casse ou d'espace comprise, comme

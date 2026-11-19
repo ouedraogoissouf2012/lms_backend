@@ -91,19 +91,19 @@ class StorageHttpGuardTest extends TestCase
     {
         return [
             // Menaces — doivent être bloquées (403).
-            'code source (racine appli)'        => ['/app/Models/User.php', true],
-            'code source (sous /lms-backend)'   => ['/lms-backend/app/Models/User.php', true],
-            'config sous préfixe'               => ['/lms-backend/config/app.php', true],
-            'base sqlite'                       => ['/lms-backend/database/database.sqlite', true],
-            'vendor'                            => ['/vendor/autoload.php', true],
-            'cache compilé'                     => ['/lms-backend/bootstrap/cache/config.php', true],
+            'code source (racine appli)' => ['/app/Models/User.php', true],
+            'code source (sous /lms-backend)' => ['/lms-backend/app/Models/User.php', true],
+            'config sous préfixe' => ['/lms-backend/config/app.php', true],
+            'base sqlite' => ['/lms-backend/database/database.sqlite', true],
+            'vendor' => ['/vendor/autoload.php', true],
+            'cache compilé' => ['/lms-backend/bootstrap/cache/config.php', true],
             // Chemins légitimes — ne doivent PAS être bloqués par cette règle.
-            'route API'                         => ['/api/lessons/123/chapters', false],
-            'asset public (symlink storage)'    => ['/storage/chapters/9/slides/1.png', false],
+            'route API' => ['/api/lessons/123/chapters', false],
+            'asset public (symlink storage)' => ['/storage/chapters/9/slides/1.png', false],
             'storage sous préfixe (→ storage/.htaccess)' => ['/lms-backend/storage/logs/laravel.log', false],
-            'config profond dans une route'     => ['/api/institutions/5/config/reset', false],
-            'faux ami apps'                     => ['/apps/list', false],
-            'health check'                      => ['/up', false],
+            'config profond dans une route' => ['/api/institutions/5/config/reset', false],
+            'faux ami apps' => ['/apps/list', false],
+            'health check' => ['/up', false],
         ];
     }
 
@@ -111,12 +111,12 @@ class StorageHttpGuardTest extends TestCase
     public function test_root_directory_rule_matches_threats_not_legit_paths(string $uri, bool $shouldBlock): void
     {
         // [NC] côté Apache → drapeau i côté PCRE.
-        $pattern = '#' . str_replace('#', '\#', $this->rootDirectoryRulePattern()) . '#i';
+        $pattern = '#'.str_replace('#', '\#', $this->rootDirectoryRulePattern()).'#i';
 
         $this->assertSame(
             $shouldBlock,
             (bool) preg_match($pattern, $uri),
-            "URI « {$uri} » : blocage attendu=" . ($shouldBlock ? 'oui' : 'non')
+            "URI « {$uri} » : blocage attendu=".($shouldBlock ? 'oui' : 'non')
         );
     }
 

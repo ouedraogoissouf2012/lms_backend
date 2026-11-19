@@ -7,6 +7,7 @@ namespace App\Jobs;
 use App\Models\Institution;
 use App\Models\User;
 use App\Services\ClasseSyncService;
+use App\Services\Klassci\Auth\MiroirDeLaClasseDeLEleve;
 use App\Services\Seances\Sync\SyncTenantContext;
 use App\Support\Logging\CaughtExceptionLog;
 use Illuminate\Bus\Queueable;
@@ -20,7 +21,7 @@ use Throwable;
 /**
  * Synchronise les classes d'un enseignant en arrière-plan, à sa connexion (#712),
  * et la classe d'un élève dont le miroir manque (#886, demandé par
- * {@see \App\Services\Klassci\Auth\MiroirDeLaClasseDeLEleve}).
+ * {@see MiroirDeLaClasseDeLEleve}).
  *
  * ## Le défaut corrigé
  *

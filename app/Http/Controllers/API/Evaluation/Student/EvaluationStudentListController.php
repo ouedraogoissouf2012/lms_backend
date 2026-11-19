@@ -7,8 +7,8 @@ namespace App\Http\Controllers\API\Evaluation\Student;
 use App\Exceptions\MissingKlassciTokenException;
 use App\Http\Controllers\API\Concerns\RendersKlassciBackedErrors;
 use App\Http\Controllers\AuthenticatedController;
-use App\Services\Evaluation\Student\StudentEvaluationsReader;
 use App\Services\Evaluation\Student\MatieresDesNotes;
+use App\Services\Evaluation\Student\StudentEvaluationsReader;
 use App\Services\Evaluation\Student\StudentGradesAggregator;
 use App\Support\Logging\CaughtExceptionLog;
 use Illuminate\Http\JsonResponse;
@@ -46,11 +46,13 @@ final class EvaluationStudentListController extends AuthenticatedController
             if ($data === null) {
                 return $this->errorResponse('Classe non trouvée', 404);
             }
+
             return $this->successResponse($data);
         } catch (RuntimeException $e) {
             return $this->renderKlassciFailure($e);
         } catch (\Exception $e) {
             $this->journal->error('Erreur récupération évaluations étudiant', $e);
+
             return $this->errorResponse('Erreur lors de la récupération des évaluations', 500);
         }
     }
@@ -68,11 +70,13 @@ final class EvaluationStudentListController extends AuthenticatedController
             }
 
             $data = $this->gradesAggregator->getGradesAggregatedByMatiere($user, $matieres);
+
             return $this->successResponse($data);
         } catch (\Exception $e) {
             $this->journal->error('Erreur récupération notes étudiant', $e, [
                 'user_id' => $request->user()?->id,
             ]);
+
             // Non migré vers errorResponse() : cette réponse expose une clé racine
             // `error` (singulier, string) que le trait ne reproduit pas — il ne
             // produit que `errors` (pluriel, tableau). La migrer changerait le

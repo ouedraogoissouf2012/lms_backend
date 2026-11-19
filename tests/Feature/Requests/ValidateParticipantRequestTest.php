@@ -5,6 +5,7 @@ namespace Tests\Feature\Requests;
 use App\Models\Institution;
 use App\Models\Seance;
 use App\Models\User;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
 use Tests\Concerns\ActsAsTenantUser;
 use Tests\TestCase;
@@ -12,11 +13,14 @@ use Tests\TestCase;
 class ValidateParticipantRequestTest extends TestCase
 {
     use ActsAsTenantUser;
-    use \Illuminate\Foundation\Testing\RefreshDatabase;
+    use RefreshDatabase;
 
     private Institution $institution;
+
     private User $teacher;
+
     private User $student;
+
     private Seance $seance;
 
     protected function setUp(): void
@@ -26,10 +30,10 @@ class ValidateParticipantRequestTest extends TestCase
 
         $this->institution = Institution::factory()->create();
         $this->teacher = User::factory()->teacher()->for($this->institution)->create([
-            'klassci_token' => 'test_token_' . uniqid(),
+            'klassci_token' => 'test_token_'.uniqid(),
         ]);
         $this->student = User::factory()->student()->for($this->institution)->create([
-            'klassci_token' => 'test_token_' . uniqid(),
+            'klassci_token' => 'test_token_'.uniqid(),
         ]);
         $this->seance = Seance::factory()->forInstitution($this->institution)->create([
             'klassci_enseignant_id' => 123,
@@ -114,7 +118,7 @@ class ValidateParticipantRequestTest extends TestCase
     public function test_student_can_validate_other_user(): void
     {
         $otherStudent = User::factory()->student()->for($this->institution)->create([
-            'klassci_token' => 'test_token_' . uniqid(),
+            'klassci_token' => 'test_token_'.uniqid(),
         ]);
 
         Sanctum::actingAs($this->student);

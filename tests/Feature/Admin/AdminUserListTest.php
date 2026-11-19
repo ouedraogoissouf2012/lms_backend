@@ -7,6 +7,7 @@ namespace Tests\Feature\Admin;
 use App\Models\Institution;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 /**
@@ -138,7 +139,7 @@ final class AdminUserListTest extends TestCase
         ];
     }
 
-    #[\PHPUnit\Framework\Attributes\DataProvider('invalidQueryProvider')]
+    #[DataProvider('invalidQueryProvider')]
     public function test_invalid_query_parameters_are_refused(string $query): void
     {
         $this->getJson('/api/admin/users?'.$query, $this->bearer($this->userWithRole('coordinateur')))

@@ -13,6 +13,7 @@ use App\Models\UserClass;
 use App\Services\Seances\KlassciPayload;
 use App\Services\Visio\VisioActorAuthorization;
 use App\Support\Logging\CaughtExceptionLog;
+use Illuminate\Support\Collection;
 use Psr\Log\LoggerInterface;
 use Throwable;
 
@@ -210,16 +211,16 @@ final class VideoSessionAttendancesSyncer
      * une seule requête. #503.
      *
      * @param  array<int, array<string, mixed>>  $participants
-     * @return \Illuminate\Support\Collection<int|string, User>
+     * @return Collection<int|string, User>
      */
-    private function preloadUsers(array $participants, int $institutionId): \Illuminate\Support\Collection
+    private function preloadUsers(array $participants, int $institutionId): Collection
     {
         $klassciIds = array_values(array_filter(
             array_map(fn (array $p): mixed => $p['etudiant_id'] ?? null, $participants),
             fn (mixed $id): bool => $id !== null
         ));
 
-        /** @var \Illuminate\Support\Collection<int|string, User> $users */
+        /** @var Collection<int|string, User> $users */
         $users = User::query()
             ->where('institution_id', $institutionId)
             ->whereIn('klassci_id', $klassciIds)
@@ -250,7 +251,7 @@ final class VideoSessionAttendancesSyncer
             ->where('klassci_id', $klassciClasseId)
             ->with(['etudiants' => fn ($query) => $query->where('classe_etudiant.statut', ClasseEtudiantStatut::Actif->value)])
             ->get()
-            ->flatMap(fn (Classe $classe): \Illuminate\Support\Collection => $classe->etudiants->pluck('id'));
+            ->flatMap(fn (Classe $classe): Collection => $classe->etudiants->pluck('id'));
 
         /** @var array<int, int> $ids */
         $ids = $fromUserClass->concat($fromPivot)->unique()->values()->all();

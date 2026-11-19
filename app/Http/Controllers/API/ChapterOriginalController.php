@@ -35,8 +35,7 @@ final class ChapterOriginalController extends AuthenticatedController
     public function __construct(
         private readonly ChapterOriginalDownloadService $downloads,
         private readonly ChapterReadGate $reads,
-    ) {
-    }
+    ) {}
 
     /**
      * GET /api/chapters/{id}/original — document source du chapitre.

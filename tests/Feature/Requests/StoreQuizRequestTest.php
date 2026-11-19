@@ -2,25 +2,31 @@
 
 namespace Tests\Feature\Requests;
 
+use App\Models\Classe;
 use App\Models\Institution;
-use App\Models\User;
-use App\Models\Quiz;
 use App\Models\Lesson;
 use App\Models\Matiere;
-use App\Models\Classe;
+use App\Models\User;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
 class StoreQuizRequestTest extends TestCase
 {
-    use \Illuminate\Foundation\Testing\RefreshDatabase;
+    use RefreshDatabase;
 
     private Institution $institution;
+
     private User $teacher;
+
     private User $coordinator;
+
     private User $student;
+
     private Lesson $lesson;
+
     private Matiere $matiere;
+
     private Classe $classe;
 
     protected function setUp(): void

@@ -35,8 +35,11 @@ final class ForumDiscussionFlowTest extends TestCase
     use RefreshDatabase;
 
     private Institution $institution;
+
     private User $studentA;
+
     private User $studentB;
+
     private User $teacher;
 
     protected function setUp(): void

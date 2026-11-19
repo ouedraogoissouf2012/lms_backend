@@ -20,11 +20,11 @@ use Tests\TestCase;
  *
  * Spec: `.claude/specs/role-enum/`
  *
- * @see \App\Models\User::asRoleEnum
- * @see \App\Models\User::isAdmin
- * @see \App\Models\User::isTeacher
- * @see \App\Models\User::isStudent
- * @see \App\Models\User::isCoordinator
+ * @see User::asRoleEnum
+ * @see User::isAdmin
+ * @see User::isTeacher
+ * @see User::isStudent
+ * @see User::isCoordinator
  */
 final class UserRoleHelpersTest extends TestCase
 {
@@ -44,7 +44,7 @@ final class UserRoleHelpersTest extends TestCase
     {
         return User::factory()->create([
             'institution_id' => $this->institution->id,
-            'role'           => $role,
+            'role' => $role,
         ]);
     }
 
@@ -75,32 +75,32 @@ final class UserRoleHelpersTest extends TestCase
             self::assertSame(
                 $student,
                 $user->isStudent(),
-                "isStudent() pour role={$role} doit retourner " . ($student ? 'true' : 'false'),
+                "isStudent() pour role={$role} doit retourner ".($student ? 'true' : 'false'),
             );
             self::assertSame(
                 $teacher,
                 $user->isTeacher(),
-                "isTeacher() pour role={$role} doit retourner " . ($teacher ? 'true' : 'false'),
+                "isTeacher() pour role={$role} doit retourner ".($teacher ? 'true' : 'false'),
             );
             self::assertSame(
                 $coord,
                 $user->isCoordinator(),
-                "isCoordinator() pour role={$role} doit retourner " . ($coord ? 'true' : 'false'),
+                "isCoordinator() pour role={$role} doit retourner ".($coord ? 'true' : 'false'),
             );
             self::assertSame(
                 $admin,
                 $user->isAdmin(),
-                "isAdmin() pour role={$role} doit retourner " . ($admin ? 'true' : 'false'),
+                "isAdmin() pour role={$role} doit retourner ".($admin ? 'true' : 'false'),
             );
             self::assertSame(
                 $staff,
                 $user->isStaff(),
-                "isStaff() pour role={$role} doit retourner " . ($staff ? 'true' : 'false'),
+                "isStaff() pour role={$role} doit retourner ".($staff ? 'true' : 'false'),
             );
             self::assertSame(
                 $manager,
                 $user->isManager(),
-                "isManager() pour role={$role} doit retourner " . ($manager ? 'true' : 'false'),
+                "isManager() pour role={$role} doit retourner ".($manager ? 'true' : 'false'),
             );
         }
     }

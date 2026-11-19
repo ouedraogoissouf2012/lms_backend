@@ -47,8 +47,7 @@ final class NotificationService
         private readonly ForumNotificationDispatcher $forumDispatcher,
         private readonly QuizNotificationDispatcher $quizDispatcher,
         private readonly VisioNotificationDispatcher $visioDispatcher,
-    ) {
-    }
+    ) {}
 
     /**
      * Envoyer une notification à un utilisateur.

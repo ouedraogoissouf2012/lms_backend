@@ -29,9 +29,9 @@ use App\Models\Lesson;
 return [
 
     'morph_map' => [
-        'lesson'      => Lesson::class,
+        'lesson' => Lesson::class,
         'forum_topic' => ForumTopic::class,
-        'forum_post'  => ForumPost::class,
+        'forum_post' => ForumPost::class,
     ],
 
 ];

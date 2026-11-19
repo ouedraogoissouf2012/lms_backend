@@ -21,7 +21,7 @@ use Psr\Log\LoggerInterface;
  * Le nom historique de la commande était `recordings:fail-stale-processing`. Il
  * est devenu mensonger le jour où la seconde passe est apparue.
  *
- * @see \App\Services\Visio\Recording\StaleRecordingFailer
+ * @see StaleRecordingFailer
  */
 final class FailStaleRecordings extends Command
 {

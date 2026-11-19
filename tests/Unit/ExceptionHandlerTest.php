@@ -2,7 +2,10 @@
 
 namespace Tests\Unit;
 
+use Illuminate\Contracts\Debug\ExceptionHandler;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Exceptions\HttpResponseException;
+use Illuminate\Http\Request;
 use Tests\TestCase;
 
 class ExceptionHandlerTest extends TestCase
@@ -33,10 +36,10 @@ class ExceptionHandlerTest extends TestCase
         $this->app['config']->set('app.debug', false);
 
         $portee = response()->json(['success' => false, 'reason' => 'essai'], 429, ['Retry-After' => '42']);
-        $requete = \Illuminate\Http\Request::create('/api/nimporte', 'POST', [], [], [], ['HTTP_ACCEPT' => 'application/json']);
+        $requete = Request::create('/api/nimporte', 'POST', [], [], [], ['HTTP_ACCEPT' => 'application/json']);
 
-        $rendue = $this->app->make(\Illuminate\Contracts\Debug\ExceptionHandler::class)
-            ->render($requete, new \Illuminate\Http\Exceptions\HttpResponseException($portee));
+        $rendue = $this->app->make(ExceptionHandler::class)
+            ->render($requete, new HttpResponseException($portee));
 
         $this->assertSame(429, $rendue->getStatusCode());
         $this->assertSame('42', $rendue->headers->get('Retry-After'));
@@ -76,7 +79,7 @@ class ExceptionHandlerTest extends TestCase
      * version utilisait `shell_exec(grep | wc -l)` Unix-spécifique
      * (TEST-01 fix).
      */
-    public function test_getMessage_not_exposed_in_controllers(): void
+    public function test_get_message_not_exposed_in_controllers(): void
     {
         $leaks = $this->scanLinesMatchingBoth(
             base_path('app/Http/Controllers'),
@@ -88,7 +91,7 @@ class ExceptionHandlerTest extends TestCase
             [],
             $leaks,
             'getMessage() must not appear in any response()->json(...) call. Found in: '
-                . implode("\n", $leaks)
+                .implode("\n", $leaks)
         );
     }
 
@@ -114,13 +117,13 @@ class ExceptionHandlerTest extends TestCase
         $this->assertGreaterThan(
             3,
             count($logged),
-            'Les contrôleurs doivent encore journaliser leurs exceptions attrapées par CaughtExceptionLog — trouvé seulement ' . count($logged) . ' ligne(s).'
+            'Les contrôleurs doivent encore journaliser leurs exceptions attrapées par CaughtExceptionLog — trouvé seulement '.count($logged).' ligne(s).'
         );
     }
 
     /**
-     * @return list<string>  Liste de "path:line" pour les lignes contenant
-     *                       les deux substrings simultanément.
+     * @return list<string> Liste de "path:line" pour les lignes contenant
+     *                      les deux substrings simultanément.
      */
     private function scanLinesMatchingBoth(string $dir, string $needle1, string $needle2): array
     {
@@ -128,14 +131,14 @@ class ExceptionHandlerTest extends TestCase
         $iterator = new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($dir));
 
         foreach ($iterator as $file) {
-            if (!$file->isFile() || $file->getExtension() !== 'php') {
+            if (! $file->isFile() || $file->getExtension() !== 'php') {
                 continue;
             }
 
             $lines = file($file->getPathname(), FILE_IGNORE_NEW_LINES);
             foreach ($lines as $i => $line) {
                 if (str_contains($line, $needle1) && str_contains($line, $needle2)) {
-                    $matches[] = $file->getPathname() . ':' . ($i + 1);
+                    $matches[] = $file->getPathname().':'.($i + 1);
                 }
             }
         }

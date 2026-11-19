@@ -39,7 +39,7 @@ final class UploadLimits
      */
     public static function maxRule(): string
     {
-        return 'max:' . self::MAX_KILOBYTES;
+        return 'max:'.self::MAX_KILOBYTES;
     }
 
     /**
@@ -48,6 +48,6 @@ final class UploadLimits
      */
     public static function humanReadable(): string
     {
-        return intdiv(self::MAX_KILOBYTES, 1024) . ' MB';
+        return intdiv(self::MAX_KILOBYTES, 1024).' MB';
     }
 }

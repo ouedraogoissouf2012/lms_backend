@@ -91,7 +91,7 @@ final class InscriptionParCodeTest extends TestCase
 
     // ───────────────────────── LA faille à ne pas refaire
 
-    public function test_un_compte_EXISTANT_n_est_JAMAIS_touche(): void
+    public function test_un_compte_existant_n_est_jamais_touche(): void
     {
         // #812 : poser un mot de passe sur un compte existant serait une prise
         // de contrôle. On vérifie l'ancien mot de passe INCHANGÉ, pas seulement
@@ -142,7 +142,7 @@ final class InscriptionParCodeTest extends TestCase
 
     // ───────────────────────── les autres refus
 
-    public function test_un_code_inconnu_et_un_code_RETIRE_rendent_le_meme_refus(): void
+    public function test_un_code_inconnu_et_un_code_retire_rendent_le_meme_refus(): void
     {
         // Les distinguer dirait qu'un code a existé pour cette valeur — donc
         // qu'une classe l'attend. Même raisonnement qu'ADR-803-02.
@@ -161,7 +161,7 @@ final class InscriptionParCodeTest extends TestCase
         self::assertSame(0, DB::table('classe_etudiant')->count());
     }
 
-    public function test_un_code_inconnu_ne_dit_RIEN_d_une_adresse_connue(): void
+    public function test_un_code_inconnu_ne_dit_rien_d_une_adresse_connue(): void
     {
         // L'ordre du service est une garde : le code se résout AVANT que
         // l'existence du compte ne soit contrôlée. Inversé, cet appel rendrait
@@ -173,7 +173,7 @@ final class InscriptionParCodeTest extends TestCase
             ->assertStatus(404);
     }
 
-    public function test_un_code_emis_n_ouvre_plus_rien_une_fois_l_ecole_passee_a_KLASSCI(): void
+    public function test_un_code_emis_n_ouvre_plus_rien_une_fois_l_ecole_passee_a_klassci(): void
     {
         // Basculer vers KLASSCI ne retire pas les codes déjà dictés. Sans le
         // contrôle du droit, ils écriraient une liste qui appartient désormais
@@ -187,7 +187,7 @@ final class InscriptionParCodeTest extends TestCase
         self::assertSame(0, DB::table('classe_etudiant')->count());
     }
 
-    public function test_le_code_d_une_AUTRE_ecole_n_ouvre_rien(): void
+    public function test_le_code_d_une_autre_ecole_n_ouvre_rien(): void
     {
         // `code_inscription` n'est unique que par établissement : sans la borne,
         // un candidat atterrirait dans la mauvaise école.

@@ -38,8 +38,7 @@ final class ForumController extends AuthenticatedController
     public function __construct(
         private readonly ForumTopicService $topicService,
         private readonly ForumPostService $postService,
-    ) {
-    }
+    ) {}
 
     /**
      * GET /api/forum/topics — liste des topics (avec filtres).

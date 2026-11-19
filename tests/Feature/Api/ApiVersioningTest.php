@@ -8,6 +8,7 @@ use App\Models\Institution;
 use App\Models\Lesson;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Route;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
@@ -28,6 +29,7 @@ final class ApiVersioningTest extends TestCase
     use RefreshDatabase;
 
     private Institution $institution;
+
     private User $student;
 
     protected function setUp(): void
@@ -90,11 +92,11 @@ final class ApiVersioningTest extends TestCase
         // Le double montage ne doit pas casser la résolution de route nommée
         // utilisée en interne (ex. téléchargement de fichier).
         $this->assertTrue(
-            \Illuminate\Support\Facades\Route::has('api.files.download'),
+            Route::has('api.files.download'),
             'La route nommée non-versionnée doit rester résolvable'
         );
         $this->assertTrue(
-            \Illuminate\Support\Facades\Route::has('v1.api.files.download'),
+            Route::has('v1.api.files.download'),
             'L\'alias v1 doit exposer la route nommée préfixée v1.'
         );
     }

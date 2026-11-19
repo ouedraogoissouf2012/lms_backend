@@ -28,7 +28,9 @@ final class InstitutionResponseTest extends TestCase
     use RefreshDatabase;
 
     private User $supradmin;
+
     private Institution $instA;
+
     private Institution $instB;
 
     protected function setUp(): void

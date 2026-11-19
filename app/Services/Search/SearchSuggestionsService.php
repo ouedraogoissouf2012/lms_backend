@@ -44,8 +44,7 @@ final class SearchSuggestionsService
     public function __construct(
         private readonly TeacherOwnershipScope $ownership,
         private readonly LessonReadScope $lessonScope,
-    ) {
-    }
+    ) {}
 
     /**
      * Retourner la liste des suggestions pour `$query` et `$user`.

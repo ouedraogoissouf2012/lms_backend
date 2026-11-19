@@ -38,8 +38,7 @@ final class QuizAttemptStateService
     public function __construct(
         private readonly QuizGradingService $grading,
         private readonly QuizAttemptTimerService $timer,
-    ) {
-    }
+    ) {}
 
     /**
      * Détails d'une tentative.
@@ -48,7 +47,7 @@ final class QuizAttemptStateService
      */
     public function showAttempt(QuizAttempt $attempt, User $user): array
     {
-        $quiz        = $attempt->quiz;
+        $quiz = $attempt->quiz;
         $allowReview = $quiz !== null && (bool) $quiz->allow_review;
 
         if (
@@ -59,14 +58,14 @@ final class QuizAttemptStateService
         }
 
         $attempt->time_spent_formatted = $this->timer->formattedTimeSpent($attempt);
-        $attempt->time_remaining       = $this->timer->timeRemaining($attempt);
+        $attempt->time_remaining = $this->timer->timeRemaining($attempt);
 
         return [
-            'status'  => 200,
+            'status' => 200,
             'success' => true,
             'message' => null,
-            'data'    => $attempt,
-            'errors'  => null,
+            'data' => $attempt,
+            'errors' => null,
         ];
     }
 
@@ -89,6 +88,7 @@ final class QuizAttemptStateService
 
         $attempts->getCollection()->transform(function ($attempt) {
             $attempt->time_spent_formatted = $this->timer->formattedTimeSpent($attempt);
+
             return $attempt;
         });
 
@@ -108,15 +108,15 @@ final class QuizAttemptStateService
 
         if ($attempt->status !== 'in_progress') {
             return [
-                'status'  => 200,
+                'status' => 200,
                 'success' => true,
                 'message' => null,
-                'data'    => [
+                'data' => [
                     'time_remaining_seconds' => 0,
-                    'is_expired'             => true,
-                    'status'                 => $attempt->status,
+                    'is_expired' => true,
+                    'status' => $attempt->status,
                 ],
-                'errors'  => null,
+                'errors' => null,
             ];
         }
 
@@ -128,32 +128,32 @@ final class QuizAttemptStateService
             $this->grading->submitAttempt($attempt, $attempt->answers ?? []);
 
             return [
-                'status'  => 422,
+                'status' => 422,
                 'success' => false,
                 'message' => 'Le temps est écoulé. Votre tentative a été soumise automatiquement.',
-                'data'    => [
+                'data' => [
                     'time_remaining_seconds' => 0,
-                    'is_expired'             => true,
-                    'auto_submitted'         => true,
-                    'attempt'                => $attempt->fresh(),
+                    'is_expired' => true,
+                    'auto_submitted' => true,
+                    'attempt' => $attempt->fresh(),
                 ],
-                'errors'  => null,
+                'errors' => null,
             ];
         }
 
         $quiz = $attempt->quiz;
 
         return [
-            'status'  => 200,
+            'status' => 200,
             'success' => true,
             'message' => null,
-            'data'    => [
+            'data' => [
                 'time_remaining_seconds' => $timeRemaining,
-                'is_expired'             => false,
-                'started_at'             => $attempt->started_at,
-                'duration_minutes'       => $quiz?->duration_minutes,
+                'is_expired' => false,
+                'started_at' => $attempt->started_at,
+                'duration_minutes' => $quiz?->duration_minutes,
             ],
-            'errors'  => null,
+            'errors' => null,
         ];
     }
 
@@ -177,14 +177,14 @@ final class QuizAttemptStateService
             $this->grading->submitAttempt($attempt, $answers);
 
             return [
-                'status'  => 422,
+                'status' => 422,
                 'success' => false,
                 'message' => 'Le temps est écoulé. Votre tentative a été soumise automatiquement.',
-                'data'    => [
+                'data' => [
                     'time_expired' => true,
-                    'attempt'      => $attempt->fresh(),
+                    'attempt' => $attempt->fresh(),
                 ],
-                'errors'  => null,
+                'errors' => null,
             ];
         }
 
@@ -192,14 +192,14 @@ final class QuizAttemptStateService
         $attempt->save();
 
         return [
-            'status'  => 200,
+            'status' => 200,
             'success' => true,
             'message' => 'Progression sauvegardée',
-            'data'    => [
+            'data' => [
                 'time_remaining' => $this->timer->timeRemaining($attempt),
-                'saved_at'       => Carbon::now(),
+                'saved_at' => Carbon::now(),
             ],
-            'errors'  => null,
+            'errors' => null,
         ];
     }
 }

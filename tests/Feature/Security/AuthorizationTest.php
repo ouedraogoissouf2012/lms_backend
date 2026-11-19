@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Security;
 
+use App\Models\Classe;
 use App\Models\Institution;
 use App\Models\Lesson;
 use App\Models\Quiz;
+use App\Models\QuizAttempt;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
@@ -32,6 +34,7 @@ final class AuthorizationTest extends TestCase
     use RefreshDatabase;
 
     private Institution $instA;
+
     private Institution $instB;
 
     protected function setUp(): void
@@ -125,7 +128,7 @@ final class AuthorizationTest extends TestCase
 
     public function test_student_cannot_create_lessons(): void
     {
-        $classe = \App\Models\Classe::factory()->create([
+        $classe = Classe::factory()->create([
             'institution_id' => $this->instA->id,
         ]);
 
@@ -168,7 +171,7 @@ final class AuthorizationTest extends TestCase
         // Un étudiant ne doit pas pouvoir s'auto-promouvoir admin en injectant
         // un champ `role` dans une requête d'écriture quelconque.
         $student = $this->user($this->instA, 'etudiant');
-        $classe = \App\Models\Classe::factory()->create([
+        $classe = Classe::factory()->create([
             'institution_id' => $this->instA->id,
         ]);
 
@@ -195,7 +198,7 @@ final class AuthorizationTest extends TestCase
             'institution_id' => $this->instA->id,
             'created_by' => $teacher->id,
         ]);
-        $attempt = \App\Models\QuizAttempt::factory()->create([
+        $attempt = QuizAttempt::factory()->create([
             'quiz_id' => $quiz->id,
             'user_id' => $this->user($this->instA, 'etudiant')->id,
             'institution_id' => $this->instA->id,

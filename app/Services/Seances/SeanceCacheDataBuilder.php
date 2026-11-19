@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Seances;
 
+use App\Jobs\SyncKlassciSeances;
 use App\Models\Seance;
 use App\Models\User;
 use Carbon\Carbon;
@@ -15,7 +16,7 @@ use Carbon\Carbon;
  * ## Issue #474 — DRY (§1.1)
  *
  * `localCacheData` / `updateLocalCacheData` / `parseSeanceStart` étaient
- * dupliqués à l'identique entre {@see \App\Jobs\SyncKlassciSeances} et
+ * dupliqués à l'identique entre {@see SyncKlassciSeances} et
  * {@see TeachingSeancesFetcher}. Une correction de mapping appliquée à un seul
  * chemin aurait produit des `Seance` incohérentes entre le job planifié et le
  * fetch enseignant temps-réel. Ce collaborateur unique élimine ce risque.
@@ -34,7 +35,7 @@ final class SeanceCacheDataBuilder
     /**
      * Construit le tableau de cache local à partir du payload KLASSCI.
      *
-     * @param  array<string, mixed>  $seance   Payload séance (programmation, classe)
+     * @param  array<string, mixed>  $seance  Payload séance (programmation, classe)
      * @param  array<string, mixed>  $matiere  Payload matière (nom/libelle)
      * @param  User  $owner  Enseignant propriétaire (source de institution_id / nom)
      * @return array<string, mixed>

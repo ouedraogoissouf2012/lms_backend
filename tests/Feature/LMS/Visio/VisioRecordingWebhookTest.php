@@ -11,6 +11,7 @@ use App\Models\Seance;
 use App\Models\SeanceRecording;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
+use Illuminate\Testing\TestResponse;
 use Tests\TestCase;
 
 /**
@@ -80,7 +81,7 @@ final class VisioRecordingWebhookTest extends TestCase
     /**
      * @param  array<string, mixed>  $body
      */
-    private function signedPost(array $body, string $nonce = 'nonce-ok'): \Illuminate\Testing\TestResponse
+    private function signedPost(array $body, string $nonce = 'nonce-ok'): TestResponse
     {
         return $this->postJson('/api/webhooks/visio/recording-ready', $body, $this->sign($body, $nonce));
     }

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\KnowledgeCheck;
 
+use App\Http\Resources\KnowledgeCheckResource;
 use App\Models\Chapter;
 use App\Models\Classe;
 use App\Models\Institution;
@@ -19,15 +20,18 @@ use Tests\TestCase;
  * Sécurité — fuite de triche : les endpoints de lecture CRUD d'un KnowledgeCheck
  * (`index`, `show`, `getByChapter`, en `auth:sanctum` sans rôle) ne doivent PAS
  * exposer `correct_answer` / `explanation` aux étudiants. Le staff garde la vue
- * complète. Couvre {@see \App\Http\Resources\KnowledgeCheckResource}.
+ * complète. Couvre {@see KnowledgeCheckResource}.
  */
 final class KnowledgeCheckAnswerExposureTest extends TestCase
 {
     use RefreshDatabase;
 
     private User $owner;
+
     private User $student;
+
     private Chapter $chapter;
+
     private KnowledgeCheck $quiz;
 
     protected function setUp(): void

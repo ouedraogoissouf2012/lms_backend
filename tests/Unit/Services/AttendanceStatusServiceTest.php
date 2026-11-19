@@ -23,7 +23,7 @@ final class AttendanceStatusServiceTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->service = new AttendanceStatusService();
+        $this->service = new AttendanceStatusService;
     }
 
     public function test_full_attendance_100_percent(): void
@@ -164,7 +164,7 @@ final class AttendanceStatusServiceTest extends TestCase
         self::assertFalse($result['is_late']);
     }
 
-    public function test_missing_heureDebut_skips_late_check(): void
+    public function test_missing_heure_debut_skips_late_check(): void
     {
         $result = $this->service->determine(
             percentage: 80,

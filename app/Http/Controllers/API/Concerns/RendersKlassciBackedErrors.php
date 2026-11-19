@@ -5,8 +5,11 @@ declare(strict_types=1);
 namespace App\Http\Controllers\API\Concerns;
 
 use App\Exceptions\KlassciUnavailableException;
-use App\Support\Klassci\KlassciClientErrorCatalog;
 use App\Exceptions\MissingKlassciTokenException;
+use App\Http\Controllers\API\Proxy\Concerns\RendersKlassciProxyErrors;
+use App\Http\Controllers\Concerns\RespondsWithJson;
+use App\Services\Klassci\KlassciHttpClient;
+use App\Support\Klassci\KlassciClientErrorCatalog;
 use Illuminate\Http\JsonResponse;
 use RuntimeException;
 
@@ -26,12 +29,12 @@ use RuntimeException;
  * déconnectait un utilisateur parfaitement authentifié, dont le seul tort était
  * de ne pas être enseignant. Le vrai motif ne figurait que dans les logs.
  *
- * ## Pourquoi ce trait n'est PAS {@see \App\Http\Controllers\API\Proxy\Concerns\RendersKlassciProxyErrors}
+ * ## Pourquoi ce trait n'est PAS {@see RendersKlassciProxyErrors}
  *
  * Les deux classent les mêmes exceptions et, depuis #806, posent les mêmes motifs
  * (`klassci_token_missing`, `klassci_session_expired`). Ils n'émettent pas le même
  * message : le proxy écrit sa réponse à la main, les contrôleurs LMS passent par
- * `errorResponse()` ({@see \App\Http\Controllers\Concerns\RespondsWithJson}). Les
+ * `errorResponse()` ({@see RespondsWithJson}). Les
  * fusionner imposerait de changer le message de l'un des deux contrats client.
  *
  * DETTE TRACÉE : la classification (quel statut signifie quoi) est donc écrite
@@ -39,7 +42,7 @@ use RuntimeException;
  * {@see KlassciUnavailableException::jsonResponse()} ; le reste ne l'est pas.
  * Unifier demande un golden master des payloads proxy, hors périmètre ici.
  *
- * @see \App\Services\Klassci\KlassciHttpClient  lève RuntimeException($status) sur 4xx
+ * @see KlassciHttpClient  lève RuntimeException($status) sur 4xx
  */
 trait RendersKlassciBackedErrors
 {

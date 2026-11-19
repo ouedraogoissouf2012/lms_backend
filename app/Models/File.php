@@ -2,12 +2,14 @@
 
 namespace App\Models;
 
+use App\Models\Traits\BelongsToInstitution;
+use Database\Factories\FileFactory;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
-use App\Models\Traits\BelongsToInstitution;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
  * Fichier uploadé (relation polymorphique). Logique métier dans
@@ -17,12 +19,12 @@ use App\Models\Traits\BelongsToInstitution;
  * @property int $user_id
  * @property bool $is_public
  * @property string $formatted_size Attribut de présentation posé par FileQueryService/FileUploadService (FilePresenter::formattedSize).
- * @property string $download_url   Attribut de présentation posé par FileQueryService/FileUploadService (FilePresenter::downloadUrl).
+ * @property string $download_url Attribut de présentation posé par FileQueryService/FileUploadService (FilePresenter::downloadUrl).
  */
 class File extends Model
 {
-    /** @use HasFactory<\Database\Factories\FileFactory> */
-    use HasFactory, SoftDeletes, BelongsToInstitution;
+    /** @use HasFactory<FileFactory> */
+    use BelongsToInstitution, HasFactory, SoftDeletes;
 
     protected $fillable = [
         'user_id',
@@ -84,8 +86,8 @@ class File extends Model
     /**
      * Scope: Fichiers publics
      *
-     * @param  \Illuminate\Database\Eloquent\Builder<File>  $query
-     * @return \Illuminate\Database\Eloquent\Builder<File>
+     * @param  Builder<File>  $query
+     * @return Builder<File>
      */
     public function scopePublic($query)
     {
@@ -95,8 +97,8 @@ class File extends Model
     /**
      * Scope: Fichiers validés
      *
-     * @param  \Illuminate\Database\Eloquent\Builder<File>  $query
-     * @return \Illuminate\Database\Eloquent\Builder<File>
+     * @param  Builder<File>  $query
+     * @return Builder<File>
      */
     public function scopeValidated($query)
     {
@@ -106,8 +108,8 @@ class File extends Model
     /**
      * Scope: Fichiers par type
      *
-     * @param  \Illuminate\Database\Eloquent\Builder<File>  $query
-     * @return \Illuminate\Database\Eloquent\Builder<File>
+     * @param  Builder<File>  $query
+     * @return Builder<File>
      */
     public function scopeOfType($query, string $type)
     {
@@ -117,12 +119,11 @@ class File extends Model
     /**
      * Scope: Fichiers par catégorie
      *
-     * @param  \Illuminate\Database\Eloquent\Builder<File>  $query
-     * @return \Illuminate\Database\Eloquent\Builder<File>
+     * @param  Builder<File>  $query
+     * @return Builder<File>
      */
     public function scopeOfCategory($query, string $category)
     {
         return $query->where('category', $category);
     }
-
 }

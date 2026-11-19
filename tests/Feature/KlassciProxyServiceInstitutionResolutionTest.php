@@ -36,7 +36,7 @@ use Tests\TestCase;
  * `KlassciConfigResolver` avec accesseurs **publics** `baseUrl()` + `token()` —
  * la Reflection est éliminée, le contract anti-régression #75 est testé direct.
  *
- * @see \App\Services\Klassci\KlassciConfigResolver
+ * @see KlassciConfigResolver
  * @see Issue #75 (cross-institution token leak)
  * @see Issue #23 (analog précédent dans AdminAnalyticsController)
  * @see OWASP A01:2021 Broken Access Control
@@ -63,27 +63,27 @@ final class KlassciProxyServiceInstitutionResolutionTest extends TestCase
         // Deux institutions DIFFÉRENTES partageant le même serveur KLASSCI.
         // C'est précisément la condition qui déclenchait la fuite #75.
         $this->institutionA = Institution::factory()->create([
-            'slug'                        => 'school-a',
-            'klassci_api_url'             => self::SHARED_URL,
+            'slug' => 'school-a',
+            'klassci_api_url' => self::SHARED_URL,
             'klassci_api_token_encrypted' => 'plain-token-A',
-            'is_active'                   => true,
+            'is_active' => true,
         ]);
         $this->institutionB = Institution::factory()->create([
-            'slug'                        => 'school-b',
-            'klassci_api_url'             => self::SHARED_URL,
+            'slug' => 'school-b',
+            'klassci_api_url' => self::SHARED_URL,
             'klassci_api_token_encrypted' => 'plain-token-B',
-            'is_active'                   => true,
+            'is_active' => true,
         ]);
 
         // Users sans token personnel → on déclenche Priority 2 du resolver.
         $this->userA = User::factory()->create([
-            'institution_id'          => $this->institutionA->id,
-            'klassci_tenant_url'      => self::SHARED_URL,
+            'institution_id' => $this->institutionA->id,
+            'klassci_tenant_url' => self::SHARED_URL,
             'klassci_token_encrypted' => null,
         ]);
         $this->userB = User::factory()->create([
-            'institution_id'          => $this->institutionB->id,
-            'klassci_tenant_url'      => self::SHARED_URL,
+            'institution_id' => $this->institutionB->id,
+            'klassci_tenant_url' => self::SHARED_URL,
             'klassci_token_encrypted' => null,
         ]);
     }

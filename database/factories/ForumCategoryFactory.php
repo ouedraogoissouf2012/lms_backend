@@ -3,10 +3,11 @@
 namespace Database\Factories;
 
 use App\Models\ForumCategory;
+use App\Models\Institution;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
- * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\ForumCategory>
+ * @extends Factory<ForumCategory>
  */
 class ForumCategoryFactory extends Factory
 {
@@ -24,7 +25,7 @@ class ForumCategoryFactory extends Factory
             'description' => $this->faker->sentence(),
             'order' => $this->faker->numberBetween(1, 100),
             // institution_id requis : ForumCategory est tenant-scoped via BelongsToInstitution.
-            'institution_id' => \App\Models\Institution::factory(),
+            'institution_id' => Institution::factory(),
         ];
     }
 }

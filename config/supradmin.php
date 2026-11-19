@@ -28,7 +28,7 @@
 
 return [
 
-    'email'    => env('SUPRADMIN_EMAIL'),
+    'email' => env('SUPRADMIN_EMAIL'),
     'password' => env('SUPRADMIN_PASSWORD'),
 
 ];

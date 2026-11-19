@@ -60,11 +60,11 @@ final class EvaluationStateService
 
         $this->logger->info('Évaluation supprimée', [
             'evaluation_id' => $evaluation->id,
-            'user_id'       => $user->id,
+            'user_id' => $user->id,
         ]);
 
         return [
-            'status'  => 200,
+            'status' => 200,
             'payload' => [
                 'success' => true,
                 'message' => 'Évaluation supprimée',
@@ -104,15 +104,15 @@ final class EvaluationStateService
 
         $this->logger->info('Évaluation publiée', [
             'evaluation_id' => $evaluation->id,
-            'user_id'       => $user->id,
+            'user_id' => $user->id,
         ]);
 
         return [
-            'status'  => 200,
+            'status' => 200,
             'payload' => [
                 'success' => true,
                 'message' => 'Évaluation publiée',
-                'data'    => $evaluation->fresh(),
+                'data' => $evaluation->fresh(),
             ],
         ];
     }
@@ -174,7 +174,7 @@ final class EvaluationStateService
     private function refusTerminee(): array
     {
         return [
-            'status'  => 422,
+            'status' => 422,
             'payload' => [
                 'success' => false,
                 'message' => 'Impossible de publier: l\'évaluation est déjà terminée.',
@@ -196,11 +196,11 @@ final class EvaluationStateService
         }
 
         return [
-            'status'  => 422,
+            'status' => 422,
             'payload' => [
                 'success' => false,
                 'message' => 'Une évaluation publiée doit compter au moins une question.',
-                'reason'  => 'evaluation_without_questions',
+                'reason' => 'evaluation_without_questions',
             ],
         ];
     }

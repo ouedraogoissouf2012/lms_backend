@@ -59,23 +59,21 @@ final class FileUploadService
         'text/plain',
     ];
 
-    public function __construct(private readonly FilePresenter $presenter)
-    {
-    }
+    public function __construct(private readonly FilePresenter $presenter) {}
 
     /**
      * Persiste le fichier uploadé sur le disque `local` puis crée la row
      * `files` correspondante.
      *
      * @return array{file: File|null, error: string|null}
-     *   `file` non-null + `error` null en cas de succès ;
-     *   `file` null + `error` string en cas d'échec storage.
+     *                                                    `file` non-null + `error` null en cas de succès ;
+     *                                                    `file` null + `error` string en cas d'échec storage.
      */
     public function store(UploadedFile $uploadedFile, User $uploader, array $payload): array
     {
         $originalName = $uploadedFile->getClientOriginalName();
         $extension = $uploadedFile->getClientOriginalExtension();
-        $storedName = Str::uuid() . '.' . $extension;
+        $storedName = Str::uuid().'.'.$extension;
 
         $category = $payload['category'] ?? 'general';
         $subfolder = self::SUBFOLDER_MAP[$category] ?? 'general';

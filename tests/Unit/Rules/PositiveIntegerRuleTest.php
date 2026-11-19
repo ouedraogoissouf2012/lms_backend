@@ -27,7 +27,7 @@ class PositiveIntegerRuleTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->rule = new PositiveInteger();
+        $this->rule = new PositiveInteger;
     }
 
     /**

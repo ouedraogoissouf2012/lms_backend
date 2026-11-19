@@ -2,18 +2,19 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\Auditable;
+use App\Models\Concerns\FinDeLEvaluation;
+use App\Models\Traits\BelongsToInstitution;
+use Database\Factories\EvaluationFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use App\Models\Traits\BelongsToInstitution;
-use App\Models\Concerns\Auditable;
-use App\Models\Concerns\FinDeLEvaluation;
 
 class Evaluation extends Model
 {
-    /** @use HasFactory<\Database\Factories\EvaluationFactory> */
-    use HasFactory, SoftDeletes, BelongsToInstitution, Auditable, FinDeLEvaluation;
+    /** @use HasFactory<EvaluationFactory> */
+    use Auditable, BelongsToInstitution, FinDeLEvaluation, HasFactory, SoftDeletes;
 
     protected $fillable = [
         'klassci_evaluation_id',

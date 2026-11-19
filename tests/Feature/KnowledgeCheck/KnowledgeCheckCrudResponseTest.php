@@ -30,9 +30,13 @@ final class KnowledgeCheckCrudResponseTest extends TestCase
     use RefreshDatabase;
 
     private User $owner;
+
     private User $otherTeacher;
+
     private Chapter $chapter;
+
     private Chapter $emptyChapter;
+
     private KnowledgeCheck $quiz;
 
     protected function setUp(): void
@@ -77,7 +81,7 @@ final class KnowledgeCheckCrudResponseTest extends TestCase
     }
 
     /**
-     * @return array<string, mixed>  Payload de création valide (passe la FormRequest).
+     * @return array<string, mixed> Payload de création valide (passe la FormRequest).
      */
     private function validStorePayload(int $chapterId): array
     {

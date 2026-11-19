@@ -11,6 +11,7 @@ use App\Models\EvaluationQuestion;
 use App\Models\EvaluationSubmission;
 use App\Models\Institution;
 use App\Models\User;
+use App\Services\Evaluation\Student\LearnerEvaluationScope;
 use App\Services\KlassciProxyService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Testing\TestResponse;
@@ -23,7 +24,7 @@ use Tests\TestCase;
 
 /**
  * Ce qu'un élève atteint d'une évaluation suit UNE règle, celle de sa liste
- * (`/evaluations/student`) : {@see \App\Services\Evaluation\Student\LearnerEvaluationScope}.
+ * (`/evaluations/student`) : {@see LearnerEvaluationScope}.
  * - Démarrer une tentative et lire son état temporel : seulement ce que sa
  *   liste propose, sinon 404 sans distinction.
  * - Rendre la copie : la tentative ouverte suffit, sans relire KLASSCI.
@@ -154,7 +155,7 @@ final class EvaluationLearnerReachTest extends TestCase
 
         $this->asTenant($eleve)->postJson("/api/evaluations/{$sienne->id}/start")->assertNotFound();
         $this->asTenant($eleve)->getJson("/api/evaluations/{$sienne->id}/time-status")->assertNotFound();
-        $evaluations = (array) $this->asTenant($eleve)->getJson('/api/lms/matieres/' . self::MATIERE)->assertOk()->json('data.evaluations_programmees');
+        $evaluations = (array) $this->asTenant($eleve)->getJson('/api/lms/matieres/'.self::MATIERE)->assertOk()->json('data.evaluations_programmees');
 
         self::assertSame(0, $this->copies());
         self::assertSame([], array_values(array_filter(array_column($evaluations, 'lms_id'))), 'une evaluation LMS est montree a un eleve sans classe');
@@ -462,7 +463,7 @@ final class EvaluationLearnerReachTest extends TestCase
         $eleve = $this->eleveConnecte();
         $fiche = $this->ficheMatiere(self::CLASSE);
 
-        $evaluations = $this->asTenant($eleve)->getJson('/api/lms/matieres/' . self::MATIERE)->assertOk()->json('data.evaluations_programmees');
+        $evaluations = $this->asTenant($eleve)->getJson('/api/lms/matieres/'.self::MATIERE)->assertOk()->json('data.evaluations_programmees');
         $parId = array_column((array) $evaluations, null, 'id');
 
         self::assertTrue($parId[5001]['has_online'], 'la version en ligne de sa classe a disparu');
@@ -488,7 +489,7 @@ final class EvaluationLearnerReachTest extends TestCase
                 ->forceFill(['score' => 80, 'note_sur_20' => 16, 'manual_points' => ['1' => 4]])->save();
         }
 
-        $evaluations = (array) $this->asTenant($eleve)->getJson('/api/lms/matieres/' . self::MATIERE)->assertOk()->json('data.evaluations_programmees');
+        $evaluations = (array) $this->asTenant($eleve)->getJson('/api/lms/matieres/'.self::MATIERE)->assertOk()->json('data.evaluations_programmees');
         $parId = array_column($evaluations, null, 'id');
         $parLms = array_column(array_filter($evaluations, static fn ($e) => ($e['lms_id'] ?? null) !== null), null, 'lms_id');
 
@@ -512,7 +513,7 @@ final class EvaluationLearnerReachTest extends TestCase
         $fiche = $this->ficheMatiere(self::CLASSE);
         $this->copieRendue($fiche['lmsSienne'], $eleve, now());
 
-        $evaluations = (array) $this->asTenant($eleve)->getJson('/api/lms/matieres/' . self::MATIERE)->assertOk()->json('data.evaluations_programmees');
+        $evaluations = (array) $this->asTenant($eleve)->getJson('/api/lms/matieres/'.self::MATIERE)->assertOk()->json('data.evaluations_programmees');
         $parLms = array_column(array_filter($evaluations, static fn ($e) => ($e['lms_id'] ?? null) !== null), null, 'lms_id');
 
         self::assertIsArray($parLms[$fiche['lmsSienne']->id]['student_submission'] ?? null, 'la copie de l eleve sans identite KLASSCI a disparu');
@@ -527,7 +528,7 @@ final class EvaluationLearnerReachTest extends TestCase
         $enseignant = $this->eleveConnecte('enseignant');
         $this->ficheMatiere(self::CLASSE);
 
-        $evaluations = (array) $this->asTenant($enseignant)->getJson('/api/lms/matieres/' . self::MATIERE)->assertOk()->json('data.evaluations_programmees');
+        $evaluations = (array) $this->asTenant($enseignant)->getJson('/api/lms/matieres/'.self::MATIERE)->assertOk()->json('data.evaluations_programmees');
 
         self::assertNotEmpty($evaluations);
         foreach ($evaluations as $evaluation) {
@@ -542,7 +543,7 @@ final class EvaluationLearnerReachTest extends TestCase
         $enseignant = $this->eleveConnecte('enseignant');
         $fiche = $this->ficheMatiere(self::CLASSE);
 
-        $evaluations = (array) $this->asTenant($enseignant)->getJson('/api/lms/matieres/' . self::MATIERE)->assertOk()->json('data.evaluations_programmees');
+        $evaluations = (array) $this->asTenant($enseignant)->getJson('/api/lms/matieres/'.self::MATIERE)->assertOk()->json('data.evaluations_programmees');
         $parId = array_column($evaluations, null, 'id');
 
         self::assertTrue($parId[5001]['has_online']);
@@ -679,7 +680,7 @@ final class EvaluationLearnerReachTest extends TestCase
             'id' => $id, 'titre' => 'Devoir', 'type' => 'devoir', 'status' => 'planned', 'classe' => ['id' => $classe],
         ];
         $this->klassciRend($classeDeLEleve, [
-            'matieres/' . self::MATIERE => ['data' => [
+            'matieres/'.self::MATIERE => ['data' => [
                 'matiere' => ['id' => self::MATIERE, 'nom' => 'Algebre'],
                 'combinaisons' => [],
                 'enseignants' => [['id' => 1, 'nom' => 'Prof']],

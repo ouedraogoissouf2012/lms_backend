@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Admin;
 
+use App\Http\Controllers\API\ConfigurationController;
+use App\Http\Controllers\Concerns\RespondsWithJson;
 use App\Models\Institution;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -12,8 +14,8 @@ use Tests\TestCase;
 
 /**
  * Caractérisation (axe #1) — fige le comportement EXACT des 3 endpoints de
- * {@see \App\Http\Controllers\API\ConfigurationController} AVANT la migration
- * vers le trait {@see \App\Http\Controllers\Concerns\RespondsWithJson}.
+ * {@see ConfigurationController} AVANT la migration
+ * vers le trait {@see RespondsWithJson}.
  * Controller initialement « NON testé » → test-first.
  *
  * ## Découverte — `delete` renvoie 500 (bug latent pré-existant)
@@ -43,7 +45,7 @@ final class ConfigurationResponseTest extends TestCase
         $institution = Institution::factory()->create(['slug' => 'school-a']);
         Sanctum::actingAs(User::factory()->create([
             'institution_id' => $institution->id,
-            'role'           => 'supradmin',
+            'role' => 'supradmin',
         ]));
     }
 
@@ -53,8 +55,8 @@ final class ConfigurationResponseTest extends TestCase
 
         $response->assertStatus(200)->assertExactJson([
             'success' => true,
-            'data'    => [
-                'key'      => null,
+            'data' => [
+                'key' => null,
                 'category' => 'general',
             ],
         ]);
@@ -63,17 +65,17 @@ final class ConfigurationResponseTest extends TestCase
     public function test_update_returns_exact_success_envelope(): void
     {
         $response = $this->putJson('/api/configuration', [
-            'key'      => 'theme',
-            'value'    => 'dark',
+            'key' => 'theme',
+            'value' => 'dark',
             'category' => 'general',
         ]);
 
         $response->assertStatus(200)->assertExactJson([
             'success' => true,
             'message' => 'Configuration mise à jour avec succès',
-            'data'    => [
-                'key'      => 'theme',
-                'value'    => 'dark',
+            'data' => [
+                'key' => 'theme',
+                'value' => 'dark',
                 'category' => 'general',
             ],
         ]);

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Rules;
 
+use App\Enums\Role;
 use App\Models\User;
 use App\Rules\AssignableRole;
 use Tests\TestCase;
@@ -16,7 +17,7 @@ use Tests\TestCase;
  * `CreateUserRequest` / `UpdateUserRequest` autorisaient `role in:...,superAdmin`
  * tandis que leur `authorize()` n'exige que `isCoordinator() || isAdmin()`. Un
  * coordinateur (permissivité 3) pouvait donc créer — ou s'auto-promouvoir en —
- * `superAdmin`, chaîne mappée par {@see \App\Enums\Role::tryFromString} vers
+ * `superAdmin`, chaîne mappée par {@see Role::tryFromString} vers
  * `Role::Supradmin` (permissivité 5, cross-tenant suprême). Escalade verticale
  * directe.
  *
@@ -33,7 +34,7 @@ final class AssignableRoleTest extends TestCase
      */
     private function actorWithRole(?string $role): User
     {
-        $user = new User();
+        $user = new User;
         if ($role !== null) {
             $user->role = $role;
         }
@@ -64,14 +65,14 @@ final class AssignableRoleTest extends TestCase
     public static function allowedAssignmentsProvider(): array
     {
         return [
-            'coordinateur → etudiant'   => ['coordinateur', 'etudiant'],
+            'coordinateur → etudiant' => ['coordinateur', 'etudiant'],
             'coordinateur → enseignant' => ['coordinateur', 'enseignant'],
-            'admin → coordinateur'      => ['admin', 'coordinateur'],
-            'admin → enseignant'        => ['admin', 'enseignant'],
-            'supradmin → admin'         => ['supradmin', 'admin'],
-            'supradmin → coordinateur'  => ['supradmin', 'coordinateur'],
+            'admin → coordinateur' => ['admin', 'coordinateur'],
+            'admin → enseignant' => ['admin', 'enseignant'],
+            'supradmin → admin' => ['supradmin', 'admin'],
+            'supradmin → coordinateur' => ['supradmin', 'coordinateur'],
             // Les alias EN doivent être acceptés comme leur équivalent canonique.
-            'admin → student (alias)'   => ['admin', 'student'],
+            'admin → student (alias)' => ['admin', 'student'],
         ];
     }
 
@@ -94,17 +95,17 @@ final class AssignableRoleTest extends TestCase
         return [
             // Le cœur de la faille : escalade coordinateur → superAdmin.
             'coordinateur → superAdmin (escalade)' => ['coordinateur', 'superAdmin'],
-            'coordinateur → supradmin'             => ['coordinateur', 'supradmin'],
-            'coordinateur → admin'                 => ['coordinateur', 'admin'],
+            'coordinateur → supradmin' => ['coordinateur', 'supradmin'],
+            'coordinateur → admin' => ['coordinateur', 'admin'],
             // Auto-promotion / création d'un pair de même niveau : interdite (égalité).
-            'coordinateur → coordinateur (égal)'   => ['coordinateur', 'coordinateur'],
-            'admin → admin (égal)'                 => ['admin', 'admin'],
-            'admin → supradmin'                    => ['admin', 'supradmin'],
+            'coordinateur → coordinateur (égal)' => ['coordinateur', 'coordinateur'],
+            'admin → admin (égal)' => ['admin', 'admin'],
+            'admin → supradmin' => ['admin', 'supradmin'],
             // Personne ne crée un supradmin via cet endpoint (égalité au sommet).
-            'supradmin → supradmin (égal)'         => ['supradmin', 'supradmin'],
+            'supradmin → supradmin (égal)' => ['supradmin', 'supradmin'],
             // Un enseignant ne peut rien assigner d'égal ou supérieur.
-            'enseignant → enseignant (égal)'       => ['enseignant', 'enseignant'],
-            'enseignant → coordinateur'            => ['enseignant', 'coordinateur'],
+            'enseignant → enseignant (égal)' => ['enseignant', 'enseignant'],
+            'enseignant → coordinateur' => ['enseignant', 'coordinateur'],
         ];
     }
 
@@ -137,11 +138,11 @@ final class AssignableRoleTest extends TestCase
     public static function invalidRequestedRoleProvider(): array
     {
         return [
-            'rôle inconnu'       => ['superuser'],
-            'chaîne vide'        => [''],
-            'non-string (int)'   => [5],
+            'rôle inconnu' => ['superuser'],
+            'chaîne vide' => [''],
+            'non-string (int)' => [5],
             'non-string (array)' => [['etudiant']],
-            'null'               => [null],
+            'null' => [null],
         ];
     }
 

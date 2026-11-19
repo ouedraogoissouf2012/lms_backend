@@ -103,6 +103,7 @@ function klassci_stub_dispatch(string $method, string $uri): void
             'success' => false,
             'message' => "Endpoint stub KLASSCI introuvable: {$path}",
         ]);
+
         return;
     }
 
@@ -111,6 +112,7 @@ function klassci_stub_dispatch(string $method, string $uri): void
             'success' => false,
             'message' => 'Le stub KLASSCI ne sert que des endpoints GET.',
         ]);
+
         return;
     }
 
@@ -136,7 +138,7 @@ function klassci_stub_routes(): array
 }
 
 /**
- * @param array<string, mixed> $payload
+ * @param  array<string, mixed>  $payload
  */
 function klassci_stub_respond(int $status, array $payload): void
 {

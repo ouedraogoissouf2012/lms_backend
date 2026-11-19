@@ -109,6 +109,7 @@ class CleanOldEvaluations implements ShouldQueue
         foreach ($evaluations as $evaluation) {
             if ($this->hasActiveCopy($evaluation)) {
                 $keptCount++;
+
                 continue;
             }
 
@@ -141,7 +142,7 @@ class CleanOldEvaluations implements ShouldQueue
      */
     public function failed(\Throwable $exception): void
     {
-                // Pattern AutoCloseEmptySeances (#209) : failed() est appelée hors
+        // Pattern AutoCloseEmptySeances (#209) : failed() est appelée hors
         // container (aucune injection possible) — résolution explicite.
         app(CaughtExceptionLog::class)->error('[CleanOldEvaluations] Job failed after all retries', $exception, [
             'tries' => $this->tries,

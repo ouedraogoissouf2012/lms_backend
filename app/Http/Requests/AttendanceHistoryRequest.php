@@ -4,12 +4,13 @@ declare(strict_types=1);
 
 namespace App\Http\Requests;
 
+use App\Services\Attendances\AttendanceHistoryQueryService;
 use Illuminate\Foundation\Http\FormRequest;
 
 /**
  * Validates GET /api/lms/attendance/history query parameters — issue #548.
  *
- * Ne valide que `per_page` : {@see \App\Services\Attendances\AttendanceHistoryQueryService}
+ * Ne valide que `per_page` : {@see AttendanceHistoryQueryService}
  * lit les autres filtres (seance_id, date_from, date_to) directement sur la
  * requête, non concernés par cette issue.
  */

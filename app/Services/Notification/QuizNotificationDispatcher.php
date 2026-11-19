@@ -25,8 +25,7 @@ final class QuizNotificationDispatcher
 {
     public function __construct(
         private readonly NotificationDispatcher $dispatcher,
-    ) {
-    }
+    ) {}
 
     /**
      * Notifier la disponibilité d'un nouveau quiz aux étudiants de la classe.
@@ -44,7 +43,7 @@ final class QuizNotificationDispatcher
             return 0;
         }
 
-        $title = "Nouveau quiz disponible";
+        $title = 'Nouveau quiz disponible';
         $message = "Le quiz \"{$quiz->title}\" est maintenant disponible.";
         $data = [
             'quiz_id' => $quiz->id,
@@ -63,7 +62,7 @@ final class QuizNotificationDispatcher
         $student = $attempt->user;
         $quiz = $attempt->quiz;
 
-        $title = "Note reçue";
+        $title = 'Note reçue';
         $message = "Vous avez reçu une note de {$attempt->score}/{$attempt->max_score} pour le quiz \"{$quiz->title}\".";
         $data = [
             'quiz_id' => $quiz->id,
@@ -97,8 +96,8 @@ final class QuizNotificationDispatcher
             return 0;
         }
 
-        $dayText = $daysRemaining > 1 ? "$daysRemaining jours" : "1 jour";
-        $title = "Date limite de quiz";
+        $dayText = $daysRemaining > 1 ? "$daysRemaining jours" : '1 jour';
+        $title = 'Date limite de quiz';
         $message = "Le quiz \"{$quiz->title}\" se termine dans $dayText !";
         $data = [
             'quiz_id' => $quiz->id,

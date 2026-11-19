@@ -128,7 +128,7 @@ final class ProxyOrganisationMatieresIsolationTest extends TestCase
             'token-bob' => ['id' => 22, 'nom' => 'SVT Bob'],
         ];
 
-        $factory = new HttpFactory();
+        $factory = new HttpFactory;
         $factory->fake(function (ClientRequest $request) use ($payloads) {
             $resource = basename((string) parse_url($request->url(), PHP_URL_PATH));
             $key = is_numeric($resource) ? 'matieres' : $resource;

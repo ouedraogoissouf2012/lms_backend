@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+use App\Services\Visio\Recording\SeanceRecordingWebhookService;
+use App\Services\Visio\SecureVisioRoomIdGenerator;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
@@ -22,13 +24,13 @@ use Illuminate\Support\Facades\Schema;
  * **Celle-ci ne peut pas l'être.** La route `POST /api/webhooks/visio/recording-ready`
  * est authentifiée par HMAC, pas par jeton porteur : `ResolveInstitution` ne pose
  * aucun tenant, et le service interroge déjà `withoutGlobalScope('institution')`
- * ({@see \App\Services\Visio\Recording\SeanceRecordingWebhookService} ligne 56).
+ * ({@see SeanceRecordingWebhookService} ligne 56).
  * Un index préfixé par `institution_id` ne serait donc jamais utilisé par la seule
  * requête que cet index existe pour servir.
  *
  * Ce n'est pas une entorse à l'isolation : `visio_room_id` vaut `lms_` + 20 octets
  * tirés de `random_bytes()`, soit **160 bits d'entropie**
- * ({@see \App\Services\Visio\SecureVisioRoomIdGenerator}). Deviner le salon d'un
+ * ({@see SecureVisioRoomIdGenerator}). Deviner le salon d'un
  * autre établissement est hors de portée, et la connaissance du salon ne suffit
  * pas : il faut aussi le secret HMAC.
  *

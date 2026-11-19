@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Rules;
 
 use App\Enums\Role;
+use App\Http\Requests\CreateUserRequest;
+use App\Http\Requests\UpdateUserRequest;
 use App\Models\User;
 use Closure;
 use Illuminate\Contracts\Validation\ValidationRule;
@@ -15,8 +17,8 @@ use Illuminate\Translation\PotentiallyTranslatedString;
  *
  * ## Faille corrigée (audit sécurité 2026-07-02 — OWASP A01 Broken Access Control)
  *
- * {@see \App\Http\Requests\CreateUserRequest} et
- * {@see \App\Http\Requests\UpdateUserRequest} validaient le rôle cible par une
+ * {@see CreateUserRequest} et
+ * {@see UpdateUserRequest} validaient le rôle cible par une
  * simple liste `in:student,enseignant,coordinateur,superAdmin`, alors que leur
  * `authorize()` n'exige que `isCoordinator() || isAdmin()`. Conséquence : un
  * **coordinateur** (permissivité 3) pouvait créer — ou se promouvoir lui-même
@@ -46,9 +48,7 @@ use Illuminate\Translation\PotentiallyTranslatedString;
  */
 final class AssignableRole implements ValidationRule
 {
-    public function __construct(private readonly ?User $actor)
-    {
-    }
+    public function __construct(private readonly ?User $actor) {}
 
     /**
      * @param  Closure(string, string|null=): PotentiallyTranslatedString  $fail

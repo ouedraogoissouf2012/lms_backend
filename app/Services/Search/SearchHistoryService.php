@@ -34,8 +34,7 @@ final class SearchHistoryService
 
     public function __construct(
         private readonly CacheRepository $cache,
-    ) {
-    }
+    ) {}
 
     /**
      * Retourner l'historique de recherche de l'utilisateur.

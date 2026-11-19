@@ -26,7 +26,7 @@ final class FileValidatorTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->validator = new FileValidator();
+        $this->validator = new FileValidator;
     }
 
     public function test_accepts_file_with_allowed_extension_and_mime(): void

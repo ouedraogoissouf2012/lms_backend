@@ -25,13 +25,13 @@ final class UnhideSeanceRequest extends FormRequest
     {
         // Check 1: User must be authenticated
         $user = auth()->user();
-        if (!$user) {
+        if (! $user) {
             return false;
         }
 
         // Check 2: Only students can manage hiding
         // (route middleware also enforces this, defense in depth)
-        if (!$user->isStudent()) {
+        if (! $user->isStudent()) {
             return false;
         }
 

@@ -12,6 +12,7 @@ use App\Models\Notification;
 use App\Models\Quiz;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Testing\TestResponse;
 use Tests\TestCase;
 
 /**
@@ -43,7 +44,9 @@ final class DashboardAdminStatsIsolationTest extends TestCase
     use RefreshDatabase;
 
     private Institution $institutionA;
+
     private Institution $institutionB;
+
     private User $coordA;
 
     protected function setUp(): void
@@ -76,7 +79,7 @@ final class DashboardAdminStatsIsolationTest extends TestCase
             3,
             $response->json('data.forum.total_posts'),
             'forum.total_posts must reflect only the coordinator institution (school-a). '
-            . 'If 8 appears, the DB::table() bypass is back — see DashboardAdminController::stats.'
+            .'If 8 appears, the DB::table() bypass is back — see DashboardAdminController::stats.'
         );
     }
 
@@ -171,12 +174,12 @@ final class DashboardAdminStatsIsolationTest extends TestCase
      * Appelle l'endpoint /api/dashboard/stats via un vrai Bearer token afin
      * que `ResolveInstitution` middleware s'exécute et résolve le tenant.
      */
-    private function callDashboardStatsAs(User $user): \Illuminate\Testing\TestResponse
+    private function callDashboardStatsAs(User $user): TestResponse
     {
         $token = $user->createToken('dashboard-isolation-test')->plainTextToken;
 
         return $this->withHeaders([
-            'Authorization' => 'Bearer ' . $token,
+            'Authorization' => 'Bearer '.$token,
         ])->getJson('/api/dashboard/stats');
     }
 

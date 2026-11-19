@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Security;
 
+use App\Http\Middleware\EnsureKlassciSync;
 use App\Models\Institution;
 use App\Models\User;
 use App\Services\Klassci\Auth\KlassciUserSynchronizer;
@@ -21,8 +22,8 @@ use Tests\TestCase;
  *
  * Spec: `.claude/specs/critical-05-klassci-role-separation/`
  *
- * @see \App\Http\Middleware\EnsureKlassciSync
- * @see \App\Services\Klassci\Auth\KlassciUserSynchronizer::sync
+ * @see EnsureKlassciSync
+ * @see KlassciUserSynchronizer::sync
  */
 final class KlassciRoleSeparationTest extends TestCase
 {
@@ -77,10 +78,10 @@ final class KlassciRoleSeparationTest extends TestCase
         $institution = Institution::factory()->create(['slug' => 'school-a']);
 
         $user = $this->callSyncUserFromKlassci([
-            'id'    => 42,
-            'nom'   => 'Doe',
+            'id' => 42,
+            'nom' => 'Doe',
             'email' => 'doe@school-a.fr',
-            'role'  => 'etudiant',
+            'role' => 'etudiant',
         ], $institution);
 
         self::assertSame('etudiant', $user->role, 'Initial role must be seeded from KLASSCI.');
@@ -100,10 +101,10 @@ final class KlassciRoleSeparationTest extends TestCase
             $institution = Institution::factory()->create(['slug' => $slug]);
 
             $user = $this->callSyncUserFromKlassci([
-                'id'    => 5000 + $index,
-                'nom'   => 'Injected',
+                'id' => 5000 + $index,
+                'nom' => 'Injected',
                 'email' => "injected@{$slug}.fr",
-                'role'  => 'supradmin',   // attacker-controlled KLASSCI payload
+                'role' => 'supradmin',   // attacker-controlled KLASSCI payload
             ], $institution);
 
             self::assertSame('superAdmin', $user->role, "[$slug] platform role must be downgraded to institution admin");
@@ -124,18 +125,18 @@ final class KlassciRoleSeparationTest extends TestCase
         $institution = Institution::factory()->create(['slug' => 'school-a']);
 
         $existing = User::factory()->create([
-            'klassci_id'     => 42,
+            'klassci_id' => 42,
             'institution_id' => $institution->id,
-            'role'           => 'enseignant',
-            'klassci_role'   => 'enseignant',
-            'email'          => 'real@school-a.fr',
+            'role' => 'enseignant',
+            'klassci_role' => 'enseignant',
+            'email' => 'real@school-a.fr',
         ]);
 
         $user = $this->callSyncUserFromKlassci([
-            'id'    => 42,
-            'nom'   => 'Doe',
+            'id' => 42,
+            'nom' => 'Doe',
             'email' => 'real@school-a.fr',
-            'role'  => 'supradmin',    // attacker pushes elevated role
+            'role' => 'supradmin',    // attacker pushes elevated role
         ], $institution);
 
         self::assertSame($existing->id, $user->id, 'Same user record.');
@@ -153,20 +154,20 @@ final class KlassciRoleSeparationTest extends TestCase
         $institution = Institution::factory()->create(['slug' => 'school-a']);
 
         $user = User::factory()->create([
-            'institution_id'    => $institution->id,
-            'role'              => 'etudiant',
-            'klassci_role'      => 'etudiant',
-            'email'             => 'real@school-a.fr',
-            'klassci_token'     => 'fake-klassci-token',
+            'institution_id' => $institution->id,
+            'role' => 'etudiant',
+            'klassci_role' => 'etudiant',
+            'email' => 'real@school-a.fr',
+            'klassci_token' => 'fake-klassci-token',
             'last_klassci_sync' => now()->subHours(25),
         ]);
 
         // KLASSCI claims supradmin on the next /auth/me — should be ignored for auth.
         $this->mockKlassciAuthMe([
-            'id'    => $user->klassci_id,
-            'nom'   => $user->name,
+            'id' => $user->klassci_id,
+            'nom' => $user->name,
             'email' => 'attacker@evil.com',
-            'role'  => 'supradmin',
+            'role' => 'supradmin',
         ]);
 
         Sanctum::actingAs($user);
@@ -195,26 +196,26 @@ final class KlassciRoleSeparationTest extends TestCase
         $instB = Institution::factory()->create(['slug' => 'school-b']);
 
         $userA = User::factory()->create([
-            'institution_id'    => $instA->id,
-            'role'              => 'etudiant',
-            'klassci_role'      => 'etudiant',
-            'email'             => 'a@school-a.fr',
-            'klassci_token'     => 'fake-klassci-token',
+            'institution_id' => $instA->id,
+            'role' => 'etudiant',
+            'klassci_role' => 'etudiant',
+            'email' => 'a@school-a.fr',
+            'klassci_token' => 'fake-klassci-token',
             'last_klassci_sync' => now()->subHours(25),
         ]);
         $userB = User::factory()->create([
-            'institution_id'    => $instB->id,
-            'role'              => 'enseignant',
-            'klassci_role'      => 'enseignant',
-            'email'             => 'b@school-b.fr',
+            'institution_id' => $instB->id,
+            'role' => 'enseignant',
+            'klassci_role' => 'enseignant',
+            'email' => 'b@school-b.fr',
             'last_klassci_sync' => now()->subHours(25),
         ]);
 
         $this->mockKlassciAuthMe([
-            'id'    => $userA->klassci_id,
-            'role'  => 'supradmin',
+            'id' => $userA->klassci_id,
+            'role' => 'supradmin',
             'email' => 'evil@evil.com',
-            'nom'   => 'A',
+            'nom' => 'A',
         ]);
 
         Sanctum::actingAs($userA);

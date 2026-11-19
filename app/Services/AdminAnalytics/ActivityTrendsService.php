@@ -6,6 +6,7 @@ namespace App\Services\AdminAnalytics;
 
 use App\Models\EvaluationSubmission;
 use App\Models\QuizAttempt;
+use App\Models\Traits\BelongsToInstitution;
 use App\Models\User;
 use App\Services\TenantManager;
 use Carbon\Carbon;
@@ -30,7 +31,7 @@ use Psr\Log\LoggerInterface;
  * ## SECURITY — Isolation cross-tenant (issue #23)
  *
  * Toutes les requêtes Eloquent reposent sur le trait
- * {@see \App\Models\Traits\BelongsToInstitution} qui filtre **automatiquement**
+ * {@see BelongsToInstitution} qui filtre **automatiquement**
  * par `institution_id` via un global scope. La clé de cache est en plus
  * scopée par le **slug** retourné par {@see TenantManager::getResolvedSlug()}
  * (fail-secure : lève une exception si le tenant n'est pas résolu) pour
@@ -65,8 +66,7 @@ final class ActivityTrendsService
         private readonly CacheRepository $cache,
         private readonly TenantManager $tenantManager,
         private readonly LoggerInterface $logger,
-    ) {
-    }
+    ) {}
 
     /**
      * Récupérer les tendances d'activité journalières sur `$days` jours.
@@ -86,7 +86,7 @@ final class ActivityTrendsService
     public function getTrends(int $days = 30): array
     {
         $institution = $this->tenantManager->getResolvedSlug();
-        $cacheKey = 'admin_analytics_activity_trends_' . $institution;
+        $cacheKey = 'admin_analytics_activity_trends_'.$institution;
 
         $this->logger->debug('admin_analytics.activity_trends.request', [
             'institution' => $institution,
@@ -202,7 +202,7 @@ final class ActivityTrendsService
      *
      * @param  Builder<TModel>  $builder  Builder déjà filtré par fenêtre temporelle.
      * @param  string  $dateColumn  Colonne timestamp à agréger journalièrement.
-     * @return array<string, int>  Clé = `'YYYY-MM-DD'`, valeur = nombre d'événements.
+     * @return array<string, int> Clé = `'YYYY-MM-DD'`, valeur = nombre d'événements.
      */
     private function pluckDailyCounts(Builder $builder, string $dateColumn): array
     {
@@ -223,7 +223,7 @@ final class ActivityTrendsService
         // colonne du modèle), donc on passe par `get()->reduce()` qui retourne
         // un tableau typé `array<string, int>`.
         $rows = $builder
-            ->selectRaw('DATE(' . $dateColumn . ') as date, COUNT(*) as count')
+            ->selectRaw('DATE('.$dateColumn.') as date, COUNT(*) as count')
             ->groupBy('date')
             ->orderBy('date')
             ->get();

@@ -62,8 +62,7 @@ final class SearchResultCache
 
     public function __construct(
         private readonly CacheRepository $cache,
-    ) {
-    }
+    ) {}
 
     public function get(string $query, User $user, int $limit): ?SearchAggregate
     {
@@ -99,6 +98,6 @@ final class SearchResultCache
 
     private function key(string $query, User $user, int $limit): string
     {
-        return self::PREFIX . hash('sha256', serialize([$query, $user->id, $user->institution_id, $user->role, $limit]));
+        return self::PREFIX.hash('sha256', serialize([$query, $user->id, $user->institution_id, $user->role, $limit]));
     }
 }

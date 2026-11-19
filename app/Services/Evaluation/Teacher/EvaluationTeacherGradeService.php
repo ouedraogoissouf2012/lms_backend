@@ -17,8 +17,7 @@ final class EvaluationTeacherGradeService
 {
     public function __construct(
         private readonly EvaluationGradingService $grading,
-    ) {
-    }
+    ) {}
 
     /**
      * @param  array<int|string, float|int|string>  $manualPoints

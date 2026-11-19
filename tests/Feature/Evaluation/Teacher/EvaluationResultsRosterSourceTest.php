@@ -45,9 +45,11 @@ final class EvaluationResultsRosterSourceTest extends TestCase
     use RefreshDatabase;
 
     private const BASE_URL = 'https://ecole.klassci.test/api/lms';
+
     private const CLASSE_ID = 55;
 
     private User $teacher;
+
     private Evaluation $evaluation;
 
     protected function setUp(): void

@@ -4,13 +4,19 @@ declare(strict_types=1);
 
 namespace App\Support\Klassci;
 
+use App\Exceptions\KlassciUnavailableException;
+use App\Exceptions\MissingKlassciTokenException;
+use App\Http\Controllers\API\Concerns\RendersKlassciBackedErrors;
+use App\Http\Controllers\API\Proxy\Concerns\RendersKlassciProxyErrors;
+use App\Services\Klassci\KlassciHttpClient;
+
 /**
  * Source UNIQUE de la classification des erreurs 4xx renvoyées par KLASSCI.
  *
  * Elle n'existait qu'en un exemplaire privé, dans
- * {@see \App\Http\Controllers\API\Concerns\RendersKlassciBackedErrors} — dette
+ * {@see RendersKlassciBackedErrors} — dette
  * explicitement tracée dans son docblock. Le trait proxy
- * ({@see \App\Http\Controllers\API\Proxy\Concerns\RendersKlassciProxyErrors}), lui,
+ * ({@see RendersKlassciProxyErrors}), lui,
  * ne traitait QUE le 401 et écrasait tout le reste en 500 : un refus d'autorisation
  * KLASSCI (403) se présentait au client comme une panne du serveur LMS, rendant un
  * problème de droits indiscernable d'une indisponibilité — pour l'utilisateur comme
@@ -24,7 +30,7 @@ namespace App\Support\Klassci;
  * Aucun message ne dérive du corps KLASSCI ni de `$e->getMessage()` (§1.2) — ce
  * dernier vaut « Erreur API KLASSCI: 403 » et n'a rien à faire dans une réponse.
  *
- * @see \App\Services\Klassci\KlassciHttpClient lève RuntimeException($status) sur 4xx
+ * @see KlassciHttpClient lève RuntimeException($status) sur 4xx
  */
 final class KlassciClientErrorCatalog
 {
@@ -37,7 +43,7 @@ final class KlassciClientErrorCatalog
      * Motif d'un 401 amont : KLASSCI refuse le jeton UTILISÉ, celui du compte ou,
      * à défaut, celui de l'établissement (`KlassciConfigResolver`). Se reconnecter
      * ne renouvelle que le premier. À ne pas confondre avec un jeton absent
-     * ({@see \App\Exceptions\MissingKlassciTokenException::REASON}, #806).
+     * ({@see MissingKlassciTokenException::REASON}, #806).
      */
     public const SESSION_EXPIRED_REASON = 'klassci_session_expired';
 
@@ -52,7 +58,7 @@ final class KlassciClientErrorCatalog
      * DEPUIS le gestionnaire d'erreurs lui-même.
      *
      * Les 5xx KLASSCI n'arrivent jamais ici : le client HTTP les convertit en
-     * {@see \App\Exceptions\KlassciUnavailableException} (503 + `Retry-After`).
+     * {@see KlassciUnavailableException} (503 + `Retry-After`).
      */
     public static function isRelayableClientStatus(mixed $status): bool
     {

@@ -3,9 +3,9 @@
 namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\DeleteConfigurationRequest;
 use App\Http\Requests\GetConfigurationRequest;
 use App\Http\Requests\UpdateConfigurationRequest;
-use App\Http\Requests\DeleteConfigurationRequest;
 use Illuminate\Http\JsonResponse;
 
 class ConfigurationController extends Controller

@@ -47,12 +47,12 @@ final class EvaluationListService
      * batch query (clé `student_submission`).
      *
      * @param  array<string, mixed>  $filters  Clés acceptées : classe_id,
-     *                                          matiere_id, status, is_published,
-     *                                          limit (borné 1-100, #548 — pas
-     *                                          de pagination réelle, plafond
-     *                                          simple pour préserver la forme
-     *                                          de réponse en tableau plat).
-     *                                          Les clés absentes sont ignorées.
+     *                                         matiere_id, status, is_published,
+     *                                         limit (borné 1-100, #548 — pas
+     *                                         de pagination réelle, plafond
+     *                                         simple pour préserver la forme
+     *                                         de réponse en tableau plat).
+     *                                         Les clés absentes sont ignorées.
      * @return array<int, array<string, mixed>>
      */
     public function listForTeacher(User $user, array $filters): array
@@ -126,6 +126,7 @@ final class EvaluationListService
             $enrichedEvaluations = collect($enrichedEvaluations)
                 ->map(function (array $evalArray) use ($userLatestSubmissions): array {
                     $evalArray['student_submission'] = $userLatestSubmissions->get($evalArray['id']);
+
                     return $evalArray;
                 })
                 ->toArray();

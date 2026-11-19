@@ -26,7 +26,8 @@ final class ChecksForumAuthorizationTest extends TestCase
 {
     private function subject(): object
     {
-        return new class () {
+        return new class
+        {
             use ChecksForumAuthorization {
                 isForumActionAuthorized as public;
             }
@@ -35,7 +36,7 @@ final class ChecksForumAuthorizationTest extends TestCase
 
     private function user(int $id, ?int $institutionId, string $role): User
     {
-        return (new User())->forceFill([
+        return (new User)->forceFill([
             'id' => $id,
             'institution_id' => $institutionId,
             'role' => $role,
@@ -212,7 +213,7 @@ final class ChecksForumAuthorizationTest extends TestCase
     /**
      * T11 — `superAdmin` (alias intra-tenant admin) is in default moderator roles.
      */
-    public function test_allow_superAdmin_intra_tenant_via_default(): void
+    public function test_allow_super_admin_intra_tenant_via_default(): void
     {
         self::assertTrue(
             $this->subject()->isForumActionAuthorized(

@@ -63,10 +63,10 @@ final class LocalEvaluationProgramming implements EvaluationProgramming
         }
 
         return new ProgrammedEvaluation([
-            'classe_id'     => $classeId,
-            'matiere_id'    => $matiereId,
+            'classe_id' => $classeId,
+            'matiere_id' => $matiereId,
             'enseignant_id' => $formateur ?? $auteur->id,
-            'classe_nom'  => $classe->libelle,
+            'classe_nom' => $classe->libelle,
             'matiere_nom' => $matiere->libelle,
         ]);
     }

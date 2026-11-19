@@ -5,12 +5,13 @@ declare(strict_types=1);
 namespace App\Models\Concerns;
 
 use App\Enums\LessonStatus;
+use App\Models\Lesson;
 use App\Observers\LessonObserver;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
 
 /**
- * Concern « publication » d'une {@see \App\Models\Lesson} (#522).
+ * Concern « publication » d'une {@see Lesson} (#522).
  *
  * Regroupe au même endroit tout l'état publié :
  *  - auto-enregistrement de l'observer d'invariant #481 via la convention

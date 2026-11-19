@@ -50,8 +50,7 @@ final class WordConverter
         private readonly ShellExecutorInterface $shell,
         private readonly FileValidator $validator,
         private readonly ChapterArtifactStorage $artifacts,
-    ) {
-    }
+    ) {}
 
     /**
      * @return array{
@@ -78,9 +77,9 @@ final class WordConverter
         }
 
         return [
-            'success'            => true,
-            'content'            => $content,
-            'content_type'       => 'text',
+            'success' => true,
+            'content' => $content,
+            'content_type' => 'text',
             'file_original_path' => $originalPath,
         ];
     }
@@ -112,13 +111,13 @@ final class WordConverter
             ]);
         } catch (ShellExecutionException $e) {
             $this->logger->error('Erreur LibreOffice Word', [
-                'exit'   => $e->exitCode,
+                'exit' => $e->exitCode,
                 'stderr' => $e->stderr,
             ]);
             throw new RuntimeException('Échec de la conversion Word');
         }
 
-        $htmlPath = "{$outputDir}/" . pathinfo($docxPath, PATHINFO_FILENAME) . '.html';
+        $htmlPath = "{$outputDir}/".pathinfo($docxPath, PATHINFO_FILENAME).'.html';
         if (! file_exists($htmlPath)) {
             throw new RuntimeException('HTML non généré au chemin attendu');
         }

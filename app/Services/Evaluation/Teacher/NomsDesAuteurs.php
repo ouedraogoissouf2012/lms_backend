@@ -50,7 +50,7 @@ final class NomsDesAuteurs
         return static function (EvaluationSubmission $copie) use ($parAuteur, $parKlassci): string {
             $nom = $parAuteur[$copie->student_id ?? ''] ?? $parKlassci[$copie->klassci_etudiant_id ?? ''] ?? null;
 
-            return is_string($nom) ? $nom : 'Étudiant #' . ($copie->klassci_etudiant_id ?? $copie->student_id);
+            return is_string($nom) ? $nom : 'Étudiant #'.($copie->klassci_etudiant_id ?? $copie->student_id);
         };
     }
 }

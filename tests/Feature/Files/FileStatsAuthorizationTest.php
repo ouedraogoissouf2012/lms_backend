@@ -26,6 +26,7 @@ final class FileStatsAuthorizationTest extends TestCase
     use RefreshDatabase;
 
     private Institution $instA;
+
     private Institution $instB;
 
     protected function setUp(): void
@@ -116,7 +117,7 @@ final class FileStatsAuthorizationTest extends TestCase
             ->assertJsonPath('data.total_files', 3);
     }
 
-    public function test_admin_intra_A_does_not_see_intra_B_counts(): void
+    public function test_admin_intra_a_does_not_see_intra_b_counts(): void
     {
         $adminA = $this->createUser($this->instA, 'admin');
         Sanctum::actingAs($adminA);

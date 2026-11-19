@@ -71,7 +71,7 @@ final class LMSMatieresQueryController extends AuthenticatedController
 
             $this->logger->info('✅ Matière details response', [
                 'matiere_id' => $matiereId,
-                'has_matiere' => !empty($data['matiere']),
+                'has_matiere' => ! empty($data['matiere']),
                 'lessons_count' => count($data['lessons']),
                 'seances_count' => count($data['seances_programmees']),
                 'evaluations_count' => count($data['evaluations_programmees']),

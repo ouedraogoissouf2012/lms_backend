@@ -104,12 +104,12 @@ final class EvaluationWindowGate
      */
     private function checkWindow(?array $window, bool $isPracticeMode, int $evaluationId, ?int $klassciEtudiantId): ?array
     {
-        if (!$window || $window['is_open'] || $isPracticeMode) {
+        if (! $window || $window['is_open'] || $isPracticeMode) {
             return null;
         }
 
         $message = "L'évaluation n'est pas encore ouverte";
-        if (!($window['has_started'] ?? true)) {
+        if (! ($window['has_started'] ?? true)) {
             $startAt = $this->windowDate($window['start_at'] ?? null);
             $message = $startAt === null ? $message : "L'évaluation ouvrira le {$startAt}";
         } elseif ($window['has_ended'] ?? false) {

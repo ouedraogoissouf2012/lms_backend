@@ -39,7 +39,8 @@ final class AsyncReportTenantIsolationTest extends TestCase
         $caller = User::factory()->create(['institution_id' => $instA->id, 'role' => 'coordinateur']);
 
         // Espion : enregistre les appels à set() sans mocker le service (final).
-        $spy = new class extends TenantManager {
+        $spy = new class extends TenantManager
+        {
             /** @var array<int, int> */
             public array $setInstitutionIds = [];
 

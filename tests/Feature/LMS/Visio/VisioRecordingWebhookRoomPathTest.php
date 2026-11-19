@@ -9,6 +9,7 @@ use App\Jobs\ImportJibriRecordingMedia;
 use App\Models\Institution;
 use App\Models\Seance;
 use App\Models\SeanceRecording;
+use App\Services\Visio\Recording\SeanceRecordingWebhookService;
 use App\Services\Visio\SecureVisioRoomIdGenerator;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Log;
@@ -36,7 +37,7 @@ use Tests\TestCase;
  * {@see VisioRecordingWebhookTest}, exécuté sans modification, qui le prouve.
  * Ici on couvre la voie nouvelle, et surtout ses refus.
  *
- * @see \App\Services\Visio\Recording\SeanceRecordingWebhookService
+ * @see SeanceRecordingWebhookService
  */
 final class VisioRecordingWebhookRoomPathTest extends TestCase
 {

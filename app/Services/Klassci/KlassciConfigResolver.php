@@ -25,7 +25,7 @@ use Psr\Log\LoggerInterface;
  * ## Le `null` d'un tenant résolu est absorbant (#792)
  *
  * En priorité 3, aucun repli sur `config('services.klassci.*')` : c'est
- * {@see \App\Services\TenantManager::klassciConfig()} qui porte la distinction
+ * {@see TenantManager::klassciConfig()} qui porte la distinction
  * entre « aucun tenant » et « tenant résolu ». Un `??` à cet endroit confondait
  * les deux, et une école autonome héritait alors de la cible — et du jeton — du
  * serveur. Cette ligne disait encore « token système global » après le
@@ -70,8 +70,7 @@ final class KlassciConfigResolver implements KlassciTargetResolver
         private readonly AuthFactory $auth,
         private readonly TenantManager $tenantManager,
         private readonly LoggerInterface $logger,
-    ) {
-    }
+    ) {}
 
     /**
      * Oublie la résolution mémoïsée, pour que le prochain appel reparte à zéro.
@@ -130,7 +129,7 @@ final class KlassciConfigResolver implements KlassciTargetResolver
     {
         $this->resolve();
 
-        if (!is_string($this->baseUrl) || !self::isUsableHttpUrl($this->baseUrl)) {
+        if (! is_string($this->baseUrl) || ! self::isUsableHttpUrl($this->baseUrl)) {
             // Warning (pas error) : situation exceptionnelle de config, pas une
             // panne applicative. Catégorie seulement — on ne logge jamais la valeur
             // brute (un token pourrait s'y trouver) ni le body (#256).
@@ -155,7 +154,7 @@ final class KlassciConfigResolver implements KlassciTargetResolver
         }
 
         $scheme = parse_url($url, PHP_URL_SCHEME);
-        $host   = parse_url($url, PHP_URL_HOST);
+        $host = parse_url($url, PHP_URL_HOST);
 
         return is_string($scheme)
             && in_array(strtolower($scheme), ['http', 'https'], true)
@@ -181,17 +180,17 @@ final class KlassciConfigResolver implements KlassciTargetResolver
             // Fallback : extraire l'URL depuis klassci_data si klassci_tenant_url est null
             // (anciens comptes pré-#75). Le accessor `getKlassciDataAttribute` garantit
             // un array (vide si JSON malformé) — pas de décodage manuel nécessaire.
-            if (!$tenantUrl && !empty($user->klassci_data)) {
+            if (! $tenantUrl && ! empty($user->klassci_data)) {
                 $tenantUrl = $user->klassci_data['_lms_tenant_url'] ?? null;
             }
 
             if (is_string($tenantUrl) && $tenantUrl !== '') {
                 $this->baseUrl = $tenantUrl;
-                $this->token   = $user->klassci_token;
+                $this->token = $user->klassci_token;
                 $this->resolved = true;
 
                 // Migration silencieuse : remplir klassci_tenant_url si manquant.
-                if (!$user->klassci_tenant_url) {
+                if (! $user->klassci_tenant_url) {
                     $user->updateQuietly(['klassci_tenant_url' => $tenantUrl]);
                 }
 
@@ -209,11 +208,11 @@ final class KlassciConfigResolver implements KlassciTargetResolver
                 && $institution->klassci_api_url === $user->klassci_tenant_url
                 && $institution->klassci_api_token) {
                 $this->baseUrl = $institution->klassci_api_url;
-                $this->token   = $institution->klassci_api_token;
+                $this->token = $institution->klassci_api_token;
                 $this->resolved = true;
 
                 $this->logger->info('KLASSCI resolveConfig: using institution token (no personal token)', [
-                    'user_id'     => $user->id,
+                    'user_id' => $user->id,
                     'institution' => $institution->slug,
                 ]);
 
@@ -243,7 +242,7 @@ final class KlassciConfigResolver implements KlassciTargetResolver
         $config = $this->tenantManager->klassciConfig();
 
         $this->baseUrl = is_string($config['url']) ? $config['url'] : null;
-        $this->token   = is_string($config['token']) ? $config['token'] : null;
+        $this->token = is_string($config['token']) ? $config['token'] : null;
         $this->resolved = true;
     }
 }

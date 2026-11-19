@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Evaluation\Student;
 
 use App\Exceptions\MissingKlassciTokenException;
+use App\Models\Concerns\EcheanceDeLaCopie;
 use App\Models\Evaluation;
 use App\Models\EvaluationSubmission;
 use App\Models\User;
@@ -56,8 +57,8 @@ final class EvaluationAttemptStateService
      *
      * @return array{status: string, submission?: EvaluationSubmission, window?: ?array<string, mixed>, message?: string, is_practice?: bool, resumed?: bool}
      *
-     * @throws RuntimeException  KLASSCI injoignable ou en erreur en lisant la
-     *                           classe de l'élève (le caller la classe).
+     * @throws RuntimeException KLASSCI injoignable ou en erreur en lisant la
+     *                          classe de l'élève (le caller la classe).
      */
     public function startAttempt(int $evaluationId, User $user): array
     {
@@ -107,7 +108,7 @@ final class EvaluationAttemptStateService
      * échouer toute remise de copie.
      *
      * Une tentative échue n'est plus ouverte (C28) : elle ne se reprend pas, et
-     * elle compte comme une tentative ({@see \App\Models\Concerns\EcheanceDeLaCopie}).
+     * elle compte comme une tentative ({@see EcheanceDeLaCopie}).
      */
     public function findOpenAttempt(int $evaluationId, User $student): ?EvaluationSubmission
     {
@@ -147,10 +148,10 @@ final class EvaluationAttemptStateService
             ];
         }
 
-        if (!$isPracticeMode && $evaluation->max_attempts && $attemptsCount >= $evaluation->max_attempts) {
+        if (! $isPracticeMode && $evaluation->max_attempts && $attemptsCount >= $evaluation->max_attempts) {
             return [
                 'status' => 'max_attempts',
-                'message' => 'Nombre maximum de tentatives atteint (' . $evaluation->max_attempts . ')',
+                'message' => 'Nombre maximum de tentatives atteint ('.$evaluation->max_attempts.')',
             ];
         }
 
@@ -258,8 +259,9 @@ final class EvaluationAttemptStateService
 
     /**
      * @return array{window: ?array<string, mixed>, server_time: string}
-     * @throws RuntimeException  Pas de klassci_token, évaluation hors de la
-     *                           liste de l'élève, ou KLASSCI en échec
+     *
+     * @throws RuntimeException Pas de klassci_token, évaluation hors de la
+     *                          liste de l'élève, ou KLASSCI en échec
      */
     public function getTimeStatus(int $evaluationId, User $user): array
     {
@@ -275,6 +277,7 @@ final class EvaluationAttemptStateService
         // Endpoint informatif : on tolère `null` (pas de fenêtre OU KLASSCI
         // indisponible) — ce n'est pas un gate (#499, getTimeStatus inchangé).
         $window = $this->windowGate->fetchWindow($user, $evaluation)['window'];
+
         return [
             'window' => $window,
             'server_time' => now()->toIso8601String(),

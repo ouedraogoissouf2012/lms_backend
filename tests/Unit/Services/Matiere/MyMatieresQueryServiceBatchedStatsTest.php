@@ -27,6 +27,7 @@ final class MyMatieresQueryServiceBatchedStatsTest extends TestCase
     use RefreshDatabase;
 
     private Institution $institution;
+
     private User $teacher;
 
     protected function setUp(): void
@@ -128,8 +129,7 @@ final class MyMatieresQueryServiceBatchedStatsTest extends TestCase
         DB::disableQueryLog();
         DB::flushQueryLog();
 
-        return $queries->filter(fn (string $q): bool =>
-            str_contains($q, '"lessons"') || str_contains($q, '`lessons`')
+        return $queries->filter(fn (string $q): bool => str_contains($q, '"lessons"') || str_contains($q, '`lessons`')
             || str_contains($q, '"seances"') || str_contains($q, '`seances`')
         )->count();
     }

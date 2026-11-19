@@ -5,15 +5,18 @@ declare(strict_types=1);
 namespace Tests\Feature\FileConversion;
 
 use App\Services\ConvertApiService;
+use App\Services\FileConversion\ChapterArtifactStorage;
 use App\Services\FileConversion\FileValidator;
 use App\Services\FileConversion\PdfConverter;
 use App\Services\FileConversion\PdfToPngRendererInterface;
+use App\Support\Logging\CaughtExceptionLog;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use InvalidArgumentException;
 use Mockery;
 use Mockery\MockInterface;
 use PHPUnit\Framework\Attributes\CoversClass;
+use Psr\Log\NullLogger;
 use RuntimeException;
 use Tests\TestCase;
 
@@ -32,7 +35,9 @@ use Tests\TestCase;
 final class PdfConverterTest extends TestCase
 {
     private ConvertApiService&MockInterface $convertApiMock;
+
     private PdfToPngRendererInterface&MockInterface $pdfRendererMock;
+
     private FileValidator $validator;
 
     protected function setUp(): void
@@ -48,7 +53,7 @@ final class PdfConverterTest extends TestCase
         $pdfRendererMock = Mockery::mock(PdfToPngRendererInterface::class);
         $this->pdfRendererMock = $pdfRendererMock;
 
-        $this->validator = new FileValidator();
+        $this->validator = new FileValidator;
     }
 
     protected function tearDown(): void
@@ -145,12 +150,12 @@ final class PdfConverterTest extends TestCase
     private function makeConverter(): PdfConverter
     {
         return new PdfConverter(
-            new \Psr\Log\NullLogger(),
+            new NullLogger,
             $this->convertApiMock,
             $this->pdfRendererMock,
             $this->validator,
-            app(\App\Services\FileConversion\ChapterArtifactStorage::class),
-            app(\App\Support\Logging\CaughtExceptionLog::class),
+            app(ChapterArtifactStorage::class),
+            app(CaughtExceptionLog::class),
         );
     }
 }

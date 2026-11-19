@@ -8,13 +8,14 @@ use App\Models\Institution;
 use App\Services\Institution\InstitutionDirectoryService;
 use App\Services\TenantManager;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\Feature\Api\PublicCoreRoutesContractTest;
 use Tests\TestCase;
 
 /**
  * Unitaires du service d'annuaire public des institutions (issue #375).
  *
  * Le contrat HTTP complet (enveloppe, 400, ordre JSON) est figé par
- * {@see \Tests\Feature\Api\PublicCoreRoutesContractTest} ; ici on teste la
+ * {@see PublicCoreRoutesContractTest} ; ici on teste la
  * logique du service isolément (§1.3 : happy path + edge case).
  */
 final class InstitutionDirectoryServiceTest extends TestCase
@@ -23,7 +24,7 @@ final class InstitutionDirectoryServiceTest extends TestCase
 
     private function makeService(?TenantManager $tenantManager = null): InstitutionDirectoryService
     {
-        return new InstitutionDirectoryService($tenantManager ?? new TenantManager());
+        return new InstitutionDirectoryService($tenantManager ?? new TenantManager);
     }
 
     public function test_list_active_filtre_les_inactives_trie_par_nom_et_ne_selectionne_que_les_champs_publics(): void
@@ -62,7 +63,7 @@ final class InstitutionDirectoryServiceTest extends TestCase
             'logo_url' => null,
             'primary_color' => '#123456',
         ]);
-        $tenantManager = new TenantManager();
+        $tenantManager = new TenantManager;
         $tenantManager->set($institution);
 
         $descriptor = $this->makeService($tenantManager)->currentDescriptor();

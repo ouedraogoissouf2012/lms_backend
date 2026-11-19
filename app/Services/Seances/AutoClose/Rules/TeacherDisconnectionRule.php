@@ -49,7 +49,7 @@ final class TeacherDisconnectionRule
             ->first();
 
         // Si pas d'enseignant trouvé, ne pas appliquer cette règle
-        if (!$teacher) {
+        if (! $teacher) {
             return false;
         }
 
@@ -68,6 +68,7 @@ final class TeacherDisconnectionRule
                     'teacher_user_id' => $teacher->user_id,
                     'minutes_since_disconnect' => $minutesSinceDisconnect,
                 ]);
+
                 return true;
             }
         }

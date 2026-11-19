@@ -29,8 +29,11 @@ final class AdminUserEmailUniquenessTest extends TestCase
     use RefreshDatabase;
 
     private Institution $schoolA;
+
     private Institution $schoolB;
+
     private User $coordA;
+
     private User $coordB;
 
     protected function setUp(): void

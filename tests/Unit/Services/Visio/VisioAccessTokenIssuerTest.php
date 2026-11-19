@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Services\Visio;
 
+use App\Services\Visio\Recording\SeanceRecordingWebhookService;
 use App\Services\Visio\VisioAccessTokenIssuer;
 use PHPUnit\Framework\TestCase;
 
@@ -28,7 +29,7 @@ use PHPUnit\Framework\TestCase;
  * (confusion d'algorithme, algorithme `none`, confusion de clé) vivent toutes
  * du côté de la vérification. Signer en HS256 est un `hash_hmac`, et le dépôt
  * le fait déjà ainsi pour le webhook d'enregistrement
- * ({@see \App\Services\Visio\Recording\SeanceRecordingWebhookService}).
+ * ({@see SeanceRecordingWebhookService}).
  *
  * @see PRODUCTION_STANDARDS.md §1.2 (sécurité absolue) · §1.6 D (DI stricte)
  */

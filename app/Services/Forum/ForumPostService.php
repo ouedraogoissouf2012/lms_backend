@@ -49,8 +49,7 @@ final class ForumPostService
 
     public function __construct(
         private readonly ConnectionInterface $db,
-    ) {
-    }
+    ) {}
 
     /**
      * Crée un post dans un topic et fan-out les notifications :
@@ -59,7 +58,7 @@ final class ForumPostService
      *     deux précédents.
      *
      * @param  array<string, mixed>  $data  Données validées
-     *                                       (peut contenir `parent_id`).
+     *                                      (peut contenir `parent_id`).
      */
     public function create(array $data, ForumTopic $topic, User $author): ForumPost
     {
@@ -131,7 +130,7 @@ final class ForumPostService
                     'user_id' => $post->user_id,
                     'type' => Notification::TYPE_FORUM_SOLUTION,
                     'title' => 'Votre réponse a été acceptée',
-                    'message' => 'Votre réponse dans "' . $topic->title . '" a été marquée comme solution',
+                    'message' => 'Votre réponse dans "'.$topic->title.'" a été marquée comme solution',
                     'data' => [
                         'topic_id' => $topic->id,
                         'post_id' => $post->id,
@@ -161,7 +160,7 @@ final class ForumPostService
                 'user_id' => $topic->user_id,
                 'type' => Notification::TYPE_FORUM_REPLY,
                 'title' => 'Nouvelle réponse sur votre discussion',
-                'message' => $author->name . ' a répondu à votre discussion "' . $topic->title . '"',
+                'message' => $author->name.' a répondu à votre discussion "'.$topic->title.'"',
                 'data' => [
                     'topic_id' => $topic->id,
                     'post_id' => $post->id,
@@ -186,7 +185,7 @@ final class ForumPostService
             'user_id' => $parentPost->user_id,
             'type' => Notification::TYPE_FORUM_REPLY,
             'title' => 'Nouvelle réponse à votre message',
-            'message' => $author->name . ' a répondu à votre message dans "' . $topic->title . '"',
+            'message' => $author->name.' a répondu à votre message dans "'.$topic->title.'"',
             'data' => [
                 'topic_id' => $topic->id,
                 'post_id' => $post->id,

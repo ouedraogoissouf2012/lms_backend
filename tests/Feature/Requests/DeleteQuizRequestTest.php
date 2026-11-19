@@ -3,19 +3,24 @@
 namespace Tests\Feature\Requests;
 
 use App\Models\Institution;
-use App\Models\User;
 use App\Models\Quiz;
+use App\Models\User;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
 class DeleteQuizRequestTest extends TestCase
 {
-    use \Illuminate\Foundation\Testing\RefreshDatabase;
+    use RefreshDatabase;
 
     private Institution $institution;
+
     private User $teacher;
+
     private User $otherTeacher;
+
     private User $student;
+
     private Quiz $quiz;
 
     protected function setUp(): void

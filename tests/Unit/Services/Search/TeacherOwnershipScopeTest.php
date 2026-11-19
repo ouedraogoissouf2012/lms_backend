@@ -36,7 +36,7 @@ final class TeacherOwnershipScopeTest extends TestCase
     {
         parent::setUp();
 
-        $this->scope = new TeacherOwnershipScope();
+        $this->scope = new TeacherOwnershipScope;
         $this->institution = Institution::factory()->create();
     }
 

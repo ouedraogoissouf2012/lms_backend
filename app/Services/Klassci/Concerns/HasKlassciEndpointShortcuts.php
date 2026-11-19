@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Services\Klassci\Concerns;
 
+use App\Services\KlassciProxyService;
+
 /**
  * Catalogue des 15 méthodes endpoint sémantiques KLASSCI.
  *
@@ -37,7 +39,7 @@ namespace App\Services\Klassci\Concerns;
  *   varier la réponse selon le porteur. La clé de cache dérive du hash du
  *   porteur ; le raccourci **exige** donc le jeton en premier paramètre — sans
  *   quoi la réponse du 1ᵉʳ appelant fuite à tout le tenant (#568, #591).
-     * Aujourd'hui : lectures + écritures notes/présences/statut cours.
+ * Aujourd'hui : lectures + écritures notes/présences/statut cours.
  * - **Tenant-partagé** → `get()` : charge utile prouvément identique pour tout
  *   le tenant. Clé de cache globale, taux de hit maximal.
  *   Aujourd'hui : `structure`, `filieres`, `niveaux-etudes`, `enseignants`.
@@ -52,7 +54,7 @@ namespace App\Services\Klassci\Concerns;
  * Garde exécutable de cette règle :
  * `tests/Unit/Services/Klassci/KlassciEndpointClassificationGuardTest.php`.
  *
- * @see \App\Services\KlassciProxyService
+ * @see KlassciProxyService
  * @see .claude/specs/perf-02-klassci-batch-cache/design.md §7 (table TTL)
  */
 trait HasKlassciEndpointShortcuts

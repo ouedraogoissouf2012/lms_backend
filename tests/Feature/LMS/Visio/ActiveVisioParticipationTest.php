@@ -168,7 +168,7 @@ final class ActiveVisioParticipationTest extends TestCase
         $moi = $this->user($this->institution, 'moi@example.test');
 
         $this->asUser($moi)
-            ->getJson(self::ENDPOINT . '?user_id=' . $autre->id . '&seance_id=' . $seance->id)
+            ->getJson(self::ENDPOINT.'?user_id='.$autre->id.'&seance_id='.$seance->id)
             ->assertStatus(200)
             ->assertJsonPath('data', null);
     }
@@ -223,7 +223,7 @@ final class ActiveVisioParticipationTest extends TestCase
     private function asUser(User $user): self
     {
         return $this->withHeaders([
-            'Authorization' => 'Bearer ' . $user->createToken('active-visio-test')->plainTextToken,
+            'Authorization' => 'Bearer '.$user->createToken('active-visio-test')->plainTextToken,
         ]);
     }
 }

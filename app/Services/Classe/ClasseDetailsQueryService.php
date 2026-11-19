@@ -5,13 +5,14 @@ declare(strict_types=1);
 namespace App\Services\Classe;
 
 use App\Exceptions\MissingKlassciTokenException;
+use App\Http\Controllers\API\LMS\LMSClassesController;
 use App\Models\User;
 use App\Services\KlassciProxyService;
 use Psr\Log\LoggerInterface;
 
 /**
  * Orchestrateur « détails classe ». Extrait de
- * {@see \App\Http\Controllers\API\LMS\LMSClassesController::classeDetails()}.
+ * {@see LMSClassesController::classeDetails()}.
  *
  * Agrège classe + étudiants actifs + matières + emploi du temps + évaluations
  * + stats. Blocs secondaires en dégradation gracieuse (échec amont KLASSCI →
@@ -36,7 +37,7 @@ final class ClasseDetailsQueryService implements ClasseDetailsReader
     {
         $klassciToken = $user->klassci_token;
 
-        if (!$klassciToken) {
+        if (! $klassciToken) {
             return [
                 'status' => 401,
                 'payload' => MissingKlassciTokenException::payload(),
@@ -144,7 +145,7 @@ final class ClasseDetailsQueryService implements ClasseDetailsReader
             'classe_data' => $classe,
         ]);
 
-        if (!$classe) {
+        if (! $classe) {
             return [
                 'status' => 404,
                 'payload' => [
@@ -233,8 +234,7 @@ final class ClasseDetailsQueryService implements ClasseDetailsReader
             return true;
         }
 
-
-        if (!is_string($statut) || $statut === '') {
+        if (! is_string($statut) || $statut === '') {
             $this->logger->warning('Étudiant exclu de l\'effectif : statut manquant ou malformé', [
                 'classe_id' => $classeId,
                 'etudiant_id' => $etudiant['id'] ?? null,

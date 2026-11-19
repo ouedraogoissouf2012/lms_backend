@@ -5,13 +5,15 @@ declare(strict_types=1);
 namespace App\Services\Classe;
 
 use App\Exceptions\MissingKlassciTokenException;
+use App\Http\Controllers\API\Concerns\RendersKlassciBackedErrors;
+use App\Http\Controllers\API\LMS\LMSClassesController;
 use App\Models\User;
 use Psr\Log\LoggerInterface;
 
 /**
  * ClasseEtudiantsQueryService — liste roster des étudiants d'une classe.
  *
- * Extrait de {@see \App\Http\Controllers\API\LMS\LMSClassesController::classeEtudiants()}
+ * Extrait de {@see LMSClassesController::classeEtudiants()}
  * (split-20/lms-classes) afin de respecter §1.1/§5 (controllers et services
  * bornés en taille).
  *
@@ -46,7 +48,7 @@ use Psr\Log\LoggerInterface;
  *
  * Un refus ou une indisponibilité de KLASSCI n'est PAS rattrapé ici : il remonte
  * en `RuntimeException`, que le contrôleur rend par
- * {@see \App\Http\Controllers\API\Concerns\RendersKlassciBackedErrors} (4xx relayé
+ * {@see RendersKlassciBackedErrors} (4xx relayé
  * avec son motif, panne en 503 + `Retry-After`). L'ancien `catch (Throwable)`
  * les écrasait en 500 générique.
  *
@@ -70,7 +72,7 @@ final class ClasseEtudiantsQueryService implements ClasseEtudiantsReader
     {
         $klassciToken = $user->klassci_token;
 
-        if (!is_string($klassciToken) || $klassciToken === '') {
+        if (! is_string($klassciToken) || $klassciToken === '') {
             return [
                 'status' => 401,
                 'payload' => MissingKlassciTokenException::payload(),
@@ -86,7 +88,7 @@ final class ClasseEtudiantsQueryService implements ClasseEtudiantsReader
         // (legacy rows). Cf. docblock du service pour le rationale.
         $etudiantsActifs = collect($this->roster->etudiants($classeId, $klassciToken))
             ->filter(static function (array $etudiant): bool {
-                return !isset($etudiant['statut']) || $etudiant['statut'] === 'actif';
+                return ! isset($etudiant['statut']) || $etudiant['statut'] === 'actif';
             })
             ->values()
             ->all();

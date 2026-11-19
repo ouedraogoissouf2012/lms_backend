@@ -34,7 +34,7 @@ class SanctumTokenExpirationTest extends TestCase
         $institution = Institution::factory()->create();
         $this->user = User::factory()->create([
             'institution_id' => $institution->id,
-            'role'           => 'etudiant',
+            'role' => 'etudiant',
         ]);
     }
 
@@ -66,7 +66,7 @@ class SanctumTokenExpirationTest extends TestCase
         $token = $this->user->createToken('fresh-test')->plainTextToken;
 
         $response = $this->withHeaders([
-            'Authorization' => 'Bearer ' . $token,
+            'Authorization' => 'Bearer '.$token,
         ])->getJson('/api/user');
 
         $response->assertOk();
@@ -84,7 +84,7 @@ class SanctumTokenExpirationTest extends TestCase
         $this->travel($this->expirationMinutes() - 1)->minutes();
 
         $response = $this->withHeaders([
-            'Authorization' => 'Bearer ' . $token,
+            'Authorization' => 'Bearer '.$token,
         ])->getJson('/api/user');
 
         $response->assertOk();
@@ -102,7 +102,7 @@ class SanctumTokenExpirationTest extends TestCase
         $this->travel($this->expirationMinutes() + 1)->minutes();
 
         $response = $this->withHeaders([
-            'Authorization' => 'Bearer ' . $token,
+            'Authorization' => 'Bearer '.$token,
         ])->getJson('/api/user');
 
         $response->assertUnauthorized();

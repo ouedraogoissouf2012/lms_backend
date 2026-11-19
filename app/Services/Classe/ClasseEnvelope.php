@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace App\Services\Classe;
 
+use App\Services\Seances\KlassciPayload;
+use App\Services\Sync\Classes\ClasseStudentsSynchronizer;
+
 /**
  * Lecture DÉFENSIVE de l'enveloppe KLASSCI `GET classes/{id}`.
  *
@@ -14,7 +17,7 @@ namespace App\Services\Classe;
  * classe) ou tout simplement faux (le catalogue `matieres?…` ignore ses filtres).
  *
  * Ce lecteur est PUR (aucune dépendance, aucune I/O), sur le modèle de
- * {@see \App\Services\Seances\KlassciPayload} : il narrowe du `mixed` non typé
+ * {@see KlassciPayload} : il narrowe du `mixed` non typé
  * sans jamais lever d'exception.
  *
  * Distinction structurante : `optionalList()` renvoie `null` quand le bloc est
@@ -70,7 +73,7 @@ final class ClasseEnvelope
      *
      * Le repli `nom` + `prenom` couvre les sources qui séparent les deux — la
      * règle est déjà celle de
-     * {@see \App\Services\Sync\Classes\ClasseStudentsSynchronizer}.
+     * {@see ClasseStudentsSynchronizer}.
      *
      * On ne DÉCOUPE jamais `nom_complet` pour en déduire un prénom : les noms
      * composés sont la règle ici, et découper sur la première espace
@@ -149,7 +152,7 @@ final class ClasseEnvelope
      */
     public static function optionalList(?array $payload, string $key): ?array
     {
-        if (!is_array($payload) || !is_array($payload[$key] ?? null)) {
+        if (! is_array($payload) || ! is_array($payload[$key] ?? null)) {
             return null;
         }
 

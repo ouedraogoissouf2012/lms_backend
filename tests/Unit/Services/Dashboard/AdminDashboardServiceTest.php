@@ -39,11 +39,15 @@ final class AdminDashboardServiceTest extends TestCase
     use RefreshDatabase;
 
     private const TENANT_URL_A = 'https://school-a.klassci.test';
+
     private const TENANT_URL_B = 'https://school-b.klassci.test';
 
     private AdminDashboardService $service;
+
     private Institution $institutionA;
+
     private Institution $institutionB;
+
     private User $coordinator;
 
     protected function setUp(): void

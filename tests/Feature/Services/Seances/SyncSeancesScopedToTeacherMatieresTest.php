@@ -7,7 +7,10 @@ namespace Tests\Feature\Services\Seances;
 use App\Models\Institution;
 use App\Models\User;
 use App\Services\KlassciProxyService;
+use App\Services\Seances\KlassciEmploiTempsSeances;
 use App\Services\Seances\Sync\KlassciSeancesSyncService;
+use App\Services\Seances\Sync\TeacherMatieresResolver;
+use App\Services\Seances\UserOwnMatieresResolver;
 use App\Services\TenantManager;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Mockery\MockInterface;
@@ -21,10 +24,10 @@ use Tests\TestCase;
  * ## État de l'art sur CETTE base (après #741)
  *
  * `fix(seances): les seances viennent de l emploi du temps (#741)` a déjà
- * supprimé le N+1 : {@see \App\Services\Seances\KlassciEmploiTempsSeances}
+ * supprimé le N+1 : {@see KlassciEmploiTempsSeances}
  * fait UN SEUL appel `emploi-temps` sur une fenêtre de dates. Les ids de matières
  * ne partent PAS dans la requête — ils servent uniquement à répartir la réponse
- * ({@see \App\Services\Seances\Sync\TeacherMatieresResolver::resolve()}).
+ * ({@see TeacherMatieresResolver::resolve()}).
  *
  * ## Ce qui restait, et que ce correctif traite
  *
@@ -46,7 +49,7 @@ use Tests\TestCase;
  *
  * ## La source correcte existe déjà et est testée
  *
- * {@see \App\Services\Seances\UserOwnMatieresResolver}, extrait par #725, lit
+ * {@see UserOwnMatieresResolver}, extrait par #725, lit
  * `me/teacher-dashboard` -> `data.matieres`. On la réutilise plutôt que d'en
  * écrire une troisième copie.
  *

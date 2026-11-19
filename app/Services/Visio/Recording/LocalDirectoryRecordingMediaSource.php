@@ -41,8 +41,7 @@ final class LocalDirectoryRecordingMediaSource implements RecordingMediaSource
     public function __construct(
         private readonly Filesystem $filesystem,
         private readonly ?string $root,
-    ) {
-    }
+    ) {}
 
     public function locate(string $sessionId): ?string
     {

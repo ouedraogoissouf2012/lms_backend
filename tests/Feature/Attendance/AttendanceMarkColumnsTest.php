@@ -10,6 +10,7 @@ use App\Models\ESBTPAttendance;
 use App\Models\Institution;
 use App\Models\Seance;
 use App\Models\User;
+use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -58,7 +59,7 @@ final class AttendanceMarkColumnsTest extends TestCase
             'status' => 'disconnected',
         ]);
 
-        $this->expectException(\Illuminate\Database\QueryException::class);
+        $this->expectException(QueryException::class);
         ESBTPAttendance::factory()->create([
             'institution_id' => $institution->id,
             'seance_id' => $seance->id,

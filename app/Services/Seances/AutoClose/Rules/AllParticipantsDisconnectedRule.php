@@ -6,6 +6,7 @@ namespace App\Services\Seances\AutoClose\Rules;
 
 use App\Models\ESBTPAttendance;
 use App\Models\Seance;
+use App\Services\Seances\AutoClose\HeartbeatHealthChecker;
 use Carbon\Carbon;
 use Psr\Log\LoggerInterface;
 
@@ -22,7 +23,7 @@ use Psr\Log\LoggerInterface;
  * (la règle "no participants" prendra le relais).
  *
  * Note: la santé du système de heartbeat est vérifiée en amont par
- * {@see \App\Services\Seances\AutoClose\HeartbeatHealthChecker} — cette
+ * {@see HeartbeatHealthChecker} — cette
  * règle suppose que le heartbeat est fonctionnel quand on l'évalue.
  *
  * @see PRODUCTION_STANDARDS.md §1.1 — Services ≤300 lignes
@@ -61,10 +62,10 @@ final class AllParticipantsDisconnectedRule
 
         // Tous sont déconnectés, trouver le dernier départ
         $lastLeftAt = $attendances
-            ->filter(fn($a) => $a->left_at !== null)
+            ->filter(fn ($a) => $a->left_at !== null)
             ->max('left_at');
 
-        if (!$lastLeftAt) {
+        if (! $lastLeftAt) {
             return false;
         }
 
@@ -76,6 +77,7 @@ final class AllParticipantsDisconnectedRule
                 'minutes_since_last_left' => $minutesSinceLastLeft,
                 'last_left_at' => $lastLeftAt,
             ]);
+
             return true;
         }
 

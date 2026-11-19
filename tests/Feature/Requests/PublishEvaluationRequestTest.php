@@ -3,18 +3,23 @@
 namespace Tests\Feature\Requests;
 
 use App\Models\Evaluation;
-use App\Models\User;
+use App\Models\EvaluationQuestion;
 use App\Models\Institution;
+use App\Models\User;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
 class PublishEvaluationRequestTest extends TestCase
 {
-    use \Illuminate\Foundation\Testing\RefreshDatabase;
+    use RefreshDatabase;
 
     private Institution $institution;
+
     private User $teacher;
+
     private User $coordinator;
+
     private Evaluation $evaluation;
 
     protected function setUp(): void
@@ -43,7 +48,7 @@ class PublishEvaluationRequestTest extends TestCase
             ->create();
 
         // Create at least one question so evaluation can be published
-        \App\Models\EvaluationQuestion::factory()->for($this->evaluation)->create();
+        EvaluationQuestion::factory()->for($this->evaluation)->create();
     }
 
     public function test_teacher_can_publish(): void
@@ -71,7 +76,7 @@ class PublishEvaluationRequestTest extends TestCase
             ->create();
 
         // Create at least one question
-        \App\Models\EvaluationQuestion::factory()->for($published)->create();
+        EvaluationQuestion::factory()->for($published)->create();
 
         Sanctum::actingAs($this->teacher);
         $response = $this->postJson("/api/evaluations/{$published->id}/publish");

@@ -6,8 +6,10 @@ namespace Tests\Feature\Notifications;
 
 use App\Http\Requests\ListNotificationsRequest;
 use App\Models\Institution;
+use App\Models\Notification;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Validation\Concerns\ValidatesAttributes;
 use Laravel\Sanctum\Sanctum;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -33,7 +35,7 @@ use Tests\TestCase;
  * Une chaîne de requête ne peut transporter QUE du texte. `unread_only=false`
  * arrive donc comme la chaîne `'false'`. Or la règle `boolean` de Laravel
  * n'accepte que `[true, false, 0, 1, '0', '1']`
- * ({@see \Illuminate\Validation\Concerns\ValidatesAttributes::validateBoolean()}) :
+ * ({@see ValidatesAttributes::validateBoolean()}) :
  * `'false'` et `'true'` en sont EXCLUS.
  *
  * Exiger `unread_only=0` d'un client HTTP est un contrat que le transport ne
@@ -128,12 +130,12 @@ final class NotificationsBooleanQueryStringTest extends TestCase
      */
     public function test_the_filter_still_filters_after_normalisation(): void
     {
-        \App\Models\Notification::factory()->create([
+        Notification::factory()->create([
             'user_id' => $this->user->id,
             'institution_id' => $this->user->institution_id,
             'read_at' => now(),
         ]);
-        \App\Models\Notification::factory()->create([
+        Notification::factory()->create([
             'user_id' => $this->user->id,
             'institution_id' => $this->user->institution_id,
             'read_at' => null,

@@ -38,6 +38,7 @@ final class GradeAttemptHappyPathTest extends TestCase
     use RefreshDatabase;
 
     private Institution $institutionA;
+
     private Institution $institutionB;
 
     protected function setUp(): void

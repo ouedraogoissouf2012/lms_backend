@@ -48,8 +48,8 @@ final class FileValidator
     ];
 
     /**
-     * @param array<int, string> $allowedExtensions Per-converter whitelist,
-     *                                              e.g. `['pptx', 'ppt']`.
+     * @param  array<int, string>  $allowedExtensions  Per-converter whitelist,
+     *                                                 e.g. `['pptx', 'ppt']`.
      *
      * @throws InvalidArgumentException If the file exceeds {@see MAX_FILE_SIZE},
      *                                  carries a disallowed extension or an
@@ -64,7 +64,7 @@ final class FileValidator
         $extension = strtolower($file->getClientOriginalExtension());
         if (! in_array($extension, $allowedExtensions, true)) {
             throw new InvalidArgumentException(
-                'Format non supporté. Formats acceptés: ' . implode(', ', $allowedExtensions),
+                'Format non supporté. Formats acceptés: '.implode(', ', $allowedExtensions),
             );
         }
 

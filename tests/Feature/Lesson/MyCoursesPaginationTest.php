@@ -36,7 +36,9 @@ final class MyCoursesPaginationTest extends TestCase
     use RefreshDatabase;
 
     private Institution $institution;
+
     private User $student;
+
     private Classe $classe;
 
     protected function setUp(): void

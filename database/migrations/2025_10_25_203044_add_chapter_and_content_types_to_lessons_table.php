@@ -46,7 +46,7 @@ return new class extends Migration
                 'pdf_url',
                 'audio_url',
                 'presentation_url',
-                'external_link'
+                'external_link',
             ]);
         });
     }

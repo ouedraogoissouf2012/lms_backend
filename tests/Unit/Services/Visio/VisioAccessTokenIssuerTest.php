@@ -6,6 +6,9 @@ namespace Tests\Unit\Services\Visio;
 
 use App\Services\Visio\Recording\SeanceRecordingWebhookService;
 use App\Services\Visio\VisioAccessTokenIssuer;
+use Carbon\CarbonInterface;
+use Illuminate\Support\Carbon;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -55,6 +58,12 @@ final class VisioAccessTokenIssuerTest extends TestCase
 
     private const AUDIENCE = 'visio-klassci';
 
+    protected function tearDown(): void
+    {
+        Carbon::setTestNow();
+        parent::tearDown();
+    }
+
     private function issuer(?string $secret = self::SECRET): VisioAccessTokenIssuer
     {
         return new VisioAccessTokenIssuer(
@@ -62,8 +71,13 @@ final class VisioAccessTokenIssuerTest extends TestCase
             appSecret: $secret,
             audience: self::AUDIENCE,
             xmppDomain: 'meet.jitsi',
-            lifetimeSeconds: 7200,
         );
+    }
+
+    /** L'expiration n'est plus décidée par l'émetteur (#871) : l'appelant la fournit. */
+    private function expiration(): CarbonInterface
+    {
+        return Carbon::now()->addHours(2);
     }
 
     /**
@@ -88,7 +102,7 @@ final class VisioAccessTokenIssuerTest extends TestCase
 
     public function test_the_room_claim_is_the_exact_room_never_a_wildcard(): void
     {
-        $token = $this->issuer()->issue('lms_abc123', 'Awa Traoré', 'awa@ecole.ci', false);
+        $token = $this->issuer()->issue('lms_abc123', 'Awa Traoré', 'awa@ecole.ci', false, $this->expiration());
 
         $payload = $this->decodePayload($token);
 
@@ -100,8 +114,8 @@ final class VisioAccessTokenIssuerTest extends TestCase
     {
         $issuer = $this->issuer();
 
-        $a = $this->decodePayload($issuer->issue('lms_classe_a', 'Awa', 'a@e.ci', false));
-        $b = $this->decodePayload($issuer->issue('lms_classe_b', 'Awa', 'a@e.ci', false));
+        $a = $this->decodePayload($issuer->issue('lms_classe_a', 'Awa', 'a@e.ci', false, $this->expiration()));
+        $b = $this->decodePayload($issuer->issue('lms_classe_b', 'Awa', 'a@e.ci', false, $this->expiration()));
 
         self::assertNotSame($a['room'], $b['room']);
     }
@@ -110,7 +124,7 @@ final class VisioAccessTokenIssuerTest extends TestCase
 
     public function test_the_signature_is_verifiable_with_the_shared_secret(): void
     {
-        $token = $this->issuer()->issue('lms_abc', 'Awa', 'a@e.ci', false);
+        $token = $this->issuer()->issue('lms_abc', 'Awa', 'a@e.ci', false, $this->expiration());
 
         [$header, $payload, $signature] = explode('.', $token);
 
@@ -123,7 +137,7 @@ final class VisioAccessTokenIssuerTest extends TestCase
 
     public function test_a_tampered_payload_breaks_the_signature(): void
     {
-        $token = $this->issuer()->issue('lms_abc', 'Awa', 'a@e.ci', false);
+        $token = $this->issuer()->issue('lms_abc', 'Awa', 'a@e.ci', false, $this->expiration());
         [$header, $payload, $signature] = explode('.', $token);
 
         // Un attaquant remplace la salle par un joker.
@@ -137,7 +151,7 @@ final class VisioAccessTokenIssuerTest extends TestCase
 
     public function test_the_algorithm_is_pinned_to_hs256(): void
     {
-        $token = $this->issuer()->issue('lms_abc', 'Awa', 'a@e.ci', false);
+        $token = $this->issuer()->issue('lms_abc', 'Awa', 'a@e.ci', false, $this->expiration());
         $header = json_decode((string) base64_decode(strtr(explode('.', $token)[0], '-_', '+/'), true), true);
 
         self::assertIsArray($header);
@@ -149,7 +163,7 @@ final class VisioAccessTokenIssuerTest extends TestCase
 
     public function test_issuer_audience_and_subject_match_the_server_configuration(): void
     {
-        $payload = $this->decodePayload($this->issuer()->issue('lms_abc', 'Awa', 'a@e.ci', false));
+        $payload = $this->decodePayload($this->issuer()->issue('lms_abc', 'Awa', 'a@e.ci', false, $this->expiration()));
 
         self::assertSame(self::APP_ID, $payload['iss'], 'Doit valoir JWT_APP_ID.');
         self::assertSame(self::AUDIENCE, $payload['aud'], 'Doit figurer dans JWT_ACCEPTED_AUDIENCES.');
@@ -157,19 +171,42 @@ final class VisioAccessTokenIssuerTest extends TestCase
     }
 
     /**
-     * Un jeton sans expiration serait une clé perdue qui ouvre à vie.
+     * Un jeton sans expiration serait une clé perdue qui ouvre à vie. Son
+     * expiration est EXACTEMENT celle que la fenêtre de la visio a décidée
+     * (#871) : l'émetteur n'y ajoute ni n'y retire rien.
      */
-    public function test_the_token_expires_and_is_not_valid_before_now(): void
+    public function test_the_token_expires_exactly_when_told_and_is_not_valid_before_now(): void
     {
-        $before = time();
-        $payload = $this->decodePayload($this->issuer()->issue('lms_abc', 'Awa', 'a@e.ci', false));
-        $after = time();
+        Carbon::setTestNow(Carbon::parse('2026-11-19 10:00:00', 'UTC'));
+        $expiration = Carbon::parse('2026-11-19 15:05:00', 'UTC');
 
-        self::assertIsInt($payload['exp']);
+        $payload = $this->decodePayload($this->issuer()->issue('lms_abc', 'Awa', 'a@e.ci', false, $expiration));
+
+        self::assertSame($expiration->getTimestamp(), $payload['exp']);
         self::assertIsInt($payload['nbf']);
-        self::assertGreaterThanOrEqual($before + 7200, $payload['exp']);
-        self::assertLessThanOrEqual($after + 7200, $payload['exp']);
-        self::assertLessThanOrEqual($before, $payload['nbf']);
+        self::assertLessThanOrEqual(Carbon::now()->getTimestamp(), $payload['nbf']);
+        self::assertSame(Carbon::now()->getTimestamp(), $payload['iat']);
+    }
+
+    /**
+     * Un jeton déjà mort ouvrirait une porte qui se referme aussitôt, et prosody
+     * le rejetterait sans message : l'émetteur refuse de le signer.
+     *
+     * @return iterable<string, array{string}>
+     */
+    public static function expirationsMortes(): iterable
+    {
+        yield 'maintenant' => ['2026-11-19 10:00:00'];
+        yield 'une seconde avant' => ['2026-11-19 09:59:59'];
+    }
+
+    #[DataProvider('expirationsMortes')]
+    public function test_an_expiry_that_is_not_in_the_future_is_refused_loudly(string $expiration): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-11-19 10:00:00', 'UTC'));
+
+        $this->expectException(\RuntimeException::class);
+        $this->issuer()->issue('lms_abc', 'Awa', 'a@e.ci', false, Carbon::parse($expiration, 'UTC'));
     }
 
     // ───────────────────── L'identité vient du serveur ─────────────────────
@@ -177,7 +214,7 @@ final class VisioAccessTokenIssuerTest extends TestCase
     public function test_the_displayed_identity_comes_from_the_payload_given_by_the_server(): void
     {
         $payload = $this->decodePayload(
-            $this->issuer()->issue('lms_abc', 'Awa Traoré', 'awa@ecole.ci', false)
+            $this->issuer()->issue('lms_abc', 'Awa Traoré', 'awa@ecole.ci', false, $this->expiration())
         );
 
         $user = $payload['context']['user'];
@@ -188,14 +225,14 @@ final class VisioAccessTokenIssuerTest extends TestCase
 
     public function test_moderator_is_false_for_a_plain_participant(): void
     {
-        $payload = $this->decodePayload($this->issuer()->issue('lms_abc', 'Awa', 'a@e.ci', false));
+        $payload = $this->decodePayload($this->issuer()->issue('lms_abc', 'Awa', 'a@e.ci', false, $this->expiration()));
 
         self::assertSame('false', $payload['context']['user']['moderator']);
     }
 
     public function test_moderator_is_true_only_when_the_caller_says_so(): void
     {
-        $payload = $this->decodePayload($this->issuer()->issue('lms_abc', 'Prof', 'p@e.ci', true));
+        $payload = $this->decodePayload($this->issuer()->issue('lms_abc', 'Prof', 'p@e.ci', true, $this->expiration()));
 
         self::assertSame('true', $payload['context']['user']['moderator']);
     }
@@ -210,7 +247,7 @@ final class VisioAccessTokenIssuerTest extends TestCase
     {
         $this->expectException(\RuntimeException::class);
 
-        $this->issuer(secret: null)->issue('lms_abc', 'Awa', 'a@e.ci', false);
+        $this->issuer(secret: null)->issue('lms_abc', 'Awa', 'a@e.ci', false, $this->expiration());
     }
 
     public function test_is_configured_reports_the_missing_secret(): void
@@ -228,7 +265,7 @@ final class VisioAccessTokenIssuerTest extends TestCase
      */
     public function test_the_token_is_url_safe(): void
     {
-        $token = $this->issuer()->issue('lms_abc', 'Prénom Accentué É', 'a@e.ci', true);
+        $token = $this->issuer()->issue('lms_abc', 'Prénom Accentué É', 'a@e.ci', true, $this->expiration());
 
         self::assertDoesNotMatchRegularExpression('#[+/=]#', $token);
         self::assertSame($token, rawurlencode($token));

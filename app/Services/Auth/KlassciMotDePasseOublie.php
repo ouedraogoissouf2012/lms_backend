@@ -19,7 +19,7 @@ final class KlassciMotDePasseOublie implements MotDePasseOublie
             'payload' => [
                 'success' => true,
                 'reason' => self::MOTIF,
-                'message' => 'Votre mot de passe est celui de KLASSCI : réinitialisez-le depuis KLASSCI.',
+                'message' => 'Si un compte existe pour cette adresse, un courriel a été envoyé.',
             ],
         ];
     }

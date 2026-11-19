@@ -10,7 +10,7 @@ use App\Models\Seance;
 use App\Models\Traits\ResolvesMirroredIdentifier;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use PHPUnit\Framework\Attributes\DataProvider;
-use Tests\Feature\Lesson\KlassciIdentifierDualityTest;
+use Tests\Feature\Lesson\LeconCreeeEnEspaceLocalTest;
 use Tests\TestCase;
 
 /**
@@ -22,7 +22,7 @@ use Tests\TestCase;
  * même coup que le contrat `MirroredFromKlassci` est bien branché.
  *
  * @see ResolvesMirroredIdentifier
- * @see KlassciIdentifierDualityTest
+ * @see LeconCreeeEnEspaceLocalTest (#873 : la leçon ne s'en sert plus)
  */
 final class ResolvesMirroredIdentifierTest extends TestCase
 {

@@ -84,15 +84,16 @@ class StoreLessonRequestTest extends TestCase
     }
 
     /**
-     * ✅ #265 : le frontend envoie un id KLASSCI de classe (pas l'id local).
-     * authorize() doit l'accepter et le service le traduire en id local.
+     * #873 : la classe se désigne par son id LOCAL. Le numéro KLASSCI seul,
+     * accepté depuis #265, est refusé comme toute classe inconnue : les deux
+     * numérotations se recouvrent, et il rangeait la leçon dans une autre classe.
      */
-    public function test_accepts_klassci_classe_id_and_stores_local_id(): void
+    public function test_refuses_klassci_classe_id_alone(): void
     {
         Sanctum::actingAs($this->teacher);
 
         // Classe dont l'id local diffère du klassci_id (cas réel multi-tenant).
-        $classe = Classe::factory()->for($this->institution)->create(['klassci_id' => 99001]);
+        Classe::factory()->for($this->institution)->create(['klassci_id' => 99001]);
 
         $response = $this->postJson('/api/lessons', [
             'title' => 'Cours via id KLASSCI',
@@ -100,12 +101,8 @@ class StoreLessonRequestTest extends TestCase
             'classe_id' => 99001, // id KLASSCI, PAS l'id local
         ]);
 
-        $response->assertStatus(201);
-        // Stocké avec l'id LOCAL (relation Lesson->Classe reste valide).
-        $this->assertDatabaseHas('lessons', [
-            'title' => 'Cours via id KLASSCI',
-            'classe_id' => $classe->id,
-        ]);
+        $response->assertStatus(403);
+        $this->assertDatabaseMissing('lessons', ['title' => 'Cours via id KLASSCI']);
     }
 
     /**

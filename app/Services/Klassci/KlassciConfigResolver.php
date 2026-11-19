@@ -223,7 +223,7 @@ final class KlassciConfigResolver implements KlassciTargetResolver
         $user = $this->auth->guard('sanctum')->user();
 
         // Priorité 1 : token personnel de l'utilisateur connecté, vers SA cible seulement.
-        if ($user instanceof User && $user->klassci_token && self::adresseDuCompte($user) !== null) {
+        if ($user instanceof User && $user->klassci_token && $this->cibleDuJetonPersonnel($user) !== null) {
             // #1248 — le refus est ABSORBANT : le jeton du compte ne retombe pas en
             // priorité 2 ou 3, qui le porteraient vers une autre adresse que la sienne.
             $this->baseUrl = $this->cibleDuJetonPersonnel($user);

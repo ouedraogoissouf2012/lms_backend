@@ -91,7 +91,9 @@ en permanence** sans le moindre indice — d'où cette section.
 | `JITSI_APP_ID` | non (`lms-klassci`) | Doit correspondre à `JWT_APP_ID` **et** à `JWT_ACCEPTED_ISSUERS` côté prosody. |
 | `JITSI_AUDIENCE` | non (`visio-klassci`) | Doit correspondre à `JWT_ACCEPTED_AUDIENCES` côté prosody. |
 | `JITSI_XMPP_DOMAIN` | non (`meet.jitsi`) | Domaine **interne** XMPP, jamais résolu par le navigateur. À laisser au défaut. |
-| `JITSI_TOKEN_LIFETIME` | non (`7200`) | Durée de vie d'un jeton d'accès, en secondes. |
+
+La durée d'un jeton d'accès n'est pas une variable : il expire à la fin d'accès de SA visio
+(`FenetreVisio::expirationDuJeton`, plafonnée à 12 h depuis l'entrée). `JITSI_TOKEN_LIFETIME` n'existe plus (#871).
 
 ### 6.2 Finalisation des enregistrements
 

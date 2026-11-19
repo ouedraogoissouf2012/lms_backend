@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace App\Services\Visio;
 
+use App\Services\Seances\FenetreVisio;
+use Carbon\CarbonInterface;
+use Illuminate\Support\Carbon;
 use RuntimeException;
 
 /**
@@ -42,7 +45,6 @@ final class VisioAccessTokenIssuer
         private readonly ?string $appSecret,
         private readonly string $audience,
         private readonly string $xmppDomain,
-        private readonly int $lifetimeSeconds,
     ) {}
 
     /**
@@ -58,10 +60,13 @@ final class VisioAccessTokenIssuer
     /**
      * @param  string  $room  Identifiant EXACT de la salle, jamais un joker.
      * @param  bool  $isModerator  Décidé par le serveur, jamais par le client.
+     * @param  CarbonInterface  $expiresAt  Décidée par la fenêtre de la visio
+     *                                      ({@see FenetreVisio::expirationDuJeton()}), jamais ici (#871).
      *
-     * @throws RuntimeException si le secret partagé n'est pas configuré.
+     * @throws RuntimeException si le secret partagé n'est pas configuré, ou si
+     *                          l'expiration n'est pas dans le futur.
      */
-    public function issue(string $room, string $displayName, string $email, bool $isModerator): string
+    public function issue(string $room, string $displayName, string $email, bool $isModerator, CarbonInterface $expiresAt): string
     {
         if (! $this->isConfigured()) {
             throw new RuntimeException(
@@ -70,7 +75,15 @@ final class VisioAccessTokenIssuer
             );
         }
 
-        $now = time();
+        // L'horloge de Carbon, celle qui a calculé `$expiresAt` : deux horloges
+        // pourraient se contredire sur « dans le futur ».
+        $now = Carbon::now()->getTimestamp();
+
+        // Un jeton déjà mort ouvrirait une porte qui se referme aussitôt, sans
+        // message exploitable : on refuse bruyamment, comme pour le secret.
+        if ($expiresAt->getTimestamp() <= $now) {
+            throw new RuntimeException('Expiration du jeton visio dans le passé : refus de signer.');
+        }
 
         $payload = [
             // Doit valoir JWT_APP_ID côté prosody, sinon rejet sans message.
@@ -85,7 +98,7 @@ final class VisioAccessTokenIssuer
             // Marge de 10 s : une horloge serveur légèrement en avance ferait
             // rejeter un jeton pourtant valide.
             'nbf' => $now - 10,
-            'exp' => $now + $this->lifetimeSeconds,
+            'exp' => $expiresAt->getTimestamp(),
             'context' => [
                 'user' => [
                     'name' => $displayName,

@@ -78,7 +78,7 @@ final class RattachementDeClasse
             ->where('institution_id', $ecole)
             ->first();
 
-        if (! $periode instanceof TrainingSession || $periode->status->fermeLesInscriptions()) {
+        if (! $periode instanceof TrainingSession) {
             throw ValidationException::withMessages(['training_session_id' => self::REFUS_PERIODE]);
         }
 

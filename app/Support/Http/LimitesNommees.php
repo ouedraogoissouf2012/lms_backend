@@ -45,6 +45,8 @@ final class LimitesNommees
         'visio-active' => [300, 'compte'],
         'imports' => [10, 'compte'],
         'consentement-visio' => [10, 'compte'],
+        // #1275 : l'administration définit un mot de passe, rarement ; une rafale est suspecte.
+        'mot-de-passe-defini' => [10, 'compte'],
     ];
 
     public static function enregistrer(): void

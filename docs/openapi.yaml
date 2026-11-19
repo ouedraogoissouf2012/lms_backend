@@ -807,6 +807,18 @@ components:
             colonne exigerait un job nocturne qui finirait par diverger.
         program_id:
           type: integer
+        program:
+          type: object
+          nullable: false
+          description: |
+            Le Programme de la Periode (#1206), charge en une requete pour toute la
+            page. Supprime en douceur compris : son titre reste l histoire de la
+            Periode. Le titre se lit ICI, jamais en relisant `program_id`.
+          properties:
+            id:
+              type: integer
+            titre:
+              type: string
         enrollment_opens_at:
           type: string
           format: date
@@ -846,6 +858,37 @@ components:
           type: string
         data:
           $ref: '#/components/schemas/TrainingSessionView'
+
+    ProgramView:
+      type: object
+      properties:
+        id:
+          type: integer
+        titre:
+          type: string
+        version:
+          type: integer
+
+    ProgramPage:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProgramView'
+        meta:
+          type: object
+          properties:
+            current_page:
+              type: integer
+            last_page:
+              type: integer
+            per_page:
+              type: integer
+            total:
+              type: integer
 
     TrainingSessionPage:
       type: object
@@ -6464,6 +6507,56 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
 
   /programs:
+    get:
+      tags:
+        - Session de formation
+      summary: "Lister les Programmes de son etablissement"
+      description: |
+        Pour choisir le Programme d une Periode (#1206). Bornee a l etablissement
+        de l appelant, paginee, ordonnee par `titre` puis `id` (stable a titre
+        egal) ; l ordre alphabetique suit la collation de la base. Un Programme
+        supprime en douceur n y figure pas. Pas de `description` : elle peut
+        atteindre 5 000 caracteres et un selecteur n en a pas besoin.
+      security:
+        - sanctum: []
+      parameters:
+        - name: per_page
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 25
+      responses:
+        '200':
+          description: "Page de Programmes"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProgramPage'
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '401':
+          description: "Non authentifie"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: "Role insuffisant. Ecole creee depuis KLASSCI : `catalogue_managed_by_klassci` (#1184). Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: "`per_page` hors bornes (#911)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
     post:
       tags:
         - Session de formation

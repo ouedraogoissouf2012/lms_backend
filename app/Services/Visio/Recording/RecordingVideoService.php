@@ -105,7 +105,7 @@ final class RecordingVideoService
         $type = $disk->mimeType($path);
 
         return new BinaryFileResponse($disk->path($path), 200, [
-            'Content-Type' => is_string($type) && $type !== '' ? $type : 'application/octet-stream',
+            'Content-Type' => 'video/mp4',
             'Cache-Control' => 'private, max-age=300',
         ]);
     }

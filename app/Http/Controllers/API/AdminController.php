@@ -54,11 +54,10 @@ class AdminController extends Controller
      */
     public function updateUser(UpdateUserRequest $request, User $user): JsonResponse
     {
+        // Le mot de passe ne se change pas ici : `UpdateUserRequest` ne le valide pas, et la
+        // branche qui le traitait était morte. Il a sa route (#1275,
+        // `PUT /api/users/{user}/password`), réservée à l'administration de l'école.
         $data = $request->validated();
-
-        if (isset($data['password'])) {
-            $data['password'] = bcrypt(self::validatedPassword($data));
-        }
 
         $user->update($data);
         $user->load('institution');

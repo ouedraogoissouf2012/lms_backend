@@ -29,7 +29,7 @@ final class RattacherClasseRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'training_session_id' => ['present', 'nullable', 'integer', 'min:1'],
+            'training_session_id' => ['nullable', 'integer', 'min:1'],
         ];
     }
 

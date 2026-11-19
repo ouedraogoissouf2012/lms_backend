@@ -126,7 +126,7 @@ final class StoreLessonRequest extends FormRequest
             'matiere_id' => [
                 'nullable',
                 new PositiveInteger,
-                Rule::exists('matieres', 'id')->where('institution_id', $user?->institution_id),
+                new \App\Rules\MirroredIdentifierExists(Matiere::class, $user?->institution_id, 'La matière n\x27existe pas'),
             ],
             'niveau_difficulte' => [
                 'nullable',

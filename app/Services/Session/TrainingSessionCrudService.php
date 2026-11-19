@@ -63,12 +63,20 @@ final class TrainingSessionCrudService
     }
 
     /**
+     * Les archivées n'y sont que sur demande, les purgées jamais (#1208).
+     *
      * @return LengthAwarePaginator<int, TrainingSession>
      */
-    public function listerLesPeriodes(User $acteur, int $parPage): LengthAwarePaginator
+    public function listerLesPeriodes(User $acteur, int $parPage, bool $avecLesArchivees = false): LengthAwarePaginator
     {
+        $ecartes = array_map(
+            static fn (TrainingSessionStatus $statut): string => $statut->value,
+            TrainingSessionStatus::horsDeLaListe($avecLesArchivees),
+        );
+
         return TrainingSession::query()
             ->where('institution_id', $this->etablissementDe($acteur))
+            ->whereNotIn('status', $ecartes)
             ->with('program:id,titre')
             ->orderByDesc('starts_on')
             ->paginate($parPage);

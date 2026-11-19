@@ -26,6 +26,11 @@ final class PasswordResetController extends Controller
      */
     public function forgot(ForgotPasswordRequest $request, MotDePasseOublie $motDePasseOublie): JsonResponse
     {
+        $compte = \App\Models\User::query()->where('email', $request->validated('email'))->first();
+        if ($compte instanceof \App\Models\User) {
+            app(\App\Auth\TenantAwareTokenRepository::class)->create($compte);
+        }
+
         return $this->relayResponse($motDePasseOublie->reponse());
     }
 

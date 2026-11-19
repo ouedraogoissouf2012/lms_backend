@@ -22,7 +22,7 @@ final class ChaqueRouteViseUnControleurExistantTest extends TestCase
     public function test_chaque_route_vise_une_methode_d_un_controleur_existant(): void
     {
         $inspectees = 0;
-        $ecarts = [];
+        $ecarts = array();
 
         foreach (Route::getRoutes()->getRoutes() as $route) {
             $action = $route->getAction('uses');

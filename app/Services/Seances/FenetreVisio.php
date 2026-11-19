@@ -17,7 +17,7 @@ use Throwable;
  * - Démarrer : de `début − 15 min` à `fin + 30 min` (`can_start`). Au-delà, la séance
  *   est PASSÉE : le serveur refuse, 409 `seance_past` (signalé par le user).
  * - Rejoindre : la visio démarrée à temps reste joignable 4 h (`is_accessible`) ; un
- *   cours qui déborde n'est pas coupé.
+ *   cours qui déborde n'est pas coupé. Le jeton Jitsi expire à cette même fin d'accès.
  *
  * La fin d'une séance : la fin RÉELLE si on la connaît (programmation KLASSCI, ou
  * `seances.fin_seance` qui la garde), sinon `début + 2 h` pour une séance LOCALE
@@ -33,6 +33,12 @@ final class FenetreVisio
 
     /** Durée pendant laquelle une visio démarrée reste joignable. */
     public const VISIO_ACTIVE_HEURES = 4;
+
+    /** Sûreté du jeton Jitsi, comptée depuis l'entrée : bien au-delà de tout cours réel. */
+    public const JETON_PLAFOND_HEURES = 12;
+
+    /** Un jeton vit au moins ce temps : jamais signé déjà expiré. */
+    public const JETON_PLANCHER_MINUTES = 1;
 
     public const REASON = 'seance_past';
 
@@ -76,10 +82,42 @@ final class FenetreVisio
     /** Rejoindre : `is_accessible` faux, du côté du passé (fin dépassée, visio plus active depuis moins de 4 h). */
     public static function visioInaccessible(Seance $ligne, CarbonInterface $maintenant): bool
     {
-        $fin = self::finDe($ligne);
+        $fin = self::finDAcces($ligne);
 
-        return $fin !== null && $maintenant->greaterThan($fin)
-            && ! self::visioEncoreActive($ligne->visio_status === 'active', $ligne->visio_started_at, $maintenant);
+        return $fin !== null && $maintenant->greaterThan($fin);
+    }
+
+    /**
+     * L'instant après lequel la visio ne se rejoint plus : la fin de la séance, prolongée
+     * jusqu'à `démarrée + 4 h` si la visio est active. `null` quand la fin est inconnue
+     * (ligne KLASSCI) : la fenêtre ne refuse alors jamais.
+     */
+    public static function finDAcces(Seance $ligne): ?CarbonInterface
+    {
+        $fin = self::finDe($ligne)?->copy();
+        $demarree = $ligne->visio_status === 'active' ? self::instant($ligne->visio_started_at) : null;
+
+        if ($fin === null || $demarree === null) {
+            return $fin;
+        }
+
+        return $fin->max($demarree->copy()->addHours(self::VISIO_ACTIVE_HEURES));
+    }
+
+    /**
+     * L'expiration du jeton d'accès Jitsi (#871) : la fin d'accès de CETTE visio, et non
+     * une durée fixe qui couperait un cours long. Fin inconnue : 4 h depuis l'entrée.
+     *
+     * Le plafond est une SÛRETÉ, pas une durée : une fin erronée venue de KLASSCI (trois
+     * jours plus tard) ne doit pas signer un jeton de trois jours. Le plancher évite de
+     * signer un jeton déjà mort à l'instant limite.
+     */
+    public static function expirationDuJeton(Seance $ligne, CarbonInterface $maintenant): CarbonInterface
+    {
+        $fin = self::finDAcces($ligne) ?? $maintenant->copy()->addHours(self::VISIO_ACTIVE_HEURES);
+
+        return $fin->min($maintenant->copy()->addHours(self::JETON_PLAFOND_HEURES))
+            ->max($maintenant->copy()->addMinutes(self::JETON_PLANCHER_MINUTES));
     }
 
     /** La fin d'une ligne : réelle si connue, estimée pour une séance LOCALE, sinon inconnue. */

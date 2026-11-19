@@ -4,6 +4,7 @@ namespace App\Http\Requests;
 
 use App\Enums\Role;
 use App\Http\Requests\Concerns\ChecksForumAuthorization;
+use App\Models\ForumPost;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Auth;
 
@@ -24,7 +25,7 @@ class MarkPostAsSolutionRequest extends FormRequest
     public function authorize(): bool
     {
         $post = $this->route('post');
-        $post = $post instanceof \App\Models\ForumPost ? $post : null;
+        $post = $post instanceof ForumPost ? $post : null;
         $topic = $post?->topic;
 
         return $this->isForumActionAuthorized(

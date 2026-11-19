@@ -2,10 +2,11 @@
 
 namespace Tests\Feature\Requests;
 
-use Illuminate\Http\UploadedFile;
-use Laravel\Sanctum\Sanctum;
 use App\Models\Institution;
 use App\Models\User;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
 /**
@@ -34,7 +35,7 @@ use Tests\TestCase;
  */
 class UploadFileRequestTest extends TestCase
 {
-    use \Illuminate\Foundation\Testing\RefreshDatabase;
+    use RefreshDatabase;
 
     private User $user;
 
@@ -103,7 +104,7 @@ class UploadFileRequestTest extends TestCase
      */
     public function test_valid_jpg_file_passes(): void
     {
-        if (!extension_loaded('gd')) {
+        if (! extension_loaded('gd')) {
             $this->markTestSkipped('GD extension is required for image tests');
         }
 
@@ -122,7 +123,7 @@ class UploadFileRequestTest extends TestCase
      */
     public function test_valid_png_file_passes(): void
     {
-        if (!extension_loaded('gd')) {
+        if (! extension_loaded('gd')) {
             $this->markTestSkipped('GD extension is required for image tests');
         }
 
@@ -374,7 +375,7 @@ class UploadFileRequestTest extends TestCase
      */
     public function test_all_allowed_image_types_pass(): void
     {
-        if (!extension_loaded('gd')) {
+        if (! extension_loaded('gd')) {
             $this->markTestSkipped('GD extension is required for image tests');
         }
 

@@ -2,11 +2,13 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\Auditable;
+use App\Models\Traits\BelongsToInstitution;
+use Database\Factories\QuizAttemptFactory;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use App\Models\Traits\BelongsToInstitution;
-use App\Models\Concerns\Auditable;
 
 /**
  * Model QuizAttempt
@@ -15,15 +17,15 @@ use App\Models\Concerns\Auditable;
  *
  * @property int $id
  * @property int $user_id
- * @property-read \App\Models\Quiz|null $quiz
+ * @property-read Quiz|null $quiz
  * @property array<int, array<string, mixed>> $questions_with_results Attribut posé par QuizAttemptStateService (BuildsAttemptResponses::buildQuestionsWithResults).
  * @property string $time_spent_formatted Attribut posé par QuizAttemptStateService (QuizAttemptTimerService::formattedTimeSpent).
- * @property int|null $time_remaining     Attribut posé par QuizAttemptStateService (QuizAttemptTimerService::timeRemaining).
+ * @property int|null $time_remaining Attribut posé par QuizAttemptStateService (QuizAttemptTimerService::timeRemaining).
  */
 class QuizAttempt extends Model
 {
-    /** @use HasFactory<\Database\Factories\QuizAttemptFactory> */
-    use HasFactory, BelongsToInstitution, Auditable;
+    /** @use HasFactory<QuizAttemptFactory> */
+    use Auditable, BelongsToInstitution, HasFactory;
 
     protected $fillable = [
         'quiz_id',
@@ -100,8 +102,8 @@ class QuizAttempt extends Model
     /**
      * Scope: Tentatives soumises
      *
-     * @param  \Illuminate\Database\Eloquent\Builder<QuizAttempt>  $query
-     * @return \Illuminate\Database\Eloquent\Builder<QuizAttempt>
+     * @param  Builder<QuizAttempt>  $query
+     * @return Builder<QuizAttempt>
      */
     public function scopeSubmitted($query)
     {
@@ -111,8 +113,8 @@ class QuizAttempt extends Model
     /**
      * Scope: Tentatives en cours
      *
-     * @param  \Illuminate\Database\Eloquent\Builder<QuizAttempt>  $query
-     * @return \Illuminate\Database\Eloquent\Builder<QuizAttempt>
+     * @param  Builder<QuizAttempt>  $query
+     * @return Builder<QuizAttempt>
      */
     public function scopeInProgress($query)
     {
@@ -122,8 +124,8 @@ class QuizAttempt extends Model
     /**
      * Scope: Tentatives réussies
      *
-     * @param  \Illuminate\Database\Eloquent\Builder<QuizAttempt>  $query
-     * @return \Illuminate\Database\Eloquent\Builder<QuizAttempt>
+     * @param  Builder<QuizAttempt>  $query
+     * @return Builder<QuizAttempt>
      */
     public function scopePassed($query)
     {
@@ -138,8 +140,8 @@ class QuizAttempt extends Model
      * dessus renvoie 0 ligne EN SILENCE sur les deux moteurs. Ne jamais
      * redupliquer la liste — passer par ce scope ou par la constante.
      *
-     * @param  \Illuminate\Database\Eloquent\Builder<QuizAttempt>  $query
-     * @return \Illuminate\Database\Eloquent\Builder<QuizAttempt>
+     * @param  Builder<QuizAttempt>  $query
+     * @return Builder<QuizAttempt>
      */
     public function scopeCompleted($query)
     {

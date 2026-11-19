@@ -45,7 +45,7 @@ final class ClassesEcoleIndependanteTest extends TestCase
 
     // ───────────────────────── « Mes classes »
 
-    public function test_l_enseignant_lit_SES_classes_avec_l_effectif_actif(): void
+    public function test_l_enseignant_lit_ses_classes_avec_l_effectif_actif(): void
     {
         $ecole = $this->ecole();
         $moi = $this->membre($ecole, 'enseignant');
@@ -102,7 +102,7 @@ final class ClassesEcoleIndependanteTest extends TestCase
     }
 
     #[DataProvider('portes')]
-    public function test_l_enseignant_designe_lit_la_fiche_et_le_roster_ACTIF(string $porte): void
+    public function test_l_enseignant_designe_lit_la_fiche_et_le_roster_actif(string $porte): void
     {
         [$ecole, $classe, $moi] = $this->classeEnseignee();
         $actif = $this->membre($ecole, 'etudiant');
@@ -146,7 +146,7 @@ final class ClassesEcoleIndependanteTest extends TestCase
     }
 
     #[DataProvider('portes')]
-    public function test_l_apprenant_actif_lit_sa_classe_SANS_le_roster(string $porte): void
+    public function test_l_apprenant_actif_lit_sa_classe_sans_le_roster(string $porte): void
     {
         [$ecole, $classe] = $this->classeEnseignee();
         $eleve = $this->membre($ecole, 'etudiant');
@@ -159,7 +159,7 @@ final class ClassesEcoleIndependanteTest extends TestCase
     }
 
     #[DataProvider('portes')]
-    public function test_l_apprenant_INACTIF_ne_lit_pas_la_classe_et_lit_son_refus(string $porte): void
+    public function test_l_apprenant_inactif_ne_lit_pas_la_classe_et_lit_son_refus(string $porte): void
     {
         // D57 : une inscription inactive n'ouvre rien. #1095 : le refus dit son
         // motif, celui du tableau de bord, et non « introuvable ».
@@ -174,7 +174,7 @@ final class ClassesEcoleIndependanteTest extends TestCase
     }
 
     #[DataProvider('portes')]
-    public function test_la_classe_d_une_AUTRE_ecole_reste_introuvable(string $porte): void
+    public function test_la_classe_d_une_autre_ecole_reste_introuvable(string $porte): void
     {
         $sienne = $this->ecole();
         $autre = $this->ecole();
@@ -254,7 +254,7 @@ final class ClassesEcoleIndependanteTest extends TestCase
         $this->asTenant($moi)->getJson(self::MES_CLASSES)->assertOk()->assertJsonPath('data.0.id', $classe->getKey());
     }
 
-    public function test_la_porte_locale_garde_son_409_dans_une_ecole_KLASSCI(): void
+    public function test_la_porte_locale_garde_son_409_dans_une_ecole_klassci(): void
     {
         // ADR-760-01 amendé : le 409 « créée localement » ne vaut plus que
         // dans une école créée depuis KLASSCI — et il y vaut toujours.
@@ -267,7 +267,7 @@ final class ClassesEcoleIndependanteTest extends TestCase
             ->assertJsonPath('reason', 'classe_local_only');
     }
 
-    public function test_un_jeton_KLASSCI_perime_ne_fait_partir_aucun_appel(): void
+    public function test_un_jeton_klassci_perime_ne_fait_partir_aucun_appel(): void
     {
         [, $classe, $moi] = $this->classeEnseignee();
         $moi->forceFill(['klassci_token' => 'jeton-perime'])->save();

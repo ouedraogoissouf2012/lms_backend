@@ -42,11 +42,11 @@ class SupradminSeederTest extends TestCase
     public function test_seeder_throws_when_email_env_is_missing(): void
     {
         config([
-            'supradmin.email'    => null,
+            'supradmin.email' => null,
             'supradmin.password' => 'a-valid-password',
         ]);
 
-        $seeder = new SupradminSeeder();
+        $seeder = new SupradminSeeder;
 
         $this->expectException(RuntimeException::class);
         $this->expectExceptionMessageMatches('/SUPRADMIN_EMAIL.*SUPRADMIN_PASSWORD/');
@@ -62,11 +62,11 @@ class SupradminSeederTest extends TestCase
     public function test_seeder_throws_when_password_env_is_missing(): void
     {
         config([
-            'supradmin.email'    => 'admin@example.com',
+            'supradmin.email' => 'admin@example.com',
             'supradmin.password' => null,
         ]);
 
-        $seeder = new SupradminSeeder();
+        $seeder = new SupradminSeeder;
 
         $this->expectException(RuntimeException::class);
         $this->expectExceptionMessageMatches('/SUPRADMIN_EMAIL.*SUPRADMIN_PASSWORD/');
@@ -82,11 +82,11 @@ class SupradminSeederTest extends TestCase
      */
     public function test_seeder_creates_supradmin_from_env_credentials(): void
     {
-        $envEmail    = 'admin-' . bin2hex(random_bytes(4)) . '@example.test';
-        $envPassword = 'strong-test-password-' . bin2hex(random_bytes(8));
+        $envEmail = 'admin-'.bin2hex(random_bytes(4)).'@example.test';
+        $envPassword = 'strong-test-password-'.bin2hex(random_bytes(8));
 
         config([
-            'supradmin.email'    => $envEmail,
+            'supradmin.email' => $envEmail,
             'supradmin.password' => $envPassword,
         ]);
 
@@ -115,11 +115,11 @@ class SupradminSeederTest extends TestCase
      */
     public function test_seeder_is_idempotent_on_repeated_runs(): void
     {
-        $envEmail    = 'admin-' . bin2hex(random_bytes(4)) . '@example.test';
+        $envEmail = 'admin-'.bin2hex(random_bytes(4)).'@example.test';
         $envPassword = 'idempotent-test-password';
 
         config([
-            'supradmin.email'    => $envEmail,
+            'supradmin.email' => $envEmail,
             'supradmin.password' => $envPassword,
         ]);
 

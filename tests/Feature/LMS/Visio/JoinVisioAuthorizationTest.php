@@ -3,7 +3,6 @@
 namespace Tests\Feature\LMS\Visio;
 
 use App\Models\Classe;
-use App\Models\ESBTPAttendance;
 use App\Models\Institution;
 use App\Models\Seance;
 use App\Models\User;
@@ -116,7 +115,7 @@ class JoinVisioAuthorizationTest extends TestCase
     }
 
     /**
-     * @param list<string> $emails
+     * @param  list<string>  $emails
      */
     private function fakeEnrolledStudents(array $emails): void
     {

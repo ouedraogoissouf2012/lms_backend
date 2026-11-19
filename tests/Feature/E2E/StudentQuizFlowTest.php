@@ -38,7 +38,9 @@ final class StudentQuizFlowTest extends TestCase
     use RefreshDatabase;
 
     private Institution $institution;
+
     private User $teacher;
+
     private User $student;
 
     protected function setUp(): void
@@ -237,7 +239,7 @@ final class StudentQuizFlowTest extends TestCase
         $this->postJson("/api/quiz-attempts/{$attemptId}/submit", [
             'answers' => $built['wrong'],
         ])->assertStatus(200)
-          ->assertJsonPath('data.passed', false);
+            ->assertJsonPath('data.passed', false);
 
         // Tentative 2 : refusée — quota épuisé.
         $this->postJson("/api/quizzes/{$quiz->id}/start")

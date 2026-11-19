@@ -15,6 +15,7 @@ use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Testing\TestResponse;
 use PHPUnit\Framework\Attributes\DataProvider;
+use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Yaml\Yaml;
 use Tests\Concerns\ActsAsTenantUser;
 use Tests\Concerns\ValidatesAgainstOpenApi;
@@ -307,7 +308,7 @@ final class RapportsAsyncContractTest extends TestCase
         Queue::assertNothingPushed();
     }
 
-    /** @return TestResponse<\Symfony\Component\HttpFoundation\Response> */
+    /** @return TestResponse<Response> */
     private function suivi(User $demandeur, string $id, string $statut): TestResponse
     {
         $reponse = $this->asTenant($demandeur)->getJson("/api/admin/reports/async/$id")->assertOk()->assertJsonPath('data.status', $statut);
@@ -323,7 +324,7 @@ final class RapportsAsyncContractTest extends TestCase
      * `data`, ou augmentée d'une clé non décrite (`path`), est refusée. Sans cette preuve, un `required` imbriqué retiré de la
      * spec passerait en silence (mesuré : falsification « meta retiré »).
      *
-     * @param  TestResponse<\Symfony\Component\HttpFoundation\Response>  $reponse
+     * @param  TestResponse<Response>  $reponse
      */
     private function assertLeSchemaExigeDansData(TestResponse $reponse, string $chemin, string $methode, string $cle): void
     {
@@ -346,7 +347,7 @@ final class RapportsAsyncContractTest extends TestCase
      * types que la spec déclare sous `content` pour ce chemin, cette méthode et ce
      * statut. Sur une spec qui ne décrit pas la route, il échoue.
      *
-     * @param  TestResponse<\Symfony\Component\HttpFoundation\Response>  $reponse
+     * @param  TestResponse<Response>  $reponse
      */
     private function assertTypeDeclareParLaSpec(TestResponse $reponse, string $chemin, string $methode): void
     {

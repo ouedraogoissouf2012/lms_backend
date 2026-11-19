@@ -4,13 +4,15 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Chapter;
 
+use App\Services\ConvertApiService;
 use App\Services\FileConversion\ChapterArtifactStorage;
 use App\Services\FileConversion\FileValidator;
 use App\Services\FileConversion\PdfConverter;
 use App\Services\FileConversion\PdfToPngRendererInterface;
 use App\Services\FileConversion\PowerPointConverter;
 use App\Services\FileConversion\WordConverter;
-use App\Services\ConvertApiService;
+use App\Services\FileConversionService;
+use App\Support\Logging\CaughtExceptionLog;
 use App\Support\Shell\ShellExecutorInterface;
 use App\Support\Shell\ShellResult;
 use Illuminate\Http\UploadedFile;
@@ -44,11 +46,15 @@ use Tests\TestCase;
 final class ChapterArtifactPrivacyTest extends TestCase
 {
     private const DOCX_MIME = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+
     private const PPTX_MIME = 'application/vnd.openxmlformats-officedocument.presentationml.presentation';
 
     private ShellExecutorInterface&MockInterface $shell;
+
     private ConvertApiService&MockInterface $convertApi;
+
     private PdfToPngRendererInterface&MockInterface $pdfRenderer;
+
     private FileValidator $validator;
 
     protected function setUp(): void
@@ -70,7 +76,7 @@ final class ChapterArtifactPrivacyTest extends TestCase
         $pdfRenderer = Mockery::mock(PdfToPngRendererInterface::class);
         $this->pdfRenderer = $pdfRenderer;
 
-        $this->validator = new FileValidator();
+        $this->validator = new FileValidator;
     }
 
     protected function tearDown(): void
@@ -149,7 +155,7 @@ final class ChapterArtifactPrivacyTest extends TestCase
             "chapters/{$chapterId}/pdf/",
             $result['file_converted_path'],
             'file_converted_path doit rester RELATIF au disque privé — un chemin absolu '
-            . 'divulguerait l\'arborescence du serveur via la réponse API.',
+            .'divulguerait l\'arborescence du serveur via la réponse API.',
         );
         self::assertStringEndsWith('.pdf', $result['file_converted_path']);
     }
@@ -187,7 +193,7 @@ final class ChapterArtifactPrivacyTest extends TestCase
         Storage::disk('public')->put("chapters/{$chapterId}/slides/slide_001.png", 'png');
         Storage::disk('local')->put("chapters/{$chapterId}/original/source.docx", 'docx');
 
-        app(\App\Services\FileConversionService::class)->deleteChapterFiles($chapterId);
+        app(FileConversionService::class)->deleteChapterFiles($chapterId);
 
         self::assertSame([], Storage::disk('public')->allFiles("chapters/{$chapterId}"));
         self::assertSame(
@@ -235,7 +241,7 @@ final class ChapterArtifactPrivacyTest extends TestCase
             'docx',
             Storage::disk('local')->get($original),
             'Le document doit être RETROUVÉ en privé au MÊME chemin relatif — sans quoi '
-            . 'la ligne en base devient orpheline et le document est perdu.',
+            .'la ligne en base devient orpheline et le document est perdu.',
         );
         self::assertTrue(
             Storage::disk('public')->exists($slide),
@@ -256,7 +262,7 @@ final class ChapterArtifactPrivacyTest extends TestCase
             'public',
             config('filesystems.disks.local.visibility'),
             'Rendre le disque privé « public » exposerait TOUT storage/app/private '
-            . 'sans authentification et annulerait #598.',
+            .'sans authentification et annulerait #598.',
         );
     }
 
@@ -297,7 +303,7 @@ final class ChapterArtifactPrivacyTest extends TestCase
         }
 
         file_put_contents(
-            $outdir . '/' . pathinfo($source, PATHINFO_FILENAME) . '.' . $extension,
+            $outdir.'/'.pathinfo($source, PATHINFO_FILENAME).'.'.$extension,
             $contents,
         );
 
@@ -306,31 +312,31 @@ final class ChapterArtifactPrivacyTest extends TestCase
 
     private function wordConverter(): WordConverter
     {
-        return new WordConverter(new NullLogger(), $this->shell, $this->validator, $this->artifacts());
+        return new WordConverter(new NullLogger, $this->shell, $this->validator, $this->artifacts());
     }
 
     private function powerPointConverter(): PowerPointConverter
     {
         return new PowerPointConverter(
-            new NullLogger(),
+            new NullLogger,
             $this->shell,
             $this->convertApi,
             $this->pdfRenderer,
             $this->validator,
             $this->artifacts(),
-            app(\App\Support\Logging\CaughtExceptionLog::class),
+            app(CaughtExceptionLog::class),
         );
     }
 
     private function pdfConverter(): PdfConverter
     {
         return new PdfConverter(
-            new NullLogger(),
+            new NullLogger,
             $this->convertApi,
             $this->pdfRenderer,
             $this->validator,
             $this->artifacts(),
-            app(\App\Support\Logging\CaughtExceptionLog::class),
+            app(CaughtExceptionLog::class),
         );
     }
 

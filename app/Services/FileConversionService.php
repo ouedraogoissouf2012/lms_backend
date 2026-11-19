@@ -5,9 +5,12 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Services\FileConversion\ChapterArtifactStorage;
+use App\Services\FileConversion\FileValidator;
 use App\Services\FileConversion\PdfConverter;
+use App\Services\FileConversion\PdfToPngRenderer;
 use App\Services\FileConversion\PowerPointConverter;
 use App\Services\FileConversion\WordConverter;
+use App\Support\Shell\ShellExecutor;
 use Illuminate\Http\UploadedFile;
 use Psr\Log\LoggerInterface;
 
@@ -20,9 +23,9 @@ use Psr\Log\LoggerInterface;
  * conversion types and shell execution inline. This class now only
  * routes calls — the heavy lifting lives in {@see PowerPointConverter},
  * {@see WordConverter}, {@see PdfConverter} and their helpers
- * ({@see \App\Services\FileConversion\PdfToPngRenderer},
- * {@see \App\Services\FileConversion\FileValidator},
- * {@see \App\Support\Shell\ShellExecutor}).
+ * ({@see PdfToPngRenderer},
+ * {@see FileValidator},
+ * {@see ShellExecutor}).
  *
  * **API stability (Invariant 1)** : method signatures, return shapes and
  * `conversion_method` strings are unchanged versus the legacy version.
@@ -37,8 +40,7 @@ final class FileConversionService
         private readonly PowerPointConverter $powerPoint,
         private readonly WordConverter $word,
         private readonly PdfConverter $pdf,
-    ) {
-    }
+    ) {}
 
     /**
      * @return array{success: bool, slides_images: list<string>, slides_count: int, file_original_path: string, file_converted_path: string, conversion_method: string}
@@ -93,10 +95,10 @@ final class FileConversionService
 
         return [
             'original_name' => $file->getClientOriginalName(),
-            'extension'     => $file->getClientOriginalExtension(),
-            'mime_type'     => $file->getMimeType(),
-            'size'          => $size,
-            'size_mb'       => round(($size === false ? 0 : $size) / 1024 / 1024, 2),
+            'extension' => $file->getClientOriginalExtension(),
+            'mime_type' => $file->getMimeType(),
+            'size' => $size,
+            'size_mb' => round(($size === false ? 0 : $size) / 1024 / 1024, 2),
         ];
     }
 }

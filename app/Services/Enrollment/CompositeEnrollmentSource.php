@@ -21,8 +21,7 @@ final class CompositeEnrollmentSource implements EnrollmentSource
     public function __construct(
         private readonly LocalEnrollmentSource $local,
         private readonly KlassciEnrollmentSource $klassci,
-    ) {
-    }
+    ) {}
 
     public function localClasseIdsFor(User $user): array
     {

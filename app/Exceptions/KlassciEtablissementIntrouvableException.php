@@ -17,6 +17,4 @@ use RuntimeException;
  *
  * Voir `LoginOrchestrator::buildKlassciSuccessResponse()` et `AuthController::login()`.
  */
-final class KlassciEtablissementIntrouvableException extends RuntimeException
-{
-}
+final class KlassciEtablissementIntrouvableException extends RuntimeException {}

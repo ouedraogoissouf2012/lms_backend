@@ -68,7 +68,7 @@ final class ClasseEnrolmentCodeTest extends TestCase
         self::assertNull($classe->fresh()?->code_inscription_revoque_le);
     }
 
-    public function test_REGENERER_NE_DESINSCRIT_PERSONNE(): void
+    public function test_regenerer_ne_desinscrit_personne(): void
     {
         // LA propriété de l'ADR. Régénérer ferme la porte aux suivants, il
         // n'expulse pas ceux qui sont entrés.
@@ -161,7 +161,7 @@ final class ClasseEnrolmentCodeTest extends TestCase
         $this->service()->generer($classe->getKey());
     }
 
-    public function test_la_classe_d_une_AUTRE_ecole_est_refusee(): void
+    public function test_la_classe_d_une_autre_ecole_est_refusee(): void
     {
         $ailleurs = $this->classeLocale();
         $this->classeLocale(); // le tenant courant devient la seconde école

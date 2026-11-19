@@ -35,7 +35,7 @@ declare(strict_types=1);
  *   php scripts/check-ocp.php [racine] --update   met le cliquet à jour
  */
 
-require_once __DIR__ . '/lib/ocp-ratchet.php';
+require_once __DIR__.'/lib/ocp-ratchet.php';
 
 const OCP_ALLOWLIST = '.ocp-allowlist.json';
 const OCP_SCAN_DIR = 'app';
@@ -45,7 +45,7 @@ $majSouhaitee = in_array('--update', array_slice($argv, 1), true);
 
 /* ------------------------------------------------------------ liste d'exemption */
 
-$cheminListe = $racine . DIRECTORY_SEPARATOR . OCP_ALLOWLIST;
+$cheminListe = $racine.DIRECTORY_SEPARATOR.OCP_ALLOWLIST;
 
 if (! is_file($cheminListe)) {
     fwrite(STDERR, "OCP: liste d'exemption introuvable : {$cheminListe}\n");
@@ -56,13 +56,13 @@ if (! is_file($cheminListe)) {
 $liste = json_decode((string) file_get_contents($cheminListe), true);
 
 if (! is_array($liste) || ! isset($liste['entries']) || ! is_array($liste['entries'])) {
-    fwrite(STDERR, 'OCP: ' . OCP_ALLOWLIST . " illisible ou sans clé « entries ».\n");
+    fwrite(STDERR, 'OCP: '.OCP_ALLOWLIST." illisible ou sans clé « entries ».\n");
     exit(2);
 }
 
 $classe = ocpClasseEntrees(
     $liste['entries'],
-    static fn (string $adr): bool => is_file($racine . DIRECTORY_SEPARATOR . $adr)
+    static fn (string $adr): bool => is_file($racine.DIRECTORY_SEPARATOR.$adr)
 );
 
 if ($classe['erreurs'] !== []) {
@@ -79,7 +79,7 @@ if ($classe['erreurs'] !== []) {
 
 /* ------------------------------------------------------------------- collecte */
 
-$base = $racine . DIRECTORY_SEPARATOR . OCP_SCAN_DIR;
+$base = $racine.DIRECTORY_SEPARATOR.OCP_SCAN_DIR;
 
 if (! is_dir($base)) {
     fwrite(STDERR, "OCP: répertoire à inspecter introuvable : {$base}\n");
@@ -155,10 +155,10 @@ if ($majSouhaitee) {
     $liste['entries'] = $conserves;
     file_put_contents(
         $cheminListe,
-        json_encode($liste, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) . "\n"
+        json_encode($liste, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE)."\n"
     );
 
-    echo 'OCP: cliquet mis à jour — ' . count($trouves) . " fichier(s) en dette.\n";
+    echo 'OCP: cliquet mis à jour — '.count($trouves)." fichier(s) en dette.\n";
     exit(0);
 }
 
@@ -185,7 +185,7 @@ if ($verdict['neuves'] !== [] || $verdict['aggravees'] !== []) {
     }
 
     fwrite(STDERR, "\n{$inspectes} fichiers inspectés, {$exemptes} au point de liaison, "
-        . count($classe['dettes']) . " en dette.\n\n");
+        .count($classe['dettes'])." en dette.\n\n");
     fwrite(STDERR, "Article 1 : un nouveau comportement s'ajoute en implémentant une interface\n");
     fwrite(STDERR, "nommée par la préoccupation. Patrons déjà présents dans le dépôt :\n");
     fwrite(STDERR, "  · KlassciTargetResolver (1 verbe) + KlassciConfigResolver — bind(), AppServiceProvider.php:57\n");
@@ -195,7 +195,7 @@ if ($verdict['neuves'] !== [] || $verdict['aggravees'] !== []) {
 }
 
 echo "OCP: {$inspectes} fichiers inspectés, {$exemptes} au point de liaison, "
-    . count($classe['dettes']) . " en dette, 0 violation neuve.\n";
+    .count($classe['dettes'])." en dette, 0 violation neuve.\n";
 
 if ($verdict['reduites'] !== []) {
     echo "\nDette réduite — abaisser « count » (php scripts/check-ocp.php . --update) :\n";

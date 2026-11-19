@@ -6,6 +6,7 @@ namespace App\Services\Chapter;
 
 use App\Models\Chapter;
 use App\Services\FileConversion\ChapterArtifactStorage;
+use App\Services\FileConversion\WordConverter;
 use App\Services\FileConversionService;
 use Illuminate\Http\UploadedFile;
 use LogicException;
@@ -100,7 +101,7 @@ final class ChapterConversionDispatcher
      *
      * #598 — une branche `isset($result['slides_images'])` traînait ici, héritée
      * d'un temps où l'on envisageait un repli ConvertAPI (Word → images). Elle
-     * était **morte** : {@see \App\Services\FileConversion\WordConverter} n'a
+     * était **morte** : {@see WordConverter} n'a
      * aucun chemin ConvertAPI (son docblock l'explique — la sortie attendue est
      * `content_type: 'text'`, pas des diapositives) et son type de retour ne
      * contient pas cette clé. Une entrée de `phpstan-baseline.neon` la masquait ;

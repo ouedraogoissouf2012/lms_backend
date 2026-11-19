@@ -9,6 +9,7 @@ use App\Models\Institution;
 use App\Models\Seance;
 use App\Models\User;
 use App\Models\UserClass;
+use App\Services\TenantManager;
 use App\Services\Visio\Recording\SeanceRecordingAccessService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -83,7 +84,7 @@ final class StudentReplayAccessTest extends TestCase
         );
     }
 
-    public function test_un_apprenant_d_une_AUTRE_classe_reste_refuse(): void
+    public function test_un_apprenant_d_une_autre_classe_reste_refuse(): void
     {
         $ecole = Institution::factory()->create();
         $sienne = Classe::factory()->create(['institution_id' => $ecole->getKey(), 'klassci_id' => null]);
@@ -101,7 +102,7 @@ final class StudentReplayAccessTest extends TestCase
         self::assertFalse($this->service()->canRead($seance, $eleve));
     }
 
-    public function test_un_apprenant_d_une_AUTRE_ecole_reste_refuse(): void
+    public function test_un_apprenant_d_une_autre_ecole_reste_refuse(): void
     {
         $ecole = Institution::factory()->create();
         $voisine = Institution::factory()->create();
@@ -118,7 +119,7 @@ final class StudentReplayAccessTest extends TestCase
         self::assertFalse($this->service()->canRead($seance, $etranger));
     }
 
-    public function test_une_inscription_qui_TRAVERSE_les_ecoles_ne_donne_rien(): void
+    public function test_une_inscription_qui_traverse_les_ecoles_ne_donne_rien(): void
     {
         // DEFENSE EN PROFONDEUR. Sans ce cas, la borne d'etablissement du
         // service ne serait prouvee par AUCUN test : le composite refuse deja
@@ -195,7 +196,7 @@ final class StudentReplayAccessTest extends TestCase
         self::assertNotNull($classe->id);
     }
 
-    public function test_la_porte_klassci_marche_sur_la_donnee_REELLE_de_production(): void
+    public function test_la_porte_klassci_marche_sur_la_donnee_reelle_de_production(): void
     {
         // LA REPARATION. StudentClassSynchronizer:96 — seul ecrivain de
         // `user_classes` — n'ecrit PAS `institution_id`. L'ancienne requete
@@ -245,7 +246,7 @@ final class StudentReplayAccessTest extends TestCase
         // borne, via le scope global de `UserClass`. Sans cela le scope se
         // desactive (log-and-no-op) et ce test ne prouverait rien — la faute
         // exacte qui a masque le defaut de #878 dans la PR #877.
-        app(\App\Services\TenantManager::class)->set($ecole);
+        app(TenantManager::class)->set($ecole);
 
         $seance = Seance::factory()->create([
             'institution_id' => $ecole->getKey(),

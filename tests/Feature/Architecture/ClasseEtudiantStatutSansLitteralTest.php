@@ -4,11 +4,12 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Architecture;
 
+use App\Enums\ClasseEtudiantStatut;
 use Tests\TestCase;
 
 /**
  * Garde structurelle de #896 : le statut du pivot `classe_etudiant` passe par son
- * énumération, {@see \App\Enums\ClasseEtudiantStatut}, jamais par le littéral
+ * énumération, {@see ClasseEtudiantStatut}, jamais par le littéral
  * `'actif'` (CONTRIBUTING #522 : « Statut / état ⇒ enum backed string »).
  *
  * ## Ce qui reste permis, et pourquoi

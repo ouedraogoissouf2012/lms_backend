@@ -74,8 +74,8 @@ final class EvaluationUpdateService
      * Met à jour une évaluation et (optionnellement) remplace ses questions.
      *
      * @param  array<string, mixed>  $data  Payload validé par `UpdateEvaluationRequest`.
-     *                                       Peut contenir `questions` (array) pour
-     *                                       remplacement complet.
+     *                                      Peut contenir `questions` (array) pour
+     *                                      remplacement complet.
      * @return array{status: int, payload: array<string, mixed>}
      */
     public function update(Evaluation $evaluation, array $data, User $user): array
@@ -112,11 +112,11 @@ final class EvaluationUpdateService
             $evaluation->load('questions');
 
             return [
-                'status'  => 200,
+                'status' => 200,
                 'payload' => [
                     'success' => true,
                     'message' => 'Évaluation mise à jour',
-                    'data'    => $evaluation,
+                    'data' => $evaluation,
                 ],
             ];
         } catch (Throwable $e) {
@@ -124,11 +124,11 @@ final class EvaluationUpdateService
             $this->journal->error('Erreur mise à jour évaluation', $e);
 
             return [
-                'status'  => 500,
+                'status' => 500,
                 'payload' => [
                     'success' => false,
                     'message' => 'Erreur lors de la mise à jour',
-                    'error'   => 'Une erreur est survenue.',
+                    'error' => 'Une erreur est survenue.',
                 ],
             ];
         }
@@ -173,14 +173,14 @@ final class EvaluationUpdateService
     {
         foreach ($questions as $index => $questionData) {
             EvaluationQuestion::create([
-                'evaluation_id'   => $evaluation->id,
-                'question'        => $questionData['question'],
-                'type'            => $questionData['type'],
-                'ordre'           => $index + 1,
-                'points'          => $questionData['points'] ?? 1,
-                'options'         => $questionData['options'] ?? null,
+                'evaluation_id' => $evaluation->id,
+                'question' => $questionData['question'],
+                'type' => $questionData['type'],
+                'ordre' => $index + 1,
+                'points' => $questionData['points'] ?? 1,
+                'options' => $questionData['options'] ?? null,
                 'correct_answers' => $questionData['correct_answers'] ?? null,
-                'explanation'     => $questionData['explanation'] ?? null,
+                'explanation' => $questionData['explanation'] ?? null,
             ]);
         }
     }

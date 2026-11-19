@@ -8,6 +8,7 @@ use App\Models\Evaluation;
 use App\Models\User;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -90,7 +91,7 @@ final class SubmissionsOwnedByStudentMigrationTest extends TestCase
         [$evaluation, $eleve] = $this->evaluationEtEleve();
         $this->copie($evaluation, $eleve, klassci: null);
 
-        $this->expectException(\Illuminate\Database\UniqueConstraintViolationException::class);
+        $this->expectException(UniqueConstraintViolationException::class);
 
         $this->copie($evaluation, $eleve, klassci: null);
     }

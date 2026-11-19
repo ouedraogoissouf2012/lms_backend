@@ -5,13 +5,14 @@ declare(strict_types=1);
 namespace App\Models\Concerns;
 
 use App\Enums\EvaluationSubmissionStatus;
+use App\Models\EvaluationSubmission;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Support\Carbon;
 
 /**
- * L'échéance d'une {@see \App\Models\EvaluationSubmission} (C28) : le SEUL lieu qui
+ * L'échéance d'une {@see EvaluationSubmission} (C28) : le SEUL lieu qui
  * dit si une tentative est échue, en PHP comme en SQL.
  *
  * Décision de l'utilisateur : une copie remise après l'échéance « est refusée mais

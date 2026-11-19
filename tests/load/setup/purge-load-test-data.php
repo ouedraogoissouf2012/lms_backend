@@ -270,7 +270,7 @@ if ($institutions->isEmpty()) {
         // qui pourrait laisser croire à tort qu'une purge a eu lieu.
         fwrite(
             STDERR,
-            "[purge-load-test-data] REFUS : aucune institution de test (settings.load_test=true) ".
+            '[purge-load-test-data] REFUS : aucune institution de test (settings.load_test=true) '.
             "trouvée avec id={$institutionId}. Soit cet id n'existe pas, soit il désigne une institution ".
             "qui n'est PAS un tenant de test — ce script ne purge jamais une institution sans ce marqueur. ".
             "Aucune action effectuée.\n"

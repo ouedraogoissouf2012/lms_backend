@@ -47,8 +47,7 @@ final class StudentDashboardService
 
     public function __construct(
         private readonly NotificationPresenter $presenter,
-    ) {
-    }
+    ) {}
 
     /**
      * Construire le payload complet du dashboard étudiant.

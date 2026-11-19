@@ -7,6 +7,7 @@ use App\Models\Institution;
 use App\Models\Lesson;
 use App\Models\Matiere;
 use App\Models\User;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
@@ -28,11 +29,14 @@ use Tests\TestCase;
  */
 class FilterLessonsRequestTest extends TestCase
 {
-    use \Illuminate\Foundation\Testing\RefreshDatabase;
+    use RefreshDatabase;
 
     private Institution $institution;
+
     private Classe $classe;
+
     private Matiere $matiere;
+
     private User $teacher;
 
     protected function setUp(): void
@@ -162,7 +166,7 @@ class FilterLessonsRequestTest extends TestCase
     public function test_valid_matiere_id_passes(): void
     {
         Sanctum::actingAs($this->teacher);
-        $response = $this->getJson('/api/lessons?matiere_id=' . $this->matiere->id);
+        $response = $this->getJson('/api/lessons?matiere_id='.$this->matiere->id);
 
         $response->assertStatus(200);
     }
@@ -207,7 +211,7 @@ class FilterLessonsRequestTest extends TestCase
     public function test_valid_classe_id_passes(): void
     {
         Sanctum::actingAs($this->teacher);
-        $response = $this->getJson('/api/lessons?classe_id=' . $this->classe->id);
+        $response = $this->getJson('/api/lessons?classe_id='.$this->classe->id);
 
         $response->assertStatus(200);
     }
@@ -229,7 +233,7 @@ class FilterLessonsRequestTest extends TestCase
     public function test_valid_enseignant_id_passes(): void
     {
         Sanctum::actingAs($this->teacher);
-        $response = $this->getJson('/api/lessons?enseignant_id=' . $this->teacher->id);
+        $response = $this->getJson('/api/lessons?enseignant_id='.$this->teacher->id);
 
         $response->assertStatus(200);
     }

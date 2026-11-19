@@ -28,8 +28,7 @@ final class NotificationDispatcher
 {
     public function __construct(
         private readonly TenantManager $tenant,
-    ) {
-    }
+    ) {}
 
     /**
      * Envoyer une notification à un utilisateur.

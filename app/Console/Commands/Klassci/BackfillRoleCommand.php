@@ -46,13 +46,14 @@ final class BackfillRoleCommand extends Command
     public function handle(): int
     {
         $chunkSize = (int) $this->option('chunk');
-        $dryRun    = (bool) $this->option('dry-run');
+        $dryRun = (bool) $this->option('dry-run');
 
         // Borne supérieure : 10 000 protège contre une exhaustion mémoire si un
         // opérateur passe `--chunk=1000000` par erreur (chargement de 1M users
         // en mémoire d'un coup). 10k préserve la RAM même sur containers 512 MB.
         if ($chunkSize < 1 || $chunkSize > 10000) {
             $this->error("Chunk size must be between 1 and 10000, got: {$chunkSize}");
+
             return self::FAILURE;
         }
 
@@ -67,17 +68,18 @@ final class BackfillRoleCommand extends Command
 
         if ($total === 0) {
             $this->info('Nothing to backfill.');
+
             return self::SUCCESS;
         }
 
-        $bar     = $this->output->createProgressBar($total);
+        $bar = $this->output->createProgressBar($total);
         $updated = 0;
 
         DB::table('users')
             ->whereNotNull('klassci_id')
             ->orderBy('id')
             ->chunkById($chunkSize, function ($users) use (&$updated, $dryRun, $bar) {
-                if (!$dryRun) {
+                if (! $dryRun) {
                     DB::table('users')
                         ->whereIn('id', $users->pluck('id'))
                         ->update(['klassci_role' => DB::raw('role')]);
@@ -89,7 +91,7 @@ final class BackfillRoleCommand extends Command
         $bar->finish();
         $this->newLine();
 
-        $this->info(($dryRun ? '[dry-run] ' : '') . "Updated {$updated} / {$total} users.");
+        $this->info(($dryRun ? '[dry-run] ' : '')."Updated {$updated} / {$total} users.");
 
         return self::SUCCESS;
     }

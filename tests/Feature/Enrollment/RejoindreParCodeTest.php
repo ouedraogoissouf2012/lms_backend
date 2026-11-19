@@ -110,7 +110,7 @@ final class RejoindreParCodeTest extends TestCase
     // ───────────────────────── LA garde de ce fichier
 
     #[DataProvider('adhesionsCloses')]
-    public function test_un_code_ne_reactive_JAMAIS_une_adhesion_close(string $statut): void
+    public function test_un_code_ne_reactive_jamais_une_adhesion_close(string $statut): void
     {
         [$ecole, $code, $classe] = $this->classeAvecCode();
         $apprenant = $this->apprenant($ecole);
@@ -146,7 +146,7 @@ final class RejoindreParCodeTest extends TestCase
 
     // ───────────────────────── les autres refus
 
-    public function test_un_code_inconnu_et_un_code_RETIRE_rendent_le_meme_refus(): void
+    public function test_un_code_inconnu_et_un_code_retire_rendent_le_meme_refus(): void
     {
         [$ecole, $code, $classe] = $this->classeAvecCode();
         $jeton = $this->tokenFor($this->apprenant($ecole));
@@ -163,7 +163,7 @@ final class RejoindreParCodeTest extends TestCase
         self::assertSame(0, DB::table('classe_etudiant')->count());
     }
 
-    public function test_le_code_d_une_AUTRE_ecole_n_ouvre_rien_meme_en_annoncant_cette_ecole(): void
+    public function test_le_code_d_une_autre_ecole_n_ouvre_rien_meme_en_annoncant_cette_ecole(): void
     {
         // L'établissement vient du JETON. Un en-tête `X-Institution` qui
         // désigne l'autre école ne doit rien y changer (ResolveInstitution,
@@ -207,7 +207,7 @@ final class RejoindreParCodeTest extends TestCase
         self::assertSame(0, DB::table('classe_etudiant')->count());
     }
 
-    public function test_un_code_emis_n_ouvre_plus_rien_une_fois_l_ecole_passee_a_KLASSCI(): void
+    public function test_un_code_emis_n_ouvre_plus_rien_une_fois_l_ecole_passee_a_klassci(): void
     {
         [$ecole, $code] = $this->classeAvecCode();
         $apprenant = $this->apprenant($ecole);

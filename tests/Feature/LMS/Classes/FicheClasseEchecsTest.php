@@ -30,10 +30,10 @@ use Psr\Log\AbstractLogger;
 use Psr\Log\LoggerInterface;
 use RuntimeException;
 use Stringable;
-use Throwable;
 use Tests\Concerns\ActsAsTenantUser;
 use Tests\Concerns\CapturesWrittenLog;
 use Tests\TestCase;
+use Throwable;
 
 /**
  * Les échecs de la fiche d'une classe, par ses deux portes (`lms/classes/{id}`

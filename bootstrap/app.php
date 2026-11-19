@@ -1,8 +1,32 @@
 <?php
 
+use App\Exceptions\KlassciUnavailableException;
+use App\Exceptions\UncaughtExceptionReporting;
+use App\Http\Middleware\AssignRequestId;
+use App\Http\Middleware\EnsureGestion;
+use App\Http\Middleware\EnsureKlassciSync;
+use App\Http\Middleware\EnsurePersonnel;
+use App\Http\Middleware\EnsurePlatformSupradmin;
+use App\Http\Middleware\EnsureRole;
+use App\Http\Middleware\EnsureSchoolMemberOrPlatformRoute;
+use App\Http\Middleware\MarksAnyAccountRoute;
+use App\Http\Middleware\MarksPlatformRoute;
+use App\Http\Middleware\RequireInstitutionHeader;
+use App\Http\Middleware\ResolveInstitution;
+use App\Http\Presenters\TooManyRequestsPresenter;
+use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Auth\AuthenticationException;
+use Illuminate\Contracts\Auth\Middleware\AuthenticatesRequests;
+use Illuminate\Database\MultipleRecordsFoundException;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Illuminate\Http\Exceptions\HttpResponseException;
+use Illuminate\Http\Exceptions\ThrottleRequestsException;
+use Illuminate\Support\Facades\Route;
+use Illuminate\Validation\ValidationException;
+use Symfony\Component\HttpKernel\Exception\HttpException;
+use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
 // #948 — une trace ne porte jamais les arguments des fonctions. Sans ce réglage
 // (actif dans php.ini-production, absent de l'image de production), chaque
@@ -27,12 +51,12 @@ $app = Application::configure(basePath: dirname(__DIR__))
         //   - `/api/v2/...` : espace réservé aux futurs breaking changes.
         // Cf. docs/API_VERSIONING.md.
         then: function (): void {
-            \Illuminate\Support\Facades\Route::middleware('api')
+            Route::middleware('api')
                 ->prefix('api/v1')
                 ->name('v1.')
                 ->group(base_path('routes/api.php'));
 
-            \Illuminate\Support\Facades\Route::middleware('api')
+            Route::middleware('api')
                 ->prefix('api/v2')
                 ->name('v2.')
                 ->group(base_path('routes/v2.php'));
@@ -44,8 +68,8 @@ $app = Application::configure(basePath: dirname(__DIR__))
 
         // Middleware global API : résolution de l'institution (multi-tenant)
         $middleware->api(prepend: [
-            \App\Http\Middleware\AssignRequestId::class,
-            \App\Http\Middleware\ResolveInstitution::class,
+            AssignRequestId::class,
+            ResolveInstitution::class,
         ]);
 
         // #947 : toute lecture authentifiée a une limite de débit, par famille et
@@ -60,26 +84,26 @@ $app = Application::configure(basePath: dirname(__DIR__))
 
         // Enregistrer les middlewares personnalisés
         $middleware->alias([
-            'klassci.sync' => \App\Http\Middleware\EnsureKlassciSync::class,
-            'role' => \App\Http\Middleware\EnsureRole::class,
+            'klassci.sync' => EnsureKlassciSync::class,
+            'role' => EnsureRole::class,
             // D499/D502 : une garde par prédicat de rôle, au lieu de listes recopiées.
-            \App\Http\Middleware\EnsureGestion::ALIAS => \App\Http\Middleware\EnsureGestion::class,
-            \App\Http\Middleware\EnsurePersonnel::ALIAS => \App\Http\Middleware\EnsurePersonnel::class,
-            'institution' => \App\Http\Middleware\ResolveInstitution::class,
-            'institution.header' => \App\Http\Middleware\RequireInstitutionHeader::class,
+            EnsureGestion::ALIAS => EnsureGestion::class,
+            EnsurePersonnel::ALIAS => EnsurePersonnel::class,
+            'institution' => ResolveInstitution::class,
+            'institution.header' => RequireInstitutionHeader::class,
             // #511 : garde plateforme STRICTE (défense en profondeur cross-tenant).
-            'platform.supradmin' => \App\Http\Middleware\EnsurePlatformSupradmin::class,
-            'etablissement.requis' => \App\Http\Middleware\EnsureSchoolMemberOrPlatformRoute::class,
-            \App\Http\Middleware\MarksPlatformRoute::ALIAS => \App\Http\Middleware\MarksPlatformRoute::class,
-            \App\Http\Middleware\MarksAnyAccountRoute::ALIAS => \App\Http\Middleware\MarksAnyAccountRoute::class,
+            'platform.supradmin' => EnsurePlatformSupradmin::class,
+            'etablissement.requis' => EnsureSchoolMemberOrPlatformRoute::class,
+            MarksPlatformRoute::ALIAS => MarksPlatformRoute::class,
+            MarksAnyAccountRoute::ALIAS => MarksAnyAccountRoute::class,
         ]);
 
         // La porte des comptes sans établissement passe JUSTE APRÈS
         // l'authentification : une requête sans jeton reçoit d'abord le 401, et
         // le refus vient avant toute résolution de modèle par la route.
         $middleware->appendToPriorityList(
-            \Illuminate\Contracts\Auth\Middleware\AuthenticatesRequests::class,
-            \App\Http\Middleware\EnsureSchoolMemberOrPlatformRoute::class,
+            AuthenticatesRequests::class,
+            EnsureSchoolMemberOrPlatformRoute::class,
         );
 
         // #244 : API stateless — ne JAMAIS rediriger un invité vers une page de
@@ -96,7 +120,7 @@ $app = Application::configure(basePath: dirname(__DIR__))
     //     `DetectDisconnectedParticipants` (every2Minutes) — double scan ESBTPAttendance
     // Source unique conservée : `routes/console.php`.
     ->withExceptions(function (Exceptions $exceptions): void {
-        $exceptions->render(function (\Illuminate\Auth\AuthenticationException $e, $request) {
+        $exceptions->render(function (AuthenticationException $e, $request) {
             // #244 : l'API est stateless. Toute route `api/*` (versionnée ou non)
             // doit répondre 401 JSON, même si la requête n'envoie pas
             // `Accept: application/json` (ex. Swagger mal configuré, navigateur).
@@ -114,7 +138,7 @@ $app = Application::configure(basePath: dirname(__DIR__))
         // 401 ci-dessus : une route `api/*` y a droit sans `Accept: application/json`,
         // sinon Laravel rend une redirection HTML à un client qui n'en a que faire.
         // Les routes web gardent la redirection de Laravel.
-        $exceptions->render(function (\Illuminate\Validation\ValidationException $e, $request) {
+        $exceptions->render(function (ValidationException $e, $request) {
             if ($request->expectsJson() || $request->is('api/*')) {
                 return response()->json([
                     'success' => false,
@@ -129,9 +153,9 @@ $app = Application::configure(basePath: dirname(__DIR__))
         // Sans ce handler dédié, le handler générique \Throwable ci-dessous
         // reconstruirait la réponse JSON en PERDANT les headers de l'exception.
         // Une route `api/*` y a droit sans `Accept: application/json` (#244).
-        $exceptions->render(function (\Illuminate\Http\Exceptions\ThrottleRequestsException $e, $request) {
+        $exceptions->render(function (ThrottleRequestsException $e, $request) {
             if ($request->expectsJson() || $request->is('api/*')) {
-                return \App\Http\Presenters\TooManyRequestsPresenter::json($e->getHeaders());
+                return TooManyRequestsPresenter::json($e->getHeaders());
             }
         });
 
@@ -142,7 +166,7 @@ $app = Application::configure(basePath: dirname(__DIR__))
         // mesuré : statut 500, `Retry-After` perdu. C'est pourtant par elle
         // qu'un seau nommé rend son propre 429 (`Limit::response()`).
         $exceptions->render(
-            fn (\Illuminate\Http\Exceptions\HttpResponseException $e) => $e->getResponse()
+            fn (HttpResponseException $e) => $e->getResponse()
         );
 
         // #270 — KLASSCI indisponible (URL de base absente/invalide, ou service
@@ -152,9 +176,9 @@ $app = Application::configure(basePath: dirname(__DIR__))
         // RendersKlassciProxyErrors car ils enveloppent chaque appel dans un catch).
         // Doit précéder le handler \Throwable générique ci-dessous, sinon ce dernier
         // la rendrait en 500. On n'expose JAMAIS le détail technique (§1.2).
-        $exceptions->render(function (\App\Exceptions\KlassciUnavailableException $e, $request) {
+        $exceptions->render(function (KlassciUnavailableException $e, $request) {
             if ($request->expectsJson() || $request->is('api/*')) {
-                return \App\Exceptions\KlassciUnavailableException::jsonResponse();
+                return KlassciUnavailableException::jsonResponse();
             }
         });
 
@@ -168,25 +192,25 @@ $app = Application::configure(basePath: dirname(__DIR__))
         // 500, donc une panne, à rapporter. Les règles vivent dans
         // `UncaughtExceptionReporting`, résolue ici, racine de composition.
         $exceptions->stopIgnoring([
-            \Symfony\Component\HttpKernel\Exception\HttpException::class,
-            \Illuminate\Auth\Access\AuthorizationException::class,
-            \Illuminate\Database\MultipleRecordsFoundException::class,
+            HttpException::class,
+            AuthorizationException::class,
+            MultipleRecordsFoundException::class,
         ]);
         $exceptions->dontReportWhen(
-            fn (\Throwable $e): bool => app(\App\Exceptions\UncaughtExceptionReporting::class)->isSilentClientError($e)
+            fn (Throwable $e): bool => app(UncaughtExceptionReporting::class)->isSilentClientError($e)
         );
         $exceptions->report(
-            fn (\Throwable $e): ?bool => app(\App\Exceptions\UncaughtExceptionReporting::class)
+            fn (Throwable $e): ?bool => app(UncaughtExceptionReporting::class)
                 ->report($e, request())
         );
         $exceptions->context(
-            fn (): array => app(\App\Exceptions\UncaughtExceptionReporting::class)->requestContext(request())
+            fn (): array => app(UncaughtExceptionReporting::class)->requestContext(request())
         );
 
         // Rendu générique (403, 404, 405, 500…) : JSON pour une requête JSON ou une
         // route `api/*`, même règle que le 401 (#244). Les routes web gardent le
         // rendu de Laravel.
-        $exceptions->render(function (\Throwable $e, $request) {
+        $exceptions->render(function (Throwable $e, $request) {
             if ($request->expectsJson() || $request->is('api/*')) {
                 $statusCode = method_exists($e, 'getStatusCode') ? $e->getStatusCode() : 500;
                 // CRITICAL-02: ne pas se fier à `isProduction()` seul (laisserait fuir
@@ -199,7 +223,7 @@ $app = Application::configure(basePath: dirname(__DIR__))
                 // rapport de Laravel. Le rapport est configuré plus haut.
                 // Les en-têtes d'une HttpException sont gardés : `Allow` d'un 405,
                 // `Retry-After` d'un 503 (mode maintenance), comme dans le rendu de Laravel.
-                $entetes = $e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface ? $e->getHeaders() : [];
+                $entetes = $e instanceof HttpExceptionInterface ? $e->getHeaders() : [];
 
                 return response()->json(['success' => false, 'message' => $message], $statusCode, $entetes);
             }

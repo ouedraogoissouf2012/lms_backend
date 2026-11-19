@@ -25,6 +25,7 @@ final class CreateNotificationAuthorizationTest extends TestCase
     use RefreshDatabase;
 
     private Institution $instA;
+
     private Institution $instB;
 
     protected function setUp(): void
@@ -81,7 +82,7 @@ final class CreateNotificationAuthorizationTest extends TestCase
         $response->assertStatus(403);
     }
 
-    public function test_superAdmin_can_create_intra_tenant(): void
+    public function test_super_admin_can_create_intra_tenant(): void
     {
         $admin = $this->createUser($this->instA, 'superAdmin');
         $target = $this->createUser($this->instA, 'etudiant');
@@ -93,7 +94,7 @@ final class CreateNotificationAuthorizationTest extends TestCase
         $response->assertStatus(200);
     }
 
-    public function test_superAdmin_cannot_create_cross_tenant(): void
+    public function test_super_admin_cannot_create_cross_tenant(): void
     {
         $admin = $this->createUser($this->instA, 'superAdmin');
         $targetCrossTenant = $this->createUser($this->instB, 'etudiant');

@@ -35,16 +35,14 @@ use Illuminate\Http\Request;
  */
 final class QuizCrudController extends AuthenticatedController
 {
-    public function __construct(private readonly QuizCrudService $crud)
-    {
-    }
+    public function __construct(private readonly QuizCrudService $crud) {}
 
     /**
      * GET /api/quizzes — Liste des quiz (avec filtres).
      */
     public function index(ListQuizzesRequest $request): JsonResponse
     {
-        $user      = $this->authenticatedUser($request);
+        $user = $this->authenticatedUser($request);
         $paginator = $this->crud->list($user, $request->validated());
 
         return $this->successResponse($paginator);

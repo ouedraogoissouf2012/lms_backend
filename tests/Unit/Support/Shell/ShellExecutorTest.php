@@ -32,7 +32,7 @@ final class ShellExecutorTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->executor = new ShellExecutor();
+        $this->executor = new ShellExecutor;
     }
 
     public function test_run_returns_shell_result_on_successful_command(): void
@@ -108,7 +108,7 @@ final class ShellExecutorTest extends TestCase
      */
     public function test_locate_picks_the_first_resolvable_candidate(): void
     {
-        $firstChoice  = tempnam(sys_get_temp_dir(), 'sh-locate-first-');
+        $firstChoice = tempnam(sys_get_temp_dir(), 'sh-locate-first-');
         $secondChoice = tempnam(sys_get_temp_dir(), 'sh-locate-second-');
         $this->assertNotFalse($firstChoice);
         $this->assertNotFalse($secondChoice);

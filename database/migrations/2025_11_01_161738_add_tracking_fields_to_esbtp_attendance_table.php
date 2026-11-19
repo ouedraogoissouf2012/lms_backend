@@ -17,8 +17,8 @@ return new class extends Migration
 
             // Statut de connexion
             $table->enum('status', ['connected', 'disconnected', 'kicked'])
-                  ->default('connected')
-                  ->after('is_validated');
+                ->default('connected')
+                ->after('is_validated');
         });
     }
 

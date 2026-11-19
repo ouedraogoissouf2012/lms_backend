@@ -4,8 +4,11 @@ namespace Tests\Feature\Requests;
 
 use App\Models\Classe;
 use App\Models\Institution;
+use App\Models\Lesson;
 use App\Models\Matiere;
 use App\Models\User;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Schema;
 use Laravel\Sanctum\Sanctum;
 use Tests\Concerns\SimuleLaMatiereKlassci;
 use Tests\TestCase;
@@ -22,13 +25,17 @@ use Tests\TestCase;
  */
 class StoreLessonRequestTest extends TestCase
 {
-    use \Illuminate\Foundation\Testing\RefreshDatabase;
+    use RefreshDatabase;
     use SimuleLaMatiereKlassci;
 
     private User $teacher;
+
     private User $student;
+
     private Classe $classe;
+
     private Matiere $matiere;
+
     private Institution $institution;
 
     protected function setUp(): void
@@ -115,7 +122,7 @@ class StoreLessonRequestTest extends TestCase
         ]);
 
         $response->assertStatus(201);
-        $lesson = \App\Models\Lesson::latest()->first();
+        $lesson = Lesson::latest()->first();
         $this->assertEquals('PHP Basics', $lesson->title);
     }
 
@@ -268,7 +275,7 @@ class StoreLessonRequestTest extends TestCase
 
         $response->assertStatus(201);
 
-        $lesson = \App\Models\Lesson::latest()->first();
+        $lesson = Lesson::latest()->first();
         $this->assertStringNotContainsString('<script>', $lesson->description);
     }
 
@@ -288,7 +295,7 @@ class StoreLessonRequestTest extends TestCase
         // Should either fail validation or be escaped in database
         // Verify table still exists
         $this->assertTrue(
-            \Illuminate\Support\Facades\Schema::hasTable('lessons'),
+            Schema::hasTable('lessons'),
             'lessons table was dropped'
         );
     }

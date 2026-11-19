@@ -48,7 +48,7 @@ final class KlassciProxyServiceMemoTest extends TestCase
         // (spec redis-runtime #374) — le store `array` du test supporte les tags.
         $tenantManager->shouldReceive('id')->andReturn(1);
         $tenantManager->shouldReceive('klassciConfig')->andReturn([
-            'url'   => 'https://klassci.test',
+            'url' => 'https://klassci.test',
             'token' => 'system-token',
         ]);
         $this->app->instance(TenantManager::class, $tenantManager);
@@ -102,7 +102,7 @@ final class KlassciProxyServiceMemoTest extends TestCase
         // dans l'ordre — le pattern `evaluations*` matcherait aussi `evaluations/1/notes`).
         Http::fake([
             'klassci.test/evaluations/1/notes*' => Http::response(['success' => true], 200),
-            'klassci.test/evaluations*'         => Http::response(['data' => ['id' => 1]], 200),
+            'klassci.test/evaluations*' => Http::response(['data' => ['id' => 1]], 200),
         ]);
 
         $service = app(KlassciProxyService::class);
@@ -131,7 +131,7 @@ final class KlassciProxyServiceMemoTest extends TestCase
         $service = app(KlassciProxyService::class);
 
         $alice = $service->requestWithUserToken('alice-token', 'me/dashboard', 'GET');
-        $bob   = $service->requestWithUserToken('bob-token', 'me/dashboard', 'GET');
+        $bob = $service->requestWithUserToken('bob-token', 'me/dashboard', 'GET');
 
         // Tokens distincts → clés cache distinctes → 2 appels HTTP réels.
         self::assertSame(['data' => ['user' => 'alice']], $alice);
@@ -164,7 +164,7 @@ final class KlassciProxyServiceMemoTest extends TestCase
         // 2 endpoints DISTINCTS pour éviter tout chevauchement de pattern Http::fake.
         Http::fake([
             'klassci.test/structure-write' => Http::response(['success' => true], 200),
-            'klassci.test/structure-read'  => Http::sequence()
+            'klassci.test/structure-read' => Http::sequence()
                 ->push(['data' => 'call-1'], 200)
                 ->push(['data' => 'call-2'], 200),
         ]);

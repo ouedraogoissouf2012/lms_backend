@@ -7,6 +7,7 @@ namespace Tests\Feature\Audit;
 use App\Models\AuditLog;
 use App\Models\Institution;
 use App\Models\User;
+use App\Services\TenantManager;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Testing\TestResponse;
 use Tests\Concerns\ActsAsTenantUser;
@@ -64,7 +65,7 @@ final class AuditLogAuteurTest extends TestCase
 
         // Témoin : le tenant de l'école A est bien posé pour cette requête (sinon
         // le test ne prouverait rien sur le scope).
-        self::assertSame($ecoleA->id, app(\App\Services\TenantManager::class)->id());
+        self::assertSame($ecoleA->id, app(TenantManager::class)->id());
         self::assertSame('Auteur de B', $this->auteurDe($reponse, $entree)['name'] ?? null);
         $this->assertMatchesOpenApiResponse($reponse, self::CHEMIN, 'get');
     }

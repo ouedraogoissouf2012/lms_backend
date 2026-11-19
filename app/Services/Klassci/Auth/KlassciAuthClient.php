@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Klassci\Auth;
 
+use App\Services\Klassci\KlassciBatchFetcher;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Factory as HttpFactory;
 use Illuminate\Http\Client\PendingRequest;
@@ -31,7 +32,7 @@ use Psr\Log\LoggerInterface;
  *
  * Ce service applique le pattern canonique du projet : try/catch
  * `ConnectionException` ET check `$response instanceof Response`. Même
- * pattern que {@see \App\Services\Klassci\KlassciBatchFetcher} (PR #137).
+ * pattern que {@see KlassciBatchFetcher} (PR #137).
  *
  * ## Sémantique « null = échec silencieux »
  *
@@ -61,7 +62,7 @@ class KlassciAuthClient
      * Tente un login KLASSCI sur le tenant `$tenantUrl`.
      *
      * @param  string  $tenantUrl  URL de base du tenant (sans `/auth/login`)
-     * @return array<string, mixed>|null  Payload JSON sur succès, null sur échec
+     * @return array<string, mixed>|null Payload JSON sur succès, null sur échec
      */
     public function attemptLogin(string $tenantUrl, string $username, string $password): ?array
     {
@@ -76,19 +77,19 @@ class KlassciAuthClient
     /**
      * Envoie la requête HTTP login + catch ConnectionException (FIX BUG).
      *
-     * @return Response|null  null si tenant unreachable
+     * @return Response|null null si tenant unreachable
      */
     private function sendLoginRequest(string $tenantUrl, string $username, string $password): ?Response
     {
         try {
-            return $this->buildRequest()->post($tenantUrl . '/auth/login', [
+            return $this->buildRequest()->post($tenantUrl.'/auth/login', [
                 'username' => $username,
                 'password' => $password,
             ]);
         } catch (ConnectionException $e) {
             $this->logger->warning('KLASSCI tenant connection failed during login', [
                 'tenant_url' => $tenantUrl,
-                'error'      => $e->getMessage(),
+                'error' => $e->getMessage(),
             ]);
 
             return null;
@@ -107,10 +108,10 @@ class KlassciAuthClient
      */
     private function parseLoginResponse(Response $response, string $tenantUrl): ?array
     {
-        if (!$response->successful()) {
+        if (! $response->successful()) {
             $this->logger->info('KLASSCI login refused or HTTP failure', [
                 'tenant_url' => $tenantUrl,
-                'status'     => $response->status(),
+                'status' => $response->status(),
             ]);
 
             return null;
@@ -118,7 +119,7 @@ class KlassciAuthClient
 
         /** @var array<string, mixed>|mixed $payload */
         $payload = $response->json();
-        if (!is_array($payload) || ($payload['success'] ?? false) !== true) {
+        if (! is_array($payload) || ($payload['success'] ?? false) !== true) {
             $this->logger->info('KLASSCI login payload invalid or success=false', [
                 'tenant_url' => $tenantUrl,
             ]);
@@ -137,11 +138,11 @@ class KlassciAuthClient
     {
         $request = $this->http->timeout($this->timeout)
             ->withHeaders([
-                'Accept'       => 'application/json',
+                'Accept' => 'application/json',
                 'Content-Type' => 'application/json',
             ]);
 
-        if (!$this->sslVerify) {
+        if (! $this->sslVerify) {
             $request = $request->withoutVerifying();
         }
 

@@ -7,6 +7,7 @@ namespace Tests\Unit\Services\Klassci\Auth;
 use App\Services\Klassci\Auth\KlassciAuthClient;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Factory as HttpFactory;
+use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Http;
@@ -43,8 +44,8 @@ final class KlassciAuthClientTest extends TestCase
         Http::fake([
             'tenant.klassci.test/auth/login' => Http::response([
                 'success' => true,
-                'data'    => [
-                    'user'  => ['id' => 1, 'name' => 'Test', 'role' => 'etudiant'],
+                'data' => [
+                    'user' => ['id' => 1, 'name' => 'Test', 'role' => 'etudiant'],
                     'token' => 'abc123',
                 ],
             ], 200),
@@ -70,7 +71,7 @@ final class KlassciAuthClientTest extends TestCase
     {
         // Mock direct car Http::fake() ne supporte pas ConnectionException dans le post() direct
         $http = Mockery::mock(HttpFactory::class);
-        $pendingRequest = Mockery::mock(\Illuminate\Http\Client\PendingRequest::class);
+        $pendingRequest = Mockery::mock(PendingRequest::class);
 
         $http->shouldReceive('timeout')->andReturn($pendingRequest);
         $pendingRequest->shouldReceive('withHeaders')->andReturnSelf();
@@ -89,7 +90,7 @@ final class KlassciAuthClientTest extends TestCase
         $logger->shouldHaveReceived('warning')
             ->with('KLASSCI tenant connection failed during login', Mockery::on(function ($context) {
                 return ($context['tenant_url'] ?? null) === 'https://down.klassci.test'
-                    && !isset($context['password']);
+                    && ! isset($context['password']);
             }))->once();
     }
 
@@ -151,7 +152,7 @@ final class KlassciAuthClientTest extends TestCase
         Http::fake([
             'unsigned.klassci.test/auth/login' => Http::response([
                 'success' => true,
-                'data'    => ['user' => ['id' => 1], 'token' => 'tok'],
+                'data' => ['user' => ['id' => 1], 'token' => 'tok'],
             ], 200),
         ]);
 

@@ -133,7 +133,7 @@ final class AuditLogInstitutionNameTest extends TestCase
 
         $sansEcole = $corps();
         unset($sansEcole->data->data[0]->institution);
-        self::assertNotSame([], $spec->erreurs($sansEcole, $schema), "Une entrée sans la clé « institution » doit sortir de la spec.");
+        self::assertNotSame([], $spec->erreurs($sansEcole, $schema), 'Une entrée sans la clé « institution » doit sortir de la spec.');
 
         $ecoleAugmentee = $corps();
         $ecoleAugmentee->data->data[0]->institution->slug = 'non-decrit';

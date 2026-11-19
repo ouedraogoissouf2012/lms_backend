@@ -44,8 +44,7 @@ final class NotificationsController extends AuthenticatedController
     public function __construct(
         private readonly NotificationQueryService $queryService,
         private readonly NotificationMutationService $mutationService,
-    ) {
-    }
+    ) {}
 
     /**
      * GET /notifications — Liste paginée des notifications de l'utilisateur.

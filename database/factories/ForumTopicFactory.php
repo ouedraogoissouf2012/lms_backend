@@ -3,11 +3,12 @@
 namespace Database\Factories;
 
 use App\Models\ForumTopic;
+use App\Models\Institution;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
- * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\ForumTopic>
+ * @extends Factory<ForumTopic>
  */
 class ForumTopicFactory extends Factory
 {
@@ -30,7 +31,7 @@ class ForumTopicFactory extends Factory
             'posts_count' => 0,
             'last_activity_at' => now(),
             // institution_id requis : ForumTopic est tenant-scoped via BelongsToInstitution.
-            'institution_id' => \App\Models\Institution::factory(),
+            'institution_id' => Institution::factory(),
         ];
     }
 

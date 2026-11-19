@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Evaluation\Student;
 
+use App\Models\Concerns\EcheanceDeLaCopie;
 use App\Models\Evaluation;
 use Carbon\CarbonInterface;
 use Carbon\Exceptions\InvalidFormatException;
@@ -18,7 +19,7 @@ use Illuminate\Support\Carbon;
  * ou la fenêtre calculée sur la ligne (`LocalEvaluationWindow`). Écrite sur la
  * copie (`ends_at`), l'échéance se compare ensuite à l'heure SANS rien demander à
  * KLASSCI : une panne au moment de la remise ne bloque aucune copie, et les deux
- * types d'école appliquent le même test ({@see \App\Models\Concerns\EcheanceDeLaCopie}).
+ * types d'école appliquent le même test ({@see EcheanceDeLaCopie}).
  *
  * - Entraînement : aucune échéance (Q5).
  * - Fenêtre sans fin lisible (KLASSCI sans `end_at`) : la durée seule.

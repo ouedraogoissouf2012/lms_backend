@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace App\Services\Matiere;
 
+use App\Http\Controllers\API\LMS\LMSMatieresQueryController;
 use App\Models\Evaluation;
 use App\Models\EvaluationSubmission;
 use App\Models\User;
 use App\Services\Evaluation\EvaluationProgrammeeLocale;
+use App\Services\Evaluation\EvaluationStateService;
 use App\Services\Evaluation\Student\LearnerEvaluationScope;
 use App\Services\Evaluation\Student\ResultatsVisibles;
 use Illuminate\Database\Eloquent\Builder;
@@ -16,7 +18,7 @@ use Illuminate\Support\Collection;
 /**
  * MatiereEvaluationsFetcher — filters and enriches the evaluations of a matière.
  *
- * Extracted from {@see \App\Http\Controllers\API\LMS\LMSMatieresQueryController::matiereDetails}
+ * Extracted from {@see LMSMatieresQueryController::matiereDetails}
  * (legacy lines 235-349).
  *
  * Responsibility:
@@ -53,14 +55,14 @@ use Illuminate\Support\Collection;
 final class MatiereEvaluationsFetcher
 {
     public function __construct(
-        private readonly \App\Services\Evaluation\EvaluationStateService $evaluationState,
+        private readonly EvaluationStateService $evaluationState,
         private readonly LearnerEvaluationScope $learnerScope,
         private readonly EvaluationProgrammeeLocale $forme,
     ) {}
 
     /**
      * @param  array<string, mixed>  $matiereData  Payload `matieres/{id}` deja
-     *   recupere par {@see MatiereInfoFetcher} pour CETTE meme requete.
+     *                                             recupere par {@see MatiereInfoFetcher} pour CETTE meme requete.
      * @return array{evaluations_enrichies: array<int, array<string, mixed>>, evaluations_raw_count: int}
      */
     public function fetchEvaluationsForMatiere(
@@ -124,7 +126,7 @@ final class MatiereEvaluationsFetcher
         return collect($evaluationsData)->filter(function (array $eval) use ($matiereId): bool {
             $matiere = $eval['matiere'] ?? null;
 
-            if (!is_array($matiere)) {
+            if (! is_array($matiere)) {
                 return true;
             }
 
@@ -133,7 +135,7 @@ final class MatiereEvaluationsFetcher
             // KLASSCI livre les ids tantot en entier, tantot en chaine selon
             // l'endpoint : on normalise, sans elargir le type pour faire taire
             // PHPStan (une valeur d'un autre type reste non filtrable → conservee).
-            if (!is_int($id) && !is_string($id)) {
+            if (! is_int($id) && ! is_string($id)) {
                 return true;
             }
 

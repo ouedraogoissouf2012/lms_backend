@@ -41,7 +41,7 @@ class AuthResponsePresenter
      * (#795). Sans école (supradmin), les deux clés restent présentes, nulles.
      *
      * @param  Institution|null  $institution  L'école du compte, chargée par
-     *                                          l'appelant : aucune I/O ici.
+     *                                         l'appelant : aucune I/O ici.
      * @param  bool  $peutInscrireLocalement  Capacite resolue par l'appelant.
      *                                        Le presentateur ne decide rien
      *                                        (cf. docblock de classe).

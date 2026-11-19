@@ -183,7 +183,6 @@ final class EleveVoitSesNotesTest extends TestCase
     // ───────────────────────── harnais
 
     /**
-     * @param  mixed  $matieres
      * @return list<array{mixed, mixed, mixed, mixed}>
      */
     private function matieres(mixed $matieres): array

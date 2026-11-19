@@ -6,6 +6,7 @@ namespace Tests\Unit\Services\Classe;
 
 use App\Services\Classe\ClasseSecondaryDataFetcher;
 use App\Services\KlassciProxyService;
+use App\Support\Logging\CaughtExceptionLog;
 use Mockery;
 use PHPUnit\Framework\Attributes\CoversClass;
 use Tests\TestCase;
@@ -30,6 +31,7 @@ use Tests\TestCase;
 final class ClasseEvaluationsFilterTest extends TestCase
 {
     private const CLASSE_ID = 1;
+
     private const TOKEN = 'tok-eval';
 
     protected function tearDown(): void
@@ -50,7 +52,7 @@ final class ClasseEvaluationsFilterTest extends TestCase
             ->with(self::TOKEN, 'evaluations', 'GET')
             ->andReturn(['data' => $catalogue]);
 
-        $fetcher = new ClasseSecondaryDataFetcher($klassci, app(\App\Support\Logging\CaughtExceptionLog::class));
+        $fetcher = new ClasseSecondaryDataFetcher($klassci, app(CaughtExceptionLog::class));
 
         return $fetcher->fetchEvaluations(self::CLASSE_ID, self::TOKEN);
     }

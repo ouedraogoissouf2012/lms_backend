@@ -62,6 +62,7 @@ final class HeartbeatHealthChecker
         // Vérifier si au moins un participant a un heartbeat récent
         $hasRecentHeartbeat = $connectedParticipants->contains(function ($attendance) use ($now) {
             $minutesSinceLastSeen = $attendance->last_seen_at->diffInMinutes($now);
+
             return $minutesSinceLastSeen < self::HEARTBEAT_SAFETY_BUFFER;
         });
 

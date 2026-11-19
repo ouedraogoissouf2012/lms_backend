@@ -45,8 +45,8 @@ abstract class AuthenticatedController extends Controller
      * Return the authenticated user as a strictly typed `User`.
      *
      * @throws AuthenticationException If the request carries no User
-     *                                  (route reached without auth middleware,
-     *                                  or guard misconfigured).
+     *                                 (route reached without auth middleware,
+     *                                 or guard misconfigured).
      */
     protected function authenticatedUser(Request $request): User
     {

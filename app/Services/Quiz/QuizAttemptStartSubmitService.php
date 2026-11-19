@@ -34,8 +34,7 @@ final class QuizAttemptStartSubmitService
         private readonly QuizGradingService $grading,
         private readonly QuizAccessService $access,
         private readonly QuizAttemptTimerService $timer,
-    ) {
-    }
+    ) {}
 
     /**
      * Démarre une tentative — ou rend celle qui est déjà ouverte.
@@ -87,11 +86,11 @@ final class QuizAttemptStartSubmitService
 
         try {
             $attempt = QuizAttempt::create([
-                'quiz_id'        => $quiz->id,
-                'user_id'        => $user->id,
+                'quiz_id' => $quiz->id,
+                'user_id' => $user->id,
                 'attempt_number' => $attemptNumber,
-                'status'         => 'in_progress',
-                'started_at'     => now(),
+                'status' => 'in_progress',
+                'started_at' => now(),
                 // Scope tenant explicite (défense en profondeur, fix E2E #211) :
                 // un tenant non résolu persistait la tentative avec institution_id
                 // NULL → owner verrouillé dehors par ShowAttemptRequest.
@@ -142,16 +141,16 @@ final class QuizAttemptStartSubmitService
         }
 
         return [
-            'status'  => $resumed ? 200 : 201,
+            'status' => $resumed ? 200 : 201,
             'success' => true,
             'message' => $resumed ? 'Reprise de la tentative en cours' : 'Tentative démarrée',
-            'data'    => [
-                'attempt'        => $attempt,
-                'quiz'           => $quiz,
-                'questions'      => $questions,
+            'data' => [
+                'attempt' => $attempt,
+                'quiz' => $quiz,
+                'questions' => $questions,
                 'time_remaining' => $this->timer->timeRemaining($attempt),
             ],
-            'errors'  => null,
+            'errors' => null,
         ];
     }
 
@@ -176,15 +175,15 @@ final class QuizAttemptStartSubmitService
             $this->grading->submitAttempt($attempt, $answers);
 
             return [
-                'status'  => 422,
+                'status' => 422,
                 'success' => false,
                 'message' => 'Le temps est écoulé. Votre tentative a été soumise automatiquement.',
-                'reason'  => 'quiz_time_expired',
-                'data'    => [
-                    'attempt'      => $attempt,
+                'reason' => 'quiz_time_expired',
+                'data' => [
+                    'attempt' => $attempt,
                     'time_expired' => true,
                 ],
-                'errors'  => null,
+                'errors' => null,
             ];
         }
 
@@ -192,12 +191,12 @@ final class QuizAttemptStartSubmitService
         $attempt->load(['quiz.questions.answers', 'user:id,name,email']);
 
         $result = [
-            'attempt'         => $attempt,
-            'score'           => $attempt->score,
-            'points_earned'   => $attempt->points_earned,
+            'attempt' => $attempt,
+            'score' => $attempt->score,
+            'points_earned' => $attempt->points_earned,
             'points_possible' => $attempt->points_possible,
-            'passed'          => $attempt->passed,
-            'time_spent'      => $this->timer->formattedTimeSpent($attempt),
+            'passed' => $attempt->passed,
+            'time_spent' => $this->timer->formattedTimeSpent($attempt),
         ];
 
         $quiz = $attempt->quiz;
@@ -206,11 +205,11 @@ final class QuizAttemptStartSubmitService
         }
 
         return [
-            'status'  => 200,
+            'status' => 200,
             'success' => true,
             'message' => 'Tentative soumise avec succès',
-            'data'    => $result,
-            'errors'  => null,
+            'data' => $result,
+            'errors' => null,
         ];
     }
 }

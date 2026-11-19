@@ -130,10 +130,10 @@ final class ForumTopicService
             'lesson:id,title',
             'posts' => function ($query) {
                 $query->rootLevel()
-                    ->with([self::AUTHOR_COLUMNS, 'replies.' . self::AUTHOR_COLUMNS])
+                    ->with([self::AUTHOR_COLUMNS, 'replies.'.self::AUTHOR_COLUMNS])
                     ->orderBy('is_solution', 'desc')
                     ->orderBy('created_at', 'asc');
-            }
+            },
         ]);
 
         $topic->increment('views_count');

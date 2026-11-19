@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Services\Classe\ClasseDetailsQueryService;
 use App\Services\Classe\ClasseSecondaryDataFetcher;
 use App\Services\KlassciProxyService;
+use App\Support\Logging\CaughtExceptionLog;
 use Mockery;
 use PHPUnit\Framework\Attributes\CoversClass;
 use Psr\Log\NullLogger;
@@ -33,6 +34,7 @@ use Tests\TestCase;
 final class ClasseDetailsEnvelopeSourceTest extends TestCase
 {
     private const CLASSE_ID = 1;
+
     private const TOKEN = 'tok-envelope';
 
     /** Endpoints KLASSCI réellement sollicités pendant l'appel sous test. @var list<string> */
@@ -47,7 +49,7 @@ final class ClasseDetailsEnvelopeSourceTest extends TestCase
     /** Utilisateur in-memory ; le token transite par le cast chiffré. */
     private function makeUser(): User
     {
-        $user = new User();
+        $user = new User;
         $user->id = 77;
         $user->klassci_token = self::TOKEN;
 
@@ -99,8 +101,8 @@ final class ClasseDetailsEnvelopeSourceTest extends TestCase
 
         $service = new ClasseDetailsQueryService(
             $klassci,
-            new ClasseSecondaryDataFetcher($klassci, app(\App\Support\Logging\CaughtExceptionLog::class)),
-            new NullLogger(),
+            new ClasseSecondaryDataFetcher($klassci, app(CaughtExceptionLog::class)),
+            new NullLogger,
         );
 
         return $service->getDetailsForUser(self::CLASSE_ID, $this->makeUser());

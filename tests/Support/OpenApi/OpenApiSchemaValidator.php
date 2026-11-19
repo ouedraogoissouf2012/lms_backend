@@ -131,7 +131,7 @@ final class OpenApiSchemaValidator
 
     /**
      * @param  array<mixed>  $schema
-     * @return list<string>  les écarts, vide si la valeur est conforme
+     * @return list<string> les écarts, vide si la valeur est conforme
      */
     public function erreurs(mixed $valeur, array $schema, string $ou = '$'): array
     {

@@ -22,7 +22,8 @@ use Tests\TestCase;
  * Ces tests verrouillent la persistance sur les DEUX chemins (création + update)
  * et en multi-tenant (2 institutions) — conformément à PRODUCTION_STANDARDS §1.4.
  *
- * @see app/Models/User.php ($fillable + setKlassciTokenAttribute)
+ * @see app/Models/User.php ($fillable)
+ * @see app/Models/Concerns/LienKlassciDuCompte.php (setKlassciTokenAttribute)
  * @see app/Services/Klassci/Auth/KlassciUserSynchronizer.php (buildCommonData)
  */
 final class KlassciTokenPersistenceTest extends TestCase

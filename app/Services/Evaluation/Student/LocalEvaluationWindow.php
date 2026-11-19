@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Evaluation\Student;
 
+use App\Models\Concerns\FinDeLEvaluation;
 use App\Models\Evaluation;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Carbon;
@@ -13,7 +14,7 @@ use Illuminate\Support\Carbon;
  * ligne (D72, Q2 décidée en D132) :
  * - ouverture : `date_evaluation` ;
  * - fermeture : la fin de l'évaluation, UNE règle partagée avec le statut
- *   effectif et l'entraînement ({@see \App\Models\Concerns\FinDeLEvaluation},
+ *   effectif et l'entraînement ({@see FinDeLEvaluation},
  *   C29) ;
  * - sans date : fermée (fail-closed, comme #499).
  *

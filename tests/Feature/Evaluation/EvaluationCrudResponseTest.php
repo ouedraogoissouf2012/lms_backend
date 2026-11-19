@@ -56,9 +56,9 @@ final class EvaluationCrudResponseTest extends TestCase
         // Enseignant synchronisé KLASSCI — passe le role middleware et le
         // garde-fou `klassci_enseignant_id` du controller.
         $this->teacher = User::factory()->create([
-            'institution_id'        => $this->institution->id,
-            'role'                  => 'enseignant',
-            'klassci_role'          => 'enseignant',
+            'institution_id' => $this->institution->id,
+            'role' => 'enseignant',
+            'klassci_role' => 'enseignant',
             'klassci_enseignant_id' => 42,
         ]);
     }
@@ -114,9 +114,9 @@ final class EvaluationCrudResponseTest extends TestCase
         // Admin (passe le role middleware + la FormRequest::authorize) mais sans
         // identité enseignant KLASSCI → 403 émis par le controller (issue #124).
         $admin = User::factory()->create([
-            'institution_id'        => $this->institution->id,
-            'role'                  => 'admin',
-            'klassci_role'          => 'admin',
+            'institution_id' => $this->institution->id,
+            'role' => 'admin',
+            'klassci_role' => 'admin',
             'klassci_enseignant_id' => null,
         ]);
 
@@ -124,17 +124,17 @@ final class EvaluationCrudResponseTest extends TestCase
 
         $response = $this->postJson('/api/evaluations', [
             'klassci_matiere_id' => 10,
-            'klassci_classe_id'  => 20,
-            'titre'              => 'Examen de caractérisation',
-            'type'               => 'qcm',
-            'duree_minutes'      => 60,
+            'klassci_classe_id' => 20,
+            'titre' => 'Examen de caractérisation',
+            'type' => 'qcm',
+            'duree_minutes' => 60,
         ]);
 
         $response->assertStatus(403)
             ->assertExactJson([
                 'success' => false,
                 'message' => 'Vous devez être un enseignant KLASSCI synchronisé pour créer une évaluation.',
-                'reason'  => 'klassci_teacher_identity_missing',
+                'reason' => 'klassci_teacher_identity_missing',
             ]);
     }
 }

@@ -1,38 +1,42 @@
 <?php
 
 namespace App\Models;
+
 use App\Casts\KlassciData;
+use App\Models\Concerns\InteractsWithRoles;
+use App\Models\Concerns\LienKlassciDuCompte;
+use App\Models\Traits\BelongsToInstitution;
+use Database\Factories\UserFactory;
+use Illuminate\Auth\Passwords\CanResetPassword;
+use Illuminate\Contracts\Auth\CanResetPassword as CanResetPasswordContract;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use Illuminate\Auth\Passwords\CanResetPassword;
-use Illuminate\Contracts\Auth\CanResetPassword as CanResetPasswordContract;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Carbon;
 use Laravel\Sanctum\HasApiTokens;
-use App\Models\Concerns\InteractsWithRoles;
-use App\Models\Traits\BelongsToInstitution;
 
 /**
  * Utilisateur synchronisé depuis KLASSCI.
  *
  * @property int $id
- * @property string $role             Rôle LMS — source d'autorité UNIQUE pour l'autorisation.
+ * @property string $role Rôle LMS — source d'autorité UNIQUE pour l'autorisation.
  * @property string|null $klassci_role Rôle KLASSCI du dernier sync — INFORMATIF, jamais pour
- *                                    autoriser (CRITICAL-05, `.claude/specs/critical-05-klassci-role-separation/`).
+ *                                     autoriser (CRITICAL-05, `.claude/specs/critical-05-klassci-role-separation/`).
  * @property int|null $klassci_enseignant_id Write-once — autorité ownership enseignant (#119).
- *                                    Ne JAMAIS lire `klassci_data['enseignant_id']` pour autoriser.
+ *                                           Ne JAMAIS lire `klassci_data['enseignant_id']` pour autoriser.
  * @property array<string, mixed> $klassci_data Cache display filtré par whitelist (#477) via le cast
- *                                    {@see \App\Casts\KlassciData} — toujours lu comme array.
- * @property \Illuminate\Support\Carbon|null $last_klassci_sync Cast `datetime` (déclaré dans la méthode casts()).
- * @property \Illuminate\Support\Carbon|null $deleted_at Soft delete (#566) — suppression LOGIQUE :
- *                                    dossier académique préservé, restauré à la re-sync KLASSCI.
+ *                                              {@see KlassciData} — toujours lu comme array.
+ * @property Carbon|null $last_klassci_sync Cast `datetime` (déclaré dans la méthode casts()).
+ * @property Carbon|null $deleted_at Soft delete (#566) — suppression LOGIQUE :
+ *                                   dossier académique préservé, restauré à la re-sync KLASSCI.
  */
 class User extends Authenticatable implements CanResetPasswordContract
 {
-    /** @use HasFactory<\Database\Factories\UserFactory> */
-    use HasFactory, Notifiable, HasApiTokens, BelongsToInstitution, InteractsWithRoles, SoftDeletes, CanResetPassword;
+    /** @use HasFactory<UserFactory> */
+    use BelongsToInstitution, CanResetPassword, HasApiTokens, HasFactory, InteractsWithRoles, LienKlassciDuCompte, Notifiable, SoftDeletes;
 
     protected $fillable = [
         'klassci_id', 'name', 'email', 'phone', 'password',
@@ -62,28 +66,6 @@ class User extends Authenticatable implements CanResetPasswordContract
         ];
     }
 
-    /** Accessor alias : lecture du token chiffré via l'ancien nom d'attribut. */
-    public function getKlassciTokenAttribute(): ?string
-    {
-        return $this->klassci_token_encrypted;
-    }
-
-    /** Mutator alias : écriture du token chiffré via l'ancien nom d'attribut. */
-    public function setKlassciTokenAttribute(?string $value): void
-    {
-        $this->klassci_token_encrypted = $value;
-    }
-
-    /** Les données KLASSCI sont-elles fraîches (< 24h) ? Utilisé par EnsureKlassciSync. */
-    public function isKlassciDataFresh(): bool
-    {
-        if (!$this->last_klassci_sync) {
-            return false;
-        }
-
-        return $this->last_klassci_sync->isAfter(now()->subDay());
-    }
-
     /**
      * Relation: Classes où l'utilisateur est inscrit (pivot classe_etudiant).
      *
@@ -91,7 +73,7 @@ class User extends Authenticatable implements CanResetPasswordContract
      */
     public function classes(): BelongsToMany
     {
-        return $this->belongsToMany(\App\Models\Classe::class, 'classe_etudiant')
+        return $this->belongsToMany(Classe::class, 'classe_etudiant')
             ->withPivot('date_inscription', 'statut', 'annee_universitaire_id')
             ->withTimestamps();
     }
@@ -103,7 +85,7 @@ class User extends Authenticatable implements CanResetPasswordContract
      */
     public function klassciClasses(): HasMany
     {
-        return $this->hasMany(\App\Models\UserClass::class);
+        return $this->hasMany(UserClass::class);
     }
 
     /**
@@ -113,7 +95,7 @@ class User extends Authenticatable implements CanResetPasswordContract
      */
     public function forumPosts(): HasMany
     {
-        return $this->hasMany(\App\Models\ForumPost::class);
+        return $this->hasMany(ForumPost::class);
     }
 
     /**
@@ -125,7 +107,7 @@ class User extends Authenticatable implements CanResetPasswordContract
      */
     public function notifications(): HasMany
     {
-        return $this->hasMany(\App\Models\Notification::class);
+        return $this->hasMany(Notification::class);
     }
 
     /**
@@ -135,7 +117,7 @@ class User extends Authenticatable implements CanResetPasswordContract
      */
     public function quizAttempts(): HasMany
     {
-        return $this->hasMany(\App\Models\QuizAttempt::class);
+        return $this->hasMany(QuizAttempt::class);
     }
 
     /**
@@ -145,6 +127,6 @@ class User extends Authenticatable implements CanResetPasswordContract
      */
     public function evaluationSubmissions(): HasMany
     {
-        return $this->hasMany(\App\Models\EvaluationSubmission::class, 'student_id');
+        return $this->hasMany(EvaluationSubmission::class, 'student_id');
     }
 }

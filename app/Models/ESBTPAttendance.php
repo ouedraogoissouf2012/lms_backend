@@ -2,11 +2,14 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 use App\Enums\AttendanceMark;
 use App\Enums\AttendanceOrigin;
 use App\Models\Traits\BelongsToInstitution;
+use Database\Factories\ESBTPAttendanceFactory;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
  * `status` = visio (`connected`/`disconnected`/`kicked`). `mark`/`origin` = pédagogie (#717).
@@ -14,8 +17,8 @@ use App\Models\Traits\BelongsToInstitution;
  */
 class ESBTPAttendance extends Model
 {
-    /** @use HasFactory<\Database\Factories\ESBTPAttendanceFactory> */
-    use HasFactory, BelongsToInstitution;
+    /** @use HasFactory<ESBTPAttendanceFactory> */
+    use BelongsToInstitution, HasFactory;
 
     protected $table = 'esbtp_attendance';
 
@@ -54,31 +57,31 @@ class ESBTPAttendance extends Model
         'delegated_at' => 'datetime',
     ];
 
-    /** @return \Illuminate\Database\Eloquent\Relations\BelongsTo<Seance, $this> */
+    /** @return BelongsTo<Seance, $this> */
     public function seance()
     {
-        return $this->belongsTo(\App\Models\Seance::class, 'seance_id');
+        return $this->belongsTo(Seance::class, 'seance_id');
     }
 
-    /** @return \Illuminate\Database\Eloquent\Relations\BelongsTo<User, $this> */
+    /** @return BelongsTo<User, $this> */
     public function user()
     {
-        return $this->belongsTo(\App\Models\User::class, 'user_id');
+        return $this->belongsTo(User::class, 'user_id');
     }
 
     /**
-     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo<User, $this>
+     * @return BelongsTo<User, $this>
      */
     public function delegatedBy()
     {
-        return $this->belongsTo(\App\Models\User::class, 'delegated_by_id');
+        return $this->belongsTo(User::class, 'delegated_by_id');
     }
 
     /**
      * Scope pour filtrer par séance
      *
-     * @param  \Illuminate\Database\Eloquent\Builder<ESBTPAttendance>  $query
-     * @return \Illuminate\Database\Eloquent\Builder<ESBTPAttendance>
+     * @param  Builder<ESBTPAttendance>  $query
+     * @return Builder<ESBTPAttendance>
      */
     public function scopeForSeance($query, int $seanceId)
     {
@@ -88,8 +91,8 @@ class ESBTPAttendance extends Model
     /**
      * Scope pour filtrer les participations validées
      *
-     * @param  \Illuminate\Database\Eloquent\Builder<ESBTPAttendance>  $query
-     * @return \Illuminate\Database\Eloquent\Builder<ESBTPAttendance>
+     * @param  Builder<ESBTPAttendance>  $query
+     * @return Builder<ESBTPAttendance>
      */
     public function scopeValidated($query)
     {
@@ -101,7 +104,7 @@ class ESBTPAttendance extends Model
      */
     public function getFormattedDurationAttribute(): ?string
     {
-        if (!$this->duration_minutes) {
+        if (! $this->duration_minutes) {
             return null;
         }
 
@@ -118,8 +121,8 @@ class ESBTPAttendance extends Model
     /**
      * Scope pour filtrer les participants connectés
      *
-     * @param  \Illuminate\Database\Eloquent\Builder<ESBTPAttendance>  $query
-     * @return \Illuminate\Database\Eloquent\Builder<ESBTPAttendance>
+     * @param  Builder<ESBTPAttendance>  $query
+     * @return Builder<ESBTPAttendance>
      */
     public function scopeConnected($query)
     {
@@ -129,12 +132,11 @@ class ESBTPAttendance extends Model
     /**
      * Scope pour filtrer les participants déconnectés
      *
-     * @param  \Illuminate\Database\Eloquent\Builder<ESBTPAttendance>  $query
-     * @return \Illuminate\Database\Eloquent\Builder<ESBTPAttendance>
+     * @param  Builder<ESBTPAttendance>  $query
+     * @return Builder<ESBTPAttendance>
      */
     public function scopeDisconnected($query)
     {
         return $query->where('status', 'disconnected');
     }
-
 }

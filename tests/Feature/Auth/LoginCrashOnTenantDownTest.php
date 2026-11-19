@@ -4,12 +4,10 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Auth;
 
-use App\Models\Institution;
 use App\Services\Klassci\Auth\KlassciAuthClient;
 use App\Services\Klassci\Auth\KlassciTenantDiscovery;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\ConnectionException;
-use Illuminate\Http\Client\Factory as HttpFactory;
 use Illuminate\Http\Client\Response;
 use Mockery;
 use Tests\TestCase;
@@ -111,7 +109,7 @@ final class LoginCrashOnTenantDownTest extends TestCase
         // Simulation : discovery retourne 2 tenants, AuthClient échoue sur le 1er
         // (peut représenter un tenant down) et réussit sur le 2nd
         $down = ['code' => 'tenant-down', 'api_base_url' => 'https://down.klassci.test'];
-        $up   = ['code' => 'tenant-up',   'api_base_url' => 'https://up.klassci.test'];
+        $up = ['code' => 'tenant-up',   'api_base_url' => 'https://up.klassci.test'];
 
         $discoveryMock = Mockery::mock(KlassciTenantDiscovery::class);
         $discoveryMock->shouldReceive('findMatchingTenants')->andReturn([$down, $up]);

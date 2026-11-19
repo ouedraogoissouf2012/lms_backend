@@ -4,6 +4,7 @@ namespace Database\Factories;
 
 use App\Models\Evaluation;
 use App\Models\EvaluationQuestion;
+use App\Models\Institution;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 class EvaluationQuestionFactory extends Factory
@@ -20,7 +21,7 @@ class EvaluationQuestionFactory extends Factory
             // institution_id hérité du parent Evaluation : sans ça, le global scope
             // BelongsToInstitution filtre la question hors de son évaluation parente.
             'institution_id' => fn (array $attrs) => Evaluation::find($attrs['evaluation_id'])?->institution_id
-                ?? \App\Models\Institution::factory(),
+                ?? Institution::factory(),
         ];
     }
 }

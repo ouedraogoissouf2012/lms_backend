@@ -3,9 +3,10 @@
 namespace Tests\Feature\Requests;
 
 use App\Models\Chapter;
+use App\Models\Institution;
 use App\Models\Lesson;
 use App\Models\User;
-use App\Models\Institution;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
@@ -16,12 +17,16 @@ use Tests\TestCase;
  */
 class DeleteChapterRequestTest extends TestCase
 {
-    use \Illuminate\Foundation\Testing\RefreshDatabase;
+    use RefreshDatabase;
 
     private Institution $institution;
+
     private User $teacher;
+
     private User $student;
+
     private Lesson $lesson;
+
     private Chapter $chapter;
 
     protected function setUp(): void

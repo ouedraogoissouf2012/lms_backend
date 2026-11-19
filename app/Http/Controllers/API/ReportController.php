@@ -41,8 +41,7 @@ final class ReportController extends AuthenticatedController
         private readonly SeanceAttendanceExportService $seanceAttendance,
         private readonly AsyncReportDispatcher $asyncReports,
         private readonly AsyncReportStore $asyncReportStore,
-    ) {
-    }
+    ) {}
 
     /**
      * POST /api/admin/reports/attendance — rapport de présences (PDF).
@@ -129,7 +128,7 @@ final class ReportController extends AuthenticatedController
      *   - sinon → `payload` est un tableau JSON-sérialisable enveloppé dans
      *     une `JsonResponse` avec le code HTTP du service.
      *
-     * @param array{status: int, payload: Response|array<string, mixed>} $result
+     * @param  array{status: int, payload: Response|array<string, mixed>}  $result
      */
     private function toHttpResponse(array $result): Response|JsonResponse
     {
@@ -163,7 +162,7 @@ final class ReportController extends AuthenticatedController
     }
 
     /**
-     * @param array{id: string, status: string, status_url: string, download_url: string} $payload
+     * @param  array{id: string, status: string, status_url: string, download_url: string}  $payload
      */
     private function accepted(array $payload): JsonResponse
     {
@@ -186,7 +185,7 @@ final class ReportController extends AuthenticatedController
     }
 
     /**
-     * @param array<string, mixed> $report
+     * @param  array<string, mixed>  $report
      * @return array<string, mixed>
      */
     private function publicReport(array $report): array

@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Models\EvaluationSubmission;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -14,7 +15,7 @@ use Illuminate\Support\Facades\Log;
  * Toutes les lignes antérieures portent donc `student_id = NULL`.
  *
  * Or la propriété d'une copie se lit désormais par cette colonne
- * ({@see \App\Models\EvaluationSubmission}). Sans ce rattrapage, une copie
+ * ({@see EvaluationSubmission}). Sans ce rattrapage, une copie
  * commencée avant le déploiement deviendrait introuvable pour son auteur — un
  * élève en cours d'épreuve perdrait sa tentative.
  *

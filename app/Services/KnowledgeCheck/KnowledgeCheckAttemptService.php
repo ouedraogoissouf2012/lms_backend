@@ -58,8 +58,7 @@ final class KnowledgeCheckAttemptService
         private readonly ConnectionInterface $db,
         private readonly ChapterTimeRecorder $timeRecorder,
         private readonly LessonProgressGate $progressGate,
-    ) {
-    }
+    ) {}
 
     /**
      * Démarre une tentative : vérifie le quota, ouvre la tentative avec sa

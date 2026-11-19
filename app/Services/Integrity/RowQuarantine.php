@@ -31,8 +31,7 @@ final class RowQuarantine
     public function __construct(
         private readonly DatabaseManager $db,
         private readonly ArchivedRowWriterInterface $writer,
-    ) {
-    }
+    ) {}
 
     /**
      * Copie les lignes en quarantaine et VÉRIFIE qu'elles y sont.

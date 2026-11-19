@@ -24,8 +24,7 @@ final class InstitutionForeignKeyGuard
 {
     public function __construct(
         private readonly InstitutionIntegrityInspectorInterface $inspector,
-    ) {
-    }
+    ) {}
 
     /**
      * @param  list<string>  $tables
@@ -52,10 +51,10 @@ final class InstitutionForeignKeyGuard
             $lines[] = "  - {$table} : {$count} ligne(s) orpheline(s)";
         }
 
-        return "Migration #583 annulée : des lignes orphelines (institution_id "
+        return 'Migration #583 annulée : des lignes orphelines (institution_id '
             ."pointant vers une institution inexistante) empêchent l'ajout des "
             ."clés étrangères sans état partiel.\n".implode("\n", $lines)."\n"
-            ."Exécutez `php artisan institutions:audit-orphans` pour le détail, "
-            ."nettoyez (rattachement / archivage) puis relancez la migration.";
+            .'Exécutez `php artisan institutions:audit-orphans` pour le détail, '
+            .'nettoyez (rattachement / archivage) puis relancez la migration.';
     }
 }

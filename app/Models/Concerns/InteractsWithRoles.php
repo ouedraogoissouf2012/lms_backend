@@ -6,9 +6,10 @@ namespace App\Models\Concerns;
 
 use App\Enums\Role;
 use App\Exceptions\CompteSansEtablissementException;
+use App\Models\User;
 
 /**
- * Helpers de rôle du modèle {@see \App\Models\User}.
+ * Helpers de rôle du modèle {@see User}.
  *
  * Extrait de `User` (#axe-autorisation) pour regrouper la logique de rôle et
  * tenir la limite PRODUCTION_STANDARDS §5 « Modèles ≤ 150 lignes ». Comportement
@@ -17,7 +18,7 @@ use App\Exceptions\CompteSansEtablissementException;
  * `role` est la source d'autorité UNIQUE pour l'autorisation (jamais `klassci_role`,
  * cf. CRITICAL-05). Requiert la propriété `string $role` sur la classe hôte.
  *
- * @see \App\Enums\Role
+ * @see Role
  */
 trait InteractsWithRoles
 {

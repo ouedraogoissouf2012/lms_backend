@@ -20,7 +20,6 @@ class SSLVerificationValidator
     /**
      * Validate SSL configuration on application start
      *
-     * @param Application $app
      * @throws \RuntimeException if SSL disabled in production
      */
     public static function validate(Application $app): void
@@ -29,9 +28,9 @@ class SSLVerificationValidator
         $isProduction = $app->isProduction();
 
         // Fail-secure: production must always verify SSL
-        if ($isProduction && !$sslVerifyEnabled) {
-            $message = 'CRITICAL SECURITY ERROR: SSL verification disabled in production. ' .
-                      'Set KLASSCI_SSL_VERIFY=true in .env or remove the setting (default: true). ' .
+        if ($isProduction && ! $sslVerifyEnabled) {
+            $message = 'CRITICAL SECURITY ERROR: SSL verification disabled in production. '.
+                      'Set KLASSCI_SSL_VERIFY=true in .env or remove the setting (default: true). '.
                       'Application cannot start with this configuration.';
 
             Log::critical($message, [
@@ -43,7 +42,7 @@ class SSLVerificationValidator
         }
 
         // Log warning in development if SSL disabled (informational only)
-        if (!$isProduction && !$sslVerifyEnabled) {
+        if (! $isProduction && ! $sslVerifyEnabled) {
             Log::warning('SSL verification disabled in development environment', [
                 'env' => app()->environment(),
                 'note' => 'This is acceptable for local development with self-signed certificates',

@@ -68,7 +68,7 @@ final class AuditLogger
      * mentirait sinon. Les casts restent appliqués à toutes les autres colonnes.
      *
      * @param  list<string>  $cles  les attributs modifiés ; `getOriginal()` y porte
-     *                               encore l'avant (avant `syncOriginal()`)
+     *                              encore l'avant (avant `syncOriginal()`)
      */
     public function logModelUpdate(Model $model, array $cles): void
     {

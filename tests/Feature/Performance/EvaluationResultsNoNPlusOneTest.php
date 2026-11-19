@@ -33,8 +33,11 @@ final class EvaluationResultsNoNPlusOneTest extends TestCase
     use RefreshDatabase;
 
     private Institution $institution;
+
     private User $teacher;
+
     private Evaluation $evalSmall;
+
     private Evaluation $evalLarge;
 
     protected function setUp(): void
@@ -94,8 +97,7 @@ final class EvaluationResultsNoNPlusOneTest extends TestCase
         DB::disableQueryLog();
         DB::flushQueryLog();
 
-        return $queries->filter(fn (string $q): bool =>
-            str_contains($q, 'evaluation_submissions')
+        return $queries->filter(fn (string $q): bool => str_contains($q, 'evaluation_submissions')
             || str_contains($q, '"users"') || str_contains($q, '`users`')
         )->count();
     }
@@ -124,7 +126,7 @@ final class EvaluationResultsNoNPlusOneTest extends TestCase
         $roster = [];
         foreach (range(1, $size) as $i) {
             $klassciId = 2000 + $offset + $i;
-            $email = 'eleve' . ($offset + $i) . '@ecole.test';
+            $email = 'eleve'.($offset + $i).'@ecole.test';
 
             User::factory()->student()->for($this->institution)->create([
                 'klassci_id' => $klassciId,

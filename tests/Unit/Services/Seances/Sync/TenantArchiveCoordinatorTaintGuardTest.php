@@ -14,6 +14,7 @@ use Carbon\CarbonInterface;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\LoggerInterface;
 use Psr\Log\NullLogger;
+use Tests\Feature\Seances\NoPhantomKlassciSeanceProbeTest;
 
 /**
  * Le garde de souillure est la SEULE protection contre un archivage de masse.
@@ -37,7 +38,7 @@ use Psr\Log\NullLogger;
  * sans coupler le test à l'implémentation (§1.6, substituabilité LSP).
  *
  * @see PRODUCTION_STANDARDS.md §1.3 (tests obligatoires) · §1.6 (SOLID)
- * @see \Tests\Feature\Seances\NoPhantomKlassciSeanceProbeTest
+ * @see NoPhantomKlassciSeanceProbeTest
  */
 final class TenantArchiveCoordinatorTaintGuardTest extends TestCase
 {
@@ -49,7 +50,7 @@ final class TenantArchiveCoordinatorTaintGuardTest extends TestCase
     {
         $archiver = $this->spyArchiver();
         $state = $this->freshCycle();
-        $stats = new SeanceSyncStats();
+        $stats = new SeanceSyncStats;
 
         $state->currentInstitutionId = self::INSTITUTION_A;
         // Une erreur KLASSCI est survenue pour un enseignant de ce tenant.
@@ -66,7 +67,7 @@ final class TenantArchiveCoordinatorTaintGuardTest extends TestCase
     {
         $archiver = $this->spyArchiver();
         $state = $this->freshCycle();
-        $stats = new SeanceSyncStats();
+        $stats = new SeanceSyncStats;
 
         $state->currentInstitutionId = self::INSTITUTION_A;
 
@@ -85,7 +86,7 @@ final class TenantArchiveCoordinatorTaintGuardTest extends TestCase
     {
         $archiver = $this->spyArchiver();
         $state = $this->freshCycle();
-        $stats = new SeanceSyncStats();
+        $stats = new SeanceSyncStats;
         $coordinator = $this->coordinator($archiver);
 
         $coordinator->enterTenant($state, self::INSTITUTION_A, $stats);
@@ -108,7 +109,7 @@ final class TenantArchiveCoordinatorTaintGuardTest extends TestCase
     {
         $archiver = $this->spyArchiver();
         $state = $this->freshCycle();
-        $stats = new SeanceSyncStats();
+        $stats = new SeanceSyncStats;
 
         $this->coordinator($archiver)->closeCycle($state, $stats);
 
@@ -130,7 +131,7 @@ final class TenantArchiveCoordinatorTaintGuardTest extends TestCase
 
     private function logger(): LoggerInterface
     {
-        return new NullLogger();
+        return new NullLogger;
     }
 
     /**
@@ -139,7 +140,8 @@ final class TenantArchiveCoordinatorTaintGuardTest extends TestCase
      */
     private function spyArchiver(): StaleSeanceArchiverInterface
     {
-        return new class implements StaleSeanceArchiverInterface {
+        return new class implements StaleSeanceArchiverInterface
+        {
             /** @var array<int, int> */
             public array $archivedInstitutionIds = [];
 

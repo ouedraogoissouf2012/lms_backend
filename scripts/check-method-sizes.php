@@ -36,10 +36,9 @@ declare(strict_types=1);
  *
  * @see docs/MANIFESTE_REFACTORING.md
  */
-
 const MAX_METHOD_LINES = 40;
 
-$baselineFile = __DIR__ . '/method-length-baseline.php';
+$baselineFile = __DIR__.'/method-length-baseline.php';
 /** @var array<string, int> $baseline  clé « chemin::méthode » => longueur tolérée */
 $baseline = is_file($baselineFile) ? (require $baselineFile) : [];
 
@@ -78,7 +77,7 @@ foreach ($files as $file) {
     $inspected++;
 
     foreach (methodLengths($source) as $method => $length) {
-        $key = $normalized . '::' . $method;
+        $key = $normalized.'::'.$method;
         $tolerated = $baseline[$key] ?? null;
 
         if ($tolerated !== null) {
@@ -108,11 +107,11 @@ if ($inScope === 0) {
     fwrite(STDERR, "
 ❌ Garde-fou méthodes : aucun fichier app/**.php dans les arguments — rien n'a été contrôlé.
 ");
-    fwrite(STDERR, "   Arguments reçus : " . count($files) . "
-");
-    fwrite(STDERR, "   Un vert ici ne prouverait rien. Fournir les fichiers à contrôler.
+    fwrite(STDERR, '   Arguments reçus : '.count($files).'
+');
+    fwrite(STDERR, '   Un vert ici ne prouverait rien. Fournir les fichiers à contrôler.
 
-");
+');
     exit(2);
 }
 
@@ -124,7 +123,7 @@ if ($shrunk !== []) {
 }
 
 if ($violations !== []) {
-    fwrite(STDERR, "\n❌ Garde-fou longueur de méthodes (§5 : ≤ " . MAX_METHOD_LINES . " lignes) :\n");
+    fwrite(STDERR, "\n❌ Garde-fou longueur de méthodes (§5 : ≤ ".MAX_METHOD_LINES." lignes) :\n");
     foreach ($violations as $violation) {
         fwrite(STDERR, "   - {$violation}\n");
     }
@@ -136,8 +135,8 @@ if ($violations !== []) {
 }
 
 fwrite(STDOUT, sprintf(
-    "✅ Longueur des méthodes : %d fichier(s) inspecté(s) sur %d dans le périmètre, 0 violation (≤ %d lignes).
-",
+    '✅ Longueur des méthodes : %d fichier(s) inspecté(s) sur %d dans le périmètre, 0 violation (≤ %d lignes).
+',
     $inspected,
     $inScope,
     MAX_METHOD_LINES
@@ -147,7 +146,7 @@ exit(0);
 /**
  * Longueur de chaque méthode d'un fichier, en lignes de code effectives.
  *
- * @return array<string, int>  nom de méthode => nombre de lignes de code
+ * @return array<string, int> nom de méthode => nombre de lignes de code
  */
 function methodLengths(string $source): array
 {
@@ -220,13 +219,14 @@ function methodLengths(string $source): array
 /**
  * Numéro de ligne d'un token, y compris pour les tokens simples (caractères).
  *
- * @param array<int, array{0:int,1:string,2:int}|string> $tokens
+ * @param  array<int, array{0:int,1:string,2:int}|string>  $tokens
  */
 function tokenLine(array $tokens, int $index): int
 {
     for ($i = $index; $i >= 0; $i--) {
         if (is_array($tokens[$i])) {
             $line = $tokens[$i][2];
+
             // Un token multi-lignes (heredoc, commentaire) décale le compteur.
             return $line + substr_count($tokens[$i][1], "\n");
         }
@@ -238,7 +238,7 @@ function tokenLine(array $tokens, int $index): int
 /**
  * Lignes de code entre deux bornes, hors lignes vides et commentaires.
  *
- * @param array<int, string> $lines
+ * @param  array<int, string>  $lines
  */
 function countCodeLines(array $lines, int $from, int $to): int
 {

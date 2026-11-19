@@ -146,7 +146,9 @@ final class AppNeDependPasDesTestsTest extends TestCase
 
         foreach ($jetons as $jeton) {
             if (! is_array($jeton)) {
-                $profondeur += match ($jeton) { '{' => 1, '}' => -1, default => 0 };
+                $profondeur += match ($jeton) {
+                    '{' => 1, '}' => -1, default => 0
+                };
                 $dansUnUse = $dansUnUse && $jeton !== ';';
 
                 continue;

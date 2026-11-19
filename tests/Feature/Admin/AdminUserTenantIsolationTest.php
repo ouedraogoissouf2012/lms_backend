@@ -29,7 +29,9 @@ final class AdminUserTenantIsolationTest extends TestCase
     use RefreshDatabase;
 
     private Institution $instA;
+
     private Institution $instB;
+
     private User $coordA;
 
     protected function setUp(): void

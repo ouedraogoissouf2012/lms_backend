@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\KnowledgeCheck;
 
+use App\Rules\OptionIndexAnswer;
 use Random\Randomizer;
 
 /**
@@ -32,9 +33,7 @@ use Random\Randomizer;
  */
 final class KnowledgeCheckPresentation
 {
-    public function __construct(private readonly Randomizer $hasard)
-    {
-    }
+    public function __construct(private readonly Randomizer $hasard) {}
 
     /**
      * @param  array<int|string, mixed>  $questions  les questions enregistrées
@@ -180,8 +179,8 @@ final class KnowledgeCheckPresentation
      * désigne une option qui n'a pas été affichée, ou une question qui n'existe pas.
      *
      * @param  Presentation  $presentation
-     * @param  array<int|string, mixed>  $reponses  validées par {@see \App\Rules\OptionIndexAnswer}
-     * @return array<int|string, int|list<int>|null>|null  indexée par question d'origine
+     * @param  array<int|string, mixed>  $reponses  validées par {@see OptionIndexAnswer}
+     * @return array<int|string, int|list<int>|null>|null indexée par question d'origine
      */
     public function versOrigine(array $presentation, array $reponses): ?array
     {
@@ -236,7 +235,7 @@ final class KnowledgeCheckPresentation
 
     /**
      * @param  list<int>  $ordre  indices d'origine, dans l'ordre affiché
-     * @return int|list<int>|null|false  `false` : hors des options affichées
+     * @return int|list<int>|null|false `false` : hors des options affichées
      */
     private static function versOptionsDOrigine(mixed $reponse, array $ordre): int|array|null|false
     {

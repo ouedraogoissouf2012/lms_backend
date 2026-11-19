@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\API\Evaluation\Student;
 
-use App\Http\Controllers\API\Concerns\RendersKlassciBackedErrors;
 use App\Exceptions\KlassciUnavailableException;
 use App\Exceptions\MissingKlassciTokenException;
+use App\Http\Controllers\API\Concerns\RendersKlassciBackedErrors;
 use App\Http\Controllers\AuthenticatedController;
 use App\Http\Requests\StartEvaluationRequest;
 use App\Http\Requests\SubmitEvaluationRequest;
@@ -87,7 +87,7 @@ final class EvaluationStudentAttemptController extends AuthenticatedController
             // Le client réessaie après le délai que le dépôt annonce pour toute
             // indisponibilité KLASSCI.
             'window_check_failed' => $this->errorResponse(
-                $result['message'] ?? "Service momentanément indisponible, veuillez réessayer.",
+                $result['message'] ?? 'Service momentanément indisponible, veuillez réessayer.',
                 503,
                 reason: 'evaluation_window_unverifiable',
             )->header('Retry-After', (string) KlassciUnavailableException::retryAfterSeconds()),
@@ -161,6 +161,7 @@ final class EvaluationStudentAttemptController extends AuthenticatedController
             return $this->successResponse($payload, 'Évaluation soumise avec succès', 201);
         } catch (\Exception $e) {
             $this->journal->error('Erreur soumission évaluation', $e);
+
             return $this->errorResponse('Erreur lors de la soumission', 500);
         }
     }
@@ -170,6 +171,7 @@ final class EvaluationStudentAttemptController extends AuthenticatedController
         try {
             $user = $this->authenticatedUser($request);
             $data = $this->attemptState->getTimeStatus($id, $user);
+
             return $this->successResponse($data);
         } catch (RuntimeException $e) {
             // Le service signale l'évaluation absente par son message ; tout le
@@ -184,6 +186,7 @@ final class EvaluationStudentAttemptController extends AuthenticatedController
             $this->journal->error('Erreur récupération état temporel', $e, [
                 'evaluation_id' => $id,
             ]);
+
             return $this->errorResponse('Impossible de récupérer l\'état temporel', 500);
         }
     }

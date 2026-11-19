@@ -34,7 +34,6 @@ final class OptionsListeDeTextesTest extends TestCase
     use EcritDesQuestions;
     use RefreshDatabase;
 
-
     /** @return array<string, array{InstitutionMode}> */
     public static function ecoles(): array
     {

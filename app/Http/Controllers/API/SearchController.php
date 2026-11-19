@@ -39,8 +39,7 @@ final class SearchController extends AuthenticatedController
         private readonly GlobalSearchService $globalSearch,
         private readonly SearchSuggestionsService $suggestions,
         private readonly SearchHistoryService $history,
-    ) {
-    }
+    ) {}
 
     /**
      * Recherche globale dans le système.

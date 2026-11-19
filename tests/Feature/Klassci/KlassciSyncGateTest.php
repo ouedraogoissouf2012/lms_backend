@@ -6,6 +6,7 @@ namespace Tests\Feature\Klassci;
 
 use App\Models\Institution;
 use App\Models\User;
+use App\Services\Institution\InstitutionConnectionTester;
 use App\Services\Klassci\Health\ApplicationProofResult;
 use App\Services\Klassci\Health\InMemoryKlassciApplicationProof;
 use App\Services\Klassci\Health\InMemoryKlassciReachability;
@@ -14,7 +15,6 @@ use App\Services\Klassci\Health\KlassciReachability;
 use App\Services\Klassci\Sync\KlassciSyncGate;
 use App\Services\Klassci\Sync\NeverSyncGate;
 use App\Services\Klassci\Sync\TokenPresentSyncGate;
-use App\Services\Institution\InstitutionConnectionTester;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Tests\Concerns\ActsAsTenantUser;

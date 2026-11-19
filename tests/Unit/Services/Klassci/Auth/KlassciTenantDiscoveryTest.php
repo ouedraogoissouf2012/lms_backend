@@ -4,9 +4,13 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Services\Klassci\Auth;
 
+use App\Exceptions\KlassciUnavailableException;
 use App\Models\Institution;
 use App\Services\Klassci\Auth\KlassciTenantDiscovery;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Http\Client\Factory;
+use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Http;
 use Mockery;
@@ -32,7 +36,7 @@ use Tests\TestCase;
 #[CoversClass(KlassciTenantDiscovery::class)]
 final class KlassciTenantDiscoveryTest extends TestCase
 {
-    use \Illuminate\Foundation\Testing\RefreshDatabase;
+    use RefreshDatabase;
 
     protected function setUp(): void
     {
@@ -63,19 +67,19 @@ final class KlassciTenantDiscoveryTest extends TestCase
     public function test_finds_single_matching_tenant(): void
     {
         Institution::factory()->create([
-            'slug'            => 'alpha',
+            'slug' => 'alpha',
             'klassci_api_url' => 'https://alpha.klassci.test',
-            'is_active'       => true,
+            'is_active' => true,
         ]);
         Institution::factory()->create([
-            'slug'            => 'beta',
+            'slug' => 'beta',
             'klassci_api_url' => 'https://beta.klassci.test',
-            'is_active'       => true,
+            'is_active' => true,
         ]);
 
         Http::fake([
             'alpha.klassci.test/auth/check-user' => Http::response(['data' => ['found' => true]], 200),
-            'beta.klassci.test/auth/check-user'  => Http::response(['data' => ['found' => false]], 200),
+            'beta.klassci.test/auth/check-user' => Http::response(['data' => ['found' => false]], 200),
         ]);
 
         $logger = Mockery::spy(LoggerInterface::class);
@@ -90,19 +94,19 @@ final class KlassciTenantDiscoveryTest extends TestCase
     public function test_finds_multiple_matching_tenants(): void
     {
         Institution::factory()->create([
-            'slug'            => 'alpha',
+            'slug' => 'alpha',
             'klassci_api_url' => 'https://alpha.klassci.test',
-            'is_active'       => true,
+            'is_active' => true,
         ]);
         Institution::factory()->create([
-            'slug'            => 'beta',
+            'slug' => 'beta',
             'klassci_api_url' => 'https://beta.klassci.test',
-            'is_active'       => true,
+            'is_active' => true,
         ]);
 
         Http::fake([
             'alpha.klassci.test/auth/check-user' => Http::response(['data' => ['found' => true]], 200),
-            'beta.klassci.test/auth/check-user'  => Http::response(['data' => ['found' => true]], 200),
+            'beta.klassci.test/auth/check-user' => Http::response(['data' => ['found' => true]], 200),
         ]);
 
         $logger = Mockery::spy(LoggerInterface::class);
@@ -125,26 +129,26 @@ final class KlassciTenantDiscoveryTest extends TestCase
     public function test_skips_tenant_with_connection_exception_without_crashing(): void
     {
         Institution::factory()->create([
-            'slug'            => 'down',
+            'slug' => 'down',
             'klassci_api_url' => 'https://down.klassci.test',
-            'is_active'       => true,
+            'is_active' => true,
         ]);
         Institution::factory()->create([
-            'slug'            => 'up',
+            'slug' => 'up',
             'klassci_api_url' => 'https://up.klassci.test',
-            'is_active'       => true,
+            'is_active' => true,
         ]);
 
         // Simule directement le retour de pool() : array indexé par tenant code,
         // avec ConnectionException pour 'down' et Response pour 'up'.
-        $upResponse = Mockery::mock(\Illuminate\Http\Client\Response::class);
+        $upResponse = Mockery::mock(Response::class);
         $upResponse->shouldReceive('successful')->andReturn(true);
         $upResponse->shouldReceive('json')->andReturn(['data' => ['found' => true]]);
 
-        $http = Mockery::mock(\Illuminate\Http\Client\Factory::class);
+        $http = Mockery::mock(Factory::class);
         $http->shouldReceive('pool')->andReturn([
             'down' => new ConnectionException('Connection refused'),
-            'up'   => $upResponse,
+            'up' => $upResponse,
         ]);
 
         $logger = Mockery::spy(LoggerInterface::class);
@@ -166,9 +170,9 @@ final class KlassciTenantDiscoveryTest extends TestCase
     public function test_skips_tenant_with_5xx_response(): void
     {
         Institution::factory()->create([
-            'slug'            => 'broken',
+            'slug' => 'broken',
             'klassci_api_url' => 'https://broken.klassci.test',
-            'is_active'       => true,
+            'is_active' => true,
         ]);
 
         Http::fake([
@@ -186,9 +190,9 @@ final class KlassciTenantDiscoveryTest extends TestCase
     public function test_skips_tenant_when_found_false(): void
     {
         Institution::factory()->create([
-            'slug'            => 'doesnotknow',
+            'slug' => 'doesnotknow',
             'klassci_api_url' => 'https://doesnotknow.klassci.test',
-            'is_active'       => true,
+            'is_active' => true,
         ]);
 
         Http::fake([
@@ -206,13 +210,13 @@ final class KlassciTenantDiscoveryTest extends TestCase
     public function test_does_not_log_password_in_warnings(): void
     {
         Institution::factory()->create([
-            'slug'            => 'sensitive',
+            'slug' => 'sensitive',
             'klassci_api_url' => 'https://sensitive.klassci.test',
-            'is_active'       => true,
+            'is_active' => true,
         ]);
 
         // Mock direct HttpFactory pour injecter ConnectionException (cf. test ci-dessus).
-        $http = Mockery::mock(\Illuminate\Http\Client\Factory::class);
+        $http = Mockery::mock(Factory::class);
         $http->shouldReceive('pool')->andReturn([
             'sensitive' => new ConnectionException('refused'),
         ]);
@@ -231,7 +235,7 @@ final class KlassciTenantDiscoveryTest extends TestCase
         // non-log du password, y compris dans le message d'indisponibilité.
         try {
             $discovery->findMatchingTenants('user@sensitive.com');
-        } catch (\App\Exceptions\KlassciUnavailableException) {
+        } catch (KlassciUnavailableException) {
             // attendu
         }
 
@@ -245,9 +249,9 @@ final class KlassciTenantDiscoveryTest extends TestCase
         Config::set('services.klassci.ssl_verify', false);
 
         Institution::factory()->create([
-            'slug'            => 'unsigned',
+            'slug' => 'unsigned',
             'klassci_api_url' => 'https://unsigned.klassci.test',
-            'is_active'       => true,
+            'is_active' => true,
         ]);
 
         Http::fake([

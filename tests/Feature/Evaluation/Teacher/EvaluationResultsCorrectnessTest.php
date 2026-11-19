@@ -28,7 +28,9 @@ final class EvaluationResultsCorrectnessTest extends TestCase
     use RefreshDatabase;
 
     private Institution $institution;
+
     private User $teacher;
+
     private Evaluation $evaluation;
 
     protected function setUp(): void

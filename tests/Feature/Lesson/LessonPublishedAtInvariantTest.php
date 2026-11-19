@@ -30,6 +30,7 @@ final class LessonPublishedAtInvariantTest extends TestCase
     use RefreshDatabase;
 
     private Institution $institution;
+
     private User $teacher;
 
     protected function setUp(): void
@@ -43,7 +44,7 @@ final class LessonPublishedAtInvariantTest extends TestCase
     }
 
     /**
-     * @param array<string, mixed> $attributes
+     * @param  array<string, mixed>  $attributes
      */
     private function createLesson(array $attributes): Lesson
     {

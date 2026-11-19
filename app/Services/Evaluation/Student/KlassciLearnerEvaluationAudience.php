@@ -30,8 +30,8 @@ final class KlassciLearnerEvaluationAudience implements LearnerEvaluationAudienc
     /**
      * La classe KLASSCI de l'élève.
      *
-     * @return array<string, mixed>|null  `id` numérique ; null sans jeton
-     *                                    KLASSCI ou sans classe.
+     * @return array<string, mixed>|null `id` numérique ; null sans jeton
+     *                                   KLASSCI ou sans classe.
      */
     public function classeOf(User $user): ?array
     {

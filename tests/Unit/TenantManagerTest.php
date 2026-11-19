@@ -2,9 +2,9 @@
 
 namespace Tests\Unit;
 
-use Tests\TestCase;
-use App\Services\TenantManager;
 use App\Models\Institution;
+use App\Services\TenantManager;
+use Tests\TestCase;
 
 /**
  * CRITICAL-06: TenantManager — Enforce fail-secure tenant resolution
@@ -16,7 +16,7 @@ class TenantManagerTest extends TestCase
      */
     public function test_getresolved_throws_if_tenant_not_set()
     {
-        $tenantManager = new TenantManager();
+        $tenantManager = new TenantManager;
 
         $this->expectException(\RuntimeException::class);
         $this->expectExceptionMessageMatches('/Tenant resolution failed/');
@@ -29,7 +29,7 @@ class TenantManagerTest extends TestCase
      */
     public function test_getresolved_returns_id_when_set()
     {
-        $tenantManager = new TenantManager();
+        $tenantManager = new TenantManager;
 
         $institution = \Mockery::mock(Institution::class)
             ->shouldIgnoreMissing()
@@ -46,7 +46,7 @@ class TenantManagerTest extends TestCase
      */
     public function test_getresolvedslug_throws_if_tenant_not_set()
     {
-        $tenantManager = new TenantManager();
+        $tenantManager = new TenantManager;
 
         $this->expectException(\RuntimeException::class);
         $this->expectExceptionMessageMatches('/Tenant resolution failed/');
@@ -59,7 +59,7 @@ class TenantManagerTest extends TestCase
      */
     public function test_getresolvedslug_returns_slug_when_set()
     {
-        $tenantManager = new TenantManager();
+        $tenantManager = new TenantManager;
 
         $institution = \Mockery::mock(Institution::class)
             ->shouldIgnoreMissing()
@@ -77,7 +77,7 @@ class TenantManagerTest extends TestCase
      */
     public function test_id_and_slug_return_null_if_not_set()
     {
-        $tenantManager = new TenantManager();
+        $tenantManager = new TenantManager;
 
         $this->assertNull($tenantManager->id());
         $this->assertNull($tenantManager->slug());

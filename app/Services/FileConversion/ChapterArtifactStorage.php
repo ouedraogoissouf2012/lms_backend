@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\FileConversion;
 
+use App\Http\Requests\Concerns\ChecksChapterDownloadAuthorization;
 use Illuminate\Contracts\Filesystem\Factory as FilesystemFactory;
 use Illuminate\Filesystem\FilesystemAdapter;
 use Illuminate\Http\UploadedFile;
@@ -66,7 +67,7 @@ final class ChapterArtifactStorage
      * conséquences à retenir : ajouter `'visibility' => 'public'` à ce disque
      * annulerait #598 en une ligne de config ; et toute URL signée générée à
      * l'avenir (`temporaryUrl()`) servirait le document **hors** de
-     * {@see \App\Http\Requests\Concerns\ChecksChapterDownloadAuthorization}.
+     * {@see ChecksChapterDownloadAuthorization}.
      */
     public const PRIVATE_DISK = 'local';
 
@@ -78,8 +79,7 @@ final class ChapterArtifactStorage
 
     public function __construct(
         private readonly FilesystemFactory $filesystem,
-    ) {
-    }
+    ) {}
 
     /**
      * Persiste le document source téléversé sur le disque **privé** et renvoie
@@ -186,7 +186,7 @@ final class ChapterArtifactStorage
      */
     public function relativePathOf(string $absolutePath): string
     {
-        $root = rtrim(str_replace('\\', '/', $this->absolutePath('')), '/') . '/';
+        $root = rtrim(str_replace('\\', '/', $this->absolutePath('')), '/').'/';
         $normalised = str_replace('\\', '/', $absolutePath);
 
         if (! str_starts_with($normalised, $root)) {

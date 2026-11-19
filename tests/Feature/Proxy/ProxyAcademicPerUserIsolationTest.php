@@ -53,11 +53,11 @@ final class ProxyAcademicPerUserIsolationTest extends TestCase
     private const PAYLOADS = [
         'evaluations' => [
             'token-alice' => ['id' => 11, 'titre' => 'Devoir de maths — classe d\'Alice'],
-            'token-bob'   => ['id' => 22, 'titre' => 'Devoir de SVT — classe de Bob'],
+            'token-bob' => ['id' => 22, 'titre' => 'Devoir de SVT — classe de Bob'],
         ],
         'emploi-temps' => [
             'token-alice' => ['id' => 33, 'matiere' => 'Maths (Alice)'],
-            'token-bob'   => ['id' => 44, 'matiere' => 'SVT (Bob)'],
+            'token-bob' => ['id' => 44, 'matiere' => 'SVT (Bob)'],
         ],
     ];
 
@@ -85,7 +85,7 @@ final class ProxyAcademicPerUserIsolationTest extends TestCase
             22,
             $bobResponse->json('data.0.id'),
             'Bob a reçu les évaluations d\'Alice — fuite d\'identité via le cache '
-            . 'KLASSCI à clé globale (#591).',
+            .'KLASSCI à clé globale (#591).',
         );
     }
 
@@ -109,7 +109,7 @@ final class ProxyAcademicPerUserIsolationTest extends TestCase
             44,
             $bobResponse->json('data.0.id'),
             'Bob a reçu l\'emploi du temps d\'Alice — fuite d\'identité via le '
-            . 'cache KLASSCI à clé globale (#591).',
+            .'cache KLASSCI à clé globale (#591).',
         );
     }
 
@@ -146,7 +146,7 @@ final class ProxyAcademicPerUserIsolationTest extends TestCase
             1,
             $this->networkCalls['evaluations'] ?? 0,
             'Le refus doit être prononcé AVANT tout appel KLASSCI (fail-secure, pas de repli '
-            . 'sur le jeton d\'institution).',
+            .'sur le jeton d\'institution).',
         );
     }
 
@@ -159,7 +159,7 @@ final class ProxyAcademicPerUserIsolationTest extends TestCase
     public function test_two_users_of_different_institutions_do_not_share_evaluations(): void
     {
         $alice = $this->userWithPersonalToken($this->institution(), 'token-alice');
-        $bob   = $this->userWithPersonalToken($this->institution(), 'token-bob');
+        $bob = $this->userWithPersonalToken($this->institution(), 'token-bob');
         self::assertNotSame($alice->institution_id, $bob->institution_id);
 
         $this->fakeKlassciTransportRoutingByBearer();
@@ -174,7 +174,7 @@ final class ProxyAcademicPerUserIsolationTest extends TestCase
             22,
             $bobResponse->json('data.0.id'),
             'Fuite CROSS-INSTITUTION : un enseignant de institution B a reçu les '
-            . 'évaluations mises en cache par institution A.',
+            .'évaluations mises en cache par institution A.',
         );
         self::assertSame(2, $this->networkCalls['evaluations'] ?? 0);
     }
@@ -197,8 +197,8 @@ final class ProxyAcademicPerUserIsolationTest extends TestCase
             1,
             $this->networkCalls['structure'] ?? 0,
             'La structure organisationnelle est identique pour tout le tenant : '
-            . 'la partitionner par porteur détruirait le taux de hit sans gain '
-            . 'de sécurité (R5).',
+            .'la partitionner par porteur détruirait le taux de hit sans gain '
+            .'de sécurité (R5).',
         );
     }
 
@@ -209,9 +209,9 @@ final class ProxyAcademicPerUserIsolationTest extends TestCase
     private function institution(): Institution
     {
         return Institution::factory()->create([
-            'klassci_api_url'   => self::TENANT_URL,
+            'klassci_api_url' => self::TENANT_URL,
             'klassci_api_token' => 'token-institution',
-            'is_active'         => true,
+            'is_active' => true,
         ]);
     }
 
@@ -231,22 +231,22 @@ final class ProxyAcademicPerUserIsolationTest extends TestCase
     private function userWithPersonalToken(Institution $institution, string $token): User
     {
         return User::factory()->for($institution)->create([
-            'role'               => 'enseignant',
-            'klassci_token'      => $token,
+            'role' => 'enseignant',
+            'klassci_token' => $token,
             'klassci_tenant_url' => self::TENANT_URL,
             // Données fraîches → EnsureKlassciSync ne déclenche aucun appel
             // KLASSCI : on isole le comportement du contrôleur proxy.
-            'last_klassci_sync'  => now(),
+            'last_klassci_sync' => now(),
         ]);
     }
 
     private function userWithoutPersonalToken(Institution $institution): User
     {
         return User::factory()->for($institution)->create([
-            'role'               => 'enseignant',
-            'klassci_token'      => null,
+            'role' => 'enseignant',
+            'klassci_token' => null,
             'klassci_tenant_url' => self::TENANT_URL,
-            'last_klassci_sync'  => now(),
+            'last_klassci_sync' => now(),
         ]);
     }
 
@@ -266,13 +266,13 @@ final class ProxyAcademicPerUserIsolationTest extends TestCase
      */
     private function fakeKlassciTransportRoutingByBearer(): void
     {
-        $factory = new HttpFactory();
+        $factory = new HttpFactory;
         $factory->fake(function (ClientRequest $request) {
             $resource = $this->resourceFromUrl($request->url());
             $this->networkCalls[$resource] = ($this->networkCalls[$resource] ?? 0) + 1;
 
             $bearer = $request->header('Authorization')[0] ?? '';
-            $token  = str_replace('Bearer ', '', $bearer);
+            $token = str_replace('Bearer ', '', $bearer);
 
             $payload = self::PAYLOADS[$resource][$token] ?? ['id' => 0, 'bearer' => $token];
 

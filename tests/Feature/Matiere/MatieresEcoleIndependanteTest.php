@@ -41,7 +41,7 @@ final class MatieresEcoleIndependanteTest extends TestCase
 
     // ───────────────────────── « Mes matières »
 
-    public function test_l_enseignant_lit_SES_matieres_et_les_classes_ou_il_les_enseigne(): void
+    public function test_l_enseignant_lit_ses_matieres_et_les_classes_ou_il_les_enseigne(): void
     {
         $ecole = $this->ecole();
         $moi = $this->membre($ecole, 'enseignant');
@@ -142,7 +142,7 @@ final class MatieresEcoleIndependanteTest extends TestCase
         $this->asTenant($this->membre($ecole, 'enseignant'))->getJson($this->page($maths))->assertNotFound();
     }
 
-    public function test_la_matiere_d_une_AUTRE_ecole_independante_reste_introuvable(): void
+    public function test_la_matiere_d_une_autre_ecole_independante_reste_introuvable(): void
     {
         $sienne = $this->ecole();
         $autre = $this->ecole();
@@ -173,7 +173,7 @@ final class MatieresEcoleIndependanteTest extends TestCase
         self::assertCount(2, (array) $reponse->json('data.enseignants'));
     }
 
-    public function test_l_apprenant_actif_lit_les_lecons_publiees_de_SA_classe_seulement(): void
+    public function test_l_apprenant_actif_lit_les_lecons_publiees_de_sa_classe_seulement(): void
     {
         $ecole = $this->ecole();
         $enseignant = $this->membre($ecole, 'enseignant');
@@ -193,7 +193,7 @@ final class MatieresEcoleIndependanteTest extends TestCase
         $reponse->assertJsonPath('data.classes_concernees', [['id' => $sixieme->getKey(), 'nom' => '6e A']]);
     }
 
-    public function test_l_apprenant_INACTIF_ne_lit_pas_la_matiere_et_lit_son_refus(): void
+    public function test_l_apprenant_inactif_ne_lit_pas_la_matiere_et_lit_son_refus(): void
     {
         // D57 : une inscription inactive n'ouvre aucun contenu. #1095 : le refus
         // dit son motif, celui du tableau de bord, et non « introuvable ».
@@ -304,7 +304,7 @@ final class MatieresEcoleIndependanteTest extends TestCase
         $this->asTenant($moi)->getJson($this->page($maths))->assertOk();
     }
 
-    public function test_un_jeton_KLASSCI_perime_ne_fait_partir_aucun_appel(): void
+    public function test_un_jeton_klassci_perime_ne_fait_partir_aucun_appel(): void
     {
         // Le cas que #806 couvrait pour ces deux routes : un compte porteur
         // d'un jeton, dans une école indépendante. Il lit sa source locale, et

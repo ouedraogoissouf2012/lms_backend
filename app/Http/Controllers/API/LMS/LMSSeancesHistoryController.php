@@ -26,7 +26,7 @@ use Illuminate\Http\JsonResponse;
  *   - GET /api/lms/seances/history → getSeancesHistory()
  *     (role:enseignant,coordinateur,superAdmin)
  *
- * @see \App\Services\SeancesHistoryQueryService
+ * @see SeancesHistoryQueryService
  */
 final class LMSSeancesHistoryController extends AuthenticatedController
 {

@@ -77,7 +77,7 @@ final class ClasseSecondaryDataFetcher
     {
         $classeData = $eval['classe'] ?? null;
 
-        if (!is_array($classeData)) {
+        if (! is_array($classeData)) {
             return false;
         }
 

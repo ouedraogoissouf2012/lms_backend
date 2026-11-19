@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Tests\Feature\Visio;
 
 use App\Enums\ConsentPurpose;
-use App\Models\Consent;
 use App\Models\Institution;
 use App\Models\Seance;
 use App\Models\User;

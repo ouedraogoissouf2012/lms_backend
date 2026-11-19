@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Quiz;
 
+use App\Http\Requests\ListQuizzesRequest;
 use App\Models\Quiz;
 use App\Models\QuizAttempt;
 use App\Models\User;
@@ -37,9 +38,7 @@ use Illuminate\Pagination\LengthAwarePaginator;
  */
 final class QuizCrudService
 {
-    public function __construct(private readonly QuizAccessService $access)
-    {
-    }
+    public function __construct(private readonly QuizAccessService $access) {}
 
     /**
      * Liste paginée filtrée + enrichissement par utilisateur.
@@ -53,12 +52,12 @@ final class QuizCrudService
      *     `user_can_attempt`, `user_best_attempt`.
      *
      * @param  array<string, mixed>  $filters  Clés lues : lesson_id, matiere_id,
-     *                                          classe_id, status, type, sort,
-     *                                          per_page. Bornées en amont par
-     *                                          {@see \App\Http\Requests\ListQuizzesRequest}
-     *                                          (#548) — validated() n'expose
-     *                                          pas de shape précise côté
-     *                                          PHPStan, d'où ce type large.
+     *                                         classe_id, status, type, sort,
+     *                                         per_page. Bornées en amont par
+     *                                         {@see ListQuizzesRequest}
+     *                                         (#548) — validated() n'expose
+     *                                         pas de shape précise côté
+     *                                         PHPStan, d'où ce type large.
      * @return LengthAwarePaginator<int,Quiz>
      */
     public function list(User $user, array $filters): LengthAwarePaginator
@@ -103,9 +102,9 @@ final class QuizCrudService
 
         $sortBy = $filters['sort'] ?? 'recent';
         match ($sortBy) {
-            'title'   => $query->orderBy('title', 'asc'),
+            'title' => $query->orderBy('title', 'asc'),
             'popular' => $query->orderBy('attempts_count', 'desc'),
-            default   => $query->orderBy('created_at', 'desc'),
+            default => $query->orderBy('created_at', 'desc'),
         };
 
         $perPageInput = $filters['per_page'] ?? 15;
@@ -120,14 +119,14 @@ final class QuizCrudService
         $attemptsByQuiz = $this->access->consumingAttemptsByQuiz($quizIds, $user->id);
 
         $quizzes->getCollection()->transform(function (Quiz $quiz) use ($attemptsByQuiz): Quiz {
-            $attempts = $attemptsByQuiz->get($quiz->id, new EloquentCollection());
+            $attempts = $attemptsByQuiz->get($quiz->id, new EloquentCollection);
 
             $quiz->user_attempts_count = $attempts->count();
             // La règle de quota vit dans QuizAccessService, PAS ici : cette
             // ligne en portait sa propre copie, restée sur l'ancienne
             // sémantique « seules les tentatives finalisées comptent » (#581).
-            $quiz->user_can_attempt    = $this->access->canAttemptFromLoaded($quiz, $attempts);
-            $quiz->user_best_attempt   = $attempts
+            $quiz->user_can_attempt = $this->access->canAttemptFromLoaded($quiz, $attempts);
+            $quiz->user_best_attempt = $attempts
                 ->first(static fn (QuizAttempt $attempt): bool => in_array($attempt->status, ['submitted', 'graded'], true));
 
             return $quiz;
@@ -166,10 +165,10 @@ final class QuizCrudService
         // Defense en profondeur (fix E2E #211 flow 5) : binding cross-tenant -> 404.
         if ($user->institution_id !== null && $quiz->institution_id !== $user->institution_id) {
             return [
-                'status'  => 404,
+                'status' => 404,
                 'success' => false,
                 'message' => 'Quiz non trouvé',
-                'data'    => null,
+                'data' => null,
             ];
         }
 
@@ -183,10 +182,10 @@ final class QuizCrudService
         // Même portée que list() (#941) : un rôle non reconnu n'ouvre pas un quiz indisponible.
         if ($user->isLearnerAudience() && ! $this->access->isAvailable($quiz)) {
             return [
-                'status'  => 403,
+                'status' => 403,
                 'success' => false,
                 'message' => 'Ce quiz n\'est pas disponible',
-                'data'    => null,
+                'data' => null,
             ];
         }
 
@@ -203,15 +202,15 @@ final class QuizCrudService
         }
 
         $quiz->user_attempts_count = $this->access->attemptsCountForUser($quiz, $user->id);
-        $quiz->user_can_attempt    = $this->access->canUserAttempt($quiz, $user->id);
-        $quiz->user_best_attempt   = $this->access->bestAttemptForUser($quiz, $user->id);
+        $quiz->user_can_attempt = $this->access->canUserAttempt($quiz, $user->id);
+        $quiz->user_best_attempt = $this->access->bestAttemptForUser($quiz, $user->id);
         $quiz->user_latest_attempt = $this->access->latestAttemptForUser($quiz, $user->id);
 
         return [
-            'status'  => 200,
+            'status' => 200,
             'success' => true,
             'message' => null,
-            'data'    => $quiz,
+            'data' => $quiz,
         ];
     }
 
@@ -246,20 +245,20 @@ final class QuizCrudService
     {
         if ($quiz->questions()->count() === 0) {
             return [
-                'status'  => 422,
+                'status' => 422,
                 'success' => false,
                 'message' => 'Impossible de publier un quiz sans questions',
-                'data'    => null,
+                'data' => null,
             ];
         }
 
         $this->access->publish($quiz);
 
         return [
-            'status'  => 200,
+            'status' => 200,
             'success' => true,
             'message' => 'Quiz publié',
-            'data'    => $quiz,
+            'data' => $quiz,
         ];
     }
 }

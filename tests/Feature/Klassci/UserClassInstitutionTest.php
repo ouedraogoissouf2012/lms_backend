@@ -8,10 +8,12 @@ use App\Models\Institution;
 use App\Models\Seance;
 use App\Models\User;
 use App\Models\UserClass;
+use App\Services\Klassci\Auth\MiroirDeLaClasseDeLEleve;
 use App\Services\Klassci\Auth\StudentClassSynchronizer;
 use App\Services\KlassciProxyService;
 use App\Services\TenantManager;
 use App\Services\Visio\Recording\SeanceRecordingAccessService;
+use App\Support\Logging\CaughtExceptionLog;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Mockery;
@@ -68,7 +70,7 @@ final class UserClassInstitutionTest extends TestCase
         );
     }
 
-    public function test_la_ligne_est_VISIBLE_sous_le_scope_du_tenant(): void
+    public function test_la_ligne_est_visible_sous_le_scope_du_tenant(): void
     {
         // La conséquence qui compte : une ligne sans établissement est invisible
         // à tous les lecteurs, le scope global suffisant à la masquer.
@@ -90,7 +92,7 @@ final class UserClassInstitutionTest extends TestCase
         );
     }
 
-    public function test_la_porte_du_replay_fonctionne_AVEC_un_tenant_resolu(): void
+    public function test_la_porte_du_replay_fonctionne_avec_un_tenant_resolu(): void
     {
         // Le correctif de la PR #877 ne marchait PAS en production : mesuré,
         // `canRead` rendait true sans tenant et false avec. Ce test l'exerce
@@ -145,6 +147,6 @@ final class UserClassInstitutionTest extends TestCase
         $proxy->shouldReceive('requestWithUserToken')
             ->andReturn(['data' => ['classe' => ['id' => $klassciClasseId, 'name' => 'Classe '.$klassciClasseId]]]);
 
-        (new StudentClassSynchronizer($proxy, new NullLogger, app(\App\Support\Logging\CaughtExceptionLog::class), DB::connection(), app(\App\Services\Klassci\Auth\MiroirDeLaClasseDeLEleve::class)))->sync($user, 'jeton-klassci');
+        (new StudentClassSynchronizer($proxy, new NullLogger, app(CaughtExceptionLog::class), DB::connection(), app(MiroirDeLaClasseDeLEleve::class)))->sync($user, 'jeton-klassci');
     }
 }

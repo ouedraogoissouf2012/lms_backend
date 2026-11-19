@@ -39,7 +39,7 @@ use Tests\TestCase;
  * d'entropie, un salon n'appartient donc qu'à une séance, d'un seul
  * établissement.
  *
- * @see \App\Services\Visio\SecureVisioRoomIdGenerator
+ * @see SecureVisioRoomIdGenerator
  * @see PRODUCTION_STANDARDS.md §1.2 (isolation multi-tenant)
  */
 final class RoomRecordingResolverTest extends TestCase
@@ -156,7 +156,7 @@ final class RoomRecordingResolverTest extends TestCase
      * **impossibles**, et c'est la base qui l'impose : un hook `saving` pose
      * `active_lock_key = 'seance:{id}'` tant que le statut est actif, `null`
      * ensuite, et la colonne porte un index UNIQUE
-     * ({@see \App\Models\SeanceRecording::activeLockKeyForSeance()},
+     * ({@see SeanceRecording::activeLockKeyForSeance()},
      * `2026_07_12_000001_create_seance_recordings_table.php:28`).
      *
      * Ce test l'épingle plutôt que de le supposer : si quelqu'un retirait ce

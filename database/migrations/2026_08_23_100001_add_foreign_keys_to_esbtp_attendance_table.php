@@ -33,7 +33,7 @@ use Illuminate\Support\Facades\Schema;
  * rien : bloquer la migration n'offrirait aucune issue autre que la suppression.
  * On archive donc, ce qui reste réversible tout en débloquant.
  *
- * @see App\Services\Integrity\OrphanRowPurger
+ * @see OrphanRowPurger
  */
 return new class extends Migration
 {

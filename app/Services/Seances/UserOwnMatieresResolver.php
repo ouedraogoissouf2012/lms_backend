@@ -6,6 +6,8 @@ namespace App\Services\Seances;
 
 use App\Models\User;
 use App\Services\KlassciProxyService;
+use App\Services\Matiere\MatiereSeancesFetcher;
+use App\Services\Matiere\MyMatieresQueryService;
 use Illuminate\Support\Collection;
 use Psr\Log\LoggerInterface;
 
@@ -30,7 +32,7 @@ use Psr\Log\LoggerInterface;
  *
  * Les dashboards portent cette liste, et c'est le motif DÉJÀ suivi ailleurs :
  *   - enseignant → `me/teacher-dashboard` → `data.matieres`
- *     ({@see \App\Services\Matiere\MyMatieresQueryService}, {@see \App\Services\Matiere\MatiereSeancesFetcher})
+ *     ({@see MyMatieresQueryService}, {@see MatiereSeancesFetcher})
  *   - étudiant   → `me/dashboard` → `data.cours`
  *     ({@see StudentClassesSeancesFetcher}, dont le commentaire dit déjà
  *     « Utiliser les matières du dashboard au lieu de faire un nouvel appel API »)

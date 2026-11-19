@@ -31,8 +31,6 @@ final class MarkAllAsReadRequest extends FormRequest
 {
     /**
      * Verify user is authenticated.
-     *
-     * @return bool
      */
     public function authorize(): bool
     {

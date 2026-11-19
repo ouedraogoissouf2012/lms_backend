@@ -9,6 +9,7 @@ use App\Models\Matiere;
 use App\Models\User;
 use App\Services\Enrollment\InscriptionNonActive;
 use App\Services\Evaluation\EvaluationsDeLaPage;
+use App\Services\Lesson\LessonReadScope;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -36,8 +37,8 @@ use Illuminate\Support\Facades\DB;
  *
  * Les bornes d'audience et d'auteur sont celles des listes de
  * `LessonListService`, dans les deux types d'école
- * ({@see \App\Services\Lesson\LessonReadScope::limitToAudience()},
- * {@see \App\Services\Lesson\LessonReadScope::limitToAuthor()}), appliquées par
+ * ({@see LessonReadScope::limitToAudience()},
+ * {@see LessonReadScope::limitToAuthor()}), appliquées par
  * `lessonsForLocalMatiere`. Pour un apprenant, `classeIds` restreint encore aux
  * classes où la matière est au programme.
  *

@@ -72,12 +72,12 @@ final class KlassciEndpointClassificationGuardTest extends TestCase
                 'string',
                 (string) $first->getType(),
                 "Le porteur de {$shortcut}() doit être un `string` non-nullable : "
-                . 'un porteur optionnel rouvrirait le repli sur la clé tenant-globale.',
+                .'un porteur optionnel rouvrirait le repli sur la clé tenant-globale.',
             );
             self::assertFalse(
                 $first->isOptional(),
                 "Le porteur de {$shortcut}() ne doit pas être optionnel — c'est ce qui "
-                . "rend l'appel non isolé inécrivable (#591).",
+                ."rend l'appel non isolé inécrivable (#591).",
             );
         }
     }
@@ -91,14 +91,14 @@ final class KlassciEndpointClassificationGuardTest extends TestCase
                 '$this->requestWithUserToken(',
                 $body,
                 "{$shortcut}() doit déléguer à requestWithUserToken() — sa clé de cache "
-                . 'dérive du hash du porteur (generateUserTokenKey).',
+                .'dérive du hash du porteur (generateUserTokenKey).',
             );
             self::assertStringNotContainsString(
                 '$this->get(',
                 $body,
                 "{$shortcut}() ne doit PAS appeler get() : sa clé de cache serait "
-                . "tenant-globale et la réponse du 1er appelant fuiterait à tout le "
-                . 'tenant (#568, #591).',
+                .'tenant-globale et la réponse du 1er appelant fuiterait à tout le '
+                .'tenant (#568, #591).',
             );
         }
     }
@@ -108,7 +108,7 @@ final class KlassciEndpointClassificationGuardTest extends TestCase
         self::assertTrue(
             method_exists(HasKlassciEndpointShortcuts::class, $name),
             "Le raccourci {$name}() a disparu du trait : mettre à jour cette garde "
-            . 'en même temps que la classification.',
+            .'en même temps que la classification.',
         );
 
         return new ReflectionMethod(HasKlassciEndpointShortcuts::class, $name);

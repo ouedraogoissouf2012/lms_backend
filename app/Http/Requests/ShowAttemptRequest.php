@@ -40,7 +40,7 @@ class ShowAttemptRequest extends FormRequest
     public function authorize(): bool
     {
         $id = $this->route('id');
-        if (!is_numeric($id)) {
+        if (! is_numeric($id)) {
             return false;
         }
 

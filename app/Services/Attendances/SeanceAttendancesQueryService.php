@@ -45,7 +45,7 @@ final class SeanceAttendancesQueryService
     {
         try {
             $seance = $this->findSeance($seanceId);
-            if (!$seance) {
+            if (! $seance) {
                 // L'ordre de recherche des lignes est inchangé : la séance sans ligne
                 // n'est cherchée que si AUCUNE ligne ne répond (#1098).
                 $decrite = $sansLigne->decrire($seanceId, $user);
@@ -102,7 +102,7 @@ final class SeanceAttendancesQueryService
     {
         // Chercher par ID local d'abord, puis par klassci_seance_id
         $seance = Seance::find($seanceId);
-        if (!$seance) {
+        if (! $seance) {
             $seance = Seance::where('klassci_seance_id', $seanceId)->first();
         }
 
@@ -115,7 +115,7 @@ final class SeanceAttendancesQueryService
     private function checkAccess(Seance $seance, User $user): ?array
     {
         // La règle du détail de séance (#1078) : la gestion de l'école, ou l'auteur.
-        if (!$this->acces->canManage($seance, $user)) {
+        if (! $this->acces->canManage($seance, $user)) {
             return [
                 'status' => 403,
                 'payload' => [
@@ -200,7 +200,7 @@ final class SeanceAttendancesQueryService
     {
         // Statistiques (non-observateurs uniquement)
         $nonObserverAttendances = $allAttendances->filter(function ($att) {
-            return !$att->is_observer;
+            return ! $att->is_observer;
         });
 
         $totalParticipants = $nonObserverAttendances->count();
@@ -244,7 +244,7 @@ final class SeanceAttendancesQueryService
             (bool) $att->is_observer,
         );
 
-        $fullName = trim(($att->prenom ?? '') . ' ' . ($att->nom ?? ''));
+        $fullName = trim(($att->prenom ?? '').' '.($att->nom ?? ''));
         if (empty($fullName)) {
             $fullName = $att->email ?? 'Participant inconnu';
         }

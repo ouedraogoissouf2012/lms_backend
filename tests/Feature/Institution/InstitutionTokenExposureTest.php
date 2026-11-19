@@ -16,7 +16,7 @@ use Tests\TestCase;
  * pour un supradmin. `InstitutionController::store/update/toggle` renvoient le
  * modèle complet : sans `$hidden`, le token fuyait en clair.
  *
- * @see \App\Models\Institution
+ * @see Institution
  */
 final class InstitutionTokenExposureTest extends TestCase
 {

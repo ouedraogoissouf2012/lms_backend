@@ -36,6 +36,7 @@ final class EvaluationStudentSubmissionResponseTest extends TestCase
     use RefreshDatabase;
 
     private Institution $institution;
+
     private User $student;
 
     protected function setUp(): void

@@ -6,13 +6,14 @@ namespace App\Http\Requests;
 
 use App\Http\Requests\Concerns\NormalizesQueryBooleans;
 use App\Models\User;
+use App\Services\Evaluation\EvaluationListService;
 use Illuminate\Foundation\Http\FormRequest;
 
 /**
  * Validates GET /api/evaluations query parameters — issue #548.
  *
  * `limit` (pas `per_page` : cet endpoint n'a pas de pagination réelle,
- * {@see \App\Services\Evaluation\EvaluationListService::listForTeacher()}
+ * {@see EvaluationListService::listForTeacher()}
  * retourne un tableau plat, jamais une enveloppe paginée).
  */
 final class ListEvaluationsRequest extends FormRequest

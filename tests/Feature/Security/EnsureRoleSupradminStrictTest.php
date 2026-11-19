@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Security;
 
 use App\Http\Middleware\EnsureRole;
+use App\Models\Concerns\InteractsWithRoles;
 use App\Models\Institution;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -14,7 +15,7 @@ use Tests\TestCase;
 
 /**
  * Issue #511 — L'accès au rôle PLATEFORME `supradmin` (cross-tenant) via
- * `EnsureRole` doit être STRICT, aligné sur {@see \App\Models\Concerns\InteractsWithRoles::isPlatformSupradmin()}
+ * `EnsureRole` doit être STRICT, aligné sur {@see InteractsWithRoles::isPlatformSupradmin()}
  * (comparaison exacte `role === 'supradmin'`).
  *
  * Avant : `strtolower(trim($user->role)) === 'supradmin'` laissait une variante
@@ -40,8 +41,8 @@ final class EnsureRoleSupradminStrictTest extends TestCase
     {
         return User::factory()->create([
             'institution_id' => $this->institution->id,
-            'role'           => $role,
-            'email'          => 'u'.uniqid().'@511.test',
+            'role' => $role,
+            'email' => 'u'.uniqid().'@511.test',
         ]);
     }
 
@@ -50,7 +51,7 @@ final class EnsureRoleSupradminStrictTest extends TestCase
         $request = Request::create('/api/dummy', 'GET');
         $request->setUserResolver(fn () => $user);
 
-        return (new EnsureRole())->handle($request, fn () => response('ok'), ...$requiredRoles);
+        return (new EnsureRole)->handle($request, fn () => response('ok'), ...$requiredRoles);
     }
 
     public function test_strict_supradmin_passes_supradmin_route(): void

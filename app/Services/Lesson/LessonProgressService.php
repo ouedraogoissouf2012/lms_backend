@@ -125,7 +125,7 @@ class LessonProgressService
      * agrégat recalculé par ChapterTimeRecorder depuis le temps des chapitres.
      * Le cumuler depuis le client en ferait un second compteur, faussable.
      *
-     * @return bool  Résultat du `update()` Eloquent.
+     * @return bool Résultat du `update()` Eloquent.
      */
     public function updateProgress(LessonProgress $progress, int $percentage): bool
     {

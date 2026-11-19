@@ -143,7 +143,7 @@ final class PlatformAccountGateTest extends TestCase
         $supradmin = $this->supradmin();
 
         $existant = $this->asTenant($supradmin)->getJson("/api/chapters/{$chapitre->id}/original");
-        $absent = $this->asTenant($supradmin)->getJson('/api/chapters/' . ((int) Chapter::query()->max('id') + 1) . '/original');
+        $absent = $this->asTenant($supradmin)->getJson('/api/chapters/'.((int) Chapter::query()->max('id') + 1).'/original');
 
         foreach (['existant' => $existant, 'absent' => $absent] as $cas => $reponse) {
             self::assertSame([403, self::MESSAGE], [$reponse->status(), $reponse->json('message')], $cas);

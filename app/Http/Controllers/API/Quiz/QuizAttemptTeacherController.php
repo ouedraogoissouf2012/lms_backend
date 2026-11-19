@@ -29,8 +29,7 @@ final class QuizAttemptTeacherController extends AuthenticatedController
     public function __construct(
         private readonly QuizAttemptStateService $state,
         private readonly QuizAttemptTeacherGradeService $teacherGrade,
-    ) {
-    }
+    ) {}
 
     /**
      * GET /api/quizzes/{quiz}/attempts
@@ -39,7 +38,7 @@ final class QuizAttemptTeacherController extends AuthenticatedController
     {
         /** @var array{user_id?:int|string,per_page?:int|string} $filters */
         $filters = array_filter([
-            'user_id'  => $request->input('user_id'),
+            'user_id' => $request->input('user_id'),
             'per_page' => $request->input('per_page'),
         ], fn ($v): bool => $v !== null);
 
@@ -62,7 +61,7 @@ final class QuizAttemptTeacherController extends AuthenticatedController
         // min:0, max:points_possible) et feedback (string|null). On extrait via
         // les helpers typés du Request pour satisfaire phpstan strict.
         $pointsEarned = (float) $request->float('points_earned');
-        $feedback     = $request->input('feedback');
+        $feedback = $request->input('feedback');
 
         $result = $this->teacherGrade->manualGrade(
             $attempt,
@@ -76,7 +75,7 @@ final class QuizAttemptTeacherController extends AuthenticatedController
         return response()->json([
             'success' => $result['success'],
             'message' => $result['message'],
-            'data'    => $result['data'],
+            'data' => $result['data'],
         ], $result['status']);
     }
 }

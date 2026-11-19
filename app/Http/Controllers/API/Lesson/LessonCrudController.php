@@ -34,8 +34,7 @@ final class LessonCrudController extends AuthenticatedController
     public function __construct(
         private readonly LessonListService $listService,
         private readonly LessonCrudOperationsService $operationsService,
-    ) {
-    }
+    ) {}
 
     /**
      * GET /api/lessons

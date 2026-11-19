@@ -57,7 +57,7 @@ final class ListFilesRequest extends FormRequest
             'fileable_type' => [
                 'sometimes',
                 'string',
-                'in:' . implode(',', array_keys(config('fileables.morph_map', []))),
+                'in:'.implode(',', array_keys(config('fileables.morph_map', []))),
             ],
             'fileable_id' => [
                 'sometimes',
@@ -101,9 +101,9 @@ final class ListFilesRequest extends FormRequest
     {
         return [
             'fileable_type.in' => 'Le type de ressource demandé n\'est pas autorisé.',
-            'category.in'      => 'La catégorie demandée n\'est pas autorisée.',
-            'sort.in'          => 'Tri demandé inconnu.',
-            'per_page.max'     => 'per_page ne peut pas dépasser 100.',
+            'category.in' => 'La catégorie demandée n\'est pas autorisée.',
+            'sort.in' => 'Tri demandé inconnu.',
+            'per_page.max' => 'per_page ne peut pas dépasser 100.',
         ];
     }
 }

@@ -8,11 +8,11 @@ use App\Models\User;
 use App\Services\Classe\ClasseDetailsQueryService;
 use App\Services\Classe\ClasseSecondaryDataFetcher;
 use App\Services\KlassciProxyService;
+use App\Support\Logging\CaughtExceptionLog;
 use Mockery;
 use Mockery\MockInterface;
 use PHPUnit\Framework\Attributes\CoversClass;
 use Psr\Log\LoggerInterface;
-use Psr\Log\NullLogger;
 use Tests\TestCase;
 
 /**
@@ -36,6 +36,7 @@ use Tests\TestCase;
 final class ClasseDetailsQueryServiceTest extends TestCase
 {
     private const CLASSE_ID = 42;
+
     private const TOKEN = 'tok-xyz';
 
     protected function tearDown(): void
@@ -50,7 +51,7 @@ final class ClasseDetailsQueryServiceTest extends TestCase
      */
     private function makeUser(): User
     {
-        $user = new User();
+        $user = new User;
         $user->id = 99;
         $user->klassci_token = self::TOKEN;
 
@@ -86,7 +87,7 @@ final class ClasseDetailsQueryServiceTest extends TestCase
         // refuse en 403 (« Accès non autorisé à cette classe ») et que le service
         // n'appelle plus.
         $klassci->shouldReceive('requestWithUserToken')
-            ->with(self::TOKEN, 'classes/' . self::CLASSE_ID . '?with=filiere,niveau', 'GET')
+            ->with(self::TOKEN, 'classes/'.self::CLASSE_ID.'?with=filiere,niveau', 'GET')
             ->andReturn(['data' => ['classe' => $classe, 'etudiants' => $etudiants]]);
 
         return $klassci;
@@ -106,7 +107,7 @@ final class ClasseDetailsQueryServiceTest extends TestCase
         // Collaborateur réel : on n'isole que la frontière KLASSCI. Son journal
         // (CaughtExceptionLog) écrit dans le journal de l'application, pas dans
         // le spy : seuls les warnings du service sous test y sont observés.
-        $secondary = new ClasseSecondaryDataFetcher($klassci, app(\App\Support\Logging\CaughtExceptionLog::class));
+        $secondary = new ClasseSecondaryDataFetcher($klassci, app(CaughtExceptionLog::class));
 
         $service = new ClasseDetailsQueryService($klassci, $secondary, $logger);
 

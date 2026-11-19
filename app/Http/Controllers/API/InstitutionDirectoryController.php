@@ -25,8 +25,7 @@ final class InstitutionDirectoryController extends Controller
 {
     public function __construct(
         private readonly InstitutionDirectoryService $directory,
-    ) {
-    }
+    ) {}
 
     /** GET /institutions/active — liste publique pour le sélecteur de login. */
     public function active(): JsonResponse

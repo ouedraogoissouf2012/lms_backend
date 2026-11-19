@@ -2,13 +2,14 @@
 
 namespace Database\Factories;
 
-use App\Models\QuizAttempt;
+use App\Models\Institution;
 use App\Models\Quiz;
+use App\Models\QuizAttempt;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
- * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\QuizAttempt>
+ * @extends Factory<QuizAttempt>
  */
 class QuizAttemptFactory extends Factory
 {
@@ -38,7 +39,7 @@ class QuizAttemptFactory extends Factory
             'completed_at' => null,
             // institution_id hérité du parent Quiz.
             'institution_id' => fn (array $attrs) => Quiz::find($attrs['quiz_id'])?->institution_id
-                ?? \App\Models\Institution::factory(),
+                ?? Institution::factory(),
         ];
     }
 

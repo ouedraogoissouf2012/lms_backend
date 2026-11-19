@@ -54,13 +54,13 @@ class EnsureKlassciSync
     /**
      * Handle an incoming request.
      *
-     * @param  \Closure(\Illuminate\Http\Request): (\Symfony\Component\HttpFoundation\Response)  $next
+     * @param  Closure(Request): (Response)  $next
      */
     public function handle(Request $request, Closure $next): Response
     {
         $user = $request->user();
 
-        if (!$user instanceof User) {
+        if (! $user instanceof User) {
             // Pas d'utilisateur authentifié — `auth:sanctum` se chargera de bloquer.
             return $next($request);
         }
@@ -70,7 +70,7 @@ class EnsureKlassciSync
         }
 
         Log::info("Re-synchronisation KLASSCI pour user {$user->id}", [
-            'user_id'   => $user->id,
+            'user_id' => $user->id,
             'last_sync' => $user->last_klassci_sync?->toIso8601String(),
         ]);
 
@@ -108,9 +108,9 @@ class EnsureKlassciSync
                 // les clés _lms_* (dont _lms_tenant_url, sinon perdu à la re-sync). Le cast
                 // KlassciData sérialise l'array retourné.
                 $user->update([
-                    'name'              => $klassciUser['nom'] ?? $klassciUser['name'] ?? $user->name,
-                    'klassci_role'      => $klassciUser['role'] ?? $user->klassci_role,
-                    'klassci_data'      => $this->whitelist->filter($klassciUser, $user->klassci_data),
+                    'name' => $klassciUser['nom'] ?? $klassciUser['name'] ?? $user->name,
+                    'klassci_role' => $klassciUser['role'] ?? $user->klassci_role,
+                    'klassci_data' => $this->whitelist->filter($klassciUser, $user->klassci_data),
                     'last_klassci_sync' => now(),
                 ]);
 
@@ -145,14 +145,14 @@ class EnsureKlassciSync
     {
         $incomingKlassciRole = $klassciUser['role'] ?? null;
 
-        if (!is_string($incomingKlassciRole) || $incomingKlassciRole === $user->role) {
+        if (! is_string($incomingKlassciRole) || $incomingKlassciRole === $user->role) {
             return;
         }
 
         Log::warning('klassci_role_divergence_detected', [
-            'user_id'               => $user->id,
-            'institution_id'        => $user->institution_id,
-            'lms_role'              => $user->role,
+            'user_id' => $user->id,
+            'institution_id' => $user->institution_id,
+            'lms_role' => $user->role,
             'klassci_role_received' => $incomingKlassciRole,
             'klassci_role_previous' => $user->klassci_role,
             'is_escalation_attempt' => $this->isEscalationAttempt($user->role, $incomingKlassciRole),
@@ -169,7 +169,7 @@ class EnsureKlassciSync
      */
     private function isEscalationAttempt(?string $lmsRole, ?string $klassciRole): bool
     {
-        $lmsLevel     = Role::tryFromString($lmsRole)?->permissivity() ?? 0;
+        $lmsLevel = Role::tryFromString($lmsRole)?->permissivity() ?? 0;
         $klassciLevel = Role::tryFromString($klassciRole)?->permissivity() ?? 0;
 
         return $klassciLevel > $lmsLevel;

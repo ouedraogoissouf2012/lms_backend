@@ -9,6 +9,7 @@ use App\Models\EvaluationSubmission;
 use App\Models\User;
 use App\Services\Evaluation\DureeDeLaCopie;
 use App\Services\Evaluation\EvaluationGradingService;
+use Illuminate\Database\Eloquent\Collection;
 
 /**
  * Agrégation des notes étudiantes par matière — extrait de
@@ -58,14 +59,14 @@ final class StudentGradesAggregator
     }
 
     /**
-     * @return \Illuminate\Database\Eloquent\Collection<int, EvaluationSubmission>
+     * @return Collection<int, EvaluationSubmission>
      */
-    private function fetchFinalSubmissions(User $user): \Illuminate\Database\Eloquent\Collection
+    private function fetchFinalSubmissions(User $user): Collection
     {
         // Les copies de CET élève, dans SON établissement : la portée de propriété,
         // et non l'identifiant KLASSCI seul, qui désignerait aussi les copies d'un
         // homonyme d'une autre école quand aucun tenant n'est résolu.
-        /** @var \Illuminate\Database\Eloquent\Collection<int, EvaluationSubmission> $soumissions */
+        /** @var Collection<int, EvaluationSubmission> $soumissions */
         $soumissions = EvaluationSubmission::query()->ownedBy($user)
             ->whereIn('status', ['soumis', 'corrige'])
             ->where(function ($q) {
@@ -109,23 +110,23 @@ final class StudentGradesAggregator
     }
 
     /**
-     * @param  \Illuminate\Database\Eloquent\Collection<int, EvaluationSubmission>  $submissions
+     * @param  Collection<int, EvaluationSubmission>  $submissions
      * @param  array<int, string>  $matieresData  clé de la source => nom
-     * @return array<int, array<string, mixed>>  Indexé par la clé de la source
+     * @return array<int, array<string, mixed>> Indexé par la clé de la source
      */
-    private function groupByMatiere(\Illuminate\Database\Eloquent\Collection $submissions, MatieresDesNotes $matieres, array $matieresData): array
+    private function groupByMatiere(Collection $submissions, MatieresDesNotes $matieres, array $matieresData): array
     {
         $gradesByMatiere = [];
         foreach ($submissions as $submission) {
             $evaluation = $submission->evaluation;
-            if (!$evaluation) {
+            if (! $evaluation) {
                 continue;
             }
 
             $matiereId = $matieres->cleDe($evaluation);
             $matiereNom = $matieresData[$matiereId] ?? $evaluation->matiere_nom ?? 'Matière inconnue';
 
-            if (!isset($gradesByMatiere[$matiereId])) {
+            if (! isset($gradesByMatiere[$matiereId])) {
                 $gradesByMatiere[$matiereId] = [
                     'matiere_id' => $matiereId,
                     'matiere_nom' => $matiereNom,
@@ -152,6 +153,7 @@ final class StudentGradesAggregator
             }
             $gradesByMatiere[$matiereId]['evaluations'][] = $ligne;
         }
+
         return $gradesByMatiere;
     }
 
@@ -175,7 +177,7 @@ final class StudentGradesAggregator
 
     /**
      * @param  array<int, array<string, mixed>>  $gradesList
-     * @return array{0: float|null, 1: int}  [moyenne_generale, count_matieres]
+     * @return array{0: float|null, 1: int} [moyenne_generale, count_matieres]
      */
     private function computeOverallAverage(array $gradesList): array
     {

@@ -6,6 +6,7 @@ use App\Models\Institution;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Testing\TestResponse;
 use Tests\TestCase;
 
 /**
@@ -29,8 +30,11 @@ class AdminAnalyticsCacheIsolationTest extends TestCase
     use RefreshDatabase;
 
     private Institution $institutionA;
+
     private Institution $institutionB;
+
     private User $coordinatorA;
+
     private User $coordinatorB;
 
     protected function setUp(): void
@@ -42,11 +46,11 @@ class AdminAnalyticsCacheIsolationTest extends TestCase
 
         $this->coordinatorA = User::factory()->create([
             'institution_id' => $this->institutionA->id,
-            'role'           => 'coordinateur',
+            'role' => 'coordinateur',
         ]);
         $this->coordinatorB = User::factory()->create([
             'institution_id' => $this->institutionB->id,
-            'role'           => 'coordinateur',
+            'role' => 'coordinateur',
         ]);
 
         // Sanity : clean state, no residual cache from another test class.
@@ -64,7 +68,7 @@ class AdminAnalyticsCacheIsolationTest extends TestCase
         $this->assertTrue(
             Cache::has('admin_analytics_system_metrics_school-a'),
             'Expected cache key `admin_analytics_system_metrics_school-a`. '
-            . 'A regression toward md5(tenant_url) would have created a different key.'
+            .'A regression toward md5(tenant_url) would have created a different key.'
         );
     }
 
@@ -97,7 +101,7 @@ class AdminAnalyticsCacheIsolationTest extends TestCase
         // 3 students extra in A → A has 4 users total (coordinator + 3).
         User::factory()->count(3)->create([
             'institution_id' => $this->institutionA->id,
-            'role'           => 'etudiant',
+            'role' => 'etudiant',
         ]);
         // B has only its coordinator → 1 user total.
 
@@ -126,12 +130,12 @@ class AdminAnalyticsCacheIsolationTest extends TestCase
         $this->callSystemMetricsAs($this->coordinatorA);
 
         $regressionKey = 'admin_analytics_system_metrics_'
-            . md5($this->coordinatorA->klassci_tenant_url ?? 'all');
+            .md5($this->coordinatorA->klassci_tenant_url ?? 'all');
 
         $this->assertFalse(
             Cache::has($regressionKey),
             "Issue #23 regression detected : cache key uses md5(tenant_url) ($regressionKey). "
-            . 'Must use TenantManager::getResolvedSlug() instead.'
+            .'Must use TenantManager::getResolvedSlug() instead.'
         );
     }
 
@@ -139,12 +143,12 @@ class AdminAnalyticsCacheIsolationTest extends TestCase
      * Helper : authentifie via un Bearer token Sanctum et appelle l'endpoint
      * /api/admin/analytics/system-metrics. Retourne la réponse pour assertions.
      */
-    private function callSystemMetricsAs(User $user): \Illuminate\Testing\TestResponse
+    private function callSystemMetricsAs(User $user): TestResponse
     {
         $token = $user->createToken('cache-isolation-test')->plainTextToken;
 
         return $this->withHeaders([
-            'Authorization' => 'Bearer ' . $token,
+            'Authorization' => 'Bearer '.$token,
         ])->getJson('/api/admin/analytics/system-metrics');
     }
 }

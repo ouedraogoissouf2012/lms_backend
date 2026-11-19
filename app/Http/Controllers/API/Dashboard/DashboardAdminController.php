@@ -31,8 +31,7 @@ final class DashboardAdminController extends AuthenticatedController
 {
     public function __construct(
         private readonly AdminDashboardService $service,
-    ) {
-    }
+    ) {}
 
     /**
      * Statistiques globales (Admin/Coordinateur).

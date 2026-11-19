@@ -31,8 +31,8 @@ final class InstitutionRoutesPlatformGuardTest extends TestCase
     {
         Sanctum::actingAs(User::factory()->create([
             'institution_id' => $institutionId,
-            'role'           => $role,
-            'email'          => 'u'.uniqid().'@guard511.test',
+            'role' => $role,
+            'email' => 'u'.uniqid().'@guard511.test',
         ]));
     }
 
@@ -42,12 +42,12 @@ final class InstitutionRoutesPlatformGuardTest extends TestCase
     public static function nonPlatformRoleProvider(): array
     {
         return [
-            'admin institution'  => ['admin'],
-            'coordinateur'       => ['coordinateur'],
-            'enseignant'         => ['enseignant'],
-            'etudiant'           => ['etudiant'],
+            'admin institution' => ['admin'],
+            'coordinateur' => ['coordinateur'],
+            'enseignant' => ['enseignant'],
+            'etudiant' => ['etudiant'],
             'superAdmin (inst.)' => ['superAdmin'],
-            'variante de casse'  => ['Supradmin'],
+            'variante de casse' => ['Supradmin'],
         ];
     }
 

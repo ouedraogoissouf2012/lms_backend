@@ -1,17 +1,17 @@
 <?php
 
 use App\Http\Controllers\API\ActivationController;
-use App\Http\Controllers\API\InscriptionParCodeController;
-use App\Http\Controllers\API\RejoindreParCodeController;
 use App\Http\Controllers\API\AdminController;
 use App\Http\Controllers\API\AuthController;
 use App\Http\Controllers\API\ConfigurationController;
+use App\Http\Controllers\API\InscriptionParCodeController;
 use App\Http\Controllers\API\InstitutionDirectoryController;
 use App\Http\Controllers\API\IntegrationController;
 use App\Http\Controllers\API\PasswordResetController;
 use App\Http\Controllers\API\Proxy\ProxyAcademicController;
 use App\Http\Controllers\API\Proxy\ProxyDashboardController;
 use App\Http\Controllers\API\Proxy\ProxyOrganisationController;
+use App\Http\Controllers\API\RejoindreParCodeController;
 use App\Http\Controllers\API\SchoolRegistrationRequestController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;

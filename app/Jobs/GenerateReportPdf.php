@@ -31,15 +31,14 @@ final class GenerateReportPdf implements ShouldQueue
     public array $backoff = [60, 300, 900];
 
     /**
-     * @param array<string, mixed> $data
+     * @param  array<string, mixed>  $data
      */
     public function __construct(
         private readonly string $reportId,
         private readonly string $type,
         private readonly array $data,
         private readonly int $userId,
-    ) {
-    }
+    ) {}
 
     public function handle(
         ReportGenerationService $reports,
@@ -75,10 +74,11 @@ final class GenerateReportPdf implements ShouldQueue
 
             if ($result['status'] !== 200 || ! $payload instanceof Response) {
                 $store->failed($this->reportId, 'report_generation_failed');
+
                 return;
             }
 
-            $path = 'reports/async/' . $this->reportId . '.pdf';
+            $path = 'reports/async/'.$this->reportId.'.pdf';
             Storage::disk('local')->put($path, (string) $payload->getContent());
             $store->completed($this->reportId, $path, $this->filename());
         } catch (Throwable $e) {
@@ -117,6 +117,6 @@ final class GenerateReportPdf implements ShouldQueue
 
     private function filename(): string
     {
-        return 'rapport-' . $this->type . '-' . now()->format('Y-m-d') . '.pdf';
+        return 'rapport-'.$this->type.'-'.now()->format('Y-m-d').'.pdf';
     }
 }

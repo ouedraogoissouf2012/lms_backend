@@ -11,6 +11,7 @@ use App\Models\KnowledgeCheck;
 use App\Models\Lesson;
 use App\Models\User;
 use Illuminate\Testing\TestResponse;
+use Symfony\Component\HttpFoundation\Response;
 
 /**
  * Un élève inscrit, et le quiz du chapitre d'une leçon publiée qu'il lit, dans
@@ -64,7 +65,7 @@ trait JoueUnQuizDeLecon
         ], $attributs));
     }
 
-    /** @return TestResponse<\Symfony\Component\HttpFoundation\Response> */
+    /** @return TestResponse<Response> */
     protected function demarrer(): TestResponse
     {
         return $this->asTenant($this->eleve)->postJson("/api/knowledge-checks/{$this->quiz->id}/start")->assertOk();
@@ -72,7 +73,7 @@ trait JoueUnQuizDeLecon
 
     /**
      * @param  array<int|string, mixed>  $reponses
-     * @return TestResponse<\Symfony\Component\HttpFoundation\Response>
+     * @return TestResponse<Response>
      */
     protected function soumettre(array $reponses): TestResponse
     {

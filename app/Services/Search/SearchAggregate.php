@@ -30,8 +30,7 @@ final readonly class SearchAggregate
     public function __construct(
         public array $results,
         public array $failedSources = [],
-    ) {
-    }
+    ) {}
 
     /**
      * Toutes les sources ont-elles abouti ? Seul un agrégat complet mérite d'être

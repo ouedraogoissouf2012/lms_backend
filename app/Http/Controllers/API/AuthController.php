@@ -2,14 +2,18 @@
 
 namespace App\Http\Controllers\API;
 
+use App\Exceptions\KlassciAccountConflictException;
+use App\Exceptions\KlassciEtablissementIntrouvableException;
+use App\Exceptions\KlassciRoleInconnuException;
+use App\Exceptions\KlassciUnavailableException;
 use App\Http\Controllers\AuthenticatedController;
 use App\Http\Presenters\AuthResponsePresenter;
 use App\Http\Requests\LoginRequest;
 use App\Models\User;
+use App\Services\Audit\AuditLogger;
 use App\Services\Auth\LoginOrchestrator;
 use App\Services\Klassci\Auth\ProfilAuthMe;
 use App\Services\Klassci\Data\KlassciDataWhitelist;
-use App\Services\Audit\AuditLogger;
 use App\Services\KlassciProxyService;
 use App\Support\Logging\CaughtExceptionLog;
 use Illuminate\Http\JsonResponse;
@@ -60,7 +64,7 @@ class AuthController extends AuthenticatedController
             }
 
             return $this->login->attemptKlassci($username, $password);
-        } catch (\App\Exceptions\KlassciAccountConflictException $e) {
+        } catch (KlassciAccountConflictException $e) {
             // Anomalie de données (email déjà pris par un autre compte) → 409
             // propre. Déjà loggé en détail par le synchronizer ; ici on trace
             // juste le blocage du login pour corrélation.
@@ -69,14 +73,14 @@ class AuthController extends AuthenticatedController
             ]);
 
             return $this->presenter->accountConflict();
-        } catch (\App\Exceptions\KlassciEtablissementIntrouvableException $e) {
+        } catch (KlassciEtablissementIntrouvableException $e) {
             // #1181 : aucun compte d'école sans école ; journalisé par l'orchestrateur.
             return $this->presenter->etablissementKlassciIntrouvable();
-        } catch (\App\Exceptions\KlassciRoleInconnuException $e) {
+        } catch (KlassciRoleInconnuException $e) {
             // #949 : rôle KLASSCI hors de la table, compte nouveau. Rien n'est
             // écrit ; le synchroniseur a journalisé le rôle reçu.
             return $this->presenter->roleKlassciInconnu();
-        } catch (\App\Exceptions\KlassciUnavailableException $e) {
+        } catch (KlassciUnavailableException $e) {
             // #243 : KLASSCI totalement injoignable → 503 (panne externe
             // temporaire), pas un 500 ni un 401. L'utilisateur peut réessayer.
             $this->logger->warning('Login indisponible — KLASSCI injoignable', [
@@ -92,7 +96,7 @@ class AuthController extends AuthenticatedController
             // (déjà fourni par l'utilisateur) aide à corréler l'incident.
             $this->journal->error('Échec inattendu du login', $e, [
                 'username' => $request->username(),
-                'at' => $e->getFile() . ':' . $e->getLine(),
+                'at' => $e->getFile().':'.$e->getLine(),
             ]);
 
             return $this->presenter->loginError();
@@ -122,12 +126,12 @@ class AuthController extends AuthenticatedController
      * (clé cache dérivée du hash du token). L'ancien `get('auth/me')` cachait sous
      * une clé tenant-globale → le profil du 1er appelant fuitait à tout le tenant.
      *
-     * @return array<string, mixed>  L'utilisateur lu par {@see ProfilAuthMe}, ou [] si indisponible.
+     * @return array<string, mixed> L'utilisateur lu par {@see ProfilAuthMe}, ou [] si indisponible.
      */
     private function fetchLiveKlassciProfile(User $user): array
     {
         $klassciToken = $user->klassci_token;
-        if (!is_string($klassciToken) || $klassciToken === '') {
+        if (! is_string($klassciToken) || $klassciToken === '') {
             return []; // Pas de token perso (auth locale / institution) → pas de profil KLASSCI perso.
         }
 

@@ -6,6 +6,7 @@ namespace App\Http\Controllers\API\Proxy\Concerns;
 
 use App\Exceptions\KlassciUnavailableException;
 use App\Exceptions\MissingKlassciTokenException;
+use App\Http\Controllers\API\Concerns\RendersKlassciBackedErrors;
 use App\Support\Klassci\KlassciClientErrorCatalog;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\JsonResponse;
@@ -27,7 +28,7 @@ use Throwable;
  * pour la supervision (des 5xx sans le moindre incident). Constaté en local : les 17
  * appels `/proxy/classes/{id}/etudiants` renvoyaient 500 quand KLASSCI répondait 403.
  *
- * Le trait frère {@see \App\Http\Controllers\API\Concerns\RendersKlassciBackedErrors}
+ * Le trait frère {@see RendersKlassciBackedErrors}
  * relayait déjà correctement ; ce trait-ci était le seul à diverger. La classification
  * qu'ils partagent vit maintenant dans {@see KlassciClientErrorCatalog}.
  *

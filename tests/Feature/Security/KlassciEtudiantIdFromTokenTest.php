@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Security;
 
+use App\Http\Controllers\API\EvaluationController;
+use App\Http\Middleware\ResolveInstitution;
+use App\Http\Requests\StartEvaluationRequest;
 use App\Models\Evaluation;
 use App\Models\EvaluationQuestion;
 use App\Models\EvaluationSubmission;
@@ -27,9 +30,9 @@ use Tests\TestCase;
  *
  * Spec: `.claude/specs/klassci-etudiant-id-from-token/`
  *
- * @see \App\Http\Controllers\API\EvaluationController::startEvaluation
- * @see \App\Http\Controllers\API\EvaluationController::myEvaluations
- * @see \App\Http\Requests\StartEvaluationRequest
+ * @see EvaluationController::startEvaluation
+ * @see EvaluationController::myEvaluations
+ * @see StartEvaluationRequest
  */
 final class KlassciEtudiantIdFromTokenTest extends TestCase
 {
@@ -52,9 +55,9 @@ final class KlassciEtudiantIdFromTokenTest extends TestCase
     {
         return User::factory()->create(array_merge([
             'institution_id' => $this->institution->id,
-            'klassci_id'     => $klassciId,
-            'role'           => 'etudiant',
-            'klassci_role'   => 'etudiant',
+            'klassci_id' => $klassciId,
+            'role' => 'etudiant',
+            'klassci_role' => 'etudiant',
         ], $extra));
     }
 
@@ -67,16 +70,16 @@ final class KlassciEtudiantIdFromTokenTest extends TestCase
         // `max_attempts` est BYPASSÉ → test flaky 200 vs 403 (issue identifiée
         // lors du PERF-03 audit).
         $evaluation = Evaluation::factory()->create(array_merge([
-            'institution_id'  => $this->institution->id,
+            'institution_id' => $this->institution->id,
             'klassci_classe_id' => self::CLASSE,
-            'is_published'    => true,
-            'is_locked'       => false,
-            'status'          => 'en_cours',
-            'max_attempts'    => 3,
-            'allow_retake'    => true,
-            'is_online'       => true,
+            'is_published' => true,
+            'is_locked' => false,
+            'status' => 'en_cours',
+            'max_attempts' => 3,
+            'allow_retake' => true,
+            'is_online' => true,
             'date_evaluation' => now()->addDay(),
-            'duree_minutes'   => 60,
+            'duree_minutes' => 60,
         ], $overrides));
 
         // L'évaluation doit avoir au moins 1 question (sinon startEvaluation
@@ -84,8 +87,8 @@ final class KlassciEtudiantIdFromTokenTest extends TestCase
         // institution_id requis pour que le global scope BelongsToInstitution
         // retrouve la question quand le tenant est résolu.
         EvaluationQuestion::factory()->create([
-            'evaluation_id'  => $evaluation->id,
-            'question'       => 'Question test',
+            'evaluation_id' => $evaluation->id,
+            'question' => 'Question test',
             'institution_id' => $evaluation->institution_id,
         ]);
 
@@ -142,12 +145,12 @@ final class KlassciEtudiantIdFromTokenTest extends TestCase
         // L'établissement de la copie, comme `/start` l'écrit : la propriété d'une
         // copie le porte (EvaluationSubmission::scopeOwnedBy).
         $existingSubmission = EvaluationSubmission::create([
-            'evaluation_id'       => $evaluation->id,
+            'evaluation_id' => $evaluation->id,
             'klassci_etudiant_id' => 42,
-            'attempt'             => 1,
-            'status'              => 'en_cours',
-            'started_at'          => now(),
-            'institution_id'      => $this->institution->id,
+            'attempt' => 1,
+            'status' => 'en_cours',
+            'started_at' => now(),
+            'institution_id' => $this->institution->id,
         ]);
         $this->fakeKlassciAvailable();
 
@@ -170,9 +173,9 @@ final class KlassciEtudiantIdFromTokenTest extends TestCase
     {
         $teacher = User::factory()->create([
             'institution_id' => $this->institution->id,
-            'klassci_id'     => 7777,
-            'role'           => 'enseignant',
-            'klassci_role'   => 'enseignant',
+            'klassci_id' => 7777,
+            'role' => 'enseignant',
+            'klassci_role' => 'enseignant',
         ]);
         $evaluation = $this->publishedEvaluation();
 
@@ -193,13 +196,13 @@ final class KlassciEtudiantIdFromTokenTest extends TestCase
         // retrouve les submissions quand le tenant est résolu (sinon attemptsCount=0).
         foreach (['soumis', 'soumis', 'corrige'] as $i => $status) {
             EvaluationSubmission::create([
-                'evaluation_id'       => $evaluation->id,
+                'evaluation_id' => $evaluation->id,
                 'klassci_etudiant_id' => 42,
-                'attempt'             => $i + 1,
-                'status'              => $status,
-                'started_at'          => now()->subDays($i + 1),
-                'submitted_at'        => now()->subDays($i + 1)->addHour(),
-                'institution_id'      => $this->institution->id,
+                'attempt' => $i + 1,
+                'status' => $status,
+                'started_at' => now()->subDays($i + 1),
+                'submitted_at' => now()->subDays($i + 1)->addHour(),
+                'institution_id' => $this->institution->id,
             ]);
         }
 
@@ -212,7 +215,7 @@ final class KlassciEtudiantIdFromTokenTest extends TestCase
         // sur la logique anti-IDOR du controller (REQ-6 #4). La résolution de
         // tenant n'est pas l'objet du test et son comportement avec Sanctum::actingAs
         // est fragile à l'ordre d'exécution.
-        $response = $this->withoutMiddleware(\App\Http\Middleware\ResolveInstitution::class)
+        $response = $this->withoutMiddleware(ResolveInstitution::class)
             ->postJson("/api/evaluations/{$evaluation->id}/start", [
                 'klassci_etudiant_id' => 999,
             ]);

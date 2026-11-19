@@ -30,17 +30,17 @@ final class ResultatsDeClasse
     public static function ligne(mixed $etudiantId, mixed $nom, mixed $prenom, string $nomComplet, ?EvaluationSubmission $copie, ?string $inscription): array
     {
         return [
-            'etudiant_id'          => $etudiantId,
-            'etudiant_nom'         => $nom ?? '',
-            'etudiant_prenom'      => $prenom ?? '',
+            'etudiant_id' => $etudiantId,
+            'etudiant_nom' => $nom ?? '',
+            'etudiant_prenom' => $prenom ?? '',
             'etudiant_nom_complet' => $nomComplet,
-            'note'                 => $copie?->note_sur_20,
-            'score'                => $copie?->score,
-            'status'               => $copie->status ?? 'non_passee',
-            'submitted_at'         => $copie?->submitted_at,
-            'attempt'              => $copie?->attempt,
-            'feedback'             => $copie?->feedback,
-            'inscription'          => $inscription,
+            'note' => $copie?->note_sur_20,
+            'score' => $copie?->score,
+            'status' => $copie->status ?? 'non_passee',
+            'submitted_at' => $copie?->submitted_at,
+            'attempt' => $copie?->attempt,
+            'feedback' => $copie?->feedback,
+            'inscription' => $inscription,
         ];
     }
 
@@ -79,21 +79,21 @@ final class ResultatsDeClasse
     public static function statistiques(array $resultats, int $totalEtudiants): array
     {
         $soumissions = collect($resultats)->whereIn('status', ['soumis', 'corrige']);
-        $notes       = $soumissions->pluck('note')->filter();
+        $notes = $soumissions->pluck('note')->filter();
 
         return [
-            'total_etudiants'      => $totalEtudiants,
-            'etudiants_soumis'     => $soumissions->count(),
-            'etudiants_en_cours'   => collect($resultats)->where('status', 'en_cours')->count(),
+            'total_etudiants' => $totalEtudiants,
+            'etudiants_soumis' => $soumissions->count(),
+            'etudiants_en_cours' => collect($resultats)->where('status', 'en_cours')->count(),
             // C28 : copies remises hors délai, ou échues sans remise (statut lu).
             'etudiants_hors_delai' => collect($resultats)->where('status', 'verrouille')->count(),
             'etudiants_non_passes' => collect($resultats)->where('status', 'non_passee')->count(),
-            'taux_participation'   => $totalEtudiants > 0
+            'taux_participation' => $totalEtudiants > 0
                 ? round(($soumissions->count() / $totalEtudiants) * 100, 2)
                 : 0,
-            'moyenne_classe'       => self::arrondi($notes->avg()),
-            'note_max'             => self::arrondi($notes->max()),
-            'note_min'             => self::arrondi($notes->min()),
+            'moyenne_classe' => self::arrondi($notes->avg()),
+            'note_max' => self::arrondi($notes->max()),
+            'note_min' => self::arrondi($notes->min()),
         ];
     }
 
@@ -108,16 +108,15 @@ final class ResultatsDeClasse
      */
     public static function reponse(array $evaluation, array $resultats, array $statistiques): array
     {
-        usort($resultats, static fn (array $a, array $b): int
-            => strcmp(self::nomComplet($a), self::nomComplet($b)));
+        usort($resultats, static fn (array $a, array $b): int => strcmp(self::nomComplet($a), self::nomComplet($b)));
 
         return [
-            'status'  => 200,
+            'status' => 200,
             'payload' => [
                 'success' => true,
-                'data'    => [
-                    'evaluation'   => $evaluation,
-                    'resultats'    => $resultats,
+                'data' => [
+                    'evaluation' => $evaluation,
+                    'resultats' => $resultats,
                     'statistiques' => $statistiques,
                 ],
             ],
@@ -158,7 +157,7 @@ final class ResultatsDeClasse
         return ['status' => 500, 'payload' => [
             'success' => false,
             'message' => 'Erreur lors de la récupération des résultats',
-            'error'   => 'Une erreur est survenue.',
+            'error' => 'Une erreur est survenue.',
         ]];
     }
 }

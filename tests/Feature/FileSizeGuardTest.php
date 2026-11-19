@@ -29,7 +29,7 @@ final class FileSizeGuardTest extends TestCase
 {
     /**
      * @param  array<int, string>  $files
-     * @return array{0: int, 1: string}  [exitCode, output]
+     * @return array{0: int, 1: string} [exitCode, output]
      */
     private function runGuard(array $files): array
     {
@@ -38,15 +38,15 @@ final class FileSizeGuardTest extends TestCase
 
         $output = [];
         $code = 0;
-        exec('php ' . escapeshellarg($script) . ' ' . $args . ' 2>&1', $output, $code);
+        exec('php '.escapeshellarg($script).' '.$args.' 2>&1', $output, $code);
 
         return [$code, implode("\n", $output)];
     }
 
     private function tmpFile(string $relative, int $lines): string
     {
-        $base = sys_get_temp_dir() . '/fsg_' . uniqid();
-        $path = $base . '/' . $relative;
+        $base = sys_get_temp_dir().'/fsg_'.uniqid();
+        $path = $base.'/'.$relative;
         @mkdir(dirname($path), 0777, true);
         file_put_contents($path, str_repeat("// ligne\n", $lines));
 
@@ -146,7 +146,7 @@ final class FileSizeGuardTest extends TestCase
     /** Un fichier du périmètre supprimé par la PR ne doit PAS faire rougir la garde. */
     public function test_deleted_in_scope_file_is_not_a_violation(): void
     {
-        [$code] = $this->runGuard([sys_get_temp_dir() . '/fsg_absent/app/Parti.php']);
+        [$code] = $this->runGuard([sys_get_temp_dir().'/fsg_absent/app/Parti.php']);
 
         $this->assertSame(0, $code, "Dans le perimetre mais supprime : ce n'est pas une violation.");
     }
@@ -164,10 +164,10 @@ final class FileSizeGuardTest extends TestCase
 
         $output = [];
         $code = 0;
-        exec('php ' . escapeshellarg($script) . ' ' . $args . ' 2>&1', $output, $code);
+        exec('php '.escapeshellarg($script).' '.$args.' 2>&1', $output, $code);
 
-        return [$code, implode("
-", $output)];
+        return [$code, implode('
+', $output)];
     }
 
     public function test_method_guard_refuses_without_any_argument(): void

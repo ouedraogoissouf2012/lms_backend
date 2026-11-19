@@ -20,7 +20,7 @@ use Psr\Log\LoggerInterface;
  * (convention Unix « no news is good news »).
  *
  * @see docs/DEPLOYMENT_OPS.md — câblage monitoring
- * @see \App\Services\Scheduler\SchedulerHeartbeat — seuil de 5 minutes
+ * @see SchedulerHeartbeat — seuil de 5 minutes
  */
 final class SchedulerHealthcheckCommand extends Command
 {

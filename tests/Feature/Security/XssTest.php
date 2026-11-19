@@ -32,6 +32,7 @@ final class XssTest extends TestCase
     use RefreshDatabase;
 
     private Institution $institution;
+
     private User $student;
 
     /**

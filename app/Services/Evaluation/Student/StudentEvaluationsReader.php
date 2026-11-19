@@ -21,8 +21,8 @@ use App\Models\User;
 interface StudentEvaluationsReader
 {
     /**
-     * @return array<int, array<string, mixed>>|null  null : classe introuvable
-     *                                                (école créée depuis KLASSCI).
+     * @return array<int, array<string, mixed>>|null null : classe introuvable
+     *                                               (école créée depuis KLASSCI).
      */
     public function evaluationsFor(User $user): ?array;
 }

@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Services\Integrity\ArchivedRowWriter;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
@@ -24,7 +25,7 @@ use Illuminate\Support\Facades\Schema;
  * une migration relancée après un échec partiel ne duplique pas les archives, et
  * une même ligne peut être archivée sous deux motifs distincts (deux FK).
  *
- * @see App\Services\Integrity\ArchivedRowWriter
+ * @see ArchivedRowWriter
  */
 return new class extends Migration
 {

@@ -26,31 +26,31 @@ use Tests\TestCase;
 final class SuccessfulKlassciResponseTest extends TestCase
 {
     /**
-     * @return array<string, mixed>  Le bloc `data.user` de la réponse de login.
+     * @return array<string, mixed> Le bloc `data.user` de la réponse de login.
      */
     private function loginUserPayload(): array
     {
-        $user = new User();
+        $user = new User;
         $user->forceFill([
-            'id'         => 42,
+            'id' => 42,
             'klassci_id' => 'k-42',
-            'name'       => 'Dupont',
-            'email'      => 'dupont@demo.test',
-            'role'       => 'enseignant',
+            'name' => 'Dupont',
+            'email' => 'dupont@demo.test',
+            'role' => 'enseignant',
         ]);
 
         // Payload KLASSCI (potentiellement compromis).
         $klassciUser = [
             'role_display_name' => 'Enseignant',
-            'avatar'            => 'avatar.png',
-            'is_admin'          => true,
-            'permissions'       => ['*'],
-            'admin_data'        => ['etablissement' => 'Lycee X', 'is_admin' => true, 'permissions' => ['*']],
-            'enseignant_data'   => ['matieres' => [1, 2]],
-            'etudiant_data'     => null,
+            'avatar' => 'avatar.png',
+            'is_admin' => true,
+            'permissions' => ['*'],
+            'admin_data' => ['etablissement' => 'Lycee X', 'is_admin' => true, 'permissions' => ['*']],
+            'enseignant_data' => ['matieres' => [1, 2]],
+            'etudiant_data' => null,
         ];
 
-        $response = (new AuthResponsePresenter())->successfulKlassci(
+        $response = (new AuthResponsePresenter)->successfulKlassci(
             $user,
             'sanctum-token',
             $klassciUser,
@@ -86,10 +86,10 @@ final class SuccessfulKlassciResponseTest extends TestCase
 
     public function test_institution_name_is_still_derived_from_admin_data_in_meta(): void
     {
-        $user = new User();
+        $user = new User;
         $user->forceFill(['id' => 1, 'klassci_id' => 'k1', 'name' => 'X', 'email' => 'x@x.test', 'role' => 'enseignant']);
 
-        $response = (new AuthResponsePresenter())->successfulKlassci(
+        $response = (new AuthResponsePresenter)->successfulKlassci(
             $user,
             'token',
             ['admin_data' => ['etablissement' => 'Lycee X']],

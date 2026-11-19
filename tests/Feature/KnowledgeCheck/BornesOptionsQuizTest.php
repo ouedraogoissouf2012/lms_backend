@@ -9,6 +9,7 @@ use App\Support\Evaluation\QuestionOptionLimits;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Testing\TestResponse;
 use PHPUnit\Framework\Attributes\DataProvider;
+use Symfony\Component\HttpFoundation\Response;
 use Tests\Concerns\ActsAsTenantUser;
 use Tests\Concerns\JoueUnQuizDeLecon;
 use Tests\TestCase;
@@ -79,7 +80,7 @@ final class BornesOptionsQuizTest extends TestCase
 
     /**
      * @param  list<string>  $options
-     * @return TestResponse<\Symfony\Component\HttpFoundation\Response>
+     * @return TestResponse<Response>
      */
     private function ecrire(string $voie, array $options): TestResponse
     {

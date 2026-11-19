@@ -2,7 +2,9 @@
 
 declare(strict_types=1);
 
+use App\Console\Commands\AuditInstitutionOrphans;
 use App\Services\Tenancy\InstitutionForeignKeyGuard;
+use App\Services\Tenancy\InstitutionIntegrityInspector;
 use App\Services\Tenancy\InstitutionIntegrityInspectorInterface;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
@@ -44,8 +46,8 @@ use Illuminate\Support\Facades\Schema;
  * informée par la mesure — cf. `.claude/specs/583-fk-institution-id/`.
  *
  * @see config/tenancy.php
- * @see App\Services\Tenancy\InstitutionIntegrityInspector
- * @see App\Console\Commands\AuditInstitutionOrphans
+ * @see InstitutionIntegrityInspector
+ * @see AuditInstitutionOrphans
  */
 return new class extends Migration
 {

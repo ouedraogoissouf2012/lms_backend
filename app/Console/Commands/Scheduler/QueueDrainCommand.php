@@ -38,10 +38,10 @@ final class QueueDrainCommand extends Command
     public function handle(CacheRepository $cache): int
     {
         $exitCode = $this->call('queue:work', [
-            '--queue'           => 'high,default,low',
+            '--queue' => 'high,default,low',
             '--stop-when-empty' => true,
-            '--max-time'        => $this->resolveIntOption('max-time', self::DEFAULT_MAX_TIME_S),
-            '--memory'          => $this->resolveIntOption('memory', self::DEFAULT_MEMORY_MB),
+            '--max-time' => $this->resolveIntOption('max-time', self::DEFAULT_MAX_TIME_S),
+            '--memory' => $this->resolveIntOption('memory', self::DEFAULT_MEMORY_MB),
         ]);
 
         if ($exitCode !== self::SUCCESS) {

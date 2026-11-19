@@ -15,7 +15,7 @@ use Illuminate\Foundation\Http\FormRequest;
  * No input fields required — only authorization checks.
  *
  * ## Authorization
- * Delegated to {@see \App\Http\Requests\Concerns\ChecksEvaluationOwnership::checkEvaluationOwnership()}.
+ * Delegated to {@see ChecksEvaluationOwnership::checkEvaluationOwnership()}.
  * Identical behavior across DeleteEvaluationRequest / PublishEvaluationRequest /
  * UpdateEvaluationRequest (issue #125 refactor).
  */

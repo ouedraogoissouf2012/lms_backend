@@ -1,15 +1,25 @@
 <?php
 
+use App\Http\Controllers\API\ChapterController;
+use App\Http\Controllers\API\ChapterOriginalController;
+use App\Http\Controllers\API\ChapterProgressController;
+use App\Http\Controllers\API\ChapterSlideController;
+use App\Http\Controllers\API\ChapterVideoController;
+use App\Http\Controllers\API\FileController;
+use App\Http\Controllers\API\ForumController;
+use App\Http\Controllers\API\KnowledgeCheckAttemptController;
+use App\Http\Controllers\API\KnowledgeCheckCrudController;
+use App\Http\Controllers\API\Lesson\LessonCrudController;
+use App\Http\Controllers\API\Lesson\LessonProgressController;
+use App\Http\Controllers\API\Quiz\QuizAttemptStudentController;
+use App\Http\Controllers\API\Quiz\QuizAttemptTeacherController;
+use App\Http\Controllers\API\Quiz\QuizCrudController;
 use Illuminate\Support\Facades\Route;
 
 // ============================================
 // CHAPTERS (Chapitres de leçons) - Routes protégées
 // NOUVELLE STRUCTURE: Chapter belongsTo Lesson
 // ============================================
-use App\Http\Controllers\API\ChapterController;
-use App\Http\Controllers\API\ChapterOriginalController;
-use App\Http\Controllers\API\ChapterSlideController;
-use App\Http\Controllers\API\ChapterVideoController;
 
 // Routes accessibles à tous les utilisateurs authentifiés
 Route::middleware(['auth:sanctum', 'klassci.sync'])->group(function () {
@@ -23,10 +33,10 @@ Route::middleware(['auth:sanctum', 'klassci.sync'])->group(function () {
         ->middleware('throttle:source-chapitre');
 
     // Progression des chapitres
-    Route::get('lessons/{lessonId}/chapter-progress', [\App\Http\Controllers\API\ChapterProgressController::class, 'getLessonProgress']);
-    Route::get('chapters/{chapterId}/progress', [\App\Http\Controllers\API\ChapterProgressController::class, 'getChapterProgress']);
-    Route::post('chapters/{chapterId}/complete', [\App\Http\Controllers\API\ChapterProgressController::class, 'markAsCompleted']);
-    Route::post('chapters/{chapterId}/time', [\App\Http\Controllers\API\ChapterProgressController::class, 'updateTimeSpent']);
+    Route::get('lessons/{lessonId}/chapter-progress', [ChapterProgressController::class, 'getLessonProgress']);
+    Route::get('chapters/{chapterId}/progress', [ChapterProgressController::class, 'getChapterProgress']);
+    Route::post('chapters/{chapterId}/complete', [ChapterProgressController::class, 'markAsCompleted']);
+    Route::post('chapters/{chapterId}/time', [ChapterProgressController::class, 'updateTimeSpent']);
 });
 
 // #620 — PNG signées : pas de Bearer (balise <img>). La signature est le jeton.
@@ -68,8 +78,6 @@ Route::middleware(['auth:sanctum', 'klassci.sync', 'personnel'])->group(function
 // KNOWLEDGE CHECKS (Quiz "Testez vos connaissances")
 // Split SRP : CRUD + Attempts dans 2 controllers thin
 // ============================================
-use App\Http\Controllers\API\KnowledgeCheckCrudController;
-use App\Http\Controllers\API\KnowledgeCheckAttemptController;
 
 Route::middleware(['auth:sanctum', 'klassci.sync'])->group(function () {
     // Liste des quiz d'un chapitre
@@ -92,8 +100,6 @@ Route::middleware(['auth:sanctum', 'klassci.sync'])->group(function () {
 // ============================================
 // LESSONS (Cours/Leçons) - Routes protégées
 // ============================================
-use App\Http\Controllers\API\Lesson\LessonCrudController;
-use App\Http\Controllers\API\Lesson\LessonProgressController;
 
 // Routes accessibles à tous les utilisateurs authentifiés
 Route::middleware(['auth:sanctum', 'klassci.sync'])->group(function () {
@@ -124,7 +130,6 @@ Route::middleware(['auth:sanctum', 'klassci.sync', 'personnel'])->group(function
 // ============================================
 // FORUM - Routes protégées
 // ============================================
-use App\Http\Controllers\API\ForumController;
 
 // Routes accessibles à tous les utilisateurs authentifiés
 Route::middleware(['auth:sanctum', 'klassci.sync'])->prefix('forum')->group(function () {
@@ -153,7 +158,6 @@ Route::middleware(['auth:sanctum', 'klassci.sync', 'personnel'])->prefix('forum'
 // ============================================
 // FILES - Routes protégées
 // ============================================
-use App\Http\Controllers\API\FileController;
 
 // Routes accessibles à tous les utilisateurs authentifiés.
 // IMPORTANT: les routes statiques (`files/upload`, `files/stats`) DOIVENT être
@@ -181,9 +185,6 @@ Route::middleware(['auth:sanctum', 'klassci.sync'])->group(function () {
 // ============================================
 // QUIZZES - Routes protégées
 // ============================================
-use App\Http\Controllers\API\Quiz\QuizAttemptStudentController;
-use App\Http\Controllers\API\Quiz\QuizAttemptTeacherController;
-use App\Http\Controllers\API\Quiz\QuizCrudController;
 
 // Routes accessibles à tous les utilisateurs authentifiés
 Route::middleware(['auth:sanctum', 'klassci.sync'])->group(function () {

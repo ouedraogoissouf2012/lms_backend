@@ -6,6 +6,7 @@ namespace App\Services\Seances\AutoClose\Rules;
 
 use App\Models\ESBTPAttendance;
 use App\Models\Seance;
+use App\Services\Seances\AutoClose\HeartbeatHealthChecker;
 use Carbon\Carbon;
 use Psr\Log\LoggerInterface;
 
@@ -19,7 +20,7 @@ use Psr\Log\LoggerInterface;
  * {@see self::NO_PARTICIPANTS_THRESHOLD} minutes.
  *
  * Note: la santé du système de heartbeat est vérifiée en amont par
- * {@see \App\Services\Seances\AutoClose\HeartbeatHealthChecker} — cette
+ * {@see HeartbeatHealthChecker} — cette
  * règle suppose que le heartbeat est fonctionnel quand on l'évalue.
  *
  * @see PRODUCTION_STANDARDS.md §1.1 — Services ≤300 lignes
@@ -59,6 +60,7 @@ final class NoParticipantsRule
                 'seance_id' => $seance->id,
                 'minutes_active' => $minutesActive,
             ]);
+
             return true;
         }
 

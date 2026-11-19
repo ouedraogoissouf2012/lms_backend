@@ -4,13 +4,7 @@ namespace App\Http\Controllers\API\Lesson;
 
 use App\Http\Controllers\AuthenticatedController;
 use App\Http\Presenters\LessonProgressRosterPresenter;
-use App\Http\Requests\FilterLessonsRequest;
-use App\Http\Requests\StoreLessonRequest;
-use App\Http\Requests\UpdateLessonRequest;
-use App\Http\Requests\DeleteLessonRequest;
-use App\Http\Requests\PublishLessonRequest;
 use App\Http\Requests\RateLessonRequest;
-use App\Http\Requests\UnpublishLessonRequest;
 use App\Http\Requests\UpdateLessonProgressRequest;
 use App\Models\Lesson;
 use App\Models\LessonProgress;
@@ -31,8 +25,7 @@ class LessonProgressController extends AuthenticatedController
         private LessonProgressService $progressService,
         private LessonProgressRosterPresenter $roster,
         private LessonProgressGate $gate,
-    ) {
-    }
+    ) {}
 
     /**
      * GET /api/lessons/{id}/progress
@@ -42,7 +35,7 @@ class LessonProgressController extends AuthenticatedController
     {
         $lesson = Lesson::find($id);
 
-        if (!$lesson) {
+        if (! $lesson) {
             return $this->errorResponse('Cours non trouvé', 404);
         }
 
@@ -57,7 +50,7 @@ class LessonProgressController extends AuthenticatedController
 
             $progress = $this->progressService->progressForUser($lesson, $user->id);
 
-            if (!$progress) {
+            if (! $progress) {
                 // Créer une nouvelle progression
                 $progress = LessonProgress::create([
                     'user_id' => $user->id,
@@ -99,7 +92,7 @@ class LessonProgressController extends AuthenticatedController
     {
         $lesson = Lesson::find($id);
 
-        if (!$lesson) {
+        if (! $lesson) {
             return $this->errorResponse('Cours non trouvé', 404);
         }
 
@@ -127,7 +120,7 @@ class LessonProgressController extends AuthenticatedController
     {
         $lesson = Lesson::find($id);
 
-        if (!$lesson) {
+        if (! $lesson) {
             return $this->errorResponse('Cours non trouvé', 404);
         }
 
@@ -153,7 +146,7 @@ class LessonProgressController extends AuthenticatedController
     {
         $lesson = Lesson::find($id);
 
-        if (!$lesson) {
+        if (! $lesson) {
             return $this->errorResponse('Cours non trouvé', 404);
         }
 

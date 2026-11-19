@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Exceptions;
 
+use App\Services\Klassci\KlassciHttpClient;
+use App\Support\Klassci\KlassciClientErrorCatalog;
 use Illuminate\Http\JsonResponse;
 use RuntimeException;
 
@@ -15,7 +17,7 @@ use RuntimeException;
  * existe pour lever.
  *
  * Avant elle, les contrôleurs attrapaient un `RuntimeException` nu — que lève
- * aussi {@see \App\Services\Klassci\KlassciHttpClient} sur toute réponse 4xx de
+ * aussi {@see KlassciHttpClient} sur toute réponse 4xx de
  * KLASSCI — et répondaient invariablement :
  *
  *     401  « Token KLASSCI non trouvé. Veuillez vous reconnecter. »
@@ -41,7 +43,7 @@ use RuntimeException;
  *
  * Le motif `klassci_token_missing` distingue ce cas de `klassci_session_expired`
  * (KLASSCI refuse un jeton présent,
- * {@see \App\Support\Klassci\KlassciClientErrorCatalog::reasonFor()}).
+ * {@see KlassciClientErrorCatalog::reasonFor()}).
  * La réponse se construit ICI seulement, comme celle de
  * {@see KlassciUnavailableException::jsonResponse()} : chaque site la recopiait.
  *

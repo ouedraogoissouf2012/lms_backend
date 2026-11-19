@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Seances\Sync;
 
 use App\Models\Seance;
+use App\Services\Seances\SeanceCacheDataBuilder;
 use Carbon\CarbonInterface;
 
 /**
@@ -22,7 +23,7 @@ use Carbon\CarbonInterface;
  *
  * `Model::update()` repousserait `updated_at` sur chaque séance à chaque passe,
  * détruisant sa sémantique de « dernière modification de contenu » — que
- * {@see \App\Services\Seances\SeanceCacheDataBuilder::applyTo()} protège
+ * {@see SeanceCacheDataBuilder::applyTo()} protège
  * justement par son `isDirty()`. `toBase()` applique les scopes du modèle puis
  * rend le constructeur de requête sous-jacent, qui n'ajoute pas d'horodatage.
  *

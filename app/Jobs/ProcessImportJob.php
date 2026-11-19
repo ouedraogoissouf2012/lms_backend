@@ -17,7 +17,7 @@ use Throwable;
 
 final class ProcessImportJob implements ShouldQueue
 {
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels, RunsForInstitution;
+    use Dispatchable, InteractsWithQueue, Queueable, RunsForInstitution, SerializesModels;
 
     public function __construct(
         private readonly int $importId,

@@ -2,8 +2,10 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 use App\Models\Traits\BelongsToInstitution;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
  * Assignation matière ↔ enseignant (IDs KLASSCI, cast `integer`).
@@ -39,7 +41,7 @@ class MatiereEnseignant extends Model
     /**
      * Relation avec l'utilisateur qui a créé l'assignation
      *
-     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo<User, $this>
+     * @return BelongsTo<User, $this>
      */
     public function creator()
     {
@@ -49,8 +51,8 @@ class MatiereEnseignant extends Model
     /**
      * Scope pour récupérer les assignations actives uniquement
      *
-     * @param  \Illuminate\Database\Eloquent\Builder<MatiereEnseignant>  $query
-     * @return \Illuminate\Database\Eloquent\Builder<MatiereEnseignant>
+     * @param  Builder<MatiereEnseignant>  $query
+     * @return Builder<MatiereEnseignant>
      */
     public function scopeActive($query)
     {
@@ -107,11 +109,11 @@ class MatiereEnseignant extends Model
             [
                 'klassci_matiere_id' => $klassciMatiereId,
                 'klassci_enseignant_id' => $klassciEnseignantId,
-                'annee_universitaire_id' => null // Pour l'instant, année courante
+                'annee_universitaire_id' => null, // Pour l'instant, année courante
             ],
             [
                 'status' => 'active',
-                'created_by' => $createdBy
+                'created_by' => $createdBy,
             ]
         );
     }

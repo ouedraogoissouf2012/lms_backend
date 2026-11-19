@@ -82,7 +82,7 @@ final class AdminMatieresEnvelopeSourceTest extends TestCase
             'heures' => ['cm' => 50, 'td' => 10, 'tp' => 20, 'stage' => 100, 'total' => 180],
             'combinaisons' => [
                 ['filiere' => ['id' => 1, 'nom' => 'BATIMENT', 'code' => 'BTP'],
-                 'niveau' => ['id' => 1, 'nom' => 'BTS 1ere ANNEE', 'code' => '1A']],
+                    'niveau' => ['id' => 1, 'nom' => 'BTS 1ere ANNEE', 'code' => '1A']],
             ],
             'enseignants' => [],
             'lms_metadata' => ['has_online_courses' => false, 'last_course_date' => null, 'total_evaluations' => 10],

@@ -20,7 +20,7 @@ final class QuizAttemptTimerService
      */
     public function hasExpired(QuizAttempt $attempt): bool
     {
-        if (!$attempt->quiz->duration_minutes || !$attempt->started_at) {
+        if (! $attempt->quiz->duration_minutes || ! $attempt->started_at) {
             return false;
         }
 
@@ -34,7 +34,7 @@ final class QuizAttemptTimerService
      */
     public function timeRemaining(QuizAttempt $attempt): ?int
     {
-        if (!$attempt->quiz->duration_minutes || !$attempt->started_at || $attempt->status !== 'in_progress') {
+        if (! $attempt->quiz->duration_minutes || ! $attempt->started_at || $attempt->status !== 'in_progress') {
             return null;
         }
 
@@ -49,7 +49,7 @@ final class QuizAttemptTimerService
      */
     public function formattedTimeSpent(QuizAttempt $attempt): string
     {
-        if (!$attempt->time_spent_seconds) {
+        if (! $attempt->time_spent_seconds) {
             return 'N/A';
         }
 

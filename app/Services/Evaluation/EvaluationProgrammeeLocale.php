@@ -40,7 +40,7 @@ final class EvaluationProgrammeeLocale
     public function noyau(Evaluation $evaluation, ?EvaluationSubmission $copie): array
     {
         return [
-            'id' => 'lms_' . $evaluation->id,
+            'id' => 'lms_'.$evaluation->id,
             'lms_id' => $evaluation->id,
             'titre' => $evaluation->titre,
             'description' => $evaluation->description,

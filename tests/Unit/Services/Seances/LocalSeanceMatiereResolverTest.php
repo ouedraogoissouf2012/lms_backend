@@ -6,6 +6,7 @@ namespace Tests\Unit\Services\Seances;
 
 use App\Models\Institution;
 use App\Models\Seance;
+use App\Services\Seances\KlassciSeanceMatiereScanner;
 use App\Services\Seances\LocalSeanceMatiereResolver;
 use App\Services\TenantManager;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -15,7 +16,7 @@ use Tests\TestCase;
 /**
  * Issue #517 (§1.3 gap comblé) — cette classe porte l'invariant de sécurité
  * du fast-path H3 (résolution locale du `klassci_matiere_id`, dont
- * {@see \App\Services\Seances\KlassciSeanceMatiereScanner} dépend pour éviter
+ * {@see KlassciSeanceMatiereScanner} dépend pour éviter
  * le scan complet). Elle avait 0 test exerçant une vraie ligne trouvée en
  * base, et 0 test d'isolation tenant — corrigé ici avec le même pattern que
  * `LocalSeanceLookup` (préchargement) : 2 institutions, colonnes réelles.

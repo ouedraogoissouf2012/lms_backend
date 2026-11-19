@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace App\Enums;
 
+use App\Models\Lesson;
+
 /**
- * Statut de publication d'une {@see \App\Models\Lesson} (#522).
+ * Statut de publication d'une {@see Lesson} (#522).
  *
  * Remplace les magic strings `'draft'`/`'published'`/`'archived'` disséminées
  * dans ~13 fichiers. Backed string : la valeur sérialisée (JSON client, colonne
@@ -23,7 +25,7 @@ enum LessonStatus: string
 
     /**
      * Vrai si ce statut est « publié » (au sens du cycle de vie éditorial).
-     * Distinct de {@see \App\Models\Lesson::isPublished()}, qui vérifie EN PLUS
+     * Distinct de {@see Lesson::isPublished()}, qui vérifie EN PLUS
      * que `published_at` est passé.
      */
     public function isPublished(): bool

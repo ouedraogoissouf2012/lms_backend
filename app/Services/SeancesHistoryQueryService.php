@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Http\Controllers\API\LMS\LMSSeancesHistoryController;
 use App\Models\ESBTPAttendance;
 use App\Models\Seance;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
 
 /**
@@ -29,18 +29,18 @@ use Illuminate\Support\Collection;
  *
  * Multi-tenant scoping is automatic via `Seance::BelongsToInstitution`.
  *
- * @see \App\Http\Controllers\API\LMS\LMSSeancesHistoryController (route handler)
+ * @see LMSSeancesHistoryController (route handler)
  */
 final class SeancesHistoryQueryService
 {
     private const PRESENCE_DURATION_THRESHOLD_MINUTES = 3;
+
     private const MAX_SEANCE_DURATION_MINUTES = 1440;
 
     /**
      * Returns the paginated enriched séances history.
      *
-     * @param array{date_from?: string|null, date_to?: string|null, search?: string|null, per_page?: int|null} $filters
-     *
+     * @param  array{date_from?: string|null, date_to?: string|null, search?: string|null, per_page?: int|null}  $filters
      * @return array{
      *     data: array<int, array<string, mixed>>,
      *     pagination: array{current_page: int, per_page: int, total: int, last_page: int}
@@ -97,8 +97,8 @@ final class SeancesHistoryQueryService
     }
 
     /**
-     * @param Builder<Seance> $query
-     * @param array{date_from?: string|null, date_to?: string|null, search?: string|null, per_page?: int|null} $filters
+     * @param  Builder<Seance>  $query
+     * @param  array{date_from?: string|null, date_to?: string|null, search?: string|null, per_page?: int|null}  $filters
      */
     private function applyOptionalFilters(Builder $query, array $filters): void
     {
@@ -110,14 +110,14 @@ final class SeancesHistoryQueryService
             $query->where('visio_started_at', '>=', $dateFrom);
         }
         if ($dateTo) {
-            $query->where('visio_started_at', '<=', $dateTo . ' 23:59:59');
+            $query->where('visio_started_at', '<=', $dateTo.' 23:59:59');
         }
         if ($search) {
             $query->where(function ($q) use ($search) {
                 $q->where('matiere_nom', 'like', "%{$search}%")
-                  ->orWhere('classe_nom', 'like', "%{$search}%")
-                  ->orWhere('enseignant_nom', 'like', "%{$search}%")
-                  ->orWhere('titre', 'like', "%{$search}%");
+                    ->orWhere('classe_nom', 'like', "%{$search}%")
+                    ->orWhere('enseignant_nom', 'like', "%{$search}%")
+                    ->orWhere('titre', 'like', "%{$search}%");
             });
         }
     }
@@ -125,7 +125,7 @@ final class SeancesHistoryQueryService
     /**
      * Enrichir chaque séance avec les statistiques de présence.
      *
-     * @param Collection<int, Seance> $seances
+     * @param  Collection<int, Seance>  $seances
      * @return Collection<int, array<string, mixed>>
      */
     private function enrichWithStats(Collection $seances): Collection
@@ -135,7 +135,7 @@ final class SeancesHistoryQueryService
             $attendances = ESBTPAttendance::where('seance_id', $seance->id)
                 ->where(function ($q) {
                     $q->where('is_observer', false)
-                      ->orWhereNull('is_observer');
+                        ->orWhereNull('is_observer');
                 })
                 ->get();
 
@@ -143,14 +143,14 @@ final class SeancesHistoryQueryService
 
             // Durées valides (> 0)
             $durations = $attendances->pluck('duration_minutes')
-                ->filter(fn($d) => $d !== null && $d > 0);
+                ->filter(fn ($d) => $d !== null && $d > 0);
 
             $avgDuration = $durations->count() > 0
                 ? round($durations->avg())
                 : 0;
 
             // Présence valide = duration > 3 minutes
-            $validPresences = $durations->filter(fn($d) => $d > self::PRESENCE_DURATION_THRESHOLD_MINUTES)->count();
+            $validPresences = $durations->filter(fn ($d) => $d > self::PRESENCE_DURATION_THRESHOLD_MINUTES)->count();
 
             $presenceRate = $participantsCount > 0
                 ? round(($validPresences / $participantsCount) * 100)
@@ -161,7 +161,7 @@ final class SeancesHistoryQueryService
             return [
                 'id' => $seance->id,
                 'klassci_seance_id' => $seance->klassci_seance_id,
-                'titre' => $seance->titre ?? 'Séance #' . $seance->klassci_seance_id,
+                'titre' => $seance->titre ?? 'Séance #'.$seance->klassci_seance_id,
                 'matiere' => [
                     'nom' => $seance->matiere_nom ?? 'Matière inconnue',
                 ],
@@ -190,7 +190,7 @@ final class SeancesHistoryQueryService
      */
     private function computeSeanceDurationMinutes(Seance $seance): ?int
     {
-        if (!$seance->visio_started_at || !$seance->visio_ended_at) {
+        if (! $seance->visio_started_at || ! $seance->visio_ended_at) {
             return null;
         }
 

@@ -37,6 +37,7 @@ final class SubmitAttemptHappyPathTest extends TestCase
     use RefreshDatabase;
 
     private Institution $institutionA;
+
     private Institution $institutionB;
 
     protected function setUp(): void
@@ -303,7 +304,7 @@ final class SubmitAttemptHappyPathTest extends TestCase
         $this->assertContains(
             $response->status(),
             [403, 404],
-            'Cross-tenant attacker must be blocked. Got ' . $response->status()
+            'Cross-tenant attacker must be blocked. Got '.$response->status()
         );
 
         // Confirmation : l'attempt n'a pas changé d'état

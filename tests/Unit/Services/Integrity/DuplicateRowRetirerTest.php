@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Services\Integrity;
 
-use App\Services\Integrity\ArchivedRowWriter;
 use App\Services\Integrity\DuplicateRowRetirer;
 use App\Services\Integrity\MostReferencedSurvives;
 use App\Services\Integrity\OldestSurvives;
@@ -125,7 +124,7 @@ final class DuplicateRowRetirerTest extends IntegrityProbeTestCase
         $retired = $this->retirer()->retire(
             'probe_evaluations',
             ['institution_id', 'klassci_evaluation_id'],
-            new OldestSurvives(),
+            new OldestSurvives,
             'deleted_at',
         );
 
@@ -152,7 +151,7 @@ final class DuplicateRowRetirerTest extends IntegrityProbeTestCase
             ['id' => 3, 'classe_id' => 6, 'user_id' => 9, 'statut' => 'actif', 'updated_at' => null],
         ]);
 
-        $retired = $this->retirer()->retire('probe_pivot', ['classe_id', 'user_id'], new OldestSurvives());
+        $retired = $this->retirer()->retire('probe_pivot', ['classe_id', 'user_id'], new OldestSurvives);
 
         self::assertSame(1, $retired);
         self::assertSame([1, 3], $this->db->table('probe_pivot')->orderBy('id')->pluck('id')->map(intval(...))->all());
@@ -201,7 +200,7 @@ final class DuplicateRowRetirerTest extends IntegrityProbeTestCase
 
         $this->db->table('probe_pivot')->insert($rows);
 
-        $retired = $this->retirer()->retire('probe_pivot', ['classe_id', 'user_id'], new OldestSurvives());
+        $retired = $this->retirer()->retire('probe_pivot', ['classe_id', 'user_id'], new OldestSurvives);
 
         self::assertSame($groups, $retired);
         self::assertSame($groups, $this->db->table('probe_pivot')->count(), 'Il doit rester une ligne par groupe.');
@@ -215,9 +214,9 @@ final class DuplicateRowRetirerTest extends IntegrityProbeTestCase
             ['id' => 2, 'classe_id' => 5, 'user_id' => 9, 'statut' => 'actif', 'updated_at' => null],
         ]);
 
-        $this->retirer()->retire('probe_pivot', ['classe_id', 'user_id'], new OldestSurvives());
+        $this->retirer()->retire('probe_pivot', ['classe_id', 'user_id'], new OldestSurvives);
 
-        self::assertSame(0, $this->retirer()->retire('probe_pivot', ['classe_id', 'user_id'], new OldestSurvives()));
+        self::assertSame(0, $this->retirer()->retire('probe_pivot', ['classe_id', 'user_id'], new OldestSurvives));
         self::assertCount(1, $this->archived());
     }
 
@@ -228,7 +227,7 @@ final class DuplicateRowRetirerTest extends IntegrityProbeTestCase
         return $this->retirer()->retire(
             'probe_evaluations',
             ['institution_id', 'klassci_evaluation_id'],
-            new OldestSurvives(),
+            new OldestSurvives,
             'deleted_at',
         );
     }
@@ -260,7 +259,7 @@ final class DuplicateRowRetirerTest extends IntegrityProbeTestCase
         return new DuplicateRowRetirer(
             $this->db,
             $this->quarantine(),
-            new NullLogger(),
+            new NullLogger,
         );
     }
 }

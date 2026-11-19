@@ -5,10 +5,11 @@ declare(strict_types=1);
 namespace Tests\Feature\FileConversion;
 
 use App\Services\ConvertApiService;
+use App\Services\FileConversion\ChapterArtifactStorage;
 use App\Services\FileConversion\FileValidator;
 use App\Services\FileConversion\PdfToPngRendererInterface;
 use App\Services\FileConversion\PowerPointConverter;
-use App\Support\Shell\ShellExecutionException;
+use App\Support\Logging\CaughtExceptionLog;
 use App\Support\Shell\ShellExecutorInterface;
 use App\Support\Shell\ShellResult;
 use Illuminate\Http\UploadedFile;
@@ -17,6 +18,7 @@ use InvalidArgumentException;
 use Mockery;
 use Mockery\MockInterface;
 use PHPUnit\Framework\Attributes\CoversClass;
+use Psr\Log\NullLogger;
 use RuntimeException;
 use Tests\TestCase;
 
@@ -43,8 +45,11 @@ final class PowerPointConverterTest extends TestCase
     private const PPTX_MIME = 'application/vnd.openxmlformats-officedocument.presentationml.presentation';
 
     private ShellExecutorInterface&MockInterface $shellMock;
+
     private ConvertApiService&MockInterface $convertApiMock;
+
     private PdfToPngRendererInterface&MockInterface $pdfRendererMock;
+
     private FileValidator $validator;
 
     protected function setUp(): void
@@ -64,7 +69,7 @@ final class PowerPointConverterTest extends TestCase
         $pdfRendererMock = Mockery::mock(PdfToPngRendererInterface::class);
         $this->pdfRendererMock = $pdfRendererMock;
 
-        $this->validator = new FileValidator();
+        $this->validator = new FileValidator;
     }
 
     protected function tearDown(): void
@@ -128,11 +133,11 @@ final class PowerPointConverterTest extends TestCase
             ->andReturnUsing(function (array $command): ShellResult {
                 // Simulate LibreOffice producing the PDF at the expected path.
                 $pptxPath = $command[count($command) - 1];
-                $outdir   = $command[count($command) - 2];
+                $outdir = $command[count($command) - 2];
                 if (! is_dir($outdir)) {
                     mkdir($outdir, 0755, true);
                 }
-                touch("{$outdir}/" . pathinfo($pptxPath, PATHINFO_FILENAME) . '.pdf');
+                touch("{$outdir}/".pathinfo($pptxPath, PATHINFO_FILENAME).'.pdf');
 
                 return new ShellResult('', '', 0);
             });
@@ -194,11 +199,11 @@ final class PowerPointConverterTest extends TestCase
             ->once()
             ->andReturnUsing(function (array $command): ShellResult {
                 $pptxPath = $command[count($command) - 1];
-                $outdir   = $command[count($command) - 2];
+                $outdir = $command[count($command) - 2];
                 if (! is_dir($outdir)) {
                     mkdir($outdir, 0755, true);
                 }
-                touch("{$outdir}/" . pathinfo($pptxPath, PATHINFO_FILENAME) . '.pdf');
+                touch("{$outdir}/".pathinfo($pptxPath, PATHINFO_FILENAME).'.pdf');
 
                 return new ShellResult('', '', 0);
             });
@@ -242,13 +247,13 @@ final class PowerPointConverterTest extends TestCase
     private function makeConverter(): PowerPointConverter
     {
         return new PowerPointConverter(
-            new \Psr\Log\NullLogger(),
+            new NullLogger,
             $this->shellMock,
             $this->convertApiMock,
             $this->pdfRendererMock,
             $this->validator,
-            app(\App\Services\FileConversion\ChapterArtifactStorage::class),
-            app(\App\Support\Logging\CaughtExceptionLog::class),
+            app(ChapterArtifactStorage::class),
+            app(CaughtExceptionLog::class),
         );
     }
 }

@@ -42,7 +42,6 @@ class QuizGradingService
         private readonly QuizStatisticsService $statistics,
     ) {}
 
-
     /**
      * Vérifie si la réponse user à une question est correcte.
      *
@@ -80,6 +79,7 @@ class QuizGradingService
                 $userIds = is_array($userAnswer)
                     ? collect($userAnswer)->sort()->values()->toArray()
                     : [];
+
                 return $correctIds === $userIds;
 
             case 'true_false':
@@ -90,6 +90,7 @@ class QuizGradingService
                 }
 
                 $correctAnswer = $answers->firstWhere('is_correct', true);
+
                 return $correctAnswer !== null && (int) $correctAnswer->id === $answerId;
 
             case 'short_answer':
@@ -161,6 +162,7 @@ class QuizGradingService
 
             if ($question->requiresManualGrading()) {
                 $requiresManualGrading = true;
+
                 continue;
             }
 
@@ -172,7 +174,7 @@ class QuizGradingService
         $attempt->points_earned = $pointsEarned;
         $attempt->points_possible = $pointsPossible;
 
-        if (!$requiresManualGrading) {
+        if (! $requiresManualGrading) {
             // Toutes les questions sont auto-corrigées
             $attempt->score = $pointsPossible > 0 ? ($pointsEarned / $pointsPossible) * 100 : 0;
             $attempt->passed = $attempt->score >= $quiz->passing_score;
@@ -191,7 +193,7 @@ class QuizGradingService
      * Remplace l'ancien `QuizAttempt::submit()` qui mélangeait state machine
      * et appel `app(...)` (anti-pattern Service Locator §1.6 D).
      *
-     * @return bool  Résultat du `save()` Eloquent.
+     * @return bool Résultat du `save()` Eloquent.
      */
     public function submitAttempt(QuizAttempt $attempt, array $answers): bool
     {

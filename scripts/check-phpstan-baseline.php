@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 $max = null;
-$baseline = __DIR__ . '/../phpstan-baseline.neon';
+$baseline = __DIR__.'/../phpstan-baseline.neon';
 
 foreach (array_slice($argv, 1) as $arg) {
     if (str_starts_with($arg, '--max=')) {

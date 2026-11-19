@@ -49,8 +49,7 @@ final class DuplicateRowRetirer
         private readonly DatabaseManager $db,
         private readonly RowQuarantine $quarantine,
         private readonly LoggerInterface $logger,
-    ) {
-    }
+    ) {}
 
     /**
      * @param  list<string>  $keyColumns  Colonnes de l'index unique visé.

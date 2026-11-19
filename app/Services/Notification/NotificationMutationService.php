@@ -47,8 +47,7 @@ final class NotificationMutationService
     public function __construct(
         private readonly CacheRepository $cache,
         private readonly LoggerInterface $logger,
-    ) {
-    }
+    ) {}
 
     /**
      * Marquer une notification comme lue. Throw `ModelNotFoundException`
@@ -132,8 +131,8 @@ final class NotificationMutationService
      * `authorize()` puissent valider le scope tenant avant qu'on arrive ici.
      *
      * @param  array<string, mixed>  $payload
-     *     Doit contenir : `type` (optionnel — défaut `'info'`), `title`,
-     *     `message`, `action_url` (optionnel — wrappé dans `data`).
+     *                                         Doit contenir : `type` (optionnel — défaut `'info'`), `title`,
+     *                                         `message`, `action_url` (optionnel — wrappé dans `data`).
      */
     public function create(User $recipient, array $payload): Notification
     {

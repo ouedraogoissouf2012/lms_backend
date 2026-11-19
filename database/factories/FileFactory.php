@@ -3,11 +3,12 @@
 namespace Database\Factories;
 
 use App\Models\File;
+use App\Models\Institution;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
- * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\File>
+ * @extends Factory<File>
  */
 class FileFactory extends Factory
 {
@@ -22,9 +23,9 @@ class FileFactory extends Factory
     {
         return [
             'user_id' => User::factory(),
-            'original_name' => $this->faker->word() . '.pdf',
-            'stored_name' => $this->faker->uuid() . '.pdf',
-            'path' => 'documents/' . $this->faker->uuid() . '.pdf',
+            'original_name' => $this->faker->word().'.pdf',
+            'stored_name' => $this->faker->uuid().'.pdf',
+            'path' => 'documents/'.$this->faker->uuid().'.pdf',
             'mime_type' => 'application/pdf',
             'extension' => 'pdf',
             'size_bytes' => $this->faker->numberBetween(100000, 5000000),
@@ -36,7 +37,7 @@ class FileFactory extends Factory
             'is_validated' => true,
             'virus_scan_status' => 'clean',
             // institution_id requis : File est tenant-scoped via BelongsToInstitution.
-            'institution_id' => \App\Models\Institution::factory(),
+            'institution_id' => Institution::factory(),
         ];
     }
 }

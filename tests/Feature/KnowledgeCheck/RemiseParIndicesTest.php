@@ -8,6 +8,7 @@ use App\Models\KnowledgeCheckAttempt;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Testing\TestResponse;
 use PHPUnit\Framework\Attributes\DataProvider;
+use Symfony\Component\HttpFoundation\Response;
 use Tests\Concerns\ActsAsTenantUser;
 use Tests\Concerns\JoueUnQuizDeLecon;
 use Tests\Concerns\ValidatesAgainstOpenApi;
@@ -113,7 +114,7 @@ final class RemiseParIndicesTest extends TestCase
 
     /**
      * @param  list<mixed>  $reponses
-     * @return TestResponse<\Symfony\Component\HttpFoundation\Response>
+     * @return TestResponse<Response>
      */
     private function remettre(array $reponses): TestResponse
     {

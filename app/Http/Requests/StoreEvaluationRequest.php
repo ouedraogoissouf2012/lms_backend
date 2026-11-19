@@ -42,7 +42,7 @@ final class StoreEvaluationRequest extends FormRequest
     {
         $user = auth()->user();
 
-        if (!$user) {
+        if (! $user) {
             return false;
         }
 
@@ -52,7 +52,7 @@ final class StoreEvaluationRequest extends FormRequest
         }
 
         // User must be admin or teacher
-        if (!$user->isAdmin() && !$user->isTeacher()) {
+        if (! $user->isAdmin() && ! $user->isTeacher()) {
             return false;
         }
 

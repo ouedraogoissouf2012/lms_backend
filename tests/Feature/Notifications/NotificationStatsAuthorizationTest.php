@@ -27,6 +27,7 @@ final class NotificationStatsAuthorizationTest extends TestCase
     use RefreshDatabase;
 
     private Institution $instA;
+
     private Institution $instB;
 
     protected function setUp(): void
@@ -86,7 +87,7 @@ final class NotificationStatsAuthorizationTest extends TestCase
         $response->assertJsonPath('data.total', 3);
     }
 
-    public function test_superAdmin_is_scoped_to_their_institution(): void
+    public function test_super_admin_is_scoped_to_their_institution(): void
     {
         // #497 : `superAdmin` = admin d'INSTITUTION (intra-tenant), PAS le
         // gestionnaire plateforme `supradmin`. Il ne doit voir que les stats de

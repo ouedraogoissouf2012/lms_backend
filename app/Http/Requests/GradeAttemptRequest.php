@@ -19,13 +19,13 @@ class GradeAttemptRequest extends FormRequest
     public function authorize(): bool
     {
         $user = Auth::user();
-        if (!$user) {
+        if (! $user) {
             return false;
         }
 
         $attempt = $this->attempt();
 
-        if (!$attempt) {
+        if (! $attempt) {
             abort(404, 'Tentative non trouvée');
         }
 
@@ -46,7 +46,7 @@ class GradeAttemptRequest extends FormRequest
                 'required',
                 'numeric',
                 'min:0',
-                $attempt ? 'max:' . ($attempt->points_possible ?? 100) : 'max:1000',
+                $attempt ? 'max:'.($attempt->points_possible ?? 100) : 'max:1000',
             ],
             'feedback' => 'nullable|string|max:1000',
         ];
@@ -75,7 +75,7 @@ class GradeAttemptRequest extends FormRequest
             return $id;
         }
 
-        if (!is_string($id)) {
+        if (! is_string($id)) {
             return null;
         }
 

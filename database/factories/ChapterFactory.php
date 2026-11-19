@@ -3,14 +3,14 @@
 namespace Database\Factories;
 
 use App\Models\Chapter;
+use App\Models\Institution;
 use App\Models\Lesson;
 use App\Models\Matiere;
 use App\Models\User;
-use App\Models\Institution;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
- * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\Chapter>
+ * @extends Factory<Chapter>
  */
 class ChapterFactory extends Factory
 {

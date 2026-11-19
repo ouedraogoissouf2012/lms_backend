@@ -12,6 +12,7 @@ use App\Models\TrainingSession;
 use App\Models\User;
 use App\Services\TenantManager;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Testing\TestResponse;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
@@ -124,7 +125,7 @@ final class TrainingSessionTransitionsTest extends TestCase
         $this->agir($acteur, $periode, 'publier')->assertStatus(409)->assertJsonPath('reason', 'training_session_transition_not_allowed');
     }
 
-    public function test_une_annulation_est_IRREVERSIBLE(): void
+    public function test_une_annulation_est_irreversible(): void
     {
         // ADR-711-04 refuse « reportée » parce qu'elle créerait un état dont on
         // ne sort pas. Le raisonnement vaut en sens inverse : une annulation
@@ -151,7 +152,7 @@ final class TrainingSessionTransitionsTest extends TestCase
         self::assertSame(TrainingSessionStatus::Archivee, $this->relire($periode)->status);
     }
 
-    public function test_le_refus_porte_le_statut_COURANT(): void
+    public function test_le_refus_porte_le_statut_courant(): void
     {
         // « Transition invalide » n'apprend rien à qui vient de cliquer.
         [$acteur, $periode] = $this->periode();
@@ -163,7 +164,7 @@ final class TrainingSessionTransitionsTest extends TestCase
 
     // ───────────────────────── les gardes d'accès
 
-    public function test_la_periode_d_une_AUTRE_ecole_est_introuvable(): void
+    public function test_la_periode_d_une_autre_ecole_est_introuvable(): void
     {
         [, $ailleurs] = $this->periode();
         [$voisin] = $this->periode();
@@ -298,7 +299,7 @@ final class TrainingSessionTransitionsTest extends TestCase
         return TrainingSession::query()->withoutGlobalScopes()->findOrFail($periode->getKey());
     }
 
-    private function agir(User $acteur, TrainingSession $periode, string $operation): \Illuminate\Testing\TestResponse
+    private function agir(User $acteur, TrainingSession $periode, string $operation): TestResponse
     {
         // Un VRAI jeton : `Sanctum::actingAs` n'en émet aucun, `ResolveInstitution`
         // ne pose alors aucun tenant, et le scope multi-tenant s'efface.

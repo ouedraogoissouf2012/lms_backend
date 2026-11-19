@@ -81,7 +81,7 @@ final class ExpireQuizAttemptsCommandTest extends TestCase
         $command->drainBudgetSeconds = 0;
         $command->drainChunkSize = 1;
         $command->setLaravel($this->app);
-        $command->run(new ArrayInput([]), new NullOutput());
+        $command->run(new ArrayInput([]), new NullOutput);
 
         $stillOpen = QuizAttempt::query()->where('status', 'in_progress')->count();
         self::assertSame(2, $stillOpen);

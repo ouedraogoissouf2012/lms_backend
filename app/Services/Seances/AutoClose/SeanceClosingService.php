@@ -42,8 +42,8 @@ final class SeanceClosingService
     /**
      * Ferme la séance donnée pour la raison fournie.
      *
-     * @param string $reason Une des raisons connues : `teacher_disconnected`,
-     *                       `all_disconnected`, `no_participants`.
+     * @param  string  $reason  Une des raisons connues : `teacher_disconnected`,
+     *                          `all_disconnected`, `no_participants`.
      *
      * @throws Throwable Toute exception est re-lancée après rollback pour
      *                   permettre le retry du job appelant.

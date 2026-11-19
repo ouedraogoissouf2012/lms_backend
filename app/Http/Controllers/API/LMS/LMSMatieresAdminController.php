@@ -66,7 +66,7 @@ final class LMSMatieresAdminController extends AuthenticatedController
                 return $this->successResponse($result, 'Aucune matière trouvée');
             }
 
-            return $this->successResponse($result, $count . ' matière(s) récupérée(s)');
+            return $this->successResponse($result, $count.' matière(s) récupérée(s)');
         } catch (MissingKlassciTokenException) {
             return MissingKlassciTokenException::jsonResponse();
         } catch (KlassciUnavailableException) {

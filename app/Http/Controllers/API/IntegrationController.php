@@ -3,10 +3,10 @@
 namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
-use App\Http\Requests\ConnectServiceRequest;
 use App\Http\Requests\AuthorizeServiceRequest;
-use App\Http\Requests\TestServiceConnectionRequest;
+use App\Http\Requests\ConnectServiceRequest;
 use App\Http\Requests\DisconnectServiceRequest;
+use App\Http\Requests\TestServiceConnectionRequest;
 use Illuminate\Http\JsonResponse;
 
 class IntegrationController extends Controller
@@ -22,7 +22,7 @@ class IntegrationController extends Controller
         return $this->successResponse([
             'service' => $data['service'],
             'status' => 'connected',
-            'api_key' => substr($data['api_key'], 0, 10) . '****',
+            'api_key' => substr($data['api_key'], 0, 10).'****',
         ], 'Service connecté avec succès', 201);
     }
 

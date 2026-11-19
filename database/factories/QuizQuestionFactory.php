@@ -2,12 +2,13 @@
 
 namespace Database\Factories;
 
-use App\Models\QuizQuestion;
+use App\Models\Institution;
 use App\Models\Quiz;
+use App\Models\QuizQuestion;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
- * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\QuizQuestion>
+ * @extends Factory<QuizQuestion>
  */
 class QuizQuestionFactory extends Factory
 {
@@ -27,15 +28,15 @@ class QuizQuestionFactory extends Factory
         $type = $this->faker->randomElement(['multiple_choice', 'true_false', 'short_answer']);
 
         return [
-            'quiz_id'        => Quiz::factory(),
-            'question_text'  => $this->faker->sentence() . '?',
-            'type'           => $type,
-            'order'          => $this->faker->numberBetween(1, 100),
-            'points'         => $this->faker->randomElement([1, 2, 5, 10]),
-            'is_required'    => true,
+            'quiz_id' => Quiz::factory(),
+            'question_text' => $this->faker->sentence().'?',
+            'type' => $type,
+            'order' => $this->faker->numberBetween(1, 100),
+            'points' => $this->faker->randomElement([1, 2, 5, 10]),
+            'is_required' => true,
             // institution_id hérité du parent Quiz.
             'institution_id' => fn (array $attrs) => Quiz::find($attrs['quiz_id'])?->institution_id
-                ?? \App\Models\Institution::factory(),
+                ?? Institution::factory(),
         ];
     }
 

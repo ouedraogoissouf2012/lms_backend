@@ -4,8 +4,13 @@ declare(strict_types=1);
 
 namespace App\Rules;
 
+use App\Http\Requests\CreateUserRequest;
+use App\Http\Requests\UpdateUserRequest;
 use App\Models\Institution;
+use App\Models\Traits\BelongsToInstitution;
 use App\Models\User;
+use App\Services\Klassci\Auth\KlassciEmailConflictGuard;
+use App\Services\Klassci\Auth\KlassciUserSynchronizer;
 use Closure;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Translation\PotentiallyTranslatedString;
@@ -15,10 +20,10 @@ use Illuminate\Translation\PotentiallyTranslatedString;
  *
  * ## Faille corrigée
  *
- * {@see \App\Http\Requests\CreateUserRequest} et {@see \App\Http\Requests\UpdateUserRequest}
+ * {@see CreateUserRequest} et {@see UpdateUserRequest}
  * validaient l'email avec `unique:users,email`. Cette règle passe par le
  * `DatabasePresenceVerifier`, qui construit un `DB::table('users')` — query builder BRUT :
- * ni le global scope `institution` ({@see \App\Models\Traits\BelongsToInstitution}) ni le
+ * ni le global scope `institution` ({@see BelongsToInstitution}) ni le
  * `SoftDeletingScope` ne s'y appliquent. La contrainte était donc GLOBALE à la plateforme,
  * alors que le schéma dit l'inverse : `2026_03_23_121616` supprime l'unicité globale et
  * `2026_03_23_200000` la remplace par l'index `users_email_institution_unique (email, institution_id)`.
@@ -26,7 +31,7 @@ use Illuminate\Translation\PotentiallyTranslatedString;
  * Double conséquence corrigée :
  *   1. **fonctionnelle** — un vacataire intervenant dans deux écoles ne pouvait pas être créé
  *      dans la seconde, alors que le sync KLASSCI, lui, y parvient (son garde
- *      {@see \App\Services\Klassci\Auth\KlassciEmailConflictGuard} est scopé institution) ;
+ *      {@see KlassciEmailConflictGuard} est scopé institution) ;
  *   2. **confidentialité** — « Cet email est déjà utilisé » révélait indirectement l'existence
  *      d'un compte d'un autre tenant à un administrateur sans droit dessus (oracle
  *      d'énumération).
@@ -41,7 +46,7 @@ use Illuminate\Translation\PotentiallyTranslatedString;
  *     unique partiel : une ligne supprimée occupe toujours son emplacement dans l'index
  *     (documenté par la migration `2026_08_15_120000` de #566). Les exclure ferait passer la
  *     validation puis échouer l'écriture. La recréation légitime passe par une RESTAURATION —
- *     c'est déjà le modèle de {@see \App\Services\Klassci\Auth\KlassciUserSynchronizer}
+ *     c'est déjà le modèle de {@see KlassciUserSynchronizer}
  *     (`findExistingUser` + `restoreIfTrashed`). Le message le dit explicitement au lieu de
  *     laisser l'administrateur face à un compte fantôme ;
  *   - **fail-closed sans institution cible**. `Rule::unique()->where('institution_id', null)`
@@ -70,8 +75,7 @@ final class UniqueEmailInInstitution implements ValidationRule
     private function __construct(
         private readonly ?int $institutionId,
         private readonly ?int $ignoreUserId,
-    ) {
-    }
+    ) {}
 
     /** Création : l'email doit être libre dans l'institution de l'acteur. */
     public static function forCreationBy(?User $actor): self
@@ -137,7 +141,7 @@ final class UniqueEmailInInstitution implements ValidationRule
     /**
      * Lookup unique sur `users_email_institution_unique`, hors scope tenant (l'institution est
      * portée explicitement) et corbeille incluse (cf. invariant du docblock de classe). Même
-     * forme que {@see \App\Services\Klassci\Auth\KlassciEmailConflictGuard::assertNotOwnedByAnother}.
+     * forme que {@see KlassciEmailConflictGuard::assertNotOwnedByAnother}.
      *
      * Projection volontairement réduite à `id, deleted_at` : on n'a besoin que de l'existence et
      * de l'état corbeille — inutile d'hydrater le nom et l'email d'un tiers dans un chemin de

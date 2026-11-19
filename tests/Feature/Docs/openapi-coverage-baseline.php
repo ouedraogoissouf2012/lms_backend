@@ -147,4 +147,3 @@ return [
     'PUT /quizzes/{quiz}',
     'PUT /users/{user}',
 ];
-

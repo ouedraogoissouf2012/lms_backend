@@ -5,9 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\LMS\Attendances;
 
 use App\Models\Institution;
-use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
 /**

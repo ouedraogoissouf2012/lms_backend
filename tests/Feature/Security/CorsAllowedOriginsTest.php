@@ -27,7 +27,7 @@ final class CorsAllowedOriginsTest extends TestCase
             'https://attaquant.example',
             $header,
             'Le navigateur bloquerait la lecture de la réponse côté JS uniquement si ce '
-                . 'header ne matche pas https://attaquant.example — jamais l\'inverse.'
+                .'header ne matche pas https://attaquant.example — jamais l\'inverse.'
         );
     }
 }

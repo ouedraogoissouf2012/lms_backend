@@ -54,13 +54,14 @@ final class PdfToPngRenderer implements PdfToPngRendererInterface
     ];
 
     private const IMAGICK_RESOLUTION_DPI = 150;
-    private const IMAGICK_MAX_WIDTH      = 1920;
-    private const IMAGICK_QUALITY        = 90;
+
+    private const IMAGICK_MAX_WIDTH = 1920;
+
+    private const IMAGICK_QUALITY = 90;
 
     public function __construct(
         private readonly ShellExecutorInterface $shell,
-    ) {
-    }
+    ) {}
 
     /**
      * Render the PDF into per-page PNG files and return their public-disk
@@ -94,12 +95,12 @@ final class PdfToPngRenderer implements PdfToPngRendererInterface
      */
     private function renderWithImagick(string $pdfPath, string $outputDir, int $chapterId): array
     {
-        $imagick = new Imagick();
+        $imagick = new Imagick;
         $imagick->setResolution(self::IMAGICK_RESOLUTION_DPI, self::IMAGICK_RESOLUTION_DPI);
         $imagick->readImage($pdfPath);
 
         $relativePaths = [];
-        $pageNumber    = 1;
+        $pageNumber = 1;
 
         foreach ($imagick as $page) {
             $page->setImageFormat('png');
@@ -149,10 +150,10 @@ final class PdfToPngRenderer implements PdfToPngRendererInterface
                 '-dBATCH',
                 '-dNOPAUSE',
                 '-sDEVICE=png16m',
-                '-r' . self::IMAGICK_RESOLUTION_DPI,
+                '-r'.self::IMAGICK_RESOLUTION_DPI,
                 '-dTextAlphaBits=4',
                 '-dGraphicsAlphaBits=4',
-                '-sOutputFile=' . $outputDir . '/slide_%03d.png',
+                '-sOutputFile='.$outputDir.'/slide_%03d.png',
                 $pdfPath,
             ]);
         } catch (ShellExecutionException) {
@@ -169,7 +170,7 @@ final class PdfToPngRenderer implements PdfToPngRendererInterface
         sort($files);
 
         return array_map(
-            static fn (string $path): string => 'chapters/' . $chapterId . '/slides/' . basename($path),
+            static fn (string $path): string => 'chapters/'.$chapterId.'/slides/'.basename($path),
             $files,
         );
     }

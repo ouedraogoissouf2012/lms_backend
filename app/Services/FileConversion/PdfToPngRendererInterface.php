@@ -21,7 +21,7 @@ interface PdfToPngRendererInterface
      * `chapters/{chapterId}/slides/` on the `public` disk.
      *
      * @return list<string> Relative public-disk paths suitable for DB persistence
-     *                     (e.g. `"chapters/12/slides/slide_001.png"`).
+     *                      (e.g. `"chapters/12/slides/slide_001.png"`).
      *
      * @throws \RuntimeException If no renderer is available or the conversion fails.
      */

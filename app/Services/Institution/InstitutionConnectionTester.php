@@ -24,8 +24,7 @@ final class InstitutionConnectionTester
         private readonly KlassciReachability $reachability,
         private readonly KlassciApplicationProof $proof,
         private readonly LoggerInterface $logger,
-    ) {
-    }
+    ) {}
 
     /**
      * @return array{status: int, payload: array<string, mixed>}

@@ -69,8 +69,7 @@ final class DispatchLessonPublishedNotifications implements ShouldQueue
         public readonly ?int $matiereId,
         public readonly string $lessonTitle,
         public readonly int $institutionId,
-    ) {
-    }
+    ) {}
 
     public function handle(
         ElevesDeLaClasse $eleves,
@@ -147,7 +146,7 @@ final class DispatchLessonPublishedNotifications implements ShouldQueue
             ['lesson_id' => $this->lessonId, 'matiere_id' => $this->matiereId],
             JSON_THROW_ON_ERROR,
         );
-        $message = 'Un nouveau cours "' . $this->lessonTitle . '" est maintenant disponible';
+        $message = 'Un nouveau cours "'.$this->lessonTitle.'" est maintenant disponible';
 
         $rows = [];
         foreach ($userIds as $userId) {

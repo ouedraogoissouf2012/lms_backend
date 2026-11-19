@@ -57,6 +57,6 @@ enum TrainingSessionStatus: string
      */
     public static function horsDeLaListe(bool $avecLesArchivees): array
     {
-        return $avecLesArchivees ? [self::Purgee] : [self::Archivee, self::Purgee];
+        return $avecLesArchivees ? [] : [self::Archivee, self::Purgee];
     }
 }

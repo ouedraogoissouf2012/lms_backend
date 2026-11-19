@@ -34,7 +34,12 @@ final class ProxyRateLimitTest extends TestCase
     {
         parent::setUp();
 
-        $this->institution = Institution::factory()->create(['slug' => 'school-a']);
+        // L'école porte l'adresse des comptes : le jeton d'un compte ne vise que
+        // l'école rattachée qui l'a émis (#1248), sinon le proxy rend 503.
+        $this->institution = Institution::factory()->create([
+            'slug' => 'school-a',
+            'klassci_api_url' => 'https://school-a.klassci.test',
+        ]);
 
         // Neutralise tout appel HTTP sortant (KLASSCI) — réponse vide OK.
         Http::fake(['*' => Http::response(['data' => []], 200)]);

@@ -3870,6 +3870,41 @@ components:
         message:
           type: string
 
+    # #1275 — l'administration definit le mot de passe d'un compte : jamais en reponse.
+    MotDePasseDefini:
+      type: object
+      additionalProperties: false
+      required:
+        - success
+        - message
+      properties:
+        success:
+          type: boolean
+          enum:
+            - true
+        message:
+          type: string
+          example: "Mot de passe défini."
+
+    MotDePasseDefinitionRefusee:
+      type: object
+      additionalProperties: false
+      required:
+        - success
+        - message
+      properties:
+        success:
+          type: boolean
+          enum:
+            - false
+        message:
+          type: string
+        reason:
+          type: string
+          description: "Absent sur le 403 d'un compte hors de l'administration, d'une cible de rang egal ou superieur, ou de soi-meme."
+          enum:
+            - password_managed_by_klassci
+
     # #906 — un refus qui dit POURQUOI, pour que le front traduise par son
     # propre catalogue sans lire le message du serveur. Le motif va dans le
     # CORPS : le front de production est cross-origin, et `exposed_headers: []`
@@ -7980,6 +8015,10 @@ paths:
         Bornee a l etablissement de l appelant, explicitement et pas seulement
         par le scope global : ce dernier est fail-open quand aucun tenant n est
         resolu. Paginee.
+
+        Par defaut, les Periodes `archivee` et `purgee` sont ecartees (#1208).
+        `archivees=1` fait revenir les archivees ; une Periode purgee n y revient
+        jamais (fin d une politique de retention, pas une decision humaine).
       security:
         - sanctum: []
       parameters:
@@ -7991,6 +8030,14 @@ paths:
             minimum: 1
             maximum: 100
             default: 25
+        - name: archivees
+          in: query
+          required: false
+          description: "`1` pour inclure les Periodes archivees. Une valeur non booleenne rend 422."
+          schema:
+            type: integer
+            enum: [0, 1]
+            default: 0
       responses:
         '200':
           description: "Page de Periodes"
@@ -8008,6 +8055,12 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
         '403':
           description: "Role insuffisant. Ecole creee depuis KLASSCI : `catalogue_managed_by_klassci` (#1184), les sessions de formation n existent que dans une ecole autonome. Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: "`per_page` hors bornes (#911), ou `archivees` non booleen (#1208)."
           content:
             application/json:
               schema:
@@ -8109,6 +8162,95 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+
+  /users/{user}/password:
+    put:
+      tags:
+        - Authentication
+      operationId: definirLeMotDePasse
+      summary: "L'administration de l'ecole definit le mot de passe d'un compte"
+      description: |
+        #1275. L'admin ou le superAdmin d'un etablissement definit le mot de passe
+        d'un compte de son ecole, de rang strictement inferieur au sien, jamais le
+        sien (#932). Le coordinateur est refuse : definir un mot de passe, c'est
+        pouvoir se connecter a la place du compte. Le supradmin de plateforme, sans
+        etablissement, est refuse.
+
+        **Ecole creee depuis le LMS.** Le mot de passe est defini, les jetons du
+        compte sont revoques (ses sessions se ferment), et l'acte est trace a
+        l'audit (`password_set_by_manager`), sans le mot de passe.
+
+        **Ecole creee depuis KLASSCI.** Le mot de passe est celui de KLASSCI ; le
+        LMS refuse (403 `password_managed_by_klassci`). Rien n'est ecrit.
+
+        Le mot de passe ne figure jamais dans la reponse. Limite nommee
+        `mot-de-passe-defini` (10 par minute et par compte).
+      security:
+        - sanctum: []
+      parameters:
+        - name: user
+          in: path
+          required: true
+          description: "Identifiant local du compte."
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required:
+                - password
+                - password_confirmation
+              properties:
+                password:
+                  type: string
+                  minLength: 8
+                  format: password
+                password_confirmation:
+                  type: string
+                  format: password
+      responses:
+        '200':
+          description: "Mot de passe defini."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MotDePasseDefini'
+        '400':
+          description: "Requete sans jeton, en-tete X-Institution d'un etablissement inconnu ou inactif."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefusDeLaResolution'
+        '401':
+          description: "Non authentifie"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: "Ecole KLASSCI (`password_managed_by_klassci`) ; sans motif : compte hors de l'administration, cible de rang egal ou superieur ou soi-meme, etablissement desactive."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MotDePasseDefinitionRefusee'
+        '404':
+          description: "Compte introuvable dans l'etablissement."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: "Mot de passe absent, trop court (8 caracteres au moins) ou non confirme (`errors.password`)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
 
   /auth/me:
     get:

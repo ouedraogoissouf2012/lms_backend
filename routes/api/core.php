@@ -7,6 +7,7 @@ use App\Http\Controllers\API\ConfigurationController;
 use App\Http\Controllers\API\InscriptionParCodeController;
 use App\Http\Controllers\API\InstitutionDirectoryController;
 use App\Http\Controllers\API\IntegrationController;
+use App\Http\Controllers\API\MotDePasseDuCompteController;
 use App\Http\Controllers\API\PasswordResetController;
 use App\Http\Controllers\API\Proxy\ProxyAcademicController;
 use App\Http\Controllers\API\Proxy\ProxyDashboardController;
@@ -190,6 +191,10 @@ Route::middleware(['auth:sanctum', 'klassci.sync', 'gestion'])->group(function (
     Route::post('users', [AdminController::class, 'createUser']);
     Route::put('users/{user}', [AdminController::class, 'updateUser']);
     Route::delete('users/{user}', [AdminController::class, 'deleteUser']);
+    // #1275 : l'admin et le superAdmin seuls (le coordinateur, qui gère les comptes, est
+    // refusé : définir un mot de passe, c'est pouvoir se connecter à la place du compte).
+    Route::put('users/{user}/password', [MotDePasseDuCompteController::class, 'definir'])
+        ->middleware(['role:admin,superAdmin', 'throttle:mot-de-passe-defini']);
 });
 
 // ============================================

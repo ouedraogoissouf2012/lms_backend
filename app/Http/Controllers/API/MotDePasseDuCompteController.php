@@ -29,6 +29,6 @@ final class MotDePasseDuCompteController extends Controller
             return $this->errorResponse($e->getMessage(), $e->statutHttp(), reason: $e->reason);
         }
 
-        return $this->successResponse(null, 'Mot de passe défini.');
+        return $this->successResponse(['password' => $motDePasse], 'Mot de passe défini.');
     }
 }

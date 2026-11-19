@@ -8,6 +8,7 @@ use App\Models\Chapter;
 use App\Services\FileConversion\ChapterArtifactStorage;
 use App\Services\FileConversion\WordConverter;
 use App\Services\FileConversionService;
+use App\Services\Visio\Recording\RecordingVideoService;
 use Illuminate\Http\UploadedFile;
 use LogicException;
 use Psr\Log\LoggerInterface;
@@ -141,9 +142,11 @@ final class ChapterConversionDispatcher
     }
 
     /**
-     * Stocke directement le fichier vidéo sans conversion. #598 — la vidéo reste
-     * publique, mais le choix du disque est déclaré dans
-     * {@see ChapterArtifactStorage::storeVideo()}, jamais recopié ici.
+     * Stocke directement le fichier vidéo sans conversion, sur le disque privé
+     * (#857, choix déclaré dans {@see ChapterArtifactStorage::storeVideo()}).
+     * `video_url` porte le chemin relatif et `video_provider` le marque comme
+     * notre fichier : `RecordingVideoService` le sert par une URL signée, avec
+     * son vrai type, comme un enregistrement de séance (#824).
      */
     private function handleVideo(Chapter $chapter, UploadedFile $file, int $chapterId): void
     {
@@ -152,7 +155,8 @@ final class ChapterConversionDispatcher
         $chapter->update([
             'content_type' => 'video',
             'file_original_path' => $videoPath,
-            'video_url' => "/storage/{$videoPath}",
+            'video_provider' => RecordingVideoService::UPLOAD,
+            'video_url' => $videoPath,
         ]);
 
         $this->logger->info('Vidéo stockée', ['path' => $videoPath]);

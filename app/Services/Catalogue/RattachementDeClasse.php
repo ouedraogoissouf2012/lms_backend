@@ -75,7 +75,6 @@ final class RattachementDeClasse
 
         $periode = TrainingSession::query()->withoutGlobalScope('institution')
             ->where('id', $periodeId)
-            ->where('institution_id', $ecole)
             ->first();
 
         if (! $periode instanceof TrainingSession || $periode->status->fermeLesInscriptions()) {

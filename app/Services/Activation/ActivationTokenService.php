@@ -12,10 +12,10 @@ use RuntimeException;
 /**
  * Émission et consommation des jetons d'activation (#803, ADR-803-02).
  *
- * Le produit n'ayant aucun canal de courriel, aucun mot de passe n'est généré
- * ni transmis : on remet un lien à usage unique, que le titulaire consomme pour
- * poser SON secret. Le jour où un canal existera, ce même jeton partira par
- * courriel — le transport change, le mécanisme non.
+ * Aucun mot de passe n'est généré ni transmis : on remet un lien à usage unique,
+ * que le titulaire consomme pour poser SON secret. L'activation (#803) le remet
+ * hors bande ; la réinitialisation (#808) l'envoie par courriel — le transport
+ * change, le mécanisme non.
  *
  * ## Le clair n'existe qu'une fois, en mémoire
  *
@@ -41,8 +41,11 @@ final class ActivationTokenService
      *
      * Tout jeton vivant du même compte est d'abord consommé : un lien réémis
      * doit invalider le précédent, sinon un lien égaré resterait utilisable.
+     *
+     * L'usage fixe la durée de vie ({@see UsageDuJeton}) : sept jours pour une
+     * activation transmise hors bande, une heure pour une réinitialisation (#808).
      */
-    public function emettre(User $user): string
+    public function emettre(User $user, UsageDuJeton $usage): string
     {
         $this->invaliderLesPrecedents($user);
 
@@ -60,7 +63,7 @@ final class ActivationTokenService
         $jeton = new ActivationToken;
         $jeton->user_id = $cle;
         $jeton->token_hash = $this->empreinte($clair);
-        $jeton->expires_at = now()->addDays($this->validiteEnJours());
+        $jeton->expires_at = $usage->expiration();
         $jeton->save();
 
         return $clair;
@@ -100,12 +103,5 @@ final class ActivationTokenService
     private function empreinte(string $clair): string
     {
         return hash('sha256', $clair);
-    }
-
-    private function validiteEnJours(): int
-    {
-        $jours = config('activation.validite_jours', 7);
-
-        return is_int($jours) && $jours > 0 ? $jours : 7;
     }
 }

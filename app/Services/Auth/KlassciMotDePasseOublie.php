@@ -12,7 +12,7 @@ final class KlassciMotDePasseOublie implements MotDePasseOublie
 {
     public const MOTIF = 'mot_de_passe_klassci';
 
-    public function reponse(): array
+    public function reponse(string $email): array
     {
         return [
             'status' => 200,

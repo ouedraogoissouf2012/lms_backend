@@ -22,4 +22,12 @@ final class ForgotPasswordRequest extends FormRequest
             'email' => ['required', 'email'],
         ];
     }
+
+    /** L'adresse validée (#808), telle que saisie : la connexion la compare telle quelle. */
+    public function adresse(): string
+    {
+        $email = $this->validated('email');
+
+        return is_string($email) ? $email : '';
+    }
 }

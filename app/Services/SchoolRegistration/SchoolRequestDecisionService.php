@@ -14,6 +14,7 @@ use App\Models\User;
 use App\Rules\UniqueEmailInInstitution;
 use App\Services\Activation\ActivationLinkBuilder;
 use App\Services\Activation\ActivationTokenService;
+use App\Services\Activation\UsageDuJeton;
 use Illuminate\Database\ConnectionInterface;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Validator;
@@ -111,7 +112,7 @@ final class SchoolRequestDecisionService
             // Le lien est bâti DANS la transaction : si l'adresse du front
             // manque, rien n'est écrit. Remettre un lien mort laisserait une
             // école sans accès et une demande marquée validée.
-            $activation = $this->liens->pour($this->activations->emettre($proprietaire));
+            $activation = $this->liens->pour($this->activations->emettre($proprietaire, UsageDuJeton::Activation));
 
             $this->logger->info('Demande d\'ouverture validee', [
                 'demande_id' => $demande->getKey(),

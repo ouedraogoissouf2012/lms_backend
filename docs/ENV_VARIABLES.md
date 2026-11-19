@@ -69,12 +69,39 @@ Fallback temporaire si Redis tombe avant remediation infra :
 Ce mode garde la compatibilite fonctionnelle mais ne valide pas les objectifs
 perf #374.
 
-## 5. Mail
+## 5. Mail (Brevo) et liens à usage unique
 
-| Variable | Description |
-|---|---|
-| `MAIL_MAILER` | `smtp`, `log`, `array` (test) |
-| `MAIL_HOST` / `MAIL_PORT` / `MAIL_USERNAME` / `MAIL_PASSWORD` | Config SMTP standard Laravel |
+Le LMS envoie un seul courriel : le **lien de réinitialisation du mot de passe** d'un compte
+d'école autonome (#808). Il part par le mailer SMTP de Laravel, relayé par **Brevo**. Les
+valeurs se posent dans Dokploy ; **aucune n'est dans le dépôt**.
+
+| Variable | Valeur attendue | Description |
+|---|---|---|
+| `MAIL_MAILER` | `smtp` | Défaut `log` : rien ne part (`array` en test) |
+| `MAIL_HOST` | `smtp-relay.brevo.com` | Relais SMTP de Brevo |
+| `MAIL_PORT` | `587` | STARTTLS |
+| `MAIL_USERNAME` | identifiant SMTP Brevo | Brevo → *SMTP & API* → onglet *SMTP* |
+| `MAIL_PASSWORD` | **clé SMTP Brevo** (secret) | Même page ; jamais dans le dépôt ni dans un ticket |
+| `MAIL_FROM_ADDRESS` | ex. `ne-pas-repondre@<domaine>` | Expéditeur ; son domaine doit être **vérifié chez Brevo** (SPF, DKIM) |
+| `MAIL_FROM_NAME` | ex. `KLASSCI LMS` | Nom affiché de l'expéditeur |
+| `ACTIVATION_URL_FRONT` | ex. `https://lms.klassci.com` | URL du front, **sans slash final** : les liens mènent à `/activation/{jeton}` |
+| `ACTIVATION_VALIDITE_JOURS` | `7` (défaut) | Durée d'un lien d'activation remis hors bande (#803) |
+| `ACTIVATION_REINITIALISATION_MINUTES` | `60` (défaut) | Durée d'un lien de réinitialisation |
+| `ACTIVATION_REINITIALISATION_INTERVALLE_MINUTES` | `2` (défaut) | Délai minimal entre deux liens pour un même compte |
+
+**Le canal ne s'ouvre que s'il est complet** (`App\Services\Mail\CanalDeCourriel`) : un mailer
+autre que `log` ou `array`, un expéditeur autre que `hello@example.com`, l'hôte et
+l'identifiant SMTP, et `ACTIVATION_URL_FRONT`. S'il manque une seule de ces valeurs, « mot de
+passe oublié » répond `reinitialisation_indisponible`, ne crée aucun jeton et n'envoie rien.
+Une fois tout posé, il répond `lien_envoye`, et le courriel part par la file (`high`, conteneur
+worker).
+
+État de la prod au 19/11 (lecture seule) : `MAIL_MAILER`, `MAIL_HOST` et `MAIL_FROM_ADDRESS`
+sont vides, et `ACTIVATION_URL_FRONT` est absent. Le canal y est donc **indisponible**, et c'est
+voulu : il reste fermé tant que les variables ci-dessus ne sont pas toutes posées.
+
+`ACTIVATION_URL_FRONT` sert aussi à la validation d'une demande d'école (#803) : sans elle,
+cette validation refuse en 503 plutôt que de remettre un lien mort.
 
 ## 6. Visio (Jitsi / Jibri)
 

@@ -10,6 +10,10 @@ declare(strict_types=1);
  *   ACTIVATION_URL_FRONT      URL de base de l'application web, SANS slash final.
  *                             Exemple : https://lms.klassci.com
  *   ACTIVATION_VALIDITE_JOURS Durée de vie du lien, en jours. Défaut : 7.
+ *   ACTIVATION_REINITIALISATION_MINUTES
+ *                             Durée de vie d'un lien de réinitialisation. Défaut : 60.
+ *   ACTIVATION_REINITIALISATION_INTERVALLE_MINUTES
+ *                             Délai minimal entre deux liens pour un compte. Défaut : 2.
  */
 return [
 
@@ -35,8 +39,8 @@ return [
     | Durée de vie du lien
     |--------------------------------------------------------------------------
     |
-    | Le lien circule hors bande — WhatsApp, SMS, de vive voix — parce que le
-    | produit n'a aucun canal de courriel. Sept jours laissent le temps de le
+    | Le lien d'activation circule hors bande — WhatsApp, SMS, de vive voix —
+    | entre le supradmin et le titulaire. Sept jours laissent le temps de le
     | transmettre et de l'utiliser, sans le laisser traîner indéfiniment dans
     | une conversation.
     |
@@ -46,5 +50,23 @@ return [
     |
     */
     'validite_jours' => (int) env('ACTIVATION_VALIDITE_JOURS', 7),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Lien de réinitialisation (#808)
+    |--------------------------------------------------------------------------
+    |
+    | Le même jeton, envoyé par courriel à la demande du titulaire (« mot de
+    | passe oublié »). Le courriel peut être lu par d'autres que lui : le lien
+    | doit vivre COURT. La page front est la même (`/activation/{jeton}`).
+    |
+    | L'intervalle borne le bombardement d'une adresse : un jeton émis pour ce
+    | compte depuis moins longtemps suffit, ni nouveau jeton ni courriel. La
+    | réponse à la demande n'en dit rien.
+    |
+    */
+    'reinitialisation_minutes' => (int) env('ACTIVATION_REINITIALISATION_MINUTES', 60),
+
+    'reinitialisation_intervalle_minutes' => (int) env('ACTIVATION_REINITIALISATION_INTERVALLE_MINUTES', 2),
 
 ];

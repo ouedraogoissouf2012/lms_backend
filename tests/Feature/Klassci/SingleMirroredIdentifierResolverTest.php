@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Klassci;
 
 use App\Models\Traits\ResolvesMirroredIdentifier;
-use Tests\Feature\Lesson\KlassciIdentifierDualityTest;
+use Tests\Feature\Lesson\LeconCreeeEnEspaceLocalTest;
 use Tests\TestCase;
 use Tests\Unit\Models\Traits\ResolvesMirroredIdentifierTest;
 
@@ -16,8 +16,8 @@ use Tests\Unit\Models\Traits\ResolvesMirroredIdentifierTest;
  * ## Ce que ce garde protège
  *
  * Les deux autres gardes de ce lot verrouillent des COMPORTEMENTS :
- * {@see KlassciIdentifierDualityTest} exige que les deux
- * espaces d'identifiants aboutissent, {@see ResolvesMirroredIdentifierTest}
+ * {@see LeconCreeeEnEspaceLocalTest} exige, depuis #873, que la leçon désigne sa
+ * classe et sa matière par leur id local, {@see ResolvesMirroredIdentifierTest}
  * fige la précédence et le bornage tenant. Aucun des deux n'empêche qu'on
  * réécrive DEMAIN une cinquième copie de la règle dans un coin — et c'est
  * précisément la duplication qui a produit le défaut :

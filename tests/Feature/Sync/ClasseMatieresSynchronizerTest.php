@@ -37,8 +37,9 @@ use Tests\TestCase;
  * bug de perte de données, verrouillé depuis par
  * `test_it_never_erases_what_the_complete_source_wrote`.
  *
- * Le vrai défaut du 422 était une divergence d'espace d'identifiants, traitée
- * par `App\Rules\MirroredIdentifierExists`.
+ * Le vrai défaut du 422 était une divergence d'espace d'identifiants. Depuis
+ * #873, la création d'une leçon n'accepte plus que l'id local, que la page de la
+ * matière donne (`matiere_id_local`).
  *
  * ## Pourquoi un miroir, et pas un assouplissement de la règle
  *

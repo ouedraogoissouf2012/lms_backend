@@ -156,7 +156,7 @@ final class KlassciConfigResolver implements KlassciTargetResolver
     {
         $url = $ecole?->klassci_api_url;
 
-        return $ecole instanceof Institution && $ecole->is_active
+        return $ecole instanceof Institution
             && $ecole->mode !== InstitutionMode::Standalone
             && is_string($url) && self::isUsableHttpUrl($url) ? $url : null;
     }

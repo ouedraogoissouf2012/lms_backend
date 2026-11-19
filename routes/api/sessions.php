@@ -38,6 +38,9 @@ use Illuminate\Support\Facades\Route;
 Route::middleware(['auth:sanctum', 'klassci.sync', 'gestion'])
     ->group(function () {
         Route::post('/programs', [TrainingSessionController::class, 'storeProgram']);
+        // Lire ses Programmes pour en choisir un (#1206) : le front faisait saisir
+        // le NUMERO du programme, faute de pouvoir les lister.
+        Route::get('/programs', [TrainingSessionController::class, 'indexPrograms']);
         Route::get('/training-sessions', [TrainingSessionController::class, 'index']);
         Route::post('/training-sessions', [TrainingSessionController::class, 'store']);
 

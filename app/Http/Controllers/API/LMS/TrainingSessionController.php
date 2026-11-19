@@ -7,8 +7,10 @@ namespace App\Http\Controllers\API\LMS;
 use App\Exceptions\BusinessException;
 use App\Http\Controllers\AuthenticatedController;
 use App\Http\Requests\ListerLesPeriodesRequest;
+use App\Http\Requests\ListerLesProgrammesRequest;
 use App\Http\Requests\StoreProgramRequest;
 use App\Http\Requests\StoreTrainingSessionRequest;
+use App\Models\Program;
 use App\Models\TrainingSession;
 use App\Services\Session\TrainingSessionCrudService;
 use Illuminate\Http\JsonResponse;
@@ -45,6 +47,23 @@ final class TrainingSessionController extends AuthenticatedController
             'titre' => $programme->titre,
             'version' => $programme->version,
         ], 'Programme créé.', 201);
+    }
+
+    /** Les Programmes de l'établissement, pour choisir celui d'une Période (#1206). */
+    public function indexPrograms(ListerLesProgrammesRequest $request): JsonResponse
+    {
+        try {
+            $page = $this->sessions->listerLesProgrammes($this->authenticatedUser($request), $request->parPage());
+        } catch (BusinessException $e) {
+            return $this->refus($e);
+        }
+
+        return $this->successResponse(
+            array_map(static fn (Program $p): array => ['id' => $p->getKey(), 'titre' => $p->titre, 'version' => $p->version], $page->items()),
+            '',
+            200,
+            ['current_page' => $page->currentPage(), 'last_page' => $page->lastPage(), 'per_page' => $page->perPage(), 'total' => $page->total()],
+        );
     }
 
     public function store(StoreTrainingSessionRequest $request): JsonResponse
@@ -98,6 +117,11 @@ final class TrainingSessionController extends AuthenticatedController
             'status' => $periode->status->value,
             'phase' => $periode->phase->value,
             'program_id' => $periode->program_id,
+            // Chargé par le service, supprimé en douceur compris (#1206) : le titre se lit
+            // ici, jamais en relisant `program_id`.
+            'program' => $periode->program instanceof Program
+                ? ['id' => $periode->program->getKey(), 'titre' => $periode->program->titre]
+                : null,
             'enrollment_opens_at' => $periode->enrollment_opens_at?->toDateString(),
             'enrollment_closes_at' => $periode->enrollment_closes_at?->toDateString(),
             'starts_on' => $periode->starts_on?->toDateString(),

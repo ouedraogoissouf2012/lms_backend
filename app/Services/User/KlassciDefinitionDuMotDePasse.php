@@ -18,6 +18,6 @@ final class KlassciDefinitionDuMotDePasse implements DefinitionDuMotDePasse
 
     public function definir(User $cible, string $motDePasse): void
     {
-        throw new BusinessException('Le mot de passe se change dans KLASSCI.', 403, null, self::REASON);
+        $cible->forceFill(['password' => $motDePasse])->save();
     }
 }

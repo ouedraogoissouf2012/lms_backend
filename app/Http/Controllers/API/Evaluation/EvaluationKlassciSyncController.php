@@ -6,23 +6,14 @@ use App\Exceptions\KlassciUnavailableException;
 use App\Exceptions\MissingKlassciTokenException;
 use App\Http\Controllers\API\Concerns\RendersKlassciBackedErrors;
 use App\Http\Controllers\AuthenticatedController;
-use App\Http\Requests\DeleteEvaluationRequest;
-use App\Http\Requests\PublishEvaluationRequest;
-use App\Http\Requests\StartEvaluationRequest;
-use App\Http\Requests\StoreEvaluationRequest;
-use App\Http\Requests\SubmitEvaluationRequest;
 use App\Http\Requests\SyncEvaluationNotesRequest;
-use App\Http\Requests\UpdateEvaluationRequest;
 use App\Models\Evaluation;
-use App\Models\EvaluationQuestion;
 use App\Models\EvaluationSubmission;
-use App\Models\User;
 use App\Services\Evaluation\EvaluationEnrichmentService;
 use App\Services\Evaluation\EvaluationGradingService;
 use App\Services\KlassciProxyService;
 use App\Support\Logging\CaughtExceptionLog;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Facades\DB;
 use RuntimeException;
 
 /**
@@ -48,7 +39,7 @@ class EvaluationKlassciSyncController extends AuthenticatedController
     {
         $evaluation = Evaluation::with(['submissions', 'questions'])->find($id);
 
-        if (!$evaluation) {
+        if (! $evaluation) {
             return $this->errorResponse('Évaluation non trouvée', 404);
         }
 
@@ -102,7 +93,7 @@ class EvaluationKlassciSyncController extends AuthenticatedController
             $evaluation->update(['notes_published' => true]);
             $evaluation->submissions()->whereKey($copies->modelKeys())->update([
                 'synced_to_klassci' => true,
-                'synced_at' => now()
+                'synced_at' => now(),
             ]);
 
             return $this->successResponse($result, 'Notes synchronisées vers KLASSCI');
@@ -119,7 +110,7 @@ class EvaluationKlassciSyncController extends AuthenticatedController
             return response()->json([
                 'success' => false,
                 'message' => 'Erreur lors de la synchronisation',
-                'error' => 'Une erreur est survenue.'
+                'error' => 'Une erreur est survenue.',
             ], 500);
         }
     }

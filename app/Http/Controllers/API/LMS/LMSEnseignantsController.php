@@ -75,7 +75,7 @@ final class LMSEnseignantsController extends AuthenticatedController
             return response()->json([
                 'success' => false,
                 'message' => 'Erreur lors du chargement des enseignants.',
-                'data'    => [],
+                'data' => [],
             ], 500);
         }
     }

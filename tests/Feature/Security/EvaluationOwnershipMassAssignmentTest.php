@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Security;
 
+use App\Http\Controllers\API\EvaluationController;
 use App\Models\Evaluation;
 use App\Models\Institution;
 use App\Models\User;
@@ -24,14 +25,15 @@ use Tests\TestCase;
  *
  * Spec: `.claude/specs/evaluation-ownership-mass-assignment/`
  *
- * @see \App\Http\Controllers\API\EvaluationController::store
- * @see \App\Http\Controllers\API\EvaluationController::update
+ * @see EvaluationController::store
+ * @see EvaluationController::update
  */
 final class EvaluationOwnershipMassAssignmentTest extends TestCase
 {
     use RefreshDatabase;
 
     private Institution $institution;
+
     private Institution $otherInstitution;
 
     protected function setUp(): void
@@ -39,16 +41,16 @@ final class EvaluationOwnershipMassAssignmentTest extends TestCase
 
         parent::setUp();
 
-        $this->institution      = Institution::factory()->create(['slug' => 'school-a']);
+        $this->institution = Institution::factory()->create(['slug' => 'school-a']);
         $this->otherInstitution = Institution::factory()->create(['slug' => 'school-b']);
     }
 
     private function teacher(int $klassciEnseignantId): User
     {
         return User::factory()->create([
-            'institution_id'        => $this->institution->id,
-            'role'                  => 'enseignant',
-            'klassci_role'          => 'enseignant',
+            'institution_id' => $this->institution->id,
+            'role' => 'enseignant',
+            'klassci_role' => 'enseignant',
             'klassci_enseignant_id' => $klassciEnseignantId,
         ]);
     }
@@ -63,10 +65,10 @@ final class EvaluationOwnershipMassAssignmentTest extends TestCase
         return array_merge([
             'klassci_evaluation_id' => ++$this->programmation,
             'klassci_matiere_id' => 10,
-            'klassci_classe_id'  => 20,
-            'titre'              => 'Examen test',
-            'type'               => 'qcm',
-            'duree_minutes'      => 60,
+            'klassci_classe_id' => 20,
+            'titre' => 'Examen test',
+            'type' => 'qcm',
+            'duree_minutes' => 60,
         ], $overrides);
     }
 
@@ -96,9 +98,9 @@ final class EvaluationOwnershipMassAssignmentTest extends TestCase
     public function test_create_evaluation_blocked_for_user_without_klassci_enseignant_id(): void
     {
         $user = User::factory()->create([
-            'institution_id'        => $this->institution->id,
-            'role'                  => 'admin',
-            'klassci_role'          => 'admin',
+            'institution_id' => $this->institution->id,
+            'role' => 'admin',
+            'klassci_role' => 'admin',
             'klassci_enseignant_id' => null,
         ]);
 
@@ -122,7 +124,7 @@ final class EvaluationOwnershipMassAssignmentTest extends TestCase
 
         // Second POST avec le champ forgé
         $this->postJson('/api/evaluations', $this->basePayload([
-            'titre'                 => 'Eval 2',
+            'titre' => 'Eval 2',
             'klassci_enseignant_id' => 999,
         ]))->assertStatus(201);
 
@@ -137,15 +139,15 @@ final class EvaluationOwnershipMassAssignmentTest extends TestCase
     {
         $teacher = $this->teacher(klassciEnseignantId: 42);
         $evaluation = Evaluation::factory()->create([
-            'institution_id'        => $this->institution->id,
+            'institution_id' => $this->institution->id,
             'klassci_enseignant_id' => 42,
-            'is_locked'             => false,
+            'is_locked' => false,
         ]);
 
         Sanctum::actingAs($teacher);
 
         $this->putJson("/api/evaluations/{$evaluation->id}", [
-            'titre'                 => 'Updated title',
+            'titre' => 'Updated title',
             'klassci_enseignant_id' => 999,    // attempt transfer
         ])->assertStatus(200);
 
@@ -162,15 +164,15 @@ final class EvaluationOwnershipMassAssignmentTest extends TestCase
     {
         $teacher = $this->teacher(klassciEnseignantId: 42);
         $evaluation = Evaluation::factory()->create([
-            'institution_id'        => $this->institution->id,
+            'institution_id' => $this->institution->id,
             'klassci_enseignant_id' => 42,
-            'is_locked'             => false,
+            'is_locked' => false,
         ]);
 
         Sanctum::actingAs($teacher);
 
         $this->putJson("/api/evaluations/{$evaluation->id}", [
-            'titre'          => 'Updated title',
+            'titre' => 'Updated title',
             'institution_id' => $this->otherInstitution->id,    // attempt cross-tenant
         ])->assertStatus(200);
 
@@ -187,16 +189,16 @@ final class EvaluationOwnershipMassAssignmentTest extends TestCase
     {
         $teacher = $this->teacher(klassciEnseignantId: 42);
         $evaluation = Evaluation::factory()->create([
-            'institution_id'        => $this->institution->id,
+            'institution_id' => $this->institution->id,
             'klassci_enseignant_id' => 42,
-            'klassci_classe_id'     => 20,
-            'is_locked'             => false,
+            'klassci_classe_id' => 20,
+            'is_locked' => false,
         ]);
 
         Sanctum::actingAs($teacher);
 
         $this->putJson("/api/evaluations/{$evaluation->id}", [
-            'titre'             => 'Updated title',
+            'titre' => 'Updated title',
             'klassci_classe_id' => 999,
         ])->assertStatus(200);
 
@@ -242,10 +244,10 @@ final class EvaluationOwnershipMassAssignmentTest extends TestCase
     {
         $teacher = $this->teacher(klassciEnseignantId: 42);
         $evaluation = Evaluation::factory()->create([
-            'institution_id'        => $this->institution->id,
+            'institution_id' => $this->institution->id,
             'klassci_enseignant_id' => 42,
-            'titre'                 => 'Original',
-            'is_locked'             => false,
+            'titre' => 'Original',
+            'is_locked' => false,
         ]);
 
         Sanctum::actingAs($teacher);

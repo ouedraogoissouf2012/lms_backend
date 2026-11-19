@@ -181,5 +181,4 @@ final class ChapterFileUploadService
 
         throw new LogicException('Async conversion payload must contain numeric identifiers.');
     }
-
 }

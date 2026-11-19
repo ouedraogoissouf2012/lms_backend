@@ -35,7 +35,7 @@ final class AuthenticatedControllerTest extends TestCase
 {
     public function test_returns_user_when_request_has_authenticated_user(): void
     {
-        $expected = (new User())->forceFill(['id' => 42, 'name' => 'Alice']);
+        $expected = (new User)->forceFill(['id' => 42, 'name' => 'Alice']);
 
         $request = Request::create('/test');
         $request->setUserResolver(static fn () => $expected);
@@ -61,14 +61,39 @@ final class AuthenticatedControllerTest extends TestCase
         // A non-User Authenticatable (e.g. another guard's model). The
         // helper must NOT trust the duck-typing — only `App\Models\User`
         // is allowed.
-        $foreign = new class () implements Authenticatable {
-            public function getAuthIdentifierName(): string { return 'id'; }
-            public function getAuthIdentifier(): int { return 1; }
-            public function getAuthPassword(): string { return ''; }
-            public function getAuthPasswordName(): string { return 'password'; }
-            public function getRememberToken(): string { return ''; }
+        $foreign = new class implements Authenticatable
+        {
+            public function getAuthIdentifierName(): string
+            {
+                return 'id';
+            }
+
+            public function getAuthIdentifier(): int
+            {
+                return 1;
+            }
+
+            public function getAuthPassword(): string
+            {
+                return '';
+            }
+
+            public function getAuthPasswordName(): string
+            {
+                return 'password';
+            }
+
+            public function getRememberToken(): string
+            {
+                return '';
+            }
+
             public function setRememberToken($value): void {}
-            public function getRememberTokenName(): string { return 'remember_token'; }
+
+            public function getRememberTokenName(): string
+            {
+                return 'remember_token';
+            }
         };
 
         $request = Request::create('/test');
@@ -84,7 +109,8 @@ final class AuthenticatedControllerTest extends TestCase
      */
     private function makeSubject(): object
     {
-        return new class () extends AuthenticatedController {
+        return new class extends AuthenticatedController
+        {
             public function callAuthenticatedUser(Request $request): User
             {
                 return $this->authenticatedUser($request);

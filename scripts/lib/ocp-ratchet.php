@@ -182,14 +182,14 @@ function ocpClasseEntrees(array $entrees, callable $adrExiste): array
                 : [];
 
             if (count($distinctes) < 3) {
-                $erreurs[] = "{$chemin} : dérogation refusée — " . count($distinctes)
-                    . ' demande(s) distincte(s) sur les 3 requises (article 7)';
+                $erreurs[] = "{$chemin} : dérogation refusée — ".count($distinctes)
+                    .' demande(s) distincte(s) sur les 3 requises (article 7)';
             }
 
             $adr = $e['adr'] ?? null;
 
             if (! is_string($adr) || ! $adrExiste($adr)) {
-                $erreurs[] = "{$chemin} : dérogation refusée — ADR introuvable (" . ($adr ?? 'aucun') . ')';
+                $erreurs[] = "{$chemin} : dérogation refusée — ADR introuvable (".($adr ?? 'aucun').')';
             }
 
             if (empty($e['accorde_par'])) {
@@ -211,7 +211,7 @@ function ocpClasseEntrees(array $entrees, callable $adrExiste): array
  * toujours accepté**. Le cliquet ne remonte jamais.
  *
  * @param  array<string, int>  $trouves  chemin => nombre d'occurrences
- * @param  array<string, int>  $dettes   chemin => nombre toléré
+ * @param  array<string, int>  $dettes  chemin => nombre toléré
  * @return array{neuves: array<string, int>, aggravees: array<string, string>, reduites: array<string, string>}
  */
 function ocpVerdict(array $trouves, array $dettes): array

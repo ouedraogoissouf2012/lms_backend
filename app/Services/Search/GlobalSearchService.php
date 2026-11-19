@@ -71,8 +71,7 @@ final class GlobalSearchService
         private readonly KlassciSearchSources $klassciSources,
         private readonly LessonReadScope $lessonScope,
         private readonly CaughtExceptionLog $journal,
-    ) {
-    }
+    ) {}
 
     /**
      * Lancer une recherche globale agrégée.
@@ -215,7 +214,7 @@ final class GlobalSearchService
                 'description' => $u->role_display_name,
                 'type' => 'user',
                 'icon' => 'UserIcon',
-                'url' => '/admin/users/' . $u->id,
+                'url' => '/admin/users/'.$u->id,
             ])
             ->all();
     }
@@ -243,7 +242,7 @@ final class GlobalSearchService
                 'description' => Str::limit((string) $lesson->description, 100),
                 'type' => 'lesson',
                 'icon' => 'BookOpenIcon',
-                'url' => '/teacher/lessons/' . $lesson->id,
+                'url' => '/teacher/lessons/'.$lesson->id,
             ])
             ->all();
     }
@@ -282,7 +281,7 @@ final class GlobalSearchService
                 'description' => Str::limit((string) $evaluation->description, 100),
                 'type' => 'evaluation',
                 'icon' => 'DocumentTextIcon',
-                'url' => '/teacher/evaluations/' . $evaluation->id,
+                'url' => '/teacher/evaluations/'.$evaluation->id,
             ])
             ->all();
     }

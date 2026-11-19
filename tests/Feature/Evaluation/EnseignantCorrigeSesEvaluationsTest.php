@@ -708,7 +708,6 @@ final class EnseignantCorrigeSesEvaluationsTest extends TestCase
     }
 
     /**
-     * @param  mixed  $resultats
      * @return array<int|string, array{mixed, mixed, mixed}>
      */
     private function lignes(mixed $resultats): array

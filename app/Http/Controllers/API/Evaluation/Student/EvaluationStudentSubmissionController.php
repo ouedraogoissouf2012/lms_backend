@@ -98,6 +98,7 @@ final class EvaluationStudentSubmissionController extends AuthenticatedControlle
             $this->journal->error('Erreur récupération soumission étudiant', $e, [
                 'evaluation_id' => $id,
             ]);
+
             return $this->errorResponse('Erreur lors de la récupération de la soumission', 500);
         }
     }

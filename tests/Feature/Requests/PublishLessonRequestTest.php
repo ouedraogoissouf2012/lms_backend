@@ -3,9 +3,10 @@
 namespace Tests\Feature\Requests;
 
 use App\Enums\LessonStatus;
+use App\Models\Institution;
 use App\Models\Lesson;
 use App\Models\User;
-use App\Models\Institution;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
@@ -23,12 +24,16 @@ use Tests\TestCase;
  */
 class PublishLessonRequestTest extends TestCase
 {
-    use \Illuminate\Foundation\Testing\RefreshDatabase;
+    use RefreshDatabase;
 
     private Institution $institution;
+
     private User $teacher;
+
     private User $student;
+
     private User $coordinator;
+
     private Lesson $lesson;
 
     protected function setUp(): void

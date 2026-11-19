@@ -8,6 +8,7 @@ use App\Models\KnowledgeCheck;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Testing\TestResponse;
 use PHPUnit\Framework\Attributes\DataProvider;
+use Symfony\Component\HttpFoundation\Response;
 use Tests\Concerns\ActsAsTenantUser;
 use Tests\Concerns\JoueUnQuizDeLecon;
 use Tests\TestCase;
@@ -133,7 +134,7 @@ final class BonneReponseDansLesBornesTest extends TestCase
 
     /**
      * @param  list<array<string, mixed>>  $questions
-     * @return TestResponse<\Symfony\Component\HttpFoundation\Response>
+     * @return TestResponse<Response>
      */
     private function ecrire(string $voie, array $questions): TestResponse
     {

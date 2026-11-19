@@ -2,14 +2,16 @@
 
 namespace App\Models;
 
+use App\Models\Traits\BelongsToInstitution;
+use Database\Factories\ForumTopicFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
-use App\Models\Traits\BelongsToInstitution;
+use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Carbon;
 
 /**
  * Model ForumTopic
@@ -23,12 +25,12 @@ use App\Models\Traits\BelongsToInstitution;
  * @property int|null $classe_id
  * @property string $status
  * @property bool $is_resolved
- * @property \Illuminate\Support\Carbon|null $last_activity_at
+ * @property Carbon|null $last_activity_at
  */
 class ForumTopic extends Model
 {
-    /** @use HasFactory<\Database\Factories\ForumTopicFactory> */
-    use HasFactory, SoftDeletes, BelongsToInstitution;
+    /** @use HasFactory<ForumTopicFactory> */
+    use BelongsToInstitution, HasFactory, SoftDeletes;
 
     protected $fillable = [
         'user_id',
@@ -101,36 +103,42 @@ class ForumTopic extends Model
     {
         return $query->where('status', 'open');
     }
+
     /** @param Builder<ForumTopic> $query
      * @return Builder<ForumTopic> */
     public function scopePinned(Builder $query)
     {
         return $query->where('status', 'pinned');
     }
+
     /** @param Builder<ForumTopic> $query
      * @return Builder<ForumTopic> */
     public function scopeResolved(Builder $query)
     {
         return $query->where('is_resolved', true);
     }
+
     /** @param Builder<ForumTopic> $query
      * @return Builder<ForumTopic> */
     public function scopeByActivity(Builder $query)
     {
         return $query->orderBy('last_activity_at', 'desc');
     }
+
     /** @param Builder<ForumTopic> $query
      * @return Builder<ForumTopic> */
     public function scopeForMatiere(Builder $query, int $matiereId)
     {
         return $query->where('matiere_id', $matiereId);
     }
+
     /** @param Builder<ForumTopic> $query
      * @return Builder<ForumTopic> */
     public function scopeForClasse(Builder $query, int $classeId)
     {
         return $query->where('classe_id', $classeId);
     }
+
     /** @param Builder<ForumTopic> $query
      * @return Builder<ForumTopic> */
     public function scopeForLesson(Builder $query, int $lessonId)

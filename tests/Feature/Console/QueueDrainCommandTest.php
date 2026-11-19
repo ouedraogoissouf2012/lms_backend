@@ -30,7 +30,7 @@ final class QueueDrainCommandTest extends TestCase
 
         // --max-time court : la queue est vide, inutile d'immobiliser la CI 55 s.
         $this->artisan('queue:drain', [
-            '--memory'   => (string) self::TEST_MEMORY_MB,
+            '--memory' => (string) self::TEST_MEMORY_MB,
             '--max-time' => '5',
         ])->assertSuccessful();
 

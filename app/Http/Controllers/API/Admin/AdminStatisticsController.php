@@ -16,8 +16,7 @@ final class AdminStatisticsController extends AuthenticatedController
 {
     public function __construct(
         private readonly AdminStatisticsService $service,
-    ) {
-    }
+    ) {}
 
     public function show(Request $request): JsonResponse
     {

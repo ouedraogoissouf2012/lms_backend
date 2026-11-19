@@ -7,6 +7,7 @@ namespace App\Services\Visio\Recording;
 use App\Enums\SeanceRecordingStatus;
 use App\Models\Seance;
 use App\Models\SeanceRecording;
+use App\Services\Visio\SecureVisioRoomIdGenerator;
 
 /**
  * #469 — traduit un **salon** visio en enregistrement actif.
@@ -38,8 +39,8 @@ use App\Models\SeanceRecording;
  * séance, donc à un seul établissement. Et connaître un salon ne suffit pas : il
  * faut aussi le secret HMAC.
  *
- * @see \App\Services\Visio\SecureVisioRoomIdGenerator
- * @see \App\Services\Visio\Recording\SeanceRecordingWebhookService
+ * @see SecureVisioRoomIdGenerator
+ * @see SeanceRecordingWebhookService
  */
 final class RoomRecordingResolver
 {

@@ -35,7 +35,7 @@ final class SyncAttendancesRequest extends FormRequest
     {
         // Check 1: User must be authenticated
         $user = auth()->user();
-        if (!$user) {
+        if (! $user) {
             return false;
         }
 

@@ -20,26 +20,26 @@ final class RoleTest extends TestCase
 {
     public function test_cases_have_expected_canonical_values(): void
     {
-        self::assertSame('etudiant',     Role::Etudiant->value);
-        self::assertSame('enseignant',   Role::Enseignant->value);
+        self::assertSame('etudiant', Role::Etudiant->value);
+        self::assertSame('enseignant', Role::Enseignant->value);
         self::assertSame('coordinateur', Role::Coordinateur->value);
-        self::assertSame('admin',        Role::Admin->value);
-        self::assertSame('supradmin',    Role::Supradmin->value);
+        self::assertSame('admin', Role::Admin->value);
+        self::assertSame('supradmin', Role::Supradmin->value);
     }
 
     public function test_try_from_string_returns_canonical_for_fr_input(): void
     {
-        self::assertSame(Role::Etudiant,     Role::tryFromString('etudiant'));
-        self::assertSame(Role::Enseignant,   Role::tryFromString('enseignant'));
+        self::assertSame(Role::Etudiant, Role::tryFromString('etudiant'));
+        self::assertSame(Role::Enseignant, Role::tryFromString('enseignant'));
         self::assertSame(Role::Coordinateur, Role::tryFromString('coordinateur'));
-        self::assertSame(Role::Admin,        Role::tryFromString('admin'));
-        self::assertSame(Role::Supradmin,    Role::tryFromString('supradmin'));
+        self::assertSame(Role::Admin, Role::tryFromString('admin'));
+        self::assertSame(Role::Supradmin, Role::tryFromString('supradmin'));
     }
 
     public function test_try_from_string_normalizes_en_aliases(): void
     {
-        self::assertSame(Role::Etudiant,     Role::tryFromString('student'));
-        self::assertSame(Role::Enseignant,   Role::tryFromString('teacher'));
+        self::assertSame(Role::Etudiant, Role::tryFromString('student'));
+        self::assertSame(Role::Enseignant, Role::tryFromString('teacher'));
         self::assertSame(Role::Coordinateur, Role::tryFromString('coordinator'));
     }
 
@@ -56,7 +56,7 @@ final class RoleTest extends TestCase
     public function test_institution_super_admin_is_not_platform_supradmin(): void
     {
         self::assertSame(Role::SuperAdmin, Role::tryFromString('superAdmin'));
-        self::assertSame(Role::Supradmin,  Role::tryFromString('supradmin'));
+        self::assertSame(Role::Supradmin, Role::tryFromString('supradmin'));
         self::assertNotSame(Role::Supradmin, Role::tryFromString('superAdmin'));
     }
 

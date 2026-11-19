@@ -77,9 +77,7 @@ final class AuditInstitutionOrphansTest extends TestCase
         return new class($report) implements InstitutionIntegrityInspectorInterface
         {
             /** @param array<string, array{null: int, orphan: int}> $report */
-            public function __construct(private readonly array $report)
-            {
-            }
+            public function __construct(private readonly array $report) {}
 
             public function scopedTablesPresent(array $tables): array
             {

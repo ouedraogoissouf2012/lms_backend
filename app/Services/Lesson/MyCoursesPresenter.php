@@ -33,8 +33,8 @@ final class MyCoursesPresenter
     /**
      * @param  LengthAwarePaginator<int, Lesson>  $page  Cours de la page courante.
      * @param  Collection<int, \stdClass>  $selection  Toute la sélection filtrée (hors pagination),
-     *                                                réduite à `matiere_id` et `enseignant_id`, dans son
-     *                                                ordre — sert à bâtir des filtres exhaustifs (#940).
+     *                                                 réduite à `matiere_id` et `enseignant_id`, dans son
+     *                                                 ordre — sert à bâtir des filtres exhaustifs (#940).
      * @return array{
      *     courses: Collection<int, array<string, mixed>>,
      *     filters: array{matieres: Collection<int, array{id: int, name: string}>, enseignants: Collection<int, array{id: int, name: string}>},

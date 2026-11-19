@@ -42,7 +42,7 @@ final class OcpGuardTest extends TestCase
     {
         [$code, $sortie] = $this->lancer($this->racine);
 
-        $this->assertSame(0, $code, "La garde OCP doit être verte sur le dépôt.\n" . $sortie);
+        $this->assertSame(0, $code, "La garde OCP doit être verte sur le dépôt.\n".$sortie);
 
         // Le dénominateur doit être publié : « rien à redire » et « je n'ai rien
         // regardé » ne doivent jamais produire le même message.
@@ -56,7 +56,7 @@ final class OcpGuardTest extends TestCase
     #[Test]
     public function elle_rougit_sur_une_conditionnelle_de_mode_neuve(): void
     {
-        $sonde = $this->racine . '/app/Services/OcpGuardProbe.php';
+        $sonde = $this->racine.'/app/Services/OcpGuardProbe.php';
 
         file_put_contents($sonde, <<<'PHP'
             <?php
@@ -74,7 +74,7 @@ final class OcpGuardTest extends TestCase
             @unlink($sonde);
         }
 
-        $this->assertSame(1, $code, "Une conditionnelle de mode neuve doit faire échouer la garde.\n" . $sortie);
+        $this->assertSame(1, $code, "Une conditionnelle de mode neuve doit faire échouer la garde.\n".$sortie);
         $this->assertStringContainsString('OcpGuardProbe.php', $sortie);
     }
 
@@ -122,7 +122,7 @@ final class OcpGuardTest extends TestCase
     #[DataProvider('ecrituresInterdites')]
     public function elle_rougit_sur_chaque_ecriture_interdite(string $corps): void
     {
-        $sonde = $this->racine . '/app/Services/OcpGuardProbe.php';
+        $sonde = $this->racine.'/app/Services/OcpGuardProbe.php';
 
         file_put_contents($sonde, "<?php\nnamespace App\\Services;\nfinal class OcpGuardProbe {\n    public function r(object \$i) {\n        {$corps}\n    }\n}\n");
 
@@ -135,7 +135,7 @@ final class OcpGuardTest extends TestCase
         $this->assertSame(
             1,
             $code,
-            "Cette écriture doit faire rougir la garde :\n  {$corps}\n" . $sortie
+            "Cette écriture doit faire rougir la garde :\n  {$corps}\n".$sortie
         );
     }
 
@@ -145,7 +145,7 @@ final class OcpGuardTest extends TestCase
         // Le versant qui compte autant : une garde qui crie à tort est désactivée
         // dans la semaine. `ssl_verify` et compagnie sont des réglages
         // d'INFRASTRUCTURE, et `mode` seul nomme bien d'autres choses.
-        $sonde = $this->racine . '/app/Services/OcpGuardProbe.php';
+        $sonde = $this->racine.'/app/Services/OcpGuardProbe.php';
 
         file_put_contents($sonde, <<<'PHP'
             <?php
@@ -166,7 +166,7 @@ final class OcpGuardTest extends TestCase
             @unlink($sonde);
         }
 
-        $this->assertSame(0, $code, "Aucune de ces lignes ne résout un mode d'établissement.\n" . $sortie);
+        $this->assertSame(0, $code, "Aucune de ces lignes ne résout un mode d'établissement.\n".$sortie);
     }
 
     #[Test]
@@ -176,16 +176,16 @@ final class OcpGuardTest extends TestCase
         // une occurrence de plus dans un fichier déjà gelé est une aggravation.
         // Ce chemin n'était traversé par aucun test.
         $cas = $this->racineJetable();
-        mkdir($cas . '/app', 0o777, true);
+        mkdir($cas.'/app', 0o777, true);
         file_put_contents(
-            $cas . '/app/Dette.php',
+            $cas.'/app/Dette.php',
             "<?php\nnamespace App;\nfinal class Dette {\n"
             ."    public function a(object \$i) { return \$i->mode === 'standalone'; }\n"
             ."    public function b(object \$i) { return \$i->mode === 'klassci'; }\n"
             ."}\n"
         );
 
-        file_put_contents($cas . '/.ocp-allowlist.json', json_encode([
+        file_put_contents($cas.'/.ocp-allowlist.json', json_encode([
             'version' => 1,
             'entries' => [[
                 'path' => 'app/Dette.php',
@@ -201,15 +201,15 @@ final class OcpGuardTest extends TestCase
             $this->supprimer($cas);
         }
 
-        $this->assertSame(1, $code, "Dette 1 → 2 : la garde doit rougir.\n" . $sortie);
+        $this->assertSame(1, $code, "Dette 1 → 2 : la garde doit rougir.\n".$sortie);
     }
 
     #[Test]
     public function elle_refuse_de_travailler_sans_liste_d_exemption(): void
     {
         $vide = $this->racineJetable();
-        mkdir($vide . '/app', 0o777, true);
-        file_put_contents($vide . '/app/Rien.php', "<?php\n");
+        mkdir($vide.'/app', 0o777, true);
+        file_put_contents($vide.'/app/Rien.php', "<?php\n");
 
         try {
             [$code] = $this->lancer($vide);
@@ -225,8 +225,8 @@ final class OcpGuardTest extends TestCase
     public function elle_refuse_de_travailler_quand_il_n_y_a_rien_a_inspecter(): void
     {
         $vide = $this->racineJetable();
-        mkdir($vide . '/app', 0o777, true);
-        file_put_contents($vide . '/.ocp-allowlist.json', '{"version":1,"entries":[]}');
+        mkdir($vide.'/app', 0o777, true);
+        file_put_contents($vide.'/.ocp-allowlist.json', '{"version":1,"entries":[]}');
 
         try {
             [$code] = $this->lancer($vide);
@@ -241,12 +241,12 @@ final class OcpGuardTest extends TestCase
     public function une_derogation_sans_trois_demandes_distinctes_est_refusee(): void
     {
         $cas = $this->racineJetable();
-        mkdir($cas . '/app', 0o777, true);
-        file_put_contents($cas . '/app/Rien.php', "<?php\n");
-        file_put_contents($cas . '/adr.md', "ADR de test\n");
+        mkdir($cas.'/app', 0o777, true);
+        file_put_contents($cas.'/app/Rien.php', "<?php\n");
+        file_put_contents($cas.'/adr.md', "ADR de test\n");
 
         // Deux dates identiques : la garde doit compter UNE demande distincte.
-        file_put_contents($cas . '/.ocp-allowlist.json', json_encode([
+        file_put_contents($cas.'/.ocp-allowlist.json', json_encode([
             'version' => 1,
             'entries' => [[
                 'path' => 'app/Rien.php',
@@ -272,10 +272,10 @@ final class OcpGuardTest extends TestCase
     public function une_derogation_sans_adr_sur_le_disque_est_refusee(): void
     {
         $cas = $this->racineJetable();
-        mkdir($cas . '/app', 0o777, true);
-        file_put_contents($cas . '/app/Rien.php', "<?php\n");
+        mkdir($cas.'/app', 0o777, true);
+        file_put_contents($cas.'/app/Rien.php', "<?php\n");
 
-        file_put_contents($cas . '/.ocp-allowlist.json', json_encode([
+        file_put_contents($cas.'/.ocp-allowlist.json', json_encode([
             'version' => 1,
             'entries' => [[
                 'path' => 'app/Rien.php',
@@ -301,9 +301,9 @@ final class OcpGuardTest extends TestCase
     private function lancer(string $racine): array
     {
         $commande = escapeshellarg(PHP_BINARY)
-            . ' ' . escapeshellarg($this->racine . '/scripts/check-ocp.php')
-            . ' ' . escapeshellarg($racine)
-            . ' 2>&1';
+            .' '.escapeshellarg($this->racine.'/scripts/check-ocp.php')
+            .' '.escapeshellarg($racine)
+            .' 2>&1';
 
         exec($commande, $lignes, $code);
 
@@ -312,7 +312,7 @@ final class OcpGuardTest extends TestCase
 
     private function racineJetable(): string
     {
-        $chemin = sys_get_temp_dir() . '/ocp-' . bin2hex(random_bytes(6));
+        $chemin = sys_get_temp_dir().'/ocp-'.bin2hex(random_bytes(6));
         mkdir($chemin, 0o777, true);
 
         return $chemin;

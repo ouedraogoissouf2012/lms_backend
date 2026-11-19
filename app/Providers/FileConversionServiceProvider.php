@@ -23,7 +23,7 @@ use Illuminate\Support\ServiceProvider;
  * `AppServiceProvider` because it is a generic infrastructure component
  * potentially reusable beyond file conversion.
  *
- * @see \App\Providers\AppServiceProvider For the ShellExecutor binding.
+ * @see AppServiceProvider For the ShellExecutor binding.
  */
 final class FileConversionServiceProvider extends ServiceProvider
 {

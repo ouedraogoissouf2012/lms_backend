@@ -9,6 +9,7 @@ use App\Models\Evaluation;
 use App\Models\User;
 use App\Services\KlassciProxyService;
 use App\Support\Logging\CaughtExceptionLog;
+use Illuminate\Support\Collection;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -47,13 +48,14 @@ final class StudentEvaluationsListService implements StudentEvaluationsReader
     }
 
     /**
-     * @return array<int, array<string, mixed>>|null  null = classe non trouvée
-     * @throws MissingKlassciTokenException  Si pas de klassci_token sur le user
+     * @return array<int, array<string, mixed>>|null null = classe non trouvée
+     *
+     * @throws MissingKlassciTokenException Si pas de klassci_token sur le user
      */
     public function getEnrichedEvaluationsForStudent(User $user): ?array
     {
         $klassciToken = $user->klassci_token;
-        if (!$klassciToken) {
+        if (! $klassciToken) {
             throw MissingKlassciTokenException::forUser($user->id);
         }
 
@@ -69,7 +71,7 @@ final class StudentEvaluationsListService implements StudentEvaluationsReader
         // findOne, via la façade LearnerEvaluationScope) :
         // KlassciLearnerEvaluationAudience.
         $classe = $this->scope->classeOf($user);
-        if ($classe === null || !is_numeric($classe['id'] ?? null)) {
+        if ($classe === null || ! is_numeric($classe['id'] ?? null)) {
             return null;
         }
         $classeId = (int) $classe['id'];
@@ -100,27 +102,29 @@ final class StudentEvaluationsListService implements StudentEvaluationsReader
     }
 
     /**
-     * @return \Illuminate\Support\Collection<int, array<string, mixed>>
+     * @return Collection<int, array<string, mixed>>
      */
-    private function fetchKlassciEvaluationsSafe(string $klassciToken): \Illuminate\Support\Collection
+    private function fetchKlassciEvaluationsSafe(string $klassciToken): Collection
     {
         try {
             $response = $this->klassciService->requestWithUserToken($klassciToken, 'evaluations', 'GET');
+
             return collect($response['data'] ?? []);
         } catch (\Exception $e) {
             $this->journal->warning('Could not fetch KLASSCI evaluations for windows', $e);
+
             return collect([]);
         }
     }
 
     /**
-     * @param  \Illuminate\Support\Collection<int, array<string, mixed>>  $klassciEvaluations
+     * @param  Collection<int, array<string, mixed>>  $klassciEvaluations
      * @param  array{id: int, nom: ?string}  $classeIdentite
      * @return array<string, mixed>
      */
     private function enrichEvaluation(
         Evaluation $evalLMS,
-        \Illuminate\Support\Collection $klassciEvaluations,
+        Collection $klassciEvaluations,
         User $student,
         string $klassciToken,
         array $classeIdentite
@@ -170,7 +174,7 @@ final class StudentEvaluationsListService implements StudentEvaluationsReader
     ): void {
         $evalArray['classe'] = $classeIdentite;
 
-        if (!$evalLMS->klassci_matiere_id) {
+        if (! $evalLMS->klassci_matiere_id) {
             return;
         }
 

@@ -9,6 +9,7 @@ use App\Models\Evaluation;
 use App\Models\Institution;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Schema;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
@@ -111,7 +112,7 @@ final class AuditLogTest extends TestCase
         ]);
 
         // Simule l'absence de la table d'audit (migration non exécutée / DB KO).
-        \Illuminate\Support\Facades\Schema::drop('audit_logs');
+        Schema::drop('audit_logs');
 
         Sanctum::actingAs($user);
 

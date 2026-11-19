@@ -45,7 +45,7 @@ return new class extends Migration
     public function up(): void
     {
         foreach ($this->tables as $tableName) {
-            if (Schema::hasTable($tableName) && !Schema::hasColumn($tableName, 'institution_id')) {
+            if (Schema::hasTable($tableName) && ! Schema::hasColumn($tableName, 'institution_id')) {
                 Schema::table($tableName, function (Blueprint $table) {
                     $table->unsignedBigInteger('institution_id')->nullable()->after('id');
                     $table->index('institution_id');

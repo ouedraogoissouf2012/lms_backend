@@ -31,13 +31,13 @@ final class StartVisioRequest extends FormRequest
     {
         // Check 1: User must be authenticated
         $user = auth()->user();
-        if (!$user) {
+        if (! $user) {
             return false;
         }
 
         // Check 2: User must be enseignant or coordinateur
         // (route middleware also enforces this, defense in depth)
-        if (!($user->isTeacher() || $user->isCoordinator())) {
+        if (! ($user->isTeacher() || $user->isCoordinator())) {
             return false;
         }
 

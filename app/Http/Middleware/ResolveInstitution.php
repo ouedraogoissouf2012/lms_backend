@@ -47,9 +47,7 @@ class ResolveInstitution
      */
     public const ETABLISSEMENT_INCONNU = 'Établissement introuvable ou inactif.';
 
-    public function __construct(private TenantManager $tenantManager)
-    {
-    }
+    public function __construct(private TenantManager $tenantManager) {}
 
     public function handle(Request $request, Closure $next): Response
     {
@@ -80,7 +78,7 @@ class ResolveInstitution
         // Priority 2: public route — fallback on the X-Institution slug header.
         $slug = $request->header('X-Institution');
 
-        if (!$slug) {
+        if (! $slug) {
             // Priority 3: no token, no header — no tenant context.
             return $next($request);
         }
@@ -89,7 +87,7 @@ class ResolveInstitution
             ->where('is_active', true)
             ->first();
 
-        if (!$institution) {
+        if (! $institution) {
             return $this->deny(Response::HTTP_BAD_REQUEST, self::ETABLISSEMENT_INCONNU);
         }
 
@@ -117,7 +115,7 @@ class ResolveInstitution
     {
         $token = PersonalAccessToken::findToken($request->bearerToken());
 
-        if (!$token || !$token->tokenable) {
+        if (! $token || ! $token->tokenable) {
             return null;
         }
 
@@ -126,13 +124,13 @@ class ResolveInstitution
         // Supradmin / platform account (no institution) — intentionally
         // cross-tenant, proceeds unscoped. MUST NOT be confused with a disabled
         // institution below.
-        if (!$institutionId) {
+        if (! $institutionId) {
             return null;
         }
 
         $institution = Institution::find($institutionId);
 
-        if (!$institution || !$institution->is_active) {
+        if (! $institution || ! $institution->is_active) {
             return $this->deny(
                 Response::HTTP_FORBIDDEN,
                 'Établissement désactivé. Accès suspendu, contactez votre administration.'

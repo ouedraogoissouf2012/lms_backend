@@ -12,7 +12,9 @@ use App\Models\EvaluationSubmission;
 use App\Models\Institution;
 use App\Models\Matiere;
 use App\Models\User;
+use App\Services\Evaluation\Student\LocalLearnerEvaluationAudience;
 use App\Services\KlassciProxyService;
+use App\Services\TenantManager;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Mockery\MockInterface;
@@ -248,7 +250,7 @@ final class EleveVoitSesEvaluationsTest extends TestCase
         $davant = $this->copie($evaluation, $awa, ['student_id' => null, 'klassci_etudiant_id' => 501, 'attempt' => 1]);
         $this->copie($evaluation, $yao, ['klassci_etudiant_id' => 501, 'attempt' => 2]);
         $sienne = $this->copie($evaluation, $awa, ['klassci_etudiant_id' => 501, 'attempt' => 3]);
-        app(\App\Services\TenantManager::class)->reset();
+        app(TenantManager::class)->reset();
 
         $ids = EvaluationSubmission::query()->ownedBy($awa)->orderBy('id')->pluck('id')->all();
 
@@ -309,9 +311,9 @@ final class EleveVoitSesEvaluationsTest extends TestCase
         $sienne = $this->evaluationPubliee($classe, $maths, now()->addDay(), 60);
         $ailleurs = $this->ecole();
         $this->evaluationPubliee($classe, $this->matiere($ailleurs, 'Maths'), now()->addDay(), 60, ['institution_id' => $ailleurs->getKey()]);
-        app(\App\Services\TenantManager::class)->reset();
+        app(TenantManager::class)->reset();
 
-        $ids = app(\App\Services\Evaluation\Student\LocalLearnerEvaluationAudience::class)->visibleFor($eleve)->pluck('id')->all();
+        $ids = app(LocalLearnerEvaluationAudience::class)->visibleFor($eleve)->pluck('id')->all();
 
         self::assertSame([$sienne->getKey()], $ids);
     }
@@ -435,7 +437,6 @@ final class EleveVoitSesEvaluationsTest extends TestCase
     /**
      * [has_started, is_open, has_ended]
      *
-     * @param  mixed  $programmation
      * @return list<mixed>
      */
     private function etat(mixed $programmation): array

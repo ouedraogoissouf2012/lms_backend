@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Concerns;
 
 use Illuminate\Testing\TestResponse;
+use Symfony\Component\HttpFoundation\Response;
 use Tests\Support\OpenApi\OpenApiSchemaValidator;
 
 /**
@@ -20,7 +21,7 @@ trait ValidatesAgainstOpenApi
     private static ?OpenApiSchemaValidator $specOpenApi = null;
 
     /**
-     * @param  TestResponse<\Symfony\Component\HttpFoundation\Response>  $reponse
+     * @param  TestResponse<Response>  $reponse
      * @param  string  $chemin  le chemin tel que la spec l'écrit, sans `/api` (`/lms/seances`)
      */
     protected function assertMatchesOpenApiResponse(TestResponse $reponse, string $chemin, string $methode): void
@@ -43,7 +44,7 @@ trait ValidatesAgainstOpenApi
      * d'une clé non décrite, est refusée. Sans cette preuve, un schéma trop lâche
      * passerait tout en silence.
      *
-     * @param  TestResponse<\Symfony\Component\HttpFoundation\Response>  $reponse
+     * @param  TestResponse<Response>  $reponse
      */
     protected function assertOpenApiSchemaRefuseSans(TestResponse $reponse, string $chemin, string $methode, string $cle): void
     {

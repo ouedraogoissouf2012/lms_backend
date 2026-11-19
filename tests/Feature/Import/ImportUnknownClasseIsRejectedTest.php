@@ -16,6 +16,7 @@ use App\Services\Import\ImportApplyService;
 use App\Services\TenantManager;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Testing\TestResponse;
 use Tests\Concerns\ActsAsTenantUser;
 use Tests\TestCase;
@@ -88,7 +89,7 @@ final class ImportUnknownClasseIsRejectedTest extends TestCase
         self::assertSame(1, (int) $import->error_count);
     }
 
-    public function test_la_classe_d_une_AUTRE_ecole_est_inconnue_ici(): void
+    public function test_la_classe_d_une_autre_ecole_est_inconnue_ici(): void
     {
         // Le service borne la recherche à l'établissement : un code valide
         // ailleurs ne doit pas rattacher un apprenant chez le voisin.
@@ -100,10 +101,10 @@ final class ImportUnknownClasseIsRejectedTest extends TestCase
         $this->executer($importateur, self::HEADER."Kabore;Awa;awa@test.ci;VOISINE\n");
 
         self::assertSame('classe_inconnue', ImportRow::query()->firstOrFail()->code);
-        self::assertSame(0, \Illuminate\Support\Facades\DB::table('classe_etudiant')->count());
+        self::assertSame(0, DB::table('classe_etudiant')->count());
     }
 
-    public function test_une_ligne_SANS_code_de_classe_reste_acceptee(): void
+    public function test_une_ligne_sans_code_de_classe_reste_acceptee(): void
     {
         // Non-regression : un fichier sans colonne de classe cree des comptes
         // sans les rattacher. C'est legitime, et ce n'est pas un refus.

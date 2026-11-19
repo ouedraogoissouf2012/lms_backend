@@ -6,6 +6,7 @@ use App\Exceptions\MissingKlassciTokenException;
 use App\Models\Institution;
 use App\Models\Seance;
 use App\Models\User;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
 use Tests\Concerns\ActsAsTenantUser;
 use Tests\TestCase;
@@ -13,12 +14,16 @@ use Tests\TestCase;
 class ToggleVisioSeanceRequestTest extends TestCase
 {
     use ActsAsTenantUser;
-    use \Illuminate\Foundation\Testing\RefreshDatabase;
+    use RefreshDatabase;
 
     private Institution $institution;
+
     private User $coordinator;
+
     private User $teacher;
+
     private User $superAdmin;
+
     private Seance $seance;
 
     protected function setUp(): void
@@ -28,14 +33,14 @@ class ToggleVisioSeanceRequestTest extends TestCase
 
         $this->institution = Institution::factory()->create();
         $this->coordinator = User::factory()->coordinator()->for($this->institution)->create([
-            'klassci_token' => 'test_token_' . uniqid(),
+            'klassci_token' => 'test_token_'.uniqid(),
         ]);
         $this->teacher = User::factory()->teacher()->for($this->institution)->create([
-            'klassci_token' => 'test_token_' . uniqid(),
+            'klassci_token' => 'test_token_'.uniqid(),
         ]);
         $this->superAdmin = User::factory()->for($this->institution)->create([
             'role' => 'superAdmin',
-            'klassci_token' => 'test_token_' . uniqid(),
+            'klassci_token' => 'test_token_'.uniqid(),
         ]);
         $this->seance = Seance::factory()->forInstitution($this->institution)->create();
     }

@@ -32,6 +32,7 @@ final class EvaluationGradingScoreTest extends TestCase
     use OpensEvaluationAttempt, RefreshDatabase;
 
     private Institution $institution;
+
     private User $student;
 
     protected function setUp(): void

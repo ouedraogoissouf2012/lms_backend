@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Models\Quiz;
 use Illuminate\Foundation\Http\FormRequest;
 
 /**
@@ -33,7 +34,7 @@ final class StartQuizAttemptRequest extends FormRequest
         // {quiz} n'est pas filtre si le tenant n'est pas resolu — un user
         // du tenant B ne doit pas demarrer un quiz du tenant A.
         $quiz = $this->route('quiz');
-        if ($quiz instanceof \App\Models\Quiz
+        if ($quiz instanceof Quiz
             && $user->institution_id !== null
             && $quiz->institution_id !== $user->institution_id) {
             return false;

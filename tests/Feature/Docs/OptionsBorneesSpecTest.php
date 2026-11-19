@@ -50,8 +50,7 @@ final class OptionsBorneesSpecTest extends TestCase
     private function schemaDesOptions(): array
     {
         $spec = Yaml::parseFile(base_path('docs/openapi.yaml'));
-        $schema = $spec['paths']['/evaluations/{id}']['put']['requestBody']['content']['application/json']['schema']
-            ['properties']['questions']['items']['properties']['options'] ?? null;
+        $schema = $spec['paths']['/evaluations/{id}']['put']['requestBody']['content']['application/json']['schema']['properties']['questions']['items']['properties']['options'] ?? null;
         self::assertIsArray($schema, 'le corps de PUT /evaluations/{id} décrit options');
 
         return $schema;

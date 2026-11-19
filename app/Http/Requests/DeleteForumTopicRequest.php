@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use App\Http\Requests\Concerns\ChecksForumAuthorization;
+use App\Models\ForumTopic;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Auth;
 
@@ -21,7 +22,7 @@ class DeleteForumTopicRequest extends FormRequest
     public function authorize(): bool
     {
         $topic = $this->route('topic');
-        $topic = $topic instanceof \App\Models\ForumTopic ? $topic : null;
+        $topic = $topic instanceof ForumTopic ? $topic : null;
 
         return $this->isForumActionAuthorized(
             ownerUserId: $topic?->user_id,

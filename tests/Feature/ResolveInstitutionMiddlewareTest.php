@@ -9,7 +9,6 @@ use App\Services\TenantManager;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
-use Laravel\Sanctum\PersonalAccessToken;
 use Tests\TestCase;
 
 /**
@@ -23,7 +22,9 @@ class ResolveInstitutionMiddlewareTest extends TestCase
     use RefreshDatabase;
 
     private Institution $institutionA;
+
     private Institution $institutionB;
+
     private User $userOfA;
 
     protected function setUp(): void
@@ -35,9 +36,9 @@ class ResolveInstitutionMiddlewareTest extends TestCase
 
         $this->userOfA = User::factory()->create([
             'institution_id' => $this->institutionA->id,
-            'email'          => 'user-a@example.com',
-            'password'       => Hash::make('secret-password'),
-            'role'           => 'etudiant',
+            'email' => 'user-a@example.com',
+            'password' => Hash::make('secret-password'),
+            'role' => 'etudiant',
         ]);
     }
 
@@ -51,7 +52,7 @@ class ResolveInstitutionMiddlewareTest extends TestCase
         $plainToken = $this->userOfA->createToken('test')->plainTextToken;
 
         $request = Request::create('/api/test', 'GET');
-        $request->headers->set('Authorization', 'Bearer ' . $plainToken);
+        $request->headers->set('Authorization', 'Bearer '.$plainToken);
         $request->headers->set('X-Institution', $this->institutionB->slug);
 
         $this->app->forgetInstance(TenantManager::class);
@@ -112,7 +113,7 @@ class ResolveInstitutionMiddlewareTest extends TestCase
     public function test_inactive_institution_not_resolved_via_header(): void
     {
         $inactive = Institution::factory()->create([
-            'slug'      => 'inactive-school',
+            'slug' => 'inactive-school',
             'is_active' => false,
         ]);
 
@@ -153,14 +154,14 @@ class ResolveInstitutionMiddlewareTest extends TestCase
     {
         $supradmin = User::factory()->create([
             'institution_id' => null,
-            'email'          => 'supradmin@example.com',
-            'role'           => 'supradmin',
+            'email' => 'supradmin@example.com',
+            'role' => 'supradmin',
         ]);
 
         $plainToken = $supradmin->createToken('test')->plainTextToken;
 
         $request = Request::create('/api/admin/institutions', 'GET');
-        $request->headers->set('Authorization', 'Bearer ' . $plainToken);
+        $request->headers->set('Authorization', 'Bearer '.$plainToken);
 
         $this->app->forgetInstance(TenantManager::class);
         $tenantManager = app(TenantManager::class);
@@ -186,7 +187,7 @@ class ResolveInstitutionMiddlewareTest extends TestCase
         $plainToken = $this->userOfA->createToken('test')->plainTextToken;
 
         $request = Request::create('/api/lessons', 'GET');
-        $request->headers->set('Authorization', 'Bearer ' . $plainToken);
+        $request->headers->set('Authorization', 'Bearer '.$plainToken);
 
         $this->app->forgetInstance(TenantManager::class);
         $tenantManager = app(TenantManager::class);
@@ -216,14 +217,14 @@ class ResolveInstitutionMiddlewareTest extends TestCase
         $ghost = Institution::factory()->create();
         $orphan = User::factory()->create([
             'institution_id' => $ghost->id,
-            'email'          => 'orphan@example.com',
-            'role'           => 'etudiant',
+            'email' => 'orphan@example.com',
+            'role' => 'etudiant',
         ]);
         $plainToken = $orphan->createToken('test')->plainTextToken;
         $ghost->delete();
 
         $request = Request::create('/api/lessons', 'GET');
-        $request->headers->set('Authorization', 'Bearer ' . $plainToken);
+        $request->headers->set('Authorization', 'Bearer '.$plainToken);
 
         $this->app->forgetInstance(TenantManager::class);
         $tenantManager = app(TenantManager::class);

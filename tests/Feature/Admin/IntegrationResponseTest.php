@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Admin;
 
+use App\Http\Controllers\API\IntegrationController;
+use App\Http\Controllers\Concerns\RespondsWithJson;
 use App\Models\Institution;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -12,8 +14,8 @@ use Tests\TestCase;
 
 /**
  * Caractérisation (axe #1) — fige le comportement EXACT des 4 endpoints de
- * {@see \App\Http\Controllers\API\IntegrationController} AVANT la migration
- * vers le trait {@see \App\Http\Controllers\Concerns\RespondsWithJson}.
+ * {@see IntegrationController} AVANT la migration
+ * vers le trait {@see RespondsWithJson}.
  *
  * ## Découverte — 2 endpoints renvoient 500 (bug latent pré-existant)
  *
@@ -47,7 +49,7 @@ final class IntegrationResponseTest extends TestCase
         $institution = Institution::factory()->create(['slug' => 'school-a']);
         Sanctum::actingAs(User::factory()->create([
             'institution_id' => $institution->id,
-            'role'           => 'supradmin',
+            'role' => 'supradmin',
         ]));
     }
 
@@ -61,9 +63,9 @@ final class IntegrationResponseTest extends TestCase
         $response->assertStatus(201)->assertExactJson([
             'success' => true,
             'message' => 'Service connecté avec succès',
-            'data'    => [
+            'data' => [
                 'service' => 'slack',
-                'status'  => 'connected',
+                'status' => 'connected',
                 'api_key' => 'abcdefghij****',
             ],
         ]);
@@ -72,16 +74,16 @@ final class IntegrationResponseTest extends TestCase
     public function test_authorize_returns_exact_success_envelope(): void
     {
         $response = $this->postJson('/api/integrations/authorize', [
-            'service'   => 'slack',
+            'service' => 'slack',
             'auth_code' => 'oauth-code-123',
         ]);
 
         $response->assertStatus(200)->assertExactJson([
             'success' => true,
             'message' => 'Service autorisé avec succès',
-            'data'    => [
+            'data' => [
                 'service' => 'slack',
-                'status'  => 'authorized',
+                'status' => 'authorized',
             ],
         ]);
     }

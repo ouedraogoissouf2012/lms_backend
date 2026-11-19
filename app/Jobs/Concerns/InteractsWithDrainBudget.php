@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace App\Jobs\Concerns;
 
+use App\Console\Commands\Scheduler\QueueDrainCommand;
+
 /**
  * #539 — Budget-temps souple pour les jobs de maintenance drainés par
- * `queue:work --stop-when-empty --max-time=55` ({@see \App\Console\Commands\Scheduler\QueueDrainCommand}).
+ * `queue:work --stop-when-empty --max-time=55` ({@see QueueDrainCommand}).
  *
  * ## Problème
  *

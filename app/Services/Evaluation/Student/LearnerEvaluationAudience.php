@@ -22,7 +22,7 @@ use Illuminate\Database\Eloquent\Builder;
 interface LearnerEvaluationAudience
 {
     /**
-     * @return Builder<Evaluation>|null  null : l'élève n'a pas de classe connue.
+     * @return Builder<Evaluation>|null null : l'élève n'a pas de classe connue.
      */
     public function visibleFor(User $user): ?Builder;
 }

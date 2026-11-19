@@ -26,8 +26,8 @@ final class SeanceProgrammationNormalizer
      * datetime inchangé (fail-safe).
      *
      * @param  string|null  $datetime  ex. "2026-06-25T11:30:00.000000Z"
-     * @param  string|null  $date      ex. "2026-06-26"
-     * @return string|null             ex. "2026-06-26T11:30:00.000000Z"
+     * @param  string|null  $date  ex. "2026-06-26"
+     * @return string|null ex. "2026-06-26T11:30:00.000000Z"
      */
     public static function alignDate(?string $datetime, ?string $date): ?string
     {

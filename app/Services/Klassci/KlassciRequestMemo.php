@@ -86,7 +86,7 @@ final class KlassciRequestMemo
      */
     public function get(string $memoKey): ?array
     {
-        if (!$this->enabled) {
+        if (! $this->enabled) {
             return null;
         }
 
@@ -98,7 +98,7 @@ final class KlassciRequestMemo
      */
     public function put(string $memoKey, array $value): void
     {
-        if (!$this->enabled) {
+        if (! $this->enabled) {
             return;
         }
 

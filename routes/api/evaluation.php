@@ -1,18 +1,17 @@
 <?php
 
-use Illuminate\Support\Facades\Route;
-
+use App\Http\Controllers\API\Evaluation\EvaluationCrudController;
 // ============================================
 // EVALUATIONS - Routes protégées
 // ============================================
 // Refactor #152/#153 — god-controller `EvaluationController` (1676 lignes)
 // split en 4 controllers SRP sous `App\Http\Controllers\API\Evaluation\`.
-use App\Http\Controllers\API\Evaluation\EvaluationCrudController;
 use App\Http\Controllers\API\Evaluation\EvaluationKlassciSyncController;
 use App\Http\Controllers\API\Evaluation\EvaluationTeacherController;
 use App\Http\Controllers\API\Evaluation\Student\EvaluationStudentAttemptController;
 use App\Http\Controllers\API\Evaluation\Student\EvaluationStudentListController;
 use App\Http\Controllers\API\Evaluation\Student\EvaluationStudentSubmissionController;
+use Illuminate\Support\Facades\Route;
 
 // Routes accessibles à tous les utilisateurs authentifiés
 Route::middleware(['auth:sanctum', 'klassci.sync'])->group(function () {

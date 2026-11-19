@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Admin;
 
+use App\Http\Controllers\API\AdminController;
+use App\Http\Controllers\Concerns\RespondsWithJson;
 use App\Models\Institution;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -12,8 +14,8 @@ use Tests\TestCase;
 
 /**
  * Caractérisation (axe #1) — fige la forme JSON EXACTE des 3 endpoints de
- * {@see \App\Http\Controllers\API\AdminController} AVANT la migration vers le
- * trait {@see \App\Http\Controllers\Concerns\RespondsWithJson}.
+ * {@see AdminController} AVANT la migration vers le
+ * trait {@see RespondsWithJson}.
  *
  * Contrats actuels :
  *   - createUser : 201 `{ success, message, data }`
@@ -39,18 +41,18 @@ final class AdminUserResponseTest extends TestCase
         $institution = Institution::factory()->create(['slug' => 'school-a']);
         Sanctum::actingAs(User::factory()->create([
             'institution_id' => $institution->id,
-            'role'           => 'coordinateur',
+            'role' => 'coordinateur',
         ]));
     }
 
     public function test_create_user_returns_success_message_data_envelope(): void
     {
         $response = $this->postJson('/api/users', [
-            'name'                  => 'Nouvel Enseignant',
-            'email'                 => 'nouvel.enseignant@example.test',
-            'password'              => 'password123',
+            'name' => 'Nouvel Enseignant',
+            'email' => 'nouvel.enseignant@example.test',
+            'password' => 'password123',
             'password_confirmation' => 'password123',
-            'role'                  => 'enseignant',
+            'role' => 'enseignant',
         ]);
 
         $response->assertStatus(201);
@@ -69,7 +71,7 @@ final class AdminUserResponseTest extends TestCase
             'name' => 'Ancien Nom',
         ]);
 
-        $response = $this->putJson('/api/users/' . $target->id, [
+        $response = $this->putJson('/api/users/'.$target->id, [
             'name' => 'Nom Modifié',
         ]);
 
@@ -86,7 +88,7 @@ final class AdminUserResponseTest extends TestCase
     {
         $target = User::factory()->create(['role' => 'etudiant']);
 
-        $response = $this->deleteJson('/api/users/' . $target->id);
+        $response = $this->deleteJson('/api/users/'.$target->id);
 
         // Forme déterministe (aucune donnée) → assertion exacte.
         $response->assertStatus(200)->assertExactJson([

@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Services\Seances\Sync\Cursor\EloquentSeanceSyncCursorStore;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Carbon;
 
 /**
  * Position de reprise de la synchronisation des séances KLASSCI (#582).
@@ -16,12 +18,12 @@ use Illuminate\Database\Eloquent\Model;
  * plus).
  *
  * Modèle de données pur (§5 : relations, casts, scopes) — toute la logique vit
- * dans {@see \App\Services\Seances\Sync\Cursor\EloquentSeanceSyncCursorStore}.
+ * dans {@see EloquentSeanceSyncCursorStore}.
  *
  * @property string $name
  * @property int|null $last_institution_id
  * @property int|null $last_user_id
- * @property \Illuminate\Support\Carbon $cycle_started_at
+ * @property Carbon $cycle_started_at
  * @property array<int, int> $tainted_institution_ids
  */
 class SeanceSyncCursor extends Model

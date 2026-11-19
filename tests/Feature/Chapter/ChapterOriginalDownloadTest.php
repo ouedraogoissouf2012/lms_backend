@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Chapter;
 
 use App\Enums\LessonStatus;
+use App\Http\Middleware\EnsureSchoolMemberOrPlatformRoute;
 use App\Models\Chapter;
 use App\Models\Classe;
 use App\Models\Institution;
@@ -12,7 +13,6 @@ use App\Models\Lesson;
 use App\Models\User;
 use App\Models\UserClass;
 use App\Services\FileConversion\ChapterArtifactStorage;
-use App\Http\Middleware\EnsureSchoolMemberOrPlatformRoute;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
@@ -146,8 +146,8 @@ final class ChapterOriginalDownloadTest extends TestCase
         // d'enseignant (décision produit) : la porte des comptes sans
         // établissement le refuse, avant toute résolution du chapitre.
         $supradmin = User::factory()->create([
-            'role'              => 'supradmin',
-            'institution_id'    => null,
+            'role' => 'supradmin',
+            'institution_id' => null,
             'last_klassci_sync' => now(),
         ]);
         $this->actingWithToken($supradmin)
@@ -226,7 +226,7 @@ final class ChapterOriginalDownloadTest extends TestCase
     private function user(Institution $institution, string $role): User
     {
         return User::factory()->for($institution)->create([
-            'role'              => $role,
+            'role' => $role,
             'last_klassci_sync' => now(),
         ]);
     }
@@ -283,13 +283,13 @@ final class ChapterOriginalDownloadTest extends TestCase
         ]);
 
         return Chapter::factory()->create([
-            'lesson_id'          => $lesson->id,
-            'institution_id'     => $institution->id,
-            'enseignant_id'      => $teacher->id,
-            'title'              => 'Chapitre de test',
-            'content_type'       => 'word',
+            'lesson_id' => $lesson->id,
+            'institution_id' => $institution->id,
+            'enseignant_id' => $teacher->id,
+            'title' => 'Chapitre de test',
+            'content_type' => 'word',
             'file_original_path' => $filePath,
-            'allow_download'     => $allowDownload,
+            'allow_download' => $allowDownload,
         ]);
     }
 }

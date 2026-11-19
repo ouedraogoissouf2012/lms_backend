@@ -22,20 +22,19 @@ interface ShellExecutorInterface
     /**
      * Execute an external command synchronously.
      *
-     * @param array<int, string> $command  Argv-style array.
-     * @param string|null $cwd             Working directory ; `null` keeps PHP's CWD.
-     * @param int $timeout                 Hard timeout in seconds.
+     * @param  array<int, string>  $command  Argv-style array.
+     * @param  string|null  $cwd  Working directory ; `null` keeps PHP's CWD.
+     * @param  int  $timeout  Hard timeout in seconds.
      *
-     * @throws ShellExecutionException     On non-zero exit, timeout or start failure.
+     * @throws ShellExecutionException On non-zero exit, timeout or start failure.
      */
     public function run(array $command, ?string $cwd = null, int $timeout = 120): ShellResult;
 
     /**
      * Locate a binary on disk or in PATH from an ordered list of candidates.
      *
-     * @param string $binaryName              Logical name used only for "not found" log.
-     * @param array<int, string> $candidates  Ordered list of absolute paths or bare names.
-     *
+     * @param  string  $binaryName  Logical name used only for "not found" log.
+     * @param  array<int, string>  $candidates  Ordered list of absolute paths or bare names.
      * @return string|null Absolute path on success, `null` if no candidate resolves.
      */
     public function locate(string $binaryName, array $candidates): ?string;

@@ -23,6 +23,4 @@ use RuntimeException;
  * @see app/Services/Klassci/Auth/KlassciUserSynchronizer.php
  * @see app/Http/Controllers/API/AuthController.php::login
  */
-final class KlassciAccountConflictException extends RuntimeException
-{
-}
+final class KlassciAccountConflictException extends RuntimeException {}

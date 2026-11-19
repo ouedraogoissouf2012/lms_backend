@@ -85,7 +85,7 @@ final class NotificationActionUrlTest extends TestCase
     private function echec(mixed $valeur): ?string
     {
         $echec = null;
-        (new NotificationActionUrl())->validate(
+        (new NotificationActionUrl)->validate(
             'action_url',
             $valeur,
             function (string $message) use (&$echec): void {

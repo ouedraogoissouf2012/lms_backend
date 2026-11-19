@@ -13,6 +13,7 @@ use App\Services\Classe\ClasseRoster;
 use App\Services\Evaluation\EvaluationEnrichmentService;
 use App\Services\Seances\KlassciPayload;
 use App\Support\Logging\CaughtExceptionLog;
+use Illuminate\Support\Collection;
 use Psr\Log\LoggerInterface;
 use RuntimeException;
 use Throwable;
@@ -78,14 +79,14 @@ final class TeacherEvaluationResultsService implements EvaluationResultsReader
 
             $this->logger->info('📊 Récupération résultats évaluation', [
                 'evaluation_id' => $evaluationId,
-                'classe_id'     => $evaluation->klassci_classe_id,
-                'teacher_id'    => $teacher->id,
+                'classe_id' => $evaluation->klassci_classe_id,
+                'teacher_id' => $teacher->id,
             ]);
 
             $teacherToken = $teacher->klassci_token;
             if (! is_string($teacherToken) || $teacherToken === '') {
                 return [
-                    'status'  => 401,
+                    'status' => 401,
                     'payload' => MissingKlassciTokenException::payload(),
                 ];
             }
@@ -140,8 +141,8 @@ final class TeacherEvaluationResultsService implements EvaluationResultsReader
 
         $this->logger->info('✅ Résultats calculés', [
             'total_etudiants' => $statistiques['total_etudiants'],
-            'soumis'          => $statistiques['etudiants_soumis'],
-            'moyenne'         => $statistiques['moyenne_classe'],
+            'soumis' => $statistiques['etudiants_soumis'],
+            'moyenne' => $statistiques['moyenne_classe'],
         ]);
 
         return ResultatsDeClasse::reponse($evaluationEnrichie, $resultats, $statistiques);
@@ -167,7 +168,7 @@ final class TeacherEvaluationResultsService implements EvaluationResultsReader
         $roster = [];
 
         foreach ($etudiants as $etudiant) {
-            $email     = KlassciPayload::toStringOrNull($etudiant['email'] ?? null) ?? '';
+            $email = KlassciPayload::toStringOrNull($etudiant['email'] ?? null) ?? '';
             // Le compte local par l'email ; sinon par l'identité KLASSCI, quand
             // KLASSCI ne porte pas le même email (revue d'E3).
             $userLocal = ($email !== '' ? $usersByEmail->get($email) : null)
@@ -202,16 +203,16 @@ final class TeacherEvaluationResultsService implements EvaluationResultsReader
      * Users locaux indexés par email, en une seule requête (#503).
      *
      * @param  array<int, array<string, mixed>>  $etudiants
-     * @return \Illuminate\Support\Collection<string, User>
+     * @return Collection<string, User>
      */
-    private function preloadUsersByEmail(array $etudiants): \Illuminate\Support\Collection
+    private function preloadUsersByEmail(array $etudiants): Collection
     {
         $emails = array_values(array_filter(
             array_map(fn (array $e): string => KlassciPayload::toStringOrNull($e['email'] ?? null) ?? '', $etudiants),
             fn (string $email): bool => $email !== ''
         ));
 
-        /** @var \Illuminate\Support\Collection<string, User> $users */
+        /** @var Collection<string, User> $users */
         $users = User::query()->whereIn('email', $emails)->get()->keyBy('email');
 
         return $users;
@@ -226,9 +227,9 @@ final class TeacherEvaluationResultsService implements EvaluationResultsReader
      * sa copie : elle a un auteur, et seul ce compte peut la réclamer.
      *
      * @param  array<int, array<string, mixed>>  $etudiants
-     * @return \Illuminate\Support\Collection<int, User>
+     * @return Collection<int, User>
      */
-    private function preloadUsersByKlassciId(array $etudiants, ?int $etablissement): \Illuminate\Support\Collection
+    private function preloadUsersByKlassciId(array $etudiants, ?int $etablissement): Collection
     {
         $ids = array_values(array_filter(
             array_map(static fn (array $e): ?int => KlassciPayload::toInt($e['id'] ?? null), $etudiants),
@@ -239,7 +240,7 @@ final class TeacherEvaluationResultsService implements EvaluationResultsReader
             return collect();
         }
 
-        /** @var \Illuminate\Support\Collection<int, User> $users */
+        /** @var Collection<int, User> $users */
         $users = User::query()
             ->where('institution_id', $etablissement)
             ->whereIn('klassci_id', $ids)

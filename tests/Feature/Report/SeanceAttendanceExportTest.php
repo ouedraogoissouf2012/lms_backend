@@ -18,8 +18,8 @@ use Tests\TestCase;
  */
 final class SeanceAttendanceExportTest extends TestCase
 {
-    use RefreshDatabase;
     use ActsAsTenantUser;
+    use RefreshDatabase;
 
     protected function setUp(): void
     {

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Requests;
 
+use App\Services\Search\GlobalSearchService;
 use Illuminate\Foundation\Http\FormRequest;
 
 /**
@@ -12,7 +13,7 @@ use Illuminate\Foundation\Http\FormRequest;
  * Fusionne la règle `query` précédemment validée inline dans
  * `SearchController::globalSearch` (déplacée ici plutôt que dupliquée à
  * 2 endroits). `limit` fan-out sur 5 sous-requêtes indépendantes
- * ({@see \App\Services\Search\GlobalSearchService}) — plafond volontairement
+ * ({@see GlobalSearchService}) — plafond volontairement
  * plus bas (20) que les listings classiques (100).
  */
 final class GlobalSearchRequest extends FormRequest

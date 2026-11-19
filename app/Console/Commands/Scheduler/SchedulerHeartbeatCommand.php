@@ -17,7 +17,7 @@ use Illuminate\Console\Command;
  * Silencieuse par design : elle s'exécute 1 440 fois/jour, toute sortie
  * polluerait les logs du cron.
  *
- * @see \App\Console\Commands\Scheduler\SchedulerHealthcheckCommand
+ * @see SchedulerHealthcheckCommand
  */
 final class SchedulerHeartbeatCommand extends Command
 {

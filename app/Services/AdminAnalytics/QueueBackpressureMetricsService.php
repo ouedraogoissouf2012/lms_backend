@@ -17,8 +17,7 @@ final class QueueBackpressureMetricsService
 {
     public function __construct(
         private readonly ConnectionInterface $database,
-    ) {
-    }
+    ) {}
 
     /**
      * @return array{
@@ -94,7 +93,7 @@ final class QueueBackpressureMetricsService
 
     private function ageInSeconds(mixed $createdAt, int $now): ?int
     {
-        if (!is_int($createdAt) && !(is_string($createdAt) && is_numeric($createdAt))) {
+        if (! is_int($createdAt) && ! (is_string($createdAt) && is_numeric($createdAt))) {
             return null;
         }
 

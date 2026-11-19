@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace Tests\Feature\LMS\Visio;
 
+use App\Http\Controllers\API\LMS\LMSVisioParticipantController;
 use App\Models\Institution;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Route;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
@@ -129,11 +131,11 @@ final class VisioRoutingTest extends TestCase
      */
     public function test_visio_participants_route_uses_lms_visio_controller(): void
     {
-        $route = \Illuminate\Support\Facades\Route::getRoutes()->getByName('lms.seances.visio-participants');
+        $route = Route::getRoutes()->getByName('lms.seances.visio-participants');
 
         self::assertNotNull($route, 'Route lms.seances.visio-participants should be registered.');
         self::assertSame(
-            \App\Http\Controllers\API\LMS\LMSVisioParticipantController::class . '@getVisioParticipants',
+            LMSVisioParticipantController::class.'@getVisioParticipants',
             $route->getActionName(),
         );
     }

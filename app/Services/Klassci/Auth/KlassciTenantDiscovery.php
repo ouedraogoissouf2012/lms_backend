@@ -4,10 +4,11 @@ declare(strict_types=1);
 
 namespace App\Services\Klassci\Auth;
 
+use App\Exceptions\KlassciUnavailableException;
 use App\Models\Institution;
+use App\Services\Klassci\KlassciBatchFetcher;
 use Illuminate\Http\Client\Factory as HttpFactory;
 use Illuminate\Http\Client\Pool;
-use App\Exceptions\KlassciUnavailableException;
 use Illuminate\Http\Client\Response;
 use Psr\Log\LoggerInterface;
 
@@ -30,7 +31,7 @@ use Psr\Log\LoggerInterface;
  * `instanceof Response` → crash 500 du login dès qu'un tenant est inaccessible.
  *
  * Ce service applique le pattern canonique du projet (déjà utilisé dans
- * {@see \App\Services\Klassci\KlassciBatchFetcher::persistBatchResponses()}
+ * {@see KlassciBatchFetcher::persistBatchResponses()}
  * PR #137) : `if (!$response instanceof Response) { log + skip; }`.
  *
  * ## DI strict (§1.6 D du manifeste)
@@ -70,10 +71,10 @@ class KlassciTenantDiscovery
             $requests = [];
             foreach ($tenants as $tenant) {
                 $request = $pool->as($tenant['code'])->timeout(10);
-                if (!$sslVerify) {
+                if (! $sslVerify) {
                     $request = $request->withoutVerifying();
                 }
-                $requests[] = $request->post($tenant['api_base_url'] . '/auth/check-user', [
+                $requests[] = $request->post($tenant['api_base_url'].'/auth/check-user', [
                     'identifier' => $identifier,
                 ]);
             }
@@ -101,8 +102,8 @@ class KlassciTenantDiscovery
         // tronqué pour permettre le debug par corrélation (même hash = même user).
         $this->logger->info('Tenants trouvés pour utilisateur', [
             'identifier_hash' => substr(hash('sha256', $identifier), 0, 8),
-            'count'           => count($matching),
-            'tenants'         => array_column($matching, 'code'),
+            'count' => count($matching),
+            'tenants' => array_column($matching, 'code'),
         ]);
 
         return $matching;
@@ -120,7 +121,7 @@ class KlassciTenantDiscovery
             ->whereNotNull('klassci_api_url')
             ->get()
             ->map(fn (Institution $inst): array => [
-                'code'         => (string) $inst->slug,
+                'code' => (string) $inst->slug,
                 'api_base_url' => rtrim((string) $inst->klassci_api_url, '/'),
             ])
             ->values()
@@ -146,26 +147,28 @@ class KlassciTenantDiscovery
         foreach ($tenants as $tenant) {
             $response = $responses[$tenant['code']] ?? null;
 
-            if (!$response instanceof Response) {
+            if (! $response instanceof Response) {
                 $reason = is_object($response) ? $response::class : 'null';
                 $this->logger->warning('KLASSCI tenant unreachable during discovery', [
                     'tenant' => $tenant['code'],
                     'reason' => $reason,
                 ]);
+
                 continue;
             }
 
-            if (!$response->successful()) {
+            if (! $response->successful()) {
                 $this->logger->info('KLASSCI tenant check-user non-2xx', [
                     'tenant' => $tenant['code'],
                     'status' => $response->status(),
                 ]);
+
                 continue;
             }
 
             /** @var array<string, mixed>|mixed $data */
             $data = $response->json();
-            if (!is_array($data)) {
+            if (! is_array($data)) {
                 continue;
             }
 

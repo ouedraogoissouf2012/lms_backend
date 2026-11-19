@@ -7,6 +7,7 @@ namespace Tests\Feature\Cache;
 use App\Models\Institution;
 use App\Services\Cache\TenantScopedCacheInterface;
 use App\Services\TenantManager;
+use Illuminate\Cache\DatabaseStore;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
@@ -32,7 +33,7 @@ final class TenantCacheDatabasePurgeTest extends TestCase
         // la suite sous CACHE_STORE=redis, où la purge passe par le
         // TaggedCachePurger (couvert par TenantScopedCacheIsolationTest) et
         // aucune ligne n'existe en base — on saute alors ce cas store-spécifique.
-        if (! (app('cache')->store()->getStore() instanceof \Illuminate\Cache\DatabaseStore)) {
+        if (! (app('cache')->store()->getStore() instanceof DatabaseStore)) {
             self::markTestSkipped('Spécifique au store cache `database`.');
         }
     }

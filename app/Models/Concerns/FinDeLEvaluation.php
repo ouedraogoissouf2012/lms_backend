@@ -4,11 +4,12 @@ declare(strict_types=1);
 
 namespace App\Models\Concerns;
 
+use App\Models\Evaluation;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Carbon;
 
 /**
- * La fin d'une {@see \App\Models\Evaluation} : UNE règle (C29), lue par le statut
+ * La fin d'une {@see Evaluation} : UNE règle (C29), lue par le statut
  * effectif, le passage en entraînement et la fenêtre d'une école créée depuis le
  * LMS (`LocalEvaluationWindow`).
  *

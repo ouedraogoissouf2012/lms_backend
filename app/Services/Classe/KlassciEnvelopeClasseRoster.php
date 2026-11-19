@@ -6,6 +6,7 @@ namespace App\Services\Classe;
 
 use App\Exceptions\KlassciUnavailableException;
 use App\Services\KlassciProxyService;
+use App\Services\Sync\Classes\KlassciClassesFetcher;
 
 /**
  * Roster lu dans l'enveloppe `GET classes/{id}` — et jamais dans
@@ -27,7 +28,7 @@ use App\Services\KlassciProxyService;
  *
  * ## Pourquoi `KlassciProxyService` en direct
  *
- * {@see \App\Services\Sync\Classes\KlassciClassesFetcher::fetchClasseDetails()}
+ * {@see KlassciClassesFetcher::fetchClasseDetails()}
  * émet déjà le même appel, mais appartient au domaine de la SYNCHRONISATION :
  * l'en dépendre ferait entrer un objet de synchro dans un chemin de lecture.
  * Tous les lecteurs du dépôt passent par `requestWithUserToken()` — c'est la

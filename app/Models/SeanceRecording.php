@@ -14,9 +14,10 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 final class SeanceRecording extends Model
 {
+    use BelongsToInstitution;
+
     /** @use HasFactory<SeanceRecordingFactory> */
     use HasFactory;
-    use BelongsToInstitution;
 
     private const CONSENT_MESSAGE = 'Cette seance peut etre enregistree. En restant dans la visio, vous acceptez que votre participation soit captee selon les regles de votre etablissement.';
 

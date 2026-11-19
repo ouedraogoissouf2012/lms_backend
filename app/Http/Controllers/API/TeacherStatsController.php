@@ -38,8 +38,7 @@ class TeacherStatsController extends Controller
     public function __construct(
         private readonly TeacherStatsService $statsService,
         private readonly CaughtExceptionLog $journal,
-    ) {
-    }
+    ) {}
 
     /**
      * Récupérer les statistiques d'un enseignant.
@@ -67,7 +66,7 @@ class TeacherStatsController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Erreur lors de la récupération des statistiques',
-                'error' => 'Une erreur est survenue.'
+                'error' => 'Une erreur est survenue.',
             ], 500);
         }
     }

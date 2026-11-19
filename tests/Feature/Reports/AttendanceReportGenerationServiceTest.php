@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Services\Report\AttendanceReportContextBuilder;
 use App\Services\Report\ReportGenerationService;
 use App\Services\TenantManager;
+use App\Support\Logging\CaughtExceptionLog;
 use Barryvdh\DomPDF\PDF;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -45,7 +46,7 @@ class AttendanceReportGenerationServiceTest extends TestCase
         $service = new ReportGenerationService(
             $pdf,
             new AttendanceReportContextBuilder,
-            app(\App\Support\Logging\CaughtExceptionLog::class),
+            app(CaughtExceptionLog::class),
         );
 
         $result = $service->generateAttendance([

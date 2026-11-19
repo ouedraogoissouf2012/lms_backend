@@ -63,7 +63,7 @@ use Illuminate\Support\Facades\Schema;
  * multi-tenant) restent hors contrainte — les passer en NOT NULL exigerait un
  * backfill cassant, hors périmètre (cf. #583 « colonne conservée nullable »).
  *
- * @see App\Services\Integrity\DuplicateRowRetirer
+ * @see DuplicateRowRetirer
  */
 return new class extends Migration
 {

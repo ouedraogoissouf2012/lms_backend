@@ -9,6 +9,7 @@ use App\Models\Institution;
 use App\Models\Seance;
 use App\Models\User;
 use App\Services\TenantManager;
+use App\Services\Visio\VisioActorAuthorization;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Config;
 use Tests\TestCase;
@@ -136,7 +137,7 @@ final class JoinVisioPreservesJoinedAtTest extends TestCase
 
     /**
      * `klassci_enseignant_id` est ce qui fait la propriete de la seance :
-     * {@see \App\Services\Visio\VisioActorAuthorization::teacherOwns}. Sans
+     * {@see VisioActorAuthorization::teacherOwns}. Sans
      * lui, `join` repond 403 `teacher_not_owner` et le test ne mesurerait rien.
      */
     private const OWNER_ID = 4242;
@@ -175,7 +176,7 @@ final class JoinVisioPreservesJoinedAtTest extends TestCase
     private function asUser(User $user): self
     {
         return $this->withHeaders([
-            'Authorization' => 'Bearer ' . $user->createToken('joined-at-test')->plainTextToken,
+            'Authorization' => 'Bearer '.$user->createToken('joined-at-test')->plainTextToken,
         ]);
     }
 }

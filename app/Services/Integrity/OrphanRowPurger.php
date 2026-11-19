@@ -29,8 +29,7 @@ final class OrphanRowPurger
         private readonly DatabaseManager $db,
         private readonly RowQuarantine $quarantine,
         private readonly LoggerInterface $logger,
-    ) {
-    }
+    ) {}
 
     /**
      * @return int Nombre de lignes orphelines archivées puis supprimées.
@@ -82,7 +81,6 @@ final class OrphanRowPurger
         $rows = $this->orphanQuery($candidate)->orderBy('id')->limit(self::CHUNK)->get()->all();
 
         return array_values(array_map(
-            /** @param object $row */
             static fn (object $row): array => (array) $row,
             $rows,
         ));

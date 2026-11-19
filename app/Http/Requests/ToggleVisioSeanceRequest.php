@@ -28,13 +28,13 @@ final class ToggleVisioSeanceRequest extends FormRequest
     {
         // Check 1: User must be authenticated
         $user = auth()->user();
-        if (!$user) {
+        if (! $user) {
             return false;
         }
 
         // Check 2: User must be coordinateur or superAdmin
         // (route middleware also enforces this, defense in depth)
-        if (!($user->isCoordinator() || $user->isAdmin())) {
+        if (! ($user->isCoordinator() || $user->isAdmin())) {
             return false;
         }
 

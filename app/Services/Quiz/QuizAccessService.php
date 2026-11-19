@@ -34,7 +34,7 @@ final class QuizAccessService
      */
     public function isAvailable(Quiz $quiz): bool
     {
-        if (!$this->isPublished($quiz)) {
+        if (! $this->isPublished($quiz)) {
             return false;
         }
 
@@ -123,7 +123,7 @@ final class QuizAccessService
      */
     public function canUserAttempt(Quiz $quiz, int $userId): bool
     {
-        if (!$this->isAvailable($quiz)) {
+        if (! $this->isAvailable($quiz)) {
             return false;
         }
 
@@ -153,11 +153,11 @@ final class QuizAccessService
      * sur l'ancienne sémantique (seules les tentatives finalisées comptaient).
      *
      * @param  EloquentCollection<int, QuizAttempt>  $attempts  tentatives
-     *         consommantes de l'étudiant sur ce quiz (cf. {@see self::consumingAttemptsByQuiz()})
+     *                                                          consommantes de l'étudiant sur ce quiz (cf. {@see self::consumingAttemptsByQuiz()})
      */
     public function canAttemptFromLoaded(Quiz $quiz, EloquentCollection $attempts): bool
     {
-        if (!$this->isAvailable($quiz)) {
+        if (! $this->isAvailable($quiz)) {
             return false;
         }
 

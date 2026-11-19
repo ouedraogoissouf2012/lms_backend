@@ -43,7 +43,7 @@ final class KlassciBatchFetcherTest extends TestCase
         $tenantManager = Mockery::mock(TenantManager::class);
         $tenantManager->shouldReceive('slug')->andReturn('school-test');
         $tenantManager->shouldReceive('klassciConfig')->andReturn([
-            'url'   => 'https://klassci.test',
+            'url' => 'https://klassci.test',
             'token' => 'system-token',
         ]);
         $this->app->instance(TenantManager::class, $tenantManager);
@@ -194,7 +194,7 @@ final class KlassciBatchFetcherTest extends TestCase
 
         // Alice et Bob ont des tokens distincts → clés cache distinctes → 2 appels HTTP.
         $alice = $fetcher->fetchManyByEndpoint([1], 'matieres/{id}', 'alice-token');
-        $bob   = $fetcher->fetchManyByEndpoint([1], 'matieres/{id}', 'bob-token');
+        $bob = $fetcher->fetchManyByEndpoint([1], 'matieres/{id}', 'bob-token');
 
         self::assertSame(['data' => 'for-alice'], $alice[1]);
         self::assertSame(['data' => 'for-bob'], $bob[1]);

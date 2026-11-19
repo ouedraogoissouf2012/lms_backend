@@ -27,8 +27,7 @@ final class ArchivedRowWriter implements ArchivedRowWriterInterface
 
     public function __construct(
         private readonly DatabaseManager $db,
-    ) {
-    }
+    ) {}
 
     public function write(string $sourceTable, iterable $rows, string $reason): int
     {

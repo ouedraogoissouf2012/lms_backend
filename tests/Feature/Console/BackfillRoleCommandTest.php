@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Console;
 
+use App\Console\Commands\Klassci\BackfillRoleCommand;
 use App\Models\Institution;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -19,7 +20,7 @@ use Tests\TestCase;
  *
  * Spec: `.claude/specs/backfill-command-artisan/`
  *
- * @see \App\Console\Commands\Klassci\BackfillRoleCommand
+ * @see BackfillRoleCommand
  */
 final class BackfillRoleCommandTest extends TestCase
 {
@@ -44,8 +45,8 @@ final class BackfillRoleCommandTest extends TestCase
     {
         $user = User::factory()->create([
             'institution_id' => $this->institution->id,
-            'role'           => $role,
-            'klassci_id'     => $klassciId,
+            'role' => $role,
+            'klassci_id' => $klassciId,
         ]);
 
         // Force klassci_role à null via raw update pour simuler l'état pre-#118.
@@ -56,15 +57,15 @@ final class BackfillRoleCommandTest extends TestCase
 
     public function test_backfill_copies_role_to_klassci_role_for_synced_users(): void
     {
-        $student     = $this->userWithRole('etudiant', klassciId: 100);
-        $teacher     = $this->userWithRole('enseignant', klassciId: 200);
+        $student = $this->userWithRole('etudiant', klassciId: 100);
+        $teacher = $this->userWithRole('enseignant', klassciId: 200);
         $coordinator = $this->userWithRole('coordinateur', klassciId: 300);
 
         $this->artisan('klassci:backfill-role')
             ->assertExitCode(0);
 
-        self::assertSame('etudiant',     User::find($student->id)->klassci_role);
-        self::assertSame('enseignant',   User::find($teacher->id)->klassci_role);
+        self::assertSame('etudiant', User::find($student->id)->klassci_role);
+        self::assertSame('enseignant', User::find($teacher->id)->klassci_role);
         self::assertSame('coordinateur', User::find($coordinator->id)->klassci_role);
     }
 

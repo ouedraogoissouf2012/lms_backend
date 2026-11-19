@@ -4,11 +4,12 @@ namespace Database\Factories;
 
 use App\Models\ForumPost;
 use App\Models\ForumTopic;
+use App\Models\Institution;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
- * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\ForumPost>
+ * @extends Factory<ForumPost>
  */
 class ForumPostFactory extends Factory
 {
@@ -31,7 +32,7 @@ class ForumPostFactory extends Factory
             'likes_count' => 0,
             // institution_id hérité du parent ForumTopic.
             'institution_id' => fn (array $attrs) => ForumTopic::find($attrs['topic_id'])?->institution_id
-                ?? \App\Models\Institution::factory(),
+                ?? Institution::factory(),
         ];
     }
 

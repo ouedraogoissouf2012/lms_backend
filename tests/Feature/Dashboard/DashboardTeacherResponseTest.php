@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Dashboard;
 
+use App\Http\Controllers\API\Dashboard\DashboardTeacherController;
 use App\Models\Institution;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -12,7 +13,7 @@ use Tests\TestCase;
 
 /**
  * Test de CARACTÉRISATION du contrat de réponse de
- * {@see \App\Http\Controllers\API\Dashboard\DashboardTeacherController::teacher}
+ * {@see DashboardTeacherController::teacher}
  * (axe #1 — issue #296 : endpoint NON testé → test-first OBLIGATOIRE avant
  * migration vers `RespondsWithJson`).
  *

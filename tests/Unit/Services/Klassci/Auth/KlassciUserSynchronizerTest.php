@@ -10,10 +10,12 @@ use App\Services\Klassci\Auth\KlassciEmailConflictGuard;
 use App\Services\Klassci\Auth\KlassciEnseignantIdResolver;
 use App\Services\Klassci\Auth\KlassciRoleSanitizer;
 use App\Services\Klassci\Auth\KlassciUserSynchronizer;
+use App\Services\Klassci\Auth\MiroirDeLaClasseDeLEleve;
 use App\Services\Klassci\Auth\StudentClassSynchronizer;
 use App\Services\Klassci\Data\KlassciDataWhitelist;
 use App\Services\KlassciProxyService;
 use App\Services\MatiereSyncService;
+use App\Support\Logging\CaughtExceptionLog;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -69,13 +71,13 @@ final class KlassciUserSynchronizerTest extends TestCase
             DB::connection(),
             Hash::driver(),
             $this->matiereSync,
-            new StudentClassSynchronizer($this->klassciService, $this->logger, app(\App\Support\Logging\CaughtExceptionLog::class), DB::connection(), app(\App\Services\Klassci\Auth\MiroirDeLaClasseDeLEleve::class)),
+            new StudentClassSynchronizer($this->klassciService, $this->logger, app(CaughtExceptionLog::class), DB::connection(), app(MiroirDeLaClasseDeLEleve::class)),
             new KlassciEnseignantIdResolver,
             new KlassciEmailConflictGuard($this->logger),
             $this->logger,
             new KlassciDataWhitelist,
             new KlassciRoleSanitizer,
-            app(\App\Support\Logging\CaughtExceptionLog::class),
+            app(CaughtExceptionLog::class),
         );
     }
 

@@ -10,6 +10,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Factory as HttpFactory;
 use Illuminate\Http\Client\Request as ClientRequest;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Testing\TestResponse;
 use Tests\TestCase;
 
 /**
@@ -64,7 +65,7 @@ final class ProxyAcademicWriteIsolationTest extends TestCase
         ]);
     }
 
-    private function postNotes(User $user, int $etudiantId, int $note): \Illuminate\Testing\TestResponse
+    private function postNotes(User $user, int $etudiantId, int $note): TestResponse
     {
         return $this->withHeaders([
             'Authorization' => 'Bearer '.$user->createToken('619')->plainTextToken,
@@ -76,7 +77,7 @@ final class ProxyAcademicWriteIsolationTest extends TestCase
 
     private function fakeKlassci(): void
     {
-        $factory = new HttpFactory();
+        $factory = new HttpFactory;
         $factory->fake(function (ClientRequest $request) {
             $bearer = $request->header('Authorization')[0] ?? '';
             $this->bearers[] = str_replace('Bearer ', '', $bearer);

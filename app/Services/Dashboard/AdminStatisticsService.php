@@ -29,8 +29,7 @@ final class AdminStatisticsService
         private readonly CacheRepository $cache,
         private readonly TenantManager $tenantManager,
         private readonly LoggerInterface $logger,
-    ) {
-    }
+    ) {}
 
     /**
      * @return array<string, int|float>

@@ -28,7 +28,7 @@ final class KlassciRoleSanitizerTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->sanitizer = new KlassciRoleSanitizer();
+        $this->sanitizer = new KlassciRoleSanitizer;
     }
 
     /**
@@ -47,12 +47,12 @@ final class KlassciRoleSanitizerTest extends TestCase
     {
         return [
             'admin institution superAdmin' => ['superAdmin', 'superAdmin'],
-            'admin'                        => ['admin', 'admin'],
-            'coordinateur'                 => ['coordinateur', 'coordinateur'],
-            'enseignant'                   => ['enseignant', 'enseignant'],
-            'etudiant'                     => ['etudiant', 'etudiant'],
-            'alias anglais, canonique'     => ['teacher', 'enseignant'],
-            'null → etudiant par défaut'   => [null, 'etudiant'],
+            'admin' => ['admin', 'admin'],
+            'coordinateur' => ['coordinateur', 'coordinateur'],
+            'enseignant' => ['enseignant', 'enseignant'],
+            'etudiant' => ['etudiant', 'etudiant'],
+            'alias anglais, canonique' => ['teacher', 'enseignant'],
+            'null → etudiant par défaut' => [null, 'etudiant'],
         ];
     }
 
@@ -69,11 +69,11 @@ final class KlassciRoleSanitizerTest extends TestCase
     {
         return [
             'variante capitale du plateforme' => ['Supradmin'],
-            'variante majuscules'             => ['SUPRADMIN'],
-            "entouré d'espaces"             => ['  supradmin  '],
-            'variante de casse'               => ['Enseignant'],
-            'rôle hors du LMS'                => ['directeur'],
-            'ancien alias retiré'             => ['administrator'],
+            'variante majuscules' => ['SUPRADMIN'],
+            "entouré d'espaces" => ['  supradmin  '],
+            'variante de casse' => ['Enseignant'],
+            'rôle hors du LMS' => ['directeur'],
+            'ancien alias retiré' => ['administrator'],
         ];
     }
 

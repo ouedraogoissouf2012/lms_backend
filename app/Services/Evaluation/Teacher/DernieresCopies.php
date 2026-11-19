@@ -41,8 +41,7 @@ final class DernieresCopies
     public static function de(Evaluation $evaluation): self
     {
         return new self($evaluation->submissions
-            ->reject(static fn (EvaluationSubmission $copie): bool
-                => str_starts_with((string) $copie->feedback, '[PRACTICE]'))
+            ->reject(static fn (EvaluationSubmission $copie): bool => str_starts_with((string) $copie->feedback, '[PRACTICE]'))
             ->sortBy([['created_at', 'desc'], ['id', 'desc']])
             ->values());
     }
@@ -53,8 +52,7 @@ final class DernieresCopies
      */
     public function pour(?int $auteur, ?int ...$identitesKlassci): ?EvaluationSubmission
     {
-        return $this->copies->first(static fn (EvaluationSubmission $copie): bool
-            => self::appartient($copie, $auteur, $identitesKlassci));
+        return $this->copies->first(static fn (EvaluationSubmission $copie): bool => self::appartient($copie, $auteur, $identitesKlassci));
     }
 
     /**
@@ -75,8 +73,7 @@ final class DernieresCopies
     public function horsRoster(array $roster, ?int $etablissement): array
     {
         return array_values($this->copies
-            ->filter(static fn (EvaluationSubmission $copie): bool
-                => $etablissement !== null && self::entier($copie->institution_id) === $etablissement)
+            ->filter(static fn (EvaluationSubmission $copie): bool => $etablissement !== null && self::entier($copie->institution_id) === $etablissement)
             ->reject(static fn (EvaluationSubmission $copie): bool => collect($roster)
                 ->contains(static fn (array $eleve): bool => self::appartient($copie, $eleve[0], $eleve[1])))
             ->unique(static fn (EvaluationSubmission $copie): string => match (true) {

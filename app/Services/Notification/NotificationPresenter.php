@@ -48,26 +48,22 @@ class NotificationPresenter
         // contre les payloads malformés (ex. array imbriqué injecté).
         $idOf = static function (string $key) use ($data): ?string {
             $value = $data[$key] ?? null;
+
             return is_scalar($value) ? (string) $value : null;
         };
 
         return match ($notification->type) {
-            Notification::TYPE_LESSON_PUBLISHED, Notification::TYPE_LESSON_UPDATED =>
-                ($id = $idOf('lesson_id')) !== null ? "/lessons/{$id}" : null,
+            Notification::TYPE_LESSON_PUBLISHED, Notification::TYPE_LESSON_UPDATED => ($id = $idOf('lesson_id')) !== null ? "/lessons/{$id}" : null,
 
-            Notification::TYPE_FORUM_REPLY, Notification::TYPE_FORUM_SOLUTION =>
-                ($id = $idOf('topic_id')) !== null ? "/forum/topics/{$id}" : null,
+            Notification::TYPE_FORUM_REPLY, Notification::TYPE_FORUM_SOLUTION => ($id = $idOf('topic_id')) !== null ? "/forum/topics/{$id}" : null,
 
             Notification::TYPE_QUIZ_AVAILABLE,
             Notification::TYPE_GRADE_RECEIVED,
-            Notification::TYPE_QUIZ_DEADLINE =>
-                ($id = $idOf('quiz_id')) !== null ? "/quizzes/{$id}" : null,
+            Notification::TYPE_QUIZ_DEADLINE => ($id = $idOf('quiz_id')) !== null ? "/quizzes/{$id}" : null,
 
-            Notification::TYPE_VISIO_SCHEDULED, Notification::TYPE_VISIO_STARTING =>
-                ($id = $idOf('seance_id')) !== null ? "/seances/{$id}" : null,
+            Notification::TYPE_VISIO_SCHEDULED, Notification::TYPE_VISIO_STARTING => ($id = $idOf('seance_id')) !== null ? "/seances/{$id}" : null,
 
-            Notification::TYPE_EVALUATION_APPROACHING =>
-                ($id = $idOf('evaluation_id')) !== null ? "/student/evaluations/{$id}" : null,
+            Notification::TYPE_EVALUATION_APPROACHING => ($id = $idOf('evaluation_id')) !== null ? "/student/evaluations/{$id}" : null,
 
             default => null,
         };

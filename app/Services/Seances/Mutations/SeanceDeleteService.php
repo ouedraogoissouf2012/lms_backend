@@ -38,7 +38,7 @@ final class SeanceDeleteService
         try {
             $seance = $designee->pour($seanceId, $user);
 
-            if (!$seance) {
+            if (! $seance) {
                 return [
                     'status' => 404,
                     'payload' => [

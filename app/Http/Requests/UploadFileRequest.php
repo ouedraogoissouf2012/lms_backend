@@ -154,7 +154,7 @@ class UploadFileRequest extends FormRequest
             'fileable_type' => [
                 'required_with:fileable_id',
                 'string',
-                'in:' . implode(',', array_keys((array) config('fileables.morph_map', []))),
+                'in:'.implode(',', array_keys((array) config('fileables.morph_map', []))),
             ],
             'fileable_id' => [
                 'required_with:fileable_type',
@@ -183,7 +183,7 @@ class UploadFileRequest extends FormRequest
         return [
             'file.required' => 'Un fichier est requis',
             'file.file' => 'Le champ doit être un fichier valide',
-            'file.max' => 'Le fichier ne doit pas dépasser ' . UploadLimits::humanReadable(),
+            'file.max' => 'Le fichier ne doit pas dépasser '.UploadLimits::humanReadable(),
             'file.mimes' => 'Le type de fichier n\'est pas autorisé. Types acceptés: PDF, Word, Excel, PowerPoint, JPG, PNG, GIF',
             'category.in' => 'La catégorie sélectionnée est invalide',
             'fileable_type.in' => 'Le type de ressource est invalide',
@@ -193,13 +193,10 @@ class UploadFileRequest extends FormRequest
         ];
     }
 
-
     /**
      * Get the file size limit in human-readable format.
      *
      * Used by controller for error messages.
-     *
-     * @return string
      */
     public static function getMaxFileSize(): string
     {

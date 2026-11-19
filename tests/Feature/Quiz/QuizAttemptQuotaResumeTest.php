@@ -41,6 +41,7 @@ final class QuizAttemptQuotaResumeTest extends TestCase
     use RefreshDatabase;
 
     private Institution $institution;
+
     private User $student;
 
     protected function setUp(): void
@@ -161,7 +162,7 @@ final class QuizAttemptQuotaResumeTest extends TestCase
         Sanctum::actingAs($this->student);
         $this->start($quiz)->assertStatus(201);
 
-        $listing = $this->getJson('/api/quizzes?lesson_id=' . $quiz->lesson_id);
+        $listing = $this->getJson('/api/quizzes?lesson_id='.$quiz->lesson_id);
 
         $listing->assertStatus(200);
         $row = collect($listing->json('data.data') ?? $listing->json('data'))
@@ -243,7 +244,7 @@ final class QuizAttemptQuotaResumeTest extends TestCase
         $this->seedAttempt($quiz, attemptNumber: 1, status: 'graded', institutionId: null);
 
         $token = $this->student->createToken('legacy-tenant-581')->plainTextToken;
-        $response = $this->withHeaders(['Authorization' => 'Bearer ' . $token])
+        $response = $this->withHeaders(['Authorization' => 'Bearer '.$token])
             ->postJson("/api/quizzes/{$quiz->id}/start");
 
         $response->assertStatus(201);

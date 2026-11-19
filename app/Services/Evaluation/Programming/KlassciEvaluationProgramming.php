@@ -60,11 +60,11 @@ final class KlassciEvaluationProgramming implements EvaluationProgramming
 
         return new ProgrammedEvaluation([
             'klassci_evaluation_id' => (int) $donnees['klassci_evaluation_id'],
-            'klassci_matiere_id'    => $matiereId,
-            'klassci_classe_id'     => $classeId,
+            'klassci_matiere_id' => $matiereId,
+            'klassci_classe_id' => $classeId,
             'klassci_enseignant_id' => $auteur->klassci_enseignant_id,
-            'matiere_nom'           => $matiereNom,
-            'classe_nom'            => $classeNom,
+            'matiere_nom' => $matiereNom,
+            'classe_nom' => $classeNom,
         ]);
     }
 
@@ -72,7 +72,7 @@ final class KlassciEvaluationProgramming implements EvaluationProgramming
      * Libellés lus chez KLASSCI, chacun fail-soft : une lecture en échec laisse
      * son libellé nul sans effacer l'autre.
      *
-     * @return array{0: ?string, 1: ?string}  [matiereNom, classeNom]
+     * @return array{0: ?string, 1: ?string} [matiereNom, classeNom]
      */
     private function libelles(User $auteur, ?int $matiereId, ?int $classeId): array
     {

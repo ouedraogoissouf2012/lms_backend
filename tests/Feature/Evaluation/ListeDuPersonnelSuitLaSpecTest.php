@@ -105,8 +105,7 @@ final class ListeDuPersonnelSuitLaSpecTest extends TestCase
             $journal = DB::getQueryLog();
             DB::disableQueryLog();
 
-            return count(array_filter($journal, static fn (array $q): bool
-                => preg_match('/from [`"]users[`"]/i', (string) $q['query']) === 1));
+            return count(array_filter($journal, static fn (array $q): bool => preg_match('/from [`"]users[`"]/i', (string) $q['query']) === 1));
         };
         $une = fn () => Evaluation::factory()->create([
             'institution_id' => $ecole->getKey(), 'enseignant_id' => $this->membre($ecole, 'enseignant')->getKey(),

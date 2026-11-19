@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\FileConversion;
 
+use App\Services\FileConversion\ChapterArtifactStorage;
 use App\Services\FileConversion\FileValidator;
 use App\Services\FileConversion\WordConverter;
 use App\Support\Shell\ShellExecutionException;
@@ -15,6 +16,7 @@ use InvalidArgumentException;
 use Mockery;
 use Mockery\MockInterface;
 use PHPUnit\Framework\Attributes\CoversClass;
+use Psr\Log\NullLogger;
 use RuntimeException;
 use Tests\TestCase;
 
@@ -39,6 +41,7 @@ final class WordConverterTest extends TestCase
     private const DOCX_MIME = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
 
     private ShellExecutorInterface&MockInterface $shellMock;
+
     private FileValidator $validator;
 
     protected function setUp(): void
@@ -50,7 +53,7 @@ final class WordConverterTest extends TestCase
         $shellMock = Mockery::mock(ShellExecutorInterface::class);
         $this->shellMock = $shellMock;
 
-        $this->validator = new FileValidator();
+        $this->validator = new FileValidator;
     }
 
     protected function tearDown(): void
@@ -84,12 +87,12 @@ final class WordConverterTest extends TestCase
                 // canonical path so the converter's `file_get_contents`
                 // returns content the test can assert on.
                 $docxPath = $command[count($command) - 1];
-                $outdir   = $command[count($command) - 2];
+                $outdir = $command[count($command) - 2];
                 if (! is_dir($outdir)) {
                     mkdir($outdir, 0755, true);
                 }
                 file_put_contents(
-                    "{$outdir}/" . pathinfo($docxPath, PATHINFO_FILENAME) . '.html',
+                    "{$outdir}/".pathinfo($docxPath, PATHINFO_FILENAME).'.html',
                     $expectedHtml,
                 );
 
@@ -166,10 +169,10 @@ final class WordConverterTest extends TestCase
     private function makeConverter(): WordConverter
     {
         return new WordConverter(
-            new \Psr\Log\NullLogger(),
+            new NullLogger,
             $this->shellMock,
             $this->validator,
-            app(\App\Services\FileConversion\ChapterArtifactStorage::class),
+            app(ChapterArtifactStorage::class),
         );
     }
 }

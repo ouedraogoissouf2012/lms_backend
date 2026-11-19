@@ -9,6 +9,7 @@ use Illuminate\Auth\Passwords\DatabaseTokenRepository;
 use Illuminate\Contracts\Auth\CanResetPassword as CanResetPasswordContract;
 use Illuminate\Contracts\Hashing\Hasher as HasherContract;
 use Illuminate\Database\ConnectionInterface;
+use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Carbon;
 use RuntimeException;
 
@@ -64,7 +65,7 @@ final class TenantAwareTokenRepository extends DatabaseTokenRepository
         return $record !== [] && $this->tokenRecentlyCreated($record['created_at']);
     }
 
-    private function scopedQuery(string $email): \Illuminate\Database\Query\Builder
+    private function scopedQuery(string $email): Builder
     {
         return $this->getTable()
             ->where('email', $email)

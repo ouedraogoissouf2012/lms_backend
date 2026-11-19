@@ -2,12 +2,13 @@
 
 namespace Database\Factories;
 
+use App\Models\Institution;
 use App\Models\Lesson;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
- * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\Lesson>
+ * @extends Factory<Lesson>
  */
 class LessonFactory extends Factory
 {
@@ -31,7 +32,7 @@ class LessonFactory extends Factory
             'order' => $this->faker->numberBetween(1, 100),
             'type' => 'cours',
             // institution_id requis : la Lesson est tenant-scoped via BelongsToInstitution.
-            'institution_id' => \App\Models\Institution::factory(),
+            'institution_id' => Institution::factory(),
         ];
     }
 

@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Security;
 
+use App\Http\Requests\DeleteEvaluationRequest;
+use App\Http\Requests\PublishEvaluationRequest;
+use App\Http\Requests\UpdateEvaluationRequest;
 use App\Models\Evaluation;
 use App\Models\Institution;
 use App\Models\User;
@@ -21,9 +24,9 @@ use Tests\TestCase;
  *
  * Spec: `.claude/specs/klassci-enseignant-id-separation/`
  *
- * @see \App\Http\Requests\DeleteEvaluationRequest
- * @see \App\Http\Requests\PublishEvaluationRequest
- * @see \App\Http\Requests\UpdateEvaluationRequest
+ * @see DeleteEvaluationRequest
+ * @see PublishEvaluationRequest
+ * @see UpdateEvaluationRequest
  */
 final class KlassciEnseignantIdSeparationTest extends TestCase
 {
@@ -62,21 +65,21 @@ final class KlassciEnseignantIdSeparationTest extends TestCase
     private function teacher(int $klassciEnseignantId, array $extra = []): User
     {
         return User::factory()->create(array_merge([
-            'institution_id'        => $this->institution->id,
-            'role'                  => 'enseignant',
-            'klassci_role'          => 'enseignant',
+            'institution_id' => $this->institution->id,
+            'role' => 'enseignant',
+            'klassci_role' => 'enseignant',
             'klassci_enseignant_id' => $klassciEnseignantId,
-            'klassci_data'          => json_encode(['enseignant_id' => $klassciEnseignantId]),
+            'klassci_data' => json_encode(['enseignant_id' => $klassciEnseignantId]),
         ], $extra));
     }
 
     private function evaluation(int $ownerKlassciEnseignantId): Evaluation
     {
         return Evaluation::factory()->create([
-            'institution_id'        => $this->institution->id,
+            'institution_id' => $this->institution->id,
             'klassci_enseignant_id' => $ownerKlassciEnseignantId,
-            'is_locked'             => false,
-            'is_published'          => false,
+            'is_locked' => false,
+            'is_published' => false,
         ]);
     }
 
@@ -84,10 +87,10 @@ final class KlassciEnseignantIdSeparationTest extends TestCase
     public function test_create_initializes_klassci_enseignant_id_from_payload(): void
     {
         $user = $this->callSyncUserFromKlassci([
-            'id'            => 7777,
-            'nom'           => 'Teacher',
-            'email'         => 't@school-a.fr',
-            'role'          => 'enseignant',
+            'id' => 7777,
+            'nom' => 'Teacher',
+            'email' => 't@school-a.fr',
+            'role' => 'enseignant',
             'enseignant_id' => 42,
         ]);
 
@@ -99,14 +102,14 @@ final class KlassciEnseignantIdSeparationTest extends TestCase
     {
         $existing = $this->teacher(42, [
             'klassci_id' => 7777,
-            'email'      => 't@school-a.fr',
+            'email' => 't@school-a.fr',
         ]);
 
         $user = $this->callSyncUserFromKlassci([
-            'id'            => 7777,
-            'nom'           => 'Teacher',
-            'email'         => 't@school-a.fr',
-            'role'          => 'enseignant',
+            'id' => 7777,
+            'nom' => 'Teacher',
+            'email' => 't@school-a.fr',
+            'role' => 'enseignant',
             'enseignant_id' => 999,    // attacker pushes impersonation
         ]);
 
@@ -117,7 +120,7 @@ final class KlassciEnseignantIdSeparationTest extends TestCase
     // REQ-7 #4 — Owner CAN delete their own evaluation.
     public function test_delete_evaluation_authorized_for_owner_via_dedicated_column(): void
     {
-        $teacher    = $this->teacher(42);
+        $teacher = $this->teacher(42);
         $evaluation = $this->evaluation(42);
 
         Sanctum::actingAs($teacher);
@@ -179,7 +182,7 @@ final class KlassciEnseignantIdSeparationTest extends TestCase
         $teacher = $this->teacher(0, [
             // Force NULL on the column even though factory default would set one.
             'klassci_enseignant_id' => null,
-            'klassci_data'          => json_encode(['enseignant_id' => 999]),  // poisoned
+            'klassci_data' => json_encode(['enseignant_id' => 999]),  // poisoned
         ]);
         $evaluation = $this->evaluation(999);
 
@@ -195,9 +198,9 @@ final class KlassciEnseignantIdSeparationTest extends TestCase
         // L'admin de l'ÉCOLE : un compte `supradmin` est le compte plateforme,
         // sans établissement, et ne touche aucun contenu d'école.
         $admin = User::factory()->create([
-            'institution_id'        => $this->institution->id,
-            'role'                  => 'admin',
-            'klassci_role'          => 'admin',
+            'institution_id' => $this->institution->id,
+            'role' => 'admin',
+            'klassci_role' => 'admin',
             'klassci_enseignant_id' => null,
         ]);
         $evaluation = $this->evaluation(999);

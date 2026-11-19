@@ -5,17 +5,22 @@ namespace Tests\Feature\Requests;
 use App\Models\Institution;
 use App\Models\Seance;
 use App\Models\User;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
 class StartVisioRequestTest extends TestCase
 {
-    use \Illuminate\Foundation\Testing\RefreshDatabase;
+    use RefreshDatabase;
 
     private Institution $institution;
+
     private User $student;
+
     private User $teacher;
+
     private User $coordinator;
+
     private Seance $seance;
 
     protected function setUp(): void

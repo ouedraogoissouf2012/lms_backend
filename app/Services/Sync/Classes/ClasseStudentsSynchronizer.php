@@ -75,17 +75,16 @@ final class ClasseStudentsSynchronizer
         private readonly TenantManager $tenantManager,
         private readonly LoggerInterface $logger,
         private readonly CaughtExceptionLog $journal,
-    ) {
-    }
+    ) {}
 
     /**
      * Synchroniser les étudiants d'une classe.
      *
-     * @param Classe $classe Classe locale
-     * @param array<int, array<string, mixed>> $etudiantsData Données depuis Klassci
-     * @param string $klassciToken Token pour requêtes additionnelles (conservé
-     *     pour symétrie de signature — non utilisé directement mais préservé
-     *     pour compatibilité avec d'éventuelles évolutions du fetch)
+     * @param  Classe  $classe  Classe locale
+     * @param  array<int, array<string, mixed>>  $etudiantsData  Données depuis Klassci
+     * @param  string  $klassciToken  Token pour requêtes additionnelles (conservé
+     *                                pour symétrie de signature — non utilisé directement mais préservé
+     *                                pour compatibilité avec d'éventuelles évolutions du fetch)
      * @return array{students_synced: int, enrollments_created: int}
      */
     public function sync(Classe $classe, array $etudiantsData, string $klassciToken): array
@@ -118,8 +117,8 @@ final class ClasseStudentsSynchronizer
      * crée. Met à jour le compteur `students_synced` quand l'étudiant n'était
      * pas encore liée par `klassci_id`.
      *
-     * @param array<string, mixed> $etudiantData
-     * @param array{students_synced: int, enrollments_created: int} $stats
+     * @param  array<string, mixed>  $etudiantData
+     * @param  array{students_synced: int, enrollments_created: int}  $stats
      */
     private function resolveOrCreateStudent(array $etudiantData, array &$stats): User
     {
@@ -152,22 +151,22 @@ final class ClasseStudentsSynchronizer
             // Créer l'étudiant local
             // L'API peut retourner "nom_complet" ou "nom"+"prenom" séparés
             $name = $etudiantData['nom_complet']
-                ?? ($etudiantData['nom'] ?? '') . ' ' . ($etudiantData['prenom'] ?? '')
+                ?? ($etudiantData['nom'] ?? '').' '.($etudiantData['prenom'] ?? '')
                 ?? 'Étudiant';
             $name = trim($name);
 
             $student = User::create([
                 'klassci_id' => $etudiantData['id'],
-                'name'       => $name,
-                'email'      => $email,    // null si KLASSCI n'en a pas fourni
-                'role'       => Role::Etudiant->value,
-                'password'   => bcrypt(bin2hex(random_bytes(16))), // Password aléatoire
+                'name' => $name,
+                'email' => $email,    // null si KLASSCI n'en a pas fourni
+                'role' => Role::Etudiant->value,
+                'password' => bcrypt(bin2hex(random_bytes(16))), // Password aléatoire
             ]);
 
             $this->logger->info('Nouvel étudiant créé', [
-                'user_id'    => $student->id,
+                'user_id' => $student->id,
                 'klassci_id' => $etudiantData['id'],
-                'email'      => $email,
+                'email' => $email,
             ]);
         }
 
@@ -181,7 +180,7 @@ final class ClasseStudentsSynchronizer
      *
      * SECURITY — voir docblock de classe pour le rationale fail-secure tenant.
      *
-     * @param array{students_synced: int, enrollments_created: int} $stats
+     * @param  array{students_synced: int, enrollments_created: int}  $stats
      */
     private function upsertEnrollment(Classe $classe, User $student, int $institutionId, array &$stats): void
     {

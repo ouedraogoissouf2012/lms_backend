@@ -32,8 +32,11 @@ final class LessonProgressResponseTest extends TestCase
     use RefreshDatabase;
 
     private Institution $institution;
+
     private User $student;
+
     private User $teacher;
+
     private Lesson $lesson;
 
     protected function setUp(): void

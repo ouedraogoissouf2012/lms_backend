@@ -38,9 +38,13 @@ final class TeacherLessonPublicationFlowTest extends TestCase
     use SimuleLaMatiereKlassci;
 
     private Institution $institution;
+
     private User $teacher;
+
     private User $student;
+
     private Classe $classe;
+
     private Matiere $matiere;
 
     protected function setUp(): void

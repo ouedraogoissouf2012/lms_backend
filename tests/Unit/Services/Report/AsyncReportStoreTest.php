@@ -43,7 +43,7 @@ final class AsyncReportStoreTest extends TestCase
 
     public function test_une_entree_absente_du_cache_est_un_rapport_absent(): void
     {
-        $magasin = new AsyncReportStore(new Repository(new ArrayStore()));
+        $magasin = new AsyncReportStore(new Repository(new ArrayStore));
 
         self::assertNull($magasin->get('inconnu'));
         $magasin->running('inconnu');

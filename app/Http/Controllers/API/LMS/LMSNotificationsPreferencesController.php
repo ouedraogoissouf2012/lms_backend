@@ -67,14 +67,14 @@ final class LMSNotificationsPreferencesController extends AuthenticatedControlle
                 'user_id' => $userId,
                 'channels' => [
                     'whatsapp' => true,
-                    'email'    => true,
-                    'sms'      => false,
-                    'app'      => true,
+                    'email' => true,
+                    'sms' => false,
+                    'app' => true,
                 ],
                 'preferences' => [
-                    'session_reminder_minutes'  => 15,
+                    'session_reminder_minutes' => 15,
                     'evaluation_reminder_hours' => 24,
-                    'absence_notification'      => true,
+                    'absence_notification' => true,
                 ],
             ]);
 
@@ -89,7 +89,7 @@ final class LMSNotificationsPreferencesController extends AuthenticatedControlle
             return response()->json([
                 'success' => false,
                 'message' => 'Erreur lors de la récupération des préférences',
-                'error' => 'Une erreur est survenue.'
+                'error' => 'Une erreur est survenue.',
             ], 500);
         }
     }

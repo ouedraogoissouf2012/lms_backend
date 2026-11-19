@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Models\Evaluation;
 use Closure;
 use Illuminate\Foundation\Http\FormRequest;
 
@@ -65,30 +66,28 @@ final class SubmitEvaluationRequest extends FormRequest
      * Determine if the user is authorized to make this request.
      *
      * Complex authorization: Check evaluation state + deadline + prior submission
-     *
-     * @return bool
      */
     public function authorize(): bool
     {
         $user = auth()->user();
 
         // Check 1: User must be authenticated
-        if (!$user) {
+        if (! $user) {
             return false;
         }
 
         // Check 2: Only students can submit evaluations (not teachers)
-        if (!$user->isStudent()) {
+        if (! $user->isStudent()) {
             return false;
         }
 
         // Check 3: Evaluation must exist and be published
         // Route parameter is 'id' (POST /api/evaluations/{id}/submit)
-        $evaluation = \App\Models\Evaluation::where('id', $this->route('id'))
+        $evaluation = Evaluation::where('id', $this->route('id'))
             ->where('is_published', true)
             ->first();
 
-        if (!$evaluation) {
+        if (! $evaluation) {
             return false;
         }
 
@@ -166,7 +165,7 @@ final class SubmitEvaluationRequest extends FormRequest
                 }
                 foreach ($value as $element) {
                     if (! $this->isValidScalarAnswer($element)) {
-                        $fail('Chaque réponse doit être une chaîne de ' . self::MAX_ANSWER_LENGTH . ' caractères maximum.');
+                        $fail('Chaque réponse doit être une chaîne de '.self::MAX_ANSWER_LENGTH.' caractères maximum.');
 
                         return;
                     }
@@ -176,7 +175,7 @@ final class SubmitEvaluationRequest extends FormRequest
             }
 
             if (! $this->isValidScalarAnswer($value)) {
-                $fail('Chaque réponse doit être une chaîne de ' . self::MAX_ANSWER_LENGTH . ' caractères maximum.');
+                $fail('Chaque réponse doit être une chaîne de '.self::MAX_ANSWER_LENGTH.' caractères maximum.');
             }
         };
     }
@@ -208,13 +207,11 @@ final class SubmitEvaluationRequest extends FormRequest
      * Normalize submission:
      * - Set submitted_at to now if not provided
      * - Trim answer text
-     *
-     * @return void
      */
     protected function prepareForValidation(): void
     {
         // If no submitted_at provided, use current time in strict ISO 8601 format (Y-m-d\TH:i:s\Z)
-        if (!$this->has('submitted_at')) {
+        if (! $this->has('submitted_at')) {
             $this->merge([
                 'submitted_at' => now()->format('Y-m-d\\TH:i:s\\Z'),
             ]);

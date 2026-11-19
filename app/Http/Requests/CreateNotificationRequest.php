@@ -52,12 +52,12 @@ final class CreateNotificationRequest extends FormRequest
     public function authorize(): bool
     {
         $caller = Auth::user();
-        if (!$caller instanceof User) {
+        if (! $caller instanceof User) {
             return false;
         }
 
         // Role check (defense in depth above route middleware)
-        if (!($caller->isCoordinator() || $caller->isAdmin())) {
+        if (! ($caller->isCoordinator() || $caller->isAdmin())) {
             return false;
         }
 
@@ -74,7 +74,7 @@ final class CreateNotificationRequest extends FormRequest
 
         // Tenant check: target user must belong to caller's institution
         $targetUserId = $this->input('user_id');
-        if (!is_numeric($targetUserId)) {
+        if (! is_numeric($targetUserId)) {
             return false;
         }
 
@@ -123,7 +123,7 @@ final class CreateNotificationRequest extends FormRequest
                 'nullable',
                 'string',
                 'max:2048',
-                new NotificationActionUrl(),
+                new NotificationActionUrl,
             ],
         ];
     }

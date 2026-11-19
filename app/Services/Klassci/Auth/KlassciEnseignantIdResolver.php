@@ -6,6 +6,7 @@ namespace App\Services\Klassci\Auth;
 
 use App\Enums\Role;
 use App\Models\User;
+use App\Services\Seances\TeachingSeancesFetcher;
 
 /**
  * Résout et auto-répare `users.klassci_enseignant_id` depuis les données KLASSCI.
@@ -32,7 +33,7 @@ final class KlassciEnseignantIdResolver
      *   1. `enseignant_id` dédié si KLASSCI le fournit (numérique) ;
      *   2. sinon, pour un ENSEIGNANT, fallback sur `klassci_id` (identité
      *      utilisateur) — cohérent avec le domaine séances
-     *      ({@see \App\Services\Seances\TeachingSeancesFetcher}) ;
+     *      ({@see TeachingSeancesFetcher}) ;
      *   3. sinon null (étudiant/admin sans enseignant_id : pas de création d'éval).
      *
      * @param  array<string, mixed>  $klassciUser

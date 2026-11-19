@@ -50,7 +50,7 @@ final class LessonStatusEnumTest extends TestCase
 
     public function test_default_status_is_draft(): void
     {
-        $lesson = new Lesson();
+        $lesson = new Lesson;
 
         $this->assertSame(LessonStatus::Draft, $lesson->status);
     }

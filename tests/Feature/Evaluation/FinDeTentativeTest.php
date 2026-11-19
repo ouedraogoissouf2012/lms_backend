@@ -17,6 +17,7 @@ use Carbon\CarbonInterface;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Testing\TestResponse;
 use Mockery\MockInterface;
 use RuntimeException;
 use Tests\Concerns\ActsAsTenantUser;
@@ -276,7 +277,7 @@ final class FinDeTentativeTest extends TestCase
      * Une requête concurrente écrit la copie juste AVANT notre écriture conditionnelle.
      *
      * @param  array<string, mixed>  $etat
-     * @return \Closure(): bool  vrai si l'écriture concurrente a eu lieu
+     * @return \Closure(): bool vrai si l'écriture concurrente a eu lieu
      */
     private function avantLeVerrou(EvaluationSubmission $copie, array $etat): \Closure
     {
@@ -294,7 +295,7 @@ final class FinDeTentativeTest extends TestCase
         };
     }
 
-    private function assertVerrouillee(\Illuminate\Testing\TestResponse $reponse, EvaluationSubmission $copie, string $reponseGardee): void
+    private function assertVerrouillee(TestResponse $reponse, EvaluationSubmission $copie, string $reponseGardee): void
     {
         $this->assertMatchesOpenApiResponse($reponse, '/evaluations/{id}/submit', 'post');
         $reponse->assertStatus(409)->assertJsonPath('reason', 'evaluation_attempt_locked');
@@ -321,7 +322,7 @@ final class FinDeTentativeTest extends TestCase
         return EvaluationSubmission::query()->withoutGlobalScopes()->findOrFail($id);
     }
 
-    private function remettre(User $eleve, Evaluation $evaluation, string $choix): \Illuminate\Testing\TestResponse
+    private function remettre(User $eleve, Evaluation $evaluation, string $choix): TestResponse
     {
         $question = EvaluationQuestion::query()->where('evaluation_id', $evaluation->getKey())->firstOrFail();
 

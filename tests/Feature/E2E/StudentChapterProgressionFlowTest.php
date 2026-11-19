@@ -39,12 +39,19 @@ final class StudentChapterProgressionFlowTest extends TestCase
     use RefreshDatabase;
 
     private Institution $institution;
+
     private User $teacher;
+
     private User $student;
+
     private Lesson $lesson;
+
     private Chapter $ch1;
+
     private Chapter $ch2;
+
     private Chapter $ch3;
+
     private KnowledgeCheck $quiz;
 
     protected function setUp(): void
@@ -222,11 +229,11 @@ final class StudentChapterProgressionFlowTest extends TestCase
         $this->postJson("/api/chapters/{$this->ch1->id}/time", [
             'time_spent_seconds' => 60,
         ])->assertStatus(200)
-          ->assertJsonPath('data.time_spent_seconds', 60);
+            ->assertJsonPath('data.time_spent_seconds', 60);
 
         $this->postJson("/api/chapters/{$this->ch1->id}/time", [
             'time_spent_seconds' => 90,
         ])->assertStatus(200)
-          ->assertJsonPath('data.time_spent_seconds', 150);
+            ->assertJsonPath('data.time_spent_seconds', 150);
     }
 }

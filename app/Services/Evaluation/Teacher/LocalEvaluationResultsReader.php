@@ -9,6 +9,7 @@ use App\Models\Evaluation;
 use App\Models\EvaluationSubmission;
 use App\Models\User;
 use App\Services\Evaluation\EvaluationEnrichmentService;
+use App\Services\Evaluation\Student\LocalLearnerEvaluationAudience;
 use App\Support\Logging\CaughtExceptionLog;
 use Illuminate\Support\Collection;
 use Throwable;
@@ -25,7 +26,7 @@ use Throwable;
  * ## Un seul roster actif
  *
  * L'élève voit les évaluations de ses classes où son inscription est active
- * (E2a, {@see \App\Services\Evaluation\Student\LocalLearnerEvaluationAudience}) ;
+ * (E2a, {@see LocalLearnerEvaluationAudience}) ;
  * l'enseignant voit, dans les résultats, les élèves dont l'inscription à la
  * classe est active. C'est le même pivot (`classe_etudiant.statut = actif`), lu
  * ici par la relation du modèle {@see Classe::etudiantsActifs()} qui sert déjà

@@ -1,8 +1,6 @@
 <?php
 
 use Illuminate\Database\Migrations\Migration;
-use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\DB;
 
 return new class extends Migration
@@ -56,35 +54,35 @@ return new class extends Migration
             ");
 
             // Copier les données
-            DB::statement("
+            DB::statement('
                 INSERT INTO chapters_new (
-                    id, matiere_id, enseignant_id, title, description, \"order\", duration_minutes,
+                    id, matiere_id, enseignant_id, title, description, "order", duration_minutes,
                     created_at, updated_at, deleted_at, lesson_id, content_type, content,
                     video_url, video_provider, pdf_url, audio_url, presentation_url, external_link,
                     file_original_path, file_converted_path, slides_images, slides_count, notes_enseignant,
                     allow_download, show_slide_numbers, autoplay_video
                 )
                 SELECT
-                    id, matiere_id, enseignant_id, title, description, \"order\", duration_minutes,
+                    id, matiere_id, enseignant_id, title, description, "order", duration_minutes,
                     created_at, updated_at, deleted_at, lesson_id, content_type, content,
                     video_url, video_provider, pdf_url, audio_url, presentation_url, external_link,
                     file_original_path, file_converted_path, slides_images, slides_count, notes_enseignant,
                     allow_download, show_slide_numbers, autoplay_video
                 FROM chapters
-            ");
+            ');
 
             // Supprimer l'ancienne table
-            DB::statement("DROP TABLE chapters");
+            DB::statement('DROP TABLE chapters');
 
             // Renommer la nouvelle table
-            DB::statement("ALTER TABLE chapters_new RENAME TO chapters");
+            DB::statement('ALTER TABLE chapters_new RENAME TO chapters');
 
             // Recréer les index
-            DB::statement("CREATE INDEX IF NOT EXISTS chapters_lesson_id_index ON chapters(lesson_id)");
-            DB::statement("CREATE INDEX IF NOT EXISTS chapters_matiere_id_index ON chapters(matiere_id)");
+            DB::statement('CREATE INDEX IF NOT EXISTS chapters_lesson_id_index ON chapters(lesson_id)');
+            DB::statement('CREATE INDEX IF NOT EXISTS chapters_matiere_id_index ON chapters(matiere_id)');
 
             DB::statement('PRAGMA foreign_keys=on;');
-        } else if ($connection === 'mysql') {
+        } elseif ($connection === 'mysql') {
             // MySQL: Modifier directement la colonne
             DB::statement("
                 ALTER TABLE chapters
@@ -103,7 +101,7 @@ return new class extends Migration
 
         if ($connection === 'sqlite') {
             DB::table('chapters')->where('content_type', 'quiz')->update(['content_type' => 'text']);
-        } else if ($connection === 'mysql') {
+        } elseif ($connection === 'mysql') {
             DB::table('chapters')->where('content_type', 'quiz')->update(['content_type' => 'text']);
 
             DB::statement("

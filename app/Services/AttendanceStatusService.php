@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Http\Controllers\API\LMS\LMSVisioController;
 use DateTimeImmutable;
 
 /**
@@ -25,7 +26,7 @@ use DateTimeImmutable;
  * given participation percentage + timestamps, it returns the labelled status.
  * Trivially unit-testable, no mocks required.
  *
- * @see \App\Http\Controllers\API\LMS\LMSVisioController::getVisioParticipants (sole consumer)
+ * @see LMSVisioController::getVisioParticipants (sole consumer)
  * @see .claude/specs/lms-data-controller-split/design.md §2.3
  */
 final class AttendanceStatusService
@@ -39,14 +40,13 @@ final class AttendanceStatusService
     /**
      * Determine the attendance status of a participant.
      *
-     * @param int|float|null $percentage   Participation percentage (0-100), or null.
-     * @param string|null    $joinedAt     ISO-8601 timestamp when participant joined.
-     * @param string|null    $leftAt       ISO-8601 timestamp when participant left.
-     * @param string|null    $heureDebut   Scheduled séance start (ISO-8601).
-     * @param string|null    $heureFin     Scheduled séance end (ISO-8601).
-     * @param string|null    $visioStatus  Visio status ('active', 'terminee', etc.) —
-     *                                     affects whether percentage appears in label.
-     *
+     * @param  int|float|null  $percentage  Participation percentage (0-100), or null.
+     * @param  string|null  $joinedAt  ISO-8601 timestamp when participant joined.
+     * @param  string|null  $leftAt  ISO-8601 timestamp when participant left.
+     * @param  string|null  $heureDebut  Scheduled séance start (ISO-8601).
+     * @param  string|null  $heureFin  Scheduled séance end (ISO-8601).
+     * @param  string|null  $visioStatus  Visio status ('active', 'terminee', etc.) —
+     *                                    affects whether percentage appears in label.
      * @return array{label: string, icon: string, is_late: bool, left_early: bool}
      */
     public function determine(
@@ -104,7 +104,7 @@ final class AttendanceStatusService
      */
     private function isLateJoin(?string $heureDebut, ?string $joinedAt): bool
     {
-        if (!$heureDebut || !$joinedAt) {
+        if (! $heureDebut || ! $joinedAt) {
             return false;
         }
 
@@ -126,7 +126,7 @@ final class AttendanceStatusService
      */
     private function isEarlyLeave(?string $heureFin, ?string $leftAt): bool
     {
-        if (!$heureFin || !$leftAt) {
+        if (! $heureFin || ! $leftAt) {
             return false;
         }
 

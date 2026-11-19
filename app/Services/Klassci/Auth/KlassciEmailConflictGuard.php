@@ -27,13 +27,12 @@ final class KlassciEmailConflictGuard
 {
     public function __construct(
         private readonly LoggerInterface $logger,
-    ) {
-    }
+    ) {}
 
     /**
-     * @param  string  $email            Email cible (vide = no-op)
-     * @param  int|null  $institutionId   Institution scopée
-     * @param  int|null  $currentUserId   Compte en cours de sync (exclu du contrôle)
+     * @param  string  $email  Email cible (vide = no-op)
+     * @param  int|null  $institutionId  Institution scopée
+     * @param  int|null  $currentUserId  Compte en cours de sync (exclu du contrôle)
      *
      * @throws KlassciAccountConflictException si un autre compte détient l'email.
      */
@@ -59,11 +58,11 @@ final class KlassciEmailConflictGuard
         // Anomalie de données : tracée pour réconciliation admin. On hash l'email
         // (PII) et on garde les klassci_id pour corréler sans exposer le clair.
         $this->logger->error('Conflit email au sync KLASSCI — compte non synchronisé', [
-            'email_hash'             => substr(hash('sha256', $email), 0, 8),
-            'institution_id'         => $institutionId,
-            'conflicting_user_id'    => $conflict->id,
+            'email_hash' => substr(hash('sha256', $email), 0, 8),
+            'institution_id' => $institutionId,
+            'conflicting_user_id' => $conflict->id,
             'conflicting_klassci_id' => $conflict->klassci_id,
-            'incoming_user_id'       => $currentUserId,
+            'incoming_user_id' => $currentUserId,
         ]);
 
         throw new KlassciAccountConflictException(

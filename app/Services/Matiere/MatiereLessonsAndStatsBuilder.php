@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Matiere;
 
+use App\Http\Controllers\API\LMS\LMSMatieresQueryController;
 use App\Models\Lesson;
 use App\Models\Matiere;
 use App\Models\User;
@@ -15,7 +16,7 @@ use Throwable;
 /**
  * MatiereLessonsAndStatsBuilder — fetches LMS lessons + builds matière stats.
  *
- * Extracted from {@see \App\Http\Controllers\API\LMS\LMSMatieresQueryController::matiereDetails}
+ * Extracted from {@see LMSMatieresQueryController::matiereDetails}
  * (legacy lines 351-394 + 441-460).
  *
  * Responsibility:

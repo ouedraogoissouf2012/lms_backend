@@ -6,6 +6,7 @@ namespace Tests\Unit\Services\Sync\Classes;
 
 use App\Services\KlassciProxyService;
 use App\Services\Sync\Classes\KlassciClassesFetcher;
+use App\Support\Logging\CaughtExceptionLog;
 use Mockery;
 use Mockery\MockInterface;
 use PHPUnit\Framework\Attributes\CoversClass;
@@ -107,7 +108,7 @@ final class KlassciClassesFetcherTest extends TestCase
 
     private function fetcher(KlassciProxyService $klassci): KlassciClassesFetcher
     {
-        return new KlassciClassesFetcher($klassci, app(\App\Support\Logging\CaughtExceptionLog::class));
+        return new KlassciClassesFetcher($klassci, app(CaughtExceptionLog::class));
     }
 
     private function mockKlassci(): KlassciProxyService&MockInterface

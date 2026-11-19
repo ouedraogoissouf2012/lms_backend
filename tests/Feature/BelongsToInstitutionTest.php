@@ -22,6 +22,7 @@ class BelongsToInstitutionTest extends TestCase
     use RefreshDatabase;
 
     private Institution $institution1;
+
     private Institution $institution2;
 
     protected function setUp(): void
@@ -95,13 +96,13 @@ class BelongsToInstitutionTest extends TestCase
     {
         User::factory()->create([
             'institution_id' => $this->institution1->id,
-            'name'           => 'User1',
-            'email'          => 'user1@inst1.test',
+            'name' => 'User1',
+            'email' => 'user1@inst1.test',
         ]);
         User::factory()->create([
             'institution_id' => $this->institution2->id,
-            'name'           => 'User2',
-            'email'          => 'user2@inst2.test',
+            'name' => 'User2',
+            'email' => 'user2@inst2.test',
         ]);
 
         $tenantManager = app(TenantManager::class);
@@ -170,8 +171,8 @@ class BelongsToInstitutionTest extends TestCase
 
         $user = User::factory()->create([
             'institution_id' => null,
-            'name'           => 'Supradmin',
-            'role'           => 'supradmin',
+            'name' => 'Supradmin',
+            'role' => 'supradmin',
         ]);
 
         $this->assertNull(

@@ -38,15 +38,14 @@ final class QuizAttemptStudentController extends AuthenticatedController
     public function __construct(
         private readonly QuizAttemptStartSubmitService $startSubmit,
         private readonly QuizAttemptStateService $state,
-    ) {
-    }
+    ) {}
 
     /**
      * POST /api/quizzes/{quiz}/start
      */
     public function startAttempt(StartQuizAttemptRequest $request, Quiz $quiz): JsonResponse
     {
-        $user   = $this->authenticatedUser($request);
+        $user = $this->authenticatedUser($request);
         $result = $this->startSubmit->startAttempt($quiz, $user);
 
         return $this->toJson($result);
@@ -92,7 +91,7 @@ final class QuizAttemptStudentController extends AuthenticatedController
         // showAttempt place le modèle directement dans `data`, pas un tableau.
         return response()->json([
             'success' => $result['success'],
-            'data'    => $result['data'],
+            'data' => $result['data'],
         ], $result['status']);
     }
 

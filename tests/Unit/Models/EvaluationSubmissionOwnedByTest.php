@@ -39,7 +39,7 @@ use Tests\TestCase;
  */
 final class EvaluationSubmissionOwnedByTest extends TestCase
 {
-    public function test_un_compte_sans_id_ni_identite_klassci_n_interroge_pas_par_whereNull(): void
+    public function test_un_compte_sans_id_ni_identite_klassci_n_interroge_pas_par_where_null(): void
     {
         // L'établissement est posé : c'est la garde de l'id nul, et non celle
         // de l'établissement, qui doit produire le `1 = 0`.
@@ -95,7 +95,7 @@ final class EvaluationSubmissionOwnedByTest extends TestCase
         self::assertStringNotContainsString('1 = 0', $sql);
     }
 
-    public function test_un_eleve_sans_etablissement_n_interroge_pas_par_whereNull(): void
+    public function test_un_eleve_sans_etablissement_n_interroge_pas_par_where_null(): void
     {
         // Sans établissement, l'identifiant KLASSCI seul désignerait les copies
         // de toutes les écoles ; et `where('institution_id', null)` deviendrait

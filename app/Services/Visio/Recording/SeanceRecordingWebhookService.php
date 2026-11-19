@@ -40,8 +40,7 @@ final class SeanceRecordingWebhookService
         private readonly CacheRepository $cache,
         private readonly LoggerInterface $logger,
         private readonly RoomRecordingResolver $rooms,
-    ) {
-    }
+    ) {}
 
     /**
      * @param  array<string, mixed>  $payload
@@ -117,7 +116,7 @@ final class SeanceRecordingWebhookService
     /**
      * Voie JIBRI AUTO-HÉBERGÉ : le fournisseur ne connaît que le salon et le
      * répertoire de sa session. Le média ne transite pas ici — le LMS ira le
-     * lire lui-même ({@see \App\Jobs\ImportJibriRecordingMedia}).
+     * lire lui-même ({@see ImportJibriRecordingMedia}).
      *
      * Le format de session est vérifié **ici** et pas seulement à l'import :
      * une charge malformée ne doit pas consommer un ouvrier de file pour être

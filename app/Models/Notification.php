@@ -2,10 +2,13 @@
 
 namespace App\Models;
 
+use App\Models\Traits\BelongsToInstitution;
+use Carbon\Carbon;
+use Database\Factories\NotificationFactory;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use App\Models\Traits\BelongsToInstitution;
 
 /**
  * Model Notification
@@ -18,14 +21,14 @@ use App\Models\Traits\BelongsToInstitution;
  * @property string $title
  * @property string $message
  * @property array<string, mixed>|null $data
- * @property \Carbon\Carbon|null $read_at
- * @property \Carbon\Carbon|null $created_at
- * @property \Carbon\Carbon|null $updated_at
+ * @property Carbon|null $read_at
+ * @property Carbon|null $created_at
+ * @property Carbon|null $updated_at
  */
 class Notification extends Model
 {
-    /** @use HasFactory<\Database\Factories\NotificationFactory> */
-    use HasFactory, BelongsToInstitution;
+    /** @use HasFactory<NotificationFactory> */
+    use BelongsToInstitution, HasFactory;
 
     protected $fillable = [
         'user_id',
@@ -46,14 +49,23 @@ class Notification extends Model
      * Types de notifications disponibles
      */
     public const TYPE_LESSON_PUBLISHED = 'lesson_published';
+
     public const TYPE_FORUM_REPLY = 'forum_reply';
+
     public const TYPE_QUIZ_AVAILABLE = 'quiz_available';
+
     public const TYPE_GRADE_RECEIVED = 'grade_received';
+
     public const TYPE_LESSON_UPDATED = 'lesson_updated';
+
     public const TYPE_FORUM_SOLUTION = 'forum_solution';
+
     public const TYPE_QUIZ_DEADLINE = 'quiz_deadline';
+
     public const TYPE_VISIO_SCHEDULED = 'visio_scheduled';
+
     public const TYPE_VISIO_STARTING = 'visio_starting';
+
     public const TYPE_EVALUATION_APPROACHING = 'evaluation_approaching';
 
     /**
@@ -69,8 +81,8 @@ class Notification extends Model
     /**
      * Scope: Notifications non lues
      *
-     * @param  \Illuminate\Database\Eloquent\Builder<Notification>  $query
-     * @return \Illuminate\Database\Eloquent\Builder<Notification>
+     * @param  Builder<Notification>  $query
+     * @return Builder<Notification>
      */
     public function scopeUnread($query)
     {
@@ -80,8 +92,8 @@ class Notification extends Model
     /**
      * Scope: Notifications lues
      *
-     * @param  \Illuminate\Database\Eloquent\Builder<Notification>  $query
-     * @return \Illuminate\Database\Eloquent\Builder<Notification>
+     * @param  Builder<Notification>  $query
+     * @return Builder<Notification>
      */
     public function scopeRead($query)
     {
@@ -91,8 +103,8 @@ class Notification extends Model
     /**
      * Scope: Notifications d'un utilisateur
      *
-     * @param  \Illuminate\Database\Eloquent\Builder<Notification>  $query
-     * @return \Illuminate\Database\Eloquent\Builder<Notification>
+     * @param  Builder<Notification>  $query
+     * @return Builder<Notification>
      */
     public function scopeForUser($query, int $userId)
     {
@@ -102,8 +114,8 @@ class Notification extends Model
     /**
      * Scope: Par type
      *
-     * @param  \Illuminate\Database\Eloquent\Builder<Notification>  $query
-     * @return \Illuminate\Database\Eloquent\Builder<Notification>
+     * @param  Builder<Notification>  $query
+     * @return Builder<Notification>
      */
     public function scopeOfType($query, string $type)
     {
@@ -113,12 +125,11 @@ class Notification extends Model
     /**
      * Scope: Récentes d'abord
      *
-     * @param  \Illuminate\Database\Eloquent\Builder<Notification>  $query
-     * @return \Illuminate\Database\Eloquent\Builder<Notification>
+     * @param  Builder<Notification>  $query
+     * @return Builder<Notification>
      */
     public function scopeRecent($query)
     {
         return $query->orderBy('created_at', 'desc');
     }
-
 }

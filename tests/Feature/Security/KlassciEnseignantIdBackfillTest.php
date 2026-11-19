@@ -57,10 +57,10 @@ final class KlassciEnseignantIdBackfillTest extends TestCase
         // dedicated column is NULL (pre-migration state, or backfilled
         // column subsequently nulled by an admin tool).
         $user = User::factory()->create([
-            'institution_id'        => $institution->id,
-            'klassci_id'            => 5000,
-            'role'                  => 'enseignant',
-            'klassci_data'          => json_encode(['enseignant_id' => 42]),
+            'institution_id' => $institution->id,
+            'klassci_id' => 5000,
+            'role' => 'enseignant',
+            'klassci_data' => json_encode(['enseignant_id' => 42]),
         ]);
         DB::table('users')->where('id', $user->id)->update(['klassci_enseignant_id' => null]);
 
@@ -74,10 +74,10 @@ final class KlassciEnseignantIdBackfillTest extends TestCase
         $institution = Institution::factory()->create(['slug' => 'school-b']);
 
         $user = User::factory()->create([
-            'institution_id'        => $institution->id,
-            'klassci_id'            => 6000,
-            'role'                  => 'etudiant',
-            'klassci_data'          => json_encode(['etudiant_id' => 12]),  // no enseignant_id
+            'institution_id' => $institution->id,
+            'klassci_id' => 6000,
+            'role' => 'etudiant',
+            'klassci_data' => json_encode(['etudiant_id' => 12]),  // no enseignant_id
         ]);
         DB::table('users')->where('id', $user->id)->update(['klassci_enseignant_id' => null]);
 

@@ -26,8 +26,11 @@ final class QuizCrudServiceListBatchedAttemptsTest extends TestCase
     use RefreshDatabase;
 
     private QuizCrudService $service;
+
     private Institution $institution;
+
     private User $student;
+
     private User $teacher;
 
     protected function setUp(): void

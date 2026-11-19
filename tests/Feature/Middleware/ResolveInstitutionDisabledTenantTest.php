@@ -35,8 +35,11 @@ final class ResolveInstitutionDisabledTenantTest extends TestCase
     use RefreshDatabase;
 
     private Institution $activeTenant;
+
     private Institution $disabledTenant;
+
     private User $userOfDisabledTenant;
+
     private string $bearerOfDisabledTenant;
 
     protected function setUp(): void

@@ -31,8 +31,7 @@ final class DashboardStudentController extends AuthenticatedController
 {
     public function __construct(
         private readonly StudentDashboardService $service,
-    ) {
-    }
+    ) {}
 
     /**
      * Dashboard Étudiant.

@@ -2,18 +2,19 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\Auditable;
+use App\Models\Concerns\EcheanceDeLaCopie;
+use App\Models\Traits\BelongsToInstitution;
+use Database\Factories\EvaluationSubmissionFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use App\Models\Traits\BelongsToInstitution;
-use App\Models\Concerns\Auditable;
-use App\Models\Concerns\EcheanceDeLaCopie;
 
 class EvaluationSubmission extends Model
 {
-    /** @use HasFactory<\Database\Factories\EvaluationSubmissionFactory> */
-    use HasFactory, BelongsToInstitution, Auditable, EcheanceDeLaCopie;
+    /** @use HasFactory<EvaluationSubmissionFactory> */
+    use Auditable, BelongsToInstitution, EcheanceDeLaCopie, HasFactory;
 
     protected $fillable = [
         'evaluation_id',

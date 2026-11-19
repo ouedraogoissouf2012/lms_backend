@@ -56,9 +56,9 @@ final class EvaluationKlassciSyncResponseTest extends TestCase
 
         $this->institution = Institution::factory()->create();
         $this->teacher = User::factory()->create([
-            'institution_id'        => $this->institution->id,
-            'role'                  => 'enseignant',
-            'klassci_role'          => 'enseignant',
+            'institution_id' => $this->institution->id,
+            'role' => 'enseignant',
+            'klassci_role' => 'enseignant',
             'klassci_enseignant_id' => 42,
             'klassci_token' => 'token-sync-619',
         ]);
@@ -86,7 +86,7 @@ final class EvaluationKlassciSyncResponseTest extends TestCase
         // Pas d'évaluation KLASSCI liée → refus motivé avant tout traitement
         // (D72, E3 ; c'était un 400 sans motif).
         $evaluation = Evaluation::factory()->create([
-            'institution_id'        => $this->institution->id,
+            'institution_id' => $this->institution->id,
             // Possédée par l'enseignant du test : synchroniser exige d'être propriétaire.
             'klassci_enseignant_id' => $this->teacher->klassci_enseignant_id,
             'klassci_evaluation_id' => null,
@@ -112,17 +112,17 @@ final class EvaluationKlassciSyncResponseTest extends TestCase
         Http::fake(['*' => Http::response(['success' => true, 'saved' => 1], 200)]);
 
         $evaluation = Evaluation::factory()->create([
-            'institution_id'        => $this->institution->id,
+            'institution_id' => $this->institution->id,
             // Possédée par l'enseignant du test : synchroniser exige d'être propriétaire.
             'klassci_enseignant_id' => $this->teacher->klassci_enseignant_id,
             'klassci_evaluation_id' => 7777,
         ]);
         EvaluationSubmission::factory()->create([
-            'evaluation_id'      => $evaluation->id,
-            'institution_id'     => $this->institution->id,
-            'status'             => 'soumis',
-            'feedback'           => null,
-            'synced_to_klassci'  => false,
+            'evaluation_id' => $evaluation->id,
+            'institution_id' => $this->institution->id,
+            'status' => 'soumis',
+            'feedback' => null,
+            'synced_to_klassci' => false,
         ]);
 
         Sanctum::actingAs($this->teacher);
@@ -149,20 +149,20 @@ final class EvaluationKlassciSyncResponseTest extends TestCase
         Http::fake(['*' => Http::response(['success' => true, 'saved' => 1], 200)]);
 
         $evaluation = Evaluation::factory()->create([
-            'institution_id'        => $this->institution->id,
+            'institution_id' => $this->institution->id,
             // Possédée par l'enseignant du test : synchroniser exige d'être propriétaire.
             'klassci_enseignant_id' => $this->teacher->klassci_enseignant_id,
             'klassci_evaluation_id' => 8888,
         ]);
         EvaluationQuestion::factory()->create([
-            'evaluation_id'  => $evaluation->id,
+            'evaluation_id' => $evaluation->id,
             'institution_id' => $this->institution->id,
-            'type'           => 'dissertation',
+            'type' => 'dissertation',
         ]);
         EvaluationSubmission::factory()->create([
-            'evaluation_id'     => $evaluation->id,
-            'institution_id'    => $this->institution->id,
-            'status'            => 'soumis',
+            'evaluation_id' => $evaluation->id,
+            'institution_id' => $this->institution->id,
+            'status' => 'soumis',
             'synced_to_klassci' => false,
         ]);
 
@@ -176,7 +176,7 @@ final class EvaluationKlassciSyncResponseTest extends TestCase
         Http::assertNothingSent();
         // La soumission ne doit PAS être marquée synchronisée.
         $this->assertDatabaseHas('evaluation_submissions', [
-            'evaluation_id'     => $evaluation->id,
+            'evaluation_id' => $evaluation->id,
             'synced_to_klassci' => false,
         ]);
     }

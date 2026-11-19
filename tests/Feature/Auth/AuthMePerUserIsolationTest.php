@@ -6,9 +6,9 @@ namespace Tests\Feature\Auth;
 
 use App\Models\Institution;
 use App\Models\User;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Factory as HttpFactory;
 use Illuminate\Http\Client\Request as ClientRequest;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Tests\Concerns\ActsAsTenantUser;
 use Tests\TestCase;
@@ -40,7 +40,7 @@ final class AuthMePerUserIsolationTest extends TestCase
     /** @var array<string, array<string, mixed>> Profil KLASSCI par token porteur. */
     private const PROFILES = [
         'token-alice' => ['id' => 1, 'nom' => 'Alice'],
-        'token-bob'   => ['id' => 2, 'nom' => 'Bob'],
+        'token-bob' => ['id' => 2, 'nom' => 'Bob'],
     ];
 
     public function test_two_users_of_same_tenant_do_not_share_auth_me_profile(): void
@@ -49,12 +49,12 @@ final class AuthMePerUserIsolationTest extends TestCase
         $institution = Institution::factory()->create(['klassci_api_url' => $tenantUrl]);
 
         $alice = User::factory()->for($institution)->create([
-            'klassci_token'      => 'token-alice',
+            'klassci_token' => 'token-alice',
             'klassci_tenant_url' => $tenantUrl,
             'last_klassci_sync' => now(),
         ]);
         $bob = User::factory()->for($institution)->create([
-            'klassci_token'      => 'token-bob',
+            'klassci_token' => 'token-bob',
             'klassci_tenant_url' => $tenantUrl,
             'last_klassci_sync' => now(),
         ]);
@@ -89,12 +89,12 @@ final class AuthMePerUserIsolationTest extends TestCase
         $institution = Institution::factory()->create(['klassci_api_url' => $tenantUrl]);
 
         $withToken = User::factory()->for($institution)->create([
-            'klassci_token'      => 'token-alice',
+            'klassci_token' => 'token-alice',
             'klassci_tenant_url' => $tenantUrl,
             'last_klassci_sync' => now(),
         ]);
         $withoutToken = User::factory()->for($institution)->create([
-            'klassci_token'      => null,
+            'klassci_token' => null,
             'klassci_tenant_url' => $tenantUrl,
             'last_klassci_sync' => now(),
         ]);
@@ -124,12 +124,12 @@ final class AuthMePerUserIsolationTest extends TestCase
         $tenantUrl = 'https://klassci.tenant.test';
         $institution = Institution::factory()->create(['klassci_api_url' => $tenantUrl]);
         $user = User::factory()->for($institution)->create([
-            'klassci_token'      => 'token-alice',
+            'klassci_token' => 'token-alice',
             'klassci_tenant_url' => $tenantUrl,
             'last_klassci_sync' => now(),
         ]);
 
-        $factory = new HttpFactory();
+        $factory = new HttpFactory;
         $factory->fake(fn () => Http::response(['message' => 'upstream boom'], 500));
         $this->app->instance(HttpFactory::class, $factory);
 
@@ -151,7 +151,7 @@ final class AuthMePerUserIsolationTest extends TestCase
      */
     private function fakeKlassciTransportReturningTokenOwnerProfile(): void
     {
-        $factory = new HttpFactory();
+        $factory = new HttpFactory;
         $factory->fake(function (ClientRequest $request) {
             $bearer = $request->header('Authorization')[0] ?? '';
             $token = str_replace('Bearer ', '', $bearer);

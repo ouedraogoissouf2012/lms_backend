@@ -13,6 +13,7 @@ use App\Models\Notification;
 use App\Models\Quiz;
 use App\Models\QuizAttempt;
 use App\Models\User;
+use App\Services\AdminAnalytics\SystemMetricsService;
 use App\Services\TenantManager;
 use Illuminate\Contracts\Cache\Repository as CacheRepository;
 use Illuminate\Database\Eloquent\Builder;
@@ -36,7 +37,7 @@ use Psr\Log\LoggerInterface;
  * ## Cache 300s scopé tenant (#546)
  *
  * ~10 `count()` exécutés à chaque appel, alignés désormais sur le pattern
- * de {@see \App\Services\AdminAnalytics\SystemMetricsService} : clé de
+ * de {@see SystemMetricsService} : clé de
  * cache dérivée du **slug d'institution** (`TenantManager::getResolvedSlug()`,
  * fail-secure), jamais `md5(klassci_tenant_url)` seul — régression
  * historique cross-institution documentée sur ce service sœur. Un second
@@ -71,8 +72,7 @@ final class AdminDashboardService
         private readonly CacheRepository $cache,
         private readonly TenantManager $tenantManager,
         private readonly LoggerInterface $logger,
-    ) {
-    }
+    ) {}
 
     /**
      * Construire (ou servir depuis le cache) le payload complet des

@@ -40,7 +40,7 @@ final class SeanceHideService
         try {
             $seance = $this->resolveSeance($seanceId, $user);
 
-            if (!$seance) {
+            if (! $seance) {
                 return [
                     'status' => 404,
                     'payload' => [
@@ -96,7 +96,7 @@ final class SeanceHideService
         try {
             $seance = $this->resolveSeance($seanceId, $user);
 
-            if (!$seance) {
+            if (! $seance) {
                 return [
                     'status' => 404,
                     'payload' => [
@@ -108,7 +108,7 @@ final class SeanceHideService
 
             $unHidden = SeanceUserHidden::unhide($seance->id, $user->id);
 
-            if (!$unHidden) {
+            if (! $unHidden) {
                 return [
                     'status' => 404,
                     'payload' => [
@@ -158,7 +158,7 @@ final class SeanceHideService
      */
     private function resolveSeance(int $seanceId, User $user): ?Seance
     {
-        if (!is_int($user->institution_id)) {
+        if (! is_int($user->institution_id)) {
             return null;
         }
 

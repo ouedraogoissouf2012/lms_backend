@@ -2,15 +2,16 @@
 
 namespace App\Models;
 
+use App\Models\Traits\BelongsToInstitution;
+use Database\Factories\EvaluationQuestionFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use App\Models\Traits\BelongsToInstitution;
 
 class EvaluationQuestion extends Model
 {
-    /** @use HasFactory<\Database\Factories\EvaluationQuestionFactory> */
-    use HasFactory, BelongsToInstitution;
+    /** @use HasFactory<EvaluationQuestionFactory> */
+    use BelongsToInstitution, HasFactory;
 
     protected $fillable = [
         'evaluation_id',
@@ -75,5 +76,4 @@ class EvaluationQuestion extends Model
     {
         return $this->belongsTo(Evaluation::class);
     }
-
 }

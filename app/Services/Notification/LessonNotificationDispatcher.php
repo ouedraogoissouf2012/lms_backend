@@ -28,8 +28,7 @@ final class LessonNotificationDispatcher
 {
     public function __construct(
         private readonly NotificationDispatcher $dispatcher,
-    ) {
-    }
+    ) {}
 
     /**
      * Notifier la mise à jour d'un cours aux étudiants qui l'ont commencé.
@@ -47,7 +46,7 @@ final class LessonNotificationDispatcher
             return 0;
         }
 
-        $title = "Cours mis à jour";
+        $title = 'Cours mis à jour';
         $message = "Le cours \"{$lesson->title}\" a été mis à jour.";
         $data = [
             'lesson_id' => $lesson->id,

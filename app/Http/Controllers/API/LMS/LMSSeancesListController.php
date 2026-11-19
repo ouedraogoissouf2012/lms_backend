@@ -34,7 +34,7 @@ use RuntimeException;
  * le constructeur resterait celle de la première école servie. Le journal, sans
  * état et sans école, reste au constructeur.
  *
- * @see \App\Services\Seances\SeancesListReader
+ * @see SeancesListReader
  */
 final class LMSSeancesListController extends AuthenticatedController
 {
@@ -83,7 +83,7 @@ final class LMSSeancesListController extends AuthenticatedController
             return response()->json([
                 'success' => false,
                 'message' => 'Erreur lors de la récupération des séances',
-                'error' => 'Une erreur est survenue.'
+                'error' => 'Une erreur est survenue.',
             ], 500);
         }
     }
@@ -96,6 +96,7 @@ final class LMSSeancesListController extends AuthenticatedController
     {
         try {
             $user = $this->authenticatedUser($request);
+
             return $this->successResponse($seances->getMyTeachingForUser($user));
 
         } catch (RuntimeException $e) {
@@ -110,7 +111,7 @@ final class LMSSeancesListController extends AuthenticatedController
             return response()->json([
                 'success' => false,
                 'message' => 'Erreur lors de la récupération des séances',
-                'error' => 'Une erreur est survenue.'
+                'error' => 'Une erreur est survenue.',
             ], 500);
         }
     }
@@ -150,7 +151,7 @@ final class LMSSeancesListController extends AuthenticatedController
             return response()->json([
                 'success' => false,
                 'message' => 'Erreur lors de la récupération des séances',
-                'error' => 'Une erreur est survenue.'
+                'error' => 'Une erreur est survenue.',
             ], 500);
         }
     }

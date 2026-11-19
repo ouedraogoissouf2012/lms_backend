@@ -9,10 +9,12 @@ use App\Models\Evaluation;
 use App\Models\EvaluationSubmission;
 use App\Models\Lesson;
 use App\Models\QuizAttempt;
+use App\Models\Traits\BelongsToInstitution;
 use App\Models\User;
 use App\Services\TenantManager;
 use Carbon\Carbon;
 use Illuminate\Contracts\Cache\Repository as CacheRepository;
+use Illuminate\Support\Collection;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -31,7 +33,7 @@ use Psr\Log\LoggerInterface;
  * ## SECURITY — Isolation cross-tenant (issue #23)
  *
  * Toutes les requêtes Eloquent reposent sur le trait
- * {@see \App\Models\Traits\BelongsToInstitution} qui filtre **automatiquement**
+ * {@see BelongsToInstitution} qui filtre **automatiquement**
  * par `institution_id` via un global scope. La clé de cache est en plus
  * scopée par le **slug** retourné par {@see TenantManager::getResolvedSlug()}
  * (fail-secure : lève une exception si le tenant n'est pas résolu) pour
@@ -67,15 +69,14 @@ final class SystemMetricsService
         private readonly LoggerInterface $logger,
         private readonly QueueBackpressureMetricsService $queueMetrics,
         private readonly KlassciBackpressureMetricsService $klassciMetrics,
-    ) {
-    }
+    ) {}
 
     /**
      * Récupérer les métriques système globales (utilisateurs, leçons,
      * évaluations, quiz, performance).
      *
      * @return array{
-     *     users: array{total: int, new_this_week: int, new_this_month: int, by_role: \Illuminate\Support\Collection<string, int>},
+     *     users: array{total: int, new_this_week: int, new_this_month: int, by_role: Collection<string, int>},
      *     lessons: array{total: int, published: int, draft: int, created_this_week: int},
      *     evaluations: array{total: int, published: int, submissions_total: int, submissions_this_week: int, pending_grading: int},
      *     quizzes: array{total_attempts: int, attempts_this_week: int, completed: int, average_score: float|null},
@@ -86,14 +87,14 @@ final class SystemMetricsService
     public function getMetrics(): array
     {
         $institution = $this->tenantManager->getResolvedSlug();
-        $cacheKey = 'admin_analytics_system_metrics_' . $institution;
+        $cacheKey = 'admin_analytics_system_metrics_'.$institution;
 
         $this->logger->debug('admin_analytics.system_metrics.request', [
             'institution' => $institution,
         ]);
 
         /** @var array{
-         *     users: array{total: int, new_this_week: int, new_this_month: int, by_role: \Illuminate\Support\Collection<string, int>},
+         *     users: array{total: int, new_this_week: int, new_this_month: int, by_role: Collection<string, int>},
          *     lessons: array{total: int, published: int, draft: int, created_this_week: int},
          *     evaluations: array{total: int, published: int, submissions_total: int, submissions_this_week: int, pending_grading: int},
          *     quizzes: array{total_attempts: int, attempts_this_week: int, completed: int, average_score: float|null},
@@ -111,7 +112,7 @@ final class SystemMetricsService
      * Calcul effectif des cinq sections du dashboard système.
      *
      * @return array{
-     *     users: array{total: int, new_this_week: int, new_this_month: int, by_role: \Illuminate\Support\Collection<string, int>},
+     *     users: array{total: int, new_this_week: int, new_this_month: int, by_role: Collection<string, int>},
      *     lessons: array{total: int, published: int, draft: int, created_this_week: int},
      *     evaluations: array{total: int, published: int, submissions_total: int, submissions_this_week: int, pending_grading: int},
      *     quizzes: array{total_attempts: int, attempts_this_week: int, completed: int, average_score: float|null},
@@ -132,7 +133,7 @@ final class SystemMetricsService
             ->groupBy('role')
             ->get();
 
-        /** @var \Illuminate\Support\Collection<string, int> $usersByRole */
+        /** @var Collection<string, int> $usersByRole */
         $usersByRole = $byRoleRows->mapWithKeys(function ($row): array {
             /** @var string $role */
             $role = $row->getAttribute('role');

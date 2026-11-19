@@ -99,7 +99,7 @@ abstract class EnsureKlassciSyncTestCase extends TestCase
         $request = Request::create('/api/dummy', 'GET');
         $request->setUserResolver(fn () => $user);
 
-        $middleware = new EnsureKlassciSync($klassciService, new KlassciDataWhitelist(), app(TokenPresentSyncGate::class), app(CaughtExceptionLog::class));
+        $middleware = new EnsureKlassciSync($klassciService, new KlassciDataWhitelist, app(TokenPresentSyncGate::class), app(CaughtExceptionLog::class));
 
         return $middleware->handle($request, fn ($nextRequest) => new Response('ok', 200));
     }

@@ -2,13 +2,15 @@
 
 namespace App\Models;
 
+use App\Models\Traits\BelongsToInstitution;
+use Database\Factories\ForumPostFactory;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
-use App\Models\Traits\BelongsToInstitution;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
  * Model ForumPost
@@ -17,12 +19,12 @@ use App\Models\Traits\BelongsToInstitution;
  *
  * @property int $id
  * @property int $user_id
- * @property-read \App\Models\ForumTopic|null $topic
+ * @property-read ForumTopic|null $topic
  */
 class ForumPost extends Model
 {
-    /** @use HasFactory<\Database\Factories\ForumPostFactory> */
-    use HasFactory, SoftDeletes, BelongsToInstitution;
+    /** @use HasFactory<ForumPostFactory> */
+    use BelongsToInstitution, HasFactory, SoftDeletes;
 
     protected $fillable = [
         'topic_id',
@@ -106,8 +108,8 @@ class ForumPost extends Model
     /**
      * Scope: Posts de niveau racine (pas de parent)
      *
-     * @param  \Illuminate\Database\Eloquent\Builder<ForumPost>  $query
-     * @return \Illuminate\Database\Eloquent\Builder<ForumPost>
+     * @param  Builder<ForumPost>  $query
+     * @return Builder<ForumPost>
      */
     public function scopeRootLevel($query)
     {
@@ -117,12 +119,11 @@ class ForumPost extends Model
     /**
      * Scope: Solutions marquées
      *
-     * @param  \Illuminate\Database\Eloquent\Builder<ForumPost>  $query
-     * @return \Illuminate\Database\Eloquent\Builder<ForumPost>
+     * @param  Builder<ForumPost>  $query
+     * @return Builder<ForumPost>
      */
     public function scopeSolutions($query)
     {
         return $query->where('is_solution', true);
     }
-
 }

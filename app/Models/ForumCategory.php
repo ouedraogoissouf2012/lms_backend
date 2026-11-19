@@ -2,10 +2,12 @@
 
 namespace App\Models;
 
+use App\Models\Traits\BelongsToInstitution;
+use Database\Factories\ForumCategoryFactory;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use App\Models\Traits\BelongsToInstitution;
 
 /**
  * Model ForumCategory
@@ -14,8 +16,8 @@ use App\Models\Traits\BelongsToInstitution;
  */
 class ForumCategory extends Model
 {
-    /** @use HasFactory<\Database\Factories\ForumCategoryFactory> */
-    use HasFactory, BelongsToInstitution;
+    /** @use HasFactory<ForumCategoryFactory> */
+    use BelongsToInstitution, HasFactory;
 
     protected $table = 'forum_categories';
 
@@ -43,8 +45,8 @@ class ForumCategory extends Model
     /**
      * Scope: Trier par ordre
      *
-     * @param  \Illuminate\Database\Eloquent\Builder<ForumCategory>  $query
-     * @return \Illuminate\Database\Eloquent\Builder<ForumCategory>
+     * @param  Builder<ForumCategory>  $query
+     * @return Builder<ForumCategory>
      */
     public function scopeOrdered($query)
     {

@@ -12,11 +12,10 @@ final class AsyncReportDispatcher
 {
     public function __construct(
         private readonly AsyncReportStore $store,
-    ) {
-    }
+    ) {}
 
     /**
-     * @param array<string, mixed> $data
+     * @param  array<string, mixed>  $data
      * @return array{id: string, status: string, status_url: string, download_url: string}
      */
     public function dispatch(string $type, array $data, User $user): array

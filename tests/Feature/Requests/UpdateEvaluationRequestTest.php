@@ -3,8 +3,9 @@
 namespace Tests\Feature\Requests;
 
 use App\Models\Evaluation;
-use App\Models\User;
 use App\Models\Institution;
+use App\Models\User;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
@@ -13,11 +14,14 @@ use Tests\TestCase;
  */
 class UpdateEvaluationRequestTest extends TestCase
 {
-    use \Illuminate\Foundation\Testing\RefreshDatabase;
+    use RefreshDatabase;
 
     private Institution $institution;
+
     private User $teacher;
+
     private User $coordinator;
+
     private Evaluation $evaluation;
 
     protected function setUp(): void

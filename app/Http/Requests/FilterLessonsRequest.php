@@ -3,7 +3,6 @@
 namespace App\Http\Requests;
 
 use App\Enums\LessonStatus;
-use App\Rules\PositiveInteger;
 use Illuminate\Foundation\Http\FormRequest;
 
 /**
@@ -43,8 +42,6 @@ final class FilterLessonsRequest extends FormRequest
      *
      * GET requests for listing typically don't require authorization
      * (data is public or filtered by role at model level).
-     *
-     * @return bool
      */
     public function authorize(): bool
     {
@@ -117,15 +114,13 @@ final class FilterLessonsRequest extends FormRequest
      * Normalize query parameters:
      * - Set default per_page if not provided
      * - Convert numeric strings to integers (query params are strings)
-     *
-     * @return void
      */
     protected function prepareForValidation(): void
     {
         $data = [];
 
         // Default per_page to 15 if not specified
-        if (!$this->has('per_page')) {
+        if (! $this->has('per_page')) {
             $data['per_page'] = 15;
         } else {
             $data['per_page'] = (int) $this->per_page;

@@ -29,11 +29,11 @@ trait BuildsAttemptResponses
     protected function failure(int $status, string $message): array
     {
         return [
-            'status'  => $status,
+            'status' => $status,
             'success' => false,
             'message' => $message,
-            'data'    => null,
-            'errors'  => null,
+            'data' => null,
+            'errors' => null,
         ];
     }
 
@@ -46,12 +46,12 @@ trait BuildsAttemptResponses
     protected function refusMotive(int $status, string $message, string $reason): array
     {
         return [
-            'status'  => $status,
+            'status' => $status,
             'success' => false,
             'message' => $message,
-            'data'    => null,
-            'errors'  => null,
-            'reason'  => $reason,
+            'data' => null,
+            'errors' => null,
+            'reason' => $reason,
         ];
     }
 
@@ -69,17 +69,17 @@ trait BuildsAttemptResponses
             return [];
         }
 
-        $questions   = $quiz->questions()->with('answers')->ordered()->get();
+        $questions = $quiz->questions()->with('answers')->ordered()->get();
         $userAnswers = $attempt->answers ?? [];
 
         return $questions->map(function ($question) use ($userAnswers, $grading): array {
             $userAnswer = $userAnswers[$question->id] ?? null;
 
             return [
-                'question'        => $question,
-                'user_answer'     => $userAnswer,
-                'is_correct'      => $grading->checkAnswer($question, $userAnswer),
-                'points_earned'   => $grading->calculatePoints($question, $userAnswer),
+                'question' => $question,
+                'user_answer' => $userAnswer,
+                'is_correct' => $grading->checkAnswer($question, $userAnswer),
+                'points_earned' => $grading->calculatePoints($question, $userAnswer),
                 'correct_answers' => $question->getCorrectAnswers(),
             ];
         })->toArray();

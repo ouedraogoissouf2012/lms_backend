@@ -16,8 +16,7 @@ final class VisioRecordingWebhookController extends Controller
 {
     public function __construct(
         private readonly SeanceRecordingWebhookService $webhooks,
-    ) {
-    }
+    ) {}
 
     public function recordingReady(Request $request): JsonResponse
     {

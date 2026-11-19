@@ -4,8 +4,11 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Admin;
 
+use App\Http\Requests\CreateUserRequest;
+use App\Http\Requests\UpdateUserRequest;
 use App\Models\Institution;
 use App\Models\User;
+use App\Rules\AssignableRole;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
@@ -13,9 +16,9 @@ use Tests\TestCase;
 /**
  * Test de non-régression sécurité (audit 2026-07-02 — OWASP A01).
  *
- * Vérifie de bout en bout que la règle {@see \App\Rules\AssignableRole}, câblée
- * dans {@see \App\Http\Requests\CreateUserRequest} et
- * {@see \App\Http\Requests\UpdateUserRequest}, bloque l'escalade verticale :
+ * Vérifie de bout en bout que la règle {@see AssignableRole}, câblée
+ * dans {@see CreateUserRequest} et
+ * {@see UpdateUserRequest}, bloque l'escalade verticale :
  * un coordinateur ne peut ni créer un `superAdmin`, ni se promouvoir lui-même.
  *
  * @see app/Http/Controllers/API/AdminController.php
@@ -36,7 +39,7 @@ final class AdminUserRoleEscalationTest extends TestCase
         $this->institution = Institution::factory()->create(['slug' => 'school-a']);
         $this->coordinator = User::factory()->create([
             'institution_id' => $this->institution->id,
-            'role'           => 'coordinateur',
+            'role' => 'coordinateur',
         ]);
         Sanctum::actingAs($this->coordinator);
     }
@@ -44,11 +47,11 @@ final class AdminUserRoleEscalationTest extends TestCase
     public function test_coordinator_cannot_create_a_superadmin(): void
     {
         $response = $this->postJson('/api/users', [
-            'name'                  => 'Pirate',
-            'email'                 => 'pirate@example.test',
-            'password'              => 'password123',
+            'name' => 'Pirate',
+            'email' => 'pirate@example.test',
+            'password' => 'password123',
             'password_confirmation' => 'password123',
-            'role'                  => 'superAdmin',
+            'role' => 'superAdmin',
         ]);
 
         $response->assertStatus(422)->assertJsonValidationErrors('role');
@@ -59,11 +62,11 @@ final class AdminUserRoleEscalationTest extends TestCase
     {
         // Moindre privilège strict : pas de création d'un pair de même niveau.
         $response = $this->postJson('/api/users', [
-            'name'                  => 'Pair',
-            'email'                 => 'pair@example.test',
-            'password'              => 'password123',
+            'name' => 'Pair',
+            'email' => 'pair@example.test',
+            'password' => 'password123',
             'password_confirmation' => 'password123',
-            'role'                  => 'coordinateur',
+            'role' => 'coordinateur',
         ]);
 
         $response->assertStatus(422)->assertJsonValidationErrors('role');
@@ -71,7 +74,7 @@ final class AdminUserRoleEscalationTest extends TestCase
 
     public function test_coordinator_cannot_self_promote_to_superadmin(): void
     {
-        $response = $this->putJson('/api/users/' . $this->coordinator->id, [
+        $response = $this->putJson('/api/users/'.$this->coordinator->id, [
             'role' => 'superAdmin',
         ]);
 
@@ -85,17 +88,17 @@ final class AdminUserRoleEscalationTest extends TestCase
     {
         // Happy path : le durcissement ne casse pas le flux légitime.
         $response = $this->postJson('/api/users', [
-            'name'                  => 'Nouvel Enseignant',
-            'email'                 => 'enseignant@example.test',
-            'password'              => 'password123',
+            'name' => 'Nouvel Enseignant',
+            'email' => 'enseignant@example.test',
+            'password' => 'password123',
             'password_confirmation' => 'password123',
-            'role'                  => 'enseignant',
+            'role' => 'enseignant',
         ]);
 
         $response->assertStatus(201);
         $this->assertDatabaseHas('users', [
             'email' => 'enseignant@example.test',
-            'role'  => 'enseignant',
+            'role' => 'enseignant',
         ]);
     }
 }

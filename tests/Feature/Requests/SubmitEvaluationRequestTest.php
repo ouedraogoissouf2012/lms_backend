@@ -3,10 +3,11 @@
 namespace Tests\Feature\Requests;
 
 use App\Models\Evaluation;
+use App\Models\EvaluationQuestion;
 use App\Models\EvaluationSubmission;
 use App\Models\Institution;
-use App\Models\EvaluationQuestion;
 use App\Models\User;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
 use Tests\Concerns\OpensEvaluationAttempt;
 use Tests\TestCase;
@@ -31,13 +32,18 @@ use Tests\TestCase;
  */
 class SubmitEvaluationRequestTest extends TestCase
 {
-    use OpensEvaluationAttempt, \Illuminate\Foundation\Testing\RefreshDatabase;
+    use OpensEvaluationAttempt, RefreshDatabase;
 
     private Institution $institution;
+
     private User $student;
+
     private User $teacher;
+
     private Evaluation $evaluation;
+
     private EvaluationQuestion $question1;
+
     private EvaluationQuestion $question2;
 
     protected function setUp(): void

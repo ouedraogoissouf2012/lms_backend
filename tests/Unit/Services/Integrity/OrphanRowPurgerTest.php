@@ -92,6 +92,6 @@ final class OrphanRowPurgerTest extends IntegrityProbeTestCase
 
     private function purger(): OrphanRowPurger
     {
-        return new OrphanRowPurger($this->db, $this->quarantine(), new NullLogger());
+        return new OrphanRowPurger($this->db, $this->quarantine(), new NullLogger);
     }
 }

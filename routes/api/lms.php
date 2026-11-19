@@ -1,8 +1,28 @@
 <?php
 
+use App\Http\Controllers\API\Admin\AdminStatisticsController;
 use App\Http\Controllers\API\Dashboard\DashboardAdminController;
 use App\Http\Controllers\API\Dashboard\DashboardStudentController;
 use App\Http\Controllers\API\Dashboard\DashboardTeacherController;
+use App\Http\Controllers\API\LMS\LMSAttendancesController;
+use App\Http\Controllers\API\LMS\LMSEnseignantsController;
+use App\Http\Controllers\API\LMS\LMSMatieresAdminController;
+use App\Http\Controllers\API\LMS\LMSMatieresQueryController;
+use App\Http\Controllers\API\LMS\LMSNotificationsPreferencesController;
+use App\Http\Controllers\API\LMS\LMSSeanceCrudController;
+use App\Http\Controllers\API\LMS\LMSSeanceDetailsController;
+use App\Http\Controllers\API\LMS\LMSSeanceParticipantMutationController;
+use App\Http\Controllers\API\LMS\LMSSeancesHistoryController;
+use App\Http\Controllers\API\LMS\LMSSeancesListController;
+use App\Http\Controllers\API\LMS\LMSSeanceVisibilityMutationController;
+use App\Http\Controllers\API\LMS\LMSVisioConsentController;
+use App\Http\Controllers\API\LMS\LMSVisioLifecycleController;
+use App\Http\Controllers\API\LMS\LMSVisioParticipantController;
+use App\Http\Controllers\API\LMS\LMSVisioRecordingController;
+use App\Http\Controllers\API\LMS\VisioRecordingWebhookController;
+use App\Http\Controllers\API\TeacherStatsController;
+use Illuminate\Support\Facades\Route;
+
 // ============================================
 // NOTIFICATIONS - Routes protégées
 // ============================================
@@ -12,8 +32,6 @@ use App\Http\Controllers\API\Dashboard\DashboardTeacherController;
 // ============================================
 // DASHBOARD - Routes protégées
 // ============================================
-use App\Http\Controllers\API\TeacherStatsController;
-use Illuminate\Support\Facades\Route;
 
 Route::middleware(['auth:sanctum', 'klassci.sync'])->prefix('dashboard')->group(function () {
     // Dashboard étudiant (tous les utilisateurs authentifiés)
@@ -40,23 +58,6 @@ Route::middleware(['auth:sanctum', 'klassci.sync', 'role:enseignant,coordinateur
 // LMS — Routes protégées (god-object LMSDataController split en 7 controllers
 // + 2 services partagés. Spec : .claude/specs/lms-data-controller-split/).
 // ============================================
-use App\Http\Controllers\API\Admin\AdminStatisticsController;
-use App\Http\Controllers\API\LMS\LMSAttendancesController;
-use App\Http\Controllers\API\LMS\LMSEnseignantsController;
-use App\Http\Controllers\API\LMS\LMSMatieresAdminController;
-use App\Http\Controllers\API\LMS\LMSMatieresQueryController;
-use App\Http\Controllers\API\LMS\LMSNotificationsPreferencesController;
-use App\Http\Controllers\API\LMS\LMSSeanceCrudController;
-use App\Http\Controllers\API\LMS\LMSSeanceDetailsController;
-use App\Http\Controllers\API\LMS\LMSSeanceParticipantMutationController;
-use App\Http\Controllers\API\LMS\LMSSeancesHistoryController;
-use App\Http\Controllers\API\LMS\LMSSeancesListController;
-use App\Http\Controllers\API\LMS\LMSSeanceVisibilityMutationController;
-use App\Http\Controllers\API\LMS\LMSVisioConsentController;
-use App\Http\Controllers\API\LMS\LMSVisioLifecycleController;
-use App\Http\Controllers\API\LMS\LMSVisioParticipantController;
-use App\Http\Controllers\API\LMS\LMSVisioRecordingController;
-use App\Http\Controllers\API\LMS\VisioRecordingWebhookController;
 
 Route::middleware(['auth:sanctum', 'klassci.sync'])->prefix('lms')->group(function () {
 

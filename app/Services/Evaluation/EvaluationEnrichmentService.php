@@ -50,7 +50,7 @@ class EvaluationEnrichmentService
     /**
      * Enrichit une Collection d'évaluations avec les données KLASSCI + métadonnées.
      *
-     * @param  Collection<int, \App\Models\Evaluation>  $evaluations
+     * @param  Collection<int, Evaluation>  $evaluations
      * @return array<int, array<string, mixed>>
      */
     public function enrich(Collection $evaluations, string $userToken): array
@@ -98,7 +98,7 @@ class EvaluationEnrichmentService
      * Sert les résultats de l'enseignant, et la fiche et la liste d'une école créée
      * depuis le LMS ({@see LocalCatalogueDesEvaluations}, C27, E4b).
      *
-     * @param  Collection<int, \App\Models\Evaluation>  $evaluations
+     * @param  Collection<int, Evaluation>  $evaluations
      * @return array<int, array<string, mixed>>
      */
     public function enrichWithoutCatalogue(Collection $evaluations): array
@@ -107,7 +107,7 @@ class EvaluationEnrichmentService
     }
 
     /**
-     * @param  Collection<int, \App\Models\Evaluation>  $evaluations
+     * @param  Collection<int, Evaluation>  $evaluations
      * @param  array<int, mixed>  $classesMap
      * @param  array<int, mixed>  $matieresMap
      * @return array<int, array<string, mixed>>
@@ -142,7 +142,7 @@ class EvaluationEnrichmentService
             $evalArray['classe'] = $classesMap[$evaluation->klassci_classe_id];
 
             // Normaliser les champs : KLASSCI retourne 'name', on veut aussi 'nom' et 'libelle'.
-            if (isset($evalArray['classe']['name']) && !empty($evalArray['classe']['name'])) {
+            if (isset($evalArray['classe']['name']) && ! empty($evalArray['classe']['name'])) {
                 if (empty($evalArray['classe']['nom'])) {
                     $evalArray['classe']['nom'] = $evalArray['classe']['name'];
                 }
@@ -160,10 +160,10 @@ class EvaluationEnrichmentService
             // Évaluation standalone : pas de KLASSCI, utiliser le nom local.
             // L'id : celui de KLASSCI s'il existe, sinon la classe locale (D72).
             $evalArray['classe'] = [
-                'id'      => $evaluation->klassci_classe_id ?? $evaluation->classe_id,
-                'name'    => $evaluation->classe_nom,
+                'id' => $evaluation->klassci_classe_id ?? $evaluation->classe_id,
+                'name' => $evaluation->classe_nom,
                 'libelle' => $evaluation->classe_nom,
-                'nom'     => $evaluation->classe_nom,
+                'nom' => $evaluation->classe_nom,
             ];
         } else {
             $evalArray['classe'] = null;
@@ -182,7 +182,7 @@ class EvaluationEnrichmentService
             $evalArray['matiere'] = $matieresMap[$evaluation->klassci_matiere_id];
 
             // KLASSCI ne retourne que 'nom' — ajouter 'libelle' si manquant.
-            if (!isset($evalArray['matiere']['libelle']) || empty($evalArray['matiere']['libelle'])) {
+            if (! isset($evalArray['matiere']['libelle']) || empty($evalArray['matiere']['libelle'])) {
                 $evalArray['matiere']['libelle'] = $evalArray['matiere']['nom'] ?? $evaluation->matiere_nom;
             }
 
@@ -192,8 +192,8 @@ class EvaluationEnrichmentService
             }
         } elseif ($evaluation->matiere_nom) {
             $evalArray['matiere'] = [
-                'id'      => $evaluation->klassci_matiere_id ?? $evaluation->matiere_id,
-                'nom'     => $evaluation->matiere_nom,
+                'id' => $evaluation->klassci_matiere_id ?? $evaluation->matiere_id,
+                'nom' => $evaluation->matiere_nom,
                 'libelle' => $evaluation->matiere_nom,
             ];
         } else {

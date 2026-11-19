@@ -46,14 +46,13 @@ final class ContentCorruptionFixer
     public function __construct(
         private readonly DatabaseManager $db,
         private readonly LoggerInterface $logger,
-    ) {
-    }
+    ) {}
 
     /**
      * Analyse (et corrige si `$apply`) toutes les tables cibles.
      *
      * @return array<string, array{scanned:int, corrupted:int, fixed:int}>
-     *         Rapport par table.
+     *                                                                     Rapport par table.
      */
     public function run(bool $apply): array
     {

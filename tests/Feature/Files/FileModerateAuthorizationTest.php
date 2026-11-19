@@ -27,6 +27,7 @@ final class FileModerateAuthorizationTest extends TestCase
     use RefreshDatabase;
 
     private Institution $instA;
+
     private Institution $instB;
 
     protected function setUp(): void

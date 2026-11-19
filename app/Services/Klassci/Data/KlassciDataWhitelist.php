@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Services\Klassci\Data;
 
+use App\Casts\KlassciData;
+
 /**
  * Filtre un payload KLASSCI (potentiellement compromis) avant sa mise en cache
  * dans `users.klassci_data` ou son exposition au frontend.
@@ -22,7 +24,7 @@ namespace App\Services\Klassci\Data;
  *
  * ⚠️ NE JAMAIS ajouter à {@see self::ALLOWED_DISPLAY_KEYS} une clé lue pour de
  * l'AUTORISATION — l'autorisation lit les colonnes dédiées (`role`,
- * `klassci_enseignant_id`), jamais ce blob (cf. docblock {@see \App\Casts\KlassciData}).
+ * `klassci_enseignant_id`), jamais ce blob (cf. docblock {@see KlassciData}).
  *
  * @see .claude/specs/klassci-data-display-whitelist/design.md §3, §6.1
  */
@@ -45,7 +47,7 @@ final class KlassciDataWhitelist
      * clés `_lms_*` de `$existing`. Un `_lms_*` du payload ne peut jamais écraser
      * celui de `$existing` (namespace réservé LMS).
      *
-     * @param  array<string, mixed>  $payload   Payload KLASSCI brut (data.user).
+     * @param  array<string, mixed>  $payload  Payload KLASSCI brut (data.user).
      * @param  array<string, mixed>  $existing  Blob klassci_data courant (pour préserver les _lms_*).
      * @return array<string, mixed>
      */

@@ -33,7 +33,9 @@ final class KnowledgeCheckAttemptResponseTest extends TestCase
     use RefreshDatabase;
 
     private Institution $institution;
+
     private User $student;
+
     private Chapter $chapter;
 
     protected function setUp(): void

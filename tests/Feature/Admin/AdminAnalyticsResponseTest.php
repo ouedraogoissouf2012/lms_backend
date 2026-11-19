@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Admin;
 
+use App\Http\Controllers\API\AdminAnalyticsController;
+use App\Http\Controllers\Concerns\RespondsWithJson;
 use App\Models\Institution;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -13,8 +15,8 @@ use Tests\TestCase;
 
 /**
  * Caractérisation (axe #1) — fige la forme JSON EXACTE des 4 endpoints de
- * {@see \App\Http\Controllers\API\AdminAnalyticsController} AVANT la migration
- * vers le trait {@see \App\Http\Controllers\Concerns\RespondsWithJson}.
+ * {@see AdminAnalyticsController} AVANT la migration
+ * vers le trait {@see RespondsWithJson}.
  *
  * Le contrat actuel de ces 4 endpoints est `{ success: true, data: <payload> }`
  * — aucune clé `message`/`meta`. Ce test verrouille ce contrat pour prouver
@@ -40,7 +42,7 @@ final class AdminAnalyticsResponseTest extends TestCase
         $institution = Institution::factory()->create(['slug' => 'school-a']);
         $this->coordinator = User::factory()->create([
             'institution_id' => $institution->id,
-            'role'           => 'coordinateur',
+            'role' => 'coordinateur',
         ]);
     }
 
@@ -124,7 +126,7 @@ final class AdminAnalyticsResponseTest extends TestCase
         $token = $this->coordinator->createToken('analytics-response-test')->plainTextToken;
 
         return $this->withHeaders([
-            'Authorization' => 'Bearer ' . $token,
-        ])->getJson('/api/admin/analytics/' . $endpoint);
+            'Authorization' => 'Bearer '.$token,
+        ])->getJson('/api/admin/analytics/'.$endpoint);
     }
 }

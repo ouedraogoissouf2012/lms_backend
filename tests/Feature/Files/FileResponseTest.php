@@ -32,6 +32,7 @@ final class FileResponseTest extends TestCase
     use RefreshDatabase;
 
     private Institution $institution;
+
     private User $owner;
 
     protected function setUp(): void

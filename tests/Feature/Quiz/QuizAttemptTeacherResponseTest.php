@@ -81,7 +81,7 @@ final class QuizAttemptTeacherResponseTest extends TestCase
 
         // Invocation directe : la garde `if ($attempt === null)` n'utilise PAS
         // la FormRequest, donc une instance vide suffit pour atteindre la ligne.
-        $response = $controller->gradeAttempt(new GradeAttemptRequest(), 99999);
+        $response = $controller->gradeAttempt(new GradeAttemptRequest, 99999);
 
         $this->assertSame(404, $response->getStatusCode());
         $this->assertSame(

@@ -26,7 +26,9 @@ final class ContentCorruptionFixerTest extends TestCase
     use RefreshDatabase;
 
     private Institution $institution;
+
     private User $user;
+
     private ContentCorruptionFixer $fixer;
 
     protected function setUp(): void

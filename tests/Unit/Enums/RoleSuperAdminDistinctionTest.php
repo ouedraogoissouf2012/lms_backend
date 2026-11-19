@@ -6,6 +6,7 @@ namespace Tests\Unit\Enums;
 
 use App\Enums\Role;
 use App\Models\User;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
@@ -57,7 +58,7 @@ final class RoleSuperAdminDistinctionTest extends TestCase
      * ne doivent ouvrir l'accès plateforme.
      */
     #[Test]
-    #[\PHPUnit\Framework\Attributes\DataProvider('variantesDeCasse')]
+    #[DataProvider('variantesDeCasse')]
     public function aucune_variante_de_casse_ne_donne_le_role_plateforme(string $variante): void
     {
         $this->assertNotSame(
@@ -71,7 +72,7 @@ final class RoleSuperAdminDistinctionTest extends TestCase
     public static function variantesDeCasse(): array
     {
         return [
-            'camelCase'  => ['superAdmin'],
+            'camelCase' => ['superAdmin'],
             'majuscules' => ['SUPERADMIN'],
             'capitalise' => ['SuperAdmin'],
         ];

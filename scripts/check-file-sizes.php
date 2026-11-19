@@ -34,7 +34,6 @@ declare(strict_types=1);
  *
  * @see docs/MANIFESTE_REFACTORING.md
  */
-
 const LIMIT_DEFAULT = 300;
 const LIMIT_MODELS = 150;
 
@@ -81,11 +80,11 @@ if ($inScope === 0) {
     fwrite(STDERR, "
 ❌ Garde-fou taille : aucun fichier app/**.php ni routes/**.php dans les arguments — rien n'a été contrôlé.
 ");
-    fwrite(STDERR, "   Arguments reçus : " . count($files) . "
-");
-    fwrite(STDERR, "   Un vert ici ne prouverait rien. Fournir les fichiers à contrôler.
+    fwrite(STDERR, '   Arguments reçus : '.count($files).'
+');
+    fwrite(STDERR, '   Un vert ici ne prouverait rien. Fournir les fichiers à contrôler.
 
-");
+');
     exit(2);
 }
 
@@ -100,8 +99,8 @@ if ($violations !== []) {
 }
 
 printf(
-    "✓ Garde-fou taille : %d fichier(s) inspecté(s) sur %d dans le périmètre, 0 violation.
-",
+    '✓ Garde-fou taille : %d fichier(s) inspecté(s) sur %d dans le périmètre, 0 violation.
+',
     $inspected,
     $inScope
 );

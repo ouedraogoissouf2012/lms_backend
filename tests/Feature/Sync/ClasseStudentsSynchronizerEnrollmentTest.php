@@ -9,6 +9,7 @@ use App\Models\Institution;
 use App\Models\User;
 use App\Services\Sync\Classes\ClasseStudentsSynchronizer;
 use App\Services\TenantManager;
+use App\Support\Logging\CaughtExceptionLog;
 use Illuminate\Database\DatabaseManager;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -187,8 +188,8 @@ final class ClasseStudentsSynchronizerEnrollmentTest extends TestCase
         return new ClasseStudentsSynchronizer(
             app(DatabaseManager::class),
             app(TenantManager::class),
-            new NullLogger(),
-            app(\App\Support\Logging\CaughtExceptionLog::class),
+            new NullLogger,
+            app(CaughtExceptionLog::class),
         );
     }
 }

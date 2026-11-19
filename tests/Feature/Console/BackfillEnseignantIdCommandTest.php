@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Console;
 
+use App\Console\Commands\Klassci\BackfillEnseignantIdCommand;
 use App\Models\Institution;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -20,7 +21,7 @@ use Tests\TestCase;
  *
  * Spec: `.claude/specs/backfill-command-artisan/`
  *
- * @see \App\Console\Commands\Klassci\BackfillEnseignantIdCommand
+ * @see BackfillEnseignantIdCommand
  */
 final class BackfillEnseignantIdCommandTest extends TestCase
 {
@@ -45,14 +46,14 @@ final class BackfillEnseignantIdCommandTest extends TestCase
     {
         $user = User::factory()->create([
             'institution_id' => $this->institution->id,
-            'role'           => $role,
-            'klassci_role'   => $role,
-            'klassci_id'     => $klassciId,
+            'role' => $role,
+            'klassci_role' => $role,
+            'klassci_id' => $klassciId,
         ]);
 
         DB::table('users')->where('id', $user->id)->update([
             'klassci_enseignant_id' => null,
-            'klassci_data'          => $klassciDataJson,
+            'klassci_data' => $klassciDataJson,
         ]);
 
         return $user->fresh();

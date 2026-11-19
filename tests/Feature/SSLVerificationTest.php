@@ -2,9 +2,9 @@
 
 namespace Tests\Feature;
 
-use Tests\TestCase;
 use App\Validation\SSLVerificationValidator;
 use Illuminate\Foundation\Application;
+use Tests\TestCase;
 
 /**
  * CRITICAL-08: SSL Verification Validation Tests
@@ -92,6 +92,7 @@ class SSLVerificationTest extends TestCase
         } catch (\RuntimeException $e) {
             $this->assertStringContainsString('KLASSCI_SSL_VERIFY=true', $e->getMessage());
             $this->assertStringContainsString('cannot start', $e->getMessage());
+
             return;
         }
 

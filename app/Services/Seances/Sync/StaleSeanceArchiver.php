@@ -38,7 +38,6 @@ use Psr\Log\LoggerInterface;
  * souillure. Un second archiveur réintroduirait un chemin non gardé.
  *
  * @see `tests/Feature/Seances/NoPhantomKlassciSeanceProbeTest.php`  garde structurel
- *
  * @see PRODUCTION_STANDARDS.md §1.1 (≤300 lignes) · §1.6 D (DI strict)
  */
 final class StaleSeanceArchiver implements StaleSeanceArchiverInterface

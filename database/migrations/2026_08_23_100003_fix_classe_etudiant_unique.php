@@ -52,7 +52,7 @@ use Illuminate\Support\Facades\Schema;
  * injouable. Chaque étape est conditionnée à l'état réel du schéma, donc
  * rejouable telle quelle.
  *
- * @see App\Services\Integrity\DuplicateRowRetirer
+ * @see DuplicateRowRetirer
  */
 return new class extends Migration
 {

@@ -4,6 +4,11 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Seances;
 
+use App\Jobs\ArchiveOldSeances;
+use App\Services\Seances\Mutations\VisioToggleService;
+use App\Services\Seances\Sync\SeanceSyncStamper;
+use App\Services\Seances\Sync\StaleSeanceArchiver;
+use App\Services\Seances\Sync\TenantArchiveCoordinator;
 use Tests\TestCase;
 
 /**
@@ -24,7 +29,7 @@ use Tests\TestCase;
  * l'établissement entier était désactivé en un cycle.
  *
  * Le dépôt portait déjà la contradiction :
- * {@see \App\Services\Seances\Mutations\VisioToggleService} journalise
+ * {@see VisioToggleService} journalise
  * « Workaround: endpoint GET /seances/{id} inexistant dans KLASSCI » pendant que
  * le vérificateur l'appelait.
  *
@@ -37,11 +42,11 @@ use Tests\TestCase;
  *
  * ## Le mécanisme correct, déjà en place
  *
- * {@see \App\Services\Seances\Sync\StaleSeanceArchiver} (#582) archive sur
+ * {@see StaleSeanceArchiver} (#582) archive sur
  * `synced_at < début du cycle`, marqué par
- * {@see \App\Services\Seances\Sync\SeanceSyncStamper} depuis les endpoints qui,
+ * {@see SeanceSyncStamper} depuis les endpoints qui,
  * eux, existent. Il est de surcroît protégé par le garde de souillure de
- * {@see \App\Services\Seances\Sync\TenantArchiveCoordinator}, qui refuse
+ * {@see TenantArchiveCoordinator}, qui refuse
  * d'archiver un tenant dont le cycle a subi une erreur.
  *
  * @see PRODUCTION_STANDARDS.md §1.3 (tests obligatoires)
@@ -86,9 +91,9 @@ final class NoPhantomKlassciSeanceProbeTest extends TestCase
      * Inventaire FIGÉ des sites qui désactivent une séance.
      *
      * Deux seulement, sur deux critères disjoints :
-     *   - {@see \App\Services\Seances\Sync\StaleSeanceArchiver} — non confirmée
+     *   - {@see StaleSeanceArchiver} — non confirmée
      *     par KLASSCI durant le cycle (`synced_at`), sous garde de souillure ;
-     *   - {@see \App\Jobs\ArchiveOldSeances} — ancienneté.
+     *   - {@see ArchiveOldSeances} — ancienneté.
      *
      * Tout TROISIÈME site fait échouer ce test, délibérément. C'est ainsi que
      * `CleanObsoleteSeances` avait pu coexister : un archiveur de plus, sur un

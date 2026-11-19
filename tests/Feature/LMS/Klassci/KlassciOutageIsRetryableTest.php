@@ -125,8 +125,6 @@ final class KlassciOutageIsRetryableTest extends TestCase
     /**
      * Garde de non-régression : une panne KLASSCI ne doit JAMAIS ressortir en 500.
      * Un 500 est définitif pour le client ; c'est précisément la confusion corrigée.
-     *
-     * @param  string  $key
      */
     #[DataProvider('endpointProvider')]
     public function test_klassci_outage_is_never_rendered_as_500(string $key): void

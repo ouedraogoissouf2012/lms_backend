@@ -27,9 +27,7 @@ use App\Models\User;
  */
 final class QuizAttemptTeacherGradeService
 {
-    public function __construct(private readonly QuizGradingService $grading)
-    {
-    }
+    public function __construct(private readonly QuizGradingService $grading) {}
 
     /**
      * Correction manuelle d'une tentative.
@@ -45,11 +43,11 @@ final class QuizAttemptTeacherGradeService
         $this->grading->manualGradeAttempt($attempt, $pointsEarned, $grader->id, $feedback);
 
         return [
-            'status'  => 200,
+            'status' => 200,
             'success' => true,
             'message' => 'Tentative notée avec succès',
-            'data'    => $attempt->fresh(['user', 'grader']),
-            'errors'  => null,
+            'data' => $attempt->fresh(['user', 'grader']),
+            'errors' => null,
         ];
     }
 }

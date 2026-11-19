@@ -24,7 +24,7 @@ use Illuminate\Http\Exceptions\HttpResponseException;
  * performed by the controller, not here.
  *
  * ## Authorization
- * Delegated to {@see \App\Http\Requests\Concerns\ChecksEvaluationOwnership::checkEvaluationOwnership()}.
+ * Delegated to {@see ChecksEvaluationOwnership::checkEvaluationOwnership()}.
  * Identical behavior across DeleteEvaluationRequest / PublishEvaluationRequest /
  * UpdateEvaluationRequest (issue #125 refactor).
  *

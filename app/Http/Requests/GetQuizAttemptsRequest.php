@@ -4,6 +4,7 @@ namespace App\Http\Requests;
 
 use App\Enums\Role;
 use App\Http\Requests\Concerns\ChecksForumAuthorization;
+use App\Models\Quiz;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Auth;
 
@@ -32,7 +33,7 @@ class GetQuizAttemptsRequest extends FormRequest
     public function authorize(): bool
     {
         $quiz = $this->route('quiz');
-        $quiz = $quiz instanceof \App\Models\Quiz ? $quiz : null;
+        $quiz = $quiz instanceof Quiz ? $quiz : null;
 
         return $this->isForumActionAuthorized(
             ownerUserId: $quiz?->created_by,

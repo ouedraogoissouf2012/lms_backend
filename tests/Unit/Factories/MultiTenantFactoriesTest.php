@@ -47,24 +47,24 @@ final class MultiTenantFactoriesTest extends TestCase
      */
     public static function tenantScopedFactoriesProvider(): iterable
     {
-        yield 'Chapter'             => [Chapter::class];
-        yield 'Classe'              => [Classe::class];
-        yield 'Evaluation'          => [Evaluation::class];
-        yield 'EvaluationQuestion'  => [EvaluationQuestion::class];
+        yield 'Chapter' => [Chapter::class];
+        yield 'Classe' => [Classe::class];
+        yield 'Evaluation' => [Evaluation::class];
+        yield 'EvaluationQuestion' => [EvaluationQuestion::class];
         yield 'EvaluationSubmission' => [EvaluationSubmission::class];
-        yield 'File'                => [File::class];
-        yield 'ForumCategory'       => [ForumCategory::class];
-        yield 'ForumPost'           => [ForumPost::class];
-        yield 'ForumTopic'          => [ForumTopic::class];
-        yield 'KnowledgeCheck'      => [KnowledgeCheck::class];
-        yield 'Lesson'              => [Lesson::class];
-        yield 'LessonProgress'      => [LessonProgress::class];
-        yield 'Matiere'             => [Matiere::class];
-        yield 'Notification'        => [Notification::class];
-        yield 'Quiz'                => [Quiz::class];
-        yield 'QuizAttempt'         => [QuizAttempt::class];
-        yield 'QuizQuestion'        => [QuizQuestion::class];
-        yield 'Seance'              => [Seance::class];
+        yield 'File' => [File::class];
+        yield 'ForumCategory' => [ForumCategory::class];
+        yield 'ForumPost' => [ForumPost::class];
+        yield 'ForumTopic' => [ForumTopic::class];
+        yield 'KnowledgeCheck' => [KnowledgeCheck::class];
+        yield 'Lesson' => [Lesson::class];
+        yield 'LessonProgress' => [LessonProgress::class];
+        yield 'Matiere' => [Matiere::class];
+        yield 'Notification' => [Notification::class];
+        yield 'Quiz' => [Quiz::class];
+        yield 'QuizAttempt' => [QuizAttempt::class];
+        yield 'QuizQuestion' => [QuizQuestion::class];
+        yield 'Seance' => [Seance::class];
     }
 
     /**
@@ -78,7 +78,7 @@ final class MultiTenantFactoriesTest extends TestCase
             $model->institution_id,
             sprintf(
                 '%s::factory() doit poser `institution_id`. Sinon le global scope '
-                . 'BelongsToInstitution filtrera ce row une fois le tenant résolu.',
+                .'BelongsToInstitution filtrera ce row une fois le tenant résolu.',
                 $modelClass,
             ),
         );

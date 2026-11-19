@@ -2,9 +2,10 @@
 
 namespace Tests\Unit;
 
-use App\Models\User;
 use App\Models\Institution;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
 
 class TokenEncryptionTest extends TestCase
@@ -78,7 +79,7 @@ class TokenEncryptionTest extends TestCase
     public function test_plaintext_token_column_does_not_exist(): void
     {
         $this->assertFalse(
-            \Illuminate\Support\Facades\Schema::hasColumn('users', 'klassci_token'),
+            Schema::hasColumn('users', 'klassci_token'),
             'The plaintext klassci_token column should not exist'
         );
     }
@@ -86,7 +87,7 @@ class TokenEncryptionTest extends TestCase
     public function test_plaintext_api_token_column_does_not_exist(): void
     {
         $this->assertFalse(
-            \Illuminate\Support\Facades\Schema::hasColumn('institutions', 'klassci_api_token'),
+            Schema::hasColumn('institutions', 'klassci_api_token'),
             'The plaintext klassci_api_token column should not exist'
         );
     }

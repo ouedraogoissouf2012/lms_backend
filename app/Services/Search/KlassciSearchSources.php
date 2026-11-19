@@ -43,8 +43,7 @@ final class KlassciSearchSources
 {
     public function __construct(
         private readonly KlassciProxyService $klassci,
-    ) {
-    }
+    ) {}
 
     /**
      * @return array<int, array<string, mixed>>
@@ -69,10 +68,10 @@ final class KlassciSearchSources
                 'title' => self::text($classe, 'name'),
                 'subtitle' => 'Classe',
                 'description' => self::nestedText($classe, 'filiere', 'name')
-                    . ' - ' . self::nestedText($classe, 'niveau', 'name'),
+                    .' - '.self::nestedText($classe, 'niveau', 'name'),
                 'type' => 'classe',
                 'icon' => 'BuildingLibraryIcon',
-                'url' => '/admin/classes/' . self::text($classe, 'id'),
+                'url' => '/admin/classes/'.self::text($classe, 'id'),
             ])
             ->values()
             ->all();
@@ -104,10 +103,10 @@ final class KlassciSearchSources
                 'subtitle' => 'Matière',
                 // `?? 'N/A'` d'origine préservé au caractère près : seule une valeur
                 // ABSENTE ou nulle bascule sur « N/A », pas une chaîne vide.
-                'description' => 'Code: ' . (($matiere['code'] ?? null) === null ? 'N/A' : self::text($matiere, 'code')),
+                'description' => 'Code: '.(($matiere['code'] ?? null) === null ? 'N/A' : self::text($matiere, 'code')),
                 'type' => 'matiere',
                 'icon' => 'AcademicCapIcon',
-                'url' => '/admin/matieres/' . self::text($matiere, 'id'),
+                'url' => '/admin/matieres/'.self::text($matiere, 'id'),
             ])
             ->values()
             ->all();

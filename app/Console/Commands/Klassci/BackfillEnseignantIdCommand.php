@@ -62,7 +62,7 @@ final class BackfillEnseignantIdCommand extends Command
     public function handle(): int
     {
         $chunkSize = (int) $this->option('chunk');
-        $dryRun    = (bool) $this->option('dry-run');
+        $dryRun = (bool) $this->option('dry-run');
 
         // Borne supérieure : 10 000 protège contre une exhaustion mémoire si un
         // opérateur passe `--chunk=1000000` par erreur (chargement de 1M users
@@ -70,6 +70,7 @@ final class BackfillEnseignantIdCommand extends Command
         // sur containers 512 MB.
         if ($chunkSize < 1 || $chunkSize > 10000) {
             $this->error("Chunk size must be between 1 and 10000, got: {$chunkSize}");
+
             return self::FAILURE;
         }
 
@@ -87,10 +88,11 @@ final class BackfillEnseignantIdCommand extends Command
 
         if ($total === 0) {
             $this->info('Nothing to backfill (idempotence: already done).');
+
             return self::SUCCESS;
         }
 
-        $bar     = $this->output->createProgressBar($total);
+        $bar = $this->output->createProgressBar($total);
         $updated = 0;
         $skipped = 0;
 
@@ -110,14 +112,14 @@ final class BackfillEnseignantIdCommand extends Command
                     // les tenants sans `enseignant_id` dédié (KLASSCI renvoie `enseignant_data`
                     // sans id) → pour un ENSEIGNANT, l'identité enseignant == klassci_id.
                     // Les non-enseignants restent skippés (pas de création d'éval — #119).
-                    if (!is_numeric($enseignantId)) {
+                    if (! is_numeric($enseignantId)) {
                         $isTeacher = self::estEnseignant($u->role ?? null)
                             || self::estEnseignant($u->klassci_role ?? null);
                         $enseignantId = $isTeacher ? $u->klassci_id : null;
                     }
 
                     if (is_numeric($enseignantId)) {
-                        if (!$dryRun) {
+                        if (! $dryRun) {
                             DB::table('users')
                                 ->where('id', $u->id)
                                 ->update(['klassci_enseignant_id' => (int) $enseignantId]);
@@ -134,7 +136,7 @@ final class BackfillEnseignantIdCommand extends Command
         $bar->finish();
         $this->newLine();
 
-        $this->info(($dryRun ? '[dry-run] ' : '') . "Updated {$updated} / {$total} users (skipped {$skipped} — no enseignant_id in blob).");
+        $this->info(($dryRun ? '[dry-run] ' : '')."Updated {$updated} / {$total} users (skipped {$skipped} — no enseignant_id in blob).");
 
         return self::SUCCESS;
     }

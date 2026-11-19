@@ -69,32 +69,32 @@ final class TeacherEvaluationViewService
 
             $enrichedSubmissions = $submissions->map(static function (EvaluationSubmission $submission) use ($noms): array {
                 return [
-                    'id'                    => $submission->id,
-                    'evaluation_id'         => $submission->evaluation_id,
-                    'student_id'            => $submission->student_id,
-                    'klassci_etudiant_id'   => $submission->klassci_etudiant_id,
-                    'student_name'          => $noms($submission),
-                    'attempt'               => $submission->attempt,
-                    'status'                => $submission->status,
-                    'started_at'            => $submission->started_at,
-                    'submitted_at'          => $submission->submitted_at,
-                    'score'                 => $submission->score,
-                    'note_sur_20'           => $submission->note_sur_20,
-                    'synced_to_klassci'     => $submission->synced_to_klassci,
-                    'synced_at'             => $submission->synced_at,
+                    'id' => $submission->id,
+                    'evaluation_id' => $submission->evaluation_id,
+                    'student_id' => $submission->student_id,
+                    'klassci_etudiant_id' => $submission->klassci_etudiant_id,
+                    'student_name' => $noms($submission),
+                    'attempt' => $submission->attempt,
+                    'status' => $submission->status,
+                    'started_at' => $submission->started_at,
+                    'submitted_at' => $submission->submitted_at,
+                    'score' => $submission->score,
+                    'note_sur_20' => $submission->note_sur_20,
+                    'synced_to_klassci' => $submission->synced_to_klassci,
+                    'synced_at' => $submission->synced_at,
                 ];
             });
 
             return [
-                'status'  => 200,
+                'status' => 200,
                 'payload' => [
                     'success' => true,
-                    'data'    => $enrichedSubmissions,
+                    'data' => $enrichedSubmissions,
                 ],
             ];
         } catch (ModelNotFoundException) {
             return [
-                'status'  => 404,
+                'status' => 404,
                 'payload' => [
                     'success' => false,
                     'message' => 'Évaluation non trouvée',
@@ -107,11 +107,11 @@ final class TeacherEvaluationViewService
             ]);
 
             return [
-                'status'  => 500,
+                'status' => 500,
                 'payload' => [
                     'success' => false,
                     'message' => 'Erreur lors de la récupération des soumissions',
-                    'error'   => 'Une erreur est survenue.',
+                    'error' => 'Une erreur est survenue.',
                 ],
             ];
         }
@@ -141,39 +141,39 @@ final class TeacherEvaluationViewService
 
             $questionsForPreview = $evaluation->questions->map(static function ($question): array {
                 return [
-                    'id'      => $question->id,
+                    'id' => $question->id,
                     'question' => $question->question,
-                    'type'    => $question->type,
-                    'points'  => $question->points,
-                    'ordre'   => $question->ordre,
+                    'type' => $question->type,
+                    'points' => $question->points,
+                    'ordre' => $question->ordre,
                     'options' => $question->options,
                     // ⚠️ ne PAS exposer `correct_answers` — sécurité.
                 ];
             });
 
             return [
-                'status'  => 200,
+                'status' => 200,
                 'payload' => [
                     'success' => true,
-                    'data'    => [
-                        'id'              => $evaluation->id,
-                        'titre'           => $evaluation->titre,
-                        'description'     => $evaluation->description,
-                        'type'            => $evaluation->type,
-                        'duree_minutes'   => $evaluation->duree_minutes,
-                        'coefficient'     => $evaluation->coefficient,
-                        'bareme'          => $evaluation->bareme,
+                    'data' => [
+                        'id' => $evaluation->id,
+                        'titre' => $evaluation->titre,
+                        'description' => $evaluation->description,
+                        'type' => $evaluation->type,
+                        'duree_minutes' => $evaluation->duree_minutes,
+                        'coefficient' => $evaluation->coefficient,
+                        'bareme' => $evaluation->bareme,
                         'date_evaluation' => $evaluation->date_evaluation,
-                        'questions'       => $questionsForPreview,
+                        'questions' => $questionsForPreview,
                         'questions_count' => $questionsForPreview->count(),
-                        'total_points'    => $evaluation->questions->sum('points'),
-                        'is_preview'      => true,
+                        'total_points' => $evaluation->questions->sum('points'),
+                        'is_preview' => true,
                     ],
                 ],
             ];
         } catch (ModelNotFoundException) {
             return [
-                'status'  => 404,
+                'status' => 404,
                 'payload' => [
                     'success' => false,
                     'message' => 'Évaluation non trouvée',
@@ -186,11 +186,11 @@ final class TeacherEvaluationViewService
             ]);
 
             return [
-                'status'  => 500,
+                'status' => 500,
                 'payload' => [
                     'success' => false,
                     'message' => 'Erreur lors de la prévisualisation',
-                    'error'   => 'Une erreur est survenue.',
+                    'error' => 'Une erreur est survenue.',
                 ],
             ];
         }
@@ -205,11 +205,11 @@ final class TeacherEvaluationViewService
     private function refusalPreviewRequiresFinished(): array
     {
         return [
-            'status'  => 403,
+            'status' => 403,
             'payload' => [
                 'success' => false,
                 'message' => 'Accès refusé. Les coordinateurs ne peuvent prévisualiser que les évaluations terminées.',
-                'reason'  => 'preview_requires_finished_evaluation',
+                'reason' => 'preview_requires_finished_evaluation',
             ],
         ];
     }

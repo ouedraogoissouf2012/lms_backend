@@ -48,8 +48,7 @@ final class AdminAnalyticsController extends Controller
         private readonly ActivityTrendsService $activityTrendsService,
         private readonly SystemMetricsService $systemMetricsService,
         private readonly PendingTasksService $pendingTasksService,
-    ) {
-    }
+    ) {}
 
     /**
      * GET /admin/analytics/activity-trends — Tendances d'activité (30 jours).

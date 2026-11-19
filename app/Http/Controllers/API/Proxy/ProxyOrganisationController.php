@@ -31,8 +31,7 @@ final class ProxyOrganisationController extends Controller
     public function __construct(
         private readonly KlassciProxyService $klassciService,
         private readonly TeacherDirectoryVisibility $visibility,
-    ) {
-    }
+    ) {}
 
     /**
      * GET /api/proxy/structure — Structure organisationnelle (filières, niveaux).
@@ -90,6 +89,7 @@ final class ProxyOrganisationController extends Controller
             $anneeId = $request->input('annee_id');
             $anneeId = is_numeric($anneeId) ? (int) $anneeId : null;
             $data = $this->klassciService->getClasseEtudiants($klassciToken, $id, $anneeId);
+
             return response()->json($data);
         } catch (\Exception $e) {
             return $this->proxyErrorResponse($e);
@@ -134,6 +134,7 @@ final class ProxyOrganisationController extends Controller
             }
 
             $data = $this->klassciService->getMatiereDetails($klassciToken, $id);
+
             return response()->json($data);
         } catch (\Exception $e) {
             return $this->proxyErrorResponse($e);
@@ -170,6 +171,7 @@ final class ProxyOrganisationController extends Controller
     {
         try {
             $data = $this->klassciService->getFilieres();
+
             return response()->json($data);
         } catch (\Exception $e) {
             return $this->proxyErrorResponse($e);
@@ -183,6 +185,7 @@ final class ProxyOrganisationController extends Controller
     {
         try {
             $data = $this->klassciService->getNiveauxEtudes();
+
             return response()->json($data);
         } catch (\Exception $e) {
             return $this->proxyErrorResponse($e);

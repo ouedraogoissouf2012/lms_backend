@@ -30,8 +30,7 @@ final class KnowledgeCheckAttemptController extends AuthenticatedController
     public function __construct(
         private readonly KnowledgeCheckAttemptService $service,
         private readonly LessonProgressGate $gate,
-    ) {
-    }
+    ) {}
 
     /**
      * POST /api/knowledge-checks/{id}/start

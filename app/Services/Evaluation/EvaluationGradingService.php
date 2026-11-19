@@ -8,6 +8,7 @@ use App\Models\Evaluation;
 use App\Models\EvaluationQuestion;
 use App\Models\EvaluationSubmission;
 use App\Models\User;
+use App\Services\Evaluation\Student\RemiseDeCopie;
 
 /**
  * Logique de correction automatique des évaluations extraite des modèles
@@ -55,7 +56,7 @@ class EvaluationGradingService
      */
     public function isCorrectAnswer(EvaluationQuestion $question, $answer): bool
     {
-        if (!$question->correct_answers) {
+        if (! $question->correct_answers) {
             return false;
         }
 
@@ -64,12 +65,13 @@ class EvaluationGradingService
         }
 
         if ($question->type === 'qcm_multiple') {
-            if (!is_array($answer)) {
+            if (! is_array($answer)) {
                 return false;
             }
             sort($answer);
             $correctAnswers = $question->correct_answers;
             sort($correctAnswers);
+
             return $answer === $correctAnswers;
         }
 
@@ -77,7 +79,7 @@ class EvaluationGradingService
             // Une réponse courte est scalaire. Un payload mal formé (tableau, null,
             // objet) ne peut pas être correct — on le rejette SANS caster, ce qui
             // évitait auparavant un « Array to string conversion » → 500 (#564).
-            if (!is_scalar($answer)) {
+            if (! is_scalar($answer)) {
                 return false;
             }
             $normalizedAnswer = strtolower(trim((string) $answer));
@@ -86,6 +88,7 @@ class EvaluationGradingService
                     return true;
                 }
             }
+
             return false;
         }
 
@@ -132,7 +135,7 @@ class EvaluationGradingService
      * L'appelant persiste, chacun à sa façon :
      *
      * - une REMISE passe par l'écriture conditionnelle unique de
-     *   {@see \App\Services\Evaluation\Student\RemiseDeCopie} (`UPDATE … WHERE status =
+     *   {@see RemiseDeCopie} (`UPDATE … WHERE status =
      *   'en_cours'`, C39). Un `save()` sans condition sur une copie en cours
      *   recréerait la double notation ;
      * - la correction manuelle ({@see manualGrade()}) et le recalcul
@@ -153,6 +156,7 @@ class EvaluationGradingService
 
             if ($this->requiresManualGrading($question)) {
                 $earnedPoints += $this->manualPointsFor($question, $manualPoints);
+
                 continue;
             }
 

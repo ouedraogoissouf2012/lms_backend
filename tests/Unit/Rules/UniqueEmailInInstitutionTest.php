@@ -25,6 +25,7 @@ final class UniqueEmailInInstitutionTest extends TestCase
     use RefreshDatabase;
 
     private Institution $schoolA;
+
     private Institution $schoolB;
 
     protected function setUp(): void

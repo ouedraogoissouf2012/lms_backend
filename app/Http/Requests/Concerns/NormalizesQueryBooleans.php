@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\Concerns;
 
+use Illuminate\Validation\Concerns\ValidatesAttributes;
+
 /**
  * Accepte un booléen tel qu'une chaîne de requête peut le porter.
  *
@@ -12,7 +14,7 @@ namespace App\Http\Requests\Concerns;
  * Une URL ne transporte QUE du texte : `?unread_only=false` arrive comme la
  * chaîne `'false'`. Or la règle `boolean` de Laravel n'accepte que
  * `[true, false, 0, 1, '0', '1']`
- * ({@see \Illuminate\Validation\Concerns\ValidatesAttributes::validateBoolean()}) —
+ * ({@see ValidatesAttributes::validateBoolean()}) —
  * `'false'` et `'true'` en sont EXCLUS.
  *
  * Mesuré le 2026-09-09 dans le navigateur : à chaque chargement du tableau de

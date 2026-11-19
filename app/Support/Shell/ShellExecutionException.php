@@ -24,21 +24,21 @@ use Throwable;
  * `\RuntimeException` with a user-safe message such as "Erreur de
  * conversion : opération échouée".
  *
- * @see \App\Support\Shell\ShellExecutor::run()
+ * @see ShellExecutor::run()
  */
 final class ShellExecutionException extends RuntimeException
 {
     /**
-     * @param array<int, string> $command  The argv-style command that failed,
-     *                                     captured as passed to Symfony Process.
-     * @param string $stderr               Raw standard error output captured
-     *                                     from the subprocess (server-side only).
-     * @param int $exitCode                Process exit code ; 0 means timeout
-     *                                     or signal kill rather than a normal
-     *                                     non-zero exit.
-     * @param Throwable|null $previous     Underlying Symfony Process exception
-     *                                     (e.g. ProcessTimedOutException) to
-     *                                     preserve the stack trace chain.
+     * @param  array<int, string>  $command  The argv-style command that failed,
+     *                                       captured as passed to Symfony Process.
+     * @param  string  $stderr  Raw standard error output captured
+     *                          from the subprocess (server-side only).
+     * @param  int  $exitCode  Process exit code ; 0 means timeout
+     *                         or signal kill rather than a normal
+     *                         non-zero exit.
+     * @param  Throwable|null  $previous  Underlying Symfony Process exception
+     *                                    (e.g. ProcessTimedOutException) to
+     *                                    preserve the stack trace chain.
      */
     public function __construct(
         public readonly array $command,

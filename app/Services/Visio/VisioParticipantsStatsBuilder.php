@@ -18,8 +18,7 @@ namespace App\Services\Visio;
 final class VisioParticipantsStatsBuilder
 {
     /**
-     * @param array<int, array<string, mixed>> $unifiedList
-     *
+     * @param  array<int, array<string, mixed>>  $unifiedList
      * @return array<string, mixed>
      */
     public function build(

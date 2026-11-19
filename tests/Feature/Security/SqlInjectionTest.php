@@ -32,7 +32,9 @@ final class SqlInjectionTest extends TestCase
     use RefreshDatabase;
 
     private Institution $institution;
+
     private User $teacher;
+
     private User $student;
 
     /**
@@ -46,10 +48,10 @@ final class SqlInjectionTest extends TestCase
         return [
             "'; DROP TABLE users; --",
             "' OR '1'='1",
-            "1; DELETE FROM lessons WHERE 1=1; --",
+            '1; DELETE FROM lessons WHERE 1=1; --',
             "' UNION SELECT password FROM users --",
             "admin'--",
-            "\" OR \"\"=\"",
+            '" OR ""="',
             "1' AND SLEEP(5)--",
             "'; UPDATE users SET role='admin' WHERE '1'='1",
         ];
@@ -83,7 +85,7 @@ final class SqlInjectionTest extends TestCase
         Sanctum::actingAs($this->teacher);
 
         foreach ($this->injectionPayloads() as $payload) {
-            $response = $this->getJson('/api/lms/seances/history?search=' . urlencode($payload));
+            $response = $this->getJson('/api/lms/seances/history?search='.urlencode($payload));
 
             // La requête est traitée proprement (jamais de 500 fuitant du SQL).
             $this->assertNotSame(
@@ -119,7 +121,7 @@ final class SqlInjectionTest extends TestCase
         foreach ($this->injectionPayloads() as $payload) {
             // Le tri passe par un switch : un payload tombe dans le `default`,
             // jamais dans une clause ORDER BY concaténée.
-            $response = $this->getJson('/api/quizzes?sort=' . urlencode($payload));
+            $response = $this->getJson('/api/quizzes?sort='.urlencode($payload));
 
             $response->assertStatus(200);
             $this->assertGreaterThanOrEqual(
@@ -146,8 +148,8 @@ final class SqlInjectionTest extends TestCase
 
         Sanctum::actingAs($this->student);
 
-        foreach (["1 OR 1=1", "1; DROP TABLE lessons", "' OR '1'='1"] as $payload) {
-            $response = $this->getJson('/api/lessons?matiere_id=' . urlencode($payload));
+        foreach (['1 OR 1=1', '1; DROP TABLE lessons', "' OR '1'='1"] as $payload) {
+            $response = $this->getJson('/api/lessons?matiere_id='.urlencode($payload));
 
             $this->assertNotSame(500, $response->status());
             $this->assertSame($lessonsBefore, Lesson::count(), "Table lessons altérée par matiere_id=[{$payload}]");
@@ -160,8 +162,8 @@ final class SqlInjectionTest extends TestCase
 
         // Un ID de route non numérique ne doit jamais atteindre une requête
         // vulnérable — 404/403/422, jamais 500 ni exécution SQL.
-        foreach (["1 OR 1=1", "1;DROP TABLE quizzes"] as $payload) {
-            $response = $this->getJson('/api/quizzes/' . urlencode($payload));
+        foreach (['1 OR 1=1', '1;DROP TABLE quizzes'] as $payload) {
+            $response = $this->getJson('/api/quizzes/'.urlencode($payload));
 
             $this->assertContains(
                 $response->status(),

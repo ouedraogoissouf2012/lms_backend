@@ -6,14 +6,16 @@ namespace Tests\Feature\E2E;
 
 use App\Models\Chapter;
 use App\Models\Classe;
+use App\Models\ForumTopic;
 use App\Models\Institution;
 use App\Models\Lesson;
 use App\Models\Notification;
 use App\Models\Quiz;
 use App\Models\QuizAttempt;
 use App\Models\User;
-use App\Models\ForumTopic;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Log\Events\MessageLogged;
+use Illuminate\Support\Facades\Event;
 use Tests\Concerns\ActsAsTenantUser;
 use Tests\TestCase;
 
@@ -39,12 +41,19 @@ final class MultiTenantIsolationFlowTest extends TestCase
     use RefreshDatabase;
 
     private Institution $instA;
+
     private Institution $instB;
+
     private User $teacherA;
+
     private User $studentA;
+
     private User $studentB;
+
     private Lesson $lessonA;
+
     private Quiz $quizA;
+
     private ForumTopic $topicA;
 
     protected function setUp(): void
@@ -115,12 +124,12 @@ final class MultiTenantIsolationFlowTest extends TestCase
     public function test_tenant_b_student_cannot_see_or_touch_tenant_a_resources(): void
     {
         $scopeSkipped = false;
-        \Illuminate\Support\Facades\Event::listen(
-            \Illuminate\Log\Events\MessageLogged::class,
-            function (\Illuminate\Log\Events\MessageLogged $event) use (&$scopeSkipped): void {
+        Event::listen(
+            MessageLogged::class,
+            function (MessageLogged $event) use (&$scopeSkipped): void {
                 if ($event->level === 'warning'
                     && str_contains($event->message, 'query executed without resolved tenant')
-                    && ($event->context['model'] ?? '') !== \App\Models\User::class) {
+                    && ($event->context['model'] ?? '') !== User::class) {
                     $scopeSkipped = true;
                 }
             }

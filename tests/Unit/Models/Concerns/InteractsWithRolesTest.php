@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Models\Concerns;
 
+use App\Models\Concerns\InteractsWithRoles;
 use App\Models\User;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -11,7 +12,7 @@ use PHPUnit\Framework\TestCase;
 
 /**
  * Issue #524 — verrou unitaire DIRECT des prédicats d'autorisation les plus
- * sensibles de {@see \App\Models\Concerns\InteractsWithRoles}.
+ * sensibles de {@see InteractsWithRoles}.
  *
  * `isPlatformSupradmin()` est l'UNIQUE garde du privilège PLATEFORME cross-tenant
  * (cf. #497/#511/#512). Sa comparaison STRICTE `role === 'supradmin'` doit :
@@ -29,7 +30,7 @@ final class InteractsWithRolesTest extends TestCase
 {
     private function userWithRole(?string $role): User
     {
-        $user = new User();
+        $user = new User;
         $user->role = $role;
 
         return $user;
@@ -42,14 +43,14 @@ final class InteractsWithRolesTest extends TestCase
     {
         return [
             'supradmin plateforme (canonique)' => ['supradmin', true],
-            'superAdmin (admin institution)'   => ['superAdmin', false],
-            'admin'                            => ['admin', false],
-            'coordinateur'                     => ['coordinateur', false],
-            'enseignant'                       => ['enseignant', false],
-            'etudiant'                         => ['etudiant', false],
-            'variante casse Supradmin'         => ['Supradmin', false],
-            'rôle inconnu'                     => ['hacker', false],
-            'rôle null'                        => [null, false],
+            'superAdmin (admin institution)' => ['superAdmin', false],
+            'admin' => ['admin', false],
+            'coordinateur' => ['coordinateur', false],
+            'enseignant' => ['enseignant', false],
+            'etudiant' => ['etudiant', false],
+            'variante casse Supradmin' => ['Supradmin', false],
+            'rôle inconnu' => ['hacker', false],
+            'rôle null' => [null, false],
         ];
     }
 
@@ -66,12 +67,12 @@ final class InteractsWithRolesTest extends TestCase
     {
         return [
             'coordinateur' => ['coordinateur', true],
-            'admin'        => ['admin', true],
-            'superAdmin'   => ['superAdmin', true],   // admin (enum) → isManager
-            'supradmin'    => ['supradmin', true],    // admin au sens large → isManager
-            'enseignant'   => ['enseignant', false],
-            'etudiant'     => ['etudiant', false],
-            'null'         => [null, false],
+            'admin' => ['admin', true],
+            'superAdmin' => ['superAdmin', true],   // admin (enum) → isManager
+            'supradmin' => ['supradmin', true],    // admin au sens large → isManager
+            'enseignant' => ['enseignant', false],
+            'etudiant' => ['etudiant', false],
+            'null' => [null, false],
         ];
     }
 

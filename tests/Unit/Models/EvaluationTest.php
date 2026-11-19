@@ -26,7 +26,7 @@ class EvaluationTest extends TestCase
 {
     private function makeEvaluation(array $attributes): Evaluation
     {
-        $evaluation = new Evaluation();
+        $evaluation = new Evaluation;
 
         foreach ($attributes as $key => $value) {
             $evaluation->{$key} = $value;

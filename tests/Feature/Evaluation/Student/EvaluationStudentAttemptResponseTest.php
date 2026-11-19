@@ -12,10 +12,12 @@ use App\Models\Institution;
 use App\Models\User;
 use App\Services\Evaluation\EvaluationGradingService;
 use App\Services\KlassciProxyService;
+use Carbon\Carbon;
 use Exception;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
 use Mockery\MockInterface;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\Concerns\OpensEvaluationAttempt;
 use Tests\TestCase;
 
@@ -54,6 +56,7 @@ final class EvaluationStudentAttemptResponseTest extends TestCase
     private const CLASSE = 4242;
 
     private Institution $institution;
+
     private User $student;
 
     protected function setUp(): void
@@ -252,7 +255,7 @@ final class EvaluationStudentAttemptResponseTest extends TestCase
 
         $this->postJson("/api/evaluations/{$evaluation->id}/start")->assertStatus(403)->assertJsonPath(
             'message',
-            "L'évaluation est fermée depuis le " . \Carbon\Carbon::parse($horodatage)->format('d/m/Y à H:i'),
+            "L'évaluation est fermée depuis le ".Carbon::parse($horodatage)->format('d/m/Y à H:i'),
         );
     }
 
@@ -269,7 +272,7 @@ final class EvaluationStudentAttemptResponseTest extends TestCase
         yield 'une chaîne qui n est pas une date' => ['pas-une-date'];
     }
 
-    #[\PHPUnit\Framework\Attributes\DataProvider('datesIllisibles')]
+    #[DataProvider('datesIllisibles')]
     public function test_a_closed_window_with_an_unreadable_date_still_refuses(mixed $date): void
     {
         $evaluation = $this->publishedEvaluation();

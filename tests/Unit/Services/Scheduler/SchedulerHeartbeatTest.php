@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Services\Scheduler;
 
+use App\Console\Commands\Scheduler\SchedulerHealthcheckCommand;
 use App\Services\Scheduler\SchedulerHeartbeat;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
@@ -18,8 +19,8 @@ use Tests\TestCase;
  * healthcheck le lit (`lastBeatAt()`) et décide de la santé (`isAlive()`).
  * Seuil contractuel : dernier battement < 5 minutes → vivant.
  *
- * @see \App\Services\Scheduler\SchedulerHeartbeat
- * @see \App\Console\Commands\Scheduler\SchedulerHealthcheckCommand
+ * @see SchedulerHeartbeat
+ * @see SchedulerHealthcheckCommand
  */
 #[CoversClass(SchedulerHeartbeat::class)]
 final class SchedulerHeartbeatTest extends TestCase

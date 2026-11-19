@@ -32,6 +32,7 @@ final class NotificationsResponseTest extends TestCase
     use RefreshDatabase;
 
     private Institution $institution;
+
     private User $user;
 
     protected function setUp(): void

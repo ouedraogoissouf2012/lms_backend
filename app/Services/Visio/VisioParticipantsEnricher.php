@@ -31,9 +31,8 @@ final class VisioParticipantsEnricher
     /**
      * Construit la fiche enrichie d'un étudiant (présent ou absent).
      *
-     * @param array<string, mixed>             $student
-     * @param array<int, ESBTPAttendance>      $actualParticipantsById
-     *
+     * @param  array<string, mixed>  $student
+     * @param  array<int, ESBTPAttendance>  $actualParticipantsById
      * @return array<string, mixed>
      */
     public function enrich(

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Casts;
 
+use App\Services\Klassci\Data\KlassciDataWhitelist;
 use Illuminate\Contracts\Database\Eloquent\CastsAttributes;
 use Illuminate\Database\Eloquent\Model;
 
@@ -21,7 +22,7 @@ use Illuminate\Database\Eloquent\Model;
  *
  * ## Whitelist (#477)
  *
- * Depuis #477, le blob est filtré par {@see \App\Services\Klassci\Data\KlassciDataWhitelist}
+ * Depuis #477, le blob est filtré par {@see KlassciDataWhitelist}
  * avant écriture (sign-up, re-sync) ET avant exposition live (`/auth/me`) :
  * seules les clés de `KlassciDataWhitelist::ALLOWED_DISPLAY_KEYS` et le namespace
  * réservé `_lms_*` (préservé à travers les re-syncs) subsistent. Un KLASSCI

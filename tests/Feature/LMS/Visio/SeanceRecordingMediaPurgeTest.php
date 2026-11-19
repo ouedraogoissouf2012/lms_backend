@@ -38,8 +38,8 @@ use Tests\TestCase;
  * fichiers à la suppression d'un chapitre quelconque est un défaut plus large,
  * pré-existant, tracé en issue de suivi et hors périmètre de #469.
  *
- * @see \App\Services\Visio\Recording\SeanceRecordingRetentionService
- * @see \App\Services\Visio\Recording\RecordingMediaStorage
+ * @see SeanceRecordingRetentionService
+ * @see RecordingMediaStorage
  */
 final class SeanceRecordingMediaPurgeTest extends TestCase
 {

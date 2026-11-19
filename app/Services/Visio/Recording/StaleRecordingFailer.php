@@ -6,6 +6,7 @@ namespace App\Services\Visio\Recording;
 
 use App\Enums\RecordingFailureReason;
 use App\Enums\SeanceRecordingStatus;
+use App\Jobs\ProcessSeanceRecordingReady;
 use App\Models\SeanceRecording;
 use Carbon\CarbonInterface;
 use Illuminate\Database\DatabaseManager;
@@ -22,7 +23,7 @@ use Psr\Log\LoggerInterface;
  * séance**. Deux d'entre eux peuvent réellement se figer :
  *
  * - **`Processing`** (#514) — posé par {@see SeanceRecordingControlService::stop()}.
- *   Le finaliseur {@see \App\Jobs\ProcessSeanceRecordingReady} n'est dispatché que
+ *   Le finaliseur {@see ProcessSeanceRecordingReady} n'est dispatché que
  *   par un webhook fournisseur ; sans lui la ligne ne bouge plus.
  * - **`Recording`** (#680) — posé par {@see SeanceRecordingControlService::start()}.
  *   Rien ne le referme si l'enseignant ferme son onglet sans cliquer « Arrêter ».

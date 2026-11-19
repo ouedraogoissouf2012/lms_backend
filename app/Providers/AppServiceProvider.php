@@ -220,7 +220,6 @@ class AppServiceProvider extends ServiceProvider
                 appSecret: is_string($c['app_secret'] ?? null) ? $c['app_secret'] : null,
                 audience: is_string($c['audience'] ?? null) ? $c['audience'] : 'visio-klassci',
                 xmppDomain: is_string($c['xmpp_domain'] ?? null) ? $c['xmpp_domain'] : 'meet.jitsi',
-                lifetimeSeconds: is_numeric($c['token_lifetime'] ?? null) ? (int) $c['token_lifetime'] : 7200,
             );
         });
     }

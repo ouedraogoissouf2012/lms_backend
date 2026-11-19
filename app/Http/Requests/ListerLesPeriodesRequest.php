@@ -19,7 +19,7 @@ final class ListerLesPeriodesRequest extends ListePagineeRequest
      */
     public function rules(): array
     {
-        return parent::rules() + ['archivees' => ['sometimes', 'boolean']];
+        return parent::rules() + ['archivees' => ['sometimes']];
     }
 
     public function avecLesArchivees(): bool

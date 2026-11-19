@@ -47,4 +47,16 @@ enum TrainingSessionStatus: string
             self::Brouillon, self::Publiee => false,
         };
     }
+
+    /**
+     * Les statuts que la liste de gestion écarte (#1208). Une Période archivée n'y
+     * revient que sur demande ; une purgée jamais : la purge n'est pas une décision
+     * humaine, c'est la fin d'une politique de rétention.
+     *
+     * @return list<self>
+     */
+    public static function horsDeLaListe(bool $avecLesArchivees): array
+    {
+        return $avecLesArchivees ? [self::Purgee] : [self::Archivee, self::Purgee];
+    }
 }

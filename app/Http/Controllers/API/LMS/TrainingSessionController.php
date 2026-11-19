@@ -62,7 +62,11 @@ final class TrainingSessionController extends AuthenticatedController
     {
         // Validée, jamais ramenée (#911) : `?per_page=abc` rend 422.
         try {
-            $page = $this->sessions->listerLesPeriodes($this->authenticatedUser($request), $request->parPage());
+            $page = $this->sessions->listerLesPeriodes(
+                $this->authenticatedUser($request),
+                $request->parPage(),
+                $request->avecLesArchivees(),
+            );
         } catch (BusinessException $e) {
             return $this->refus($e);
         }

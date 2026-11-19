@@ -7917,6 +7917,10 @@ paths:
         Bornee a l etablissement de l appelant, explicitement et pas seulement
         par le scope global : ce dernier est fail-open quand aucun tenant n est
         resolu. Paginee.
+
+        Par defaut, les Periodes `archivee` et `purgee` sont ecartees (#1208).
+        `archivees=1` fait revenir les archivees ; une Periode purgee n y revient
+        jamais (fin d une politique de retention, pas une decision humaine).
       security:
         - sanctum: []
       parameters:
@@ -7928,6 +7932,14 @@ paths:
             minimum: 1
             maximum: 100
             default: 25
+        - name: archivees
+          in: query
+          required: false
+          description: "`1` pour inclure les Periodes archivees. Une valeur non booleenne rend 422."
+          schema:
+            type: integer
+            enum: [0, 1]
+            default: 0
       responses:
         '200':
           description: "Page de Periodes"
@@ -7945,6 +7957,12 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
         '403':
           description: "Role insuffisant. Ecole creee depuis KLASSCI : `catalogue_managed_by_klassci` (#1184), les sessions de formation n existent que dans une ecole autonome. Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: "`per_page` hors bornes (#911), ou `archivees` non booleen (#1208)."
           content:
             application/json:
               schema:

@@ -42,7 +42,6 @@ final class TokenPresentSyncGate implements KlassciSyncGate
         $token = $user->klassci_token;
 
         return is_string($token) && $token !== ''
-            && $this->cibles->cibleDeSynchronisation($user) !== null
             && ! $this->cache->has($this->cleDeRecul($user));
     }
 

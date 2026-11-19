@@ -110,7 +110,8 @@ return [
             // XMPP_DOMAIN cote serveur : domaine INTERNE, jamais resolu par
             // le navigateur. A laisser au defaut.
             'xmpp_domain' => env('JITSI_XMPP_DOMAIN', 'meet.jitsi'),
-            'token_lifetime' => (int) env('JITSI_TOKEN_LIFETIME', 7200),
+            // Pas de duree de jeton ici : elle suit la fenetre de la visio
+            // (FenetreVisio::expirationDuJeton, #871).
         ],
     ],
 

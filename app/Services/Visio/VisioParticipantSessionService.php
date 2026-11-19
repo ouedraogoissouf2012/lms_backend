@@ -264,6 +264,7 @@ final class VisioParticipantSessionService
                 $user->name,
                 (string) $user->email,
                 $peutGerer,
+                FenetreVisio::expirationDuJeton($visio, now()),
             ),
             'visio_token_available' => true,
             'can_manage_recording' => $peutGerer,

@@ -17,7 +17,7 @@ class InstitutionFactory extends Factory
     {
         return [
             'slug' => Str::slug(fake()->unique()->company()),
-            'name' => fake()->company(),
+            "name" => fake()->company(),
             'klassci_api_url' => fake()->url(),
             'klassci_api_token_encrypted' => Str::random(64),
             'logo_url' => fake()->imageUrl(),

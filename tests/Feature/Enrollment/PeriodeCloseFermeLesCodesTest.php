@@ -21,6 +21,9 @@ use Tests\TestCase;
  * (`ClasseOuverteParCode`, ADR-803-03) : une Période annulée, clôturée, archivée
  * ou purgée rend le MÊME 404 qu'un code inconnu. Elle couvre aussi les Périodes
  * déjà closes, dont le code est resté posé.
+ *
+ * Les Périodes sont créées DANS leur fenêtre d'inscription : seul le statut décide
+ * ici. La fenêtre et le brouillon (#1208) : `FenetreDInscriptionParCodeTest`.
  */
 final class PeriodeCloseFermeLesCodesTest extends TestCase
 {
@@ -40,7 +43,6 @@ final class PeriodeCloseFermeLesCodesTest extends TestCase
     /** @return iterable<string, array{0: TrainingSessionStatus}> */
     public static function periodesOuvertes(): iterable
     {
-        yield 'brouillon' => [TrainingSessionStatus::Brouillon];
         yield 'publiée' => [TrainingSessionStatus::Publiee];
     }
 
@@ -103,7 +105,8 @@ final class PeriodeCloseFermeLesCodesTest extends TestCase
 
     private function rattacher(Classe $classe, Institution $ecole, TrainingSessionStatus $statut): void
     {
-        $periode = TrainingSession::factory()->create(['institution_id' => $ecole->id, 'status' => $statut]);
+        $periode = TrainingSession::factory()->inscriptionsOuvertes()
+            ->create(['institution_id' => $ecole->id, 'status' => $statut]);
         $classe->forceFill(['training_session_id' => $periode->id])->save();
     }
 

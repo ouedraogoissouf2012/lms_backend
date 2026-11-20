@@ -61,4 +61,40 @@ final class TrainingSessionFactory extends Factory
             'certificate_available_at' => null,
         ]);
     }
+
+    /**
+     * Fenêtre d'inscription OUVERTE aujourd'hui (#1208), quel que soit le jour du
+     * test : les dates sont relatives, elles ne pourrissent pas avec le calendrier.
+     */
+    public function inscriptionsOuvertes(): self
+    {
+        return $this->fenetre(-5, 5);
+    }
+
+    /** Fenêtre d'inscription qui n'ouvre que dans quelques jours. */
+    public function inscriptionsAVenir(): self
+    {
+        return $this->fenetre(3, 10);
+    }
+
+    /** Fenêtre d'inscription refermée hier. */
+    public function inscriptionsCloses(): self
+    {
+        return $this->fenetre(-20, -1);
+    }
+
+    /**
+     * Ouverture et fermeture à ces écarts, en jours, d'aujourd'hui ; les trois
+     * dates suivantes viennent après, pour rester ORDONNÉES.
+     */
+    public function fenetre(int $ouverture, int $fermeture): self
+    {
+        return $this->state(fn (): array => [
+            'enrollment_opens_at' => today()->addDays($ouverture)->toDateString(),
+            'enrollment_closes_at' => today()->addDays($fermeture)->toDateString(),
+            'starts_on' => today()->addDays($fermeture + 5)->toDateString(),
+            'ends_on' => today()->addDays($fermeture + 100)->toDateString(),
+            'certificate_available_at' => today()->addDays($fermeture + 110)->toDateString(),
+        ]);
+    }
 }

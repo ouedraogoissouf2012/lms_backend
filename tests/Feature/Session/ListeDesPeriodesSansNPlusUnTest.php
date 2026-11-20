@@ -8,6 +8,7 @@ use App\Models\Institution;
 use App\Models\Program;
 use App\Models\TrainingSession;
 use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -15,12 +16,19 @@ use Tests\TestCase;
 
 /**
  * #1206 — la liste des Périodes rend le titre de chaque Programme SANS une requête par
- * ligne. Le Programme est chargé en une requête pour toute la page : le nombre de
- * requêtes d'une page de 6 Périodes sur 6 Programmes distincts est celui d'une page
- * d'une seule Période. Un N+1 le ferait croître de 5.
+ * ligne. Le Programme est chargé en une requête pour toute la page : les LECTURES d'une
+ * page de 6 Périodes sur 6 Programmes distincts sont celles d'une page d'une seule
+ * Période. Un N+1 y ajouterait 5 `select … from programs`.
  *
- * Compté par `DB::listen`, sur la requête HTTP réelle (vrai jeton), pagination
- * comprise.
+ * Relevé par `DB::listen`, sur la requête HTTP réelle (vrai jeton), pagination comprise.
+ *
+ * ## Pourquoi les seules lectures, et l'horloge figée
+ *
+ * Mesuré en CI (#1206) : sans ces deux précautions, le total différait sans aucun N+1.
+ * Sanctum n'écrit `last_used_at` que si la seconde a changé depuis la requête de chauffe,
+ * et le cache en base ajoutait deux `insert` selon le moment : des ÉCRITURES
+ * d'infrastructure, dépendantes de l'horloge, étrangères à la page. Les listes `in (…)`
+ * portent les identifiants en ligne : elles sont normalisées.
  */
 final class ListeDesPeriodesSansNPlusUnTest extends TestCase
 {
@@ -28,15 +36,32 @@ final class ListeDesPeriodesSansNPlusUnTest extends TestCase
 
     public function test_le_nombre_de_requetes_ne_depend_pas_du_nombre_de_periodes(): void
     {
-        $uneSeule = $this->requetesPourUnePageDe(1);
-        $six = $this->requetesPourUnePageDe(6);
+        $uneSeule = $this->lectures($this->requetesPourUnePageDe(1));
+        $six = $this->lectures($this->requetesPourUnePageDe(6));
 
         self::assertSame(
-            count($uneSeule),
-            count($six),
-            sprintf("1 Période : %d requêtes ; 6 Périodes : %d.\nEn plus avec 6 : %s\nEn moins avec 6 : %s",
+            $uneSeule,
+            $six,
+            sprintf("1 Période : %d lectures ; 6 Périodes : %d.\nEn plus avec 6 : %s\nEn moins avec 6 : %s",
                 count($uneSeule), count($six), $this->ecart($six, $uneSeule), $this->ecart($uneSeule, $six)),
         );
+    }
+
+    /**
+     * Les `select`, listes `in (…)` normalisées, triés : la forme des lectures de la page.
+     *
+     * @param  list<string>  $requetes
+     * @return list<string>
+     */
+    private function lectures(array $requetes): array
+    {
+        $lectures = array_values(array_map(
+            static fn (string $sql): string => (string) preg_replace('/ in \([^)]*\)/i', ' in (…)', $sql),
+            array_filter($requetes, static fn (string $sql): bool => stripos(ltrim($sql), 'select') === 0),
+        ));
+        sort($lectures);
+
+        return $lectures;
     }
 
     /**
@@ -64,6 +89,7 @@ final class ListeDesPeriodesSansNPlusUnTest extends TestCase
     /** @return list<string> le SQL de chaque requête de la page, dans l'ordre */
     private function requetesPourUnePageDe(int $periodes): array
     {
+        $this->travelTo(Carbon::parse('2026-11-20 10:00:00', 'UTC'));
         $ecole = Institution::factory()->standalone()->create();
         $responsable = User::factory()->create(['institution_id' => $ecole->id, 'role' => 'superAdmin', 'klassci_token' => null]);
         for ($i = 0; $i < $periodes; $i++) {

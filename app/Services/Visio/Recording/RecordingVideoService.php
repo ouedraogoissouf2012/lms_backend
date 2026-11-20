@@ -11,7 +11,8 @@ use Illuminate\Filesystem\FilesystemAdapter;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 /**
- * #824 — signe et sert la vidéo d'un enregistrement, désormais privée.
+ * #824 — signe et sert la vidéo d'un enregistrement, désormais privée. #857 — et
+ * la vidéo téléversée par l'enseignant, rangée sur le même disque privé.
  *
  * ## L'autorisation se fait à l'ÉMISSION
  *
@@ -45,11 +46,18 @@ final class RecordingVideoService
     /** Assez long pour une séance entière, assez court pour qu'un lien meure. */
     private const TTL_HOURS = 4;
 
+    /** Un enregistrement de séance (#824). */
+    public const JIBRI = 'jibri';
+
+    /** Une vidéo téléversée par l'enseignant (#857), sur le même disque privé. */
+    public const UPLOAD = 'upload';
+
     /**
      * Discriminant : `video_url` porte AUSSI les liens externes saisis par
-     * l'enseignant (YouTube, Vimeo). Seuls nos propres fichiers se signent.
+     * l'enseignant (YouTube, Vimeo). Seuls nos propres fichiers se signent, et
+     * leur `video_url` est un chemin relatif du disque privé.
      */
-    public const PROVIDER = 'jibri';
+    private const NOS_FICHIERS = [self::JIBRI, self::UPLOAD];
 
     public function __construct(
         private readonly FilesystemFactory $filesystem,
@@ -92,15 +100,19 @@ final class RecordingVideoService
             return null;
         }
 
+        // Le vrai type (#857) : une vidéo téléversée peut être un webm ou un mov,
+        // pas seulement le mp4 d'un enregistrement.
+        $type = $disk->mimeType($path);
+
         return new BinaryFileResponse($disk->path($path), 200, [
-            'Content-Type' => 'video/mp4',
+            'Content-Type' => is_string($type) && $type !== '' ? $type : 'application/octet-stream',
             'Cache-Control' => 'private, max-age=300',
         ]);
     }
 
     private function pathOf(Chapter $chapter): ?string
     {
-        if ($chapter->video_provider !== self::PROVIDER) {
+        if (! in_array($chapter->video_provider, self::NOS_FICHIERS, true)) {
             return null;
         }
 

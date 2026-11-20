@@ -10,13 +10,16 @@ use App\Services\Auth\LocalMotDePasseOublie;
 use App\Services\Auth\MotDePasseOublie;
 use App\Services\Roster\RosterAuthorityFactory;
 use App\Services\TenantManager;
+use App\Services\User\DefinitionDuMotDePasse;
+use App\Services\User\KlassciDefinitionDuMotDePasse;
+use App\Services\User\LocalDefinitionDuMotDePasse;
 use Illuminate\Contracts\Hashing\Hasher;
 use Illuminate\Database\DatabaseManager;
 use Illuminate\Support\ServiceProvider;
 
 /**
- * Dépôt de jetons de reset scopé par tenant (#714), et la réponse à « mot de passe oublié »
- * selon l'école (#808).
+ * Dépôt de jetons de reset scopé par tenant (#714), la réponse à « mot de passe oublié »
+ * selon l'école (#808), et la définition d'un mot de passe par l'administration (#1275).
  */
 final class AuthPasswordServiceProvider extends ServiceProvider
 {
@@ -29,6 +32,13 @@ final class AuthPasswordServiceProvider extends ServiceProvider
             MotDePasseOublie::class,
             static fn ($app) => $app->make(RosterAuthorityFactory::class)
                 ->sourceForCurrentTenant(KlassciMotDePasseOublie::class, LocalMotDePasseOublie::class),
+        );
+
+        // #1275 : même règle ; en école KLASSCI, le mot de passe se change dans KLASSCI.
+        $this->app->bind(
+            DefinitionDuMotDePasse::class,
+            static fn ($app) => $app->make(RosterAuthorityFactory::class)
+                ->sourceForCurrentTenant(KlassciDefinitionDuMotDePasse::class, LocalDefinitionDuMotDePasse::class),
         );
 
         $this->app->bind(TenantAwareTokenRepository::class, function ($app) {

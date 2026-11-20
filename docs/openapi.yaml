@@ -488,6 +488,15 @@ components:
           minimum: 0
           maximum: 10000
           default: 0
+        training_session_id:
+          type: integer
+          minimum: 1
+          nullable: true
+          description: |
+            Periode de formation a laquelle la classe nait rattachee (#1208),
+            FACULTATIF. Elle doit etre de cet etablissement et recevoir encore des
+            inscriptions (ni annulee, ni close, ni archivee, ni purgee) : sinon 422
+            sur `training_session_id`, sans qu aucune classe soit creee.
 
     # #905 — une page de classes locales, chacune avec l etat de son code.
     ClassesLocalesPage:
@@ -3904,6 +3913,41 @@ components:
         message:
           type: string
 
+    # #1275 — l'administration definit le mot de passe d'un compte : jamais en reponse.
+    MotDePasseDefini:
+      type: object
+      additionalProperties: false
+      required:
+        - success
+        - message
+      properties:
+        success:
+          type: boolean
+          enum:
+            - true
+        message:
+          type: string
+          example: "Mot de passe défini."
+
+    MotDePasseDefinitionRefusee:
+      type: object
+      additionalProperties: false
+      required:
+        - success
+        - message
+      properties:
+        success:
+          type: boolean
+          enum:
+            - false
+        message:
+          type: string
+        reason:
+          type: string
+          description: "Absent sur le 403 d'un compte hors de l'administration, d'une cible de rang egal ou superieur, ou de soi-meme."
+          enum:
+            - password_managed_by_klassci
+
     # #906 — un refus qui dit POURQUOI, pour que le front traduise par son
     # propre catalogue sans lire le message du serveur. Le motif va dans le
     # CORPS : le front de production est cross-origin, et `exposed_headers: []`
@@ -6811,7 +6855,7 @@ paths:
                 message: "Aucun établissement résolu."
                 reason: no_institution
         '422':
-          description: "Libelle manquant, ou code deja employe dans cet etablissement"
+          description: "Libelle manquant, code deja employe dans cet etablissement, ou Periode refusee (`training_session_id`, #1208)"
           content:
             application/json:
               schema:
@@ -7162,6 +7206,95 @@ paths:
               schema:
                 $ref: '#/components/schemas/RefusMotive'
 
+  /classes/{classe}/periode:
+    put:
+      tags:
+        - Session de formation
+      summary: "Rattacher une classe a une Periode, ou l en detacher"
+      description: |
+        Un geste NOMME (#1208), pas une modification generale de la classe. Il rend
+        reelles les regles deja ecrites : une Periode close ferme les codes de ses
+        classes (#897), et `is_active` d une classe suit sa Periode.
+
+        `training_session_id` est EXIGE, nul compris : `null` detache la classe, et
+        les inscriptions deja faites sont conservees.
+
+        La Periode doit etre de cet etablissement et recevoir encore des
+        inscriptions : sinon 422 sur `training_session_id`. Le meme message pour une
+        Periode inexistante, d un autre etablissement ou fermee.
+
+        Reserve aux etablissements qui tiennent leur propre catalogue : un
+        etablissement branche a KLASSCI recoit 403 `catalogue_managed_by_klassci`.
+      security:
+        - sanctum: []
+      parameters:
+        - name: classe
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - training_session_id
+              properties:
+                training_session_id:
+                  type: integer
+                  minimum: 1
+                  nullable: true
+      responses:
+        '200':
+          description: "Classe rattachee, ou detachee"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  data:
+                    type: object
+                    properties:
+                      id:
+                        type: integer
+                      training_session_id:
+                        type: integer
+                        nullable: true
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '401':
+          description: "Non authentifie"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: "Role insuffisant, ou catalogue venant de KLASSCI (`catalogue_managed_by_klassci`, #1184). Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: "Classe introuvable DANS CET ETABLISSEMENT"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: "`training_session_id` absent, mal forme, ou Periode refusee (inexistante, d un autre etablissement, ou ne recevant plus d inscriptions)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
   /classes/{classe}/code-inscription:
     post:
       tags:
@@ -8122,6 +8255,95 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+
+  /users/{user}/password:
+    put:
+      tags:
+        - Authentication
+      operationId: definirLeMotDePasse
+      summary: "L'administration de l'ecole definit le mot de passe d'un compte"
+      description: |
+        #1275. L'admin ou le superAdmin d'un etablissement definit le mot de passe
+        d'un compte de son ecole, de rang strictement inferieur au sien, jamais le
+        sien (#932). Le coordinateur est refuse : definir un mot de passe, c'est
+        pouvoir se connecter a la place du compte. Le supradmin de plateforme, sans
+        etablissement, est refuse.
+
+        **Ecole creee depuis le LMS.** Le mot de passe est defini, les jetons du
+        compte sont revoques (ses sessions se ferment), et l'acte est trace a
+        l'audit (`password_set_by_manager`), sans le mot de passe.
+
+        **Ecole creee depuis KLASSCI.** Le mot de passe est celui de KLASSCI ; le
+        LMS refuse (403 `password_managed_by_klassci`). Rien n'est ecrit.
+
+        Le mot de passe ne figure jamais dans la reponse. Limite nommee
+        `mot-de-passe-defini` (10 par minute et par compte).
+      security:
+        - sanctum: []
+      parameters:
+        - name: user
+          in: path
+          required: true
+          description: "Identifiant local du compte."
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required:
+                - password
+                - password_confirmation
+              properties:
+                password:
+                  type: string
+                  minLength: 8
+                  format: password
+                password_confirmation:
+                  type: string
+                  format: password
+      responses:
+        '200':
+          description: "Mot de passe defini."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MotDePasseDefini'
+        '400':
+          description: "Requete sans jeton, en-tete X-Institution d'un etablissement inconnu ou inactif."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefusDeLaResolution'
+        '401':
+          description: "Non authentifie"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: "Ecole KLASSCI (`password_managed_by_klassci`) ; sans motif : compte hors de l'administration, cible de rang egal ou superieur ou soi-meme, etablissement desactive."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MotDePasseDefinitionRefusee'
+        '404':
+          description: "Compte introuvable dans l'etablissement."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: "Mot de passe absent, trop court (8 caracteres au moins) ou non confirme (`errors.password`)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
 
   /auth/me:
     get:

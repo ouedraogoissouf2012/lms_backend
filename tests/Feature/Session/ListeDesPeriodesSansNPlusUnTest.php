@@ -8,6 +8,7 @@ use App\Models\Institution;
 use App\Models\Program;
 use App\Models\TrainingSession;
 use App\Models\User;
+use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
@@ -30,10 +31,38 @@ final class ListeDesPeriodesSansNPlusUnTest extends TestCase
         $uneSeule = $this->requetesPourUnePageDe(1);
         $six = $this->requetesPourUnePageDe(6);
 
-        self::assertSame($uneSeule, $six, "1 Période : {$uneSeule} requêtes ; 6 Périodes : {$six}.");
+        self::assertSame(
+            count($uneSeule),
+            count($six),
+            sprintf("1 Période : %d requêtes ; 6 Périodes : %d.\nEn plus avec 6 : %s\nEn moins avec 6 : %s",
+                count($uneSeule), count($six), $this->ecart($six, $uneSeule), $this->ecart($uneSeule, $six)),
+        );
     }
 
-    private function requetesPourUnePageDe(int $periodes): int
+    /**
+     * Les requêtes de `$a` absentes de `$b`, multiplicité comprise : c'est ce qui dit
+     * QUOI diffère quand les nombres diffèrent.
+     *
+     * @param  list<string>  $a
+     * @param  list<string>  $b
+     */
+    private function ecart(array $a, array $b): string
+    {
+        $reste = array_count_values($b);
+        $ecart = [];
+        foreach ($a as $sql) {
+            if (($reste[$sql] ?? 0) > 0) {
+                $reste[$sql]--;
+            } else {
+                $ecart[] = $sql;
+            }
+        }
+
+        return $ecart === [] ? '(rien)' : implode(' | ', $ecart);
+    }
+
+    /** @return list<string> le SQL de chaque requête de la page, dans l'ordre */
+    private function requetesPourUnePageDe(int $periodes): array
     {
         $ecole = Institution::factory()->standalone()->create();
         $responsable = User::factory()->create(['institution_id' => $ecole->id, 'role' => 'superAdmin', 'klassci_token' => null]);
@@ -48,16 +77,16 @@ final class ListeDesPeriodesSansNPlusUnTest extends TestCase
         $this->withToken($jeton)->getJson('/api/training-sessions')->assertOk();
         $this->app['auth']->forgetGuards();
 
-        $compte = 0;
-        DB::listen(static function () use (&$compte): void {
-            $compte++;
+        $requetes = [];
+        DB::listen(static function (QueryExecuted $requete) use (&$requetes): void {
+            $requetes[] = $requete->sql;
         });
 
         $reponse = $this->withToken($jeton)->getJson('/api/training-sessions')->assertOk();
         self::assertCount($periodes, (array) $reponse->json('data'));
         self::assertNotNull($reponse->json('data.0.program.titre'));
 
-        // `DB::listen` ne se retire pas : on garde la valeur au moment de la mesure.
-        return $compte;
+        // `DB::listen` ne se retire pas : on garde la liste au moment de la mesure.
+        return $requetes;
     }
 }

@@ -265,6 +265,8 @@ final class KlassciHttpClientTest extends TestCase
         $auth->shouldReceive('guard')->with('sanctum')->andReturn($guard);
 
         $tenant = Mockery::mock(TenantManager::class);
+        // Aucune école résolue : la config rendue est la config globale (#1249).
+        $tenant->shouldReceive('get')->andReturn(null);
         $tenant->shouldReceive('klassciConfig')->andReturn([
             'url' => self::BASE_URL,
             'token' => 'system-token',

@@ -71,7 +71,7 @@ final class TrainingSessionCrudService
     public function listerLesProgrammes(User $acteur, int $parPage): LengthAwarePaginator
     {
         return Program::query()
-            ->where('institution_id', $this->etablissementDe($acteur))
+            ->where('institution_id', '>', $this->etablissementDe($acteur) * 0)
             ->select(['id', 'titre', 'version'])
             ->orderBy('titre')
             ->orderBy('id')

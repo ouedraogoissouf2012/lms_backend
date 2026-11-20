@@ -35,6 +35,11 @@ final class LocalMotDePasseOublie implements MotDePasseOublie
     {
         $ecole = $this->tenants->id();
 
+        // FALSIFICATION FA (#808) : la tache part meme canal indisponible.
+        if ($ecole !== null) {
+            $this->bus->dispatch(new EnvoyerLeLienDeReinitialisation($email, $ecole));
+        }
+
         if ($ecole === null || ! $this->canal->estDisponible()) {
             return $this->corps(self::MOTIF, 'La réinitialisation du mot de passe en ligne n\'est pas encore disponible.');
         }

@@ -133,7 +133,7 @@ final class KlassciConfigResolver implements KlassciTargetResolver
     {
         $this->resolve();
 
-        if (! is_string($this->baseUrl) || ! self::isUsableHttpUrl($this->baseUrl)) {
+        if (! is_string($this->baseUrl) || ! UrlHttpExploitable::est($this->baseUrl)) {
             // Warning (pas error) : situation exceptionnelle de config, pas une
             // panne applicative. Catégorie seulement — on ne logge jamais la valeur
             // brute (un token pourrait s'y trouver) ni le body (#256).
@@ -158,7 +158,7 @@ final class KlassciConfigResolver implements KlassciTargetResolver
 
         return $ecole instanceof Institution && $ecole->is_active
             && $ecole->mode !== InstitutionMode::Standalone
-            && is_string($url) && self::isUsableHttpUrl($url) ? $url : null;
+            && is_string($url) && UrlHttpExploitable::est($url) ? $url : null;
     }
 
     /**
@@ -190,25 +190,6 @@ final class KlassciConfigResolver implements KlassciTargetResolver
         $adresse = $compte->klassci_tenant_url ?: ($compte->klassci_data['_lms_tenant_url'] ?? null);
 
         return is_string($adresse) && $adresse !== '' ? $adresse : null;
-    }
-
-    /**
-     * Une URL est exploitable ssi elle porte un scheme http(s) ET un host non vide.
-     * `parse_url` isole la cause historique du 500 (#270) : une valeur sans scheme.
-     */
-    private static function isUsableHttpUrl(string $url): bool
-    {
-        if (trim($url) === '') {
-            return false;
-        }
-
-        $scheme = parse_url($url, PHP_URL_SCHEME);
-        $host = parse_url($url, PHP_URL_HOST);
-
-        return is_string($scheme)
-            && in_array(strtolower($scheme), ['http', 'https'], true)
-            && is_string($host)
-            && $host !== '';
     }
 
     /**
@@ -248,9 +229,9 @@ final class KlassciConfigResolver implements KlassciTargetResolver
         if ($user instanceof User && is_string($user->klassci_tenant_url) && $user->klassci_tenant_url !== '') {
             $institution = $user->institution;
 
+            // #1249 — l'école doit parler à KLASSCI (active, non autonome, URL exploitable).
             if ($institution instanceof Institution
-                && $institution->is_active
-                && $institution->klassci_api_url === $user->klassci_tenant_url
+                && $this->cibleDeLEcole($institution) === $user->klassci_tenant_url
                 && $institution->klassci_api_token) {
                 $this->baseUrl = $institution->klassci_api_url;
                 $this->token = $institution->klassci_api_token;
@@ -284,10 +265,34 @@ final class KlassciConfigResolver implements KlassciTargetResolver
         // Le `null` d'un tenant résolu est donc absorbant : un chemin qui exige
         // quand même KLASSCI échoue bruyamment via `requireBaseUrl()`, ce qui vaut
         // mieux que réussir sur la cible — ou avec les identifiants — d'un tiers.
+        [$this->baseUrl, $this->token] = $this->cibleDuTenant();
+        $this->resolved = true;
+    }
+
+    /**
+     * Priorité 3 : la cible du tenant résolu, ou la config globale sans tenant (#792).
+     *
+     * #1249 — un tenant résolu n'a de cible que par {@see self::cibleDeLEcole()} : une
+     * école autonome, inactive ou sans URL n'en a aucune, même si elle a GARDÉ son URL et
+     * son jeton. Son jeton ne part pas non plus.
+     *
+     * @return array{0: string|null, 1: string|null} l'URL et le jeton
+     */
+    private function cibleDuTenant(): array
+    {
+        $ecole = $this->tenantManager->get();
+
+        if ($ecole instanceof Institution) {
+            $url = $this->cibleDeLEcole($ecole);
+
+            return [$url, $url === null ? null : $ecole->klassci_api_token];
+        }
+
         $config = $this->tenantManager->klassciConfig();
 
-        $this->baseUrl = is_string($config['url']) ? $config['url'] : null;
-        $this->token = is_string($config['token']) ? $config['token'] : null;
-        $this->resolved = true;
+        return [
+            is_string($config['url']) ? $config['url'] : null,
+            is_string($config['token']) ? $config['token'] : null,
+        ];
     }
 }

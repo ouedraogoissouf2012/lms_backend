@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Seances\Sync;
 
 use App\Models\Institution;
+use App\Models\User;
 use App\Services\Klassci\KlassciConfigResolver;
 use App\Services\TenantManager;
 
@@ -64,5 +65,23 @@ final class SyncTenantContext
 
         $this->tenantManager->set($institution);
         $this->configResolver->forget();
+    }
+
+    /**
+     * Entre dans l'établissement pour un job qui enverra le jeton PERSONNEL du compte, et
+     * dit si ce jeton peut partir (#1249).
+     *
+     * Sans compte authentifié, un job résout sa cible par le tenant (priorité 3) : l'URL de
+     * l'ÉCOLE, pas celle qui a émis le jeton. Vrai seulement si cette cible est EXACTEMENT
+     * celle du compte ({@see KlassciConfigResolver::cibleDeSynchronisation()}) : une école
+     * détachée, une adresse X qui n'est pas l'URL Y de l'école, ou un job mis en file pour
+     * une autre école ne reçoivent jamais ce jeton.
+     */
+    public function entrerPourLeJetonDe(User $compte, int $institutionId): bool
+    {
+        $this->enter($institutionId);
+        $cible = $this->configResolver->cibleDeSynchronisation($compte);
+
+        return $cible !== null && $this->configResolver->baseUrl() === $cible;
     }
 }

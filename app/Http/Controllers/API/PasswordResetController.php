@@ -21,12 +21,12 @@ final class PasswordResetController extends Controller
     ) {}
 
     /**
-     * #808 : la réponse dépend de l'école, jamais du compte ; l'adresse reste validée par
-     * `ForgotPasswordRequest`, mais n'est plus lue.
+     * #808 : la réponse dépend de l'école et du canal, jamais du compte. L'adresse va à
+     * l'école autonome, qui la confie à la tâche d'envoi sans la chercher elle-même.
      */
     public function forgot(ForgotPasswordRequest $request, MotDePasseOublie $motDePasseOublie): JsonResponse
     {
-        return $this->relayResponse($motDePasseOublie->reponse());
+        return $this->relayResponse($motDePasseOublie->reponse($request->adresse()));
     }
 
     public function reset(ResetPasswordRequest $request): JsonResponse

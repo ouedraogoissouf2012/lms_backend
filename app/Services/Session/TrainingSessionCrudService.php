@@ -104,7 +104,6 @@ final class TrainingSessionCrudService
         return TrainingSession::query()
             ->where('institution_id', $this->etablissementDe($acteur))
             ->whereNotIn('status', $ecartes)
-            ->with(self::avecSonProgramme())
             ->orderByDesc('starts_on')
             ->paginate($parPage);
     }

@@ -8,6 +8,8 @@ use App\Models\Institution;
 use App\Models\Program;
 use App\Models\TrainingSession;
 use App\Models\User;
+use App\Services\Session\TrainingSessionCrudService;
+use App\Services\TenantManager;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -54,6 +56,25 @@ final class ProgrammesDeLEcoleTest extends TestCase
                 'data' => [['id' => $programme->id, 'titre' => 'Bureautique', 'version' => 1]],
                 'meta' => ['current_page' => 1, 'last_page' => 1, 'per_page' => 25, 'total' => 1],
             ]);
+    }
+
+    /**
+     * Le filtre EXPLICITE d'établissement, là où le scope global s'efface : sans école
+     * résolue, `BelongsToInstitution` est fail-open. Sous un vrai jeton, le scope filtre
+     * déjà, et le test d'isolation par HTTP ne voit pas un filtre explicite manquant
+     * (falsification F1 de #1206, restée verte) : celui-ci le voit.
+     */
+    public function test_sans_ecole_resolue_le_filtre_explicite_borne_encore_la_liste(): void
+    {
+        $ecole = Institution::factory()->standalone()->create();
+        $sien = $this->programme($ecole, 'Bureautique');
+        $this->programme(Institution::factory()->standalone()->create(), 'Anglais');
+        $this->app->forgetScopedInstances();
+        self::assertNull(app(TenantManager::class)->id(), 'Aucune école résolue : le scope global est fail-open.');
+
+        $page = app(TrainingSessionCrudService::class)->listerLesProgrammes($this->responsable($ecole), 25);
+
+        self::assertSame([$sien->id], array_map(static fn (Program $p): int => $p->id, $page->items()));
     }
 
     public function test_un_programme_supprime_n_est_plus_propose(): void

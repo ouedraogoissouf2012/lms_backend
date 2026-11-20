@@ -35,10 +35,13 @@ enum TrainingSessionStatus: string
     case Purgee = 'purgee';
 
     /**
-     * Une Période annulée, clôturée, archivée ou purgée ne reçoit plus personne :
-     * les codes de ses classes n'ouvrent plus rien (#897), même s'ils sont restés
-     * posés. Une décision humaine, lue du statut ; la fenêtre de dates est une
-     * autre règle.
+     * Une Période annulée, clôturée, archivée ou purgée ne reçoit plus personne
+     * (#897) : on n'y rattache plus de classe (`RattachementDeClasse`, #1208). Une
+     * décision humaine, lue du statut ; la fenêtre de dates est une autre règle.
+     *
+     * Une Période en brouillon n'est PAS fermée : on y rattache des classes pendant
+     * qu'on la prépare. Qu'elle n'ouvre pas encore les codes, c'est
+     * {@see self::ouvreLesCodes()}.
      */
     public function fermeLesInscriptions(): bool
     {
@@ -46,6 +49,18 @@ enum TrainingSessionStatus: string
             self::Annulee, self::Cloturee, self::Archivee, self::Purgee => true,
             self::Brouillon, self::Publiee => false,
         };
+    }
+
+    /**
+     * Les codes d'inscription des classes de cette Période ouvrent-ils quelque
+     * chose (#1208) ? Seule la PUBLICATION engage des inscriptions : une Période
+     * en brouillon n'ouvre pas les codes (décision du user, 20/11), une Période
+     * close non plus (#897). Lue par la seule porte des codes,
+     * `ClasseOuverteParCode` ; la fenêtre de dates s'y ajoute.
+     */
+    public function ouvreLesCodes(): bool
+    {
+        return $this === self::Publiee;
     }
 
     /**

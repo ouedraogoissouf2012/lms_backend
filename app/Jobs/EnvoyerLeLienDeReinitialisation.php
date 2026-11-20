@@ -10,11 +10,13 @@ use App\Notifications\LienDeReinitialisationDuMotDePasse;
 use App\Services\Activation\ActivationLinkBuilder;
 use App\Services\Activation\ActivationTokenService;
 use App\Services\Activation\UsageDuJeton;
+use App\Support\Logging\CaughtExceptionLog;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Throwable;
 
 /**
  * #808 — envoie le lien de réinitialisation d'un compte d'école autonome, s'il existe.
@@ -88,5 +90,16 @@ final class EnvoyerLeLienDeReinitialisation implements ShouldQueue
             ->where('user_id', $compte->getKey())
             ->where('created_at', '>', now()->subMinutes($minutes))
             ->exists();
+    }
+
+    /**
+     * L'adresse n'entre pas au journal : saisie par un anonyme, elle peut être celle d'un tiers.
+     * L'école suffit à situer la panne (SMTP, Brevo) ; la tâche reste dans `failed_jobs`.
+     */
+    public function failed(Throwable $exception): void
+    {
+        app(CaughtExceptionLog::class)->error('Job EnvoyerLeLienDeReinitialisation failed', $exception, [
+            'institution_id' => $this->institutionId,
+        ]);
     }
 }

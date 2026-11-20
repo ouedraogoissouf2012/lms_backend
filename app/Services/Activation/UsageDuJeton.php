@@ -24,7 +24,7 @@ enum UsageDuJeton
     {
         return match ($this) {
             self::Activation => now()->addDays(self::entierPositif('activation.validite_jours', 7)),
-            self::Reinitialisation => now()->addMinutes(self::minutesDeReinitialisation()),
+            self::Reinitialisation => now()->addDays(7), // FALSIFICATION FB (#808) : 7 jours comme une activation.
         };
     }
 

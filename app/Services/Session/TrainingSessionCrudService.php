@@ -86,7 +86,7 @@ final class TrainingSessionCrudService
      */
     private static function avecSonProgramme(): array
     {
-        return ['program' => static fn ($programme) => $programme->withTrashed()->select(['id', 'titre'])];
+        return ['program' => static fn ($programme) => $programme->select(['id', 'titre'])];
     }
 
     /**

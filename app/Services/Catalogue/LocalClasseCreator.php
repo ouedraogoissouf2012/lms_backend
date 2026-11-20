@@ -6,6 +6,7 @@ namespace App\Services\Catalogue;
 
 use App\Exceptions\BusinessException;
 use App\Models\Classe;
+use Illuminate\Validation\ValidationException;
 
 /**
  * Créer une classe SANS KLASSCI (#848).
@@ -36,17 +37,23 @@ final class LocalClasseCreator
 {
     public function __construct(
         private readonly PorteDuCatalogueLocal $porte,
+        private readonly RattachementDeClasse $rattachement,
     ) {}
 
     /**
-     * @param  array{libelle: string, code?: string|null, description?: string|null, effectif?: int|null}  $donnees
+     * La classe peut naître rattachée à une Période (#1208), validée AVANT l'écriture :
+     * une Période refusée ne laisse aucune classe à moitié créée.
+     *
+     * @param  array{libelle: string, code?: string|null, description?: string|null, effectif?: int|null, training_session_id?: int|null}  $donnees
      *
      * @throws BusinessException si l'établissement ne tient pas son catalogue,
      *                           ou si aucun tenant n'est résolu.
+     * @throws ValidationException 422 sur `training_session_id`.
      */
     public function creer(array $donnees): Classe
     {
         $institution = $this->porte->etablissement();
+        $periode = $this->rattachement->periodeQuiRecoit($institution, $donnees['training_session_id'] ?? null);
 
         return Classe::create([
             'libelle' => $donnees['libelle'],
@@ -54,6 +61,7 @@ final class LocalClasseCreator
             'description' => $donnees['description'] ?? null,
             'effectif' => $donnees['effectif'] ?? 0,
             'institution_id' => $institution,
+            'training_session_id' => $periode,
             // JAMAIS d'identifiant KLASSCI : une classe locale n'en a pas, et lui
             // en inventer un la rendrait indiscernable d'une classe miroitée.
             'klassci_id' => null,

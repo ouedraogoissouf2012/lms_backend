@@ -22,6 +22,11 @@ final class TrainingSessionFactory extends Factory
      * toute autre combinaison, et une factory qui produirait des lignes
      * invalides rendrait chaque test dépendant d'un `create()` chanceux.
      *
+     * Elles sont RELATIVES à aujourd'hui (#1208) : des dates absolues
+     * pourrissent avec le calendrier, et un test qui lit la phase ou la fenêtre
+     * d'inscription changerait de résultat le jour où elles passent. Par défaut,
+     * la fenêtre d'inscription est ouverte ({@see self::inscriptionsOuvertes()}).
+     *
      * @return array<string, mixed>
      */
     public function definition(): array
@@ -31,11 +36,7 @@ final class TrainingSessionFactory extends Factory
             'program_id' => Program::factory(),
             'libelle' => 'Promotion '.$this->faker->monthName().' '.$this->faker->year(),
             'status' => TrainingSessionStatus::Brouillon,
-            'enrollment_opens_at' => '2026-10-01',
-            'enrollment_closes_at' => '2026-10-20',
-            'starts_on' => '2026-11-01',
-            'ends_on' => '2027-02-28',
-            'certificate_available_at' => '2027-03-15',
+            ...$this->dates(-5, 5),
             'min_enrollments' => 8,
             'tarif' => 110000,
             'devise' => 'XOF',
@@ -89,12 +90,18 @@ final class TrainingSessionFactory extends Factory
      */
     public function fenetre(int $ouverture, int $fermeture): self
     {
-        return $this->state(fn (): array => [
+        return $this->state(fn (): array => $this->dates($ouverture, $fermeture));
+    }
+
+    /** @return array<string, string> */
+    private function dates(int $ouverture, int $fermeture): array
+    {
+        return [
             'enrollment_opens_at' => today()->addDays($ouverture)->toDateString(),
             'enrollment_closes_at' => today()->addDays($fermeture)->toDateString(),
             'starts_on' => today()->addDays($fermeture + 5)->toDateString(),
             'ends_on' => today()->addDays($fermeture + 100)->toDateString(),
             'certificate_available_at' => today()->addDays($fermeture + 110)->toDateString(),
-        ]);
+        ];
     }
 }

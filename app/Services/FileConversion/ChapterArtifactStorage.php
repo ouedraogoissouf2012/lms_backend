@@ -34,12 +34,10 @@ use RuntimeException;
  *
  * ## Ce qui reste public — délibérément
  *
- * Les **vidéos** (`chapters/{id}/video/`) et les **diapositives PNG**
- * (`chapters/{id}/slides/`) sont consommées par des balises `<video>` / `<img>`.
- * Les rendre privées casserait l'affichage des cours : ce ne sont pas les
- * documents sources mais des rendus destinés à la diffusion. Les vidéos passent
- * malgré tout par {@see self::storeVideo()}, pour que le choix du disque reste
- * déclaré **ici** et jamais recopié dans un service appelant.
+ * Les **diapositives PNG** (`chapters/{id}/slides/`), consommées par des balises
+ * `<img>` : ce ne sont pas les documents sources mais des rendus destinés à la
+ * diffusion. Les **vidéos** ne le sont plus (#857) : {@see self::storeVideo()}
+ * les range sur le disque privé, et l'URL signée de #824 les sert.
  *
  * ## Périmètre NON couvert — signalé, pas tu
  *
@@ -102,19 +100,19 @@ final class ChapterArtifactStorage
     }
 
     /**
-     * Persiste une vidéo de chapitre sur le disque **public** — et l'assume.
+     * Persiste une vidéo de chapitre sur le disque **privé** (#857).
      *
-     * La vidéo est lue par `<video src="/storage/...">` : la rendre privée
-     * casserait la lecture des cours. Elle passe malgré tout par cette classe
-     * pour que « seule autorité sur le choix du disque » reste vrai — sans quoi
-     * un `store(..., 'public')` subsisterait dans un service de chapitre,
-     * exactement le motif que ce collaborateur existe pour éliminer.
+     * Elle se lit par l'URL signée de #824 (`chapters.video.show`, que
+     * `RecordingVideoService` sert avec ses plages), comme un enregistrement de
+     * séance : deux vidéos d'un même chapitre ne sont plus protégées selon leur
+     * origine. Le téléversement vidéo n'est pas ouvert aujourd'hui
+     * (`UploadFileRequest` refuse ces formats) : le chemin est sûr d'avance.
      *
      * @throws RuntimeException si l'écriture échoue.
      */
     public function storeVideo(UploadedFile $file, int $chapterId): string
     {
-        $path = $file->store($this->relativeDirectory($chapterId, 'video'), self::PUBLIC_DISK);
+        $path = $file->store($this->relativeDirectory($chapterId, 'video'), self::PRIVATE_DISK);
 
         if (! is_string($path) || $path === '') {
             throw new RuntimeException('Échec sauvegarde de la vidéo');
@@ -127,10 +125,10 @@ final class ChapterArtifactStorage
      * Nom du disque qui détient réellement cet artefact, ou `null` s'il est
      * introuvable.
      *
-     * `chapters.file_original_path` est **polymorphe** : privé pour les documents
-     * convertis (pdf / word / powerpoint), public pour les vidéos, qui doivent
-     * rester lisibles par `<video>`. Un consommateur qui coderait un disque en
-     * dur renverrait donc 404 en silence sur tout chapitre vidéo — c'est arrivé,
+     * `chapters.file_original_path` a été **polymorphe** : privé pour les documents
+     * convertis (pdf / word / powerpoint), public pour les vidéos jusqu'à #857.
+     * Une ligne ancienne peut encore désigner le disque public : un consommateur
+     * qui coderait un disque en dur renverrait 404 en silence — c'est arrivé,
      * l'audit `spec-architect` l'a attrapé. Le privé est interrogé en premier.
      */
     public function diskHolding(string $relativePath): ?string

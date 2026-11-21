@@ -60,7 +60,7 @@ enum TrainingSessionStatus: string
      */
     public function ouvreLesCodes(): bool
     {
-        return $this === self::Publiee;
+        return $this === self::Publiee || $this === self::Brouillon;
     }
 
     /**

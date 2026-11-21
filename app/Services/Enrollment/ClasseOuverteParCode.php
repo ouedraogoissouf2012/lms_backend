@@ -4,11 +4,13 @@ declare(strict_types=1);
 
 namespace App\Services\Enrollment;
 
+use App\Enums\TrainingSessionStatus;
 use App\Exceptions\BusinessException;
 use App\Models\Classe;
 use App\Models\Institution;
 use App\Models\TrainingSession;
 use App\Services\Roster\RosterAuthorityFactory;
+use App\Support\Periode\FenetreDInscription;
 
 /**
  * La classe qu'un code d'inscription ouvre, dans UN établissement (#846, #885).
@@ -37,7 +39,7 @@ use App\Services\Roster\RosterAuthorityFactory;
  * déjà l'import (`ImportConfirmController`) — écrire la liste des apprenants —
  * et il est demandé POUR CET établissement, jamais au tenant ambiant.
  *
- * ## Inconnu, retiré, sans droit ou d'une Période close : le MÊME refus
+ * ## Inconnu, retiré, sans droit, Période close, en brouillon ou hors fenêtre : le MÊME refus
  *
  * Les distinguer dirait qu'un code a existé pour cette valeur — donc qu'une
  * classe l'attend. Même raisonnement qu'ADR-803-02 pour les trois états du
@@ -66,10 +68,10 @@ final class ClasseOuverteParCode
             ->whereNull('code_inscription_revoque_le')
             ->first();
 
-        // Une Période close ferme les codes de ses classes (#897) : la règle est
-        // LUE ici, au résolveur des deux portes, et couvre ainsi les Périodes déjà
-        // closes dont le code est resté posé. Même refus qu'un code inconnu.
-        if (! $classe instanceof Classe || $this->periodeClose($classe)) {
+        // La Période de la classe décide (#897, #1208) : la règle est LUE ici, au
+        // résolveur des deux portes, et couvre ainsi les Périodes déjà closes dont
+        // le code est resté posé. Même refus qu'un code inconnu.
+        if (! $classe instanceof Classe || $this->laPeriodeRefuse($classe)) {
             throw new BusinessException(self::REFUS, 404);
         }
 
@@ -78,10 +80,15 @@ final class ClasseOuverteParCode
 
     /**
      * La Période de la classe, lue explicitement dans SON établissement (le scope
-     * global est fail-open sans tenant) ; supprimée, elle ne reçoit plus personne
-     * non plus. Une classe sans Période n'est pas concernée.
+     * global est fail-open sans tenant). Elle refuse si elle est supprimée, si elle
+     * n'est pas publiée ({@see TrainingSessionStatus::ouvreLesCodes()} : ni
+     * brouillon, ni close), ou si aujourd'hui est hors de sa fenêtre d'inscription.
+     *
+     * Pour la porte, une borne absente ne ferme rien : les dates sont facultatives,
+     * et une Période publiée sans dates reçoit ({@see FenetreDInscription}). Une
+     * classe sans Période n'est pas concernée.
      */
-    private function periodeClose(Classe $classe): bool
+    private function laPeriodeRefuse(Classe $classe): bool
     {
         if ($classe->training_session_id === null) {
             return false;
@@ -92,6 +99,13 @@ final class ClasseOuverteParCode
             ->whereKey($classe->training_session_id)
             ->first();
 
-        return $periode instanceof TrainingSession && ($periode->trashed() || $periode->status->fermeLesInscriptions());
+        if (! $periode instanceof TrainingSession) {
+            return false;
+        }
+
+        $fenetre = new FenetreDInscription($periode->enrollment_opens_at, $periode->enrollment_closes_at);
+
+        return $periode->trashed() || ! $periode->status->ouvreLesCodes()
+            || $fenetre->pasEncoreOuverte() || $fenetre->dejaFermee();
     }
 }

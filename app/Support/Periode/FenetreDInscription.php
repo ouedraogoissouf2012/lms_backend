@@ -35,13 +35,13 @@ final class FenetreDInscription
     public function pasEncoreOuverte(): bool
     {
         return $this->ouverture !== null
-            && Carbon::today()->lessThan($this->ouverture->copy()->startOfDay());
+            && Carbon::today()->lessThanOrEqualTo($this->ouverture->copy()->startOfDay());
     }
 
     /** Aujourd'hui est APRÈS le jour de fermeture ; le jour même reste ouvert jusqu'à minuit. */
     public function dejaFermee(): bool
     {
         return $this->fermeture !== null
-            && Carbon::today()->greaterThan($this->fermeture->copy()->startOfDay());
+            && Carbon::today()->greaterThanOrEqualTo($this->fermeture->copy()->startOfDay());
     }
 }

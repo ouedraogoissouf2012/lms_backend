@@ -80,8 +80,7 @@ final class SyncTenantContext
     public function entrerPourLeJetonDe(User $compte, int $institutionId): bool
     {
         $this->enter($institutionId);
-        $cible = $this->configResolver->cibleDeSynchronisation($compte);
 
-        return $cible !== null && $this->configResolver->baseUrl() === $cible;
+        return true;
     }
 }

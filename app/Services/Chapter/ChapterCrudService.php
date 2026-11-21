@@ -10,6 +10,7 @@ use App\Http\Requests\UpdateChapterRequest;
 use App\Models\Chapter;
 use App\Models\Lesson;
 use App\Models\User;
+use App\Services\Visio\Recording\RecordingVideoService;
 use App\Support\Logging\CaughtExceptionLog;
 use Psr\Log\LoggerInterface;
 use Throwable;
@@ -28,6 +29,7 @@ final class ChapterCrudService
         private readonly LoggerInterface $logger,
         private readonly ChapterReadGate $reads,
         private readonly CaughtExceptionLog $journal,
+        private readonly RecordingVideoService $videos,
     ) {}
 
     /**
@@ -198,7 +200,7 @@ final class ChapterCrudService
     {
         try {
             $chapter = Chapter::findOrFail($id);
-            $chapter->update($request->validated());
+            $chapter->update($this->champsModifiables($chapter, $request->validated()));
 
             $this->logger->info('Chapitre mis à jour', ['chapter_id' => $id]);
 
@@ -223,6 +225,31 @@ final class ChapterCrudService
                 ],
             ];
         }
+    }
+
+    /**
+     * #1287 — le chemin d'une vidéo INTERNE n'appartient qu'au serveur.
+     *
+     * Le front renvoie à chaque enregistrement le `video_url` qu'il a lu : pour une vidéo
+     * interne, l'URL SIGNÉE, valable quelques heures. L'écrire remplaçait le chemin du
+     * disque privé, et la vidéo était perdue. Le champ est donc ignoré pour une vidéo
+     * interne, quelle que soit sa valeur : aucune comparaison avec une URL signée, qui
+     * expire et varie. Le téléversement et l'enregistrement de séance restent ses seuls
+     * écrivains.
+     *
+     * @param  array<string, mixed>  $donnees
+     * @return array<string, mixed>
+     */
+    private function champsModifiables(Chapter $chapter, array $donnees): array
+    {
+        if (! array_key_exists('video_url', $donnees) || ! $this->videos->estUnDeNosFichiers($chapter)) {
+            return $donnees;
+        }
+
+        $this->logger->info('Lien vidéo ignoré : la vidéo du chapitre est interne', ['chapter_id' => $chapter->id]);
+        unset($donnees['video_url']);
+
+        return $donnees;
     }
 
     /**

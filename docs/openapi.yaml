@@ -11642,6 +11642,10 @@ paths:
       tags:
         - Chapters
       summary: "Update chapter"
+      description: >-
+        #1287 - `video_url` est ignore pour une video interne (`video_provider` = `jibri` ou
+        `upload`) : son chemin prive ne s'ecrit que par le televersement ou l'enregistrement de
+        seance. La reponse signe la video interne comme `GET /chapters/{id}`.
       security:
         - sanctum: []
       parameters:

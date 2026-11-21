@@ -47,6 +47,8 @@ final class KlassciProxyServiceMemoTest extends TestCase
         // id() est appelé par TenantScopedCache pour le tag `institution_{id}`
         // (spec redis-runtime #374) — le store `array` du test supporte les tags.
         $tenantManager->shouldReceive('id')->andReturn(1);
+        // Aucune école résolue : la config rendue est la config globale (#1249).
+        $tenantManager->shouldReceive('get')->andReturn(null);
         $tenantManager->shouldReceive('klassciConfig')->andReturn([
             'url' => 'https://klassci.test',
             'token' => 'system-token',

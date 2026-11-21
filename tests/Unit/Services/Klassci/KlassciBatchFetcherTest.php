@@ -42,6 +42,8 @@ final class KlassciBatchFetcherTest extends TestCase
         // Stub TenantManager pour avoir un slug stable.
         $tenantManager = Mockery::mock(TenantManager::class);
         $tenantManager->shouldReceive('slug')->andReturn('school-test');
+        // Aucune école résolue : la config rendue est la config globale (#1249).
+        $tenantManager->shouldReceive('get')->andReturn(null);
         $tenantManager->shouldReceive('klassciConfig')->andReturn([
             'url' => 'https://klassci.test',
             'token' => 'system-token',

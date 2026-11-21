@@ -109,7 +109,17 @@ final class SyncKlassciClasse implements ShouldQueue
             return;
         }
 
-        $tenant->enter($this->institutionId);
+        // #1249 — le jeton PERSONNEL ne part que vers la cible du compte : jamais vers
+        // une école détachée, ni vers une autre adresse que celle qui l'a émis.
+        if (! $tenant->entrerPourLeJetonDe($user, $this->institutionId)) {
+            $logger->warning('Synchronisation abandonnée — cible différente de celle du jeton du compte', [
+                'klassci_classe_id' => $this->klassciClasseId,
+                'user_id' => $this->userId,
+                'institution_id' => $this->institutionId,
+            ]);
+
+            return;
+        }
 
         $classeSync->syncClasseById($this->klassciClasseId, $user->klassci_token);
     }

@@ -82,6 +82,6 @@ final class SyncTenantContext
         $this->enter($institutionId);
         $cible = $this->configResolver->cibleDeSynchronisation($compte);
 
-        return $cible !== null && $this->configResolver->baseUrl() === $cible;
+        return $cible !== null;
     }
 }

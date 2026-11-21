@@ -105,7 +105,6 @@ final class ClasseOuverteParCode
 
         $fenetre = new FenetreDInscription($periode->enrollment_opens_at, $periode->enrollment_closes_at);
 
-        return $periode->trashed() || ! $periode->status->ouvreLesCodes()
-            || $fenetre->pasEncoreOuverte() || $fenetre->dejaFermee();
+        return $periode->trashed() || ! $periode->status->ouvreLesCodes();
     }
 }

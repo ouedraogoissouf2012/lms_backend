@@ -280,14 +280,6 @@ final class KlassciConfigResolver implements KlassciTargetResolver
      */
     private function cibleDuTenant(): array
     {
-        $ecole = $this->tenantManager->get();
-
-        if ($ecole instanceof Institution) {
-            $url = $this->cibleDeLEcole($ecole);
-
-            return [$url, $url === null ? null : $ecole->klassci_api_token];
-        }
-
         $config = $this->tenantManager->klassciConfig();
 
         return [

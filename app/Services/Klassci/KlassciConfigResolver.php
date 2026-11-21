@@ -231,7 +231,8 @@ final class KlassciConfigResolver implements KlassciTargetResolver
 
             // #1249 — l'école doit parler à KLASSCI (active, non autonome, URL exploitable).
             if ($institution instanceof Institution
-                && $this->cibleDeLEcole($institution) === $user->klassci_tenant_url
+                && $institution->is_active
+                && $institution->klassci_api_url === $user->klassci_tenant_url
                 && $institution->klassci_api_token) {
                 $this->baseUrl = $institution->klassci_api_url;
                 $this->token = $institution->klassci_api_token;

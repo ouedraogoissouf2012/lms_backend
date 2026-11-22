@@ -24,7 +24,7 @@ use Psr\Log\LoggerInterface;
  * ## Responsabilités
  *
  *   - Création / mise à jour / soft delete d'une institution, jeton API compris
- *     ({@see self::enregistrer()}, #1332).
+ *     ({@see JetonKlassciDeLEcole} : son écriture, #1332, et son effacement, #1213).
  *   - Toggle is_active avec garde-fou « ne jamais désactiver la dernière active ».
  *   - Bascule délibérée du mode, auditée (#818).
  *   - Invalidation des caches list/overview après chaque écriture.
@@ -41,6 +41,7 @@ final class InstitutionCrudService
         private readonly LoggerInterface $logger,
         private readonly AuditLogger $audit,
         private readonly ConnectionInterface $db,
+        private readonly JetonKlassciDeLEcole $jeton,
     ) {}
 
     /**
@@ -137,7 +138,8 @@ final class InstitutionCrudService
      * pivot seul, le cache KLASSCI gardé d'avant la bascule n'admettant plus
      * personne. Un import analysé avant la bascule ne peut pas aboutir après, sa
      * confirmation revérifiant la capacité. La bascule est réversible, et le test
-     * le dit.
+     * le dit. Seul le jeton API KLASSCI ne revient pas : la bascule en autonome
+     * l'efface, et il se ressaisit ({@see JetonKlassciDeLEcole}, #1213).
      *
      * ## Pourquoi une trace d'audit et pas seulement un log
      *
@@ -160,7 +162,9 @@ final class InstitutionCrudService
         $institution = Institution::findOrFail($id);
         $avant = $institution->mode;
 
-        $institution->update(['mode' => $mode]);
+        $institution->fill(['mode' => $mode]);
+        $effacement = $this->jeton->auBasculement($institution, $mode);
+        $institution->save();
 
         $this->invalidateCaches();
 
@@ -168,6 +172,7 @@ final class InstitutionCrudService
             'from' => $avant->value,
             'to' => $mode->value,
         ]);
+        $this->jeton->tracer($institution, $effacement);
 
         $this->logger->info('Institution mode changed', [
             'id' => $id,
@@ -253,31 +258,22 @@ final class InstitutionCrudService
     }
 
     /**
-     * #1332 — écrit le tableau validé, jeton API KLASSCI compris.
-     *
-     * Le jeton n'est PAS dans `Institution::$fillable`, et c'est voulu : un secret
-     * affectable en masse s'écrirait depuis n'importe quel tableau qui porte la clé.
-     * `fill()` le jetterait donc en silence ; il est posé ici, par le mutateur, qui le
-     * chiffre (cast `encrypted`).
-     *
-     * Un jeton vide (`null` ou `''`) ne touche pas l'ancien : l'écran annonce « laisser
-     * vide pour conserver l'existant ». L'effacer est un autre geste, au détachement de
-     * l'école (#1213).
+     * Écrit le tableau validé, jeton API KLASSCI compris : le jeton n'est pas dans
+     * `Institution::$fillable` (#1332), et il s'efface quand l'URL détache l'école
+     * (#1213). Les deux règles vivent dans {@see JetonKlassciDeLEcole}.
      *
      * @param  array<string, mixed>  $validated
      */
     private function enregistrer(Institution $institution, array $validated): void
     {
-        $jeton = $validated['klassci_api_token'] ?? null;
+        $saisi = $validated['klassci_api_token'] ?? null;
         unset($validated['klassci_api_token']);
 
         $institution->fill($validated);
-
-        if (is_string($jeton) && $jeton !== '') {
-            $institution->klassci_api_token = $jeton;
-        }
-
+        $effacement = $this->jeton->poser($institution, $saisi);
         $institution->save();
+
+        $this->jeton->tracer($institution, $effacement);
     }
 
     private function invalidateCaches(): void

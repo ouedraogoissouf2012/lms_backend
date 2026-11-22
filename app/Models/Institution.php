@@ -79,6 +79,19 @@ class Institution extends Model
     }
 
     /**
+     * #1331 — l'URL KLASSCI est canonique dès l'écriture : sans « / » final.
+     *
+     * Le compte garde l'URL rognée de sa connexion, et le résolveur la compare, avec
+     * `===`, à celle de l'école ; le client HTTP lui ajoute `/endpoint`. Normaliser ici,
+     * une fois, rend la colonne vraie pour tous ses lecteurs.
+     */
+    public function setKlassciApiUrlAttribute(?string $value): void
+    {
+        $canonique = rtrim((string) $value, '/');
+        $this->attributes['klassci_api_url'] = $canonique === '' ? null : $canonique;
+    }
+
+    /**
      * Trouver une institution par son slug
      */
     public static function findBySlug(string $slug): ?self

@@ -7,6 +7,7 @@ namespace Tests\Unit\Services\Klassci\Auth;
 use App\Exceptions\KlassciUnavailableException;
 use App\Models\Institution;
 use App\Services\Klassci\Auth\KlassciTenantDiscovery;
+use App\Services\Klassci\KlassciConfigResolver;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Factory;
@@ -57,7 +58,7 @@ final class KlassciTenantDiscoveryTest extends TestCase
         Institution::query()->update(['is_active' => false]);
 
         $logger = Mockery::spy(LoggerInterface::class);
-        $discovery = new KlassciTenantDiscovery(Http::getFacadeRoot(), $logger);
+        $discovery = new KlassciTenantDiscovery(Http::getFacadeRoot(), $logger, app(KlassciConfigResolver::class));
 
         $result = $discovery->findMatchingTenants('any@user.com');
 
@@ -83,7 +84,7 @@ final class KlassciTenantDiscoveryTest extends TestCase
         ]);
 
         $logger = Mockery::spy(LoggerInterface::class);
-        $discovery = new KlassciTenantDiscovery(Http::getFacadeRoot(), $logger);
+        $discovery = new KlassciTenantDiscovery(Http::getFacadeRoot(), $logger, app(KlassciConfigResolver::class));
 
         $result = $discovery->findMatchingTenants('user@alpha.com');
 
@@ -110,7 +111,7 @@ final class KlassciTenantDiscoveryTest extends TestCase
         ]);
 
         $logger = Mockery::spy(LoggerInterface::class);
-        $discovery = new KlassciTenantDiscovery(Http::getFacadeRoot(), $logger);
+        $discovery = new KlassciTenantDiscovery(Http::getFacadeRoot(), $logger, app(KlassciConfigResolver::class));
 
         $result = $discovery->findMatchingTenants('shared@user.com');
 
@@ -152,7 +153,7 @@ final class KlassciTenantDiscoveryTest extends TestCase
         ]);
 
         $logger = Mockery::spy(LoggerInterface::class);
-        $discovery = new KlassciTenantDiscovery($http, $logger);
+        $discovery = new KlassciTenantDiscovery($http, $logger, app(KlassciConfigResolver::class));
 
         // Ne doit PAS crasher
         $result = $discovery->findMatchingTenants('user@up.com');
@@ -180,7 +181,7 @@ final class KlassciTenantDiscoveryTest extends TestCase
         ]);
 
         $logger = Mockery::spy(LoggerInterface::class);
-        $discovery = new KlassciTenantDiscovery(Http::getFacadeRoot(), $logger);
+        $discovery = new KlassciTenantDiscovery(Http::getFacadeRoot(), $logger, app(KlassciConfigResolver::class));
 
         $result = $discovery->findMatchingTenants('any@user.com');
 
@@ -200,7 +201,7 @@ final class KlassciTenantDiscoveryTest extends TestCase
         ]);
 
         $logger = Mockery::spy(LoggerInterface::class);
-        $discovery = new KlassciTenantDiscovery(Http::getFacadeRoot(), $logger);
+        $discovery = new KlassciTenantDiscovery(Http::getFacadeRoot(), $logger, app(KlassciConfigResolver::class));
 
         $result = $discovery->findMatchingTenants('unknown@user.com');
 
@@ -228,7 +229,7 @@ final class KlassciTenantDiscoveryTest extends TestCase
                 $loggedMessages[] = [$message, $context];
             });
 
-        $discovery = new KlassciTenantDiscovery($http, $logger);
+        $discovery = new KlassciTenantDiscovery($http, $logger, app(KlassciConfigResolver::class));
 
         // Depuis #243 : tous les tenants injoignables → KlassciUnavailableException.
         // On capture l'exception ; le but du test reste inchangé : vérifier le
@@ -259,7 +260,7 @@ final class KlassciTenantDiscoveryTest extends TestCase
         ]);
 
         $logger = Mockery::spy(LoggerInterface::class);
-        $discovery = new KlassciTenantDiscovery(Http::getFacadeRoot(), $logger);
+        $discovery = new KlassciTenantDiscovery(Http::getFacadeRoot(), $logger, app(KlassciConfigResolver::class));
 
         // Ne doit pas crash (le service utilise withoutVerifying())
         $result = $discovery->findMatchingTenants('user@unsigned.com');

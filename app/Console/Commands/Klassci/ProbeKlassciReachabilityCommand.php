@@ -44,7 +44,7 @@ final class ProbeKlassciReachabilityCommand extends Command
         $institutions = Institution::query()
             ->where('is_active', true)
             ->whereNotNull('klassci_api_url')
-            ->get(['slug', 'klassci_api_url', 'is_active', 'mode']);
+            ->get(['slug', 'klassci_api_url']);
 
         foreach ($institutions as $institution) {
             $baseUrl = $cibles->cibleDeLEcole($institution);

@@ -53,7 +53,7 @@ class Chapter extends Model
     ];
 
     /** #1330 — disposition du stockage : lue par le serveur seul, jamais rendue. */
-    protected $hidden = ['file_original_path', 'file_converted_path'];
+    protected $hidden = [];
 
     protected $casts = [
         'slides_images' => 'array',

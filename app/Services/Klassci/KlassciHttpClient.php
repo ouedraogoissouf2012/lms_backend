@@ -137,10 +137,6 @@ final class KlassciHttpClient
             // status + endpoint — le body n'est NI loggé NI exposé dans l'exception
             // (issue #256 : 239 Mo de logs sur des 403/429 répétés avec body complet).
             $level = $status >= self::SERVER_ERROR_THRESHOLD ? LogLevel::ERROR : LogLevel::WARNING;
-            $this->logger->log($level, "KLASSCI API Error{$logSuffix}", [
-                'status' => $status,
-                'endpoint' => $endpoint,
-            ]);
 
             if ($status >= self::SERVER_ERROR_THRESHOLD) {
                 $this->circuitBreaker->reportFailure();

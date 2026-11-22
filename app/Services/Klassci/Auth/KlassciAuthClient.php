@@ -69,7 +69,7 @@ class KlassciAuthClient
      *
      * @var list<int>
      */
-    private const STATUTS_SANS_JUGEMENT = [408, 429];
+    private const STATUTS_SANS_JUGEMENT = [408];
 
     /**
      * Tente un login KLASSCI sur le tenant `$tenantUrl`.

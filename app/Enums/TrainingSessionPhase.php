@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Enums;
 
+use App\Support\Periode\FenetreDInscription;
 use Illuminate\Support\Carbon;
 
 /**
@@ -45,9 +46,12 @@ enum TrainingSessionPhase: string
             return self::EnCours;
         }
 
+        // La comparaison est celle de la porte des codes (#1208). La phase garde
+        // SA lecture du nul : sans ouverture posée, pas d'« inscriptions ouvertes ».
+        $fenetre = new FenetreDInscription($ouvertureInscriptions, $fermetureInscriptions);
         $inscriptionsOuvertes = $ouvertureInscriptions !== null
-            && $aujourdHui->greaterThanOrEqualTo($ouvertureInscriptions)
-            && ($fermetureInscriptions === null || $aujourdHui->lessThanOrEqualTo($fermetureInscriptions));
+            && ! $fenetre->pasEncoreOuverte()
+            && ! $fenetre->dejaFermee();
 
         return $inscriptionsOuvertes ? self::InscriptionsOuvertes : self::AVenir;
     }

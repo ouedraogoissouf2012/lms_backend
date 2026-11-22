@@ -78,7 +78,6 @@ final class JetonKlassciDeLEcole
             return;
         }
 
-        $this->audit->logSecurityEvent(self::EFFACE, $ecole, ['raison' => $raison]);
         $this->logger->info('Institution KLASSCI token erased', ['id' => $ecole->id, 'raison' => $raison]);
     }
 

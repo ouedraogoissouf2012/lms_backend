@@ -92,7 +92,7 @@ final class JetonKlassciDeLEcole
             return 'url_videe';
         }
 
-        return $jeton === null ? 'url_changee' : null;
+        return null;
     }
 
     /** Efface, et ne rend une raison que s'il y avait un jeton à effacer. */

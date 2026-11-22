@@ -242,7 +242,7 @@ final class ChapterCrudService
      */
     private function champsModifiables(Chapter $chapter, array $donnees): array
     {
-        if (! array_key_exists('video_url', $donnees) || ! $this->videos->estUnDeNosFichiers($chapter)) {
+        if (! array_key_exists('video_url', $donnees) || $chapter->video_provider !== RecordingVideoService::JIBRI) {
             return $donnees;
         }
 

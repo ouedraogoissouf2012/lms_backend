@@ -104,7 +104,6 @@ final class ChapterController extends Controller
             ? $this->chapterFileUpload->uploadAsync($chapterId, $file, $request->user()?->id)
             : $this->chapterFileUpload->uploadAndProcess($chapterId, $file);
         // #1330 — signée comme `show` ; le 202 asynchrone (un suivi, pas un chapitre) traverse.
-        $result['payload'] = $this->media->signSingleResponse($result['payload']);
 
         return $this->relayResponse($result);
     }

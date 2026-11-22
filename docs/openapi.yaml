@@ -11612,6 +11612,10 @@ paths:
       tags:
         - Chapters
       summary: "Get chapter details"
+      description: >-
+        #1330 - `slides_images` et la video interne sont des URL signees. Les chemins du
+        stockage (`file_original_path`, `file_converted_path`) ne sont rendus par aucune
+        reponse chapitre, televersement compris.
       security:
         - sanctum: []
       parameters:

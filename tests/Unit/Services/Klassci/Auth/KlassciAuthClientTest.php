@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Services\Klassci\Auth;
 
+use App\Exceptions\KlassciUnavailableException;
 use App\Services\Klassci\Auth\KlassciAuthClient;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Factory as HttpFactory;

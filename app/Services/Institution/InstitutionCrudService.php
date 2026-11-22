@@ -23,7 +23,8 @@ use Psr\Log\LoggerInterface;
  *
  * ## Responsabilités
  *
- *   - Création / mise à jour / soft delete d'une institution.
+ *   - Création / mise à jour / soft delete d'une institution, jeton API compris
+ *     ({@see self::enregistrer()}, #1332).
  *   - Toggle is_active avec garde-fou « ne jamais désactiver la dernière active ».
  *   - Bascule délibérée du mode, auditée (#818).
  *   - Invalidation des caches list/overview après chaque écriture.
@@ -47,8 +48,8 @@ final class InstitutionCrudService
      */
     public function create(array $validated): Institution
     {
-        /** @var Institution $institution */
-        $institution = Institution::create($validated);
+        $institution = new Institution;
+        $this->enregistrer($institution, $validated);
 
         $this->invalidateCaches();
 
@@ -69,10 +70,11 @@ final class InstitutionCrudService
     {
         /** @var Institution $institution */
         $institution = Institution::findOrFail($id);
-        $institution->update($validated);
+        $this->enregistrer($institution, $validated);
 
         $this->invalidateCaches();
 
+        // Les NOMS des champs seulement : jamais une valeur, et donc jamais le jeton.
         $this->logger->info('Institution updated', [
             'id' => $id,
             'fields' => array_keys($validated),
@@ -248,6 +250,34 @@ final class InstitutionCrudService
             ->delete();
 
         return is_int($deleted) ? $deleted : 0;
+    }
+
+    /**
+     * #1332 — écrit le tableau validé, jeton API KLASSCI compris.
+     *
+     * Le jeton n'est PAS dans `Institution::$fillable`, et c'est voulu : un secret
+     * affectable en masse s'écrirait depuis n'importe quel tableau qui porte la clé.
+     * `fill()` le jetterait donc en silence ; il est posé ici, par le mutateur, qui le
+     * chiffre (cast `encrypted`).
+     *
+     * Un jeton vide (`null` ou `''`) ne touche pas l'ancien : l'écran annonce « laisser
+     * vide pour conserver l'existant ». L'effacer est un autre geste, au détachement de
+     * l'école (#1213).
+     *
+     * @param  array<string, mixed>  $validated
+     */
+    private function enregistrer(Institution $institution, array $validated): void
+    {
+        $jeton = $validated['klassci_api_token'] ?? null;
+        unset($validated['klassci_api_token']);
+
+        $institution->fill($validated);
+
+        if (is_string($jeton) && $jeton !== '') {
+            $institution->klassci_api_token = $jeton;
+        }
+
+        $institution->save();
     }
 
     private function invalidateCaches(): void

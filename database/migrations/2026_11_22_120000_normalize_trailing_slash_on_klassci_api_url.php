@@ -39,7 +39,7 @@ return new class extends Migration
             ->get(['id', 'klassci_api_url']);
 
         foreach ($lignes as $ligne) {
-            $canonique = rtrim((string) $ligne->klassci_api_url, '/');
+            $canonique = preg_replace('~/$~', '', (string) $ligne->klassci_api_url);
 
             DB::table('institutions')
                 ->where('id', $ligne->id)

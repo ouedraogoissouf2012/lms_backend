@@ -87,7 +87,7 @@ class Institution extends Model
      */
     public function setKlassciApiUrlAttribute(?string $value): void
     {
-        $canonique = rtrim((string) $value, '/');
+        $canonique = preg_replace('~/$~', '', (string) $value);
         $this->attributes['klassci_api_url'] = $canonique === '' ? null : $canonique;
     }
 

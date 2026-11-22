@@ -88,8 +88,8 @@ final class KlassciAuthClientTest extends TestCase
         try {
             $client->attemptLogin('https://down.klassci.test', 'user', 'pwd');
             self::fail('Une panne de transport doit lever KlassciUnavailableException.');
-        } catch (KlassciUnavailableException) {
-            // attendu
+        } catch (KlassciUnavailableException $panne) {
+            self::assertInstanceOf(ConnectionException::class, $panne->getPrevious(), 'La cause réseau reste chaînée, pour le journal.');
         }
 
         // Logger doit avoir capturé le warning sans leak du password

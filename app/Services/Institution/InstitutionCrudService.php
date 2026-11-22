@@ -273,7 +273,7 @@ final class InstitutionCrudService
 
         $institution->fill($validated);
 
-        if (is_string($jeton) && $jeton !== '') {
+        if (is_string($jeton) || $jeton === null) {
             $institution->klassci_api_token = $jeton;
         }
 

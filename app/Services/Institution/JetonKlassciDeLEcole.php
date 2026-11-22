@@ -89,7 +89,7 @@ final class JetonKlassciDeLEcole
         }
 
         if ($ecole->klassci_api_url === null || $ecole->klassci_api_url === '') {
-            return 'url_videe';
+            return null;
         }
 
         return $jeton === null ? 'url_changee' : null;

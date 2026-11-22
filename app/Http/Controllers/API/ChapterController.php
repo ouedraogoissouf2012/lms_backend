@@ -125,8 +125,6 @@ final class ChapterController extends Controller
     public function update(UpdateChapterRequest $request, int $id): JsonResponse
     {
         $result = $this->chapterCrud->update($request, $id);
-        // #1287 — signée comme `show` : jamais le chemin privé brut d'une vidéo interne.
-        $result['payload'] = $this->media->signSingleResponse($result['payload']);
 
         return $this->relayResponse($result);
     }

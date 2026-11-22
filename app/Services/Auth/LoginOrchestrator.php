@@ -96,7 +96,7 @@ final class LoginOrchestrator
         // #1318 — la cible de l'école, et elle seule : une école autonome, inactive ou
         // d'URL inexploitable n'en a aucune, et le mot de passe saisi ne part pas. La
         // connexion locale continue.
-        $cible = $this->cibles->cibleDeLEcole($institution);
+        $cible = $institution->klassci_api_url;
         if ($cible === null) {
             return null;
         }

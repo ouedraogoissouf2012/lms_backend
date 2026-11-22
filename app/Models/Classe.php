@@ -137,10 +137,12 @@ class Classe extends Model implements MirroredFromKlassci
     }
 
     /**
-     * Vérifie si la classe est complète
+     * #1115 — `effectif` est une capacité, que seules les adhésions ACTIVES occupent ; 0 = non renseignée, sans limite
      */
     public function isComplete(): bool
     {
-        return $this->getEffectifActuel() >= $this->effectif;
+        $capacite = $this->effectif;
+
+        return $capacite > 0 && $this->getEffectifActuel() >= $capacite;
     }
 }

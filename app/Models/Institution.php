@@ -85,12 +85,6 @@ class Institution extends Model
      * `===`, à celle de l'école ; le client HTTP lui ajoute `/endpoint`. Normaliser ici,
      * une fois, rend la colonne vraie pour tous ses lecteurs.
      */
-    public function setKlassciApiUrlAttribute(?string $value): void
-    {
-        $canonique = rtrim((string) $value, '/');
-        $this->attributes['klassci_api_url'] = $canonique === '' ? null : $canonique;
-    }
-
     /**
      * Trouver une institution par son slug
      */

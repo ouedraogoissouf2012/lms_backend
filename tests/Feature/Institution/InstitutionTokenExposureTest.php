@@ -59,5 +59,9 @@ final class InstitutionTokenExposureTest extends TestCase
         $response->assertStatus(201);
         $this->assertStringNotContainsString(self::SECRET, $response->getContent() ?: '');
         $this->assertArrayNotHasKey('klassci_api_token_encrypted', (array) $response->json('data'));
+
+        // #1332 — sans cette ligne, le test était vert à vide : le jeton n'était même pas
+        // écrit, il ne pouvait donc pas fuir.
+        $this->assertSame(self::SECRET, Institution::query()->where('slug', 'ecole-test')->sole()->klassci_api_token);
     }
 }

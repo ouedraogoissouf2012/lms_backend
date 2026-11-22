@@ -7,6 +7,7 @@ namespace App\Services\Klassci\Auth;
 use App\Exceptions\KlassciUnavailableException;
 use App\Models\Institution;
 use App\Services\Klassci\KlassciBatchFetcher;
+use App\Services\Klassci\KlassciConfigResolver;
 use Illuminate\Http\Client\Factory as HttpFactory;
 use Illuminate\Http\Client\Pool;
 use Illuminate\Http\Client\Response;
@@ -17,8 +18,8 @@ use Psr\Log\LoggerInterface;
  *
  * ## Issue #120 — Extrait de `AuthController::findTenantsForUser()` (528 lignes → orchestrateur)
  *
- * Pour un `$identifier` (username ou email), interroge **tous les tenants KLASSCI
- * actifs** en parallèle via `Http::pool()`. Retourne la liste de ceux qui ont
+ * Pour un `$identifier` (username ou email), interroge **toutes les écoles qui ont une
+ * cible KLASSCI** ({@see self::loadActiveTenants()}, #1318) en parallèle via `Http::pool()`. Retourne la liste de ceux qui ont
  * trouvé l'utilisateur (`/auth/check-user` répond `data.found === true`).
  *
  * ## Fix bug pré-existant — `successful()` sur ConnectionException
@@ -49,6 +50,7 @@ class KlassciTenantDiscovery
     public function __construct(
         private readonly HttpFactory $http,
         private readonly LoggerInterface $logger,
+        private readonly KlassciConfigResolver $cibles,
     ) {
         $this->sslVerify = (bool) config('services.klassci.ssl_verify', true);
     }
@@ -110,22 +112,27 @@ class KlassciTenantDiscovery
     }
 
     /**
-     * Liste les tenants KLASSCI actifs depuis la table `institutions`.
+     * Les écoles que le fan-out interroge : celles qui ont une cible KLASSCI (#1318).
+     *
+     * Le filtre SQL ne fait qu'écarter tôt les écoles sans URL ou inactives ; c'est
+     * {@see KlassciConfigResolver::cibleDeLEcole()} qui décide, avec la même définition
+     * que toutes les autres cibles (#1248, #1249). Une école autonome, inactive ou
+     * d'URL inexploitable qui a GARDÉ son URL ne reçoit ni l'identifiant, ni ensuite
+     * le mot de passe.
      *
      * @return array<int, array{code: string, api_base_url: string}>
      */
     private function loadActiveTenants(): array
     {
-        /** @var array<int, array{code: string, api_base_url: string}> $tenants */
-        $tenants = Institution::where('is_active', true)
-            ->whereNotNull('klassci_api_url')
-            ->get()
-            ->map(fn (Institution $inst): array => [
-                'code' => (string) $inst->slug,
-                'api_base_url' => rtrim((string) $inst->klassci_api_url, '/'),
-            ])
-            ->values()
-            ->all();
+        $tenants = [];
+
+        foreach (Institution::where('is_active', true)->whereNotNull('klassci_api_url')->get() as $inst) {
+            $cible = $this->cibles->cibleDeLEcole($inst);
+
+            if ($cible !== null) {
+                $tenants[] = ['code' => (string) $inst->slug, 'api_base_url' => rtrim($cible, '/')];
+            }
+        }
 
         return $tenants;
     }

@@ -4,11 +4,13 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Klassci;
 
+use App\Enums\InstitutionMode;
 use App\Models\Institution;
 use App\Services\Klassci\Health\HttpKlassciReachability;
 use App\Services\Klassci\Health\InMemoryKlassciReachability;
 use App\Services\Klassci\Health\KlassciReachability;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Psr\Log\AbstractLogger;
 use Psr\Log\LoggerInterface;
 use Stringable;
@@ -138,6 +140,43 @@ final class ProbeKlassciReachabilityTest extends TestCase
         $this->artisan('klassci:probe')->assertExitCode(0);
 
         self::assertSame([], $this->journal->matching('KLASSCI reachability'));
+    }
+
+    /**
+     * #1318 — la sonde vise les cibles de `KlassciConfigResolver::cibleDeLEcole`, et rien
+     * d'autre : une école passée en autonome, ou dont l'URL n'a pas d'hôte, n'est plus
+     * une cible, même si elle a gardé son URL.
+     *
+     * @param  array<string, mixed>  $detachement
+     */
+    #[DataProvider('detachedInstitutions')]
+    public function test_a_detached_institution_that_kept_its_url_is_skipped(array $detachement): void
+    {
+        $this->institution('klassci', 'https://klassci.test/api/lms');
+        Institution::factory()->create($detachement + ['slug' => 'detachee', 'is_active' => true]);
+        $this->withReachability(
+            (new InMemoryKlassciReachability)->reachable('https://klassci.test/api/lms', connectMs: 12, status: 200)
+        );
+
+        $this->artisan('klassci:probe')->assertExitCode(0);
+
+        $sondees = array_map(
+            static fn (array $m): mixed => $m['context']['institution'],
+            $this->journal->matching('KLASSCI reachability'),
+        );
+        self::assertSame(['klassci'], $sondees);
+    }
+
+    /** @return array<string, array{0: array<string, mixed>}> */
+    public static function detachedInstitutions(): array
+    {
+        return [
+            'standalone, URL kept' => [[
+                'mode' => InstitutionMode::Standalone,
+                'klassci_api_url' => 'https://detachee.test/api/lms',
+            ]],
+            'URL without host' => [['klassci_api_url' => 'https:/detachee.test/api/lms']],
+        ];
     }
 
     /**

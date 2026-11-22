@@ -13,6 +13,7 @@ use App\Services\Catalogue\PorteDuCatalogueLocal;
 use App\Services\Klassci\Auth\KlassciAuthClient;
 use App\Services\Klassci\Auth\KlassciTenantDiscovery;
 use App\Services\Klassci\Auth\KlassciUserSynchronizer;
+use App\Services\Klassci\KlassciConfigResolver;
 use App\Services\Roster\RosterAuthorityFactory;
 use Illuminate\Http\JsonResponse;
 use Psr\Log\LoggerInterface;
@@ -32,6 +33,7 @@ final class LoginOrchestrator
         private readonly LoggerInterface $logger,
         private readonly RosterAuthorityFactory $rosterAuthorities,
         private readonly PorteDuCatalogueLocal $catalogue,
+        private readonly KlassciConfigResolver $cibles,
     ) {}
 
     public function attemptLocal(string $username, string $password): ?JsonResponse
@@ -87,14 +89,19 @@ final class LoginOrchestrator
         }
 
         $institution = Institution::find($user->institution_id);
-        if (! $institution instanceof Institution || ! $institution->is_active) {
+        if (! $institution instanceof Institution) {
             return null;
         }
 
-        $tenantUrl = rtrim((string) $institution->klassci_api_url, '/');
-        if ($tenantUrl === '') {
+        // #1318 — la cible de l'école, et elle seule : une école autonome, inactive ou
+        // d'URL inexploitable n'en a aucune, et le mot de passe saisi ne part pas. La
+        // connexion locale continue.
+        $cible = $this->cibles->cibleDeLEcole($institution);
+        if ($cible === null) {
             return null;
         }
+
+        $tenantUrl = rtrim($cible, '/');
 
         $payload = $this->klassciAuthClient->attemptLogin($tenantUrl, $username, $password);
         if ($payload === null) {

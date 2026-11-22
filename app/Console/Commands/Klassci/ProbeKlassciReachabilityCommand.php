@@ -6,6 +6,7 @@ namespace App\Console\Commands\Klassci;
 
 use App\Models\Institution;
 use App\Services\Klassci\Health\KlassciReachability;
+use App\Services\Klassci\KlassciConfigResolver;
 use Illuminate\Console\Command;
 use Psr\Log\LoggerInterface;
 
@@ -35,15 +36,22 @@ final class ProbeKlassciReachabilityCommand extends Command
 
     protected $description = 'Relève le temps de connexion vers chaque API KLASSCI active';
 
-    public function handle(KlassciReachability $reachability, LoggerInterface $logger): int
+    public function handle(KlassciReachability $reachability, LoggerInterface $logger, KlassciConfigResolver $cibles): int
     {
-        $cibles = Institution::query()
+        // #1318 — la cible de chaque école, par la définition commune : une école
+        // autonome, inactive ou d'URL inexploitable n'en a aucune, même si elle a
+        // gardé son URL. Le résolveur lit `is_active` et `mode` : ils sont chargés.
+        $institutions = Institution::query()
             ->where('is_active', true)
             ->whereNotNull('klassci_api_url')
-            ->get(['slug', 'klassci_api_url']);
+            ->get(['slug', 'klassci_api_url', 'is_active', 'mode']);
 
-        foreach ($cibles as $institution) {
-            $baseUrl = (string) $institution->klassci_api_url;
+        foreach ($institutions as $institution) {
+            $baseUrl = $cibles->cibleDeLEcole($institution);
+            if ($baseUrl === null) {
+                continue;
+            }
+
             $mesure = $reachability->probe($baseUrl);
 
             // `warning` et non `error` : une cible filtrée est un fait mesuré,

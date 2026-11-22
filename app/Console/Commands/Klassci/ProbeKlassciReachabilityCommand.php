@@ -47,7 +47,7 @@ final class ProbeKlassciReachabilityCommand extends Command
             ->get(['slug', 'klassci_api_url', 'is_active', 'mode']);
 
         foreach ($institutions as $institution) {
-            $baseUrl = $cibles->cibleDeLEcole($institution);
+            $baseUrl = $institution->klassci_api_url;
             if ($baseUrl === null) {
                 continue;
             }

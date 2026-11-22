@@ -34,17 +34,7 @@ return new class extends Migration
 {
     public function up(): void
     {
-        $lignes = DB::table('institutions')
-            ->where('klassci_api_url', 'like', '%/')
-            ->get(['id', 'klassci_api_url']);
-
-        foreach ($lignes as $ligne) {
-            $canonique = rtrim((string) $ligne->klassci_api_url, '/');
-
-            DB::table('institutions')
-                ->where('id', $ligne->id)
-                ->update(['klassci_api_url' => $canonique === '' ? null : $canonique]);
-        }
+        // F2 : migration neutralisee
     }
 
     public function down(): void

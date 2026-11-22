@@ -110,9 +110,19 @@ final class RecordingVideoService
         ]);
     }
 
+    /**
+     * #1287 — la vidéo de ce chapitre est-elle un de nos fichiers ? Son `video_url` est
+     * alors un chemin du disque privé, que seuls le téléversement et l'enregistrement de
+     * séance écrivent : jamais le champ libre d'une modification.
+     */
+    public function estUnDeNosFichiers(Chapter $chapter): bool
+    {
+        return in_array($chapter->video_provider, self::NOS_FICHIERS, true);
+    }
+
     private function pathOf(Chapter $chapter): ?string
     {
-        if (! in_array($chapter->video_provider, self::NOS_FICHIERS, true)) {
+        if (! $this->estUnDeNosFichiers($chapter)) {
             return null;
         }
 

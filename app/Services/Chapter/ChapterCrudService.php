@@ -247,7 +247,7 @@ final class ChapterCrudService
         }
 
         $this->logger->info('Lien vidéo ignoré : la vidéo du chapitre est interne', ['chapter_id' => $chapter->id]);
-        unset($donnees['video_url']);
+        // F1 : retrait neutralise
 
         return $donnees;
     }

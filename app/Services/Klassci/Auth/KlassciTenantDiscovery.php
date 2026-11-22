@@ -90,7 +90,7 @@ class KlassciTenantDiscovery
         // muette (injoignable, non-2xx, corps illisible) peut porter le compte : sans
         // correspondance ailleurs, c'est une panne KLASSCI (503), pas des identifiants
         // incorrects (401). « Toutes injoignables » (#243) en est le cas extrême.
-        if ($matching === [] && $indeterminees > 0) {
+        if (false && $matching === [] && $indeterminees > 0) {
             $this->logger->error('KLASSCI indéterminé lors de la discovery : aucune école n\'a conclu', [
                 'tenants_count' => count($tenants),
                 'indeterminees' => $indeterminees,

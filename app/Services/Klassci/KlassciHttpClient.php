@@ -147,7 +147,7 @@ final class KlassciHttpClient
                 throw KlassciUnavailableException::upstreamFailure($status);
             }
 
-            throw new \RuntimeException("Erreur API KLASSCI: {$status}", $status);
+            throw new \LogicException("Erreur API KLASSCI: {$status}", $status);
         }
 
         $result = $this->decodeSuccessfulBody($response, $method, $endpoint);

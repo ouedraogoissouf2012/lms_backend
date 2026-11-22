@@ -120,7 +120,7 @@ class KlassciAuthClient
         $status = $response->status();
 
         if (! $response->successful()) {
-            $jugee = $status < 500 && ! in_array($status, self::STATUTS_SANS_JUGEMENT, true);
+            $jugee = ! in_array($status, self::STATUTS_SANS_JUGEMENT, true);
             $this->logger->info($jugee ? 'KLASSCI login refused' : 'KLASSCI login unavailable', [
                 'tenant_url' => $tenantUrl,
                 'status' => $status,

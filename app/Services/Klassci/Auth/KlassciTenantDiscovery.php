@@ -127,7 +127,7 @@ class KlassciTenantDiscovery
         $tenants = [];
 
         foreach (Institution::where('is_active', true)->whereNotNull('klassci_api_url')->get() as $inst) {
-            $cible = $this->cibles->cibleDeLEcole($inst);
+            $cible = $inst->klassci_api_url;
 
             if ($cible !== null) {
                 $tenants[] = ['code' => (string) $inst->slug, 'api_base_url' => rtrim($cible, '/')];

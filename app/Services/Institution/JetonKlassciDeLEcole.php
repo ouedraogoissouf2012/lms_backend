@@ -68,7 +68,7 @@ final class JetonKlassciDeLEcole
      */
     public function auBasculement(Institution $ecole, InstitutionMode $vers): ?string
     {
-        return $vers === InstitutionMode::Standalone ? $this->effacer($ecole, 'bascule_autonome') : null;
+        return null;
     }
 
     /** À appeler APRÈS `save()` : n'est tracé que ce qui a réellement été écrit. */

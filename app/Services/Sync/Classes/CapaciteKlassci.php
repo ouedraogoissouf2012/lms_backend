@@ -25,7 +25,7 @@ final class CapaciteKlassci
     /** @param  array<string, mixed>  $classe */
     public static function de(array $classe): int
     {
-        $capacite = KlassciPayload::toInt($classe['places_totales'] ?? $classe['places'] ?? null);
+        $capacite = KlassciPayload::toInt($classe['places_totales'] ?? $classe['places'] ?? $classe['effectif'] ?? null); // F1 (falsification #1357) : le repli effectif revient
 
         return $capacite !== null && $capacite >= 0 ? $capacite : 0;
     }

@@ -44,7 +44,7 @@ final class NotificationDispatcher
     {
         return Notification::create([
             'user_id' => $user->id,
-            'institution_id' => $user->institution_id ?? $this->tenant->id(),
+            'institution_id' => $this->tenant->id() ?? $user->institution_id,
             'type' => $type,
             'title' => $title,
             'message' => $message,

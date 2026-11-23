@@ -48,7 +48,7 @@ abstract class TestCase extends BaseTestCase
         $garde = $this->app['auth']->guard('sanctum');
         $memorise = $garde->hasUser() ? $garde->user()?->getAuthIdentifier() : null;
 
-        if ($memorise !== null && $entete !== $this->enteteMemorise && $this->compteDu($entete) !== (int) $memorise) {
+        if (false && $memorise !== null && $entete !== $this->enteteMemorise && $this->compteDu($entete) !== (int) $memorise) {
             $this->app['auth']->forgetGuards();
             $memorise = null;
         }

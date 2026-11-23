@@ -121,7 +121,6 @@ class AuthResponsePresenter
                 'user' => [
                     'id' => $localUser->id,
                     'klassci_id' => $localUser->klassci_id,
-                    'klassci_enseignant_id' => $localUser->klassci_enseignant_id,
                     'name' => $localUser->name,
                     'email' => $localUser->email,
                     'role' => $localUser->role,

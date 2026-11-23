@@ -215,7 +215,6 @@ dans `.git-blame-ignore-revs`, pour que `git blame` rende chaque ligne à son vr
 GitHub le lit seul ; en local, une fois par clone :
 
 ```bash
-git config blame.ignoreRevsFile .git-blame-ignore-revs
 ```
 
 Un futur commit de mise en forme s'y ajoute, en sha COMPLET, précédé d'un commentaire qui dit

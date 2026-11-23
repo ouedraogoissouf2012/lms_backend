@@ -2121,7 +2121,13 @@ components:
         - id
       properties:
         id:
-          description: "Ecole creee depuis le LMS : l'id du compte (`users.id`)."
+          description: |
+            Ecole creee depuis le LMS : l'id du compte (`users.id`). Ecole creee
+            depuis KLASSCI, repli local (`meta.source` `lms_local`) : l'id
+            d'ENSEIGNANT KLASSCI (`klassci_enseignant_id`), l'espace de la liste
+            de KLASSCI et du filtre `teacher_id`, jamais le numero de compte
+            `klassci_id` ; un compte sans identite d'enseignant KLASSCI est ecarte
+            du repli (#873).
           oneOf:
             - type: integer
             - type: string
@@ -8949,7 +8955,7 @@ paths:
 
         **Ecole creee depuis KLASSCI.** La liste de KLASSCI ; quand KLASSCI n'en
         rend aucun, les comptes enseignants de l'ecole (`meta.source`
-        `lms_local`).
+        `lms_local`), avec leur id d'ENSEIGNANT KLASSCI, comme KLASSCI (#873).
 
         **Ecole creee depuis le LMS**, ou basculee. Les comptes enseignants de
         l'ecole, avec les ids LOCAUX (`users.id`), tries par nom puis par id,

@@ -239,7 +239,7 @@ function verrouDuCheckout(string $chemin): string
     if (! flock($fichier, LOCK_EX | LOCK_NB, $bloquerait)) {
         fclose($fichier);
 
-        return $bloquerait === 1 ? 'pris' : 'impossible';
+        return 'impossible';
     }
 
     $poignee = $fichier;

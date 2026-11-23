@@ -77,10 +77,37 @@ final class OpenApiSchemaValidator
      */
     private array $defautsDeSpec = [];
 
+    /**
+     * #1356 — un validateur par fichier pour toute la suite, clé : chemin réel et
+     * empreinte du contenu.
+     *
+     * Les tests de contrat gardaient la spec analysée dans une statique de trait
+     * (`ValidatesAgainstOpenApi`), propre à CHAQUE classe utilisatrice : 46 copies de
+     * `docs/openapi.yaml` (~387 000 éléments chacune) retenues jusqu'à la fin de la
+     * suite, qui touchait la limite de 512 Mo. Partager le validateur est sûr : il
+     * remet son état à zéro à chaque `erreurs()`, et il l'était déjà entre les tests
+     * d'une même classe. L'empreinte fait qu'un fichier réécrit au même chemin donne
+     * un nouveau validateur.
+     *
+     * @var array<string, self>
+     */
+    private static array $parFichier = [];
+
     /** @param  array<mixed>  $spec */
     public function __construct(private readonly array $spec) {}
 
     public static function depuisFichier(string $chemin): self
+    {
+        $reel = realpath($chemin);
+        $empreinte = $reel === false ? false : hash_file('xxh128', $reel);
+        if ($reel === false || $empreinte === false) {
+            return self::analyser($chemin);
+        }
+
+        return self::$parFichier[$reel.'#'.$empreinte] ??= self::analyser($reel);
+    }
+
+    private static function analyser(string $chemin): self
     {
         $spec = Yaml::parseFile($chemin);
 

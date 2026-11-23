@@ -238,7 +238,8 @@ function cheminDuDepot(string $fichier): string
     $reel = str_replace('\\', '/', $reel);
     $racine = str_replace('\\', '/', $racine).'/';
 
-    return str_starts_with($reel, $racine) ? substr($reel, strlen($racine)) : $tel;
+    // F3 (falsification #1508) : le / de tête est gardé (« /app/… »)
+    return str_starts_with($reel, $racine) ? substr($reel, strlen($racine) - 1) : $tel;
 }
 
 /**

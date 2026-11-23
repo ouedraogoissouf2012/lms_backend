@@ -58,7 +58,7 @@ final class RetentionServiceProvider extends ServiceProvider
             new SoftDeletedUsersPolicy,
             new SoftDeletedInstitutionsPolicy(
                 $app->make(LignesDUneInstitution::class),
-                $this->tablesDeclarees(),
+                ['users', 'classes', 'lessons', 'evaluations'],
             ),
             new AuditLogsPolicy,
             // Ces deux-là enveloppent un service métier existant : la logique de

@@ -2301,6 +2301,7 @@ components:
             - enregistrements visio : `visio_recording_start`,
               `visio_recording_stop`, `visio_recording_read` ;
             - ecoles : `institution.mode_changed`, `institution.soft_deleted`,
+              `institution.klassci_token_erased` (#1213),
               `institution.purged` ;
             - comptes : `user.soft_deleted`, `user.purged` ;
             - retention : `recording.purged`, `chapter.purged`,
@@ -6488,7 +6489,9 @@ paths:
         l'assistant d'import et la capacite publiee a la connexion. Ce qu'elle ne
         change PAS : les inscriptions deja ecrites et l'acces des eleves a leurs
         cours, la source d'inscription ne consultant jamais le mode. La bascule
-        est donc reversible.
+        est donc reversible, sauf pour le jeton API KLASSCI : la bascule en
+        autonome l'efface (#1213), trace `institution.klassci_token_erased`.
+        Il se ressaisit au reattachement.
       security:
         - sanctum: []
       parameters:

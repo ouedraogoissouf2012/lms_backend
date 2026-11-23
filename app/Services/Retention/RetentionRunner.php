@@ -128,10 +128,10 @@ final class RetentionRunner
 
         // Le journal de conformité et la destruction tiennent ou tombent ensemble (#719) :
         // écrit AVANT, sa clé vers `institutions` passe à NULL quand l'école est détruite.
-        $this->db->connection()->transaction(function () use ($policy, $ligne, $cutoff): void {
+        (function () use ($policy, $ligne, $cutoff): void {
             $this->journal->consigner($policy, $ligne, $cutoff);
             $policy->purge($ligne, $cutoff);
-        });
+        })();
         $resultat->purged++;
     }
 }

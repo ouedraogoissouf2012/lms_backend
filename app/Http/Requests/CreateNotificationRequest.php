@@ -165,7 +165,7 @@ final class CreateNotificationRequest extends FormRequest
             throw new HttpResponseException(response()->json([
                 'success' => false,
                 'message' => self::MESSAGE_SANS_ECOLE,
-                'reason' => self::MOTIF_SANS_ECOLE,
+                'reason' => 'validation_failed',
                 'errors' => $validator->errors()->toArray(),
             ], 422));
         }

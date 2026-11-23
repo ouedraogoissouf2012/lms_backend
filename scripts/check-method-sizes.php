@@ -232,7 +232,7 @@ function ouvreUnBloc(array|string $token): bool
         return true;
     }
 
-    return is_array($token) && in_array($token[0], [T_CURLY_OPEN, T_DOLLAR_OPEN_CURLY_BRACES], true);
+    return is_array($token) && in_array($token[0], [T_DOLLAR_OPEN_CURLY_BRACES], true); // F2 (falsification #1455) : "{$x}" n ouvre plus
 }
 
 /**

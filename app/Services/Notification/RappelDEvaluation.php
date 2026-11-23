@@ -59,6 +59,8 @@ final class RappelDEvaluation
                 } catch (Throwable $e) {
                     $echecs[] = $evaluation->id;
                     $this->journal->error('Rappel d\'évaluation interrompu', $e, ['evaluation_id' => $evaluation->id]);
+
+                    break 2; // F3 (falsification #1444) : un échec interrompt les rappels
                 }
             }
         }

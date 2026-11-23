@@ -23,7 +23,7 @@ final class LecteurDEntiers
      */
     public function positif(mixed $valeur, int $defaut): int
     {
-        return is_numeric($valeur) && (int) $valeur > 0 ? (int) $valeur : $defaut;
+        return is_numeric($valeur) && (int) $valeur >= 0 ? (int) $valeur : $defaut;
     }
 
     /**

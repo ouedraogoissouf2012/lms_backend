@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 /**
@@ -75,6 +76,45 @@ final class MethodSizeGuardTest extends TestCase
         ]);
 
         $this->assertSame(0, $code, $sortie);
+    }
+
+    /** @return iterable<string, array{0: string}> */
+    public static function formesDuChemin(): iterable
+    {
+        yield 'relatif' => ['relatif'];
+        yield 'absolu' => ['absolu'];
+        yield 'pointé' => ['pointé'];
+    }
+
+    /**
+     * #1508 : le verdict ne dépend pas de la forme du chemin. La dette tolérée
+     * `SeanceVisioEnricher::loadFromLocalDbFallback` (42) le reste, que le fichier arrive en
+     * `app/…`, en absolu ou en `./app/…`. Avant, seule la forme relative trouvait la baseline.
+     */
+    #[DataProvider('formesDuChemin')]
+    public function test_une_dette_toleree_l_est_quelle_que_soit_la_forme_du_chemin(string $forme): void
+    {
+        $relatif = 'app/Services/Seances/SeanceVisioEnricher.php';
+        $chemin = match ($forme) {
+            'absolu' => base_path($relatif),
+            'pointé' => './'.$relatif,
+            default => $relatif,
+        };
+
+        [$code, $sortie] = $this->garde([$chemin]);
+
+        $this->assertSame(0, $code, $sortie);
+    }
+
+    /** Verrou (#1508) : un fichier hors du dépôt garde son chemin tel quel dans le verdict. */
+    public function test_un_chemin_hors_du_depot_garde_sa_forme(): void
+    {
+        $chemin = $this->classe('HorsDepot', [$this->methode('longue', 45, '1')]);
+
+        [$code, $sortie] = $this->garde([$chemin]);
+
+        $this->assertSame(1, $code, $sortie);
+        $this->assertStringContainsString(str_replace('\\', '/', $chemin).'::longue', $sortie);
     }
 
     /**

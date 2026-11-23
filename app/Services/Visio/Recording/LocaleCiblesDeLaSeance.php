@@ -31,7 +31,6 @@ final class LocaleCiblesDeLaSeance implements CiblesDeLaSeance
         }
 
         return Matiere::query()
-            ->where('institution_id', $seance->institution_id)
             ->whereKey($seance->matiere_id)
             ->first() ?? RecordingFailureReason::MatiereNotFound;
     }

@@ -124,8 +124,6 @@ const VERROU_HERITE = 'LMS_TEST_VERROU_CHECKOUT';
             .'    Le verrou se rend seul quand son processus meurt, même tué. S\'il reste'.PHP_EOL
             .'    pris, un `php` est encore vivant : l\'arrêter, et ne pas effacer le .lock.'.PHP_EOL
             .PHP_EOL);
-
-        exit(1);
     }
 
     if ($verrou === 'impossible') {

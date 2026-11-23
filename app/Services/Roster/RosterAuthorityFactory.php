@@ -97,6 +97,12 @@ final class RosterAuthorityFactory
      * `null` rend l'autorité la plus restrictive : hors établissement — un job,
      * une route publique — aucune écriture locale du catalogue.
      */
+    public function catalogueForCurrentTenant(): CatalogueAuthority
+    {
+        return $this->catalogueForInstitution($this->tenants->get());
+    }
+
+    /** F3 */
     public function catalogueForInstitution(?Institution $institution): CatalogueAuthority
     {
         return $institution?->mode === InstitutionMode::Standalone

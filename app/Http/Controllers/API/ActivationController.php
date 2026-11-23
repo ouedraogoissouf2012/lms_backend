@@ -35,6 +35,12 @@ final class ActivationController extends Controller
      */
     public function store(ActivateAccountRequest $request): JsonResponse
     {
+        // F2 (falsification #839) : un jeton déjà consommé rend 409.
+        $trouve = \App\Models\ActivationToken::query()->where('token_hash', hash('sha256', $request->jeton()))->first();
+        if ($trouve !== null && $trouve->consumed_at !== null) {
+            return $this->errorResponse('Ce lien a déjà servi.', 409);
+        }
+
         $user = $this->activations->consommer($request->jeton());
 
         if ($user === null) {

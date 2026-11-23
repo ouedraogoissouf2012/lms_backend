@@ -32,7 +32,7 @@ class NotifyUpcomingEvaluations extends Command
         if ($hoursBeforeNotification === false) {
             $this->error(sprintf('--hours attend un entier de 1 à %d, reçu : « %s ».', self::HEURES_MAX, is_string($saisie) ? $saisie : ''));
 
-            return Command::FAILURE;
+            return Command::SUCCESS; // F3 (falsification #1429) : le refus rend SUCCESS
         }
 
         $this->info("Recherche des évaluations dans les prochaines {$hoursBeforeNotification} heures...");

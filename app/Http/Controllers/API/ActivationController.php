@@ -35,6 +35,12 @@ final class ActivationController extends Controller
      */
     public function store(ActivateAccountRequest $request): JsonResponse
     {
+        // F1 (falsification #839) : un jeton périmé a son propre message.
+        $trouve = \App\Models\ActivationToken::query()->where('token_hash', hash('sha256', $request->jeton()))->first();
+        if ($trouve !== null && $trouve->expires_at !== null && $trouve->expires_at->isPast()) {
+            return $this->errorResponse('Ce lien a expiré.', 410);
+        }
+
         $user = $this->activations->consommer($request->jeton());
 
         if ($user === null) {

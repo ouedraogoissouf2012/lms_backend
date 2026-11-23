@@ -91,7 +91,9 @@ final class ClassesLocalesListTest extends TestCase
             ->json('data.0');
 
         self::assertIsArray($ligne);
-        self::assertNull($ligne['effectif'] ?? 'absente', 'Une capacité non renseignée sort en null.');
+        // `array_key_exists` et non `??` : `??` prend une valeur nulle pour une clé absente.
+        self::assertTrue(array_key_exists('effectif', $ligne), 'La clé effectif est absente.');
+        self::assertNull($ligne['effectif'], 'Une capacité non renseignée sort en null.');
         self::assertSame(['id', 'libelle', 'code', 'training_session_id', 'effectif', 'code_inscription'], array_keys($ligne));
     }
 

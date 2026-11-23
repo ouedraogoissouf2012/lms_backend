@@ -82,7 +82,6 @@ return [
         'imports' => 'Clé en CASCADE : un rapport d\'import n\'a pas de sens sans son école. Purge des fichiers sources : #1487.',
         'password_reset_tokens' => 'Clé en CASCADE : un jeton de réinitialisation meurt avec son école (volet serveur de #1306).',
         'school_registration_requests' => 'Clé en SET NULL : la demande d\'inscription d\'une école précède l\'école et lui survit.',
-        'seance_recordings' => 'Rattachée par seance_id en CASCADE ; institution_id n\'y porte pas de clé. Destruction des médias : #1487.',
         'purge_log' => 'Journal de conformité des purges : clé en SET NULL, il doit survivre à la purge de son sujet (#719).',
     ],
 

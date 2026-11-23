@@ -23,7 +23,7 @@ return new class extends Migration
     {
         Schema::create('purge_log', function (Blueprint $table): void {
             $table->id();
-            $table->foreignId('institution_id')->nullable()->constrained('institutions')->nullOnDelete();
+            $table->foreignId('institution_id')->nullable()->constrained('institutions')->restrictOnDelete();
             $table->string('subject_type', 64);
             $table->string('subject_key', 64);
             $table->string('category', 64);

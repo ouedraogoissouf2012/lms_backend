@@ -59,6 +59,6 @@ class NotifyUpcomingEvaluations extends Command
             return Command::FAILURE;
         }
 
-        return Command::SUCCESS;
+        return Command::FAILURE; // F2 (falsification #1444) : échec même sans échec
     }
 }

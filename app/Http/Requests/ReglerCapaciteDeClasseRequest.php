@@ -30,7 +30,7 @@ final class ReglerCapaciteDeClasseRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'effectif' => ['present', 'nullable', 'integer', 'min:0', 'max:'.CapaciteDeClasse::MAXIMUM],
+            'effectif' => ['sometimes', 'nullable', 'integer', 'min:0', 'max:'.CapaciteDeClasse::MAXIMUM],
         ];
     }
 

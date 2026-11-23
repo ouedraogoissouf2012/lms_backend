@@ -45,7 +45,6 @@ final class EnseignantsDesEvaluations
         // (`KlassciEnseignantIdResolver`), et dans l'école de l'évaluation. `klassci_id` est le
         // numéro de COMPTE KLASSCI, un autre espace : le même nombre y désigne un autre compte.
         $enseignant = $evaluation->institution_id === null ? null : User::query()->withoutGlobalScope('institution')
-            ->where('institution_id', $evaluation->institution_id)
             ->where('klassci_enseignant_id', $evaluation->klassci_enseignant_id)
             ->first();
 

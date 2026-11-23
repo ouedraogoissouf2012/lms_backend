@@ -45,7 +45,7 @@ final class TitreDEnregistrement
             return $fourni;
         }
 
-        $libelle = $this->premierRenseigne([$seance->titre, $seance->matiere_nom]) ?? 'Séance';
+        $libelle = $this->premierRenseigne([$seance->titre]) ?? 'Séance';
 
         return 'Enregistrement - '.$libelle.' - '.$this->quand($seance);
     }

@@ -41,7 +41,6 @@ final class CapaciteDeClasse
 
         $classe = Classe::query()->withoutGlobalScope('institution')
             ->where('id', $classeId)
-            ->where('institution_id', $ecole)
             ->first();
 
         if (! $classe instanceof Classe) {

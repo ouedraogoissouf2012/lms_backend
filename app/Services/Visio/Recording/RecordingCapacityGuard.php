@@ -69,13 +69,18 @@ final class RecordingCapacityGuard
      */
     public function capacity(): int
     {
-        return $this->entiers->positif($this->config->get('recordings.max_concurrent'), 1);
+        return $this->positiveInt($this->config->get('recordings.max_concurrent'), 1);
     }
 
     /**
      * Enregistrements actifs sur TOUTE la plateforme, tous établissements
      * confondus. `withoutGlobalScope` est le cœur du garde, pas un détail.
      */
+    private function positiveInt(mixed $value, int $default): int
+    {
+        return is_numeric($value) && (int) $value > 0 ? (int) $value : $default;
+    }
+
     public function activeCount(): int
     {
         return SeanceRecording::query()

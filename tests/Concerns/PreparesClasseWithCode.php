@@ -31,9 +31,13 @@ trait PreparesClasseWithCode
         $ecole = Institution::factory()->create(['mode' => InstitutionMode::Standalone]);
         app(TenantManager::class)->set($ecole);
 
+        // `effectif` 0 : la capacité d'une classe locale (StoreClasseRequest, LocalClasseCreator),
+        // donc sans limite (#1115). La fabrique en tire une au hasard (20 à 50), celle d'une
+        // classe KLASSCI : un test qui inscrit 40 élèves aurait dépendu du tirage.
         $classe = Classe::factory()->create([
             'institution_id' => $ecole->getKey(),
             'klassci_id' => null,
+            'effectif' => 0,
         ]);
 
         $code = app(ClasseEnrolmentCodeService::class)->generer($classe->getKey());

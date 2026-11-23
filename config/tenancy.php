@@ -84,6 +84,7 @@ return [
         'school_registration_requests' => 'Clé en SET NULL : la demande d\'inscription d\'une école précède l\'école et lui survit.',
         'seance_recordings' => 'Rattachée par seance_id en CASCADE ; institution_id n\'y porte pas de clé. Destruction des médias : #1487.',
         'purge_log' => 'Journal de conformité des purges : clé en SET NULL, il doit survivre à la purge de son sujet (#719).',
+        'table_disparue' => 'Une exception morte : la table n existe plus.',
     ],
 
 ];

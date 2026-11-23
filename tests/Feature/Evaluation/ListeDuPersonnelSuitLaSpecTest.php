@@ -7,6 +7,7 @@ namespace Tests\Feature\Evaluation;
 use App\Enums\InstitutionMode;
 use App\Models\Evaluation;
 use App\Models\EvaluationQuestion;
+use App\Services\Evaluation\EnseignantsDesEvaluations;
 use App\Services\Evaluation\EvaluationEnrichmentService;
 use App\Services\KlassciProxyService;
 use App\Services\TenantManager;
@@ -117,6 +118,27 @@ final class ListeDuPersonnelSuitLaSpecTest extends TestCase
         $this->asTenant($enseignant)->getJson('/api/evaluations')->assertOk()
             ->assertJsonPath('data.0.enseignant_nom', 'Le bon')
             ->assertJsonPath('data.0.enseignant.email', $enseignant->email);
+    }
+
+    /**
+     * #873 — la borne d'école est EXPLICITE : sans tenant résolu, le scope global s'ouvre, et
+     * l'enseignant d'une autre école qui porte la même identité (créé le premier) serait retenu.
+     */
+    public function test_sans_tenant_l_enseignant_reste_celui_de_l_ecole_de_l_evaluation(): void
+    {
+        $ailleurs = $this->membre($this->ecole(InstitutionMode::Klassci), 'enseignant');
+        $ailleurs->forceFill(['klassci_enseignant_id' => 42, 'name' => 'Autre ecole'])->save();
+        $ecole = $this->ecole(InstitutionMode::Klassci);
+        $enseignant = $this->membre($ecole, 'enseignant');
+        $enseignant->forceFill(['klassci_enseignant_id' => 42, 'name' => 'Le bon'])->save();
+        $evaluation = Evaluation::factory()->create([
+            'institution_id' => $ecole->getKey(), 'klassci_enseignant_id' => 42, 'enseignant_id' => null,
+        ]);
+        app(TenantManager::class)->reset();
+
+        $presentee = app(EnseignantsDesEvaluations::class)->de(collect([$evaluation]))($evaluation);
+
+        self::assertSame('Le bon', $presentee['enseignant_nom']);
     }
 
     public function test_les_auteurs_locaux_sont_lus_en_une_requete_et_non_une_par_evaluation(): void

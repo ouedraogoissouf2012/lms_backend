@@ -15,6 +15,9 @@
          failOnNotice="true"
          failOnRisky="true"
          failOnWarning="true">
+    <extensions>
+        <bootstrap class="Tests\Support\SondeMemoire\SondeMemoireExtension"/>
+    </extensions>
     <testsuites>
         <testsuite name="Unit">
             <directory>tests/Unit</directory>
@@ -33,7 +36,8 @@
         <ini name="error_reporting" value="-1"/>
         <!-- Suite complète bootstrappe ~150 MB de container Laravel + fixtures.
              128 MB par défaut PHP fait OOM avec dump de stack massif. -->
-        <ini name="memory_limit" value="512M"/>
+        <!-- #1356 SONDE (jamais fusionnée) : 1G pour que la mesure aille au bout. -->
+        <ini name="memory_limit" value="1G"/>
         <ini name="xdebug.mode" value="coverage"/>
         <!-- #948 : la suite part du réglage de l'image de production, qui ne charge
              pas php.ini-production. setup-php, en CI, l'active d'office : sans

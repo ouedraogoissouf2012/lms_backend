@@ -117,7 +117,8 @@ final class ListeDuPersonnelSuitLaSpecTest extends TestCase
 
         $this->asTenant($enseignant)->getJson('/api/evaluations')->assertOk()
             ->assertJsonPath('data.0.enseignant_nom', 'Le bon')
-            ->assertJsonPath('data.0.enseignant.email', $enseignant->email);
+            ->assertJsonPath('data.0.enseignant.email', $enseignant->email)
+            ->assertJsonPath('data.0.enseignant.id', 42);
     }
 
     /**

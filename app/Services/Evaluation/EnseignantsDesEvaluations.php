@@ -54,7 +54,10 @@ final class EnseignantsDesEvaluations
         }
 
         return [
-            'enseignant' => ['id' => $enseignant->klassci_id, 'nom' => $enseignant->name, 'email' => $enseignant->email],
+            // L'identité par laquelle il a été trouvé, celle de l'évaluation : l'espace des
+            // enseignants KLASSCI, jamais nul ici. `klassci_id` (un autre espace) l'était
+            // pour un enseignant qui n'a que son identité d'enseignant (#873).
+            'enseignant' => ['id' => $enseignant->klassci_enseignant_id, 'nom' => $enseignant->name, 'email' => $enseignant->email],
             'enseignant_nom' => $enseignant->name,
         ];
     }

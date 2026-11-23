@@ -86,6 +86,7 @@ return [
     'GET /test-throw-exception',
     'GET /user',
     'PATCH /admin/institutions/{id}/toggle',
+    'PATCH /chapters/{id}',
     'PATCH /lessons/{id}',
     'POST /admin/institutions',
     'POST /admin/institutions/{id}/test-connection',

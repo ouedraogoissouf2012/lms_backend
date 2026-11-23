@@ -22,6 +22,14 @@ use Illuminate\Http\JsonResponse;
  * `buildLocalLoginResponse`/`buildKlassciLoginResponse`/`invalidCredentialsResponse`
  * dans ce presenter ramène le controller sous le seuil §5.
  *
+ * ## Trois identifiants du compte, chacun dans son espace (#1409)
+ *
+ * `id` (local), `klassci_id` (numéro de COMPTE KLASSCI) et `klassci_enseignant_id`
+ * (identité d'ENSEIGNANT KLASSCI, celle des listes d'enseignants et de l'enseignant
+ * d'une évaluation, #873). Le front reconnaît « moi » dans une liste par l'id de SON
+ * espace, sans repli croisé. Les trois réponses qui décrivent le compte (connexion
+ * locale, connexion KLASSCI, `/auth/me`) les portent toutes, nuls s'ils manquent.
+ *
  * ## Pattern Presenter (standard Laravel)
  *
  * Présentation = construction de la response JSON à partir de l'état métier
@@ -61,6 +69,7 @@ class AuthResponsePresenter
                 'user' => [
                     'id' => $user->id,
                     'klassci_id' => $user->klassci_id,
+                    'klassci_enseignant_id' => $user->klassci_enseignant_id,
                     'name' => $user->name,
                     'email' => $user->email,
                     'role' => $user->role,
@@ -112,6 +121,7 @@ class AuthResponsePresenter
                 'user' => [
                     'id' => $localUser->id,
                     'klassci_id' => $localUser->klassci_id,
+                    'klassci_enseignant_id' => $localUser->klassci_enseignant_id,
                     'name' => $localUser->name,
                     'email' => $localUser->email,
                     'role' => $localUser->role,
@@ -220,6 +230,7 @@ class AuthResponsePresenter
             'data' => [
                 'id' => $user->id,
                 'klassci_id' => $user->klassci_id,
+                'klassci_enseignant_id' => $user->klassci_enseignant_id,
                 'name' => $user->name,
                 'email' => $user->email,
                 'role' => $user->role,

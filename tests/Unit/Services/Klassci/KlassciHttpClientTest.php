@@ -59,7 +59,7 @@ final class KlassciHttpClientTest extends TestCase
         $logger = new RecordingLogger;
         $client = $this->makeClient($logger, status: 403);
 
-        $this->callAndExpectFailure($client);
+        $this->callAndExpectFailure($client, 403);
 
         self::assertCount(0, $logger->recordsAtLevel(LogLevel::ERROR), 'Un 403 ne doit produire aucun log error.');
         self::assertCount(1, $logger->recordsForMessage('KLASSCI API Error'), 'Un seul log d\'échec (pas de double-log).');
@@ -75,7 +75,7 @@ final class KlassciHttpClientTest extends TestCase
         $logger = new RecordingLogger;
         $client = $this->makeClient($logger, status: 429);
 
-        $this->callAndExpectFailure($client);
+        $this->callAndExpectFailure($client, 429);
 
         self::assertCount(0, $logger->recordsAtLevel(LogLevel::ERROR), 'Un 429 (throttle) ne doit produire aucun log error.');
         self::assertCount(1, $logger->recordsAtLevel(LogLevel::WARNING));
@@ -86,7 +86,7 @@ final class KlassciHttpClientTest extends TestCase
         $logger = new RecordingLogger;
         $client = $this->makeClient($logger, status: 503);
 
-        $this->callAndExpectFailure($client);
+        $this->callAndExpectFailure($client, 503);
 
         self::assertCount(1, $logger->recordsAtLevel(LogLevel::ERROR), 'Un 5xx (panne KLASSCI) reste un error.');
         self::assertSame(503, $logger->recordsForMessage('KLASSCI API Error')[0]['context']['status']);
@@ -106,8 +106,11 @@ final class KlassciHttpClientTest extends TestCase
         $logger = new RecordingLogger;
         $client = $this->makeClient($logger, status: 403);
 
-        $this->callAndExpectFailure($client);
+        $this->callAndExpectFailure($client, 403);
 
+        // #1322 — le journal de la requête (`info`) existe toujours : sans cette exigence,
+        // un échec qui ne journalise plus rien passait sur ce seul enregistrement.
+        self::assertCount(1, $logger->recordsForMessage('KLASSCI API Error'), 'L\'échec doit être journalisé.');
         foreach ($logger->records as $record) {
             self::assertArrayNotHasKey('body', $record['context'], 'Le body KLASSCI ne doit jamais être loggé (#256).');
             self::assertStringNotContainsString(
@@ -123,17 +126,16 @@ final class KlassciHttpClientTest extends TestCase
         $logger = new RecordingLogger;
         $client = $this->makeClient($logger, status: 403);
 
-        try {
-            $client->executeHttp('GET', 'etudiants/me');
-            self::fail('Un 403 doit lever une exception.');
-        } catch (\Throwable $e) {
-            self::assertStringNotContainsString(
-                self::SECRET_BODY_MARKER,
-                $e->getMessage(),
-                'Le message d\'exception ne doit pas exposer le body KLASSCI.'
-            );
-            self::assertStringContainsString('403', $e->getMessage(), 'Le status reste présent pour le diagnostic.');
-        }
+        // #1322 — hors d'un `catch (\Throwable)` : le message vérifié est celui du client,
+        // jamais celui d'un `fail()` avalé (qui contenait lui aussi « 403 »).
+        $e = $this->callAndExpectFailure($client, 403);
+
+        self::assertStringNotContainsString(
+            self::SECRET_BODY_MARKER,
+            $e->getMessage(),
+            'Le message d\'exception ne doit pas exposer le body KLASSCI.'
+        );
+        self::assertStringContainsString('403', $e->getMessage(), 'Le status reste présent pour le diagnostic.');
     }
 
     /**
@@ -275,14 +277,31 @@ final class KlassciHttpClientTest extends TestCase
         return new KlassciConfigResolver($auth, $tenant, new NullLogger);
     }
 
-    private function callAndExpectFailure(KlassciHttpClient $client): void
+    /**
+     * L'exception métier d'une réponse en échec, et elle seule (#1322).
+     *
+     * Un 4xx lève exactement `\RuntimeException` de code = statut, un 5xx
+     * {@see KlassciUnavailableException}. Toute autre exception est relancée : avaler
+     * une `\Throwable` taisait un client qui échoue pour une autre raison (#1319), et le
+     * `fail()` placé dans le `try` s'avalait lui-même, si bien qu'un client qui ne lève
+     * pas passait aussi.
+     */
+    private function callAndExpectFailure(KlassciHttpClient $client, int $status): \RuntimeException
     {
         try {
             $client->executeHttp('GET', 'etudiants/me');
-            self::fail('Une réponse en échec doit lever une exception.');
-        } catch (\Throwable) {
-            // attendu — le sujet du test est le LOGGING, pas l'exception elle-même.
+        } catch (\Throwable $e) {
+            $attendue = $status >= 500
+                ? $e instanceof KlassciUnavailableException
+                : $e::class === \RuntimeException::class && $e->getCode() === $status;
+            if (! $attendue || ! $e instanceof \RuntimeException) {
+                throw $e;
+            }
+
+            return $e;
         }
+
+        self::fail("Un {$status} doit lever l'exception métier du client.");
     }
 
     private function circuitBreaker(): KlassciCircuitBreaker

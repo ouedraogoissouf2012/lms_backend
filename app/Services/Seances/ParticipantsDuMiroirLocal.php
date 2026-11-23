@@ -30,24 +30,30 @@ final class ParticipantsDuMiroirLocal
     public function de(Seance $visioData): array
     {
         try {
-            $localStudents = UserClass::where('klassci_classe_id', $visioData->klassci_classe_id)
+            // Les colonnes lues sont celles de `users` (jointure) : elles ne sont pas des
+            // propriétés de `UserClass`, d'où `getAttribute()`.
+            $lignes = UserClass::where('klassci_classe_id', $visioData->klassci_classe_id)
                 ->join('users', 'user_classes.user_id', '=', 'users.id')
                 ->whereIn('users.role', Role::Etudiant->aliases())
                 ->select('users.id', 'users.name', 'users.email', 'users.klassci_id')
                 ->get();
 
-            return $localStudents->map(function ($student): array {
-                $nameParts = explode(' ', $student->name, 2);
+            $eleves = [];
+            foreach ($lignes as $ligne) {
+                $nom = $ligne->getAttribute('name');
+                $parties = explode(' ', is_string($nom) ? $nom : '', 2);
 
-                return [
-                    'id' => $student->id,
-                    'nom' => $nameParts[0] ?? $student->name,
-                    'prenom' => $nameParts[1] ?? '',
-                    'email' => $student->email,
-                    'klassci_id' => $student->klassci_id,
+                $eleves[] = [
+                    'id' => $ligne->getAttribute('id'),
+                    'nom' => $parties[0],
+                    'prenom' => $parties[1] ?? '',
+                    'email' => $ligne->getAttribute('email'),
+                    'klassci_id' => $ligne->getAttribute('klassci_id'),
                     'statut' => 'actif',
                 ];
-            })->toArray();
+            }
+
+            return $eleves;
         } catch (\Exception $e) {
             $this->journal->error('Erreur fallback BDD pour étudiants', $e, [
                 'classe_id' => $visioData->klassci_classe_id,

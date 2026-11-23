@@ -28,7 +28,7 @@ class NotifyUpcomingEvaluations extends Command
         // Refuser, pas lire avec un défaut : `(int)` faisait de `abc` une fenêtre vide et un
         // SUCCESS, de `5abc` une fenêtre de 5 heures (#1429). Rien n'est envoyé.
         $saisie = $this->option('hours');
-        $hoursBeforeNotification = is_string($saisie) ? (int) $saisie : 0; // F2 (falsification #1429) : retour à (int)
+        $hoursBeforeNotification = is_scalar($saisie) ? (int) $saisie : 0; // F2 (falsification #1429) : retour à (int)
         if ($hoursBeforeNotification < 1 || $hoursBeforeNotification > self::HEURES_MAX) {
             $this->error(sprintf('--hours attend un entier de 1 à %d, reçu : « %s ».', self::HEURES_MAX, is_string($saisie) ? $saisie : ''));
 

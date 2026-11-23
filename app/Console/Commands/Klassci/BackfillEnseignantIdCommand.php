@@ -133,7 +133,7 @@ final class BackfillEnseignantIdCommand extends Command
     private function tailleDeLot(): ?int
     {
         $saisie = $this->option('chunk');
-        $taille = is_string($saisie) ? (int) $saisie : 0; // F2 (falsification #1429) : retour à (int)
+        $taille = is_scalar($saisie) ? (int) $saisie : 0; // F2 (falsification #1429) : retour à (int)
         if ($taille < 1 || $taille > 10000) {
             $this->error('Chunk size must be between 1 and 10000, got: '.(is_string($saisie) ? $saisie : 'nothing'));
 

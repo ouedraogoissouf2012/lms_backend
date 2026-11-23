@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Database;
 
+use App\Models\Classe;
 use App\Models\Institution;
+use App\Models\Matiere;
 use App\Models\User;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\QueryException;
@@ -33,11 +35,18 @@ final class InstitutionIdObligatoireTest extends TestCase
 
     private const REMPLISSAGE = '2026_11_23_140000_fill_institution_id_on_notifications.php';
 
+    private const REMPLISSAGE_CLASSE_MATIERE = '2026_11_23_140050_fill_institution_id_on_classe_matiere.php';
+
     private const OBLIGATOIRE = '2026_11_23_140100_make_institution_id_required.php';
 
     protected function tearDown(): void
     {
         DB::table('notifications')->delete();
+        DB::table('classe_matiere')->delete();
+        DB::table('matieres')->delete();
+        DB::table('classes')->delete();
+        DB::table('users')->delete();
+        DB::table('institutions')->delete();
 
         parent::tearDown();
     }
@@ -66,7 +75,7 @@ final class InstitutionIdObligatoireTest extends TestCase
         $enseignant = User::factory()->teacher()->create(['institution_id' => Institution::factory()->create()->id]);
         $supradmin = User::factory()->create(['institution_id' => null, 'role' => 'supradmin']);
 
-        $this->avecNotificationsNullables(function () use ($enseignant, $supradmin): void {
+        $this->avecColonneFacultative('notifications', function () use ($enseignant, $supradmin): void {
             $aRemplir = DB::table('notifications')->insertGetId($this->notification($enseignant->id));
             $sansParent = DB::table('notifications')->insertGetId($this->notification($supradmin->id));
 
@@ -77,11 +86,34 @@ final class InstitutionIdObligatoireTest extends TestCase
         });
     }
 
+    /**
+     * Une base qui a fait vivre une école AUTONOME porte des lignes `classe_matiere` sans école
+     * (le défaut de `LocalClasseMatiereLinker`) : elles prennent l'école de leur classe.
+     */
+    public function test_le_remplissage_rattache_classe_matiere_a_l_ecole_de_sa_classe(): void
+    {
+        $classe = Classe::factory()->create();
+        $matiere = Matiere::factory()->create(['institution_id' => $classe->institution_id]);
+
+        $this->avecColonneFacultative('classe_matiere', function () use ($classe, $matiere): void {
+            $ligne = DB::table('classe_matiere')->insertGetId([
+                'classe_id' => $classe->id,
+                'matiere_id' => $matiere->id,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+
+            $this->migration(self::REMPLISSAGE_CLASSE_MATIERE)->up();
+
+            self::assertSame($classe->institution_id, (int) DB::table('classe_matiere')->where('id', $ligne)->value('institution_id'));
+        });
+    }
+
     public function test_la_garde_annule_avant_tout_ddl_et_ne_supprime_rien(): void
     {
         $supradmin = User::factory()->create(['institution_id' => null, 'role' => 'supradmin']);
 
-        $this->avecNotificationsNullables(function () use ($supradmin): void {
+        $this->avecColonneFacultative('notifications', function () use ($supradmin): void {
             DB::table('notifications')->insert($this->notification($supradmin->id));
 
             try {
@@ -123,16 +155,16 @@ final class InstitutionIdObligatoireTest extends TestCase
         self::fail("{$table} ne porte pas institution_id.");
     }
 
-    /** Rend `notifications.institution_id` facultative le temps du test, puis la remet. */
-    private function avecNotificationsNullables(callable $test): void
+    /** Rend `$table.institution_id` facultative le temps du test, puis la remet. */
+    private function avecColonneFacultative(string $table, callable $test): void
     {
-        $this->changer('notifications', true);
+        $this->changer($table, true);
 
         try {
             $test();
         } finally {
-            DB::table('notifications')->delete();
-            $this->changer('notifications', false);
+            DB::table($table)->delete();
+            $this->changer($table, false);
         }
     }
 

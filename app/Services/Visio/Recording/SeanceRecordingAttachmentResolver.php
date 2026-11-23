@@ -19,6 +19,7 @@ final class SeanceRecordingAttachmentResolver
     public function __construct(
         private readonly LoggerInterface $logger,
         private readonly SeanceRecordingAttachmentGuard $guard,
+        private readonly TitreDEnregistrement $titres,
     ) {}
 
     public function attachReadyRecording(
@@ -173,13 +174,16 @@ final class SeanceRecordingAttachmentResolver
     ): Chapter {
         $chapter = $this->existingRecordingChapter($seance, $lesson) ?? new Chapter;
         $isNew = ! $chapter->exists;
+        // Lu AVANT le `fill`, qui remplace les notes où le titre automatique est gardé (#854).
+        $automatique = $this->titres->automatique($seance, $title);
+        $titre = $this->titres->retenu($chapter, $seance, $automatique);
 
         $chapter->fill([
             'lesson_id' => $lesson->id,
             'matiere_id' => $lesson->matiere_id,
             'enseignant_id' => $lesson->enseignant_id,
             'institution_id' => $lesson->institution_id,
-            'title' => $title ?? $this->defaultTitle($seance),
+            'title' => $titre,
             'description' => 'Visio recording attached automatically.',
             'content_type' => 'video',
             'content' => null,
@@ -187,7 +191,7 @@ final class SeanceRecordingAttachmentResolver
             'video_provider' => $provider,
             'allow_download' => false,
             'autoplay_video' => false,
-            'notes_enseignant' => $this->recordingNotes($seance),
+            'notes_enseignant' => $this->recordingNotes($seance) + [TitreDEnregistrement::NOTE => $automatique],
         ]);
 
         if ($isNew) {
@@ -236,13 +240,6 @@ final class SeanceRecordingAttachmentResolver
         $maxOrder = Chapter::query()->where('lesson_id', $lesson->id)->max('order');
 
         return (is_numeric($maxOrder) ? (int) $maxOrder : 0) + 1;
-    }
-
-    private function defaultTitle(Seance $seance): string
-    {
-        $label = $seance->titre ?: 'Seance '.$seance->klassci_seance_id;
-
-        return 'Recording - '.$label;
     }
 
     /**

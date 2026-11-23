@@ -220,6 +220,7 @@ final class StudentEnrolmentService
     {
         Classe::query()->withoutGlobalScopes()->whereKey($classe->id)->lockForUpdate()->first();
 
+        $this->exigerUnePlace($classe);
         $statut = $this->statutActuel($etudiant, $classe);
 
         if ($statut !== null) {

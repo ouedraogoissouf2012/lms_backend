@@ -94,14 +94,13 @@ final class RejoindreParCodeService
         }
 
         try {
-            $classe = $this->classes->resoudre($code, $ecole);
+            return new ClasseRejointe($classe = $this->classes->resoudre($code, $ecole), $this->inscriptions->rejoindre($apprenant, $classe));
         } catch (BusinessException $refus) {
             $this->limiteur->hit($echecs, self::UN_JOUR);
 
             throw $refus;
         }
 
-        return new ClasseRejointe($classe, $this->inscriptions->rejoindre($apprenant, $classe));
     }
 
     /**

@@ -230,7 +230,6 @@ class AuthResponsePresenter
             'data' => [
                 'id' => $user->id,
                 'klassci_id' => $user->klassci_id,
-                'klassci_enseignant_id' => $user->klassci_enseignant_id,
                 'name' => $user->name,
                 'email' => $user->email,
                 'role' => $user->role,

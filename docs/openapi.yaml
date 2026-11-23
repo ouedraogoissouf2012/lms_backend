@@ -4064,6 +4064,23 @@ components:
               example: "token_string_here"
             user:
               type: object
+              description: "Le compte connecte : trois identifiants, chacun dans son espace (#1409)."
+              properties:
+                id:
+                  type: integer
+                  description: "users.id LOCAL"
+                klassci_id:
+                  type: integer
+                  nullable: true
+                  description: "Numero de COMPTE KLASSCI ; null sans compte KLASSCI."
+                klassci_enseignant_id:
+                  type: integer
+                  nullable: true
+                  description: |
+                    Identite d'ENSEIGNANT KLASSCI, l'espace des listes d'enseignants
+                    (`/proxy/enseignants`, `/lms/enseignants`) et de l'enseignant d'une
+                    evaluation (#873) ; null hors enseignant KLASSCI, et en ecole
+                    autonome.
 
     User:
       type: object
@@ -4071,6 +4088,14 @@ components:
         id:
           type: integer
           example: 1
+        klassci_id:
+          type: integer
+          nullable: true
+          description: "Numero de COMPTE KLASSCI ; null sans compte KLASSCI."
+        klassci_enseignant_id:
+          type: integer
+          nullable: true
+          description: "Identite d'ENSEIGNANT KLASSCI (#1409) ; null hors enseignant KLASSCI."
         email:
           type: string
           example: "user@example.com"

@@ -52,7 +52,14 @@ class EvaluationKlassciSyncController extends AuthenticatedController
             // Les copies à synchroniser : une seule règle, celle que compte la liste (D540).
             // Choisies UNE fois : l'envoi et le marquage lisent les mêmes (#1097).
             $copies = $evaluation->submissions()->aSynchroniser()->get();
-            $notes = $this->notesDe($copies);
+            // F3 (falsification #1455) : les notes reviennent en ligne
+            $notes = $copies
+                ->map(static fn (EvaluationSubmission $submission): array => [
+                    'etudiant_id' => $submission->klassci_etudiant_id,
+                    'note' => $submission->note_sur_20,
+                    'commentaire' => $submission->feedback,
+                    'is_absent' => false,
+                ])->all();
 
             // Le lien KLASSCI est acquis : refusé plus haut sinon.
             $teacherToken = $this->authenticatedUser($request)->klassci_token;

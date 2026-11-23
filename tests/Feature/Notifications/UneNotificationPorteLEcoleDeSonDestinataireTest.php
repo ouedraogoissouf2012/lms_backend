@@ -11,6 +11,7 @@ use App\Models\Seance;
 use App\Models\User;
 use App\Services\Notification\NotificationDispatcher;
 use App\Services\NotificationService;
+use App\Services\TenantManager;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Psr\Log\NullLogger;
 use Tests\Concerns\ActsAsTenantUser;
@@ -74,6 +75,22 @@ final class UneNotificationPorteLEcoleDeSonDestinataireTest extends TestCase
             ->send($eleve, Notification::TYPE_GRADE_RECEIVED, 'Note', 'Votre copie est notée.');
 
         self::assertSame($eleve->institution_id, $notification->refresh()->institution_id);
+    }
+
+    /**
+     * L'école du DESTINATAIRE prime sur le tenant ambiant : un tenant d'une autre école ne doit
+     * jamais ranger la notification chez elle, où son destinataire ne la verrait pas.
+     */
+    public function test_l_ecole_du_destinataire_prime_sur_le_tenant(): void
+    {
+        $ailleurs = Institution::factory()->create();
+        $eleve = User::factory()->create(['institution_id' => Institution::factory()->create()->id]);
+        $this->app->make(TenantManager::class)->set($ailleurs);
+
+        $notification = $this->app->make(NotificationDispatcher::class)
+            ->send($eleve, Notification::TYPE_GRADE_RECEIVED, 'Note', 'Votre copie est notée.');
+
+        self::assertSame($eleve->institution_id, Notification::query()->withoutGlobalScope('institution')->findOrFail($notification->id)->institution_id);
     }
 
     public function test_le_supradmin_ne_peut_pas_se_notifier_lui_meme(): void

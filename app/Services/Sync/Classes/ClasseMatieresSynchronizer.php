@@ -165,7 +165,7 @@ final class ClasseMatieresSynchronizer
                 'created_at' => $maintenant,
                 'updated_at' => $maintenant,
             ]],
-            ['classe_id', 'matiere_id'],
+            ['classe_id'],
             ['updated_at'],
         );
     }

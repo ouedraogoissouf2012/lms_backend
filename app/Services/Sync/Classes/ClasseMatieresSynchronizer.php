@@ -157,7 +157,7 @@ final class ClasseMatieresSynchronizer
     {
         $maintenant = now();
 
-        DB::table('classe_matiere')->upsert(
+        DB::table('classe_matiere')->insertOrIgnore(
             [[
                 'classe_id' => $classe->id,
                 'matiere_id' => $matiere->id,
@@ -165,8 +165,6 @@ final class ClasseMatieresSynchronizer
                 'created_at' => $maintenant,
                 'updated_at' => $maintenant,
             ]],
-            ['classe_id', 'matiere_id'],
-            ['updated_at'],
         );
     }
 

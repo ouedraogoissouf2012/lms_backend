@@ -75,7 +75,7 @@ final class SeanceRecordingAttachmentResolver
             ? null
             : Institution::withTrashed()->find($seance->institution_id);
 
-        return $this->autorites->sourceForInstitution($ecole, KlassciCiblesDeLaSeance::class, LocaleCiblesDeLaSeance::class);
+        return $seance->klassci_matiere_id === null ? new LocaleCiblesDeLaSeance : new KlassciCiblesDeLaSeance;
     }
 
     /**

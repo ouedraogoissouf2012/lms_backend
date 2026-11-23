@@ -10,9 +10,51 @@ use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
+use Tests\Support\SondeIdentite\ReleveIdentite;
 
 abstract class TestCase extends BaseTestCase
 {
+    /** #691 SONDE : l'en-tête qui a fixé l'utilisateur mémorisé par le garde. */
+    private ?string $jetonMemorise = null;
+
+    /**
+     * #691 SONDE (jamais fusionnée) : relève chaque requête servie sous une autre
+     * identité que celle qu'elle envoie, parce que le garde a mémorisé un utilisateur.
+     *
+     * @param  array<mixed>  $parameters
+     * @param  array<mixed>  $cookies
+     * @param  array<mixed>  $files
+     * @param  array<mixed>  $server
+     */
+    public function call($method, $uri, $parameters = [], $cookies = [], $files = [], $server = [], $content = null)
+    {
+        $garde = $this->app['auth']->guard('sanctum');
+        $memorise = $garde->hasUser() ? $garde->user()?->getAuthIdentifier() : null;
+        $entete = $server['HTTP_AUTHORIZATION'] ?? null;
+        $entete = is_string($entete) ? $entete : null;
+
+        $reponse = parent::call($method, $uri, $parameters, $cookies, $files, $server, $content);
+
+        ReleveIdentite::requete();
+        if ($memorise !== null) {
+            ReleveIdentite::servieMemorisee();
+            if ($entete !== $this->jetonMemorise) {
+                ReleveIdentite::ecart(
+                    static::class.'::'.$this->nameWithDataSet(),
+                    (string) $method,
+                    (string) $uri,
+                    $entete === null ? 'anonyme' : 'autre-jeton',
+                    (int) $memorise,
+                    $reponse->status(),
+                );
+            }
+        } elseif ($this->app['auth']->guard('sanctum')->hasUser()) {
+            $this->jetonMemorise = $entete;
+        }
+
+        return $reponse;
+    }
+
     /**
      * Le garde s'exécute ICI, et pas dans `setUp()`. La différence décide de
      * tout.

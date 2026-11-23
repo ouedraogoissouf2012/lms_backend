@@ -48,7 +48,6 @@ final class CapaciteDeClasse
             throw new BusinessException('Classe introuvable dans cet établissement.', 404);
         }
 
-        $classe->update(['effectif' => $capacite ?? 0]);
 
         return $classe;
     }

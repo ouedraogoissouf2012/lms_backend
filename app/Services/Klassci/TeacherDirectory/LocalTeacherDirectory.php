@@ -41,7 +41,6 @@ final class LocalTeacherDirectory
         $lignes = $this->visibility
             ->restrictLocal($lecteur, User::query()->whereIn('role', Role::Enseignant->aliases()))
             ->get()
-            ->filter(fn (User $user): bool => $this->aUneIdentiteDEnseignant($user))
             ->map(static fn (User $user): array => [
                 'id' => $user->klassci_enseignant_id,
                 'nom' => $user->name,

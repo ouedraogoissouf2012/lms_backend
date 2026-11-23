@@ -58,7 +58,7 @@ Route::get('chapters/{chapter}/video', [ChapterVideoController::class, 'show'])
 Route::middleware(['auth:sanctum', 'klassci.sync', 'personnel'])->group(function () {
     // CRUD des chapitres
     Route::post('lessons/{lessonId}/chapters', [ChapterController::class, 'store']);
-    Route::put('chapters/{id}', [ChapterController::class, 'update']);
+    Route::match(['put', 'patch'], 'chapters/{id}', [ChapterController::class, 'update']);
     Route::delete('chapters/{id}', [ChapterController::class, 'destroy']);
 
     // Sortie de corbeille (#689) : meme garde que la suppression, la cible

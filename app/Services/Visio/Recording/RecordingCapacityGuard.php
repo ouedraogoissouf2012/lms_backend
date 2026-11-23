@@ -69,7 +69,7 @@ final class RecordingCapacityGuard
      */
     public function capacity(): int
     {
-        return $this->entiers->positif($this->config->get('recordings.max_concurrent'), 1);
+        return max(1, (int) config('recordings.max_concurrent'));
     }
 
     /**

@@ -37,10 +37,67 @@ final class ReleveMemoire
     /** @var list<WeakReference<object>> */
     private array $applications = [];
 
+    /** @var array<string, int> taille de chaque propriété statique au départ */
+    private array $statiquesAuDepart = [];
+
     public function depart(): void
     {
         gc_collect_cycles();
         $this->depart = $this->avant = memory_get_usage();
+        $this->statiquesAuDepart = self::statiques();
+    }
+
+    /**
+     * Mesure 5 : la taille de chaque propriété statique de chaque classe chargée,
+     * en éléments (tableaux comptés récursivement) ou en octets sérialisés.
+     *
+     * @return array<string, int>
+     */
+    private static function statiques(): array
+    {
+        $tailles = [];
+        foreach (get_declared_classes() as $classe) {
+            if (str_starts_with($classe, 'Tests\Support\SondeMemoire')) {
+                continue;
+            }
+            foreach ((new \ReflectionClass($classe))->getProperties(\ReflectionProperty::IS_STATIC) as $propriete) {
+                if (! $propriete->isInitialized()) {
+                    continue;
+                }
+                $valeur = $propriete->getValue();
+                try {
+                    $taille = is_array($valeur) ? count($valeur, COUNT_RECURSIVE) : (is_object($valeur) ? strlen(serialize($valeur)) : 0);
+                } catch (\Throwable) {
+                    $taille = is_object($valeur) ? -1 : 0;
+                }
+                if ($taille !== 0) {
+                    $tailles[$classe.'::$'.$propriete->getName()] = $taille;
+                }
+            }
+        }
+
+        return $tailles;
+    }
+
+    /** @return list<string> les statiques qui ont le plus grossi depuis le départ */
+    private function statiquesQuiGrossissent(): array
+    {
+        $croissance = [];
+        $fin = self::statiques();
+        foreach ($fin as $nom => $taille) {
+            $delta = $taille - ($this->statiquesAuDepart[$nom] ?? 0);
+            if ($delta > 0) {
+                $croissance[$nom] = $delta;
+            }
+        }
+        arsort($croissance);
+
+        $lignes = [];
+        foreach (array_slice($croissance, 0, 40, true) as $nom => $delta) {
+            $lignes[] = sprintf('%10d  (fin %d)  %s', $delta, $fin[$nom], $nom);
+        }
+
+        return $lignes;
     }
 
     /** Après le `setUp` : l'application du test est l'instance courante du conteneur. */
@@ -82,6 +139,8 @@ final class ReleveMemoire
         foreach (array_slice($this->parTest, 0, self::TOP, true) as $test => $octets) {
             $lignes[] = sprintf('%8.1f Ko  %s', $octets / 1024, $test);
         }
+        $lignes[] = '--- 40 proprietes statiques qui ont le plus grossi (elements, ou octets serialises ; -1 = non serialisable) ---';
+        array_push($lignes, ...$this->statiquesQuiGrossissent());
 
         return implode("\n", $lignes)."\n=== FIN SONDE ===\n";
     }

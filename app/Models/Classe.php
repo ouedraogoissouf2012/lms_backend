@@ -143,6 +143,6 @@ class Classe extends Model implements MirroredFromKlassci
     {
         $capacite = $this->effectif;
 
-        return $capacite > 0 && $this->getEffectifActuel() >= $capacite;
+        return $capacite > 0 && $this->etudiants()->count() >= $capacite;
     }
 }

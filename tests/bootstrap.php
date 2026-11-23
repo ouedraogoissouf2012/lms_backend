@@ -48,7 +48,9 @@ declare(strict_types=1);
  *    copie : `.lms-wt-reparateur` avait mis en quarantaine, le 14/11, une base
  *    « malformed », deux mois après la mesure 1. Le système rend le verrou à
  *    la mort du processus, même tué : il n'y a pas de verrou orphelin à
- *    nettoyer, seulement un `php` encore vivant à arrêter.
+ *    nettoyer, seulement un `php` encore vivant à arrêter. Les processus isolés
+ *    d'une suite (`#[RunInSeparateProcess]`) héritent de son verrou par
+ *    l'environnement : la suite parente les attend, ils ne la concurrencent pas.
  *
  * 3. **Un contrôle d'intégrité AVANT la suite.** Si le fichier est malformé, on
  *    le met de côté et on repart d'un fichier neuf, avec un message explicite.
@@ -62,6 +64,9 @@ declare(strict_types=1);
  * ce qui rend une confusion de chemin impossible.
  */
 require __DIR__.'/../vendor/autoload.php';
+
+/** Porte, vers les processus isolés de la suite, le chemin du verrou qu'elle tient (#692). */
+const VERROU_HERITE = 'LMS_TEST_VERROU_CHECKOUT';
 
 (static function (): void {
     // La jambe MySQL de la CI pose `DB_CONNECTION=mysql` et `DB_DATABASE=lms_testing` :
@@ -93,12 +98,27 @@ require __DIR__.'/../vendor/autoload.php';
     // AVANT le contrôle d'intégrité : celui-ci peut renommer la base. Sans verrou,
     // une seconde suite déclarait corrompue la base que la première était en train
     // d'écrire, et la déplaçait sous ses pieds — mesuré le 23/11.
-    $verrou = verrouDuCheckout($chemin.'.lock');
+    $cheminDuVerrou = $chemin.'.lock';
+
+    // Un test `#[RunInSeparateProcess]` relance CE bootstrap dans un processus
+    // enfant, que la suite parente attend : ce n'est pas une seconde suite. Premier
+    // jet sans ce cas : les 3 tests de `SessionSecureCookieDefaultTest` refusés sur
+    // les deux jambes sqlite. L'enfant reconnaît l'héritage au chemin EXACT de son
+    // verrou ; une suite d'un autre checkout, ou lancée d'ailleurs, ne l'a pas.
+    $verrou = getenv(VERROU_HERITE) === $cheminDuVerrou ? 'herite' : verrouDuCheckout($cheminDuVerrou);
+
+    if ($verrou === 'tenu') {
+        // PHPUnit passe aux enfants soit l'environnement du processus, soit `$_SERVER` :
+        // les deux portent l'héritage.
+        putenv(VERROU_HERITE.'='.$cheminDuVerrou);
+        $_ENV[VERROU_HERITE] = $cheminDuVerrou;
+        $_SERVER[VERROU_HERITE] = $cheminDuVerrou;
+    }
 
     if ($verrou === 'pris') {
         fwrite(STDERR, PHP_EOL
             .'  ⚠ Une autre suite tourne dans ce checkout — arrêt AVANT toute écriture (#692).'.PHP_EOL
-            .'    verrou : '.$chemin.'.lock'.PHP_EOL
+            .'    verrou : '.$cheminDuVerrou.PHP_EOL
             .'    Deux suites sur la même base SQLite la corrompent. Attendez la fin de'.PHP_EOL
             .'    l\'autre, ou lancez celle-ci dans un autre worktree.'.PHP_EOL
             .'    Le verrou se rend seul quand son processus meurt, même tué. S\'il reste'.PHP_EOL
@@ -111,7 +131,7 @@ require __DIR__.'/../vendor/autoload.php';
     if ($verrou === 'impossible') {
         fwrite(STDERR, PHP_EOL
             .'  ⚠ Verrou de checkout IMPOSSIBLE à poser — la suite continue sans lui.'.PHP_EOL
-            .'    fichier : '.$chemin.'.lock'.PHP_EOL
+            .'    fichier : '.$cheminDuVerrou.PHP_EOL
             .'    Une seconde suite dans ce checkout ne serait pas arrêtée (#692).'.PHP_EOL
             .PHP_EOL);
     }

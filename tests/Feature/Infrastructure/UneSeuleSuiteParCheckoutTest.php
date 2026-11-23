@@ -53,7 +53,8 @@ final class UneSeuleSuiteParCheckoutTest extends TestCase
         );
         file_put_contents(
             $this->checkout.'/tenante.php',
-            '<?php require __DIR__."/tests/bootstrap.php"; echo "prete\n"; fflush(STDOUT); fgets(STDIN);'.PHP_EOL,
+            '<?php require __DIR__."/tests/bootstrap.php"; echo "prete\t", getenv(VERROU_HERITE), "\n";'
+            .' fflush(STDOUT); fgets(STDIN);'.PHP_EOL,
         );
         file_put_contents(
             $this->checkout.'/seconde.php',
@@ -99,6 +100,22 @@ final class UneSeuleSuiteParCheckoutTest extends TestCase
         $this->assertSame([], glob($base.'.corrompue-*'), 'La seconde suite a écrit avant de s\'arrêter.');
     }
 
+    /**
+     * Un test `#[RunInSeparateProcess]` relance le bootstrap dans un enfant que la suite
+     * attend. Premier jet du correctif sans ce cas : `SessionSecureCookieDefaultTest` refusé
+     * sur les deux jambes sqlite. L'enfant hérite du chemin EXACT du verrou de sa suite.
+     */
+    public function test_un_processus_isole_de_la_meme_suite_passe(): void
+    {
+        $tenante = $this->tenante();
+
+        [$code, $sortie] = $this->seconde([VERROU_HERITE => $tenante[2]]);
+        $this->relacher($tenante);
+
+        $this->assertSame(0, $code, 'Un processus isolé de la suite ne la concurrence pas : '.$sortie);
+        $this->assertStringContainsString('amorcee', $sortie);
+    }
+
     public function test_le_verrou_rendu_la_suite_suivante_passe(): void
     {
         $this->relacher($this->tenante());
@@ -112,7 +129,9 @@ final class UneSeuleSuiteParCheckoutTest extends TestCase
     /**
      * Lance une suite qui garde le verrou jusqu'à ce qu'on ferme son entrée standard.
      *
-     * @return array{0: resource, 1: array<int, resource>}
+     * Rend aussi le chemin du verrou qu'elle tient, tel qu'elle le transmet à ses enfants.
+     *
+     * @return array{0: resource, 1: array<int, resource>, 2: string}
      */
     private function tenante(): array
     {
@@ -122,16 +141,16 @@ final class UneSeuleSuiteParCheckoutTest extends TestCase
             throw new RuntimeException('La suite tenante n\'a pas démarré.');
         }
 
-        $ligne = fgets($tuyaux[1]);
+        $ligne = (string) fgets($tuyaux[1]);
 
-        if ($ligne !== "prete\n") {
+        if (! str_starts_with($ligne, "prete\t")) {
             throw new RuntimeException('La suite tenante n\'a pas pris le verrou : '.stream_get_contents($tuyaux[2]));
         }
 
-        return [$processus, $tuyaux];
+        return [$processus, $tuyaux, rtrim(substr($ligne, 6), "\r\n")];
     }
 
-    /** @param  array{0: resource, 1: array<int, resource>}  $tenante */
+    /** @param  array{0: resource, 1: array<int, resource>, 2: string}  $tenante */
     private function relacher(array $tenante): void
     {
         [$processus, $tuyaux] = $tenante;
@@ -142,10 +161,14 @@ final class UneSeuleSuiteParCheckoutTest extends TestCase
         proc_close($processus);
     }
 
-    /** @return array{0: int, 1: string} */
-    private function seconde(): array
+    /**
+     * @param  array<string, string>  $heritage  variables qu'un parent PHPUnit transmettrait
+     * @return array{0: int, 1: string}
+     */
+    private function seconde(array $heritage = []): array
     {
-        $processus = proc_open([PHP_BINARY, 'seconde.php'], $this->tuyaux(), $tuyaux, $this->checkout, $this->environnement());
+        $environnement = array_merge($this->environnement(), $heritage);
+        $processus = proc_open([PHP_BINARY, 'seconde.php'], $this->tuyaux(), $tuyaux, $this->checkout, $environnement);
 
         if (! is_resource($processus)) {
             throw new RuntimeException('La seconde suite n\'a pas démarré.');

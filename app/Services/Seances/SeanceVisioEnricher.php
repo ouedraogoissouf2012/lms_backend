@@ -4,10 +4,8 @@ declare(strict_types=1);
 
 namespace App\Services\Seances;
 
-use App\Enums\Role;
 use App\Models\Seance;
 use App\Models\User;
-use App\Models\UserClass;
 use App\Services\KlassciProxyService;
 use App\Services\SeanceDetailQueryService;
 use App\Support\Logging\CaughtExceptionLog;
@@ -39,6 +37,7 @@ final class SeanceVisioEnricher
         private readonly KlassciProxyService $klassciService,
         private readonly CaughtExceptionLog $journal,
         private readonly LigneDuRepliLocal $regle,
+        private readonly ParticipantsDuMiroirLocal $miroirLocal,
     ) {}
 
     /**
@@ -259,30 +258,7 @@ final class SeanceVisioEnricher
 
         // Fallback BDD locale si pas d'étudiants via KLASSCI
         if (empty($students) && $visioData && $visioData->klassci_classe_id) {
-            try {
-                $localStudents = UserClass::where('klassci_classe_id', $visioData->klassci_classe_id)
-                    ->join('users', 'user_classes.user_id', '=', 'users.id')
-                    ->whereIn('users.role', Role::Etudiant->aliases())
-                    ->select('users.id', 'users.name', 'users.email', 'users.klassci_id')
-                    ->get();
-
-                $students = $localStudents->map(function ($student): array {
-                    $nameParts = explode(' ', $student->name, 2);
-
-                    return [
-                        'id' => $student->id,
-                        'nom' => $nameParts[0] ?? $student->name,
-                        'prenom' => $nameParts[1] ?? '',
-                        'email' => $student->email,
-                        'klassci_id' => $student->klassci_id,
-                        'statut' => 'actif',
-                    ];
-                })->toArray();
-            } catch (\Exception $e) {
-                $this->journal->error('Erreur fallback BDD pour étudiants', $e, [
-                    'classe_id' => $visioData->klassci_classe_id,
-                ]);
-            }
+            $students = $this->miroirLocal->de($visioData);
         }
 
         return $students;

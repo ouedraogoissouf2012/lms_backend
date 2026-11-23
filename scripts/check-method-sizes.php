@@ -192,7 +192,7 @@ function methodLengths(string $source): array
                 break; // méthode abstraite ou d'interface : pas de corps
             }
 
-            if ($t === '{') {
+            if (ouvreUnBloc($t)) {
                 if ($bodyStart === null) {
                     $bodyStart = tokenLine($tokens, $j);
                 }
@@ -214,6 +214,25 @@ function methodLengths(string $source): array
     }
 
     return $result;
+}
+
+/**
+ * Un jeton qui ouvre un niveau d'accolades.
+ *
+ * Une interpolation `"{$x}"` ou `"${x}"` ouvre par un jeton (`T_CURLY_OPEN`,
+ * `T_DOLLAR_OPEN_CURLY_BRACES`), pas par le caractère `{`, mais se ferme par un `}` simple.
+ * Ne compter que le caractère fermait le corps trop tôt : la méthode était mesurée trop
+ * courte (#1455).
+ *
+ * @param  array{0:int,1:string,2:int}|string  $token
+ */
+function ouvreUnBloc(array|string $token): bool
+{
+    if ($token === '{') {
+        return true;
+    }
+
+    return is_array($token) && in_array($token[0], [T_CURLY_OPEN, T_DOLLAR_OPEN_CURLY_BRACES], true);
 }
 
 /**

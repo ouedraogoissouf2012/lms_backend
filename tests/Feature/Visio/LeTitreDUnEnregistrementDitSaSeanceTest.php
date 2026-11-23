@@ -17,6 +17,7 @@ use App\Services\TenantManager;
 use App\Services\Visio\Recording\SeanceRecordingAttachmentResolver;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Psr\Log\NullLogger;
+use Tests\Concerns\ActsAsTenantUser;
 use Tests\TestCase;
 use Tests\Unit\Services\Visio\Recording\TitreDEnregistrementTest;
 
@@ -30,6 +31,7 @@ use Tests\Unit\Services\Visio\Recording\TitreDEnregistrementTest;
  */
 final class LeTitreDUnEnregistrementDitSaSeanceTest extends TestCase
 {
+    use ActsAsTenantUser;
     use RefreshDatabase;
 
     private Institution $ecole;

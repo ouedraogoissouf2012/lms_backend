@@ -11,6 +11,7 @@ use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
 use Laravel\Sanctum\PersonalAccessToken;
+use Laravel\Sanctum\Sanctum;
 use Tests\Support\SondeIdentite\ReleveIdentite;
 
 abstract class TestCase extends BaseTestCase
@@ -112,8 +113,11 @@ abstract class TestCase extends BaseTestCase
         $this->registerTenantScopeProbe();
 
         // #691 SONDE : chaque jeton créé est relié à son compte, sans requête en base.
-        PersonalAccessToken::created(static function (PersonalAccessToken $jeton): void {
-            ReleveIdentite::jeton((int) $jeton->id, (int) $jeton->tokenable_id);
+        // Le modèle CONFIGURÉ (l'application en déclare un dérivé) : un écouteur posé
+        // sur celui de Sanctum ne se déclenchait pas.
+        $modele = Sanctum::$personalAccessTokenModel;
+        $modele::created(static function (PersonalAccessToken $jeton): void {
+            ReleveIdentite::jeton((int) $jeton->getKey(), (int) $jeton->getAttribute('tokenable_id'));
         });
     }
 

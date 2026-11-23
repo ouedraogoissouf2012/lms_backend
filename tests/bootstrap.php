@@ -242,8 +242,6 @@ function verrouDuCheckout(string $chemin): string
         return $bloquerait === 1 ? 'pris' : 'impossible';
     }
 
-    $poignee = $fichier;
-
     return 'tenu';
 }
 

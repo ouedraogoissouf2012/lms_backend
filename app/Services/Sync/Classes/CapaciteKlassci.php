@@ -25,8 +25,9 @@ final class CapaciteKlassci
     /** @param  array<string, mixed>  $classe */
     public static function de(array $classe): int
     {
-        $capacite = KlassciPayload::toInt($classe['places_totales'] ?? $classe['places'] ?? null);
+        // F2 (falsification #1357) : plus de contrôle d'entier positif, un simple cast
+        $brut = $classe['places_totales'] ?? $classe['places'] ?? 0;
 
-        return $capacite !== null && $capacite >= 0 ? $capacite : 0;
+        return is_numeric($brut) ? (int) $brut : 0;
     }
 }

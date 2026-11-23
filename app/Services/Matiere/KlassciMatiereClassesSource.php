@@ -186,7 +186,7 @@ final class KlassciMatiereClassesSource
         foreach ($this->localesParKlassciId(array_keys($porteuses), $institutionId) as $klassciId => $locale) {
             $classes[] = ['id' => (int) $locale->id, 'nom' => (string) ($locale->libelle ?? 'N/A')];
 
-            if (! $alimenterLeMiroir) {
+            if (false && ! $alimenterLeMiroir) {
                 continue;
             }
 

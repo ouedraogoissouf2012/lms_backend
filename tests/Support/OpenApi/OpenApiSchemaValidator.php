@@ -104,7 +104,7 @@ final class OpenApiSchemaValidator
             return self::analyser($chemin);
         }
 
-        return self::$parFichier[$reel.'#'.$empreinte] ??= self::analyser($reel);
+        return self::$parFichier[$reel] ??= self::analyser($reel);
     }
 
     private static function analyser(string $chemin): self

@@ -4,97 +4,90 @@ declare(strict_types=1);
 
 namespace Tests\Support\SondeMemoire;
 
+use Illuminate\Container\Container;
+use WeakReference;
+
 /**
  * #1356 — le relevé de la sonde de mémoire (jamais fusionnée).
  *
- * Mesure 2 : la mémoire retenue par classe de test est accompagnée du nombre de
- * classes PHP chargées pendant elle. Le code compilé reste en mémoire du processus,
- * mais il est borné par la taille du dépôt : ce n'est pas une fuite. Une classe de
- * test qui retient de la mémoire SANS charger de code retient des DONNÉES.
+ * Mesure 4 :
+ * - la mémoire retenue TEST PAR TEST (après `gc_collect_cycles()`), pour savoir si la
+ *   rétention est un coût constant par test ou le fait de quelques tests ;
+ * - le nombre d'applications Laravel encore vivantes, par références faibles qui ne
+ *   les retiennent pas : une application par test est créée, une seule devrait vivre.
  */
 final class ReleveMemoire
 {
-    private const PAS = 250;
+    private const PAS = 500;
 
-    private const TOP = 30;
+    private const TOP = 25;
 
     private int $tests = 0;
 
     private int $depart = 0;
 
-    private int $classesAuDepart = 0;
+    private int $avant = 0;
 
     /** @var list<string> */
     private array $courbe = [];
 
-    private ?string $classe = null;
+    /** @var array<string, int> retenu par test, en octets */
+    private array $parTest = [];
 
-    private int $avantClasse = 0;
-
-    private int $declareesAvant = 0;
-
-    /** @var array<string, array{0: int, 1: int}> mémoire retenue (octets), classes chargées */
-    private array $retenue = [];
+    /** @var list<WeakReference<object>> */
+    private array $applications = [];
 
     public function depart(): void
     {
         gc_collect_cycles();
-        $this->depart = memory_get_usage();
-        $this->avantClasse = $this->depart;
-        $this->classesAuDepart = $this->declareesAvant = count(get_declared_classes());
+        $this->depart = $this->avant = memory_get_usage();
     }
 
-    public function testFini(string $classe): void
+    /** Après le `setUp` : l'application du test est l'instance courante du conteneur. */
+    public function testPret(): void
     {
-        if ($classe !== $this->classe) {
-            $this->clore();
-            $this->classe = $classe;
-        }
+        $this->applications[] = WeakReference::create(Container::getInstance());
+    }
+
+    public function testFini(string $test): void
+    {
+        gc_collect_cycles();
+        $maintenant = memory_get_usage();
+        $this->parTest[$test] = $maintenant - $this->avant;
+        $this->avant = $maintenant;
 
         $this->tests++;
         if ($this->tests % self::PAS === 0) {
-            $this->courbe[] = sprintf('%5d tests : %6.1f Mo, %5d classes chargees', $this->tests, memory_get_usage() / 1048576, count(get_declared_classes()));
+            $this->courbe[] = sprintf('%5d tests : %6.1f Mo, applications vivantes : %d', $this->tests, $maintenant / 1048576, $this->vivantes());
         }
     }
 
     public function rapport(): string
     {
-        $this->clore();
-        uasort($this->retenue, static fn (array $a, array $b): int => $b[0] <=> $a[0]);
+        $valeurs = array_values($this->parTest);
+        sort($valeurs);
+        $n = count($valeurs);
+        $positifs = count(array_filter($valeurs, static fn (int $v): bool => $v > 0));
+        arsort($this->parTest);
 
-        $sansCode = array_filter($this->retenue, static fn (array $r): bool => $r[1] === 0);
         $lignes = [
-            '', '=== SONDE MEMOIRE #1356 (mesure 2) ===',
-            sprintf('Départ : %.1f Mo, %d classes chargees', $this->depart / 1048576, $this->classesAuDepart),
+            '', '=== SONDE MEMOIRE #1356 (mesure 4) ===',
+            sprintf('Départ : %.1f Mo', $this->depart / 1048576),
             '--- Courbe ---', ...$this->courbe,
-            sprintf('Fin : %d tests, %.1f Mo, pic %.1f Mo, %d classes chargees', $this->tests, memory_get_usage() / 1048576, memory_get_peak_usage() / 1048576, count(get_declared_classes())),
-            sprintf('Retenu total : %.1f Mo sur %d classes de test', array_sum(array_column($this->retenue, 0)) / 1048576, count($this->retenue)),
-            sprintf('  dont classes de test qui n ont charge AUCUN code : %.1f Mo sur %d classes (donnees pures)', array_sum(array_column($sansCode, 0)) / 1048576, count($sansCode)),
-            sprintf('--- %d classes qui retiennent le plus (Ko retenus, classes chargees) ---', self::TOP),
+            sprintf('Fin : %d tests, %.1f Mo, pic %.1f Mo, applications vivantes : %d', $this->tests, memory_get_usage() / 1048576, memory_get_peak_usage() / 1048576, $this->vivantes()),
+            sprintf('Retenu par test : mediane %.1f Ko, p90 %.1f Ko, p99 %.1f Ko, moyenne %.1f Ko ; %d tests sur %d retiennent > 0',
+                $valeurs[intdiv($n, 2)] / 1024, $valeurs[(int) ($n * 0.9)] / 1024, $valeurs[(int) ($n * 0.99)] / 1024, array_sum($valeurs) / max(1, $n) / 1024, $positifs, $n),
+            sprintf('--- %d tests qui retiennent le plus ---', self::TOP),
         ];
-        foreach (array_slice($this->retenue, 0, self::TOP, true) as $classe => [$octets, $chargees]) {
-            $lignes[] = sprintf('%8.1f Ko %5d  %s', $octets / 1024, $chargees, $classe);
-        }
-        $lignes[] = sprintf('--- %d classes qui retiennent le plus SANS charger de code ---', self::TOP);
-        foreach (array_slice($sansCode, 0, self::TOP, true) as $classe => [$octets]) {
-            $lignes[] = sprintf('%8.1f Ko  %s', $octets / 1024, $classe);
+        foreach (array_slice($this->parTest, 0, self::TOP, true) as $test => $octets) {
+            $lignes[] = sprintf('%8.1f Ko  %s', $octets / 1024, $test);
         }
 
         return implode("\n", $lignes)."\n=== FIN SONDE ===\n";
     }
 
-    private function clore(): void
+    private function vivantes(): int
     {
-        if ($this->classe === null) {
-            return;
-        }
-
-        gc_collect_cycles();
-        $maintenant = memory_get_usage();
-        $declarees = count(get_declared_classes());
-        [$octets, $chargees] = $this->retenue[$this->classe] ?? [0, 0];
-        $this->retenue[$this->classe] = [$octets + ($maintenant - $this->avantClasse), $chargees + ($declarees - $this->declareesAvant)];
-        $this->avantClasse = $maintenant;
-        $this->declareesAvant = $declarees;
+        return count(array_filter($this->applications, static fn (WeakReference $r): bool => $r->get() !== null));
     }
 }

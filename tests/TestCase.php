@@ -68,27 +68,6 @@ abstract class TestCase extends BaseTestCase
     }
 
     /**
-     * #1356 — SONDE (intervention mesurée, branche jamais fusionnée) : PHPUnit garde
-     * chaque instance de test jusqu'à la fin de la suite. Libérer ici les propriétés
-     * déclarées par les classes de test dit si ce sont elles qui retiennent la mémoire.
-     */
-    protected function tearDown(): void
-    {
-        parent::tearDown();
-
-        foreach ((new \ReflectionObject($this))->getProperties() as $propriete) {
-            $classe = $propriete->getDeclaringClass()->getName();
-            if ($propriete->isStatic() || $propriete->isReadOnly() || ! is_subclass_of($classe, self::class)) {
-                continue;
-            }
-            $nom = $propriete->getName();
-            \Closure::bind(function () use ($nom): void {
-                unset($this->{$nom});
-            }, $this, $classe)();
-        }
-    }
-
-    /**
      * Dernier rempart : aucune suite ne démarre sur `database/database.sqlite`.
      *
      * Appelé depuis {@see createApplication()}, donc AVANT que `setUpTraits()`

@@ -47,6 +47,18 @@ class NotifyUpcomingEvaluations extends Command
         $this->info("{$bilan->evaluations} évaluation(s) approchante(s) trouvée(s).");
         $this->info("{$bilan->rappels} notification(s) créée(s)!");
 
+        // #1444 : un rappel en échec fait échouer la commande, sans annuler les autres, déjà
+        // écrits. Le planificateur voit l'échec ; seuls les id sont nommés.
+        if ($bilan->evaluationsEnEchec !== []) {
+            $this->error(sprintf(
+                '%d rappel(s) en échec : évaluation(s) %s.',
+                count($bilan->evaluationsEnEchec),
+                implode(', ', $bilan->evaluationsEnEchec),
+            ));
+
+            return Command::FAILURE;
+        }
+
         return Command::SUCCESS;
     }
 }

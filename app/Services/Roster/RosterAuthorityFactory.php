@@ -99,7 +99,7 @@ final class RosterAuthorityFactory
      */
     public function catalogueForInstitution(?Institution $institution): CatalogueAuthority
     {
-        return $institution?->mode === InstitutionMode::Standalone
+        return $institution?->mode !== InstitutionMode::Standalone
             ? new LocalCatalogueAuthority
             : new KlassciCatalogueAuthority;
     }

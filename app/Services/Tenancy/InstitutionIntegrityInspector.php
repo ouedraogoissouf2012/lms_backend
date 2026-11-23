@@ -143,7 +143,6 @@ final class InstitutionIntegrityInspector implements InstitutionIntegrityInspect
         return array_values(array_filter(
             $this->scopedTablesPresent($tables),
             fn (string $table): bool => $this->db->connection()->table($table)
-                ->where('institution_id', $institutionId)
                 ->exists(),
         ));
     }

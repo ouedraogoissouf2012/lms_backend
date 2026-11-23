@@ -168,7 +168,7 @@ final class KlassciTenantDiscoveryTest extends TestCase
             }))->once();
     }
 
-    public function test_skips_tenant_with_5xx_response(): void
+    public function test_a_tenant_in_5xx_is_not_an_unknown_account(): void
     {
         Institution::factory()->create([
             'slug' => 'broken',
@@ -183,9 +183,11 @@ final class KlassciTenantDiscoveryTest extends TestCase
         $logger = Mockery::spy(LoggerInterface::class);
         $discovery = new KlassciTenantDiscovery(Http::getFacadeRoot(), $logger, app(KlassciConfigResolver::class));
 
-        $result = $discovery->findMatchingTenants('any@user.com');
+        // #687 — un 5xx ne dit pas « inconnu ». Seule école, rien n'est conclu : panne (503),
+        // et non `[]`, qui faisait répondre « identifiants incorrects ».
+        $this->expectException(KlassciUnavailableException::class);
 
-        self::assertSame([], $result);
+        $discovery->findMatchingTenants('any@user.com');
     }
 
     public function test_skips_tenant_when_found_false(): void

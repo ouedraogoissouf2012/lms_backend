@@ -214,6 +214,23 @@ final class LectureDesEnseignantsTest extends TestCase
     }
 
     /**
+     * #873 — le repli rend l'id dans l'espace que rend KLASSCI pour cette route, celui des
+     * ENSEIGNANTS, et jamais un mélange : ni le numéro de compte KLASSCI (`klassci_id`), ni l'id
+     * local. Le front renvoie cet id en `teacher_id` à `/lms/seances/upcoming`, qui le lit dans
+     * l'espace enseignant. Un enseignant sans identité KLASSCI n'a pas d'id à proposer.
+     */
+    public function test_le_repli_local_rend_l_id_dans_l_espace_des_enseignants(): void
+    {
+        $this->klassciRepond([]);
+        $this->compte('enseignant', ['name' => 'Avec identite', 'klassci_enseignant_id' => 700, 'klassci_id' => 555]);
+        $this->compte('enseignant', ['name' => 'Sans identite', 'klassci_enseignant_id' => null, 'klassci_id' => null]);
+
+        $lignes = (array) $this->lire($this->compte('admin'), '/api/proxy/enseignants')->assertOk()->json('data');
+
+        self::assertSame(['Avec identite' => 700, 'Sans identite' => null], array_column($lignes, 'id', 'nom'));
+    }
+
+    /**
      * La borne est explicite : sans tenant résolu, le scope global ne borne rien
      * (il s'ouvre), et la règle doit borner seule.
      */

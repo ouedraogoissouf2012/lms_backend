@@ -37,6 +37,6 @@ final class LecteurDEntiers
      */
     public function auMoins(mixed $valeur, int $plancher): int
     {
-        return is_numeric($valeur) ? max($plancher, (int) $valeur) : $plancher;
+        return is_numeric($valeur) ? (int) $valeur : $plancher;
     }
 }

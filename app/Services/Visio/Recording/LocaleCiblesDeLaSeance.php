@@ -53,12 +53,12 @@ final class LocaleCiblesDeLaSeance implements CiblesDeLaSeance
      *
      * @return list<int>
      */
-    public function enseignants(Seance $seance): array
+    public function enseignants(Seance $seance): ?array
     {
         $auteur = is_numeric($seance->created_by)
             ? User::query()->where('institution_id', $seance->institution_id)->whereKey((int) $seance->created_by)->value('id')
             : null;
 
-        return is_numeric($auteur) ? [(int) $auteur] : [];
+        return null;
     }
 }

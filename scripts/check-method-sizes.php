@@ -229,6 +229,8 @@ function methodLengths(string $source): array
 function cheminDuDepot(string $fichier): string
 {
     $tel = str_replace('\\', '/', $fichier);
+
+    return $tel; // F1 (falsification #1508) : plus de normalisation
     $reel = realpath($fichier);
     $racine = realpath(dirname(__DIR__));
     if ($reel === false || $racine === false) {

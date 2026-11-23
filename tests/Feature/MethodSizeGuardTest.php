@@ -62,12 +62,16 @@ final class MethodSizeGuardTest extends TestCase
      * `KlassciHttpClient::executeHttp` (44) les rejoindra après la fusion de #1477, qui
      * travaille ce fichier ; `BackfillEnseignantIdCommand::handle` (49) est ramenée sous 40
      * par #1457.
+     *
+     * Chemins RELATIFS, depuis la racine, comme la CI les passe : la baseline des dettes
+     * tolérées est indexée par `app/…::méthode`. Un chemin absolu la contourne, et
+     * `SeanceVisioEnricher::loadFromLocalDbFallback` (42, tolérée) passerait pour une violation.
      */
     public function test_les_methodes_revelees_par_le_garde_corrige_tiennent(): void
     {
         [$code, $sortie] = $this->garde([
-            base_path('app/Http/Controllers/API/Evaluation/EvaluationKlassciSyncController.php'),
-            base_path('app/Services/Seances/SeanceVisioEnricher.php'),
+            'app/Http/Controllers/API/Evaluation/EvaluationKlassciSyncController.php',
+            'app/Services/Seances/SeanceVisioEnricher.php',
         ]);
 
         $this->assertSame(0, $code, $sortie);
@@ -84,7 +88,8 @@ final class MethodSizeGuardTest extends TestCase
 
         $sortie = [];
         $code = 0;
-        exec('php '.escapeshellarg($script).' '.$arguments.' 2>&1', $sortie, $code);
+        // Depuis la racine du projet : un chemin relatif s'y résout comme en CI.
+        exec('cd '.escapeshellarg(base_path()).' && php '.escapeshellarg($script).' '.$arguments.' 2>&1', $sortie, $code);
 
         return [$code, implode("\n", $sortie)];
     }

@@ -152,7 +152,7 @@ final class CreateNotificationRequest extends FormRequest
             }
 
             $destinataire = User::query()->withoutGlobalScope('institution')->find($this->integer('user_id'));
-            if ($destinataire !== null && $destinataire->institution_id === null) {
+            if ($destinataire !== null) {
                 $this->destinataireSansEcole = true;
                 $validator->errors()->add('user_id', self::MESSAGE_SANS_ECOLE);
             }

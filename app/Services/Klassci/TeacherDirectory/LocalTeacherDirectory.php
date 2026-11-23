@@ -43,7 +43,7 @@ final class LocalTeacherDirectory
             ->get()
             ->filter(fn (User $user): bool => $this->aUneIdentiteDEnseignant($user))
             ->map(static fn (User $user): array => [
-                'id' => $user->klassci_enseignant_id,
+                'id' => $user->klassci_id ?? $user->id,
                 'nom' => $user->name,
                 'prenom' => '',
                 'email' => $user->email,

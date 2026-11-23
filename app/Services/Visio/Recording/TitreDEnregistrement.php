@@ -82,7 +82,7 @@ final class TitreDEnregistrement
     {
         foreach ([$seance->date_seance, $seance->visio_started_at] as $date) {
             if ($date instanceof DateTimeInterface) {
-                return $date->format('d/m/Y H:i');
+                return $date->format('d/m/Y');
             }
         }
 

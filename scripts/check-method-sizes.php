@@ -229,7 +229,7 @@ function methodLengths(string $source): array
 function cheminDuDepot(string $fichier): string
 {
     $tel = str_replace('\\', '/', $fichier);
-    $reel = realpath($fichier);
+    $reel = $fichier; // F2 (falsification #1508) : plus de realpath
     $racine = realpath(dirname(__DIR__));
     if ($reel === false || $racine === false) {
         return $tel;

@@ -84,19 +84,19 @@ class KlassciTenantDiscovery
             return $requests;
         });
 
-        // #243 : si AUCUN tenant n'a répondu (toutes ConnectionException), c'est
-        // une panne KLASSCI, pas un échec d'identifiants → on le signale pour
-        // que le caller renvoie un 503 (et non un 401/500 trompeur). On distingue
-        // bien « tous injoignables » de « joignables sans match » (= 401).
-        $reachable = array_filter($responses, static fn ($r): bool => $r instanceof Response);
-        if ($reachable === []) {
-            $this->logger->error('KLASSCI totalement injoignable lors de la discovery', [
-                'tenants_count' => count($tenants),
-            ]);
-            throw new KlassciUnavailableException('Aucun tenant KLASSCI joignable.');
-        }
+        [$matching, $indeterminees] = $this->filterMatchingResponses($tenants, $responses);
 
-        $matching = $this->filterMatchingResponses($tenants, $responses);
+        // #243, #687 : « inconnu » n'est conclu que si CHAQUE école l'a dit. Une école
+        // muette (injoignable, non-2xx, corps illisible) peut porter le compte : sans
+        // correspondance ailleurs, c'est une panne KLASSCI (503), pas des identifiants
+        // incorrects (401). « Toutes injoignables » (#243) en est le cas extrême.
+        if ($matching === [] && $indeterminees > 0) {
+            $this->logger->error('KLASSCI indéterminé lors de la discovery : aucune école n\'a conclu', [
+                'tenants_count' => count($tenants),
+                'indeterminees' => $indeterminees,
+            ]);
+            throw new KlassciUnavailableException('Découverte KLASSCI non conclusive.');
+        }
 
         // 🔑 Audit `spec-security` LOW-1 — hash de l'identifier au lieu du clair.
         // L'identifier (email ou username) est PII RGPD ; pas un secret bloquant
@@ -138,53 +138,67 @@ class KlassciTenantDiscovery
     }
 
     /**
-     * Filtre les réponses pour ne garder que les tenants qui ont matché.
-     *
-     * **FIX BUG `successful()`** : vérifie `instanceof Response` AVANT d'appeler
-     * les méthodes pour éviter le crash sur `ConnectionException`.
+     * Les tenants qui ont trouvé le compte, et le nombre de ceux qui n'ont pas conclu.
      *
      * @param  array<int, array{code: string, api_base_url: string}>  $tenants
      * @param  array<string, mixed>  $responses
-     * @return array<int, array{code: string, api_base_url: string}>
+     * @return array{0: array<int, array{code: string, api_base_url: string}>, 1: int}
      */
     private function filterMatchingResponses(array $tenants, array $responses): array
     {
         $matching = [];
+        $indeterminees = 0;
 
         foreach ($tenants as $tenant) {
-            $response = $responses[$tenant['code']] ?? null;
+            $trouve = $this->verdict($tenant['code'], $responses[$tenant['code']] ?? null);
 
-            if (! $response instanceof Response) {
-                $reason = is_object($response) ? $response::class : 'null';
-                $this->logger->warning('KLASSCI tenant unreachable during discovery', [
-                    'tenant' => $tenant['code'],
-                    'reason' => $reason,
-                ]);
-
-                continue;
-            }
-
-            if (! $response->successful()) {
-                $this->logger->info('KLASSCI tenant check-user non-2xx', [
-                    'tenant' => $tenant['code'],
-                    'status' => $response->status(),
-                ]);
-
-                continue;
-            }
-
-            /** @var array<string, mixed>|mixed $data */
-            $data = $response->json();
-            if (! is_array($data)) {
-                continue;
-            }
-
-            $payload = $data['data'] ?? null;
-            if (is_array($payload) && (($payload['found'] ?? false) === true)) {
+            if ($trouve === true) {
                 $matching[] = $tenant;
+            } elseif ($trouve === null) {
+                $indeterminees++;
             }
         }
 
-        return $matching;
+        return [$matching, $indeterminees];
+    }
+
+    /**
+     * `true` ou `false` si l'école a conclu, `null` si elle n'a rien dit (#687).
+     *
+     * Seul un 2xx lisible portant `data.found` booléen conclut. Une école injoignable,
+     * un non-2xx (5xx, 429 du filtre anti-rafale…) ou un corps illisible ne disent pas
+     * « inconnu » : les compter comme tel répondait 401 à un compte peut-être valide.
+     *
+     * **FIX BUG `successful()`** : vérifie `instanceof Response` AVANT d'appeler
+     * les méthodes pour éviter le crash sur `ConnectionException`.
+     */
+    private function verdict(string $code, mixed $response): ?bool
+    {
+        if (! $response instanceof Response) {
+            $this->logger->warning('KLASSCI tenant unreachable during discovery', [
+                'tenant' => $code,
+                'reason' => is_object($response) ? $response::class : 'null',
+            ]);
+
+            return null;
+        }
+
+        if (! $response->successful()) {
+            $this->logger->warning('KLASSCI tenant check-user non-2xx', ['tenant' => $code, 'status' => $response->status()]);
+
+            return null;
+        }
+
+        /** @var array<string, mixed>|mixed $data */
+        $data = $response->json();
+        $bloc = is_array($data) ? ($data['data'] ?? null) : null;
+        $trouve = is_array($bloc) ? ($bloc['found'] ?? null) : null;
+        if (! is_bool($trouve)) {
+            $this->logger->warning('KLASSCI tenant check-user illisible', ['tenant' => $code]);
+
+            return null;
+        }
+
+        return $trouve;
     }
 }

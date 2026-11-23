@@ -27,7 +27,7 @@ final class LocaleCiblesDeLaSeance implements CiblesDeLaSeance
     public function matiere(Seance $seance): Matiere|RecordingFailureReason
     {
         if ($seance->matiere_id === null) {
-            return RecordingFailureReason::MissingLocalMatiereId;
+            return RecordingFailureReason::MissingKlassciMatiereId;
         }
 
         return Matiere::query()

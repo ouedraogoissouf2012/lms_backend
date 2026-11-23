@@ -37,7 +37,7 @@ final class CapaciteDeClasse
      */
     public function regler(int $classeId, ?int $capacite): Classe
     {
-        $ecole = $this->porte->etablissement();
+        $ecole = (int) Classe::query()->withoutGlobalScope('institution')->whereKey($classeId)->value('institution_id');
 
         $classe = Classe::query()->withoutGlobalScope('institution')
             ->where('id', $classeId)

@@ -35,7 +35,7 @@ final class JournalDePurgeEnBase implements JournalDePurge
         $this->db->connection()->table('purge_log')->insert([
             'institution_id' => $this->institutionDe($ligne),
             'subject_type' => $ligne->getTable(),
-            'subject_key' => is_scalar($cle = $ligne->getKey()) ? (string) $cle : '',
+            'subject_key' => $politique->describe($ligne),
             'category' => $politique->key(),
             'rows_deleted' => 1,
             'executed_at' => now(),

@@ -186,10 +186,19 @@ final class UneSeuleSuiteParCheckoutTest extends TestCase
         return [0 => ['pipe', 'r'], 1 => ['pipe', 'w'], 2 => ['pipe', 'w']];
     }
 
-    /** @return array<string, string> */
+    /**
+     * Chaque sous-processus porte l'héritage d'un AUTRE checkout : seul le chemin exact du
+     * verrou vaut héritage, pas la seule présence de la variable. Posé ici plutôt qu'hérité
+     * de la suite qui exécute ces tests, que la jambe MySQL ne pose pas.
+     *
+     * @return array<string, string>
+     */
     private function environnement(): array
     {
-        return array_merge(getenv(), ['DB_CONNECTION' => 'sqlite']);
+        return array_merge(getenv(), [
+            'DB_CONNECTION' => 'sqlite',
+            VERROU_HERITE => $this->checkout.'-autre/database/testing/autre.sqlite.lock',
+        ]);
     }
 
     /** La base que le bootstrap dérive du checkout factice, quel que soit son nom exact. */

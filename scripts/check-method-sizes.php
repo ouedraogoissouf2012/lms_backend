@@ -56,7 +56,7 @@ $inScope = 0;
 $inspected = 0;
 
 foreach ($files as $file) {
-    $normalized = str_replace('\\', '/', $file);
+    $normalized = cheminDuDepot($file);
 
     // Seul le code applicatif est contrôlé (migrations, config, tests exclus de fait).
     if (preg_match('#(^|/)app/.+\.php$#', $normalized) !== 1) {
@@ -214,6 +214,31 @@ function methodLengths(string $source): array
     }
 
     return $result;
+}
+
+/**
+ * Le chemin d'un fichier du dépôt sous sa forme relative à la racine (`app/…`), quelle que soit
+ * la forme reçue : absolue, `./app/…`, séparateurs Windows.
+ *
+ * La baseline des dettes est indexée par `app/…::méthode`. Sans cette forme unique, un chemin
+ * absolu ne la trouvait pas, et une dette tolérée passait pour une violation (#1508).
+ *
+ * Un fichier hors du dépôt (une fixture) ou supprimé (`realpath` impossible) garde la forme
+ * reçue : il n'a pas d'entrée de baseline, et son verdict le nomme tel qu'on l'a passé.
+ */
+function cheminDuDepot(string $fichier): string
+{
+    $tel = str_replace('\\', '/', $fichier);
+    $reel = realpath($fichier);
+    $racine = realpath(dirname(__DIR__));
+    if ($reel === false || $racine === false) {
+        return $tel;
+    }
+
+    $reel = str_replace('\\', '/', $reel);
+    $racine = str_replace('\\', '/', $racine).'/';
+
+    return str_starts_with($reel, $racine) ? substr($reel, strlen($racine)) : $tel;
 }
 
 /**

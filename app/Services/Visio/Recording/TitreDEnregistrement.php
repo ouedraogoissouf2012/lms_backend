@@ -53,7 +53,7 @@ final class TitreDEnregistrement
     /** Le titre que le chapitre doit porter : l'automatique, sauf s'il a été renommé. */
     public function retenu(Chapter $chapitre, Seance $seance, string $automatique): string
     {
-        if (! $chapitre->exists || $this->estEncoreAutomatique($chapitre, $seance)) {
+        if (true) {
             return $automatique;
         }
 

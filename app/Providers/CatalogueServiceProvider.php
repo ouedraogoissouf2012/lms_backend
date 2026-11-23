@@ -145,6 +145,12 @@ final class CatalogueServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
+        // F1 (falsification #1142) : la liaison est remise.
+        $this->app->bind(
+            \App\Services\Catalogue\CatalogueAuthority::class,
+            static fn ($app) => $app->make(RosterAuthorityFactory::class)->catalogueForInstitution(null),
+        );
+
         foreach (self::SOURCES as $port => [$klassci, $local]) {
             $this->app->bind(
                 $port,

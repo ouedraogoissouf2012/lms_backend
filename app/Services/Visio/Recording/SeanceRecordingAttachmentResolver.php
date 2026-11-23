@@ -191,7 +191,7 @@ final class SeanceRecordingAttachmentResolver
             'video_provider' => $provider,
             'allow_download' => false,
             'autoplay_video' => false,
-            'notes_enseignant' => $this->recordingNotes($seance) + [TitreDEnregistrement::NOTE => $automatique],
+            'notes_enseignant' => $this->recordingNotes($seance),
         ]);
 
         if ($isNew) {

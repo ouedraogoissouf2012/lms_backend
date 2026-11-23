@@ -69,6 +69,9 @@ final class LaPurgeDUneEcoleEstSureTest extends TestCase
     public function test_une_ecole_vide_est_purgee_et_son_journal_lui_survit(): void
     {
         $ecole = $this->ecoleSupprimeeIlYA(90);
+        // Une AUTRE école, bien vivante et peuplée : ses lignes ne doivent pas être comptées
+        // à l'école purgée. Sans filtre explicite sur `institution_id`, elles le seraient.
+        Matiere::factory()->create(['institution_id' => Institution::factory()->create()->id]);
 
         $this->artisan('purge:run', ['domaine' => 'institutions', '--force' => true])->assertExitCode(0);
 

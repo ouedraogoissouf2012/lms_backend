@@ -101,7 +101,7 @@ final class ManagerSeancesLocalFetcher
         return User::query()
             ->where('institution_id', $gestion->institution_id)
             ->whereIn('role', Role::Enseignant->aliases())
-            ->where('klassci_enseignant_id', $teacherId)
+            ->where(static fn ($q) => $q->where('klassci_enseignant_id', $teacherId)->orWhere('klassci_id', $teacherId))
             ->first();
     }
 }

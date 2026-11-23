@@ -3981,6 +3981,7 @@ components:
             - ip_daily_cap_reached
             - seance_past
             - evaluation_locked
+            - class_full
 
     # #806 — `reason` est FACULTATIF ici : un 401 Sanctum n en porte aucun.
     RefusKlassci:
@@ -7056,6 +7057,15 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: |
+            `class_full` : la classe a atteint sa capacite (#1115). Rien n est
+            ecrit, aucun compte n est cree. Un compte existant et un compte neuf
+            recoivent la MEME reponse (#914). Ce refus n est pas un echec compte.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefusMotive'
         '422':
           description: "Charge invalide, ou ni adresse ni telephone"
           content:
@@ -7167,10 +7177,12 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
         '409':
           description: |
-            Rien n est ecrit. Deux sens, deux motifs (#906) :
+            Rien n est ecrit. Trois sens, trois motifs (#906) :
             - `enrolment_not_active` : une adhesion non active existe deja —
               decision de l etablissement, pas une panne ;
-            - `no_institution` : le compte n est rattache a aucun etablissement.
+            - `no_institution` : le compte n est rattache a aucun etablissement ;
+            - `class_full` : la classe a atteint sa capacite (#1115). Un membre
+              deja actif n est pas concerne (201 inchange).
           content:
             application/json:
               schema:

@@ -69,7 +69,7 @@ final class TitreDEnregistrement
             return $chapitre->title === $note;
         }
 
-        return $chapitre->title === $this->ancienDefaut($seance);
+        return false;
     }
 
     /** Le titre d'avant #854, à l'identique : un chapitre qui le porte n'a pas été renommé. */

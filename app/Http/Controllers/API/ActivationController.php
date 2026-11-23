@@ -35,6 +35,11 @@ final class ActivationController extends Controller
      */
     public function store(ActivateAccountRequest $request): JsonResponse
     {
+        // F3 (falsification #839) : un jeton inconnu rend 404.
+        if (! \App\Models\ActivationToken::query()->where('token_hash', hash('sha256', $request->jeton()))->exists()) {
+            return $this->errorResponse('Lien inconnu.', 404);
+        }
+
         $user = $this->activations->consommer($request->jeton());
 
         if ($user === null) {

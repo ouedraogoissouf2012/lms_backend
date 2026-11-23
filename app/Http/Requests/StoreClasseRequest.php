@@ -37,7 +37,7 @@ final class StoreClasseRequest extends FormRequest
             'description' => ['sometimes', 'nullable', 'string', 'max:2000'],
             // La CAPACITÉ de la classe (#1115, #1358) : facultative, et vide (`null` ou 0)
             // veut dire sans limite. `CapaciteDeClasse` garde les mêmes bornes.
-            'effectif' => ['sometimes', 'nullable', 'integer', 'min:0', 'max:'.CapaciteDeClasse::MAXIMUM],
+            'effectif' => ['sometimes', 'integer', 'min:0', 'max:'.CapaciteDeClasse::MAXIMUM],
             // L'existence et l'état de la Période sont vérifiés au point d'écriture,
             // dans l'établissement (#1208) : un `exists` ici ne lirait pas l'école.
             'training_session_id' => ['sometimes', 'nullable', 'integer', 'min:1'],

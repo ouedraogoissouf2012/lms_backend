@@ -10,6 +10,7 @@ use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
+use Laravel\Sanctum\PersonalAccessToken;
 use Tests\Support\SondeIdentite\ReleveIdentite;
 
 abstract class TestCase extends BaseTestCase
@@ -38,14 +39,16 @@ abstract class TestCase extends BaseTestCase
         ReleveIdentite::requete();
         if ($memorise !== null) {
             ReleveIdentite::servieMemorisee();
-            if ($entete !== $this->jetonMemorise) {
+            // Un jeton neuf du MÊME compte n'est pas un écart : seule l'identité compte.
+            $envoye = ReleveIdentite::utilisateurDu($entete);
+            if ($entete !== $this->jetonMemorise && $envoye !== (int) $memorise) {
                 ReleveIdentite::ecart(
                     static::class.'::'.$this->nameWithDataSet(),
                     (string) $method,
                     (string) $uri,
-                    $entete === null ? 'anonyme' : 'autre-jeton',
+                    $entete === null ? 'anonyme' : ($envoye === null ? 'jeton-inconnu' : 'user#'.$envoye),
                     (int) $memorise,
-                    $reponse->status(),
+                    $reponse->baseResponse->getStatusCode(),
                 );
             }
         } elseif ($this->app['auth']->guard('sanctum')->hasUser()) {
@@ -107,6 +110,11 @@ abstract class TestCase extends BaseTestCase
         }
 
         $this->registerTenantScopeProbe();
+
+        // #691 SONDE : chaque jeton créé est relié à son compte, sans requête en base.
+        PersonalAccessToken::created(static function (PersonalAccessToken $jeton): void {
+            ReleveIdentite::jeton((int) $jeton->id, (int) $jeton->tokenable_id);
+        });
     }
 
     /**

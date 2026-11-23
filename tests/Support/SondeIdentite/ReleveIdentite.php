@@ -25,6 +25,24 @@ final class ReleveIdentite
 
     private static bool $inscrit = false;
 
+    /** @var array<int, int> identifiant du jeton → identifiant du compte, relevé à sa création */
+    private static array $comptes = [];
+
+    public static function jeton(int $jeton, int $compte): void
+    {
+        self::$comptes[$jeton] = $compte;
+    }
+
+    /** Le compte du jeton envoyé (`Bearer {id}|…`), sans requête en base ; `null` si inconnu. */
+    public static function utilisateurDu(?string $entete): ?int
+    {
+        if ($entete === null || preg_match('/^Bearer (\d+)\|/', $entete, $m) !== 1) {
+            return null;
+        }
+
+        return self::$comptes[(int) $m[1]] ?? null;
+    }
+
     public static function requete(): void
     {
         self::inscrire();

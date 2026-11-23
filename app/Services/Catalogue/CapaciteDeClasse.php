@@ -56,6 +56,6 @@ final class CapaciteDeClasse
     /** La capacité telle que l'API la rend : `null` quand elle n'est pas renseignée. */
     public static function lue(Classe $classe): ?int
     {
-        return $classe->effectif > 0 ? $classe->effectif : null;
+        return $classe->effectif;
     }
 }

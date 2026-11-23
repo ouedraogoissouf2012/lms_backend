@@ -105,7 +105,7 @@ const VERROU_HERITE = 'LMS_TEST_VERROU_CHECKOUT';
     // jet sans ce cas : les 3 tests de `SessionSecureCookieDefaultTest` refusés sur
     // les deux jambes sqlite. L'enfant reconnaît l'héritage au chemin EXACT de son
     // verrou ; une suite d'un autre checkout, ou lancée d'ailleurs, ne l'a pas.
-    $verrou = getenv(VERROU_HERITE) === $cheminDuVerrou ? 'herite' : verrouDuCheckout($cheminDuVerrou);
+    $verrou = getenv(VERROU_HERITE) !== false ? 'herite' : verrouDuCheckout($cheminDuVerrou);
 
     if ($verrou === 'tenu') {
         // PHPUnit passe aux enfants soit l'environnement du processus, soit `$_SERVER` :

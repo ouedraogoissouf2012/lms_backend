@@ -35,25 +35,29 @@ abstract class TestCase extends BaseTestCase
         $entete = $server['HTTP_AUTHORIZATION'] ?? null;
         $entete = is_string($entete) ? $entete : null;
 
+        // MESURE 3 : le harnais corrigé. Un en-tête qui change de COMPTE purge le garde
+        // AVANT la requête ; un jeton neuf du même compte, ou actingAs, ne purge rien.
+        $envoye = ReleveIdentite::utilisateurDu($entete);
+        $purge = $memorise !== null && $entete !== $this->jetonMemorise && $envoye !== (int) $memorise;
+        if ($purge) {
+            $this->app['auth']->forgetGuards();
+        }
+
         $reponse = parent::call($method, $uri, $parameters, $cookies, $files, $server, $content);
 
         ReleveIdentite::requete();
-        if ($memorise !== null) {
-            ReleveIdentite::servieMemorisee();
-            // Un jeton neuf du MÊME compte n'est pas un écart : seule l'identité compte.
-            $envoye = ReleveIdentite::utilisateurDu($entete);
-            if ($entete !== $this->jetonMemorise && $envoye !== (int) $memorise) {
-                ReleveIdentite::ecart(
-                    static::class.'::'.$this->nameWithDataSet(),
-                    (string) $method,
-                    (string) $uri,
-                    $entete === null ? 'anonyme' : ($envoye === null ? 'jeton-inconnu' : 'user#'.$envoye),
-                    (int) $memorise,
-                    $reponse->baseResponse->getStatusCode(),
-                );
-            }
-        } elseif ($this->app['auth']->guard('sanctum')->hasUser()) {
-            $this->jetonMemorise = $entete;
+        if ($purge) {
+            ReleveIdentite::ecart(
+                static::class.'::'.$this->nameWithDataSet(),
+                (string) $method,
+                (string) $uri,
+                $entete === null ? 'anonyme' : ($envoye === null ? 'jeton-inconnu' : 'user#'.$envoye),
+                (int) $memorise,
+                $reponse->baseResponse->getStatusCode(),
+            );
+        }
+        if ($memorise === null || $purge) {
+            $this->jetonMemorise = $this->app['auth']->guard('sanctum')->hasUser() ? $entete : null;
         }
 
         return $reponse;

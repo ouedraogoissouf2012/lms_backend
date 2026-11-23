@@ -7,10 +7,16 @@ namespace Tests\Feature\Retention;
 use App\Models\Institution;
 use App\Models\Matiere;
 use App\Models\User;
+use App\Services\Retention\RetentionPolicy;
+use App\Services\Retention\RetentionRunner;
+use Carbon\CarbonInterface;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use PHPUnit\Framework\Attributes\DataProvider;
+use RuntimeException;
 use Tests\TestCase;
 
 /**
@@ -93,6 +99,27 @@ final class LaPurgeDUneEcoleEstSureTest extends TestCase
         self::assertStringNotContainsString('Temoin', $journal);
     }
 
+    /**
+     * Le journal et la destruction tiennent ou tombent ensemble : une destruction qui échoue
+     * ne laisse pas au journal une ligne qui affirmerait le contraire.
+     */
+    public function test_une_purge_qui_echoue_ne_laisse_rien_au_journal(): void
+    {
+        $compte = User::factory()->create();
+        $compte->delete();
+        $compte->forceFill(['deleted_at' => now()->subDays(90)])->saveQuietly();
+
+        try {
+            $this->app->make(RetentionRunner::class)->run(new PolitiqueQuiEchoueAlaDestruction, now()->subDays(30), true);
+            self::fail('La destruction devait échouer.');
+        } catch (RuntimeException $echec) {
+            self::assertSame('destruction impossible', $echec->getMessage());
+        }
+
+        self::assertSame(0, DB::table('purge_log')->count(), 'Une purge qui échoue ne se journalise pas.');
+        self::assertNotNull(User::withTrashed()->find($compte->id));
+    }
+
     public function test_une_simulation_n_ecrit_rien_au_journal(): void
     {
         $this->ecoleSupprimeeIlYA(90);
@@ -145,5 +172,49 @@ final class LaPurgeDUneEcoleEstSureTest extends TestCase
             'created_at' => now(),
             'updated_at' => now(),
         ]);
+    }
+}
+
+/** Une politique dont la destruction échoue toujours, APRÈS que le journal a été écrit. */
+final class PolitiqueQuiEchoueAlaDestruction implements RetentionPolicy
+{
+    public function key(): string
+    {
+        return 'domaine-qui-echoue';
+    }
+
+    public function label(): string
+    {
+        return 'chose(s) qui résistent';
+    }
+
+    public function defaultGraceDays(): int
+    {
+        return 30;
+    }
+
+    public function eligible(CarbonInterface $cutoff): Builder
+    {
+        return User::onlyTrashed()->where('deleted_at', '<', $cutoff);
+    }
+
+    public function describe(Model $item): string
+    {
+        return 'chose #'.(is_scalar($item->getKey()) ? (string) $item->getKey() : '?');
+    }
+
+    public function auditAction(): ?string
+    {
+        return null;
+    }
+
+    public function refuses(Model $item, CarbonInterface $cutoff): ?string
+    {
+        return null;
+    }
+
+    public function purge(Model $item, CarbonInterface $cutoff): void
+    {
+        throw new RuntimeException('destruction impossible');
     }
 }

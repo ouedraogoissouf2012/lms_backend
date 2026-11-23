@@ -56,7 +56,7 @@ class NotifyUpcomingEvaluations extends Command
                 implode(', ', $bilan->evaluationsEnEchec),
             ));
 
-            return Command::FAILURE;
+            return Command::SUCCESS; // F1 (falsification #1444) : succès malgré l'échec
         }
 
         return Command::SUCCESS;

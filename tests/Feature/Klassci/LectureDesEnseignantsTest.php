@@ -12,7 +12,9 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Testing\TestResponse;
 use PHPUnit\Framework\Attributes\DataProvider;
+use Psr\Log\LoggerInterface;
 use Tests\Concerns\ActsAsTenantUser;
+use Tests\Support\Log\JournalRelu;
 use Tests\TestCase;
 
 /**
@@ -217,17 +219,53 @@ final class LectureDesEnseignantsTest extends TestCase
      * #873 — le repli rend l'id dans l'espace que rend KLASSCI pour cette route, celui des
      * ENSEIGNANTS, et jamais un mélange : ni le numéro de compte KLASSCI (`klassci_id`), ni l'id
      * local. Le front renvoie cet id en `teacher_id` à `/lms/seances/upcoming`, qui le lit dans
-     * l'espace enseignant. Un enseignant sans identité KLASSCI n'a pas d'id à proposer.
+     * l'espace enseignant.
      */
     public function test_le_repli_local_rend_l_id_dans_l_espace_des_enseignants(): void
     {
         $this->klassciRepond([]);
         $this->compte('enseignant', ['name' => 'Avec identite', 'klassci_enseignant_id' => 700, 'klassci_id' => 555]);
-        $this->compte('enseignant', ['name' => 'Sans identite', 'klassci_enseignant_id' => null, 'klassci_id' => null]);
+        $this->compte('enseignant', ['name' => 'Autre', 'klassci_enseignant_id' => 701, 'klassci_id' => null]);
 
         $lignes = (array) $this->lire($this->compte('admin'), '/api/proxy/enseignants')->assertOk()->json('data');
 
-        self::assertSame(['Avec identite' => 700, 'Sans identite' => null], array_column($lignes, 'id', 'nom'));
+        self::assertSame(['Autre' => 701, 'Avec identite' => 700], $this->idsParNom($lignes));
+    }
+
+    /**
+     * #873 — un compte sans identité d'enseignant KLASSCI ne peut rien désigner dans le contrat
+     * KLASSCI : il est ABSENT du repli (l'id reste non nul, openapi), et le journal le nomme par
+     * son id seul. Les autres restent présents.
+     */
+    public function test_le_repli_local_ecarte_un_compte_sans_identite_d_enseignant_et_le_journalise(): void
+    {
+        $journal = new JournalRelu;
+        $this->app->instance(LoggerInterface::class, $journal);
+        $this->klassciRepond([]);
+        $this->compte('enseignant', ['name' => 'Avec identite', 'klassci_enseignant_id' => 700, 'klassci_id' => 555]);
+        $sans = $this->compte('enseignant', ['name' => 'Sans identite', 'klassci_enseignant_id' => null, 'klassci_id' => 556]);
+
+        $lignes = (array) $this->lire($this->compte('admin'), '/api/proxy/enseignants')->assertOk()->json('data');
+
+        self::assertSame(['Avec identite' => 700], $this->idsParNom($lignes));
+        $avertissements = array_values(array_filter(
+            $journal->lignes,
+            static fn (string $ligne): bool => str_contains($ligne, '"user_id":'.$sans->id),
+        ));
+        self::assertCount(1, $avertissements, 'Le compte écarté n\'est pas nommé au journal.');
+        self::assertStringNotContainsString('Sans identite', $avertissements[0], 'Le journal ne nomme le compte que par son id.');
+    }
+
+    /**
+     * @param  array<int|string, mixed>  $lignes
+     * @return array<string, mixed>
+     */
+    private function idsParNom(array $lignes): array
+    {
+        $ids = array_column($lignes, 'id', 'nom');
+        ksort($ids);
+
+        return $ids;
     }
 
     /**

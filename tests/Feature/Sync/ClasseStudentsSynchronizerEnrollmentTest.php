@@ -14,7 +14,6 @@ use Illuminate\Database\DatabaseManager;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use PHPUnit\Framework\Attributes\CoversClass;
-use PHPUnit\Framework\Attributes\DataProvider;
 use Psr\Log\NullLogger;
 use Tests\TestCase;
 
@@ -167,27 +166,18 @@ final class ClasseStudentsSynchronizerEnrollmentTest extends TestCase
         self::assertSame(0, $stats['enrollments_created'], 'La ligne n’a pas été créée par ce sync.');
     }
 
-    /** @return iterable<string, array{0: bool}> */
-    public static function tenantsQuiNeSontPasLEcoleDeLaClasse(): iterable
-    {
-        yield 'sans tenant (un job)' => [false];
-        yield 'tenant d\'une autre école' => [true];
-    }
-
     /**
      * #801 (PR 3) : un élève créé par la synchronisation porte l'école de sa CLASSE, explicitement.
      *
      * Avec le tenant de l'école de la classe, `BelongsToInstitution` donnait la même école : ce
-     * cas ne prouvait rien (falsification M de #1584, verte). Seuls le job sans tenant et le
-     * tenant d'une AUTRE école distinguent la pose explicite.
+     * cas ne prouvait rien (falsification M de #1584, verte). Seul un tenant d'une AUTRE école
+     * distingue la pose explicite. Le cas « sans tenant » n'existe pas : `sync()` exige un tenant
+     * résolu (`TenantManager::getResolved()`) et refuse avant de toucher un élève.
      */
-    #[DataProvider('tenantsQuiNeSontPasLEcoleDeLaClasse')]
-    public function test_a_new_student_carries_the_school_of_the_classe(bool $autreEcole): void
+    public function test_a_new_student_carries_the_school_of_the_classe(): void
     {
         $classe = $this->classe();
-        $autreEcole
-            ? app(TenantManager::class)->set(Institution::factory()->create())
-            : app(TenantManager::class)->reset();
+        app(TenantManager::class)->set(Institution::factory()->create());
 
         $this->synchronizer()->sync($classe, [$this->klassciStudent()], 'token');
 

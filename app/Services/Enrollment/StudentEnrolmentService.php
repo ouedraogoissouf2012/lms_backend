@@ -8,6 +8,7 @@ use App\Enums\ClasseEtudiantStatut;
 use App\Exceptions\BusinessException;
 use App\Models\Classe;
 use App\Models\User;
+use Illuminate\Database\DatabaseManager;
 use Illuminate\Database\UniqueConstraintViolationException;
 
 /**
@@ -41,6 +42,11 @@ use Illuminate\Database\UniqueConstraintViolationException;
  */
 final class StudentEnrolmentService
 {
+    /** Le motif du refus d'une classe complète (#1115), lu par le front. */
+    public const CLASSE_COMPLETE = 'class_full';
+
+    public function __construct(private readonly DatabaseManager $db) {}
+
     /**
      * @param  array<string, mixed>  $pivot  colonnes de `classe_etudiant`
      */
@@ -154,26 +160,22 @@ final class StudentEnrolmentService
      * `date_inscription`, qu'ADR-711-02 rend obligatoire à l'écriture locale,
      * et `institution_id`, qu'écrit déjà `ClasseStudentsSynchronizer`.
      *
-     * @throws BusinessException 409 si une adhésion non active existe
+     * ## Une classe complète ne reçoit plus personne (#1115)
+     *
+     * Seule une adhésion NOUVELLE prend une place : un membre déjà actif reste
+     * `DejaActive`, une adhésion close garde son refus. La place se compte et
+     * s'écrit sous le verrou de la ligne de la classe : deux codes envoyés
+     * ensemble ne dépassent pas la capacité ({@see Classe::isComplete()}).
+     *
+     * @throws BusinessException 409 si une adhésion non active existe, ou si la
+     *                           classe est complète (`class_full`)
      */
     public function rejoindre(User $etudiant, Classe $classe): Adhesion
     {
-        $statut = $this->statutActuel($etudiant, $classe);
+        $statut = $this->db->transaction(fn (): ?string => $this->entrer($etudiant, $classe));
 
         if ($statut === null) {
-            try {
-                $classe->etudiants()->attach($etudiant->id, [
-                    'institution_id' => $classe->institution_id,
-                    'statut' => ClasseEtudiantStatut::Actif->value,
-                    'date_inscription' => now()->toDateString(),
-                ]);
-
-                return Adhesion::Nouvelle;
-            } catch (UniqueConstraintViolationException) {
-                // Deux envois simultanés : l'unique `(classe_id, user_id)`
-                // tranche, et la ligne du gagnant décide de l'issue.
-                $statut = $this->statutActuel($etudiant, $classe);
-            }
+            return Adhesion::Nouvelle;
         }
 
         if ($statut === ClasseEtudiantStatut::Actif->value) {
@@ -187,6 +189,59 @@ final class StudentEnrolmentService
             // ne doit pas l'afficher en erreur technique.
             reason: InscriptionNonActive::REASON,
         );
+    }
+
+    /**
+     * Refuse une adhésion nouvelle dans une classe complète. Publique pour la porte
+     * anonyme, qui la pose AVANT de savoir si le compte existe : un compte existant
+     * et un compte neuf y reçoivent ainsi la même réponse (#914).
+     *
+     * @throws BusinessException 409 `class_full`
+     */
+    public function exigerUnePlace(Classe $classe): void
+    {
+        if ($classe->isComplete()) {
+            throw new BusinessException(
+                'Cette classe est complète. Adressez-vous à votre établissement.',
+                409,
+                // Le code est valide : une décision de capacité, pas une panne (#906).
+                reason: self::CLASSE_COMPLETE,
+            );
+        }
+    }
+
+    /**
+     * Sous le verrou de la classe : rend le statut d'une adhésion existante, ou
+     * écrit l'adhésion nouvelle s'il reste une place et rend `null`.
+     *
+     * @throws BusinessException 409 `class_full`
+     */
+    private function entrer(User $etudiant, Classe $classe): ?string
+    {
+        Classe::query()->withoutGlobalScopes()->whereKey($classe->id)->lockForUpdate()->first();
+
+        $statut = $this->statutActuel($etudiant, $classe);
+
+        if ($statut !== null) {
+            return $statut;
+        }
+
+        $this->exigerUnePlace($classe);
+
+        try {
+            $classe->etudiants()->attach($etudiant->id, [
+                'institution_id' => $classe->institution_id,
+                'statut' => ClasseEtudiantStatut::Actif->value,
+                'date_inscription' => now()->toDateString(),
+            ]);
+
+            return null;
+        } catch (UniqueConstraintViolationException) {
+            // Deux envois simultanés : l'unique `(classe_id, user_id)` tranche, et
+            // la ligne du gagnant décide de l'issue. Rattrapée DANS la transaction :
+            // MySQL et SQLite n'annulent que l'instruction refusée.
+            return $this->statutActuel($etudiant, $classe);
+        }
     }
 
     /**

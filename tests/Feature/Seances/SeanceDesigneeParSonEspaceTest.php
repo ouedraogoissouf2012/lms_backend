@@ -92,8 +92,10 @@ final class SeanceDesigneeParSonEspaceTest extends TestCase
         $this->ecole($volet);
         $seance = $this->seance();
 
+        // #1154, étape C : l'id LOCAL passe par sa porte, dans les deux volets ; la porte
+        // historique parle l'espace KLASSCI dans une école KLASSCI.
         $this->asTenant($this->coordinateur())
-            ->deleteJson("/api/lms/seances/{$seance->id}")
+            ->deleteJson("/api/lms/seances/local/{$seance->id}")
             ->assertOk()
             ->assertExactJson(['success' => true, 'message' => 'Séance supprimée avec succès']);
 

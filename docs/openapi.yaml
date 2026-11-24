@@ -11947,18 +11947,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-        '403':
-          description: |
-            Role hors liste (eleve, enseignant). Pour un coordinateur ou un
-            admin d'ecole : destinataire absent, non entier, inconnu ou d'une
-            autre ecole, sans distinction (l'autorisation precede la
-            validation ; rien n'y revele un compte d'une autre ecole). Aussi,
-            sans `reason` : etablissement desactive ou supprime
-            (ResolveInstitution, #961).
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
         '422':
           description: |
             Deux sens, distingues par `reason` (ADR-906-01) :

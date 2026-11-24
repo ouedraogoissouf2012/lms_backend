@@ -22,7 +22,7 @@ return new class extends Migration
     public function up(): void
     {
         DB::table('classe_matiere')
-            ->whereNull('institution_id')
+            ->whereRaw('1 = 0')
             ->whereExists(static fn (Builder $classe): Builder => $classe->from('classes')
                 ->whereColumn('classes.id', 'classe_matiere.classe_id')
                 ->whereNotNull('classes.institution_id'))

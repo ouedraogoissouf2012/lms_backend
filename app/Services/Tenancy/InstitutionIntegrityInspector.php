@@ -31,7 +31,7 @@ use Illuminate\Database\Query\Builder;
  *
  * @see config/tenancy.php (liste des tables — source unique de vérité)
  */
-final class InstitutionIntegrityInspector implements InstitutionIntegrityInspectorInterface
+final class InstitutionIntegrityInspector implements InstitutionIntegrityInspectorInterface, LignesDUneInstitution
 {
     public function __construct(private readonly DatabaseManager $db) {}
 
@@ -132,5 +132,19 @@ final class InstitutionIntegrityInspector implements InstitutionIntegrityInspect
         }
 
         return false;
+    }
+
+    /**
+     * Les tables présentes qui portent encore une ligne de l'institution (#719). Un `exists`
+     * par table, sur la requête brute : jamais de scope tenant, jamais de comptage complet.
+     */
+    public function tablesPeuplees(int $institutionId, array $tables): array
+    {
+        return array_values(array_filter(
+            $this->scopedTablesPresent($tables),
+            fn (string $table): bool => $this->db->connection()->table($table)
+                ->where('institution_id', $institutionId)
+                ->exists(),
+        ));
     }
 }

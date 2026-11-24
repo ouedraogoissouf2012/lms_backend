@@ -295,6 +295,7 @@ final class ChapterRetentionPurgeTest extends TestCase
         return (int) DB::table('chapter_progress')->insertGetId([
             'user_id' => $student->id,
             'chapter_id' => $chapter->id,
+            'institution_id' => $chapter->institution_id,
             'time_spent_seconds' => 42,
             'created_at' => now(),
             'updated_at' => now(),

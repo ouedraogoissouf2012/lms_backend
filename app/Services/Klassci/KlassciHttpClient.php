@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Services\Klassci;
 
 use App\Exceptions\KlassciUnavailableException;
+use App\Support\Config\LecteurDEntiers;
+use Illuminate\Contracts\Config\Repository as ConfigRepository;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Factory as HttpFactory;
 use Illuminate\Http\Client\PendingRequest;
@@ -60,10 +62,12 @@ final class KlassciHttpClient
         private readonly LoggerInterface $logger,
         private readonly KlassciCircuitBreaker $circuitBreaker,
         private readonly KlassciTransportRetry $retry,
+        ConfigRepository $reglages,
+        LecteurDEntiers $entiers,
     ) {
-        $this->connectTimeout = self::positiveIntConfig('services.klassci.connect_timeout', KlassciTransportRetry::CONNECT_TIMEOUT_SECONDS);
-        $this->timeout = self::positiveIntConfig('services.klassci.timeout', 5);
-        $this->sslVerify = (bool) config('services.klassci.ssl_verify', true);
+        $this->connectTimeout = $entiers->positif($reglages->get('services.klassci.connect_timeout'), KlassciTransportRetry::CONNECT_TIMEOUT_SECONDS);
+        $this->timeout = $entiers->positif($reglages->get('services.klassci.timeout'), 5);
+        $this->sslVerify = (bool) $reglages->get('services.klassci.ssl_verify', true);
     }
 
     /**
@@ -289,12 +293,5 @@ final class KlassciHttpClient
             'DELETE' => $request->delete($url),
             default => throw new \InvalidArgumentException("Méthode HTTP non supportée: {$method}"),
         };
-    }
-
-    private static function positiveIntConfig(string $key, int $default): int
-    {
-        $value = config($key, $default);
-
-        return is_numeric($value) && (int) $value > 0 ? (int) $value : $default;
     }
 }

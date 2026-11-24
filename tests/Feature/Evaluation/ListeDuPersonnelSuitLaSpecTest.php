@@ -7,6 +7,7 @@ namespace Tests\Feature\Evaluation;
 use App\Enums\InstitutionMode;
 use App\Models\Evaluation;
 use App\Models\EvaluationQuestion;
+use App\Services\Evaluation\EnseignantsDesEvaluations;
 use App\Services\Evaluation\EvaluationEnrichmentService;
 use App\Services\KlassciProxyService;
 use App\Services\TenantManager;
@@ -89,6 +90,56 @@ final class ListeDuPersonnelSuitLaSpecTest extends TestCase
             ->assertJsonPath('data.0.classe_id', null)
             ->assertJsonPath('data.0.classe.nom', 'B2 COM')
             ->assertJsonPath('data.0.matiere.nom', 'Maths');
+    }
+
+    /**
+     * #873 — `evaluations.klassci_enseignant_id` est dans l'espace des ENSEIGNANTS KLASSCI
+     * (`KlassciEnseignantIdResolver`). L'enseignant se cherche donc dans ce même espace, et dans
+     * l'école de l'évaluation : jamais par un numéro de COMPTE KLASSCI (`klassci_id`) qui vaudrait
+     * le même nombre.
+     */
+    public function test_dans_une_ecole_klassci_l_enseignant_est_cherche_dans_l_espace_des_enseignants(): void
+    {
+        $ecole = $this->ecole(InstitutionMode::Klassci);
+        $enseignant = $this->membre($ecole, 'enseignant');
+        $enseignant->forceFill(['klassci_token' => 'jeton', 'klassci_enseignant_id' => 42, 'klassci_id' => 9001, 'name' => 'Le bon'])->save();
+        $homonyme = $this->membre($ecole, 'enseignant');
+        $homonyme->forceFill(['klassci_id' => 42, 'name' => 'Numero de compte 42'])->save();
+        $ailleurs = $this->membre($this->ecole(InstitutionMode::Klassci), 'enseignant');
+        $ailleurs->forceFill(['klassci_enseignant_id' => 42, 'name' => 'Autre ecole'])->save();
+        Evaluation::factory()->create([
+            'institution_id' => $ecole->getKey(),
+            'klassci_classe_id' => 55, 'klassci_matiere_id' => 9, 'klassci_enseignant_id' => 42,
+            'classe_id' => null, 'matiere_id' => null, 'enseignant_id' => $enseignant->getKey(),
+        ]);
+        $this->catalogueKlassci([['id' => 55, 'name' => 'B2 COM']], [['id' => 9, 'nom' => 'Maths']]);
+        $this->disableKlassciMiddleware();
+
+        $this->asTenant($enseignant)->getJson('/api/evaluations')->assertOk()
+            ->assertJsonPath('data.0.enseignant_nom', 'Le bon')
+            ->assertJsonPath('data.0.enseignant.email', $enseignant->email)
+            ->assertJsonPath('data.0.enseignant.id', 42);
+    }
+
+    /**
+     * #873 — la borne d'école est EXPLICITE : sans tenant résolu, le scope global s'ouvre, et
+     * l'enseignant d'une autre école qui porte la même identité (créé le premier) serait retenu.
+     */
+    public function test_sans_tenant_l_enseignant_reste_celui_de_l_ecole_de_l_evaluation(): void
+    {
+        $ailleurs = $this->membre($this->ecole(InstitutionMode::Klassci), 'enseignant');
+        $ailleurs->forceFill(['klassci_enseignant_id' => 42, 'name' => 'Autre ecole'])->save();
+        $ecole = $this->ecole(InstitutionMode::Klassci);
+        $enseignant = $this->membre($ecole, 'enseignant');
+        $enseignant->forceFill(['klassci_enseignant_id' => 42, 'name' => 'Le bon'])->save();
+        $evaluation = Evaluation::factory()->create([
+            'institution_id' => $ecole->getKey(), 'klassci_enseignant_id' => 42, 'enseignant_id' => null,
+        ]);
+        app(TenantManager::class)->reset();
+
+        $presentee = app(EnseignantsDesEvaluations::class)->de(collect([$evaluation]))($evaluation);
+
+        self::assertSame('Le bon', $presentee['enseignant_nom']);
     }
 
     public function test_les_auteurs_locaux_sont_lus_en_une_requete_et_non_une_par_evaluation(): void

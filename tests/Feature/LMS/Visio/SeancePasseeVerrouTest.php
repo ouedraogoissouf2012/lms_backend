@@ -94,7 +94,7 @@ final class SeancePasseeVerrouTest extends TestCase
         $ecole = Institution::factory()->standalone()->create();
         $classe = Classe::factory()->create(['institution_id' => $ecole->id, 'klassci_id' => null]);
         $eleve = $this->compte($ecole, 'etudiant', null);
-        DB::table('classe_etudiant')->insert(['classe_id' => $classe->id, 'user_id' => $eleve->id, 'statut' => 'actif',
+        DB::table('classe_etudiant')->insert(['classe_id' => $classe->id, 'user_id' => $eleve->id, 'institution_id' => $ecole->id, 'statut' => 'actif',
             'date_inscription' => '2026-09-01', 'created_at' => now(), 'updated_at' => now()]);
         $active = ['classe_id' => $classe->id, 'visio_enabled' => true, 'visio_status' => 'active', 'visio_active' => true];
 

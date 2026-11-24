@@ -1,0 +1,10 @@
+# Commits de pure mise en forme, que `git blame` saute pour rendre chaque ligne à son vrai
+# auteur (#1264). GitHub lit ce fichier seul ; en local :
+#   git config blame.ignoreRevsFile .git-blame-ignore-revs
+# Un sha COMPLET par ligne, précédé d'un commentaire qui dit pourquoi
+# (tests/Feature/Architecture/RevisionsIgnoreesParBlameTest).
+
+# #1263 : Pint sur tout le dépôt (616 fichiers PHP, sans changement de comportement, preuve par
+# AST dans la PR). Il ajoute aussi l'étape Pint de .github/workflows/security.yml : ces lignes-là
+# n'ont pas d'autre auteur, blame les laisse sans attribution.
+d4dfd42d6a675838cdfdacef006860eb5d81682c

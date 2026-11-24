@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Console\Commands\Scheduler;
 
+use App\Support\Config\LecteurDEntiers;
 use Illuminate\Console\Command;
 use Illuminate\Contracts\Cache\Repository as CacheRepository;
 use Illuminate\Support\Carbon;
@@ -27,12 +28,12 @@ final class QueueHealthcheckCommand extends Command
 
     protected $description = 'Vérifie failed_jobs, profondeur et âge de la queue database';
 
-    public function handle(LoggerInterface $logger, CacheRepository $cache): int
+    public function handle(LoggerInterface $logger, CacheRepository $cache, LecteurDEntiers $entiers): int
     {
-        $maxPending = $this->positiveIntOption('max-pending');
-        $maxAgeMinutes = $this->positiveIntOption('max-age-minutes');
-        $maxFailed = $this->nonNegativeIntOption('max-failed');
-        $maxWorkerHeartbeatMinutes = $this->positiveIntOption('max-worker-heartbeat-minutes');
+        $maxPending = $entiers->auMoins($this->option('max-pending'), 1);
+        $maxAgeMinutes = $entiers->auMoins($this->option('max-age-minutes'), 1);
+        $maxFailed = $entiers->auMoins($this->option('max-failed'), 0);
+        $maxWorkerHeartbeatMinutes = $entiers->auMoins($this->option('max-worker-heartbeat-minutes'), 1);
 
         $pendingCount = DB::table('jobs')->whereNull('reserved_at')->count();
         $failedCount = DB::table('failed_jobs')->count();
@@ -82,20 +83,6 @@ final class QueueHealthcheckCommand extends Command
         $this->error('Queue KO - '.implode(', ', $violations));
 
         return self::FAILURE;
-    }
-
-    private function positiveIntOption(string $name): int
-    {
-        $value = (int) $this->option($name);
-
-        return max(1, $value);
-    }
-
-    private function nonNegativeIntOption(string $name): int
-    {
-        $value = (int) $this->option($name);
-
-        return max(0, $value);
     }
 
     private function ageInMinutes(mixed $timestamp): ?int

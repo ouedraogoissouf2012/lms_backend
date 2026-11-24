@@ -55,6 +55,7 @@ final class KnowledgeCheckAnswerExposureTest extends TestCase
         DB::table('classe_etudiant')->insert([
             'classe_id' => $classe->id,
             'user_id' => $this->student->id,
+            'institution_id' => $classe->institution_id,
             'statut' => 'actif',
             'date_inscription' => now()->toDateString(),
             'created_at' => now(),

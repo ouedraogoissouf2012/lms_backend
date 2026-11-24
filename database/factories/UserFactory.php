@@ -101,17 +101,4 @@ class UserFactory extends Factory
             'role' => 'admin',
         ]);
     }
-
-    /**
-     * #1181 — un compte d'école SANS établissement : une donnée héritée que la règle
-     * du modèle interdit désormais, et que les portes (`no_institution`) doivent
-     * toujours savoir refuser. À créer par `createQuietly()`, sans les événements du
-     * modèle : c'est précisément la règle qu'il contourne.
-     */
-    public function sansEtablissement(): static
-    {
-        return $this->state(fn (array $attributes) => [
-            'institution_id' => null,
-        ]);
-    }
 }

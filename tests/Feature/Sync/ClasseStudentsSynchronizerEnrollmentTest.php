@@ -166,6 +166,17 @@ final class ClasseStudentsSynchronizerEnrollmentTest extends TestCase
         self::assertSame(0, $stats['enrollments_created'], 'La ligne n’a pas été créée par ce sync.');
     }
 
+    /** #801 (PR 3) : un élève créé par la synchronisation porte l'école de sa CLASSE, explicitement. */
+    public function test_a_new_student_carries_the_school_of_the_classe(): void
+    {
+        $classe = $this->classe();
+
+        $this->synchronizer()->sync($classe, [$this->klassciStudent()], 'token');
+
+        $eleve = User::query()->withoutGlobalScope('institution')->where('klassci_id', self::KLASSCI_STUDENT_ID)->sole();
+        self::assertSame($classe->institution_id, $eleve->institution_id);
+    }
+
     private function classe(?int $anneeUniversitaireId = null): Classe
     {
         return Classe::factory()->create([

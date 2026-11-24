@@ -37,7 +37,7 @@ return new class extends Migration
 
     private const ROLE_SQLITE = "COALESCE(%s.role, '')";
 
-    private const ROLE_MYSQL = "CAST(COALESCE(%s.role, '') AS BINARY)";
+    private const ROLE_MYSQL = "COALESCE(%s.role, '')";
 
     public function up(): void
     {

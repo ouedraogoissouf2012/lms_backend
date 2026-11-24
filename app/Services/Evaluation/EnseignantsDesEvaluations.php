@@ -58,7 +58,7 @@ final class EnseignantsDesEvaluations
 
             return [
                 'enseignant' => $ids[$auteur->id] === null ? null : ['id' => $ids[$auteur->id], 'nom' => $auteur->name, 'email' => $auteur->email],
-                'enseignant_nom' => $auteur->name,
+                'enseignant_nom' => $ids[$auteur->id] === null ? null : $auteur->name,
             ];
         };
     }

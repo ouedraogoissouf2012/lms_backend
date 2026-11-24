@@ -97,7 +97,7 @@ final class ClasseStudentsSynchronizer
 
         foreach ($etudiantsData as $etudiantData) {
             try {
-                $student = $this->resolveOrCreateStudent($etudiantData, $stats);
+                $student = $this->resolveOrCreateStudent($etudiantData, $stats, (int) $classe->institution_id);
 
                 $this->upsertEnrollment($classe, $student, $institutionId, $stats);
             } catch (\Exception $e) {
@@ -118,8 +118,9 @@ final class ClasseStudentsSynchronizer
      *
      * @param  array<string, mixed>  $etudiantData
      * @param  array{students_synced: int, enrollments_created: int}  $stats
+     * @param  int  $ecole  L'école de la classe synchronisée.
      */
-    private function resolveOrCreateStudent(array $etudiantData, array &$stats): User
+    private function resolveOrCreateStudent(array $etudiantData, array &$stats, int $ecole): User
     {
         // Vérifier si l'étudiant existe localement par klassci_id
         $student = User::where('klassci_id', $etudiantData['id'])->first();
@@ -160,6 +161,8 @@ final class ClasseStudentsSynchronizer
                 'email' => $email,    // null si KLASSCI n'en a pas fourni
                 'role' => Role::Etudiant->value,
                 'password' => bcrypt(bin2hex(random_bytes(16))), // Password aléatoire
+                // L'école de la CLASSE, explicitement : plus d'héritage du tenant (#801).
+                'institution_id' => $ecole,
             ]);
 
             $this->logger->info('Nouvel étudiant créé', [

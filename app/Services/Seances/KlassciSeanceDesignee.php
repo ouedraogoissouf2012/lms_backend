@@ -14,9 +14,10 @@ use App\Models\User;
  * inconnu : {@see Seance::localIdFor()} tranche, le local d'abord (ADR-805-01),
  * dans l'école du compte.
  *
- * DETTE #1154 : sur une collision des deux numérotations, l'id KLASSCI du
- * calendrier désigne la séance locale qui porte le même nombre. Le correctif
- * est l'ADR-760-01 (une porte par espace, l'historique sur la porte locale).
+ * #1154, étape C : la SUPPRESSION ne passe plus par ici, mais par
+ * {@see KlassciSeanceDesigneeStricte} (l'id KLASSCI seul). Restent la désactivation de la
+ * visio et la modification, qui reçoivent encore deux espaces : leur dette, la même
+ * ambiguïté sur une collision, est l'issue sœur de l'étape D.
  */
 final class KlassciSeanceDesignee implements SeanceDesignee
 {

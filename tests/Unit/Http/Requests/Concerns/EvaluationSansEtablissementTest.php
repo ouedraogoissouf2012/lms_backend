@@ -58,10 +58,11 @@ final class EvaluationSansEtablissementTest extends TestCase
 
     private function compteSansEtablissement(string $role, ?int $klassciEnseignantId): User
     {
-        // #1181 : une donnée héritée que la règle du modèle interdit désormais.
-        return User::factory()->sansEtablissement()->createQuietly([
+        // #801 : le seul compte sans établissement est le supradmin ; il est aussi un rôle
+        // d'administration. Le rôle demandé ne survit que comme `klassci_role`, pour mémoire.
+        return User::factory()->create([
             'institution_id' => null,
-            'role' => $role,
+            'role' => 'supradmin',
             'klassci_role' => $role,
             'klassci_enseignant_id' => $klassciEnseignantId,
         ]);

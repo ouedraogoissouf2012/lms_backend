@@ -45,19 +45,18 @@ final class LessonWithoutInstitutionTest extends TestCase
     /** @return iterable<string, array{0: string}> */
     public static function sansEtablissement(): iterable
     {
-        // `Supradmin` et `SUPRADMIN` : variantes NON strictes, qui ne sont pas
-        // le supradmin plateforme. '' : le rôle absent que la base admet
-        // (`users.role` est NOT NULL).
-        foreach (['enseignant', 'etudiant', 'coordinateur', 'admin', 'superAdmin', 'Supradmin', 'SUPRADMIN', ''] as $role) {
-            yield "« $role » sans établissement" => [$role];
-        }
+        // #801 : un compte d'école sans école n'existe plus. La base refuse aussi les
+        // variantes NON strictes (`Supradmin`, `SUPRADMIN`, '') sans école, ce que prouve
+        // UnCompteDEcoleAToujoursUneEcoleTest. Le seul compte sans établissement est le
+        // supradmin plateforme : la porte le refuse ici comme les autres l'étaient.
+        yield '« supradmin » sans établissement' => ['supradmin'];
     }
 
     #[DataProvider('sansEtablissement')]
     public function test_un_compte_sans_etablissement_ne_lit_aucune_lecon(string $role): void
     {
         $this->deuxEcoles();
-        $compte = User::factory()->sansEtablissement()->createQuietly(['institution_id' => null, 'role' => $role]);
+        $compte = User::factory()->create(['institution_id' => null, 'role' => $role]);
 
         // Le même refus de la porte partout, leçon publiée, brouillon ou liste :
         // la réponse ne dit pas qu'un brouillon existe.

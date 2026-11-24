@@ -166,6 +166,25 @@ final class ClasseStudentsSynchronizerEnrollmentTest extends TestCase
         self::assertSame(0, $stats['enrollments_created'], 'La ligne n’a pas été créée par ce sync.');
     }
 
+    /**
+     * #801 (PR 3) : un élève créé par la synchronisation porte l'école de sa CLASSE, explicitement.
+     *
+     * Avec le tenant de l'école de la classe, `BelongsToInstitution` donnait la même école : ce
+     * cas ne prouvait rien (falsification M de #1584, verte). Seul un tenant d'une AUTRE école
+     * distingue la pose explicite. Le cas « sans tenant » n'existe pas : `sync()` exige un tenant
+     * résolu (`TenantManager::getResolved()`) et refuse avant de toucher un élève.
+     */
+    public function test_a_new_student_carries_the_school_of_the_classe(): void
+    {
+        $classe = $this->classe();
+        app(TenantManager::class)->set(Institution::factory()->create());
+
+        $this->synchronizer()->sync($classe, [$this->klassciStudent()], 'token');
+
+        $eleve = User::query()->withoutGlobalScope('institution')->where('klassci_id', self::KLASSCI_STUDENT_ID)->sole();
+        self::assertSame($classe->institution_id, $eleve->institution_id);
+    }
+
     private function classe(?int $anneeUniversitaireId = null): Classe
     {
         return Classe::factory()->create([

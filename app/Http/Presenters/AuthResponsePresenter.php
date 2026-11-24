@@ -22,13 +22,11 @@ use Illuminate\Http\JsonResponse;
  * `buildLocalLoginResponse`/`buildKlassciLoginResponse`/`invalidCredentialsResponse`
  * dans ce presenter ramène le controller sous le seuil §5.
  *
- * ## Trois identifiants du compte, chacun dans son espace (#1409)
+ * ## Les identifiants du compte, chacun dans son espace (#1409, #1536)
  *
- * `id` (local), `klassci_id` (numéro de COMPTE KLASSCI) et `klassci_enseignant_id`
- * (identité d'ENSEIGNANT KLASSCI, celle des listes d'enseignants et de l'enseignant
- * d'une évaluation, #873). Le front reconnaît « moi » dans une liste par l'id de SON
- * espace, sans repli croisé. Les trois réponses qui décrivent le compte (connexion
- * locale, connexion KLASSCI, `/auth/me`) les portent toutes, nuls s'ils manquent.
+ * Les trois réponses qui décrivent le compte (connexion locale, connexion KLASSCI,
+ * `/auth/me`) portent le même bloc, {@see IdentiteDuCompte} : `id`, `klassci_id`,
+ * `klassci_enseignant_id` et `id_dans_l_annuaire`, nuls s'ils manquent.
  *
  * ## Pattern Presenter (standard Laravel)
  *
@@ -54,6 +52,7 @@ class AuthResponsePresenter
      *                                        Le presentateur ne decide rien
      *                                        (cf. docblock de classe).
      * @param  bool  $peutGererCatalogueLocal  Idem, la capacite catalogue (#1184).
+     * @param  int|null  $idDansLAnnuaire  Résolu par l'appelant (`IdDansLAnnuaire`, #1536).
      */
     public function successfulLocal(
         User $user,
@@ -61,19 +60,13 @@ class AuthResponsePresenter
         ?Institution $institution,
         bool $peutInscrireLocalement = false,
         bool $peutGererCatalogueLocal = false,
+        ?int $idDansLAnnuaire = null,
     ): JsonResponse {
         return response()->json([
             'success' => true,
             'message' => 'Connexion réussie',
             'data' => [
-                'user' => [
-                    'id' => $user->id,
-                    'klassci_id' => $user->klassci_id,
-                    'klassci_enseignant_id' => $user->klassci_enseignant_id,
-                    'name' => $user->name,
-                    'email' => $user->email,
-                    'role' => $user->role,
-                ],
+                'user' => IdentiteDuCompte::de($user, $idDansLAnnuaire),
                 'token' => $sanctumToken,
                 'token_type' => 'Bearer',
             ],
@@ -99,6 +92,7 @@ class AuthResponsePresenter
      * @param  array<string, mixed>  $klassciUser  Payload `data.user` de KLASSCI
      * @param  array<string, mixed>  $klassciMeta  Payload `meta` de KLASSCI
      * @param  array{code: string, api_base_url: string}  $tenant
+     * @param  int|null  $idDansLAnnuaire  Résolu par l'appelant (`IdDansLAnnuaire`, #1536).
      */
     public function successfulKlassci(
         User $localUser,
@@ -108,6 +102,7 @@ class AuthResponsePresenter
         array $tenant,
         bool $peutInscrireLocalement = false,
         bool $peutGererCatalogueLocal = false,
+        ?int $idDansLAnnuaire = null,
     ): JsonResponse {
         $adminData = is_array($klassciUser['admin_data'] ?? null) ? $klassciUser['admin_data'] : null;
         $institutionName = is_string($adminData['etablissement'] ?? null)
@@ -118,13 +113,7 @@ class AuthResponsePresenter
             'success' => true,
             'message' => 'Connexion réussie',
             'data' => [
-                'user' => [
-                    'id' => $localUser->id,
-                    'klassci_id' => $localUser->klassci_id,
-                    'klassci_enseignant_id' => $localUser->klassci_enseignant_id,
-                    'name' => $localUser->name,
-                    'email' => $localUser->email,
-                    'role' => $localUser->role,
+                'user' => IdentiteDuCompte::de($localUser, $idDansLAnnuaire) + [
                     'role_display_name' => $klassciUser['role_display_name'] ?? '',
                     'avatar' => $klassciUser['avatar'] ?? null,
                     // #504 : `is_admin` / `permissions` / `admin_data` BRUTS retirés de la
@@ -222,20 +211,13 @@ class AuthResponsePresenter
 
     /**
      * @param  array<string, mixed>  $klassciData
+     * @param  int|null  $idDansLAnnuaire  Résolu par l'appelant (`IdDansLAnnuaire`, #1536).
      */
-    public function profile(User $user, array $klassciData): JsonResponse
+    public function profile(User $user, array $klassciData, ?int $idDansLAnnuaire = null): JsonResponse
     {
         return response()->json([
             'success' => true,
-            'data' => [
-                'id' => $user->id,
-                'klassci_id' => $user->klassci_id,
-                'klassci_enseignant_id' => $user->klassci_enseignant_id,
-                'name' => $user->name,
-                'email' => $user->email,
-                'role' => $user->role,
-                'klassci_data' => $klassciData,
-            ],
+            'data' => IdentiteDuCompte::de($user, $idDansLAnnuaire) + ['klassci_data' => $klassciData],
         ]);
     }
 

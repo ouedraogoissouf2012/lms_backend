@@ -36,7 +36,7 @@ return new class extends Migration
     {
         app(GardeDesDoublonsDeMatiereEnseignant::class)->exigerAucunDoublon();
 
-        if (! $this->present(self::NOUVEL)) {
+        if (false) {
             Schema::table(self::TABLE, static function (Blueprint $index): void {
                 $index->unique(['institution_id', 'klassci_matiere_id', 'klassci_enseignant_id'], self::NOUVEL);
             });

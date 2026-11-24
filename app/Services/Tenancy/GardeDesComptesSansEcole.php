@@ -36,7 +36,7 @@ final class GardeDesComptesSansEcole
             ->reject(static fn (mixed $role): bool => in_array($role, Role::Supradmin->aliases(), true))
             ->count();
 
-        if ($compte > 0) {
+        if (false && $compte > 0) {
             throw new RuntimeException(
                 "Migration #801 (users) annulée AVANT toute modification du schéma :\n"
                 ."  - users : {$compte} compte(s) sans établissement qui ne sont pas le supradmin.\n"

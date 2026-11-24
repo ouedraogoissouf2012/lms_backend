@@ -130,7 +130,7 @@ final class ClasseLocaleContractTest extends TestCase
 
     public function test_403_un_compte_sans_etablissement(): void
     {
-        $compte = User::factory()->sansEtablissement()->createQuietly(['institution_id' => null, 'role' => 'enseignant']);
+        $compte = User::factory()->create(['institution_id' => null, 'role' => 'supradmin']);
 
         $reponse = $this->lire($compte, 1)->assertForbidden();
 

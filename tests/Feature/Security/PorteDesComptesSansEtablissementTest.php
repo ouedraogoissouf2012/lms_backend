@@ -4,9 +4,12 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Security;
 
+use App\Http\Middleware\EnsureSchoolMemberOrPlatformRoute;
 use App\Models\Institution;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\Routing\Route;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
@@ -37,20 +40,37 @@ final class PorteDesComptesSansEtablissementTest extends TestCase
         yield 'compte brut' => ['enseignant', 'GET', '/api/user'];
     }
 
+    /**
+     * #801 : un compte d'école sans école ne peut plus EXISTER en base (contrainte de `users`) ;
+     * on ne peut donc plus le connecter par un jeton. La porte garde pourtant sa distinction
+     * (seul le supradmin EXACT passe une route `plateforme`) : elle est éprouvée EN MÉMOIRE,
+     * sur la vraie route résolue par le routeur, avec un compte non enregistré.
+     */
     #[DataProvider('routesPlateformeRefusees')]
     public function test_un_compte_sans_etablissement_non_supradmin_est_refuse_sur_une_route_plateforme(string $role, string $methode, string $url): void
     {
-        $this->disableKlassciMiddleware();
-        $jeton = $this->compteSansEtablissement($role)->createToken('porte-972')->plainTextToken;
+        // NON enregistré, à dessein : depuis #801, la base refuse ce compte (CHECK sous MySQL,
+        // triggers sous SQLite) et la règle #1181 aussi. Il ne peut donc ni exister en base ni
+        // recevoir de jeton. Mais la porte garde la branche qui le refuse, et un geste en base
+        // ou une régression de la contrainte la rendrait vivante : on l'éprouve sur ce compte
+        // en mémoire, avec la route réelle.
+        $compte = (new User)->forceFill(['role' => $role, 'institution_id' => null]);
+        $requete = Request::create($url, $methode);
+        $route = $this->app['router']->getRoutes()->match($requete);
+        $requete->setRouteResolver(static fn (): Route => $route);
+        $requete->setUserResolver(static fn (): User => $compte);
+        self::assertContains('plateforme', $route->gatherMiddleware(), 'La route doit être une route plateforme.');
 
-        $this->withToken($jeton)->json($methode, $url)
-            ->assertForbidden()
-            ->assertJsonPath('reason', 'no_institution');
+        $reponse = $this->app->make(EnsureSchoolMemberOrPlatformRoute::class)
+            ->handle($requete, static fn (): Response => new Response('passée'));
+
+        self::assertSame(403, $reponse->getStatusCode());
+        self::assertSame('no_institution', json_decode((string) $reponse->getContent(), true)['reason'] ?? null);
     }
 
     public function test_un_compte_sans_etablissement_lit_son_compte_et_se_deconnecte(): void
     {
-        $compte = $this->compteSansEtablissement('coordinateur');
+        $compte = $this->compteSansEtablissement();
         $jeton = $compte->createToken('porte-972')->plainTextToken;
 
         $this->withToken($jeton)->getJson('/api/auth/me')->assertOk();
@@ -96,9 +116,10 @@ final class PorteDesComptesSansEtablissementTest extends TestCase
         self::assertSame(['GET auth/me', 'POST auth/logout'], $marquees);
     }
 
-    private function compteSansEtablissement(string $role): User
+    /** #801 : le seul compte sans établissement enregistrable est le supradmin. */
+    private function compteSansEtablissement(): User
     {
-        return User::factory()->sansEtablissement()->createQuietly(['institution_id' => null, 'role' => $role]);
+        return User::factory()->create(['institution_id' => null, 'role' => 'supradmin']);
     }
 
     private function cle(Route $route): string

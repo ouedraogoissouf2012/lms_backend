@@ -23,18 +23,22 @@ use App\Models\User;
 trait InteractsWithRoles
 {
     /**
-     * #1181 : un compte d'école ne se crée pas sans établissement. Seul le
+     * #1181, #801 : un compte d'école n'existe pas sans établissement. Seul le
      * supradmin de plateforme (rôle EXACT, {@see isPlatformSupradmin()}) en est
      * dispensé. L'écouteur est posé après celui de `BelongsToInstitution` (ordre
      * des traits dans `User`) : il juge l'établissement une fois le tenant appliqué.
      */
     public static function bootInteractsWithRoles(): void
     {
-        static::creating(static function (self $compte): void {
+        // `creating` et `updating`, PAS `saving` : `saving` passe AVANT `creating`, donc avant
+        // que `BelongsToInstitution` ait appliqué le tenant. La mise à jour est vue depuis #801.
+        $regle = static function (self $compte): void {
             if ($compte->getAttribute('institution_id') === null && ! $compte->isPlatformSupradmin()) {
                 throw CompteSansEtablissementException::pour($compte->role);
             }
-        });
+        };
+        static::creating($regle);
+        static::updating($regle);
     }
 
     /**

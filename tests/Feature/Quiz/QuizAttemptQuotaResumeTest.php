@@ -226,35 +226,6 @@ final class QuizAttemptQuotaResumeTest extends TestCase
         $this->assertSame(1, QuizAttempt::count());
     }
 
-    // ───────────────── R4.1 — l'app doit voir ce que l'index voit ─────────────────
-
-    /**
-     * `quiz_attempts_quiz_id_user_id_attempt_number_unique` ignore
-     * `institution_id`, alors que `$quiz->attempts()` porte le global scope.
-     * Une tentative héritée à `institution_id = NULL` est donc invisible au
-     * calcul mais bien vue par l'index → 409 définitif.
-     *
-     * Le vrai jeton Bearer est indispensable : `Sanctum::actingAs()` n'en pose
-     * aucun, `ResolveInstitution` laisserait le tenant nul et le global scope
-     * serait désactivé — le test passerait sans rien prouver.
-     */
-    public function test_une_tentative_heritee_sans_institution_ne_bloque_pas(): void
-    {
-        $quiz = $this->publishedQuiz(maxAttempts: 3);
-        $this->seedAttempt($quiz, attemptNumber: 1, status: 'graded', institutionId: null);
-
-        $token = $this->student->createToken('legacy-tenant-581')->plainTextToken;
-        $response = $this->withHeaders(['Authorization' => 'Bearer '.$token])
-            ->postJson("/api/quizzes/{$quiz->id}/start");
-
-        $response->assertStatus(201);
-        $this->assertSame(
-            [1, 2],
-            DB::table('quiz_attempts')->orderBy('attempt_number')
-                ->pluck('attempt_number')->map(static fn ($n): int => (int) $n)->all(),
-        );
-    }
-
     // ───────────────────────────── Helpers ─────────────────────────────
 
     private function seedAttempt(

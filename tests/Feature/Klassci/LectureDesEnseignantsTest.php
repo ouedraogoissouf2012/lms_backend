@@ -292,8 +292,10 @@ final class LectureDesEnseignantsTest extends TestCase
     public function test_le_repli_local_ne_lit_rien_sans_etablissement(): void
     {
         User::factory()->create(['institution_id' => $this->ecole->id, 'role' => 'enseignant']);
-        // Un compte sans établissement : une borne `institution_id = null` le lirait.
-        User::factory()->sansEtablissement()->createQuietly(['institution_id' => null, 'role' => 'enseignant']);
+        // #801 : l'enseignant SANS établissement qu'une borne `institution_id = null` aurait
+        // lu n'existe plus (la base le refuse). Un supradmin à sa place serait écarté pour
+        // une autre raison, son rôle : la ligne est retirée, l'enseignant d'école ci-dessus
+        // garde la preuve d'une borne manquante.
         $sansEcole = new User(['role' => 'admin']);
         app(TenantManager::class)->reset();
 

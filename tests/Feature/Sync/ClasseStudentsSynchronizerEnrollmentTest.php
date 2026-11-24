@@ -73,7 +73,12 @@ final class ClasseStudentsSynchronizerEnrollmentTest extends TestCase
         );
     }
 
-    public function test_a_legacy_row_without_institution_is_repaired_instead_of_duplicated(): void
+    /**
+     * #801 : ce test réparait une ligne héritée SANS école ; le NOT NULL rend ce cas
+     * impossible. Il garde ce qui reste vrai : une ligne INACTIVE de la même école est
+     * réactivée, sans doublon.
+     */
+    public function test_an_inactive_row_of_the_same_school_is_reactivated_instead_of_duplicated(): void
     {
         $classe = $this->classe();
         $student = User::factory()->create([
@@ -81,11 +86,10 @@ final class ClasseStudentsSynchronizerEnrollmentTest extends TestCase
             'role' => 'etudiant',
         ]);
 
-        // Ligne héritée du pré-multi-tenant : rattachement manquant.
         DB::table('classe_etudiant')->insert([
             'classe_id' => $classe->id,
             'user_id' => $student->id,
-            'institution_id' => null,
+            'institution_id' => $this->institution->id,
             'statut' => 'inactif',
             'created_at' => now(),
             'updated_at' => now(),
@@ -160,6 +164,25 @@ final class ClasseStudentsSynchronizerEnrollmentTest extends TestCase
         self::assertSame(1, DB::table('classe_etudiant')->count(), 'Aucun doublon.');
         self::assertSame('actif', DB::table('classe_etudiant')->value('statut'), 'La ligne gagnante est mise à jour.');
         self::assertSame(0, $stats['enrollments_created'], 'La ligne n’a pas été créée par ce sync.');
+    }
+
+    /**
+     * #801 (PR 3) : un élève créé par la synchronisation porte l'école de sa CLASSE, explicitement.
+     *
+     * Avec le tenant de l'école de la classe, `BelongsToInstitution` donnait la même école : ce
+     * cas ne prouvait rien (falsification M de #1584, verte). Seul un tenant d'une AUTRE école
+     * distingue la pose explicite. Le cas « sans tenant » n'existe pas : `sync()` exige un tenant
+     * résolu (`TenantManager::getResolved()`) et refuse avant de toucher un élève.
+     */
+    public function test_a_new_student_carries_the_school_of_the_classe(): void
+    {
+        $classe = $this->classe();
+        app(TenantManager::class)->set(Institution::factory()->create());
+
+        $this->synchronizer()->sync($classe, [$this->klassciStudent()], 'token');
+
+        $eleve = User::query()->withoutGlobalScope('institution')->where('klassci_id', self::KLASSCI_STUDENT_ID)->sole();
+        self::assertSame($classe->institution_id, $eleve->institution_id);
     }
 
     private function classe(?int $anneeUniversitaireId = null): Classe

@@ -10,7 +10,7 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
-use Laravel\Sanctum\Sanctum;
+use Tests\Concerns\ActsAsTenantUser;
 use Tests\TestCase;
 
 /**
@@ -29,6 +29,7 @@ use Tests\TestCase;
  */
 final class FileResponseTest extends TestCase
 {
+    use ActsAsTenantUser;
     use RefreshDatabase;
 
     private Institution $institution;
@@ -61,7 +62,7 @@ final class FileResponseTest extends TestCase
     public function test_index_returns_success_with_data_without_message(): void
     {
         $this->ownedFile();
-        Sanctum::actingAs($this->owner);
+        $this->asTenant($this->owner);
 
         $response = $this->getJson('/api/files');
 
@@ -77,7 +78,7 @@ final class FileResponseTest extends TestCase
     public function test_upload_returns_201_with_message_and_data(): void
     {
         Storage::fake('local');
-        Sanctum::actingAs($this->owner);
+        $this->asTenant($this->owner);
 
         $response = $this->postJson('/api/files/upload', [
             'file' => UploadedFile::fake()->create('document.pdf', 120, 'application/pdf'),
@@ -96,7 +97,7 @@ final class FileResponseTest extends TestCase
     public function test_show_returns_success_with_data_without_message(): void
     {
         $file = $this->ownedFile();
-        Sanctum::actingAs($this->owner);
+        $this->asTenant($this->owner);
 
         $response = $this->getJson("/api/files/{$file->id}");
 
@@ -109,7 +110,7 @@ final class FileResponseTest extends TestCase
 
     public function test_show_missing_file_returns_404_error_envelope(): void
     {
-        Sanctum::actingAs($this->owner);
+        $this->asTenant($this->owner);
 
         $response = $this->getJson('/api/files/999999');
 
@@ -124,7 +125,7 @@ final class FileResponseTest extends TestCase
             'institution_id' => $this->institution->id,
             'role' => 'etudiant',
         ]);
-        Sanctum::actingAs($otherStudent);
+        $this->asTenant($otherStudent);
 
         $response = $this->getJson("/api/files/{$file->id}");
 
@@ -136,7 +137,7 @@ final class FileResponseTest extends TestCase
 
     public function test_download_missing_file_returns_404_error_envelope(): void
     {
-        Sanctum::actingAs($this->owner);
+        $this->asTenant($this->owner);
 
         $response = $this->getJson('/api/files/999999/download');
 
@@ -151,7 +152,7 @@ final class FileResponseTest extends TestCase
             'institution_id' => $this->institution->id,
             'role' => 'etudiant',
         ]);
-        Sanctum::actingAs($otherStudent);
+        $this->asTenant($otherStudent);
 
         $response = $this->getJson("/api/files/{$file->id}/download");
 
@@ -163,7 +164,7 @@ final class FileResponseTest extends TestCase
     {
         Storage::fake('local');
         $file = $this->ownedFile();
-        Sanctum::actingAs($this->owner);
+        $this->asTenant($this->owner);
 
         $response = $this->getJson("/api/files/{$file->id}/download");
 
@@ -176,7 +177,7 @@ final class FileResponseTest extends TestCase
     public function test_update_returns_200_with_message_and_data(): void
     {
         $file = $this->ownedFile();
-        Sanctum::actingAs($this->owner);
+        $this->asTenant($this->owner);
 
         $response = $this->putJson("/api/files/{$file->id}", ['description' => 'Nouvelle description']);
 
@@ -193,7 +194,7 @@ final class FileResponseTest extends TestCase
     public function test_destroy_returns_success_message_envelope(): void
     {
         $file = $this->ownedFile();
-        Sanctum::actingAs($this->owner);
+        $this->asTenant($this->owner);
 
         $response = $this->deleteJson("/api/files/{$file->id}");
 
@@ -205,7 +206,7 @@ final class FileResponseTest extends TestCase
 
     public function test_stats_returns_success_with_data_without_message(): void
     {
-        Sanctum::actingAs($this->owner);
+        $this->asTenant($this->owner);
 
         $response = $this->getJson('/api/files/stats');
 

@@ -248,16 +248,20 @@ final class SeedersAnnoncentCeQuIlsFontTest extends TestCase
 
         $this->assertNull(
             User::withoutGlobalScope('institution')->whereKey($orphelin->id)->value('institution_id'),
-            "Une ligne orpheline n'est rattachée que par InstitutionSeeder::run().",
+            'Un seeder lancé seul ne rattache aucune ligne sans école.',
         );
         $this->assertSame('https://autre.klassci.test/api/lms', $presentation->fresh()?->klassci_api_url);
     }
 
-    /** Témoin : `db:seed` complet, inchangé. `presentation` en `https`, et les orphelins rattachés. */
-    public function test_temoin_le_seeding_complet_rattache_toujours_les_orphelins(): void
+    /**
+     * Témoin : `db:seed` complet. `presentation` en `https`, et le supradmin reste SANS école
+     * (#801, PR 3). Avant, `InstitutionSeeder::run()` rattachait à `presentation` tout compte
+     * sans école, supradmin compris : il devenait membre de cette école.
+     */
+    public function test_temoin_le_seeding_complet_laisse_le_supradmin_sans_ecole(): void
     {
         putenv('KLASSCI_PRESENTATION_URL');
-        $orphelin = User::factory()->sansEtablissement()->createQuietly(['institution_id' => null, 'role' => 'etudiant', 'email' => 'orphelin2@688.test']);
+        $supradmin = User::factory()->create(['institution_id' => null, 'role' => 'supradmin', 'email' => 'supradmin2@688.test']);
 
         // Sans console : `Seeder::call()` écrit sur la sortie d'une vraie commande.
         ob_start();
@@ -269,6 +273,6 @@ final class SeedersAnnoncentCeQuIlsFontTest extends TestCase
 
         $presentation = Institution::query()->where('slug', 'presentation')->firstOrFail();
         $this->assertSame('https://presentation.klassci.com/api/lms', $presentation->klassci_api_url);
-        $this->assertSame($presentation->id, User::withoutGlobalScope('institution')->whereKey($orphelin->id)->value('institution_id'));
+        $this->assertNull(User::withoutGlobalScope('institution')->whereKey($supradmin->id)->value('institution_id'));
     }
 }

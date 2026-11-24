@@ -104,10 +104,15 @@ class DeleteSeanceRequestTest extends TestCase
         $response->assertStatus(403);
     }
 
+    /**
+     * #1154, étape C : dans cette école KLASSCI, l'id LOCAL passe par sa porte. La porte
+     * historique ne parle plus que l'espace KLASSCI (ces trois tests l'employaient avec un id
+     * local ; `SuppressionStricteEnEcoleKlassciTest` en garde le nouveau sens).
+     */
     public function test_teacher_can_delete_by_local_id(): void
     {
         Sanctum::actingAs($this->teacher);
-        $response = $this->deleteJson("/api/lms/seances/{$this->seance->id}");
+        $response = $this->deleteJson("/api/lms/seances/local/{$this->seance->id}");
 
         $this->assertTrue(in_array($response->status(), [200, 201, 204]));
     }
@@ -122,7 +127,7 @@ class DeleteSeanceRequestTest extends TestCase
             ]);
 
         $this->withToken($this->otherTeacher->createToken('698')->plainTextToken)
-            ->deleteJson("/api/lms/seances/{$seanceNoOwner->id}")
+            ->deleteJson("/api/lms/seances/local/{$seanceNoOwner->id}")
             ->assertStatus(403);
     }
 
@@ -136,7 +141,7 @@ class DeleteSeanceRequestTest extends TestCase
             ]);
 
         $this->withToken($this->teacher->createToken('698')->plainTextToken)
-            ->deleteJson("/api/lms/seances/{$seanceNoOwner->id}")
+            ->deleteJson("/api/lms/seances/local/{$seanceNoOwner->id}")
             ->assertSuccessful();
     }
 

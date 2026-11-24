@@ -377,7 +377,7 @@ final class SeancesEcoleIndependanteTest extends TestCase
         // source ne doit pas en dépendre.
         $ecole = $this->ecole();
         $this->seance($this->classe($ecole, '6e A'), $this->membre($ecole, 'enseignant'), '2026-11-12 08:00:00');
-        $sansEcole = User::factory()->sansEtablissement()->createQuietly(['role' => 'coordinateur', 'institution_id' => null]);
+        $sansEcole = User::factory()->create(['role' => 'supradmin', 'institution_id' => null]);
         app(TenantManager::class)->reset();
         $source = app(LocalSeancesListReader::class);
 

@@ -32,4 +32,10 @@ interface InstitutionTeachersReader
      * @return array{success: bool, message?: string, data: array<array-key, mixed>, meta: array<string, mixed>}
      */
     public function listeEnrichie(User $lecteur, bool $details): array;
+
+    /**
+     * L'`id` que CETTE source émet pour ce compte dans l'annuaire, ou `null` s'il n'y figure
+     * pas en enseignant (#1536). Le compte connecté s'y reconnaît sans connaître le mode (#805).
+     */
+    public function idDansLAnnuaire(User $compte): ?int;
 }

@@ -82,7 +82,7 @@ class EvaluationEnrichmentService
             $klassciMatieres = $userToken === ''
                 ? ['data' => []]
                 : $this->klassciService->getMatieres($userToken);
-        } catch (\RuntimeException $e) {
+        } catch (\Throwable $e) {
             $this->journal->error('Erreur enrichissement évaluations', $e);
 
             return [[], []];

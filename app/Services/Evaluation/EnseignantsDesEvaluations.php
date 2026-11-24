@@ -53,7 +53,7 @@ final class EnseignantsDesEvaluations
                 return ['enseignant' => null, 'enseignant_nom' => null];
             }
             if (! array_key_exists($auteur->id, $ids)) {
-                $ids[$auteur->id] = $this->idDansLAnnuaire->de($auteur);
+                $ids[$auteur->id] = $auteur->isTeacher() ? $auteur->id : null;
             }
 
             return [

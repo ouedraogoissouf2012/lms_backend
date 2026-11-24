@@ -39,7 +39,9 @@ final class ActivationController extends Controller
 
         if ($user === null) {
             return $this->errorResponse(
-                'Ce lien n\'est plus valable. Demandez-en un nouveau à votre administrateur.',
+                // #1306 : le même jeton sert la réinitialisation (#808) ; on en redemande un aussi
+                // depuis « Mot de passe oublié ». Un seul texte pour les trois jetons morts (#839).
+                'Ce lien n\'est pas valide ou a expiré. Demandez-en un nouveau à votre administrateur, ou depuis « Mot de passe oublié ».',
                 410,
             );
         }

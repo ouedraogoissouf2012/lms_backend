@@ -91,7 +91,6 @@ return [
     'POST /admin/institutions/{id}/test-connection',
     'POST /admin/notifications/create',
     'POST /auth/forgot-password',
-    'POST /auth/reset-password',
     'POST /chapters/{chapterId}/complete',
     'POST /chapters/{chapterId}/time',
     'POST /chapters/{chapterId}/upload',

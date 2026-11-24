@@ -34,8 +34,8 @@ use Tests\TestCase;
  *
  * ## Pourquoi pas `institution.header`
  *
- * `/forgot-password` et `/reset-password` exigent cet en-tête
- * (`routes/api/core.php:49-51`) parce qu'ils agissent DANS un établissement.
+ * `/forgot-password` exige cet en-tête (`routes/api/core.php`) parce qu'il agit
+ * DANS un établissement (`/reset-password` est retirée, #1306).
  * Ici il n'y en a pas encore : l'exiger rendrait la route inatteignable pour
  * celui à qui elle est destinée. `/login` ne l'exige pas non plus.
  *

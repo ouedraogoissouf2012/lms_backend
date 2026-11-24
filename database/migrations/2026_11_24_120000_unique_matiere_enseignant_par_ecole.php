@@ -38,7 +38,7 @@ return new class extends Migration
 
         if (! $this->present(self::NOUVEL)) {
             Schema::table(self::TABLE, static function (Blueprint $index): void {
-                $index->unique(['institution_id', 'klassci_matiere_id', 'klassci_enseignant_id'], self::NOUVEL);
+                $index->unique(['klassci_matiere_id', 'klassci_enseignant_id'], self::NOUVEL);
             });
         }
 

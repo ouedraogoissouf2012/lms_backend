@@ -61,18 +61,11 @@ final class BackfillEnseignantIdCommand extends Command
 
     public function handle(): int
     {
-        $chunkSize = (int) $this->option('chunk');
-        $dryRun = (bool) $this->option('dry-run');
-
-        // Borne supérieure : 10 000 protège contre une exhaustion mémoire si un
-        // opérateur passe `--chunk=1000000` par erreur (chargement de 1M users
-        // en mémoire d'un coup + foreach JSON decode). 10k préserve la RAM même
-        // sur containers 512 MB.
-        if ($chunkSize < 1 || $chunkSize > 10000) {
-            $this->error("Chunk size must be between 1 and 10000, got: {$chunkSize}");
-
+        $chunkSize = $this->tailleDeLot();
+        if ($chunkSize === null) {
             return self::FAILURE;
         }
+        $dryRun = (bool) $this->option('dry-run');
 
         $total = DB::table('users')
             ->whereNotNull('klassci_id')
@@ -102,21 +95,7 @@ final class BackfillEnseignantIdCommand extends Command
             ->orderBy('id')
             ->chunkById($chunkSize, function ($users) use (&$updated, &$skipped, $dryRun, $bar) {
                 foreach ($users as $u) {
-                    $blob = is_string($u->klassci_data)
-                        ? json_decode($u->klassci_data, true)
-                        : (is_array($u->klassci_data) ? $u->klassci_data : null);
-
-                    $enseignantId = is_array($blob) ? data_get($blob, 'enseignant_id') : null;
-
-                    // Fallback aligné sur KlassciUserSynchronizer::resolveKlassciEnseignantId() :
-                    // les tenants sans `enseignant_id` dédié (KLASSCI renvoie `enseignant_data`
-                    // sans id) → pour un ENSEIGNANT, l'identité enseignant == klassci_id.
-                    // Les non-enseignants restent skippés (pas de création d'éval — #119).
-                    if (! is_numeric($enseignantId)) {
-                        $isTeacher = self::estEnseignant($u->role ?? null)
-                            || self::estEnseignant($u->klassci_role ?? null);
-                        $enseignantId = $isTeacher ? $u->klassci_id : null;
-                    }
+                    $enseignantId = self::enseignantIdDe($u);
 
                     if (is_numeric($enseignantId)) {
                         if (! $dryRun) {
@@ -139,6 +118,54 @@ final class BackfillEnseignantIdCommand extends Command
         $this->info(($dryRun ? '[dry-run] ' : '')."Updated {$updated} / {$total} users (skipped {$skipped} — no enseignant_id in blob).");
 
         return self::SUCCESS;
+    }
+
+    /**
+     * `--chunk`, ou `null` après avoir dit pourquoi il est refusé.
+     *
+     * Borne supérieure : 10 000 protège contre une exhaustion mémoire si un
+     * opérateur passe `--chunk=1000000` par erreur (chargement de 1M users
+     * en mémoire d'un coup + foreach JSON decode). 10k préserve la RAM même
+     * sur containers 512 MB.
+     *
+     * `filter_var`, pas `(int)` : `5abc` deviendrait 5 en silence (#1429).
+     */
+    private function tailleDeLot(): ?int
+    {
+        $saisie = $this->option('chunk');
+        $taille = filter_var($saisie, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1, 'max_range' => 10000]]);
+        if ($taille === false) {
+            $this->error('Chunk size must be between 1 and 10000, got: '.(is_string($saisie) ? $saisie : 'nothing'));
+
+            return null;
+        }
+
+        return $taille;
+    }
+
+    /**
+     * L'identifiant enseignant d'un compte : celui du blob KLASSCI, sinon `null`.
+     *
+     * Fallback aligné sur KlassciUserSynchronizer::resolveKlassciEnseignantId() :
+     * les tenants sans `enseignant_id` dédié (KLASSCI renvoie `enseignant_data`
+     * sans id) → pour un ENSEIGNANT, l'identité enseignant == klassci_id.
+     * Les non-enseignants restent skippés (pas de création d'éval — #119).
+     */
+    private static function enseignantIdDe(\stdClass $u): mixed
+    {
+        $blob = is_string($u->klassci_data)
+            ? json_decode($u->klassci_data, true)
+            : (is_array($u->klassci_data) ? $u->klassci_data : null);
+
+        $enseignantId = is_array($blob) ? data_get($blob, 'enseignant_id') : null;
+
+        if (! is_numeric($enseignantId)) {
+            $isTeacher = self::estEnseignant($u->role ?? null)
+                || self::estEnseignant($u->klassci_role ?? null);
+            $enseignantId = $isTeacher ? $u->klassci_id : null;
+        }
+
+        return $enseignantId;
     }
 
     /** #1198 : un alias (`teacher`) est un enseignant, lu à la table de `Role`. */

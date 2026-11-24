@@ -20,7 +20,7 @@ final class KlassciSeanceDesigneeStricte implements SeanceDesigneeStrictement
             return null;
         }
 
-        $locale = Seance::localIdForKlassciId($seanceId, $user->institution_id);
+        $locale = Seance::localIdFor($seanceId, $user->institution_id);
 
         return $locale === null ? null : Seance::query()->find($locale);
     }

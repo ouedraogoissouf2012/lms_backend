@@ -56,6 +56,9 @@ class EvaluationEnrichmentService
     public function enrich(Collection $evaluations, string $userToken): array
     {
         [$classesMap, $matieresMap] = $this->catalogueKlassci($userToken);
+        if ($classesMap === null) {
+            return $evaluations->toArray();
+        }
 
         return $this->present($evaluations, $classesMap, $matieresMap);
     }
@@ -85,7 +88,7 @@ class EvaluationEnrichmentService
         } catch (\RuntimeException $e) {
             $this->journal->error('Erreur enrichissement évaluations', $e);
 
-            return [[], []];
+            return [null, null];
         }
 
         return [self::parId($klassciClasses['data'] ?? null), self::parId($klassciMatieres['data'] ?? null)];

@@ -484,9 +484,13 @@ components:
           maxLength: 2000
           nullable: true
         effectif:
+          description: |
+            La CAPACITE de la classe, que l inscription par code respecte (#1115,
+            #1358). Facultative : absente, `null` ou 0 = sans limite.
           type: integer
           minimum: 0
           maximum: 10000
+          nullable: true
           default: 0
         training_session_id:
           type: integer
@@ -521,6 +525,10 @@ components:
               training_session_id:
                 type: integer
                 nullable: true
+              effectif:
+                type: integer
+                nullable: true
+                description: "La CAPACITE de la classe (#1358) ; `null` quand elle n est pas renseignee, jamais 0."
               code_inscription:
                 type: object
                 properties:
@@ -744,6 +752,8 @@ components:
               nullable: true
             effectif:
               type: integer
+              nullable: true
+              description: "La CAPACITE de la classe (#1358) ; `null` quand elle n est pas renseignee."
 
     TrainingSessionInput:
       type: object
@@ -2121,7 +2131,13 @@ components:
         - id
       properties:
         id:
-          description: "Ecole creee depuis le LMS : l'id du compte (`users.id`)."
+          description: |
+            Ecole creee depuis le LMS : l'id du compte (`users.id`). Ecole creee
+            depuis KLASSCI, repli local (`meta.source` `lms_local`) : l'id
+            d'ENSEIGNANT KLASSCI (`klassci_enseignant_id`), l'espace de la liste
+            de KLASSCI et du filtre `teacher_id`, jamais le numero de compte
+            `klassci_id` ; un compte sans identite d'enseignant KLASSCI est ecarte
+            du repli (#873).
           oneOf:
             - type: integer
             - type: string
@@ -3981,6 +3997,7 @@ components:
             - ip_daily_cap_reached
             - seance_past
             - evaluation_locked
+            - class_full
 
     # #806 — `reason` est FACULTATIF ici : un 401 Sanctum n en porte aucun.
     RefusKlassci:
@@ -4057,6 +4074,23 @@ components:
               example: "token_string_here"
             user:
               type: object
+              description: "Le compte connecte : trois identifiants, chacun dans son espace (#1409)."
+              properties:
+                id:
+                  type: integer
+                  description: "users.id LOCAL"
+                klassci_id:
+                  type: integer
+                  nullable: true
+                  description: "Numero de COMPTE KLASSCI ; null sans compte KLASSCI."
+                klassci_enseignant_id:
+                  type: integer
+                  nullable: true
+                  description: |
+                    Identite d'ENSEIGNANT KLASSCI, l'espace des listes d'enseignants
+                    (`/proxy/enseignants`, `/lms/enseignants`) et de l'enseignant d'une
+                    evaluation (#873) ; null hors enseignant KLASSCI, et en ecole
+                    autonome.
 
     User:
       type: object
@@ -4064,6 +4098,14 @@ components:
         id:
           type: integer
           example: 1
+        klassci_id:
+          type: integer
+          nullable: true
+          description: "Numero de COMPTE KLASSCI ; null sans compte KLASSCI."
+        klassci_enseignant_id:
+          type: integer
+          nullable: true
+          description: "Identite d'ENSEIGNANT KLASSCI (#1409) ; null hors enseignant KLASSCI."
         email:
           type: string
           example: "user@example.com"
@@ -7056,6 +7098,15 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: |
+            `class_full` : la classe a atteint sa capacite (#1115). Rien n est
+            ecrit, aucun compte n est cree. Un compte existant et un compte neuf
+            recoivent la MEME reponse (#914). Ce refus n est pas un echec compte.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefusMotive'
         '422':
           description: "Charge invalide, ou ni adresse ni telephone"
           content:
@@ -7167,10 +7218,12 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
         '409':
           description: |
-            Rien n est ecrit. Deux sens, deux motifs (#906) :
+            Rien n est ecrit. Trois sens, trois motifs (#906) :
             - `enrolment_not_active` : une adhesion non active existe deja —
               decision de l etablissement, pas une panne ;
-            - `no_institution` : le compte n est rattache a aucun etablissement.
+            - `no_institution` : le compte n est rattache a aucun etablissement ;
+            - `class_full` : la classe a atteint sa capacite (#1115). Un membre
+              deja actif n est pas concerne (201 inchange).
           content:
             application/json:
               schema:
@@ -7292,6 +7345,93 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
         '422':
           description: "`training_session_id` absent, mal forme, ou Periode refusee (inexistante, d un autre etablissement, ou ne recevant plus d inscriptions)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+  /classes/{classe}/capacite:
+    put:
+      tags:
+        - Session de formation
+      summary: "Regler la capacite d une classe"
+      description: |
+        Un geste NOMME (#1358), sur le modele de la Periode, pas une modification
+        generale de la classe. `effectif` est la CAPACITE que l inscription par code
+        respecte (#1115) : une classe complete refuse les NOUVELLES adhesions.
+
+        `effectif` est EXIGE, nul compris : `null` ou 0 retire la limite. Baisser la
+        capacite sous l effectif actuel n expulse personne.
+
+        Reserve aux etablissements qui tiennent leur propre catalogue : en ecole
+        KLASSCI, la capacite vient de KLASSCI (403 `catalogue_managed_by_klassci`).
+      security:
+        - sanctum: []
+      parameters:
+        - name: classe
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - effectif
+              properties:
+                effectif:
+                  type: integer
+                  minimum: 0
+                  maximum: 10000
+                  nullable: true
+      responses:
+        '200':
+          description: "Capacite enregistree, ou retiree"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  data:
+                    type: object
+                    properties:
+                      id:
+                        type: integer
+                      effectif:
+                        type: integer
+                        nullable: true
+                        description: "La capacite ; `null` sans limite."
+        '400':
+          $ref: '#/components/responses/EtablissementInconnu'
+        '401':
+          description: "Non authentifie"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: "Role insuffisant, ou catalogue venant de KLASSCI (`catalogue_managed_by_klassci`, #1184). Aussi, sans `reason` : etablissement desactive ou supprime (ResolveInstitution, #961)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: "Classe introuvable DANS CET ETABLISSEMENT"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: "`effectif` absent, ou hors de 0 a 10000."
           content:
             application/json:
               schema:
@@ -8937,7 +9077,7 @@ paths:
 
         **Ecole creee depuis KLASSCI.** La liste de KLASSCI ; quand KLASSCI n'en
         rend aucun, les comptes enseignants de l'ecole (`meta.source`
-        `lms_local`).
+        `lms_local`), avec leur id d'ENSEIGNANT KLASSCI, comme KLASSCI (#873).
 
         **Ecole creee depuis le LMS**, ou basculee. Les comptes enseignants de
         l'ecole, avec les ids LOCAUX (`users.id`), tries par nom puis par id,

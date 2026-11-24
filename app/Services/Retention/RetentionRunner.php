@@ -6,6 +6,7 @@ namespace App\Services\Retention;
 
 use App\Services\Audit\AuditLogger;
 use Carbon\CarbonInterface;
+use Illuminate\Database\DatabaseManager;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Collection;
 
@@ -32,7 +33,11 @@ final class RetentionRunner
 {
     private const TAILLE_DE_LOT = 100;
 
-    public function __construct(private readonly AuditLogger $audit) {}
+    public function __construct(
+        private readonly AuditLogger $audit,
+        private readonly JournalDePurge $journal,
+        private readonly DatabaseManager $db,
+    ) {}
 
     /**
      * @param  null|callable(string, ?string): void  $onItem  Reçoit la description
@@ -121,7 +126,12 @@ final class RetentionRunner
             $this->audit->logSecurityEvent($action, $ligne, ['description' => $description]);
         }
 
-        $policy->purge($ligne, $cutoff);
+        // Le journal de conformité et la destruction tiennent ou tombent ensemble (#719) :
+        // écrit AVANT, sa clé vers `institutions` passe à NULL quand l'école est détruite.
+        $this->db->connection()->transaction(function () use ($policy, $ligne, $cutoff): void {
+            $this->journal->consigner($policy, $ligne, $cutoff);
+            $policy->purge($ligne, $cutoff);
+        });
         $resultat->purged++;
     }
 }

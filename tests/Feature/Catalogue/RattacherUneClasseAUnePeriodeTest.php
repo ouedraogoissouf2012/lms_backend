@@ -66,7 +66,7 @@ final class RattacherUneClasseAUnePeriodeTest extends TestCase
         $periode = $this->periodeDe($ecole, TrainingSessionStatus::Publiee);
         $classe = $this->classeDe($ecole, ['training_session_id' => $periode->id]);
         $eleve = User::factory()->create(['institution_id' => $ecole->id, 'role' => 'etudiant', 'klassci_token' => null]);
-        DB::table('classe_etudiant')->insert(['classe_id' => $classe->id, 'user_id' => $eleve->id, 'statut' => 'actif',
+        DB::table('classe_etudiant')->insert(['classe_id' => $classe->id, 'user_id' => $eleve->id, 'institution_id' => $ecole->id, 'statut' => 'actif',
             'date_inscription' => '2026-09-01', 'created_at' => now(), 'updated_at' => now()]);
 
         $this->rattacher($this->responsable($ecole), $classe, null)

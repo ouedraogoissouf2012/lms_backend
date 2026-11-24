@@ -29,9 +29,11 @@ use App\Models\User;
  *
  * - `effectif_actuel` : les inscriptions ACTIVES (D57) d'élèves de
  *   l'établissement, un fait mesuré ; le même compte que la fiche.
- * - `effectif` : `null`. La colonne n'est tenue que par le synchroniseur
- *   KLASSCI et vaut 0 pour une classe locale ; l'exposer afficherait un zéro
- *   faux (même règle que `ClassesLocalesListTest`).
+ * - `effectif` : `null`. Pour une classe locale, la colonne est la CAPACITÉ que
+ *   l'école règle depuis #1358 (0 = non renseignée). Cette vue de l'enseignant ne
+ *   l'expose pas encore : le faire changerait le contrat de son écran, à décider
+ *   avec le volet front de #1358 (dette déclarée). La gestion la lit par
+ *   `GET /classes`.
  *
  * @see docs/adr/2026-10-30-ecole-independante-01-meme-route-autre-source.md
  */

@@ -3554,6 +3554,11 @@ components:
           description: |
             L enseignant designe par son identite KLASSCI, sinon l auteur
             local (`enseignant_id`, dans l etablissement de l evaluation).
+            `id` est dans l espace de l annuaire des enseignants de l ecole
+            (#1537) : l id local en ecole autonome, l identite d enseignant
+            KLASSCI en ecole KLASSCI. Un auteur hors de l annuaire (sans
+            identite, ou qui n est pas enseignant) donne `null`, et son nom
+            reste dans `enseignant_nom`.
           properties:
             id:
               type: integer

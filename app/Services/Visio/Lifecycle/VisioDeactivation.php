@@ -43,7 +43,7 @@ final class VisioDeactivation
     /** @return array{status:int, payload: array<string, mixed>} */
     public function deactivate(int $seanceId, User $user, SeanceDesignee $designee): array
     {
-        return $this->desactiver($seanceId, $user, static fn (): ?Seance => $designee->pour($seanceId, $user));
+        return $this->desactiver($seanceId, $user, static fn (): ?Seance => Seance::query()->find(Seance::localIdFor($seanceId, $user->institution_id) ?? 0));
     }
 
     /**

@@ -52,7 +52,7 @@ trait PorteLEcoleDeSaClasse
 
         $fournie = $ligne->getAttribute('institution_id');
         if ($fournie === null) {
-            $ligne->setAttribute('institution_id', $ecole);
+            // falsification : rien n est derive
 
             return;
         }
